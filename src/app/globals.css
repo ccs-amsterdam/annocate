@@ -1,107 +1,401 @@
 :root {
-  --max-width: 1100px;
-  --border-radius: 12px;
-  --font-mono: ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Segoe UI Mono',
-    'Roboto Mono', 'Oxygen Mono', 'Ubuntu Monospace', 'Source Code Pro',
-    'Fira Mono', 'Droid Sans Mono', 'Courier New', monospace;
+  --font-size: 1.6rem;
 
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --primary: #673ab7;
+  --primary-dark: #3b2667;
+  --primary-light: #d1c4e9;
+  --primary-text: #3b2667;
+  --primary-transparent: #673ab788;
 
-  --primary-glow: conic-gradient(
-    from 180deg at 50% 50%,
-    #16abff33 0deg,
-    #0885ff33 55deg,
-    #54d6ff33 120deg,
-    #0071ff33 160deg,
-    transparent 360deg
-  );
-  --secondary-glow: radial-gradient(
-    rgba(255, 255, 255, 1),
-    rgba(255, 255, 255, 0)
-  );
+  --secondary: #03dac6;
+  --secondary-dark: #018786;
+  --secondary-light: #a7ffeb;
 
-  --tile-start-rgb: 239, 245, 249;
-  --tile-end-rgb: 228, 232, 233;
-  --tile-border: conic-gradient(
-    #00000080,
-    #00000040,
-    #00000030,
-    #00000020,
-    #00000010,
-    #00000010,
-    #00000080
-  );
+  --background: white;
+  --background-transparent: #fffb;
+  --background-fixed: white;
+  --background-inversed: #1b1c1d;
+  --background-inversed-fixed: #222;
 
-  --callout-rgb: 238, 240, 241;
-  --callout-border-rgb: 172, 175, 176;
-  --card-rgb: 180, 185, 188;
-  --card-border-rgb: 131, 134, 135;
+  --text: black;
+  --text-fixed: black;
+  --text-light: grey;
+  --text-light-fixed: darkgrey;
+  --text-inversed: white;
+  --text-inversed-fixed: white;
+
+  --lightgrey: lightgrey;
+  --grey: grey;
+  --darkgrey: darkgrey;
+  --border: white;
+  --green: green;
+  --red: crimson;
+  --lightred: rgb(218, 151, 164);
+  --orange: orange;
+
+  --inactive: #00000011;
+  --active: #00000022;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-
-    --primary-glow: radial-gradient(rgba(1, 65, 255, 0.4), rgba(1, 65, 255, 0));
-    --secondary-glow: linear-gradient(
-      to bottom right,
-      rgba(1, 65, 255, 0),
-      rgba(1, 65, 255, 0),
-      rgba(1, 65, 255, 0.3)
-    );
-
-    --tile-start-rgb: 2, 13, 46;
-    --tile-end-rgb: 2, 5, 19;
-    --tile-border: conic-gradient(
-      #ffffff80,
-      #ffffff40,
-      #ffffff30,
-      #ffffff20,
-      #ffffff10,
-      #ffffff10,
-      #ffffff80
-    );
-
-    --callout-rgb: 20, 20, 20;
-    --callout-border-rgb: 108, 108, 108;
-    --card-rgb: 100, 100, 100;
-    --card-border-rgb: 200, 200, 200;
-  }
+[data-dark="on"] {
+  --background: #222;
+  --background-transparent: #222b;
+  --background-inversed: white;
+  --text: white;
+  --text-light: darkgrey;
+  --text-inversed: black;
+  --primary-text: #e4d8fa;
 }
 
-* {
+[data-fontsize="small"] {
+  --font-size: 1.3rem;
+}
+[data-fontsize="medium"] {
+  --font-size: 1.6rem;
+}
+[data-fontsize="large"] {
+  --font-size: 2rem;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+html {
+  line-height: 1.15;
   box-sizing: border-box;
-  padding: 0;
+  font-size: 62.5%;
+}
+
+body {
   margin: 0;
+  overscroll-behavior: contain;
+  background: var(--background);
+  color: var(--text);
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+
+  transition: all 0.3s ease;
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+div::-webkit-scrollbar,
+p::-webkit-scrollbar {
+  width: 5px;
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+/* Track */
+div::-webkit-scrollbar-track,
+p::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 0;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Handle */
+div::-webkit-scrollbar-thumb,
+p::-webkit-scrollbar-thumb {
+  background-color: var(--primary);
+  border-radius: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+/* Handle on hover */
+div::-webkit-scrollbar-thumb:hover,
+p::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}
+
+h1 {
+  min-height: 1em;
+  font-size: 2em;
+}
+
+h2 {
+  font-size: 1.71428571em;
+}
+
+h3 {
+  font-size: 1.28571429em;
+}
+
+h4 {
+  font-size: 1.07142857em;
+}
+
+h5 {
+  font-size: 1em;
+}
+
+.flex {
+  flex: 1 1 auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
   }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Document Style */
+
+.field {
+}
+
+.paragraph {
+  vertical-align: middle;
+}
+
+span.token {
+  position: relative;
+  /* vertical-align: bottom; */
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+span.token.pre,
+span.token.text,
+span.token.post {
+  position: relative;
+  padding: 0.1em 0rem 0.1em;
+}
+
+span.token.pre .relation,
+span.token.text .relation,
+span.token.post .relation {
+  position: absolute;
+  bottom: -0.5em;
+  left: 0%;
+  width: 100%;
+  height: 0.5em;
+  background: none;
+}
+
+span.token.pre,
+span.token.post {
+  white-space: nowrap;
+}
+
+.relationMode {
+  cursor: not-allowed;
+}
+.relationMode span.token {
+  opacity: 0.6;
+}
+.relationMode span.token.can-select {
+  opacity: 1;
+  cursor: crosshair;
+}
+
+span.token.codingUnit {
+  font-size: 1.2em;
+  color: var(--text);
+}
+
+span.token:focus {
+  outline: none;
+}
+
+span.token:focus > span.text,
+span.token.selected > span.text {
+  background-color: var(--text-light) !important;
+  color: var(--text-inversed);
+}
+
+span.token.selected:not(.end) > span.post {
+  background-color: var(--text-light) !important;
+}
+span.token.selected:not(.start) > span.pre {
+  background-color: var(--text-light) !important;
+}
+
+span.token.tapped > span {
+  transition: text-decoration 0.3s ease;
+  text-decoration: underline overline !important;
+}
+
+button.active {
+  border: solid !important;
+}
+
+.editMode.token {
+  cursor: not-allowed;
+}
+.editMode.token.annotated {
+  cursor: pointer;
+}
+
+span.token.annotated > span {
+  /* line-height: 1.5em; */
+  transition: background 0.3s ease;
+  border: 1px solid var(--background-inversed-fixed);
+  border-left: none;
+  border-right: none;
+  /* cursor: pointer;; */
+  vertical-align: bottom;
+  box-shadow: none;
+  box-sizing: border-box;
+  hyphens: none;
+
+  /* add white background for dark mode. Annotation colors are customizable,
+  so we use opacity on a white background to ensure text readability.
+  (also possible on black background, but not easy on the eyes)  */
+  color: var(--text-fixed);
+  position: relative;
+}
+
+span.token.annotatred > span::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+span.token.annotated.anyLeft > span.text {
+  border-left: solid;
+  border-left-width: 0px;
+  border-bottom-left-radius: 0px;
+}
+
+span.token.annotated.allLeft > span.pre {
+  border: none;
+  background: none;
+}
+span.token.annotated.allLeft > span.text {
+  padding-left: 3px;
+  border-left: 1px solid var(--background-inversed-fixed);
+  border-left-width: 1px;
+  border-bottom-left-radius: 5px;
+  border-top-left-radius: 5px;
+}
+
+span.token.annotated.anyRight > span.text {
+  border-right: 0px solid;
+}
+span.token.annotated.allRight > span.post {
+  border: none;
+  background: none;
+}
+span.token.annotated.allRight > span.text {
+  padding-right: 3px;
+  border-right: 1px solid var(--background-inversed-fixed);
+  border-right-width: 1px;
+  border-bottom-right-radius: 5px;
+  border-top-right-radius: 5px;
+}
+
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Old versions of Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome, Edge, Opera and Firefox */
+}
+
+.overlayFocus {
+  transition: background-color 500ms;
+  position: relative;
+  background-color: var(--background) !important;
+  border: 1px double var(--border);
+  border-radius: 20px;
+  box-shadow: 0px 1px 3px black;
+  z-index: 20;
+}
+
+.menu > .selected {
+  background: var(--primary) !important;
+  color: var(--text-inversed) !important;
+}
+
+.buttonBackground {
+  position: relative;
+}
+
+.buttonBackground::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+/* Annotator style */
+
+input[type="range"] {
+  border-radius: 2px;
+  height: 14px;
+  margin-top: 5px;
+  background-color: var(--primary-light) !important;
+  outline: none;
+  cursor: crosshair;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 24px;
+  padding: 0;
+  background: var(--primary-light);
+  cursor: pointer;
+  border: 1px solid var(--background-inversed-fixed);
+}
+
+input[type="range"]::-moz-range-thumb {
+  appearance: none;
+  width: 10px;
+  height: 24px;
+  padding: 0;
+  background: var(--primary-dark);
+  cursor: pointer;
+  border-radius: 0px;
+}
+
+.fullscreen {
+  height: 100%;
+  width: 100%;
+}
+
+.dom-node-provider {
+  height: 100%;
+  width: 100%;
 }

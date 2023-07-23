@@ -1,0 +1,312 @@
+[
+  {
+    "id": "1",
+    "type": "unit",
+    "unit": {
+      "text_fields": [
+        {
+          "name": "title",
+          "value": "Mary had a little lamb",
+          "style": {
+            "fontWeight": "bold",
+            "fontSize": "1.2em",
+            "textAlign": "center"
+          }
+        },
+        {
+          "name": "text",
+          "value": "Mary had a little lamb, its fleece was white as snow. Everywhere that she went, the lamb was sure to go.\n\nIn other words, they went everywhere together"
+        }
+      ],
+      "annotations": [
+        {
+          "type": "span",
+          "field": "title",
+          "variable": "actor",
+          "value": "Mary",
+          "offset": 0,
+          "length": 4
+        },
+        {
+          "type": "span",
+          "field": "title",
+          "variable": "actor",
+          "value": "Lamb",
+          "offset": 18,
+          "length": 4
+        },
+        {
+          "type": "span",
+          "field": "text",
+          "variable": "actor",
+          "value": "Mary",
+          "offset": 0,
+          "length": 4
+        },
+        {
+          "type": "span",
+          "field": "text",
+          "variable": "actor",
+          "value": "Lamb",
+          "offset": 18,
+          "length": 4
+        },
+        {
+          "type": "span",
+          "field": "text",
+          "variable": "actor",
+          "value": "EMPTY",
+          "offset": 24,
+          "length": 3
+        },
+        {
+          "type": "span",
+          "field": "text",
+          "variable": "actor",
+          "value": "EMPTY",
+          "offset": 70,
+          "length": 3
+        },
+        {
+          "type": "span",
+          "field": "text",
+          "variable": "actor",
+          "value": "Hannibal Lecter",
+          "offset": 84,
+          "length": 4
+        },
+        {
+          "type": "span",
+          "field": "text",
+          "variable": "actor",
+          "value": "EMPTY",
+          "offset": 122,
+          "length": 4
+        }
+      ],
+
+      "variables": []
+    },
+    "codebook": {
+      "type": "annotate",
+      "settings": {
+        "instruction": "# Computer assisted actor identification\n\nIn the following texts, we want to identify all references to the mentioned actors.  To make this task easier and mobile phone friendly, we pre-annotated the actors that we are interested in, and marked potential references to these actors (e.g., pronouns).\n\nThe coder then only has to tab on the highlighted words to add or remove actor labels",
+        "auto_instruction": true
+      },
+      "variables": [
+        {
+          "codes": [
+            {
+              "code": "Lamb",
+              "color": "blue"
+            },
+            {
+              "code": "Hannibal Lecter",
+              "color": "crimson"
+            }
+          ],
+          "name": "actor",
+          "instruction": "Add and correct all references to the actors highlighted in this text.",
+          "searchBox": false,
+          "buttonMode": "all",
+          "multiple": false,
+          "editMode": true,
+          "keepEmpty": true
+        }
+      ]
+    }
+  },
+  {
+    "id": "2",
+    "type": "unit",
+
+    "unit": {
+      "text_fields": [
+        {
+          "name": "title",
+          "value": "Barack Obama",
+          "style": { "textAlign": "center", "fontSize": "1.5em", "fontWeight": "bold" }
+        },
+        {
+          "name": "text",
+          "value": "My fellow citizens:\n\nI stand here today humbled by the task before us, grateful for the trust you have bestowed, mindful of the sacrifices borne by our ancestors. I thank President Bush for his service to our nation, as well as the generosity and cooperation he has shown throughout this transition.\n\nForty-four Americans have now taken the presidential oath. The words have been spoken during rising tides of prosperity and the still waters of peace. Yet, every so often the oath is taken amidst gathering clouds and raging storms. At these moments, America has carried on not simply because of the skill or vision of those in high office, but because We the People have remained faithful to the ideals of our forbearers, and true to our founding documents.\n\nSo it has been. So it must be with this generation of Americans."
+        }
+      ],
+
+      "annotations": [
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "Barack Obama",
+          "field": "title",
+          "offset": 0,
+          "length": 12
+        },
+
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 0,
+          "length": 2
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "America / Americans",
+          "field": "text",
+          "offset": 10,
+          "length": 8
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 21,
+          "length": 1
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 67,
+          "length": 2
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 94,
+          "length": 3
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 148,
+          "length": 3
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "George Bush",
+          "field": "text",
+          "offset": 171,
+          "length": 14
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 190,
+          "length": 3
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 259,
+          "length": 2
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "America / Americans",
+          "field": "text",
+          "offset": 312,
+          "length": 9
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "America / Americans",
+          "field": "text",
+          "offset": 551,
+          "length": 7
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 619,
+          "length": 5
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 653,
+          "length": 2
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 656,
+          "length": 10
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 707,
+          "length": 3
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "EMPTY",
+          "field": "text",
+          "offset": 735,
+          "length": 3
+        },
+        {
+          "type": "span",
+          "variable": "actor",
+          "value": "America / Americans",
+          "field": "text",
+          "offset": 814,
+          "length": 9
+        }
+      ],
+      "variables": []
+    },
+    "codebook": {
+      "type": "annotate",
+      "settings": {
+        "instruction": "# Computer assisted actor identification\n\nIn the following texts, we want to identify all references to the mentioned actors.  To make this task easier and mobile phone friendly, we pre-annotated the actors that we are interested in, and marked potential references to these actors (e.g., pronouns).\n\nThe coder then only has to tab on the highlighted words to add or remove actor labels",
+        "auto_instruction": true
+      },
+      "variables": [
+        {
+          "codes": [
+            {
+              "code": "Barack Obama"
+            },
+            {
+              "code": "George Bush"
+            },
+            { "code": "America / Americans" }
+          ],
+          "name": "actor",
+          "instruction": "Add and correct all references to the actors highlighted in this text.",
+          "searchBox": false,
+          "buttonMode": "all",
+          "multiple": false,
+          "editMode": true
+        }
+      ]
+    }
+  }
+]

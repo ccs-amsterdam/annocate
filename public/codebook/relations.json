@@ -1,0 +1,113 @@
+{
+  "type": "annotate",
+  "settings": { "no_table": false },
+  "variables": [
+    {
+      "type": "span",
+      "codes": [
+        {
+          "code": "Subject",
+          "color": "blue"
+        },
+        {
+          "code": "Predicate",
+          "color": "purple"
+        }
+      ],
+
+      "name": "Labels",
+      "instruction": "Annotate arguments by labeling subjects and predictes, and then drawing relations between them.",
+      "searchBox": false,
+      "buttonMode": "all",
+      "multiple": false,
+      "editMode": false
+    },
+    {
+      "type": "relation",
+      "codes": [
+        {
+          "code": "Statement of Fact",
+          "color": "green"
+        },
+        {
+          "code": "Statement of Value",
+          "color": "orange"
+        },
+        {
+          "code": "Statement of Policy",
+          "color": "magenta"
+        },
+        {
+          "code": "Fulcrum",
+          "color": "yellow"
+        },
+
+        {
+          "code": "Lever",
+          "color": "orange"
+        },
+
+        {
+          "code": "Premise",
+          "color": "purple"
+        },
+        {
+          "code": "Co-premise",
+          "color": "crimson"
+        }
+      ],
+      "relations": [
+        {
+          "codes": ["Statement of Fact", "Statement of Value", "Statement of Policy"],
+          "from": {
+            "variable": "Labels",
+            "values": ["Predicate"]
+          },
+          "to": {
+            "variable": "Labels",
+            "values": ["Subject"]
+          }
+        },
+        {
+          "codes": ["Fulcrum", "Lever"],
+          "from": {
+            "variable": "Labels",
+            "values": ["Subject"]
+          },
+          "to": {
+            "variable": "Labels",
+            "values": ["Subject"]
+          }
+        },
+        {
+          "codes": ["Fulcrum", "Lever"],
+          "from": {
+            "variable": "Labels",
+            "values": ["Predicate"]
+          },
+          "to": {
+            "variable": "Labels",
+            "values": ["Predicate"]
+          }
+        },
+        {
+          "codes": ["Premise", "Co-premise"],
+          "from": {
+            "variable": "Relations",
+            "values": ["Statement of Fact", "Statement of Value", "Statement of Policy"]
+          },
+          "to": {
+            "variable": "Relations",
+            "values": ["Statement of Fact", "Statement of Value", "Statement of Policy"]
+          }
+        }
+      ],
+      "name": "Relations",
+      "instruction": "Annotate arguments by labeling subjects and predictes, and then drawing relations between them.",
+      "searchBox": false,
+      "buttonMode": "all",
+      "multiple": false,
+      "editMode": false
+    }
+  ]
+}
