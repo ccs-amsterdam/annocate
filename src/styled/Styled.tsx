@@ -4,23 +4,23 @@ export const CenteredDiv = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   position: relative;
 `;
 
 export const Loader = styled.div<{
-  active?: boolean;
-  radius?: number;
-  content?: string;
-  transitionTime?: number;
-  background?: string;
-  blur?: number;
+  $active?: boolean;
+  $radius?: number;
+  $content?: string;
+  $transitionTime?: number;
+  $background?: string;
+  $blur?: number;
 }>`
-  --r: ${(p) => (p.radius != null ? p.radius + "px" : "40px")};
+  --r: ${(p) => (p.$radius != null ? p.$radius + "px" : "40px")};
   pointer-events: none;
-  opacity: ${(p) => (p.active ? 1 : 0)};
-  transition: all ${(p) => p.transitionTime || 0}s;
+  opacity: ${(p) => (p.$active ? 1 : 0)};
+  transition: all ${(p) => p.$transitionTime || 0}s;
 
   position: absolute;
   top: 0;
@@ -28,10 +28,10 @@ export const Loader = styled.div<{
   height: 100%;
   width: 100%;
   z-index: 100;
-  background-color: ${(p) => p.background || "var(--background-transparent)"};
-  backdrop-filter: ${(p) => `{p.blur}px` || "blur(3px)"};
+  background-color: ${(p) => p.$background || "var(--background-transparent)"};
+  backdrop-filter: ${(p) => `${p.$blur || 3}px`};
 
-  ::after {
+  &::after {
     content: "";
     position: absolute;
     z-index: 1000;
@@ -43,12 +43,12 @@ export const Loader = styled.div<{
     border-radius: 50%;
     width: calc(var(--r) * 2);
     height: calc(var(--r) * 2);
-    animation: spin 1s linear infinite;
+    animation: spinNonLinear 1s linear infinite;
     opacity: 0.5;
   }
 
-  ::before {
-    content: "${(p) => p.content}";
+  &::before {
+    content: "${(p) => p.$content}";
     position: fixed;
     z-index: 1001;
     top: calc(50% - var(--r) / 2);

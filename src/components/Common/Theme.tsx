@@ -20,11 +20,25 @@ export const DarkModeButton = () => {
     setDark(next);
   };
 
-  if (!isClient) return <FaSun style={{ color: "transparent" }} />;
+  if (!isClient) return <FaSun className="Rendering" />;
 
   if (dark === "off")
-    return <FaSun onClick={onClick} style={{ cursor: "pointer" }} />;
-  return <FaMoon onClick={onClick} style={{ cursor: "pointer" }} />;
+    return (
+      <FaSun
+        onClick={onClick}
+        style={{
+          cursor: "pointer",
+        }}
+      />
+    );
+  return (
+    <FaMoon
+      onClick={onClick}
+      style={{
+        cursor: "pointer",
+      }}
+    />
+  );
 };
 
 const fontsizes = ["small", "medium", "large"];
@@ -40,6 +54,6 @@ export const FontSizeButton = () => {
     setFontsize(fontsizes[next]);
   };
 
-  if (!isClient) return <RiFontSize2 style={{ color: "transparent" }} />;
+  if (!isClient) return <RiFontSize2 className="Rendering" />;
   return <RiFontSize2 onClick={onClick} />;
 };

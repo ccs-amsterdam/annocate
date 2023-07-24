@@ -4,7 +4,7 @@ import type { Config } from "drizzle-kit";
 config({ path: ".env.local" });
 
 export default {
-  schema: "./lib/schema.ts",
+  schema: "./lib/drizzle.ts",
   out: "./drizzle-output",
   driver: "pg",
   dbCredentials: {

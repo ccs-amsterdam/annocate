@@ -1,1 +1,0 @@
-ALTER TABLE "jobs" ADD COLUMN "test" varchar(256) NOT NULL;

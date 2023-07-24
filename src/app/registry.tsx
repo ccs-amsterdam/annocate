@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useServerInsertedHTML } from "next/navigation";
 import { ServerStyleSheet, StyleSheetManager } from "styled-components";
+import isPropValid from "@emotion/is-prop-valid";
 
 export default function StyledComponentsRegistry({
   children,
@@ -22,7 +23,10 @@ export default function StyledComponentsRegistry({
   if (typeof window !== "undefined") return <>{children}</>;
 
   return (
-    <StyleSheetManager sheet={styledComponentsStyleSheet.instance}>
+    <StyleSheetManager
+      sheet={styledComponentsStyleSheet.instance}
+      shouldForwardProp={isPropValid}
+    >
       {children as React.ReactChild}
     </StyleSheetManager>
   );

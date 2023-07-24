@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "pg",
-  "id": "88b4007f-8680-4b13-ad2e-7de7fe4e0775",
-  "prevId": "fe5dd773-66d7-4ac8-8975-633eaa7296e6",
+  "id": "5f1f72a3-60c6-4385-94f5-39d5f10ede58",
+  "prevId": "0cb12bb3-3351-4876-8a9b-cd449dd56dd2",
   "tables": {
     "jobs": {
       "name": "jobs",
@@ -20,11 +20,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "test": {
-          "name": "test",
-          "type": "varchar(256)",
+        "created": {
+          "name": "created",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},

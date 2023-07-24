@@ -3,18 +3,52 @@ import { useRef } from "react";
 import Popup from "@/components/Common/Popup";
 import MenuButtonGroup from "../Annotator/components/MenuButtonGroup";
 import { DarkModeButton } from "../Common/Theme";
-import { FaUser } from "react-icons/fa";
+import { FaChevronRight, FaUser } from "react-icons/fa";
 import styled from "styled-components";
+import { useSelectedLayoutSegments } from "next/navigation";
+import Link from "next/link";
 
 interface MenuProps {}
 
 export default function Menu() {
   const userButtonRef = useRef<HTMLDivElement>(null);
+  const test = useSelectedLayoutSegments();
+
+  const breadcrubs = ["home", ...test];
+
+  function renderBreadcrumbs() {
+    let path = "";
+    return breadcrubs.map((x, i) => {
+      path = path + "/" + x;
+      if (i === breadcrubs.length - 1)
+        return (
+          <Breadcrumb key={x} $current>
+            {x}
+          </Breadcrumb>
+        );
+      return (
+        <Breadcrumb key={x + i}>
+          <Link href={path}>{x}</Link>
+          <FaChevronRight
+            key={"next" + x + i}
+            style={{
+              marginLeft: "1rem",
+              fontSize: "1.3rem",
+              transform: "translateY(2px)",
+            }}
+          />
+        </Breadcrumb>
+      );
+    });
+  }
 
   return (
     <StyledDiv>
       <ul className="Menu">
-        <div className="RightSide">
+        <div key="left" className="LeftSide">
+          {renderBreadcrumbs()}
+        </div>
+        <div key="right" className="RightSide">
           <MenuButtonGroup>
             <div>
               <DarkModeButton />
@@ -33,17 +67,30 @@ export default function Menu() {
 }
 
 const StyledDiv = styled.div`
+  width: 100%;
+  max-width: 1200px;
+
   .Menu {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     list-style-type: none;
     margin: 0;
     padding: 3px 10px 0px 10px;
     gap: 1rem;
     font-size: 1.6rem;
     color: var(--text);
+    min-height: 5rem;
+
+    .LeftSide {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      min-height: 4rem;
+      margin-top: 0.2rem;
+    }
 
     .RightSide {
+      color: var(--primary-text);
       padding-top: 5px;
       flex: 1 1 auto;
       display: flex;
@@ -73,6 +120,20 @@ const StyledDiv = styled.div`
       margin: auto;
       display: flex;
       justify-content: center;
+    }
+  }
+`;
+
+const Breadcrumb = styled.div<{ $current?: boolean }>`
+  padding: 0.6rem 0.5rem 0.5rem 0.3rem;
+  border-radius: 4px;
+  color: var(--primary-text);
+
+  a {
+    color: var(--text);
+    text-decoration: none;
+    &:hover {
+      color: var(--primary-text);
     }
   }
 `;

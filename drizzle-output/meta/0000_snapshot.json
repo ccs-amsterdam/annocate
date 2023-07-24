@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "pg",
-  "id": "fe5dd773-66d7-4ac8-8975-633eaa7296e6",
+  "id": "0cb12bb3-3351-4876-8a9b-cd449dd56dd2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "jobs": {
@@ -17,6 +17,12 @@
         "title": {
           "name": "title",
           "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "settings": {
+          "name": "settings",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         }

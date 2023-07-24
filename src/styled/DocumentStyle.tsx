@@ -111,7 +111,7 @@ export default css`
     color: var(--text-fixed);
     position: relative;
     //z-index: 1;
-    ::after {
+    &::after {
       content: "";
       position: absolute;
       top: 0;
@@ -184,7 +184,7 @@ export default css`
 
   .buttonBackground {
     position: relative;
-    ::after {
+    &::after {
       content: "";
       position: absolute;
       top: 0;

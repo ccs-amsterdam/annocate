@@ -49,8 +49,10 @@ const useLogin = (): [Backend, ReactElement] => {
   );
 
   const render = useCallback(() => {
-    if (backendQuery.isFetching) return <Loader active content="Connecting to server" />;
-    if (!backendQuery.data) return <Login login={login} sessionList={sessionList} />;
+    if (backendQuery.isFetching)
+      return <Loader $active $content="Connecting to server" />;
+    if (!backendQuery.data)
+      return <Login login={login} sessionList={sessionList} />;
 
     return <Logout logout={logout} />;
   }, [backendQuery, login, logout, sessionList]);

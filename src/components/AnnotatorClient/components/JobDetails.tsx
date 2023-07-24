@@ -1,6 +1,16 @@
 import { useState, useEffect, CSSProperties } from "react";
-import { Checkbox, Dropdown, Container, Portal, Segment } from "semantic-ui-react";
-import { StyledButton, StyledTable, Button } from "../../../styled/StyledSemantic";
+import {
+  Checkbox,
+  Dropdown,
+  Container,
+  Portal,
+  Segment,
+} from "semantic-ui-react";
+import {
+  StyledButton,
+  StyledTable,
+  Button,
+} from "../../../styled/StyledSemantic";
 import { useCSVDownloader } from "react-papaparse";
 import QRCodeCanvas from "qrcode.react";
 import copyToClipboard from "../../../functions/copyToClipboard";
@@ -9,7 +19,11 @@ import { Job, User, SetState } from "../../../types";
 import { FaList } from "react-icons/fa";
 import { Loader } from "../../../styled/Styled";
 
-const leftColStyle = { fontWeight: "bold", textAlign: "right", paddingRight: "15px" };
+const leftColStyle = {
+  fontWeight: "bold",
+  textAlign: "right",
+  paddingRight: "15px",
+};
 
 interface AnnotationData {
   data: any;
@@ -82,7 +96,7 @@ const JobDetails = ({ backend, jobId, setJobs }: JobDetailsProps) => {
   if (!job)
     return (
       <div>
-        <Loader active={true} background="none" blur={0} />
+        <Loader $active={true} $background="none" $blur={0} />
       </div>
     );
 
@@ -139,7 +153,13 @@ const JobDetails = ({ backend, jobId, setJobs }: JobDetailsProps) => {
                 toggle
                 checked={job.archived}
                 onChange={() =>
-                  setJobSettings(job.id, backend, { archived: !job.archived }, setJobs, setJob)
+                  setJobSettings(
+                    job.id,
+                    backend,
+                    { archived: !job.archived },
+                    setJobs,
+                    setJob
+                  )
                 }
               />
             </StyledTable.Cell>
@@ -153,7 +173,13 @@ const JobDetails = ({ backend, jobId, setJobs }: JobDetailsProps) => {
                 toggle
                 checked={job.restricted}
                 onChange={() =>
-                  setJobSettings(job.id, backend, { restricted: !job.restricted }, setJobs, setJob)
+                  setJobSettings(
+                    job.id,
+                    backend,
+                    { restricted: !job.restricted },
+                    setJobs,
+                    setJob
+                  )
                 }
               />
             </StyledTable.Cell>
@@ -177,14 +203,30 @@ const JobDetails = ({ backend, jobId, setJobs }: JobDetailsProps) => {
           type={Type.Button}
           filename={`annotations_${job?.id}_${job?.title}.csv`}
           data={annotations?.data}
-          style={{ display: "flex", cursor: "pointer", border: "0", padding: "0", width: "100%" }}
+          style={{
+            display: "flex",
+            cursor: "pointer",
+            border: "0",
+            padding: "0",
+            width: "100%",
+          }}
         >
-          <StyledButton fluid disabled={annotations?.data.length === 0 || loading} primary>
-            {annotations?.data.length > 0 ? "Download annotations" : "There are no annotations :("}
+          <StyledButton
+            fluid
+            disabled={annotations?.data.length === 0 || loading}
+            primary
+          >
+            {annotations?.data.length > 0
+              ? "Download annotations"
+              : "There are no annotations :("}
           </StyledButton>
         </CSVDownloader>
       ) : (
-        <StyledButton fluid onClick={getAnnotations} disabled={annotations !== null || loading}>
+        <StyledButton
+          fluid
+          onClick={getAnnotations}
+          disabled={annotations !== null || loading}
+        >
           <FaList />
           Get annotations
         </StyledButton>
@@ -209,7 +251,11 @@ const JobUsers = ({ backend, job }: JobUsersProps) => {
     backend
       .getUsers()
       .then((users: User[]) => {
-        const options = users.map((u) => ({ key: u.name, value: u.name, text: u.name }));
+        const options = users.map((u) => ({
+          key: u.name,
+          value: u.name,
+          text: u.name,
+        }));
         setOptions(options);
       })
       .catch((e: Error) => setOptions([]));
@@ -301,11 +347,13 @@ const AnnotationProgress = ({ job, annotations }: AnnotationProgressProps) => {
       <ul>
         <li>{totalAnnotations} Annotations</li>
         <li>
-          {jobsetsStarted} / {job.jobset_details.length} jobset{jobsetsStarted !== 1 ? "s" : ""}{" "}
-          started, {jobsetsFinished} finished (by at least one coder)
+          {jobsetsStarted} / {job.jobset_details.length} jobset
+          {jobsetsStarted !== 1 ? "s" : ""} started, {jobsetsFinished} finished
+          (by at least one coder)
         </li>
         <li>
-          {codersStarted} session{codersStarted !== 1 ? "s" : ""} started, {codersFinished} finished
+          {codersStarted} session{codersStarted !== 1 ? "s" : ""} started,{" "}
+          {codersFinished} finished
         </li>
       </ul>
 
@@ -313,7 +361,13 @@ const AnnotationProgress = ({ job, annotations }: AnnotationProgressProps) => {
         type={Type.Button}
         filename={`progress_${job?.id}_${job?.title}.csv`}
         data={summaryCSV}
-        style={{ display: "flex", cursor: "pointer", border: "0", padding: "0", width: "100%" }}
+        style={{
+          display: "flex",
+          cursor: "pointer",
+          border: "0",
+          padding: "0",
+          width: "100%",
+        }}
       >
         <StyledButton fluid disabled={annotations?.data.length === 0} secondary>
           {annotations?.data.length > 0
@@ -332,7 +386,14 @@ const AnnotationProgress = ({ job, annotations }: AnnotationProgressProps) => {
       />
       <br />
       {Object.entries(data).map(([coder, values]) => {
-        return <LabeledProgress key={coder} label={coder} value={values.n} total={values.total} />;
+        return (
+          <LabeledProgress
+            key={coder}
+            label={coder}
+            value={values.n}
+            total={values.total}
+          />
+        );
       })}
     </div>
   );
@@ -345,7 +406,12 @@ interface LabeledProgressProps {
   bold?: boolean;
 }
 
-const LabeledProgress = ({ label, value, total, bold = false }: LabeledProgressProps) => {
+const LabeledProgress = ({
+  label,
+  value,
+  total,
+  bold = false,
+}: LabeledProgressProps) => {
   return (
     <div style={{ display: "flex", fontWeight: bold ? "bold" : "normal" }}>
       <span
@@ -375,7 +441,11 @@ interface JobTokenButtonProps {
   style?: CSSProperties;
 }
 
-const JobTokenButton = ({ jobId, backend, style = {} }: JobTokenButtonProps) => {
+const JobTokenButton = ({
+  jobId,
+  backend,
+  style = {},
+}: JobTokenButtonProps) => {
   const [link, setLink] = useState(null);
   const [open, setOpen] = useState(false);
 
@@ -406,7 +476,9 @@ const JobTokenButton = ({ jobId, backend, style = {} }: JobTokenButtonProps) => 
       onOpen={() => setOpen(true)}
       hoverable
       mouseLeaveDelay={9999999}
-      trigger={<Button style={{ padding: "5px", ...style }}>Get Job Token</Button>}
+      trigger={
+        <Button style={{ padding: "5px", ...style }}>Get Job Token</Button>
+      }
     >
       <Segment
         style={{

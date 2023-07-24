@@ -18,7 +18,7 @@ const StyledButtonGroup = styled.div`
   & .Burger {
     cursor: pointer;
     display: none;
-    padding: 5px 5px 0px 5px;
+    padding: 4px 5px 0.4px 5px;
     font-size: 2.5rem;
     height: 35px;
     width: 30px;
@@ -47,7 +47,7 @@ const StyledButtonGroup = styled.div`
       display: block;
     }
     & .Buttons {
-      background: var(--background);
+      background: transparent;
       position: absolute;
       padding-top: 5px;
       top: 0px;

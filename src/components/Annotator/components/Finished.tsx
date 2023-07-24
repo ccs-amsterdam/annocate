@@ -1,5 +1,4 @@
 import { useState, useEffect, CSSProperties } from "react";
-import { Loader } from "semantic-ui-react";
 import { QRCodeCanvas } from "qrcode.react";
 import copyToClipboard from "../../../functions/copyToClipboard";
 import Backend from "../../Login/Backend";
@@ -8,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import Markdown from "../../Common/components/Markdown";
 import styled from "styled-components";
 import { FaFlagCheckered } from "react-icons/fa";
+import { Loader } from "@/styled/Styled";
 
 const StyledDiv = styled.div`
   display: flex;
@@ -71,7 +71,7 @@ const Finished = ({ jobServer }: FinishedProps) => {
   if (debriefing.isFetching)
     return (
       <StyledDiv>
-        <Loader size="huge" active style={{ color: "var(--text)" }} />
+        <Loader $active />
       </StyledDiv>
     );
 
@@ -85,7 +85,10 @@ const Finished = ({ jobServer }: FinishedProps) => {
         <br />
         {debriefing.data.link ? (
           <a
-            href={debriefing.data.link.replace("{user_id}", debriefing.data.user_id)}
+            href={debriefing.data.link.replace(
+              "{user_id}",
+              debriefing.data.user_id
+            )}
             rel="noopener noreferrer"
           >
             {debriefing.data.link_text || "Click here!"}
@@ -120,9 +123,9 @@ const JobLink = ({ jobId, backend, style = {} }: JobLinkProps) => {
       .then((token: string) => {
         const qrhost = backend.host.replace(":", "%colon%");
         setLink({
-          url: `${window.location.origin + window.location.pathname}guest/?host=${
-            backend.host
-          }&jobtoken=${token}`,
+          url: `${
+            window.location.origin + window.location.pathname
+          }guest/?host=${backend.host}&jobtoken=${token}`,
           qrUrl: `${
             window.location.origin + window.location.pathname
           }guest/?host=${qrhost}&jobtoken=${token}`,

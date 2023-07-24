@@ -15,7 +15,7 @@ const AnnotatorPythonClient = () => {
   const [jobServer, initJobServer] = useJobServer(backend);
   if (!backend) return authForm;
 
-  if (initJobServer) return <Loader active content="Looking for codingjob" />;
+  if (initJobServer) return <Loader $active $content="Looking for codingjob" />;
 
   if (!jobServer) {
     // if backend is connected, but there is no jobServer (because no job_id was passed in the url)

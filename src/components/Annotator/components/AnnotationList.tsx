@@ -2,7 +2,12 @@ import { useMemo, ReactElement } from "react";
 import styled from "styled-components";
 import standardizeColor from "../../../functions/standardizeColor";
 import { getColor } from "../../../functions/tokenDesign";
-import { Annotation, VariableMap, AnnotationMap, TriggerSelector } from "../../../types";
+import {
+  Annotation,
+  VariableMap,
+  AnnotationMap,
+  TriggerSelector,
+} from "../../../types";
 
 const VariableNames = styled.div`
   font-size: 2rem;
@@ -45,7 +50,7 @@ const StyledDiv = styled.div`
 
       color: var(--text-fixed);
       position: relative;
-      ::after {
+      &::after {
         content: "";
         position: absolute;
         top: 0;
@@ -110,7 +115,7 @@ const StyledDiv = styled.div`
 
     color: var(--text-fixed);
     position: relative;
-    ::after {
+    &::after {
       content: "";
       position: absolute;
       top: 0;
@@ -172,7 +177,11 @@ interface AnnotationListProps {
   selectors: Record<string, TriggerSelector>;
 }
 
-const AnnotationList = ({ variableMap, annotations, selectors }: AnnotationListProps) => {
+const AnnotationList = ({
+  variableMap,
+  annotations,
+  selectors,
+}: AnnotationListProps) => {
   const annMap: AnnotationMap = useMemo(() => {
     const annMap: AnnotationMap = {};
     for (let a of annotations || []) annMap[a.id] = a;
@@ -191,7 +200,9 @@ const AnnotationList = ({ variableMap, annotations, selectors }: AnnotationListP
           })}
         </div>
       </VariableNames>
-      <StyledDiv>{listAnnotations(variableMap, annotations, annMap, selectors)}</StyledDiv>
+      <StyledDiv>
+        {listAnnotations(variableMap, annotations, annMap, selectors)}
+      </StyledDiv>
     </div>
   );
 };
@@ -287,7 +298,12 @@ interface ShowRelationProps {
   onClick: () => void;
 }
 
-const ShowRelation = ({ variableMap, annotation, annMap, onClick }: ShowRelationProps) => {
+const ShowRelation = ({
+  variableMap,
+  annotation,
+  annMap,
+  onClick,
+}: ShowRelationProps) => {
   let codeMap = variableMap?.[annotation.variable]?.codeMap;
   if (!codeMap) return null;
 
@@ -332,9 +348,15 @@ function recursiveRelationText(
   }
   if (annotation.type === "relation") {
     elements.push(
-      <div key={key} className={`relation ${depth === 0 && "header"}`} style={{ marginLeft }}>
+      <div
+        key={key}
+        className={`relation ${depth === 0 && "header"}`}
+        style={{ marginLeft }}
+      >
         <div className="label">
-          {depth > 0 && <div className="dot" style={{ background: annotation.color }} />}
+          {depth > 0 && (
+            <div className="dot" style={{ background: annotation.color }} />
+          )}
           <div>{annotation.value}</div>
         </div>
       </div>

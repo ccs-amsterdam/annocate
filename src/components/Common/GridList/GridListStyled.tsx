@@ -9,13 +9,12 @@ export const GridListDiv = styled.div`
   margin: auto;
   padding: 2rem;
   max-width: 900px;
-  max-height: 600px;
 
   opacity: 1;
   transition: opacity 0.5s;
 
-  &.Empty {
-    opacity: 0;
+  &.Waiting {
+    opacity: 0.5;
   }
 
   @keyframes UpOut {
@@ -183,6 +182,13 @@ export const GridListDiv = styled.div`
         opacity: 1;
       }
     }
+  }
+
+  .NoResults {
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 2rem 1rem;
   }
 `;
 

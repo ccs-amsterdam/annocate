@@ -4,7 +4,7 @@ import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/contexts/auth";
 import StyledComponentRegistry from "./registry";
 import { cookies } from "next/headers";
-import ResponsiveContainer from "@/components/Common/ResponsiveContainer";
+import SetResponsiveSize from "@/components/Common/SetResponsiveSize";
 
 const font = Poppins({
   weight: "500",
@@ -32,10 +32,9 @@ export default function RootLayout({
       data-fontsize={fontsize?.value || "medium"}
     >
       <body className={font.className}>
+        <SetResponsiveSize />
         <StyledComponentRegistry>
-          <AuthProvider>
-            <ResponsiveContainer>{children}</ResponsiveContainer>
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </StyledComponentRegistry>
       </body>
     </html>

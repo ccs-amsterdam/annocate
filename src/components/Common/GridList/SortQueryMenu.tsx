@@ -16,19 +16,11 @@ const SortQueryMenu = ({ query, setQuery, sortOptions }: SortQueryProps) => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const newSort: SortQuery[] = [];
-    for (let option of sortOptions) {
-      if (option.default) {
-        const { variable, label, default: order } = option;
-        newSort.push({ variable, label, order });
-      }
-    }
-    setQuery((query) => ({ ...query, sort: newSort }));
-  }, [setQuery, sortOptions]);
-
-  useEffect(() => {
     function closeOnPageClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         e.stopPropagation();
         setOpen(false);
       }
@@ -38,7 +30,7 @@ const SortQueryMenu = ({ query, setQuery, sortOptions }: SortQueryProps) => {
   }, [dropdownRef]);
 
   return (
-    <QueryDiv open={open} active={query.sort && query.sort.length > 0}>
+    <QueryDiv $open={open} $active={query.sort && query.sort.length > 0}>
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -62,7 +54,9 @@ const SortQueryMenu = ({ query, setQuery, sortOptions }: SortQueryProps) => {
           })}
           {query.sort?.length > 0 && <div className="Divider" />}
           {sortOptions?.map((option) => {
-            const currentOrder = query.sort?.find((s) => s.variable === option.variable)?.order;
+            const currentOrder = query.sort?.find(
+              (s) => s.variable === option.variable
+            )?.order;
             if (currentOrder) return null;
             return (
               <SortField
