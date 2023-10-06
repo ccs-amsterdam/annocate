@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "migrate": "drizzle-kit generate:pg && tsx lib/migrate.ts",
-    "studio": "drizzle-kit studio"
+    "studio": "drizzle-kit studio",
+    "watch": "tsc -w"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.5.3",
@@ -16,22 +17,25 @@
     "@types/react": "18.2.15",
     "@types/react-dom": "18.2.7",
     "axios": "^1.4.0",
+    "cookies": "^0.8.0",
     "drizzle-orm": "^0.27.2",
     "eslint": "8.45.0",
     "eslint-config-next": "13.4.10",
     "js-cookie": "^3.0.5",
+    "middlecat-react": "^0.3.13",
     "next": "13.4.10",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^4.10.1",
     "styled-components": "^6.0.5",
-    "typescript": "5.1.6",
     "zod": "^3.21.4"
   },
   "devDependencies": {
+    "@tanstack/react-query-devtools": "^4.32.0",
     "dotenv": "^16.3.1",
     "drizzle-kit": "^0.19.8",
     "postgres": "^3.3.5",
-    "tsx": "^3.12.7"
+    "tsx": "^3.12.7",
+    "typescript": "5.1.6"
   }
 }

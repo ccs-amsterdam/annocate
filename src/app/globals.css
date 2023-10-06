@@ -17,6 +17,8 @@
   --background-inversed: #1b1c1d;
   --background-inversed-fixed: #222;
 
+  --menu: #d1c4e955;
+
   --text: black;
   --text-fixed: black;
   --text-light: grey;
@@ -41,6 +43,7 @@
   --background: #222;
   --background-transparent: #222b;
   --background-inversed: white;
+  --menu: #3b266755;
   --text: white;
   --text-light: darkgrey;
   --text-inversed: black;

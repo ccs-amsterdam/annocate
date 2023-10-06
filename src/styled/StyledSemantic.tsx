@@ -1,4 +1,4 @@
-import styled, { StyledComponent } from "styled-components";
+import styled from "styled-components";
 
 // Use styled components to customize semantic ui components.
 // Note that !important is still nicely contained, because styled components
@@ -128,7 +128,7 @@ const StyledButton = styled.button<{
   }
 
   svg {
-    transform: translateY(${(p) => p.$size * (1 / 7.5) || 0.2 + "rem"});
+    transform: translateY(${(p) => (p?.$size || 0) * (1 / 7.5) || 0.2 + "rem"});
     margin-right: 0.5rem;
   }
 

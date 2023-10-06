@@ -1,16 +1,19 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { AuthProvider } from "@/contexts/auth";
+import Providers from "./providers";
 import StyledComponentRegistry from "./registry";
 import { cookies } from "next/headers";
 import SetResponsiveSize from "@/components/Common/SetResponsiveSize";
+import ReactQueryProvider from "@/providers/reactQuery";
+import { MiddlecatProvider } from "middlecat-react";
 
 const font = Poppins({
   weight: "500",
   subsets: ["devanagari"],
   display: "swap",
 });
+
 export const metadata: Metadata = {
   title: "AnnoCate",
   description: "Annotation and Content Analysis Tool",
@@ -34,7 +37,7 @@ export default function RootLayout({
       <body className={font.className}>
         <SetResponsiveSize />
         <StyledComponentRegistry>
-          <AuthProvider>{children}</AuthProvider>
+          <Providers>{children} </Providers>
         </StyledComponentRegistry>
       </body>
     </html>

@@ -188,7 +188,6 @@ export const GridListDiv = styled.div`
     font-size: 2rem;
     font-weight: bold;
     text-align: center;
-    padding: 2rem 1rem;
   }
 `;
 

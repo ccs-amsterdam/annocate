@@ -1,4 +1,10 @@
-import React, { useCallback, useState, ReactElement, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useState,
+  ReactElement,
+  useMemo,
+  useRef,
+} from "react";
 import AnnotationPortal from "../components/AnnotationPortal";
 import { getColor, getColorGradient } from "../../../functions/tokenDesign";
 import ButtonSelection from "../components/ButtonSelection";
@@ -47,19 +53,31 @@ const useSpanSelector = (
   const [open, setOpen] = useState(false);
   const positionRef = useRef<HTMLSpanElement>(null);
   const [span, setSpan] = useState<Span>(null);
-  const [annotationOptions, setAnnotationOptions] = useState<CodeSelectorOption[]>([]);
+  const [annotationOptions, setAnnotationOptions] = useState<
+    CodeSelectorOption[]
+  >([]);
   const tokens = doc.tokens;
 
   const triggerFunction = React.useCallback(
     // this function can be called to open the code selector.
     (selection: TriggerSelectorParams) => {
       if (!variable) return;
-      if (selection?.index == null || selection?.from == null || selection?.to == null) return;
+      if (
+        selection?.index == null ||
+        selection?.from == null ||
+        selection?.to == null
+      )
+        return;
       if (selection.from > selection.to)
         [selection.from, selection.to] = [selection.to, selection.from];
 
       if (variable.editMode) {
-        const options = getAnnotationOptions(annotationLib, selection.index, variable, tokens);
+        const options = getAnnotationOptions(
+          annotationLib,
+          selection.index,
+          variable,
+          tokens
+        );
         if (options?.length === 0) {
           setOpen(false);
         } else if (options?.length === 1) {
@@ -84,9 +102,18 @@ const useSpanSelector = (
   if (!variable) return [null, null, true];
 
   let popup = (
-    <AnnotationPortal open={open} setOpen={setOpen} positionRef={positionRef} minY={30}>
+    <AnnotationPortal
+      open={open}
+      setOpen={setOpen}
+      positionRef={positionRef}
+      minY={30}
+    >
       {span === null ? (
-        <SelectAnnotationPage options={annotationOptions} setSpan={setSpan} setOpen={setOpen} />
+        <SelectAnnotationPage
+          options={annotationOptions}
+          setSpan={setSpan}
+          setOpen={setOpen}
+        />
       ) : (
         <NewCodePage // if current is known, select what the new code should be (or delete, or ignore)
           tokens={tokens}
@@ -112,7 +139,11 @@ interface SelectAnnotationPageProps {
   setOpen: SetState<boolean>;
 }
 
-const SelectAnnotationPage = ({ options, setSpan, setOpen }: SelectAnnotationPageProps) => {
+const SelectAnnotationPage = ({
+  options,
+  setSpan,
+  setOpen,
+}: SelectAnnotationPageProps) => {
   const onButtonSelection = React.useCallback(
     (value: CodeSelectorValue, ctrlKey: boolean) => {
       if (value.cancel) {
@@ -164,7 +195,12 @@ const NewCodePage = ({
         const keepEmpty = editMode;
         annotationManager.rmAnnotation(value.id, keepEmpty);
       } else {
-        annotationManager.createSpanAnnotation(value.code, span[0], span[1], tokens);
+        annotationManager.createSpanAnnotation(
+          value.code,
+          span[0],
+          span[1],
+          tokens
+        );
       }
       if (!variable?.multiple && !ctrlKey) {
         setOpen(false);
@@ -241,10 +277,14 @@ const NewCodePage = ({
 
   return (
     <>
-      {/* TODO: Used to be Header, but typescript doesn't seem to get along with semantic react */}
-      <h5 style={{ textAlign: "center" }}>"{getTextSnippet(tokens, span)}"</h5>
-      {/* {asDropdownSelection(dropdownOptions)} */}
-      <ButtonSelection id={"newCodePageButtons"} options={options} onSelect={onSelect} />{" "}
+      <h5 style={{ textAlign: "center" }}>
+        &ldquo;{getTextSnippet(tokens, span)}&rdquo;
+      </h5>
+      <ButtonSelection
+        id={"newCodePageButtons"}
+        options={options}
+        onSelect={onSelect}
+      />{" "}
     </>
   );
 };

@@ -138,6 +138,84 @@ const GridList = ({
 
   const noResults = !waiting && !meta.total;
 
+  function renderHeader() {
+    if (noResults)
+      return (
+        <div key="noresults" className="NoResults">
+          {noResultsText}
+        </div>
+      );
+    if (canGoUp)
+      return (
+        <CenteredDiv>
+          <FaChevronUp size="5rem" />
+        </CenteredDiv>
+      );
+
+    return template.map((item: GridItemTemplate, i) => (
+      <Value key={item.label + "_" + i} style={item.style}>
+        {item.label}
+      </Value>
+    ));
+  }
+
+  function renderBody() {
+    return data.map(({ datapoint, ref }, i) => {
+      if (i > meta?.total) return null;
+      return (
+        <div
+          key={datapoint?.id ?? `missing_${i}`}
+          ref={ref}
+          className={`Up GridItem Values  ${!datapoint ? "Disabled" : ""} ${
+            selected && selected.datapoint.id === datapoint?.id
+              ? "Selected"
+              : ""
+          }`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!datapoint) return;
+            if (setDetail) {
+              setDetail(datapoint)
+                .then((detailElement) => {
+                  setSelected({ datapoint, ref, detailElement });
+                })
+                .catch(console.error);
+            } else {
+              setSelected({ datapoint, ref });
+            }
+            onClick && onClick(datapoint);
+          }}
+        >
+          {template.map((item: GridItemTemplate, j) => {
+            if (!datapoint)
+              return (
+                <Value style={item.style} key={`missing_${i}_${j}`}></Value>
+              );
+            return (
+              <ItemValue
+                key={datapoint.id + "+" + item.value}
+                datapoint={datapoint}
+                item={item}
+              />
+            );
+          })}
+        </div>
+      );
+    });
+  }
+
+  function renderFooter() {
+    return (
+      <div
+        key="footer"
+        className={`GridItem Labels PageChange ${!canGoDown && "Disabled"}`}
+        onClick={() => changePage("down")}
+      >
+        <CenteredDiv>{canGoDown && <FaChevronDown size="5rem" />}</CenteredDiv>
+      </div>
+    );
+  }
+
   return (
     <CenteredDiv>
       <Loader $active={waiting} $transitionTime={0.5} />
@@ -163,86 +241,15 @@ const GridList = ({
         <div className={`GridItems ${singlePage ? "SinglePage" : ""}`}>
           {
             <div
-              key="labels up"
+              key="header"
               className={`GridItem Labels ${canGoUp && "PageChange"}`}
               onClick={() => canGoUp && changePage("up")}
             >
-              {canGoUp ? (
-                <CenteredDiv>
-                  <FaChevronUp size="5rem" />
-                </CenteredDiv>
-              ) : (
-                template.map((item: GridItemTemplate, i) => (
-                  <Value key={item.label + "_" + i} style={item.style}>
-                    {item.label}
-                  </Value>
-                ))
-              )}
+              {renderHeader()}
             </div>
           }
-          {data.map(({ datapoint, ref }, i) => {
-            if (noResults && i === 0)
-              return (
-                <div key="noresults" className="NoResults">
-                  {noResultsText}
-                </div>
-              );
-            if (i > meta?.total) return null;
-            return (
-              <div
-                key={datapoint?.id ?? `missing_${i}`}
-                ref={ref}
-                className={`Up GridItem Values  ${
-                  !datapoint ? "Disabled" : ""
-                } ${
-                  selected && selected.datapoint.id === datapoint?.id
-                    ? "Selected"
-                    : ""
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!datapoint) return;
-                  if (setDetail) {
-                    setDetail(datapoint)
-                      .then((detailElement) => {
-                        setSelected({ datapoint, ref, detailElement });
-                      })
-                      .catch(console.error);
-                  } else {
-                    setSelected({ datapoint, ref });
-                  }
-                  onClick && onClick(datapoint);
-                }}
-              >
-                {template.map((item: GridItemTemplate, j) => {
-                  if (!datapoint)
-                    return (
-                      <Value
-                        style={item.style}
-                        key={`missing_${i}_${j}`}
-                      ></Value>
-                    );
-                  return (
-                    <ItemValue
-                      key={datapoint.id + "+" + item.value}
-                      datapoint={datapoint}
-                      item={item}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-
-          <div
-            key="labels down"
-            className={`GridItem Labels PageChange ${!canGoDown && "Disabled"}`}
-            onClick={() => changePage("down")}
-          >
-            <CenteredDiv>
-              {canGoDown && <FaChevronDown size="5rem" />}
-            </CenteredDiv>
-          </div>
+          {renderBody()}
+          {renderFooter()}
         </div>
         <div
           className={`DetailContainer ${selected?.detailElement ? "Open" : ""}`}
