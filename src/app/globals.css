@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --font-size: 1.6rem;
 
@@ -16,6 +20,8 @@
   --background-fixed: white;
   --background-inversed: #1b1c1d;
   --background-inversed-fixed: #222;
+
+  --shadow: #00000022;
 
   --menu: #d1c4e955;
 
@@ -48,6 +54,7 @@
   --text-light: darkgrey;
   --text-inversed: black;
   --primary-text: #e4d8fa;
+  --shadow: #ffffff22;
 }
 
 [data-fontsize="small"] {
@@ -78,9 +85,8 @@ body {
   background: var(--background);
   color: var(--text);
   font-family: Verdana, Geneva, Tahoma, sans-serif;
-
   transition: all 0.3s ease;
-
+  font-size: 16px;
   height: var(--responsive-height, 98vh);
   width: var(--responsive-width, 100vw);
 }

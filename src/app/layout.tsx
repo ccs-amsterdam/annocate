@@ -1,12 +1,10 @@
-import "./globals.css";
+import "@/app/globals.css";
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import Providers from "./providers";
 import StyledComponentRegistry from "./registry";
 import { cookies } from "next/headers";
 import SetResponsiveSize from "@/components/Common/SetResponsiveSize";
-import ReactQueryProvider from "@/providers/reactQuery";
-import { MiddlecatProvider } from "middlecat-react";
 
 const font = Poppins({
   weight: "500",
@@ -19,21 +17,13 @@ export const metadata: Metadata = {
   description: "Annotation and Content Analysis Tool",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = cookies();
   const dark = cookieStore.get("dark");
   const fontsize = cookieStore.get("fontsize");
 
   return (
-    <html
-      lang="en"
-      data-dark={dark?.value || "off"}
-      data-fontsize={fontsize?.value || "medium"}
-    >
+    <html lang="en" data-dark={dark?.value || "off"} data-fontsize={fontsize?.value || "medium"}>
       <body className={font.className}>
         <SetResponsiveSize />
         <StyledComponentRegistry>

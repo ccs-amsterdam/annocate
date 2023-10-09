@@ -118,7 +118,7 @@ function getNextIndex(
   questionIndex: number,
   canSelect: boolean[],
   questions: Question[],
-  answers: Answer[]
+  answers: Answer[],
 ) {
   for (let i = questionIndex + 1; i < questions.length; i++) {
     if (!canSelect?.[i]) continue;

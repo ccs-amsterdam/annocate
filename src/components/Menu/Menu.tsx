@@ -1,20 +1,15 @@
 "use client";
-import { useRef } from "react";
-import Popup from "@/components/Common/Popup";
 import MenuButtonGroup from "../Annotator/components/MenuButtonGroup";
 import { DarkModeButton } from "../Common/Theme";
 import { FaChevronRight, FaUser } from "react-icons/fa";
-import styled from "styled-components";
 import { useSelectedLayoutSegments } from "next/navigation";
 import Link from "next/link";
-
-interface MenuProps {}
+import { AuthForm } from "middlecat-react";
+import RadixPopup from "../Common/RadixPopup";
 
 export default function Menu() {
-  const userButtonRef = useRef<HTMLDivElement>(null);
-  const test = useSelectedLayoutSegments();
-
-  const breadcrubs = ["home", ...test];
+  const path = useSelectedLayoutSegments();
+  const breadcrubs = ["home", ...path];
 
   function renderBreadcrumbs() {
     let path = "";
@@ -22,7 +17,7 @@ export default function Menu() {
       path = path + "/" + x;
       if (i === breadcrubs.length - 1)
         return (
-          <Breadcrumb key={x} $current>
+          <Breadcrumb key={x} current={true}>
             {x}
           </Breadcrumb>
         );
@@ -43,97 +38,36 @@ export default function Menu() {
   }
 
   return (
-    <StyledDiv>
-      <ul className="Menu">
-        <div key="left" className="LeftSide">
+    <menu className="w-full max-w-[1200px] px-2">
+      <ul className="text-text m-0 flex min-h-[5rem] list-none items-start gap-2 px-3 pb-0 pt-1 text-2xl">
+        <div key="left" className="mt-1 flex min-h-[4rem] flex-auto items-center ">
           {renderBreadcrumbs()}
         </div>
-        <div key="right" className="RightSide">
+        <div key="right" className="text-primary-text flex flex-auto justify-end pt-[5px]">
           <MenuButtonGroup>
             <div>
               <DarkModeButton />
             </div>
-            <div ref={userButtonRef}>
-              <FaUser />
-            </div>
+            <RadixPopup trigger={<FaUser />} className="flex flex-col justify-center">
+              <AuthForm signInTitle="" />
+            </RadixPopup>
           </MenuButtonGroup>
         </div>
       </ul>
-      <Popup triggerRef={userButtonRef}>
-        <div className="PopupContent"></div>
-      </Popup>
-    </StyledDiv>
+    </menu>
   );
 }
 
-const StyledDiv = styled.div`
-  width: 100%;
-  max-width: 1200px;
-
-  .Menu {
-    display: flex;
-    align-items: flex-start;
-    list-style-type: none;
-    margin: 0;
-    padding: 3px 10px 0px 10px;
-    gap: 1rem;
-    font-size: 1.6rem;
-    color: var(--text);
-    min-height: 5rem;
-
-    .LeftSide {
-      flex: 1 1 auto;
-      display: flex;
-      align-items: center;
-      min-height: 4rem;
-      margin-top: 0.2rem;
-    }
-
-    .RightSide {
-      color: var(--primary-text);
-      padding-top: 5px;
-      flex: 1 1 auto;
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    li {
-      cursor: pointer;
-      padding: 1.5rem 0.5rem 0.5rem 0.5rem;
-
-      &.active {
-        border-bottom: 2px solid var(--primary);
-      }
-    }
-  }
-
-  .PopupContent {
-    display: flex;
-    flex-direction: column;
-
-    padding: 1rem;
-    font-size: 1.5rem;
-    svg {
-      margin-right: 1rem;
-    }
-    .authform {
-      margin: auto;
-      display: flex;
-      justify-content: center;
-    }
-  }
-`;
-
-const Breadcrumb = styled.div<{ $current?: boolean }>`
-  padding: 0.6rem 0.5rem 0.5rem 0.3rem;
-  border-radius: 4px;
-  color: var(--primary-text);
-
-  a {
-    color: var(--text);
-    text-decoration: none;
-    &:hover {
-      color: var(--primary-text);
-    }
-  }
-`;
+const Breadcrumb = ({ children, current }: { current?: boolean; children: React.ReactNode }) => {
+  return (
+    <div className="text-primary-text rounded p-2">
+      <a
+        className={`text-text  flex no-underline ${
+          current ? "text-primary-text" : "hover:text-primary-text"
+        }`}
+      >
+        {children}
+      </a>
+    </div>
+  );
+};
