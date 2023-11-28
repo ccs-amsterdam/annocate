@@ -1,34 +1,25 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AnnoCate
 
-## Getting Started
+AnnoCate is a browser-based, mobile-compatible crowd annotation tool, that has been in active development in several forms over the past few years.
+it's raison d'être is based on a combination of features that we did not find in existing annotation tools. At it's core, its a convenient tools for creating coding jobs. Over are the days of asking co-authors to help you create training or validation data in Excel sheets. Manual content analysis can be much more efficient and enjoyable if you can do it on your mobile phone whenever the fancy strikes you. AnnoCate supports a wide range of annotation tasks, including complex word-selection tasks, and drawing relations between annotations.
 
-First, run the development server:
+But moreover, AnnoCate is a system for deploying these jobs to a large, untrained crowd, and can even be used for experiments. For example, a researcher can create an invite link that can be distributed by a survey company. One option is then to include participant identifiers to link the annotations to (panel) surveys. But AnnoCate also support integrating survey questions directly inside of codingjobs. Furthermore, the researchers can determine rules for randomly assigning participants to different conditions. This allows one to conduct annotation experiments, either to research the annotation process itself (e.g., annotation bias), or to use annotations as a novel way to investigate attitudes (e.g., do people annotate stances differently if the source is a women).
+
+you can (https://annocate.com/demo?units=introduction&codebook=introduction)[peek here for a quick introduction].
+
+# Development status and history
+
+The current repository is under active development. Early development of this tool started out as a (https://www.opted.eu/fileadmin/user_upload/k_opted/OPTED_Deliverable_D7.2.pdf)[work package of in the OPTED project], where it is one part of the broader AmCAT infrastructure. It has since stayed in active develoment and testing, which has mostly been under the working title AnnoTinder ((https://github.com/ccs-amsterdam/annotinder-client)[client], (https://github.com/ccs-amsterdam/annotinder-server)[server]).
+
+At present it is being re-implemented in this repository, under the name of AnnoCate. The goal of this re-implementation is to clean-up the codebase and features based on current experience in deploying the tool in a number of studies. We're also dropping the separate Python backend in favour of using the fullstack framework NextJS. This will make it easier for people to fire-up their own AnnoCate server.
+
+The authentication for AnnoCate will go through (https://github.com/ccs-amsterdam/middlecat)[Middlecat], which maintains the integration with the AmCAT infrastructure. This can also be used for standalone AnnoCate servers, with the benefit that people that trust us can rely on our Middlecat server, so they do not need to handle authentication themselves.
+
+## Development guide
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
