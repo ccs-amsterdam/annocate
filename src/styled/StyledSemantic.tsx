@@ -22,7 +22,7 @@ const CodeButton = styled.button<{
   $maxWidth?: string;
   $minWidth?: string;
 }>`
-  font-size: ${(p) => p.$size || 1.5}rem;
+  font-size: ${(p) => p.$size || 1}rem;
   padding: ${(p) => (p.$compact ? "0.5rem" : "0.5rem")};
   min-height: ${(p) => (p.$compact ? "" : "5rem")};
   margin: 0;
@@ -50,8 +50,7 @@ const CodeButton = styled.button<{
     return "var(--background)";
   }};
   background: ${(p) => p.$background || "var(--primary-transparent)"};
-  flex: ${(p) =>
-    p.$compact && !p.$flex ? "0.2 1 auto" : p.$flex || "1 1 auto"};
+  flex: ${(p) => (p.$compact && !p.$flex ? "0.2 1 auto" : p.$flex || "1 1 auto")};
   max-width: ${(p) => p.$maxWidth || "none"};
   min-width: ${(p) => p.$minWidth || "none"};
 
@@ -87,10 +86,7 @@ const CodeButton = styled.button<{
   }
 
   :hover {
-    border-color: ${(p) =>
-      p.$darkBackground
-        ? "var(--background-fixed)"
-        : "var(--background-inversed)"};
+    border-color: ${(p) => (p.$darkBackground ? "var(--background-fixed)" : "var(--background-inversed)")};
   }
 
   :disabled {
@@ -105,7 +101,8 @@ const StyledButton = styled.button<{
   $secondary?: boolean;
   $fluid?: boolean;
 }>`
-  font-size: ${(p) => p.$size || 1.5}rem;
+  position: relative;
+  font-size: ${(p) => p.$size || 1}rem;
   padding: 0.7em 1em 0.7em 1rem;
   margin: 0;
   cursor: pointer;
@@ -141,8 +138,7 @@ const StyledButton = styled.button<{
         background: var(--primary-dark);
       }
         `;
-    }
-    if (p.$secondary) {
+    } else if (p.$secondary) {
       return `
       background: var(--secondary);
       color: #222;
@@ -152,10 +148,32 @@ const StyledButton = styled.button<{
       }
         `;
     }
+    return `
+      &.selected, &:hover, &:active {
+        
+        color: var(--primary-text)
+      }
+      `;
   }}
 
   &:disabled {
     cursor: not-allowed;
+    background: grey;
+  }
+
+  &.loading::after {
+    position: absolute;
+    content: "";
+    top: 50%;
+    right: 3%;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: -0.75rem;
+    margin-left: -0.75rem;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
   }
 
   ${(p) => {
@@ -200,11 +218,4 @@ const StyledSegment = styled.div`
   padding: 1em;
 `;
 
-export {
-  Button,
-  ButtonGroup,
-  CodeButton,
-  StyledButton,
-  StyledContainer,
-  StyledSegment,
-};
+export { Button, ButtonGroup, CodeButton, StyledButton, StyledContainer, StyledSegment };

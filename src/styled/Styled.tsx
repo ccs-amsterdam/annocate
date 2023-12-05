@@ -17,7 +17,7 @@ export const Loader = styled.div<{
   $background?: string;
   $blur?: number;
 }>`
-  --r: ${(p) => (p.$radius != null ? p.$radius + "px" : "40px")};
+  --r: ${(p) => (p.$radius != null ? p.$radius + "px" : "30px")};
   pointer-events: none;
   opacity: ${(p) => (p.$active ? 1 : 0)};
   transition: all ${(p) => p.$transitionTime || 0}s;
@@ -53,7 +53,7 @@ export const Loader = styled.div<{
     z-index: 1001;
     top: calc(50% - var(--r) / 2);
     font-weight: bold;
-    font-size: 1.5rem;
+    font-size: 0.9rem;
     color: var(--primary-text);
     left: 50%;
     transform: translateX(-50%);

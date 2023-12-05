@@ -11,7 +11,7 @@ const StyledButtonGroup = styled.div`
   &:active {
     --buttongroup-height: 1000px;
   }
-  font-size: 2.5rem;
+  font-size: 1.8rem;
   z-index: 1000;
   position: relative;
 

@@ -60,12 +60,7 @@ export default function ManageUsers({ backend }: ManageUsersProps) {
   return (
     <CenteredDiv>
       <StyledDiv>
-        <CreateUserModal
-          backend={backend}
-          addUsers={addUsers}
-          setAddUsers={setAddUsers}
-          setUsers={setUsers}
-        />
+        <CreateUserModal backend={backend} addUsers={addUsers} setAddUsers={setAddUsers} setUsers={setUsers} />
         <div className="UsersTable">
           <UsersTable backend={backend} users={users} setUsers={setUsers} />
         </div>
@@ -161,7 +156,7 @@ const CreateUserModal = ({ backend, addUsers, setAddUsers, setUsers }: CreateUse
         {status === "pending" ? (
           <Loader active={true} />
         ) : (
-          <div style={{ display: "flex", gap: "1rem", marginTop: "2rem" }}>
+          <div style={{ display: "flex", gap: "1rem", marginTop: "1.8rem" }}>
             <StyledButton
               fluid
               onClick={() => {

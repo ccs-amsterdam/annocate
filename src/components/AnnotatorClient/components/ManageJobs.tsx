@@ -53,14 +53,14 @@ export default function ManageJobs({ backend }: ManageJobsProps) {
       data = data.slice(query.offset, query.offset + query.n);
       return { data, meta };
     },
-    [jobs]
+    [jobs],
   );
 
   const setDetail = useCallback(
     async (data: DataPoint) => {
       return <JobDetails backend={backend} jobId={data.id} setJobs={setJobs} />;
     },
-    [backend, setJobs]
+    [backend, setJobs],
   );
 
   return (
@@ -75,7 +75,7 @@ export default function ManageJobs({ backend }: ManageJobsProps) {
 }
 
 const template: GridItemTemplate[] = [
-  { label: "Coding Job", value: "title", style: { fontWeight: "bold", fontSize: "1.6rem" } },
+  { label: "Coding Job", value: "title", style: { fontWeight: "bold", fontSize: "1.2rem" } },
   {
     label: "Created by",
     value: "creator",

@@ -17,19 +17,24 @@ import {
 
 import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
-import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import { registerService } from "@/lib/utils";
+import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
+import { Annotation, AnnotationHistory, RawCodeBook, RawUnit, Rules, Status } from "@/app/types";
 
 config({ path: ".env.local" });
 
 // JOB TABLES
 
+export interface JobConfig {
+  description: string;
+}
+
 export const jobs = pgTable("jobs", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 256 }).notNull().unique(),
+  name: varchar("name", { length: 128 }).notNull().unique(),
   created: timestamp("created").notNull().defaultNow(),
-  createdBy: integer("created_by").notNull(),
+  config: jsonb("job").notNull().$type<JobConfig>().default({ description: "" }),
+  frozen: boolean("frozen").notNull().default(false),
 });
 
 export const codebooks = pgTable(
@@ -40,8 +45,7 @@ export const codebooks = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
-    created: timestamp("created").notNull().defaultNow(),
-    codebook: jsonb("codebook").notNull(),
+    codebook: jsonb("codebook").notNull().$type<RawCodeBook>(),
   },
   (table) => {
     return { jobIds: index("job_ids").on(table.jobId) };
@@ -51,56 +55,67 @@ export const codebooks = pgTable(
 export const units = pgTable(
   "units",
   {
+    id: serial("id").primaryKey(),
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    unitId: varchar("unit_id", { length: 256 }).notNull(),
+    externalId: varchar("unit_id", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    unit: jsonb("unit").notNull(),
-    type: text("type", { enum: ["code", "train", "test", "survey"] }).notNull(),
-    group: varchar("group", { length: 256 }).default(""),
+    unit: jsonb("unit").notNull().$type<RawUnit>(),
+    codebookId: integer("codebook_id"),
+    encryptionKey: varchar("encryption_key", { length: 256 }),
+    modified: timestamp("modified").notNull().defaultNow(),
+    type: text("type", { enum: ["annotate", "train", "test", "survey"] }).notNull(),
   },
   (table) => {
-    return { pk: primaryKey(table.jobId, table.unitId) };
+    return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
 
 export const unitGroups = pgTable(
   "unit_groups",
   {
+    id: serial("id").primaryKey(),
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
-    created: timestamp("created").notNull().defaultNow(),
+    rules: jsonb("rules").notNull().$type<Rules>(),
+    codebookId: integer("codebook_id").notNull(),
   },
   (table) => {
-    return { pk: primaryKey(table.jobId, table.name) };
+    return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
 
-export const jobSets = pgTable("job_sets", {
-  id: serial("id").primaryKey(),
-  jobId: integer("job_id")
-    .notNull()
-    .references(() => jobs.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 256 }).notNull(),
-  created: timestamp("created").notNull().defaultNow(),
-  codebookId: integer("codebook_id"),
-});
-
-export const jobSetUnits = pgTable(
-  "job_set_units",
+export const unitGroupUnits = pgTable(
+  "unit_group_units",
   {
-    jobSetId: integer("job_set_id")
+    unitGroupId: integer("unit_group_id")
       .notNull()
-      .references(() => jobSets.id, { onDelete: "cascade" }),
+      .references(() => unitGroups.id, { onDelete: "cascade" }),
     unitId: integer("unit_id")
       .notNull()
       .references(() => units.id, { onDelete: "cascade" }),
   },
   (table) => {
-    return { pk: primaryKey(table.jobSetId, table.unitId) };
+    return { pk: primaryKey({ columns: [table.unitGroupId, table.unitId] }) };
+  },
+);
+
+export const jobSets = pgTable(
+  "job_sets",
+  {
+    id: serial("id").primaryKey(),
+    jobId: integer("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }).notNull(),
+    unitGroups: jsonb("unit_groups").notNull(),
+    deployed: boolean("deployed").notNull().default(false),
+  },
+  (table) => {
+    return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
 
@@ -127,7 +142,7 @@ export const managers = pgTable(
     role: text("role", { enum: ["owner", "admin", "write", "read"] }).notNull(),
   },
   (table) => {
-    return { pk: primaryKey(table.jobId, table.userId) };
+    return { pk: primaryKey({ columns: [table.jobId, table.userId] }) };
   },
 );
 
@@ -145,32 +160,48 @@ export const annotators = pgTable(
       .references(() => jobSets.id, { onDelete: "cascade" }),
   },
   (table) => {
-    return { pk: primaryKey(table.jobId, table.userId) };
+    return { pk: primaryKey({ columns: [table.jobId, table.userId] }) };
+  },
+);
+
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: varchar("id", { length: 256 }).primaryKey(),
+    jobsetId: integer("jobset_id")
+      .notNull()
+      .references(() => jobSets.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 128 }).notNull(),
+    createdIds: jsonb("created_ids").notNull().$type<string[]>().default([]),
+  },
+  (table) => {
+    return { jobsetIds: index("jobset_ids").on(table.jobsetId) };
   },
 );
 
 export const annotations = pgTable(
   "annotations",
   {
-    id: serial("id").primaryKey(),
-    jobId: integer("job_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    unitId: integer("unit_id")
-      .notNull()
-      .references(() => units.id, { onDelete: "cascade" }),
-    userId: integer("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    created: timestamp("created").notNull().defaultNow(),
-    annotation: jsonb("annotation").notNull(),
+    jobId: integer("job_id").notNull(),
+    // user is email for registered users, or secret id for anonymous users
+    user: varchar("user_id", { length: 256 }).notNull(),
+    index: integer("index").notNull(),
+    unitId: integer("unit_id").notNull(),
+    preallocateTime: timestamp("preallocate_time"),
+    annotation: jsonb("annotation").notNull().$type<Annotation[]>(),
+    history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
+    status: text("status").$type<Status>(),
+    sessionSecret: varchar("device_id", { length: 64 }),
   },
   (table) => {
-    return { pk: primaryKey(table.jobId, table.unitId, table.userId) };
+    return {
+      pk: primaryKey({ columns: [table.jobId, table.user, table.index] }),
+      unitIds: index("unit_ids").on(table.unitId),
+    };
   },
 );
 
-function getDB() {
+function getDB(): NeonHttpDatabase | PostgresJsDatabase {
   if (process.env.NEON_DATABASE_URL) {
     const queryClient = neon(process.env.NEON_DATABASE_URL || "");
     const db = drizzleNeon(queryClient);
@@ -182,5 +213,5 @@ function getDB() {
   }
 }
 
-const db = registerService("db", getDB);
+const db = getDB();
 export default db;

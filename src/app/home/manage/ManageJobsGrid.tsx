@@ -57,12 +57,12 @@ const template: GridItemTemplate[] = [
   {
     label: "ID",
     value: "id",
-    style: { fontWeight: "bold", fontSize: "1.6rem" },
+    style: { fontWeight: "bold", fontSize: "1.2rem" },
   },
   {
     label: "Coding Job",
     value: "title",
-    style: { fontWeight: "bold", fontSize: "1.3rem" },
+    style: { fontWeight: "bold", fontSize: "1rem" },
   },
 ];
 
@@ -71,6 +71,4 @@ const sortOptions: SortQueryOption[] = [
   { variable: "progress", label: "% Completed" },
 ];
 
-const filterOptions: FilterQueryOption[] = [
-  { variable: "title", label: "Coding Job Title", type: "search" },
-];
+const filterOptions: FilterQueryOption[] = [{ variable: "title", label: "Coding Job Title", type: "search" }];

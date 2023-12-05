@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const config = {
-    middlecat_url: "https://middlecat.up.railway.app",
+    middlecat_url: process.env.MIDDLECAT_URL || "",
     authorization: "authenticated",
   };
 

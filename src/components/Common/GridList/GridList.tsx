@@ -53,9 +53,7 @@ const GridList = ({
   const gridRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<SelectedDataPoint>();
-  const [query, setQuery] = useState<DataQuery>(() =>
-    createInitialQuery(pageSize, filterOptions, sortOptions)
-  );
+  const [query, setQuery] = useState<DataQuery>(() => createInitialQuery(pageSize, filterOptions, sortOptions));
 
   const singlePage = meta && meta.total <= pageSize;
 
@@ -93,9 +91,7 @@ const GridList = ({
     gridEl.classList.remove("upOut", "downOut", "upIn", "downIn");
     gridEl.classList.add(`${query.direction || ""}Out`);
 
-    const loadDataFunction = fullData
-      ? async (query: DataQuery) => queryFullData(fullData, query)
-      : loadData;
+    const loadDataFunction = fullData ? async (query: DataQuery) => queryFullData(fullData, query) : loadData;
 
     const now = Date.now();
     loadDataFunction(query)
@@ -148,7 +144,7 @@ const GridList = ({
     if (canGoUp)
       return (
         <CenteredDiv>
-          <FaChevronUp size="5rem" />
+          <FaChevronUp size="3rem" />
         </CenteredDiv>
       );
 
@@ -167,9 +163,7 @@ const GridList = ({
           key={datapoint?.id ?? `missing_${i}`}
           ref={ref}
           className={`Up GridItem Values  ${!datapoint ? "Disabled" : ""} ${
-            selected && selected.datapoint.id === datapoint?.id
-              ? "Selected"
-              : ""
+            selected && selected.datapoint.id === datapoint?.id ? "Selected" : ""
           }`}
           onClick={(e) => {
             e.stopPropagation();
@@ -187,17 +181,8 @@ const GridList = ({
           }}
         >
           {template.map((item: GridItemTemplate, j) => {
-            if (!datapoint)
-              return (
-                <Value style={item.style} key={`missing_${i}_${j}`}></Value>
-              );
-            return (
-              <ItemValue
-                key={datapoint.id + "+" + item.value}
-                datapoint={datapoint}
-                item={item}
-              />
-            );
+            if (!datapoint) return <Value style={item.style} key={`missing_${i}_${j}`}></Value>;
+            return <ItemValue key={datapoint.id + "+" + item.value} datapoint={datapoint} item={item} />;
           })}
         </div>
       );
@@ -211,7 +196,7 @@ const GridList = ({
         className={`GridItem Labels PageChange ${!canGoDown && "Disabled"}`}
         onClick={() => changePage("down")}
       >
-        <CenteredDiv>{canGoDown && <FaChevronDown size="5rem" />}</CenteredDiv>
+        <CenteredDiv>{canGoDown && <FaChevronDown size="3rem" />}</CenteredDiv>
       </div>
     );
   }
@@ -222,20 +207,8 @@ const GridList = ({
 
       <GridListDiv ref={gridRef} className={waiting ? "Waiting" : ""}>
         <div className="QueryFields">
-          {filterOptions && (
-            <FilterQueryMenu
-              query={query}
-              setQuery={setQuery}
-              filterOptions={filterOptions}
-            />
-          )}
-          {sortOptions && (
-            <SortQueryMenu
-              query={query}
-              setQuery={setQuery}
-              sortOptions={sortOptions}
-            />
-          )}
+          {filterOptions && <FilterQueryMenu query={query} setQuery={setQuery} filterOptions={filterOptions} />}
+          {sortOptions && <SortQueryMenu query={query} setQuery={setQuery} sortOptions={sortOptions} />}
           {!singlePage && <div className="Results">{page + " / " + pages}</div>}
         </div>
         <div className={`GridItems ${singlePage ? "SinglePage" : ""}`}>
@@ -251,9 +224,7 @@ const GridList = ({
           {renderBody()}
           {renderFooter()}
         </div>
-        <div
-          className={`DetailContainer ${selected?.detailElement ? "Open" : ""}`}
-        >
+        <div className={`DetailContainer ${selected?.detailElement ? "Open" : ""}`}>
           <div ref={detailRef} className={`Detail `}>
             {selected?.detailElement}
           </div>
@@ -265,7 +236,7 @@ const GridList = ({
 
 const Value = styled.div<{ wrap?: boolean }>`
   width: 100%;
-  min-height: 2.1rem;
+  min-height: 1.8rem;
   padding-right: 0.1rem;
   ${(p) => {
     if (!p.wrap)
@@ -284,8 +255,7 @@ const ItemValue = (props: { datapoint: DataPoint; item: GridItemTemplate }) => {
     if (typeof item.value === "string") {
       let value = datapoint[item.value];
       if (value == null) value = "";
-      if (typeof (value as Date).getMonth === "function")
-        value = dateValue(value as Date);
+      if (typeof (value as Date).getMonth === "function") value = dateValue(value as Date);
       return String(value);
     } else if (typeof item.value === "function") {
       return item.value(datapoint);
@@ -296,10 +266,7 @@ const ItemValue = (props: { datapoint: DataPoint; item: GridItemTemplate }) => {
   const value = getValue();
 
   return (
-    <Value
-      style={item.style}
-      title={typeof value === "string" ? String(value) : undefined}
-    >
+    <Value style={item.style} title={typeof value === "string" ? String(value) : undefined}>
       {item?.prefix}
       {value}
       {item?.suffix}
@@ -308,33 +275,19 @@ const ItemValue = (props: { datapoint: DataPoint; item: GridItemTemplate }) => {
 };
 
 const dateValue = (value: Date) => {
-  const minutes_ago = Math.floor(
-    (new Date().getTime() - value.getTime()) / (1000 * 60)
-  );
+  const minutes_ago = Math.floor((new Date().getTime() - value.getTime()) / (1000 * 60));
   if (minutes_ago < 1) return "just now";
   if (minutes_ago < 60) return `${minutes_ago} minutes ago`;
   if (minutes_ago < 60 * 24) return `${Math.floor(minutes_ago / 60)} hours ago`;
-  if (minutes_ago < 60 * 24 * 7)
-    return `${Math.floor(minutes_ago / (60 * 24))} days ago`;
+  if (minutes_ago < 60 * 24 * 7) return `${Math.floor(minutes_ago / (60 * 24))} days ago`;
   return value.toISOString().split("T")[0];
 };
 
-const createInitialQuery = (
-  pageSize: number,
-  filterOptions: FilterQueryOption[],
-  sortOptions: SortQueryOption[]
-) => {
+const createInitialQuery = (pageSize: number, filterOptions: FilterQueryOption[], sortOptions: SortQueryOption[]) => {
   const filter: FilterQuery[] = [];
   for (let option of filterOptions) {
     if (option.defaultSelect || option.defaultFrom || option.defaultTo) {
-      const {
-        type,
-        variable,
-        label,
-        defaultFrom: from,
-        defaultTo: to,
-        defaultSelect: select,
-      } = option;
+      const { type, variable, label, defaultFrom: from, defaultTo: to, defaultSelect: select } = option;
 
       filter.push({ type, variable, label, from, to, select });
     }

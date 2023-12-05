@@ -1,55 +1,52 @@
 "use client";
+import LoginRequired from "@/components/Common/LoginRequired";
+import { postJob } from "@/query/jobs";
 import { Loader } from "@/styled/Styled";
 import { Button } from "@/styled/StyledSemantic";
 import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
+import { useMiddlecat } from "middlecat-react";
 import { redirect } from "next/navigation";
 import { useState } from "react";
 import styled from "styled-components";
 
-async function postJob(title: string) {
-  return axios.post("/api/jobs", { title });
-}
-
 export default function Home() {
   const [title, setTitle] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { user, loading } = useMiddlecat();
 
-  const {
-    mutate: createJob,
-    isLoading,
-    error,
-  } = useMutation(postJob, {
+  const { mutate: createJob, isLoading } = useMutation(postJob, {
     onSuccess: (data) => {
       redirect(`/home/manage/${data.id}`);
     },
     onError: (e) => {
-      console.log("heey");
       console.error(e);
     },
   });
 
   function onSubmit(e) {
     e.preventDefault();
-    createJob(title);
+    createJob({ user, title });
   }
 
+  if (!loading && !user?.email) return <LoginRequired />;
+
   return (
-    <StyledDiv>
-      <Loader $active={loading} />
-      <form onSubmit={onSubmit}>
+    <div className="flex h-full flex-col items-center justify-center">
+      <form onSubmit={onSubmit} className="relative flex flex-col gap-2">
         <input
           type="text"
           value={title}
           required
-          minLength="3"
-          maxLength="256"
+          minLength={5}
+          maxLength={128}
           placeholder="Job title"
           onChange={(e) => setTitle(e.target.value)}
+          className="rounded border-[1px] p-3 text-black shadow-sm shadow-shadow"
         ></input>
-        <Button>Create new job</Button>
+        <Button $primary disabled={loading || isLoading} className={loading || isLoading ? "loading" : ""}>
+          Create new job
+        </Button>
       </form>
-    </StyledDiv>
+    </div>
   );
 }
 
@@ -62,10 +59,5 @@ const StyledDiv = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1rem;
-
-    input {
-      padding: 1rem;
-      border-radius: 5px;
-    }
   }
 `;

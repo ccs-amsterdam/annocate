@@ -1,11 +1,4 @@
-import {
-  ReactElement,
-  RefObject,
-  Dispatch,
-  SetStateAction,
-  MutableRefObject,
-  CSSProperties,
-} from "react";
+import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CSSProperties } from "react";
 import Backend from "./components/Login/Backend";
 // common interfaces
 
@@ -31,7 +24,7 @@ export type FullScreenNode = MutableRefObject<HTMLDivElement | null>;
 export type Span = [number, number];
 export type Edge = [number, number];
 
-export type Status = "DONE" | "IN_PROGRESS";
+export type Status = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
 
 export interface Annotation {
   type?: "field" | "span" | "relation";
@@ -88,6 +81,12 @@ export interface AnnotationLibrary {
 export type AnnotationDictionary = Record<AnnotationID, Annotation>;
 export type TokenAnnotations = Record<number, AnnotationID[]>;
 export type AnnotationID = string;
+
+export interface AnnotationHistory {
+  datetime: string;
+  added: Annotation[];
+  removed: Annotation[];
+}
 
 ////// LOGIN
 
@@ -210,13 +209,7 @@ export interface Transition {
   color?: string;
 }
 
-export type QuestionType =
-  | "search code"
-  | "select code"
-  | "scale"
-  | "annotinder"
-  | "confirm"
-  | "inputs";
+export type QuestionType = "search code" | "select code" | "scale" | "annotinder" | "confirm" | "inputs";
 
 export interface QuestionItem {
   name: string;
@@ -500,11 +493,7 @@ export interface JobServer {
 
   init: () => void;
   getUnit: (i: number) => Promise<RawUnit>;
-  postAnnotations: (
-    unitId: string,
-    annotation: Annotation[],
-    status: Status
-  ) => Promise<ConditionReport>;
+  postAnnotations: (unitId: string, annotation: Annotation[], status: Status) => Promise<ConditionReport>;
   getDebriefing?: () => Promise<Debriefing>;
 }
 

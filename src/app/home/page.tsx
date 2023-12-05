@@ -8,48 +8,23 @@ export default function Home() {
   const { user, loading, signIn, signOut } = useMiddlecat();
 
   return (
-    <StyledDiv>
-      <div className="Container">
+    <div className="flex h-full flex-col items-center justify-center">
+      <div className="flex flex-col  items-center gap-2">
         <h3>What are you here for?</h3>
 
-        <div className="Nav">
-          <Link href="/home/manage">
+        <div className="flex h-min flex-wrap justify-center gap-2 p-2">
+          <Link href="/home/manage" className="h-30 w-60">
             <Button $primary $fluid>
               Annotate
             </Button>
           </Link>
-          <Link href="/home/manage">
+          <Link href="/home/manage" className="h-30 w-60">
             <Button $secondary $fluid>
               Manage jobs
             </Button>
           </Link>
         </div>
       </div>
-    </StyledDiv>
+    </div>
   );
 }
-
-const StyledDiv = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-
-  .Container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .Nav {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    padding: 1rem;
-
-    a {
-      width: 200px;
-    }
-  }
-`;

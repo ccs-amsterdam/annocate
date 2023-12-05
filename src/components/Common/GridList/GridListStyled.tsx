@@ -79,7 +79,7 @@ export const GridListDiv = styled.div`
     gap: 0.5rem;
 
     .Results {
-      font-size: 1.5rem;
+      font-size: 0.9rem;
       margin-right: 0.2rem;
       margin-left: auto;
     }
@@ -155,12 +155,13 @@ export const GridListDiv = styled.div`
     right: 0;
     bottom: 0;
     display: flex;
-    padding: 2rem 4rem;
+    padding: 1.5rem 3rem;
     z-index: 1000;
-
-    .Detail {
+    s .Detail {
       padding: 1rem;
-      transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+      transition:
+        opacity 0.3s ease-in-out,
+        transform 0.3s ease-in-out;
       transition-delay: 0.1s;
       opacity: 0;
       //max-width: 100%;
@@ -185,14 +186,13 @@ export const GridListDiv = styled.div`
   }
 
   .NoResults {
-    font-size: 2rem;
     font-weight: bold;
     text-align: center;
   }
 `;
 
 export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
-  min-height: 3rem;
+  min-height: 2rem;
   gap: 1rem;
   display: flex;
   flex-wrap: wrap;
@@ -203,7 +203,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
   --borderradius: 5px;
   --border: 1px solid var(--primary);
   --z-index: 900; // Makes sure z-index of button is lower than dropdown of another button
-  --height: 3.5rem;
+  --height: 3rem;
   --marginbottom: 0.5rem;
   ${(p) =>
     p.open &&
@@ -220,7 +220,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
     gap: 0.5rem;
     justify-content: center;
     align-items: center;
-    width: 3.5rem;
+    width: var(--height);
     margin-bottom: var(--marginbottom);
     height: var(--height);
     pointer-events: all;
@@ -229,7 +229,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
     border-bottom-right-radius: var(--borderradius);
     border-bottom-left-radius: var(--borderradius);
     border-bottom: var(--border);
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     z-index: var(--z-index);
     cursor: pointer;
 
@@ -259,7 +259,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
     color: ${(p) => (p.active ? "var(--primary-dark)" : "var(--primary-text)")};
 
     & > div {
-      padding: 1rem;
+      padding: 0.8rem;
     }
 
     .Divider {
@@ -277,7 +277,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
     align-items: center;
     svg {
       border-radius: 5px;
-      font-size: 3rem;
+      font-size: 2rem;
       padding: 0.5rem;
       cursor: pointer;
 
@@ -320,7 +320,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
       border: 1px solid var(--primary);
       border-radius: 5px;
       padding: 0.5rem 1rem;
-      font-size: 1.5rem;
+      font-size: 0.9rem;
     }
 
     .SelectField {
