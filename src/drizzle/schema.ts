@@ -37,6 +37,8 @@ export const jobs = pgTable("jobs", {
   config: jsonb("job").notNull().$type<JobConfig>().default({ description: "" }),
   frozen: boolean("frozen").notNull().default(false),
 });
+export type SelectJob = InferSelectModel<typeof jobs>;
+export type InsertJob = InferInsertModel<typeof jobs>;
 
 export const codebooks = pgTable(
   "codebooks",
@@ -52,6 +54,8 @@ export const codebooks = pgTable(
     return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
+export type SelectCodebook = InferSelectModel<typeof codebooks>;
+export type InsertCodebook = InferInsertModel<typeof codebooks>;
 
 export const units = pgTable(
   "units",
@@ -72,6 +76,8 @@ export const units = pgTable(
     return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
+export type SelectUnit = InferSelectModel<typeof units>;
+export type InsertUnit = InferInsertModel<typeof units>;
 
 export const unitGroups = pgTable(
   "unit_groups",
@@ -88,6 +94,8 @@ export const unitGroups = pgTable(
     return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
+export type SelectUnitGroup = InferSelectModel<typeof unitGroups>;
+export type InsertUnitGroup = InferInsertModel<typeof unitGroups>;
 
 export const unitGroupUnits = pgTable(
   "unit_group_units",
@@ -119,6 +127,8 @@ export const jobSets = pgTable(
     return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
+export type SelectJobSet = InferSelectModel<typeof jobSets>;
+export type InsertJobSet = InferInsertModel<typeof jobSets>;
 
 export const jobSetUnitGroups = pgTable(
   "job_set_unit_groups",
@@ -138,13 +148,14 @@ export const jobSetUnitGroups = pgTable(
 // USER TABLES
 
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 256 }).primaryKey(),
   name: varchar("name", { length: 256 }).notNull(),
-  email: varchar("email", { length: 256 }).notNull().unique(),
   created: timestamp("created").notNull().defaultNow(),
   isAdmin: boolean("is_admin").notNull().default(false),
   canCreateJob: boolean("can_create_job").notNull().default(false),
 });
+export type SelectUser = InferSelectModel<typeof users>;
+export type InsertUser = InferInsertModel<typeof users>;
 
 export const managers = pgTable(
   "managers",
@@ -152,13 +163,13 @@ export const managers = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    userId: integer("user_id")
+    email: varchar("email", { length: 256 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => users.email, { onDelete: "cascade", onUpdate: "cascade" }),
     role: text("role", { enum: ["owner", "admin", "write", "read"] }).notNull(),
   },
   (table) => {
-    return { pk: primaryKey({ columns: [table.jobId, table.userId] }) };
+    return { pk: primaryKey({ columns: [table.jobId, table.email] }), emails: index("emails").on(table.email) };
   },
 );
 
@@ -168,15 +179,13 @@ export const registeredAnnotators = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    userId: integer("user_id")
+    email: varchar("email", { length: 256 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    jobSetId: integer("job_set_id")
-      .notNull()
-      .references(() => jobSets.id, { onDelete: "cascade" }),
+      .references(() => users.email, { onDelete: "cascade", onUpdate: "cascade" }),
+    jobSetId: integer("job_set_id").references(() => jobSets.id, { onDelete: "cascade" }),
   },
   (table) => {
-    return { pk: primaryKey({ columns: [table.jobId, table.userId] }) };
+    return { pk: primaryKey({ columns: [table.jobId, table.email] }), emails: index("emails").on(table.email) };
   },
 );
 
@@ -192,7 +201,7 @@ export const invitations = pgTable(
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.jobsetId, table.id] }),
+      pk: primaryKey({ columns: [table.jobSetId, table.id] }),
     };
   },
 );
@@ -203,7 +212,7 @@ interface AnnotatorStatistics {
 }
 
 export const annotators = pgTable(
-  "invited_users",
+  "annotators",
   {
     user: varchar("user_id", { length: 256 }).notNull(),
     jobSetId: integer("jobset_id"),
@@ -216,6 +225,16 @@ export const annotators = pgTable(
   },
 );
 
+// routine:
+// - check annotations for index
+// - if doesn't exist, complete following steps to allocate new units
+// - get jobsetunitgroups
+// - separately get units of each group, using rules to determine which to get
+// - negative join on anntoations to skip already annotated units
+// - concatenate units in these groups (maybe directly using union?)
+// - preallocate annotations so that already coded annotations keep their index,
+//   and new annotations are allocated at the end
+
 export const annotations = pgTable(
   "annotations",
   {
@@ -226,25 +245,23 @@ export const annotations = pgTable(
     // - for invitations without user_id, it's the device_id
     user: varchar("user_id", { length: 256 }).notNull(),
     index: integer("index").notNull(),
-
-    jobId: integer("job_id").notNull(),
     unitId: integer("unit_id").notNull(),
 
     preallocateTime: timestamp("preallocate_time"),
     annotation: jsonb("annotation").notNull().$type<Annotation[]>(),
     history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
-    status: text("status").$type<Status>(),
+    status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED"] }).$type<Status>(),
 
     // We register the device id for cases where we want extra privacy security.
     // If invited users with u_* params open a job from a different device, they can
     // continue the job, but they will not be able to see previous annotations.
     // For registered users this is optional. (for invited users without u_* params
-    // its redundant, becaus the user column is already the device_id).
-    deviceId: uuid("device_id"),
+    // its redundant, because the user column is already the device_id).
+    deviceId: varchar("device_id", { length: 64 }),
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.jobId, table.user, table.index] }),
+      pk: primaryKey({ columns: [table.jobSetId, table.user, table.index] }),
       unitIds: index("unit_ids").on(table.unitId),
     };
   },

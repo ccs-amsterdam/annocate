@@ -1,3 +1,4 @@
+import { JobsGetParams, JobsGetResponse } from "@/app/api/jobs/route";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { MiddlecatUser } from "middlecat-react";
 
@@ -6,21 +7,27 @@ export async function postJob(params: { user: MiddlecatUser; title: string }) {
 }
 
 export function useJobs(user: MiddlecatUser, query?: string) {
-  const params = { limit: 10 };
-  if (query) params.query = query;
+  const baseParams: JobsGetParams = { limit: 10 };
+  if (query) baseParams.query = query;
 
   return useInfiniteQuery({
     queryKey: ["jobs", user],
     queryFn: async () => {
-      user.api.get("jobs", { params });
+      const params: JobsGetParams = { ...baseParams };
+      const res = await user.api.get<JobsGetResponse>("jobs", { params });
+      return res.data;
     },
     getNextPageParam: async (lastPage, allPages) => {
-      const afterId = lastPage.data[lastPage.data.length - 1].id;
-      user.api.get("jobs", { ...params, afterId });
+      const afterId = lastPage.rows[lastPage.rows.length - 1].id;
+      const params: JobsGetParams = { ...baseParams, afterId };
+      const res = await user.api.get("jobs", { params });
+      return res.data;
     },
     getPreviousPageParam: async (firstPage, allPages) => {
-      const beforeId = firstPage.data[0].id;
-      user.api.get("jobs", { ...params, beforeId });
+      const beforeId = firstPage.rows[0].id;
+      const params: JobsGetParams = { ...baseParams, beforeId };
+      const res = await user.api.get("jobs", { params });
+      return res.data;
     },
     enabled: !!user,
   });

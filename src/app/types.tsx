@@ -812,12 +812,6 @@ export interface ButtonComponentProps {
 
 ///// MANAGE USERS
 
-export interface User {
-  name: string;
-  admin: boolean;
-  password?: string;
-}
-
 ///// MANAGE JOBS
 
 export interface Job {

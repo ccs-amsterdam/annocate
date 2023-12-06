@@ -1,21 +1,33 @@
 import { NextResponse } from "next/server";
-import { jobs, managers, users } from "@/drizzle/schema";
+import { SelectJob, jobs, managers, users } from "@/drizzle/schema";
 import db from "@/drizzle/schema";
 import { z } from "zod";
 import { SQL, gt, like, lt, and, sql, count, eq } from "drizzle-orm";
 import validateRequestParams from "@/functions/validateRequestParams";
-import { authenticateUser } from "../authorization";
+import { authenticateUser } from "@/functions/authorization";
+
+export const runtime = "edge";
 
 // GET /api/jobs
+
+export interface JobsGetResponse {
+  meta: {
+    rows: number;
+  };
+  rows: SelectJob[];
+}
+
 const GetParamsSchema = z.object({
-  afterId: z.string().optional(),
-  beforeId: z.string().optional(),
+  afterId: z.number().optional(),
+  beforeId: z.number().optional(),
   limit: z.number().min(1).max(100).default(10),
   query: z.string().optional(),
 });
 
+export type JobsGetParams = z.infer<typeof GetParamsSchema>;
+
 export async function GET(req: Request) {
-  const email = await authenticateUser(req.headers.get("authorization"));
+  const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -46,8 +58,13 @@ const postJobSchema = z.object({
   title: z.string().min(5).max(128),
 });
 
+export interface JobsPostResponse {
+  id: number;
+}
+export type JobsPostBody = z.infer<typeof postJobSchema>;
+
 export async function POST(req: Request) {
-  const email = await authenticateUser(req.headers.get("authorization"));
+  const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -59,11 +76,12 @@ export async function POST(req: Request) {
 
     const id = await db.transaction(async (tx) => {
       const [job] = await tx.insert(jobs).values({ name: title }).returning();
-      await tx.insert(managers).values({ jobId: job.id, userId: user.id, role: "owner" });
+      await tx.insert(managers).values({ jobId: job.id, email, role: "owner" });
       return job.id;
     });
 
-    return NextResponse.json({ id });
+    const res: JobsPostResponse = { id };
+    return NextResponse.json(res);
   } catch (e: any) {
     return NextResponse.json(e.message, { status: 400 });
   }
