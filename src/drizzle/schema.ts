@@ -13,6 +13,7 @@ import {
   varchar,
   unique,
   index,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 import { neon } from "@neondatabase/serverless";
@@ -111,11 +112,26 @@ export const jobSets = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
-    unitGroups: jsonb("unit_groups").notNull(),
+    modified: timestamp("modified").notNull().defaultNow(),
     deployed: boolean("deployed").notNull().default(false),
   },
   (table) => {
     return { jobIds: index("job_ids").on(table.jobId) };
+  },
+);
+
+export const jobSetUnitGroups = pgTable(
+  "job_set_unit_groups",
+  {
+    jobSetId: integer("job_set_id")
+      .notNull()
+      .references(() => jobSets.id, { onDelete: "cascade" }),
+    unitGroupId: integer("unit_group_id")
+      .notNull()
+      .references(() => unitGroups.id, { onDelete: "cascade" }),
+  },
+  (table) => {
+    return { pk: primaryKey({ columns: [table.jobSetId, table.unitGroupId] }) };
   },
 );
 
@@ -146,7 +162,7 @@ export const managers = pgTable(
   },
 );
 
-export const annotators = pgTable(
+export const registeredAnnotators = pgTable(
   "annotators",
   {
     jobId: integer("job_id")
@@ -167,31 +183,64 @@ export const annotators = pgTable(
 export const invitations = pgTable(
   "invitations",
   {
-    id: varchar("id", { length: 256 }).primaryKey(),
-    jobsetId: integer("jobset_id")
+    jobSetId: integer("jobset_id")
       .notNull()
       .references(() => jobSets.id, { onDelete: "cascade" }),
-    label: varchar("label", { length: 128 }).notNull(),
-    createdIds: jsonb("created_ids").notNull().$type<string[]>().default([]),
+    id: varchar("id", { length: 64 }),
+    label: varchar("label", { length: 64 }).notNull(),
+    access: text("access", { enum: ["only_registered", "only_anonymous", "user_decides"] }).notNull(),
   },
   (table) => {
-    return { jobsetIds: index("jobset_ids").on(table.jobsetId) };
+    return {
+      pk: primaryKey({ columns: [table.jobsetId, table.id] }),
+    };
+  },
+);
+
+interface AnnotatorStatistics {
+  damage?: number;
+  blocked?: boolean;
+}
+
+export const annotators = pgTable(
+  "invited_users",
+  {
+    user: varchar("user_id", { length: 256 }).notNull(),
+    jobSetId: integer("jobset_id"),
+    statistics: jsonb("statistics").notNull().$type<AnnotatorStatistics>().default({}),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.user, table.jobSetId] }),
+    };
   },
 );
 
 export const annotations = pgTable(
   "annotations",
   {
-    jobId: integer("job_id").notNull(),
-    // user is email for registered users, or secret id for anonymous users
+    jobSetId: integer("jobset_id").notNull(),
+    // user string depends on type of user
+    // - for registered users, it's the email address
+    // - for invitations that include u_* params, it's the param string
+    // - for invitations without user_id, it's the device_id
     user: varchar("user_id", { length: 256 }).notNull(),
     index: integer("index").notNull(),
+
+    jobId: integer("job_id").notNull(),
     unitId: integer("unit_id").notNull(),
+
     preallocateTime: timestamp("preallocate_time"),
     annotation: jsonb("annotation").notNull().$type<Annotation[]>(),
     history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
     status: text("status").$type<Status>(),
-    sessionSecret: varchar("device_id", { length: 64 }),
+
+    // We register the device id for cases where we want extra privacy security.
+    // If invited users with u_* params open a job from a different device, they can
+    // continue the job, but they will not be able to see previous annotations.
+    // For registered users this is optional. (for invited users without u_* params
+    // its redundant, becaus the user column is already the device_id).
+    deviceId: uuid("device_id"),
   },
   (table) => {
     return {

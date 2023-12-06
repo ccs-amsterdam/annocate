@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jobs, managers } from "@/drizzle/schema";
+import { jobs, managers, users } from "@/drizzle/schema";
 import db from "@/drizzle/schema";
 import { z } from "zod";
 import { SQL, gt, like, lt, and, sql, count, eq } from "drizzle-orm";
@@ -21,24 +21,23 @@ export async function GET(req: Request) {
   try {
     const params = validateRequestParams(req, GetParamsSchema);
     const where: SQL[] = [];
-    if (params.afterId) where.push(gt("id", params.afterId));
-    if (params.beforeId) where.push(lt("id", params.beforeId));
-    if (params.query) where.push(like("title", `%${params.query}%`));
+    if (params.afterId) where.push(gt(jobs.id, params.afterId));
+    if (params.beforeId) where.push(lt(jobs.id, params.beforeId));
+    if (params.query) where.push(like(jobs.name, `%${params.query}%`));
 
-    const res = await db.batch([
-      db.select({ rows: count() }).from(jobs),
-      db
-        .select()
-        .from(jobs)
-        .orderBy("id", "desc")
-        .where(and(...where))
-        .limit(params.limit),
-    ]);
+    const metaPromise = db.select({ rows: count() }).from(jobs);
+    const rowsPromise = db
+      .select()
+      .from(jobs)
+      .orderBy(jobs.id)
+      .where(and(...where))
+      .limit(params.limit);
+    const [meta, rows] = await Promise.all([metaPromise, rowsPromise]);
+
+    return NextResponse.json({ meta, rows });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: e.status });
   }
-
-  return NextResponse.json(jobs);
 }
 
 // POST /api/jobs
@@ -55,7 +54,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { title } = postJobSchema.parse(body);
 
-    const [user] = await db.select().from(users).where(eq("email", email));
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     if (!user || !user.canCreateJob) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const id = await db.transaction(async (tx) => {
