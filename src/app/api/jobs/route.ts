@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SelectJob, jobs, managers, users } from "@/drizzle/schema";
+import { jobs, managers, users } from "@/drizzle/schema";
 import db from "@/drizzle/schema";
 import { z } from "zod";
 import { SQL, gt, like, lt, and, sql, count, eq } from "drizzle-orm";
@@ -10,13 +10,6 @@ export const runtime = "edge";
 
 // GET /api/jobs
 
-export interface JobsGetResponse {
-  meta: {
-    rows: number;
-  };
-  rows: SelectJob[];
-}
-
 const GetParamsSchema = z.object({
   afterId: z.number().optional(),
   beforeId: z.number().optional(),
@@ -24,7 +17,22 @@ const GetParamsSchema = z.object({
   query: z.string().optional(),
 });
 
+const GetResponseSchema = z.object({
+  meta: z.object({
+    rows: z.number(),
+  }),
+  rows: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+      createdAt: z.string(),
+      updatedAt: z.string(),
+    }),
+  ),
+});
+
 export type JobsGetParams = z.infer<typeof GetParamsSchema>;
+export type JobsGetResponse = z.infer<typeof GetResponseSchema>;
 
 export async function GET(req: Request) {
   const email = await authenticateUser(req);
@@ -46,7 +54,8 @@ export async function GET(req: Request) {
       .limit(params.limit);
     const [meta, rows] = await Promise.all([metaPromise, rowsPromise]);
 
-    return NextResponse.json({ meta, rows });
+    const res = GetResponseSchema.parse({ meta, rows });
+    return NextResponse.json(res);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: e.status });
   }

@@ -37,8 +37,6 @@ export const jobs = pgTable("jobs", {
   config: jsonb("job").notNull().$type<JobConfig>().default({ description: "" }),
   frozen: boolean("frozen").notNull().default(false),
 });
-export type SelectJob = InferSelectModel<typeof jobs>;
-export type InsertJob = InferInsertModel<typeof jobs>;
 
 export const codebooks = pgTable(
   "codebooks",
@@ -54,30 +52,6 @@ export const codebooks = pgTable(
     return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
-export type SelectCodebook = InferSelectModel<typeof codebooks>;
-export type InsertCodebook = InferInsertModel<typeof codebooks>;
-
-export const units = pgTable(
-  "units",
-  {
-    id: serial("id").primaryKey(),
-    jobId: integer("job_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    externalId: varchar("unit_id", { length: 256 }).notNull(),
-    created: timestamp("created").notNull().defaultNow(),
-    unit: jsonb("unit").notNull().$type<RawUnit>(),
-    codebookId: integer("codebook_id"),
-    encryptionKey: varchar("encryption_key", { length: 256 }),
-    modified: timestamp("modified").notNull().defaultNow(),
-    type: text("type", { enum: ["annotate", "train", "test", "survey"] }).notNull(),
-  },
-  (table) => {
-    return { jobIds: index("job_ids").on(table.jobId) };
-  },
-);
-export type SelectUnit = InferSelectModel<typeof units>;
-export type InsertUnit = InferInsertModel<typeof units>;
 
 export const unitGroups = pgTable(
   "unit_groups",
@@ -87,28 +61,31 @@ export const unitGroups = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
-    rules: jsonb("rules").notNull().$type<Rules>(),
-    codebookId: integer("codebook_id").notNull(),
   },
   (table) => {
     return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
-export type SelectUnitGroup = InferSelectModel<typeof unitGroups>;
-export type InsertUnitGroup = InferInsertModel<typeof unitGroups>;
 
-export const unitGroupUnits = pgTable(
-  "unit_group_units",
+export const units = pgTable(
+  "units",
   {
+    id: serial("id").primaryKey(),
+    jobId: integer("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
     unitGroupId: integer("unit_group_id")
       .notNull()
       .references(() => unitGroups.id, { onDelete: "cascade" }),
-    unitId: integer("unit_id")
-      .notNull()
-      .references(() => units.id, { onDelete: "cascade" }),
+    externalId: varchar("unit_id", { length: 256 }).notNull(),
+    unit: jsonb("unit").notNull().$type<RawUnit>(),
+    created: timestamp("created").notNull().defaultNow(),
+    codebookId: integer("codebook_id"),
+    modified: timestamp("modified").notNull().defaultNow(),
+    type: text("type", { enum: ["annotate", "train", "test", "survey"] }).notNull(),
   },
   (table) => {
-    return { pk: primaryKey({ columns: [table.unitGroupId, table.unitId] }) };
+    return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
 
@@ -127,8 +104,6 @@ export const jobSets = pgTable(
     return { jobIds: index("job_ids").on(table.jobId) };
   },
 );
-export type SelectJobSet = InferSelectModel<typeof jobSets>;
-export type InsertJobSet = InferInsertModel<typeof jobSets>;
 
 export const jobSetUnitGroups = pgTable(
   "job_set_unit_groups",
@@ -139,6 +114,8 @@ export const jobSetUnitGroups = pgTable(
     unitGroupId: integer("unit_group_id")
       .notNull()
       .references(() => unitGroups.id, { onDelete: "cascade" }),
+    rules: jsonb("rules").notNull().$type<Rules>(),
+    codebookId: integer("codebook_id").references(() => codebooks.id, { onDelete: "set null" }),
   },
   (table) => {
     return { pk: primaryKey({ columns: [table.jobSetId, table.unitGroupId] }) };
@@ -154,8 +131,6 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   canCreateJob: boolean("can_create_job").notNull().default(false),
 });
-export type SelectUser = InferSelectModel<typeof users>;
-export type InsertUser = InferInsertModel<typeof users>;
 
 export const managers = pgTable(
   "managers",
