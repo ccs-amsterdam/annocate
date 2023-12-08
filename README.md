@@ -9,7 +9,7 @@ you can [peek here for a quick introduction](https://annocate.com/demo?units=int
 
 # Development status and history
 
-The current repository is under active development. Early development of this tool started out as a [work package of in the OPTED project](https://www.opted.eu/fileadmin/user_upload/k_opted/OPTED_Deliverable_D7.2.pdf), where it is one part of the broader AmCAT infrastructure. It has since stayed in active develoment and testing, which has mostly been under the working title AnnoTinder ([client](https://github.com/ccs-amsterdam/annotinder-client), (https://github.com/ccs-amsterdam/annotinder-server)[server]).
+The current repository is under active development. Early development of this tool started out as a [work package of in the OPTED project](https://www.opted.eu/fileadmin/user_upload/k_opted/OPTED_Deliverable_D7.2.pdf), where it is one part of the broader AmCAT infrastructure. It has since stayed in active develoment and testing, which has mostly been under the working title AnnoTinder ([client](https://github.com/ccs-amsterdam/annotinder-client), ([server](https://github.com/ccs-amsterdam/annotinder-server)).
 
 At present it is being re-implemented in this repository, under the name of AnnoCate. The goal of this re-implementation is to clean-up the codebase and features based on current experience in deploying the tool in a number of studies. We're also dropping the separate Python backend in favour of using the fullstack framework NextJS. This will make it easier for people to fire-up their own AnnoCate server.
 
