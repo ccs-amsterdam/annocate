@@ -28,7 +28,7 @@ export const Loader = styled.div<{
   height: 100%;
   width: 100%;
   z-index: 100;
-  background-color: ${(p) => p.$background || "var(--background-transparent)"};
+  background-color: ${(p) => p.$background || "hsl(var(--background), 0.5)"};
   backdrop-filter: ${(p) => `${p.$blur || 3}px`};
 
   &::after {
@@ -39,7 +39,7 @@ export const Loader = styled.div<{
     left: calc(50% - var(--r));
     background: transparent;
     border: calc(var(--r) / 4) solid var(--primary-light);
-    border-top: calc(var(--r) / 4) solid var(--primary);
+    border-top: calc(var(--r) / 4) solid hsl(var(--primary));
     border-radius: 50%;
     width: calc(var(--r) * 2);
     height: calc(var(--r) * 2);
@@ -54,7 +54,7 @@ export const Loader = styled.div<{
     top: calc(50% - var(--r) / 2);
     font-weight: bold;
     font-size: 0.9rem;
-    color: var(--primary-text);
+    color: hsl(var(--primary-foreground));
     left: 50%;
     transform: translateX(-50%);
     overflow: show;

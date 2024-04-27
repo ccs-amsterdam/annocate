@@ -7,8 +7,9 @@ import { useSelectedLayoutSegments } from "next/navigation";
 import Link from "next/link";
 import { AuthForm, useMiddlecat } from "middlecat-react";
 import RadixPopup from "../Common/RadixPopup";
-import { Button } from "@/styled/StyledSemantic";
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 export default function Menu() {
   const path = useSelectedLayoutSegments();
@@ -44,42 +45,42 @@ export default function Menu() {
     });
   }
 
-  console.log(user);
   function renderAuth() {
     if (loading) return null;
     if (user?.email)
       return (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3 fill-background-inversed-fixed">
+          <div className=" flex items-center gap-3">
             <img src={user.image} alt="profile" className="h-7 w-7 rounded" referrerPolicy="no-referrer" />
             {user.name || user.email}
           </div>
-          <Button $primary $fluid className="ml-auto mt-10" onClick={() => signOut()}>
+          <Button className="ml-auto mt-10" onClick={() => signOut(true)}>
             Sign out
           </Button>
         </div>
       );
-    return (
-      <Button $primary $fluid onClick={() => signIn(fixedResource)}>
-        Sign in
-      </Button>
-    );
+    return <Button onClick={() => signIn(fixedResource)}>Sign in</Button>;
   }
 
   return (
     <menu className="w-full px-2">
-      <ul className="m-0 flex min-h-[3.8rem] list-none items-start gap-2 px-3 pb-0 pt-1 text-xl text-text">
+      <ul className="m-0 flex min-h-[3.8rem] list-none items-start gap-2 px-3 pb-0 pt-1 text-xl text-foreground">
         <div key="left" className="mt-1 flex min-h-[3rem] flex-auto items-center ">
           {showBreadcrumb ? renderBreadcrumbs() : null}
         </div>
-        <div key="right" className="flex flex-auto justify-end pt-[5px] text-primary-text">
+        <div key="right" className="flex flex-auto justify-end pt-[5px]">
           <MenuButtonGroup>
             <div>
               <DarkModeButton />
             </div>
-            <RadixPopup trigger={<FaUser />} className="flex min-w-[12rem] flex-col justify-center p-4">
-              {renderAuth()}
-            </RadixPopup>
+            <Popover>
+              <PopoverTrigger>
+                <FaUser />
+              </PopoverTrigger>
+              <PopoverContent className="mr-2 mt-5">
+                <div className="flex flex-col gap-3">{renderAuth()}</div>
+              </PopoverContent>
+            </Popover>
           </MenuButtonGroup>
         </div>
       </ul>
@@ -89,10 +90,8 @@ export default function Menu() {
 
 const Breadcrumb = ({ children, current }: { current?: boolean; children: React.ReactNode }) => {
   return (
-    <div className="rounded p-2 text-primary-text">
-      <span className={`flex  text-text no-underline ${current ? "text-primary-text" : "hover:text-primary-text"}`}>
-        {children}
-      </span>
+    <div className="rounded p-2 text-primary">
+      <span className={`flex  no-underline ${current ? "text-foreground" : "hover:text-foreground"}`}>{children}</span>
     </div>
   );
 };

@@ -24,7 +24,7 @@ const Meta = ({ metaFields }: MetaProps) => {
             style={{
               borderTop: "none",
               textAlign: "right",
-              color: "var(--primary-text)",
+              color: "hsl(var(--primary-foreground))",
             }}
           >
             <b>{label}</b>
@@ -59,8 +59,8 @@ const Meta = ({ metaFields }: MetaProps) => {
             lineHeight: "0.8",
             padding: "10px",
             paddingLeft: "10px",
-            background: "var(--background)",
-            color: "var(--text)",
+            background: "hsl(var(--background))",
+            color: "var(--foreground)",
           }}
         >
           <StyledTable.Body>{rows()}</StyledTable.Body>

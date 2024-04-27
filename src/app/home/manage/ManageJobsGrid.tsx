@@ -1,74 +1,48 @@
 "use client";
 
-import GridList from "@/components/Common/GridList/GridList";
-import { DataQuery } from "@/components/Common/GridList/GridListTypes";
-import { StyledButton } from "@/styled/StyledSemantic";
+import { useJobs } from "@/app/api/jobs/query";
+import { JobsGetResponse } from "@/app/api/jobs/route";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/styled/Styled";
+import { useMiddlecat } from "middlecat-react";
 import Link from "next/link";
-import { useCallback, useEffect } from "react";
-import styled from "styled-components";
-
-const StyledDiv = styled.div`
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  align-items: center;
-
-  .Header {
-    width: 280px;
-    max-width: 100%;
-    h2 {
-      text-align: center;
-    }
-  }
-`;
+import { useCallback, useEffect, useState } from "react";
 
 export default function ManageJobsGrid() {
-  const loadData = useCallback(async (query: DataQuery) => {
-    try {
-      const res = await fetch("/api/jobs");
-      const data = await res.json();
-      return { data, meta: { offset: 0, total: data.length } };
-    } catch (e: any) {
-      console.error(e);
-      return { data: [], meta: { offset: 0, total: 0 } };
-    }
-  }, []);
-
   return (
-    <StyledDiv>
-      <div className="Header">
+    <div className="flex flex-auto flex-col items-center">
+      <div className="">
         <h2>Manage Jobs</h2>
-        <Link href="/home/manage/new">
-          <StyledButton $fluid>Create new job</StyledButton>
+        <Link href="/home/manage/new" className="flex">
+          <Button variant="ghost" className="mx-auto">
+            Create new job
+          </Button>
         </Link>
       </div>
-      <GridList
-        loadData={loadData}
-        template={template}
-        filterOptions={filterOptions}
-        sortOptions={sortOptions}
-        noResultsText="No jobs found"
-      />
-    </StyledDiv>
+      <SelectJob />
+    </div>
   );
 }
 
-const template: GridItemTemplate[] = [
-  {
-    label: "ID",
-    value: "id",
-    style: { fontWeight: "bold", fontSize: "1.2rem" },
-  },
-  {
-    label: "Coding Job",
-    value: "title",
-    style: { fontWeight: "bold", fontSize: "1rem" },
-  },
-];
+function SelectJob() {
+  const { user } = useMiddlecat();
+  const [query, setQuery] = useState<string>("");
+  const 
+  const { data, isLoading, error } = useJobs(user, query);
 
-const sortOptions: SortQueryOption[] = [
-  { variable: "modified", label: "Last activity", default: "desc" },
-  { variable: "progress", label: "% Completed" },
-];
+  if (isLoading) return <Loader />;
+  if (!data) return null;
 
-const filterOptions: FilterQueryOption[] = [{ variable: "title", label: "Coding Job Title", type: "search" }];
+  return (
+    <div>
+      {jobs.rows.map((job) => {
+        return (
+          <div key={job.id}>
+            <h2>{job.name}</h2>
+            <p>{job.createdAt}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

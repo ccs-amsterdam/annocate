@@ -16,14 +16,14 @@ const SessionBox = styled.div`
   margin: 0.5rem 0.5rem 0.5rem 10%;
   padding: 5px 10px;
   border-radius: 10px;
-  border: 1px solid var(--primary);
-  color: var(--text-light);
+  border: 1px solid hsl(var(--primary));
+  color: var(--foreground-light);
   transition: background 0.3s;
   cursor: pointer;
   overflow: auto;
   &:hover {
     background: var(--primary-light);
-    color: var(--text-inversed);
+    color: var(--foreground-inversed);
   }
 `;
 
@@ -38,7 +38,7 @@ const SessionList = ({ login, sessions, rmSession }: SessionListProps) => {
 
   return (
     <SessionsContainer>
-      <h3 style={{ color: "var(--primary)", marginBottom: "0" }}>active sessions</h3>
+      <h3 style={{ color: "hsl(var(--primary))", marginBottom: "0" }}>active sessions</h3>
       <i>click to resume</i>
       {Object.keys(sessions).map((key) => {
         const session = sessions[key];
@@ -105,8 +105,8 @@ const RemoveSession = ({ session, sessionKey, rmSession }: RemoveSessionProps) =
       <StyledModal.Content>
         {!session.email && (
           <>
-            This session is not <i>registered</i> to an email address. Once signed-out, you will not
-            be able to resume this session.
+            This session is not <i>registered</i> to an email address. Once signed-out, you will not be able to resume
+            this session.
             <br />
             <br />
           </>

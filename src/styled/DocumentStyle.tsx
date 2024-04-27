@@ -53,9 +53,9 @@ export default css`
 
   span.token.codingUnit {
     font-size: 1.2em;
-    //background-color: var(--background-transparent);
-    //text-shadow: 0px 0px 2px var(--background);
-    color: var(--text);
+    //background-color: hsl(var(--background), 0.5);
+    //text-shadow: 0px 0px 2px hsl(var(--background));
+    color: hsl(--var(--foreground));
   }
 
   span.token:focus {
@@ -170,7 +170,7 @@ export default css`
   .overlayFocus {
     transition: background-color 500ms;
     position: relative;
-    background-color: var(--background) !important;
+    background-color: hsl(var(--background)) !important;
     border: 1px double var(--border);
     border-radius: 20px;
     box-shadow: 0px 1px 3px black;
@@ -178,7 +178,7 @@ export default css`
   }
 
   .menu > .selected {
-    background: var(--primary) !important;
+    background: hsl(var(--primary)) !important;
     color: var(--text-inversed) !important;
   }
 

@@ -21,14 +21,7 @@ interface InputsProps {
  * Answerfield for (multiple) open input items, like text, number
  * @returns
  */
-const Inputs = ({
-  items,
-  answerItems,
-  onSelect,
-  onFinish,
-  blockEvents,
-  questionIndex,
-}: InputsProps) => {
+const Inputs = ({ items, answerItems, onSelect, onFinish, blockEvents, questionIndex }: InputsProps) => {
   const [selectedItem, setSelectedItem] = useState(1);
 
   useEffect(() => {
@@ -179,24 +172,18 @@ const Items = ({
               }}
             >
               <div>
-                <label style={{ color: "var(--text-inversed-fixed)", fontSize: "0.8em" }}>
+                <label style={{ color: "var(--foreground-inversed-fixed)", fontSize: "0.8em" }}>
                   <>
                     {itemlabel}
-                    <i style={{ color: "var(--text-light-fixed)" }}>
-                      {itemObj?.optional ? " (optional)" : ""}
-                    </i>
+                    <i style={{ color: "var(--text-light-fixed)" }}>{itemObj?.optional ? " (optional)" : ""}</i>
                   </>
                 </label>
                 <br />
 
-                <Input
-                  answerItems={answerItems}
-                  onSelect={onSelect}
-                  item={itemObj}
-                  itemIndex={itemIndex}
-                />
+                <Input answerItems={answerItems} onSelect={onSelect} item={itemObj} itemIndex={itemIndex} />
               </div>
             </form>
+            -foreground
           </div>
         );
       })}
@@ -236,7 +223,7 @@ interface InputProps {
 
 const Input = ({ answerItems, onSelect, item, itemIndex }: InputProps) => {
   item.ref = useRef();
-  const value = answerItems?.[itemIndex]?.values?.[0]; // for all non-multiple forms
+  const value = ans - foregroundems?.[itemIndex]?.values?.[0]; // for all non-multiple forms
 
   function onFocus() {
     const el = item?.ref?.current;

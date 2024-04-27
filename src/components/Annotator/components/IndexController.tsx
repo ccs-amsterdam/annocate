@@ -28,7 +28,7 @@ const Slider = styled.input<{ progress: number }>`
   min-width: 1px;
   background: linear-gradient(
     to right,
-    ${(props) => `var(--primary) ${props.progress}%,
+    ${(props) => `hsl(var(--primary)) ${props.progress}%,
     var(--primary-light) ${props.progress}% 100%,
     var(--primary-light) 100%`}
   );
@@ -41,7 +41,7 @@ const IndexLabel = styled.div`
   font-size: 1.6rem;
 
   font-weight: bold;
-  color: var(--primary-text);
+  color: hsl(var(--primary-foreground));
 
   & div {
     min-width: 1.6rem;
@@ -52,10 +52,10 @@ const IndexLabel = styled.div`
 const Icon = styled.div<{ disabled?: boolean }>`
   font-size: 2.5rem;
   cursor: ${(p) => (p.disabled ? "default" : "pointer")};
-  color: ${(p) => (p.disabled ? "grey" : "var(--primary-text)")};
+  color: ${(p) => (p.disabled ? "grey" : "hsl(var(--primary-foreground))")};
 
   /* svg:hover {
-    fill: ${(p) => (p.disabled ? "grey" : "var(--secondary)")};
+    fill: ${(p) => (p.disabled ? "grey" : "hsl(var(--secondary))")};
   } */
 `;
 
@@ -124,10 +124,7 @@ const IndexController = ({
     <IndexControllerBar>
       <div>
         {canGoBack || canGoForward ? (
-          <Icon
-            onClick={() => updatePage(Math.max(1, activePage - 1))}
-            disabled={!canGoBack || activePage === 1}
-          >
+          <Icon onClick={() => updatePage(Math.max(1, activePage - 1))} disabled={!canGoBack || activePage === 1}>
             <FaStepBackward />
           </Icon>
         ) : null}

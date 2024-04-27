@@ -69,9 +69,9 @@ const StyledButtonGroup = styled.div`
     &:focus .Buttons,
     &:hover .Buttons,
     &:active .Buttons {
-      background: var(--primary-text);
+      background: hsl(var(--primary-foreground));
       border-radius: 5px;
-      color: var(--text-inversed);
+      color: var(--foreground-inversed);
       transition: max-height 1s;
       //border: 3px double var(--background-fixed);
       //border-top: 0px;

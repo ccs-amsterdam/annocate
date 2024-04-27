@@ -9,11 +9,11 @@ interface SelectVariableProps {
 }
 
 const StyledDiv = styled.div<{ description: boolean }>`
-  //border-bottom: 1px solid var(--primary);
+  //border-bottom: 1px solid hsl(var(--primary));
   border-radius: 3px;
   position: relative;
   flex: 1 1 auto;
-  background: var(--primary);
+  background: hsl(var(--primary));
 
   &::after {
     content: "";
@@ -21,14 +21,14 @@ const StyledDiv = styled.div<{ description: boolean }>`
     bottom: 10;
     width: calc(100% - 1rem); // 1rem for the scrollbar
     height: 1rem;
-    background: linear-gradient(var(--background), transparent 70%);
+    background: linear-gradient(hsl(var(--background)), transparent 70%);
     //backdrop-filter: blur(5px);
     z-index: 1000;
   }
 
   .Description {
     //margin: auto;
-    //background: var(--secondary);
+    //background: hsl(var(--secondary));
     color: white;
     border-radius: 10px;
     display: flex;
@@ -56,8 +56,8 @@ const StyledDiv = styled.div<{ description: boolean }>`
     //border-bottom: 1px solid var(--background-fixed);
     //border-radius: 2px;
 
-    //background: var(--primary-dark);
-    color: var(--text-inversed-fixed);
+    //background: var(--hsl(var(--primary-dark)));
+    color: var(--foreground-inversed-fixed);
     position: relative;
     z-index: 10000;
     display: flex;
@@ -70,7 +70,7 @@ const StyledDiv = styled.div<{ description: boolean }>`
     button {
       flex: 0 1 auto;
       padding: 0.4rem 0.7rem;
-      background: var(--primary);
+      background: hsl(var(--primary));
       border-radius: 4px;
       border: 1px solid var(--primary-light);
       color: var(--primary-light);
@@ -159,12 +159,7 @@ const SelectVariable = ({ variables, variable, setVariable }: SelectVariableProp
 
   return (
     <StyledDiv description={true}>
-      <VariableMenu
-        variable={variable}
-        setVariable={setVariable}
-        variables={variables}
-        variableNames={variableNames}
-      />
+      <VariableMenu variable={variable} setVariable={setVariable} variables={variables} variableNames={variableNames} />
       <div className="Description">
         <div className="Text">{helpText}</div>
         {/* <div className="ShowDescription" onClick={() => setShowDescription(!showDescription)}>
@@ -197,11 +192,7 @@ const VariableMenu = ({ variable, setVariable, variables, variableNames }: Varia
     <div className="VariableButtons">
       {variableNames.map((name) => {
         return (
-          <button
-            key={name}
-            className={name === variable ? "active" : ""}
-            onClick={() => setVariable(name)}
-          >
+          <button key={name} className={name === variable ? "active" : ""} onClick={() => setVariable(name)}>
             {name}
           </button>
         );

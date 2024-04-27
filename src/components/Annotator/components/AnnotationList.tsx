@@ -2,17 +2,12 @@ import { useMemo, ReactElement } from "react";
 import styled from "styled-components";
 import standardizeColor from "../../../functions/standardizeColor";
 import { getColor } from "../../../functions/tokenDesign";
-import {
-  Annotation,
-  VariableMap,
-  AnnotationMap,
-  TriggerSelector,
-} from "../../../types";
+import { Annotation, VariableMap, AnnotationMap, TriggerSelector } from "../../../types";
 
 const VariableNames = styled.div`
   font-size: 2rem;
   padding: 2rem 1rem;
-  color: var(--primary-text);
+  color: hsl(var(--primary-foreground));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -36,7 +31,7 @@ const StyledDiv = styled.div`
     display: flex;
     align-items: stretch;
 
-    //border-bottom: 1px dotted var(--text-light);
+    //border-bottom: 1px dotted var(--foreground-light);
     cursor: pointer;
     margin: 0.2rem;
 
@@ -48,7 +43,7 @@ const StyledDiv = styled.div`
       padding: 0.5rem 0.3rem;
       border: 1px solid var(--background-inversed-fixed);
 
-      color: var(--text-fixed);
+      color: var(--foreground-fixed);
       position: relative;
       &::after {
         content: "";
@@ -113,7 +108,7 @@ const StyledDiv = styled.div`
     padding: 0.2rem 0.2rem 0 0.2rem;
     border: 1px solid var(--background-inversed-fixed);
 
-    color: var(--text-fixed);
+    color: var(--foreground-fixed);
     position: relative;
     &::after {
       content: "";
@@ -177,11 +172,7 @@ interface AnnotationListProps {
   selectors: Record<string, TriggerSelector>;
 }
 
-const AnnotationList = ({
-  variableMap,
-  annotations,
-  selectors,
-}: AnnotationListProps) => {
+const AnnotationList = ({ variableMap, annotations, selectors }: AnnotationListProps) => {
   const annMap: AnnotationMap = useMemo(() => {
     const annMap: AnnotationMap = {};
     for (let a of annotations || []) annMap[a.id] = a;
@@ -200,9 +191,7 @@ const AnnotationList = ({
           })}
         </div>
       </VariableNames>
-      <StyledDiv>
-        {listAnnotations(variableMap, annotations, annMap, selectors)}
-      </StyledDiv>
+      <StyledDiv>{listAnnotations(variableMap, annotations, annMap, selectors)}</StyledDiv>
     </div>
   );
 };
@@ -211,7 +200,7 @@ const listAnnotations = (
   variableMap: VariableMap,
   annotations: Annotation[],
   annMap: AnnotationMap,
-  selectors: Record<string, TriggerSelector>
+  selectors: Record<string, TriggerSelector>,
 ) => {
   const rows = [];
 
@@ -231,7 +220,7 @@ const listAnnotations = (
             });
           }}
           text={text}
-        />
+        />,
       );
     }
     if (annotation.type === "relation") {
@@ -251,7 +240,7 @@ const listAnnotations = (
               toId: annotation.toId,
             });
           }}
-        />
+        />,
       );
     }
   }
@@ -265,12 +254,7 @@ interface ShowSpanAnnotationProps {
   text: string;
 }
 
-const ShowSpanAnnotation = ({
-  variableMap,
-  annotation,
-  onClick,
-  text,
-}: ShowSpanAnnotationProps) => {
+const ShowSpanAnnotation = ({ variableMap, annotation, onClick, text }: ShowSpanAnnotationProps) => {
   let codeMap = variableMap?.[annotation.variable]?.codeMap;
   if (!codeMap) return null;
 
@@ -298,12 +282,7 @@ interface ShowRelationProps {
   onClick: () => void;
 }
 
-const ShowRelation = ({
-  variableMap,
-  annotation,
-  annMap,
-  onClick,
-}: ShowRelationProps) => {
+const ShowRelation = ({ variableMap, annotation, annMap, onClick }: ShowRelationProps) => {
   let codeMap = variableMap?.[annotation.variable]?.codeMap;
   if (!codeMap) return null;
 
@@ -312,12 +291,7 @@ const ShowRelation = ({
   //const relationSpan: Span = [annotation.from.token_span[0], annotation.to.token_span[1]];
 
   return (
-    <div
-      key={annotation.id}
-      className={"relationList"}
-      onClick={onClick}
-      style={{ background: color || null }}
-    >
+    <div key={annotation.id} className={"relationList"} onClick={onClick} style={{ background: color || null }}>
       {recursiveRelationText(annMap, annotation)}
     </div>
   );
@@ -328,7 +302,7 @@ function recursiveRelationText(
   annotation: Annotation,
   depth: number = 0,
   elements: ReactElement[] = [],
-  keySuffix: string = ""
+  keySuffix: string = "",
 ) {
   const key = annotation.id + "_" + depth + "_" + keySuffix;
   const marginLeft = `${depth * 1}rem`;
@@ -343,38 +317,26 @@ function recursiveRelationText(
         <div className="text" title={annotation.text}>
           {annotation.text}
         </div>
-      </div>
+      </div>,
     );
   }
   if (annotation.type === "relation") {
     elements.push(
-      <div
-        key={key}
-        className={`relation ${depth === 0 && "header"}`}
-        style={{ marginLeft }}
-      >
+      <div key={key} className={`relation ${depth === 0 && "header"}`} style={{ marginLeft }}>
         <div className="label">
-          {depth > 0 && (
-            <div className="dot" style={{ background: annotation.color }} />
-          )}
+          {depth > 0 && <div className="dot" style={{ background: annotation.color }} />}
           <div>{annotation.value}</div>
         </div>
-      </div>
+      </div>,
     );
     recursiveRelationText(
       annMap,
       annMap[annotation.fromId],
       depth + 1,
       elements,
-      annotation.id + "from" // required for unique key
+      annotation.id + "from", // required for unique key
     );
-    recursiveRelationText(
-      annMap,
-      annMap[annotation.toId],
-      depth + 1,
-      elements,
-      annotation.id + "to"
-    );
+    recursiveRelationText(annMap, annMap[annotation.toId], depth + 1, elements, annotation.id + "to");
   }
 
   return elements;

@@ -12,12 +12,12 @@ const Portal = styled.div<{ smallScreen?: boolean }>`
   min-width: ${(p) => (p.smallScreen ? "100%" : "300px")};
   max-width: min(100%, 600px);
   z-index: 100000;
-  background: var(--background);
-  color: var(--text);
+  background: hsl(var(--background));
+  color: var(--foreground);
   padding: 10px 10px 0px 10px;
   margin-top: 14px;
   border-radius: 5px;
-  border: 2px solid var(--primary);
+  border: 2px solid hsl(var(--primary));
 
   opacity: 0;
   pointer-events: none;
@@ -26,7 +26,9 @@ const Portal = styled.div<{ smallScreen?: boolean }>`
   &.Open {
     opacity: 1;
     pointer-events: auto;
-    transition: all 90ms, opacity 100ms linear 100ms;
+    transition:
+      all 90ms,
+      opacity 100ms linear 100ms;
   }
 `;
 

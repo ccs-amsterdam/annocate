@@ -19,7 +19,7 @@ const StyledDiv = styled.div<{ open: boolean }>`
       ? `
         pointer-events: auto;
         backdrop-filter: blur(5px);
-        background: var(--background-transparent);
+        background: hsl(var(--background), 0.5);
     `
       : `
         pointer-events: none;
@@ -36,12 +36,12 @@ const StyledDiv = styled.div<{ open: boolean }>`
     margin: auto;
 
     transition: all 0.2s;
-    border: 3px solid var(--primary);
-    box-shadow: 0 0 10px var(--primary-dark);
+    border: 3px solid hsl(var(--primary));
+    box-shadow: 0 0 10px var(--hsl(var(--primary-dark)));
     border-radius: 5px;
     z-index: 10000;
-    background: var(--background);
-    color: var(--text);
+    background: hsl(var(--background));
+    color: var(--foreground);
     padding: 1.5rem;
     ${(p) =>
       p.open
@@ -68,7 +68,7 @@ const StyledDiv = styled.div<{ open: boolean }>`
       h4,
       h5,
       h6 {
-        color: var(--primary-text);
+        color: hsl(var(--primary-foreground));
       }
     }
 
@@ -84,7 +84,7 @@ const StyledDiv = styled.div<{ open: boolean }>`
       left: calc(50% - 2.5rem);
 
       svg:hover {
-        fill: var(--text);
+        fill: var(--foreground);
       }
     }
   }
@@ -136,7 +136,7 @@ const Modal = ({ children, open, setOpen, closeOnSelectKey }: ModalProps) => {
           <br />
         </div>
         <div className="closeIcon" ref={closeIcon}>
-          <FaWindowClose size="100%" color="var(--primary)" onClick={() => setOpen(false)} />
+          <FaWindowClose size="100%" color="hsl(hsl(var(--primary)))" onClick={() => setOpen(false)} />
         </div>
       </div>
     </StyledDiv>

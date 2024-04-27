@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useRef,
-  RefObject,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useRef, RefObject, useCallback, useMemo } from "react";
 import QuestionForm from "./QuestionForm";
 import Document from "../../Document/Document";
 import { useSwipeable } from "react-swipeable";
@@ -31,7 +25,7 @@ const Container = styled.div`
   flex-direction: column;
   height: 100%;
 
-  background: var(--background);
+  background: hsl(var(--background));
 `;
 
 const ContentWindow = styled.div<{ fullSize?: boolean }>`
@@ -54,7 +48,7 @@ const ContentWindow = styled.div<{ fullSize?: boolean }>`
 `;
 
 const QuestionMenu = styled.div<{
-  fullSize?: boolean;
+  fullSize?: boolean;hsl(var(--background))
 }>`
   //overflow: auto;
   flex: ${(p) => (p.fullSize ? `0 0 auto` : `0 1 auto`)};
@@ -114,10 +108,7 @@ const QuestionTask = ({
     return { text: textref, box: boxref, code: coderef };
   }, []);
 
-  const questions = useMemo(
-    () => unfoldQuestions(codebook, unit),
-    [unit, codebook]
-  );
+  const questions = useMemo(() => unfoldQuestions(codebook, unit), [unit, codebook]);
   const question = questions[questionIndex];
 
   if (useWatchChange([unit])) {
@@ -142,7 +133,7 @@ const QuestionTask = ({
         }, 100);
       }
     },
-    [refs]
+    [refs],
   );
 
   // swipe controlls need to be up in the QuestionTask component due to working on the div containing the question screen
@@ -155,13 +146,9 @@ const QuestionTask = ({
 
   // two modes for highlighting annotations: a single annotation in question.annotation and
   // question.showAnnotations. Passing an array of annotations to Document highlights the spans
-  let annotations: Annotation[] = question?.annotation
-    ? [question.annotation]
-    : [];
+  let annotations: Annotation[] = question?.annotation ? [question.annotation] : [];
   if (question?.showAnnotations && unit.unit.annotations) {
-    const addAnnotations = unit.unit.annotations.filter((a) =>
-      question.showAnnotations.includes(a.variable)
-    );
+    const addAnnotations = unit.unit.annotations.filter((a) => question.showAnnotations.includes(a.variable));
     annotations = [...annotations, ...addAnnotations];
   }
 
@@ -205,9 +192,7 @@ const QuestionTask = ({
           blockEvents={blockEvents}
         >
           <Instructions
-            instruction={
-              question?.instruction || codebook?.settings?.instruction
-            }
+            instruction={question?.instruction || codebook?.settings?.instruction}
             autoInstruction={codebook?.settings?.auto_instruction || false}
             sessionData={sessionData}
           />
@@ -234,16 +219,12 @@ const nextUnitTransition = (r: SwipeRefs, trans: Transition) => {
 const nextQuestionTransition = (r: SwipeRefs, trans: Transition) => {
   if (!trans?.color) return;
   // if (r?.box?.current?.style != null && r?.text?.current != null) {
-  //   r.text.current.style.transition = `background 50ms ease-out`;
+  //   r.text.current.style.transhsl(var(--background))nd 50ms ease-out`;
   //   r.text.current.style.background = trans.color;
   // }
 };
 
-const hideUnit = (
-  text: RefObject<HTMLElement>,
-  box: RefObject<HTMLElement>,
-  code: RefObject<HTMLElement>
-): void => {
+const hideUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, code: RefObject<HTMLElement>): void => {
   if (!text.current) return null;
   code.current.innerText = "";
   text.current.style.transition = ``;
@@ -253,11 +234,7 @@ const hideUnit = (
   text.current.style.transform = "translateX(0%) translateY(0%)";
 };
 
-const showUnit = (
-  text: RefObject<HTMLElement>,
-  box: RefObject<HTMLElement>,
-  code: RefObject<HTMLElement>
-): void => {
+const showUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, code: RefObject<HTMLElement>): void => {
   if (!text.current) return null;
   code.current.innerText = "";
   box.current.style.transition = `opacity 200ms linear`;
@@ -270,3 +247,4 @@ const showUnit = (
 };
 
 export default React.memo(QuestionTask);
+hsl(var(--background))hsl(var(--background))

@@ -1,16 +1,16 @@
 import { useEffect, useCallback, useState } from "react";
 import Backend from "../../Login/Backend";
-import { Job, SetState } from "../../../types";
+import { Job, SetState } from "@/app/types";
 import JobDetails from "./JobDetails";
-import GridList from "../../Common/components/GridList/GridList";
+import GridList from "@/components/Common/GridList/GridList";
 import {
   DataPoint,
   DataQuery,
   GridItemTemplate,
   FilterQueryOption,
   SortQueryOption,
-} from "../../Common/components/GridList/GridListTypes";
-import { sortData } from "../../Common/components/GridList/GridListFunctions";
+} from "@/components/Common/GridList/GridListTypes";
+import { sortData } from "@/components/Common/GridList/GridListFunctions";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 interface ManageJobsProps {

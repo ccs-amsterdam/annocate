@@ -18,7 +18,7 @@ const AnswerDiv = styled.div`
   width: 100%;
   margin: auto 0;
   font-size: inherit;
-  color: var(--text);
+  color: var(--foreground);
 
   & .InnerAnswerField {
     width: 100%;
@@ -35,14 +35,7 @@ interface AnswerFieldProps {
   blockEvents?: boolean;
 }
 
-const AnswerField = ({
-  answers,
-  questions,
-  questionIndex,
-  onAnswer,
-  swipe,
-  blockEvents = false,
-}: AnswerFieldProps) => {
+const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, blockEvents = false }: AnswerFieldProps) => {
   const [question, setQuestion] = useState<Question>(null);
   const [answerItems, setAnswerItems] = useState<AnswerItem[]>(null);
   const questionDate = useRef<Date>(new Date());
@@ -132,9 +125,7 @@ const AnswerField = ({
     } else {
       // if a single value, check whether it should be treated as multiple, or add as array of length 1
       if (multiple) {
-        const valueIndex = answerItems[itemIndex].values.findIndex(
-          (v: string | number) => v === value
-        );
+        const valueIndex = answerItems[itemIndex].values.findIndex((v: string | number) => v === value);
         if (valueIndex < 0) {
           // if value doesn't exist yet, add it
           answerItems[itemIndex].values.push(value);
@@ -218,12 +209,7 @@ const AnswerField = ({
 
   if (question.type === "confirm")
     answerfield = (
-      <Confirm
-        onSelect={onSelect}
-        button={question.options?.[0]?.code}
-        swipe={swipe}
-        blockEvents={blockEvents}
-      />
+      <Confirm onSelect={onSelect} button={question.options?.[0]?.code} swipe={swipe} blockEvents={blockEvents} />
     );
 
   if (question.type === "inputs")

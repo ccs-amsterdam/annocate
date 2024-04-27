@@ -32,7 +32,7 @@ const FormBox = styled.div`
 `;
 
 const Title = styled.h1`
-  color: var(--primary);
+  color: hsl(var(--primary));
   font-size: 3.5rem;
   margin-bottom: 1rem;
 `;
@@ -56,8 +56,7 @@ const Login = ({ login, sessionList }: LoginProps) => {
     retry: false,
   });
 
-  let hostLoginSuccess =
-    canRegister || has_jobtoken ? hostInfoQuery.data != null : hostInfoQuery.data?.user != null;
+  let hostLoginSuccess = canRegister || has_jobtoken ? hostInfoQuery.data != null : hostInfoQuery.data?.user != null;
 
   const render = () => {
     if (!hostLoginSuccess)
@@ -94,7 +93,7 @@ const Login = ({ login, sessionList }: LoginProps) => {
           <div>{render()}</div>
         </FormBox>
         <span
-          style={{ marginTop: "1rem", cursor: "pointer", color: "var(--primary-text)" }}
+          style={{ marginTop: "1rem", cursor: "pointer", color: "hsl(var(--primary-foreground))" }}
           onClick={() => setDemoModal(true)}
         >
           View Demo
@@ -115,7 +114,7 @@ const HostLogoutDiv = styled.div`
   display: flex;
   text-align: center;
   justify-content: space-between;
-  color: var(--text-light);
+  color: var(--foreground-light);
 `;
 
 const HostDetails = styled.div`
@@ -133,14 +132,7 @@ interface HostLogoutProps {
   setSearchParams: any;
 }
 
-export const HostLogout = ({
-  host,
-  email,
-  setHost,
-  setEmail,
-  searchParams,
-  setSearchParams,
-}: HostLogoutProps) => {
+export const HostLogout = ({ host, email, setHost, setEmail, searchParams, setSearchParams }: HostLogoutProps) => {
   if (!host) return null;
 
   return (

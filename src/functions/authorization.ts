@@ -50,6 +50,8 @@ const tokenVerifier = new TokenVerifier();
 
 export async function authenticateUser(req: Request): Promise<string | null> {
   const bearer: string | null = req.headers.get("authorization");
+  console.log(req);
+  console.log(req.headers);
   const access_token = bearer?.split(" ")[1] || "";
   if (!access_token) return null;
 

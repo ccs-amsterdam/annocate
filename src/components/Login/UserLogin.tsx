@@ -26,23 +26,10 @@ const UserLogin = ({ login, hostInfo, searchParams }: UserLoginProps) => {
   if (d_number && k_number) userId = `d=${d_number}&k=${k_number}`;
 
   if (jobtoken) {
-    return (
-      <JobTokenLogin
-        login={login}
-        host={hostInfo.host}
-        userId={userId}
-        jobtoken={jobtoken}
-        asGuest={asGuest}
-      />
-    );
+    return <JobTokenLogin login={login} host={hostInfo.host} userId={userId} jobtoken={jobtoken} asGuest={asGuest} />;
   }
   return (
-    <RegisteredLogin
-      login={login}
-      host={host}
-      email={hostInfo.user?.email}
-      hasPassword={hostInfo.user?.has_password}
-    />
+    <RegisteredLogin login={login} host={host} email={hostInfo.user?.email} hasPassword={hostInfo.user?.has_password} />
   );
 };
 
@@ -58,9 +45,7 @@ const RegisteredLogin = ({ login, host, email, hasPassword }: RegisteredLoginPro
 
   return (
     <div>
-      {hasPassword && !useMagicLink ? (
-        <PasswordLogin host={host} email={email} login={login} />
-      ) : null}
+      {hasPassword && !useMagicLink ? <PasswordLogin host={host} email={email} login={login} /> : null}
       <MagicLinkLogin
         host={host}
         email={email}
@@ -119,13 +104,7 @@ const PasswordLogin = ({ host, email, login }: PasswordLoginProps) => {
         }}
         style={{ width: "260px", fontSize: "1.5rem" }}
       />
-      <StyledButton
-        onClick={tryPasswordLogin}
-        primary
-        key="password"
-        disabled={password.length === 0}
-        fluid
-      >
+      <StyledButton onClick={tryPasswordLogin} primary key="password" disabled={password.length === 0} fluid>
         Sign in
       </StyledButton>
     </Form>
@@ -142,7 +121,7 @@ const MagicLink = styled.div`
 
 const SecretForm = styled.form`
   & p {
-    color: var(--primary);
+    color: hsl(var(--primary));
   }
   & .button {
     margin-top: 10px;
@@ -155,7 +134,9 @@ const SecretInput = styled.input`
   background: linear-gradient(to left, #ccc 1px, transparent 0);
   background-size: 19.5px 1px;
   width: 120px;
-  font: 32.5px monaco, monospace;
+  font:
+    32.5px monaco,
+    monospace;
   color: var(--secondary-light);
 `;
 
@@ -167,13 +148,7 @@ interface MagicLinkLoginProps {
   setUseMagicLink: SetState<boolean>;
 }
 
-const MagicLinkLogin = ({
-  host,
-  email,
-  login,
-  useMagicLink,
-  setUseMagicLink,
-}: MagicLinkLoginProps) => {
+const MagicLinkLogin = ({ host, email, login, useMagicLink, setUseMagicLink }: MagicLinkLoginProps) => {
   const [secret, setSecret] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loginError, setLoginError] = useState("");

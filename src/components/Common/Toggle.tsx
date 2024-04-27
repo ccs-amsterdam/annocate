@@ -9,8 +9,8 @@ const StyledDiv = styled.div<{ size?: number }>`
     width: 1.2em;
     height: 0.74em;
     border-radius: 0.74em;
-    background: var(--background);
-    border: 1px solid var(--primary-text);
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--primary-foreground));
     transition: all 0.2s;
   }
 
@@ -38,22 +38,22 @@ const StyledDiv = styled.div<{ size?: number }>`
     width: 0.52em;
     left: 0.08em;
     bottom: 0.08em;
-    background: var(--primary-text);
+    background: hsl(var(--primary-foreground));
     transition: all 0.2s;
     border-radius: 50%;
   }
 
   .Toggle input:checked + label {
-    background-color: var(--primary-text);
+    background-color: hsl(var(--primary-foreground));
   }
 
   .Toggle input:checked + label:before {
     transform: translateX(0.44em);
-    background: var(--background);
+    background: hsl(var(--background));
   }
 
   .Toggle input:focus + label {
-    box-shadow: 0 0 1px var(--primary);
+    box-shadow: 0 0 1px hsl(hsl(var(--primary)));
   }
 `;
 

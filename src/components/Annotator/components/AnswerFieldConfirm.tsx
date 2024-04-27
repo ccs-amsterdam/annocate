@@ -25,7 +25,7 @@ const Confirm = ({ onSelect, button, swipe, blockEvents }: ConfirmProps) => {
         onSelect({ value: "confirmed", finish: true });
       }
     },
-    [onSelect]
+    [onSelect],
   );
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const Confirm = ({ onSelect, button, swipe, blockEvents }: ConfirmProps) => {
       onSelect({
         value: "confirmed",
         finish: true,
-        transition: { direction: "up", color: "var(--primary)" },
+        transition: { direction: "up", color: "hsl(var(--primary))" },
       });
     }
   }, [swipe, onSelect]);

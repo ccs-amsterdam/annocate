@@ -93,9 +93,9 @@ export const GridListDiv = styled.div`
     .GridItem {
       text-align: left;
       padding: 1rem;
-      border: 2px solid var(--primary-text);
+      border: 2px solid hsl(var(--primary-foreground));
       border-radius: 5px;
-      box-shadow: 2px 2px 1px var(--primary);
+      box-shadow: 2px 2px 1px hsl(var(--primary));
       display: flex;
       flex-wrap: wrap;
 
@@ -104,21 +104,21 @@ export const GridListDiv = styled.div`
       }
 
       &.Labels {
-        background: var(--primary);
+        background: hsl(var(--primary));
         color: white;
       }
       &.Values {
         transition: all 0.2s;
-        color: var(--primary-text);
-        background: var(--background-transparent);
+        color: hsl(var(--primary-foreground));
+        background: hsl(var(--background), 0.5);
         backdrop-filter: blur(5px);
-        //box-shadow: 3px 3px 3px var(--primary);
+        //box-shadow: 3px 3px 3px hsl(var(--primary));
         //margin: 0.2rem;
         cursor: pointer;
         &:hover,
         &.Selected {
-          background: var(--secondary);
-          color: var(--primary-dark);
+          background: hsl(var(--secondary));
+          color: var(--hsl(var(--primary-dark)));
         }
         &.Selected {
           transform: scale(1.05);
@@ -168,14 +168,14 @@ export const GridListDiv = styled.div`
       width: auto;
       margin: auto;
       transform: scale(1%);
-      border: 2px solid var(--primary-text);
-      background: var(--background-transparent);
+      border: 2px solid hsl(var(--primary-foreground));
+      background: hsl(var(--background), 0.5);
       border-radius: 5px;
     }
 
     &.Open {
       pointer-events: all;
-      background: var(--background-transparent);
+      background: hsl(var(--background), 0.5);
       backdrop-filter: blur(3px);
 
       .Detail {
@@ -201,7 +201,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
 
   --dropdown-display: none;
   --borderradius: 5px;
-  --border: 1px solid var(--primary);
+  --border: 1px solid hsl(var(--primary));
   --z-index: 900; // Makes sure z-index of button is lower than dropdown of another button
   --height: 3rem;
   --marginbottom: 0.5rem;
@@ -224,7 +224,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
     margin-bottom: var(--marginbottom);
     height: var(--height);
     pointer-events: all;
-    border: 1px solid var(--primary);
+    border: 1px solid hsl(var(--primary));
     border-radius: 5px;
     border-bottom-right-radius: var(--borderradius);
     border-bottom-left-radius: var(--borderradius);
@@ -233,8 +233,8 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
     z-index: var(--z-index);
     cursor: pointer;
 
-    background: ${(p) => (p.active ? "var(--secondary)" : "var(--background)")};
-    color: ${(p) => (p.active ? "var(--primary-dark)" : "var(--primary-text)")};
+    background: ${(p) => (p.active ? "hsl(var(--secondary))" : "hsl(var(--background))")};
+    color: ${(p) => (p.active ? "var(--hsl(var(--primary-dark)))" : "hsl(var(--primary-foreground))")};
 
     :disabled {
       pointer-events: none;
@@ -251,12 +251,12 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
     top: calc(100% - 1px);
     left: 0;
     z-index: 999;
-    border: 1px solid var(--primary);
+    border: 1px solid hsl(var(--primary));
     border-radius: 5px;
     border-top-left-radius: var(--borderradius);
 
-    background: ${(p) => (p.active ? "var(--secondary)" : "var(--background)")};
-    color: ${(p) => (p.active ? "var(--primary-dark)" : "var(--primary-text)")};
+    background: ${(p) => (p.active ? "hsl(var(--secondary))" : "hsl(var(--background))")};
+    color: ${(p) => (p.active ? "var(--hsl(var(--primary-dark)))" : "hsl(var(--primary-foreground))")};
 
     & > div {
       padding: 0.8rem;
@@ -266,7 +266,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
       height: 0;
       margin-top: 0.5rem;
       padding-top: 0.5rem;
-      border-top: 1px solid var(--primary);
+      border-top: 1px solid hsl(var(--primary));
     }
   }
 
@@ -306,7 +306,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
       gap: 0;
 
       //pointer-events: none;
-      //border-bottom: 1px solid var(--primary);
+      //border-bottom: 1px solid hsl(var(--primary));
     }
   }
 
@@ -317,7 +317,7 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
 
     .SearchField {
       line-height: 2rem;
-      border: 1px solid var(--primary);
+      border: 1px solid hsl(var(--primary));
       border-radius: 5px;
       padding: 0.5rem 1rem;
       font-size: 0.9rem;
@@ -335,15 +335,15 @@ export const QueryDiv = styled.div<{ open?: boolean; active?: boolean }>`
 
       .SelectOption {
         display: flex;
-        border: 1px solid var(--primary);
+        border: 1px solid hsl(var(--primary));
         border-radius: 5px;
         background: #fff;
-        color: var(--primary-dark);
+        color: var(--hsl(var(--primary-dark)));
         padding: 0.3rem;
         cursor: pointer;
 
         &.Selected {
-          background: var(--primary);
+          background: hsl(var(--primary));
           color: white;
         }
       }

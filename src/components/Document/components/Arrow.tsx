@@ -70,7 +70,7 @@ const StyledG = styled.g<{ interactive: boolean }>`
   text,
   textPath {
     line-height: 1rem;
-    fill: var(--text-fixed);
+    fill: var(--foreground-fixed);
     font-weight: bold;
     overflow: show;
     paint-order: stroke;
@@ -216,7 +216,7 @@ export default function Arrow({
           id={id}
           className="arrow"
           d={`M${sx},${sy} Q${cx},${cy} ${ex},${ey}`}
-          stroke={edgeColor || "var(--text)"}
+          stroke={edgeColor || "var(--foreground)"}
           fill="none"
           strokeWidth="5"
         />

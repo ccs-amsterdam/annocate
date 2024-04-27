@@ -10,7 +10,7 @@ const GlobalStyle = createGlobalStyle`
     --font-size: 1.6rem;
 
     --primary: #673AB7;
-    --primary-dark: #3B2667;
+    --hsl(var(--primary-dark)): #3B2667;
     --primary-light: #D1C4E9;
     --primary-text: #c0b1dd;
     --primary-transparent: #673AB788;
@@ -61,8 +61,8 @@ const GlobalStyle = createGlobalStyle`
   body {
     margin: 0;
     overscroll-behavior: contain;
-    background: var(--background);
-    color: var(--text);
+    background: hsl(var(--background));
+    color: hsl(--var(--foreground));
     font-family: Verdana, Geneva, Tahoma, sans-serif
   }
 
@@ -78,13 +78,13 @@ const GlobalStyle = createGlobalStyle`
 
   /* Handle */
   div::-webkit-scrollbar-thumb, p::-webkit-scrollbar-thumb {
-    background-color: var(--primary);
+    background-color: hsl(var(--primary));
     border-radius: 0;
   }
 
   /* Handle on hover */
   div::-webkit-scrollbar-thumb:hover, p::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark);
+    background: var(--hsl(var(--primary-dark)));
   }
 
   h1 {

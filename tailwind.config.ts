@@ -1,13 +1,8 @@
-import type { Config } from "tailwindcss"
+import type { Config } from "tailwindcss";
 
 const config = {
   darkMode: ["class"],
-  content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
-	],
+  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
     container: {
@@ -18,39 +13,67 @@ const config = {
       },
     },
     extend: {
+      cursor: {
+        pencil: "url(/images/pencil-cursor.svg) 16 16, pointer",
+      },
+      typography: {
+        DEFAULT: {
+          css: {
+            p: { hyphens: "auto" },
+          },
+        },
+        invert: {},
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+
+        background: {
+          DEFAULT: "hsl(var(--background), <alpha-value>)",
+        },
+        header: {
+          DEFAULT: "hsl(var(--header), <alpha-value>)",
+        },
+        foreground: {
+          DEFAULT: "hsl(var(--foreground), <alpha-value>)",
+        },
         primary: {
-          DEFAULT: "hsl(var(--primary))",
+          DEFAULT: "hsl(var(--primary), <alpha-value>)",
           foreground: "hsl(var(--primary-foreground))",
+          dark: "hsl(var(--primary-dark), <alpha-value>)",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "hsl(var(--secondary), <alpha-value>)",
+          foreground: "hsl(var(--secondary-foreground), <alpha-value>)",
+          dark: "hsl(var(--secondary-dark), <alpha-value>)",
+        },
+        check: {
+          DEFAULT: "hsl(var(--check), <alpha-value>)",
+          foreground: "hsl(var(--check-foreground), <alpha-value>)",
+        },
+        warn: {
+          DEFAULT: "hsl(var(--warn), <alpha-value>)",
+          foreground: "hsl(var(--warn-foreground), <alpha-value>)",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "hsl(var(--destructive), <alpha-value>)",
+          foreground: "hsl(var(--destructive-foreground), <alpha-value>)",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "hsl(var(--muted), <alpha-value>)",
+          foreground: "hsl(var(--muted), <alpha-value>)",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "hsl(var(--accent), <alpha-value>)",
+          foreground: "hsl(var(--accent-foreground), <alpha-value>)",
         },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
+
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "hsl(var(--card), <alpha-value>)",
+          foreground: "hsl(var(--card-foreground), <alpha-value>)",
+        },
+        ring: {
+          DEFAULT: "hsl(var(--ring), <alpha-value>)",
         },
       },
       borderRadius: {
@@ -67,14 +90,19 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 0.2s ease-out",
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config
+} satisfies Config;
 
-export default config
+export default config;

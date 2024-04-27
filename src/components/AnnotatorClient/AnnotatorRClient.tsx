@@ -18,15 +18,15 @@ const StyledDiv = styled.div`
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: var(--background);
-  color: var(--primary-text);
+  background: hsl(var(--background));
+  color: hsl(var(--primary-foreground));
 
   h2 {
-    color: var(--text);
+    color: var(--foreground);
   }
   svg {
     margin-bottom: 2rem;
-    color: var(--primary-text);
+    color: hsl(var(--primary-foreground));
     animation: spin 5s infinite linear;
   }
 `;
@@ -52,9 +52,7 @@ export default function AnnotatorRClient() {
         <StyledDiv>
           <FaSync size="4rem" />
           <h2>{`Connecting to port ${PORT}`}</h2>
-          <h3>
-            If this takes forever, please make sure the R server is actually running on this port`
-          </h3>
+          <h3>If this takes forever, please make sure the R server is actually running on this port`</h3>
         </StyledDiv>
       </CenteredDiv>
     );

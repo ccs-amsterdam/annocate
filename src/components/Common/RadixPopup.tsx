@@ -21,7 +21,7 @@ const RadixPopup = ({ children, trigger, className, closeButton, arrow }: Props)
     <Popover.Portal>
       <Popover.Content
         className={cn(
-          "animate-slideInRight relative m-5 rounded border-[1px] border-shadow bg-background p-8 text-sm shadow-md shadow-shadow",
+          "animate-slideInRight border-shadow shadow-shadow relative m-5 rounded border-[1px] bg-background p-8 text-sm shadow-md",
           className,
         )}
         sideOffset={5}
@@ -29,7 +29,7 @@ const RadixPopup = ({ children, trigger, className, closeButton, arrow }: Props)
         {children}
         {closeButton ? (
           <Popover.Close
-            className="absolute right-0 top-2 rounded-full p-2 text-xl text-primary-text hover:bg-primary-light"
+            className="hover:bg-primary-light absolute right-0 top-2 rounded-full p-2 text-xl text-primary-foreground"
             aria-label="Close"
           >
             <AiOutlineClose />

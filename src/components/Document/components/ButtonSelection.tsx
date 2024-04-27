@@ -19,7 +19,7 @@ const StyledDiv = styled.div<{ showSearch?: boolean }>`
 
     svg {
       :hover {
-        fill: var(--text);
+        fill: var(--foreground);
       }
     }
   }
@@ -97,15 +97,14 @@ const ButtonSelection = ({ id, options, onSelect }: ButtonSelectionProps) => {
     // add cancel button and (most importantly) add refs used for navigation
     const cancelOption: CodeSelectorOption = {
       label: "CLOSE",
-      color: "var(--text-light)",
+      color: "var(--foreground-light)",
       value: { cancel: true },
-      textColor: "var(--text-inversed)",
+      textColor: "var(--foreground-inversed)",
     };
 
     let allOptions: CodeSelectorOption[] = [cancelOption, ...options];
     for (let option of allOptions) {
-      option.queryText =
-        String(option.label).toLowerCase() + " " + String(option.tag || "").toLowerCase();
+      option.queryText = String(option.label).toLowerCase() + " " + String(option.tag || "").toLowerCase();
       option.color = standardizeColor(option.color);
       option.ref = React.createRef();
     }
@@ -117,9 +116,7 @@ const ButtonSelection = ({ id, options, onSelect }: ButtonSelectionProps) => {
     setSelected(0);
     if (!deferredSearch) return allOptions;
     const query = deferredSearch.toLowerCase();
-    return allOptions.filter(
-      (o) => o.queryText.includes(query) && !o.value.delete && !o.value.cancel
-    );
+    return allOptions.filter((o) => o.queryText.includes(query) && !o.value.delete && !o.value.cancel);
   }, [allOptions, deferredSearch]);
 
   const onKeydown = React.useCallback(
@@ -172,7 +169,7 @@ const ButtonSelection = ({ id, options, onSelect }: ButtonSelectionProps) => {
 
       searchInputRef.current.focus();
     },
-    [selected, searchRef, searchInputRef, filteredOptions, onSelect]
+    [selected, searchRef, searchInputRef, filteredOptions, onSelect],
   );
 
   useEffect(() => {
@@ -190,21 +187,16 @@ const ButtonSelection = ({ id, options, onSelect }: ButtonSelectionProps) => {
     for (let option of filteredOptions) {
       if (option.value.cancel)
         cancelButton = (
-          <div
-            key={option.label + "_" + i}
-            className={`closeIcon`}
-            ref={option.ref as React.RefObject<HTMLDivElement>}
-          >
+          <div key={option.label + "_" + i} className={`closeIcon`} ref={option.ref as React.RefObject<HTMLDivElement>}>
             <FaWindowClose
               size="100%"
-              color={selected === 0 ? "var(--text)" : "var(--primary-light)"}
+              color={selected === 0 ? "var(--foreground)" : "var(--primary-light)"}
               onClick={(e) => onSelect(option.value, e.ctrlKey || e.altKey)}
               onMouseOver={() => setSelected(0)}
             />
           </div>
         );
-      else if (option.value.delete)
-        deleteButtons.push(button(option, i, true, onSelect, selected, setSelected));
+      else if (option.value.delete) deleteButtons.push(button(option, i, true, onSelect, selected, setSelected));
       else {
         selectButtons.push(button(option, i, false, onSelect, selected, setSelected));
       }
@@ -236,16 +228,13 @@ const ButtonSelection = ({ id, options, onSelect }: ButtonSelectionProps) => {
         <div className="DeleteButtonsContainer">
           {deleteButtons.length > 0 ? (
             <>
-              <div style={{ height: "10px", borderTop: "1px solid var(--primary-text)" }} />
+              <div style={{ height: "10px", borderTop: "1px solid hsl(var(--primary-foreground))" }} />
               <div className="deleteIcon">
                 <RiDeleteBin2Line size="2rem" />
               </div>
             </>
           ) : null}
-          <div
-            key={id + "_2"}
-            style={{ display: "flex", flexWrap: "wrap", justifyContent: "center" }}
-          >
+          <div key={id + "_2"} style={{ display: "flex", flexWrap: "wrap", justifyContent: "center" }}>
             {deleteButtons}
           </div>
         </div>
@@ -260,7 +249,7 @@ const button = (
   rm: boolean,
   onSelect: (value: CodeSelectorValue, ctrlKey: boolean) => void,
   selected: number,
-  setSelected: SetState<number>
+  setSelected: SetState<number>,
 ) => {
   return (
     <CodeButton

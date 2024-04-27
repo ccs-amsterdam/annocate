@@ -1,8 +1,7 @@
 "use client";
-import { Button } from "@/styled/StyledSemantic";
+import { Button } from "@/components/ui/button";
 import { useMiddlecat } from "middlecat-react";
 import Link from "next/link";
-import styled from "styled-components";
 
 export default function Home() {
   const { user, loading, signIn, signOut } = useMiddlecat();
@@ -14,12 +13,10 @@ export default function Home() {
 
         <div className="flex h-min flex-wrap justify-center gap-2 p-2">
           <Link href="/home/manage" className="h-30 w-60">
-            <Button $primary $fluid>
-              Annotate
-            </Button>
+            <Button className="w-full">Annotate</Button>
           </Link>
           <Link href="/home/manage" className="h-30 w-60">
-            <Button $secondary $fluid>
+            <Button variant="secondary" className="w-full">
               Manage jobs
             </Button>
           </Link>

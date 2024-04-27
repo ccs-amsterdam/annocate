@@ -2,105 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0, 0%, 100%;
-    --foreground: 222.2, 84%, 10%;
-    --foreground-reverse: 222.2, 84%, 90%;
-    --header: 0, 0%, 80%;
+:root {
+  --font-size: 1rem;
 
-    --card: 0, 0%, 100%;
-    --card-foreground: 222.2, 84%, 4rgb (0, 0, 0) 0.9%;
+  --primary: #673ab7;
+  --hsl(var(--primary-dark)): #3b2667;
+  --primary-light: #d1c4e9;
+  --primary-text: #3b2667;
+  --primary-transparent: #673ab788;
 
-    --primary: 174, 80%, 30%;
-    --primary-foreground: 222.2, 47.4%, 100%;
+  --secondary: #03dac6;
+  --secondary-dark: #018786;
+  --secondary-light: #a7ffeb;
 
-    --secondary: 44, 64%, 50%;
-    --secondary-foreground: 222.2, 47.4%, 20%;
+  --background: white;
+  --background-transparent: #fffb;
+  --background-fixed: white;
+  --background-inversed: #1b1c1d;
+  --background-inversed-fixed: #222;
 
-    --muted: 0, 0%, 50%;
-    --muted-foreground: 0.4, 16.3%, 46.9%;
+  --shadow: #00000022;
 
-    --accent: 174, 40%, 96.1%;
-    --accent-foreground: 174, 47.4%, 11.2%;
+  --menu: #d1c4e955;
 
-    --check: 174, 56%, 40%;
-    --check-foreground: 222.2, 47.4%, 0%;
+  --text: black;
+  --text-fixed: black;
+  --text-light: grey;
+  --text-light-fixed: darkgrey;
+  --text-inversed: white;
+  --text-inversed-fixed: white;
 
-    --warn: 0, 84.2%, 60.2%;
-    --warn-foreground: 210, 40%, 98%;
+  --lightgrey: lightgrey;
+  --grey: grey;
+  --darkgrey: darkgrey;
+  --border: white;
+  --green: green;
+  --red: crimson;
+  --lightred: rgb(218, 151, 164);
+  --orange: orange;
 
-    --destructive: 0, 84.2%, 60.2%;
-    --destructive-foreground: 210, 40%, 98%;
-
-    --border: 214.3, 31.8%, 80.4%;
-    --input: 214.3, 31.8%, 80.4%;
-    --ring: 174, 80%, 30%;
-
-    --radius: 0.5rem;
-
-    --navbar-height: 80px;
-    --navbar-height-md: 112px;
-  }
-
-  [data-dark="on"] {
-    --background: 0, 0%, 14%;
-    --foreground: 222.2, 84%, 90%;
-    --foreground-reverse: 222.2, 84%, 10%;
-    --header: 0, 0%, 20%;
-
-    --card: 0, 0%, 100%;
-    --card-foreground: 222.2, 84%, 4rgb (0, 0, 0) 0.9%;
-
-    --primary: 174, 56%, 50%;
-    --primary-foreground: 222.2, 47.4%, 0%;
-
-    --secondary: 44, 64%, 53%;
-    --secondary-foreground: 222.2, 47.4%, 10%;
-
-    --muted: 0, 0%, 50%;
-    --muted-foreground: 0.4, 16.3%, 46.9%;
-
-    --accent: 0, 0%, 11.1%;
-    --accent-foreground: 0, 0%, 90.2%;
-
-    --check: 174, 56%, 50%;
-    --check-foreground: 222.2, 47.4%, 0%;
-
-    --warn: 0, 84.2%, 60.2%;
-    --warn-foreground: 210, 40%, 98%;
-
-    --destructive: 0, 84.2%, 60.2%;
-    --destructive-foreground: 210, 40%, 98%;
-
-    --border: 214.3, 31.8%, 91.4%;
-    --input: 214.3, 31.8%, 91.4%;
-    --ring: 222.2, 84%, 4.9%;
-
-    --radius: 0.5rem;
-
-    --navbar-height: 80px;
-    --navbar-height-md: 112px;
-  }
-
-  [data-fontsize="small"] {
-    --font-size: 0.8rem;
-  }
-  [data-fontsize="medium"] {
-    --font-size: 1rem;
-  }
-  [data-fontsize="large"] {
-    --font-size: 1.2rem;
-  }
+  --inactive: #00000011;
+  --active: #00000022;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply text-foreground bg-background;
-  }
+[data-dark="on"] {
+  --background: #222;
+  --background-transparent: #222b;
+  --background-inversed: white;
+  --menu: #3b266755;
+  --text: white;
+  --text-light: darkgrey;
+  --text-inversed: black;
+  --primary-text: #e4d8fa;
+  --shadow: #77777722;
+}
+
+[data-fontsize="small"] {
+  --font-size: 0.8rem;
+}
+[data-fontsize="medium"] {
+  --font-size: 1rem;
+}
+[data-fontsize="large"] {
+  --font-size: 1.2rem;
 }
 
 *,
@@ -118,7 +82,7 @@ body {
   margin: 0;
   overscroll-behavior: contain;
   background: hsl(var(--background));
-  color: hsl(--var(--foreground));
+  color: var(--text);
   font-family: Verdana, Geneva, Tahoma, sans-serif;
   transition: all 0.3s ease;
   font-size: 16px;
@@ -277,7 +241,7 @@ span.token.post {
 
 span.token.codingUnit {
   font-size: 1.2em;
-  color: hsl(--var(--foreground));
+  color: var(--text);
 }
 
 span.token:focus {

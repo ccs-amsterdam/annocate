@@ -27,17 +27,7 @@ const JobTokenLogin = ({ login, host, userId, jobtoken, asGuest }: JobTokenLogin
       searchParams.delete("jobtoken");
       setSearchParams(searchParams);
     });
-  }, [
-    login,
-    guestAuth,
-    host,
-    userId,
-    jobtoken,
-    setGuestAuth,
-    asGuest,
-    searchParams,
-    setSearchParams,
-  ]);
+  }, [login, guestAuth, host, userId, jobtoken, setGuestAuth, asGuest, searchParams, setSearchParams]);
 
   return (
     <Grid.Column width="8">
@@ -49,7 +39,7 @@ const JobTokenLogin = ({ login, host, userId, jobtoken, asGuest }: JobTokenLogin
           justifyContent: "space-between",
         }}
       >
-        <h2 style={{ color: "var(--primary)", marginBottom: "20px" }}>One-time login</h2>
+        <h2 style={{ color: "hsl(var(--primary))", marginBottom: "20px" }}>One-time login</h2>
         <p style={{ marginLeft: "10%", marginRight: "10%" }}>
           {alreadyGuest
             ? "This device is already logged in. Click here to continue"
@@ -80,7 +70,7 @@ const redeemShuffle = async (
   jobtoken: string,
   login: (host: string, token: string) => void,
   guestAuth: any,
-  setGuestAuth: any
+  setGuestAuth: any,
 ) => {
   const key = `host:${host};user_id:${userId};jobtoken:${jobtoken}`;
 

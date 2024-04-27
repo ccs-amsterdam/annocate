@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useRef, RefObject } from "react";
-import {
-  OnSelectParams,
-  AnswerOption,
-  AnswerItem,
-  QuestionItem,
-} from "../../../types";
+import { OnSelectParams, AnswerOption, AnswerItem, QuestionItem } from "../../../types";
 import { Button } from "../../../styled/StyledSemantic";
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
 import styled from "styled-components";
@@ -33,8 +28,8 @@ const StyledDiv = styled.div`
   position: relative;
   flex-direction: column;
   justify-content: space-between;
-  background: var(--background);
-  color: var(--text);
+  background: hsl(var(--background));
+  color: var(--foreground);
   display: flex;
   flex-direction: column;
 
@@ -48,15 +43,7 @@ const StyledDiv = styled.div`
 `;
 
 const Scale = React.memo(
-  ({
-    items,
-    answerItems,
-    options,
-    onSelect,
-    onFinish,
-    blockEvents,
-    questionIndex,
-  }: ScaleProps) => {
+  ({ items, answerItems, options, onSelect, onFinish, blockEvents, questionIndex }: ScaleProps) => {
     // render buttons for options (an array of objects with keys 'label' and 'color')
     // On selection perform onSelect function with the button label as input
     // if canDelete is TRUE, also contains a delete button, which passes null to onSelect
@@ -77,8 +64,7 @@ const Scale = React.memo(
         if (arrowKeys.includes(event.key)) {
           event.preventDefault();
           if (event.key === "ArrowRight") {
-            if (selectedButton < nbuttons - 1)
-              setSelectedButton(selectedButton + 1);
+            if (selectedButton < nbuttons - 1) setSelectedButton(selectedButton + 1);
           }
           if (event.key === "ArrowLeft") {
             if (selectedButton > 0) setSelectedButton(selectedButton - 1);
@@ -116,15 +102,7 @@ const Scale = React.memo(
           }
         }
       },
-      [
-        selectedButton,
-        selectedItem,
-        answerItems,
-        onSelect,
-        onFinish,
-        options,
-        items,
-      ]
+      [selectedButton, selectedItem, answerItems, onSelect, onFinish, options, items],
     );
 
     useEffect(() => {
@@ -156,7 +134,7 @@ const Scale = React.memo(
             display: "flex",
             padding: "5px",
             justifyContent: "space-between",
-            color: "var(--primary-text)",
+            color: "hsl(var(--primary-foreground))",
           }}
         >
           <div className="ScaleLabel ">
@@ -194,7 +172,7 @@ const Scale = React.memo(
         </Button>
       </StyledDiv>
     );
-  }
+  },
 );
 
 interface ItemsProps {
@@ -266,10 +244,10 @@ const ItemButton = styled.div<{
   flex: 1 1 auto;
   height: 2.5rem;
   border-radius: 4px;
-  background: ${(p) => (p.customColor ? "white" : "var(--primary)")};
+  background: ${(p) => (p.customColor ? "white" : "hsl(var(--primary))")};
   border: 2px solid ${(p) => {
-    if (p.selected) return "var(--text)";
-    if (p.current) return "var(--secondary)";
+    if (p.selected) return "var(--foreground)";
+    if (p.current) return "hsl(var(--secondary))";
     return p.customColor ? "grey" : "var(--primary)";
   }};
   
@@ -277,7 +255,7 @@ const ItemButton = styled.div<{
     width: 100%;
     height: 100%;
     padding: 4px 0 2px 0;
-    background-color: ${(p) => (p.current ? "var(--secondary)" : p.color)};
+    background-color: ${(p) => (p.current ? "hsl(var(--secondary))" : p.color)};
     font-weight: bold;
     font-size: 0.8em;
     text-shadow: 0px 0px 5px #ffffff77,
@@ -292,11 +270,11 @@ const ItemButton = styled.div<{
     content: ${(p) => (p.selected ? '""' : `none`)};
     position: absolute;
     top: -0.5rem;
-    left: -0.5rem;
+    left: -0.5rem;hsl(var(--primary))
     height: calc(100% + 1rem);
     width: calc(100% + 1rem);
     z-index: 9;
-    border: 0.4rem solid var(--text);
+    border: 0.4rem solid var(--foreground);
     border-radius: 4px;
   }
   }
@@ -304,15 +282,7 @@ const ItemButton = styled.div<{
   
 `;
 
-const Item = ({
-  itemObj,
-  answerItems,
-  selectedItem,
-  itemIndex,
-  options,
-  selectedButton,
-  onSelect,
-}: ItemProps) => {
+const Item = ({ itemObj, answerItems, selectedItem, itemIndex, options, selectedButton, onSelect }: ItemProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const colorstep = 90 / options.length;
   const itemlabel = itemObj.label || itemObj.name;
@@ -339,7 +309,7 @@ const Item = ({
             style={{
               padding: "0.3rem",
               borderRadius: "5px",
-              color: "var(--text)",
+              color: "var(--foreground)",
             }}
           >
             {itemlabel}
@@ -359,10 +329,8 @@ const Item = ({
         }}
       >
         {options.map((option, buttonIndex: number) => {
-          const isCurrent =
-            options[buttonIndex].code === answerItems?.[itemIndex]?.values[0];
-          const isSelected =
-            buttonIndex === selectedButton && itemIndex === selectedItem;
+          const isCurrent = options[buttonIndex].code === answerItems?.[itemIndex]?.values[0];
+          const isSelected = buttonIndex === selectedButton && itemIndex === selectedItem;
 
           // if option doesn't have color, we use primary color as background and
           // use opacity of buttoncolor to show a gradient

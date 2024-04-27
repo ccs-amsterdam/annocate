@@ -12,7 +12,7 @@ const Overlay = styled.div`
   width: 100%;
   height: 100%;
   backdrop-filter: blur(1px);
-  background: var(--background-transparent);
+  background: hsl(var(--background), 0.5);
   //border: 1px solid black;
   z-index: 2;
 `;
@@ -37,14 +37,8 @@ const FocusOverlay = ({ fieldRefs, focus, containerRef }: FocusOverlayProps) => 
           cl.add("overlayFocus");
           if (first) {
             containerRef.current.style.scrollBehavior = "smooth";
-            setTimeout(
-              () => scrollToMiddle(containerRef.current, fieldRefs[field].current, 1 / 3),
-              50
-            );
-            setTimeout(
-              () => scrollToMiddle(containerRef.current, fieldRefs[field].current, 1 / 3),
-              500
-            );
+            setTimeout(() => scrollToMiddle(containerRef.current, fieldRefs[field].current, 1 / 3), 50);
+            setTimeout(() => scrollToMiddle(containerRef.current, fieldRefs[field].current, 1 / 3), 500);
             first = false;
           }
         }

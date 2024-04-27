@@ -35,13 +35,13 @@ const StyledDiv = styled.div`
   }
 
   svg {
-    color: var(--primary-text);
+    color: hsl(var(--primary-foreground));
     font-size: 8rem;
     margin-bottom: 2rem;
   }
 
   a {
-    color: var(--primary-text);
+    color: hsl(var(--primary-foreground));
     text-decoration: underline;
     font-size: 1.2em;
     width: 100%;
@@ -63,7 +63,7 @@ const Finished = ({ jobServer }: FinishedProps) => {
     },
     {
       enabled: !!jobServer,
-    }
+    },
   );
 
   if (!jobServer) return null;
@@ -84,19 +84,11 @@ const Finished = ({ jobServer }: FinishedProps) => {
         </div>
         <br />
         {debriefing.data.link ? (
-          <a
-            href={debriefing.data.link.replace(
-              "{user_id}",
-              debriefing.data.user_id
-            )}
-            rel="noopener noreferrer"
-          >
+          <a href={debriefing.data.link.replace("{user_id}", debriefing.data.user_id)} rel="noopener noreferrer">
             {debriefing.data.link_text || "Click here!"}
           </a>
         ) : null}
-        {debriefing.data.qr ? (
-          <JobLink jobId={jobServer.job_id} backend={jobServer.backend} />
-        ) : null}
+        {debriefing.data.qr ? <JobLink jobId={jobServer.job_id} backend={jobServer.backend} /> : null}
       </StyledDiv>
     );
   }
@@ -123,12 +115,8 @@ const JobLink = ({ jobId, backend, style = {} }: JobLinkProps) => {
       .then((token: string) => {
         const qrhost = backend.host.replace(":", "%colon%");
         setLink({
-          url: `${
-            window.location.origin + window.location.pathname
-          }guest/?host=${backend.host}&jobtoken=${token}`,
-          qrUrl: `${
-            window.location.origin + window.location.pathname
-          }guest/?host=${qrhost}&jobtoken=${token}`,
+          url: `${window.location.origin + window.location.pathname}guest/?host=${backend.host}&jobtoken=${token}`,
+          qrUrl: `${window.location.origin + window.location.pathname}guest/?host=${qrhost}&jobtoken=${token}`,
         });
       })
       .catch((e: Error) => {
@@ -145,7 +133,7 @@ const JobLink = ({ jobId, backend, style = {} }: JobLinkProps) => {
           copyToClipboard(link?.url);
           setTimeout(() => alert("copied link!"), 50);
         }}
-        style={{ color: "var(--primary)", cursor: "copy" }}
+        style={{ color: "hsl(var(--primary))", cursor: "copy" }}
       >
         Share this job with others!
       </h2>

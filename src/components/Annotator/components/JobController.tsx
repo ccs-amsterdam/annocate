@@ -29,7 +29,7 @@ const StyledWrapper = styled.div<{ maxWidth: string; maxHeight: string }>`
   margin: 0 auto;
   height: 100%;
   width: 100%;
-  background: var(--background);
+  background: hsl(var(--background));
   overflow: auto;
   /* display: flex;
   flex-direction: column; */
@@ -44,16 +44,12 @@ const StyledWrapper = styled.div<{ maxWidth: string; maxHeight: string }>`
     padding: 3px 5px 0px 5px;
     display: flex;
     justify-content: space-between;
-    color: var(--primary-text);
+    color: hsl(var(--primary-foreground));
     font-size: 2rem;
     z-index: 9000;
 
     backdrop-filter: blur(2px);
-    background: linear-gradient(
-      var(--background) 10%,
-      var(--background-transparent) 70%,
-      transparent 100%
-    );
+    background: linear-gradient(hsl(var(--background)) 10%, hsl(var(--background), 0.5) 70%, transparent 100%);
 
     .InnerMenuBar {
       margin: 0 auto;
@@ -127,11 +123,7 @@ const JobController = ({
       </div>
       <Modal open={openExitModal} setOpen={setOpenExitModal}>
         <div style={{ display: "flex", minWidth: "150px", minHeight: "50px" }}>
-          {jobServer?.return_link ? (
-            <BackToOverview jobServer={jobServer} setOpen={setOpenExitModal} />
-          ) : (
-            authForm
-          )}
+          {jobServer?.return_link ? <BackToOverview jobServer={jobServer} setOpen={setOpenExitModal} /> : authForm}
         </div>
       </Modal>
     </StyledWrapper>
@@ -182,15 +174,7 @@ const getMaxWindowSize = (codebook: CodeBook) => {
   }
 };
 
-const HeartContainer = ({
-  damage,
-  maxDamage,
-  hearts = 5,
-}: {
-  damage: number;
-  maxDamage: number;
-  hearts?: number;
-}) => {
+const HeartContainer = ({ damage, maxDamage, hearts = 5 }: { damage: number; maxDamage: number; hearts?: number }) => {
   if (damage == null || maxDamage == null) return null;
   const healthPct = (100 * (maxDamage - damage)) / maxDamage;
 

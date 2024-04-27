@@ -15,9 +15,9 @@ const RetryPortalContent = styled.div`
   margin: 0;
   max-height: 50%;
   z-index: 10000;
-  color: var(--text-fixed);
+  color: var(--foreground-fixed);
   background: var(--primary-light);
-  border-bottom: 1px solid var(--primary-dark);
+  border-bottom: 1px solid var(--hsl(var(--primary-dark)));
 
   .portalContent {
     text-align: center;
@@ -40,7 +40,7 @@ const RetryPortalContent = styled.div`
     left: calc(50% - 2.5rem);
 
     svg:hover {
-      fill: var(--text);
+      fill: var(--foreground);
     }
   }
 `;
@@ -68,29 +68,13 @@ interface FeedbackPortalProps {
   fullScreenNode: FullScreenNode;
 }
 
-const FeedbackPortal = ({
-  variable,
-  conditionReport,
-  setConditionReport,
-  fullScreenNode,
-}: FeedbackPortalProps) => {
-  const action = useMemo(
-    () => conditionReport?.evaluation?.[variable],
-    [conditionReport, variable]
-  );
+const FeedbackPortal = ({ variable, conditionReport, setConditionReport, fullScreenNode }: FeedbackPortalProps) => {
+  const action = useMemo(() => conditionReport?.evaluation?.[variable], [conditionReport, variable]);
 
   return (
     <>
-      <RetryPortal
-        action={action}
-        setConditionReport={setConditionReport}
-        fullScreenNode={fullScreenNode}
-      />
-      <ApplaudPortal
-        action={action}
-        reportSuccess={conditionReport?.reportSuccess}
-        fullScreenNode={fullScreenNode}
-      />
+      <RetryPortal action={action} setConditionReport={setConditionReport} fullScreenNode={fullScreenNode} />
+      <ApplaudPortal action={action} reportSuccess={conditionReport?.reportSuccess} fullScreenNode={fullScreenNode} />
     </>
   );
 };
@@ -167,7 +151,7 @@ interface CloseButtonProps {
 const CloseButton = ({ onClick }: CloseButtonProps) => {
   return (
     <div className="closeIcon">
-      <FaWindowClose size="100%" color="var(--primary)" onClick={onClick} />
+      <FaWindowClose size="100%" color="hsl(var(--primary))" onClick={onClick} />
     </div>
   );
 };

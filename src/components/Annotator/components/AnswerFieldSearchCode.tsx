@@ -77,7 +77,7 @@ const SearchCode = React.memo(
                     <>
                       {option.code}
                       <br />
-                      <span style={{ color: "var(--text-light)" }}>{option.tree}</span>
+                      <span style={{ color: "var(--foreground-light)" }}>{option.tree}</span>
                     </>
                   ),
                 };
@@ -121,7 +121,7 @@ const SearchCode = React.memo(
         ) : null}
       </div>
     );
-  }
+  },
 );
 
 export default SearchCode;

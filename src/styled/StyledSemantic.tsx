@@ -47,9 +47,9 @@ const CodeButton = styled.button<{
       return "var(--background-inversed-fixed)";
     }
     if (p.$selected || p.$current) return "var(--background-inversed)";
-    return "var(--background)";
+    return "hsl(var(--background))";
   }};
-  background: ${(p) => p.$background || "var(--primary-transparent)"};
+  background: ${(p) => p.$background || "hsl(var(--primary), 0.5)"};
   flex: ${(p) => (p.$compact && !p.$flex ? "0.2 1 auto" : p.$flex || "1 1 auto")};
   max-width: ${(p) => p.$maxWidth || "none"};
   min-width: ${(p) => p.$minWidth || "none"};
@@ -132,18 +132,18 @@ const StyledButton = styled.button<{
   ${(p) => {
     if (p.$primary) {
       return `
-      background: var(--primary);
+      background: hsl(var(--primary));
       color: white;
       &.selected, &:hover, &:active {
-        background: var(--primary-dark);
+        background: var(--hsl(var(--primary-dark)));
       }
         `;
     } else if (p.$secondary) {
       return `
-      background: var(--secondary);
+      background: hsl(var(--secondary));
       color: #222;
       &.selected, &:hover, &:active {
-        background: var(--secondary-dark);
+        background: hsl(var(--secondary-dark));
         color: white;
       }
         `;
@@ -151,7 +151,7 @@ const StyledButton = styled.button<{
     return `
       &.selected, &:hover, &:active {
         
-        color: var(--primary-text)
+        color: hsl(var(--primary-foreground))
       }
       `;
   }}

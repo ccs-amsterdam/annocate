@@ -26,10 +26,10 @@ const Icon = styled.div<{ disabled?: boolean; hidden?: boolean }>`
   transform: scale(1, 1.1);
   padding: 0.3rem 0.8rem 0rem 0.8rem;
   cursor: ${(p) => (p.disabled ? "default" : "pointer")};
-  color: ${(p) => (p.disabled ? "transparent" : "var(--primary-text)")};
+  color: ${(p) => (p.disabled ? "transparent" : "hsl(var(--primary-foreground))")};
 
   /* svg:hover {
-    fill: ${(p) => (p.disabled ? "grey" : "var(--secondary)")};
+    fill: ${(p) => (p.disabled ? "grey" : "hsl(var(--secondary))")};
   } */
 `;
 
@@ -114,12 +114,7 @@ function getPreviousIndex(questionIndex: number, canSelect: boolean[], answers: 
   }
   return null;
 }
-function getNextIndex(
-  questionIndex: number,
-  canSelect: boolean[],
-  questions: Question[],
-  answers: Answer[],
-) {
+function getNextIndex(questionIndex: number, canSelect: boolean[], questions: Question[], answers: Answer[]) {
   for (let i = questionIndex + 1; i < questions.length; i++) {
     if (!canSelect?.[i]) continue;
     if (answers[i].items[0].values?.[0] === "IRRELEVANT") continue;

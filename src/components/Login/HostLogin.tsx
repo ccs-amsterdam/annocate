@@ -13,14 +13,7 @@ interface HostLoginProps {
   hostInfoQuery: UseQueryResult;
 }
 
-export const HostLogin = ({
-  host,
-  email,
-  setHost,
-  setEmail,
-  canRegister,
-  hostInfoQuery,
-}: HostLoginProps) => {
+export const HostLogin = ({ host, email, setHost, setEmail, canRegister, hostInfoQuery }: HostLoginProps) => {
   let fixedHost = "";
   //fixedHost = "https://lancar.up.railway.app";
   const [hostInput, setHostInput] = useState(fixedHost || host);
@@ -29,7 +22,7 @@ export const HostLogin = ({
 
   const validEmail = () => {
     const notEmail = !emailInput.match(
-      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
     );
 
     if (notEmail) {
@@ -64,7 +57,7 @@ export const HostLogin = ({
       }}
       style={{ width: "250px", maxWidth: "100%", fontSize: "1.3rem" }}
     >
-      <h3 style={{ color: "var(--primary)", marginBottom: "0" }}>Sign-in</h3>
+      <h3 style={{ color: "hsl(var(--primary))", marginBottom: "0" }}>Sign-in</h3>
       <i>provide host and email address</i>
       <Form.Input
         fluid

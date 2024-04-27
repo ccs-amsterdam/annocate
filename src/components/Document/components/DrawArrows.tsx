@@ -23,13 +23,7 @@ interface DrawArrowsProps {
   tokenSelection: TokenSelection;
 }
 
-const DrawArrows = ({
-  active,
-  tokens,
-  annotationLib,
-  triggerSelector,
-  tokenSelection,
-}: DrawArrowsProps) => {
+const DrawArrows = ({ active, tokens, annotationLib, triggerSelector, tokenSelection }: DrawArrowsProps) => {
   const [, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -54,17 +48,13 @@ const DrawArrows = ({
 
   return (
     <StyledSvg>
-      <RelationArrows
-        tokens={tokens}
-        annotationLib={annotationLib}
-        triggerSelector={triggerSelector}
-      />
+      <RelationArrows tokens={tokens} annotationLib={annotationLib} triggerSelector={triggerSelector} />
 
       <Arrow
         id={"create relation"}
         tokens={tokens}
         tokenSelection={tokenSelection}
-        edgeColor={"var(--primary)"}
+        edgeColor={"hsl(var(--primary))"}
         yoffset={-5}
       />
     </StyledSvg>

@@ -13,7 +13,7 @@ const QuestionMarkButton = styled.span`
   cursor: pointer;
 
   /* svg:hover {
-    fill: var(--secondary);
+    fill: hsl(var(--secondary));
   } */
 `;
 

@@ -3,15 +3,7 @@ import AnnotationList from "./AnnotationList";
 import Document from "../../Document/Document";
 import AnnotateTaskManual from "./AnnotateTaskManual";
 
-import {
-  Annotation,
-  FullScreenNode,
-  Unit,
-  VariableMap,
-  CodeBook,
-  SessionData,
-  TriggerSelector,
-} from "../../../types";
+import { Annotation, FullScreenNode, Unit, VariableMap, CodeBook, SessionData, TriggerSelector } from "../../../types";
 import Instructions from "./Instructions";
 import styled from "styled-components";
 import { FaStepForward } from "react-icons/fa";
@@ -57,8 +49,8 @@ const AnnotateGrid = styled.div`
       display: flex;
       padding: 0;
       padding-left: 2rem;
-      color: var(--text-inversed-fixed);
-      background: var(--primary-dark);
+      color: var(--foreground-inversed-fixed);
+      background: var(--hsl(var(--primary-dark)));
       border-radius: 2px;
       align-items: center;
       min-height: 3.5rem;
@@ -131,20 +123,14 @@ const AnnotateTask = ({
       </div>
       <div className="annotationList">
         <div style={{}}>
-          <AnnotationList
-            variableMap={variableMap}
-            annotations={annotations}
-            selectors={selectors}
-          />
+          <AnnotationList variableMap={variableMap} annotations={annotations} selectors={selectors} />
         </div>
       </div>
     </AnnotateGrid>
   );
 };
 
-const useAnnotations = (
-  unit: Unit
-): [Annotation[], (unitId: string, value: Annotation[]) => void] => {
+const useAnnotations = (unit: Unit): [Annotation[], (unitId: string, value: Annotation[]) => void] => {
   // simple hook for onChangeAnnotations that posts to server and returns state
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
 
@@ -164,7 +150,7 @@ const useAnnotations = (
       const newStatus = unit?.status === "DONE" ? "DONE" : "IN_PROGRESS";
       unit.jobServer.postAnnotations(unit.unitId, cleanAnnotations, newStatus);
     },
-    [unit]
+    [unit],
   );
 
   return [annotations, onChangeAnnotations];
@@ -200,7 +186,7 @@ interface NextUnitButtonProps {
 }
 
 const NextUnitButtonStyle = styled.button`
-  background: var(--primary);
+  background: hsl(var(--primary));
   color: white;
   flex: 1 1 auto;
   border: none;
@@ -215,7 +201,7 @@ const NextUnitButtonStyle = styled.button`
   transition: background-color 0.1s;
 
   &:hover {
-    background: var(--secondary);
+    background: hsl(var(--secondary));
     color: black;
   }
   &:disabled {
@@ -233,7 +219,7 @@ const NextUnitButtonStyle = styled.button`
 const NextUnitButton = ({ unit, annotations, nextUnit }: NextUnitButtonProps) => {
   const [tempDisable, setTempDisable] = useState("ready");
 
-  const onNext = () => {
+  const onNext =hsl(var(--primary))
     if (tempDisable !== "ready") return;
 
     // write DONE status

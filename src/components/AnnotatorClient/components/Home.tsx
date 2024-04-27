@@ -30,7 +30,7 @@ const Menu = styled.ul`
   padding: 3px 10px 0px 10px;
   gap: 1rem;
   font-size: 1.6rem;
-  color: var(--text);
+  color: var(--foreground);
 
   .RightSide {
     padding-top: 5px;
@@ -44,7 +44,7 @@ const Menu = styled.ul`
     padding: 1.5rem 0.5rem 0.5rem 0.5rem;
 
     &.active {
-      border-bottom: 2px solid var(--primary);
+      border-bottom: 2px solid hsl(var(--primary));
     }
   }
 `;
@@ -86,12 +86,7 @@ export default function Home({ backend, authForm }: HomeProps) {
 
   return (
     <StyledDiv>
-      <MenuBar
-        backend={backend}
-        authForm={authForm}
-        menuItem={menuItem}
-        setMenuItem={setMenuItem}
-      />
+      <MenuBar backend={backend} authForm={authForm} menuItem={menuItem} setMenuItem={setMenuItem} />
       <div className="Content">{renderItem()}</div>
     </StyledDiv>
   );

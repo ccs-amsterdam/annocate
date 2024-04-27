@@ -17,8 +17,8 @@ const DocumentContainer = styled.div`
   height: 100%;
   max-height: 100%;
   flex-direction: column;
-  color: var(--text);
-  background: var(--background);
+  color: var(--foreground);
+  background: hsl(var(--background));
   z-index: 100;
   font-size: var(--font-size);
 `;
@@ -84,15 +84,10 @@ const Document = ({
   const [selectedVariable, setSelectedVariable] = useState(null);
   const [variable, fullVariableMap, variableMap, showValues, variableType] = useVariableMap(
     variables,
-    selectedVariable
+    selectedVariable,
   );
 
-  const [doc, annotationLib, annotationManager] = useUnit(
-    unit,
-    annotations,
-    fullVariableMap,
-    onChangeAnnotations
-  );
+  const [doc, annotationLib, annotationManager] = useUnit(unit, annotations, fullVariableMap, onChangeAnnotations);
 
   // keep track of current tokens object, to prevent rendering annotations on the wrong text
   const [currentUnit, setCurrentUnit] = useState(doc);
@@ -101,13 +96,13 @@ const Document = ({
     doc,
     annotationLib,
     annotationManager,
-    variable
+    variable,
   );
   const [relationSelectorPopup, relationSelector, relationSelectorOpen] = useRelationSelector(
     doc,
     annotationLib,
     annotationManager,
-    variable
+    variable,
   );
 
   useEffect(() => {
@@ -133,11 +128,7 @@ const Document = ({
 
   return (
     <DocumentContainer className={`${annotationMode} ${(variable?.editMode && "editMode") || ""}`}>
-      <SelectVariable
-        variables={variables}
-        variable={selectedVariable}
-        setVariable={setSelectedVariable}
-      />
+      <SelectVariable variables={variables} variable={selectedVariable} setVariable={setSelectedVariable} />
 
       <Body
         tokens={doc.tokens}

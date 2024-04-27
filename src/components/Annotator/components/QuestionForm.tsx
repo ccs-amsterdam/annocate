@@ -12,14 +12,8 @@ import {
   ConditionReport,
   Transition,
 } from "../../../types";
-import {
-  getMakesIrrelevantArray,
-  processIrrelevantBranching,
-} from "../functions/irrelevantBranching";
-import {
-  addAnnotationsFromAnswer,
-  getAnswersFromAnnotations,
-} from "../functions/mapAnswersToAnnotations";
+import { getMakesIrrelevantArray, processIrrelevantBranching } from "../functions/irrelevantBranching";
+import { addAnnotationsFromAnswer, getAnswersFromAnnotations } from "../functions/mapAnswersToAnnotations";
 import AnswerField from "./AnswerField";
 import QuestionIndexStep from "./QuestionIndexStep";
 import overflowBordersEvent from "../../../functions/overflowBordersEvent";
@@ -28,9 +22,9 @@ const QuestionDiv = styled.div`
   position: relative;
   height: 100%;
   width: 100%;
-  background-color: var(--background);
+  background-color: hsl(var(--background));
   padding-top: 0.5rem;
-  box-shadow: 0px -10px 10px -6px var(--background);
+  box-shadow: 0px -10px 10px -6px hsl(var(--background));
   transition: border 0.2s;
 
   /* display: grid;
@@ -55,13 +49,9 @@ const MenuDiv = styled.div`
   position: sticky;
   top: 0;
   left: 0;
-  //background: var(--background-transparent);
-  background: linear-gradient(
-    var(--background) 40%,
-    var(--background-transparent) 75%,
-    transparent 100%
-  );
-  //box-shadow: 0px 10px 5px 0px var(--background-transparent);
+  //background: hsl(var(--background), 0.5);
+  background: linear-gradient(hsl(var(--background)) 40%, hsl(var(--background), 0.5) 75%, transparent 100%);
+  //box-shadow: 0px 10px 5px 0px hsl(var(--background), 0.5);
 
   .Navigator {
     flex: 1 1 auto;
@@ -80,7 +70,7 @@ const MenuDiv = styled.div`
     .Question {
       display: inline-block;
 
-      color: var(--text);
+      color: var(--foreground);
       align-items: center;
       font-size: clamp(1.8rem, 3vw, 2.5rem);
       font-weight: bold;
@@ -90,7 +80,7 @@ const MenuDiv = styled.div`
     .Buttons {
       display: inline-block;
       z-index: 100;
-      color: var(--primary);
+      color: hsl(var(--primary));
     }
   }
 `;
@@ -100,7 +90,7 @@ const BodyDiv = styled.div`
   flex-flow: column;
   width: 100%;
   padding: 0px 10px 10px 10px;
-  color: var(--text);
+  color: var(--foreground);
   font-size: inherit;
   min-height: 100px;
   overflow: auto;
@@ -188,7 +178,7 @@ const QuestionForm = ({
         setQuestionIndex,
         setConditionReport,
         (nextUnit: boolean) => startTransition(transition, nextUnit),
-        blockAnswer
+        blockAnswer,
       );
     },
     [
@@ -201,7 +191,7 @@ const QuestionForm = ({
       unit,
       setSwipe,
       startTransition,
-    ]
+    ],
   );
 
   if (!questions || !unit || !answers) return null;
@@ -289,12 +279,9 @@ const markedString = (text: string) => {
           prev.push(current);
         } else {
           prev.push(
-            <mark
-              key={i + current}
-              style={{ color: "var(--primary-text)", backgroundColor: "transparent" }}
-            >
+            <mark key={i + current} style={{ color: "hsl(var(--primary-foreground))", backgroundColor: "transparent" }}>
               {current}
-            </mark>
+            </mark>,
           );
         }
         return prev;
@@ -315,17 +302,14 @@ const processAnswer = async (
   setQuestionIndex: SetState<number>,
   setConditionReport: SetState<ConditionReport>,
   transition: (nextUnit: boolean) => void,
-  blockAnswer: any
+  blockAnswer: any,
 ): Promise<void> => {
   if (blockAnswer.current) return null;
   blockAnswer.current = true;
 
   try {
     answers[questionIndex].items = items;
-    answers[questionIndex].makes_irrelevant = getMakesIrrelevantArray(
-      items,
-      questions[questionIndex].options
-    );
+    answers[questionIndex].makes_irrelevant = getMakesIrrelevantArray(items, questions[questionIndex].options);
 
     unit.unit.annotations = addAnnotationsFromAnswer(answers[questionIndex], unit.unit.annotations);
     const irrelevantQuestions = processIrrelevantBranching(unit, questions, answers, questionIndex);
@@ -358,7 +342,7 @@ const processAnswer = async (
     const conditionReport: ConditionReport = await unit.jobServer.postAnnotations(
       unit.unitId,
       cleanAnnotations,
-      status
+      status,
     );
 
     conditionReport.reportSuccess = true;
