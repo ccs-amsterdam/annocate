@@ -1,4 +1,4 @@
-import { CodeBook, Question, Unit } from "../types";
+import { CodeBook, Question, Unit } from "@/app/types";
 
 /**
  * Codebooks can indicate that certain questions need to be asked
@@ -10,7 +10,7 @@ import { CodeBook, Question, Unit } from "../types";
  * @returns
  */
 export default function unfoldQuestions(codebook: CodeBook, unit: Unit): Question[] {
-  if (!codebook) return null;
+  if (!codebook?.questions) return [];
 
   let needsUnfold = false;
   for (let question of codebook.questions) {
@@ -29,15 +29,14 @@ export default function unfoldQuestions(codebook: CodeBook, unit: Unit): Questio
     // perAnnotation
     const duplicate: Record<string, boolean> = {};
     for (let a of unit.unit.annotations || []) {
-      if (!question.perAnnotation.includes(a.variable)) continue;
+      if (!question?.perAnnotation?.includes(a.variable)) continue;
 
-      const aSerial: string =
-        a.field + "." + a.variable + "." + a.value + "." + a.offset + "." + a.length;
+      const aSerial: string = a.field + "." + a.variable + "." + a.value + "." + a.offset + "." + a.length;
       if (duplicate[aSerial]) continue;
       duplicate[aSerial] = true;
 
       const q = { ...question, annotation: a };
-      if (question.focusAnnotations) q.fields = [a.field];
+      if (question.focusAnnotations && a.field) q.fields = [a.field];
       questions.push(q);
     }
 
@@ -45,7 +44,7 @@ export default function unfoldQuestions(codebook: CodeBook, unit: Unit): Questio
     if (question.perField) {
       if (!Array.isArray(question.perField)) question.perField = [question.perField];
 
-      const fields = new Set([]);
+      const fields = new Set<string>([]);
       for (let f of unit.unit.textFields || []) fields.add(f.name);
       for (let f of unit.unit.markdownFields || []) fields.add(f.name);
       for (let f of unit.unit.imageFields || []) fields.add(f.name);

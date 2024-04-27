@@ -2,17 +2,17 @@
 // Code colors are always shown on top of a white background, so opacity lightens
 // the color so that black text is always readable.
 const standardizeColor = (str?: string, alpha: string = "50") => {
-  if (!str) return null;
+  if (!str) return "#000000" + alpha;
   if (str.slice(0, 6) === "var(--") return str; // ignore if css color variable
   // https://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
   const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return "#000000" + alpha;
   ctx.fillStyle = str.trim();
   let color = ctx.fillStyle;
   if (color.slice(0, 5) === "rgba(") color = RGBAToHexA(color);
   if (color.slice(0, 1) === "#" && alpha !== null) {
     if (color.length === 9) color = color.slice(0, 7);
-    if (color.length === 4)
-      color = "#" + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
+    if (color.length === 4) color = "#" + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
 
     if (color.length === 7) color += alpha;
   }
@@ -21,7 +21,7 @@ const standardizeColor = (str?: string, alpha: string = "50") => {
 
 export default standardizeColor;
 
-function RGBAToHexA(rgba, forceRemoveAlpha = false) {
+function RGBAToHexA(rgba: string, forceRemoveAlpha = false) {
   //https://stackoverflow.com/a/73401564
   return (
     "#" +

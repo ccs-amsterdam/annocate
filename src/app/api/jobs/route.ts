@@ -6,7 +6,7 @@ import { SQL, gt, like, lt, and, sql, count, eq } from "drizzle-orm";
 import validateRequestParams from "@/functions/validateRequestParams";
 import { authenticateUser } from "@/functions/authorization";
 
-export const runtime = "edge";
+// export const runtime = "edge";
 
 // GET /api/jobs
 

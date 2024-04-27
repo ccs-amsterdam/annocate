@@ -8,7 +8,7 @@ import SetResponsiveSize from "@/components/Common/SetResponsiveSize";
 
 const font = Poppins({
   weight: "500",
-  subsets: ["devanagari"],
+  subsets: ["latin"],
   display: "swap",
 });
 

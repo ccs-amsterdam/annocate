@@ -13,10 +13,10 @@ interface Position {
  * @param {*} arr An array of objects that each has a .ref key
  * @param {*} selected
  */
-export const moveUp = (arr: any, selected: number, xposition: number = null) => {
+export const moveUp = (arr: any, selected: number, xposition: number = -1) => {
   // given an array of refs for buttons (or any divs), and the current selected button,
   // move to most overlapping button on previous row
-  // (basically, what you want to happen when you press 'up' in a grid of buttons)
+  // (basically, what you want to happen when you press 'up' in a cloud of buttons)
   const currentPos = getPosition(arr[selected].ref, arr?.[xposition]?.ref);
   let correctRow = null;
   let prevColOverlap = 0;
@@ -48,7 +48,7 @@ export const moveUp = (arr: any, selected: number, xposition: number = null) => 
  * @param {*} arr An array of objects that each has a .ref key
  * @param {*} selected
  */
-export const moveDown = (arr: any, selected: number, xposition: number = null) => {
+export const moveDown = (arr: any, selected: number, xposition: number = -1) => {
   // like moveUp, but down
 
   const currentPos = getPosition(arr[selected].ref, arr?.[xposition]?.ref);
@@ -98,11 +98,7 @@ const calcColOverlap = (a: Position, b: Position): number => {
   return Math.max(pctA, pctB);
 };
 
-const getPosition = (
-  ref: { current: HTMLElement },
-  horizontalRef?: { current: HTMLElement }
-): Position => {
-  if (!ref?.current) return null;
+const getPosition = (ref: { current: HTMLElement }, horizontalRef?: { current: HTMLElement }): Position => {
   const pos = ref.current.getBoundingClientRect();
 
   if (horizontalRef != null) {

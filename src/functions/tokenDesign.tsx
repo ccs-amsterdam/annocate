@@ -1,4 +1,4 @@
-import { CodeMap } from "../types";
+import { CodeMap } from "@/app/types";
 
 /**
  * Get the color from the codeMap for a given annotation value/code.
@@ -27,7 +27,7 @@ export const getColorGradient = (colors: string[]) => {
   if (colors.length === 1) return colors[0];
 
   const pct = Math.floor(100 / colors.length);
-  const gradColors = colors.reduce((a, color, i) => {
+  const gradColors = colors.reduce((a: string[], color, i) => {
     if (i === 0) a.push(color + ` ${pct}%`);
     if (i === colors.length - 1) a.push(color + ` ${100 - pct}%`);
 

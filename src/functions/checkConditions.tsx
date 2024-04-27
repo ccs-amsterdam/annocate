@@ -1,4 +1,4 @@
-import { RawUnit, ConditionReport, Annotation, Status, ConditionalAction } from "../types";
+import { RawUnit, ConditionReport, Annotation, Status, ConditionalAction } from "@/app/types";
 
 /**
  * If unit.conditionals exists, check whether an annotation satistfies the conditions.
@@ -90,12 +90,8 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
     }
 
     // This means that there were annotations that did not match a condition
-    const validAnnotationI = Object.keys(validAnnotation).filter(
-      (i: string) => validAnnotation[Number(i)]
-    );
-    const invalidAnnotationI = Object.keys(validAnnotation).filter(
-      (i: string) => !validAnnotation[Number(i)]
-    );
+    const validAnnotationI = Object.keys(validAnnotation).filter((i: string) => validAnnotation[Number(i)]);
+    const invalidAnnotationI = Object.keys(validAnnotation).filter((i: string) => !validAnnotation[Number(i)]);
     if (invalidAnnotationI.length > 0) success = false;
 
     if (success) {
@@ -106,12 +102,8 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
       cr.evaluation[conditional.variable].submessages = submessages;
 
       // add correct and incorrect annotations
-      cr.evaluation[conditional.variable].correct = validAnnotationI.map(
-        (i: string) => annotation[Number(i)]
-      );
-      cr.evaluation[conditional.variable].incorrect = invalidAnnotationI.map(
-        (i: string) => annotation[Number(i)]
-      );
+      cr.evaluation[conditional.variable].correct = validAnnotationI.map((i: string) => annotation[Number(i)]);
+      cr.evaluation[conditional.variable].incorrect = invalidAnnotationI.map((i: string) => annotation[Number(i)]);
 
       damage += conditional.damage ?? defaultDamage;
     }
@@ -119,7 +111,7 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
   if (damage) {
     cr.damage.damage = damage;
     alert(
-      `This answer gave you ${damage} damage!\n\nCoders won't see this message if the job is hosted on an AnnoTinder (Python) server.`
+      `This answer gave you ${damage} damage!\n\nCoders won't see this message if the job is hosted on an AnnoTinder (Python) server.`,
     );
   }
 

@@ -10,11 +10,10 @@ import {
   Question,
   CodeBook,
   RawCodeBook,
-} from "../types";
+} from "@/app/types";
 import standardizeColor from "./standardizeColor";
 
 export function importCodebook(codebook: RawCodeBook): CodeBook {
-  if (!codebook) return null;
   if (codebook.type === "annotate")
     return {
       type: "annotate",
@@ -22,12 +21,11 @@ export function importCodebook(codebook: RawCodeBook): CodeBook {
       settings: codebook.settings || {},
     };
 
-  if (codebook.type === "questions")
-    return {
-      type: "questions",
-      questions: importQuestions(codebook.questions),
-      settings: codebook.settings || {},
-    };
+  return {
+    type: "questions",
+    questions: importQuestions(codebook.questions),
+    settings: codebook.settings || {},
+  };
 }
 
 const importVariables = (variables: Variable[]): Variable[] => {
@@ -44,14 +42,13 @@ const importQuestions = (questions: Question[]): Question[] => {
   // checks and preparation of questions
   return questions.map((question) => {
     const fillMissingColor = !["scale"].includes(question.type);
-    const codeMap = codeBookEdgesToMap(question.name, question.codes, fillMissingColor);
+    const codeMap = codeBookEdgesToMap(question.name, question.codes || [], fillMissingColor);
     let cta = getCodeTreeArray(codeMap);
     const [options, swipeOptions] = getOptions(cta);
 
     const out = { ...question, options, swipeOptions }; // it's important that this deep copies question
     if (out.fields && !Array.isArray(out.fields)) out.fields = [out.fields];
-    if (out.perAnnotation && !Array.isArray(out.perAnnotation))
-      out.perAnnotation = [out.perAnnotation];
+    if (out.perAnnotation && !Array.isArray(out.perAnnotation)) out.perAnnotation = [out.perAnnotation];
     return out;
   });
 };
@@ -84,11 +81,7 @@ const getOptions = (cta: CodeTree[]): [AnswerOption[], SwipeOptions] => {
   return [options, swipeOptions];
 };
 
-export const standardizeCodes = (
-  variable: string,
-  codes: Code[] | string[],
-  fillMissingColor: boolean
-): Code[] => {
+export const standardizeCodes = (variable: string, codes: Code[] | string[], fillMissingColor: boolean): Code[] => {
   if (!codes) return [];
   return codes.map((code: any, i) => {
     if (typeof code !== "object") code = { code };
@@ -111,11 +104,7 @@ export const standardizeCodes = (
   });
 };
 
-export const codeBookEdgesToMap = (
-  variable: string,
-  codes: Code[] | string[],
-  fillMissingColor: boolean = true
-) => {
+export const codeBookEdgesToMap = (variable: string, codes: Code[] | string[], fillMissingColor: boolean = true) => {
   const standardizedCodes = standardizeCodes(variable, codes, fillMissingColor);
   // codesis an array of objects, but for efficients operations
   // in the annotator we convert it to an object with the codes as keys
@@ -145,10 +134,7 @@ export const codeBookEdgesToMap = (
   }
 
   for (const code of Object.keys(codeMap)) {
-    [codeMap[code].tree, codeMap[code].activeParent, codeMap[code].foldToParent] = parentData(
-      codeMap,
-      code
-    );
+    [codeMap[code].tree, codeMap[code].activeParent, codeMap[code].foldToParent] = parentData(codeMap, code);
 
     if (codeMap[code].parent) codeMap[codeMap[code].parent].children.push(code);
 
@@ -173,20 +159,13 @@ export const codeBookEdgesToMap = (
  * @returns
  */
 export const getCodeTreeArray = (codeMap: CodeMap): CodeTree[] => {
-  let parents = Object.keys(codeMap).filter(
-    (code) => !codeMap[code].parent || codeMap[code].parent === ""
-  );
+  let parents = Object.keys(codeMap).filter((code) => !codeMap[code].parent || codeMap[code].parent === "");
   const codeTreeArray: CodeTree[] = [];
   fillCodeTreeArray(codeMap, parents, codeTreeArray, []);
   return codeTreeArray.map((object, i) => ({ ...object, i: i }));
 };
 
-const fillCodeTreeArray = (
-  codeMap: CodeMap,
-  parents: string[],
-  codeTreeArray: CodeTree[],
-  codeTrail: string[]
-) => {
+const fillCodeTreeArray = (codeMap: CodeMap, parents: string[], codeTreeArray: CodeTree[], codeTrail: string[]) => {
   for (const code of parents) {
     let newcodeTrail = [...codeTrail];
     newcodeTrail.push(code);

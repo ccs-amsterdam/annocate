@@ -7,7 +7,7 @@ function getCurrentValue(key: string, defaultValue: string): string {
   return saved ?? defaultValue;
 }
 
-export const useCookie = (key, defaultValue) => {
+export const useCookie = (key: string, defaultValue: any) => {
   const [value, setValue] = useState<string>(() => {
     return getCurrentValue(key, defaultValue);
   });

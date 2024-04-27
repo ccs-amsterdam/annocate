@@ -9,7 +9,7 @@ import {
   ImageField,
   FieldGrid,
   FieldGridInput,
-} from "../types";
+} from "@/app/types";
 import { importCodebook } from "./codebook";
 
 /**
@@ -20,14 +20,14 @@ import { importCodebook } from "./codebook";
  */
 export default function processUnitContent(rawUnit: RawUnit): UnitContent {
   const ruc: RawUnitContent = rawUnit.unit;
-  const annotations: Annotation[] = rawUnit.annotation || rawUnit.annotations; // singular annotation is deprecated
+  const annotations: Annotation[] = rawUnit.annotation || rawUnit.annotations || []; // singular annotation is deprecated
 
   const content: UnitContent = {
     textFields: ruc.text_fields || [],
     imageFields: ruc.image_fields || [],
     markdownFields: ruc.markdown_fields || [],
     metaFields: ruc.meta_fields || [],
-    codebook: importCodebook(ruc.codebook),
+    codebook: ruc.codebook ? importCodebook(ruc.codebook) : undefined,
     variables: ruc.variables,
   };
 
@@ -45,7 +45,11 @@ export default function processUnitContent(rawUnit: RawUnit): UnitContent {
     }
   }
 
-  content.tokens = ruc.tokens ? importTokens(ruc.tokens) : parseTokens([...content.textFields]);
+  if (ruc.tokens) {
+    content.tokens = importTokens(ruc.tokens);
+  } else if (content.textFields) {
+    content.tokens = parseTokens([...content.textFields]);
+  }
 
   // A unit can have pre-defined annotations in rawUnit.unit.annotations
   // If so, we need to set these annotations on the first time the user starts coding this unit.
@@ -53,14 +57,12 @@ export default function processUnitContent(rawUnit: RawUnit): UnitContent {
   const hasAnnotations = annotations && annotations.length > 0;
 
   content.annotations =
-    hasAnnotations || rawUnit.status === "DONE"
-      ? annotations
-      : ruc.annotations || ruc.importedAnnotations; // importedAnnotations is the deprecated term
+    hasAnnotations || rawUnit.status === "DONE" ? annotations : ruc.annotations || ruc.importedAnnotations; // importedAnnotations is the deprecated term
 
   return content;
 }
 
-function prepareGrid(grid: FieldGridInput, content: UnitContent): FieldGrid {
+function prepareGrid(grid: FieldGridInput | undefined, content: UnitContent): FieldGrid {
   // areas should be an array of arrays of the same length, where all values are strings.
   // there is some leeway (inner array can be a single string, and if inner arrays do not have same length, last value is repeated).
   // this is then used to create the grid-template-areas
@@ -80,7 +82,7 @@ function prepareGrid(grid: FieldGridInput, content: UnitContent): FieldGrid {
   // so we'll enumerate fields and label them f1, f2, etc.
   const areaNameMap: Record<string, string> = {};
 
-  const used_columns = new Set([]);
+  const used_columns = new Set<string>([]);
   for (let row of grid.areas) {
     const row_columns = [];
     for (let i = 0; i < ncolumns; i++) {
@@ -98,16 +100,16 @@ function prepareGrid(grid: FieldGridInput, content: UnitContent): FieldGrid {
   }
 
   // rm all fields that are not in the template
-  content.textFields = content.textFields.filter((f: TextField) => used_columns.has(f.name));
-  content.imageFields = content.imageFields.filter((f: ImageField) => used_columns.has(f.name));
-  content.markdownFields = content.markdownFields.filter((f: MarkdownField) =>
-    used_columns.has(f.name)
-  );
+  if (content.textFields) content.textFields = content.textFields.filter((f: TextField) => used_columns.has(f.name));
+  if (content.imageFields)
+    content.imageFields = content.imageFields.filter((f: ImageField) => used_columns.has(f.name));
+  if (content.markdownFields)
+    content.markdownFields = content.markdownFields.filter((f: MarkdownField) => used_columns.has(f.name));
 
   // add area names
-  for (let f of content.textFields) f.grid_area = areaNameMap[f.name];
-  for (let f of content.imageFields) f.grid_area = areaNameMap[f.name];
-  for (let f of content.markdownFields) f.grid_area = areaNameMap[f.name];
+  for (let f of content.textFields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.imageFields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.markdownFields || []) f.grid_area = areaNameMap[f.name];
 
   if (template.length > 0) outputGrid.areas = template.join(" ");
 

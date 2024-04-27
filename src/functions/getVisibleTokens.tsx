@@ -1,4 +1,4 @@
-import { Token } from "../types";
+import { Token } from "@/app/types";
 
 /**
  * Get an array of all tokens that are currenly visible (not outside of scroll) in TokenContainer
@@ -15,9 +15,7 @@ const getVisibleTokens = (tokens: Token[]) => {
     const el = token?.ref?.current?.getBoundingClientRect();
     if (!el) continue;
     const visible =
-      el.top <= container.top
-        ? container.top - el.top <= el.height
-        : el.bottom - container.bottom <= el.height;
+      el.top <= container.top ? container.top - el.top <= el.height : el.bottom - container.bottom <= el.height;
     if (visible) visibleTokens.push(token);
   }
   return visibleTokens;

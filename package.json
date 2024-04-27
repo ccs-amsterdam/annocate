@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "middlecat-react": "^0.3.13",
     "next": "^14.0.3",
+    "randomcolor": "^0.6.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^4.10.1",
@@ -38,6 +39,9 @@
   },
   "devDependencies": {
     "@tanstack/react-query-devtools": "^4.32.0",
+    "@types/cookies": "^0.9.0",
+    "@types/js-cookie": "^3.0.6",
+    "@types/randomcolor": "^0.5.9",
     "autoprefixer": "^10.4.16",
     "dotenv": "^16.3.1",
     "drizzle-kit": "^0.20.6",

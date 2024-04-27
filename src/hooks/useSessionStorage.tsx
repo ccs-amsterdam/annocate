@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 function getStorageValue(key: string, defaultValue: any): any {
   // getting stored value
   const saved = sessionStorage.getItem(key);
-  const initial = JSON.parse(saved);
+  const initial = saved ? JSON.parse(saved) : undefined;
   return initial ?? defaultValue;
 }
 
@@ -22,7 +22,7 @@ const useSessionStorage = (key: string, defaultValue: any): [any, (value: any) =
       sessionStorage.setItem(key, JSON.stringify(newvalue));
       setValue(newvalue);
     },
-    [key, value, setValue]
+    [key, value, setValue],
   );
 
   return [value, setSessionStorage];

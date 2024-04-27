@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 
 import { authenticateUser } from "@/functions/authorization";
 
-export const runtime = "edge";
+// export const runtime = "edge";
 
 export interface UsersMeGetResponse {
   admin: boolean;
