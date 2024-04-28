@@ -20,7 +20,7 @@ import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
 import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import { Annotation, AnnotationHistory, RawCodeBook, RawUnit, Rules, Status } from "@/app/types";
+import { Annotation, AnnotationHistory, RawCodeBook, RawUnit, Rules, ServerUnitStatus, Status } from "@/app/types";
 
 config({ path: ".env.local" });
 
@@ -49,7 +49,7 @@ export const codebooks = pgTable(
     codebook: jsonb("codebook").notNull().$type<RawCodeBook>(),
   },
   (table) => {
-    return { jobIds: index("job_ids").on(table.jobId) };
+    return { jobIds: index("codebook_job_ids").on(table.jobId) };
   },
 );
 
@@ -63,7 +63,7 @@ export const unitGroups = pgTable(
     name: varchar("name", { length: 256 }).notNull(),
   },
   (table) => {
-    return { jobIds: index("job_ids").on(table.jobId) };
+    return { jobIds: index("unitgroups_job_ids").on(table.jobId) };
   },
 );
 
@@ -85,7 +85,7 @@ export const units = pgTable(
     type: text("type", { enum: ["annotate", "train", "test", "survey"] }).notNull(),
   },
   (table) => {
-    return { jobIds: index("job_ids").on(table.jobId) };
+    return { jobIds: index("units_job_ids").on(table.jobId) };
   },
 );
 
@@ -101,7 +101,7 @@ export const jobSets = pgTable(
     deployed: boolean("deployed").notNull().default(false),
   },
   (table) => {
-    return { jobIds: index("job_ids").on(table.jobId) };
+    return { jobIds: index("jobsets_job_ids").on(table.jobId) };
   },
 );
 
@@ -144,23 +144,10 @@ export const managers = pgTable(
     role: text("role", { enum: ["owner", "admin", "write", "read"] }).notNull(),
   },
   (table) => {
-    return { pk: primaryKey({ columns: [table.jobId, table.email] }), emails: index("emails").on(table.email) };
-  },
-);
-
-export const registeredAnnotators = pgTable(
-  "annotators",
-  {
-    jobId: integer("job_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    email: varchar("email", { length: 256 })
-      .notNull()
-      .references(() => users.email, { onDelete: "cascade", onUpdate: "cascade" }),
-    jobSetId: integer("job_set_id").references(() => jobSets.id, { onDelete: "cascade" }),
-  },
-  (table) => {
-    return { pk: primaryKey({ columns: [table.jobId, table.email] }), emails: index("emails").on(table.email) };
+    return {
+      pk: primaryKey({ columns: [table.jobId, table.email] }),
+      emails: index("manager_emails").on(table.email),
+    };
   },
 );
 
@@ -172,7 +159,7 @@ export const invitations = pgTable(
       .references(() => jobSets.id, { onDelete: "cascade" }),
     id: varchar("id", { length: 64 }),
     label: varchar("label", { length: 64 }).notNull(),
-    access: text("access", { enum: ["only_registered", "only_anonymous", "user_decides"] }).notNull(),
+    access: text("access", { enum: ["only_authenticated", "only_anonymous", "user_decides"] }).notNull(),
   },
   (table) => {
     return {
@@ -181,17 +168,20 @@ export const invitations = pgTable(
   },
 );
 
-interface AnnotatorStatistics {
+interface jobsetAnnotatorStatistics {
   damage?: number;
   blocked?: boolean;
 }
 
-export const annotators = pgTable(
-  "annotators",
+export const jobsetAnnotator = pgTable(
+  "jobset_annotator",
   {
+    // user is either an email address, a string from the user_id url parameter, or a random device_id.
     user: varchar("user_id", { length: 256 }).notNull(),
     jobSetId: integer("jobset_id"),
-    statistics: jsonb("statistics").notNull().$type<AnnotatorStatistics>().default({}),
+    email: varchar("email", { length: 256 }), // this is the authenticated email address
+    urlParams: jsonb("url_params").notNull().$type<Record<string, string>>().default({}),
+    statistics: jsonb("statistics").notNull().$type<jobsetAnnotatorStatistics>().default({}),
   },
   (table) => {
     return {
@@ -225,19 +215,23 @@ export const annotations = pgTable(
     preallocateTime: timestamp("preallocate_time"),
     annotation: jsonb("annotation").notNull().$type<Annotation[]>(),
     history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
-    status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED"] }).$type<Status>(),
+    status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED"] })
+      .$type<ServerUnitStatus>()
+      .default("PREALLOCATED"),
 
     // We register the device id for cases where we want extra privacy security.
-    // If invited users with u_* params open a job from a different device, they can
-    // continue the job, but they will not be able to see previous annotations.
-    // For registered users this is optional. (for invited users without u_* params
-    // its redundant, because the user column is already the device_id).
+    // We store a random device ID in an httponly cookie.
+    // If the user is not authenticated, and the device id doesnt exist or match, then
+    // all annotations that were made (with a different device) will be invisible and
+    // immutable. This way, if a user changes devices, they can still continue with the job,
+    // but if their login links somehow leaks, it doesn't expose their annotations
     deviceId: varchar("device_id", { length: 64 }),
+    authenticated: boolean("authenticated").notNull(),
   },
   (table) => {
     return {
       pk: primaryKey({ columns: [table.jobSetId, table.user, table.index] }),
-      unitIds: index("unit_ids").on(table.unitId),
+      unitIds: index("annotations_unit_ids").on(table.unitId),
     };
   },
 );

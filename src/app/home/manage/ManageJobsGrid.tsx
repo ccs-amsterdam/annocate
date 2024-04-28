@@ -30,7 +30,7 @@ function SelectJob() {
   const { data, isLoading, pagination } = usePaginatedJobs(user, query);
 
   if (isLoading) return <Loader />;
-  if (!data) return null;
+  if (!data.rows) return null;
 
   return (
     <div>

@@ -1,5 +1,5 @@
 {
-  "id": "cdde31f0-17b3-4cea-8630-5fd8bec5cd0c",
+  "id": "9991e18e-eb73-455c-8dce-4c314f545b3d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
@@ -54,18 +54,25 @@
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": "'PREALLOCATED'"
         },
         "device_id": {
           "name": "device_id",
           "type": "varchar(64)",
           "primaryKey": false,
           "notNull": false
+        },
+        "authenticated": {
+          "name": "authenticated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
-        "unit_ids": {
-          "name": "unit_ids",
+        "annotations_unit_ids": {
+          "name": "annotations_unit_ids",
           "columns": [
             "unit_id"
           ],
@@ -80,43 +87,6 @@
             "jobset_id",
             "user_id",
             "index"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
-    },
-    "invited_users": {
-      "name": "invited_users",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "jobset_id": {
-          "name": "jobset_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "statistics": {
-          "name": "statistics",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "invited_users_user_id_jobset_id_pk": {
-          "name": "invited_users_user_id_jobset_id_pk",
-          "columns": [
-            "user_id",
-            "jobset_id"
           ]
         }
       },
@@ -152,8 +122,8 @@
         }
       },
       "indexes": {
-        "job_ids": {
-          "name": "job_ids",
+        "codebook_job_ids": {
+          "name": "codebook_job_ids",
           "columns": [
             "job_id"
           ],
@@ -249,6 +219,18 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "rules": {
+          "name": "rules",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codebook_id": {
+          "name": "codebook_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -277,6 +259,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_set_unit_groups_codebook_id_codebooks_id_fk": {
+          "name": "job_set_unit_groups_codebook_id_codebooks_id_fk",
+          "tableFrom": "job_set_unit_groups",
+          "tableTo": "codebooks",
+          "columnsFrom": [
+            "codebook_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -329,8 +324,8 @@
         }
       },
       "indexes": {
-        "job_ids": {
-          "name": "job_ids",
+        "jobsets_job_ids": {
+          "name": "jobsets_job_ids",
           "columns": [
             "job_id"
           ],
@@ -406,6 +401,56 @@
         }
       }
     },
+    "jobset_annotator": {
+      "name": "jobset_annotator",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jobset_id": {
+          "name": "jobset_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "url_params": {
+          "name": "url_params",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "statistics": {
+          "name": "statistics",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "jobset_annotator_user_id_jobset_id_pk": {
+          "name": "jobset_annotator_user_id_jobset_id_pk",
+          "columns": [
+            "user_id",
+            "jobset_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {}
+    },
     "managers": {
       "name": "managers",
       "schema": "",
@@ -416,9 +461,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
+        "email": {
+          "name": "email",
+          "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
         },
@@ -429,7 +474,15 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "manager_emails": {
+          "name": "manager_emails",
+          "columns": [
+            "email"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "managers_job_id_jobs_id_fk": {
           "name": "managers_job_id_jobs_id_fk",
@@ -444,159 +497,26 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "managers_user_id_users_id_fk": {
-          "name": "managers_user_id_users_id_fk",
+        "managers_email_users_email_fk": {
+          "name": "managers_email_users_email_fk",
           "tableFrom": "managers",
           "tableTo": "users",
           "columnsFrom": [
-            "user_id"
+            "email"
           ],
           "columnsTo": [
-            "id"
+            "email"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
-        "managers_job_id_user_id_pk": {
-          "name": "managers_job_id_user_id_pk",
+        "managers_job_id_email_pk": {
+          "name": "managers_job_id_email_pk",
           "columns": [
             "job_id",
-            "user_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
-    },
-    "annotators": {
-      "name": "annotators",
-      "schema": "",
-      "columns": {
-        "job_id": {
-          "name": "job_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "job_set_id": {
-          "name": "job_set_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "annotators_job_id_jobs_id_fk": {
-          "name": "annotators_job_id_jobs_id_fk",
-          "tableFrom": "annotators",
-          "tableTo": "jobs",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "annotators_user_id_users_id_fk": {
-          "name": "annotators_user_id_users_id_fk",
-          "tableFrom": "annotators",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "annotators_job_set_id_job_sets_id_fk": {
-          "name": "annotators_job_set_id_job_sets_id_fk",
-          "tableFrom": "annotators",
-          "tableTo": "job_sets",
-          "columnsFrom": [
-            "job_set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "annotators_job_id_user_id_pk": {
-          "name": "annotators_job_id_user_id_pk",
-          "columns": [
-            "job_id",
-            "user_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
-    },
-    "unit_group_units": {
-      "name": "unit_group_units",
-      "schema": "",
-      "columns": {
-        "unit_group_id": {
-          "name": "unit_group_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unit_id": {
-          "name": "unit_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "unit_group_units_unit_group_id_unit_groups_id_fk": {
-          "name": "unit_group_units_unit_group_id_unit_groups_id_fk",
-          "tableFrom": "unit_group_units",
-          "tableTo": "unit_groups",
-          "columnsFrom": [
-            "unit_group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "unit_group_units_unit_id_units_id_fk": {
-          "name": "unit_group_units_unit_id_units_id_fk",
-          "tableFrom": "unit_group_units",
-          "tableTo": "units",
-          "columnsFrom": [
-            "unit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "unit_group_units_unit_group_id_unit_id_pk": {
-          "name": "unit_group_units_unit_group_id_unit_id_pk",
-          "columns": [
-            "unit_group_id",
-            "unit_id"
+            "email"
           ]
         }
       },
@@ -623,23 +543,11 @@
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
-        },
-        "rules": {
-          "name": "rules",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "codebook_id": {
-          "name": "codebook_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
         }
       },
       "indexes": {
-        "job_ids": {
-          "name": "job_ids",
+        "unitgroups_job_ids": {
+          "name": "unitgroups_job_ids",
           "columns": [
             "job_id"
           ],
@@ -680,9 +588,21 @@
           "primaryKey": false,
           "notNull": true
         },
+        "unit_group_id": {
+          "name": "unit_group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "unit_id": {
           "name": "unit_id",
           "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit": {
+          "name": "unit",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         },
@@ -693,21 +613,9 @@
           "notNull": true,
           "default": "now()"
         },
-        "unit": {
-          "name": "unit",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
         "codebook_id": {
           "name": "codebook_id",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "encryption_key": {
-          "name": "encryption_key",
-          "type": "varchar(256)",
           "primaryKey": false,
           "notNull": false
         },
@@ -726,8 +634,8 @@
         }
       },
       "indexes": {
-        "job_ids": {
-          "name": "job_ids",
+        "units_job_ids": {
+          "name": "units_job_ids",
           "columns": [
             "job_id"
           ],
@@ -747,6 +655,19 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "units_unit_group_id_unit_groups_id_fk": {
+          "name": "units_unit_group_id_unit_groups_id_fk",
+          "tableFrom": "units",
+          "tableTo": "unit_groups",
+          "columnsFrom": [
+            "unit_group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -756,20 +677,14 @@
       "name": "users",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
+        "email": {
+          "name": "email",
+          "type": "varchar(256)",
           "primaryKey": true,
           "notNull": true
         },
         "name": {
           "name": "name",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
@@ -799,22 +714,14 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "users_email_unique": {
-          "name": "users_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      }
+      "uniqueConstraints": {}
     }
   },
   "enums": {},
   "schemas": {},
   "_meta": {
+    "columns": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
+    "tables": {}
   }
 }

@@ -23,6 +23,7 @@ export type FullScreenNode = MutableRefObject<HTMLDivElement | null>;
 export type Span = [number, number];
 export type Edge = [number, number];
 
+export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
 export type Status = "DONE" | "IN_PROGRESS";
 
 export interface Annotation {

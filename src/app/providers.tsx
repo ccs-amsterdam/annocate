@@ -12,7 +12,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const mutationCache = new MutationCache({
     onError: (e: any) => {
       console.error(e);
-
       if (e instanceof ZodError) {
         zodErrorToast(e);
       } else {

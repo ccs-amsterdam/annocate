@@ -15,9 +15,13 @@ export default function Home() {
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    createJob({ title }).then(() => {
-      router.push("/manage");
-    });
+    createJob({ title })
+      .then(() => {
+        router.push("/manage");
+      })
+      .catch((e) => {
+        console.error(e);
+      });
   }
 
   if (!loading && !user?.email) return <LoginRequired />;

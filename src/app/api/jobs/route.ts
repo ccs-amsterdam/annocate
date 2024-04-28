@@ -94,6 +94,7 @@ export async function POST(req: Request) {
     const res: JobsPostResponse = { id };
     return NextResponse.json(res);
   } catch (e: any) {
+    console.error(e);
     return NextResponse.json(e.message, { status: 400 });
   }
 }

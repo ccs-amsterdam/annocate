@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
 import { useMiddlecat } from "middlecat-react";
 import Link from "next/link";
 
@@ -21,6 +22,12 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+        <Link href="/home/admin" className="h-30 w-60">
+          <Button variant="ghost" className="flex w-full items-center gap-2">
+            <Settings className="h-6 w-6" />
+            Admin stuff
+          </Button>
+        </Link>
       </div>
     </div>
   );
