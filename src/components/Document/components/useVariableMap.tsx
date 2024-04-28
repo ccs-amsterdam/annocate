@@ -7,11 +7,13 @@ import {
   VariableMap,
   ValidRelation,
   Code,
-} from "../../../types";
+  Relation,
+  CodeMap,
+} from "@/app/types";
 
 export default function useVariableMap(
   variables: Variable[],
-  selectedVariable: string
+  selectedVariable: string,
 ): [Variable, VariableMap, VariableMap, VariableMap, VariableType] {
   const fullVariableMap: VariableMap = useMemo(() => {
     // creates fullVariableMap
@@ -33,51 +35,46 @@ export default function useVariableMap(
     return vm;
   }, [variables]);
 
-  const [variableMap, showValues, variableType]: [VariableMap, VariableMap, VariableType] =
-    useMemo(() => {
-      // creates the actually used variableMap from the fullVariableMap
-      // this lets us select specific variables without recreating full map
-      // Here we also add imported variables
-      if (fullVariableMap === null) return [null, null, null];
+  const [variableMap, showValues, variableType]: [VariableMap, VariableMap, VariableType] = useMemo(() => {
+    // creates the actually used variableMap from the fullVariableMap
+    // this lets us select specific variables without recreating full map
+    // Here we also add imported variables
+    if (fullVariableMap === null) return [null, null, null];
 
-      let vmap: VariableMap;
-      if (selectedVariable === null) {
-        vmap = fullVariableMap;
-      } else {
-        vmap = { [selectedVariable]: fullVariableMap[selectedVariable] };
-      }
+    let vmap: VariableMap;
+    if (selectedVariable === null) {
+      vmap = fullVariableMap;
+    } else {
+      vmap = { [selectedVariable]: fullVariableMap[selectedVariable] };
+    }
 
-      // !! be carefull when changing to not break copying (otherwise fullVariableMap gets affected)
-      vmap = { ...vmap };
-      for (let variable of Object.keys(vmap)) {
-        vmap[variable] = { ...vmap[variable] };
-      }
+    // !! be carefull when changing to not break copying (otherwise fullVariableMap gets affected)
+    vmap = { ...vmap };
+    for (let variable of Object.keys(vmap)) {
+      vmap[variable] = { ...vmap[variable] };
+    }
 
-      // we use a separate variableMap called showValues that tells Document what annotations
-      // to show. These are the same for "span" variables, but for "relation"
-      // variables we want to only show the annotations
-      // that are valid options for the relation codes
-      let showValues: VariableMap;
-      let variableType: VariableType = "span";
-      if (fullVariableMap?.[selectedVariable]?.relations) {
-        variableType = "relation";
-        showValues = getRelationShowValues(vmap, fullVariableMap, selectedVariable);
-      } else {
-        showValues = vmap;
-      }
+    // we use a separate variableMap called showValues that tells Document what annotations
+    // to show. These are the same for "span" variables, but for "relation"
+    // variables we want to only show the annotations
+    // that are valid options for the relation codes
+    let showValues: VariableMap;
+    let variableType: VariableType = "span";
+    if (fullVariableMap?.[selectedVariable]?.relations) {
+      variableType = "relation";
+      showValues = getRelationShowValues(vmap, fullVariableMap, selectedVariable);
+    } else {
+      showValues = vmap;
+    }
 
-      return [vmap, showValues, variableType];
-    }, [fullVariableMap, selectedVariable]);
+    return [vmap, showValues, variableType];
+  }, [fullVariableMap, selectedVariable]);
 
   if (!selectedVariable) return [null, fullVariableMap, null, null, variableType];
   return [variableMap?.[selectedVariable], fullVariableMap, variableMap, showValues, variableType];
 }
 
-const getRelationShowValues = (
-  vmap: VariableMap,
-  fullVariableMap: VariableMap,
-  selectedVariable: string
-) => {
+const getRelationShowValues = (vmap: VariableMap, fullVariableMap: VariableMap, selectedVariable: string) => {
   let showValues: VariableMap = { [selectedVariable]: vmap[selectedVariable] };
   let valuemap: VariableValueMap | null = {};
 
@@ -121,12 +118,18 @@ const getRelationShowValues = (
  * If variable of type relation, prepare efficient lookup for
  * valid from/to annotations
  */
-function getValidRelationCodes(relations, codeMap) {
+function getValidRelationCodes(relations: Relation[], codeMap: CodeMap) {
   if (!relations) return [null, null];
   const validFrom: ValidRelation = {};
   const validTo: ValidRelation = {};
 
-  function addValidRelation(valid: ValidRelation, relationId, variable, values, codes) {
+  function addValidRelation(
+    valid: ValidRelation,
+    relationId: number,
+    variable: string,
+    values: string[],
+    codes: Code[],
+  ) {
     if (!variable) {
       if (!valid["*"]) valid["*"] = { "*": {} };
       valid["*"]["*"][relationId] = codes;

@@ -1,5 +1,4 @@
 import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CSSProperties } from "react";
-import Backend from "./components/Login/Backend";
 // common interfaces
 
 ///// UTIL
@@ -24,7 +23,7 @@ export type FullScreenNode = MutableRefObject<HTMLDivElement | null>;
 export type Span = [number, number];
 export type Edge = [number, number];
 
-export type Status = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
+export type Status = "DONE" | "IN_PROGRESS";
 
 export interface Annotation {
   type?: "field" | "span" | "relation";
@@ -385,7 +384,7 @@ export interface CodeSelectorDropdownOption {
   content?: ReactElement;
 }
 
-export type TokenSelection = [number, number] | [];
+export type TokenSelection = [number, number | null] | [] | null;
 
 /** used to manage keyboard navigation */
 export interface Mover {
@@ -395,7 +394,7 @@ export interface Mover {
   counter: number;
 }
 
-export type Arrowkeys = "ArrowRight" | "ArrowLeft" | "ArrowUp" | "ArrowDown";
+export type Arrowkeys = "ArrowRight" | "ArrowLeft" | "ArrowUp" | "ArrowDown" | null;
 
 ///// CONDITIONALS
 
@@ -488,7 +487,6 @@ export interface JobServer {
   return_link?: string;
   job_id?: string;
   setJobServer?: SetState<JobServer>;
-  backend?: Backend;
   demodata?: DemoData;
 
   init: () => void;
@@ -786,7 +784,7 @@ export interface TriggerSelectorParams {
   toId?: string;
 }
 export interface TriggerSelector {
-  (TriggerSelectorParams): void;
+  (params: TriggerSelectorParams): void;
 }
 
 ///// FULLDATATABLE
@@ -805,7 +803,6 @@ export interface RowObj {
 export interface ButtonComponentProps {
   key: string;
   row: RowObj;
-  backend: Backend;
   setData: SetState<RowObj[]>;
   style: CSSProperties;
 }
@@ -821,7 +818,6 @@ export interface Job {
   creator: string;
   archived?: boolean;
   restricted?: boolean;
-  users?: User[];
   jobset_details?: JobSet[];
   n_total: number;
 }

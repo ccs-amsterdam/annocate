@@ -16,16 +16,17 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
   if (type !== "train" && type !== "test") return cr;
   if (!unit.conditionals) return cr;
 
-  const annotation: Annotation[] = unit.annotation;
+  const annotation: Annotation[] = unit.annotation || [];
   const status: Status = unit.status;
 
   let damage = 0;
 
   // Default actions are determined by unit type
-  let defaultSuccessAction: ConditionalAction = null;
-  let defaultFailAction: ConditionalAction = null;
-  let defaultMessage = null;
+  let defaultSuccessAction: ConditionalAction = "applaud";
+  let defaultFailAction: ConditionalAction = "retry";
+  let defaultMessage = undefined;
   let defaultDamage = 0;
+
   if (type === "train") {
     defaultSuccessAction = "applaud";
     defaultFailAction = "retry";
@@ -70,12 +71,14 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
         const op = c.operator || "==";
 
         let hasMatch = false;
-        if (op === "==" && a.value === c.value) hasMatch = true;
-        if (op === "<=" && a.value <= c.value) hasMatch = true;
-        if (op === "<" && a.value < c.value) hasMatch = true;
-        if (op === ">=" && a.value >= c.value) hasMatch = true;
-        if (op === ">" && a.value > c.value) hasMatch = true;
-        if (op === "!=" && a.value !== c.value) hasMatch = true;
+        if (a.value) {
+          if (op === "==" && a.value === c.value) hasMatch = true;
+          if (op === "<=" && a.value <= c.value) hasMatch = true;
+          if (op === "<" && a.value < c.value) hasMatch = true;
+          if (op === ">=" && a.value >= c.value) hasMatch = true;
+          if (op === ">" && a.value > c.value) hasMatch = true;
+          if (op === "!=" && a.value !== c.value) hasMatch = true;
+        }
         if (hasMatch) {
           validAnnotation[i] = true;
           continue conditionloop;

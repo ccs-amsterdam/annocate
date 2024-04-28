@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { jobs, managers, users } from "@/drizzle/schema";
 import db from "@/drizzle/schema";
 import { z } from "zod";
-import { SQL, gt, like, lt, and, sql, count, eq } from "drizzle-orm";
+import { SQL, gt, like, lt, and, sql, count, eq, max, min } from "drizzle-orm";
 import validateRequestParams from "@/functions/validateRequestParams";
 import { authenticateUser } from "@/functions/authorization";
 
@@ -20,6 +20,8 @@ const GetParamsSchema = z.object({
 const GetResponseSchema = z.object({
   meta: z.object({
     rows: z.number(),
+    maxId: z.number(),
+    minId: z.number(),
   }),
   rows: z.array(
     z.object({
@@ -45,7 +47,7 @@ export async function GET(req: Request) {
     if (params.beforeId) where.push(lt(jobs.id, params.beforeId));
     if (params.query) where.push(like(jobs.name, `%${params.query}%`));
 
-    const metaPromise = db.select({ rows: count() }).from(jobs);
+    const metaPromise = db.select({ rows: count(), maxId: max(jobs.id), minId: min(jobs.id) }).from(jobs);
     const rowsPromise = db
       .select()
       .from(jobs)

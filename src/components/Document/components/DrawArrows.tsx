@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TokenSelection, Token, TriggerSelector, AnnotationLibrary } from "../../../types";
+import { TokenSelection, Token, TriggerSelector, AnnotationLibrary } from "@/app/types";
 import styled from "styled-components";
 import RelationArrows from "./RelationArrows";
 import Arrow from "./Arrow";

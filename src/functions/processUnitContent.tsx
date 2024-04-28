@@ -1,4 +1,4 @@
-import { importTokens, parseTokens } from "../components/Document/functions/tokens";
+import { importTokens, parseTokens } from "./tokens";
 import {
   RawUnit,
   Annotation,

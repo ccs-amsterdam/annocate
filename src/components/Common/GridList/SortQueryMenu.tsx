@@ -1,5 +1,5 @@
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { SetState } from "../../../../types";
+import { SetState } from "@/app/types";
 import { TbArrowsSort } from "react-icons/tb";
 import { SortQuery, DataQuery, SortQueryOption } from "./GridListTypes";
 import { QueryDiv } from "./GridListStyled";
@@ -17,10 +17,7 @@ const SortQueryMenu = ({ query, setQuery, sortOptions }: SortQueryProps) => {
 
   useEffect(() => {
     function closeOnPageClick(e: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         e.stopPropagation();
         setOpen(false);
       }
@@ -30,7 +27,7 @@ const SortQueryMenu = ({ query, setQuery, sortOptions }: SortQueryProps) => {
   }, [dropdownRef]);
 
   return (
-    <QueryDiv $open={open} $active={query.sort && query.sort.length > 0}>
+    <QueryDiv open={open} active={query.sort && query.sort.length > 0}>
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -54,9 +51,7 @@ const SortQueryMenu = ({ query, setQuery, sortOptions }: SortQueryProps) => {
           })}
           {query.sort?.length > 0 && <div className="Divider" />}
           {sortOptions?.map((option) => {
-            const currentOrder = query.sort?.find(
-              (s) => s.variable === option.variable
-            )?.order;
+            const currentOrder = query.sort?.find((s) => s.variable === option.variable)?.order;
             if (currentOrder) return null;
             return (
               <SortField

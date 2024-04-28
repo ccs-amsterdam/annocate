@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useDeferredValue, useRef } from "react";
 import { CodeButton } from "../../../styled/StyledSemantic";
-import { moveDown, moveUp } from "../../../functions/refNavigation";
-import { CodeSelectorOption, CodeSelectorValue, SetState } from "../../../types";
+import { moveDown, moveUp } from "@/functions/refNavigation";
+import { CodeSelectorOption, CodeSelectorValue, SetState } from "@/app/types";
 import { FaWindowClose } from "react-icons/fa";
 import styled from "styled-components";
 import { RiDeleteBin2Line } from "react-icons/ri";
-import standardizeColor from "../../../functions/standardizeColor";
+import standardizeColor from "@/functions/standardizeColor";
 
 const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
@@ -255,10 +255,9 @@ const button = (
     <CodeButton
       ref={option.ref as React.RefObject<HTMLButtonElement>}
       key={option.label + "_" + i}
-      selected={i === selected}
-      background={option.color}
-      //className="buttonBackground"
-      compact
+      $selected={i === selected}
+      $background={option.color}
+      $compact
       style={{
         paddingRight: rm ? "3rem" : "",
       }}

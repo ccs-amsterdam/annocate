@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import JobServerDemo from "./classes/JobServerDemo";
 import { Loader } from "../../styled/Styled";
 import Annotator from "../Annotator/Annotator";
 import DemoJobOverview from "./DemoJobOverview";
 import styled from "styled-components";
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 const StyledDiv = styled.div`
   display: flex;
@@ -43,7 +43,7 @@ export default function AnnotatorDemoClient() {
     };
   }, [data]);
 
-  if (status === "loading") return <Loader active />;
+  if (status === "loading") return <Loader $active />;
   if (status === "success" && data === null)
     return (
       <StyledDiv>
@@ -55,7 +55,7 @@ export default function AnnotatorDemoClient() {
 }
 
 const useJob = () => {
-  const [searchparams] = useSearchParams();
+  const searchparams = useSearchParams();
   const codebook = searchparams.get("codebook");
   const units = searchparams.get("units");
 
@@ -72,7 +72,7 @@ const useJob = () => {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       retry: false,
-    }
+    },
   );
 
   return jobQuery;

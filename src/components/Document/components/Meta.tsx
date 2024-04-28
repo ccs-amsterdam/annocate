@@ -1,5 +1,5 @@
-import { MetaField } from "../../../types";
-import { StyledTable } from "../../../styled/StyledSemantic";
+import { MetaField } from "@/app/types";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 interface MetaProps {
   metaFields: MetaField[];
@@ -12,14 +12,14 @@ const Meta = ({ metaFields }: MetaProps) => {
       label = String(label);
 
       return (
-        <StyledTable.Row
+        <TableRow
           key={label}
           style={{
             lineHeight: "1.2",
             fontSize: `1.2em`,
           }}
         >
-          <StyledTable.Cell
+          <TableCell
             width={1}
             style={{
               borderTop: "none",
@@ -28,9 +28,9 @@ const Meta = ({ metaFields }: MetaProps) => {
             }}
           >
             <b>{label}</b>
-          </StyledTable.Cell>
-          <StyledTable.Cell style={row.style}>{row.value}</StyledTable.Cell>
-        </StyledTable.Row>
+          </TableCell>
+          <TableCell style={row.style}>{row.value}</TableCell>
+        </TableRow>
       );
     });
   };
@@ -50,21 +50,9 @@ const Meta = ({ metaFields }: MetaProps) => {
       }}
     >
       <div style={{ margin: "auto" }}>
-        <StyledTable
-          basic="very"
-          compact
-          unstackable
-          style={{
-            width: "100%",
-            lineHeight: "0.8",
-            padding: "10px",
-            paddingLeft: "10px",
-            background: "hsl(var(--background))",
-            color: "var(--foreground)",
-          }}
-        >
-          <StyledTable.Body>{rows()}</StyledTable.Body>
-        </StyledTable>
+        <Table>
+          <TableBody>{rows()}</TableBody>
+        </Table>
       </div>
     </div>
   );

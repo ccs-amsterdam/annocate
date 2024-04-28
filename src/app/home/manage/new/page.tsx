@@ -13,7 +13,7 @@ export default function Home() {
 
   const { mutateAsync: createJob, isLoading } = useMutateJobs(user);
 
-  function onSubmit(e) {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     createJob({ title }).then(() => {
       router.push("/manage");

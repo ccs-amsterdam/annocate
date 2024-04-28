@@ -8,9 +8,9 @@ import {
   DemoData,
   RawUnit,
   ConditionReport,
-} from "../../../types";
-import { importCodebook } from "../../../functions/codebook";
-import checkConditions from "../../../functions/checkConditions";
+} from "@/app/types";
+import { importCodebook } from "@/functions/codebook";
+import checkConditions from "@/functions/checkConditions";
 
 class JobServerDemo implements JobServer {
   codebook: CodeBook; // TODO: add codebook interface
@@ -53,16 +53,11 @@ class JobServerDemo implements JobServer {
     return unit;
   }
 
-  async postAnnotations(
-    unit_id: string,
-    annotation: Annotation[],
-    status: Status
-  ): Promise<ConditionReport> {
+  async postAnnotations(unit_id: string, annotation: Annotation[], status: Status): Promise<ConditionReport> {
     try {
       let unit_index = Number(unit_id); // in demo job, we use the index as id
       this.demodata.units[unit_index].annotation = annotation;
-      this.demodata.units[unit_index].status =
-        this.demodata.units[unit_index].status === "DONE" ? "DONE" : status;
+      this.demodata.units[unit_index].status = this.demodata.units[unit_index].status === "DONE" ? "DONE" : status;
       this.progress.n_coded = Math.max(unit_index + 1, this.progress.n_coded);
       return checkConditions(this.demodata.units[unit_index]);
     } catch (e) {

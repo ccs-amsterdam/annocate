@@ -1,6 +1,6 @@
 import React, { useEffect, ReactElement, useRef } from "react";
 import styled from "styled-components";
-import { SetState } from "../../../types";
+import { SetState } from "@/app/types";
 
 const Portal = styled.div<{ smallScreen?: boolean }>`
   left: 0px;

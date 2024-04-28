@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import styled from "styled-components";
-import { scrollToMiddle } from "../../../functions/scroll";
-import { FieldRefs } from "../../../types";
+import { scrollToMiddle } from "@/functions/scroll";
+import { FieldRefs } from "@/app/types";
 
 const Overlay = styled.div`
   //background: linear-gradient(135deg, #aaa8 25%, #ddd8 50%, #bbb7 75%, #ccc9 100%);

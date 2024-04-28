@@ -1,20 +1,11 @@
 import React, { CSSProperties, useEffect, useRef, useState, useMemo, ReactElement } from "react";
-import { Ref } from "semantic-ui-react";
 import Meta from "./Meta";
-import renderText from "../functions/renderText";
-import renderImages from "../functions/renderImages";
-import renderMarkdown from "../functions/renderMarkdown";
+import renderText from "@/functions/renderText";
+import renderImages from "@/functions/renderImages";
+import renderMarkdown from "@/functions/renderMarkdown";
 import FocusOverlay from "./FocusOverlay";
 
-import {
-  FieldGrid,
-  FieldRefs,
-  ImageField,
-  MarkdownField,
-  MetaField,
-  TextField,
-  Token,
-} from "../../../types";
+import { FieldGrid, FieldRefs, ImageField, MarkdownField, MetaField, TextField, Token } from "@/app/types";
 import styled from "styled-components";
 import { Loader } from "../../../styled/Styled";
 
@@ -104,47 +95,39 @@ const Body = ({
   if (tokens === null) return null;
 
   return (
-    <>
-      <Ref innerRef={containerRef}>
-        <BodyContainer
-          key="bodycontainer"
-          id="bodycontainer"
-          className="BodyContainer"
-          style={{
-            ...bodyStyle,
-          }}
+    <BodyContainer
+      key="bodycontainer"
+      id="bodycontainer"
+      ref={containerRef}
+      className="BodyContainer"
+      style={{
+        ...bodyStyle,
+      }}
+    >
+      <Meta metaFields={metaFields} />
+      <div
+        key="fields"
+        style={{
+          position: "relative",
+          flex: "1 1 97%",
+          display: "flex",
+          paddingTop: "10px",
+          width: "100%",
+        }}
+      >
+        <Loader $active={!imagesLoaded || !currentUnitReady} $radius={0} />
+        <DocumentContent
+          centered={centered}
+          highLines={!readOnly}
+          grid={grid}
+          key="content"
+          className="DocumentContent"
         >
-          <Meta metaFields={metaFields} />
-          <div
-            key="fields"
-            style={{
-              position: "relative",
-              flex: "1 1 97%",
-              display: "flex",
-              paddingTop: "10px",
-              width: "100%",
-            }}
-          >
-            <Loader active={!imagesLoaded || !currentUnitReady} radius={0} />
-            <DocumentContent
-              centered={centered}
-              highLines={!readOnly}
-              grid={grid}
-              key="content"
-              className="DocumentContent"
-            >
-              <FocusOverlay
-                key="focusoverlay"
-                fieldRefs={fieldRefs}
-                focus={focus}
-                containerRef={containerRef}
-              />
-              {content}
-            </DocumentContent>
-          </div>
-        </BodyContainer>
-      </Ref>
-    </>
+          <FocusOverlay key="focusoverlay" fieldRefs={fieldRefs} focus={focus} containerRef={containerRef} />
+          {content}
+        </DocumentContent>
+      </div>
+    </BodyContainer>
   );
 };
 

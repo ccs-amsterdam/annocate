@@ -7,15 +7,20 @@ class TokenVerifier {
 
   async verifyToken(token: string) {
     let publicKey = await this.getPublicKey();
+    if (!publicKey) return null;
+
     let payload = jwt.verify(token, publicKey);
 
     if (!payload) {
       // try again once, because key could have rotated
       publicKey = await this.getNewPublicKey();
+      if (!publicKey) return null;
       payload = jwt.verify(token, publicKey);
     }
 
-    if (!payload || payload.resource !== process.env.ANNOCATE_URL + "/api") {
+    if (!payload || typeof payload !== "object") return null;
+
+    if (payload.resource !== process.env.ANNOCATE_URL + "/api") {
       // token not signed for this resource
       return null;
     }
@@ -36,8 +41,8 @@ class TokenVerifier {
     if (!trusted_middlecat) throw new Error("MIDDLECAT_URL not set");
     const res = await fetch(trusted_middlecat + "/api/configuration");
     const config = await res.json();
-    this.public_key = config.public_key;
-    return this.public_key;
+    this.publicKey = config.public_key;
+    return this.publicKey;
   }
 
   async getNewPublicKey() {
@@ -50,8 +55,6 @@ const tokenVerifier = new TokenVerifier();
 
 export async function authenticateUser(req: Request): Promise<string | null> {
   const bearer: string | null = req.headers.get("authorization");
-  console.log(req);
-  console.log(req.headers);
   const access_token = bearer?.split(" ")[1] || "";
   if (!access_token) return null;
 

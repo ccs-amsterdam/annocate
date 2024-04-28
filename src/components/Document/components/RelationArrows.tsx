@@ -1,12 +1,14 @@
 import { useMemo } from "react";
-import standardizeColor from "../../../functions/standardizeColor";
+import standardizeColor from "@/functions/standardizeColor";
 import {
   Token,
   TriggerSelector,
   AnnotationLibrary,
   AnnotationDictionary,
   AnnotationID,
-} from "../../../types";
+  Span,
+  TokenSelection,
+} from "@/app/types";
 import Arrow from "./Arrow";
 
 interface Props {
@@ -30,11 +32,11 @@ const RelationArrows = ({ tokens, annotationLib, triggerSelector }: Props) => {
 
       arrows.push({
         id: r.id,
-        tokenSelection: [from, to],
-        tokenSelectionEnd: [fromEnd, toEnd],
+        tokenSelection: [from, to] as TokenSelection,
+        tokenSelectionEnd: [fromEnd, toEnd] as TokenSelection,
         fromId: r.fromId,
         toId: r.toId,
-        relation: r.value,
+        relation: String(r.value),
         edgeColor: standardizeColor(r.color, "90"),
         fromColor: standardizeColor(fromAnnotation.color, "90"),
         toColor: standardizeColor(toAnnotation.color, "90"),
@@ -66,7 +68,7 @@ const RelationArrows = ({ tokens, annotationLib, triggerSelector }: Props) => {
   );
 };
 
-function getAnnotationSpan(annDict: AnnotationDictionary, id: AnnotationID) {
+function getAnnotationSpan(annDict: AnnotationDictionary, id: AnnotationID): Span {
   const ann = annDict[id];
   if (!ann) return null;
   if (ann.type === "relation") {

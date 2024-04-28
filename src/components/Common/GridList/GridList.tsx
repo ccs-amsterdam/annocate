@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, ReactNode } from "react";
 import styled from "styled-components";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { CenteredDiv, Loader } from "../../../styled/Styled";
@@ -14,9 +14,10 @@ import {
   GridItemTemplate,
   DataMeta,
   SelectedDataPoint,
+  FilterQuery,
+  SortQuery,
 } from "./GridListTypes";
 import { GridListDiv } from "./GridListStyled";
-import { ReactElement } from "react-markdown/lib/react-markdown";
 import { queryFullData } from "./GridListFunctions";
 
 interface GridListProps {
@@ -32,7 +33,7 @@ interface GridListProps {
   // searchOptions should be static and not change during the lifetime of the component
   searchOptions?: string[];
   onClick?: (data: DataPoint) => void;
-  setDetail?: (data: DataPoint) => Promise<ReactElement>;
+  setDetail?: (data: DataPoint) => Promise<ReactNode>;
   pageSize?: number;
   noResultsText?: string;
 }

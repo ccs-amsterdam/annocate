@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { Variable, SetState } from "../../../types";
+import { Variable, SetState } from "@/app/types";
 
 interface SelectVariableProps {
   variables: Variable[];

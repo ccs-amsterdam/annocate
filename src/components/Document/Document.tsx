@@ -1,13 +1,13 @@
 import React, { useState, useEffect, CSSProperties } from "react";
 import AnnotateNavigation from "./components/AnnotateNavigation";
 import Body from "./components/Body";
-import useSpanSelector from "./hooks/useSpanSelector";
-import useRelationSelector from "./hooks/useRelationSelector";
-import useUnit from "./hooks/useUnit";
+import useSpanSelector from "../../hooks/useSpanSelector";
+import useRelationSelector from "../../hooks/useRelationSelector";
+import useUnit from "../../hooks/useUnit";
 import SelectVariable from "./components/SelectVariable";
 
 import useVariableMap from "./components/useVariableMap";
-import { Variable, VariableMap, Unit, Annotation, SetState, TriggerSelector } from "../../types";
+import { Variable, VariableMap, Unit, Annotation, SetState, TriggerSelector } from "@/app/types";
 import { useCallback } from "react";
 import styled from "styled-components";
 

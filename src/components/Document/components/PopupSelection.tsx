@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { CodeSelectorOption, CodeSelectorValue } from "../../../types";
+import { CodeSelectorOption, CodeSelectorValue } from "@/app/types";
 import ButtonSelection from "./ButtonSelection";
 
 interface Props {

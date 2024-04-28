@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { SetState } from "../../../types";
+import { SetState } from "@/app/types";
 
 const StyledDiv = styled.div<{ size?: number }>`
   font-size: ${(props) => props.size || 30}px;

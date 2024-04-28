@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import useAnnotationEvents from "../hooks/useAnnotationEvents";
-import { List } from "semantic-ui-react";
-import { getColorGradient } from "../../../functions/tokenDesign";
-import standardizeColor from "../../../functions/standardizeColor";
-import { getValidTokenRelations, getValidTokenDestinations } from "../functions/relations";
-import Popup from "../../Common/components/Popup";
+import React, { ReactElement, useEffect, useMemo, useRef } from "react";
+import useAnnotationEvents from "@/hooks/useAnnotationEvents";
+import { getColorGradient } from "@/functions/tokenDesign";
+import standardizeColor from "@/functions/standardizeColor";
+import { getValidTokenRelations, getValidTokenDestinations } from "@/functions/relations";
+import Popup from "@/components/Common/Popup";
 
 import {
   Variable,
@@ -17,7 +16,7 @@ import {
   ValidTokenRelations,
   ValidTokenDestinations,
   AnnotationLibrary,
-} from "../../../types";
+} from "@/app/types";
 import DrawArrows from "./DrawArrows";
 
 interface AnnotateNavigationProps {
@@ -128,7 +127,7 @@ const highlightAnnotations = (
     if (tokenAnnotations.length === 0) {
       if (token.ref.current.classList.contains("annotated")) {
         token.ref.current.classList.remove("annotated");
-        setTokenColor(token, null, null, null, null, null, null, null);
+        setTokenColor(token);
       }
       continue;
     }
@@ -191,10 +190,10 @@ const setAnnotationAsCSSClass = (token: Token, annotations: Annotation[]) => {
       tokenlabel.push(String(annotation.value));
 
       spanColors.text.push(color);
-      if (annotation.span[0] === token.index) {
+      if (annotation.span?.[0] === token.index) {
         nLeft++;
       } else spanColors.pre.push(color);
-      if (annotation.span[1] === token.index) {
+      if (annotation.span?.[1] === token.index) {
         nRight++;
       } else spanColors.post.push(color);
     }
@@ -205,8 +204,8 @@ const setAnnotationAsCSSClass = (token: Token, annotations: Annotation[]) => {
       tokenlabel.push(String(annotation.value));
 
       relationColors.text.push(color);
-      if (annotation.positions.has(token.index)) relationColors.pre.push(color);
-      if (annotation.positions.has(token.index + 1)) relationColors.post.push(color);
+      if (annotation.positions?.has(token.index)) relationColors.pre.push(color);
+      if (annotation.positions?.has(token.index + 1)) relationColors.post.push(color);
     }
   }
 
@@ -245,9 +244,9 @@ const setTokenColor = (
   nRelations?: number,
 ) => {
   const [pre, text, post] = token.ref.current.children;
-  pre.style.background = spanPre;hsl(var(--background))
+  pre.style.background = spanPre;
   text.style.background = spanText;
-  post.style.background = spanPost;hsl(var(--background))
+  post.style.background = spanPost;
 
   const preRelation = pre.children[0];
   const textRelation = text.children[0];
@@ -257,7 +256,7 @@ const setTokenColor = (
   textRelation.style.background = relationText;
   postRelation.style.background = relationPost;
 
-  const height = `${Math.min(nRelations * 0.2, 0.5)}em`;
+  const height = `${Math.min((nRelations || 0) * 0.2, 0.5)}em`;
   preRelation.style.height = height;
   textRelation.style.height = height;
   postRelation.style.height = height;
@@ -282,7 +281,11 @@ const setSelectionAsCSSClass = (tokens: Token[], asEdge: boolean, selection: Tok
       continue;
     }
 
-    let selected = token.arrayIndex >= from && token.arrayIndex <= to;
+    let selected = false;
+    if (token.arrayIndex && from != null && to != null && token.arrayIndex >= from && token.arrayIndex <= to) {
+      selected = true;
+      hasSelection.current = true;
+    }
 
     const cl = token.ref.current.classList;
     if (selected && token.codingUnit) {
@@ -305,7 +308,7 @@ interface AnnotationPopupProps {
   showValues: VariableMap;
 }
 
-const AnnotationPopup = React.memo(({ tokens, tokenIndex, annotationLib, showValues }: AnnotationPopupProps) => {
+const AnnotationPopup = ({ tokens, tokenIndex, annotationLib, showValues }: AnnotationPopupProps) => {
   const ref = useRef<HTMLDivElement>();
 
   const content = useMemo(() => {
@@ -315,15 +318,15 @@ const AnnotationPopup = React.memo(({ tokens, tokenIndex, annotationLib, showVal
 
     const tokenAnnotations = annotationIds.map((id) => annotationLib.annotations[id]);
     const ids = Object.keys(tokenAnnotations);
-    const list = ids.reduce((arr, id, i) => {
-      const variable = tokenAnnotations[id].variable;
-      const value = tokenAnnotations[id].value;
+    const list = ids.reduce((arr: ReactElement[], id, i) => {
+      const variable = tokenAnnotations[i].variable;
+      const value = tokenAnnotations[i].value;
       if (!showValues?.[variable]) return arr;
 
-      const color = standardizeColor(tokenAnnotations[id].color);
+      const color = standardizeColor(tokenAnnotations[i].color);
 
       arr.push(
-        <List.Item
+        <li
           key={i}
           style={{
             backgroundColor: color,
@@ -333,13 +336,13 @@ const AnnotationPopup = React.memo(({ tokens, tokenIndex, annotationLib, showVal
           {/* <b>{variable}</b>
             {": " + value} */}
           <b>{value}</b>
-        </List.Item>,
+        </li>,
       );
       return arr;
     }, []);
 
     if (list.length === 0) return null;
-    return <List>{list}</List>;
+    return <ul>{list}</ul>;
     //setRefresh(0);
   }, [tokens, tokenIndex, annotationLib, showValues]);
 
@@ -356,6 +359,6 @@ const AnnotationPopup = React.memo(({ tokens, tokenIndex, annotationLib, showVal
       {content}
     </Popup>
   );
-});
+};
 
 export default AnnotateNavigation;

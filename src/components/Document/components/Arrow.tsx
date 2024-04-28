@@ -1,7 +1,7 @@
 import { getArrow } from "perfect-arrows";
 import styled from "styled-components";
-import standardizeColor from "../../../functions/standardizeColor";
-import { TokenSelection, Token } from "../../../types";
+import standardizeColor from "@/functions/standardizeColor";
+import { TokenSelection, Token } from "@/app/types";
 
 const StyledG = styled.g<{ interactive: boolean }>`
   pointer-events: ${(p) => (p.interactive ? "stroke" : "none")};
@@ -18,7 +18,6 @@ const StyledG = styled.g<{ interactive: boolean }>`
   --bigpolyOpacity: 0;
   --smallpolyOpacity: 1;
 
-
   &:hover {
     opacity: 1;
     font-size: 1.2rem;
@@ -27,11 +26,10 @@ const StyledG = styled.g<{ interactive: boolean }>`
     --radius: 1rem;
     --bigpolyOpacity: 1;
     --smallpolyOpacity: 0;
-    
   }
 
   path {
-    position: relative,
+    position: relative;
     z-index: var(--z);
   }
 
@@ -59,7 +57,9 @@ const StyledG = styled.g<{ interactive: boolean }>`
   }
 
   .arrow {
-    transition: stroke-width 0.1s, opacity 0.1s;
+    transition:
+      stroke-width 0.1s,
+      opacity 0.1s;
     opacity: var(--opacity);
     stroke-width: var(--strokewidth);
   }
@@ -88,7 +88,7 @@ interface Props {
   fromColor?: string;
   toColor?: string;
   onClick?: () => void;
-  usedPositions?: Record<number, Record<number, boolean>>;
+  usedPositions?: Record<string, number>;
   xoffset?: number;
   yoffset?: number;
 }
@@ -145,7 +145,7 @@ export default function Arrow({
   fromY = "bottom";
   toY = "bottom";
 
-  function getXY(p, pend, x, y) {
+  function getXY(p: typeof p1, pend: typeof p1, x: string, y: string) {
     if (x === "left" && y === "top") return [p.x + xoffset, p.y - yoffset];
     if (x === "left" && y === "bottom") return [p.x + xoffset, p.y + p.h + yoffset];
     if (x === "right" && y === "top") return [pend.x - xoffset, pend.y - yoffset];

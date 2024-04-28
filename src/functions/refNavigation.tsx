@@ -23,7 +23,6 @@ export const moveUp = (arr: any, selected: number, xposition: number = -1) => {
   for (let i = selected - 1; i >= 0; i--) {
     if (arr[i].ref == null || arr[i].ref.current === null) return i + 1;
     const nextPos = getPosition(arr[i].ref);
-    if (nextPos === null) return;
 
     if (correctRow === null) {
       if (sameRow(currentPos, nextPos)) continue;
@@ -57,7 +56,6 @@ export const moveDown = (arr: any, selected: number, xposition: number = -1) => 
   for (let i = selected + 1; i < arr.length; i++) {
     if (arr[i].ref == null || arr[i].ref.current === null) return i - 1;
     const nextPos = getPosition(arr[i].ref);
-    if (nextPos === null) return;
 
     if (correctRow === null) {
       if (sameRow(currentPos, nextPos)) continue;

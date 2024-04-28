@@ -1,6 +1,6 @@
 "use client";
 
-import { useJobs } from "@/app/api/jobs/query";
+import { useJobs, usePaginatedJobs } from "@/app/api/jobs/query";
 import { JobsGetResponse } from "@/app/api/jobs/route";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/styled/Styled";
@@ -27,15 +27,14 @@ export default function ManageJobsGrid() {
 function SelectJob() {
   const { user } = useMiddlecat();
   const [query, setQuery] = useState<string>("");
-  const 
-  const { data, isLoading, error } = useJobs(user, query);
+  const { data, isLoading, pagination } = usePaginatedJobs(user, query);
 
   if (isLoading) return <Loader />;
   if (!data) return null;
 
   return (
     <div>
-      {jobs.rows.map((job) => {
+      {data.rows.map((job) => {
         return (
           <div key={job.id}>
             <h2>{job.name}</h2>

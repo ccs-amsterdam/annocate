@@ -1,6 +1,6 @@
 "use client";
 
-import MenuButtonGroup from "../Annotator/components/MenuButtonGroup";
+import MenuButtonGroup from "../Annotator/subcomponents/MenuButtonGroup";
 import { DarkModeButton } from "../Common/Theme";
 import { FaChevronRight, FaUser } from "react-icons/fa";
 import { useSelectedLayoutSegments } from "next/navigation";
@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 export default function Menu() {
-  const path = useSelectedLayoutSegments();
+  const path = useSelectedLayoutSegments() || [];
   const breadcrubs = ["home", ...path];
   const { user, loading, signIn, signOut, fixedResource } = useMiddlecat();
   const [showBreadcrumb, setShowBreadcrumb] = useState(true);

@@ -16,7 +16,7 @@ export const useCookie = (key: string, defaultValue: any) => {
     Cookies.set(key, value);
   }, [key, value]);
 
-  return [value, setValue];
+  return [value, setValue] as const;
 };
 
 export default useCookie;

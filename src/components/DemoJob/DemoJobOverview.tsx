@@ -1,10 +1,10 @@
 import React, { useCallback } from "react";
-import { Button, ButtonGroup } from "../../styled/StyledSemantic";
 import QRCodeCanvas from "qrcode.react";
-import copyToClipboard from "../../functions/copyToClipboard";
+import copyToClipboard from "@/functions/copyToClipboard";
 import styled from "styled-components";
-import GridList from "../Common/components/GridList/GridList";
-import { DataPoint, GridItemTemplate } from "../Common/components/GridList/GridListTypes";
+import GridList from "@/components/Common/GridList/GridList";
+import { DataPoint, GridItemTemplate } from "@/components/Common/GridList/GridListTypes";
+import { Button } from "../ui/button";
 
 const StyledDiv = styled.div`
   display: flex;
@@ -34,8 +34,8 @@ const DemoJobOverview = () => {
       <div className="Header">
         <h2>Demo jobs</h2>
         <p>
-          This is a list of demo jobs to get a gist of the annotator features. Your annotations will
-          not be stored, and will be lost when closing or refreshing the application.
+          This is a list of demo jobs to get a gist of the annotator features. Your annotations will not be stored, and
+          will be lost when closing or refreshing the application.
         </p>
       </div>
       <div className="Body">
@@ -120,20 +120,20 @@ const DemoJobLink = ({ units, codebook }: DemoJobLinkProps) => {
 
   return (
     <div>
-      <ButtonGroup>
-        <Button primary fluid disabled={!units || !codebook} onClick={onClick}>
+      <div className="flex gap-2">
+        <Button className="w-full" disabled={!units || !codebook} onClick={onClick}>
           Start Demo
         </Button>
         <Button
-          fluid
-          secondary
+          className="w-full"
+          variant="secondary"
           onClick={() => {
             copyToClipboard(url);
           }}
         >
           Copy link
         </Button>
-      </ButtonGroup>
+      </div>
       <br />
       <div style={{ textAlign: "center", width: "100%", maxWidth: "60vw", marginTop: "10px" }}>
         <QRCodeCanvas value={encodeURI(url)} size={150} />

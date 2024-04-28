@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, ReactElement } from "react";
-import AnnotateUnit from "./components/AnnotateUnit";
-import FullScreenWindow from "./components/FullScreenWindow";
-import JobController from "./components/JobController";
-import { SetState, JobServer, Unit, SetUnitIndex, RawUnit, UnitContent } from "../../types";
-import processUnitContent from "../../functions/processUnitContent";
+import AnnotateUnit from "./subcomponents/AnnotateUnit";
+import FullScreenWindow from "./subcomponents/FullScreenWindow";
+import JobController from "./subcomponents/JobController";
+import { SetState, JobServer, Unit, SetUnitIndex, RawUnit, UnitContent } from "@/app/types";
+import processUnitContent from "@/functions/processUnitContent";
 import { StyledSegment } from "../../styled/StyledSemantic";
 
 /**
  * Keep unit and index in same state to guarantee that they're synchronized
  */
-interface IndexedUnit {
+export interface IndexedUnit {
   unit: Unit;
   index: number;
   error?: boolean;
@@ -25,18 +25,13 @@ interface AnnotatorProps {
   authForm?: ReactElement;
 }
 
-const Annotator = ({
-  jobServer,
-  askFullScreen = false,
-  cantLeave = false,
-  authForm,
-}: AnnotatorProps) => {
+const Annotator = ({ jobServer, askFullScreen = false, cantLeave = false, authForm }: AnnotatorProps) => {
   const [indexedUnit, setIndexedUnit] = useState<IndexedUnit>({ unit: null, index: -1 });
   const [unitProgress, setUnitProgress] = useState(jobServer.progress.n_coded);
 
   const setUnitIndex: SetUnitIndex = useCallback(
-    (index) => updateIndexedUnit(jobServer, index, setIndexedUnit, setUnitProgress),
-    [jobServer]
+    (index: number) => updateIndexedUnit(jobServer, index, setIndexedUnit, setUnitProgress),
+    [jobServer],
   );
 
   useEffect(() => {
@@ -79,7 +74,7 @@ const updateIndexedUnit = async (
   jobServer: any,
   index: number,
   setIndexedUnit: SetState<IndexedUnit>,
-  setUnitProgress: SetState<number>
+  setUnitProgress: SetState<number>,
 ) => {
   if (!jobServer || index === null) return;
 

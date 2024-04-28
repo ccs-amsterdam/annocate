@@ -1,4 +1,4 @@
-import { ReactElement, RefObject } from "react";
+import { ReactElement, ReactNode, RefObject } from "react";
 
 export type DataPointValue = string | number | Date | undefined;
 
@@ -27,7 +27,7 @@ export interface DataPointWithRef {
 export interface SelectedDataPoint {
   ref: RefObject<HTMLDivElement>;
   datapoint: DataPoint;
-  detailElement?: ReactElement;
+  detailElement?: ReactNode;
 }
 
 export interface DataMeta {
