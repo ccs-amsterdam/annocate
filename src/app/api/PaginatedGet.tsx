@@ -38,6 +38,12 @@ export interface GETParams {
 export type PaginatedGetParams = z.infer<typeof PaginatedGetSchema>;
 export type PaginatedGetFilter = z.infer<typeof PaginatedGetFilter>;
 
+// TODO: Use dynamic queries so that tables can specify additional filters such as join based on user role.
+// https://orm.drizzle.team/docs/dynamic-query-building
+
+// Do separate meta after all. No longer really needed with offset based pagination. Make separate endpoint if needed.
+// Then always specify all schemas and queries in root of api/table.
+
 export async function PaginatedGet({ table, queryColumns, filterColumns, responseSchema, req }: GETParams) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
