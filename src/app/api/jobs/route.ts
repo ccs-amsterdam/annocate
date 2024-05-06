@@ -1,47 +1,19 @@
 import { NextResponse } from "next/server";
 import { jobs, managers, users } from "@/drizzle/schema";
 import db from "@/drizzle/schema";
-import { z } from "zod";
 import { SQL, gt, like, lt, and, sql, count, eq, max, min } from "drizzle-orm";
 import validateRequestParams from "@/functions/validateRequestParams";
-import { authenticateUser } from "@/functions/authorization";
-
-// export const runtime = "edge";
+import { authenticateUser, serverRole } from "@/functions/authorization";
+import { JobsGetParamsSchema, JobsGetResponseSchema, JobsPostBodySchema, JobsPostResponse } from "./schemas";
 
 // GET /api/jobs
-
-const GetParamsSchema = z.object({
-  afterId: z.number().optional(),
-  beforeId: z.number().optional(),
-  limit: z.number().min(1).max(100).default(10),
-  query: z.string().optional(),
-});
-
-const GetResponseSchema = z.object({
-  meta: z.object({
-    rows: z.number(),
-    maxId: z.number(),
-    minId: z.number(),
-  }),
-  rows: z.array(
-    z.object({
-      id: z.number(),
-      name: z.string(),
-      createdAt: z.string(),
-      updatedAt: z.string(),
-    }),
-  ),
-});
-
-export type JobsGetParams = z.infer<typeof GetParamsSchema>;
-export type JobsGetResponse = z.infer<typeof GetResponseSchema>;
 
 export async function GET(req: Request) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const params = validateRequestParams(req, GetParamsSchema);
+    const params = validateRequestParams(req, JobsGetParamsSchema);
     const where: SQL[] = [];
     if (params.afterId) where.push(gt(jobs.id, params.afterId));
     if (params.beforeId) where.push(lt(jobs.id, params.beforeId));
@@ -56,7 +28,7 @@ export async function GET(req: Request) {
       .limit(params.limit);
     const [meta, rows] = await Promise.all([metaPromise, rowsPromise]);
 
-    const res = GetResponseSchema.parse({ meta, rows });
+    const res = JobsGetResponseSchema.parse({ meta, rows });
     return NextResponse.json(res);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: e.status });
@@ -65,25 +37,16 @@ export async function GET(req: Request) {
 
 // POST /api/jobs
 
-const postJobSchema = z.object({
-  title: z.string().min(5).max(128),
-});
-
-export interface JobsPostResponse {
-  id: number;
-}
-export type JobsPostBody = z.infer<typeof postJobSchema>;
-
 export async function POST(req: Request) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await req.json();
-    const { title } = postJobSchema.parse(body);
+    const { title } = JobsPostBodySchema.parse(body);
 
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    if (!user || !user.canCreateJob) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const role = await serverRole(email);
+    if (!role.canCreateJob) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const id = await db.transaction(async (tx) => {
       const [job] = await tx.insert(jobs).values({ name: title }).returning();

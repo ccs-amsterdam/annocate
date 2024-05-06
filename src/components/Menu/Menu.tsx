@@ -1,86 +1,55 @@
 "use client";
 
-import MenuButtonGroup from "../Annotator/subcomponents/MenuButtonGroup";
-import { DarkModeButton } from "../Common/Theme";
-import { FaChevronRight, FaUser } from "react-icons/fa";
+import { FaChevronRight, FaCog, FaUser, FaUsers } from "react-icons/fa";
 import { useSelectedLayoutSegments } from "next/navigation";
 import Link from "next/link";
-import { AuthForm, useMiddlecat } from "middlecat-react";
-import RadixPopup from "../Common/RadixPopup";
-import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { useEffect, useState } from "react";
+import UserMenu from "./UserMenu";
+import { useServerRole } from "@/app/api/me/serverRole/query";
+import { Loader, Users } from "lucide-react";
+import MenuButtonGroup from "../Annotator/subcomponents/MenuButtonGroup";
+import { DarkModeButton } from "../Common/Theme";
 
 export default function Menu() {
   const path = useSelectedLayoutSegments() || [];
-  const breadcrubs = ["home", ...path];
-  const { user, loading, signIn, signOut, fixedResource } = useMiddlecat();
-  const [showBreadcrumb, setShowBreadcrumb] = useState(true);
-
-  useEffect(() => setShowBreadcrumb(true), []);
+  const { data: serverRole, isLoading } = useServerRole();
 
   function renderBreadcrumbs() {
-    let path = "";
-    return breadcrubs.map((x, i) => {
-      path = path + "/" + x;
-      if (i === breadcrubs.length - 1)
-        return (
-          <Breadcrumb key={x} current={true}>
-            {x}
-          </Breadcrumb>
-        );
+    let newpath = "";
+    return path.map((x, i) => {
+      const isLast = i === path.length - 1;
+      newpath = newpath + "/" + x;
       return (
-        <Breadcrumb key={x + i}>
-          <Link href={path}>{x}</Link>
-          <FaChevronRight
-            key={"next" + x + i}
-            style={{
-              marginLeft: "1rem",
-              fontSize: "0.8rem",
-              transform: "translateY(8px)",
-            }}
-          />
+        <Breadcrumb key={x + i} link={isLast ? undefined : newpath}>
+          {x}
         </Breadcrumb>
       );
     });
   }
-
-  function renderAuth() {
-    if (loading) return null;
-    if (user?.email)
-      return (
-        <div className="flex flex-col gap-3">
-          <div className=" flex items-center gap-3">
-            <img src={user.image} alt="profile" className="h-7 w-7 rounded" referrerPolicy="no-referrer" />
-            {user.name || user.email}
-          </div>
-          <Button className="ml-auto mt-10" onClick={() => signOut(true)}>
-            Sign out
-          </Button>
-        </div>
-      );
-    return <Button onClick={() => signIn(fixedResource)}>Sign in</Button>;
+  function renderServerRole() {
+    if (isLoading) return <FaCog className="animate-spin-slow h-7 w-7 text-foreground/50" />;
+    if (!serverRole?.admin) return null;
+    return (
+      <Link href="/admin">
+        <FaCog className="h-7 w-7 hover:text-foreground" />
+      </Link>
+    );
   }
+  console.log(path);
 
   return (
     <menu className="w-full px-2">
       <ul className="m-0 flex min-h-[3.8rem] list-none items-start gap-2 px-3 pb-0 pt-1 text-xl text-foreground">
         <div key="left" className="mt-1 flex min-h-[3rem] flex-auto items-center ">
-          {showBreadcrumb ? renderBreadcrumbs() : null}
+          <Breadcrumb link={path.length ? "/" : undefined}>home</Breadcrumb>
+          {renderBreadcrumbs()}
         </div>
+
         <div key="right" className="flex flex-auto justify-end pt-[5px]">
           <MenuButtonGroup>
-            <div>
-              <DarkModeButton />
-            </div>
-            <Popover>
-              <PopoverTrigger>
-                <FaUser />
-              </PopoverTrigger>
-              <PopoverContent className="mr-2 mt-5">
-                <div className="flex flex-col gap-3">{renderAuth()}</div>
-              </PopoverContent>
-            </Popover>
+            {renderServerRole()}
+            <DarkModeButton />
+            <UserMenu />
           </MenuButtonGroup>
         </div>
       </ul>
@@ -88,10 +57,17 @@ export default function Menu() {
   );
 }
 
-const Breadcrumb = ({ children, current }: { current?: boolean; children: React.ReactNode }) => {
+const Breadcrumb = ({ children, current, link }: { current?: boolean; children: React.ReactNode; link?: string }) => {
   return (
-    <div className="rounded p-2 text-primary">
-      <span className={`flex  no-underline ${current ? "text-foreground" : "hover:text-foreground"}`}>{children}</span>
+    <div className="flex items-center gap-2 rounded p-2 pl-0 text-primary">
+      {link ? (
+        <Link href={link}>
+          <span className="hover:text-foreground">{children}</span>
+        </Link>
+      ) : (
+        <span className="text-foreground">{children}</span>
+      )}
+      {link && <FaChevronRight className="ml-1 h-4 w-4" />}
     </div>
   );
 };

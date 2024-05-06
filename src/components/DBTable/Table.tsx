@@ -25,7 +25,7 @@ import {
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import CreateUser from "./CreateUser";
+import Create from "./Create";
 
 interface User {
   email: string;
@@ -43,7 +43,7 @@ interface Props {
 // This components works for both Server and Index users, depending
 // on the props passed in.
 
-export default function UserRoleTable({ user, ownRole, users, roles, changeRole }: Props) {
+export default function Table({ user, ownRole, users, roles, changeRole }: Props) {
   const [changeOwnRole, setChangeOwnRole] = useState<string | undefined>(undefined);
   const [tableColumns] = useState<ColumnDef<Row>[]>(() => createTableColumns(roles));
   const [globalFilter, setGlobalFilter] = useState("");
@@ -86,12 +86,12 @@ export default function UserRoleTable({ user, ownRole, users, roles, changeRole 
       <div className="flex items-center justify-between pb-4">
         <div className="prose-xl flex gap-1 md:gap-3">
           <h3 className="mb-0">Users</h3>
-          <CreateUser ownRole={ownRole} roles={roles} changeRole={changeRole}>
+          <Create ownRole={ownRole} roles={roles} changeRole={changeRole}>
             <Button variant="ghost" className="flex gap-2 p-4">
               <UserPlus />
               <span className="hidden sm:inline">Add user</span>
             </Button>
-          </CreateUser>
+          </Create>
         </div>
         <div className="relative ml-auto flex items-center">
           <Input

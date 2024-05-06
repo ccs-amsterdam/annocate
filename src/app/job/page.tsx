@@ -11,7 +11,7 @@ const StyledDiv = styled.div`
   align-items: center;
 `;
 
-export default function Home() {
+export default function Job() {
   return (
     <main>
       <StyledDiv>

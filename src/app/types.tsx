@@ -867,3 +867,8 @@ export interface Debriefing {
 export interface SessionData {
   seenInstructions: Record<string, boolean>;
 }
+
+export interface ServerRole {
+  admin: boolean;
+  canCreateJob: boolean;
+}

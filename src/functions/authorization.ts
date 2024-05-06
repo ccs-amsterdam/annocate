@@ -1,3 +1,6 @@
+import { ServerRole } from "@/app/types";
+import db, { users } from "@/drizzle/schema";
+import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 
 class TokenVerifier {
@@ -59,4 +62,12 @@ export async function authenticateUser(req: Request): Promise<string | null> {
   if (!access_token) return null;
 
   return await tokenVerifier.verifyToken(access_token);
+}
+
+export async function serverRole(email: string): Promise<ServerRole> {
+  if (email === process.env.SUPERADMIN) return { admin: true, canCreateJob: true };
+
+  const [user] = await db.select().from(users).where(eq(users.email, email));
+  if (user) return { admin: user.isAdmin, canCreateJob: user.canCreateJob };
+  return { admin: false, canCreateJob: false };
 }

@@ -6,6 +6,7 @@ import StyledComponentRegistry from "./registry";
 import { cookies } from "next/headers";
 import SetResponsiveSize from "@/components/Common/SetResponsiveSize";
 import { Toaster } from "@/components/ui/sonner";
+import { PageLayout } from "./PageLayout";
 
 const font = Poppins({
   weight: "500",
@@ -29,8 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SetResponsiveSize />
         <StyledComponentRegistry>
           <Providers>
-            {children}
-
+            <PageLayout>{children}</PageLayout>
             <Toaster />
           </Providers>
         </StyledComponentRegistry>

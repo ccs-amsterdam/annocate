@@ -5,6 +5,7 @@ import { FaMoon, FaSun } from "react-icons/fa";
 import { RiFontSize2 } from "react-icons/ri";
 import useCookie from "@/hooks/useCookie";
 import useIsClient from "@/hooks/useIsClient";
+import { Loader } from "lucide-react";
 
 function setDataset(dataset: string, value: string) {
   document.documentElement.dataset[dataset] = value;
@@ -20,7 +21,7 @@ export const DarkModeButton = () => {
     setDark(next);
   };
 
-  if (!isClient) return <FaSun className="Rendering" />;
+  if (!isClient) return <FaSun className="animate-spin-slow text-foreground/50" />;
 
   if (dark === "off")
     return (
