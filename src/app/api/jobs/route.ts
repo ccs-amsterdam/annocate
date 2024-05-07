@@ -1,38 +1,48 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { jobs, managers, users } from "@/drizzle/schema";
 import db from "@/drizzle/schema";
 import { SQL, gt, like, lt, and, sql, count, eq, max, min } from "drizzle-orm";
 import validateRequestParams from "@/functions/validateRequestParams";
 import { authenticateUser, serverRole } from "@/functions/authorization";
 import { JobsGetParamsSchema, JobsGetResponseSchema, JobsPostBodySchema, JobsPostResponse } from "./schemas";
+import { CommonGet } from "../routeHelpers";
+import { PgColumn } from "drizzle-orm/pg-core";
 
 // GET /api/jobs
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  try {
-    const params = validateRequestParams(req, JobsGetParamsSchema);
-    const where: SQL[] = [];
-    if (params.afterId) where.push(gt(jobs.id, params.afterId));
-    if (params.beforeId) where.push(lt(jobs.id, params.beforeId));
-    if (params.query) where.push(like(jobs.name, `%${params.query}%`));
+  const rowsQuery = db
+    .select({
+      id: jobs.id,
+      name: jobs.name,
+      created: jobs.created,
+    })
+    .from(managers)
+    .where(eq(managers.email, email))
+    .rightJoin(jobs, eq(managers.jobId, jobs.id))
+    .$dynamic();
 
-    const metaPromise = db.select({ rows: count(), maxId: max(jobs.id), minId: min(jobs.id) }).from(jobs);
-    const rowsPromise = db
-      .select()
-      .from(jobs)
-      .orderBy(jobs.id)
-      .where(and(...where))
-      .limit(params.limit);
-    const [meta, rows] = await Promise.all([metaPromise, rowsPromise]);
+  const metaQuery = db
+    .select({
+      rows: count(),
+    })
+    .from(managers)
+    .where(eq(managers.email, email))
+    .rightJoin(jobs, eq(managers.jobId, jobs.id))
+    .groupBy(managers.email)
+    .$dynamic();
 
-    const res = JobsGetResponseSchema.parse({ meta, rows });
-    return NextResponse.json(res);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: e.status });
-  }
+  return CommonGet({
+    req,
+    table: jobs,
+    rowsQuery,
+    metaQuery,
+    ParamSchema: JobsGetParamsSchema,
+    queryColumns: ["name"],
+  });
 }
 
 // POST /api/jobs

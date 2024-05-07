@@ -1,23 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMiddlecat } from "middlecat-react";
-import { UsersGetResponse } from "./schemas";
-import { PaginatedGetFilter } from "../PaginatedGet";
-import { usePaginated } from "../usePaginated";
+import { useCommonGet } from "../queryHelpers";
+import { UsersGetParams, UsersGetResponseSchema } from "./schemas";
 
-export function useUsers() {
-  const { user } = useMiddlecat();
-
-  return useQuery({
-    queryKey: ["users"],
-    queryFn: async () => {
-      const res = await user.api.get("users");
-      const users: UsersGetResponse[] = res.data;
-      return users;
-    },
-    enabled: !!user,
+export function useUsers(params: UsersGetParams) {
+  return useCommonGet({
+    endpoint: "users",
+    params: params,
+    responseSchema: UsersGetResponseSchema,
   });
-}
-
-export function usePaginatedUsers(query?: string, filters?: PaginatedGetFilter[]) {
-  return usePaginated("users", query, filters);
 }

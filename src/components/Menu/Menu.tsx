@@ -27,7 +27,7 @@ export default function Menu() {
     });
   }
   function renderServerRole() {
-    if (isLoading) return <FaCog className="animate-spin-slow h-7 w-7 text-foreground/50" />;
+    if (isLoading) return <FaCog className="h-7 w-7 animate-spin-slow text-foreground/50" />;
     if (!serverRole?.admin) return null;
     return (
       <Link href="/admin">
@@ -35,7 +35,6 @@ export default function Menu() {
       </Link>
     );
   }
-  console.log(path);
 
   return (
     <menu className="w-full px-2">

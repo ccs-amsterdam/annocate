@@ -39,6 +39,9 @@ export function CreateJob({ afterSubmit }: CreateJobProps) {
   const { user } = useMiddlecat();
   const form = useForm<JobsPostBody>({
     resolver: zodResolver(JobsPostBodySchema),
+    defaultValues: {
+      title: "",
+    },
   });
   const { mutateAsync } = useMutateJobs(user);
 

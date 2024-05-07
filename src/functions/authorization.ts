@@ -65,9 +65,18 @@ export async function authenticateUser(req: Request): Promise<string | null> {
 }
 
 export async function serverRole(email: string): Promise<ServerRole> {
-  if (email === process.env.SUPERADMIN) return { admin: true, canCreateJob: true };
-
   const [user] = await db.select().from(users).where(eq(users.email, email));
   if (user) return { admin: user.isAdmin, canCreateJob: user.canCreateJob };
+
+  if (email === process.env.SUPERADMIN) {
+    // if superadmin not in user table, add now
+    await db.insert(users).values({
+      email,
+      isAdmin: true,
+      canCreateJob: true,
+    });
+    return { admin: true, canCreateJob: true };
+  }
+
   return { admin: false, canCreateJob: false };
 }

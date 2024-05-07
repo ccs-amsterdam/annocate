@@ -126,7 +126,6 @@ export const jobSetUnitGroups = pgTable(
 
 export const users = pgTable("users", {
   email: varchar("email", { length: 256 }).primaryKey(),
-  name: varchar("name", { length: 256 }).notNull(),
   created: timestamp("created").notNull().defaultNow(),
   isAdmin: boolean("is_admin").notNull().default(false),
   canCreateJob: boolean("can_create_job").notNull().default(false),

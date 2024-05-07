@@ -1,13 +1,10 @@
+import { NextRequest } from "next/server";
 import { z } from "zod";
 
-export default function validateRequestParams(req: Request, schema: z.ZodObject<any, any>) {
-  const { searchParams } = new URL(req.url);
-  const paramNames = Object.keys(schema.shape);
+export default function validateRequestParams<T extends z.ZodTypeAny>(req: NextRequest, schema: T) {
   const params: Record<string, any> = {};
-  for (const paramName of paramNames) {
-    const param = searchParams.get(paramName);
-    if (param) params[paramName] = param;
+  for (let [key, value] of req.nextUrl.searchParams.entries()) {
+    params[key] = req.nextUrl.searchParams.get(key);
   }
-
   return schema.parse(params);
 }

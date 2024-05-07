@@ -1,26 +1,12 @@
 import { z } from "zod";
+import { GetParamsSchema } from "../schemaHelpers";
 
-export const JobsGetParamsSchema = z.object({
-  afterId: z.number().optional(),
-  beforeId: z.number().optional(),
-  limit: z.number().min(1).max(100).default(10),
-  query: z.string().optional(),
-});
+export const JobsGetParamsSchema = GetParamsSchema.extend({});
 
 export const JobsGetResponseSchema = z.object({
-  meta: z.object({
-    rows: z.number(),
-    maxId: z.number(),
-    minId: z.number(),
-  }),
-  rows: z.array(
-    z.object({
-      id: z.number(),
-      name: z.string(),
-      createdAt: z.string(),
-      updatedAt: z.string(),
-    }),
-  ),
+  id: z.number(),
+  name: z.string(),
+  created: z.coerce.date(),
 });
 
 export const JobsPostBodySchema = z.object({
