@@ -1,12 +1,9 @@
+import { authenticateUser, serverRole } from "@/app/api/authorization";
+import db, { jobs, managers } from "@/drizzle/schema";
+import { count, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { jobs, managers, users } from "@/drizzle/schema";
-import db from "@/drizzle/schema";
-import { SQL, gt, like, lt, and, sql, count, eq, max, min } from "drizzle-orm";
-import validateRequestParams from "@/functions/validateRequestParams";
-import { authenticateUser, serverRole } from "@/functions/authorization";
-import { JobsGetParamsSchema, JobsGetResponseSchema, JobsPostBodySchema, JobsPostResponse } from "./schemas";
-import { CommonGet } from "../routeHelpers";
-import { PgColumn } from "drizzle-orm/pg-core";
+import { createCommonGet, validateRequestParams } from "../routeHelpers";
+import { JobsGetParamsSchema, JobsPostBodySchema, JobsPostResponse } from "./schemas";
 
 // GET /api/jobs
 
@@ -14,7 +11,9 @@ export async function GET(req: NextRequest) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rowsQuery = db
+  const params = validateRequestParams(req, JobsGetParamsSchema);
+
+  const table = db
     .select({
       id: jobs.id,
       name: jobs.name,
@@ -23,24 +22,12 @@ export async function GET(req: NextRequest) {
     .from(managers)
     .where(eq(managers.email, email))
     .rightJoin(jobs, eq(managers.jobId, jobs.id))
-    .$dynamic();
+    .as("baseQuery");
 
-  const metaQuery = db
-    .select({
-      rows: count(),
-    })
-    .from(managers)
-    .where(eq(managers.email, email))
-    .rightJoin(jobs, eq(managers.jobId, jobs.id))
-    .groupBy(managers.email)
-    .$dynamic();
-
-  return CommonGet({
-    req,
-    table: jobs,
-    rowsQuery,
-    metaQuery,
-    ParamSchema: JobsGetParamsSchema,
+  return createCommonGet({
+    table,
+    params,
+    idColumn: "id",
     queryColumns: ["name"],
   });
 }

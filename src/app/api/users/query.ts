@@ -1,10 +1,10 @@
 import { useCommonGet } from "../queryHelpers";
 import { UsersGetParams, UsersGetResponseSchema } from "./schemas";
 
-export function useUsers(params: UsersGetParams) {
+export function useUsers(initialParams: UsersGetParams) {
   return useCommonGet({
     endpoint: "users",
-    params: params,
+    initialParams: initialParams,
     responseSchema: UsersGetResponseSchema,
   });
 }

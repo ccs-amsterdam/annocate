@@ -1,10 +1,8 @@
-import { JobsGetParams, JobsGetResponse } from "@/app/api/jobs/schemas";
 import { useQuery } from "@tanstack/react-query";
-import { PgTable } from "drizzle-orm/pg-core";
 import { useMiddlecat } from "middlecat-react";
-import { useCallback, useEffect, useState } from "react";
-import { z } from "zod";
-import { GetMetaSchema, GetParams } from "./schemaHelpers";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { set, z } from "zod";
+import { CommonGetParams, GetMetaSchema } from "./schemaHelpers";
 
 export interface Paginate {
   nextPage: () => void;
@@ -13,62 +11,76 @@ export interface Paginate {
   hasPrevPage: boolean;
 }
 
-export function useCommonGet<Params extends GetParams, Response extends z.ZodTypeAny>({
+interface Pagination {
+  pageTokens: string[];
+  page: number;
+}
+
+export function useCommonGet<Params extends CommonGetParams, Response extends z.ZodTypeAny>({
   endpoint,
-  params,
+  initialParams,
   responseSchema,
-  pageSize,
 }: {
   endpoint: string;
-  params: Params;
+  initialParams: Params;
   responseSchema: Response;
-  pageSize?: number;
 }) {
   const { user } = useMiddlecat();
-  const [offset, setOffset] = useState(0);
+  const pageTokens = useRef<Record<number, string>>({ 0: "" });
+  const [params, setParams] = useState(initialParams);
 
-  const { data: meta, isLoading: metaLoading } = useQuery({
-    queryKey: [endpoint, user, params, "meta"],
+  const { data, isLoading } = useQuery({
+    queryKey: [endpoint, user, params],
     queryFn: async () => {
-      const res = await user.api.get(endpoint, { params: { ...params, meta: 1 } });
-      return GetMetaSchema.parse(res.data);
+      const res = await user.api.get(endpoint, { params });
+      const data = z
+        .object({
+          data: z.array(responseSchema),
+          meta: GetMetaSchema,
+          nextToken: z.string(),
+        })
+        .parse(res.data);
+      if (data.nextToken) pageTokens.current[data.meta.page + 1] = data.nextToken;
+      return data;
     },
     enabled: !!user,
   });
 
-  const { data, isLoading: rowsLoading } = useQuery({
-    queryKey: [endpoint, user, params, offset, pageSize],
-    queryFn: async () => {
-      const res = await user.api.get(endpoint, { params: { ...params, offset, limit: pageSize } });
-      return z.array(responseSchema).parse(res.data);
-    },
-    enabled: !!user,
-  });
+  let hasNextPage = !!data?.nextToken;
+  let hasPrevPage = data?.meta && data.meta.page > 0;
 
-  useEffect(() => {
-    setOffset(0);
-  }, [endpoint, params, user, pageSize]);
+  const nextPage = () => {
+    if (!hasNextPage) return;
+    const page = data.meta.page + 1;
+    setParams((params) => ({ ...params, nextToken: pageTokens.current[page] || "" }));
+  };
 
-  let hasNextPage = false;
-  let hasPrevPage = false;
+  const prevPage = () => {
+    if (!hasPrevPage) return;
+    const page = data.meta.page - 1;
+    setParams((params) => ({ ...params, nextToken: pageTokens.current[page] || "" }));
+  };
 
-  if (data?.length && meta?.rows) {
-    hasNextPage = offset + pageSize < meta.rows;
-    hasPrevPage = offset > 0;
-  }
-
-  const nextPage = useCallback(() => {
-    setOffset((prev) => prev + pageSize);
-  }, [pageSize]);
-
-  const prevPage = useCallback(() => {
-    setOffset((prev) => prev - pageSize);
-  }, [pageSize]);
+  const sortBy = (column: string, direction: "asc" | "desc") => {
+    pageTokens.current = { 0: "" };
+    setParams((prev) => {
+      return { ...prev, sort: column, direction, nextToken: "" };
+    });
+  };
+  const search = (query: string) => {
+    pageTokens.current = { 0: "" };
+    setParams((prev) => {
+      return { ...prev, query, nextToken: "" };
+    });
+  };
 
   return {
-    data,
-    meta,
-    isLoading: rowsLoading || metaLoading,
-    pagination: { nextPage, prevPage, hasNextPage, hasPrevPage },
+    data: data?.data,
+    meta: data?.meta,
+    params: params,
+    isLoading,
+    sortBy,
+    search,
+    paginate: { nextPage, prevPage, hasNextPage, hasPrevPage },
   };
 }

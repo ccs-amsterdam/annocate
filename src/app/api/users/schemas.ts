@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { GetParamsSchema } from "../schemaHelpers";
+import { CommonGetParamsSchema } from "../schemaHelpers";
 
-export const UsersGetParamsSchema = GetParamsSchema.extend({});
+export const UsersGetParamsSchema = CommonGetParamsSchema.extend({});
 
 export const UsersGetResponseSchema = z.object({
   id: z.number(),

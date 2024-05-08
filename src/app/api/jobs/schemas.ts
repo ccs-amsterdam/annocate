@@ -1,12 +1,16 @@
 import { z } from "zod";
-import { GetParamsSchema } from "../schemaHelpers";
+import { CommonGetParamsSchema } from "../schemaHelpers";
 
-export const JobsGetParamsSchema = GetParamsSchema.extend({});
+export const JobsGetParamsSchema = CommonGetParamsSchema.extend({});
 
 export const JobsGetResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   created: z.coerce.date(),
+});
+
+export const JobsGetMetaResponseSchema = z.object({
+  rows: z.number(),
 });
 
 export const JobsPostBodySchema = z.object({

@@ -3,12 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MiddlecatUser } from "middlecat-react";
 import { useCommonGet } from "../queryHelpers";
 
-export function useJobs(params: JobsGetParams, pageSize: number = 10) {
+export function useJobs(initialParams: JobsGetParams) {
   return useCommonGet({
     endpoint: "jobs",
-    params,
+    initialParams,
     responseSchema: JobsGetResponseSchema,
-    pageSize,
   });
 }
 

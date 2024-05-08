@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { authenticateUser, serverRole } from "@/functions/authorization";
+import { authenticateUser, serverRole } from "@/app/api/authorization";
 
 export async function GET(req: Request) {
   const email = await authenticateUser(req);

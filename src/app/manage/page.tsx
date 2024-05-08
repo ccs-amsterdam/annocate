@@ -7,6 +7,7 @@ import { Loader } from "@/styled/Styled";
 import { useMiddlecat } from "middlecat-react";
 import { useState } from "react";
 import { JobsGetParams } from "../api/jobs/schemas";
+import CommonGetTable from "@/components/Common/CommonGetTable";
 
 export default function Home() {
   return (
@@ -25,22 +26,7 @@ export default function Home() {
 }
 
 function SelectJob() {
-  const [params, setParams] = useState<JobsGetParams>({ query: "" });
-  const { data, isLoading, pagination } = useJobs(params, 4);
+  const jobs = useJobs({ pageSize: 3 });
 
-  if (isLoading) return <Loader />;
-  if (!data) return null;
-
-  return (
-    <div>
-      {data.map((job: any) => {
-        return (
-          <div key={job.id}>
-            <h2>{job.name}</h2>
-            <p>{job.createdAt}</p>
-          </div>
-        );
-      })}
-    </div>
-  );
+  return <CommonGetTable {...jobs} />;
 }
