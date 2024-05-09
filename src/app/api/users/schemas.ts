@@ -3,20 +3,21 @@ import { CommonGetParamsSchema } from "../schemaHelpers";
 
 export const UsersGetParamsSchema = CommonGetParamsSchema.extend({});
 
+export const UserRoleSchema = z.enum(["admin", "creator", "guest"]);
+
 export const UsersGetResponseSchema = z.object({
-  id: z.number(),
   email: z.string(),
-  name: z.string(),
-  created: z.string(),
-  isAdmin: z.boolean(),
-  canCreateJob: z.boolean(),
+  role: UserRoleSchema,
 });
 
 export const UsersPostBodySchema = z.object({
+  email: z.string().email().min(1).max(256),
+  role: UserRoleSchema,
+});
+
+export const UsersPutBodySchema = z.object({
   email: z.string().email(),
-  name: z.string().min(1).max(128),
-  isAdmin: z.boolean().optional(),
-  canCreateJob: z.boolean().optional(),
+  role: UserRoleSchema,
 });
 
 export type UsersGetParams = z.infer<typeof UsersGetParamsSchema>;

@@ -66,7 +66,7 @@ export default function renderText(
 }
 
 const renderField = (
-  textField: TextField,
+  textField: TextField | undefined,
   paragraph_key: string,
   paragraphs: ReactElement[],
   field: string,
@@ -103,7 +103,12 @@ const renderField = (
   );
 };
 
-const renderParagraph = (textField: TextField, paragraph_nr: number, tokens: ReactElement[], end: boolean) => {
+const renderParagraph = (
+  textField: TextField | undefined,
+  paragraph_nr: number,
+  tokens: ReactElement[],
+  end: boolean,
+) => {
   if (textField?.paragraphs != null && !textField?.paragraphs)
     return (
       <span key={"par" + paragraph_nr}>

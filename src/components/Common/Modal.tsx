@@ -103,7 +103,7 @@ const Modal = ({ children, open, setOpen, closeOnSelectKey }: ModalProps) => {
   const closeIcon = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !container.current) return;
     const modalEl = modal.current;
     const containerEl = container.current;
     const closeIconEl = closeIcon.current;

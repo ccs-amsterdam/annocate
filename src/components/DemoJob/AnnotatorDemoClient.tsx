@@ -44,20 +44,22 @@ export default function AnnotatorDemoClient() {
   }, [data]);
 
   if (status === "loading") return <Loader $active />;
-  if (status === "success" && data === null)
+  if (status === "success" && data == null)
     return (
       <StyledDiv>
         <DemoJobOverview />
       </StyledDiv>
     );
+  if (status === "error") return <p>Error loading job</p>;
+  if (data == null) return <p>Job not found</p>;
 
   return <Annotator jobServer={data} />;
 }
 
 const useJob = () => {
   const searchparams = useSearchParams();
-  const codebook = searchparams.get("codebook");
-  const units = searchparams.get("units");
+  const codebook = searchparams?.get("codebook");
+  const units = searchparams?.get("units");
 
   const jobQuery = useQuery(
     ["job", codebook, units],

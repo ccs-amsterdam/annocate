@@ -99,7 +99,7 @@ const QuestionTask = ({
   blockEvents = false,
 }: QuestionTaskProps) => {
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [conditionReport, setConditionReport] = useState<ConditionReport>(null);
+  const [conditionReport, setConditionReport] = useState<ConditionReport | null>(null);
   const divref = useRef(null);
   const textref = useRef(null);
   const boxref = useRef(null);
@@ -123,7 +123,7 @@ const QuestionTask = ({
   }, [refs.text, refs.box, refs.code]);
 
   const startTransition = useCallback(
-    (trans: Transition, nextUnit: boolean) => {
+    (trans: Transition | undefined, nextUnit: boolean) => {
       if (nextUnit) {
         nextUnitTransition(refs, trans);
       } else {
@@ -138,7 +138,7 @@ const QuestionTask = ({
 
   // swipe controlls need to be up in the QuestionTask component due to working on the div containing the question screen
   // use separate swipe for text (document) and menu rows, because swiping up in the text is only possible if scrolled all the way down
-  const [swipe, setSwipe] = useState<Swipes>(null);
+  const [swipe, setSwipe] = useState<Swipes | null>(null);
   const textSwipe = useSwipeable(swipeControl(question, refs, setSwipe, false));
   const menuSwipe = useSwipeable(swipeControl(question, refs, setSwipe, true));
 
@@ -148,7 +148,7 @@ const QuestionTask = ({
   // question.showAnnotations. Passing an array of annotations to Document highlights the spans
   let annotations: Annotation[] = question?.annotation ? [question.annotation] : [];
   if (question?.showAnnotations && unit.unit.annotations) {
-    const addAnnotations = unit.unit.annotations.filter((a) => question.showAnnotations.includes(a.variable));
+    const addAnnotations = unit.unit.annotations.filter((a) => question.showAnnotations?.includes(a.variable));
     annotations = [...annotations, ...addAnnotations];
   }
 
@@ -202,7 +202,7 @@ const QuestionTask = ({
   );
 };
 
-const nextUnitTransition = (r: SwipeRefs, trans: Transition) => {
+const nextUnitTransition = (r: SwipeRefs, trans: Transition | undefined) => {
   const direction = trans?.direction;
   const color = trans?.color || "var(--background)";
   if (r?.box?.current?.style != null && r?.text?.current != null) {
@@ -216,7 +216,7 @@ const nextUnitTransition = (r: SwipeRefs, trans: Transition) => {
   }
 };
 
-const nextQuestionTransition = (r: SwipeRefs, trans: Transition) => {
+const nextQuestionTransition = (r: SwipeRefs, trans: Transition | undefined) => {
   if (!trans?.color) return;
   // if (r?.box?.current?.style != null && r?.text?.current != null) {
   //   r.text.current.style.transhsl(var(--background))nd 50ms ease-out`;
@@ -225,7 +225,7 @@ const nextQuestionTransition = (r: SwipeRefs, trans: Transition) => {
 };
 
 const hideUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, code: RefObject<HTMLElement>): void => {
-  if (!text.current) return null;
+  if (!text.current || !box.current || !code.current) return;
   code.current.innerText = "";
   text.current.style.transition = ``;
   box.current.style.transition = ``;
@@ -235,7 +235,7 @@ const hideUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, cod
 };
 
 const showUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, code: RefObject<HTMLElement>): void => {
-  if (!text.current) return null;
+  if (!text.current || !box.current || !code.current) return;
   code.current.innerText = "";
   box.current.style.transition = `opacity 200ms linear`;
   box.current.style.opacity = "1";

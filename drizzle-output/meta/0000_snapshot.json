@@ -1,5 +1,5 @@
 {
-  "id": "9991e18e-eb73-455c-8dce-4c314f545b3d",
+  "id": "15fab3c6-cb38-4fb1-a5b6-baf19fc80c65",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
@@ -360,6 +360,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "creator_email": {
+          "name": "creator_email",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "name": {
           "name": "name",
           "type": "varchar(128)",
@@ -389,13 +395,28 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "jobs_creator_email_users_email_fk": {
+          "name": "jobs_creator_email_users_email_fk",
+          "tableFrom": "jobs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "creator_email"
+          ],
+          "columnsTo": [
+            "email"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "cascade"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "jobs_name_unique": {
-          "name": "jobs_name_unique",
+        "unique_name": {
+          "name": "unique_name",
           "nullsNotDistinct": false,
           "columns": [
+            "creator_email",
             "name"
           ]
         }
@@ -683,12 +704,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "name": {
-          "name": "name",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
         "created": {
           "name": "created",
           "type": "timestamp",
@@ -696,19 +711,12 @@
           "notNull": true,
           "default": "now()"
         },
-        "is_admin": {
-          "name": "is_admin",
-          "type": "boolean",
+        "role": {
+          "name": "role",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": false
-        },
-        "can_create_job": {
-          "name": "can_create_job",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
+          "default": "'coder'"
         }
       },
       "indexes": {},

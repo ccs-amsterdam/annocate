@@ -1,31 +1,79 @@
 import { Paginate } from "@/app/api/queryHelpers";
 import { Button } from "../ui/button";
-import { FaChevronDown, FaChevronLeft, FaChevronRight, FaChevronUp } from "react-icons/fa";
+import { FaChevronDown, FaChevronLeft, FaChevronRight, FaChevronUp, FaSearch } from "react-icons/fa";
 import { CommonGetParams, GetMeta } from "@/app/api/schemaHelpers";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useEffect, useState } from "react";
+import { Input } from "../ui/input";
+import { set } from "zod";
+import { CheckCircle, ChevronLeft, ChevronRight, Circle, Loader, Search } from "lucide-react";
+
+type Value = string | number | Date | boolean;
 
 interface Props {
-  data: Record<string, string | number | Date>[];
+  data: Record<string, Value>[];
   meta: GetMeta;
   params: CommonGetParams;
   paginate: Paginate;
   sortBy: (column: string, direction: "asc" | "desc") => void;
   search: (query: string) => void;
   isLoading: boolean;
+  className?: string;
+  onSelect?: (row: Record<string, Value>) => void;
 }
 
 export default function CommonGetTable(props: Props) {
   const [prevProps, setPrevProps] = useState(props);
+  const [query, setQuery] = useState("");
+  const [debouncing, setDebouncing] = useState(false);
+  const search = props.search;
 
   useEffect(() => {
     if (props.data) setPrevProps(props);
   }, [props]);
 
+  useEffect(() => {
+    setDebouncing(true);
+    const timer = setTimeout(() => {
+      search(query);
+      setDebouncing(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [query, search]);
+
   const { data, meta, paginate } = prevProps;
 
   if (!data && props.isLoading) return <div>Loading...</div>;
-  if (!data) return <div>No data</div>;
+  const showPagination = meta?.rows > meta?.pageSize;
+
+  return (
+    <div className={props.className || ""}>
+      <div className={` mb-4 flex select-none gap-3  ${showPagination ? "" : "hidden"}`}>
+        <div className="relative">
+          <Input
+            className="flex-shrink-1 h-9  min-w-0 border-none bg-primary/30"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search"
+          />
+          <div className="absolute right-2 top-2 text-primary">
+            {debouncing || props.isLoading ? (
+              <Loader className="h-5 w-5 animate-spin-slow" />
+            ) : (
+              <Search className="h-5 w-5" />
+            )}
+          </div>
+        </div>
+        <CommonGetPagination {...paginate} />
+      </div>
+      <RenderTable {...prevProps} />
+    </div>
+  );
+}
+
+function RenderTable({ data, meta, sortBy, onSelect, isLoading }: Props) {
+  if (!data) return null;
+  if (data.length === 0) return <div className="mt-5">No data found</div>;
 
   function renderSortChevron(column: string) {
     if (!meta?.sort || column !== meta.sort) return <FaChevronUp className="opacity-0 group-hover:opacity-100" />;
@@ -35,59 +83,68 @@ export default function CommonGetTable(props: Props) {
   }
 
   function onSort(column: string): void {
-    if (!meta.sort) return null;
+    if (!meta.sort) return;
     if (column === meta.sort) {
-      props.sortBy(column, meta.direction === "asc" ? "desc" : "asc");
+      sortBy(column, meta.direction === "asc" ? "desc" : "asc");
     } else {
-      props.sortBy(column, "asc");
+      sortBy(column, "asc");
     }
   }
 
   return (
-    <div className={props.isLoading ? "opacity-50" : ""}>
-      <CommonGetPagination {...paginate} />
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {Object.keys(data[0]).map((key) => (
-              <TableHead key={key}>
-                <div className="group flex cursor-pointer items-center gap-3" onClick={() => onSort(key)}>
-                  {key} {renderSortChevron(key)}
-                </div>
-              </TableHead>
+    <Table className={`w-full ${isLoading ? "opacity-50" : ""} `}>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          {Object.keys(data[0]).map((key) => (
+            <TableHead key={key}>
+              <div
+                className={`group flex cursor-pointer select-none items-center gap-3 font-bold text-primary `}
+                onClick={() => onSort(key)}
+              >
+                {key} {renderSortChevron(key)}
+              </div>
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((row, i) => (
+          <TableRow key={JSON.stringify(row)} onClick={() => onSelect?.(row)}>
+            {Object.values(row).map((value, i) => (
+              <TableCell key={i}>{formatValue(value)}</TableCell>
             ))}
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((row, i) => (
-            <TableRow key={JSON.stringify(row)}>
-              {Object.values(row).map((value, i) => (
-                <TableCell key={i}>{formatValue(value)}</TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
 export function CommonGetPagination(paginate: Paginate) {
   return (
-    <div>
-      <div>
-        <Button disabled={!paginate.hasPrevPage} variant="ghost" onClick={() => paginate.prevPage()}>
-          <FaChevronLeft />
-        </Button>
-        <Button disabled={!paginate.hasNextPage} variant="ghost" onClick={() => paginate.nextPage()}>
-          <FaChevronRight />
-        </Button>
-      </div>
+    <div className="flex flex-nowrap gap-1 text-primary">
+      <Button
+        className="h-9 bg-primary/30 px-2 hover:bg-primary/40 disabled:bg-foreground/40"
+        disabled={!paginate.hasPrevPage}
+        variant="ghost"
+        onClick={() => paginate.prevPage()}
+      >
+        <ChevronLeft />
+      </Button>
+      <Button
+        className="h-9 bg-primary/30 px-2 hover:bg-primary/40 disabled:bg-foreground/40"
+        disabled={!paginate.hasNextPage}
+        variant="ghost"
+        onClick={() => paginate.nextPage()}
+      >
+        <ChevronRight />
+      </Button>
     </div>
   );
 }
 
-function formatValue(value: string | number | Date) {
-  if (value instanceof Date) return value.toLocaleString();
+function formatValue(value: Value) {
+  if (value instanceof Date) return <span title={value.toLocaleString()}>{value.toDateString()}</span>;
+  if (typeof value === "boolean") return value ? <CheckCircle /> : <Circle />;
   return value;
 }

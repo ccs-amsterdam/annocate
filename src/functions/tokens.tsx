@@ -85,7 +85,7 @@ export const parseTokens = (textFields: TextField[]): Token[] => {
   return tokens;
 };
 
-export const importTokens = (tokens: RawToken[] | RawTokenColumn): Token[] => {
+export const importTokens = (tokens: RawToken[] | RawTokenColumn): Token[] | null => {
   if (!Array.isArray(tokens)) tokens = tokensColumnToRow(tokens);
 
   let paragraph = 0;
@@ -95,46 +95,43 @@ export const importTokens = (tokens: RawToken[] | RawTokenColumn): Token[] => {
   let totalLength = 0;
 
   for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i].text == null) {
-      if (tokens[i].token != null) {
-        tokens[i].text = tokens[i].token;
-      } else {
-        alert("Invalid token data:\n\nimported tokens must have 'text' or 'token' field");
-        return null;
-      }
-    }
-    if (tokens[i].offset == null && tokens[i].start != null) tokens[i].offset = tokens[i].start;
-    if (tokens[i].length == null) tokens[i].length = tokens[i].text.length;
+    const token = tokens[i];
+    const nextOffset = tokens[i + 1]?.offset || 0;
 
-    if (tokens[i].pre == null) tokens[i].pre = "";
-    if (tokens[i].post == null && tokens[i].space != null) tokens[i].post = tokens[i].space;
-    if (tokens[i].post == null) {
-      if (tokens[i].offset != null && tokens[i].length != null) {
-        tokens[i].post =
-          i < tokens[i].length - 1
-            ? " ".repeat(Math.max(0, tokens[i + 1].offset - tokens[i].offset - tokens[i].length))
-            : "";
+    token.text = token.text ?? token.token;
+    if (token.text == null) {
+      throw new Error("Invalid token data: imported tokens must have 'text' or 'token' field");
+    }
+
+    if (token.offset == null && token.start != null) token.offset = token.start;
+    if (token.length == null) token.length = token.text.length;
+
+    if (token.pre == null) token.pre = "";
+    if (token.post == null && token.space != null) token.post = token.space;
+    if (token.post == null) {
+      if (token.offset != null && token.length != null) {
+        token.post = i < token.length - 1 ? " ".repeat(Math.max(0, nextOffset - token.offset - token.length)) : "";
       } else {
-        tokens[i].post = " ";
+        token.post = " ";
       }
     }
 
-    totalLength = tokens[i].length + tokens[i].post.length;
+    totalLength = token.length + token.post.length;
     if (i < tokens.length - 1) totalLength = totalLength + (tokens[i + 1].pre?.length || 0);
 
-    if (tokens[i].offset == null) {
-      tokens[i].offset = offset;
+    if (token.offset == null) {
+      token.offset = offset;
       offset = offset + totalLength;
     }
 
     if (i < tokens.length - 1) {
-      if (!tokens[i].field || tokens[i].field === tokens[i + 1].field) {
+      if (!token.field || token.field === tokens[i + 1].field) {
         if (tokens[i + 1].offset == null && tokens[i + 1].start != null) tokens[i + 1].offset = tokens[i + 1].start;
-        if (tokens[i + 1].offset && tokens[i + 1].offset < tokens[i].offset + totalLength) {
+        if (tokens[i + 1].offset && nextOffset < token.offset + totalLength) {
           alert(
             `Invalid token position data. The length of "${
-              tokens[i].pre + tokens[i].text + tokens[i].post
-            }" on position ${tokens[i].offset} exeeds the offset/start position of the next token`,
+              token.pre + token.text + token.post
+            }" on position ${token.offset} exeeds the offset/start position of the next token`,
           );
           return null;
         }
@@ -143,19 +140,20 @@ export const importTokens = (tokens: RawToken[] | RawTokenColumn): Token[] => {
 
     // ensure paragraph counter
     // if paragraph exists, still overwrite with new counter to ensure that it adds up
-    if (tokens[i].paragraph == null) {
-      tokens[i].paragraph = paragraph;
-      if (tokens[i].text.includes("\n") || tokens[i].post.includes("\n")) paragraph++;
+    if (token.paragraph == null) {
+      token.paragraph = paragraph;
+      if (token.text.includes("\n") || token.post.includes("\n")) paragraph++;
     } else {
-      if (tokens[i].paragraph !== last_paragraph) {
-        last_paragraph = tokens[i].paragraph;
+      if (token.paragraph !== last_paragraph) {
+        last_paragraph = token.paragraph;
         paragraph++;
       }
-      tokens[i].paragraph = paragraph;
+      token.paragraph = paragraph;
     }
 
-    if (tokens[i].field == null) tokens[i].field = "text";
-    tokens[i].index = i;
+    if (token.field == null) token.field = "text";
+    token.index = i;
+    tokens[i] = token;
   }
 
   const preparedTokens: Token[] = [];
@@ -190,12 +188,14 @@ export const importTokens = (tokens: RawToken[] | RawTokenColumn): Token[] => {
  */
 export const tokensColumnToRow = (tokens: RawTokenColumn): RawToken[] => {
   const columns: string[] = Object.keys(tokens);
-  const n = tokens[columns[0] as keyof RawTokenColumn].length;
+  const n = tokens[columns[0] as keyof RawTokenColumn]?.length;
+
+  if (!n) return [];
 
   const tokensArray = [];
   for (let i = 0; i < n; i++) {
     const token: RawToken = columns.reduce((obj, column) => {
-      obj[column] = tokens[column as keyof RawTokenColumn][i];
+      obj[column] = tokens[column as keyof RawTokenColumn]?.[i];
       return obj;
     }, {} as any);
 

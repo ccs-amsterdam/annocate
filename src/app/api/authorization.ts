@@ -1,4 +1,4 @@
-import { ServerRole } from "@/app/types";
+import { UserDetails } from "@/app/types";
 import db, { users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
@@ -64,19 +64,22 @@ export async function authenticateUser(req: Request): Promise<string | null> {
   return await tokenVerifier.verifyToken(access_token);
 }
 
-export async function serverRole(email: string): Promise<ServerRole> {
+export async function userDetails(email: string): Promise<UserDetails> {
   const [user] = await db.select().from(users).where(eq(users.email, email));
-  if (user) return { admin: user.isAdmin, canCreateJob: user.canCreateJob };
+  if (user) return { role: user.role };
 
   if (email === process.env.SUPERADMIN) {
     // if superadmin not in user table, add now
     await db.insert(users).values({
       email,
-      isAdmin: true,
-      canCreateJob: true,
+      role: "admin",
     });
-    return { admin: true, canCreateJob: true };
+    return { role: "admin" };
   }
 
-  return { admin: false, canCreateJob: false };
+  return { role: null };
+}
+
+export function canCreateJob(role: string) {
+  return role === "admin" || role === "creator";
 }

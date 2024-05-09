@@ -12,7 +12,7 @@
     --card: 0, 0%, 100%;
     --card-foreground: 222.2, 84%, 4rgb (0, 0, 0) 0.9%;
 
-    --primary: 174, 80%, 30%;
+    --primary: 174, 80%, 35%;
     --primary-foreground: 222.2, 47.4%, 100%;
 
     --secondary: 44, 64%, 50%;
@@ -52,7 +52,7 @@
     --card: 0, 0%, 100%;
     --card-foreground: 222.2, 84%, 4rgb (0, 0, 0) 0.9%;
 
-    --primary: 174, 56%, 50%;
+    --primary: 174, 50%, 45%;
     --primary-foreground: 222.2, 47.4%, 0%;
 
     --secondary: 44, 64%, 53%;
@@ -99,7 +99,7 @@
     @apply border-border;
   }
   body {
-    @apply text-foreground bg-background;
+    @apply bg-background text-foreground;
   }
 }
 

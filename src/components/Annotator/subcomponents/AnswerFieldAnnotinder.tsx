@@ -15,7 +15,7 @@ interface AnnotinderProps {
   /** The function used to update the values */
   onSelect: (params: OnSelectParams) => void;
   /** A string telling what direction was swiped */
-  swipe: Swipes;
+  swipe: Swipes | null;
   /** If true, all eventlisteners are stopped */
   blockEvents: boolean;
 }

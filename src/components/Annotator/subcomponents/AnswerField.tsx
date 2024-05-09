@@ -6,7 +6,7 @@ import SearchCode from "./AnswerFieldSearchCode";
 import SelectCode from "./AnswerFieldSelectCode";
 import Inputs from "./AnswerFieldInputs";
 import { AnswerItem, OnSelectParams, Swipes, Question, Answer, Transition } from "@/app/types";
-import styled from "styled-components";
+import styled, { CSSProperties } from "styled-components";
 
 const AnswerDiv = styled.div`
   transition: all 0.3s;
@@ -31,15 +31,15 @@ interface AnswerFieldProps {
   questions: Question[];
   questionIndex: number;
   onAnswer: (items: AnswerItem[], onlySave: boolean, transition?: Transition) => void;
-  swipe: Swipes;
+  swipe: Swipes | null;
   blockEvents?: boolean;
 }
 
 const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, blockEvents = false }: AnswerFieldProps) => {
-  const [question, setQuestion] = useState<Question>(null);
-  const [answerItems, setAnswerItems] = useState<AnswerItem[]>(null);
+  const [question, setQuestion] = useState<Question | null>(null);
+  const [answerItems, setAnswerItems] = useState<AnswerItem[] | null>(null);
   const questionDate = useRef<Date>(new Date());
-  const answerRef = useRef(null);
+  const answerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const currentAnswer = answers?.[questionIndex]?.items;
@@ -74,8 +74,10 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
     const el = answerRef.current;
     function resize() {
       const innerEl = el?.children?.[0];
-      if (!innerEl) return;
-      answerRef.current.style["grid-template-rows"] = innerEl.clientHeight + "px";
+      if (!innerEl || !answerRef.current) return;
+
+      const style = answerRef.current.style;
+      style["grid-template-rows" as any] = innerEl.clientHeight + "px";
     }
 
     // first do a quick update, using a small delay that is enough for most content
@@ -92,6 +94,7 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
   }, [answerRef, onAnswer]);
 
   const onFinish = () => {
+    if (!answerItems) return;
     onAnswer(answerItems, false);
   };
 
@@ -112,6 +115,7 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
     //    if an item can only have 1 value, it is still an array of length 1 for consistency
 
     if (!answerItems?.[itemIndex]) return;
+    if (!value) return;
 
     answerItems[itemIndex].questionTime = questionDate.current.toISOString();
     answerItems[itemIndex].answerTime = new Date().toISOString();
@@ -125,7 +129,7 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
     } else {
       // if a single value, check whether it should be treated as multiple, or add as array of length 1
       if (multiple) {
-        const valueIndex = answerItems[itemIndex].values.findIndex((v: string | number) => v === value);
+        const valueIndex = answerItems[itemIndex].values.findIndex((v: string | number | undefined) => v === value);
         if (valueIndex < 0) {
           // if value doesn't exist yet, add it
           answerItems[itemIndex].values.push(value);
@@ -156,14 +160,14 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
 
   let answerfield = null;
 
-  if (question.type === "select code")
+  if (question?.type === "select code")
     answerfield = (
       <SelectCode
-        options={question.options}
-        values={answerItems[0].values} // only use first because selectCode doesn't support items
-        multiple={question.multiple}
-        vertical={question.vertical}
-        sameSize={question.same_size}
+        options={question.options || []}
+        values={answerItems[0].values || []} // only use first because selectCode doesn't support items
+        multiple={!!question.multiple}
+        vertical={!!question.vertical}
+        sameSize={!!question.same_size}
         onSelect={onSelect}
         onFinish={onFinish}
         blockEvents={blockEvents} // for disabling key/click events
@@ -171,24 +175,24 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
       />
     );
 
-  if (question.type === "search code")
+  if (question?.type === "search code")
     answerfield = (
       <SearchCode
-        options={question.options}
+        options={question.options || []}
         values={answerItems[0].values}
-        multiple={question.multiple}
+        multiple={!!question.multiple}
         onSelect={onSelect}
         onFinish={onFinish}
         blockEvents={blockEvents}
       />
     );
 
-  if (question.type === "scale")
+  if (question?.type === "scale")
     answerfield = (
       <Scale
         answerItems={answerItems}
-        items={question.items}
-        options={question.options}
+        items={question.items || []}
+        options={question.options || []}
         onSelect={onSelect}
         onFinish={onFinish}
         blockEvents={blockEvents}
@@ -196,7 +200,7 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
       />
     );
 
-  if (question.type === "annotinder")
+  if (question?.type === "annotinder" && question.swipeOptions)
     answerfield = (
       <Annotinder
         answerItems={answerItems}
@@ -207,12 +211,17 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
       />
     );
 
-  if (question.type === "confirm")
+  if (question?.type === "confirm")
     answerfield = (
-      <Confirm onSelect={onSelect} button={question.options?.[0]?.code} swipe={swipe} blockEvents={blockEvents} />
+      <Confirm
+        onSelect={onSelect}
+        button={question.options?.[0]?.code || "continue"}
+        swipe={swipe}
+        blockEvents={blockEvents}
+      />
     );
 
-  if (question.type === "inputs")
+  if (question?.type === "inputs")
     answerfield = (
       <Inputs
         items={question.items || [null]}

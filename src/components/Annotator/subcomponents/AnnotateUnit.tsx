@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { useCallback } from "react";
 
 interface AnnotateUnitProps {
-  unit: Unit;
+  unit: Unit | null;
   jobServer: JobServer;
   unitIndex: number;
   setUnitIndex: SetUnitIndex;

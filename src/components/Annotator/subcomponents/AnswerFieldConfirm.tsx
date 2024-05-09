@@ -9,7 +9,7 @@ interface ConfirmProps {
   /** The text shown on the confirm button */
   button: string;
   /** A string telling what direction was swiped */
-  swipe: Swipes;
+  swipe: Swipes | null;
   /** If true, all eventlisteners are stopped */
   blockEvents: boolean;
 }

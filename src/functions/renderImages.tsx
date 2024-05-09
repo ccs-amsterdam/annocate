@@ -26,8 +26,8 @@ const StyledImg = styled.img<{ size: Size; fixedSize?: Size }>`
 
 /** Simple interface for image size */
 interface Size {
-  height: string;
-  width: string;
+  height: string | undefined;
+  width: string | undefined;
 }
 
 /** Returns a record where keys are image field names and values are react elements that render the image */
@@ -68,7 +68,7 @@ interface AnnotatableImageProps {
 const AnnotatableImage = React.forwardRef(({ imageField, onImageLoad }: AnnotatableImageProps, ref) => {
   const container = ref;
   const img = useRef<HTMLImageElement>(null);
-  const [size, setSize] = useState({ height: undefined, width: undefined });
+  const [size, setSize] = useState<Size>({ height: undefined, width: undefined });
   const extraspace = imageField.caption ? 56 : 6; // reserve 50 px for caption + 6 for border
 
   useEffect(() => {
@@ -125,6 +125,7 @@ const AnnotatableImage = React.forwardRef(({ imageField, onImageLoad }: Annotata
     </StyledFigure>
   );
 });
+AnnotatableImage.displayName = "AnnotatableImage";
 
 const updateImageSize = (img: any, container: any, setSize: (value: Size) => void, bottomSpace = 0) => {
   if (!img.current || !container.current) return;

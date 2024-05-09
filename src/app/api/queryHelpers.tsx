@@ -22,16 +22,17 @@ export function useCommonGet<Params extends CommonGetParams, Response extends z.
   responseSchema,
 }: {
   endpoint: string;
-  initialParams: Params;
+  initialParams?: Params;
   responseSchema: Response;
 }) {
   const { user } = useMiddlecat();
   const pageTokens = useRef<Record<number, string>>({ 0: "" });
-  const [params, setParams] = useState(initialParams);
+  const [params, setParams] = useState(initialParams || {});
 
   const { data, isLoading } = useQuery({
     queryKey: [endpoint, user, params],
     queryFn: async () => {
+      if (!user) return;
       const res = await user.api.get(endpoint, { params });
       const data = z
         .object({
@@ -40,23 +41,24 @@ export function useCommonGet<Params extends CommonGetParams, Response extends z.
           nextToken: z.string(),
         })
         .parse(res.data);
-      if (data.nextToken) pageTokens.current[data.meta.page + 1] = data.nextToken;
       return data;
     },
     enabled: !!user,
   });
 
+  if (data?.nextToken) pageTokens.current[data.meta.page + 1] = data.nextToken;
+
   let hasNextPage = !!data?.nextToken;
   let hasPrevPage = data?.meta && data.meta.page > 0;
 
   const nextPage = () => {
-    if (!hasNextPage) return;
+    if (!hasNextPage || !data) return;
     const page = data.meta.page + 1;
     setParams((params) => ({ ...params, nextToken: pageTokens.current[page] || "" }));
   };
 
   const prevPage = () => {
-    if (!hasPrevPage) return;
+    if (!hasPrevPage || !data) return;
     const page = data.meta.page - 1;
     setParams((params) => ({ ...params, nextToken: pageTokens.current[page] || "" }));
   };
@@ -67,12 +69,12 @@ export function useCommonGet<Params extends CommonGetParams, Response extends z.
       return { ...prev, sort: column, direction, nextToken: "" };
     });
   };
-  const search = (query: string) => {
+  const search = useCallback((query: string) => {
     pageTokens.current = { 0: "" };
     setParams((prev) => {
       return { ...prev, query, nextToken: "" };
     });
-  };
+  }, []);
 
   return {
     data: data?.data,

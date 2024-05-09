@@ -18,16 +18,20 @@ export function processIrrelevantBranching(unit: any, questions: Question[], ans
   const irrelevantQuestions = new Array(questions.length).fill(false);
 
   for (let i = 0; i < questions.length; i++) {
+    if (!answers[i]?.items) continue;
+    const aItems = answers[i].items;
+    if (!aItems) continue;
+
     if (which.has(i)) {
       irrelevantQuestions[i] = true;
       // gives the value "IRRELEVANT" to targeted questions
-      for (let a of answers[i].items) a.values = ["IRRELEVANT"];
+      for (let a of aItems) a.values = ["IRRELEVANT"];
       unit.annotations = addAnnotationsFromAnswer(answers[i], unit.annotations);
     } else {
       irrelevantQuestions[i] = false;
       // If a question is marked as IRRELEVANT, double check whether this is still the case
       // (a coder might have changed a previous answer)
-      for (let a of answers[i].items) {
+      for (let a of aItems) {
         if (a.values[0] === "IRRELEVANT") a.values = [];
       }
       unit.annotations = addAnnotationsFromAnswer(answers[i], unit.annotations);
@@ -85,6 +89,7 @@ export const getMakesIrrelevantArray = (items: AnswerItem[], options: AnswerOpti
   const answer_makes_irrelevant: { [question: string]: boolean } = {}; // reduce both required for and makes irrelevant
   for (let item of items) {
     for (let value of item.values) {
+      if (value == null) continue;
       if (makes_irrelevant[value])
         for (let mi of Object.keys(makes_irrelevant[value])) answer_makes_irrelevant[mi] = true;
       for (let qhrf of Object.keys(question_has_required_for)) {

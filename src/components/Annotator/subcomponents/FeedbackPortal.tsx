@@ -63,8 +63,8 @@ const ApplaudIcon = styled.div`
 
 interface FeedbackPortalProps {
   variable: string;
-  conditionReport: ConditionReport;
-  setConditionReport: SetState<ConditionReport>;
+  conditionReport: ConditionReport | null;
+  setConditionReport: SetState<ConditionReport | null>;
   fullScreenNode: FullScreenNode;
 }
 
@@ -74,14 +74,14 @@ const FeedbackPortal = ({ variable, conditionReport, setConditionReport, fullScr
   return (
     <>
       <RetryPortal action={action} setConditionReport={setConditionReport} fullScreenNode={fullScreenNode} />
-      <ApplaudPortal action={action} reportSuccess={conditionReport?.reportSuccess} fullScreenNode={fullScreenNode} />
+      <ApplaudPortal action={action} reportSuccess={!!conditionReport?.reportSuccess} fullScreenNode={fullScreenNode} />
     </>
   );
 };
 
 interface RetryPortalProps {
-  action: Action;
-  setConditionReport: SetState<ConditionReport>;
+  action: Action | undefined;
+  setConditionReport: SetState<ConditionReport | null>;
   fullScreenNode: FullScreenNode;
 }
 
@@ -100,7 +100,7 @@ const RetryPortal = ({ action, setConditionReport, fullScreenNode }: RetryPortal
         <RetryPortalContent>
           <CloseButton onClick={() => setConditionReport({ evaluation: {}, damage: {} })} />
           <div className="portalContent">
-            <Markdown>{action?.message}</Markdown>
+            <Markdown>{action?.message || ""}</Markdown>
             <div className="Hint">
               {(action?.submessages || []).map((sm: string, i) => {
                 return (
@@ -118,7 +118,7 @@ const RetryPortal = ({ action, setConditionReport, fullScreenNode }: RetryPortal
 };
 
 interface ApplaudPortalProps {
-  action: Action;
+  action: Action | undefined;
   reportSuccess: boolean;
   fullScreenNode: FullScreenNode;
 }

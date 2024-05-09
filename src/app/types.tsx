@@ -1,17 +1,10 @@
 import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CSSProperties } from "react";
-// common interfaces
 
-///// UTIL
+export type UserRole = "admin" | "creator" | "guest";
 
-// For passing on setState functions, which can either take a value or a function
-// export interface SetState<Type> {
-//   (value: Type): void;
-//   (value: (value: Type) => Type): void;
-// }
-// !! apparently this already exists as Dispatch<SetStateAction<string>>
-//    where Dispatch<function> just says return value is voi
-
-///// CONVENIENCE
+export interface UserDetails {
+  role: UserRole | null;
+}
 
 // shorthand for the many setstate props being passed around
 export type SetState<Type> = Dispatch<SetStateAction<Type>>;
@@ -25,6 +18,53 @@ export type Edge = [number, number];
 
 export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
 export type Status = "DONE" | "IN_PROGRESS";
+
+// need to do this at some point but damn
+
+// export interface GeneralTypeAnnotation {
+//   id?: string;
+//   variable: string;
+//   value?: string | number;
+//   field?: string;
+
+//   color?: string;
+//   comment?: string;
+
+//   // intermediate values (not stored in backend)
+//   index?: number;
+//   text?: string;
+//   positions?: Set<number>;
+//   span?: Span;
+
+//   select: () => void;
+// }
+
+// export interface SpanTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "span";
+//   offset: number;
+//   length: number;
+// }
+
+// export interface FieldTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "field";
+//   id: string;
+// }
+
+// export interface QuestionTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "question";
+//   id: string;
+//   time_question: string;
+//   time_answer: string;
+// }
+
+// export interface RelationTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "relation";
+//   id: string;
+//   fromId: string;
+//   toId: string;
+// }
+
+// export type Annotation = SpanTypeAnnotation | FieldTypeAnnotation | QuestionTypeAnnotation | RelationTypeAnnotation;
 
 export interface Annotation {
   type?: "field" | "span" | "relation";
@@ -228,7 +268,7 @@ export type QuestionItemType = "email" | "number" | "textarea" | "text";
 // an intermediate format that maps annotations to questions in 'questions' mode
 export interface Answer {
   variable: string;
-  items: AnswerItem[];
+  items: AnswerItem[] | null;
   length?: number;
   field?: string;
   offset?: number;
@@ -866,9 +906,4 @@ export interface Debriefing {
 
 export interface SessionData {
   seenInstructions: Record<string, boolean>;
-}
-
-export interface ServerRole {
-  admin: boolean;
-  canCreateJob: boolean;
 }

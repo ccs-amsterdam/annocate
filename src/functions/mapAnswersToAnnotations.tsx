@@ -65,7 +65,7 @@ const isMatch = (annotation: Annotation, answer: Answer, item = "") => {
   );
 };
 
-export const addAnnotationsFromAnswer = (answer: Answer, annotations: Annotation[]): Annotation[] => {
+export const addAnnotationsFromAnswer = (answer: Answer, annotations: Annotation[] | undefined): Annotation[] => {
   // transforms answers to annotations, and either replaces existing annotations or
   // creates new ones.
   if (!annotations) annotations = [];

@@ -108,10 +108,10 @@ interface QuestionFormProps {
   questionIndex: number;
   setQuestionIndex: SetState<number>;
   nextUnit: () => void;
-  setConditionReport: SetState<ConditionReport>;
-  swipe: Swipes;
-  setSwipe: SetState<Swipes>;
-  startTransition: ({ direction, color }: Transition, nextUnit: boolean) => void;
+  setConditionReport: SetState<ConditionReport | null>;
+  swipe: Swipes | null;
+  setSwipe: SetState<Swipes | null>;
+  startTransition: (transition: Transition | undefined, nextUnit: boolean) => void;
   blockEvents: boolean;
 }
 
@@ -130,7 +130,7 @@ const QuestionForm = ({
 }: QuestionFormProps) => {
   const questionRef = useRef<HTMLDivElement>(null);
   const blockAnswer = useRef(false); // to prevent answering double (e.g. with swipe events)
-  const [answers, setAnswers] = useState<Answer[]>(null);
+  const [answers, setAnswers] = useState<Answer[] | null>(null);
   const [questionText, setQuestionText] = useState(<div />);
 
   if (useWatchChange([unit, questions])) {
@@ -165,6 +165,7 @@ const QuestionForm = ({
       // do this via a function, but than this would need to be passed up from
       // AnswerField. At some point think of this when refactoring
       setSwipe(null);
+      if (!answers || !setAnswers) return;
 
       processAnswer(
         items,
@@ -237,7 +238,7 @@ const QuestionForm = ({
   );
 };
 
-const prepareQuestion = (unit: Unit, question: Question, answers: Answer[]) => {
+const prepareQuestion = (unit: Unit, question: Question, answers: Answer[] | null) => {
   if (!question?.question) return <div />;
   let preparedQuestion = question.question;
 
@@ -246,7 +247,7 @@ const prepareQuestion = (unit: Unit, question: Question, answers: Answer[]) => {
     // matchAll not yet supported by RStudio browser
     //const matches = [...Array.from(preparedQuestion.matchAll(regex))];
     //for (let m of matches) {
-    let m: RegExpExecArray;
+    let m: RegExpExecArray | null;
     while ((m = regex.exec(preparedQuestion))) {
       const m0: string = m[0];
       const m1: string = m[1];
@@ -258,7 +259,7 @@ const prepareQuestion = (unit: Unit, question: Question, answers: Answer[]) => {
         answer = answers.find((a) => a.variable === m1) || answer;
       }
 
-      if (answer) {
+      if (answer?.items?.[0]) {
         const value = answer.items[0].values.join(", ");
         preparedQuestion = preparedQuestion.replace(m0, "{" + value + "}");
       }
@@ -298,13 +299,14 @@ const processAnswer = async (
   answers: Answer[],
   questionIndex: number,
   nextUnit: () => void,
-  setAnswers: SetState<Answer[]>,
+  setAnswers: SetState<Answer[] | null>,
   setQuestionIndex: SetState<number>,
-  setConditionReport: SetState<ConditionReport>,
+  setConditionReport: SetState<ConditionReport | null>,
   transition: (nextUnit: boolean) => void,
   blockAnswer: any,
 ): Promise<void> => {
-  if (blockAnswer.current) return null;
+  if (blockAnswer.current) return;
+  if (!questions[questionIndex]?.options || !unit || !answers) return;
   blockAnswer.current = true;
 
   try {
@@ -315,7 +317,7 @@ const processAnswer = async (
     const irrelevantQuestions = processIrrelevantBranching(unit, questions, answers, questionIndex);
 
     // next (non-irrelevant) question in unit (null if no remaining)
-    let newQuestionIndex: number = null;
+    let newQuestionIndex: number | null = null;
     for (let i = questionIndex + 1; i < questions.length; i++) {
       if (irrelevantQuestions[i]) {
         unit.unit.annotations = addAnnotationsFromAnswer(answers[i], unit.unit.annotations);

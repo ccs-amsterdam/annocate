@@ -45,11 +45,12 @@ CREATE TABLE IF NOT EXISTS "job_sets" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "jobs" (
 	"id" serial PRIMARY KEY NOT NULL,
+	"creator_email" varchar(256) NOT NULL,
 	"name" varchar(128) NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
 	"job" jsonb DEFAULT '{"description":""}'::jsonb NOT NULL,
 	"frozen" boolean DEFAULT false NOT NULL,
-	CONSTRAINT "jobs_name_unique" UNIQUE("name")
+	CONSTRAINT "unique_name" UNIQUE("creator_email","name")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "jobset_annotator" (
@@ -88,10 +89,8 @@ CREATE TABLE IF NOT EXISTS "units" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "users" (
 	"email" varchar(256) PRIMARY KEY NOT NULL,
-	"name" varchar(256) NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
-	"is_admin" boolean DEFAULT false NOT NULL,
-	"can_create_job" boolean DEFAULT false NOT NULL
+	"role" text DEFAULT 'coder' NOT NULL
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "annotations_unit_ids" ON "annotations" ("unit_id");--> statement-breakpoint
@@ -132,6 +131,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "job_sets" ADD CONSTRAINT "job_sets_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "jobs"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "jobs" ADD CONSTRAINT "jobs_creator_email_users_email_fk" FOREIGN KEY ("creator_email") REFERENCES "users"("email") ON DELETE no action ON UPDATE cascade;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

@@ -18,7 +18,7 @@ const QuestionMarkButton = styled.span`
 `;
 
 interface InstructionsProps {
-  instruction: string;
+  instruction: string | undefined;
   autoInstruction: boolean;
   sessionData: SessionData;
 }

@@ -10,7 +10,7 @@ import { StyledSegment } from "../../styled/StyledSemantic";
  * Keep unit and index in same state to guarantee that they're synchronized
  */
 export interface IndexedUnit {
-  unit: Unit;
+  unit: Unit | null;
   index: number;
   error?: boolean;
 }

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MiddlecatUser } from "middlecat-react";
 import { useCommonGet } from "../queryHelpers";
 
-export function useJobs(initialParams: JobsGetParams) {
+export function useJobs(initialParams?: JobsGetParams) {
   return useCommonGet({
     endpoint: "jobs",
     initialParams,

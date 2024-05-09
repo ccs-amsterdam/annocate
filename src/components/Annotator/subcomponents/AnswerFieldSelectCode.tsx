@@ -42,9 +42,9 @@ const SelectCode = ({
   // render buttons for options (an array of objects with keys 'label' and 'color')
   // On selection perform onSelect function with the button label as input
   // if canDelete is TRUE, also contains a delete button, which passes null to onSelect
-  const [selected, setSelected] = useState<number>(null);
-  const container = useRef<HTMLDivElement>();
-  const finishbutton = useRef<HTMLButtonElement>();
+  const [selected, setSelected] = useState<number | null>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const finishbutton = useRef<HTMLButtonElement>(null);
   const speedbump = useSpeedBump(values);
 
   const onKeydown = React.useCallback(

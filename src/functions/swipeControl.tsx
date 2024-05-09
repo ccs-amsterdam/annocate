@@ -4,7 +4,7 @@ import { Question, SetState, SwipeRefs, Swipes } from "@/app/types";
 const swipeControl = (
   question: Question,
   refs: SwipeRefs,
-  setSwipe: SetState<Swipes>,
+  setSwipe: SetState<Swipes | null>,
   alwaysDoVertical: boolean,
   triggerdist: number = 110,
 ) => {
@@ -28,6 +28,7 @@ const swipeControl = (
 
   let container: Element;
   const getDeltas = (d: SwipeEventData) => {
+    if (!refs.text.current) return [0, 0];
     if (!container) container = refs.text.current.getElementsByClassName("BodyContainer")[0];
     let deltaX = d.deltaX;
     let deltaY = d.deltaY;
@@ -45,7 +46,8 @@ const swipeControl = (
 
   return {
     onSwiping: (d: SwipeEventData) => {
-      if (!refs?.text?.current) return;
+      if (!swipeOptions || !refs?.text?.current || !refs.box.current || !refs.code.current) return;
+
       const [deltaX, deltaY] = getDeltas(d);
       if (deltaX > 0 && !swipeOptions.right) return;
       if (deltaX < 0 && !swipeOptions.left) return;
@@ -75,7 +77,7 @@ const swipeControl = (
       refs.code.current.style.textAlign = talign;
     },
     onSwiped: (d: SwipeEventData) => {
-      if (!refs?.text?.current) return;
+      if (!swipeOptions || !refs?.text?.current || !refs.box.current || !refs.code.current) return;
       const [deltaX, deltaY] = getDeltas(d);
       if (deltaX > 0 && !swipeOptions.right) return;
       if (deltaX < 0 && !swipeOptions.left) return;

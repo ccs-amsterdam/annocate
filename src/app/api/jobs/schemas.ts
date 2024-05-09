@@ -7,6 +7,7 @@ export const JobsGetResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   created: z.coerce.date(),
+  creator: z.string().nullish(),
 });
 
 export const JobsGetMetaResponseSchema = z.object({
@@ -14,7 +15,7 @@ export const JobsGetMetaResponseSchema = z.object({
 });
 
 export const JobsPostBodySchema = z.object({
-  title: z.string().min(5).max(128),
+  title: z.string().min(1).max(128),
 });
 
 export type JobsPostBody = z.infer<typeof JobsPostBodySchema>;

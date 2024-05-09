@@ -25,7 +25,7 @@ export default class AnnotationManager {
   }
 
   addAnnotation(annotation: Annotation) {
-    this.setAnnotationLib((annotationLib) => {
+    this.setAnnotationLib((annotationLib: AnnotationLibrary) => {
       annotation.id = createId(annotationLib.annotations);
       annotation.positions = getTokenPositions(annotationLib.annotations, annotation);
 
@@ -72,6 +72,7 @@ export default class AnnotationManager {
   }
 
   createRelationAnnotation(code: Code, from: Annotation, to: Annotation) {
+    if (!from.id || !to.id) throw new Error("Cannot create relation annotation without ids");
     const annotation: Annotation = {
       type: "relation",
       variable: code.variable,
@@ -99,7 +100,7 @@ export function createAnnotationLibrary(
   annotationArray = annotationArray.map((a) => ({ ...a }));
 
   annotationArray = repairAnnotations(annotationArray, variableMap);
-  annotationArray = addTokenIndices(annotationArray, unit.unit.tokens);
+  annotationArray = addTokenIndices(annotationArray, unit.unit.tokens || []);
   const annotationDict: AnnotationDictionary = {};
 
   for (let a of annotationArray) {

@@ -103,8 +103,8 @@ const JobController = ({
               progressN={unitProgress}
               index={unitIndex}
               setIndex={setUnitIndex}
-              canGoBack={jobServer?.progress?.seek_backwards}
-              canGoForward={jobServer?.progress?.seek_forwards}
+              canGoBack={!!jobServer?.progress?.seek_backwards}
+              canGoForward={!!jobServer?.progress?.seek_forwards}
             />
           </div>
           <HeartContainer damage={health?.damage} maxDamage={health?.maxDamage} />

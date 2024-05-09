@@ -1,4 +1,4 @@
-import { authenticateUser, serverRole } from "@/app/api/authorization";
+import { authenticateUser, userDetails } from "@/app/api/authorization";
 import db, { jobs, managers } from "@/drizzle/schema";
 import { count, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
       id: jobs.id,
       name: jobs.name,
       created: jobs.created,
+      creator: jobs.creator,
     })
     .from(managers)
     .where(eq(managers.email, email))
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     table,
     params,
     idColumn: "id",
-    queryColumns: ["name"],
+    queryColumns: ["name", "creator"],
   });
 }
 
@@ -37,16 +38,18 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const requiredRoles = ["admin", "creator"];
 
   try {
     const body = await req.json();
     const { title } = JobsPostBodySchema.parse(body);
 
-    const role = await serverRole(email);
-    if (!role.canCreateJob) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await userDetails(email);
+    if (!user.role || !requiredRoles.includes(user.role))
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const id = await db.transaction(async (tx) => {
-      const [job] = await tx.insert(jobs).values({ name: title }).returning();
+      const [job] = await tx.insert(jobs).values({ name: title, creator: email }).returning();
       await tx.insert(managers).values({ jobId: job.id, email, role: "owner" });
       return job.id;
     });
@@ -54,6 +57,9 @@ export async function POST(req: Request) {
     const res: JobsPostResponse = { id };
     return NextResponse.json(res);
   } catch (e: any) {
+    if (e.message.includes("duplicate key value")) {
+      return NextResponse.json({ message: `You already created a job with this name` }, { status: 400 });
+    }
     console.error(e);
     return NextResponse.json(e.message, { status: 400 });
   }

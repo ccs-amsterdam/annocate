@@ -20,23 +20,41 @@ import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
 import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import { Annotation, AnnotationHistory, RawCodeBook, RawUnit, Rules, ServerUnitStatus, Status } from "@/app/types";
+import { Annotation, AnnotationHistory, RawCodeBook, RawUnit, Rules, UserRole, ServerUnitStatus } from "@/app/types";
 
 config({ path: ".env.local" });
 
 // JOB TABLES
 
+export const users = pgTable("users", {
+  email: varchar("email", { length: 256 }).primaryKey(),
+  created: timestamp("created").notNull().defaultNow(),
+  role: text("role", { enum: ["admin", "creator", "guest"] })
+    .notNull()
+    .$type<UserRole>()
+    .default("guest"),
+});
+
 export interface JobConfig {
   description: string;
 }
 
-export const jobs = pgTable("jobs", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 128 }).notNull().unique(),
-  created: timestamp("created").notNull().defaultNow(),
-  config: jsonb("job").notNull().$type<JobConfig>().default({ description: "" }),
-  frozen: boolean("frozen").notNull().default(false),
-});
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: serial("id").primaryKey(),
+    creator: varchar("creator_email", { length: 256 })
+      .references(() => users.email, { onUpdate: "cascade" })
+      .notNull(),
+    name: varchar("name", { length: 128 }).notNull(),
+    created: timestamp("created").notNull().defaultNow(),
+    config: jsonb("job").notNull().$type<JobConfig>().default({ description: "" }),
+    frozen: boolean("frozen").notNull().default(false),
+  },
+  (table) => {
+    return { unq: unique("unique_name").on(table.creator, table.name) };
+  },
+);
 
 export const codebooks = pgTable(
   "codebooks",
@@ -121,15 +139,6 @@ export const jobSetUnitGroups = pgTable(
     return { pk: primaryKey({ columns: [table.jobSetId, table.unitGroupId] }) };
   },
 );
-
-// USER TABLES
-
-export const users = pgTable("users", {
-  email: varchar("email", { length: 256 }).primaryKey(),
-  created: timestamp("created").notNull().defaultNow(),
-  isAdmin: boolean("is_admin").notNull().default(false),
-  canCreateJob: boolean("can_create_job").notNull().default(false),
-});
 
 export const managers = pgTable(
   "managers",

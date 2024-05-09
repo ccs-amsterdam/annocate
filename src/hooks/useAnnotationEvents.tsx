@@ -42,10 +42,10 @@ export default function useAnnotationEvents(
   holdSpaceRef.current = holdSpace;
   alternativeRef.current = alternative;
 
-  const currentTokenRef = useRef(0);
+  const currentTokenRef = useRef<number>(0);
   const setCurrentToken = useCallback(
-    (i: number) => {
-      if (i === currentTokenRef.current) return;
+    (i: number | null) => {
+      if (i == null || i === currentTokenRef.current) return;
       if (tokens?.[i]?.ref?.current) tokens[i].ref.current.focus();
       currentTokenRef.current = i;
     },

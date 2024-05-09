@@ -49,7 +49,7 @@ export default function QuestionIndexStep({
   setQuestionIndex,
 }: QuestionIndexStepProps) {
   //if (questions.length === 1) return null;
-  const [canSelect, setCanSelect] = useState([]);
+  const [canSelect, setCanSelect] = useState<boolean[]>([]);
 
   useEffect(() => {
     const done = answers.map((a: Answer) => {
@@ -58,7 +58,7 @@ export default function QuestionIndexStep({
       }
       return true;
     });
-    const irrelevant = answers.map((a: Answer) => a.items[0].values?.[0] === "IRRELEVANT");
+    const irrelevant = answers.map((a: Answer) => a?.items?.[0] && a.items[0].values?.[0] === "IRRELEVANT");
 
     const cs = answers.map((_, i: number) => {
       if (i === 0) return true;
@@ -109,7 +109,7 @@ export default function QuestionIndexStep({
 function getPreviousIndex(questionIndex: number, canSelect: boolean[], answers: Answer[]) {
   for (let i = questionIndex - 1; i >= 0; i--) {
     if (!canSelect?.[i]) continue;
-    if (answers[i].items[0].values?.[0] === "IRRELEVANT") continue;
+    if (answers?.[i]?.items?.[0].values?.[0] === "IRRELEVANT") continue;
     return i;
   }
   return null;
@@ -117,7 +117,7 @@ function getPreviousIndex(questionIndex: number, canSelect: boolean[], answers: 
 function getNextIndex(questionIndex: number, canSelect: boolean[], questions: Question[], answers: Answer[]) {
   for (let i = questionIndex + 1; i < questions.length; i++) {
     if (!canSelect?.[i]) continue;
-    if (answers[i].items[0].values?.[0] === "IRRELEVANT") continue;
+    if (answers?.[i]?.items?.[0].values?.[0] === "IRRELEVANT") continue;
     return i;
   }
   return null;

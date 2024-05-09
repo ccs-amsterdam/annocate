@@ -1,13 +1,13 @@
 "use client";
 
 import { useJobs } from "@/app/api/jobs/query";
+import CommonGetTable from "@/components/Common/CommonGetTable";
 import { CreateJobDialog } from "@/components/Forms/CreateJob";
 import { Button } from "@/components/ui/button";
-import { Loader } from "@/styled/Styled";
-import { useMiddlecat } from "middlecat-react";
+import { JobsGetResponse } from "../api/jobs/schemas";
 import { useState } from "react";
-import { JobsGetParams } from "../api/jobs/schemas";
-import CommonGetTable from "@/components/Common/CommonGetTable";
+import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 
 export default function Home() {
   return (
@@ -15,8 +15,9 @@ export default function Home() {
       <div className="">
         <h2>Manage Jobs</h2>
         <CreateJobDialog>
-          <Button variant="ghost" className="mx-auto">
+          <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
             Create new job
+            <Plus className="h-5 w-5" />
           </Button>
         </CreateJobDialog>
       </div>
@@ -26,7 +27,12 @@ export default function Home() {
 }
 
 function SelectJob() {
-  const jobs = useJobs({ pageSize: 3 });
+  const jobs = useJobs();
+  const router = useRouter();
 
-  return <CommonGetTable {...jobs} />;
+  function onSelect(row: JobsGetResponse) {
+    router.push(`/manage/${row.id}`);
+  }
+
+  return <CommonGetTable className="mt-8 w-full p-3" {...jobs} onSelect={onSelect} />;
 }

@@ -1,18 +1,16 @@
 "use client";
 
-import { FaChevronRight, FaCog, FaUser, FaUsers } from "react-icons/fa";
-import { useSelectedLayoutSegments } from "next/navigation";
+import { useUserDetails } from "@/app/api/me/details/query";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import UserMenu from "./UserMenu";
-import { useServerRole } from "@/app/api/me/serverRole/query";
-import { Loader, Users } from "lucide-react";
+import { useSelectedLayoutSegments } from "next/navigation";
+import { FaChevronRight, FaCog } from "react-icons/fa";
 import MenuButtonGroup from "../Annotator/subcomponents/MenuButtonGroup";
 import { DarkModeButton } from "../Common/Theme";
+import UserMenu from "./UserMenu";
 
 export default function Menu() {
   const path = useSelectedLayoutSegments() || [];
-  const { data: serverRole, isLoading } = useServerRole();
+  const { data: userDetails, isLoading } = useUserDetails();
 
   function renderBreadcrumbs() {
     let newpath = "";
@@ -26,9 +24,9 @@ export default function Menu() {
       );
     });
   }
-  function renderServerRole() {
+  function renderAdmin() {
     if (isLoading) return <FaCog className="h-7 w-7 animate-spin-slow text-foreground/50" />;
-    if (!serverRole?.admin) return null;
+    if (userDetails?.role !== "admin") return null;
     return (
       <Link href="/admin">
         <FaCog className="h-7 w-7 hover:text-foreground" />
@@ -46,7 +44,7 @@ export default function Menu() {
 
         <div key="right" className="flex flex-auto justify-end pt-[5px]">
           <MenuButtonGroup>
-            {renderServerRole()}
+            {renderAdmin()}
             <DarkModeButton />
             <UserMenu />
           </MenuButtonGroup>

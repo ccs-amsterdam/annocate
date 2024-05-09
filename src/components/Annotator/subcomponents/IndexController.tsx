@@ -100,7 +100,7 @@ const IndexController = ({
   const updateSliderPage = (e: any) => {
     // Changing the range slider directly only updates sliderPage, which shows the value on the slider.
     // the onMouseUp event then process the change
-    let newpage: number = null;
+    let newpage: number | null = null;
     if (Number(e.target.value) > sliderPage) {
       if (canGoForward) {
         newpage = Number(e.target.value);

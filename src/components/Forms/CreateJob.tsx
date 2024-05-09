@@ -20,7 +20,9 @@ export function CreateJobDialog({ children }: CreateJobDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogTrigger asChild className="flex">
+        {children}
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Job</DialogTitle>
@@ -61,7 +63,7 @@ export function CreateJob({ afterSubmit }: CreateJobProps) {
               <FormControl>
                 <Input placeholder="Job title" {...field} />
               </FormControl>
-              <FormDescription>Enter the title of the job</FormDescription>
+              <FormDescription>Pick a name. You can change this later</FormDescription>
               <FormMessage />
             </FormItem>
           )}

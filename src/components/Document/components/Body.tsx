@@ -10,7 +10,7 @@ import styled from "styled-components";
 import { Loader } from "../../../styled/Styled";
 
 const DocumentContent = styled.div<{
-  grid: FieldGrid;
+  grid?: FieldGrid;
   centered: boolean;
   highLines: boolean;
 }>`
