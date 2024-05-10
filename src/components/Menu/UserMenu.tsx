@@ -1,11 +1,10 @@
 "use client";
 
-import MenuButtonGroup from "../Annotator/subcomponents/MenuButtonGroup";
-import { DarkModeButton } from "../Common/Theme";
 import { FaUser } from "react-icons/fa";
 import { useMiddlecat } from "middlecat-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { User } from "lucide-react";
 
 export default function UserMenu() {
   const { user, loading, signIn, signOut, fixedResource } = useMiddlecat();
@@ -30,7 +29,7 @@ export default function UserMenu() {
   return (
     <Popover>
       <PopoverTrigger>
-        <FaUser />
+        <User className="h-8 w-8" />
       </PopoverTrigger>
       <PopoverContent className="mr-2 mt-5">
         <div className="flex flex-col gap-3">{renderAuth()}</div>

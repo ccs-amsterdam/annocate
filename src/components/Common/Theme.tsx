@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { FaMoon, FaSun } from "react-icons/fa";
 import { RiFontSize2 } from "react-icons/ri";
 import useCookie from "@/hooks/useCookie";
 import useIsClient from "@/hooks/useIsClient";
-import { Loader } from "lucide-react";
+import { Loader, Moon, Sun, SunMoon } from "lucide-react";
 
 function setDataset(dataset: string, value: string) {
   document.documentElement.dataset[dataset] = value;
@@ -21,11 +19,12 @@ export const DarkModeButton = () => {
     setDark(next);
   };
 
-  if (!isClient) return <FaSun className="animate-spin-slow text-foreground/50" />;
+  if (!isClient) return <SunMoon className="h-8 w-8 animate-spin-slow text-foreground/50" />;
 
   if (dark === "off")
     return (
-      <FaSun
+      <Sun
+        className="h-8 w-8"
         onClick={onClick}
         style={{
           cursor: "pointer",
@@ -33,7 +32,8 @@ export const DarkModeButton = () => {
       />
     );
   return (
-    <FaMoon
+    <Moon
+      className="h-8 w-8"
       onClick={onClick}
       style={{
         cursor: "pointer",

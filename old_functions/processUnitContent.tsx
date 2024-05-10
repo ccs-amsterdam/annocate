@@ -1,4 +1,4 @@
-import { importTokens, parseTokens } from "./tokens";
+import { importTokens, parseTokens } from "../src/functions/tokens";
 import {
   RawUnit,
   Annotation,
@@ -10,7 +10,7 @@ import {
   FieldGrid,
   FieldGridInput,
 } from "@/app/types";
-import { importCodebook } from "./codebook";
+import { importCodebook } from "../src/functions/codebook";
 
 /**
  * Any steps for validating and preparing the unit content should go here

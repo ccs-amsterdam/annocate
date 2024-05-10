@@ -7,7 +7,7 @@ export const JobsGetResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   created: z.coerce.date(),
-  creator: z.string().nullish(),
+  creator: z.string(),
 });
 
 export const JobsGetMetaResponseSchema = z.object({

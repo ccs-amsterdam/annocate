@@ -7,18 +7,20 @@ const darkmass = 1;
 
 export default function SetResponsiveSize() {
   useEffect(() => {
+    // only on client
+    if (!window?.visualViewport) return;
+
     // Listen for changes to screen size and orientation
     // (this would have been so much easier if Safari would support window.screen.orientation)
     window.visualViewport.addEventListener("resize", updateSize);
     window.addEventListener("resize", updateSize);
 
-    if (window?.screen?.orientation)
-      window.screen.orientation?.addEventListener("change", updateSize);
+    if (window?.screen?.orientation) window.screen.orientation?.addEventListener("change", updateSize);
     return () => {
+      if (!window?.visualViewport) return;
       window.visualViewport.removeEventListener("resize", updateSize);
       window.removeEventListener("resize", updateSize);
-      if (window?.screen?.orientation)
-        window.screen.orientation.removeEventListener("change", updateSize);
+      if (window?.screen?.orientation) window.screen.orientation.removeEventListener("change", updateSize);
     };
   }, []);
 
@@ -38,10 +40,8 @@ function updateSize() {
   const height = `${window.innerHeight - darkmass}px`;
   const width = `${document.documentElement.clientWidth - darkmass}px`;
 
-  const currentHeight =
-    document.documentElement.style.getPropertyValue(`--responsive-height`);
-  const currentWidth =
-    document.documentElement.style.getPropertyValue(`--responsive-width`);
+  const currentHeight = document.documentElement.style.getPropertyValue(`--responsive-height`);
+  const currentWidth = document.documentElement.style.getPropertyValue(`--responsive-width`);
 
   if (height !== currentHeight || width !== currentWidth) {
     document.documentElement.style.setProperty(`--responsive-height`, height);

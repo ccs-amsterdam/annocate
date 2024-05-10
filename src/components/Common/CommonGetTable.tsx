@@ -10,19 +10,18 @@ import { CheckCircle, ChevronLeft, ChevronRight, Circle, Loader, Search } from "
 
 type Value = string | number | Date | boolean;
 
-interface Props {
-  data: Record<string, Value>[];
-  meta: GetMeta;
-  params: CommonGetParams;
+interface Props<T> {
+  data?: T[];
+  meta?: GetMeta;
   paginate: Paginate;
   sortBy: (column: string, direction: "asc" | "desc") => void;
   search: (query: string) => void;
   isLoading: boolean;
   className?: string;
-  onSelect?: (row: Record<string, Value>) => void;
+  onSelect?: (row: T) => void;
 }
 
-export default function CommonGetTable(props: Props) {
+export default function CommonGetTable<T extends Record<string, Value>>(props: Props<T>) {
   const [prevProps, setPrevProps] = useState(props);
   const [query, setQuery] = useState("");
   const [debouncing, setDebouncing] = useState(false);
@@ -44,7 +43,7 @@ export default function CommonGetTable(props: Props) {
   const { data, meta, paginate } = prevProps;
 
   if (!data && props.isLoading) return <div>Loading...</div>;
-  const showPagination = meta?.rows > meta?.pageSize;
+  const showPagination = meta && meta.rows > meta.pageSize;
 
   return (
     <div className={props.className || ""}>
@@ -71,8 +70,8 @@ export default function CommonGetTable(props: Props) {
   );
 }
 
-function RenderTable({ data, meta, sortBy, onSelect, isLoading }: Props) {
-  if (!data) return null;
+function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSelect, isLoading }: Props<T>) {
+  if (!data || !meta) return null;
   if (data.length === 0) return <div className="mt-5">No data found</div>;
 
   function renderSortChevron(column: string) {
@@ -83,7 +82,7 @@ function RenderTable({ data, meta, sortBy, onSelect, isLoading }: Props) {
   }
 
   function onSort(column: string): void {
-    if (!meta.sort) return;
+    if (!meta?.sort) return;
     if (column === meta.sort) {
       sortBy(column, meta.direction === "asc" ? "desc" : "asc");
     } else {

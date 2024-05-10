@@ -43,9 +43,7 @@ export const jobs = pgTable(
   "jobs",
   {
     id: serial("id").primaryKey(),
-    creator: varchar("creator_email", { length: 256 })
-      .references(() => users.email, { onUpdate: "cascade" })
-      .notNull(),
+    creator: varchar("creator_email", { length: 256 }).notNull(),
     name: varchar("name", { length: 128 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
     config: jsonb("job").notNull().$type<JobConfig>().default({ description: "" }),

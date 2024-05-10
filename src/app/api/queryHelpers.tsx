@@ -49,7 +49,7 @@ export function useCommonGet<Params extends CommonGetParams, Response extends z.
   if (data?.nextToken) pageTokens.current[data.meta.page + 1] = data.nextToken;
 
   let hasNextPage = !!data?.nextToken;
-  let hasPrevPage = data?.meta && data.meta.page > 0;
+  let hasPrevPage = !!data?.meta && data.meta.page > 0;
 
   const nextPage = () => {
     if (!hasNextPage || !data) return;
@@ -79,7 +79,6 @@ export function useCommonGet<Params extends CommonGetParams, Response extends z.
   return {
     data: data?.data,
     meta: data?.meta,
-    params: params,
     isLoading,
     sortBy,
     search,

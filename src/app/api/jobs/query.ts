@@ -11,10 +11,11 @@ export function useJobs(initialParams?: JobsGetParams) {
   });
 }
 
-export function useMutateJobs(user: MiddlecatUser) {
+export function useMutateJobs(user?: MiddlecatUser) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: JobsPostBody) => {
+      if (!user) throw new Error("User not found");
       return user.api.post("jobs", body);
     },
     onSuccess: (data) => {
