@@ -8,7 +8,8 @@ export function useUserDetails() {
   return useQuery({
     queryKey: ["user"],
     queryFn: async () => {
-      const res = await user.api.get("me/authorization");
+      if (!user) return;
+      const res = await user.api.get("me/details");
       const userDetails: UserDetails = res.data;
       return userDetails;
     },

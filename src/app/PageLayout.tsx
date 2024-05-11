@@ -10,7 +10,7 @@ interface Props {
 export function PageLayout({ children }: Props) {
   const path = usePathname();
 
-  if (path.startsWith("/annotator")) {
+  if (path?.startsWith("/annotator")) {
     return <AnnotatorLayout>{children}</AnnotatorLayout>;
   }
   return <ManagerLayout>{children}</ManagerLayout>;

@@ -40,7 +40,6 @@ interface CreateUserProps {
 }
 
 export function CreateUser({ afterSubmit }: CreateUserProps) {
-  const { user } = useMiddlecat();
   const form = useForm<UsersPostBody>({
     resolver: zodResolver(UsersPostBodySchema),
     defaultValues: {
@@ -48,7 +47,7 @@ export function CreateUser({ afterSubmit }: CreateUserProps) {
       role: undefined,
     },
   });
-  const { mutateAsync } = useMutateUsers(user);
+  const { mutateAsync } = useMutateUsers();
 
   function onSubmit(values: UsersPostBody) {
     mutateAsync(values).then(afterSubmit).catch(console.error);

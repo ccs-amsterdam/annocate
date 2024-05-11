@@ -1,4 +1,4 @@
-import { UserDetails } from "@/app/types";
+import { UserDetails, UserRole } from "@/app/types";
 import db, { users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
@@ -80,6 +80,11 @@ export async function userDetails(email: string): Promise<UserDetails> {
   return { role: null };
 }
 
-export function canCreateJob(role: string) {
-  return role === "admin" || role === "creator";
+export function hasMinRole(role: UserRole | null, minRole: UserRole) {
+  if (!role) return false;
+  const sortedRoles = ["guest", "creator", "admin"];
+
+  const roleIndex = sortedRoles.indexOf(role);
+  const minRoleIndex = sortedRoles.indexOf(minRole);
+  return roleIndex >= minRoleIndex;
 }

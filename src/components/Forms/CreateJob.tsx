@@ -38,14 +38,13 @@ interface CreateJobProps {
 }
 
 export function CreateJob({ afterSubmit }: CreateJobProps) {
-  const { user } = useMiddlecat();
   const form = useForm<JobsPostBody>({
     resolver: zodResolver(JobsPostBodySchema),
     defaultValues: {
       title: "",
     },
   });
-  const { mutateAsync } = useMutateJobs(user);
+  const { mutateAsync } = useMutateJobs();
 
   function onSubmit(values: JobsPostBody) {
     mutateAsync(values).then(afterSubmit).catch(console.error);

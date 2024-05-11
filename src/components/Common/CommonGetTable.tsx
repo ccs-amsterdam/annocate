@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Input } from "../ui/input";
 import { set } from "zod";
 import { CheckCircle, ChevronLeft, ChevronRight, Circle, Loader, Search } from "lucide-react";
+import { Loading } from "../ui/loader";
 
 type Value = string | number | Date | boolean;
 
@@ -40,10 +41,7 @@ export default function CommonGetTable<T extends Record<string, Value>>(props: P
     return () => clearTimeout(timer);
   }, [query, search]);
 
-  const { data, meta, paginate } = prevProps;
-
-  if (!data && props.isLoading) return <div>Loading...</div>;
-  const showPagination = meta && meta.rows > meta.pageSize;
+  const showPagination = props.meta && props.meta.rows > props.meta.pageSize;
 
   return (
     <div className={props.className || ""}>
@@ -63,7 +61,7 @@ export default function CommonGetTable<T extends Record<string, Value>>(props: P
             )}
           </div>
         </div>
-        <CommonGetPagination {...paginate} />
+        <CommonGetPagination {...props.paginate} />
       </div>
       <RenderTable {...prevProps} />
     </div>
@@ -71,6 +69,7 @@ export default function CommonGetTable<T extends Record<string, Value>>(props: P
 }
 
 function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSelect, isLoading }: Props<T>) {
+  if (isLoading) return <Loading />;
   if (!data || !meta) return null;
   if (data.length === 0) return <div className="mt-5">No data found</div>;
 

@@ -1,6 +1,6 @@
 import { JobsGetParams, JobsGetResponseSchema, JobsPostBody } from "@/app/api/jobs/schemas";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MiddlecatUser } from "middlecat-react";
+import { MiddlecatUser, useMiddlecat } from "middlecat-react";
 import { useCommonGet } from "../queryHelpers";
 
 export function useJobs(initialParams?: JobsGetParams) {
@@ -11,7 +11,8 @@ export function useJobs(initialParams?: JobsGetParams) {
   });
 }
 
-export function useMutateJobs(user?: MiddlecatUser) {
+export function useMutateJobs() {
+  const { user } = useMiddlecat();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: JobsPostBody) => {
