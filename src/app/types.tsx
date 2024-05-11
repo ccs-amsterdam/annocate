@@ -1,6 +1,7 @@
 import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CSSProperties } from "react";
 
-export type UserRole = "admin" | "creator" | "guest";
+export const userRole = ["guest", "creator", "admin"] as const;
+export type UserRole = (typeof userRole)[number];
 
 export interface UserDetails {
   role: UserRole | null;

@@ -11,7 +11,7 @@ export default function Home() {
   const { user, loading } = useMiddlecat();
   const router = useRouter();
 
-  const { mutateAsync: createJob, isLoading } = useMutateJobs(user);
+  const { mutateAsync: createJob, isLoading } = useMutateJobs();
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

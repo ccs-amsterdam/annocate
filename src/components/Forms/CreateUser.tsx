@@ -9,9 +9,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Button } from "../ui/button";
-import { UsersPostBody, UsersPostBodySchema } from "@/app/api/users/schemas";
+import { roleOptions, UsersPostBody, UsersPostBodySchema } from "@/app/api/users/schemas";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Plus } from "lucide-react";
+import { RadioFormField, TextFormField } from "./formHelpers";
 
 interface CreateUserDialogProps {
   children?: React.ReactNode;
@@ -52,85 +53,14 @@ export function CreateUser({ afterSubmit }: CreateUserProps) {
   function onSubmit(values: UsersPostBody) {
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
+  console.log(UsersPostBodySchema.shape.role);
+  const shape = UsersPostBodySchema.shape;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email address</FormLabel>
-              <FormControl>
-                <Input placeholder="user@somewhere.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="role"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel className="mt-0">Role</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex flex-col space-y-1"
-                >
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="guest" />
-                    </FormControl>
-                    <FormLabel className="w-14 font-normal">Guest</FormLabel>
-                    <FormDescription>Can be invited to manage and code jobs</FormDescription>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="creator" />
-                    </FormControl>
-                    <FormLabel className="w-14 font-normal">Creator</FormLabel>
-                    <FormDescription className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" /> can create new jobs
-                    </FormDescription>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="admin" />
-                    </FormControl>
-                    <FormLabel className="w-14 font-normal">Admin</FormLabel>
-                    <FormDescription className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" /> can manage users
-                    </FormDescription>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              {/* <div>
-                <FormDescription>Should this user have Admin priviledges? </FormDescription>
-                <FormMessage />
-              </div> */}
-            </FormItem>
-          )}
-        />
-        {/* <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem className="flex space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox {...field} />
-              </FormControl>
-              <div>
-                <FormLabel>Can create jobs</FormLabel>
-                <FormDescription>Should this user be allowed to create new jobs? </FormDescription>
-                <FormMessage />
-              </div>
-            </FormItem>
-          )}
-        /> */}
+        <TextFormField control={form.control} zType={shape.email} name="email" />
+        <RadioFormField control={form.control} zType={shape.role} name="role" values={roleOptions} />
         <Button type="submit">Create User</Button>
       </form>
     </Form>
