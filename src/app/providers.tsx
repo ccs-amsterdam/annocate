@@ -48,8 +48,9 @@ const defaultOptions = {
       if (failureCount >= 2) return false;
       const unauthorized = e.response?.status == 401;
       const forbidden = e.response?.status == 403;
+      const conflict = e.response?.status == 409;
       const zodError = e.name === "ZodError";
-      const doRetry = !zodError && !unauthorized && !forbidden;
+      const doRetry = !zodError && !unauthorized && !forbidden && !conflict;
       return doRetry;
     },
 

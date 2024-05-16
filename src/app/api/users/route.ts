@@ -1,40 +1,34 @@
-import { authenticateUser, userDetails } from "@/app/api/authorization";
 import db, { users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { createCommonGet, createCommonUpdate } from "../routeHelpers";
-import { UsersGetParamsSchema, UsersPostBodySchema, UsersUpdateResponseSchema } from "./schemas";
+import { NextRequest } from "next/server";
+import { createTableGet, createUpdate } from "../routeHelpers";
+import { UsersTableParamsSchema, UsersUpdateSchema, UsersResponseSchema } from "./schemas";
 
 export async function GET(req: NextRequest) {
-  return createCommonGet({
+  return createTableGet({
     req,
-    tableFunction: (email) => db.select({ email: users.email, role: users.role }).from(users).as("baseQuery"),
-    paramsSchema: UsersGetParamsSchema,
+    tableFunction: (email) =>
+      db.select({ id: users.id, email: users.email, role: users.role }).from(users).as("baseQuery"),
+    paramsSchema: UsersTableParamsSchema,
     idColumn: "email",
     queryColumns: ["email"],
   });
 }
 
 export async function POST(req: Request) {
-  return createCommonUpdate({
-    updateFunction: (email, body) => {
-      return db.insert(users).values(body).returning();
+  return createUpdate({
+    updateFunction: async (email, body) => {
+      const [user] = await db.insert(users).values(body).returning();
+      return user;
     },
     req,
-    bodySchema: UsersPostBodySchema,
-    responseSchema: UsersUpdateResponseSchema,
-    authorizeFunction: (role, body) => role === "admin",
-  });
-}
-
-export async function PUT(req: Request) {
-  return createCommonUpdate({
-    updateFunction: (email, body) => {
-      return db.update(users).set(body).where(eq(users.email, body.email)).returning();
+    bodySchema: UsersUpdateSchema,
+    responseSchema: UsersResponseSchema,
+    authorizeFunction: async (auth, body) => {
+      if (auth.role !== "admin") return { message: "Need to be Admin to add users" };
     },
-    req,
-    bodySchema: UsersPostBodySchema,
-    responseSchema: UsersUpdateResponseSchema,
-    authorizeFunction: (role, body) => role === "admin",
+    errorMsgs: {
+      409: "User already exists",
+    },
   });
 }

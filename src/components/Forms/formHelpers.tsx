@@ -1,17 +1,18 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ReactNode, useState } from "react";
-import { Control, FieldValues, Path, useForm } from "react-hook-form";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useRef, useState } from "react";
+import { Control, FieldValues, Path } from "react-hook-form";
 import { z } from "zod";
-import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "../ui/form";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { FormControl, FormDescription, FormField, FormItem, FormLabel } from "../ui/form";
 import { Input } from "../ui/input";
-import { get } from "http";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { HelpCircle } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+
+export interface FormOptions {
+  value: string;
+  label: string;
+  description?: string;
+}
 
 interface FormFieldProps<T extends FieldValues, Z> {
   control: Control<T, any>;
@@ -20,7 +21,7 @@ interface FormFieldProps<T extends FieldValues, Z> {
 }
 
 interface FormFieldArrayProps<T extends FieldValues, Z extends string> extends FormFieldProps<T, Z> {
-  values: { value: Z; label: string }[];
+  values: FormOptions[];
 }
 
 export function TextFormField<T extends FieldValues, Z>({ control, name, zType }: FormFieldProps<T, Z>) {
@@ -48,14 +49,13 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
   values,
 }: FormFieldArrayProps<T, Z>) {
   const openAPI = getOpenApi(zType);
-  console.log(openAPI);
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <Title title={openAPI.title} description={openAPI.description} />
+          <Title title={openAPI.title || name} description={openAPI.description} />
           <FormControl>
             <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-0">
               {values?.map((value) => (
@@ -63,7 +63,8 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
                   <FormControl>
                     <RadioGroupItem value={value.value} />
                   </FormControl>
-                  <FormLabel className="w-14 font-normal">{value.label}</FormLabel>
+                  <FormLabel className="w-20 font-normal">{value.label}</FormLabel>
+                  {value.description ? <FormDescription className="w-full">{value.description}</FormDescription> : null}
                 </FormItem>
               ))}
             </RadioGroup>
@@ -79,16 +80,41 @@ function getOpenApi(zType: z.ZodTypeAny) {
 }
 
 function Title({ title, description }: { title: string; description: string }) {
+  const [showDescription, setShowDescription] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  function descriptionStyle(showDescription: boolean) {
+    if (!showDescription || !ref.current)
+      return {
+        maxHeight: "0",
+      };
+    const descriptionHeight = ref.current?.scrollHeight;
+    return {
+      maxHeight: `${descriptionHeight}px`,
+    };
+  }
+
+  const chevron = !showDescription ? (
+    <ChevronRight className="h-5 w-5 text-foreground/50 hover:text-primary" />
+  ) : (
+    <ChevronDown className="h-5 w-5 text-foreground/50 hover:text-primary" />
+  );
+
   return (
-    <div className="flex items-center gap-3">
-      <FormLabel>{title}</FormLabel>
-      <Popover>
-        <PopoverTrigger>
-          <HelpCircle className="h-5 w-5 text-foreground/50 hover:text-primary" />
-        </PopoverTrigger>
-        <PopoverContent>{description}</PopoverContent>
-      </Popover>
-    </div>
+    <>
+      <div
+        className="flex items-center gap-3"
+        onClick={() => {
+          if (description) setShowDescription(!showDescription);
+        }}
+      >
+        <FormLabel>{title}</FormLabel>
+        {description ? chevron : null}
+      </div>
+      <FormDescription ref={ref} className="overflow-hidden transition-all" style={descriptionStyle(showDescription)}>
+        {description}
+      </FormDescription>
+    </>
   );
 }
 

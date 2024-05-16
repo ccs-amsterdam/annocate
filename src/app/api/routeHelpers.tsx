@@ -4,9 +4,9 @@ import { PgTableWithColumns, SubqueryWithSelection } from "drizzle-orm/pg-core";
 import jwt from "jsonwebtoken";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { UserRole } from "../types";
-import { authenticateUser, userDetails } from "./authorization";
-import { CommonGetParams } from "./schemaHelpers";
+import { Authorization, UserRole } from "../types";
+import { authenticateUser, authorization } from "./authorization";
+import { TableParamsSchema } from "./schemaHelpers";
 
 interface After {
   column: string;
@@ -15,13 +15,67 @@ interface After {
   isBoolean?: boolean;
 }
 
-interface CreateCommonGetParams<T> {
+interface ErrorMessages {
+  [key: number]: string;
+}
+
+interface AuthorizationError {
+  message?: string;
+  status?: number;
+}
+
+type TableParams = z.infer<typeof TableParamsSchema>;
+
+type AuthorizeFunction<T> = (auth: Authorization, params?: T) => Promise<AuthorizationError | undefined>;
+
+interface CreateGetParams<T> {
+  selectFunction: (email: string, params: T) => Promise<any>;
+  req: NextRequest;
+  paramSchema?: z.ZodType<T>;
+  responseSchema?: z.ZodTypeAny;
+  jobId?: number;
+  authorizeFunction?: AuthorizeFunction<T>;
+}
+
+export async function createGet<T>({
+  selectFunction,
+  req,
+  paramSchema,
+  responseSchema,
+  authorizeFunction,
+  jobId,
+}: CreateGetParams<T>) {
+  const email = await authenticateUser(req);
+  if (!email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  try {
+    const params = paramSchema ? validateRequestParams(req, paramSchema) : undefined;
+    if (authorizeFunction != undefined) {
+      const auth = await authorization(email, jobId);
+      const authError = await authorizeFunction(auth, params);
+      if (authError)
+        return NextResponse.json({ message: authError.message || "Unauthorized" }, { status: authError.status || 403 });
+    }
+
+    const response = await selectFunction(email, params);
+    if (responseSchema) return NextResponse.json(responseSchema.parse(response));
+    return NextResponse.json(response);
+  } catch (e: any) {
+    console.error(e);
+    return NextResponse.json(e.message, { status: 400 });
+  }
+}
+
+interface CreateTableGetParams<T> {
   tableFunction: (email: string, params: T) => PgTableWithColumns<any> | SubqueryWithSelection<any, any>;
   req: NextRequest;
   paramsSchema: z.ZodType<T>;
+  responseSchema?: z.ZodTypeAny;
   idColumn: string;
+  jobId?: number;
   queryColumns?: string[];
-  authorizeFunction?: (role: UserRole | null, params: T) => boolean;
+  authorizeFunction?: AuthorizeFunction<T>;
+  errorMsgs?: ErrorMessages;
 }
 
 /**
@@ -31,22 +85,30 @@ interface CreateCommonGetParams<T> {
  *
  * @returns A Promise that resolves to the response JSON object containing the fetched data, meta data, and next token.
  */
-export async function createCommonGet<T>({
+export async function createTableGet<T>({
   tableFunction,
   req,
   paramsSchema,
+  responseSchema,
   idColumn,
+  jobId,
   queryColumns,
   authorizeFunction,
-}: CreateCommonGetParams<T>) {
+  errorMsgs,
+}: CreateTableGetParams<T>) {
   const email = await authenticateUser(req);
-  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!email) return NextResponse.json({ error: errorMsgs?.[401] || "Unauthorized" }, { status: 401 });
 
   try {
     const params = validateRequestParams(req, paramsSchema);
     if (authorizeFunction != undefined) {
-      const user = await userDetails(email);
-      if (!authorizeFunction(user.role, params)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const auth = await authorization(email, jobId);
+      const authError = await authorizeFunction(auth, params);
+      if (authError)
+        return NextResponse.json(
+          { message: authError.message || errorMsgs?.[authError.status || 403] || "Unauthorized" },
+          { status: authError.status || 403 },
+        );
     }
 
     const table = tableFunction(email, params);
@@ -54,7 +116,7 @@ export async function createCommonGet<T>({
     if (params.nextToken) {
       const { commonParams, after, meta } = parseNextToken(params.nextToken);
 
-      const data = await withCommonGet(table, commonParams, idColumn, queryColumns, after);
+      const data = await queryWithTableFilters(table, commonParams, idColumn, queryColumns, after);
       meta.page = meta.page + 1;
 
       const nextToken = createNextToken(commonParams, data, meta, idColumn);
@@ -67,7 +129,7 @@ export async function createCommonGet<T>({
         pageSize: params.pageSize,
       };
 
-      const [metaResponse] = await withCommonMetaGet(table, commonParams, queryColumns);
+      const [metaResponse] = await queryMeta(table, commonParams, queryColumns);
       const meta = {
         ...metaResponse,
         page: 0,
@@ -77,13 +139,15 @@ export async function createCommonGet<T>({
       };
       if (metaResponse.rows === 0) return NextResponse.json({ data: [], meta, nextToken: "" });
 
-      const data = await withCommonGet(table, commonParams, idColumn, queryColumns);
+      const data = await queryWithTableFilters(table, commonParams, idColumn, queryColumns);
       const nextToken = createNextToken(commonParams, data, meta, idColumn);
+
+      if (responseSchema) return NextResponse.json({ data: z.array(responseSchema).parse(data), meta, nextToken });
       return NextResponse.json({ data, meta, nextToken });
     }
   } catch (e: any) {
     console.error(e);
-    return NextResponse.json(e.message, { status: 400 });
+    return NextResponse.json(errorMsgs?.[400] || e.message, { status: 400 });
   }
 }
 
@@ -91,38 +155,74 @@ interface CreateCommonUpdateParams<T> {
   updateFunction: (email: string, body: T) => Promise<any>;
   req: Request;
   bodySchema: z.ZodType<T>;
-  authorizeFunction: (role: UserRole | null, body: T) => boolean;
+  authorizeFunction: AuthorizeFunction<T>;
+  jobId?: number;
   responseSchema?: z.ZodTypeAny;
+  errorMsgs?: ErrorMessages;
 }
 
-export async function createCommonUpdate<T>({
+export async function createUpdate<T>({
   updateFunction,
   req,
   bodySchema,
   authorizeFunction,
+  jobId,
   responseSchema,
+  errorMsgs,
 }: CreateCommonUpdateParams<T>) {
   const email = await authenticateUser(req);
-  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!email) return NextResponse.json({ message: errorMsgs?.[401] || "Unauthorized" }, { status: 401 });
 
   try {
     const bodyRaw = await req.json();
     const body = bodySchema.parse(bodyRaw);
     if (authorizeFunction != undefined) {
-      const user = await userDetails(email);
-      if (!authorizeFunction(user.role, body)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const auth = await authorization(email, jobId);
+      const authError = await authorizeFunction(auth, body);
+      if (authError)
+        return NextResponse.json(
+          { message: authError.message || errorMsgs?.[authError.status || 403] || "Unauthorized" },
+          { status: authError.status || 403 },
+        );
     }
 
-    const [row] = await updateFunction(email, body);
+    const response = await updateFunction(email, body);
 
-    if (responseSchema) return NextResponse.json(responseSchema.parse(row));
-    return NextResponse.json(row);
+    if (responseSchema) return NextResponse.json(responseSchema.parse(response));
+    return NextResponse.json(response);
   } catch (e: any) {
     console.error(e);
     if (e.message.includes("duplicate key value")) {
-      return NextResponse.json({ message: `This entry already exists` }, { status: 400 });
+      return NextResponse.json({ message: errorMsgs?.[409] || `This entry already exists` }, { status: 409 });
     }
-    return NextResponse.json(e.message, { status: 400 });
+    return NextResponse.json(errorMsgs?.[400] || e.message, { status: 400 });
+  }
+}
+
+interface CreateCommonDeleteParams {
+  deleteFunction: (email: string) => PgTableWithColumns<any> | SubqueryWithSelection<any, any>;
+  req: Request;
+  authorizeFunction: AuthorizeFunction<undefined>;
+  errorMsgs?: ErrorMessages;
+}
+
+export async function createDelete({ deleteFunction, req, authorizeFunction, errorMsgs }: CreateCommonDeleteParams) {
+  const email = await authenticateUser(req);
+  if (!email) return NextResponse.json({ message: errorMsgs?.[401] || "Unauthorized" }, { status: 401 });
+
+  try {
+    if (authorizeFunction != undefined) {
+      const auth = await authorization(email);
+      if (!authorizeFunction(auth))
+        return NextResponse.json({ message: errorMsgs?.[403] || "Unauthorized" }, { status: 403 });
+    }
+
+    await deleteFunction(email).returning();
+
+    return NextResponse.json({ message: "Success" }, { status: 204 });
+  } catch (e: any) {
+    console.error(e);
+    return NextResponse.json({ message: errorMsgs?.[400] || e.message }, { status: 400 });
   }
 }
 
@@ -134,9 +234,9 @@ function validateRequestParams<T extends z.ZodTypeAny>(req: NextRequest, schema:
   return schema.parse(params);
 }
 
-function withCommonGet(
+function queryWithTableFilters(
   table: PgTableWithColumns<any> | SubqueryWithSelection<any, any>,
-  params: CommonGetParams,
+  params: TableParams,
   idColumn: string,
   queryColumns?: string[],
   after?: After[],
@@ -177,9 +277,9 @@ function withCommonGet(
     .where(and(...where));
 }
 
-function withCommonMetaGet(
+function queryMeta(
   table: PgTableWithColumns<any> | SubqueryWithSelection<any, any>,
-  params: CommonGetParams,
+  params: TableParams,
   queryColumns?: string[],
 ) {
   const where: SQL[] = [];
@@ -196,7 +296,7 @@ function withCommonMetaGet(
     .where(and(...where));
 }
 
-function createNextToken(commonParams: CommonGetParams, data: any, meta: any, idColumn: string) {
+function createNextToken(commonParams: TableParams, data: any, meta: any, idColumn: string) {
   const hasNext = (meta.page + 1) * meta.pageSize < meta.rows;
   if (!hasNext) return "";
 
@@ -214,7 +314,7 @@ function createNextToken(commonParams: CommonGetParams, data: any, meta: any, id
 }
 function parseNextToken(token: string) {
   const { commonParams, after, meta } = jwt.verify(token, process.env.SECRET_KEY as string) as {
-    commonParams: CommonGetParams;
+    commonParams: TableParams;
     meta: any;
     after: After[];
   };

@@ -1,4 +1,4 @@
-import { UserDetails } from "@/app/types";
+import { Authorization } from "@/app/types";
 import { useQuery } from "@tanstack/react-query";
 import { useMiddlecat } from "middlecat-react";
 
@@ -10,7 +10,8 @@ export function useUserDetails() {
     queryFn: async () => {
       if (!user) return;
       const res = await user.api.get("me/details");
-      const userDetails: UserDetails = res.data;
+      const userDetails: Authorization = res.data;
+      console.log(userDetails);
       return userDetails;
     },
     enabled: !!user,

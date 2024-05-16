@@ -1,6 +1,6 @@
-import { UserDetails, UserRole } from "@/app/types";
-import db, { users } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { Authorization, JobRole, UserRole } from "@/app/types";
+import db, { managers, users } from "@/drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 
 class TokenVerifier {
@@ -64,25 +64,47 @@ export async function authenticateUser(req: Request): Promise<string | null> {
   return await tokenVerifier.verifyToken(access_token);
 }
 
-export async function userDetails(email: string): Promise<UserDetails> {
-  const [user] = await db.select().from(users).where(eq(users.email, email));
-  if (user) return { role: user.role };
+// Function for getting user details, primarily for server side use to authorize requests.
+export async function authorization(email: string, jobId?: number): Promise<Authorization> {
+  const auth: Authorization = { email, role: null, jobRole: null };
+  if (email === process.env.SUPERADMIN) auth.superAdmin = true;
 
-  if (email === process.env.SUPERADMIN) {
-    // if superadmin not in user table, add now
-    await db.insert(users).values({
-      email,
-      role: "admin",
-    });
-    return { role: "admin" };
+  if (jobId) {
+    const [user] = await db
+      .select({ role: users.role, jobRole: managers.role })
+      .from(users)
+      .leftJoin(managers, eq(users.id, managers.userId))
+      .where(and(eq(users.email, email), eq(managers.jobId, jobId)));
+
+    auth.role = user?.role || null;
+    auth.jobRole = user?.jobRole || null;
+    auth.jobId = jobId;
+  } else {
+    const [user] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(and(eq(users.email, email)));
+
+    auth.role = user?.role || null;
   }
 
-  return { role: null };
+  if (auth.superAdmin) auth.role = "admin";
+
+  return auth;
 }
 
 export function hasMinRole(role: UserRole | null, minRole: UserRole) {
   if (!role) return false;
   const sortedRoles = ["guest", "creator", "admin"];
+
+  const roleIndex = sortedRoles.indexOf(role);
+  const minRoleIndex = sortedRoles.indexOf(minRole);
+  return roleIndex >= minRoleIndex;
+}
+
+export function hasMinJobRole(role: JobRole | null, minRole: JobRole) {
+  if (!role) return false;
+  const sortedRoles = ["manager", "admin"];
 
   const roleIndex = sortedRoles.indexOf(role);
   const minRoleIndex = sortedRoles.indexOf(minRole);

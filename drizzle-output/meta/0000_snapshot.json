@@ -1,5 +1,5 @@
 {
-  "id": "15fab3c6-cb38-4fb1-a5b6-baf19fc80c65",
+  "id": "b04c8c1f-050e-441d-b243-aa6affd09260",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "5",
   "dialect": "pg",
@@ -395,21 +395,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "jobs_creator_email_users_email_fk": {
-          "name": "jobs_creator_email_users_email_fk",
-          "tableFrom": "jobs",
-          "tableTo": "users",
-          "columnsFrom": [
-            "creator_email"
-          ],
-          "columnsTo": [
-            "email"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "cascade"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "unique_name": {
@@ -482,9 +468,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "email": {
-          "name": "email",
-          "type": "varchar(256)",
+        "user_uuid": {
+          "name": "user_uuid",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -496,10 +482,10 @@
         }
       },
       "indexes": {
-        "manager_emails": {
-          "name": "manager_emails",
+        "managers_userId_index": {
+          "name": "managers_userId_index",
           "columns": [
-            "email"
+            "user_uuid"
           ],
           "isUnique": false
         }
@@ -518,26 +504,26 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "managers_email_users_email_fk": {
-          "name": "managers_email_users_email_fk",
+        "managers_user_uuid_users_uuid_fk": {
+          "name": "managers_user_uuid_users_uuid_fk",
           "tableFrom": "managers",
           "tableTo": "users",
           "columnsFrom": [
-            "email"
+            "user_uuid"
           ],
           "columnsTo": [
-            "email"
+            "uuid"
           ],
           "onDelete": "cascade",
-          "onUpdate": "cascade"
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "managers_job_id_email_pk": {
-          "name": "managers_job_id_email_pk",
+        "managers_job_id_user_uuid_pk": {
+          "name": "managers_job_id_user_uuid_pk",
           "columns": [
             "job_id",
-            "email"
+            "user_uuid"
           ]
         }
       },
@@ -698,10 +684,17 @@
       "name": "users",
       "schema": "",
       "columns": {
+        "uuid": {
+          "name": "uuid",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "email": {
           "name": "email",
           "type": "varchar(256)",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
         "created": {
@@ -711,18 +704,33 @@
           "notNull": true,
           "default": "now()"
         },
+        "deactivated": {
+          "name": "deactivated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "role": {
           "name": "role",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'coder'"
+          "default": "'guest'"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      }
     }
   },
   "enums": {},

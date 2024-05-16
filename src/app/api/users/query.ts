@@ -1,26 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCommonGet } from "../queryHelpers";
-import { UsersGetParams, UsersGetResponseSchema, UsersPostBody } from "./schemas";
-import { MiddlecatUser, useMiddlecat } from "middlecat-react";
+import { useTableGet, useUpdate } from "../queryHelpers";
+import { UsersTableParamsSchema, UsersResponseSchema, UsersUpdateSchema } from "./schemas";
+import { useMiddlecat } from "middlecat-react";
+import { z } from "zod";
 
-export function useUsers(initialParams?: UsersGetParams) {
-  return useCommonGet({
+export function useUsers(initialParams?: z.infer<typeof UsersTableParamsSchema>) {
+  return useTableGet({
     endpoint: "users",
     initialParams,
-    responseSchema: UsersGetResponseSchema,
+    responseSchema: UsersResponseSchema,
   });
 }
 
-export function useMutateUsers() {
-  const { user } = useMiddlecat();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: UsersPostBody) => {
-      if (!user) throw new Error("User not found");
-      return user.api.post("users", body);
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries(["users", user]);
-    },
-  });
+export function useUpdateUsers(userId?: string) {
+  return useUpdate(`users/${userId}`, UsersUpdateSchema, UsersResponseSchema, userId);
 }

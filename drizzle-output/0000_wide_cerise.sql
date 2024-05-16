@@ -64,9 +64,9 @@ CREATE TABLE IF NOT EXISTS "jobset_annotator" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "managers" (
 	"job_id" integer NOT NULL,
-	"email" varchar(256) NOT NULL,
+	"user_uuid" uuid NOT NULL,
 	"role" text NOT NULL,
-	CONSTRAINT "managers_job_id_email_pk" PRIMARY KEY("job_id","email")
+	CONSTRAINT "managers_job_id_user_uuid_pk" PRIMARY KEY("job_id","user_uuid")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "unit_groups" (
@@ -88,15 +88,18 @@ CREATE TABLE IF NOT EXISTS "units" (
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "users" (
-	"email" varchar(256) PRIMARY KEY NOT NULL,
+	"uuid" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"email" varchar(256) NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
-	"role" text DEFAULT 'coder' NOT NULL
+	"deactivated" boolean DEFAULT false NOT NULL,
+	"role" text DEFAULT 'guest' NOT NULL,
+	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "annotations_unit_ids" ON "annotations" ("unit_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "codebook_job_ids" ON "codebooks" ("job_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "jobsets_job_ids" ON "job_sets" ("job_id");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "manager_emails" ON "managers" ("email");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "managers_userId_index" ON "managers" ("user_uuid");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "unitgroups_job_ids" ON "unit_groups" ("job_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "units_job_ids" ON "units" ("job_id");--> statement-breakpoint
 DO $$ BEGIN
@@ -136,19 +139,13 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "jobs" ADD CONSTRAINT "jobs_creator_email_users_email_fk" FOREIGN KEY ("creator_email") REFERENCES "users"("email") ON DELETE no action ON UPDATE cascade;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
  ALTER TABLE "managers" ADD CONSTRAINT "managers_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "jobs"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "managers" ADD CONSTRAINT "managers_email_users_email_fk" FOREIGN KEY ("email") REFERENCES "users"("email") ON DELETE cascade ON UPDATE cascade;
+ ALTER TABLE "managers" ADD CONSTRAINT "managers_user_uuid_users_uuid_fk" FOREIGN KEY ("user_uuid") REFERENCES "users"("uuid") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

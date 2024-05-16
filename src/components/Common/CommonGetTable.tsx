@@ -1,23 +1,24 @@
 import { Paginate } from "@/app/api/queryHelpers";
-import { Button } from "../ui/button";
-import { FaChevronDown, FaChevronLeft, FaChevronRight, FaChevronUp, FaSearch } from "react-icons/fa";
-import { CommonGetParams, GetMeta } from "@/app/api/schemaHelpers";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { useEffect, useState } from "react";
-import { Input } from "../ui/input";
-import { set } from "zod";
 import { CheckCircle, ChevronLeft, ChevronRight, Circle, Loader, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { Loading } from "../ui/loader";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { z } from "zod";
+import { GetMetaSchema } from "@/app/api/schemaHelpers";
 
 type Value = string | number | Date | boolean;
 
 interface Props<T> {
   data?: T[];
-  meta?: GetMeta;
+  meta?: z.infer<typeof GetMetaSchema>;
   paginate: Paginate;
   sortBy: (column: string, direction: "asc" | "desc") => void;
   search: (query: string) => void;
   isLoading: boolean;
+  columns?: string[];
   className?: string;
   onSelect?: (row: T) => void;
 }
@@ -68,7 +69,12 @@ export default function CommonGetTable<T extends Record<string, Value>>(props: P
   );
 }
 
-function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSelect, isLoading }: Props<T>) {
+function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSelect, isLoading, columns }: Props<T>) {
+  const columnsI = useMemo(() => {
+    if (!data || !columns) return undefined;
+    return Object.keys(data[0]).map((key) => columns?.includes(key));
+  }, [data, columns]);
+
   if (isLoading) return <Loading />;
   if (!data || !meta) return null;
   if (data.length === 0) return <div className="mt-5">No data found</div>;
@@ -93,24 +99,29 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
     <Table className={`w-full ${isLoading ? "opacity-50" : ""} `}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          {Object.keys(data[0]).map((key) => (
-            <TableHead key={key}>
-              <div
-                className={`group flex cursor-pointer select-none items-center gap-3 font-bold text-primary `}
-                onClick={() => onSort(key)}
-              >
-                {key} {renderSortChevron(key)}
-              </div>
-            </TableHead>
-          ))}
+          {Object.keys(data[0]).map((key, i) => {
+            if (columnsI && !columnsI[i]) return null;
+            return (
+              <TableHead key={key}>
+                <div
+                  role="button"
+                  className={`group flex cursor-pointer select-none items-center gap-3 font-bold text-primary `}
+                  onClick={() => onSort(key)}
+                >
+                  {key} {renderSortChevron(key)}
+                </div>
+              </TableHead>
+            );
+          })}
         </TableRow>
       </TableHeader>
       <TableBody>
         {data.map((row, i) => (
-          <TableRow key={JSON.stringify(row)} onClick={() => onSelect?.(row)}>
-            {Object.values(row).map((value, i) => (
-              <TableCell key={i}>{formatValue(value)}</TableCell>
-            ))}
+          <TableRow role="button" key={JSON.stringify(row)} onClick={() => onSelect?.(row)}>
+            {Object.values(row).map((value, i) => {
+              if (columnsI && !columnsI[i]) return null;
+              return <TableCell key={i}>{formatValue(value)}</TableCell>;
+            })}
           </TableRow>
         ))}
       </TableBody>

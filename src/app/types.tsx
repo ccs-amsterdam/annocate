@@ -3,8 +3,15 @@ import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CS
 export const userRole = ["guest", "creator", "admin"] as const;
 export type UserRole = (typeof userRole)[number];
 
-export interface UserDetails {
+export const jobRole = ["manager", "admin"] as const;
+export type JobRole = (typeof jobRole)[number];
+
+export interface Authorization {
+  email: string;
   role: UserRole | null;
+  superAdmin?: boolean;
+  jobId?: number;
+  jobRole: JobRole | null;
 }
 
 // shorthand for the many setstate props being passed around

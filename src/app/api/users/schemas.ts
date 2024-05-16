@@ -1,37 +1,41 @@
 import { z } from "zod";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-import { CommonGetParamsSchema } from "../schemaHelpers";
-import { userRole, UserRole } from "@/app/types";
+import { TableParamsSchema } from "../schemaHelpers";
+import { userRole } from "@/app/types";
+import { FormOptions } from "@/components/Forms/formHelpers";
 
 extendZodWithOpenApi(z);
 
-export const roleOptions: { value: UserRole; label: string }[] = [
-  { value: "guest", label: "Guest" },
-  { value: "creator", label: "Creator" },
-  { value: "admin", label: "Admin" },
+export const roleOptions: FormOptions[] = [
+  { value: "guest", label: "Guest", description: "can be invited to manage or code jobs" },
+  { value: "creator", label: "Creator", description: "+ can create new jobs" },
+  { value: "admin", label: "Admin", description: "+ can manage users" },
 ];
 
-export const UsersGetParamsSchema = CommonGetParamsSchema.extend({});
+export const UserIdSchema = z.string().uuid().openapi({
+  title: "User ID",
+  description: "The unique identifier of the user",
+  example: "123e4567-e89b-12d3-a456-426614174000",
+});
 
 export const UserEmailSchema = z.string().email().min(1).max(256).openapi({
   title: "Email",
-  description: "The email address of the user",
+  description: "The email address of the user.",
   example: "user@somewhere.com",
 });
 export const UserRoleSchema = z.enum(userRole).openapi({
   title: "Role",
-  description: "The role of the user",
+  description: "The role of the user.",
 });
 
-export const UsersGetResponseSchema = z.object({
+export const UsersTableParamsSchema = TableParamsSchema.extend({});
+
+export const UsersResponseSchema = z.object({
+  id: UserIdSchema,
   email: UserEmailSchema,
   role: UserRoleSchema,
 });
-export const UsersPostBodySchema = z.object({
-  email: UserEmailSchema,
-  role: UserRoleSchema,
-});
-export const UsersPutBodySchema = z.object({
+export const UsersUpdateSchema = z.object({
   email: UserEmailSchema,
   role: UserRoleSchema,
 });
@@ -39,9 +43,3 @@ export const UsersUpdateResponseSchema = z.object({
   email: UserEmailSchema,
   role: UserRoleSchema,
 });
-
-export type UsersGetParams = z.infer<typeof UsersGetParamsSchema>;
-export type UsersGetResponse = z.infer<typeof UsersGetResponseSchema>;
-export type UsersPostBody = z.infer<typeof UsersPostBodySchema>;
-export type UsersPutBody = z.infer<typeof UsersPutBodySchema>;
-export type UsersUpdateResponse = z.infer<typeof UsersUpdateResponseSchema>;

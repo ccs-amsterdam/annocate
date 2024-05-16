@@ -1,12 +1,12 @@
-import db, { jobs, managers } from "@/drizzle/schema";
+import db, { jobs, managers, users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { createCommonGet, createCommonUpdate } from "../routeHelpers";
-import { JobsGetParamsSchema, JobsPostBodySchema, JobsUpdateResponseSchema, JobsPutBodySchema } from "./schemas";
+import { createTableGet, createUpdate } from "../routeHelpers";
+import { JobsTableParamsSchema, JobsUpdateSchema, JobsResponseSchema } from "./schemas";
 import { hasMinRole } from "../authorization";
 
 export async function GET(req: NextRequest) {
-  return createCommonGet({
+  return createTableGet({
     tableFunction: (email) =>
       db
         .select({
@@ -15,41 +15,33 @@ export async function GET(req: NextRequest) {
           created: jobs.created,
           creator: jobs.creator,
         })
-        .from(managers)
-        .where(eq(managers.email, email))
+        .from(users)
+        .where(eq(users.email, email))
+        .leftJoin(managers, eq(users.id, managers.userId))
         .rightJoin(jobs, eq(managers.jobId, jobs.id))
         .as("baseQuery"),
     req,
-    paramsSchema: JobsGetParamsSchema,
+    paramsSchema: JobsTableParamsSchema,
     idColumn: "id",
     queryColumns: ["name", "creator"],
   });
 }
 
 export async function POST(req: Request) {
-  return createCommonUpdate({
+  return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        const [job] = await tx.insert(jobs).values({ name: body.title, creator: email }).returning();
-        await tx.insert(managers).values({ jobId: job.id, email, role: "owner" });
+        const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email));
+        const [job] = await tx.insert(jobs).values({ name: body.name, creator: email }).returning();
+        await tx.insert(managers).values({ jobId: job.id, userId: user.id, role: "admin" });
         return job;
       });
     },
     req,
-    bodySchema: JobsPostBodySchema,
-    responseSchema: JobsUpdateResponseSchema,
-    authorizeFunction: (role, body) => hasMinRole(role, "creator"),
-  });
-}
-
-export async function PUT(req: Request) {
-  return createCommonUpdate({
-    updateFunction: (email, body) => {
-      return db.update(jobs).set({ name: body.title }).where(eq(jobs.id, body.id)).returning();
+    bodySchema: JobsUpdateSchema,
+    responseSchema: JobsResponseSchema,
+    authorizeFunction: async (auth, body) => {
+      if (!hasMinRole(auth.role, "creator")) return { message: "Need to have the Creator role to make a project" };
     },
-    req,
-    bodySchema: JobsPutBodySchema,
-    responseSchema: JobsUpdateResponseSchema,
-    authorizeFunction: (role, body) => hasMinRole(role, "creator"),
   });
 }

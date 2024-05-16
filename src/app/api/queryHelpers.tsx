@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMiddlecat } from "middlecat-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { set, z } from "zod";
-import { CommonGetParams, GetMetaSchema } from "./schemaHelpers";
+import { TableParamsSchema, GetMetaSchema } from "./schemaHelpers";
 
 export interface Paginate {
   nextPage: () => void;
@@ -16,7 +16,9 @@ interface Pagination {
   page: number;
 }
 
-export function useCommonGet<Params extends CommonGetParams, Response extends z.ZodTypeAny>({
+type TableParams = z.infer<typeof TableParamsSchema>;
+
+export function useTableGet<Params extends TableParams, Response extends z.ZodTypeAny>({
   endpoint,
   initialParams,
   responseSchema,
@@ -84,4 +86,41 @@ export function useCommonGet<Params extends CommonGetParams, Response extends z.
     search,
     paginate: { nextPage, prevPage, hasNextPage, hasPrevPage },
   };
+}
+
+export function useGet<T>(table: string, id: number | string, responseSchema: z.ZodType<T>) {
+  const { user } = useMiddlecat();
+  return useQuery({
+    queryKey: [table, user, id],
+    queryFn: async () => {
+      if (!user) return;
+      const res = await user.api.get(`${table}/${id}`);
+      const data = responseSchema.parse(res.data);
+      return data;
+    },
+    enabled: !!user,
+  });
+}
+
+export function useUpdate<Update, Response>(
+  table: string,
+  updateSchema: z.ZodType<Update>,
+  responseSchema: z.ZodType<Response>,
+  updateId?: number | string,
+) {
+  const { user } = useMiddlecat();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: z.infer<typeof updateSchema>) => {
+      if (!user) throw new Error("User not found");
+      if (updateId) {
+        return responseSchema.parse(await user.api.post(`${table}/${updateId}`, params));
+      } else {
+        return responseSchema.parse(await user.api.post(table, params));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries([table, user]);
+    },
+  });
 }

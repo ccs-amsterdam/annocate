@@ -4,6 +4,8 @@ import { RiFontSize2 } from "react-icons/ri";
 import useCookie from "@/hooks/useCookie";
 import useIsClient from "@/hooks/useIsClient";
 import { Loader, Moon, Sun, SunMoon } from "lucide-react";
+import { ReactNode } from "react";
+import { Button } from "@radix-ui/themes";
 
 function setDataset(dataset: string, value: string) {
   document.documentElement.dataset[dataset] = value;
@@ -19,11 +21,14 @@ export const DarkModeButton = () => {
     setDark(next);
   };
 
-  if (!isClient) return <SunMoon className="h-8 w-8 animate-spin-slow text-foreground/50" />;
+  let icon: ReactNode = null;
 
-  if (dark === "off")
-    return (
+  if (!isClient) icon = <SunMoon className="h-8 w-8 animate-spin-slow text-foreground/50" />;
+
+  if (dark === "off") {
+    icon = (
       <Sun
+        role="button"
         className="h-8 w-8"
         onClick={onClick}
         style={{
@@ -31,15 +36,20 @@ export const DarkModeButton = () => {
         }}
       />
     );
-  return (
-    <Moon
-      className="h-8 w-8"
-      onClick={onClick}
-      style={{
-        cursor: "pointer",
-      }}
-    />
-  );
+  } else {
+    icon = (
+      <Moon
+        role="button"
+        className="h-8 w-8"
+        onClick={onClick}
+        style={{
+          cursor: "pointer",
+        }}
+      />
+    );
+  }
+
+  return <Button>{icon}</Button>;
 };
 
 const fontsizes = ["small", "medium", "large"];

@@ -1,26 +1,19 @@
-import { JobsGetParams, JobsGetResponseSchema, JobsPostBody } from "@/app/api/jobs/schemas";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MiddlecatUser, useMiddlecat } from "middlecat-react";
-import { useCommonGet } from "../queryHelpers";
+import { JobsResponseSchema, JobsTableParamsSchema, JobsUpdateSchema } from "@/app/api/jobs/schemas";
+import { z } from "zod";
+import { useGet, useTableGet, useUpdate } from "../queryHelpers";
 
-export function useJobs(initialParams?: JobsGetParams) {
-  return useCommonGet({
+export function useJobs(initialParams?: z.infer<typeof JobsTableParamsSchema>) {
+  return useTableGet({
     endpoint: "jobs",
     initialParams,
-    responseSchema: JobsGetResponseSchema,
+    responseSchema: JobsResponseSchema,
   });
 }
 
-export function useMutateJobs() {
-  const { user } = useMiddlecat();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: JobsPostBody) => {
-      if (!user) throw new Error("User not found");
-      return user.api.post("jobs", body);
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries(["jobs", user]);
-    },
-  });
+export function useJob(jobId: number) {
+  return useGet("jobs", jobId, JobsResponseSchema);
+}
+
+export function useUpdateJobs(jobId?: number) {
+  return useUpdate("jobs", JobsUpdateSchema, JobsResponseSchema, jobId);
 }

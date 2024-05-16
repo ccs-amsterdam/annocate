@@ -20,15 +20,26 @@ import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
 import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import { Annotation, AnnotationHistory, RawCodeBook, RawUnit, Rules, UserRole, ServerUnitStatus } from "@/app/types";
+import {
+  Annotation,
+  AnnotationHistory,
+  RawCodeBook,
+  RawUnit,
+  Rules,
+  UserRole,
+  ServerUnitStatus,
+  JobRole,
+} from "@/app/types";
 
 config({ path: ".env.local" });
 
 // JOB TABLES
 
 export const users = pgTable("users", {
-  email: varchar("email", { length: 256 }).primaryKey(),
+  id: uuid("uuid").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 256 }).unique().notNull(),
   created: timestamp("created").notNull().defaultNow(),
+  deactivated: boolean("deactivated").notNull().default(false),
   role: text("role", { enum: ["admin", "creator", "guest"] })
     .notNull()
     .$type<UserRole>()
@@ -144,15 +155,18 @@ export const managers = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    email: varchar("email", { length: 256 })
+    userId: uuid("user_uuid")
       .notNull()
-      .references(() => users.email, { onDelete: "cascade", onUpdate: "cascade" }),
-    role: text("role", { enum: ["owner", "admin", "write", "read"] }).notNull(),
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["admin", "manager"] })
+      .notNull()
+      .$type<JobRole>()
+      .default("manager"),
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.jobId, table.email] }),
-      emails: index("manager_emails").on(table.email),
+      pk: primaryKey({ columns: [table.jobId, table.userId] }),
+      userIdIndex: index("managers_userId_index").on(table.userId),
     };
   },
 );
