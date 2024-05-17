@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS "codebooks" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"job_id" integer NOT NULL,
 	"name" varchar(256) NOT NULL,
-	"codebook" jsonb NOT NULL
+	"created" timestamp DEFAULT now() NOT NULL,
+	"codebook" jsonb NOT NULL,
+	CONSTRAINT "unique_job_name" UNIQUE("job_id","name")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "invitations" (
@@ -50,7 +52,7 @@ CREATE TABLE IF NOT EXISTS "jobs" (
 	"created" timestamp DEFAULT now() NOT NULL,
 	"job" jsonb DEFAULT '{"description":""}'::jsonb NOT NULL,
 	"frozen" boolean DEFAULT false NOT NULL,
-	CONSTRAINT "unique_name" UNIQUE("creator_email","name")
+	CONSTRAINT "unique_creator_name" UNIQUE("creator_email","name")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "jobset_annotator" (
@@ -65,7 +67,7 @@ CREATE TABLE IF NOT EXISTS "jobset_annotator" (
 CREATE TABLE IF NOT EXISTS "managers" (
 	"job_id" integer NOT NULL,
 	"user_uuid" uuid NOT NULL,
-	"role" text NOT NULL,
+	"role" text DEFAULT 'manager' NOT NULL,
 	CONSTRAINT "managers_job_id_user_uuid_pk" PRIMARY KEY("job_id","user_uuid")
 );
 --> statement-breakpoint

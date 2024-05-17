@@ -30,6 +30,8 @@ import {
   ServerUnitStatus,
   JobRole,
 } from "@/app/types";
+import { CodebookSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
+import { z } from "zod";
 
 config({ path: ".env.local" });
 
@@ -61,9 +63,11 @@ export const jobs = pgTable(
     frozen: boolean("frozen").notNull().default(false),
   },
   (table) => {
-    return { unq: unique("unique_name").on(table.creator, table.name) };
+    return { unq: unique("unique_creator_name").on(table.creator, table.name) };
   },
 );
+
+type Codebook = z.infer<typeof CodebookSchema>;
 
 export const codebooks = pgTable(
   "codebooks",
@@ -73,10 +77,14 @@ export const codebooks = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
-    codebook: jsonb("codebook").notNull().$type<RawCodeBook>(),
+    created: timestamp("created").notNull().defaultNow(),
+    codebook: jsonb("codebook").notNull().$type<Codebook>(),
   },
   (table) => {
-    return { jobIds: index("codebook_job_ids").on(table.jobId) };
+    return {
+      jobIds: index("codebook_job_ids").on(table.jobId),
+      unq: unique("unique_job_name").on(table.jobId, table.name),
+    };
   },
 );
 

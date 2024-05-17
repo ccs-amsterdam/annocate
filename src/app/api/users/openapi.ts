@@ -19,8 +19,8 @@ export const openapiUsers = createOpenAPIDefinitions(
       response: UsersResponseSchema,
     },
     {
-      path: "/users/{userId}",
-      method: "post",
+      path: "/users",
+      method: "put",
       description: "Update a user",
       body: UsersUpdateSchema,
       response: UsersResponseSchema,

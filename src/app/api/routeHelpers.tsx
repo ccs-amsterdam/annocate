@@ -58,7 +58,6 @@ export async function createGet<T>({
     }
 
     const response = await selectFunction(email, params);
-    if (responseSchema) return NextResponse.json(responseSchema.parse(response));
     return NextResponse.json(response);
   } catch (e: any) {
     console.error(e);
@@ -189,7 +188,7 @@ export async function createUpdate<T>({
     const response = await updateFunction(email, body);
 
     if (responseSchema) return NextResponse.json(responseSchema.parse(response));
-    return NextResponse.json(response);
+    return NextResponse.json({ message: "Success" }, { status: 200 });
   } catch (e: any) {
     console.error(e);
     if (e.message.includes("duplicate key value")) {

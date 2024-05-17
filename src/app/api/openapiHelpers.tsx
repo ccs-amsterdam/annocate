@@ -6,7 +6,7 @@ interface PostMethod {
   path: string;
   description: string;
   body: z.ZodSchema<any>;
-  response: z.ZodSchema<any>;
+  response?: z.ZodSchema<any>;
 }
 
 interface GetMethod {
@@ -14,7 +14,7 @@ interface GetMethod {
   path: string;
   description: string;
   params: z.ZodSchema<any>;
-  response: z.ZodSchema<any>;
+  response?: z.ZodSchema<any>;
 }
 
 export function createOpenAPIDefinitions(tags: string[], method: (PostMethod | GetMethod)[]) {
@@ -43,7 +43,7 @@ export function createOpenAPIDefinitions(tags: string[], method: (PostMethod | G
           description: "Success",
           content: {
             "application/json": {
-              schema: m.response,
+              schema: m.response || z.object({}),
             },
           },
         },

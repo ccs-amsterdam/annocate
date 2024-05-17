@@ -1,8 +1,8 @@
 "use client";
 
 import { useJobs } from "@/app/api/jobs/query";
-import CommonGetTable from "@/components/Common/CommonGetTable";
-import { UpdateJob } from "@/components/Forms/jobForms";
+import DBTable from "@/components/Common/DBTable";
+import { CreateJob, UpdateJob } from "@/components/Forms/jobForms";
 import { Button } from "@/components/ui/button";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { Plus } from "lucide-react";
@@ -27,7 +27,7 @@ export default function Home() {
             </Button>
           }
         >
-          <UpdateJob afterSubmit={() => setOpen(false)} />
+          <CreateJob afterSubmit={() => setOpen(false)} />
         </SimpleDialog>
       </div>
       <SelectJob />
@@ -45,5 +45,5 @@ function SelectJob() {
     router.push(`/manage/${row.id}`);
   }
 
-  return <CommonGetTable className="mt-8 w-full p-3" {...jobs} onSelect={onSelect} columns={COLUMNS} />;
+  return <DBTable className="mt-8 w-full p-3" {...jobs} onSelect={onSelect} columns={COLUMNS} />;
 }

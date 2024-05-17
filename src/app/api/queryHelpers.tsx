@@ -3,6 +3,8 @@ import { useMiddlecat } from "middlecat-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { set, z } from "zod";
 import { TableParamsSchema, GetMetaSchema } from "./schemaHelpers";
+import { FieldValues, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 export interface Paginate {
   nextPage: () => void;
@@ -19,10 +21,12 @@ interface Pagination {
 type TableParams = z.infer<typeof TableParamsSchema>;
 
 export function useTableGet<Params extends TableParams, Response extends z.ZodTypeAny>({
+  resource,
   endpoint,
   initialParams,
   responseSchema,
 }: {
+  resource: string;
   endpoint: string;
   initialParams?: Params;
   responseSchema: Response;
@@ -32,7 +36,7 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
   const [params, setParams] = useState(initialParams || {});
 
   const { data, isLoading } = useQuery({
-    queryKey: [endpoint, user, params],
+    queryKey: [resource, user, params],
     queryFn: async () => {
       if (!user) return;
       const res = await user.api.get(endpoint, { params });
@@ -88,13 +92,13 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
   };
 }
 
-export function useGet<T>(table: string, id: number | string, responseSchema: z.ZodType<T>) {
+export function useGet<T>(resource: string, id: number | string, responseSchema: z.ZodType<T>) {
   const { user } = useMiddlecat();
   return useQuery({
-    queryKey: [table, user, id],
+    queryKey: [resource, user, id],
     queryFn: async () => {
       if (!user) return;
-      const res = await user.api.get(`${table}/${id}`);
+      const res = await user.api.get(`${resource}/${id}`);
       const data = responseSchema.parse(res.data);
       return data;
     },
@@ -102,25 +106,29 @@ export function useGet<T>(table: string, id: number | string, responseSchema: z.
   });
 }
 
-export function useUpdate<Update, Response>(
-  table: string,
-  updateSchema: z.ZodType<Update>,
-  responseSchema: z.ZodType<Response>,
-  updateId?: number | string,
-) {
+export function useMutate<Body, Response>({
+  method = "post",
+  resource,
+  endpoint,
+  bodySchema,
+  responseSchema,
+}: {
+  method?: "post" | "put";
+  resource: string;
+  endpoint: string;
+  bodySchema: z.ZodType<Body>;
+  responseSchema?: z.ZodType<Response>;
+}) {
   const { user } = useMiddlecat();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: z.infer<typeof updateSchema>) => {
+    mutationFn: async (params: z.infer<typeof bodySchema>) => {
       if (!user) throw new Error("User not found");
-      if (updateId) {
-        return responseSchema.parse(await user.api.post(`${table}/${updateId}`, params));
-      } else {
-        return responseSchema.parse(await user.api.post(table, params));
-      }
+      const res = await user.api[method](endpoint, params);
+      return responseSchema ? responseSchema.parse(res.data) : res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([table, user]);
+      queryClient.invalidateQueries([resource, user]);
     },
   });
 }

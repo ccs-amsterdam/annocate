@@ -38,6 +38,9 @@ export const JobsResponseSchema = z.object({
   creator: JobsCreatorSchema,
 });
 
+export const JobsCreateSchema = z.object({
+  name: JobsNameSchema,
+});
 export const JobsUpdateSchema = z.object({
   name: JobsNameSchema,
 });

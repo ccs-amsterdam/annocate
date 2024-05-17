@@ -23,7 +23,7 @@ interface Props<T> {
   onSelect?: (row: T) => void;
 }
 
-export default function CommonGetTable<T extends Record<string, Value>>(props: Props<T>) {
+export default function DBTable<T extends Record<string, Value>>(props: Props<T>) {
   const [prevProps, setPrevProps] = useState(props);
   const [query, setQuery] = useState("");
   const [debouncing, setDebouncing] = useState(false);
@@ -71,7 +71,7 @@ export default function CommonGetTable<T extends Record<string, Value>>(props: P
 
 function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSelect, isLoading, columns }: Props<T>) {
   const columnsI = useMemo(() => {
-    if (!data || !columns) return undefined;
+    if (!data || !columns || data.length === 0) return undefined;
     return Object.keys(data[0]).map((key) => columns?.includes(key));
   }, [data, columns]);
 

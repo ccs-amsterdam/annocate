@@ -67,7 +67,14 @@ export async function authenticateUser(req: Request): Promise<string | null> {
 // Function for getting user details, primarily for server side use to authorize requests.
 export async function authorization(email: string, jobId?: number): Promise<Authorization> {
   const auth: Authorization = { email, role: null, jobRole: null };
-  if (email === process.env.SUPERADMIN) auth.superAdmin = true;
+
+  if (email === process.env.SUPERADMIN) {
+    if (jobId) auth.jobId = jobId;
+    auth.superAdmin = true;
+    auth.role = "admin";
+    auth.jobRole = "admin";
+    return auth;
+  }
 
   if (jobId) {
     const [user] = await db
@@ -87,8 +94,6 @@ export async function authorization(email: string, jobId?: number): Promise<Auth
 
     auth.role = user?.role || null;
   }
-
-  if (auth.superAdmin) auth.role = "admin";
 
   return auth;
 }

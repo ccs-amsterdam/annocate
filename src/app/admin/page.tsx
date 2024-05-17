@@ -1,7 +1,7 @@
 "use client";
 
-import CommonGetTable from "@/components/Common/CommonGetTable";
-import { UpdateUser } from "@/components/Forms/userForms";
+import DBTable from "@/components/Common/DBTable";
+import { CreateUser, UpdateUser } from "@/components/Forms/userForms";
 import { Button } from "@/components/ui/button";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { Plus } from "lucide-react";
@@ -27,16 +27,16 @@ export default function Admin() {
             </Button>
           }
         >
-          <UpdateUser afterSubmit={() => setOpen(false)} />
+          <CreateUser afterSubmit={() => setOpen(false)} />
         </SimpleDialog>
       </div>
-      <SelectUser />
+      <UserTable />
     </div>
   );
 }
 const COLUMNS = ["email", "role"];
 
-function SelectUser() {
+function UserTable() {
   const useUsersProps = useUsers();
   const [open, setOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<z.infer<typeof UsersResponseSchema>>();
@@ -49,9 +49,9 @@ function SelectUser() {
   return (
     <>
       <SimpleDialog open={open} setOpen={setOpen} header={`${selectedUser?.email}`}>
-        <UpdateUser current={selectedUser} afterSubmit={() => setSelectedUser(undefined)} />
+        {selectedUser ? <UpdateUser current={selectedUser} afterSubmit={() => setOpen(false)} /> : null}
       </SimpleDialog>
-      <CommonGetTable className="mt-8 w-full p-3" {...useUsersProps} onSelect={onSelect} columns={COLUMNS} />
+      <DBTable className="mt-8 w-full p-3" {...useUsersProps} onSelect={onSelect} columns={COLUMNS} />
     </>
   );
 }

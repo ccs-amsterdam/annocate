@@ -1,6 +1,6 @@
 {
-  "id": "7734df9a-bc4d-4073-8327-9e2383e43b12",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "7d8cdc70-4a18-4524-adc2-8e92f1699d60",
+  "prevId": "7734df9a-bc4d-4073-8327-9e2383e43b12",
   "version": "5",
   "dialect": "pg",
   "tables": {
@@ -478,6 +478,12 @@
       "name": "managers",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
         "job_id": {
           "name": "job_id",
           "type": "integer",
@@ -499,6 +505,13 @@
         }
       },
       "indexes": {
+        "managers_jobId_index": {
+          "name": "managers_jobId_index",
+          "columns": [
+            "job_id"
+          ],
+          "isUnique": false
+        },
         "managers_userId_index": {
           "name": "managers_userId_index",
           "columns": [
@@ -535,16 +548,17 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "managers_job_id_user_uuid_pk": {
-          "name": "managers_job_id_user_uuid_pk",
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unique_job_user": {
+          "name": "unique_job_user",
+          "nullsNotDistinct": false,
           "columns": [
             "job_id",
             "user_uuid"
           ]
         }
-      },
-      "uniqueConstraints": {}
+      }
     },
     "unit_groups": {
       "name": "unit_groups",

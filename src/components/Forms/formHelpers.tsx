@@ -14,17 +14,17 @@ export interface FormOptions {
   description?: string;
 }
 
-interface FormFieldProps<T extends FieldValues, Z> {
+interface FormFieldProps<T extends FieldValues> {
   control: Control<T, any>;
   name: Path<T>;
-  zType: z.ZodType<Z>;
+  zType: z.ZodTypeAny;
 }
 
-interface FormFieldArrayProps<T extends FieldValues, Z extends string> extends FormFieldProps<T, Z> {
+interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
   values: FormOptions[];
 }
 
-export function TextFormField<T extends FieldValues, Z>({ control, name, zType }: FormFieldProps<T, Z>) {
+export function TextFormField<T extends FieldValues>({ control, name, zType }: FormFieldProps<T>) {
   const openAPI = getOpenApi(zType);
   return (
     <FormField
@@ -47,7 +47,7 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
   name,
   zType,
   values,
-}: FormFieldArrayProps<T, Z>) {
+}: FormFieldArrayProps<T>) {
   const openAPI = getOpenApi(zType);
   return (
     <FormField

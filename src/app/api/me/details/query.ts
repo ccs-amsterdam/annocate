@@ -11,7 +11,6 @@ export function useUserDetails() {
       if (!user) return;
       const res = await user.api.get("me/details");
       const userDetails: Authorization = res.data;
-      console.log(userDetails);
       return userDetails;
     },
     enabled: !!user,
