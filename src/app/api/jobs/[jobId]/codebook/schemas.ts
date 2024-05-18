@@ -1,8 +1,17 @@
 import { TableParamsSchema } from "@/app/api/schemaHelpers";
+import { FormOptions } from "@/components/Forms/formHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 
 extendZodWithOpenApi(z);
+
+export const variableTypeOptions: FormOptions[] = [
+  { value: "select code", label: "Select Code", description: "Select one or more codes from a list" },
+  { value: "search code", label: "Search Code", description: "Search for codes in a list" },
+  { value: "scale", label: "Scale", description: "Rate on a scale" },
+  { value: "annotinder", label: "Annotinder", description: "Annotate with Annotinder" },
+  { value: "confirm", label: "Confirm", description: "Confirm the annotation" },
+];
 
 export const CodebookCodeSchema = z.object({
   code: z.string().openapi({
@@ -24,13 +33,13 @@ export const CodebookCodeSchema = z.object({
 });
 
 export const CodebookVariableSchema = z.object({
-  name: z.string().openapi({
+  name: z.string().max(128).openapi({
     title: "Name",
     description:
       "The name of the variable. Will not be shown to user, so pick a name that works well in your analysis software (e.g., avoid spaces). Needs to be unique within the codebook.",
     example: "variable_name",
   }),
-  question: z.string().openapi({
+  question: z.string().max(512).openapi({
     title: "Question",
     description: "The question that will be shown to the annotator.",
     example: "What is the question you want to ask?",
@@ -39,6 +48,12 @@ export const CodebookVariableSchema = z.object({
     title: "Type",
     description: "The type of the variable",
     example: "select code",
+  }),
+  instruction: z.string().nullish().openapi({
+    title: "Instruction",
+    description:
+      "Optionally, you can provide additional instructions for this variable. This is a markdown string, so you can style it as you like",
+    example: "Here we measure emotion, defined as ...",
   }),
 
   perField: z
@@ -83,7 +98,12 @@ export const CodebookSearchTypeSchema = CodebookVariableSchema.extend({
 });
 
 export const CodebookSettingsSchema = z.object({
-  instruction: z.string().nullish(),
+  instruction: z.string().nullish().openapi({
+    title: "Instruction",
+    description:
+      "Optionally, you can provide additional instructions for the codebook. This is a markdown string, so you can style it as you like",
+    example: "Here we measure emotion, defined as ...",
+  }),
   auto_instruction: z.boolean().nullish(),
 });
 
@@ -111,6 +131,10 @@ export const CodebooksResponseSchema = z.object({
 });
 
 export const CodebooksCreateOrUpdateSchema = z.object({
-  name: z.string(),
+  name: z.string().max(128).openapi({
+    title: "Name",
+    description: "The name of the codebook",
+    example: "My first codebook",
+  }),
   codebook: CodebookSchema,
 });

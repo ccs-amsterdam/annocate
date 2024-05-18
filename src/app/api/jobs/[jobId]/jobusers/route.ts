@@ -42,7 +42,6 @@ export async function POST(req: NextRequest, { params }: { params: { jobId: numb
             set: { role: body.role },
           })
           .returning();
-        console.log(jobuser);
         return jobuser;
       });
     },

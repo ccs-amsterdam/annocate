@@ -25,44 +25,18 @@ interface Props<T> {
 
 export default function DBTable<T extends Record<string, Value>>(props: Props<T>) {
   const [prevProps, setPrevProps] = useState(props);
-  const [query, setQuery] = useState("");
-  const [debouncing, setDebouncing] = useState(false);
-  const search = props.search;
 
   useEffect(() => {
     if (props.data) setPrevProps(props);
   }, [props]);
-
-  useEffect(() => {
-    setDebouncing(true);
-    const timer = setTimeout(() => {
-      search(query);
-      setDebouncing(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [query, search]);
 
   const showPagination = props.meta && props.meta.rows > props.meta.pageSize;
 
   return (
     <div className={props.className || ""}>
       <div className={` mb-4 flex select-none gap-3  ${showPagination ? "" : "hidden"}`}>
-        <div className="relative">
-          <Input
-            className="flex-shrink-1 h-9  min-w-0 border-none bg-primary/30"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
-          />
-          <div className="absolute right-2 top-2 text-primary">
-            {debouncing || props.isLoading ? (
-              <Loader className="h-5 w-5 animate-spin-slow" />
-            ) : (
-              <Search className="h-5 w-5" />
-            )}
-          </div>
-        </div>
-        <CommonGetPagination {...props.paginate} />
+        <DBSearch search={props.search} isLoading={props.isLoading} />
+        <DBPagination paginate={props.paginate} />
       </div>
       <RenderTable {...prevProps} />
     </div>
@@ -129,7 +103,35 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
   );
 }
 
-export function CommonGetPagination(paginate: Paginate) {
+export function DBSearch({ search, isLoading }: { search: (query: string) => void; isLoading: boolean }) {
+  const [query, setQuery] = useState("");
+  const [debouncing, setDebouncing] = useState(false);
+
+  useEffect(() => {
+    setDebouncing(true);
+    const timer = setTimeout(() => {
+      search(query);
+      setDebouncing(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [query, search]);
+
+  return (
+    <div className="relative">
+      <Input
+        className="flex-shrink-1 h-9  min-w-0 border-none bg-primary/30"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search"
+      />
+      <div className="absolute right-2 top-2 text-primary">
+        {debouncing || isLoading ? <Loader className="h-5 w-5 animate-spin-slow" /> : <Search className="h-5 w-5" />}
+      </div>
+    </div>
+  );
+}
+
+export function DBPagination({ paginate }: { paginate: Paginate }) {
   return (
     <div className="flex flex-nowrap gap-1 text-primary">
       <Button

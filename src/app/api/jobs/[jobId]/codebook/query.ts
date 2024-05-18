@@ -12,18 +12,9 @@ export function useCodebooks(jobId: number, initialParams?: z.infer<typeof Codeb
   });
 }
 
-export function useCreateCodebook(jobId: number) {
+export function useCreateOrUpdateCodebook(jobId: number) {
   return useMutate({
     method: `post`,
-    resource: `codebook`,
-    endpoint: `jobs/${jobId}/codebook`,
-    bodySchema: CodebooksCreateOrUpdateSchema,
-  });
-}
-
-export function useUpdateCodebook(jobId: number) {
-  return useMutate({
-    method: `put`,
     resource: `codebook`,
     endpoint: `jobs/${jobId}/codebook`,
     bodySchema: CodebooksCreateOrUpdateSchema,

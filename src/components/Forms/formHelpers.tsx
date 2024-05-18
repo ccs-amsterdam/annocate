@@ -25,7 +25,7 @@ interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
 }
 
 export function TextFormField<T extends FieldValues>({ control, name, zType }: FormFieldProps<T>) {
-  const openAPI = getOpenApi(zType);
+  const openAPI = getOpenApi(zType, name);
   return (
     <FormField
       control={control}
@@ -48,14 +48,14 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
   zType,
   values,
 }: FormFieldArrayProps<T>) {
-  const openAPI = getOpenApi(zType);
+  const openAPI = getOpenApi(zType, name);
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <Title title={openAPI.title || name} description={openAPI.description} />
+          <Title title={openAPI?.title || name} description={openAPI?.description} />
           <FormControl>
             <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-0">
               {values?.map((value) => (
@@ -75,8 +75,8 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
   );
 }
 
-function getOpenApi(zType: z.ZodTypeAny) {
-  return zType._def?.openapi?.metadata;
+function getOpenApi(zType: z.ZodTypeAny, name: string) {
+  return zType._def?.openapi?.metadata || { title: name, description: "" };
 }
 
 function Title({ title, description }: { title: string; description: string }) {
