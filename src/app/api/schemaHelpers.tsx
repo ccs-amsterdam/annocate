@@ -33,3 +33,9 @@ export const GetMetaSchema = z.object({
   sort: z.string(),
   direction: z.enum(["asc", "desc"]),
 });
+
+const nameReg = /^[a-zA-Z0-9_]+$/;
+const isSafeName = (name: string) => nameReg.test(name);
+export const SafeNameSchema = z.string().min(1).max(128).refine(isSafeName, {
+  message: "Name must be alphanumeric and underscores only",
+});

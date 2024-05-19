@@ -75,6 +75,10 @@ const config = {
         ring: {
           DEFAULT: "hsl(var(--ring), <alpha-value>)",
         },
+        popover: {
+          DEFAULT: "hsl(var(--popover), <alpha-value>)",
+          foreground: "hsl(var(--popover-foreground), <alpha-value>)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

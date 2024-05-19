@@ -7,7 +7,7 @@ export default function Job({ params }: { params: { jobId: number } }) {
   const { data: job, isLoading, isError } = useJob(params.jobId);
 
   return (
-    <div>
+    <div className="p-3">
       <h1>Job {params.jobId}</h1>
 
       {/* <JobUserTable jobId={params.jobId} /> */}

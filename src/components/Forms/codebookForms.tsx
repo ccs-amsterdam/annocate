@@ -14,6 +14,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "..
 import { Button } from "../ui/button";
 import { Form } from "../ui/form";
 import { RadioFormField, TextFormField } from "./formHelpers";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 type CodebookCreateOrUpdateBody = z.infer<typeof CodebooksCreateOrUpdateSchema>;
 
@@ -24,6 +27,7 @@ interface CreateOrUpdateCodebookProps {
 }
 
 export function CreateCodebook({ jobId, current, afterSubmit }: CreateOrUpdateCodebookProps) {
+  const [accordionValue, setAccordionValue] = useState<string>("");
   const { mutateAsync } = useCreateOrUpdateCodebook(jobId);
   const form = useForm<CodebookCreateOrUpdateBody>({
     resolver: zodResolver(CodebooksCreateOrUpdateSchema),
@@ -42,12 +46,14 @@ export function CreateCodebook({ jobId, current, afterSubmit }: CreateOrUpdateCo
   });
 
   const {
-    fields: variables,
+    fields: variables_array,
     append: appendVariable,
     remove: removeVariable,
+    swap: swapVariable,
   } = useFieldArray({
     name: "codebook.variables",
     control: form.control,
+    keyName: "id",
   });
 
   function onSubmit(values: CodebookCreateOrUpdateBody) {
@@ -55,7 +61,8 @@ export function CreateCodebook({ jobId, current, afterSubmit }: CreateOrUpdateCo
     // mutateAsync(values).then(afterSubmit).catch(console.error);
   }
   const shape = CodebooksCreateOrUpdateSchema.shape;
-
+  const variables = form.getValues("codebook.variables");
+  console.log(accordionValue);
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -66,14 +73,31 @@ export function CreateCodebook({ jobId, current, afterSubmit }: CreateOrUpdateCo
           name="codebook.settings.instruction"
         />
         <div>
-          <Accordion type="single" collapsible className="w-full">
+          <Accordion
+            value={accordionValue}
+            onValueChange={setAccordionValue}
+            type="single"
+            collapsible
+            className="w-full"
+          >
             {variables.map((variable, index) => {
-              console.log(variable);
               return (
-                <AccordionItem key={variable.id} value={variable.id}>
-                  <AccordionTrigger>{variable.name}</AccordionTrigger>
+                <AccordionItem key={index} value={"V" + index}>
+                  <div className="grid grid-cols-[2rem,1fr] items-center gap-3">
+                    <SwapVariables
+                      swap={swapVariable}
+                      i={index}
+                      n={variables.length}
+                      setAccordionValue={setAccordionValue}
+                    />
+
+                    <div>
+                      <AccordionTrigger>{variable.name}</AccordionTrigger>
+                    </div>
+                  </div>
                   <AccordionContent>
                     <CodebookVariable type={variable.type} control={form.control} index={index} />
+                    <Button onClick={() => removeVariable(index)}>Remove Variable</Button>
                   </AccordionContent>
                 </AccordionItem>
               );
@@ -86,6 +110,43 @@ export function CreateCodebook({ jobId, current, afterSubmit }: CreateOrUpdateCo
         <Button type="submit">Create User</Button>
       </form>
     </Form>
+  );
+}
+
+function SwapVariables({
+  swap,
+  i,
+  n,
+  setAccordionValue,
+}: {
+  swap: (index1: number, index2: number) => void;
+  i: number;
+  n: number;
+  setAccordionValue: (value: string) => void;
+}) {
+  const itemArray = Array.from({ length: n }, (_, i) => i);
+  return (
+    <DropdownMenu modal={false} onOpenChange={() => setAccordionValue("")}>
+      <DropdownMenuTrigger asChild>
+        <Button className="h-8">{i + 1}</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="flex w-full max-w-[80vw] gap-[11px] overflow-auto border-none bg-background"
+        side="right"
+        sideOffset={8}
+      >
+        {itemArray.map((j) => {
+          if (j === i) return null;
+          return (
+            <DropdownMenuItem key={j} onClick={() => swap(i, j)} className="p-0">
+              <Button variant={i > j ? "secondary" : "default"} className="h-8 w-[2rem]">
+                {j + 1}
+              </Button>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -112,7 +173,13 @@ function CodebookVariable<T extends FieldValues>({
 
   return (
     <div>
-      <RadioFormField control={control} zType={shape.type} name={appendPath("type")} values={variableTypeOptions} />
+      <RadioFormField
+        control={control}
+        zType={shape.type}
+        name={appendPath("type")}
+        values={variableTypeOptions}
+        labelWidth="8rem"
+      />
       <TextFormField control={control} zType={shape.name} name={appendPath("name")} />
       <TextFormField control={control} zType={shape.question} name={appendPath("question")} />
       <TextFormField control={control} zType={shape.instruction} name={appendPath("instruction")} />

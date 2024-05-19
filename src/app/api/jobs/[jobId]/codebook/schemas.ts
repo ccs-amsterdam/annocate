@@ -1,7 +1,8 @@
-import { TableParamsSchema } from "@/app/api/schemaHelpers";
+import { SafeNameSchema, TableParamsSchema } from "@/app/api/schemaHelpers";
 import { FormOptions } from "@/components/Forms/formHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
 
 extendZodWithOpenApi(z);
 
@@ -33,10 +34,10 @@ export const CodebookCodeSchema = z.object({
 });
 
 export const CodebookVariableSchema = z.object({
-  name: z.string().max(128).openapi({
+  name: SafeNameSchema.openapi({
     title: "Name",
     description:
-      "The name of the variable. Will not be shown to user, so pick a name that works well in your analysis software (e.g., avoid spaces). Needs to be unique within the codebook.",
+      "The name of the variable. Will not be shown to user, so pick a name that works well in your analysis software (e.g., avoid spaces). Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
     example: "variable_name",
   }),
   question: z.string().max(512).openapi({
@@ -69,8 +70,17 @@ export const CodebookVariableSchema = z.object({
 });
 
 export const CodebookVariableItemSchema = z.object({
-  name: z.string(),
-  label: z.string().nullish(),
+  name: SafeNameSchema.openapi({
+    title: "Name",
+    description:
+      "The name of the item. This will be concatenated with the variable name. Should only contain alphanumeric characters and underscores. This is never shown to the coder (that's what the label is for)",
+    example: "Item name",
+  }),
+  label: z.string().max(128).nullish().openapi({
+    title: "Label",
+    description: "The label of the item",
+    example: "Item label",
+  }),
 });
 
 export const CodebookAnnotinderTypeSchema = CodebookVariableSchema.extend({

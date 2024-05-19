@@ -22,6 +22,7 @@ interface FormFieldProps<T extends FieldValues> {
 
 interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
   values: FormOptions[];
+  labelWidth?: string;
 }
 
 export function TextFormField<T extends FieldValues>({ control, name, zType }: FormFieldProps<T>) {
@@ -47,6 +48,7 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
   name,
   zType,
   values,
+  labelWidth = "6rem",
 }: FormFieldArrayProps<T>) {
   const openAPI = getOpenApi(zType, name);
   return (
@@ -63,7 +65,9 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
                   <FormControl>
                     <RadioGroupItem value={value.value} />
                   </FormControl>
-                  <FormLabel className="w-20 font-normal">{value.label}</FormLabel>
+                  <FormLabel style={{ width: labelWidth }} className="font-normal">
+                    {value.label}
+                  </FormLabel>
                   {value.description ? <FormDescription className="w-full">{value.description}</FormDescription> : null}
                 </FormItem>
               ))}
