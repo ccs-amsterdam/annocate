@@ -2,16 +2,16 @@ import { SafeNameSchema, TableParamsSchema } from "@/app/api/schemaHelpers";
 import { FormOptions } from "@/components/Forms/formHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { v4 as uuidv4 } from "uuid";
 
 extendZodWithOpenApi(z);
 
+export const variableType = ["select code", "search code", "scale", "annotinder", "confirm"] as const;
 export const variableTypeOptions: FormOptions[] = [
-  { value: "select code", label: "Select Code", description: "Select one or more codes from a list" },
-  { value: "search code", label: "Search Code", description: "Search for codes in a list" },
-  { value: "scale", label: "Scale", description: "Rate on a scale" },
-  { value: "annotinder", label: "Annotinder", description: "Annotate with Annotinder" },
-  { value: "confirm", label: "Confirm", description: "Confirm the annotation" },
+  { value: "select code", label: "Select Code", description: "Select one or multiple buttons" },
+  { value: "search code", label: "Search Code", description: "Search and select one or multiple items from a list" },
+  { value: "scale", label: "Scale", description: "Rate one or multiple items on a scale" },
+  { value: "annotinder", label: "Swipe", description: "Swipe to annotate (only for 2 or 3 codes)" },
+  { value: "confirm", label: "Confirm", description: "Ask annotator to confirm something" },
 ];
 
 export const CodebookCodeSchema = z.object({
@@ -34,6 +34,11 @@ export const CodebookCodeSchema = z.object({
 });
 
 export const CodebookVariableSchema = z.object({
+  type: z.enum(variableType).openapi({
+    title: "Type",
+    description: "Choose a format in which the variable will be presented to the annotator.",
+    example: "select code",
+  }),
   name: SafeNameSchema.openapi({
     title: "Name",
     description:
@@ -44,11 +49,6 @@ export const CodebookVariableSchema = z.object({
     title: "Question",
     description: "The question that will be shown to the annotator.",
     example: "What is the question you want to ask?",
-  }),
-  type: z.enum(["select code", "search code", "scale", "annotinder", "confirm"]).openapi({
-    title: "Type",
-    description: "The type of the variable",
-    example: "select code",
   }),
   instruction: z.string().nullish().openapi({
     title: "Instruction",
@@ -90,7 +90,7 @@ export const CodebookAnnotinderTypeSchema = CodebookVariableSchema.extend({
 
 export const CodebookScaleTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["scale"]),
-  items: z.array(CodebookVariableItemSchema),
+  items: z.array(CodebookVariableItemSchema).nullish(),
 });
 
 export const CodebookSelectTypeSchema = CodebookVariableSchema.extend({
@@ -107,6 +107,10 @@ export const CodebookSearchTypeSchema = CodebookVariableSchema.extend({
   multiple: z.boolean().nullish(),
 });
 
+export const CodebookConfirmTypeSchema = CodebookVariableSchema.extend({
+  type: z.enum(["confirm"]),
+});
+
 export const CodebookSettingsSchema = z.object({
   instruction: z.string().nullish().openapi({
     title: "Instruction",
@@ -118,10 +122,11 @@ export const CodebookSettingsSchema = z.object({
 });
 
 export const CodebookUnionTypeSchema = z.union([
-  CodebookAnnotinderTypeSchema,
   CodebookScaleTypeSchema,
+  CodebookAnnotinderTypeSchema,
   CodebookSelectTypeSchema,
   CodebookSearchTypeSchema,
+  CodebookConfirmTypeSchema,
 ]);
 
 export const CodebookSchema = z.object({
