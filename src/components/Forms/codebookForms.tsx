@@ -3,6 +3,7 @@
 import { useCreateOrUpdateCodebook } from "@/app/api/jobs/[jobId]/codebook/query";
 import {
   CodebookScaleTypeSchema,
+  CodebookSchema,
   CodebooksCreateOrUpdateSchema,
   CodebookSelectTypeSchema,
   CodebooksResponseSchema,
@@ -17,38 +18,48 @@ import { Button } from "../ui/button";
 import { Form } from "../ui/form";
 import { DropdownFormField, RadioFormField, TextFormField } from "./formHelpers";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { ChevronDown, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertCircle, ChevronDown, XIcon } from "lucide-react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import { AlertDialog } from "../ui/alert-dialog";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 
+type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookCreateOrUpdateBody = z.infer<typeof CodebooksCreateOrUpdateSchema>;
 
-interface CreateOrUpdateCodebookProps {
-  jobId: number;
-  current?: z.infer<typeof CodebooksResponseSchema>;
-  afterSubmit: () => void;
-  setPreview?: (codebook: CodebookCreateOrUpdateBody) => void;
+export function useCreateCodebook(jobId: number) {
+  const { mutateAsync } = useCreateOrUpdateCodebook(jobId);
+
+  const create = useCallback(() => {
+    const newCodebook = {
+      name: "New codebook",
+      codebook: {
+        settings: {
+          instruction: "",
+          auto_instruction: false,
+        },
+        variables: [],
+      },
+    };
+    return mutateAsync(newCodebook);
+  }, [mutateAsync]);
+
+  return { create };
 }
 
-export function CreateCodebook({ jobId, current, afterSubmit, setPreview }: CreateOrUpdateCodebookProps) {
+interface UpdateCodebookProps {
+  jobId: number;
+  current: z.infer<typeof CodebooksResponseSchema>;
+  afterSubmit?: () => void;
+  setPreview?: (codebook: Codebook | undefined) => void;
+}
+
+export function UpdateCodebook({ jobId, current, afterSubmit, setPreview }: UpdateCodebookProps) {
   const [changed, setChanged] = useState(false);
   const [accordionValue, setAccordionValue] = useState<string>("");
   const { mutateAsync } = useCreateOrUpdateCodebook(jobId);
   const form = useForm<CodebookCreateOrUpdateBody>({
     resolver: zodResolver(CodebooksCreateOrUpdateSchema),
-    defaultValues: current
-      ? CodebooksCreateOrUpdateSchema.parse(current)
-      : {
-          name: "",
-          codebook: {
-            settings: {
-              instruction: "",
-              auto_instruction: false,
-            },
-            variables: [],
-          },
-        },
+    defaultValues: CodebooksCreateOrUpdateSchema.parse(current),
   });
 
   useEffect(() => {
@@ -62,7 +73,7 @@ export function CreateCodebook({ jobId, current, afterSubmit, setPreview }: Crea
   useEffect(() => {
     if (!setPreview) return;
     const timer = setTimeout(() => {
-      setPreview(codebook);
+      setPreview(codebook?.codebook);
     }, 1000);
     return () => clearTimeout(timer);
   }, [codebook, setPreview]);
@@ -112,29 +123,26 @@ export function CreateCodebook({ jobId, current, afterSubmit, setPreview }: Crea
             className="w-full"
           >
             {variables.map((variable, index) => {
+              const varName = form.watch(`codebook.variables.${index}.name`);
+              const varQuestion = form.watch(`codebook.variables.${index}.question`);
+              const isActive = accordionValue === "V" + index;
               const { error } = form.getFieldState(`codebook.variables.${index}.name`);
+              let bg = isActive ? "bg-primary-light" : "";
               return (
-                <AccordionItem key={index} value={"V" + index}>
-                  <div className={` grid grid-cols-[2rem,1fr] items-center gap-3 ${error ? "text-destructive" : ""}`}>
-                    <SwapVariables
-                      move={moveVariable}
-                      i={index}
-                      n={variables.length}
-                      setAccordionValue={setAccordionValue}
-                    />
+                <AccordionItem key={index} value={"V" + index} className={`${bg}  rounded p-3 `}>
+                  <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
+                    <SwapVariables move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
 
                     <div>
                       <AccordionTrigger className="text-left no-underline hover:no-underline">
-                        <span>
-                          {variable.name.replace(/_/g, " ")}
-                          {variable.question && (
-                            <span className="text-base text-primary/70"> - {variable.question}</span>
-                          )}
+                        <span className="break-all">
+                          {varName.replace(/_/g, " ")}
+                          {/* {varQuestion && <span className="text-base text-primary/70"> - {variable.question}</span>} */}
                         </span>
                       </AccordionTrigger>
                     </div>
                   </div>
-                  <AccordionContent className="flex flex-col gap-5 py-3 pl-11">
+                  <AccordionContent className="flex flex-col gap-5 px-1 py-3">
                     <CodebookVariable type={variable.type} control={form.control} index={index} />
                     <ConfirmDialog
                       title="Remove variable"
@@ -166,21 +174,25 @@ function SwapVariables({
   move,
   i,
   n,
-  setAccordionValue,
+  bg,
+  error,
 }: {
   move: (index1: number, index2: number) => void;
   i: number;
   n: number;
-  setAccordionValue: (value: string) => void;
+  bg: string;
+  error: boolean;
 }) {
   const itemArray = Array.from({ length: n }, (_, i) => i);
   return (
-    <DropdownMenu modal={false} onOpenChange={(open) => (open ? null : setAccordionValue(""))}>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild disabled={n === 1}>
-        <Button className={` h-8 rounded-full `}>{i + 1}</Button>
+        <Button variant={error ? "destructive" : "default"} className={` h-8 rounded-full `}>
+          {i + 1}
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="flex w-full max-w-[80vw] items-center gap-[11px] overflow-auto border-none bg-background"
+        className={`flex items-center gap-[11px] overflow-auto border-none shadow-none ${bg} `}
         side="right"
         sideOffset={8}
       >
@@ -189,7 +201,7 @@ function SwapVariables({
           if (j === i) return null;
           return (
             <DropdownMenuItem key={j} onClick={() => move(i, j)} className="p-0">
-              <Button variant="secondary" className="h-8 w-[2rem] rounded-full">
+              <Button variant="secondary" className="h-8 w-[2rem] rounded-full hover:border-none ">
                 {j + 1}
               </Button>
             </DropdownMenuItem>

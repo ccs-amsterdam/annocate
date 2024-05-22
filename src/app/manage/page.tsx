@@ -14,7 +14,7 @@ import { JobsResponseSchema } from "../api/jobs/schemas";
 export default function Home() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-auto flex-col items-center">
+    <div className="mx-auto flex w-full max-w-5xl flex-auto flex-col items-center">
       <div className="">
         <h2>Manage Jobs</h2>
         <SimpleDialog

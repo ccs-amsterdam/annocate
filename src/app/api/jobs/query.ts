@@ -12,7 +12,7 @@ export function useJobs(initialParams?: z.infer<typeof JobsTableParamsSchema>) {
 }
 
 export function useJob(jobId: number) {
-  return useGet("jobs", jobId, JobsResponseSchema);
+  return useGet({ resource: "jobs", endpoint: `jobs/${jobId}`, responseSchema: JobsResponseSchema });
 }
 
 export function useCreateJob() {

@@ -1,19 +1,18 @@
 "use client";
-import { useJob } from "@/app/api/jobs/query";
-import { JobUserTable } from "./JobUserTable";
-import { CreateCodebook } from "@/components/Forms/codebookForms";
-import { param } from "drizzle-orm";
 import { useCodebooks } from "@/app/api/jobs/[jobId]/codebook/query";
+import { useJob } from "@/app/api/jobs/query";
+import DBSelect from "@/components/Common/DBSelect";
+import { useCreateCodebook } from "@/components/Forms/codebookForms";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function Job({ params }: { params: { jobId: number } }) {
   const { data: job, isLoading, isError } = useJob(params.jobId);
 
   return (
-    <div className="p-3">
-      <h1>Job {params.jobId}</h1>
-
+    <div className="grid grid-cols-1 lg:grid-cols-2">
       {/* <JobUserTable jobId={params.jobId} /> */}
-      <div className="mt-10">
+      <div className="max-w-xl p-3">
         <Codebooks jobId={params.jobId} />
       </div>
     </div>
@@ -21,7 +20,21 @@ export default function Job({ params }: { params: { jobId: number } }) {
 }
 
 function Codebooks({ jobId }: { jobId: number }) {
-  const { data, isLoading } = useCodebooks(jobId);
-  console.log(data);
-  return <CreateCodebook jobId={jobId} afterSubmit={() => console.log("yeej")} />;
+  const useCodebooksProps = useCodebooks(jobId);
+  const { create } = useCreateCodebook(jobId);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button>Codebook</Button>
+      </PopoverTrigger>
+      <PopoverContent className="max-w-72">
+        <DBSelect {...useCodebooksProps} nameField={"name"} jobId={jobId}>
+          <Button className="h-8 w-full" variant="secondary" onClick={create}>
+            Create new codebook
+          </Button>
+        </DBSelect>
+      </PopoverContent>
+    </Popover>
+  );
 }

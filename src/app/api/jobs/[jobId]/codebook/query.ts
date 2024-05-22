@@ -1,7 +1,12 @@
-import { useMutate } from "@/app/api/queryHelpers";
+import { useGet, useMutate } from "@/app/api/queryHelpers";
 import { z } from "zod";
 import { useTableGet } from "@/app/api/queryHelpers";
-import { CodebooksCreateOrUpdateSchema, CodebooksResponseSchema, CodebooksTableParamsSchema } from "./schemas";
+import {
+  CodebookResponseSchema,
+  CodebooksCreateOrUpdateSchema,
+  CodebooksResponseSchema,
+  CodebooksTableParamsSchema,
+} from "./schemas";
 
 export function useCodebooks(jobId: number, initialParams?: z.infer<typeof CodebooksTableParamsSchema>) {
   return useTableGet({
@@ -18,5 +23,13 @@ export function useCreateOrUpdateCodebook(jobId: number) {
     resource: `codebook`,
     endpoint: `jobs/${jobId}/codebook`,
     bodySchema: CodebooksCreateOrUpdateSchema,
+  });
+}
+
+export function useCodebook(jobId: number, codebookId: number) {
+  return useGet({
+    resource: "codebook",
+    endpoint: `jobs/${jobId}/codebook/${codebookId}`,
+    responseSchema: CodebookResponseSchema,
   });
 }

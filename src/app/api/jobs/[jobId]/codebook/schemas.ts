@@ -142,14 +142,30 @@ export const CodebooksResponseSchema = z.object({
   id: z.number(),
   jobId: z.number(),
   name: z.string(),
+});
+
+export const CodebookResponseSchema = z.object({
+  id: z.number(),
+  jobId: z.number(),
+  name: z.string(),
   codebook: CodebookSchema,
 });
 
 export const CodebooksCreateOrUpdateSchema = z.object({
-  name: z.string().max(128).openapi({
+  name: z.string().min(1).max(128).openapi({
     title: "Name",
     description: "The name of the codebook",
     example: "My first codebook",
   }),
   codebook: CodebookSchema,
+  overwrite: z.boolean().optional().openapi({
+    title: "Overwrite",
+    description: "If a codebook with the same name already exists, overwrite it. This is ignored if you provide an ID",
+    example: true,
+  }),
+  id: z.number().optional().openapi({
+    title: "Codebook ID",
+    description: "If you want to update an existing codebook, provide the ID here",
+    example: 1,
+  }),
 });

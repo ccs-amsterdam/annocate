@@ -22,12 +22,12 @@ export function AnnotatorLayout({ children }: Props) {
 
 export function ManagerLayout({ children }: Props) {
   return (
-    <div className="k relative flex h-full w-full flex-col items-center">
+    <div className=" relative flex h-full w-full flex-col items-center">
       <header className="bg-menu border-primary-light sticky left-0 top-0 z-50 flex w-full justify-center border-b-[1px] backdrop-blur-md transition-all">
         <Menu />
       </header>
 
-      <div className={"mt-10 h-full w-full max-w-[1000px]"}>{children}</div>
+      <div className={"mt-10 flex h-full w-full flex-col"}>{children}</div>
       <footer className={"mt-auto h-10 w-full"}></footer>
     </div>
   );

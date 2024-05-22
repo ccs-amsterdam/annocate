@@ -23,23 +23,36 @@ export async function GET(req: NextRequest, { params }: { params: { jobId: numbe
 export async function POST(req: Request, { params }: { params: { jobId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      const [user] = await db
+      const overwrite = body.overwrite;
+      delete body.overwrite;
+
+      if (body.id) {
+        const [codebook] = await db.update(codebooks).set(body).where(eq(codebooks.id, body.id)).returning();
+        return codebook;
+      }
+
+      let query = db
         .insert(codebooks)
         .values({ ...body, jobId: params.jobId })
-        .onConflictDoUpdate({
+        .$dynamic();
+
+      if (overwrite) {
+        query = query.onConflictDoUpdate({
           target: [codebooks.jobId, codebooks.name],
           set: { ...body },
-        })
-        .returning();
-      return user;
+        });
+      }
+
+      const [codebook] = await query.returning();
+      return codebook;
     },
     req,
     bodySchema: CodebooksCreateOrUpdateSchema,
     authorizeFunction: async (auth, body) => {
       if (!hasMinJobRole(auth.jobRole, "manager")) return { message: "Unauthorized" };
     },
-    errorMsgs: {
-      409: "Codebook with this name already exists in this job",
+    errorFunction: (status, body) => {
+      if (status === 409) return `Codebook with the name "${body?.name}" already exists in this job`;
     },
   });
 }

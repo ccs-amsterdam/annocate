@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
     authorizeFunction: async (auth, body) => {
       if (auth.role !== "admin") return { message: "Need to be Admin to add users" };
     },
-    errorMsgs: {
-      409: "User already exists",
+    errorFunction: (status, params) => {
+      if (status === 409) return `User ${params?.email} already exists`;
     },
   });
 }

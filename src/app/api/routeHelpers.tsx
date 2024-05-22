@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Authorization, UserRole } from "../types";
 import { authenticateUser, authorization } from "./authorization";
 import { TableParamsSchema } from "./schemaHelpers";
+import { fromZodError } from "zod-validation-error";
 
 interface After {
   column: string;
@@ -27,6 +28,7 @@ interface AuthorizationError {
 type TableParams = z.infer<typeof TableParamsSchema>;
 
 type AuthorizeFunction<T> = (auth: Authorization, params?: T) => Promise<AuthorizationError | undefined>;
+type ErrorFunction<T> = (status: number, params?: T) => string | undefined;
 
 interface CreateGetParams<T> {
   selectFunction: (email: string, params: T) => Promise<any>;
@@ -61,6 +63,9 @@ export async function createGet<T>({
     return NextResponse.json(response);
   } catch (e: any) {
     console.error(e);
+    if (e instanceof z.ZodError) {
+      return NextResponse.json({ message: String(fromZodError(e)) }, { status: 400 });
+    }
     return NextResponse.json(e.message, { status: 400 });
   }
 }
@@ -74,7 +79,7 @@ interface CreateTableGetParams<T> {
   jobId?: number;
   queryColumns?: string[];
   authorizeFunction?: AuthorizeFunction<T>;
-  errorMsgs?: ErrorMessages;
+  errorFunction?: ErrorFunction<T>;
 }
 
 /**
@@ -93,19 +98,22 @@ export async function createTableGet<T>({
   jobId,
   queryColumns,
   authorizeFunction,
-  errorMsgs,
+  errorFunction,
 }: CreateTableGetParams<T>) {
   const email = await authenticateUser(req);
-  if (!email) return NextResponse.json({ error: errorMsgs?.[401] || "Unauthorized" }, { status: 401 });
+  if (!email) return NextResponse.json({ error: errorFunction?.(401) || "Unauthorized" }, { status: 401 });
 
+  let paramCopy: T | undefined = undefined;
   try {
     const params = validateRequestParams(req, paramsSchema);
+    paramCopy = params;
+
     if (authorizeFunction != undefined) {
       const auth = await authorization(email, jobId);
       const authError = await authorizeFunction(auth, params);
       if (authError)
         return NextResponse.json(
-          { message: authError.message || errorMsgs?.[authError.status || 403] || "Unauthorized" },
+          { message: authError.message || errorFunction?.(authError.status || 403, params) || "Unauthorized" },
           { status: authError.status || 403 },
         );
     }
@@ -146,7 +154,10 @@ export async function createTableGet<T>({
     }
   } catch (e: any) {
     console.error(e);
-    return NextResponse.json(errorMsgs?.[400] || e.message, { status: 400 });
+    if (e instanceof z.ZodError) {
+      return NextResponse.json({ message: String(fromZodError(e)) }, { status: 400 });
+    }
+    return NextResponse.json(errorFunction?.(400, paramCopy) || e.message, { status: 400 });
   }
 }
 
@@ -157,7 +168,7 @@ interface CreateCommonUpdateParams<T> {
   authorizeFunction: AuthorizeFunction<T>;
   jobId?: number;
   responseSchema?: z.ZodTypeAny;
-  errorMsgs?: ErrorMessages;
+  errorFunction?: ErrorFunction<T>;
 }
 
 export async function createUpdate<T>({
@@ -167,20 +178,23 @@ export async function createUpdate<T>({
   authorizeFunction,
   jobId,
   responseSchema,
-  errorMsgs,
+  errorFunction,
 }: CreateCommonUpdateParams<T>) {
   const email = await authenticateUser(req);
-  if (!email) return NextResponse.json({ message: errorMsgs?.[401] || "Unauthorized" }, { status: 401 });
+  if (!email) return NextResponse.json({ message: errorFunction?.(401) || "Unauthorized" }, { status: 401 });
 
+  let bodyCopy: T | undefined = undefined;
   try {
     const bodyRaw = await req.json();
     const body = bodySchema.parse(bodyRaw);
+    bodyCopy = body;
+
     if (authorizeFunction != undefined) {
       const auth = await authorization(email, jobId);
       const authError = await authorizeFunction(auth, body);
       if (authError)
         return NextResponse.json(
-          { message: authError.message || errorMsgs?.[authError.status || 403] || "Unauthorized" },
+          { message: authError.message || errorFunction?.(authError.status || 403) || "Unauthorized" },
           { status: authError.status || 403 },
         );
     }
@@ -192,9 +206,15 @@ export async function createUpdate<T>({
   } catch (e: any) {
     console.error(e);
     if (e.message.includes("duplicate key value")) {
-      return NextResponse.json({ message: errorMsgs?.[409] || `This entry already exists` }, { status: 409 });
+      return NextResponse.json(
+        { message: errorFunction?.(409, bodyCopy) || `This entry already exists` },
+        { status: 409 },
+      );
     }
-    return NextResponse.json(errorMsgs?.[400] || e.message, { status: 400 });
+    if (e instanceof z.ZodError) {
+      return NextResponse.json({ message: String(fromZodError(e)) }, { status: 400 });
+    }
+    return NextResponse.json(errorFunction?.(400, bodyCopy) || e.message, { status: 400 });
   }
 }
 
@@ -202,18 +222,23 @@ interface CreateCommonDeleteParams {
   deleteFunction: (email: string) => PgTableWithColumns<any> | SubqueryWithSelection<any, any>;
   req: Request;
   authorizeFunction: AuthorizeFunction<undefined>;
-  errorMsgs?: ErrorMessages;
+  errorFunction: ErrorFunction<undefined>;
 }
 
-export async function createDelete({ deleteFunction, req, authorizeFunction, errorMsgs }: CreateCommonDeleteParams) {
+export async function createDelete({
+  deleteFunction,
+  req,
+  authorizeFunction,
+  errorFunction,
+}: CreateCommonDeleteParams) {
   const email = await authenticateUser(req);
-  if (!email) return NextResponse.json({ message: errorMsgs?.[401] || "Unauthorized" }, { status: 401 });
+  if (!email) return NextResponse.json({ message: errorFunction?.(401) || "Unauthorized" }, { status: 401 });
 
   try {
     if (authorizeFunction != undefined) {
       const auth = await authorization(email);
       if (!authorizeFunction(auth))
-        return NextResponse.json({ message: errorMsgs?.[403] || "Unauthorized" }, { status: 403 });
+        return NextResponse.json({ message: errorFunction?.(403) || "Unauthorized" }, { status: 403 });
     }
 
     await deleteFunction(email).returning();
@@ -221,7 +246,7 @@ export async function createDelete({ deleteFunction, req, authorizeFunction, err
     return NextResponse.json({ message: "Success" }, { status: 204 });
   } catch (e: any) {
     console.error(e);
-    return NextResponse.json({ message: errorMsgs?.[400] || e.message }, { status: 400 });
+    return NextResponse.json({ message: errorFunction?.(400) || e.message }, { status: 400 });
   }
 }
 

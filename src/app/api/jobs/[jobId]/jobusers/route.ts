@@ -51,8 +51,8 @@ export async function POST(req: NextRequest, { params }: { params: { jobId: numb
     authorizeFunction: async (auth, params) => {
       if (!hasMinJobRole(auth.jobRole, "admin")) return { message: "Unauthorized" };
     },
-    errorMsgs: {
-      409: "User already exists",
+    errorFunction: (status, params) => {
+      if (status === 409) return `User  ${params?.email} already exists`;
     },
   });
 }
