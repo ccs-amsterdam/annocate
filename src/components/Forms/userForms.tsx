@@ -1,7 +1,12 @@
 "use client";
 
 import { useCreateUser, useUpdateUser } from "@/app/api/users/query";
-import { roleOptions, UsersResponseSchema, UsersUpdateSchema, UsersCreateSchema } from "@/app/api/users/schemas";
+import {
+  roleOptions,
+  UsersResponseSchema,
+  UsersUpdateBodySchema,
+  UsersCreateBodySchema,
+} from "@/app/api/users/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -10,8 +15,8 @@ import { Form, FormControl, FormField, FormItem } from "../ui/form";
 import { RadioFormField, TextFormField } from "./formHelpers";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
-type UsersUpdateBody = z.infer<typeof UsersUpdateSchema>;
-type UsersCreateBody = z.infer<typeof UsersCreateSchema>;
+type UsersUpdateBody = z.infer<typeof UsersUpdateBodySchema>;
+type UsersCreateBody = z.infer<typeof UsersCreateBodySchema>;
 
 interface CreateUserProps {
   afterSubmit: () => void;
@@ -25,7 +30,7 @@ interface UpdateUserProps {
 export function CreateUser({ afterSubmit }: CreateUserProps) {
   const { mutateAsync } = useCreateUser();
   const form = useForm<UsersCreateBody>({
-    resolver: zodResolver(UsersCreateSchema),
+    resolver: zodResolver(UsersCreateBodySchema),
     defaultValues: {
       email: "",
       role: undefined,
@@ -35,7 +40,7 @@ export function CreateUser({ afterSubmit }: CreateUserProps) {
   function onSubmit(values: UsersCreateBody) {
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
-  const shape = UsersCreateSchema.shape;
+  const shape = UsersCreateBodySchema.shape;
 
   return (
     <Form {...form}>
@@ -49,16 +54,16 @@ export function CreateUser({ afterSubmit }: CreateUserProps) {
 }
 
 export function UpdateUser({ current, afterSubmit }: UpdateUserProps) {
-  const { mutateAsync } = useUpdateUser();
+  const { mutateAsync } = useUpdateUser(current.id);
   const form = useForm<UsersUpdateBody>({
-    resolver: zodResolver(UsersUpdateSchema),
-    defaultValues: UsersUpdateSchema.parse(current),
+    resolver: zodResolver(UsersUpdateBodySchema),
+    defaultValues: UsersUpdateBodySchema.parse(current),
   });
 
   function onSubmit(values: UsersUpdateBody) {
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
-  const shape = UsersUpdateSchema.shape;
+  const shape = UsersUpdateBodySchema.shape;
 
   return (
     <Form {...form}>

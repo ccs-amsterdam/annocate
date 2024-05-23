@@ -2,6 +2,7 @@ import { useMutate } from "@/app/api/queryHelpers";
 import { z } from "zod";
 import { useTableGet } from "@/app/api/queryHelpers";
 import { JobUsersCreateOrUpdateSchema, JobUsersResponseSchema, JobUsersTableParamsSchema } from "./schemas";
+import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 
 export function useJobUsers(jobId: number, initialParams?: z.infer<typeof JobUsersTableParamsSchema>) {
   return useTableGet({
@@ -12,7 +13,7 @@ export function useJobUsers(jobId: number, initialParams?: z.infer<typeof JobUse
   });
 }
 
-export function useCreateOrUpdateJobUsers(jobId: number) {
+export function useCreateOrUpdateJobUser(jobId: number) {
   return useMutate({
     method: `post`,
     resource: `jobusers`,
@@ -21,11 +22,22 @@ export function useCreateOrUpdateJobUsers(jobId: number) {
   });
 }
 
-export function useUpdateJobUsers(jobId: number) {
-  return useMutate({
-    method: `put`,
-    resource: `jobusers`,
-    endpoint: `jobs/${jobId}/jobusers`,
-    bodySchema: JobUsersCreateOrUpdateSchema,
-  });
-}
+export const openapiJobUsers = createOpenAPIDefinitions(
+  ["Job user management"],
+  [
+    {
+      path: "job/{jobId}/jobusers",
+      method: "get",
+      description: "Get all job users",
+      params: JobUsersTableParamsSchema,
+      response: JobUsersResponseSchema,
+    },
+    {
+      path: "job/{jobId}/jobusers",
+      method: "post",
+      description:
+        "Create or update a job user. If the user already exists, it will be updated. Otherwise, it will be created.",
+      body: JobUsersCreateOrUpdateSchema,
+    },
+  ],
+);

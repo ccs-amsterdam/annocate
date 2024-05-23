@@ -27,7 +27,7 @@ interface AuthorizationError {
 
 type TableParams = z.infer<typeof TableParamsSchema>;
 
-type AuthorizeFunction<T> = (auth: Authorization, params?: T) => Promise<AuthorizationError | undefined>;
+type AuthorizeFunction<T> = (auth: Authorization, params: T) => Promise<AuthorizationError | undefined>;
 type ErrorFunction<T> = (status: number, params?: T) => string | undefined;
 
 interface CreateGetParams<T> {
@@ -237,7 +237,7 @@ export async function createDelete({
   try {
     if (authorizeFunction != undefined) {
       const auth = await authorization(email);
-      if (!authorizeFunction(auth))
+      if (!authorizeFunction(auth, undefined))
         return NextResponse.json({ message: errorFunction?.(403) || "Unauthorized" }, { status: 403 });
     }
 

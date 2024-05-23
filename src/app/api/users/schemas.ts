@@ -48,19 +48,15 @@ export const UserRoleSchema = z.enum(userRole).openapi({
 export const UsersTableParamsSchema = TableParamsSchema.extend({});
 
 export const UsersResponseSchema = z.object({
+  id: UserIdSchema,
   email: UserEmailSchema,
   role: UserRoleSchema,
 });
-export const UsersCreateSchema = z.object({
+export const UsersCreateBodySchema = z.object({
   email: UserEmailSchema,
   role: UserRoleSchema,
 });
-export const UsersUpdateSchema = z.object({
-  email: UserEmailSchema,
-  replaceEmail: UserReplaceEmailSchema.optional(),
+export const UsersUpdateBodySchema = z.object({
+  email: UserEmailSchema.optional(),
   role: UserRoleSchema.optional(),
-});
-export const UsersUpdateResponseSchema = z.object({
-  email: UserEmailSchema,
-  role: UserRoleSchema,
 });

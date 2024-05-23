@@ -31,6 +31,7 @@ export function importCodebook(codebook: RawCodeBook): CodeBook {
 const importVariables = (variables: Variable[]): Variable[] => {
   // checks and preparation of variables
   return variables.map((variable) => {
+    if (!("codes" in variable)) return variable;
     return {
       ...variable,
       codeMap: codeBookEdgesToMap(variable.name, variable.codes),
@@ -104,7 +105,7 @@ export const standardizeCodes = (variable: string, codes: Code[] | string[], fil
   });
 };
 
-export const codeBookEdgesToMap = (variable: string, codes: Code[] | string[], fillMissingColor: boolean = true) => {
+export const codeBookEdgesToMap = (variable: string, codes: Code[], fillMissingColor: boolean = true) => {
   const standardizedCodes = standardizeCodes(variable, codes, fillMissingColor);
   // codesis an array of objects, but for efficients operations
   // in the annotator we convert it to an object with the codes as keys

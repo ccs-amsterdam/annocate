@@ -1,5 +1,17 @@
 import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CSSProperties } from "react";
+import {
+  CodebookCodeSchema,
+  CodebookSchema,
+  CodebookUnionTypeSchema,
+  CodebookVariableItemSchema,
+} from "./api/jobs/[jobId]/codebook/schemas";
+import { z } from "zod";
 
+//////////  NEW
+///////////
+///////////
+///////////
+///////////
 export const userRole = ["guest", "creator", "admin"] as const;
 export type UserRole = (typeof userRole)[number];
 
@@ -13,6 +25,18 @@ export interface Authorization {
   jobId?: number;
   jobRole: JobRole | null;
 }
+
+export type Codebook = z.infer<typeof CodebookSchema>;
+export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
+export type Code = z.infer<typeof CodebookCodeSchema>;
+export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
+
+///////////
+///////////
+///////////
+///////////
+///////////
+///////////
 
 // shorthand for the many setstate props being passed around
 export type SetState<Type> = Dispatch<SetStateAction<Type>>;
@@ -311,9 +335,9 @@ export interface AnswerOption {
 /** An object that maps an AnswerOption to left, right and up swipes */
 export type Swipes = "left" | "right" | "up";
 export interface SwipeOptions {
-  left: AnswerOption;
-  right: AnswerOption;
-  up: AnswerOption;
+  left: Code;
+  right: Code;
+  up: Code;
 }
 
 /** the refs to html elements used in swipeControl */
@@ -346,21 +370,21 @@ export interface OnSelectParams {
 
 ///// ANNOTATE MODE
 
-export interface Variable {
-  name: string;
-  type?: VariableType; // if missing, defaults to "span"
-  codes: Code[];
-  relations?: Relation[];
-  instruction: string;
-  buttonMode?: "all" | "recent";
-  searchBox?: boolean;
-  multiple?: boolean;
-  editMode?: boolean;
-  onlyImported?: boolean;
-  codeMap?: CodeMap;
-  validFrom?: ValidRelation;
-  validTo?: ValidRelation;
-}
+// export interface Variable {
+//   name: string;
+//   type?: VariableType; // if missing, defaults to "span"
+//   codes: Code[];
+//   relations?: Relation[];
+//   instruction: string;
+//   buttonMode?: "all" | "recent";
+//   searchBox?: boolean;
+//   multiple?: boolean;
+//   editMode?: boolean;
+//   onlyImported?: boolean;
+//   codeMap?: CodeMap;
+//   validFrom?: ValidRelation;
+//   validTo?: ValidRelation;
+// }
 
 export interface Relation {
   codes?: string[];
@@ -692,26 +716,26 @@ export interface MetaField {
 
 ///// CODES
 
-export interface Code {
-  variable: string;
+// export interface Code {
+//   variable: string;
 
-  code: string;
-  parent: string;
-  color: string;
+//   code: string;
+//   parent: string;
+//   color: string;
 
-  active: boolean;
-  activeParent: any;
-  folded: boolean;
-  children: string[];
-  foldToParent: any;
-  totalChildren: number;
-  totalActiveChildren: number;
-  tree?: any;
-  /** An array with names of questions (or all "REMAINING" question) that become irrelevant if this options is chosen */
-  makes_irrelevant?: string[];
-  /** Like makes_irrelevant, but the questions become irrelevant if this option is NOT chosen */
-  required_for?: string[];
-}
+//   // active: boolean;
+//   // activeParent: any;
+//   // folded: boolean;
+//   // children: string[];
+//   // foldToParent: any;
+//   // totalChildren: number;
+//   // totalActiveChildren: number;
+//   // tree?: any;
+//   /** An array with names of questions (or all "REMAINING" question) that become irrelevant if this options is chosen */
+//   makes_irrelevant?: string[];
+//   /** Like makes_irrelevant, but the questions become irrelevant if this option is NOT chosen */
+//   required_for?: string[];
+// }
 
 export interface CodeRelation {
   variable: string;

@@ -1,33 +1,40 @@
 "use client";
 
-import { useCreateOrUpdateCodebook } from "@/app/api/jobs/[jobId]/codebook/query";
+import { useUpdateCodebook, useCreateCodebook } from "@/app/api/jobs/[jobId]/codebook/query";
 import {
+  CodebookCreateBodySchema,
   CodebookScaleTypeSchema,
   CodebookSchema,
-  CodebooksCreateOrUpdateSchema,
   CodebookSelectTypeSchema,
   CodebooksResponseSchema,
+  CodebookUpdateBodySchema,
   CodebookVariableSchema,
   variableTypeOptions,
 } from "@/app/api/jobs/[jobId]/codebook/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Control, FieldValues, Path, useFieldArray, useForm } from "react-hook-form";
+import { Save, Watch, XIcon } from "lucide-react";
+import { use, useCallback, useEffect, useState } from "react";
+import { Control, FieldValues, Path, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
-import { Form } from "../ui/form";
-import { DropdownFormField, RadioFormField, TextFormField } from "./formHelpers";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { AlertCircle, ChevronDown, XIcon } from "lucide-react";
-import { ReactNode, useCallback, useEffect, useState } from "react";
-import { AlertDialog } from "../ui/alert-dialog";
 import { ConfirmDialog } from "../ui/confirm-dialog";
+import {
+  BooleanFormField,
+  CodesFormField,
+  DropdownFormField,
+  MoveItemInArray,
+  TextAreaFormField,
+  TextFormField,
+} from "./formHelpers";
+import { Form } from "../ui/form";
+import React from "react";
 
 type Codebook = z.infer<typeof CodebookSchema>;
-type CodebookCreateOrUpdateBody = z.infer<typeof CodebooksCreateOrUpdateSchema>;
+type CodebookUpdateBody = z.infer<typeof CodebookUpdateBodySchema>;
 
-export function useCreateCodebook(jobId: number) {
-  const { mutateAsync } = useCreateOrUpdateCodebook(jobId);
+export function useCreateEmptyCodebook(jobId: number) {
+  const { mutateAsync } = useCreateCodebook(jobId);
 
   const create = useCallback(() => {
     const newCodebook = {
@@ -53,40 +60,45 @@ interface UpdateCodebookProps {
   setPreview?: (codebook: Codebook | undefined) => void;
 }
 
-export function UpdateCodebook({ jobId, current, afterSubmit, setPreview }: UpdateCodebookProps) {
-  const [changed, setChanged] = useState(false);
+export const UpdateCodebook = React.memo(function UpdateCodebook({
+  jobId,
+  current,
+  afterSubmit,
+  setPreview,
+}: UpdateCodebookProps) {
   const [accordionValue, setAccordionValue] = useState<string>("");
-  const { mutateAsync } = useCreateOrUpdateCodebook(jobId);
-  const form = useForm<CodebookCreateOrUpdateBody>({
-    resolver: zodResolver(CodebooksCreateOrUpdateSchema),
-    defaultValues: CodebooksCreateOrUpdateSchema.parse(current),
+  const { mutateAsync } = useUpdateCodebook(jobId, current.id);
+  const form = useForm<CodebookUpdateBody>({
+    resolver: zodResolver(CodebookCreateBodySchema),
+    defaultValues: CodebookCreateBodySchema.parse(current),
   });
-
-  useEffect(() => {
-    setChanged(true);
-  }, [current]);
 
   const { error } = form.getFieldState("codebook");
   const codebook = form.getValues();
   const variables = form.getValues("codebook.variables");
 
   useEffect(() => {
-    if (!setPreview) return;
-    const timer = setTimeout(() => {
-      setPreview(codebook?.codebook);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [codebook, setPreview]);
+    form.reset(CodebookCreateBodySchema.parse(current));
+  }, [current, form]);
+
+  useEffect(() => {
+    function beforeUnload(e: BeforeUnloadEvent) {
+      e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+    }
+    if (form.formState.isDirty) return;
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [form]);
 
   function appendVariable() {
     const newVariables = [...variables, defaultVariable("Variable_" + (variables.length + 1))];
-    form.setValue("codebook.variables", newVariables, { shouldValidate: true });
+    form.setValue("codebook.variables", newVariables, { shouldValidate: true, shouldDirty: true });
     setAccordionValue("V" + (newVariables.length - 1));
   }
 
   function removeVariable(index: number) {
     const newVariables = variables.filter((_, i) => i !== index);
-    form.setValue("codebook.variables", newVariables, { shouldValidate: true });
+    form.setValue("codebook.variables", newVariables, { shouldValidate: true, shouldDirty: true });
     setAccordionValue("");
   }
 
@@ -95,24 +107,51 @@ export function UpdateCodebook({ jobId, current, afterSubmit, setPreview }: Upda
     const newVariables = [...variables];
     const [removed] = newVariables.splice(index1, 1);
     newVariables.splice(index2, 0, removed);
-    form.setValue("codebook.variables", newVariables, { shouldValidate: true });
+    form.setValue("codebook.variables", newVariables, { shouldValidate: true, shouldDirty: true });
     setAccordionValue("");
   }
 
-  function onSubmit(values: CodebookCreateOrUpdateBody) {
+  function onSubmit(values: CodebookUpdateBody) {
     if (variables.length === 0) return alert("You need to add at least one variable");
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
-  const shape = CodebooksCreateOrUpdateSchema.shape;
+  const shape = CodebookCreateBodySchema.shape;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-3">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex max-h-full flex-col gap-3  p-3 lg:px-8 ">
+        <div
+          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)] w-full items-center justify-between gap-10 border-b bg-background px-8 ${form.formState.isDirty ? "" : "hidden"} `}
+        >
+          <Button
+            className="  flex w-min translate-y-1 items-center gap-2 shadow-lg disabled:opacity-0"
+            variant={error ? "destructive" : "secondary"}
+            type="submit"
+            disabled={!form.formState.isDirty || variables.length === 0}
+          >
+            <Save className="h-5 w-5" />
+            Save changes
+          </Button>
+          <Button
+            type="button"
+            className="  flex w-min translate-y-1 items-center gap-2 shadow-lg disabled:opacity-0"
+            variant="destructive"
+            onClick={() => form.reset(CodebookCreateBodySchema.parse(current))}
+          >
+            <XIcon className="h-5 w-5" />
+            Undo changes
+          </Button>
+        </div>
         <TextFormField control={form.control} zType={shape.name} name="name" />
-        <TextFormField
+        <TextAreaFormField
           control={form.control}
           zType={shape.codebook.shape.settings.shape.instruction}
           name="codebook.settings.instruction"
+        />
+        <BooleanFormField
+          control={form.control}
+          zType={shape.codebook.shape.settings.shape.auto_instruction}
+          name="codebook.settings.auto_instruction"
         />
         <div>
           <Accordion
@@ -124,14 +163,13 @@ export function UpdateCodebook({ jobId, current, afterSubmit, setPreview }: Upda
           >
             {variables.map((variable, index) => {
               const varName = form.watch(`codebook.variables.${index}.name`);
-              const varQuestion = form.watch(`codebook.variables.${index}.question`);
               const isActive = accordionValue === "V" + index;
-              const { error } = form.getFieldState(`codebook.variables.${index}.name`);
+              const { error } = form.getFieldState(`codebook.variables.${index}`);
               let bg = isActive ? "bg-primary-light" : "";
               return (
                 <AccordionItem key={index} value={"V" + index} className={`${bg}  rounded p-3 `}>
                   <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
-                    <SwapVariables move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
+                    <MoveItemInArray move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
 
                     <div>
                       <AccordionTrigger className="text-left no-underline hover:no-underline">
@@ -162,54 +200,18 @@ export function UpdateCodebook({ jobId, current, afterSubmit, setPreview }: Upda
             Add Variable
           </Button>
         </div>
-        <Button type="submit" disabled={!!error || variables.length === 0}>
-          Create User
-        </Button>
+        <WatchForPreview form={form} setPreview={setPreview} />
       </form>
     </Form>
   );
-}
+});
 
-function SwapVariables({
-  move,
-  i,
-  n,
-  bg,
-  error,
-}: {
-  move: (index1: number, index2: number) => void;
-  i: number;
-  n: number;
-  bg: string;
-  error: boolean;
-}) {
-  const itemArray = Array.from({ length: n }, (_, i) => i);
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild disabled={n === 1}>
-        <Button variant={error ? "destructive" : "default"} className={` h-8 rounded-full `}>
-          {i + 1}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className={`flex items-center gap-[11px] overflow-auto border-none shadow-none ${bg} `}
-        side="right"
-        sideOffset={8}
-      >
-        move to
-        {itemArray.map((j) => {
-          if (j === i) return null;
-          return (
-            <DropdownMenuItem key={j} onClick={() => move(i, j)} className="p-0">
-              <Button variant="secondary" className="h-8 w-[2rem] rounded-full hover:border-none ">
-                {j + 1}
-              </Button>
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+function WatchForPreview({ form, setPreview }: { form: any; setPreview?: (codebook: Codebook | undefined) => void }) {
+  const watch = useWatch({ control: form.control, name: "codebook" });
+  useEffect(() => {
+    if (setPreview) setPreview(watch);
+  }, [watch, setPreview]);
+  return <div></div>;
 }
 
 function CodebookVariable<T extends FieldValues>({
@@ -232,7 +234,7 @@ function CodebookVariable<T extends FieldValues>({
       const shape = CodebookSelectTypeSchema.shape;
       return (
         <>
-          <div>select</div>
+          <CodesFormField control={control} name={appendPath("codes")} zType={shape.codes} />
         </>
       );
     }
@@ -275,6 +277,6 @@ function defaultVariable(name: string): z.infer<typeof CodebookSelectTypeSchema>
     question: "",
     type: "select code",
     instruction: "",
-    codes: [],
+    codes: [{ code: "Example", value: 1, color: "red" }],
   };
 }

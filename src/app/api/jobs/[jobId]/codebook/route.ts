@@ -3,7 +3,7 @@ import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import db, { codebooks } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { CodebooksCreateOrUpdateSchema, CodebooksTableParamsSchema } from "./schemas";
+import { CodebookCreateBodySchema, CodebooksTableParamsSchema } from "./schemas";
 
 export async function GET(req: NextRequest, { params }: { params: { jobId: number } }) {
   return createTableGet({
@@ -26,11 +26,6 @@ export async function POST(req: Request, { params }: { params: { jobId: number }
       const overwrite = body.overwrite;
       delete body.overwrite;
 
-      if (body.id) {
-        const [codebook] = await db.update(codebooks).set(body).where(eq(codebooks.id, body.id)).returning();
-        return codebook;
-      }
-
       let query = db
         .insert(codebooks)
         .values({ ...body, jobId: params.jobId })
@@ -47,7 +42,7 @@ export async function POST(req: Request, { params }: { params: { jobId: number }
       return codebook;
     },
     req,
-    bodySchema: CodebooksCreateOrUpdateSchema,
+    bodySchema: CodebookCreateBodySchema,
     authorizeFunction: async (auth, body) => {
       if (!hasMinJobRole(auth.jobRole, "manager")) return { message: "Unauthorized" };
     },

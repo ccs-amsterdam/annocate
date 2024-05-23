@@ -1,8 +1,13 @@
 import { SwipeEventData } from "react-swipeable";
-import { Question, SetState, SwipeRefs, Swipes } from "@/app/types";
+import { Code, Question, SetState, SwipeRefs, Swipes } from "@/app/types";
+import { z } from "zod";
+import { CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
+import { get } from "http";
+
+type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 
 const swipeControl = (
-  question: Question,
+  question: Variable,
   refs: SwipeRefs,
   setSwipe: SetState<Swipes | null>,
   alwaysDoVertical: boolean,
@@ -12,7 +17,9 @@ const swipeControl = (
   const swipeable = ["annotinder"];
   if (!swipeable.includes(question.type)) return {};
 
-  let swipeOptions = question.swipeOptions;
+  if (question.type !== "annotinder") return {};
+
+  let swipeOptions = getSwipeOptions(question.codes);
 
   const transitionTime = 250;
   let scrolloffset = 0;
@@ -71,7 +78,7 @@ const swipeControl = (
         [bottom, talign] = ["40%", "right"];
       }
 
-      refs.box.current.style.backgroundColor = bgc;
+      refs.box.current.style.backgroundColor = String(bgc);
       refs.code.current.innerText = code;
       refs.code.current.style.bottom = bottom;
       refs.code.current.style.textAlign = talign;
@@ -103,5 +110,13 @@ const swipeControl = (
     ...swipeConfig,
   };
 };
+
+export function getSwipeOptions(codes: Code[]) {
+  return {
+    left: codes[0],
+    right: codes[1],
+    up: codes[2],
+  };
+}
 
 export default swipeControl;

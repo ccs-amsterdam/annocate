@@ -41,6 +41,7 @@ export const JobUsersResponseSchema = z.object({
   email: JobUserEmailSchema,
   role: JobUserRoleSchema,
 });
+
 export const JobUsersCreateOrUpdateSchema = z.object({
   email: JobUserEmailSchema,
   role: JobUserRoleSchema,

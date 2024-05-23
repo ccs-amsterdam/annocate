@@ -1,4 +1,9 @@
-import { CodeBook, Question, Unit } from "@/app/types";
+import { CodebookSchema, CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
+import { Question, Unit } from "@/app/types";
+import { z } from "zod";
+
+type Codebook = z.infer<typeof CodebookSchema>;
+type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 
 /**
  * Codebooks can indicate that certain questions need to be asked
@@ -9,18 +14,18 @@ import { CodeBook, Question, Unit } from "@/app/types";
  * @param unit
  * @returns
  */
-export default function unfoldQuestions(codebook: CodeBook, unit: Unit): Question[] {
-  if (!codebook?.questions) return [];
+export default function unfoldQuestions(codebook: Codebook, unit: Unit): Variable[] {
+  if (!codebook?.variables) return [];
 
   let needsUnfold = false;
-  for (let question of codebook.questions) {
+  for (let question of codebook.variables) {
     if (question.perAnnotation && unit.unit.annotations) needsUnfold = true;
     if (question.perField) needsUnfold = true;
   }
-  if (!needsUnfold) return codebook.questions;
+  if (!needsUnfold) return codebook.variables;
 
   const questions = [];
-  for (let question of codebook.questions) {
+  for (let question of codebook.variables) {
     if (!question.perAnnotation && !question.perField) {
       questions.push(question);
       continue;

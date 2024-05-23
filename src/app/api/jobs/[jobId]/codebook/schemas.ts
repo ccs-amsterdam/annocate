@@ -15,23 +15,56 @@ export const variableTypeOptions: FormOptions[] = [
 ];
 
 export const CodebookCodeSchema = z.object({
-  code: z.string().openapi({
+  code: z.string().min(1).trim().openapi({
     title: "Code",
     description: "This is the code value that will be shown to the annotator. Needs to be unique within the variable.",
     example: "Code label shown to user",
   }),
-  color: z.string().nullish().openapi({
+  color: z.string().optional().openapi({
     title: "Color",
     description: "Optionally, you can specify a custom color for displaying the code.",
     example: "#FF0000 | red | yellow | ...",
   }),
-  value: z.union([z.string(), z.number()]).nullish().openapi({
+  value: z.union([z.string(), z.number()]).optional().openapi({
     title: "Value",
     description:
       "Optionally, you can specify an additional value related to the code. This can be a number or a string, and doesn't have to be unique",
     example: "negative | -1 | ...",
   }),
+
+  required_for: z.array(z.string()).optional(),
+  makes_irrelevant: z.array(z.string()).optional(),
 });
+
+export const CodebookCodesSchema = z
+  .array(CodebookCodeSchema)
+  .refine(
+    (codes) => {
+      const names = codes.map((c) => c.code || "");
+      return new Set(names).size === names.length;
+    },
+    { message: "Codes must be unique" },
+  )
+  .openapi({
+    title: "Codes",
+    description: "The codes that will be shown to the annotator. Codes have to be unique",
+  });
+
+export const CodebookSwipeCodesSchema = z
+  .array(CodebookCodeSchema)
+  .max(3)
+  .refine(
+    (codes) => {
+      const names = codes.map((c) => c.code);
+      return new Set(names).size === names.length;
+    },
+    { message: "Codes must be unique" },
+  )
+  .openapi({
+    title: "Codes",
+    description:
+      "The codes that will be shown to the annotator. For swiping, only 2 or 3 codes are allowed. the first, second and third code correspond to the left, right, and upward swipe respectively",
+  });
 
 export const CodebookVariableSchema = z.object({
   type: z.enum(variableType).openapi({
@@ -50,7 +83,7 @@ export const CodebookVariableSchema = z.object({
     description: "The question that will be shown to the annotator.",
     example: "What is the question you want to ask?",
   }),
-  instruction: z.string().nullish().openapi({
+  instruction: z.string().optional().openapi({
     title: "Instruction",
     description:
       "Optionally, you can provide additional instructions for this variable. This is a markdown string, so you can style it as you like",
@@ -59,14 +92,16 @@ export const CodebookVariableSchema = z.object({
 
   perField: z
     .array(z.string())
-    .nullish()
+    .optional()
     .openapi({
       title: "Per Field",
       description:
         "Optionally, you can ask this question for a specific field, or ask it multiple times for multiple fields. If a field is numbered (e.g., comment.1, comment.1) it will be asked for each item",
       example: ["title", "lead"],
     }),
-  perAnnotation: z.array(z.string()).nullish(),
+  perAnnotation: z.array(z.string()).optional(),
+  focusAnnotations: z.boolean().optional(),
+  fields: z.array(z.string()).optional(),
 });
 
 export const CodebookVariableItemSchema = z.object({
@@ -76,7 +111,7 @@ export const CodebookVariableItemSchema = z.object({
       "The name of the item. This will be concatenated with the variable name. Should only contain alphanumeric characters and underscores. This is never shown to the coder (that's what the label is for)",
     example: "Item name",
   }),
-  label: z.string().max(128).nullish().openapi({
+  label: z.string().max(128).optional().openapi({
     title: "Label",
     description: "The label of the item",
     example: "Item label",
@@ -85,26 +120,27 @@ export const CodebookVariableItemSchema = z.object({
 
 export const CodebookAnnotinderTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["annotinder"]),
-  codes: z.array(CodebookCodeSchema).max(3),
+  codes: CodebookSwipeCodesSchema,
 });
 
 export const CodebookScaleTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["scale"]),
-  items: z.array(CodebookVariableItemSchema).nullish(),
+  codes: CodebookCodesSchema,
+  items: z.array(CodebookVariableItemSchema).optional(),
 });
 
 export const CodebookSelectTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["select code"]),
-  codes: z.array(CodebookCodeSchema),
-  multiple: z.boolean().nullish(),
-  vertical: z.boolean().nullish(),
-  same_size: z.boolean().nullish(),
+  codes: CodebookCodesSchema,
+  multiple: z.boolean().optional(),
+  vertical: z.boolean().optional(),
+  same_size: z.boolean().optional(),
 });
 
 export const CodebookSearchTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["search code"]),
-  codes: z.array(CodebookCodeSchema),
-  multiple: z.boolean().nullish(),
+  codes: CodebookCodesSchema,
+  multiple: z.boolean().optional(),
 });
 
 export const CodebookConfirmTypeSchema = CodebookVariableSchema.extend({
@@ -112,13 +148,18 @@ export const CodebookConfirmTypeSchema = CodebookVariableSchema.extend({
 });
 
 export const CodebookSettingsSchema = z.object({
-  instruction: z.string().nullish().openapi({
+  instruction: z.string().optional().openapi({
     title: "Instruction",
     description:
       "Optionally, you can provide additional instructions for the codebook. This is a markdown string, so you can style it as you like",
     example: "Here we measure emotion, defined as ...",
   }),
-  auto_instruction: z.boolean().nullish(),
+  auto_instruction: z.boolean().optional().openapi({
+    title: "Show instruction on first encounter",
+    description:
+      "If enabled, the instruction is automatically shown to the annotator the first time they encounter this codebook.",
+    example: true,
+  }),
 });
 
 export const CodebookUnionTypeSchema = z.union([
@@ -129,14 +170,31 @@ export const CodebookUnionTypeSchema = z.union([
   CodebookConfirmTypeSchema,
 ]);
 
+export const CodebookVariablesSchema = z.array(CodebookUnionTypeSchema).refine(
+  (variables) => {
+    const names = variables.map((v) => v.name);
+    return new Set(names).size === names.length;
+  },
+  { message: "Variable names must be unique" },
+);
+
 export const CodebookSchema = z.object({
-  variables: z.array(CodebookUnionTypeSchema),
+  variables: CodebookVariablesSchema.openapi({
+    title: "Variables",
+    description: "The variables that will be shown to the annotator. Names have to be unique",
+  }),
   settings: CodebookSettingsSchema,
 });
 
 ///////////////////////////
 
 export const CodebooksTableParamsSchema = TableParamsSchema.extend({});
+
+export const CodebookNameSchema = z.string().min(0).max(128).openapi({
+  title: "Name",
+  description: "The name of the codebook",
+  example: "My first codebook",
+});
 
 export const CodebooksResponseSchema = z.object({
   id: z.number(),
@@ -151,21 +209,17 @@ export const CodebookResponseSchema = z.object({
   codebook: CodebookSchema,
 });
 
-export const CodebooksCreateOrUpdateSchema = z.object({
-  name: z.string().min(1).max(128).openapi({
-    title: "Name",
-    description: "The name of the codebook",
-    example: "My first codebook",
-  }),
+export const CodebookCreateBodySchema = z.object({
+  name: CodebookNameSchema,
   codebook: CodebookSchema,
   overwrite: z.boolean().optional().openapi({
     title: "Overwrite",
-    description: "If a codebook with the same name already exists, overwrite it. This is ignored if you provide an ID",
+    description: "If a codebook with the same name already exists, overwrite it",
     example: true,
   }),
-  id: z.number().optional().openapi({
-    title: "Codebook ID",
-    description: "If you want to update an existing codebook, provide the ID here",
-    example: 1,
-  }),
+});
+
+export const CodebookUpdateBodySchema = z.object({
+  name: CodebookNameSchema.optional(),
+  codebook: CodebookSchema.optional(),
 });

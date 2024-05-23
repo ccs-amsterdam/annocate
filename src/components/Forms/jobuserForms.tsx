@@ -6,7 +6,7 @@ import {
   JobUsersCreateOrUpdateSchema,
 } from "@/app/api/jobs/[jobId]/jobusers/schemas";
 
-import { useCreateOrUpdateJobUsers, useUpdateJobUsers } from "@/app/api/jobs/[jobId]/jobusers/query";
+import { useCreateOrUpdateJobUser } from "@/app/api/jobs/[jobId]/jobusers/query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -29,7 +29,7 @@ interface UpdateJobUserProps {
 }
 
 export function CreateJobUser({ jobId, afterSubmit }: CreateJobUserProps) {
-  const { mutateAsync } = useCreateOrUpdateJobUsers(jobId);
+  const { mutateAsync } = useCreateOrUpdateJobUser(jobId);
   const form = useForm<JobUsersCreateBody>({
     resolver: zodResolver(JobUsersCreateOrUpdateSchema),
     defaultValues: {
@@ -55,7 +55,7 @@ export function CreateJobUser({ jobId, afterSubmit }: CreateJobUserProps) {
 }
 
 export function UpdateJobUser({ jobId, current, afterSubmit }: UpdateJobUserProps) {
-  const { mutateAsync } = useCreateOrUpdateJobUsers(jobId);
+  const { mutateAsync } = useCreateOrUpdateJobUser(jobId);
   const form = useForm<JobUsersUpdateBody>({
     resolver: zodResolver(JobUsersCreateOrUpdateSchema),
     defaultValues: JobUsersCreateOrUpdateSchema.parse(current),

@@ -13,7 +13,7 @@ interface GetMethod {
   method: "get";
   path: string;
   description: string;
-  params: z.ZodSchema<any>;
+  params?: z.ZodSchema<any>;
   response?: z.ZodSchema<any>;
 }
 
