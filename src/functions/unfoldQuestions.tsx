@@ -1,9 +1,6 @@
 import { CodebookSchema, CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
-import { Question, Unit } from "@/app/types";
+import { Codebook, Question, Unit, Variable } from "@/app/types";
 import { z } from "zod";
-
-type Codebook = z.infer<typeof CodebookSchema>;
-type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 
 /**
  * Codebooks can indicate that certain questions need to be asked
@@ -36,12 +33,12 @@ export default function unfoldQuestions(codebook: Codebook, unit: Unit): Variabl
     for (let a of unit.unit.annotations || []) {
       if (!question?.perAnnotation?.includes(a.variable)) continue;
 
-      const aSerial: string = a.field + "." + a.variable + "." + a.value + "." + a.offset + "." + a.length;
+      const aSerial: string = JSON.stringify(a);
       if (duplicate[aSerial]) continue;
       duplicate[aSerial] = true;
 
       const q = { ...question, annotation: a };
-      if (question.focusAnnotations && a.field) q.fields = [a.field];
+      if (question.focusAnnotations && "field" in a && a.field) q.fields = [a.field];
       questions.push(q);
     }
 

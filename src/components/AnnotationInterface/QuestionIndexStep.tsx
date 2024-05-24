@@ -3,6 +3,8 @@ import { Answer, SetState, Variable } from "@/app/types";
 
 import styled from "styled-components";
 import { FaStepForward, FaStepBackward } from "react-icons/fa";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "../ui/button";
 
 const QuestionIndexDiv = styled.div`
   min-height: 10px;
@@ -34,7 +36,7 @@ const Icon = styled.div<{ disabled?: boolean; hidden?: boolean }>`
 `;
 
 interface QuestionIndexStepProps {
-  children?: React.ReactNode;
+  children?: React.ReactNode | React.ReactNode[];
   questions: Variable[];
   questionIndex: number;
   answers: Answer[];
@@ -85,24 +87,27 @@ export default function QuestionIndexStep({
   const hide = questions.length === 1;
 
   return (
-    <QuestionIndexDiv>
-      <Icon
-        hidden={hide}
-        onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
+    <div className="flex h-full min-h-3 w-full items-center justify-between gap-2 ">
+      <Button
+        size="icon"
+        variant="ghost"
+        className={`h-full rounded-none ${hide ? "hidden" : ""}`}
         disabled={previousIndex === null}
+        onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
       >
-        <FaStepBackward />
-      </Icon>
+        <ChevronLeft />
+      </Button>
       {children}
-
-      <Icon
-        hidden={hide}
-        onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}
+      <Button
+        size="icon"
+        variant="ghost"
+        className={`h-full ${hide ? "hidden" : ""}`}
         disabled={nextIndex === null}
+        onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}
       >
-        <FaStepForward />
-      </Icon>
-    </QuestionIndexDiv>
+        <ChevronRight />
+      </Button>
+    </div>
   );
 }
 

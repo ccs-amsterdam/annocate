@@ -10,6 +10,7 @@
 import { Answer, AnswerItem, Question, Annotation, Unit, QuestionItem } from "@/app/types";
 import { z } from "zod";
 import { CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
+import cuid from "cuid";
 type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 
 export const getAnswersFromAnnotations = (unit: Unit, questions: Variable[]): Answer[] => {
@@ -60,12 +61,18 @@ const createVariable = (variable: string, item: string) => {
 };
 
 const isMatch = (annotation: Annotation, answer: Answer, item = "") => {
-  return (
-    annotation.variable === createVariable(answer.variable, item) &&
-    annotation.field === answer.field &&
-    annotation.offset === answer.offset &&
-    annotation.length === answer.length
-  );
+  if (annotation.type === "unit") return annotation.variable === createVariable(answer.variable, item);
+
+  if (annotation.type === "field")
+    return annotation.variable === createVariable(answer.variable, item) && annotation.field === answer.field;
+
+  if (annotation.type === "span")
+    return (
+      annotation.variable === createVariable(answer.variable, item) &&
+      annotation.field === answer.field &&
+      annotation.offset === answer.offset &&
+      annotation.length === answer.length
+    );
 };
 
 export const addAnnotationsFromAnswer = (answer: Answer, annotations: Annotation[] | undefined): Annotation[] => {
@@ -104,15 +111,19 @@ export const addAnnotationsFromAnswer = (answer: Answer, annotations: Annotation
 
       // case 3
       const variable = createVariable(answer.variable, item);
-      const annotation: Annotation = { type: "field", variable, value };
-      if (answer.field != null) annotation.field = answer.field;
-      if (answer.offset != null) annotation.offset = answer.offset;
-      if (answer.length != null) annotation.length = answer.length;
 
-      const valueObj = valueMap[item][value].valueObj;
-      if (valueObj.questionTime) annotation.time_question = valueObj.questionTime;
-      if (valueObj.answerTime) annotation.time_answer = valueObj.answerTime;
-      annotations.push(annotation);
+      let annotation: Annotation = { id: cuid(), created: new Date().toISOString(), type: "unit", variable, value };
+      if ("field" in answer && answer.field) {
+        annotation = { ...annotation, type: "field", field: answer.field };
+      }
+      if ("offset" in answer && answer.offset && answer.field && answer.length) {
+        annotation = { ...annotation, type: "span", field: answer.field, offset: answer.offset, length: answer.length };
+
+        const valueObj = valueMap[item][value].valueObj;
+        if (valueObj.questionTime) annotation.time_question = valueObj.questionTime;
+        if (valueObj.answerTime) annotation.time_answer = valueObj.answerTime;
+        annotations.push(annotation);
+      }
     }
   }
 

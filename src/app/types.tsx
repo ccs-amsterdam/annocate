@@ -1,6 +1,7 @@
 import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CSSProperties } from "react";
 import {
   CodebookCodeSchema,
+  CodebookRelationSchema,
   CodebookSchema,
   CodebookUnionTypeSchema,
   CodebookVariableItemSchema,
@@ -31,6 +32,23 @@ export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 
+export type ExtendedVariable = Variable & {
+  // intermediate values (not stored in backend)
+  codeMap: Record<string, Code>;
+  validFrom?: ValidRelation;
+  validTo?: ValidRelation;
+};
+
+export type ExtendedCodebook = {
+  variables: ExtendedVariable[];
+  settings: {
+    instruction?: string;
+    auto_instruction?: boolean;
+  };
+};
+
+export type AnnotationRelation = z.infer<typeof CodebookRelationSchema>;
+
 ///////////
 ///////////
 ///////////
@@ -53,70 +71,18 @@ export type Status = "DONE" | "IN_PROGRESS";
 
 // need to do this at some point but damn
 
-// export interface GeneralTypeAnnotation {
-//   id?: string;
-//   variable: string;
-//   value?: string | number;
-//   field?: string;
-
-//   color?: string;
-//   comment?: string;
-
-//   // intermediate values (not stored in backend)
-//   index?: number;
-//   text?: string;
-//   positions?: Set<number>;
-//   span?: Span;
-
-//   select: () => void;
-// }
-
-// export interface SpanTypeAnnotation extends GeneralTypeAnnotation {
-//   type: "span";
-//   offset: number;
-//   length: number;
-// }
-
-// export interface FieldTypeAnnotation extends GeneralTypeAnnotation {
-//   type: "field";
-//   id: string;
-// }
-
-// export interface QuestionTypeAnnotation extends GeneralTypeAnnotation {
-//   type: "question";
-//   id: string;
-//   time_question: string;
-//   time_answer: string;
-// }
-
-// export interface RelationTypeAnnotation extends GeneralTypeAnnotation {
-//   type: "relation";
-//   id: string;
-//   fromId: string;
-//   toId: string;
-// }
-
-// export type Annotation = SpanTypeAnnotation | FieldTypeAnnotation | QuestionTypeAnnotation | RelationTypeAnnotation;
-
-export interface Annotation {
-  type?: "field" | "span" | "relation";
-  id?: string;
+export interface GeneralTypeAnnotation {
+  id: string;
   variable: string;
-  value?: string | number;
-  field?: string;
+  value: string | number | undefined;
 
-  // span type annotations
-  offset?: number;
-  length?: number;
-  // relation type annotations
-  fromId?: string;
-  toId?: string;
-  // question type annotations
-  time_question?: string;
-  time_answer?: string;
-  // optional (?)
+  created: string;
+
   color?: string;
   comment?: string;
+
+  time_question?: string;
+  time_answer?: string;
 
   // intermediate values (not stored in backend)
   index?: number;
@@ -126,6 +92,62 @@ export interface Annotation {
 
   select?: () => void;
 }
+
+export interface SpanTypeAnnotation extends GeneralTypeAnnotation {
+  type: "span";
+  field: string;
+  offset: number;
+  length: number;
+}
+
+export interface FieldTypeAnnotation extends GeneralTypeAnnotation {
+  type: "field";
+  field: string;
+  id: string;
+}
+
+export interface UnitTypeAnnotation extends GeneralTypeAnnotation {
+  type: "unit";
+  id: string;
+}
+
+export interface RelationTypeAnnotation extends GeneralTypeAnnotation {
+  type: "relation";
+  id: string;
+  fromId: string;
+  toId: string;
+}
+
+export type Annotation = SpanTypeAnnotation | FieldTypeAnnotation | UnitTypeAnnotation | RelationTypeAnnotation;
+
+// export interface Annotation {
+//   type?: "field" | "span" | "relation";
+//   id: string;
+//   variable: string;
+//   value?: string | number;
+//   field?: string;
+
+//   // span type annotations
+//   offset?: number;
+//   length?: number;
+//   // relation type annotations
+//   fromId?: string;
+//   toId?: string;
+//   // question type annotations
+//   time_question?: string;
+//   time_answer?: string;
+//   // optional (?)
+//   color?: string;
+//   comment?: string;
+
+//   // intermediate values (not stored in backend)
+//   index?: number;
+//   text?: string;
+//   positions?: Set<number>;
+//   span?: Span;
+
+//   select?: () => void;
+// }
 
 export interface RelationAnnotation {
   type: "relation";
@@ -608,7 +630,7 @@ export interface UnitContent {
   metaFields?: MetaField[];
   annotations?: Annotation[];
   importedAnnotations?: Annotation[];
-  codebook?: CodeBook;
+  codebook?: ExtendedCodebook;
   variables?: UnitVariables;
   grid?: FieldGrid;
 }
@@ -649,9 +671,8 @@ export interface RawUnitContent {
   image_fields?: ImageField[];
   markdown_fields?: MarkdownField[];
   meta_fields?: MetaField[];
-  importedAnnotations?: Annotation[]; // deprecated
-  annotations: Annotation[];
-  codebook?: RawCodeBook;
+  annotations?: Annotation[];
+  codebook?: Codebook;
   variables?: UnitVariables;
   grid?: FieldGridInput;
 }
@@ -846,7 +867,7 @@ export interface CodeHistory {
 }
 
 export interface VariableMap {
-  [key: string]: Variable;
+  [key: string]: ExtendedVariable;
 }
 
 export interface TriggerSelectorParams {

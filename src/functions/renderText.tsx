@@ -76,17 +76,17 @@ const renderField = (
   return (
     <div
       ref={fieldRefs[field]}
-      className="field  prose dark:prose-invert max-w-none"
+      className="field prose dark:prose-invert max-w-none"
       key={"tokens-" + field}
       style={{
-        gridArea: textField.grid_area,
+        gridArea: textField?.grid_area,
         padding: "10px 0px 10px 0px",
         margin: "0px 10px 0px 10px",
         maxWidth: "100%",
-        ...(textField.style || {}),
+        ...(textField?.style || {}),
       }}
     >
-      {textField.label ? (
+      {textField?.label ? (
         <span
           key={field + paragraph_key + "label"}
           style={{
@@ -118,13 +118,11 @@ const renderParagraph = (
 
   return (
     <p
-      key={"par" + textField.name + "_" + paragraph_nr}
+      key={"par" + textField?.name + "_" + paragraph_nr}
       className="paragraph noselect"
-      // style={
-      //   {
-      //     // padding: "0px 10px 0px 10px",
-      //   }
-      // }
+      // style={{
+      //   padding: "0px 10px 0px 10px",
+      // }}
     >
       {tokens}
     </p>

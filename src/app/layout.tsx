@@ -25,7 +25,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const fontsize = cookieStore.get("fontsize");
 
   return (
-    <html lang="en" data-dark={dark?.value || "off"} data-fontsize={fontsize?.value || "medium"}>
+    <html
+      lang="en"
+      data-dark={dark?.value || "off"}
+      data-fontsize={fontsize?.value || "medium"}
+      suppressHydrationWarning
+    >
       <body className={font.className}>
         <SetResponsiveSize />
         <StyledComponentRegistry>

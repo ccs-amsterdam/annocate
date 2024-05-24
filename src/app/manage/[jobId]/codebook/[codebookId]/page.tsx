@@ -1,13 +1,16 @@
 "use client";
 import { useCodebook } from "@/app/api/jobs/[jobId]/codebook/query";
 import { CodebookSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
-import { Unit } from "@/app/types";
+import { RawUnit, Unit } from "@/app/types";
 import QuestionTask from "@/components/AnnotationInterface/QuestionTask";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
 import { Loading } from "@/components/ui/loader";
-import { useCallback, useState } from "react";
+import { importCodebook } from "@/functions/codebook";
+import { prepareUnit } from "@/functions/processUnitContent";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { LoremIpsum } from "./lorem";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
@@ -24,28 +27,59 @@ export default function Job({ params }: { params: { jobId: number; codebookId: n
 
   return (
     <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-3 lg:grid-cols-2">
-      <div className="max-h-[calc(100vh-var(--header-height))] ">
+      <div className="relative flex justify-center">
+        <PreviewCodebook preview={preview} />
+      </div>
+      <div className="max-h-[calc(100vh-var(--header-height))] overflow-auto py-6">
         <UpdateCodebook jobId={params.jobId} current={codebook} setPreview={setPreview} afterSubmit={confirmUpdate} />
       </div>
-      <PreviewCodebook preview={preview} />
     </div>
   );
 }
 
 function PreviewCodebook({ preview }: { preview?: Codebook }) {
-  if (!preview) return null;
+  const [size, setSize] = useState({ width: 500, height: 800 });
+  const [focus, setFocus] = useState(false);
+
+  const codebook = useMemo(() => {
+    if (!preview) return null;
+    return importCodebook(preview);
+  }, [preview]);
+  const previewUnit = useMemo(() => {
+    return prepareUnit(rawPreviewUnit);
+  }, []);
+
+  if (!codebook) return null;
   return (
-    <div>
-      <QuestionTask unit={previewUnit} codebook={preview} nextUnit={() => null} blockEvents={true} />;
+    <div className="">
+      <div
+        tabIndex={0}
+        className={`border-1 mt-10 rounded-lg  border-foreground/50 bg-foreground/50 p-1  ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
+        style={size}
+        onClick={(e) => {
+          e.currentTarget.focus();
+        }}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+      >
+        <QuestionTask unit={previewUnit} codebook={codebook} nextUnit={() => null} blockEvents={!focus} />
+      </div>
     </div>
   );
 }
 
-const previewUnit: Unit = {
-  unitId: "id",
-  unitType: "code",
-  unit: {
-    textFields: [],
-  },
+const rawPreviewUnit: RawUnit = {
+  index: 0,
   status: "IN_PROGRESS",
+  id: "id",
+  type: "code",
+  unit: {
+    text_fields: [
+      { name: "title", value: LoremIpsum.split("\n\n")[0], style: { fontSize: "1.2rem", fontWeight: "bold" } },
+      {
+        name: "lorem",
+        value: LoremIpsum.split("\n\n").slice(1).join("\n\n"),
+      },
+    ],
+  },
 };

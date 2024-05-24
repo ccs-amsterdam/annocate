@@ -1,33 +1,33 @@
-import React, { ReactElement, useEffect, useMemo, useRef } from "react";
-import useAnnotationEvents from "@/hooks/useAnnotationEvents";
-import { getColorGradient } from "@/functions/tokenDesign";
-import standardizeColor from "@/functions/standardizeColor";
-import { getValidTokenRelations, getValidTokenDestinations } from "@/functions/relations";
 import Popup from "@/components/Common/Popup";
+import useAnnotationEvents from "@/components/Document/hooks/useAnnotationEvents";
+import { getValidTokenDestinations, getValidTokenRelations } from "@/functions/relations";
+import standardizeColor from "@/functions/standardizeColor";
+import { getColorGradient } from "@/functions/tokenDesign";
+import { ReactElement, useEffect, useMemo, useRef } from "react";
 
 import {
-  Variable,
-  VariableMap,
-  Token,
   Annotation,
+  AnnotationLibrary,
+  ExtendedVariable,
+  Token,
   TokenSelection,
   TriggerSelector,
-  VariableType,
-  ValidTokenRelations,
   ValidTokenDestinations,
-  AnnotationLibrary,
+  ValidTokenRelations,
+  VariableMap,
+  VariableType,
 } from "@/app/types";
 import DrawArrows from "./DrawArrows";
 
 interface AnnotateNavigationProps {
   tokens: Token[];
   annotationLib: AnnotationLibrary;
-  variable: Variable;
-  variableType: VariableType;
-  showValues: VariableMap;
+  variable: ExtendedVariable | null;
+  variableType: VariableType | null;
+  showValues: VariableMap | null;
   disableAnnotations: boolean;
   editMode: boolean;
-  triggerSelector: TriggerSelector;
+  triggerSelector: TriggerSelector | null;
   eventsBlocked: boolean;
   showAll: boolean;
   currentUnitReady: boolean;
@@ -62,15 +62,15 @@ const AnnotateNavigation = ({
   );
   const showEdge = variableType === "relation" || alternative;
 
-  const validRelations: ValidTokenRelations | null = useMemo(
-    () => getValidTokenRelations(annotationLib, variable),
-    [annotationLib, variable],
-  );
+  const validRelations: ValidTokenRelations | null = useMemo(() => {
+    if (!variable) return null;
+    return getValidTokenRelations(annotationLib, variable);
+  }, [annotationLib, variable]);
 
-  const validDestinations: ValidTokenDestinations | null = useMemo(
-    () => getValidTokenDestinations(annotationLib, validRelations, tokenSelection),
-    [annotationLib, validRelations, tokenSelection],
-  );
+  const validDestinations: ValidTokenDestinations | null = useMemo(() => {
+    if (!validRelations || !tokenSelection) return null;
+    return getValidTokenDestinations(annotationLib, validRelations, tokenSelection);
+  }, [annotationLib, validRelations, tokenSelection]);
 
   useEffect(() => {
     if (!currentUnitReady) return;
@@ -102,11 +102,11 @@ const AnnotateNavigation = ({
 
 const highlightAnnotations = (
   tokens: Token[],
-  validTokens: ValidTokenRelations | ValidTokenDestinations,
+  validTokens: ValidTokenRelations | ValidTokenDestinations | null,
   annotationLib: AnnotationLibrary,
-  showValues: VariableMap,
+  showValues: VariableMap | null,
   showAll: boolean,
-  variableType: string,
+  variableType: string | null,
 ) => {
   // loop over tokens. Do some styling. Then get the (allowed) annotations for this token,
   // and apply styling to annotated tokens
@@ -139,7 +139,7 @@ const highlightAnnotations = (
 const allowedAnnotations = (
   annotationLib: AnnotationLibrary,
   tokenIndex: number,
-  showValues: VariableMap,
+  showValues: VariableMap | null,
   showAll: boolean,
 ) => {
   // get all annotations that are currently 'allowed', meaning that the variable is selected
@@ -263,7 +263,8 @@ const setTokenColor = (
 };
 
 const setSelectionAsCSSClass = (tokens: Token[], asEdge: boolean, selection: TokenSelection, hasSelection: any) => {
-  let [from, to] = selection || [null, null];
+  if (!selection || selection.length === 0 || selection[0] === null) return;
+  let [from, to] = selection;
   if (to !== null && from > to) [to, from] = [from, to];
 
   if (from === null || to === null) {
@@ -303,15 +304,16 @@ const setSelectionAsCSSClass = (tokens: Token[], asEdge: boolean, selection: Tok
 
 interface AnnotationPopupProps {
   tokens: Token[];
-  tokenIndex: number;
+  tokenIndex: number | undefined;
   annotationLib: AnnotationLibrary;
-  showValues: VariableMap;
+  showValues: VariableMap | null;
 }
 
 const AnnotationPopup = ({ tokens, tokenIndex, annotationLib, showValues }: AnnotationPopupProps) => {
   const ref = useRef<HTMLDivElement>();
 
   const content = useMemo(() => {
+    if (!tokenIndex) return null;
     if (!tokens?.[tokenIndex]?.ref) return null;
     const annotationIds = annotationLib.byToken[tokens[tokenIndex].index];
     if (!annotationIds) return null;
@@ -347,11 +349,12 @@ const AnnotationPopup = ({ tokens, tokenIndex, annotationLib, showValues }: Anno
   }, [tokens, tokenIndex, annotationLib, showValues]);
 
   useEffect(() => {
+    if (!tokenIndex) return;
     const tokenRef = tokens?.[tokenIndex]?.ref;
     if (!tokenRef) return;
   }, [ref, tokens, tokenIndex]);
 
-  if (!content) return null;
+  if (!content || !tokenIndex) return null;
   const tokenRef = tokens?.[tokenIndex]?.ref;
 
   return (

@@ -40,15 +40,15 @@ const BodyContainer = styled.div`
 `;
 
 interface BodyProps {
-  tokens: Token[];
+  tokens?: Token[];
   textFields: TextField[];
   metaFields: MetaField[];
   imageFields: ImageField[];
   markdownFields: MarkdownField[];
   grid?: FieldGrid;
   onReady: () => any;
-  bodyStyle?: CSSProperties;
-  focus?: string[];
+  bodyStyle: CSSProperties | undefined;
+  focus: string[] | undefined;
   centered: boolean;
   readOnly: boolean;
   currentUnitReady: boolean;
@@ -92,7 +92,7 @@ const Body = ({
     }, 50);
   }, [tokens, textFields, imageFields, markdownFields, onReady, setImagesLoaded, fieldRefs]);
 
-  if (tokens === null) return null;
+  if (tokens == null) return null;
 
   return (
     <BodyContainer
@@ -123,7 +123,7 @@ const Body = ({
           key="content"
           className="DocumentContent"
         >
-          <FocusOverlay key="focusoverlay" fieldRefs={fieldRefs} focus={focus} containerRef={containerRef} />
+          <FocusOverlay key="focusoverlay" fieldRefs={fieldRefs} focus={focus || []} containerRef={containerRef} />
           {content}
         </DocumentContent>
       </div>

@@ -1,10 +1,25 @@
 import { useEffect } from "react";
+import styled from "styled-components";
 import { scrollToMiddle } from "@/functions/scroll";
 import { FieldRefs } from "@/app/types";
 
+const Overlay = styled.div`
+  //background: linear-gradient(135deg, #aaa8 25%, #ddd8 50%, #bbb7 75%, #ccc9 100%);
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(1px);
+  background: hsl(var(--background), 0.5);
+  //border: 1px solid black;
+  z-index: 2;
+`;
+
 interface FocusOverlayProps {
   fieldRefs: FieldRefs;
-  focus: string[] | undefined;
+  focus: string[];
   containerRef: any;
 }
 
@@ -12,9 +27,9 @@ const FocusOverlay = ({ fieldRefs, focus, containerRef }: FocusOverlayProps) => 
   useEffect(() => {
     let first = true;
     for (const field of Object.keys(fieldRefs)) {
-      if (!fieldRefs[field].current) continue;
       let nomatch = true;
-      const cl = fieldRefs[field].current.classList;
+      const cl = fieldRefs?.[field]?.current?.classList;
+      if (!cl) continue;
       for (let f of focus || []) {
         const fieldWithoutNr = field.replace(/[.][0-9]+$/, "");
         if (f === field || f === fieldWithoutNr) {
@@ -33,7 +48,7 @@ const FocusOverlay = ({ fieldRefs, focus, containerRef }: FocusOverlayProps) => 
   });
 
   if (!focus || focus.length === 0) return null;
-  return <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-full bg-background/50"></div>;
+  return <Overlay key="overlay" />;
 };
 
 export default FocusOverlay;

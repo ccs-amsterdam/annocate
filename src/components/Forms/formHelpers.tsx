@@ -15,6 +15,7 @@ import {
   CodebookCodeSchema,
   CodebookCodesSchema,
   CodebookCreateBodySchema,
+  CodebookVariableItemSchema,
 } from "@/app/api/jobs/[jobId]/codebook/schemas";
 import { createDecipheriv } from "crypto";
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "../ui/table";
@@ -185,7 +186,6 @@ export function DropdownFormField<T extends FieldValues>({ control, name, zType,
 }
 
 type CodebookCode = z.infer<typeof CodebookCodeSchema>;
-type CodebookCodes = z.infer<typeof CodebookCodesSchema>;
 
 export function CodesFormField<T extends FieldValues>({ control, name, zType, swipe }: CodeFormProps<T>) {
   const openAPI = getOpenApi(zType, name);
@@ -292,6 +292,111 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
   );
 }
 
+type CodebookVariableItem = z.infer<typeof CodebookVariableItemSchema>;
+
+export function VariableItemsFormField<T extends FieldValues>({ control, name, zType, swipe }: CodeFormProps<T>) {
+  const openAPI = getOpenApi(zType, name);
+
+  const maxLines = swipe ? 3 : undefined;
+
+  function addVariable(field: any, values: CodebookVariableItem[]) {
+    values.push({ name: "new_item", label: "" });
+    field.onChange(values);
+  }
+
+  function rmVariable(field: any, values: CodebookVariableItem[], index: number) {
+    values.splice(index, 1);
+    field.onChange(values);
+  }
+
+  function moveVariable(field: any, values: CodebookVariableItem[], i: number, j: number) {
+    const temp = values[i];
+    values[i] = values[j];
+    values[j] = temp;
+    field.onChange(values);
+  }
+
+  function forceAlphaNumeric(value: string) {
+    return value.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+  }
+
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => {
+        const items = field.value || ([] as CodebookVariableItem[]);
+        console.log(items);
+        function setItem(index: number, key: "name" | "label", value: string) {
+          items[index][key] = value;
+          field.onChange(items);
+        }
+
+        return (
+          <FormItem className="flex flex-col">
+            <Title title={openAPI.title} description={openAPI.description} />
+            <FormControl>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-3"></TableHead>
+                    <TableHead className="h-6 px-3 py-1">Name</TableHead>
+                    <TableHead className="h-6 w-2/3 px-3 py-1">Label</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item, i) => {
+                    if (maxLines && i >= maxLines) return null;
+                    const inputStyle = "h-7 rounded-none focus-visible:ring-0";
+                    const cellStyle = "p-1 rounded-none hover:bg-transparent ";
+                    return (
+                      <TableRow key={i} className="hover:bg-transparent">
+                        <TableCell className={cellStyle}>
+                          <MoveItemInArray
+                            move={(i, j) => moveVariable(field, items, i, j)}
+                            i={i}
+                            n={items.length}
+                            bg="bg-primary-light"
+                            error={false}
+                            variant="secondary"
+                          />
+                        </TableCell>
+                        <TableCell className={cellStyle}>
+                          <Input
+                            className={inputStyle}
+                            value={item.name}
+                            onChange={(v) => setItem(i, "name", forceAlphaNumeric(v.target.value))}
+                          />
+                        </TableCell>
+                        <TableCell className={cellStyle}>
+                          <Input
+                            className={inputStyle}
+                            value={String(item.label)}
+                            onChange={(v) => setItem(i, "label", v.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell className={cellStyle}>
+                          <X
+                            className="h-5 w-5 cursor-pointer text-foreground/50 hover:text-destructive"
+                            onClick={() => rmVariable(field, items, i)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </FormControl>
+            <Button type="button" variant="secondary" onClick={() => addVariable(field, items)}>
+              Add Item
+            </Button>
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
 function getOpenApi(zType: z.ZodTypeAny, name: string) {
   return zType._def?.openapi?.metadata || { title: name, description: "" };
 }
@@ -342,18 +447,20 @@ export function MoveItemInArray({
   n,
   bg,
   error,
+  variant,
 }: {
   move: (index1: number, index2: number) => void;
   i: number;
   n: number;
   bg: string;
   error: boolean;
+  variant?: "default" | "secondary";
 }) {
   const itemArray = Array.from({ length: n }, (_, i) => i);
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild disabled={n === 1}>
-        <Button variant={error ? "destructive" : "default"} className={` h-8 w-8 rounded-full `}>
+        <Button variant={error ? "destructive" : variant || "default"} className={` h-8 w-8 rounded-full `}>
           {i + 1}
         </Button>
       </DropdownMenuTrigger>

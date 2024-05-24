@@ -23,9 +23,9 @@ export const DarkModeButton = () => {
 
   let icon: ReactNode = null;
 
-  if (!isClient) icon = <SunMoon className="h-8 w-8 animate-spin-slow text-foreground/50" />;
-
-  if (dark === "off") {
+  if (!isClient) {
+    icon = <SunMoon className="h-8 w-8 animate-spin-slow text-foreground/50" />;
+  } else if (dark === "off") {
     icon = (
       <Sun
         role="button"

@@ -26,6 +26,7 @@ import {
   MoveItemInArray,
   TextAreaFormField,
   TextFormField,
+  VariableItemsFormField,
 } from "./formHelpers";
 import { Form } from "../ui/form";
 import React from "react";
@@ -74,7 +75,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   });
 
   const { error } = form.getFieldState("codebook");
-  const codebook = form.getValues();
   const variables = form.getValues("codebook.variables");
 
   useEffect(() => {
@@ -92,13 +92,13 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 
   function appendVariable() {
     const newVariables = [...variables, defaultVariable("Variable_" + (variables.length + 1))];
-    form.setValue("codebook.variables", newVariables, { shouldValidate: true, shouldDirty: true });
+    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
     setAccordionValue("V" + (newVariables.length - 1));
   }
 
   function removeVariable(index: number) {
     const newVariables = variables.filter((_, i) => i !== index);
-    form.setValue("codebook.variables", newVariables, { shouldValidate: true, shouldDirty: true });
+    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
     setAccordionValue("");
   }
 
@@ -107,7 +107,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     const newVariables = [...variables];
     const [removed] = newVariables.splice(index1, 1);
     newVariables.splice(index2, 0, removed);
-    form.setValue("codebook.variables", newVariables, { shouldValidate: true, shouldDirty: true });
+    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
     setAccordionValue("");
   }
 
@@ -119,27 +119,27 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex max-h-full flex-col gap-3  p-3 lg:px-8 ">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex flex-col gap-3  p-3 lg:px-8 ">
         <div
           className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)] w-full items-center justify-between gap-10 border-b bg-background px-8 ${form.formState.isDirty ? "" : "hidden"} `}
         >
           <Button
-            className="  flex w-min translate-y-1 items-center gap-2 shadow-lg disabled:opacity-0"
+            type="button"
+            className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-0"
+            variant="destructive"
+            onClick={() => form.reset(CodebookCreateBodySchema.parse(current))}
+          >
+            <XIcon className="h-5 w-5" />
+            Undo changes
+          </Button>
+          <Button
+            className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-0"
             variant={error ? "destructive" : "secondary"}
             type="submit"
             disabled={!form.formState.isDirty || variables.length === 0}
           >
             <Save className="h-5 w-5" />
             Save changes
-          </Button>
-          <Button
-            type="button"
-            className="  flex w-min translate-y-1 items-center gap-2 shadow-lg disabled:opacity-0"
-            variant="destructive"
-            onClick={() => form.reset(CodebookCreateBodySchema.parse(current))}
-          >
-            <XIcon className="h-5 w-5" />
-            Undo changes
           </Button>
         </div>
         <TextFormField control={form.control} zType={shape.name} name="name" />
@@ -163,6 +163,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
           >
             {variables.map((variable, index) => {
               const varName = form.watch(`codebook.variables.${index}.name`);
+              const varType = form.watch(`codebook.variables.${index}.type`);
               const isActive = accordionValue === "V" + index;
               const { error } = form.getFieldState(`codebook.variables.${index}`);
               let bg = isActive ? "bg-primary-light" : "";
@@ -209,8 +210,14 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 function WatchForPreview({ form, setPreview }: { form: any; setPreview?: (codebook: Codebook | undefined) => void }) {
   const watch = useWatch({ control: form.control, name: "codebook" });
   useEffect(() => {
-    if (setPreview) setPreview(watch);
-  }, [watch, setPreview]);
+    if (!setPreview) return;
+    const timeout = setTimeout(() => {
+      form.trigger();
+      const codebook = CodebookSchema.safeParse(watch);
+      if (codebook.success) setPreview(codebook.data);
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [watch, setPreview, form]);
   return <div></div>;
 }
 
@@ -242,7 +249,8 @@ function CodebookVariable<T extends FieldValues>({
       const shape = CodebookScaleTypeSchema.shape;
       return (
         <>
-          <div>scale</div>
+          <CodesFormField control={control} name={appendPath("codes")} zType={shape.codes} />
+          <VariableItemsFormField control={control} name={appendPath("items")} zType={shape.items} />
         </>
       );
     }

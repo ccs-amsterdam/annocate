@@ -35,6 +35,7 @@
     "clsx": "^2.1.1",
     "compromise": "^14.13.0",
     "cookies": "^0.8.0",
+    "cuid": "^3.0.0",
     "drizzle-orm": "^0.29.1",
     "drizzle-zod": "^0.5.1",
     "eslint": "8.45.0",
@@ -62,11 +63,11 @@
     "swagger-ui-react": "^5.17.9",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^9.0.1",
     "zod": "^3.23.6",
     "zod-validation-error": "^3.2.0"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.13",
     "@tanstack/react-query-devtools": "^4.32.0",
     "@types/cookies": "^0.9.0",
     "@types/js-cookie": "^3.0.6",

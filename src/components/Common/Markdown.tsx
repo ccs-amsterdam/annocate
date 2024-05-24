@@ -9,7 +9,7 @@ interface MarkdownProps {
 
 const Markdown = ({ children, style = {} }: MarkdownProps) => {
   return (
-    <div style={{ ...style }}>
+    <div style={{ ...style }} className="prose dark:prose-invert max-w-none">
       <ReactMarkdown rehypePlugins={[[rehypeExternalLinks, { target: "_blank" }]]}>{children}</ReactMarkdown>
     </div>
   );

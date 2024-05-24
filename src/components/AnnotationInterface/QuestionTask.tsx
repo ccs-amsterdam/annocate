@@ -1,6 +1,6 @@
 import React, { useState, useRef, RefObject, useCallback, useMemo } from "react";
 import QuestionForm from "./QuestionForm";
-// import Document from "../../Document/Document";
+import Document from "@/components/Document/Document";
 import { useSwipeable } from "react-swipeable";
 import swipeControl from "@/functions/swipeControl";
 import styled from "styled-components";
@@ -9,67 +9,6 @@ import Instructions from "./Instructions";
 // import FeedbackPortal from "./FeedbackPortal";
 import useWatchChange from "@/hooks/useWatchChange";
 import unfoldQuestions from "@/functions/unfoldQuestions";
-
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-
-  background: hsl(var(--background));
-`;
-
-const ContentWindow = styled.div<{ fullSize?: boolean }>`
-  flex: ${(p) => (p.fullSize ? `1 0 auto` : `1 1 0`)};
-  min-height: ${(p) => (p.fullSize ? "none" : "40%")};
-  position: relative;
-  z-index: 1;
-
-  &::after {
-    content: "";
-    display: block;
-    position: absolute;
-    bottom: 0px;
-    left: 0px;
-    height: 10px;
-    width: calc(100% - 5px);
-    background: linear-gradient(transparent, var(--background) 100%);
-    z-index: 100;
-  }
-`;
-
-const QuestionMenu = styled.div<{
-  fullSize?: boolean;
-}>`
-  //overflow: auto;
-  flex: ${(p) => (p.fullSize ? `0 0 auto` : `0 1 auto`)};
-  font-size: 1.2em;
-`;
-
-const SwipeableBox = styled.div`
-  height: 100%;
-  overflow: hidden;
-  outline: 1px solid black;
-  outline-offset: -2px;
-  position: relative;
-  will-change: opacity, transform;
-  z-index: 20;
-`;
-
-const SwipeCode = styled.div`
-  padding: 0.6em 0.3em;
-  width: 100%;
-  font-size: 3em;
-  position: absolute;
-`;
-
-const Content = styled.div`
-  height: 100%;
-  position: relative;
-  top: 0;
-  font-size: 1em;
-  box-shadow: 0px 0px 10px 5px var(--background-inversed-fixed);
-  will-change: background, transform;
-`;
 
 interface QuestionTaskProps {
   unit: Unit;
@@ -137,29 +76,32 @@ const QuestionTask = ({ unit, codebook, nextUnit, blockEvents = false }: Questio
   const singlePage = unit.unitType === "survey";
 
   return (
-    <Container className="QuestionContainer" ref={divref}>
+    <div className="flex h-full flex-col bg-background" ref={divref}>
       {/* <FeedbackPortal
         variable={questions?.[questionIndex]?.name}
         conditionReport={conditionReport}
         setConditionReport={setConditionReport}
       /> */}
-      <ContentWindow {...textSwipe} fullSize={singlePage}>
-        <SwipeableBox ref={refs.box}>
+      <div
+        {...textSwipe}
+        className={`relative z-10 ${singlePage ? "min-h-0 flex-[1_0_auto]" : "min-h-[40%] flex-[1_1_0]"}`}
+      >
+        <div ref={refs.box} className="oveflow-hidden relative z-20 h-full will-change-auto">
           {/* This div moves around behind the div containing the document to show the swipe code  */}
-          <SwipeCode ref={refs.code} />
-          <Content ref={refs.text}>
-            {/* <Document
+          <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
+          <div ref={refs.text} className="relative top-0 h-full will-change-auto">
+            <Document
               unit={unit}
-              annotations={annotations}
+              annotations={[]}
               showAll={true}
               onReady={onNewUnit}
               focus={question?.fields}
-              centered
-            /> */}
-          </Content>
-        </SwipeableBox>
-      </ContentWindow>
-      <QuestionMenu {...menuSwipe} fullSize={singlePage}>
+              centered={true}
+            />
+          </div>
+        </div>
+      </div>
+      <div {...menuSwipe} className={` ${singlePage ? "flex-[0_0_auto]" : "flex-[0_1_auto"}`}>
         <QuestionForm
           unit={unit}
           questions={questions}
@@ -172,14 +114,13 @@ const QuestionTask = ({ unit, codebook, nextUnit, blockEvents = false }: Questio
           startTransition={startTransition}
           blockEvents={blockEvents}
         >
-          <div>instructions</div>
           <Instructions
             instruction={question?.instruction || codebook?.settings?.instruction}
             autoInstruction={codebook?.settings?.auto_instruction || false}
           />
         </QuestionForm>
-      </QuestionMenu>
-    </Container>
+      </div>
+    </div>
   );
 };
 

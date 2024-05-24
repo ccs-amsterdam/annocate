@@ -142,15 +142,10 @@ const SelectCode = ({
 
       return (
         <Button
+          className="max-h-20 max-w-full flex-[0.3_0_auto] p-3"
           ref={buttonRefs[i]}
-          // $background={option.color}
-          // $selected={i === selected}
-          // $current={isCurrent}
-          key={option.code}
+          key={option.code + i}
           value={option.code}
-          // $minWidth={minWidth}
-          // $compact={vertical}
-          // $flex={`0 1 auto`}
           onClick={() => {
             if (speedbump) return;
 
@@ -163,25 +158,18 @@ const SelectCode = ({
             }); // !multiple tells not to finish unit if multiple is true
           }}
         >
-          <div style={{ minWidth, maxWidth: "min-content" }}>{option.code}</div>
+          <div className="break-word max-h-20 whitespace-normal">{option.code}</div>
         </Button>
       );
     });
   };
 
   return (
-    <div style={{ height: "100%", width: "100%", display: "flex" }}>
+    <div className="flex h-full w-full px-3">
       <div
         ref={container}
-        style={{
-          display: "flex",
-          flex: "1 1 auto",
-          justifyContent: "center",
-          flexWrap: "wrap",
-          alignItems: "stretch",
-          maxWidth: "100%",
-          height: "100%",
-        }}
+        className=" flex h-full  flex-auto flex-wrap  justify-center gap-2
+       "
       >
         {mapButtons()}
       </div>

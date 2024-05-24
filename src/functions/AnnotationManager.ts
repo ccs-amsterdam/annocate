@@ -16,6 +16,7 @@ import {
   VariableMap,
 } from "@/app/types";
 import randomColor from "randomcolor";
+import cuid from "cuid";
 
 export default class AnnotationManager {
   setAnnotationLib: SetState<AnnotationLibrary>;
@@ -26,7 +27,6 @@ export default class AnnotationManager {
 
   addAnnotation(annotation: Annotation) {
     this.setAnnotationLib((annotationLib: AnnotationLibrary) => {
-      annotation.id = createId(annotationLib.annotations);
       annotation.positions = getTokenPositions(annotationLib.annotations, annotation);
 
       let annotations = { ...annotationLib.annotations };
@@ -56,10 +56,12 @@ export default class AnnotationManager {
     });
   }
 
-  createSpanAnnotation(code: Code, from: number, to: number, tokens: Token[]) {
+  createSpanAnnotation(variable: string, code: Code, from: number, to: number, tokens: Token[]) {
     const annotation: Annotation = {
+      id: cuid(),
+      created: new Date().toISOString(),
       type: "span",
-      variable: code.variable,
+      variable: variable,
       value: code.code,
       color: code.color,
       span: [from, to],
@@ -71,11 +73,13 @@ export default class AnnotationManager {
     this.addAnnotation(annotation);
   }
 
-  createRelationAnnotation(code: Code, from: Annotation, to: Annotation) {
+  createRelationAnnotation(variable: string, code: Code, from: Annotation, to: Annotation) {
     if (!from.id || !to.id) throw new Error("Cannot create relation annotation without ids");
     const annotation: Annotation = {
+      id: cuid(),
+      created: new Date().toISOString(),
       type: "relation",
-      variable: code.variable,
+      variable: variable,
       value: code.code,
       color: code.color,
       fromId: from.id,
@@ -104,12 +108,6 @@ export function createAnnotationLibrary(
   const annotationDict: AnnotationDictionary = {};
 
   for (let a of annotationArray) {
-    if (a.id == null) continue;
-    annotationDict[a.id] = a;
-  }
-  for (let a of annotationArray) {
-    if (a.id != null) continue;
-    a.id = createId(annotationDict);
     annotationDict[a.id] = a;
   }
 
@@ -144,9 +142,17 @@ function addToTokenDictionary(byToken: TokenAnnotations, annotation: Annotation)
 function updateCodeHistory(codeHistory: CodeHistory, annotation: Annotation) {
   const { variable, value } = annotation;
   if (!codeHistory?.[variable]) codeHistory[variable] = [];
+
+  let values: (string | number)[] = [];
+  if (value) {
+    values = [value, ...codeHistory[variable].filter((v: string | number) => v !== value)];
+  } else {
+    values = codeHistory[variable];
+  }
+
   return {
     ...codeHistory,
-    [variable]: [value, ...codeHistory[variable].filter((v: string | number) => v !== value)],
+    [variable]: values,
   };
 }
 
@@ -154,6 +160,7 @@ function rmBrokenRelations(annDict: AnnotationDictionary) {
   const nBefore = Object.keys(annDict).length;
   for (let a of Object.values(annDict)) {
     if (a.type !== "relation") continue;
+    if (!("fromId" in a && "toId" in a)) continue;
     if (!annDict[a.fromId] || !annDict[a.toId]) delete annDict[a.id];
   }
 
@@ -173,11 +180,12 @@ export const addTokenIndices = (annotations: Annotation[], tokens: Token[]) => {
   // first add the span token indices, and simultaneously create an annotation map
   for (let a of annotations || []) {
     if (a.type === "span") {
-      a.span = [
-        getIndexFromOffset(tokens, a.field, a.offset),
-        getIndexFromOffset(tokens, a.field, a.offset + a.length - 1),
-      ];
-      if (!a.text) a.text = getSpanText(a.span, tokens);
+      const from = getIndexFromOffset(tokens, a.field, a.offset);
+      const to = getIndexFromOffset(tokens, a.field, a.offset + a.length - 1);
+      if (from !== null && to !== null) {
+        a.span = [from, to];
+        if (!a.text) a.text = getSpanText(a.span, tokens);
+      }
     }
     annMap[a.id] = a;
   }
@@ -197,6 +205,7 @@ const initializeCodeHistory = (annotations: Annotation[]): CodeHistory => {
   const vvh: VariableValueMap = {};
 
   for (let annotation of annotations) {
+    if (!annotation.value) continue;
     if (!vvh[annotation.variable]) {
       vvh[annotation.variable] = { [annotation.value]: true };
     } else {
@@ -234,6 +243,10 @@ function getTokenPositions(
   if (!positions) positions = new Set<number>();
 
   if (annotation.type === "span") {
+    if (!annotation.span) {
+      console.error("Span annotation without span", annotation);
+      return positions;
+    }
     for (let i = annotation.span[0]; i <= annotation.span[1]; i++) {
       positions.add(i);
     }
@@ -248,19 +261,9 @@ function getTokenPositions(
 
 function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap) {
   for (let a of Object.values(annotations)) {
-    if (!a.type) {
-      if (a.offset != null) {
-        a.type = "span";
-      } else if (a.fromId != null) {
-        a.type = "relation";
-      } else {
-        a.type = "field";
-      }
-    }
-
     if (variableMap) {
       const codeMap = variableMap[a.variable].codeMap;
-      if (codeMap[a.value]) {
+      if (a.value != null && codeMap[a.value]) {
         a.color = getColor(a.value, codeMap);
       }
     }
@@ -279,7 +282,10 @@ function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
   if (!annotation) return annotations;
 
   for (let a of Object.values(annotations)) {
-    if (a.id === annotation.id || a.type !== "span") continue;
+    if (a.type !== "span" || annotation.type !== "span") continue;
+    if (!a.span || !annotation.span) continue;
+    if (a.id === annotation.id) continue;
+
     if (
       a.field === annotation.field &&
       a.variable === annotation.variable &&
@@ -291,7 +297,7 @@ function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
 
   const emptyAnnotation = {
     ...annotations[id],
-    id: createId(annotations),
+    id: cuid(),
     value: "EMPTY",
     color: "grey",
   };
@@ -302,6 +308,8 @@ function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
 function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) {
   // check if this has the same position as an empty span. If so, remove the empty span
   for (let a of Object.values(annotations)) {
+    if (a.type !== "span" || annotation.type !== "span") continue;
+    if (!a.span || !annotation.span) continue;
     if (a.value !== "EMPTY") continue;
     if (
       a.field === annotation.field &&
@@ -314,12 +322,4 @@ function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) 
   }
 
   return annotations;
-}
-
-function createId(annotations: AnnotationDictionary) {
-  // use millisec since 2023 as id, but increment if id already used
-  // (which can happen if 2 ids are created on same millisec)
-  let i = Date.now() - new Date("2023-01-01").getTime();
-  while (annotations[String(i)]) i++;
-  return String(i);
 }

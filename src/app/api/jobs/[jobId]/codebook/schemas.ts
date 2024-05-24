@@ -5,7 +5,15 @@ import { z } from "zod";
 
 extendZodWithOpenApi(z);
 
-export const variableType = ["select code", "search code", "scale", "annotinder", "confirm"] as const;
+export const variableType = [
+  "select code",
+  "search code",
+  "scale",
+  "annotinder",
+  "confirm",
+  "span",
+  "relation",
+] as const;
 export const variableTypeOptions: FormOptions[] = [
   { value: "select code", label: "Select Code", description: "Select one or multiple buttons" },
   { value: "search code", label: "Search Code", description: "Search and select one or multiple items from a list" },
@@ -86,7 +94,7 @@ export const CodebookVariableSchema = z.object({
   instruction: z.string().optional().openapi({
     title: "Instruction",
     description:
-      "Optionally, you can provide additional instructions for this variable. This is a markdown string, so you can style it as you like",
+      "Provide specific instructions for this variable. This overwrites the general instruction for the codebook.",
     example: "Here we measure emotion, defined as ...",
   }),
 
@@ -118,6 +126,44 @@ export const CodebookVariableItemSchema = z.object({
   }),
 });
 
+export const CodebookVariableItemsSchema = z
+  .array(CodebookVariableItemSchema)
+  .min(1)
+  .refine(
+    (items) => {
+      const names = items.map((i) => i.name);
+      return new Set(names).size === names.length;
+    },
+    { message: "Item names must be unique" },
+  )
+  .openapi({
+    title: "Items",
+    description:
+      "The items for which the question is asked. The name is for your own use, and will be concatenated with the variable name to store the results. The label is shown to the user",
+  });
+
+export const CodebookRelationOptionsSchema = z.object({
+  variable: z.string(),
+  values: z.array(z.string()).optional(),
+});
+
+export const CodebookRelationSchema = z.object({
+  codes: CodebookCodesSchema,
+  from: CodebookRelationOptionsSchema,
+  to: CodebookRelationOptionsSchema,
+});
+
+export const CodebookSpanTypeSchema = CodebookVariableSchema.extend({
+  type: z.enum(["span"]),
+  codes: CodebookCodesSchema,
+  editMode: z.boolean().optional(),
+});
+export const CodebookRelationTypeSchema = CodebookVariableSchema.extend({
+  type: z.enum(["relation"]),
+  relations: z.array(CodebookRelationSchema),
+  editMode: z.boolean().optional(),
+});
+
 export const CodebookAnnotinderTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["annotinder"]),
   codes: CodebookSwipeCodesSchema,
@@ -126,7 +172,7 @@ export const CodebookAnnotinderTypeSchema = CodebookVariableSchema.extend({
 export const CodebookScaleTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["scale"]),
   codes: CodebookCodesSchema,
-  items: z.array(CodebookVariableItemSchema).optional(),
+  items: CodebookVariableItemsSchema,
 });
 
 export const CodebookSelectTypeSchema = CodebookVariableSchema.extend({
@@ -155,7 +201,7 @@ export const CodebookSettingsSchema = z.object({
     example: "Here we measure emotion, defined as ...",
   }),
   auto_instruction: z.boolean().optional().openapi({
-    title: "Show instruction on first encounter",
+    title: "Automatically open instruction the first time",
     description:
       "If enabled, the instruction is automatically shown to the annotator the first time they encounter this codebook.",
     example: true,
@@ -163,6 +209,8 @@ export const CodebookSettingsSchema = z.object({
 });
 
 export const CodebookUnionTypeSchema = z.union([
+  CodebookSpanTypeSchema,
+  CodebookRelationTypeSchema,
   CodebookScaleTypeSchema,
   CodebookAnnotinderTypeSchema,
   CodebookSelectTypeSchema,

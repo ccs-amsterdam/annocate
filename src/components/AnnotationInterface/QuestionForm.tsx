@@ -19,85 +19,6 @@ import AnswerField from "./AnswerField";
 import QuestionIndexStep from "./QuestionIndexStep";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 
-const QuestionDiv = styled.div`
-  position: relative;
-  height: 100%;
-  width: 100%;
-  background-color: hsl(var(--background));
-  padding-top: 0.5rem;
-  box-shadow: 0px -10px 10px -6px hsl(var(--background));
-  transition: border 0.2s;
-
-  /* display: grid;
-  grid-template-rows: min-content 1fr; */
-
-  font-size: inherit;
-  z-index: 50;
-`;
-
-const MenuDiv = styled.div`
-  z-index: 51;
-  width: 100%;
-  display: flex;
-  //flex-wrap: wrap-reverse;
-  justify-content: space-between;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-
-  // backdrop would be nice, but messes up stacking order
-  //backdrop-filter: blur(3px);
-
-  position: sticky;
-  top: 0;
-  left: 0;
-  //background: hsl(var(--background), 0.5);
-  background: linear-gradient(hsl(var(--background)) 40%, hsl(var(--background), 0.5) 75%, transparent 100%);
-  //box-shadow: 0px 10px 5px 0px hsl(var(--background), 0.5);
-
-  .Navigator {
-    flex: 1 1 auto;
-  }
-
-  .QuestionText {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 11;
-    flex: 1 1 auto;
-    font-size: inherit;
-    position: relative;
-    margin-bottom: 0.5rem;
-
-    .Question {
-      display: inline-block;
-
-      color: var(--foreground);
-      align-items: center;
-      font-size: clamp(1.8rem, 3vw, 2.5rem);
-      font-weight: bold;
-      text-align: center;
-      line-height: 2.5rem;
-    }
-    .Buttons {
-      display: inline-block;
-      z-index: 100;
-      color: hsl(var(--primary));
-    }
-  }
-`;
-
-const BodyDiv = styled.div`
-  display: flex;
-  flex-flow: column;
-  width: 100%;
-  padding: 0px 10px 10px 10px;
-  color: var(--foreground);
-  font-size: inherit;
-  min-height: 100px;
-  overflow: auto;
-  position: relative;
-`;
-
 interface QuestionFormProps {
   /** Buttons can be passed as children, that will be shown on the topleft of the question form */
   children: ReactElement | ReactElement[];
@@ -200,32 +121,29 @@ const QuestionForm = ({
   if (!questions?.[questionIndex]) return null;
 
   return (
-    <QuestionDiv ref={questionRef}>
-      <MenuDiv className="QuestionMenu">
-        {/* <div className="Question">
-          <div className="Buttons">{children}</div>
-          <div className="QuestionText">{questionText}</div>
-        </div> */}
-        <div className="Navigator">
+    <div
+      ref={questionRef}
+      className="relative z-30 flex h-full min-h-60 w-full flex-col bg-background  text-[length:inherit] transition-[border]"
+    >
+      <div className="sticky left-0 top-0 z-40 flex w-full flex-auto flex-col justify-center border-y border-primary bg-gradient-to-b from-primary/40 from-0% via-primary/20 via-50% to-primary/40 to-100% ">
+        <div className="flex-hidden">
           <QuestionIndexStep
             questions={questions}
             questionIndex={questionIndex}
             answers={answers}
             setQuestionIndex={setQuestionIndex}
           >
-            <div className="QuestionText">
-              <div className="Question">
-                <span>
-                  {questionText}
-                  <span className="Buttons">{children}</span>
-                </span>
+            <div className="relative z-20 mb-1 flex flex-auto items-center justify-center py-3 text-[length:inherit] ">
+              <div className="  flex items-center justify-between gap-3 text-lg  ">
+                <div>{questionText}</div>
+                <div className="z-50 inline-block translate-y-1">{children}</div>
               </div>
             </div>
           </QuestionIndexStep>
         </div>
-      </MenuDiv>
+      </div>
 
-      <BodyDiv>
+      <div className="relative flex w-full flex-auto overflow-auto pt-2 text-[length:inherit] text-foreground ">
         <AnswerField
           answers={answers}
           questions={questions}
@@ -234,8 +152,8 @@ const QuestionForm = ({
           swipe={swipe}
           blockEvents={blockEvents}
         />
-      </BodyDiv>
-    </QuestionDiv>
+      </div>
+    </div>
   );
 };
 
@@ -333,9 +251,14 @@ const processAnswer = async (
     }
 
     const status = newQuestionIndex === null ? "DONE" : "IN_PROGRESS";
-    const cleanAnnotations = (unit.unit.annotations || []).map((a: Annotation) => {
-      const { field, offset, length, variable, value, time_question, time_answer } = a;
-      return { field, offset, length, variable, value, time_question, time_answer };
+    const cleanAnnotations = (unit.unit.annotations || []).map((a: Annotation): Annotation => {
+      const buildAnnotation: any = {};
+      for (let key of Object.keys(a)) {
+        if (!["type", "field", "offset", "length", "variable", "value", "time_question", "time_answer"].includes(key))
+          continue;
+        buildAnnotation[key] = a[key as keyof Annotation];
+      }
+      return buildAnnotation;
     });
 
     if (onlySave) {

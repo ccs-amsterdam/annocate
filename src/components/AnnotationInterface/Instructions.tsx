@@ -6,6 +6,7 @@ import { FaQuestionCircle } from "react-icons/fa";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import useSessionStorage from "@/hooks/useSessionStorage";
 import hash from "object-hash";
+import { Info } from "lucide-react";
 
 const QuestionMarkButton = styled.span`
   vertical-align: middle;
@@ -59,7 +60,7 @@ const Instructions = ({ instruction, autoInstruction }: InstructionsProps) => {
   return (
     <Dialog>
       <DialogTrigger>
-        <FaQuestionCircle />
+        <Info className="h-6 w-6 " />
       </DialogTrigger>
       <DialogContent className="prose dark:prose-invert w-[90vw] max-w-[800px]">
         <Markdown

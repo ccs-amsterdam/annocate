@@ -3,6 +3,7 @@ import { OnSelectParams, AnswerOption, AnswerItem, QuestionItem, Code, VariableI
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
 import styled from "styled-components";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft, ArrowRight, Play } from "lucide-react";
 
 const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
@@ -22,25 +23,6 @@ interface ScaleProps {
   /** The index of the question.  */
   questionIndex: number;
 }
-
-const StyledDiv = styled.div`
-  height: 100%;
-  position: relative;
-  flex-direction: column;
-  justify-content: space-between;
-  background: hsl(var(--background));
-  color: var(--foreground);
-  display: flex;
-  flex-direction: column;
-
-  .ScaleLabel {
-    font-size: 1.4rem;
-    svg {
-      font-size: 2rem;
-      transform: translateY(0.4rem);
-    }
-  }
-`;
 
 const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, questionIndex }: ScaleProps) => {
   // render buttons for options (an array of objects with keys 'label' and 'color')
@@ -130,25 +112,11 @@ const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, q
   const done = nAnswered === answerItems.length;
 
   return (
-    <StyledDiv>
-      <div
-        style={{
-          flex: "1 1 auto",
-          display: "flex",
-          padding: "5px",
-          justifyContent: "space-between",
-          color: "hsl(var(--primary-foreground))",
-        }}
-      >
-        <div className="ScaleLabel ">
-          <FaAngleLeft />
-          {left.code}
-        </div>
+    <div className="relative flex h-full flex-col justify-between bg-background text-foreground">
+      <div className="flex flex-auto justify-between p-2 ">
+        <div className="flex items-center gap-2">{left.code}</div>
 
-        <div className="ScaleLabel ">
-          {right.code}
-          <FaAngleRight />
-        </div>
+        <div className="flex items-center gap-2">{right.code}</div>
       </div>
 
       <Items
@@ -164,15 +132,15 @@ const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, q
 
       <Button
         ref={continueButtonRef}
-        className={selectedItem === -1 ? "selected" : ""}
+        className={`rounded-none ${selectedItem === -1 ? "ring-4 ring-secondary" : ""}`}
         disabled={!done}
         onClick={() => {
           onFinish();
         }}
       >
-        {done ? "Continue" : `${nAnswered} / ${answerItems.length}`}
+        {done ? <Play /> : `${nAnswered} / ${answerItems.length}`}
       </Button>
-    </StyledDiv>
+    </div>
   );
 };
 
@@ -202,14 +170,7 @@ const Items = ({
   }, [selectedItem, items, continueButtonRef]);
 
   return (
-    <div
-      style={{
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-      }}
-    >
+    <div className="relative flex flex-auto flex-col">
       {items.map((itemObj, itemIndex: number) => {
         return (
           <Item
@@ -240,52 +201,6 @@ interface ItemProps {
   onSelect: (params: OnSelectParams) => void;
 }
 
-const ItemButton = styled.div<{
-  selected?: boolean;
-  current?: boolean;
-  customColor?: string;
-  color?: string;
-}>`
-  flex: 1 1 auto;
-  height: 2.5rem;
-  border-radius: 4px;
-  background: ${(p) => (p.customColor ? "white" : "hsl(var(--primary))")};
-  border: 2px solid
-    ${(p) => {
-      if (p.selected) return "var(--foreground)";
-      if (p.current) return "hsl(var(--secondary))";
-      return p.customColor ? "grey" : "var(--primary)";
-    }};
-
-  button {
-    width: 100%;
-    height: 100%;
-    padding: 4px 0 2px 0;
-    background-color: ${(p) => (p.current ? "hsl(var(--secondary))" : p.color)};
-    font-weight: bold;
-    font-size: 0.8em;
-    text-shadow: 0px 0px 5px #ffffff77;
-    border-radius: 10px;
-    border-color: transparent;
-    color: ${(p) => (p.customColor || p.current ? "black" : "white")};
-    cursor: pointer;
-    position: relative;
-    z-index: 10;
-
-    &::after {
-      content: ${(p) => (p.selected ? '""' : `none`)};
-      position: absolute;
-      top: -0.5rem;
-      left: -0.5rem;
-      height: calc(100% + 1rem);
-      width: calc(100% + 1rem);
-      z-index: 9;
-      border: 0.4rem solid var(--foreground);
-      border-radius: 4px;
-    }
-  }
-`;
-
 const Item = ({
   itemObj,
   itemRef,
@@ -304,38 +219,11 @@ const Item = ({
   return (
     <div key={itemIndex} style={{ padding, borderRadius: "5px" }}>
       <div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            textAlign: "center",
-            fontSize: "1.6rem",
-            padding: "0.2rem",
-          }}
-        >
-          <div
-            style={{
-              padding: "0.3rem",
-              borderRadius: "5px",
-              color: "var(--foreground)",
-            }}
-          >
-            {itemlabel}
-          </div>
+        <div className="flex justify-center text-center ">
+          <div className="rounded p-1 text-foreground">{itemlabel}</div>
         </div>
       </div>
-      <div
-        ref={itemRef}
-        style={{
-          display: "flex",
-          scrollMargin: "100px",
-          gap: "0.5rem",
-          margin: "auto",
-          maxWidth: "min(500px, 100%)",
-          padding: "0px 5px",
-          paddingBottom: "2px",
-        }}
-      >
+      <div className="m-auto flex max-w-[min(500px,100%)] scroll-m-24 gap-2 p-1 pb-2" ref={itemRef}>
         {options.map((option, buttonIndex: number) => {
           const isCurrent = options[buttonIndex].code === answerItems?.[itemIndex]?.values[0];
           const isSelected = buttonIndex === selectedButton && itemIndex === selectedItem;
@@ -350,22 +238,26 @@ const Item = ({
           }
 
           return (
-            <ItemButton
+            <div
+              className={`h-7 flex-auto rounded  `}
+              style={{ background: option.color ? "white" : "hsl(var(--primary))" }}
               key={option.code}
-              selected={isSelected}
-              current={isCurrent}
-              customColor={option.color}
               color={color}
             >
               <button
+                style={{
+                  background: isCurrent ? "hsl(var(--secondary))" : option.color,
+                  color: option.color || isCurrent ? "black" : "white",
+                }}
+                className={`${isSelected ? "ring-4 ring-secondary ring-offset-1" : ""} relative z-10 h-full w-full cursor-pointer rounded border-transparent text-sm font-bold `}
                 // ref={option.ref as React.RefObject<HTMLButtonElement>}
                 onClick={() => {
                   onSelect({ value: options[buttonIndex].code, itemIndex });
                 }}
               >
-                {isCurrent ? option.code : buttonIndex + 1}
+                {isCurrent ? option.code : option.value || buttonIndex + 1}
               </button>
-            </ItemButton>
+            </div>
           );
         })}
       </div>

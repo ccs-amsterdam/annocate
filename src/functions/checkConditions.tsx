@@ -64,9 +64,13 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
         if (conditional.variable !== a.variable) continue;
         if (!validAnnotation[i]) validAnnotation[i] = false;
         variableCoded = true;
-        if (c.field != null && c.field !== a.field) continue;
-        if (c.offset != null && c.offset !== a.offset) continue;
-        if (c.length != null && c.length !== a.length) continue;
+
+        const field = "field" in a ? a.field : undefined;
+        const offset = "offset" in a ? a.offset : undefined;
+        const length = "length" in a ? a.length : undefined;
+        if ("field" in c && c.field != null && c.field !== field) continue;
+        if ("offset" in c && c.offset != null && c.offset !== offset) continue;
+        if ("length" in c && c.length != null && c.length !== length) continue;
 
         const op = c.operator || "==";
 

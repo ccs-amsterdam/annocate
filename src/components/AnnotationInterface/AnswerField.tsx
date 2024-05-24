@@ -8,24 +8,6 @@ import SearchCode from "./AnswerFieldSearchCode";
 import SelectCode from "./AnswerFieldSelectCode";
 import { getSwipeOptions } from "@/functions/swipeControl";
 
-const AnswerDiv = styled.div`
-  transition: all 0.3s;
-  display: grid;
-  grid-template-rows: auto;
-  position: relative;
-  padding: 0;
-
-  width: 100%;
-  margin: auto 0;
-  font-size: inherit;
-  color: var(--foreground);
-
-  & .InnerAnswerField {
-    width: 100%;
-    margin-top: auto;
-  }
-`;
-
 interface AnswerFieldProps {
   answers: Answer[];
   questions: Variable[];
@@ -227,9 +209,12 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
   //   );
 
   return (
-    <AnswerDiv ref={answerRef}>
-      <div className="InnerAnswerField">{answerfield}</div>
-    </AnswerDiv>
+    <div
+      ref={answerRef}
+      className="relative mx-0 my-auto grid w-full grid-rows-[auto] p-0  text-[length:inherit] text-foreground transition-all"
+    >
+      <div className="mt-auto w-full">{answerfield}</div>
+    </div>
   );
 };
 
