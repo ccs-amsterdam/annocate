@@ -8,7 +8,7 @@ export default function Home() {
   const { user, loading, signIn, signOut } = useMiddlecat();
 
   return (
-    <div className="flex h-full flex-col items-center justify-center">
+    <div className="mt-[13vh] flex h-full flex-col">
       <div className="flex flex-col  items-center gap-2">
         <h3>What are you here for?</h3>
 

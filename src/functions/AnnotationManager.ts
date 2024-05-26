@@ -1,22 +1,44 @@
-import { getColor } from "@/functions/tokenDesign";
 import {
   Annotation,
-  Span,
-  Code,
-  Unit,
-  CodeHistory,
-  AnnotationMap,
   AnnotationDictionary,
-  SetState,
   AnnotationID,
-  Token,
   AnnotationLibrary,
-  VariableValueMap,
+  AnnotationMap,
+  AnnotationRelation,
+  Answer,
+  Code,
+  CodeHistory,
+  CodeMap,
+  ExtendedCodebook,
+  ExtendedVariable,
+  SetState,
+  Span,
+  Token,
   TokenAnnotations,
+  Unit,
+  ValidRelation,
   VariableMap,
+  VariableValueMap,
 } from "@/app/types";
-import randomColor from "randomcolor";
+import { getColor } from "@/functions/tokenDesign";
 import cuid from "cuid";
+import randomColor from "randomcolor";
+import { useEffect, useState } from "react";
+import checkConditions from "./checkConditions";
+import { addAnnotationsFromAnswer } from "./mapAnswersToAnnotations";
+
+export function useAnnotationManager(unit: Unit, codebook: ExtendedCodebook) {
+  const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(() =>
+    createAnnotationLibrary(unit, codebook, unit.unit.annotations || []),
+  );
+  const [annotationManager] = useState<AnnotationManager>(() => new AnnotationManager(setAnnotationLib));
+
+  useEffect(() => {
+    setAnnotationLib(createAnnotationLibrary(unit, codebook, unit.unit.annotations || []));
+  }, [unit, codebook]);
+
+  return { annotationLib, annotationManager };
+}
 
 export default class AnnotationManager {
   setAnnotationLib: SetState<AnnotationLibrary>;
@@ -38,6 +60,7 @@ export default class AnnotationManager {
         annotations,
         codeHistory: updateCodeHistory(annotationLib.codeHistory, annotation),
         byToken: newTokenDictionary(annotations),
+        conditionReport: checkConditions(annotationLib),
       };
     });
   }
@@ -54,6 +77,41 @@ export default class AnnotationManager {
 
       return { ...annotationLib, annotations, byToken: newTokenDictionary(annotations) };
     });
+  }
+
+  annotationFromAnswer(answer: Answer) {
+    this.setAnnotationLib((annotationLib) => {
+      const annotationsArray = addAnnotationsFromAnswer(answer, Object.values(annotationLib.annotations));
+      const annotations: AnnotationDictionary = {};
+      annotationsArray.forEach((a) => (annotations[a.id] = a));
+
+      return { ...annotationLib, annotations, byToken: newTokenDictionary(annotations) };
+    });
+  }
+
+  createUnitAnnotation(variable: string, code: Code) {
+    const annotation: Annotation = {
+      id: cuid(),
+      created: new Date().toISOString(),
+      type: "unit",
+      variable: variable,
+      value: code.code,
+      color: code.color,
+    };
+    this.addAnnotation(annotation);
+  }
+
+  createFieldAnnotation(variable: string, code: Code, field: string) {
+    const annotation: Annotation = {
+      id: cuid(),
+      created: new Date().toISOString(),
+      type: "field",
+      variable: variable,
+      value: code.code,
+      color: code.color,
+      field: field,
+    };
+    this.addAnnotation(annotation);
   }
 
   createSpanAnnotation(variable: string, code: Code, from: number, to: number, tokens: Token[]) {
@@ -97,9 +155,10 @@ export default class AnnotationManager {
 
 export function createAnnotationLibrary(
   unit: Unit,
+  codebook: ExtendedCodebook,
   annotations: Annotation[],
-  variableMap: VariableMap,
 ): AnnotationLibrary {
+  const variableMap = createVariableMap(codebook.variables || []);
   let annotationArray = annotations || [];
   annotationArray = annotationArray.map((a) => ({ ...a }));
 
@@ -116,10 +175,14 @@ export function createAnnotationLibrary(
   }
 
   return {
+    type: unit.unitType,
+    status: unit.status,
+    conditionals: unit.conditionals || [],
     annotations: annotationDict,
     byToken: newTokenDictionary(annotationDict),
     codeHistory: initializeCodeHistory(annotationArray),
     unitId: unit.unitId,
+    conditionReport: unit.report || null,
   };
 }
 
@@ -322,4 +385,73 @@ function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) 
   }
 
   return annotations;
+}
+
+function createVariableMap(variables: ExtendedVariable[]) {
+  const vm: any = {};
+  for (let variable of variables) {
+    let cm = variable.codeMap;
+    cm = Object.keys(cm).reduce((obj: any, key) => {
+      obj[key] = cm[key];
+      return obj;
+    }, {});
+
+    vm[variable.name] = { ...variable, codeMap: cm };
+
+    if (variable.type === "relation") {
+      const [validFrom, validTo] = getValidRelationCodes(variable.relations, variable.codeMap);
+      vm[variable.name].validFrom = validFrom;
+      vm[variable.name].validTo = validTo;
+    }
+  }
+
+  return vm;
+}
+
+/**
+ * If variable of type relation, prepare efficient lookup for
+ * valid from/to annotations
+ */
+function getValidRelationCodes(relations: AnnotationRelation[], codeMap: CodeMap) {
+  if (!relations) return [null, null];
+  const validFrom: ValidRelation = {};
+  const validTo: ValidRelation = {};
+
+  function addValidRelation(
+    valid: ValidRelation,
+    relationId: number,
+    codes: Code[],
+    variable?: string,
+    values?: string[],
+  ) {
+    if (!variable) {
+      if (!valid["*"]) valid["*"] = { "*": {} };
+      valid["*"]["*"][relationId] = codes;
+      return;
+    }
+    if (!valid[variable]) valid[variable] = {};
+    // if we include a code_id, which is just the relation index, we can use that
+    // to connect the from/to values
+
+    if (values) {
+      for (let value of values) {
+        if (!valid[variable][value]) valid[variable][value] = {};
+        valid[variable][value][relationId] = codes;
+      }
+    } else {
+      if (!valid[variable]["*"]) valid[variable]["*"] = {};
+      valid[variable]["*"][relationId] = codes;
+    }
+  }
+
+  for (let i = 0; i < relations.length; i++) {
+    const relation = relations[i];
+    if (!relation.codes) relation.codes = Object.keys(codeMap).map((code) => ({ code }));
+    const codes: Code[] = [];
+    for (let code of relation.codes) if (codeMap[code.code]) codes.push(codeMap[code.code]);
+    addValidRelation(validFrom, i, codes, relation?.from?.variable, relation?.from?.values);
+    addValidRelation(validTo, i, codes, relation?.to?.variable, relation?.to?.values);
+  }
+
+  return [validFrom, validTo];
 }

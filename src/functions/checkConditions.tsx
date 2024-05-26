@@ -1,4 +1,14 @@
-import { RawUnit, ConditionReport, Annotation, Status, ConditionalAction } from "@/app/types";
+import {
+  RawUnit,
+  ConditionReport,
+  Annotation,
+  Status,
+  ConditionalAction,
+  UnitType,
+  UnitStatus,
+  Conditional,
+  AnnotationLibrary,
+} from "@/app/types";
 
 /**
  * If unit.conditionals exists, check whether an annotation satistfies the conditions.
@@ -10,14 +20,13 @@ import { RawUnit, ConditionReport, Annotation, Status, ConditionalAction } from 
  * When using the python backend, the conditionals are checked server-side. The main reason
  * for including this client-side version is for demoing and testing with the R backend.
  */
-export default function checkConditions(unit: RawUnit): ConditionReport {
-  const type = unit.type;
+export default function checkConditions(annotationLibrary: AnnotationLibrary): ConditionReport {
+  const { type, status, conditionals } = annotationLibrary;
+  const annotations = Object.values(annotationLibrary.annotations);
+
   const cr: ConditionReport = { evaluation: {}, damage: {} };
   if (type !== "train" && type !== "test") return cr;
-  if (!unit.conditionals) return cr;
-
-  const annotation: Annotation[] = unit.annotation || [];
-  const status: Status = unit.status;
+  if (!conditionals) return cr;
 
   let damage = 0;
 
@@ -42,7 +51,7 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
     defaultDamage = 10;
   }
 
-  for (let conditional of unit.conditionals) {
+  for (let conditional of conditionals) {
     // only check conditions for variables that have been coded
     // (if unit is done, all variables are assumed to have been coded)
     if (!cr.evaluation[conditional.variable])
@@ -59,8 +68,8 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
     let validAnnotation: { [annotationI: number]: boolean } = {};
 
     conditionloop: for (let c of conditional.conditions) {
-      for (let i = 0; i < annotation.length; i++) {
-        const a = annotation[i];
+      for (let i = 0; i < annotations.length; i++) {
+        const a = annotations[i];
         if (conditional.variable !== a.variable) continue;
         if (!validAnnotation[i]) validAnnotation[i] = false;
         variableCoded = true;
@@ -109,8 +118,8 @@ export default function checkConditions(unit: RawUnit): ConditionReport {
       cr.evaluation[conditional.variable].submessages = submessages;
 
       // add correct and incorrect annotations
-      cr.evaluation[conditional.variable].correct = validAnnotationI.map((i: string) => annotation[Number(i)]);
-      cr.evaluation[conditional.variable].incorrect = invalidAnnotationI.map((i: string) => annotation[Number(i)]);
+      cr.evaluation[conditional.variable].correct = validAnnotationI.map((i: string) => annotations[Number(i)]);
+      cr.evaluation[conditional.variable].incorrect = invalidAnnotationI.map((i: string) => annotations[Number(i)]);
 
       damage += conditional.damage ?? defaultDamage;
     }

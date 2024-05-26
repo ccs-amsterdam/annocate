@@ -167,10 +167,14 @@ export interface RelationAnnotation {
 }
 
 export interface AnnotationLibrary {
+  type: UnitType;
+  status: UnitStatus;
+  conditionals: Conditional[];
   annotations: AnnotationDictionary;
   byToken: TokenAnnotations;
   codeHistory: CodeHistory;
   unitId: string;
+  conditionReport: ConditionReport | null;
 }
 export type AnnotationDictionary = Record<AnnotationID, Annotation>;
 export type TokenAnnotations = Record<number, AnnotationID[]>;
@@ -620,6 +624,7 @@ export interface Unit {
   jobServer?: any;
   status: UnitStatus;
   report?: ConditionReport;
+  conditionals?: Conditional[];
 }
 
 export interface UnitContent {
@@ -630,7 +635,7 @@ export interface UnitContent {
   metaFields?: MetaField[];
   annotations?: Annotation[];
   importedAnnotations?: Annotation[];
-  codebook?: ExtendedCodebook;
+  codebook: ExtendedCodebook;
   variables?: UnitVariables;
   grid?: FieldGrid;
 }

@@ -46,10 +46,14 @@ function PreviewCodebook({ preview }: { preview?: Codebook }) {
     return importCodebook(preview);
   }, [preview]);
   const previewUnit = useMemo(() => {
-    return prepareUnit(rawPreviewUnit);
+    if (!codebook) return null;
+    return prepareUnit(rawPreviewUnit, codebook);
   }, []);
 
-  if (!codebook) return null;
+  console.log(codebook, previewUnit);
+
+  if (!codebook || !previewUnit) return null;
+
   return (
     <div className="">
       <div

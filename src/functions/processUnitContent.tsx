@@ -10,11 +10,13 @@ import {
   FieldGrid,
   FieldGridInput,
   Unit,
+  Codebook,
+  ExtendedCodebook,
 } from "@/app/types";
 import { importCodebook } from "./codebook";
 
-export function prepareUnit(rawUnit: RawUnit): Unit {
-  const unitContent = processUnitContent(rawUnit);
+export function prepareUnit(rawUnit: RawUnit, codebook: ExtendedCodebook): Unit {
+  const unitContent = processUnitContent(rawUnit, codebook);
   return {
     jobServer: undefined,
     unitId: rawUnit.id,
@@ -31,7 +33,7 @@ export function prepareUnit(rawUnit: RawUnit): Unit {
  * @param unit
  * @returns
  */
-export default function processUnitContent(rawUnit: RawUnit): UnitContent {
+export default function processUnitContent(rawUnit: RawUnit, codebook: ExtendedCodebook): UnitContent {
   const ruc: RawUnitContent = rawUnit.unit;
   const annotations: Annotation[] = rawUnit.annotation || rawUnit.annotations || []; // singular annotation is deprecated
 
@@ -40,7 +42,7 @@ export default function processUnitContent(rawUnit: RawUnit): UnitContent {
     imageFields: ruc.image_fields || [],
     markdownFields: ruc.markdown_fields || [],
     metaFields: ruc.meta_fields || [],
-    codebook: ruc.codebook ? importCodebook(ruc.codebook) : undefined,
+    codebook: ruc.codebook ? importCodebook(ruc.codebook) : codebook,
     variables: ruc.variables,
   };
 

@@ -7,10 +7,11 @@
 // -- questions where multiple codes can be selected correspond to multiple annotations as usual,
 //    and in the question answers this is represented as an array of objects
 
-import { Answer, AnswerItem, Question, Annotation, Unit, QuestionItem } from "@/app/types";
+import { Answer, AnswerItem, Question, Annotation, Unit, QuestionItem, AnnotationLibrary } from "@/app/types";
 import { z } from "zod";
 import { CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
 import cuid from "cuid";
+import AnnotationManager from "./AnnotationManager";
 type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 
 export const getAnswersFromAnnotations = (unit: Unit, questions: Variable[]): Answer[] => {

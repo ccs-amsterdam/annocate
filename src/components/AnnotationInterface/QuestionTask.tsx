@@ -4,20 +4,34 @@ import Document from "@/components/Document/Document";
 import { useSwipeable } from "react-swipeable";
 import swipeControl from "@/functions/swipeControl";
 import styled from "styled-components";
-import { Annotation, Codebook, ConditionReport, SessionData, SwipeRefs, Swipes, Unit, Transition } from "@/app/types";
+import {
+  Annotation,
+  Codebook,
+  ConditionReport,
+  SessionData,
+  SwipeRefs,
+  Swipes,
+  Unit,
+  Transition,
+  AnnotationLibrary,
+  ExtendedCodebook,
+} from "@/app/types";
 import Instructions from "./Instructions";
 // import FeedbackPortal from "./FeedbackPortal";
 import useWatchChange from "@/hooks/useWatchChange";
 import unfoldQuestions from "@/functions/unfoldQuestions";
+import AnnotationManager, { useAnnotationManager } from "@/functions/AnnotationManager";
 
 interface QuestionTaskProps {
   unit: Unit;
-  codebook: Codebook;
+  codebook: ExtendedCodebook;
   nextUnit: () => void;
   blockEvents?: boolean;
 }
 
 const QuestionTask = ({ unit, codebook, nextUnit, blockEvents = false }: QuestionTaskProps) => {
+  const { annotationLib, annotationManager } = useAnnotationManager(unit, codebook);
+
   const [questionIndex, setQuestionIndex] = useState(0);
   const [conditionReport, setConditionReport] = useState<ConditionReport | null>(null);
   const divref = useRef(null);
@@ -104,6 +118,8 @@ const QuestionTask = ({ unit, codebook, nextUnit, blockEvents = false }: Questio
       <div {...menuSwipe} className={` ${singlePage ? "flex-[0_0_auto]" : "flex-[0_1_auto"}`}>
         <QuestionForm
           unit={unit}
+          annotationLib={annotationLib}
+          annotationManager={annotationManager}
           questions={questions}
           questionIndex={questionIndex}
           setQuestionIndex={setQuestionIndex}

@@ -18,19 +18,16 @@ const useUnit = (
   fullVariableMap: VariableMap,
   onChangeAnnotations?: (unitId: string, value: Annotation[]) => void,
 ): [Doc, AnnotationLibrary, AnnotationManager] => {
-  const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>({
-    annotations: {},
-    byToken: {},
-    codeHistory: {},
-    unitId: "",
-  });
+  const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(() =>
+    createAnnotationLibrary(unit, unit.unit.codebook, annotations),
+  );
 
   const [annotationManager] = useState<AnnotationManager>(new AnnotationManager(setAnnotationLib));
 
   const doc = unit.unit;
 
   if (useWatchChange([unit, annotations, fullVariableMap])) {
-    setAnnotationLib(createAnnotationLibrary(unit, annotations, fullVariableMap));
+    setAnnotationLib(createAnnotationLibrary(unit, unit.unit.codebook, annotations));
   }
 
   useEffect(() => {
