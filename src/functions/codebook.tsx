@@ -23,7 +23,7 @@ export function importCodebook(codebook: Codebook): ExtendedCodebook {
 const importVariables = (variables: Variable[]): ExtendedVariable[] => {
   // checks and preparation of variables
   return variables.map((variable) => {
-    const fillMissingColor = !["scale"].includes(variable.type);
+    const fillMissingColor = ["annotinder"].includes(variable.type);
 
     const eVariable: ExtendedVariable = {
       ...variable,
@@ -40,6 +40,7 @@ const importVariables = (variables: Variable[]): ExtendedVariable[] => {
         eVariable.codeMap[eVariable.codes[i].code] = eVariable.codes[i];
       }
     }
+
     return eVariable;
   });
 };

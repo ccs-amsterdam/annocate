@@ -5,25 +5,24 @@ import { importCodebook } from "@/functions/codebook";
 import { prepareUnit } from "@/functions/processUnitContent";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryState } from "next-usequerystate";
+import { g } from "next-usequerystate/dist/serializer-C_l8WgvO";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 interface UnitContextProps {
   unit: Unit;
-  postAnnotations: (status: Status) => void;
   codebook: Codebook;
   index: number | null;
   selectUnit: (i?: number) => void;
 }
 
 interface AnnotationsContextProps {
-  annotations: AnnotationLibrary;
+  annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
 }
 
 const UnitContext = createContext<UnitContextProps>({
   unit: dummyUnit(),
-  postAnnotations: (status: Status) => console.log(status),
   codebook: dummyCodebook(),
   index: null,
   selectUnit: (i?: number) => console.log(i),
@@ -31,7 +30,7 @@ const UnitContext = createContext<UnitContextProps>({
 export const useUnit = () => useContext(UnitContext);
 
 const AnnotationsContext = createContext<AnnotationsContextProps>({
-  annotations: dummyAnnotationLib(),
+  annotationLib: dummyAnnotationLib(),
   annotationManager: new AnnotationManager(() => console.log("AnnotationManager not initialized")),
 });
 export const useAnnotations = () => useContext(AnnotationsContext);
@@ -50,12 +49,15 @@ export default function UnitProvider({ jobServer, children }: Props) {
   const [unit, setUnit] = useState<Unit | null>(null);
   const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(dummyAnnotationLib());
   const [annotationManager] = useState<AnnotationManager>(() => new AnnotationManager(setAnnotationLib));
+
   const { data: codebook } = useQuery({
-    queryKey: ["codebook", jobServer, rawUnit?.unit.codebook, rawUnit?.unit.codebookId],
+    queryKey: ["codebook", jobServer, rawUnit?.unit.codebookId, rawUnit?.unit.codebook],
     queryFn: async () => {
-      const codebook = rawUnit?.unit?.codebookId
-        ? await jobServer?.getCodebook(rawUnit?.unit.codebookId)
-        : rawUnit?.unit.codebook;
+      let codebook = rawUnit?.unit?.codebook;
+      if (!codebook && rawUnit?.unit.codebookId) {
+        codebook = await jobServer.getCodebook(rawUnit?.unit.codebookId);
+      }
+
       if (!codebook) {
         console.error("Codebook not found");
         toast.error("Codebook not found");
@@ -63,6 +65,8 @@ export default function UnitProvider({ jobServer, children }: Props) {
       }
       return importCodebook(codebook);
     },
+    cacheTime: Infinity,
+    staleTime: Infinity,
   });
 
   useEffect(() => {
@@ -74,8 +78,8 @@ export default function UnitProvider({ jobServer, children }: Props) {
     const unit = prepareUnit(rawUnit, codebook);
     setIndex(rawUnit.index);
     setUnit(unit);
-    setAnnotationLib(createAnnotationLibrary(unit, codebook, unit.unit.annotations || []));
-  }, [rawUnit, codebook, setIndex]);
+    annotationManager.createAnnotationLibrary(jobServer, unit, codebook);
+  }, [annotationManager, jobServer, rawUnit, codebook, setIndex]);
 
   const selectUnit = useCallback(
     async (i?: number) => {
@@ -84,32 +88,16 @@ export default function UnitProvider({ jobServer, children }: Props) {
     [jobServer],
   );
 
-  const postAnnotations = useCallback(
-    (status: Status) => {
-      if (!unit || !annotationLib) {
-        console.error("Unit or annotationLib not found");
-        return;
-      }
-      if (unit.unitId !== annotationLib.unitId) {
-        console.error("Unit and annotationLib do not match");
-        return;
-      }
-      jobServer.postAnnotations(unit.unitId, Object.values(annotationLib.annotations), status);
-    },
-    [unit, annotationLib, jobServer],
-  );
-
   return (
     <UnitContext.Provider
       value={{
         unit: unit || dummyUnit(),
-        postAnnotations,
         codebook: codebook || dummyCodebook(),
         index,
         selectUnit,
       }}
     >
-      <AnnotationsContext.Provider value={{ annotations: annotationLib, annotationManager }}>
+      <AnnotationsContext.Provider value={{ annotationLib: annotationLib, annotationManager }}>
         {children}
       </AnnotationsContext.Provider>
     </UnitContext.Provider>
@@ -147,5 +135,9 @@ function dummyAnnotationLib(): AnnotationLibrary {
     byToken: {},
     codeHistory: {},
     unitId: "",
+    variables: [],
+    variableIndex: 0,
+    variableStatuses: [],
+    previousIndex: 0,
   };
 }

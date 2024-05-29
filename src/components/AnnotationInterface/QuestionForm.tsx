@@ -20,55 +20,26 @@ import AnswerField from "./AnswerField";
 import QuestionIndexStep from "./QuestionIndexStep";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import AnnotationManager from "@/functions/AnnotationManager";
+import { useAnnotations } from "../UnitProvider/UnitProvider";
 
 interface QuestionFormProps {
   /** Buttons can be passed as children, that will be shown on the topleft of the question form */
   children: ReactElement | ReactElement[];
   /** The unit */
   unit: Unit;
-  /** The tokens of the unit. Used to include span offset and length in the annotation
-   * (this allows questions about a part of a document, like a sentence, to be made into document annotations) */
-  questions: Variable[];
-  questionIndex: number;
-  setQuestionIndex: SetState<number>;
-  nextUnit: () => void;
-  setConditionReport: SetState<ConditionReport | null>;
-  swipe: Swipes | null;
-  setSwipe: SetState<Swipes | null>;
-  startTransition: (transition: Transition | undefined, nextUnit: boolean) => void;
   blockEvents: boolean;
 }
 
-const QuestionForm = ({
-  children,
-  unit,
-  questions,
-  questionIndex,
-  setQuestionIndex,
-  nextUnit,
-  setConditionReport,
-  swipe,
-  setSwipe,
-  startTransition,
-  blockEvents,
-}: QuestionFormProps) => {
+const QuestionForm = ({ children, unit, blockEvents }: QuestionFormProps) => {
+  const { annotationLib, annotationManager } = useAnnotations();
+  const variable = annotationLib.variables[annotationLib.variableIndex];
   const questionRef = useRef<HTMLDivElement>(null);
   const blockAnswer = useRef(false); // to prevent answering double (e.g. with swipe events)
-  const [answers, setAnswers] = useState<Answer[] | null>(null);
-  const [questionText, setQuestionText] = useState(<div />);
 
-  if (useWatchChange([unit, questions])) {
-    if (questions) setAnswers(getAnswersFromAnnotations(unit, questions));
-  }
-
-  if (useWatchChange([unit, questions, answers, questionIndex])) {
-    if (!questions?.[questionIndex] || !unit) {
-      setQuestionIndex(0);
-    } else {
-      setQuestionText(prepareQuestion(unit, questions[questionIndex], answers));
-      blockAnswer.current = false;
-    }
-  }
+  const questionText = useMemo(
+    () => prepareQuestion(unit, variable, Object.values(annotationLib.annotations)),
+    [unit, variable, annotationLib],
+  );
 
   useEffect(() => {
     const container = questionRef.current;
@@ -77,63 +48,62 @@ const QuestionForm = ({
     const handleScroll = (e: Event) => overflowBordersEvent(container, true, false);
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [questionIndex]);
+  }, [annotationLib.variableIndex]);
 
-  const onAnswer = useCallback(
-    (items: AnswerItem[], onlySave = false, transition?: Transition): void => {
-      // posts results and skips to next question, or next unit if no questions left.
-      // If onlySave is true, only write to db without going to next question
+  // const onAnswer = useCallback(
+  //   (items: AnswerItem[], onlySave = false, transition?: Transition): void => {
+  //     // posts results and skips to next question, or next unit if no questions left.
+  //     // If onlySave is true, only write to db without going to next question
 
-      // Swipe is now passed down via a state, so state needs to be reset
-      // before the next question or unit. It would probably be better to
-      // do this via a function, but than this would need to be passed up from
-      // AnswerField. At some point think of this when refactoring
-      setSwipe(null);
-      if (!answers || !setAnswers) return;
+  //     // Swipe is now passed down via a state, so state needs to be reset
+  //     // before the next question or unit. It would probably be better to
+  //     // do this via a function, but than this would need to be passed up from
+  //     // AnswerField. At some point think of this when refactoring
+  //     setSwipe(null);
+  //     if (!answers || !setAnswers) return;
 
-      processAnswer(
-        items,
-        onlySave,
-        unit,
-        questions,
-        answers,
-        questionIndex,
-        nextUnit,
-        setAnswers,
-        setQuestionIndex,
-        setConditionReport,
-        (nextUnit: boolean) => startTransition(transition, nextUnit),
-        blockAnswer,
-      );
-    },
-    [
-      answers,
-      questionIndex,
-      questions,
-      setQuestionIndex,
-      nextUnit,
-      setConditionReport,
-      unit,
-      setSwipe,
-      startTransition,
-    ],
-  );
+  //     processAnswer(
+  //       items,
+  //       onlySave,
+  //       unit,
+  //       questions,
+  //       answers,
+  //       questionIndex,
+  //       nextUnit,
+  //       setAnswers,
+  //       setQuestionIndex,
+  //       setConditionReport,
+  //       (nextUnit: boolean) => startTransition(transition, nextUnit),
+  //       blockAnswer,
+  //     );
+  //   },
+  //   [
+  //     answers,
+  //     questionIndex,
+  //     questions,
+  //     setQuestionIndex,
+  //     nextUnit,
+  //     setConditionReport,
+  //     unit,
+  //     setSwipe,
+  //     startTransition,
+  //   ],
+  // );
 
-  if (!questions || !unit || !answers) return null;
-  if (!questions?.[questionIndex]) return null;
+  if (!unit || !variable) return null;
 
   return (
     <div
       ref={questionRef}
       className="relative z-30 flex h-full min-h-60 w-full flex-col bg-background  text-[length:inherit] transition-[border]"
     >
-      <div className="sticky left-0 top-0 z-40 flex w-full flex-auto flex-col justify-center border-y border-primary bg-gradient-to-b from-primary/40 from-0% via-primary/20 via-50% to-primary/40 to-100% ">
+      <div className="sticky left-0 top-0 z-40 flex w-full  flex-col justify-center border-y border-primary bg-gradient-to-b from-primary/40 from-0% via-primary/20 via-50% to-primary/40 to-100% ">
         <div className="flex-hidden">
           <QuestionIndexStep
-            questions={questions}
-            questionIndex={questionIndex}
-            answers={answers}
-            setQuestionIndex={setQuestionIndex}
+            variables={annotationLib.variables}
+            variableIndex={annotationLib.variableIndex}
+            variableStatuses={annotationLib.variableStatuses}
+            setQuestionIndex={(index: number) => annotationManager.setVariableIndex(index)}
           >
             <div className="relative z-20 mb-1 flex flex-auto items-center justify-center py-3 text-[length:inherit] ">
               <div className="  flex items-center justify-between gap-3 text-lg  ">
@@ -145,13 +115,15 @@ const QuestionForm = ({
         </div>
       </div>
 
-      <div className="relative flex w-full flex-auto overflow-auto pt-2 text-[length:inherit] text-foreground ">
+      <div className="relative flex w-full flex-auto overflow-auto bg-primary/20 pt-2 text-[length:inherit] text-foreground">
         <AnswerField
-          answers={answers}
-          questions={questions}
-          questionIndex={questionIndex}
-          onAnswer={onAnswer}
-          swipe={swipe}
+          annotationLib={annotationLib}
+          annotationManager={annotationManager}
+          // answers={answers}
+          // questions={questions}
+          // questionIndex={questionIndex}
+          // onAnswer={onAnswer}
+          // swipe={swipe}
           blockEvents={blockEvents}
         />
       </div>
@@ -159,12 +131,12 @@ const QuestionForm = ({
   );
 };
 
-const prepareQuestion = (unit: Unit, question: Variable, answers: Answer[] | null) => {
+const prepareQuestion = (unit: Unit, question: Variable, annotations: Annotation[]) => {
   if (!question?.question) return <div />;
   let preparedQuestion = question.question;
 
   const regex = /{(.*?)}/g;
-  if (answers) {
+  if (annotations.length > 0) {
     // matchAll not yet supported by RStudio browser
     //const matches = [...Array.from(preparedQuestion.matchAll(regex))];
     //for (let m of matches) {
@@ -172,16 +144,13 @@ const prepareQuestion = (unit: Unit, question: Variable, answers: Answer[] | nul
     while ((m = regex.exec(preparedQuestion))) {
       const m0: string = m[0];
       const m1: string = m[1];
-      let answer;
+      let value;
       if (unit.unit.variables) {
-        answer = { variable: m1, items: [{ values: [unit.unit.variables[m1]] }] };
+        value = unit.unit.variables[m1];
       }
-      if (answers) {
-        answer = answers.find((a) => a.variable === m1) || answer;
-      }
+      value = annotations.find((a) => a.variable === m1)?.code || value;
 
-      if (answer?.items?.[0]) {
-        const value = answer.items[0].values.join(", ");
+      if (value) {
         preparedQuestion = preparedQuestion.replace(m0, "{" + value + "}");
       }
     }

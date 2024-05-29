@@ -11,13 +11,16 @@ import {
   CodeMap,
   ExtendedCodebook,
   ExtendedVariable,
+  JobServer,
   SetState,
   Span,
+  Status,
   Token,
   TokenAnnotations,
   Unit,
   ValidRelation,
   VariableMap,
+  VariableStatus,
   VariableValueMap,
 } from "@/app/types";
 import { getColor } from "@/functions/tokenDesign";
@@ -26,6 +29,7 @@ import randomColor from "randomcolor";
 import { useEffect, useState } from "react";
 import checkConditions from "./checkConditions";
 import { addAnnotationsFromAnswer } from "./mapAnswersToAnnotations";
+import { headers } from "next/headers";
 
 export function useAnnotationManager(unit: Unit, codebook: ExtendedCodebook) {
   const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(() =>
@@ -41,80 +45,110 @@ export function useAnnotationManager(unit: Unit, codebook: ExtendedCodebook) {
 }
 
 export default class AnnotationManager {
+  unitId: string;
+  postAnnotations: (status: Status) => void;
+  annotationLib: AnnotationLibrary;
   setAnnotationLib: SetState<AnnotationLibrary>;
 
   constructor(setAnnotationLib: SetState<AnnotationLibrary>) {
+    this.annotationLib = {
+      type: "code",
+      status: "IN_PROGRESS",
+      conditionals: [],
+      conditionReport: null,
+      annotations: {},
+      byToken: {},
+      codeHistory: {},
+      unitId: "",
+      variables: [],
+      variableIndex: 0,
+      variableStatuses: [],
+      previousIndex: 0,
+    };
     this.setAnnotationLib = setAnnotationLib;
+    this.unitId = "";
+    this.postAnnotations = (status: Status) => console.log("No unit initialized");
+  }
+
+  createAnnotationLibrary(jobServer: JobServer, unit: Unit, codebook: ExtendedCodebook) {
+    const annotationLib = createAnnotationLibrary(unit, codebook, unit.unit.annotations || []);
+    this.updateAnnotationLibrary(annotationLib);
+    this.postAnnotations = (status: Status) => {
+      console.log(this.annotationLib.annotations);
+      jobServer.postAnnotations(unit.unitId, Object.values(this.annotationLib.annotations), status);
+    };
+  }
+
+  updateAnnotationLibrary(annotationLib: AnnotationLibrary) {
+    this.annotationLib = annotationLib;
+    this.setAnnotationLib({
+      ...annotationLib,
+      variableStatuses: computeVariableStatuses(annotationLib.variables, Object.values(annotationLib.annotations)),
+    });
+  }
+
+  setVariableIndex(index: number) {
+    this.updateAnnotationLibrary({
+      ...this.annotationLib,
+      previousIndex: this.annotationLib.variableIndex,
+      variableIndex: index,
+    });
   }
 
   addAnnotation(annotation: Annotation) {
-    this.setAnnotationLib((annotationLib: AnnotationLibrary) => {
-      annotation.positions = getTokenPositions(annotationLib.annotations, annotation);
+    annotation.positions = getTokenPositions(this.annotationLib.annotations, annotation);
 
-      let annotations = { ...annotationLib.annotations };
-      annotations[annotation.id] = annotation;
-      annotations = rmEmptySpan(annotations, annotation);
+    let annotations = { ...this.annotationLib.annotations };
+    annotations[annotation.id] = annotation;
+    annotations = rmEmptySpan(annotations, annotation);
 
-      return {
-        ...annotationLib,
-        annotations,
-        codeHistory: updateCodeHistory(annotationLib.codeHistory, annotation),
-        byToken: newTokenDictionary(annotations),
-        conditionReport: checkConditions(annotationLib),
-      };
+    this.updateAnnotationLibrary({
+      ...this.annotationLib,
+      annotations,
+      codeHistory: updateCodeHistory(this.annotationLib.codeHistory, annotation),
+      byToken: newTokenDictionary(annotations),
+      conditionReport: checkConditions(this.annotationLib),
     });
   }
 
   rmAnnotation(id: AnnotationID, keep_empty: boolean = false) {
-    this.setAnnotationLib((annotationLib) => {
-      let annotations = { ...annotationLib.annotations };
+    let annotations = { ...this.annotationLib.annotations };
 
-      if (!annotations?.[id]) return annotationLib;
-      if (keep_empty) annotations = addEmptySpan(annotations, id);
-      delete annotations[id];
+    if (!annotations?.[id]) return;
+    if (keep_empty) annotations = addEmptySpan(annotations, id);
+    delete annotations[id];
 
-      annotations = rmBrokenRelations(annotations);
+    annotations = rmBrokenRelations(annotations);
 
-      return { ...annotationLib, annotations, byToken: newTokenDictionary(annotations) };
-    });
+    this.updateAnnotationLibrary({ ...this.annotationLib, annotations, byToken: newTokenDictionary(annotations) });
   }
 
-  annotationFromAnswer(answer: Answer) {
-    this.setAnnotationLib((annotationLib) => {
-      const annotationsArray = addAnnotationsFromAnswer(answer, Object.values(annotationLib.annotations));
-      const annotations: AnnotationDictionary = {};
-      annotationsArray.forEach((a) => (annotations[a.id] = a));
+  // createUnitAnnotation(variable: string, code: Code) {
+  //   const annotation: Annotation = {
+  //     id: cuid(),
+  //     created: new Date().toISOString(),
+  //     type: "unit",
+  //     variable: variable,
+  //     code: code.code,
+  //     value: code.value,
+  //     color: code.color,
+  //   };
+  //   this.addAnnotation(annotation);
+  // }
 
-      return { ...annotationLib, annotations, byToken: newTokenDictionary(annotations) };
-    });
-  }
-
-  createUnitAnnotation(variable: string, code: Code) {
-    const annotation: Annotation = {
-      id: cuid(),
-      created: new Date().toISOString(),
-      type: "unit",
-      variable: variable,
-      code: code.code,
-      value: code.value,
-      color: code.color,
-    };
-    this.addAnnotation(annotation);
-  }
-
-  createFieldAnnotation(variable: string, code: Code, field: string) {
-    const annotation: Annotation = {
-      id: cuid(),
-      created: new Date().toISOString(),
-      type: "field",
-      variable: variable,
-      code: code.code,
-      value: code.value,
-      color: code.color,
-      field: field,
-    };
-    this.addAnnotation(annotation);
-  }
+  // createFieldAnnotation(variable: string, code: Code, field: string) {
+  //   const annotation: Annotation = {
+  //     id: cuid(),
+  //     created: new Date().toISOString(),
+  //     type: "field",
+  //     variable: variable,
+  //     code: code.code,
+  //     value: code.value,
+  //     color: code.color,
+  //     field: field,
+  //   };
+  //   this.addAnnotation(annotation);
+  // }
 
   processAnswer(variable: string, code: Code, multiple: boolean, field?: string) {
     let annotation: Annotation = {
@@ -130,24 +164,34 @@ export default class AnnotationManager {
       annotation = { ...annotation, field, type: "field" };
     }
 
-    this.setAnnotationLib((annotationLib) => {
-      const currentAnnotations = Object.values(annotationLib.annotations);
-      for (const a of currentAnnotations) {
-        if (a.variable !== annotation.variable) continue;
-        if (a.type !== annotation.type) continue;
-        if (annotation.type === "field" && a.type === "field" && a.field !== annotation.field) continue;
-        if (a.code === annotation.code || !multiple) {
-          delete annotationLib.annotations[a.id];
-        }
-      }
-      annotationLib.annotations[annotation.id] = annotation;
+    let addAnnotation = true;
 
-      return {
-        ...annotationLib,
-        byToken: newTokenDictionary(annotationLib.annotations),
-        codeHistory: updateCodeHistory(annotationLib.codeHistory, annotation),
-        conditionReport: checkConditions(annotationLib),
-      };
+    const currentAnnotations = Object.values(this.annotationLib.annotations);
+    const newAnnotations: Record<string, Annotation> = { ...this.annotationLib.annotations };
+    for (const a of currentAnnotations) {
+      if (a.variable !== annotation.variable) continue;
+      if (a.type !== annotation.type) continue;
+      if (annotation.type === "field" && a.type === "field" && a.field !== annotation.field) continue;
+
+      console.log(a.code, annotation.code);
+      if (a.code === annotation.code) {
+        console.log(1);
+        addAnnotation = false;
+        if (multiple) delete newAnnotations[a.id];
+      } else {
+        console.log(2);
+        if (!multiple) delete newAnnotations[a.id];
+      }
+    }
+
+    if (addAnnotation) newAnnotations[annotation.id] = annotation;
+
+    this.updateAnnotationLibrary({
+      ...this.annotationLib,
+      annotations: newAnnotations,
+      byToken: newTokenDictionary(this.annotationLib.annotations),
+      codeHistory: updateCodeHistory(this.annotationLib.codeHistory, annotation),
+      conditionReport: checkConditions(this.annotationLib),
     });
   }
 
@@ -184,12 +228,6 @@ export default class AnnotationManager {
     };
     this.addAnnotation(annotation);
   }
-
-  rerenderAnnotations() {
-    this.setAnnotationLib((annotationLib) => {
-      return { ...annotationLib };
-    });
-  }
 }
 
 export function createAnnotationLibrary(
@@ -222,6 +260,10 @@ export function createAnnotationLibrary(
     codeHistory: initializeCodeHistory(annotationArray),
     unitId: unit.unitId,
     conditionReport: unit.report || null,
+    variables: codebook.variables,
+    variableIndex: 0,
+    variableStatuses: computeVariableStatuses(codebook.variables, annotationArray),
+    previousIndex: 0,
   };
 }
 
@@ -271,6 +313,24 @@ function rmBrokenRelations(annDict: AnnotationDictionary) {
   if (Object.keys(annDict).length < nBefore) return rmBrokenRelations(annDict);
 
   return annDict;
+}
+
+function computeVariableStatuses(variables: ExtendedVariable[], annotations: Annotation[]) {
+  const variableStatuses: VariableStatus[] = Array(variables.length).fill("pending");
+
+  for (let i = 0; i < variables.length; i++) {
+    const variable = variables[i];
+    const codeMap = variable.codeMap;
+    for (let a of annotations) {
+      if (a.variable !== variable.name) continue;
+      if (!a.code) continue;
+      if (!codeMap[a.code]) continue;
+
+      variableStatuses[i] = "done";
+      break;
+    }
+  }
+  return variableStatuses;
 }
 
 /**

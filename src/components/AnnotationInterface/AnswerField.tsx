@@ -1,37 +1,37 @@
-import { Answer, AnswerItem, OnSelectParams, Question, Swipes, Transition, Variable } from "@/app/types";
-import React, { useEffect, useRef, useState } from "react";
-import styled from "styled-components";
-import Annotinder from "./AnswerFieldAnnotinder";
-import Confirm from "./AnswerFieldConfirm";
-import Scale from "./AnswerFieldScale";
-import SearchCode from "./AnswerFieldSearchCode";
+import { AnnotationLibrary, AnswerItem, Code } from "@/app/types";
+import AnnotationManager from "@/functions/AnnotationManager";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import SelectCode from "./AnswerFieldSelectCode";
-import { getSwipeOptions } from "@/functions/swipeControl";
+import useSpeedBump from "@/hooks/useSpeedBump";
+import { useUnit } from "../UnitProvider/UnitProvider";
 
 interface AnswerFieldProps {
-  answers: Answer[];
-  questions: Variable[];
-  questionIndex: number;
-  onAnswer: (items: AnswerItem[], onlySave: boolean, transition?: Transition) => void;
-  swipe: Swipes | null;
+  annotationLib: AnnotationLibrary;
+  annotationManager: AnnotationManager;
+  // answers: Answer[];
+  // questions: Variable[];
+  // questionIndex: number;
+  // onAnswer: (items: AnswerItem[], onlySave: boolean, transition?: Transition) => void;
+  // swipe: Swipes | null;
   blockEvents?: boolean;
 }
 
-const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, blockEvents = false }: AnswerFieldProps) => {
-  const [question, setQuestion] = useState<Variable>();
+export interface OnSelectParams {
+  code: Code;
+  multiple: boolean;
+}
+
+const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: AnswerFieldProps) => {
+  const { index, selectUnit } = useUnit();
   const [answerItems, setAnswerItems] = useState<AnswerItem[] | null>(null);
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const currentAnswer = answers?.[questionIndex]?.items;
-    questionDate.current = new Date();
-    // Note that currentAnswer:
-    // is an array of objects: [{item: 'string of item name', values: [array of unique answer values]}]
-    // order and length mathces question.items. If question doesn't have items, it must be an array of length 1
-    setAnswerItems(currentAnswer);
-    setQuestion(questions[questionIndex]);
-  }, [answers, questions, questionIndex, questionDate]);
+  const variables = annotationLib.variables;
+  const variableIndex = annotationLib.variableIndex;
+  const variable = variables?.[variableIndex];
+
+  const speedbump = useSpeedBump(annotationLib.unitId + annotationLib.variableIndex, 100);
 
   useEffect(() => {
     // if answer changed but has not been saved, warn users when they try to close the app
@@ -42,15 +42,11 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
       return msg;
     };
 
-    if (answers?.[questionIndex]?.items !== answerItems) {
-      window.addEventListener("beforeunload", handleBeforeUnload);
-    } else {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [answers, questionIndex, answerItems]);
+  }, [variables, variableIndex, answerItems]);
 
   useEffect(() => {
     const el = answerRef.current;
@@ -68,133 +64,102 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
     // and ensures that theres no issues when content is slow to load (e.g., images)
     const interval = setInterval(() => {
       resize();
-    }, 500);
+    }, 100);
     return () => {
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, [answerRef, onAnswer]);
+  }, [answerRef]);
+
+  const values = useMemo(() => {
+    let fullVariableNames: Record<string, boolean> = {};
+    if ("items" in variable) {
+      variable.items.forEach((item) => {
+        fullVariableNames[`${variable.name}.${item.name}`] = true;
+      });
+    } else {
+      fullVariableNames[variable.name] = true;
+    }
+
+    return Object.values(annotationLib.annotations)
+      .filter((a) => fullVariableNames[a.variable])
+      .map((a) => a.code)
+      .filter((code) => code !== undefined) as string[]; // ts somehow can't understand this
+  }, [variable, annotationLib]);
 
   const onFinish = () => {
-    if (!answerItems) return;
-    onAnswer(answerItems, false);
+    if (variableIndex === variables.length - 1) {
+      // if this was the last variable, finish the unit
+      annotationManager.postAnnotations("DONE");
+      selectUnit((index || 0) + 1);
+    } else {
+      annotationManager.postAnnotations("IN_PROGRESS");
+      annotationManager.setVariableIndex(variableIndex + 1);
+    }
   };
 
-  const onSelect = ({
-    value,
-    itemIndex = 0,
-    multiple = false,
-    finish = false,
-    invalid = false,
-    save = false,
-    transition,
-  }: OnSelectParams = {}) => {
-    // this bad boy is used in all of the AnswerField sub-components to write values.
-    // it's a bit complicated here, but it makes the code within the sub-components easier.
-    // answerItems is an array of objects, where each object is an item.
-    //    if a question has no items (i.e. just a single value), it is still an array of length 1 for consistency
-    // each item object has a .value, which is an array of multiple values
-    //    if an item can only have 1 value, it is still an array of length 1 for consistency
+  const onSelect = ({ code, multiple }: { code: Code; multiple: boolean }) => {
+    const fields = variable.fields ? variable.fields.join(", ") : undefined;
 
-    if (!answerItems?.[itemIndex]) return;
-    if (!value) return;
-
-    answerItems[itemIndex].questionTime = questionDate.current.toISOString();
-    answerItems[itemIndex].answerTime = new Date().toISOString();
-
-    if (Array.isArray(value)) {
-      // if value is an array, write exact array to answer
-      answerItems[itemIndex] = {
-        ...answerItems[itemIndex],
-        values: value,
-      };
-    } else {
-      // if a single value, check whether it should be treated as multiple, or add as array of length 1
-      if (multiple) {
-        const valueIndex = answerItems[itemIndex].values.findIndex((v: string | number | undefined) => v === value);
-        if (valueIndex < 0) {
-          // if value doesn't exist yet, add it
-          answerItems[itemIndex].values.push(value);
-        } else {
-          // if it does exist, remove it
-          answerItems[itemIndex].values.splice(valueIndex, 1);
-        }
-      } else {
-        answerItems[itemIndex] = { ...answerItems[itemIndex], values: [value] };
-      }
-    }
-
-    const newAnswerItems = [...answerItems];
-    newAnswerItems[itemIndex].invalid = invalid;
-    setAnswerItems(newAnswerItems);
-    if (finish) {
-      onAnswer(newAnswerItems, false, transition);
-    } else {
-      if (save) onAnswer(newAnswerItems, true);
-    }
-    return newAnswerItems;
+    annotationManager.processAnswer(variable.name, code, multiple, fields);
+    if (!multiple) onFinish();
   };
-
-  if (!answerItems) return null;
-  // use these props:
-  // values         array of values
-  // answerItems     object with items as keys and values array as value
 
   let answerfield = null;
 
-  if (question?.type === "select code")
+  if (variable?.type === "select code")
     answerfield = (
       <SelectCode
-        options={question.codes || []}
-        values={answerItems[0].values || []} // only use first because selectCode doesn't support items
-        multiple={!!question.multiple}
-        vertical={!!question.vertical}
-        sameSize={!!question.same_size}
+        options={variable.codes || []}
+        values={values.filter((v) => v !== undefined)} // only use first because selectCode doesn't support items
+        multiple={!!variable.multiple}
+        vertical={!!variable.vertical}
         onSelect={onSelect}
         onFinish={onFinish}
         blockEvents={blockEvents} // for disabling key/click events
-        questionIndex={questionIndex} // for use in useEffect for resetting values on question change
+        questionIndex={variableIndex} // for use in useEffect for resetting values on question change
+        speedbump={speedbump}
       />
     );
 
-  if (question?.type === "search code")
-    answerfield = (
-      <SearchCode
-        options={question.codes || []}
-        values={answerItems[0].values}
-        multiple={!!question.multiple}
-        onSelect={onSelect}
-        onFinish={onFinish}
-        blockEvents={blockEvents}
-      />
-    );
+  // if (question?.type === "search code")
+  //   answerfield = (
+  //     <SearchCode
+  //       options={question.codes || []}
+  //       values={answerItems[0].values}
+  //       multiple={!!question.multiple}
+  //       onSelect={onSelect}
+  //       onFinish={onFinish}
+  //       blockEvents={blockEvents}
+  //     />
+  //   );
 
-  if (question?.type === "scale")
-    answerfield = (
-      <Scale
-        answerItems={answerItems}
-        items={question.items || []}
-        options={question.codes || []}
-        onSelect={onSelect}
-        onFinish={onFinish}
-        blockEvents={blockEvents}
-        questionIndex={questionIndex}
-      />
-    );
+  // if (question?.type === "scale")
+  //   answerfield = (
+  //     <Scale
+  //       answerItems={answerItems}
+  //       items={question.items || []}
+  //       options={question.codes || []}
+  //       onSelect={onSelect}
+  //       onFinish={onFinish}
+  //       blockEvents={blockEvents}
+  //       questionIndex={variableIndex}
+  //     />
+  //   );
 
-  if (question?.type === "annotinder")
-    answerfield = (
-      <Annotinder
-        answerItems={answerItems}
-        codes={question.codes || []}
-        onSelect={onSelect}
-        swipe={swipe}
-        blockEvents={blockEvents}
-      />
-    );
+  // if (question?.type === "annotinder")
+  //   answerfield = (
+  //     <Annotinder
+  //       answerItems={answerItems}
+  //       codes={question.codes || []}
+  //       onSelect={onSelect}
+  //       swipe={swipe}
+  //       blockEvents={blockEvents}
+  //     />
+  //   );
 
-  if (question?.type === "confirm")
-    answerfield = <Confirm onSelect={onSelect} button={"continue"} swipe={swipe} blockEvents={blockEvents} />;
+  // if (question?.type === "confirm")
+  //   answerfield = <Confirm onSelect={onSelect} button={"continue"} swipe={swipe} blockEvents={blockEvents} />;
 
   // if (question?.type === "inputs")
   //   answerfield = (
@@ -208,12 +173,16 @@ const AnswerField = ({ answers, questions, questionIndex, onAnswer, swipe, block
   //     />
   //   );
 
+  let animate = "";
+  if (annotationLib.previousIndex < variableIndex) animate = "animate-slide-in-right";
+  if (annotationLib.previousIndex > variableIndex) animate = "animate-slide-in-left";
+
   return (
     <div
       ref={answerRef}
-      className="relative mx-0 my-auto grid w-full grid-rows-[auto] p-0  text-[length:inherit] text-foreground transition-all"
+      className={`relative mx-0 my-auto grid  w-full grid-rows-[auto] overflow-hidden   p-0 text-[length:inherit] text-foreground transition-all `}
     >
-      <div className="mt-auto w-full">{answerfield}</div>
+      <div className={`${animate} mt-auto max-h-96 w-full overflow-auto`}>{answerfield}</div>
     </div>
   );
 };

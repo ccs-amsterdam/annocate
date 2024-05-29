@@ -100,18 +100,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         </div>
       </div>
       <div {...menuSwipe} className={` ${singlePage ? "flex-[0_0_auto]" : "flex-[0_1_auto"}`}>
-        <QuestionForm
-          unit={unit}
-          questions={questions}
-          questionIndex={questionIndex}
-          setQuestionIndex={setQuestionIndex}
-          setConditionReport={setConditionReport}
-          swipe={swipe}
-          nextUnit={() => console.log("next")}
-          setSwipe={setSwipe}
-          startTransition={startTransition}
-          blockEvents={blockEvents}
-        >
+        <QuestionForm unit={unit} blockEvents={blockEvents}>
           <Instructions
             instruction={question?.instruction || codebook?.settings?.instruction}
             autoInstruction={codebook?.settings?.auto_instruction || false}

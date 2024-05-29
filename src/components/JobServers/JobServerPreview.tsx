@@ -2,15 +2,13 @@ import { Annotation, Codebook, Status, Progress, JobServer, DemoData, RawUnit, C
 import { importCodebook } from "@/functions/codebook";
 import checkConditions from "@/functions/checkConditions";
 
-class JobServerDemo implements JobServer {
-  codebooks: Record<string, Codebook>; // TODO: add codebook interface
+class JobServerPreview implements JobServer {
   demodata: DemoData;
   progress: Progress;
   return_link: string;
   codebookId: string;
 
   constructor(codebook: Codebook, units: RawUnit[]) {
-    this.codebooks = { demo_codebook: codebook };
     this.demodata = {
       units: units.map((u, i) => {
         return {
@@ -37,24 +35,17 @@ class JobServerDemo implements JobServer {
   async init() {}
 
   async getUnit(i?: number) {
-    if (i === undefined) {
-      i = this.progress.n_coded;
-    } else {
-      this.progress.n_coded = Math.max(i, this.progress.n_coded);
-    }
-    let unit = this.demodata?.units?.[i];
-    // deep copy to make sure no modifications seep into the demodata.units
-    unit = JSON.parse(JSON.stringify(unit));
-    return unit || null;
+    console.log(this.demodata);
+    return this.demodata?.units?.[0] || null;
   }
 
   async postAnnotations(unit_id: string, annotation: Annotation[], status: Status) {
     try {
       if (!this.demodata.units) throw new Error("No units found");
       let unit_index = Number(unit_id); // in demo job, we use the index as id
-      this.demodata.units[unit_index].annotation = annotation;
-      this.demodata.units[unit_index].status = this.demodata.units[unit_index].status === "DONE" ? "DONE" : status;
-      this.progress.n_coded = Math.max(unit_index + 1, this.progress.n_coded);
+      //   this.demodata.units[unit_index].annotation = annotation;
+      //   this.demodata.units[unit_index].status = this.demodata.units[unit_index].status === "DONE" ? "DONE" : status;
+      //   this.progress.n_coded = Math.max(unit_index + 1, this.progress.n_coded);
       return "DONE";
     } catch (e) {
       console.error(e);
@@ -63,8 +54,10 @@ class JobServerDemo implements JobServer {
   }
 
   async getCodebook(id: string) {
-    console.log(this.codebooks, id);
-    return this.codebooks[id];
+    return {
+      settings: {},
+      variables: [],
+    };
   }
 
   async getDebriefing() {
@@ -76,4 +69,4 @@ class JobServerDemo implements JobServer {
   }
 }
 
-export default JobServerDemo;
+export default JobServerPreview;

@@ -11,8 +11,8 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { LoremIpsum } from "./lorem";
-import JobServerDemo from "@/components/Demo/JobServerDemo";
-import UnitProvider from "@/components/UnitProvider/UnitProvider";
+import JobServerPreview from "@/components/JobServers/JobServerPreview";
+import UnitProvider, { useAnnotations } from "@/components/UnitProvider/UnitProvider";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
@@ -41,11 +41,13 @@ export default function Job({ params }: { params: { jobId: number; codebookId: n
 
 function PreviewCodebook({ preview }: { preview?: Codebook }) {
   const [size, setSize] = useState({ width: 500, height: 800 });
+  const [unit, setUnit] = useState<RawUnit>(rawPreviewUnit);
   const [focus, setFocus] = useState(false);
 
   const jobServer = useMemo(() => {
     if (!preview) return null;
-    return new JobServerDemo(preview, [rawPreviewUnit]);
+    const unit = { ...rawPreviewUnit, unit: { ...rawPreviewUnit.unit, codebook: preview } };
+    return new JobServerPreview(preview, [unit]);
   }, [preview]);
 
   if (!jobServer) return null;
@@ -63,11 +65,38 @@ function PreviewCodebook({ preview }: { preview?: Codebook }) {
         onBlur={() => setFocus(false)}
       >
         <UnitProvider jobServer={jobServer}>
-          <QuestionTask blockEvents={!focus} />;
+          <QuestionTask blockEvents={!focus} />
+          <PreviewAnnotations />
         </UnitProvider>
       </div>
     </div>
   );
+}
+
+function PreviewAnnotations() {
+  const { annotationLib } = useAnnotations();
+
+  return (
+    <div className="mt-6">
+      {Object.values(annotationLib.annotations).map((a) => {
+        return (
+          <div key={a.id} className="text-sm">
+            {a.variable} - {a.code}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // return (
+  //   <div>
+  //     {annotationLib.map((annotation) => (
+  //       <div key={annotation.id}>
+  //         {annotation.type} - {annotation.value}
+  //       </div>
+  //     ))}
+  //   </div>
+  // );
 }
 
 const rawPreviewUnit: RawUnit = {
@@ -77,6 +106,7 @@ const rawPreviewUnit: RawUnit = {
   type: "code",
   unit: {
     codebookId: "demo_codebook",
+    annotations: [],
     text_fields: [
       { name: "title", value: LoremIpsum.split("\n\n")[0], style: { fontSize: "1.2rem", fontWeight: "bold" } },
       {

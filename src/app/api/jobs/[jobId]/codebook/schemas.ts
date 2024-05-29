@@ -142,6 +142,18 @@ export const CodebookVariableItemsSchema = z
       "The items for which the question is asked. The name is for your own use, and will be concatenated with the variable name to store the results. The label is shown to the user",
   });
 
+export const CodebookParamsVerticalSchema = z.boolean().default(false).optional().openapi({
+  title: "Vertical",
+  description: "If enabled, all buttons are put in a single column",
+  example: true,
+});
+
+export const CodebookParamsMultipleSchema = z.boolean().default(false).optional().openapi({
+  title: "Multiple",
+  description: "If enabled, multiple options can be chosen",
+  example: true,
+});
+
 export const CodebookRelationOptionsSchema = z.object({
   variable: z.string(),
   values: z.array(z.string()).optional(),
@@ -178,8 +190,8 @@ export const CodebookScaleTypeSchema = CodebookVariableSchema.extend({
 export const CodebookSelectTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["select code"]),
   codes: CodebookCodesSchema,
-  multiple: z.boolean().optional(),
-  vertical: z.boolean().optional(),
+  multiple: CodebookParamsMultipleSchema,
+  vertical: CodebookParamsVerticalSchema,
   same_size: z.boolean().optional(),
 });
 

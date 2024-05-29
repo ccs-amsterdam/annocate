@@ -167,16 +167,21 @@ export interface RelationAnnotation {
   select?: () => void;
 }
 
+export type VariableStatus = "pending" | "done" | "skip";
+
 export interface AnnotationLibrary {
   type: UnitType;
   status: UnitStatus;
   conditionals: Conditional[];
   annotations: AnnotationDictionary;
+  variables: ExtendedVariable[];
   variableIndex: number;
+  variableStatuses: VariableStatus[];
   byToken: TokenAnnotations;
   codeHistory: CodeHistory;
   unitId: string;
   conditionReport: ConditionReport | null;
+  previousIndex: number;
 }
 export type AnnotationDictionary = Record<AnnotationID, Annotation>;
 export type TokenAnnotations = Record<number, AnnotationID[]>;

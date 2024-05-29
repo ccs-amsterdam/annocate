@@ -73,6 +73,8 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     resolver: zodResolver(CodebookCreateBodySchema),
     defaultValues: CodebookCreateBodySchema.parse(current),
   });
+  console.log(CodebookCreateBodySchema.parse(current));
+  console.log(form.getValues());
 
   const { error } = form.getFieldState("codebook");
   const variables = form.getValues("codebook.variables");
@@ -117,11 +119,14 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   }
   const shape = CodebookCreateBodySchema.shape;
 
+  console.log(form.formState.isDirty);
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex flex-col gap-3  p-3 lg:px-8 ">
         <div
-          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)] w-full items-center justify-between gap-10 border-b bg-background px-8 ${form.formState.isDirty ? "" : "hidden"} `}
+          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)] w-full 
+          items-center justify-between gap-10 border-b bg-background px-8 ${form.formState.isDirty ? "" : "hidden"} `}
         >
           <Button
             type="button"
@@ -163,6 +168,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
           >
             {variables.map((variable, index) => {
               const varName = form.watch(`codebook.variables.${index}.name`);
+              const varQuestion = form.watch(`codebook.variables.${index}.question`);
               const varType = form.watch(`codebook.variables.${index}.type`);
               const isActive = accordionValue === "V" + index;
               const { error } = form.getFieldState(`codebook.variables.${index}`);
@@ -176,7 +182,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
                       <AccordionTrigger className="text-left no-underline hover:no-underline">
                         <span className="break-all">
                           {varName.replace(/_/g, " ")}
-                          {/* {varQuestion && <span className="text-base text-primary/70"> - {variable.question}</span>} */}
+                          {varQuestion && <span className="text-base text-primary/70"> - {variable.question}</span>}
                         </span>
                       </AccordionTrigger>
                     </div>
@@ -241,6 +247,8 @@ function CodebookVariable<T extends FieldValues>({
       const shape = CodebookSelectTypeSchema.shape;
       return (
         <>
+          <BooleanFormField control={control} zType={shape.multiple} name={appendPath("multiple")} />
+          <BooleanFormField control={control} zType={shape.vertical} name={appendPath("vertical")} />
           <CodesFormField control={control} name={appendPath("codes")} zType={shape.codes} />
         </>
       );

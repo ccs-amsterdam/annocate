@@ -1,3 +1,5 @@
+import { RefObject } from "react";
+
 interface Position {
   top: number;
   bottom: number;
@@ -7,22 +9,31 @@ interface Position {
   width: number;
   height: number;
 }
+interface hasHTMLRef {
+  ref?: RefObject<HTMLElement>;
+}
 
 /**
  *
  * @param {*} arr An array of objects that each has a .ref key
  * @param {*} selected
  */
-export const moveUp = (arr: any, selected: number, xposition: number = -1) => {
+export const moveUp = (arr: hasHTMLRef[] | undefined, selected: number, xposition: number = -1) => {
   // given an array of refs for buttons (or any divs), and the current selected button,
   // move to most overlapping button on previous row
   // (basically, what you want to happen when you press 'up' in a cloud of buttons)
+  if (!arr || !arr[selected]?.ref) return selected;
+
   const currentPos = getPosition(arr[selected].ref, arr?.[xposition]?.ref);
+
   let correctRow = null;
   let prevColOverlap = 0;
   for (let i = selected - 1; i >= 0; i--) {
-    if (arr[i].ref == null || arr[i].ref.current === null) return i + 1;
-    const nextPos = getPosition(arr[i].ref);
+    const el = arr[i].ref;
+    if (!el) continue;
+
+    if (arr[i].ref == null || el.current === null) return i + 1;
+    const nextPos = getPosition(el);
 
     if (correctRow === null) {
       if (sameRow(currentPos, nextPos)) continue;
@@ -47,15 +58,17 @@ export const moveUp = (arr: any, selected: number, xposition: number = -1) => {
  * @param {*} arr An array of objects that each has a .ref key
  * @param {*} selected
  */
-export const moveDown = (arr: any, selected: number, xposition: number = -1) => {
+export const moveDown = (arr: hasHTMLRef[] | undefined, selected: number, xposition: number = -1) => {
   // like moveUp, but down
+  if (!arr || !arr?.[selected]?.ref) return selected;
 
   const currentPos = getPosition(arr[selected].ref, arr?.[xposition]?.ref);
   let correctRow = null;
   let prevColOverlap = 0;
   for (let i = selected + 1; i < arr.length; i++) {
-    if (arr[i].ref == null || arr[i].ref.current === null) return i - 1;
-    const nextPos = getPosition(arr[i].ref);
+    const el = arr[i].ref;
+    if (el == null || el.current === null) return i - 1;
+    const nextPos = getPosition(el);
 
     if (correctRow === null) {
       if (sameRow(currentPos, nextPos)) continue;
@@ -96,10 +109,14 @@ const calcColOverlap = (a: Position, b: Position): number => {
   return Math.max(pctA, pctB);
 };
 
-const getPosition = (ref: { current: HTMLElement }, horizontalRef?: { current: HTMLElement }): Position => {
+const getPosition = (
+  ref: RefObject<HTMLElement> | undefined,
+  horizontalRef?: RefObject<HTMLElement> | undefined,
+): Position => {
+  if (!ref?.current) return { top: 0, bottom: 0, left: 0, right: 0, x: 0, width: 0, height: 0 };
   const pos = ref.current.getBoundingClientRect();
 
-  if (horizontalRef != null) {
+  if (horizontalRef?.current != null) {
     const hpos = horizontalRef.current.getBoundingClientRect();
     pos.x = hpos.x;
     pos.width = hpos.width;
@@ -114,5 +131,6 @@ const getPosition = (ref: { current: HTMLElement }, horizontalRef?: { current: H
     width: pos.width,
     height: pos.height,
   };
+  console.log(position);
   return position;
 };

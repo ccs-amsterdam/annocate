@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { moveUp, moveDown } from "@/functions/refNavigation";
-import { AnswerOption, Code, OnSelectParams } from "@/app/types";
+import { AnswerOption, Code } from "@/app/types";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { Button } from "@/components/ui/button";
+import { OnSelectParams } from "./AnswerField";
+import { Play } from "lucide-react";
 
 const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
@@ -10,13 +12,11 @@ interface SelectCodeProps {
   /** The options the user can choose from */
   options: Code[];
   /** An array of answer values. If multiple is false, should have length 1 */
-  values: (string | number)[];
+  values: string[];
   /** If true, multiple options can be chosen */
   multiple: boolean;
   /** If true, all buttons are put in a single column */
   vertical: boolean;
-  /** If true, all buttons are kept mostly the same size (can deviate if some options have more characters) */
-  sameSize: boolean;
   /** The function used to update the values */
   onSelect: (params: OnSelectParams) => void;
   /** Like onSelect, but for finishing the question/unit with the current values */
@@ -25,6 +25,8 @@ interface SelectCodeProps {
   blockEvents: boolean;
   /** The index of the question.  */
   questionIndex: number;
+  /** speedbump */
+  speedbump: boolean;
 }
 
 const SelectCode = ({
@@ -32,28 +34,28 @@ const SelectCode = ({
   values,
   multiple,
   vertical,
-  sameSize,
   onSelect,
   onFinish,
   blockEvents,
   questionIndex,
+  speedbump,
 }: SelectCodeProps) => {
   // render buttons for options (an array of objects with keys 'label' and 'color')
   // On selection perform onSelect function with the button label as input
   // if canDelete is TRUE, also contains a delete button, which passes null to onSelect
+
   const [selected, setSelected] = useState<number | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const finishbutton = useRef<HTMLButtonElement>(null);
-  const speedbump = useSpeedBump(values);
 
   const buttonRefs = useMemo(() => {
-    return options.map(() => React.createRef<HTMLButtonElement>());
+    return options.map(() => ({ ref: React.createRef<HTMLButtonElement>() }));
   }, [options]);
 
   const onKeydown = React.useCallback(
     (event: KeyboardEvent) => {
       // the finishbutton is just added to the buttons array, so that navigation still works nicely
-      const buttons = multiple ? [...buttonRefs, finishbutton] : buttonRefs;
+      const buttons = multiple ? [...buttonRefs, { ref: finishbutton }] : buttonRefs;
       const nbuttons = buttons.length;
 
       if (selected === null || selected < 0 || selected > nbuttons) {
@@ -85,7 +87,7 @@ const SelectCode = ({
         //   behavior: "smooth",
         //   block: "center",
         // });
-        buttons?.[selected]?.current?.scrollIntoView();
+        buttons?.[selected]?.ref?.current?.scrollIntoView();
         return;
       }
 
@@ -101,11 +103,8 @@ const SelectCode = ({
         } else {
           if (options?.[selected])
             onSelect({
-              value: options[selected].code,
-              itemIndex: 0,
+              code: options[selected],
               multiple,
-              finish: !multiple,
-              transition: { color: options[selected]?.color },
             }); // !multiple tells not to finish unit if multiple is true
         }
       }
@@ -139,56 +138,56 @@ const SelectCode = ({
 
     return options.map((option, i) => {
       const isCurrent = values.includes(option.code);
-
+      const isSelected = selected === i;
       return (
         <Button
-          className="max-h-20 max-w-full flex-[0.3_0_auto] p-3"
-          ref={buttonRefs[i]}
+          className={`relative z-0 max-h-20 max-w-full flex-[0.3_0_auto] p-3 text-foreground    hover:bg-foreground hover:text-background
+          ${isCurrent ? "ring-4 ring-primary ring-offset-1" : ""} 
+          ${isSelected ? "bg-foreground text-background " : ""}`}
+          style={{ minWidth }}
+          ref={buttonRefs[i].ref}
+          variant={"outline"}
           key={option.code + i}
           value={option.code}
           onClick={() => {
             if (speedbump) return;
-
             onSelect({
-              value: option.code,
-              itemIndex: 0,
+              code: option,
               multiple: multiple,
-              finish: !multiple,
-              transition: { color: option.color },
             }); // !multiple tells not to finish unit if multiple is true
           }}
         >
-          <div className="break-word max-h-20 whitespace-normal">{option.code}</div>
+          <div className="break-word pointer-events-none relative z-20 max-h-20 whitespace-normal">{option.code}</div>
+          <div
+            className={`${isCurrent ? "" : ""} placeholder absolute left-0 top-0 z-10 h-full w-full rounded-md `}
+            style={{ background: option.color || "hsla(var(--primary),0.6)" }}
+          ></div>
         </Button>
       );
     });
   };
 
   return (
-    <div className="flex h-full w-full px-3">
+    <div className="flex h-full w-full flex-col px-3 py-1">
       <div
         ref={container}
-        className=" flex h-full  flex-auto flex-wrap  justify-center gap-2
-       "
+        className={` flex  h-full flex-auto  flex-wrap justify-center  ${vertical ? "gap-1" : "gap-2"}`}
       >
         {mapButtons()}
       </div>
       {multiple ? (
-        <div style={{ width: "60px", height: "100%" }}>
+        <div>
           <Button
+            className={`mt-4 h-8 w-full`}
+            variant="secondary"
             ref={finishbutton}
-            style={{
-              height: "100%",
-              border: `5px solid ${
-                selected === options.length ? "var(--background-fixed)" : "var(--background-inversed-fixed)"
-              }`,
-            }}
             onClick={() => {
               if (speedbump) return;
-
-              onSelect({ value: values, itemIndex: 0, finish: true });
+              onFinish();
             }}
-          />
+          >
+            <Play size={16} className="mr-2" />
+          </Button>
         </div>
       ) : null}
     </div>
