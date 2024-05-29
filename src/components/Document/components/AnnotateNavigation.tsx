@@ -187,7 +187,7 @@ const setAnnotationAsCSSClass = (token: Token, annotations: Annotation[]) => {
     if (annotation.type === "span") {
       nSpanAnnotations++;
       const color = standardizeColor(annotation.color, "50");
-      tokenlabel.push(String(annotation.value));
+      tokenlabel.push(String(annotation.code));
 
       spanColors.text.push(color);
       if (annotation.span?.[0] === token.index) {
@@ -201,7 +201,7 @@ const setAnnotationAsCSSClass = (token: Token, annotations: Annotation[]) => {
     if (annotation.type === "relation") {
       nRelationAnnotations++;
       const color = standardizeColor(annotation.color, "90");
-      tokenlabel.push(String(annotation.value));
+      tokenlabel.push(String(annotation.code));
 
       relationColors.text.push(color);
       if (annotation.positions?.has(token.index)) relationColors.pre.push(color);
@@ -322,7 +322,7 @@ const AnnotationPopup = ({ tokens, tokenIndex, annotationLib, showValues }: Anno
     const ids = Object.keys(tokenAnnotations);
     const list = ids.reduce((arr: ReactElement[], id, i) => {
       const variable = tokenAnnotations[i].variable;
-      const value = tokenAnnotations[i].value;
+      const value = tokenAnnotations[i].code;
       if (!showValues?.[variable]) return arr;
 
       const color = standardizeColor(tokenAnnotations[i].color);

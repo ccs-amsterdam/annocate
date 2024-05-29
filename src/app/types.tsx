@@ -74,6 +74,7 @@ export type Status = "DONE" | "IN_PROGRESS";
 export interface GeneralTypeAnnotation {
   id: string;
   variable: string;
+  code: string | undefined;
   value: string | number | undefined;
 
   created: string;
@@ -171,6 +172,7 @@ export interface AnnotationLibrary {
   status: UnitStatus;
   conditionals: Conditional[];
   annotations: AnnotationDictionary;
+  variableIndex: number;
   byToken: TokenAnnotations;
   codeHistory: CodeHistory;
   unitId: string;
@@ -581,16 +583,13 @@ export interface OauthClients {
  * In particular, it needs to have a codebook and progress
  */
 export interface JobServer {
-  codebook: CodeBook;
-  progress: Progress;
   return_link?: string;
   job_id?: string;
-  setJobServer?: SetState<JobServer>;
-  demodata?: DemoData;
 
   init: () => void;
-  getUnit: (i: number) => Promise<RawUnit>;
-  postAnnotations: (unitId: string, annotation: Annotation[], status: Status) => Promise<ConditionReport>;
+  getUnit: (i?: number) => Promise<RawUnit | null>;
+  getCodebook: (id: string) => Promise<Codebook>;
+  postAnnotations: (unitId: string, annotation: Annotation[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }
 
@@ -678,11 +677,12 @@ export interface RawUnitContent {
   meta_fields?: MetaField[];
   annotations?: Annotation[];
   codebook?: Codebook;
+  codebookId?: string;
   variables?: UnitVariables;
   grid?: FieldGridInput;
 }
 
-export type UnitStatus = "DONE" | "IN_PROGRESS";
+export type UnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
 
 export interface FieldGridInput {
   areas?: string[][];

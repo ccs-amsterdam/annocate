@@ -95,7 +95,8 @@ export default class AnnotationManager {
       created: new Date().toISOString(),
       type: "unit",
       variable: variable,
-      value: code.code,
+      code: code.code,
+      value: code.value,
       color: code.color,
     };
     this.addAnnotation(annotation);
@@ -107,11 +108,47 @@ export default class AnnotationManager {
       created: new Date().toISOString(),
       type: "field",
       variable: variable,
-      value: code.code,
+      code: code.code,
+      value: code.value,
       color: code.color,
       field: field,
     };
     this.addAnnotation(annotation);
+  }
+
+  processAnswer(variable: string, code: Code, multiple: boolean, field?: string) {
+    let annotation: Annotation = {
+      id: cuid(),
+      created: new Date().toISOString(),
+      type: "unit",
+      variable: variable,
+      code: code.code,
+      value: code.value,
+      color: code.color,
+    };
+    if (field) {
+      annotation = { ...annotation, field, type: "field" };
+    }
+
+    this.setAnnotationLib((annotationLib) => {
+      const currentAnnotations = Object.values(annotationLib.annotations);
+      for (const a of currentAnnotations) {
+        if (a.variable !== annotation.variable) continue;
+        if (a.type !== annotation.type) continue;
+        if (annotation.type === "field" && a.type === "field" && a.field !== annotation.field) continue;
+        if (a.code === annotation.code || !multiple) {
+          delete annotationLib.annotations[a.id];
+        }
+      }
+      annotationLib.annotations[annotation.id] = annotation;
+
+      return {
+        ...annotationLib,
+        byToken: newTokenDictionary(annotationLib.annotations),
+        codeHistory: updateCodeHistory(annotationLib.codeHistory, annotation),
+        conditionReport: checkConditions(annotationLib),
+      };
+    });
   }
 
   createSpanAnnotation(variable: string, code: Code, from: number, to: number, tokens: Token[]) {
@@ -120,7 +157,8 @@ export default class AnnotationManager {
       created: new Date().toISOString(),
       type: "span",
       variable: variable,
-      value: code.code,
+      code: code.code,
+      value: code.value,
       color: code.color,
       span: [from, to],
       offset: tokens[from].offset,
@@ -138,7 +176,8 @@ export default class AnnotationManager {
       created: new Date().toISOString(),
       type: "relation",
       variable: variable,
-      value: code.code,
+      code: code.code,
+      value: code.value,
       color: code.color,
       fromId: from.id,
       toId: to.id,
@@ -203,7 +242,7 @@ function addToTokenDictionary(byToken: TokenAnnotations, annotation: Annotation)
 }
 
 function updateCodeHistory(codeHistory: CodeHistory, annotation: Annotation) {
-  const { variable, value } = annotation;
+  const { variable, code: value } = annotation;
   if (!codeHistory?.[variable]) codeHistory[variable] = [];
 
   let values: (string | number)[] = [];
@@ -268,11 +307,11 @@ const initializeCodeHistory = (annotations: Annotation[]): CodeHistory => {
   const vvh: VariableValueMap = {};
 
   for (let annotation of annotations) {
-    if (!annotation.value) continue;
+    if (!annotation.code) continue;
     if (!vvh[annotation.variable]) {
-      vvh[annotation.variable] = { [annotation.value]: true };
+      vvh[annotation.variable] = { [annotation.code]: true };
     } else {
-      vvh[annotation.variable][annotation.value] = true;
+      vvh[annotation.variable][annotation.code] = true;
     }
   }
 
@@ -326,13 +365,13 @@ function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap)
   for (let a of Object.values(annotations)) {
     if (variableMap) {
       const codeMap = variableMap[a.variable].codeMap;
-      if (a.value != null && codeMap[a.value]) {
-        a.color = getColor(a.value, codeMap);
+      if (a.code != null && codeMap[a.code]) {
+        a.color = getColor(a.code, codeMap);
       }
     }
 
     if (!a.color) {
-      if (!a.color) a.color = randomColor({ seed: a.value, luminosity: "light" });
+      if (!a.color) a.color = randomColor({ seed: a.code, luminosity: "light" });
     }
   }
 
@@ -373,7 +412,7 @@ function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) 
   for (let a of Object.values(annotations)) {
     if (a.type !== "span" || annotation.type !== "span") continue;
     if (!a.span || !annotation.span) continue;
-    if (a.value !== "EMPTY") continue;
+    if (a.code !== "EMPTY") continue;
     if (
       a.field === annotation.field &&
       a.variable === annotation.variable &&

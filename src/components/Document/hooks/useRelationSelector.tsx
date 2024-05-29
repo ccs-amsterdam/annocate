@@ -145,7 +145,7 @@ const SelectRelationPage = ({ variable, edge, annotationLib, annotationManager, 
       if (!annotation.id || annotation.type !== "relation") continue;
       if (annotation.fromId !== edge.from.id) continue;
       if (annotation.toId !== edge.to.id) continue;
-      existing[annotation.variable + "|" + annotation.value] = annotation.id;
+      existing[annotation.variable + "|" + annotation.code] = annotation.id;
     }
 
     const options = edge.relations.map((code) => {
@@ -169,7 +169,7 @@ const SelectRelationPage = ({ variable, edge, annotationLib, annotationManager, 
   }, [options, onSelect, setOpen]);
 
   if (!options) return null;
-  return <PopupSelection header={`${edge.from.value} → ${edge.to.value}`} options={options} onSelect={onSelect} />;
+  return <PopupSelection header={`${edge.from.code} → ${edge.to.code}`} options={options} onSelect={onSelect} />;
 };
 
 function getOptions(from: Annotation[], to: Annotation[], variable: ExtendedVariable) {
@@ -178,14 +178,14 @@ function getOptions(from: Annotation[], to: Annotation[], variable: ExtendedVari
   const validTo = variable.validTo;
 
   for (let f of from) {
-    if (!f.variable || !f.value) continue;
-    const fromRelations = validFrom?.[f.variable]?.["*"] || validFrom?.[f.variable]?.[f.value] || null;
+    if (!f.variable || !f.code) continue;
+    const fromRelations = validFrom?.[f.variable]?.["*"] || validFrom?.[f.variable]?.[f.code] || null;
     if (!fromRelations) continue;
 
     for (let t of to) {
       if (f.id === t.id) continue;
-      if (!t.variable || !t.value) continue;
-      const toRelations = validTo?.[t.variable]?.["*"] || validTo?.[t.variable]?.[t.value] || null;
+      if (!t.variable || !t.code) continue;
+      const toRelations = validTo?.[t.variable]?.["*"] || validTo?.[t.variable]?.[t.code] || null;
       if (!toRelations) continue;
 
       const relations: Code[] = [];
@@ -196,7 +196,7 @@ function getOptions(from: Annotation[], to: Annotation[], variable: ExtendedVari
       }
       if (relations.length === 0) continue;
 
-      const key = `${f.variable}:${f.value}:${t.variable}:${t.value}`;
+      const key = `${f.variable}:${f.code}:${t.variable}:${t.code}`;
 
       if (!edgeRelations[key]?.relationOption) {
         edgeRelations[key] = {
@@ -210,7 +210,7 @@ function getOptions(from: Annotation[], to: Annotation[], variable: ExtendedVari
   }
 
   const edgeOptions: CodeSelectorOption[] = Object.values(edgeRelations).map((value) => ({
-    label: `${value.relationOption?.from.value} → ${value.relationOption?.to.value}`,
+    label: `${value.relationOption?.from.code} → ${value.relationOption?.to.code}`,
     color: "var(--primary-light)",
     value,
   }));

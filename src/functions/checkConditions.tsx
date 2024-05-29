@@ -84,13 +84,13 @@ export default function checkConditions(annotationLibrary: AnnotationLibrary): C
         const op = c.operator || "==";
 
         let hasMatch = false;
-        if (a.value) {
-          if (op === "==" && a.value === c.value) hasMatch = true;
-          if (op === "<=" && a.value <= c.value) hasMatch = true;
-          if (op === "<" && a.value < c.value) hasMatch = true;
-          if (op === ">=" && a.value >= c.value) hasMatch = true;
-          if (op === ">" && a.value > c.value) hasMatch = true;
-          if (op === "!=" && a.value !== c.value) hasMatch = true;
+        if (a.code) {
+          if (op === "==" && a.code === c.value) hasMatch = true;
+          if (op === "<=" && a.code <= c.value) hasMatch = true;
+          if (op === "<" && a.code < c.value) hasMatch = true;
+          if (op === ">=" && a.code >= c.value) hasMatch = true;
+          if (op === ">" && a.code > c.value) hasMatch = true;
+          if (op === "!=" && a.code !== c.value) hasMatch = true;
         }
         if (hasMatch) {
           validAnnotation[i] = true;

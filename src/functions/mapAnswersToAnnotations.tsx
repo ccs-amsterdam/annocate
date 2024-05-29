@@ -49,8 +49,8 @@ const getAnswerValues = (annotations: Annotation[], answer: Answer, question: Va
     const itemname = typeof item === "string" ? item : item?.name; // item can be a string or {name, label}
     const values: (string | number)[] = [];
     for (let annotation of annotations || []) {
-      if (annotation.value && isMatch(annotation, answer, itemname)) {
-        values.push(annotation.value);
+      if (annotation.code && isMatch(annotation, answer, itemname)) {
+        values.push(annotation.code);
       }
     }
     return { item: itemname, optional: item.optional, values: values };
@@ -90,17 +90,17 @@ export const addAnnotationsFromAnswer = (answer: Answer, annotations: Annotation
 
   for (let item of Object.keys(valueMap)) {
     for (let annotation of annotations) {
-      if (annotation.value && isMatch(annotation, answer, item)) {
+      if (annotation.code && isMatch(annotation, answer, item)) {
         // if it is a match, three things can happen.
         // case 1: the annotation value does occur in the answer value, in which case we leave it alone
         // case 2: the annotation value does not occur in the answer values, in which case we delete it
         // case 3: an answer value does not have an annotation, in which case we add it
-        if (valueMap[item][annotation.value] !== undefined) {
+        if (valueMap[item][annotation.code] !== undefined) {
           // case 1
-          valueMap[item][annotation.value].exists = true; // keeping track for case 3
+          valueMap[item][annotation.code].exists = true; // keeping track for case 3
         } else {
           // case 2
-          annotation.value = undefined;
+          annotation.code = undefined;
         }
       }
     }
@@ -113,7 +113,14 @@ export const addAnnotationsFromAnswer = (answer: Answer, annotations: Annotation
       // case 3
       const variable = createVariable(answer.variable, item);
 
-      let annotation: Annotation = { id: cuid(), created: new Date().toISOString(), type: "unit", variable, value };
+      let annotation: Annotation = {
+        id: cuid(),
+        created: new Date().toISOString(),
+        type: "unit",
+        variable,
+        code: value,
+        value: value,
+      };
       if ("field" in answer && answer.field) {
         annotation = { ...annotation, type: "field", field: answer.field };
       }
@@ -128,5 +135,5 @@ export const addAnnotationsFromAnswer = (answer: Answer, annotations: Annotation
     }
   }
 
-  return annotations.filter((a) => a.value !== undefined);
+  return annotations.filter((a) => a.code !== undefined);
 };

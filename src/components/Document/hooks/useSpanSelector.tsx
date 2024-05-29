@@ -183,7 +183,7 @@ const NewCodePage = ({
         doneId[id] = true;
         const a = { ...annotationLib.annotations[id] };
         if (a.variable !== variable.name) continue;
-        if (a.value === "EMPTY") continue;
+        if (a.code === "EMPTY") continue;
         //if (!codeMap[a.value]) continue;
         existing.push(a);
       }
@@ -192,19 +192,19 @@ const NewCodePage = ({
     if (Object.keys(codeMap).length === 1) {
       // auto code if only one option is available
       const value = Object.values(codeMap)[0];
-      const nonEmpty = existing.filter((e) => e.value !== "EMPTY");
+      const nonEmpty = existing.filter((e) => e.code !== "EMPTY");
       if (nonEmpty.length === 0) {
         // If there is only one option (which only happens if there is only 1 possible value and nothing that can be deleted), select it automatically
         setTimeout(() => onSelect({ span, value, delete: false }), 0);
         setOpen(false);
       }
-      if (editMode && nonEmpty.length === 1 && value.value === nonEmpty[0].value) {
+      if (editMode && nonEmpty.length === 1 && value.value === nonEmpty[0].code) {
         setTimeout(() => onSelect({ span, value, delete: true }), 0);
         setOpen(false);
       }
     }
 
-    const existingValues = new Set(existing.map((e) => e.value));
+    const existingValues = new Set(existing.map((e) => e.code));
     for (let code of Object.values(codeMap)) {
       if (existingValues.has(code.code)) continue;
 
@@ -220,7 +220,7 @@ const NewCodePage = ({
         //if (!codeMap[o.value]) continue;
 
         options.push({
-          tag: o.value,
+          tag: o.code,
           label: o.span ? '"' + getTextSnippet(tokens, o.span) + '"' : "",
           color: standardizeColor(o.color),
           value: { id: o.id, delete: true },
@@ -259,7 +259,7 @@ const getAnnotationOptions = (
     const span = annotation.span;
     const key = annotation.variable + ":" + span?.[0] + "-" + span?.[1];
     const label = span ? '"' + getTextSnippet(tokens, span) + '"' : "";
-    const color = getColor(annotation.value ?? "", codeMap);
+    const color = getColor(annotation.code ?? "", codeMap);
     if (!variableSpans[key]) {
       variableSpans[key] = {
         tag: annotation.variable,

@@ -24,8 +24,6 @@ import AnnotationManager from "@/functions/AnnotationManager";
 interface QuestionFormProps {
   /** Buttons can be passed as children, that will be shown on the topleft of the question form */
   children: ReactElement | ReactElement[];
-  annotationLib: AnnotationLibrary;
-  annotationManager: AnnotationManager;
   /** The unit */
   unit: Unit;
   /** The tokens of the unit. Used to include span offset and length in the annotation
@@ -43,8 +41,6 @@ interface QuestionFormProps {
 
 const QuestionForm = ({
   children,
-  annotationLib,
-  annotationManager,
   unit,
   questions,
   questionIndex,

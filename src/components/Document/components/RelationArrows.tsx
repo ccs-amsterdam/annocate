@@ -40,7 +40,7 @@ const RelationArrows = ({ tokens, annotationLib, triggerSelector }: Props) => {
         tokenSelectionEnd: [fromEnd, toEnd] as TokenSelection,
         fromId: r.fromId,
         toId: r.toId,
-        relation: String(r.value),
+        relation: String(r.code),
         edgeColor: standardizeColor(r.color, "90"),
         fromColor: standardizeColor(fromAnnotation.color, "90"),
         toColor: standardizeColor(toAnnotation.color, "90"),

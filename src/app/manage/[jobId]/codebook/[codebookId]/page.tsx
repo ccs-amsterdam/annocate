@@ -11,6 +11,8 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { LoremIpsum } from "./lorem";
+import JobServerDemo from "@/components/Demo/JobServerDemo";
+import UnitProvider from "@/components/UnitProvider/UnitProvider";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
@@ -41,18 +43,12 @@ function PreviewCodebook({ preview }: { preview?: Codebook }) {
   const [size, setSize] = useState({ width: 500, height: 800 });
   const [focus, setFocus] = useState(false);
 
-  const codebook = useMemo(() => {
+  const jobServer = useMemo(() => {
     if (!preview) return null;
-    return importCodebook(preview);
+    return new JobServerDemo(preview, [rawPreviewUnit]);
   }, [preview]);
-  const previewUnit = useMemo(() => {
-    if (!codebook) return null;
-    return prepareUnit(rawPreviewUnit, codebook);
-  }, []);
 
-  console.log(codebook, previewUnit);
-
-  if (!codebook || !previewUnit) return null;
+  if (!jobServer) return null;
 
   return (
     <div className="">
@@ -66,7 +62,9 @@ function PreviewCodebook({ preview }: { preview?: Codebook }) {
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
       >
-        <QuestionTask unit={previewUnit} codebook={codebook} nextUnit={() => null} blockEvents={!focus} />
+        <UnitProvider jobServer={jobServer}>
+          <QuestionTask blockEvents={!focus} />;
+        </UnitProvider>
       </div>
     </div>
   );
@@ -78,6 +76,7 @@ const rawPreviewUnit: RawUnit = {
   id: "id",
   type: "code",
   unit: {
+    codebookId: "demo_codebook",
     text_fields: [
       { name: "title", value: LoremIpsum.split("\n\n")[0], style: { fontSize: "1.2rem", fontWeight: "bold" } },
       {
