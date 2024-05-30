@@ -32,7 +32,7 @@ import { Form } from "../ui/form";
 import React from "react";
 
 type Codebook = z.infer<typeof CodebookSchema>;
-type CodebookUpdateBody = z.infer<typeof CodebookUpdateBodySchema>;
+type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
 
 export function useCreateEmptyCodebook(jobId: number) {
   const { mutateAsync } = useCreateCodebook(jobId);
@@ -287,7 +287,7 @@ function CodebookVariable<T extends FieldValues>({
   );
 }
 
-function defaultVariable(name: string): z.infer<typeof CodebookSelectTypeSchema> {
+function defaultVariable(name: string): z.input<typeof CodebookSelectTypeSchema> {
   return {
     name,
     question: "",

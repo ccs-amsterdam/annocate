@@ -29,7 +29,7 @@ export default function Job({ params }: { params: { jobId: number; codebookId: n
 
   return (
     <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-3 lg:grid-cols-2">
-      <div className="relative flex justify-center">
+      <div className="relative flex max-h-[calc(100vh-var(--header-height))] justify-center overflow-auto">
         <PreviewCodebook preview={preview} />
       </div>
       <div className="max-h-[calc(100vh-var(--header-height))] overflow-auto py-6">

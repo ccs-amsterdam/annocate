@@ -32,6 +32,10 @@ export async function POST(req: Request) {
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
         const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email));
+        if (!user)
+          throw new Error(
+            `User ${email} is not registered. (You are probably a superadmin, and can register yourself)`,
+          );
         const [job] = await tx.insert(jobs).values({ name: body.name, creator: email }).returning();
         await tx.insert(managers).values({ jobId: job.id, userId: user.id, role: "admin" });
         return job;

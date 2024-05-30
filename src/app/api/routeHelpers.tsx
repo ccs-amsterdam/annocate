@@ -214,7 +214,7 @@ export async function createUpdate<T>({
     if (e instanceof z.ZodError) {
       return NextResponse.json({ message: String(fromZodError(e)) }, { status: 400 });
     }
-    return NextResponse.json(errorFunction?.(400, bodyCopy) || e.message, { status: 400 });
+    return NextResponse.json({ message: errorFunction?.(400, bodyCopy) || e.message }, { status: 400 });
   }
 }
 

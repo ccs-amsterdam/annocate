@@ -67,7 +67,7 @@ export const jobs = pgTable(
   },
 );
 
-type Codebook = z.infer<typeof CodebookSchema>;
+type Codebook = z.input<typeof CodebookSchema>;
 
 export const codebooks = pgTable(
   "codebooks",

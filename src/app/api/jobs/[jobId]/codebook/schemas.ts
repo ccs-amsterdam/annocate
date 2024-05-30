@@ -142,13 +142,13 @@ export const CodebookVariableItemsSchema = z
       "The items for which the question is asked. The name is for your own use, and will be concatenated with the variable name to store the results. The label is shown to the user",
   });
 
-export const CodebookParamsVerticalSchema = z.boolean().default(false).optional().openapi({
+export const CodebookParamsVerticalSchema = z.boolean().optional().default(false).openapi({
   title: "Vertical",
   description: "If enabled, all buttons are put in a single column",
   example: true,
 });
 
-export const CodebookParamsMultipleSchema = z.boolean().default(false).optional().openapi({
+export const CodebookParamsMultipleSchema = z.boolean().optional().default(false).openapi({
   title: "Multiple",
   description: "If enabled, multiple options can be chosen",
   example: true,
