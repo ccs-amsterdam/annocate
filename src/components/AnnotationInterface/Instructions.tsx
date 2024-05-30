@@ -8,18 +8,6 @@ import useSessionStorage from "@/hooks/useSessionStorage";
 import hash from "object-hash";
 import { Info } from "lucide-react";
 
-const QuestionMarkButton = styled.span`
-  vertical-align: middle;
-  margin: 0.1em;
-  font-size: 1em;
-  padding: 0.6em;
-  cursor: pointer;
-
-  /* svg:hover {
-    fill: hsl(var(--secondary));
-  } */
-`;
-
 interface InstructionsProps {
   instruction: string | undefined;
   autoInstruction: boolean;
@@ -47,6 +35,7 @@ const Instructions = ({ instruction, autoInstruction }: InstructionsProps) => {
   }, [instruction, autoInstruction, seen, setSeen]);
 
   useEffect(() => {
+    if (!open) return;
     const stopPropagation = (e: any) => open && e.stopPropagation();
     const stopWhat = ["keydown", "keyup"];
     for (const what of stopWhat) document.addEventListener(what, stopPropagation);
@@ -62,7 +51,7 @@ const Instructions = ({ instruction, autoInstruction }: InstructionsProps) => {
       <DialogTrigger>
         <Info className="h-6 w-6 " />
       </DialogTrigger>
-      <DialogContent className="prose dark:prose-invert w-[90vw] max-w-[800px]">
+      <DialogContent className="prose w-[90vw] max-w-[800px] dark:prose-invert">
         <Markdown
           style={{
             hyphens: "auto",

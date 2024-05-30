@@ -6,6 +6,7 @@ interface SelectVariableProps {
   variables?: ExtendedVariable[];
   variable: string;
   setVariable: SetState<string>;
+  blockEvents: boolean;
 }
 
 const StyledDiv = styled.div<{ description: boolean }>`
@@ -86,7 +87,7 @@ const StyledDiv = styled.div<{ description: boolean }>`
   }
 `;
 
-const SelectVariable = ({ variables, variable, setVariable }: SelectVariableProps) => {
+const SelectVariable = ({ variables, variable, setVariable, blockEvents }: SelectVariableProps) => {
   //const [showDescription, setShowDescription] = React.useState(true);
   const variableNames: string[] = useMemo(() => {
     let variableNames: string[] = [];
@@ -137,13 +138,14 @@ const SelectVariable = ({ variables, variable, setVariable }: SelectVariableProp
     //   setVariable(variableNames[newIndex]);
     // };
 
+    if (blockEvents) return;
     window.addEventListener("keydown", onKeyDown);
     //window.addEventListener("contextmenu", onMouseDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       //window.removeEventListener("contextmenu", onMouseDown);
     };
-  }, [setVariable, variable, variableNames]);
+  }, [setVariable, variable, variableNames, blockEvents]);
 
   useEffect(() => {
     if (variable === null) setVariable(variableNames[0]);

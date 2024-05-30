@@ -2,6 +2,7 @@ import { AnnotationLibrary, AnswerItem, Code } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import SelectCode from "./AnswerFieldSelectCode";
+import Scale from "./AnswerFieldScale";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { useUnit } from "../UnitProvider/UnitProvider";
 
@@ -18,7 +19,9 @@ interface AnswerFieldProps {
 
 export interface OnSelectParams {
   code: Code;
-  multiple: boolean;
+  multiple?: boolean;
+  finish?: boolean;
+  item?: string;
 }
 
 const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: AnswerFieldProps) => {
@@ -71,7 +74,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     };
   }, [answerRef]);
 
-  const values = useMemo(() => {
+  const annotations = useMemo(() => {
     let fullVariableNames: Record<string, boolean> = {};
     if ("items" in variable) {
       variable.items.forEach((item) => {
@@ -81,10 +84,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
       fullVariableNames[variable.name] = true;
     }
 
-    return Object.values(annotationLib.annotations)
-      .filter((a) => fullVariableNames[a.variable])
-      .map((a) => a.code)
-      .filter((code) => code !== undefined) as string[]; // ts somehow can't understand this
+    return Object.values(annotationLib.annotations).filter((a) => fullVariableNames[a.variable]);
   }, [variable, annotationLib]);
 
   const onFinish = () => {
@@ -98,20 +98,22 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     }
   };
 
-  const onSelect = ({ code, multiple }: { code: Code; multiple: boolean }) => {
-    const fields = variable.fields ? variable.fields.join(", ") : undefined;
+  const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
+    const fields = variable.fields ? variable.fields.join("|") : undefined;
 
-    annotationManager.processAnswer(variable.name, code, multiple, fields);
-    if (!multiple) onFinish();
+    let varname = variable.name;
+    if (item) varname += `.${item}`;
+    annotationManager.processAnswer(varname, code, !!multiple, fields);
+    if (finish) onFinish();
   };
 
   let answerfield = null;
 
-  if (variable?.type === "select code")
+  if (variable.type === "select code")
     answerfield = (
       <SelectCode
         options={variable.codes || []}
-        values={values.filter((v) => v !== undefined)} // only use first because selectCode doesn't support items
+        annotations={annotations} // ts not smart enough
         multiple={!!variable.multiple}
         vertical={!!variable.vertical}
         onSelect={onSelect}
@@ -134,18 +136,19 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   //     />
   //   );
 
-  // if (question?.type === "scale")
-  //   answerfield = (
-  //     <Scale
-  //       answerItems={answerItems}
-  //       items={question.items || []}
-  //       options={question.codes || []}
-  //       onSelect={onSelect}
-  //       onFinish={onFinish}
-  //       blockEvents={blockEvents}
-  //       questionIndex={variableIndex}
-  //     />
-  //   );
+  if (variable.type === "scale")
+    answerfield = (
+      <Scale
+        annotations={annotations}
+        variable={variable.name}
+        items={variable.items || []}
+        options={variable.codes || []}
+        onSelect={onSelect}
+        onFinish={onFinish}
+        blockEvents={blockEvents}
+        questionIndex={variableIndex}
+      />
+    );
 
   // if (question?.type === "annotinder")
   //   answerfield = (

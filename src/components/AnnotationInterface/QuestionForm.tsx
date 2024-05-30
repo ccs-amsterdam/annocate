@@ -115,7 +115,7 @@ const QuestionForm = ({ children, unit, blockEvents }: QuestionFormProps) => {
         </div>
       </div>
 
-      <div className="relative flex w-full flex-auto overflow-auto bg-primary/20 pt-2 text-[length:inherit] text-foreground">
+      <div className="relative flex w-full flex-auto overflow-auto bg-gradient-to-br from-primary/10 to-background pt-2 text-[length:inherit] text-foreground">
         <AnswerField
           annotationLib={annotationLib}
           annotationManager={annotationManager}

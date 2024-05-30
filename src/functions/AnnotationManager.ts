@@ -321,13 +321,18 @@ function computeVariableStatuses(variables: ExtendedVariable[], annotations: Ann
   for (let i = 0; i < variables.length; i++) {
     const variable = variables[i];
     const codeMap = variable.codeMap;
-    for (let a of annotations) {
-      if (a.variable !== variable.name) continue;
-      if (!a.code) continue;
-      if (!codeMap[a.code]) continue;
+    const suffices = "items" in variable ? variable.items.map((i) => i.name) : [""];
 
-      variableStatuses[i] = "done";
-      break;
+    for (let suffix of suffices) {
+      const v = suffix ? `${variable.name}.${suffix}` : variable.name;
+      for (let a of annotations) {
+        if (a.variable !== v) continue;
+        if (!a.code) continue;
+        if (!codeMap[a.code]) continue;
+
+        variableStatuses[i] = "done";
+        break;
+      }
     }
   }
   return variableStatuses;

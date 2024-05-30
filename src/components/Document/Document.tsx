@@ -130,7 +130,12 @@ const Document = ({
 
   return (
     <DocumentContainer className={`${annotationMode} ${(editMode && "editMode") || ""}`}>
-      <SelectVariable variables={variables} variable={selectedVariable} setVariable={setSelectedVariable} />
+      <SelectVariable
+        variables={variables}
+        variable={selectedVariable}
+        setVariable={setSelectedVariable}
+        blockEvents={!!blockEvents}
+      />
 
       <Body
         tokens={doc.tokens}

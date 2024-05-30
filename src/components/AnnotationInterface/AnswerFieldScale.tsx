@@ -1,36 +1,44 @@
 import React, { useState, useEffect, useRef, RefObject, useMemo } from "react";
-import { OnSelectParams, AnswerOption, AnswerItem, QuestionItem, Code, VariableItem } from "@/app/types";
+import { AnswerOption, AnswerItem, QuestionItem, Code, VariableItem, Annotation } from "@/app/types";
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
 import styled from "styled-components";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Play } from "lucide-react";
+import { OnSelectParams } from "./AnswerField";
 
 const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
 interface ScaleProps {
-  /** The item array of the current question. Contains al settings for items */
+  variable: string;
   items: VariableItem[];
-  /** An array of answer items (matching the items array in length and order)  */
-  answerItems: AnswerItem[];
-  /** The options the user can choose from */
+  annotations: Annotation[];
   options: Code[];
-  /** The function used to update the values */
   onSelect: (params: OnSelectParams) => void;
-  /** Like onSelect, but for finishing the question/unit with the current values */
   onFinish: () => void;
-  /** If true, all eventlisteners are stopped */
   blockEvents: boolean;
-  /** The index of the question.  */
   questionIndex: number;
 }
 
-const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, questionIndex }: ScaleProps) => {
+const Scale = ({
+  items,
+  variable,
+  annotations,
+  options,
+  onSelect,
+  onFinish,
+  blockEvents,
+  questionIndex,
+}: ScaleProps) => {
   // render buttons for options (an array of objects with keys 'label' and 'color')
   // On selection perform onSelect function with the button label as input
   // if canDelete is TRUE, also contains a delete button, which passes null to onSelect
   const [selectedItem, setSelectedItem] = useState<number>(0);
   const [selectedButton, setSelectedButton] = useState<number>();
   const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const nAnswered = items.filter((item) => {
+    return annotations.some((a) => a.variable === `${variable}.${item.name}`);
+  }).length;
+  const done = nAnswered === items.length;
 
   const itemRefs = useMemo(() => {
     return options.map(() => React.createRef<HTMLDivElement>());
@@ -78,16 +86,17 @@ const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, q
         event.preventDefault();
         event.stopPropagation();
         if (selectedItem === -1) {
-          if (!answerItems.some((a) => a.values?.[0] == null)) onFinish();
+          if (done) onFinish();
         } else {
           onSelect({
-            value: options[selectedButton].code,
-            itemIndex: selectedItem,
+            code: options[selectedButton],
+            finish: false,
+            item: items[selectedItem].name,
           });
         }
       }
     },
-    [selectedButton, selectedItem, answerItems, onSelect, onFinish, options, items, itemRefs],
+    [done, selectedButton, selectedItem, onSelect, onFinish, options, items, itemRefs],
   );
 
   useEffect(() => {
@@ -107,20 +116,18 @@ const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, q
 
   const left = options[0];
   const right = options[options.length - 1];
-  if (answerItems == null) return null;
-  const nAnswered = answerItems.filter((iv) => iv.values?.[0] != null).length;
-  const done = nAnswered === answerItems.length;
 
   return (
-    <div className="relative flex h-full flex-col justify-between bg-background text-foreground">
-      <div className="flex flex-auto justify-between p-2 ">
-        <div className="flex items-center gap-2">{left.code}</div>
+    <div className="relative flex h-full flex-col justify-between ">
+      <div className="flex flex-auto items-start justify-between p-2">
+        <div className="flex max-w-[40%] items-center gap-2 ">{left.code}</div>
 
-        <div className="flex items-center gap-2">{right.code}</div>
+        <div className="flex max-w-[40%] items-center gap-2 text-right">{right.code}</div>
       </div>
 
       <Items
-        answerItems={answerItems}
+        variable={variable}
+        annotations={annotations}
         selectedItem={selectedItem}
         items={items}
         itemRefs={itemRefs}
@@ -132,20 +139,21 @@ const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, q
 
       <Button
         ref={continueButtonRef}
-        className={`rounded-none ${selectedItem === -1 ? "ring-4 ring-secondary" : ""}`}
+        className={`m-1 ${selectedItem === -1 ? "ring-4 ring-secondary" : ""}`}
         disabled={!done}
         onClick={() => {
           onFinish();
         }}
       >
-        {done ? <Play /> : `${nAnswered} / ${answerItems.length}`}
+        {done ? <Play /> : `${nAnswered} / ${items.length}`}
       </Button>
     </div>
   );
 };
 
 interface ItemsProps {
-  answerItems: AnswerItem[];
+  variable: string;
+  annotations: Annotation[];
   selectedItem: number;
   items: VariableItem[];
   itemRefs: RefObject<HTMLDivElement>[];
@@ -156,7 +164,8 @@ interface ItemsProps {
 }
 
 const Items = ({
-  answerItems,
+  variable,
+  annotations,
   selectedItem,
   items,
   itemRefs,
@@ -177,7 +186,8 @@ const Items = ({
             key={itemObj.label || "" + itemIndex}
             itemObj={itemObj}
             itemRef={itemRefs[itemIndex]}
-            answerItems={answerItems}
+            variable={variable}
+            annotations={annotations}
             selectedItem={selectedItem}
             itemIndex={itemIndex}
             options={options}
@@ -193,7 +203,8 @@ const Items = ({
 interface ItemProps {
   itemObj: QuestionItem;
   itemRef: RefObject<HTMLDivElement>;
-  answerItems: AnswerItem[];
+  variable: string;
+  annotations: Annotation[];
   selectedItem: number;
   itemIndex: number;
   options: Code[];
@@ -204,7 +215,8 @@ interface ItemProps {
 const Item = ({
   itemObj,
   itemRef,
-  answerItems,
+  variable,
+  annotations,
   selectedItem,
   itemIndex,
   options,
@@ -225,7 +237,7 @@ const Item = ({
       </div>
       <div className="m-auto flex max-w-[min(500px,100%)] scroll-m-24 gap-2 p-1 pb-2" ref={itemRef}>
         {options.map((option, buttonIndex: number) => {
-          const isCurrent = options[buttonIndex].code === answerItems?.[itemIndex]?.values[0];
+          const isCurrent = annotations.find((a) => a.variable === `${variable}.${itemObj.name}`)?.code === option.code;
           const isSelected = buttonIndex === selectedButton && itemIndex === selectedItem;
 
           // if option doesn't have color, we use primary color as background and
@@ -239,7 +251,7 @@ const Item = ({
 
           return (
             <div
-              className={`h-7 flex-auto rounded  `}
+              className={`h-7 max-w-[50%] flex-auto rounded  `}
               style={{ background: option.color ? "white" : "hsl(var(--primary))" }}
               key={option.code}
               color={color}
@@ -249,10 +261,10 @@ const Item = ({
                   background: isCurrent ? "hsl(var(--secondary))" : option.color,
                   color: option.color || isCurrent ? "black" : "white",
                 }}
-                className={`${isSelected ? "ring-4 ring-secondary ring-offset-1" : ""} relative z-10 h-full w-full cursor-pointer rounded border-transparent text-sm font-bold `}
+                className={`${isSelected ? " ring-4 ring-secondary ring-offset-1" : ""} relative z-10 h-full w-full cursor-pointer   overflow-hidden text-ellipsis whitespace-nowrap rounded border-transparent px-1 text-sm font-bold  `}
                 // ref={option.ref as React.RefObject<HTMLButtonElement>}
                 onClick={() => {
-                  onSelect({ value: options[buttonIndex].code, itemIndex });
+                  onSelect({ code: options[buttonIndex], finish: false, item: itemObj.name });
                 }}
               >
                 {isCurrent ? option.code : option.value || buttonIndex + 1}

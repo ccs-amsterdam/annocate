@@ -95,6 +95,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
               onReady={onNewUnit}
               focus={question?.fields}
               centered={true}
+              blockEvents={blockEvents}
             />
           </div>
         </div>

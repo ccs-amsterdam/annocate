@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { moveUp, moveDown } from "@/functions/refNavigation";
-import { AnswerOption, Code } from "@/app/types";
+import { Annotation, AnswerOption, Code } from "@/app/types";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { Button } from "@/components/ui/button";
 import { OnSelectParams } from "./AnswerField";
@@ -11,8 +11,7 @@ const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 interface SelectCodeProps {
   /** The options the user can choose from */
   options: Code[];
-  /** An array of answer values. If multiple is false, should have length 1 */
-  values: string[];
+  annotations: Annotation[];
   /** If true, multiple options can be chosen */
   multiple: boolean;
   /** If true, all buttons are put in a single column */
@@ -31,7 +30,7 @@ interface SelectCodeProps {
 
 const SelectCode = ({
   options,
-  values,
+  annotations,
   multiple,
   vertical,
   onSelect,
@@ -105,7 +104,8 @@ const SelectCode = ({
             onSelect({
               code: options[selected],
               multiple,
-            }); // !multiple tells not to finish unit if multiple is true
+              finish: !multiple,
+            });
         }
       }
     },
@@ -137,7 +137,7 @@ const SelectCode = ({
     if (vertical) minWidth = "100%";
 
     return options.map((option, i) => {
-      const isCurrent = values.includes(option.code);
+      const isCurrent = !!annotations.find((a) => a.code === option.code);
       const isSelected = selected === i;
       return (
         <Button
@@ -154,6 +154,7 @@ const SelectCode = ({
             onSelect({
               code: option,
               multiple: multiple,
+              finish: !multiple,
             }); // !multiple tells not to finish unit if multiple is true
           }}
         >
