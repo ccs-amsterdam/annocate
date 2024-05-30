@@ -35,9 +35,16 @@ const Scale = ({
   const [selectedItem, setSelectedItem] = useState<number>(0);
   const [selectedButton, setSelectedButton] = useState<number>();
   const continueButtonRef = useRef<HTMLButtonElement>(null);
-  const nAnswered = items.filter((item) => {
-    return annotations.some((a) => a.variable === `${variable}.${item.name}`);
-  }).length;
+
+  function countAnswered() {
+    if (items.length > 0) {
+      return items.filter((item) => {
+        return annotations.some((a) => a.variable === `${variable}.${item.name}`);
+      }).length;
+    }
+    return annotations.some((a) => a.variable === variable);
+  }
+  const nAnswered = countAnswered();
   const done = nAnswered === items.length;
 
   const itemRefs = useMemo(() => {
@@ -145,7 +152,7 @@ const Scale = ({
           onFinish();
         }}
       >
-        {done ? <Play /> : `${nAnswered} / ${items.length}`}
+        {done || items.length === 0 ? <Play /> : `${nAnswered} / ${items.length}`}
       </Button>
     </div>
   );
@@ -178,12 +185,14 @@ const Items = ({
     if (selectedItem < 0) continueButtonRef?.current?.scrollIntoView();
   }, [selectedItem, items, continueButtonRef]);
 
+  const optionalItems = items.length > 0 ? items : [undefined];
+
   return (
     <div className="relative flex flex-auto flex-col">
-      {items.map((itemObj, itemIndex: number) => {
+      {optionalItems.map((itemObj, itemIndex: number) => {
         return (
           <Item
-            key={itemObj.label || "" + itemIndex}
+            key={itemIndex}
             itemObj={itemObj}
             itemRef={itemRefs[itemIndex]}
             variable={variable}
@@ -201,7 +210,7 @@ const Items = ({
 };
 
 interface ItemProps {
-  itemObj: QuestionItem;
+  itemObj: QuestionItem | undefined;
   itemRef: RefObject<HTMLDivElement>;
   variable: string;
   annotations: Annotation[];
@@ -224,7 +233,7 @@ const Item = ({
   onSelect,
 }: ItemProps) => {
   const colorstep = 90 / options.length;
-  const itemlabel = itemObj.label || itemObj.name;
+  const itemlabel = itemObj ? itemObj.label || itemObj.name : "";
   //const background = itemIndex % 2 !== 0 ? "#6666660b" : "#6666661b";
   const padding = "0px 0px 10px 0px";
 
@@ -237,7 +246,8 @@ const Item = ({
       </div>
       <div className="m-auto flex max-w-[min(500px,100%)] scroll-m-24 gap-2 p-1 pb-2" ref={itemRef}>
         {options.map((option, buttonIndex: number) => {
-          const isCurrent = annotations.find((a) => a.variable === `${variable}.${itemObj.name}`)?.code === option.code;
+          const varname = itemObj ? `${variable}.${itemObj.name}` : variable;
+          const isCurrent = annotations.find((a) => a.variable === varname)?.code === option.code;
           const isSelected = buttonIndex === selectedButton && itemIndex === selectedItem;
 
           // if option doesn't have color, we use primary color as background and
@@ -264,7 +274,7 @@ const Item = ({
                 className={`${isSelected ? " ring-4 ring-secondary ring-offset-1" : ""} relative z-10 h-full w-full cursor-pointer   overflow-hidden text-ellipsis whitespace-nowrap rounded border-transparent px-1 text-sm font-bold  `}
                 // ref={option.ref as React.RefObject<HTMLButtonElement>}
                 onClick={() => {
-                  onSelect({ code: options[buttonIndex], finish: false, item: itemObj.name });
+                  onSelect({ code: options[buttonIndex], finish: false, item: itemObj ? itemObj.name : undefined });
                 }}
               >
                 {isCurrent ? option.code : option.value || buttonIndex + 1}

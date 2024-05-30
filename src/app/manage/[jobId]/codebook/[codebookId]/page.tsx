@@ -13,6 +13,8 @@ import { z } from "zod";
 import { LoremIpsum } from "./lorem";
 import JobServerPreview from "@/components/JobServers/JobServerPreview";
 import UnitProvider, { useAnnotations } from "@/components/UnitProvider/UnitProvider";
+import useLocalStorage from "@/hooks/useLocalStorage";
+import { Slider } from "@/components/ui/slider";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
@@ -28,11 +30,11 @@ export default function Job({ params }: { params: { jobId: number; codebookId: n
   if (!codebook) return <div>Codebook not found</div>;
 
   return (
-    <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-3 lg:grid-cols-2">
-      <div className="relative flex max-h-[calc(100vh-var(--header-height))] justify-center overflow-auto">
+    <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="relative flex justify-center">
         <PreviewCodebook preview={preview} />
       </div>
-      <div className="max-h-[calc(100vh-var(--header-height))] overflow-auto py-6">
+      <div className="max-h-[calc(100vh-var(--header-height))] max-w-[600px] overflow-auto py-6">
         <UpdateCodebook jobId={params.jobId} current={codebook} setPreview={setPreview} afterSubmit={confirmUpdate} />
       </div>
     </div>
@@ -40,9 +42,8 @@ export default function Job({ params }: { params: { jobId: number; codebookId: n
 }
 
 function PreviewCodebook({ preview }: { preview?: Codebook }) {
-  const [size, setSize] = useState({ width: 500, height: 800 });
-  const [unit, setUnit] = useState<RawUnit>(rawPreviewUnit);
   const [focus, setFocus] = useState(false);
+  const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
 
   const jobServer = useMemo(() => {
     if (!preview) return null;
@@ -53,11 +54,19 @@ function PreviewCodebook({ preview }: { preview?: Codebook }) {
   if (!jobServer) return null;
 
   return (
-    <div className="">
+    <div className="flex w-full flex-col items-center">
+      <div className="mt-10 grid w-96 grid-cols-[4rem,1fr,4rem] gap-2">
+        <div>Width</div>
+        <Slider min={300} max={800} value={[size.width]} onValueChange={(width) => setSize({ ...size, width })} />
+        <div>{size.width} px</div>
+        <div>Height</div>
+        <Slider min={500} max={800} value={[size.height]} onValueChange={(height) => setSize({ ...size, height })} />
+        <div>{size.height} px</div>
+      </div>
       <div
         tabIndex={0}
         className={`border-1 mt-10 rounded-lg  border-foreground/50 bg-foreground/50 p-1  ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
-        style={size}
+        style={{ height: size.height + "px", width: size.width + "px" }}
         onClick={(e) => {
           e.currentTarget.focus();
         }}

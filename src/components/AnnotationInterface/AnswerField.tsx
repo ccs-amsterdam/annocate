@@ -76,8 +76,9 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
 
   const annotations = useMemo(() => {
     let fullVariableNames: Record<string, boolean> = {};
-    if ("items" in variable) {
-      variable.items.forEach((item) => {
+    const items = "items" in variable ? variable.items || [] : [];
+    if (items.length > 0) {
+      items.forEach((item) => {
         fullVariableNames[`${variable.name}.${item.name}`] = true;
       });
     } else {

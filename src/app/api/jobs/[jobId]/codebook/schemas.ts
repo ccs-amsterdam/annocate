@@ -128,7 +128,7 @@ export const CodebookVariableItemSchema = z.object({
 
 export const CodebookVariableItemsSchema = z
   .array(CodebookVariableItemSchema)
-  .min(1)
+  // .min(0)
   .refine(
     (items) => {
       const names = items.map((i) => i.name);
@@ -136,6 +136,7 @@ export const CodebookVariableItemsSchema = z
     },
     { message: "Item names must be unique" },
   )
+  .optional()
   .openapi({
     title: "Items",
     description:
