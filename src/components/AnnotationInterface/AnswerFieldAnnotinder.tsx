@@ -1,42 +1,38 @@
 import useSpeedBump from "@/hooks/useSpeedBump";
 import React, { useEffect, useMemo } from "react";
-import { SwipeOptions, Swipes, AnswerItem, OnSelectParams, AnswerOption, Code } from "@/app/types";
+import { SwipeOptions, Swipes, AnswerItem, AnswerOption, Code, Annotation } from "@/app/types";
 import { FaArrowLeft, FaArrowRight, FaArrowUp } from "react-icons/fa";
 import { Button } from "../ui/button";
 import { getSwipeOptions } from "@/functions/swipeControl";
+import { OnSelectParams } from "./AnswerField";
+import { ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 
 const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
 interface AnnotinderProps {
-  /** An array of answer items (matching the items array in length and order)  */
-  answerItems: AnswerItem[];
+  value: string | undefined;
   /** The options the user can choose from */
   codes: Code[];
   /** The function used to update the values */
   onSelect: (params: OnSelectParams) => void;
-  /** A string telling what direction was swiped */
-  swipe: Swipes | null;
   /** If true, all eventlisteners are stopped */
   blockEvents: boolean;
+  speedbump: boolean;
 }
 
-const Annotinder = ({ answerItems, codes, onSelect, swipe, blockEvents }: AnnotinderProps) => {
-  const speedbump = useSpeedBump(answerItems);
-  // const left = options.find(option => option.swipe === "left");
-  // const up = options.find(option => option.swipe === "up");
-  // const right = options.find(option => option.swipe === "right");
+const Annotinder = ({ value, codes, onSelect, blockEvents, speedbump }: AnnotinderProps) => {
   const swipeOptions = useMemo(() => getSwipeOptions(codes), [codes]);
 
-  useEffect(() => {
-    if (swipe) {
-      const option = swipeOptions[swipe];
-      onSelect({
-        value: option.code,
-        finish: true,
-        transition: { direction: swipe, color: option.color },
-      });
-    }
-  }, [swipe, onSelect, swipeOptions]);
+  // useEffect(() => {
+  //   if (swipe) {
+  //     const option = swipeOptions[swipe];
+  //     onSelect({
+  //       value: option.code,
+  //       finish: true,
+  //       transition: { direction: swipe, color: option.color },
+  //     });
+  //   }
+  // }, [swipe, onSelect, swipeOptions]);
 
   const onKeydown = React.useCallback(
     (event: KeyboardEvent) => {
@@ -50,9 +46,8 @@ const Annotinder = ({ answerItems, codes, onSelect, swipe, blockEvents }: Annoti
         if (event.key === "ArrowLeft") dir = "left";
         const option = swipeOptions[dir];
         onSelect({
-          value: option.code,
+          code: option,
           finish: true,
-          transition: { direction: dir, color: option.color },
         });
       }
     },
@@ -70,12 +65,11 @@ const Annotinder = ({ answerItems, codes, onSelect, swipe, blockEvents }: Annoti
     };
   }, [onKeydown, blockEvents]);
 
-  const value = answerItems?.[0]?.values?.[0];
   type Direction = "left" | "up" | "right";
   const directions: Direction[] = ["left", "up", "right"];
 
   return (
-    <div className="flex gap-2">
+    <div className="flex items-center justify-center gap-2 px-2 py-1">
       {directions.map((direction: Direction, i: number) => {
         return (
           <AnnotinderStyledButton
@@ -95,7 +89,7 @@ const Annotinder = ({ answerItems, codes, onSelect, swipe, blockEvents }: Annoti
 interface AnnotinderStyledButtonProps {
   swipeOptions: SwipeOptions;
   direction: "left" | "right" | "up";
-  value: string | number;
+  value: string | undefined;
   onSelect: (params: OnSelectParams) => void;
   speedbump: boolean;
 }
@@ -118,27 +112,33 @@ const AnnotinderStyledButton = ({
     option = swipeOptions.right;
   }
   if (!option) return null;
+  const current = option?.code === value;
+
+  function renderArrow() {
+    if (direction === "up") return <ArrowUp />;
+    if (direction === "left") return <ArrowLeft />;
+    if (direction === "right") return <ArrowRight />;
+  }
 
   return (
-    <Button
-      className={`flex`}
-      key={option.code}
-      // ref={option.ref as React.RefObject<HTMLButtonElement>}
-      // $background={option.color}
-      disabled={option == null || speedbump}
-      // $selected={option.code === value}
-      onClick={(e) => {
-        onSelect({
-          value: option?.code,
-          finish: true,
-          transition: { direction, color: option.color },
-        });
-      }}
-    >
-      {icon}
-
-      <span>{option?.code || ""}</span>
-    </Button>
+    <div className="flex w-full flex-col items-center gap-1">
+      <Button
+        variant="outline"
+        className={`flex h-max w-full flex-col gap-[2px] whitespace-normal border-0 pb-[2px] pt-[2px] ${current ? "ring-2 ring-primary ring-offset-2" : ""}`}
+        key={option.code}
+        style={{ background: option.color }}
+        disabled={!option || speedbump}
+        onClick={(e) => {
+          onSelect({
+            code: option,
+            finish: true,
+          });
+        }}
+      >
+        <div>{renderArrow()}</div>
+        {option.code}
+      </Button>
+    </div>
   );
 };
 

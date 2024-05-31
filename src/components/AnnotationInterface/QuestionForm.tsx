@@ -1,37 +1,32 @@
-import React, { useState, useRef, ReactElement, useCallback, useEffect, useMemo } from "react";
-import styled from "styled-components";
-import useWatchChange from "@/hooks/useWatchChange";
 import {
-  Question,
-  Unit,
+  Annotation,
+  AnnotationLibrary,
   Answer,
   AnswerItem,
-  SetState,
-  Annotation,
-  Swipes,
   ConditionReport,
-  Transition,
+  SetState,
+  Unit,
   Variable,
-  AnnotationLibrary,
 } from "@/app/types";
+import AnnotationManager from "@/functions/AnnotationManager";
 import { getMakesIrrelevantArray, processIrrelevantBranching } from "@/functions/irrelevantBranching";
-import { addAnnotationsFromAnswer, getAnswersFromAnnotations } from "@/functions/mapAnswersToAnnotations";
+import { addAnnotationsFromAnswer } from "@/functions/mapAnswersToAnnotations";
+import overflowBordersEvent from "@/functions/overflowBordersEvent";
+import React, { ReactElement, useEffect, useMemo, useRef } from "react";
 import AnswerField from "./AnswerField";
 import QuestionIndexStep from "./QuestionIndexStep";
-import overflowBordersEvent from "@/functions/overflowBordersEvent";
-import AnnotationManager from "@/functions/AnnotationManager";
-import { useAnnotations } from "../UnitProvider/UnitProvider";
 
 interface QuestionFormProps {
   /** Buttons can be passed as children, that will be shown on the topleft of the question form */
   children: ReactElement | ReactElement[];
   /** The unit */
   unit: Unit;
+  annotationLib: AnnotationLibrary;
+  annotationManager: AnnotationManager;
   blockEvents: boolean;
 }
 
-const QuestionForm = ({ children, unit, blockEvents }: QuestionFormProps) => {
-  const { annotationLib, annotationManager } = useAnnotations();
+const QuestionForm = ({ children, unit, annotationLib, annotationManager, blockEvents }: QuestionFormProps) => {
   const variable = annotationLib.variables[annotationLib.variableIndex];
   const questionRef = useRef<HTMLDivElement>(null);
   const blockAnswer = useRef(false); // to prevent answering double (e.g. with swipe events)
@@ -50,52 +45,12 @@ const QuestionForm = ({ children, unit, blockEvents }: QuestionFormProps) => {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [annotationLib.variableIndex]);
 
-  // const onAnswer = useCallback(
-  //   (items: AnswerItem[], onlySave = false, transition?: Transition): void => {
-  //     // posts results and skips to next question, or next unit if no questions left.
-  //     // If onlySave is true, only write to db without going to next question
-
-  //     // Swipe is now passed down via a state, so state needs to be reset
-  //     // before the next question or unit. It would probably be better to
-  //     // do this via a function, but than this would need to be passed up from
-  //     // AnswerField. At some point think of this when refactoring
-  //     setSwipe(null);
-  //     if (!answers || !setAnswers) return;
-
-  //     processAnswer(
-  //       items,
-  //       onlySave,
-  //       unit,
-  //       questions,
-  //       answers,
-  //       questionIndex,
-  //       nextUnit,
-  //       setAnswers,
-  //       setQuestionIndex,
-  //       setConditionReport,
-  //       (nextUnit: boolean) => startTransition(transition, nextUnit),
-  //       blockAnswer,
-  //     );
-  //   },
-  //   [
-  //     answers,
-  //     questionIndex,
-  //     questions,
-  //     setQuestionIndex,
-  //     nextUnit,
-  //     setConditionReport,
-  //     unit,
-  //     setSwipe,
-  //     startTransition,
-  //   ],
-  // );
-
   if (!unit || !variable) return null;
 
   return (
     <div
       ref={questionRef}
-      className="relative z-30 flex h-full min-h-60 w-full flex-col bg-background  text-[length:inherit] transition-[border]"
+      className="relative z-30 flex h-full w-full flex-col bg-background  text-[length:inherit] transition-[border]"
     >
       <div className="sticky left-0 top-0 z-40 flex w-full  flex-col justify-center border-y border-primary bg-gradient-to-b from-primary/40 from-0% via-primary/20 via-50% to-primary/40 to-100% ">
         <div className="flex-hidden">
@@ -115,7 +70,7 @@ const QuestionForm = ({ children, unit, blockEvents }: QuestionFormProps) => {
         </div>
       </div>
 
-      <div className="relative flex w-full flex-auto overflow-auto bg-gradient-to-br from-primary/10 to-background pt-2 text-[length:inherit] text-foreground">
+      <div className="relative flex w-full flex-auto overflow-auto bg-gradient-to-br from-primary/10 to-background py-2 text-[length:inherit] text-foreground">
         <AnswerField
           annotationLib={annotationLib}
           annotationManager={annotationManager}

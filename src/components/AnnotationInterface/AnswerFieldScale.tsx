@@ -42,10 +42,10 @@ const Scale = ({
         return annotations.some((a) => a.variable === `${variable}.${item.name}`);
       }).length;
     }
-    return annotations.some((a) => a.variable === variable);
+    return annotations.some((a) => a.variable === variable) ? 1 : 0;
   }
   const nAnswered = countAnswered();
-  const done = nAnswered === items.length;
+  const done = items.length === 0 ? nAnswered > 0 : nAnswered > items.length;
 
   const itemRefs = useMemo(() => {
     return options.map(() => React.createRef<HTMLDivElement>());
@@ -98,7 +98,7 @@ const Scale = ({
           onSelect({
             code: options[selectedButton],
             finish: false,
-            item: items[selectedItem].name,
+            item: items[selectedItem]?.name,
           });
         }
       }

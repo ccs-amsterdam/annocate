@@ -1,20 +1,18 @@
 "use client";
 import { useCodebook } from "@/app/api/jobs/[jobId]/codebook/query";
 import { CodebookSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
-import { RawUnit, Unit } from "@/app/types";
+import { RawUnit } from "@/app/types";
 import QuestionTask from "@/components/AnnotationInterface/QuestionTask";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
+import JobServerPreview from "@/components/JobServers/JobServerPreview";
+import UnitProvider, { useUnit } from "@/components/UnitProvider/UnitProvider";
 import { Loading } from "@/components/ui/loader";
-import { importCodebook } from "@/functions/codebook";
-import { prepareUnit } from "@/functions/processUnitContent";
+import { Slider } from "@/components/ui/slider";
+import useLocalStorage from "@/hooks/useLocalStorage";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { LoremIpsum } from "./lorem";
-import JobServerPreview from "@/components/JobServers/JobServerPreview";
-import UnitProvider, { useAnnotations } from "@/components/UnitProvider/UnitProvider";
-import useLocalStorage from "@/hooks/useLocalStorage";
-import { Slider } from "@/components/ui/slider";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
@@ -83,7 +81,7 @@ function PreviewCodebook({ preview }: { preview?: Codebook }) {
 }
 
 function PreviewAnnotations() {
-  const { annotationLib } = useAnnotations();
+  const { annotationLib } = useUnit();
 
   return (
     <div className="mt-6">

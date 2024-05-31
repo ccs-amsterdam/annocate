@@ -311,7 +311,7 @@ export interface Question {
 
 export interface Transition {
   direction?: "left" | "right" | "up";
-  color?: string;
+  code?: Code;
 }
 
 export type QuestionType = "search code" | "select code" | "scale" | "annotinder" | "confirm" | "inputs";

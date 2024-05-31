@@ -150,7 +150,7 @@ export default class AnnotationManager {
   //   this.addAnnotation(annotation);
   // }
 
-  processAnswer(variable: string, code: Code, multiple: boolean, field?: string) {
+  processAnswer(variable: string, code: Code, multiple: boolean = false, fields?: string[]) {
     let annotation: Annotation = {
       id: cuid(),
       created: new Date().toISOString(),
@@ -160,8 +160,8 @@ export default class AnnotationManager {
       value: code.value,
       color: code.color,
     };
-    if (field) {
-      annotation = { ...annotation, field, type: "field" };
+    if (fields) {
+      annotation = { ...annotation, field: fields.join("|"), type: "field" };
     }
 
     let addAnnotation = true;
@@ -240,6 +240,7 @@ export function createAnnotationLibrary(
   annotationArray = annotationArray.map((a) => ({ ...a }));
 
   annotationArray = repairAnnotations(annotationArray, variableMap);
+
   annotationArray = addTokenIndices(annotationArray, unit.unit.tokens || []);
   const annotationDict: AnnotationDictionary = {};
 

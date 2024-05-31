@@ -13,27 +13,20 @@ interface UnitContextProps {
   unit: Unit;
   codebook: Codebook;
   index: number | null;
-  selectUnit: (i?: number) => void;
-}
-
-interface AnnotationsContextProps {
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
+  selectUnit: (i?: number) => void;
 }
 
 const UnitContext = createContext<UnitContextProps>({
   unit: dummyUnit(),
   codebook: dummyCodebook(),
   index: null,
+  annotationLib: dummyAnnotationLib(),
+  annotationManager: new AnnotationManager(() => console.log("AnnotationManager not initialized")),
   selectUnit: (i?: number) => console.log(i),
 });
 export const useUnit = () => useContext(UnitContext);
-
-const AnnotationsContext = createContext<AnnotationsContextProps>({
-  annotationLib: dummyAnnotationLib(),
-  annotationManager: new AnnotationManager(() => console.log("AnnotationManager not initialized")),
-});
-export const useAnnotations = () => useContext(AnnotationsContext);
 
 interface Props {
   jobServer: JobServer;
@@ -45,6 +38,7 @@ export default function UnitProvider({ jobServer, children }: Props) {
     parse: (query: string) => parseInt(query) || undefined,
     defaultValue: null,
   });
+
   const [rawUnit, setRawUnit] = useState<RawUnit | null>(null);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(dummyAnnotationLib());
@@ -94,12 +88,12 @@ export default function UnitProvider({ jobServer, children }: Props) {
         unit: unit || dummyUnit(),
         codebook: codebook || dummyCodebook(),
         index,
+        annotationLib,
+        annotationManager,
         selectUnit,
       }}
     >
-      <AnnotationsContext.Provider value={{ annotationLib: annotationLib, annotationManager }}>
-        {children}
-      </AnnotationsContext.Provider>
+      {children}
     </UnitContext.Provider>
   );
 }

@@ -1,4 +1,4 @@
-import { Annotation, ConditionReport, ExtendedCodebook, SwipeRefs, Swipes, Transition, Unit } from "@/app/types";
+import { Annotation, Code, ConditionReport, ExtendedCodebook, SwipeRefs, Swipes, Transition, Unit } from "@/app/types";
 import Document from "@/components/Document/Document";
 import swipeControl from "@/functions/swipeControl";
 import React, { RefObject, useCallback, useMemo, useRef, useState } from "react";
@@ -15,7 +15,7 @@ interface QuestionTaskProps {
 }
 
 const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
-  const { unit, codebook } = useUnit();
+  const { unit, codebook, annotationLib, annotationManager } = useUnit();
   const [questionIndex, setQuestionIndex] = useState(0);
   const [conditionReport, setConditionReport] = useState<ConditionReport | null>(null);
   const divref = useRef(null);
@@ -56,9 +56,15 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   // swipe controlls need to be up in the QuestionTask component due to working on the div containing the question screen
   // use separate swipe for text (document) and menu rows, because swiping up in the text is only possible if scrolled all the way down
-  const [swipe, setSwipe] = useState<Swipes | null>(null);
-  const textSwipe = useSwipeable(swipeControl(question, refs, setSwipe, false));
-  const menuSwipe = useSwipeable(swipeControl(question, refs, setSwipe, true));
+  function onSwipe(transition: Transition) {
+    if (!transition.code) return;
+    annotationManager.processAnswer(question.name, transition.code, false, question.fields);
+    // PUT THE onFinish() from answerfield.tsx into annotationmanager.
+    // then call that here (and in answerfield)
+  }
+
+  const textSwipe = useSwipeable(swipeControl(question, refs, onSwipe, false));
+  const menuSwipe = useSwipeable(swipeControl(question, refs, onSwipe, true));
 
   if (!unit) return null;
 
@@ -101,7 +107,12 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         </div>
       </div>
       <div {...menuSwipe} className={` ${singlePage ? "flex-[0_0_auto]" : "flex-[0_1_auto"}`}>
-        <QuestionForm unit={unit} blockEvents={blockEvents}>
+        <QuestionForm
+          unit={unit}
+          annotationLib={annotationLib}
+          annotationManager={annotationManager}
+          blockEvents={blockEvents}
+        >
           <Instructions
             instruction={question?.instruction || codebook?.settings?.instruction}
             autoInstruction={codebook?.settings?.auto_instruction || false}
@@ -114,7 +125,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
 const nextUnitTransition = (r: SwipeRefs, trans: Transition | undefined) => {
   const direction = trans?.direction;
-  const color = trans?.color || "var(--background)";
+  const color = trans?.code?.color || "var(--background)";
   if (r?.box?.current?.style != null && r?.text?.current != null) {
     r.text.current.style.transition = `transform 2000ms`;
     r.text.current.style.transform = `translateX(${
@@ -127,7 +138,7 @@ const nextUnitTransition = (r: SwipeRefs, trans: Transition | undefined) => {
 };
 
 const nextQuestionTransition = (r: SwipeRefs, trans: Transition | undefined) => {
-  if (!trans?.color) return;
+  if (!trans?.code?.color) return;
   // if (r?.box?.current?.style != null && r?.text?.current != null) {
   //   r.text.current.style.transhsl(var(--background))nd 50ms ease-out`;
   //   r.text.current.style.background = trans.color;

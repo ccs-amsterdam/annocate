@@ -3,6 +3,7 @@ import AnnotationManager from "@/functions/AnnotationManager";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import SelectCode from "./AnswerFieldSelectCode";
 import Scale from "./AnswerFieldScale";
+import Annotinder from "./AnswerFieldAnnotinder";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { useUnit } from "../UnitProvider/UnitProvider";
 
@@ -100,11 +101,9 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
-    const fields = variable.fields ? variable.fields.join("|") : undefined;
-
     let varname = variable.name;
     if (item) varname += `.${item}`;
-    annotationManager.processAnswer(varname, code, !!multiple, fields);
+    annotationManager.processAnswer(varname, code, !!multiple, variable.fields);
     if (finish) onFinish();
   };
 
@@ -151,16 +150,16 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
       />
     );
 
-  // if (question?.type === "annotinder")
-  //   answerfield = (
-  //     <Annotinder
-  //       answerItems={answerItems}
-  //       codes={question.codes || []}
-  //       onSelect={onSelect}
-  //       swipe={swipe}
-  //       blockEvents={blockEvents}
-  //     />
-  //   );
+  if (variable?.type === "annotinder")
+    answerfield = (
+      <Annotinder
+        value={annotations.find((a) => a.variable === variable.name)?.code}
+        codes={variable.codes || []}
+        onSelect={onSelect}
+        blockEvents={blockEvents}
+        speedbump={speedbump}
+      />
+    );
 
   // if (question?.type === "confirm")
   //   answerfield = <Confirm onSelect={onSelect} button={"continue"} swipe={swipe} blockEvents={blockEvents} />;

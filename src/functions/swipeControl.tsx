@@ -1,5 +1,5 @@
 import { SwipeEventData } from "react-swipeable";
-import { Code, Question, SetState, SwipeRefs, Swipes } from "@/app/types";
+import { Code, Question, SetState, SwipeRefs, Swipes, Transition } from "@/app/types";
 import { z } from "zod";
 import { CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
 import { get } from "http";
@@ -9,7 +9,7 @@ type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 const swipeControl = (
   question: Variable,
   refs: SwipeRefs,
-  setSwipe: SetState<Swipes | null>,
+  onSwipe: (transition: Transition) => void,
   alwaysDoVertical: boolean,
   triggerdist: number = 110,
 ) => {
@@ -104,7 +104,13 @@ const swipeControl = (
 
         let dir: Swipes = deltaX > 0 ? "right" : "up";
         dir = deltaX < 0 ? "left" : dir;
-        setSwipe(dir);
+
+        const code = swipeOptions[dir];
+        const transition: Transition = {
+          direction: dir,
+          code,
+        };
+        onSwipe(transition);
       }
     },
     ...swipeConfig,
