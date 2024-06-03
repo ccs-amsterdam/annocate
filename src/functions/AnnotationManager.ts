@@ -30,6 +30,7 @@ import { useEffect, useState } from "react";
 import checkConditions from "./checkConditions";
 import { addAnnotationsFromAnswer } from "./mapAnswersToAnnotations";
 import { headers } from "next/headers";
+import { toast } from "sonner";
 
 export function useAnnotationManager(unit: Unit, codebook: ExtendedCodebook) {
   const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(() =>
@@ -46,7 +47,7 @@ export function useAnnotationManager(unit: Unit, codebook: ExtendedCodebook) {
 
 export default class AnnotationManager {
   unitId: string;
-  postAnnotations: (status: Status) => void;
+  postAnnotations: (status: Status) => Promise<Status>;
   annotationLib: AnnotationLibrary;
   setAnnotationLib: SetState<AnnotationLibrary>;
 
@@ -67,15 +68,20 @@ export default class AnnotationManager {
     };
     this.setAnnotationLib = setAnnotationLib;
     this.unitId = "";
-    this.postAnnotations = (status: Status) => console.log("No unit initialized");
+    this.postAnnotations = async (status: Status) => "IN_PROGRESS";
   }
 
-  createAnnotationLibrary(jobServer: JobServer, unit: Unit, codebook: ExtendedCodebook) {
+  initAnnotationLibrary(jobServer: JobServer, unit: Unit, codebook: ExtendedCodebook) {
     const annotationLib = createAnnotationLibrary(unit, codebook, unit.unit.annotations || []);
     this.updateAnnotationLibrary(annotationLib);
-    this.postAnnotations = (status: Status) => {
-      console.log(this.annotationLib.annotations);
-      jobServer.postAnnotations(unit.unitId, Object.values(this.annotationLib.annotations), status);
+    this.postAnnotations = async (status: Status) => {
+      try {
+        return await jobServer.postAnnotations(unit.unitId, Object.values(this.annotationLib.annotations), status);
+      } catch (e) {
+        console.error("Error posting annotations", e);
+        toast.error("Error posting annotations");
+        return "IN_PROGRESS";
+      }
     };
   }
 
@@ -85,6 +91,17 @@ export default class AnnotationManager {
       ...annotationLib,
       variableStatuses: computeVariableStatuses(annotationLib.variables, Object.values(annotationLib.annotations)),
     });
+  }
+
+  async finishVariable() {
+    if (this.annotationLib.variableIndex === this.annotationLib.variables.length - 1) {
+      const status = await this.postAnnotations("DONE");
+      return { status, conditionReport: null };
+    } else {
+      const status = await this.postAnnotations("IN_PROGRESS");
+      this.setVariableIndex(this.annotationLib.variableIndex + 1);
+      return { status, conditionReport: null };
+    }
   }
 
   setVariableIndex(index: number) {

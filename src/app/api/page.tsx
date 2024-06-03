@@ -5,9 +5,9 @@ import "swagger-ui-react/swagger-ui.css";
 import { OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 
 import { openapiUsers } from "./users/query";
-import { openapiJobs } from "./jobs/query";
-import { openapiCodebook } from "./jobs/[jobId]/codebook/query";
-import { openapiJobUsers } from "./jobs/[jobId]/jobusers/query";
+import { openapiProjects } from "./projects/query";
+import { openapiCodebook } from "./projects/[projectId]/codebook/query";
+import { openapiProjectUsers } from "./projects/[projectId]/projectusers/query";
 
 const config = {
   openapi: "3.0.0",
@@ -19,7 +19,7 @@ const config = {
   servers: [{ url: "api" }],
 };
 
-const allDescriptions = [...openapiUsers, ...openapiJobs, ...openapiCodebook, ...openapiJobUsers];
+const allDescriptions = [...openapiUsers, ...openapiProjects, ...openapiCodebook, ...openapiProjectUsers];
 
 export default function OpenAPI() {
   const spec = useMemo(() => {

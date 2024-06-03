@@ -9,7 +9,7 @@
 
 import { Answer, AnswerItem, Question, Annotation, Unit, QuestionItem, AnnotationLibrary } from "@/app/types";
 import { z } from "zod";
-import { CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
+import { CodebookUnionTypeSchema } from "@/app/api/projects/[projectId]/codebook/schemas";
 import cuid from "cuid";
 import AnnotationManager from "./AnnotationManager";
 type Variable = z.infer<typeof CodebookUnionTypeSchema>;

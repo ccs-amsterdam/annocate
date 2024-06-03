@@ -1,6 +1,6 @@
 "use client";
-import { useCodebook } from "@/app/api/jobs/[jobId]/codebook/query";
-import { CodebookSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
+import { useCodebook } from "@/app/api/projects/[projectId]/codebook/query";
+import { CodebookSchema } from "@/app/api/projects/[projectId]/codebook/schemas";
 import { RawUnit } from "@/app/types";
 import QuestionTask from "@/components/AnnotationInterface/QuestionTask";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
@@ -16,9 +16,9 @@ import { LoremIpsum } from "./lorem";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
-export default function Job({ params }: { params: { jobId: number; codebookId: number } }) {
+export default function Job({ params }: { params: { projectId: number; codebookId: number } }) {
   const [preview, setPreview] = useState<Codebook | undefined>();
-  const { data: codebook, isLoading } = useCodebook(params.jobId, params.codebookId);
+  const { data: codebook, isLoading } = useCodebook(params.projectId, params.codebookId);
 
   const confirmUpdate = useCallback(() => {
     toast.success("Updated codebook");
@@ -33,7 +33,12 @@ export default function Job({ params }: { params: { jobId: number; codebookId: n
         <PreviewCodebook preview={preview} />
       </div>
       <div className="max-h-[calc(100vh-var(--header-height))] max-w-[600px] overflow-auto py-6">
-        <UpdateCodebook jobId={params.jobId} current={codebook} setPreview={setPreview} afterSubmit={confirmUpdate} />
+        <UpdateCodebook
+          projectId={params.projectId}
+          current={codebook}
+          setPreview={setPreview}
+          afterSubmit={confirmUpdate}
+        />
       </div>
     </div>
   );

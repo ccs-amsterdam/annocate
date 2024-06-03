@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1715935824005,
-      "tag": "0000_brown_synch",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1715940696626,
-      "tag": "0001_cloudy_vengeance",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1715940985558,
-      "tag": "0002_zippy_night_thrasher",
+      "when": 1717423560773,
+      "tag": "0000_cloudy_red_shift",
       "breakpoints": true
     }
   ]

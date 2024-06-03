@@ -16,7 +16,7 @@ import {
   CodebookCodesSchema,
   CodebookCreateBodySchema,
   CodebookVariableItemSchema,
-} from "@/app/api/jobs/[jobId]/codebook/schemas";
+} from "@/app/api/projects/[projectId]/codebook/schemas";
 import { createDecipheriv } from "crypto";
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "../ui/table";
 

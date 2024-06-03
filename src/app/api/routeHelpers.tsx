@@ -35,7 +35,7 @@ interface CreateGetParams<T> {
   req: NextRequest;
   paramSchema?: z.ZodType<T>;
   responseSchema?: z.ZodTypeAny;
-  jobId?: number;
+  projectId?: number;
   authorizeFunction?: AuthorizeFunction<T>;
 }
 
@@ -45,7 +45,7 @@ export async function createGet<T>({
   paramSchema,
   responseSchema,
   authorizeFunction,
-  jobId,
+  projectId,
 }: CreateGetParams<T>) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -53,7 +53,7 @@ export async function createGet<T>({
   try {
     const params = paramSchema ? validateRequestParams(req, paramSchema) : undefined;
     if (authorizeFunction != undefined) {
-      const auth = await authorization(email, jobId);
+      const auth = await authorization(email, projectId);
       const authError = await authorizeFunction(auth, params);
       if (authError)
         return NextResponse.json({ message: authError.message || "Unauthorized" }, { status: authError.status || 403 });
@@ -76,7 +76,7 @@ interface CreateTableGetParams<T> {
   paramsSchema: z.ZodType<T>;
   responseSchema?: z.ZodTypeAny;
   idColumn: string;
-  jobId?: number;
+  projectId?: number;
   queryColumns?: string[];
   authorizeFunction?: AuthorizeFunction<T>;
   errorFunction?: ErrorFunction<T>;
@@ -95,7 +95,7 @@ export async function createTableGet<T>({
   paramsSchema,
   responseSchema,
   idColumn,
-  jobId,
+  projectId,
   queryColumns,
   authorizeFunction,
   errorFunction,
@@ -109,7 +109,7 @@ export async function createTableGet<T>({
     paramCopy = params;
 
     if (authorizeFunction != undefined) {
-      const auth = await authorization(email, jobId);
+      const auth = await authorization(email, projectId);
       const authError = await authorizeFunction(auth, params);
       if (authError)
         return NextResponse.json(
@@ -166,7 +166,7 @@ interface CreateCommonUpdateParams<T> {
   req: Request;
   bodySchema: z.ZodType<T>;
   authorizeFunction: AuthorizeFunction<T>;
-  jobId?: number;
+  projectId?: number;
   responseSchema?: z.ZodTypeAny;
   errorFunction?: ErrorFunction<T>;
 }
@@ -176,7 +176,7 @@ export async function createUpdate<T>({
   req,
   bodySchema,
   authorizeFunction,
-  jobId,
+  projectId,
   responseSchema,
   errorFunction,
 }: CreateCommonUpdateParams<T>) {
@@ -190,7 +190,7 @@ export async function createUpdate<T>({
     bodyCopy = body;
 
     if (authorizeFunction != undefined) {
-      const auth = await authorization(email, jobId);
+      const auth = await authorization(email, projectId);
       const authError = await authorizeFunction(auth, body);
       if (authError)
         return NextResponse.json(

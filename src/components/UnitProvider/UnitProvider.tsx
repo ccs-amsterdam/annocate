@@ -72,7 +72,7 @@ export default function UnitProvider({ jobServer, children }: Props) {
     const unit = prepareUnit(rawUnit, codebook);
     setIndex(rawUnit.index);
     setUnit(unit);
-    annotationManager.createAnnotationLibrary(jobServer, unit, codebook);
+    annotationManager.initAnnotationLibrary(jobServer, unit, codebook);
   }, [annotationManager, jobServer, rawUnit, codebook, setIndex]);
 
   const selectUnit = useCallback(

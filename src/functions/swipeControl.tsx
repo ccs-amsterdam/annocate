@@ -1,7 +1,7 @@
 import { SwipeEventData } from "react-swipeable";
 import { Code, Question, SetState, SwipeRefs, Swipes, Transition } from "@/app/types";
 import { z } from "zod";
-import { CodebookUnionTypeSchema } from "@/app/api/jobs/[jobId]/codebook/schemas";
+import { CodebookUnionTypeSchema } from "@/app/api/projects/[projectId]/codebook/schemas";
 import { get } from "http";
 
 type Variable = z.infer<typeof CodebookUnionTypeSchema>;

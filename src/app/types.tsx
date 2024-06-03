@@ -5,8 +5,9 @@ import {
   CodebookSchema,
   CodebookUnionTypeSchema,
   CodebookVariableItemSchema,
-} from "./api/jobs/[jobId]/codebook/schemas";
+} from "./api/projects/[projectId]/codebook/schemas";
 import { z } from "zod";
+import { AnnotationSchema } from "./api/projects/[projectId]/annotations/schemas";
 
 //////////  NEW
 ///////////
@@ -16,15 +17,15 @@ import { z } from "zod";
 export const userRole = ["guest", "creator", "admin"] as const;
 export type UserRole = (typeof userRole)[number];
 
-export const jobRole = ["manager", "admin"] as const;
-export type JobRole = (typeof jobRole)[number];
+export const projectRole = ["manager", "admin"] as const;
+export type ProjectRole = (typeof projectRole)[number];
 
 export interface Authorization {
   email: string;
   role: UserRole | null;
   superAdmin?: boolean;
-  jobId?: number;
-  jobRole: JobRole | null;
+  projectId?: number;
+  projectRole: ProjectRole | null;
 }
 
 export type Codebook = z.infer<typeof CodebookSchema>;
@@ -49,6 +50,18 @@ export type ExtendedCodebook = {
 
 export type AnnotationRelation = z.infer<typeof CodebookRelationSchema>;
 
+export type Annotation = z.infer<typeof AnnotationSchema> & {
+  color?: string;
+  comment?: string;
+  time_question?: string;
+  time_answer?: string;
+  index?: number;
+  text?: string;
+  positions?: Set<number>;
+  span?: Span;
+  select?: () => void;
+};
+
 ///////////
 ///////////
 ///////////
@@ -71,55 +84,55 @@ export type Status = "DONE" | "IN_PROGRESS";
 
 // need to do this at some point but damn
 
-export interface GeneralTypeAnnotation {
-  id: string;
-  variable: string;
-  code: string | undefined;
-  value: string | number | undefined;
+// export interface GeneralTypeAnnotation {
+//   id: string;
+//   variable: string;
+//   code: string | undefined;
+//   value: string | number | undefined;
 
-  created: string;
+//   created: string;
 
-  color?: string;
-  comment?: string;
+//   color?: string;
+//   comment?: string;
 
-  time_question?: string;
-  time_answer?: string;
+//   time_question?: string;
+//   time_answer?: string;
 
-  // intermediate values (not stored in backend)
-  index?: number;
-  text?: string;
-  positions?: Set<number>;
-  span?: Span;
+//   // intermediate values (not stored in backend)
+//   index?: number;
+//   text?: string;
+//   positions?: Set<number>;
+//   span?: Span;
 
-  select?: () => void;
-}
+//   select?: () => void;
+// }
 
-export interface SpanTypeAnnotation extends GeneralTypeAnnotation {
-  type: "span";
-  field: string;
-  offset: number;
-  length: number;
-}
+// export interface SpanTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "span";
+//   field: string;
+//   offset: number;
+//   length: number;
+// }
 
-export interface FieldTypeAnnotation extends GeneralTypeAnnotation {
-  type: "field";
-  field: string;
-  id: string;
-}
+// export interface FieldTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "field";
+//   field: string;
+//   id: string;
+// }
 
-export interface UnitTypeAnnotation extends GeneralTypeAnnotation {
-  type: "unit";
-  id: string;
-}
+// export interface UnitTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "unit";
+//   id: string;
+// }
 
-export interface RelationTypeAnnotation extends GeneralTypeAnnotation {
-  type: "relation";
-  id: string;
-  fromId: string;
-  toId: string;
-}
+// export interface RelationTypeAnnotation extends GeneralTypeAnnotation {
+//   type: "relation";
+//   id: string;
+//   fromId: string;
+//   toId: string;
+// }
 
-export type Annotation = SpanTypeAnnotation | FieldTypeAnnotation | UnitTypeAnnotation | RelationTypeAnnotation;
+// export type Annotation = SpanTypeAnnotation | FieldTypeAnnotation | UnitTypeAnnotation | RelationTypeAnnotation;
 
 // export interface Annotation {
 //   type?: "field" | "span" | "relation";
@@ -150,22 +163,22 @@ export type Annotation = SpanTypeAnnotation | FieldTypeAnnotation | UnitTypeAnno
 //   select?: () => void;
 // }
 
-export interface RelationAnnotation {
-  type: "relation";
-  id: string;
-  variable: string;
-  value: string;
-  fromId: string;
-  toId: string;
+// export interface RelationAnnotation {
+//   type: "relation";
+//   id: string;
+//   variable: string;
+//   value: string;
+//   fromId: string;
+//   toId: string;
 
-  // this stuff is just used internally
-  color?: string;
-  edge?: Edge;
-  from?: Annotation;
-  to?: Annotation;
+//   // this stuff is just used internally
+//   color?: string;
+//   edge?: Edge;
+//   from?: Annotation;
+//   to?: Annotation;
 
-  select?: () => void;
-}
+//   select?: () => void;
+// }
 
 export type VariableStatus = "pending" | "done" | "skip";
 

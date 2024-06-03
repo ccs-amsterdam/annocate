@@ -43,7 +43,7 @@ export default function QuestionIndexStep({
       <Button
         size="icon"
         variant="ghost"
-        className={`h-full rounded-none disabled:opacity-0 ${hide ? "hidden" : ""}`}
+        className={`h-full rounded-none hover:bg-transparent disabled:opacity-0 ${hide ? "hidden" : ""}`}
         disabled={previousIndex === null}
         onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
       >
@@ -53,7 +53,7 @@ export default function QuestionIndexStep({
       <Button
         size="icon"
         variant="ghost"
-        className={`h-full disabled:opacity-0 ${hide ? "hidden" : ""}`}
+        className={`h-full hover:bg-transparent disabled:opacity-0 ${hide ? "hidden" : ""}`}
         disabled={nextIndex === null}
         onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}
       >

@@ -2,30 +2,30 @@ import db, { managers, users } from "@/drizzle/schema";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import { JobUsersTableParamsSchema, JobUsersResponseSchema, JobUsersCreateOrUpdateSchema } from "./schemas";
-import { hasMinJobRole } from "@/app/api/authorization";
+import { ProjectUsersTableParamsSchema, ProjectUsersResponseSchema, ProjectUsersCreateOrUpdateSchema } from "./schemas";
+import { hasMinProjectRole } from "@/app/api/authorization";
 
-export async function GET(req: NextRequest, { params }: { params: { jobId: number } }) {
+export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createTableGet({
     req,
-    jobId: params.jobId,
+    projectId: params.projectId,
     tableFunction: (email) =>
       db
         .select({ email: users.email, role: managers.role })
         .from(managers)
         .leftJoin(users, eq(managers.userId, users.id))
-        .where(eq(managers.jobId, params.jobId))
+        .where(eq(managers.projectId, params.projectId))
         .as("baseQuery"),
-    paramsSchema: JobUsersTableParamsSchema,
+    paramsSchema: ProjectUsersTableParamsSchema,
     idColumn: "email",
     queryColumns: ["email"],
     authorizeFunction: async (auth, params) => {
-      if (!hasMinJobRole(auth.jobRole, "manager")) return { message: "Unauthorized" };
+      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
   });
 }
 
-export async function POST(req: NextRequest, { params }: { params: { jobId: number } }) {
+export async function POST(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
@@ -34,22 +34,22 @@ export async function POST(req: NextRequest, { params }: { params: { jobId: numb
           [user] = await tx.insert(users).values({ email: body.email, role: "guest" }).returning();
           await tx.execute(sql`commit`);
         }
-        const [jobuser] = await db
+        const [projectuser] = await db
           .insert(managers)
-          .values({ jobId: params.jobId, userId: user.id, role: body.role })
+          .values({ projectId: params.projectId, userId: user.id, role: body.role })
           .onConflictDoUpdate({
-            target: [managers.jobId, managers.userId],
+            target: [managers.projectId, managers.userId],
             set: { role: body.role },
           })
           .returning();
-        return jobuser;
+        return projectuser;
       });
     },
     req,
-    jobId: params.jobId,
-    bodySchema: JobUsersCreateOrUpdateSchema,
+    projectId: params.projectId,
+    bodySchema: ProjectUsersCreateOrUpdateSchema,
     authorizeFunction: async (auth, params) => {
-      if (!hasMinJobRole(auth.jobRole, "admin")) return { message: "Unauthorized" };
+      if (!hasMinProjectRole(auth.projectRole, "admin")) return { message: "Unauthorized" };
     },
     errorFunction: (status, params) => {
       if (status === 409) return `User  ${params?.email} already exists`;

@@ -6,6 +6,7 @@ import Scale from "./AnswerFieldScale";
 import Annotinder from "./AnswerFieldAnnotinder";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { useUnit } from "../UnitProvider/UnitProvider";
+import { toast } from "sonner";
 
 interface AnswerFieldProps {
   annotationLib: AnnotationLibrary;
@@ -90,14 +91,9 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   }, [variable, annotationLib]);
 
   const onFinish = () => {
-    if (variableIndex === variables.length - 1) {
-      // if this was the last variable, finish the unit
-      annotationManager.postAnnotations("DONE");
-      selectUnit((index || 0) + 1);
-    } else {
-      annotationManager.postAnnotations("IN_PROGRESS");
-      annotationManager.setVariableIndex(variableIndex + 1);
-    }
+    annotationManager.finishVariable().then((res) => {
+      if (res.status === "DONE") selectUnit((index || 0) + 1);
+    });
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {

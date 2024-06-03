@@ -1,6 +1,6 @@
 "use client";
 
-import { useUpdateCodebook, useCreateCodebook } from "@/app/api/jobs/[jobId]/codebook/query";
+import { useUpdateCodebook, useCreateCodebook } from "@/app/api/projects/[projectId]/codebook/query";
 import {
   CodebookCreateBodySchema,
   CodebookScaleTypeSchema,
@@ -10,7 +10,7 @@ import {
   CodebookUpdateBodySchema,
   CodebookVariableSchema,
   variableTypeOptions,
-} from "@/app/api/jobs/[jobId]/codebook/schemas";
+} from "@/app/api/projects/[projectId]/codebook/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, Watch, XIcon } from "lucide-react";
 import { use, useCallback, useEffect, useState } from "react";
@@ -34,41 +34,44 @@ import React from "react";
 type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
 
-export function useCreateEmptyCodebook(jobId: number) {
-  const { mutateAsync } = useCreateCodebook(jobId);
+export function useCreateEmptyCodebook(projectId: number) {
+  const { mutateAsync } = useCreateCodebook(projectId);
 
-  const create = useCallback(() => {
-    const newCodebook = {
-      name: "New codebook",
-      codebook: {
-        settings: {
-          instruction: "",
-          auto_instruction: false,
+  const create = useCallback(
+    (name: string) => {
+      const newCodebook = {
+        name,
+        codebook: {
+          settings: {
+            instruction: "",
+            auto_instruction: false,
+          },
+          variables: [],
         },
-        variables: [],
-      },
-    };
-    return mutateAsync(newCodebook);
-  }, [mutateAsync]);
+      };
+      return mutateAsync(newCodebook);
+    },
+    [mutateAsync],
+  );
 
   return { create };
 }
 
 interface UpdateCodebookProps {
-  jobId: number;
+  projectId: number;
   current: z.infer<typeof CodebooksResponseSchema>;
   afterSubmit?: () => void;
   setPreview?: (codebook: Codebook | undefined) => void;
 }
 
 export const UpdateCodebook = React.memo(function UpdateCodebook({
-  jobId,
+  projectId,
   current,
   afterSubmit,
   setPreview,
 }: UpdateCodebookProps) {
   const [accordionValue, setAccordionValue] = useState<string>("");
-  const { mutateAsync } = useUpdateCodebook(jobId, current.id);
+  const { mutateAsync } = useUpdateCodebook(projectId, current.id);
   const form = useForm<CodebookUpdateBody>({
     resolver: zodResolver(CodebookCreateBodySchema),
     defaultValues: CodebookCreateBodySchema.parse(current),

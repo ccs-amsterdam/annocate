@@ -1,7 +1,7 @@
-import { useJobUsers } from "@/app/api/jobs/[jobId]/jobusers/query";
-import { JobUsersResponseSchema } from "@/app/api/jobs/[jobId]/jobusers/schemas";
+import { useProjectUsers } from "@/app/api/projects/[projectId]/projectusers/query";
+import { ProjectUsersResponseSchema } from "@/app/api/projects/[projectId]/projectusers/schemas";
 import DBTable from "@/components/Common/DBTable";
-import { UpdateJobUser, CreateJobUser } from "@/components/Forms/jobuserForms";
+import { UpdateProjectUser, CreateProjectUser } from "@/components/Forms/projectuserForms";
 import { Button } from "@/components/ui/button";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { Plus } from "lucide-react";
@@ -9,37 +9,37 @@ import { useState } from "react";
 import { z } from "zod";
 
 interface Props {
-  jobId: number;
+  projectId: number;
 }
 
 const COLUMNS = ["email", "role"];
 
-export function JobUserTable({ jobId }: Props) {
-  const useJobUsersProps = useJobUsers(jobId);
+export function ProjectUserTable({ projectId }: Props) {
+  const useProjectUsersProps = useProjectUsers(projectId);
   const [open, setOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<z.infer<typeof JobUsersResponseSchema>>();
+  const [selectedUser, setSelectedUser] = useState<z.infer<typeof ProjectUsersResponseSchema>>();
 
-  function onSelect(row: z.infer<typeof JobUsersResponseSchema>) {
+  function onSelect(row: z.infer<typeof ProjectUsersResponseSchema>) {
     setSelectedUser(row);
     setOpen(true);
   }
 
   return (
     <div>
-      <CreateJobUserButton jobId={jobId} />
+      <CreateProjectUserButton projectId={projectId} />
       <SimpleDialog open={open} setOpen={setOpen} header={`${selectedUser?.email}`}>
         {selectedUser ? (
-          <UpdateJobUser current={selectedUser} jobId={jobId} afterSubmit={() => setOpen(false)} />
+          <UpdateProjectUser current={selectedUser} projectId={projectId} afterSubmit={() => setOpen(false)} />
         ) : null}
       </SimpleDialog>
       <div className="mt-8 w-full p-3">
-        <DBTable {...useJobUsersProps} onSelect={onSelect} columns={COLUMNS} />
+        <DBTable {...useProjectUsersProps} onSelect={onSelect} columns={COLUMNS} />
       </div>
     </div>
   );
 }
 
-function CreateJobUserButton({ jobId }: Props) {
+function CreateProjectUserButton({ projectId }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -54,7 +54,7 @@ function CreateJobUserButton({ jobId }: Props) {
         </Button>
       }
     >
-      <CreateJobUser jobId={jobId} afterSubmit={() => setOpen(false)} />
+      <CreateProjectUser projectId={projectId} afterSubmit={() => setOpen(false)} />
     </SimpleDialog>
   );
 }

@@ -1,31 +1,29 @@
 "use client";
 
-import { useUpdateJob, useCreateJob } from "@/app/api/jobs/query";
-import { JobsUpdateSchema, JobsResponseSchema } from "@/app/api/jobs/schemas";
+import { useUpdateProject, useCreateProject } from "@/app/api/projects/query";
+import { ProjectsUpdateSchema, ProjectsResponseSchema } from "@/app/api/projects/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { Form } from "../ui/form";
 import { TextFormField } from "./formHelpers";
 
-type JobsCreate = z.infer<typeof JobsUpdateSchema>;
-type JobsUpdate = z.infer<typeof JobsUpdateSchema>;
+type JobsCreate = z.infer<typeof ProjectsUpdateSchema>;
+type JobsUpdate = z.infer<typeof ProjectsUpdateSchema>;
 
 interface CreateJobProps {
   afterSubmit: () => void;
 }
 interface UpdateJobProps {
-  current: z.infer<typeof JobsResponseSchema>;
+  current: z.infer<typeof ProjectsResponseSchema>;
   afterSubmit: () => void;
 }
 
 export function CreateJob({ afterSubmit }: CreateJobProps) {
-  const { mutateAsync } = useCreateJob();
+  const { mutateAsync } = useCreateProject();
   const form = useForm<JobsUpdate>({
-    resolver: zodResolver(JobsUpdateSchema),
+    resolver: zodResolver(ProjectsUpdateSchema),
     defaultValues: { name: "" },
   });
 
@@ -33,7 +31,7 @@ export function CreateJob({ afterSubmit }: CreateJobProps) {
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
 
-  const shape = JobsUpdateSchema.shape;
+  const shape = ProjectsUpdateSchema.shape;
 
   return (
     <Form {...form}>
@@ -46,9 +44,9 @@ export function CreateJob({ afterSubmit }: CreateJobProps) {
 }
 
 export function UpdateJob({ current, afterSubmit }: UpdateJobProps) {
-  const { mutateAsync } = useUpdateJob(current.id);
+  const { mutateAsync } = useUpdateProject(current.id);
   const form = useForm<JobsUpdate>({
-    resolver: zodResolver(JobsUpdateSchema),
+    resolver: zodResolver(ProjectsUpdateSchema),
     defaultValues: {
       name: "",
     },
@@ -58,7 +56,7 @@ export function UpdateJob({ current, afterSubmit }: UpdateJobProps) {
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
 
-  const shape = JobsUpdateSchema.shape;
+  const shape = ProjectsUpdateSchema.shape;
 
   return (
     <Form {...form}>

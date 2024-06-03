@@ -1,6 +1,6 @@
 "use client";
 
-import { useJobs } from "@/app/api/jobs/query";
+import { useProjects } from "@/app/api/projects/query";
 import DBTable from "@/components/Common/DBTable";
 import { CreateJob, UpdateJob } from "@/components/Forms/jobForms";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
-import { JobsResponseSchema } from "../api/jobs/schemas";
+import { ProjectsResponseSchema } from "../api/projects/schemas";
 
 export default function Home() {
   const [open, setOpen] = useState(false);
@@ -38,10 +38,10 @@ export default function Home() {
 const COLUMNS = ["name", "created", "creator"];
 
 function SelectJob() {
-  const jobs = useJobs();
+  const jobs = useProjects();
   const router = useRouter();
 
-  function onSelect(row: z.infer<typeof JobsResponseSchema>) {
+  function onSelect(row: z.infer<typeof ProjectsResponseSchema>) {
     router.push(`/manage/${row.id}`);
   }
 

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Loading } from "../ui/loader";
 import { Button } from "../ui/button";
 import Link from "next/link";
+import { Dot } from "lucide-react";
 
 type Value = string | number | Date | boolean;
 
@@ -17,7 +18,7 @@ interface Props<T> {
   search: (query: string) => void;
   isLoading: boolean;
   nameField: string;
-  jobId: number;
+  projectId: number;
   children?: React.ReactNode;
   className?: string;
   onSelect?: (row: T) => void;
@@ -43,12 +44,14 @@ export default function DBSelect<T extends Record<string, Value>>(props: Props<T
         {props.data?.map((row, index) => {
           return (
             <Button
-              className="h-8 max-w-full justify-start overflow-hidden text-ellipsis whitespace-nowrap"
+              variant="ghost"
+              className="flex h-6 max-w-full items-center justify-start gap-2 overflow-hidden text-ellipsis whitespace-nowrap"
               key={index}
               onClick={() => prevProps.onSelect && prevProps.onSelect(row)}
               asChild
             >
-              <Link title={String(row[props.nameField])} href={`/manage/${props.jobId}/codebook/${row.id}`}>
+              <Link title={String(row[props.nameField])} href={`/manage/${props.projectId}/codebook/${row.id}`}>
+                <Dot />
                 {String(row[props.nameField])}
               </Link>
             </Button>

@@ -1,4 +1,4 @@
-import { Authorization, JobRole, UserRole } from "@/app/types";
+import { Authorization, ProjectRole, UserRole } from "@/app/types";
 import db, { managers, users } from "@/drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
@@ -65,27 +65,27 @@ export async function authenticateUser(req: Request): Promise<string | null> {
 }
 
 // Function for getting user details, primarily for server side use to authorize requests.
-export async function authorization(email: string, jobId?: number): Promise<Authorization> {
-  const auth: Authorization = { email, role: null, jobRole: null };
+export async function authorization(email: string, projectId?: number): Promise<Authorization> {
+  const auth: Authorization = { email, role: null, projectRole: null };
 
   if (email === process.env.SUPERADMIN) {
-    if (jobId) auth.jobId = jobId;
+    if (projectId) auth.projectId = projectId;
     auth.superAdmin = true;
     auth.role = "admin";
-    auth.jobRole = "admin";
+    auth.projectRole = "admin";
     return auth;
   }
 
-  if (jobId) {
+  if (projectId) {
     const [user] = await db
-      .select({ role: users.role, jobRole: managers.role })
+      .select({ role: users.role, projectRole: managers.role })
       .from(users)
       .leftJoin(managers, eq(users.id, managers.userId))
-      .where(and(eq(users.email, email), eq(managers.jobId, jobId)));
+      .where(and(eq(users.email, email), eq(managers.projectId, projectId)));
 
     auth.role = user?.role || null;
-    auth.jobRole = user?.jobRole || null;
-    auth.jobId = jobId;
+    auth.projectRole = user?.projectRole || null;
+    auth.projectId = projectId;
   } else {
     const [user] = await db
       .select({ role: users.role })
@@ -107,7 +107,7 @@ export function hasMinRole(role: UserRole | null, minRole: UserRole) {
   return roleIndex >= minRoleIndex;
 }
 
-export function hasMinJobRole(role: JobRole | null, minRole: JobRole) {
+export function hasMinProjectRole(role: ProjectRole | null, minRole: ProjectRole) {
   if (!role) return false;
   const sortedRoles = ["manager", "admin"];
 

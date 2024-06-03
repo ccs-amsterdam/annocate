@@ -15,7 +15,7 @@ interface QuestionTaskProps {
 }
 
 const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
-  const { unit, codebook, annotationLib, annotationManager } = useUnit();
+  const { unit, codebook, annotationLib, annotationManager, index, selectUnit } = useUnit();
   const [questionIndex, setQuestionIndex] = useState(0);
   const [conditionReport, setConditionReport] = useState<ConditionReport | null>(null);
   const divref = useRef(null);
@@ -26,69 +26,46 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
     return { text: textref, box: boxref, code: coderef };
   }, []);
 
-  const questions = useMemo(() => unfoldQuestions(codebook, unit), [unit, codebook]);
-  const question = questions[questionIndex];
-
-  if (useWatchChange([unit])) {
-    setQuestionIndex(0);
-    setConditionReport(unit.report || { evaluation: {}, damage: {} });
-    hideUnit(refs.text, refs.box, refs.code); // hide unit until ready
-  }
+  const variable = annotationLib.variables?.[annotationLib.variableIndex];
 
   const onNewUnit = useCallback(() => {
     // this is called in the onReady callback in Document
     showUnit(refs.text, refs.box, refs.code);
   }, [refs.text, refs.box, refs.code]);
 
-  const startTransition = useCallback(
-    (trans: Transition | undefined, nextUnit: boolean) => {
-      if (nextUnit) {
-        nextUnitTransition(refs, trans);
-      } else {
-        nextQuestionTransition(refs, trans);
+  function onSwipe(transition: Transition) {
+    if (!transition.code) return;
+    annotationManager.processAnswer(variable.name, transition.code, false, variable.fields);
+    annotationManager.finishVariable().then((res) => {
+      if (res.status === "DONE") {
+        selectUnit(index || 0 + 1);
+        nextUnitTransition(refs, transition);
         setTimeout(() => {
           showUnit(refs.text, refs.box, refs.code);
         }, 100);
+      } else {
+        nextQuestionTransition(refs, transition);
       }
-    },
-    [refs],
-  );
-
-  // swipe controlls need to be up in the QuestionTask component due to working on the div containing the question screen
-  // use separate swipe for text (document) and menu rows, because swiping up in the text is only possible if scrolled all the way down
-  function onSwipe(transition: Transition) {
-    if (!transition.code) return;
-    annotationManager.processAnswer(question.name, transition.code, false, question.fields);
-    // PUT THE onFinish() from answerfield.tsx into annotationmanager.
-    // then call that here (and in answerfield)
+    });
   }
 
-  const textSwipe = useSwipeable(swipeControl(question, refs, onSwipe, false));
-  const menuSwipe = useSwipeable(swipeControl(question, refs, onSwipe, true));
+  const textSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, false));
+  const menuSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, true));
 
   if (!unit) return null;
-
-  // two modes for highlighting annotations: a single annotation in question.annotation and
-  // question.showAnnotations. Passing an array of annotations to Document highlights the spans
-  // let annotations: Annotation[] = question?.annotation ? [question.annotation] : [];
-  // if (question?.showAnnotations && unit.unit.annotations) {
-  //   const addAnnotations = unit.unit.annotations.filter((a) => question.showAnnotations?.includes(a.variable));
-  //   annotations = [...annotations, ...addAnnotations];
-  // }
-  let annotation: Annotation[] = [];
 
   const singlePage = unit.unitType === "survey";
 
   return (
     <div className="flex h-full flex-col bg-background" ref={divref}>
       {/* <FeedbackPortal
-        variable={questions?.[questionIndex]?.name}
+        variable={variable.name}
         conditionReport={conditionReport}
         setConditionReport={setConditionReport}
       /> */}
       <div
         {...textSwipe}
-        className={`relative z-10 ${singlePage ? "min-h-0 flex-[1_0_auto]" : "min-h-[40%] flex-[1_1_0]"}`}
+        className={`relative z-10 overflow-hidden ${singlePage ? "min-h-0 flex-[1_0_auto]" : "min-h-[40%] flex-[1_1_0]"}`}
       >
         <div ref={refs.box} className="oveflow-hidden relative z-20 h-full will-change-auto">
           {/* This div moves around behind the div containing the document to show the swipe code  */}
@@ -99,7 +76,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
               annotations={[]}
               showAll={true}
               onReady={onNewUnit}
-              focus={question?.fields}
+              focus={variable?.fields}
               centered={true}
               blockEvents={blockEvents}
             />
@@ -114,7 +91,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
           blockEvents={blockEvents}
         >
           <Instructions
-            instruction={question?.instruction || codebook?.settings?.instruction}
+            instruction={variable?.instruction || codebook?.settings?.instruction}
             autoInstruction={codebook?.settings?.auto_instruction || false}
           />
         </QuestionForm>

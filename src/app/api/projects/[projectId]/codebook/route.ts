@@ -1,18 +1,18 @@
-import { hasMinJobRole } from "@/app/api/authorization";
+import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import db, { codebooks } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { CodebookCreateBodySchema, CodebooksTableParamsSchema } from "./schemas";
+import { CodebookCreateBodySchema, CodebookCreateResponseSchema, CodebooksTableParamsSchema } from "./schemas";
 
-export async function GET(req: NextRequest, { params }: { params: { jobId: number } }) {
+export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createTableGet({
     req,
     tableFunction: () =>
       db
-        .select({ id: codebooks.id, jobId: codebooks.jobId, name: codebooks.name, created: codebooks.created })
+        .select({ id: codebooks.id, projectId: codebooks.projectId, name: codebooks.name, created: codebooks.created })
         .from(codebooks)
-        .where(eq(codebooks.jobId, params.jobId))
+        .where(eq(codebooks.projectId, params.projectId))
         .as("baseQuery"),
     paramsSchema: CodebooksTableParamsSchema,
     idColumn: "id",
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: { jobId: numbe
   });
 }
 
-export async function POST(req: Request, { params }: { params: { jobId: number } }) {
+export async function POST(req: Request, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
       const overwrite = body.overwrite;
@@ -28,12 +28,12 @@ export async function POST(req: Request, { params }: { params: { jobId: number }
 
       let query = db
         .insert(codebooks)
-        .values({ ...body, jobId: params.jobId })
+        .values({ ...body, projectId: params.projectId })
         .$dynamic();
 
       if (overwrite) {
         query = query.onConflictDoUpdate({
-          target: [codebooks.jobId, codebooks.name],
+          target: [codebooks.projectId, codebooks.name],
           set: { ...body },
         });
       }
@@ -43,11 +43,12 @@ export async function POST(req: Request, { params }: { params: { jobId: number }
     },
     req,
     bodySchema: CodebookCreateBodySchema,
+    responseSchema: CodebookCreateResponseSchema,
     authorizeFunction: async (auth, body) => {
-      if (!hasMinJobRole(auth.jobRole, "manager")) return { message: "Unauthorized" };
+      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
     errorFunction: (status, body) => {
-      if (status === 409) return `Codebook with the name "${body?.name}" already exists in this job`;
+      if (status === 409) return `Codebook with the name "${body?.name}" already exists in this project`;
     },
   });
 }
