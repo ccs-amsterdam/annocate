@@ -138,6 +138,24 @@ body {
   width: var(--responsive-width, 100vw);
 }
 
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--primary));
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hsl(var(--primary-dark)));
+}
+
 div::-webkit-scrollbar,
 p::-webkit-scrollbar {
   width: 5px;
@@ -154,7 +172,7 @@ p::-webkit-scrollbar-track {
 div::-webkit-scrollbar-thumb,
 p::-webkit-scrollbar-thumb {
   background-color: hsl(var(--primary));
-  border-radius: 0;
+  border-radius: 50px;
 }
 
 /* Handle on hover */

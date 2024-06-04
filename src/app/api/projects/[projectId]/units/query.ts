@@ -5,8 +5,9 @@ import {
   UnitDataResponseSchema,
   UnitDataTableParamsSchema,
 } from "./schemas";
-import { useMutate, useTableGet } from "@/app/api/queryHelpers";
+import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
+import { UnitCollectionsResponseSchema } from "./collections/schemas";
 
 export function useUnits(projectId: number, initialParams?: z.infer<typeof UnitDataTableParamsSchema>) {
   return useTableGet({
@@ -26,6 +27,13 @@ export function useCreateUnits(projectId: number) {
   });
 }
 
+export function useCollections(projectId: number) {
+  return useGet({
+    resource: "unitCollections",
+    endpoint: `projects/${projectId}/units/collections`,
+    responseSchema: z.array(UnitCollectionsResponseSchema),
+  });
+}
 export const openapiUnits = createOpenAPIDefinitions(
   ["Unit management"],
   [
@@ -42,6 +50,12 @@ export const openapiUnits = createOpenAPIDefinitions(
       description: "Create a unit",
       body: UnitDataCreateBodySchema,
       response: UnitDataCreateResponseSchema,
+    },
+    {
+      path: "/projects/{projectId}/units/collections",
+      method: "get",
+      description: "Get all unit collections",
+      response: z.array(UnitDataResponseSchema),
     },
   ],
 );

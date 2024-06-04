@@ -57,7 +57,7 @@ export function UnitsTable({ projectId }: Props) {
   return (
     <div>
       <CreateUnitsButton projectId={projectId} />
-      <div className="mt-8 w-full p-3">
+      <div className="mt-8 w-full">
         <DBTable {...useUnitsProps} onSelect={onSelect} columns={COLUMNS} />
       </div>
       <SimpleDialog open={!!unit} setOpen={(open) => !open && setUnit(undefined)} header={``} className="max-w-[800px]">

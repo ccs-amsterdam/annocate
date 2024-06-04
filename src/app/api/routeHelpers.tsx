@@ -60,6 +60,7 @@ export async function createGet<T>({
     }
 
     const response = await selectFunction(email, params);
+    if (responseSchema) return NextResponse.json(responseSchema.parse(response));
     return NextResponse.json(response);
   } catch (e: any) {
     console.error(e);
