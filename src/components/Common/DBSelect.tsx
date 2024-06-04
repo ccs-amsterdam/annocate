@@ -44,16 +44,11 @@ export default function DBSelect<T extends Record<string, Value>>(props: Props<T
         {props.data?.map((row, index) => {
           return (
             <Button
-              variant="ghost"
               className="flex h-6 max-w-full items-center justify-start gap-2 overflow-hidden text-ellipsis whitespace-nowrap"
               key={index}
               onClick={() => prevProps.onSelect && prevProps.onSelect(row)}
-              asChild
             >
-              <Link title={String(row[props.nameField])} href={`/manage/${props.projectId}/codebook/${row.id}`}>
-                <Dot />
-                {String(row[props.nameField])}
-              </Link>
+              {String(row[props.nameField])}
             </Button>
           );
         })}

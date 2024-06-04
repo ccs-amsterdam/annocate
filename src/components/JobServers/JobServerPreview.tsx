@@ -35,7 +35,6 @@ class JobServerPreview implements JobServer {
   async init() {}
 
   async getUnit(i?: number) {
-    console.log(this.demodata);
     return this.demodata?.units?.[0] || null;
   }
 

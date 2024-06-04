@@ -1,24 +1,18 @@
 "use client";
 
+import { CodebookCodeSchema, CodebookVariableItemSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { Control, FieldValues, Path } from "react-hook-form";
 import { z } from "zod";
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFormField } from "../ui/form";
+import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Textarea } from "../ui/textarea";
-import { Checkbox } from "../ui/checkbox";
-import {
-  CodebookCodeSchema,
-  CodebookCodesSchema,
-  CodebookCreateBodySchema,
-  CodebookVariableItemSchema,
-} from "@/app/api/projects/[projectId]/codebook/schemas";
-import { createDecipheriv } from "crypto";
-import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "../ui/table";
 
 export interface FormOptions {
   value: string;

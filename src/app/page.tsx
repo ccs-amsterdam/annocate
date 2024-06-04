@@ -13,12 +13,12 @@ export default function Home() {
         <h3>What are you here for?</h3>
 
         <div className="flex h-min flex-wrap justify-center gap-2 p-2">
-          <Link href="/manage" className="h-30 w-60">
+          <Link href="/projects" className="h-30 w-60">
             <Button className="w-full">Annotate</Button>
           </Link>
-          <Link href="/manage" className="h-30 w-60">
+          <Link href="/projects" className="h-30 w-60">
             <Button variant="secondary" className="w-full">
-              Manage jobs
+              Projects
             </Button>
           </Link>
         </div>

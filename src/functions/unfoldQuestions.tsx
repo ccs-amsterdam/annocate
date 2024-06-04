@@ -1,4 +1,3 @@
-import { CodebookSchema, CodebookUnionTypeSchema } from "@/app/api/projects/[projectId]/codebook/schemas";
 import { Codebook, Question, Unit, Variable } from "@/app/types";
 import { z } from "zod";
 

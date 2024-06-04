@@ -16,7 +16,7 @@ export default function Home() {
   return (
     <div className="mx-auto mt-10 flex w-full max-w-5xl flex-auto flex-col items-center">
       <div className="">
-        <h2>Manage Jobs</h2>
+        <h2>Manage Projects</h2>
         <SimpleDialog
           open={open}
           setOpen={setOpen}
@@ -42,7 +42,7 @@ function SelectJob() {
   const router = useRouter();
 
   function onSelect(row: z.infer<typeof ProjectsResponseSchema>) {
-    router.push(`/manage/${row.id}`);
+    router.push(`/projects/${row.id}`);
   }
 
   return <DBTable className="mt-8 w-full p-3" {...jobs} onSelect={onSelect} columns={COLUMNS} />;

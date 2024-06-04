@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { z } from "zod";
 import { GetMetaSchema } from "@/app/api/schemaHelpers";
 
-type Value = string | number | Date | boolean;
+type Value = string | number | Date | boolean | string[] | object;
 
 interface Props<T> {
   data?: T[];
@@ -17,6 +17,7 @@ interface Props<T> {
   paginate: Paginate;
   sortBy: (column: string, direction: "asc" | "desc") => void;
   search: (query: string) => void;
+  hasSearch: boolean;
   isLoading: boolean;
   columns?: string[];
   className?: string;
@@ -30,8 +31,7 @@ export default function DBTable<T extends Record<string, Value>>(props: Props<T>
     if (props.data) setPrevProps(props);
   }, [props]);
 
-  const showPagination = props.meta && props.meta.rows > props.meta.pageSize;
-
+  const showPagination = props.hasSearch || (prevProps.meta && prevProps.meta.rows > prevProps.meta.pageSize);
   return (
     <div className={props.className || ""}>
       <div className={` mb-4 flex select-none gap-3  ${showPagination ? "" : "hidden"}`}>
@@ -44,10 +44,7 @@ export default function DBTable<T extends Record<string, Value>>(props: Props<T>
 }
 
 function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSelect, isLoading, columns }: Props<T>) {
-  const columnsI = useMemo(() => {
-    if (!data || !columns || data.length === 0) return undefined;
-    return Object.keys(data[0]).map((key) => columns?.includes(key));
-  }, [data, columns]);
+  const cols = columns || Object.keys(data?.[0] || {});
 
   if (isLoading) return <Loading />;
   if (!data || !meta) return null;
@@ -73,8 +70,7 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
     <Table className={`w-full ${isLoading ? "opacity-50" : ""} `}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          {Object.keys(data[0]).map((key, i) => {
-            if (columnsI && !columnsI[i]) return null;
+          {cols.map((key, i) => {
             return (
               <TableHead key={key}>
                 <div
@@ -92,8 +88,8 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
       <TableBody>
         {data.map((row, i) => (
           <TableRow role="button" key={JSON.stringify(row)} onClick={() => onSelect?.(row)}>
-            {Object.values(row).map((value, i) => {
-              if (columnsI && !columnsI[i]) return null;
+            {cols.map((col, i) => {
+              const value = row[col];
               return <TableCell key={i}>{formatValue(value)}</TableCell>;
             })}
           </TableRow>
@@ -156,6 +152,14 @@ export function DBPagination({ paginate }: { paginate: Paginate }) {
 
 function formatValue(value: Value) {
   if (value instanceof Date) return <span title={value.toLocaleString()}>{value.toDateString()}</span>;
+  if (typeof value === "object") return "";
   if (typeof value === "boolean") return value ? <CheckCircle /> : <Circle />;
-  return value;
+  if (typeof value === "number") return value;
+
+  const str = Array.isArray(value) ? value.join(", ") : value;
+  return (
+    <div title={str} className="max-w-[20rem] overflow-hidden text-ellipsis whitespace-nowrap">
+      {str}
+    </div>
+  );
 }

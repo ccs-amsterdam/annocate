@@ -2,29 +2,18 @@
 
 import { useUserDetails } from "@/app/api/me/details/query";
 import Link from "next/link";
-import { useSelectedLayoutSegments } from "next/navigation";
+import { useParams, useSelectedLayoutSegments } from "next/navigation";
 import { FaChevronRight, FaCog } from "react-icons/fa";
 import { DarkModeButton } from "../Common/Theme";
 import UserMenu from "./UserMenu";
 import ResponsiveButtonGroup from "./ResponsiveButtonGroup";
-import { ChevronRight, Cog } from "lucide-react";
+import { ChevronLeft, ChevronRight, Cog } from "lucide-react";
+import React from "react";
 
 export default function Menu() {
-  const path = useSelectedLayoutSegments() || [];
+  const params = useParams();
   const { data: userDetails, isLoading } = useUserDetails();
 
-  function renderBreadcrumbs() {
-    let newpath = "";
-    return path.map((x, i) => {
-      const isLast = i === path.length - 1;
-      newpath = newpath + "/" + x;
-      return (
-        <Breadcrumb key={x + i} link={isLast ? undefined : newpath}>
-          {x}
-        </Breadcrumb>
-      );
-    });
-  }
   function renderAdmin() {
     if (isLoading) return <Cog className="h-8 w-8 animate-spin-slow text-foreground/50" />;
     if (userDetails?.role !== "admin") return null;
@@ -35,12 +24,44 @@ export default function Menu() {
     );
   }
 
+  function renderNav() {
+    if (!params?.projectId) {
+      return (
+        <>
+          <NavItem href="/" key="projects">
+            home
+          </NavItem>
+          <NavItem href="/projects" key="projects">
+            projects
+          </NavItem>
+        </>
+      );
+    }
+    return (
+      <>
+        <NavItem icon={<ChevronLeft />} href="/projects" key="projects"></NavItem>
+
+        <NavItem href={`/projects/${params.projectId}`} key="project">
+          jobs
+        </NavItem>
+        <NavItem href={`/projects/${params.projectId}/codebooks`} key="codebooks">
+          codebooks
+        </NavItem>
+        <NavItem href={`/projects/${params.projectId}/units`} key="units">
+          units
+        </NavItem>
+        <NavItem href={`/projects/${params.projectId}/users`} key="users">
+          users
+        </NavItem>
+      </>
+    );
+  }
+
   return (
     <menu className="w-full px-2">
       <div className="m-0 flex min-h-[3.8rem] list-none items-center gap-2 px-3 pb-0 pt-1 text-xl text-foreground">
         <div key="left" className="mt-1 flex min-h-[3rem] flex-auto items-center ">
-          <Breadcrumb link={path.length ? "/" : undefined}>home</Breadcrumb>
-          {renderBreadcrumbs()}
+          {renderNav()}
         </div>
 
         <div key="right" className="flex h-full items-center justify-end">
@@ -55,17 +76,11 @@ export default function Menu() {
   );
 }
 
-const Breadcrumb = ({ children, current, link }: { current?: boolean; children: React.ReactNode; link?: string }) => {
+function NavItem({ children, icon, href }: { children?: React.ReactNode; icon?: React.ReactNode; href: string }) {
   return (
-    <div className="flex items-center gap-2 rounded p-2 pl-0 text-primary">
-      {link ? (
-        <Link href={link}>
-          <span className="hover:text-foreground">{children}</span>
-        </Link>
-      ) : (
-        <span className="text-foreground">{children}</span>
-      )}
-      {link && <ChevronRight className="ml-1 h-4 w-4" />}
-    </div>
+    <Link href={href} className="flex h-full items-center gap-2 px-2 hover:text-primary">
+      {icon}
+      {children}
+    </Link>
   );
-};
+}

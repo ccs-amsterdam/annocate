@@ -6,12 +6,14 @@ export function SimpleDialog({
   open,
   setOpen,
   header,
+  className,
 }: {
   trigger?: React.ReactNode;
   children: React.ReactNode;
   open?: boolean;
   setOpen?: (open: boolean) => void;
   header?: string;
+  className?: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -20,7 +22,7 @@ export function SimpleDialog({
           {trigger}
         </DialogTrigger>
       ) : null}
-      <DialogContent>
+      <DialogContent className={className}>
         {header ? (
           <DialogHeader>
             <DialogTitle>{header}</DialogTitle>

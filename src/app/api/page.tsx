@@ -6,7 +6,7 @@ import { OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 
 import { openapiUsers } from "./users/query";
 import { openapiProjects } from "./projects/query";
-import { openapiCodebook } from "./projects/[projectId]/codebook/query";
+import { openapiCodebook } from "./projects/[projectId]/codebooks/query";
 import { openapiProjectUsers } from "./projects/[projectId]/projectusers/query";
 
 const config = {

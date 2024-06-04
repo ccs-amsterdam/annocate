@@ -30,8 +30,9 @@ import {
   ServerUnitStatus,
   ProjectRole,
 } from "@/app/types";
-import { CodebookSchema } from "@/app/api/projects/[projectId]/codebook/schemas";
+import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { z } from "zod";
+import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/sets/schemas";
 
 config({ path: ".env.local" });
 
@@ -88,6 +89,30 @@ export const codebooks = pgTable(
   },
 );
 
+export const units = pgTable(
+  "units",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    externalId: varchar("unit_id", { length: 256 }).notNull(),
+    collection: varchar("collection", { length: 256 }).notNull(),
+    data: jsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
+    created: timestamp("created").notNull().defaultNow(),
+    modified: timestamp("modified").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      collection_index: index("units_collection_idx").on(table.collection),
+      project_index: index("units_project_idx").on(table.projectId),
+      unique: unique("units_project_collection_external_id").on(table.projectId, table.externalId),
+    };
+  },
+);
+
+type UnitLayout = z.input<typeof UnitLayoutSchema>;
+
 export const unitSets = pgTable(
   "unit_sets",
   {
@@ -96,44 +121,12 @@ export const unitSets = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
-  },
-  (table) => {
-    return { projectIds: index("unitgroups_project_ids").on(table.projectId) };
-  },
-);
-
-export const unitPresentation = pgTable(
-  "unit_presentations",
-  {
-    id: serial("id").primaryKey(),
-    unitSetId: integer("unit_set_id")
-      .notNull()
-      .references(() => unitSets.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }).notNull(),
-    presentation: jsonb("presentation").notNull().$type<Record<string, string | number | boolean>>(),
-  },
-  (table) => {
-    return { unitSetIds: index("unit_presentations_unit_set_ids").on(table.unitSetId) };
-  },
-);
-
-export const units = pgTable(
-  "units",
-  {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    unitSetId: integer("unit_set_id")
-      .notNull()
-      .references(() => unitSets.id, { onDelete: "cascade" }),
-    externalId: varchar("unit_id", { length: 256 }).notNull(),
-    unit: jsonb("unit").notNull().$type<Record<string, string | number | boolean>>(),
     created: timestamp("created").notNull().defaultNow(),
-    modified: timestamp("modified").notNull().defaultNow(),
+    collections: jsonb("collections").notNull().$type<string[]>().default([]),
+    layout: jsonb("layout").notNull().$type<UnitLayout>(),
   },
   (table) => {
-    return { projectIds: index("units_project_ids").on(table.projectId) };
+    return { projectIds: index("unitsets_project_ids").on(table.projectId) };
   },
 );
 

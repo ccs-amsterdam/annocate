@@ -86,6 +86,7 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
     data: data?.data,
     meta: data?.meta,
     isLoading,
+    hasSearch: "query" in params && !!params.query,
     sortBy,
     search,
     paginate: { nextPage, prevPage, hasNextPage, hasPrevPage },

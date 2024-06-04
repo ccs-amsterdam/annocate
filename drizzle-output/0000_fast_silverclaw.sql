@@ -71,6 +71,13 @@ CREATE TABLE IF NOT EXISTS "projects" (
 	CONSTRAINT "unique_creator_name" UNIQUE("creator_email","name")
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "unit_presentations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"unit_set_id" integer NOT NULL,
+	"name" varchar(256) NOT NULL,
+	"presentation" jsonb NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "unit_sets" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"project_id" integer NOT NULL,
@@ -80,13 +87,11 @@ CREATE TABLE IF NOT EXISTS "unit_sets" (
 CREATE TABLE IF NOT EXISTS "units" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"project_id" integer NOT NULL,
-	"unit_group_id" integer NOT NULL,
+	"unit_set_id" integer NOT NULL,
 	"unit_id" varchar(256) NOT NULL,
 	"unit" jsonb NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
-	"codebook_id" integer,
-	"modified" timestamp DEFAULT now() NOT NULL,
-	"type" text NOT NULL
+	"modified" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "users" (
@@ -102,6 +107,7 @@ CREATE INDEX IF NOT EXISTS "annotations_unit_ids" ON "annotations" ("unit_id");-
 CREATE INDEX IF NOT EXISTS "codebook_project_ids" ON "codebooks" ("project_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "jobs_project_ids" ON "jobs" ("project_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "managers_userId_index" ON "managers" ("user_uuid");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "unit_presentations_unit_set_ids" ON "unit_presentations" ("unit_set_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "unitgroups_project_ids" ON "unit_sets" ("project_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "units_project_ids" ON "units" ("project_id");--> statement-breakpoint
 DO $$ BEGIN
@@ -153,6 +159,12 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "unit_presentations" ADD CONSTRAINT "unit_presentations_unit_set_id_unit_sets_id_fk" FOREIGN KEY ("unit_set_id") REFERENCES "unit_sets"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "unit_sets" ADD CONSTRAINT "unit_sets_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -165,7 +177,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "units" ADD CONSTRAINT "units_unit_group_id_unit_sets_id_fk" FOREIGN KEY ("unit_group_id") REFERENCES "unit_sets"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "units" ADD CONSTRAINT "units_unit_set_id_unit_sets_id_fk" FOREIGN KEY ("unit_set_id") REFERENCES "unit_sets"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

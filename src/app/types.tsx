@@ -5,7 +5,7 @@ import {
   CodebookSchema,
   CodebookUnionTypeSchema,
   CodebookVariableItemSchema,
-} from "./api/projects/[projectId]/codebook/schemas";
+} from "./api/projects/[projectId]/codebooks/schemas";
 import { z } from "zod";
 import { AnnotationSchema } from "./api/projects/[projectId]/annotations/schemas";
 

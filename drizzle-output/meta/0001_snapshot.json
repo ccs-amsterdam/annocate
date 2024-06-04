@@ -1,6 +1,6 @@
 {
-  "id": "491a5d38-50c6-41c5-95a7-3493600d2cbd",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "1a67cdb8-7d45-49b5-aa49-e09ecfb50e7b",
+  "prevId": "491a5d38-50c6-41c5-95a7-3493600d2cbd",
   "version": "5",
   "dialect": "pg",
   "tables": {
@@ -546,62 +546,6 @@
         }
       }
     },
-    "unit_presentations": {
-      "name": "unit_presentations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "unit_set_id": {
-          "name": "unit_set_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "presentation": {
-          "name": "presentation",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "unit_presentations_unit_set_ids": {
-          "name": "unit_presentations_unit_set_ids",
-          "columns": [
-            "unit_set_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "unit_presentations_unit_set_id_unit_sets_id_fk": {
-          "name": "unit_presentations_unit_set_id_unit_sets_id_fk",
-          "tableFrom": "unit_presentations",
-          "tableTo": "unit_sets",
-          "columnsFrom": [
-            "unit_set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
     "unit_sets": {
       "name": "unit_sets",
       "schema": "",
@@ -623,11 +567,31 @@
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
+        },
+        "created": {
+          "name": "created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "collections": {
+          "name": "collections",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "layout": {
+          "name": "layout",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
-        "unitgroups_project_ids": {
-          "name": "unitgroups_project_ids",
+        "unitsets_project_ids": {
+          "name": "unitsets_project_ids",
           "columns": [
             "project_id"
           ],
@@ -668,20 +632,20 @@
           "primaryKey": false,
           "notNull": true
         },
-        "unit_set_id": {
-          "name": "unit_set_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
         "unit_id": {
           "name": "unit_id",
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
         },
-        "unit": {
-          "name": "unit",
+        "collection": {
+          "name": "collection",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
@@ -702,8 +666,15 @@
         }
       },
       "indexes": {
-        "units_project_ids": {
-          "name": "units_project_ids",
+        "units_collection_idx": {
+          "name": "units_collection_idx",
+          "columns": [
+            "collection"
+          ],
+          "isUnique": false
+        },
+        "units_project_idx": {
+          "name": "units_project_idx",
           "columns": [
             "project_id"
           ],
@@ -723,23 +694,19 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "units_unit_set_id_unit_sets_id_fk": {
-          "name": "units_unit_set_id_unit_sets_id_fk",
-          "tableFrom": "units",
-          "tableTo": "unit_sets",
-          "columnsFrom": [
-            "unit_set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "units_project_collection_external_id": {
+          "name": "units_project_collection_external_id",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "unit_id"
+          ]
+        }
+      }
     },
     "users": {
       "name": "users",

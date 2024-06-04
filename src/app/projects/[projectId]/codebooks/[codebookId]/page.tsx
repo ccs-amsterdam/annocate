@@ -1,6 +1,6 @@
 "use client";
-import { useCodebook } from "@/app/api/projects/[projectId]/codebook/query";
-import { CodebookSchema } from "@/app/api/projects/[projectId]/codebook/schemas";
+import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
+import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { RawUnit } from "@/app/types";
 import QuestionTask from "@/components/AnnotationInterface/QuestionTask";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";

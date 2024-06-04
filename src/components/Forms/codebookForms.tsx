@@ -1,6 +1,6 @@
 "use client";
 
-import { useUpdateCodebook, useCreateCodebook } from "@/app/api/projects/[projectId]/codebook/query";
+import { useUpdateCodebook, useCreateCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import {
   CodebookCreateBodySchema,
   CodebookScaleTypeSchema,
@@ -10,7 +10,7 @@ import {
   CodebookUpdateBodySchema,
   CodebookVariableSchema,
   variableTypeOptions,
-} from "@/app/api/projects/[projectId]/codebook/schemas";
+} from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, Watch, XIcon } from "lucide-react";
 import { use, useCallback, useEffect, useState } from "react";
@@ -76,8 +76,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     resolver: zodResolver(CodebookCreateBodySchema),
     defaultValues: CodebookCreateBodySchema.parse(current),
   });
-  console.log(CodebookCreateBodySchema.parse(current));
-  console.log(form.getValues());
 
   const { error } = form.getFieldState("codebook");
   const variables = form.getValues("codebook.variables");
@@ -121,8 +119,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
   const shape = CodebookCreateBodySchema.shape;
-
-  console.log(form.formState.isDirty);
 
   return (
     <Form {...form}>
