@@ -1,13 +1,13 @@
-import db, { unitSets, units, users } from "@/drizzle/schema";
+import db, { layouts, units, users } from "@/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import {
-  UnitSetsCreateBodySchema,
-  UnitSetsCreateResponseSchema,
-  UnitSetsResponseSchema,
-  UnitSetsTableParamsSchema,
+  UnitLayoutsCreateBodySchema,
+  UnitLayoutsCreateResponseSchema,
+  UnitLayoutsResponseSchema,
+  UnitLayoutsTableParamsSchema,
 } from "./schemas";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
@@ -16,15 +16,14 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     tableFunction: (email, urlParams) =>
       db
         .select({
-          projectId: unitSets.projectId,
-          id: unitSets.id,
-          name: unitSets.name,
+          id: layouts.id,
+          name: layouts.name,
         })
-        .from(unitSets)
-        .where(eq(unitSets.projectId, params.projectId))
+        .from(layouts)
+        .where(eq(layouts.projectId, params.projectId))
         .as("baseQuery"),
-    paramsSchema: UnitSetsTableParamsSchema,
-    responseSchema: UnitSetsResponseSchema,
+    paramsSchema: UnitLayoutsTableParamsSchema,
+    responseSchema: UnitLayoutsResponseSchema,
     idColumn: "id",
     queryColumns: ["name"],
   });
@@ -37,23 +36,23 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
       delete body.overwrite;
 
       let query = db
-        .insert(unitSets)
+        .insert(layouts)
         .values({ ...body, projectId: params.projectId })
         .$dynamic();
 
       if (overwrite) {
         query = query.onConflictDoUpdate({
-          target: [unitSets.projectId, unitSets.name],
+          target: [layouts.projectId, layouts.name],
           set: { ...body },
         });
       }
 
-      const [unitSet] = await query.returning();
-      return unitSet;
+      const [layout] = await query.returning();
+      return layout;
     },
     req,
-    bodySchema: UnitSetsCreateBodySchema,
-    responseSchema: UnitSetsCreateResponseSchema,
+    bodySchema: UnitLayoutsCreateBodySchema,
+    responseSchema: UnitLayoutsCreateResponseSchema,
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

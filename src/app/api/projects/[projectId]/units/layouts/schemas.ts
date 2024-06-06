@@ -6,7 +6,6 @@ export const UnitGeneralLayoutSchema = z.object({
   type: z.enum(["text", "markdown", "image", "variable"]),
   name: z.string().min(1).max(128),
   style: z.record(z.string(), z.string()),
-  value: z.string(),
 });
 
 export const UnitTextLayoutSchema = UnitGeneralLayoutSchema.extend({
@@ -42,30 +41,31 @@ export const UnitLayoutSchema = z.object({
   variables: z.record(z.string(), UnitDataValueSchema),
 });
 
-export const UnitSetsTableParamsSchema = TableParamsSchema.extend({});
+export const UnitLayoutsTableParamsSchema = TableParamsSchema.extend({});
 
-export const UnitSetsResponseSchema = z.object({
-  id: z.string(),
+export const UnitLayoutsResponseSchema = z.object({
+  id: z.number(),
   name: z.string(),
-  created: z.coerce.date(),
-  collections: z.array(z.string()),
+});
+
+export const UnitLayoutResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
   layout: UnitLayoutSchema,
 });
 
-export const UnitSetsCreateBodySchema = z.object({
+export const UnitLayoutsCreateBodySchema = z.object({
   name: z.string(),
   layout: UnitLayoutSchema,
-  collections: z.array(z.string()),
   overwrite: z.boolean().optional(),
 });
 
-export const UnitSetsUpdateBodySchema = z.object({
+export const UnitLayoutsUpdateBodySchema = z.object({
   name: z.string().optional(),
   layout: UnitLayoutSchema.optional(),
-  collections: z.array(z.string()).optional(),
 });
 
-export const UnitSetsCreateResponseSchema = z.object({
-  id: z.string(),
+export const UnitLayoutsCreateResponseSchema = z.object({
+  id: z.number(),
   name: z.string(),
 });

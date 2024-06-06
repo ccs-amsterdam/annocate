@@ -20,19 +20,10 @@ import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
 import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import {
-  Annotation,
-  AnnotationHistory,
-  RawCodeBook,
-  RawUnit,
-  Rules,
-  UserRole,
-  ServerUnitStatus,
-  ProjectRole,
-} from "@/app/types";
+import { Annotation, AnnotationHistory, Rules, UserRole, ServerUnitStatus, ProjectRole } from "@/app/types";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { z } from "zod";
-import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/sets/schemas";
+import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
 
 config({ path: ".env.local" });
 
@@ -97,23 +88,53 @@ export const units = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     externalId: varchar("unit_id", { length: 256 }).notNull(),
-    collection: varchar("collection", { length: 256 }).notNull(),
     data: jsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("modified").notNull().defaultNow(),
   },
   (table) => {
     return {
-      collection_index: index("units_collection_idx").on(table.collection),
       project_index: index("units_project_idx").on(table.projectId),
-      unique: unique("units_project_collection_external_id").on(table.projectId, table.externalId),
+      unique: unique("units_project_external_id").on(table.projectId, table.externalId),
     };
+  },
+);
+
+export const unitsets = pgTable(
+  "unitsets",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }).notNull(),
+    created: timestamp("created").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      unique: unique("unitsets_project_name").on(table.projectId, table.name),
+    };
+  },
+);
+
+export const unitsetUnits = pgTable(
+  "unitset_units",
+  {
+    unitsetId: integer("unitset_id")
+      .notNull()
+      .references(() => unitsets.id, { onDelete: "cascade" }),
+    unitId: integer("unit_id")
+      .notNull()
+      .references(() => units.id, { onDelete: "cascade" }),
+  },
+  (table) => {
+    return { pk: primaryKey({ columns: [table.unitsetId, table.unitId] }) };
   },
 );
 
 type UnitLayout = z.input<typeof UnitLayoutSchema>;
 
-export const unitSets = pgTable(
+export const layouts = pgTable(
   "unit_sets",
   {
     id: serial("id").primaryKey(),
@@ -122,11 +143,10 @@ export const unitSets = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    collections: jsonb("collections").notNull().$type<string[]>().default([]),
     layout: jsonb("layout").notNull().$type<UnitLayout>(),
   },
   (table) => {
-    return { projectIds: index("unitsets_project_ids").on(table.projectId) };
+    return { projectIds: index("layouts_project_ids").on(table.projectId) };
   },
 );
 
@@ -154,7 +174,7 @@ export const jobSetUnitGroups = pgTable(
       .references(() => jobs.id, { onDelete: "cascade" }),
     unitGroupId: integer("unit_group_id")
       .notNull()
-      .references(() => unitSets.id, { onDelete: "cascade" }),
+      .references(() => layouts.id, { onDelete: "cascade" }),
     rules: jsonb("rules").notNull().$type<Rules>(),
     codebookId: integer("codebook_id").references(() => codebooks.id, { onDelete: "set null" }),
   },

@@ -8,11 +8,11 @@ import { z } from "zod";
 import { createOpenAPIDefinitions } from "../openapiHelpers";
 import { useGet, useMutate, useTableGet } from "../queryHelpers";
 
-export function useProjects(initialParams?: z.infer<typeof ProjectsTableParamsSchema>) {
+export function useProjects(initialParams?: z.input<typeof ProjectsTableParamsSchema>) {
   return useTableGet({
     resource: "projects",
     endpoint: "projects",
-    initialParams,
+    initialParams: initialParams || {},
     responseSchema: ProjectsResponseSchema,
   });
 }

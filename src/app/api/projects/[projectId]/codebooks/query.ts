@@ -13,7 +13,7 @@ export function useCodebooks(projectId: number, initialParams?: z.infer<typeof C
   return useTableGet({
     resource: "codebook",
     endpoint: `projects/${projectId}/codebooks`,
-    initialParams,
+    initialParams: initialParams || {},
     responseSchema: CodebooksResponseSchema,
   });
 }

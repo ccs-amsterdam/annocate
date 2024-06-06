@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1717478595417,
-      "tag": "0000_fast_silverclaw",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1717496280976,
-      "tag": "0001_sloppy_gorilla_man",
+      "when": 1717690699802,
+      "tag": "0000_narrow_strong_guy",
       "breakpoints": true
     }
   ]

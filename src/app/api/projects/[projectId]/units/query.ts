@@ -7,9 +7,9 @@ import {
 } from "./schemas";
 import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
-import { UnitCollectionsResponseSchema } from "./collections/schemas";
+import { UnitsetsResponseSchema } from "./unitsets/schemas";
 
-export function useUnits(projectId: number, initialParams?: z.infer<typeof UnitDataTableParamsSchema>) {
+export function useUnits(projectId: number, initialParams: z.input<typeof UnitDataTableParamsSchema>) {
   return useTableGet({
     resource: "unit",
     endpoint: `projects/${projectId}/units`,
@@ -27,11 +27,11 @@ export function useCreateUnits(projectId: number) {
   });
 }
 
-export function useCollections(projectId: number) {
+export function useUnitsets(projectId: number) {
   return useGet({
-    resource: "unitCollections",
-    endpoint: `projects/${projectId}/units/collections`,
-    responseSchema: z.array(UnitCollectionsResponseSchema),
+    resource: "unitUnitsets",
+    endpoint: `projects/${projectId}/units/unitsets`,
+    responseSchema: z.array(UnitsetsResponseSchema),
   });
 }
 export const openapiUnits = createOpenAPIDefinitions(
@@ -52,9 +52,9 @@ export const openapiUnits = createOpenAPIDefinitions(
       response: UnitDataCreateResponseSchema,
     },
     {
-      path: "/projects/{projectId}/units/collections",
+      path: "/projects/{projectId}/units/unitset",
       method: "get",
-      description: "Get all unit collections",
+      description: "Get all unit unitset",
       response: z.array(UnitDataResponseSchema),
     },
   ],

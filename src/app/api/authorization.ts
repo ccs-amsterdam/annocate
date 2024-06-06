@@ -44,6 +44,7 @@ class TokenVerifier {
     if (!trusted_middlecat) throw new Error("MIDDLECAT_URL not set");
     const res = await fetch(trusted_middlecat + "/api/configuration");
     const config = await res.json();
+
     this.publicKey = config.public_key;
     return this.publicKey;
   }

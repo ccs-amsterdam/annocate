@@ -18,7 +18,7 @@ interface Pagination {
   page: number;
 }
 
-type TableParams = z.infer<typeof TableParamsSchema>;
+type TableParams = z.input<typeof TableParamsSchema>;
 
 export function useTableGet<Params extends TableParams, Response extends z.ZodTypeAny>({
   resource,
@@ -28,12 +28,12 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
 }: {
   resource: string;
   endpoint: string;
-  initialParams?: Params;
+  initialParams: Params;
   responseSchema: Response;
 }) {
   const { user } = useMiddlecat();
   const pageTokens = useRef<Record<number, string>>({ 0: "" });
-  const [params, setParams] = useState(initialParams || {});
+  const [params, setParams] = useState<Params>(initialParams);
 
   const { data, isLoading } = useQuery({
     queryKey: [resource, user, params],
@@ -60,13 +60,13 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
   const nextPage = () => {
     if (!hasNextPage || !data) return;
     const page = data.meta.page + 1;
-    setParams((params) => ({ ...params, nextToken: pageTokens.current[page] || "" }));
+    setParams((params) => ({ ...(params || {}), nextToken: pageTokens.current[page] || "" }));
   };
 
   const prevPage = () => {
     if (!hasPrevPage || !data) return;
     const page = data.meta.page - 1;
-    setParams((params) => ({ ...params, nextToken: pageTokens.current[page] || "" }));
+    setParams((params) => ({ ...(params || {}), nextToken: pageTokens.current[page] || "" }));
   };
 
   const sortBy = (column: string, direction: "asc" | "desc") => {
@@ -89,6 +89,8 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
     hasSearch: "query" in params && !!params.query,
     sortBy,
     search,
+    params,
+    setParams,
     paginate: { nextPage, prevPage, hasNextPage, hasPrevPage },
   };
 }

@@ -1,6 +1,6 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { units } from "@/drizzle/schema";
+import db, { units, unitsets, unitsetUnits } from "@/drizzle/schema";
 import { and, eq, inArray, SQL, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
@@ -10,22 +10,25 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     req,
     tableFunction: (email, urlParams) => {
       const where: SQL[] = [eq(units.projectId, params.projectId)];
-      if (urlParams.collections) where.push(inArray(units.collection, urlParams.collections));
+      if (urlParams.unitsets) where.push(inArray(unitsets.name, urlParams.unitsets));
 
       return db
         .select({
           id: units.externalId,
-          collection: units.collection,
+          unitsets: sql`array_agg(${unitsets.name})`.as("unitsets"),
           data: units.data,
         })
         .from(units)
+        .leftJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
+        .leftJoin(unitsets, eq(unitsetUnits.unitsetId, unitsets.id))
         .where(and(...where))
+        .groupBy(units.id)
         .as("baseQuery");
     },
     paramsSchema: UnitDataTableParamsSchema,
     responseSchema: UnitDataResponseSchema,
     idColumn: "id",
-    queryColumns: ["collection", "id"],
+    queryColumns: ["id"],
   });
 }
 
@@ -35,7 +38,6 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
       const data = body.units.map((unit) => ({
         projectId: params.projectId,
         externalId: unit.id,
-        collection: unit.collection,
         data: unit.data,
       }));
 
@@ -47,7 +49,6 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
             target: [units.projectId, units.externalId],
             set: {
               data: sql`excluded.data`,
-              collection: sql`excluded.collection`,
             },
           });
       } else {

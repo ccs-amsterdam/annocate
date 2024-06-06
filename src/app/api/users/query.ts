@@ -3,11 +3,11 @@ import { useMutate, useTableGet } from "../queryHelpers";
 import { UsersCreateBodySchema, UsersResponseSchema, UsersTableParamsSchema, UsersUpdateBodySchema } from "./schemas";
 import { createOpenAPIDefinitions } from "../openapiHelpers";
 
-export function useUsers(initialParams?: z.infer<typeof UsersTableParamsSchema>) {
+export function useUsers(initialParams?: z.input<typeof UsersTableParamsSchema>) {
   return useTableGet({
     resource: "users",
     endpoint: "users",
-    initialParams,
+    initialParams: initialParams || {},
     responseSchema: UsersResponseSchema,
   });
 }

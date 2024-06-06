@@ -8,7 +8,7 @@ export function useProjectUsers(projectId: number, initialParams?: z.infer<typeo
   return useTableGet({
     resource: "projectusers",
     endpoint: `projects/${projectId}/projectusers`,
-    initialParams,
+    initialParams: initialParams || {},
     responseSchema: ProjectUsersResponseSchema,
   });
 }

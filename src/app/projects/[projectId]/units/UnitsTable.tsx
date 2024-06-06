@@ -1,4 +1,4 @@
-import { useCreateUnits, useUnits } from "@/app/api/projects/[projectId]/units/query";
+import { useUnitsets, useCreateUnits, useUnits } from "@/app/api/projects/[projectId]/units/query";
 import {
   UnitDataResponseSchema,
   UnitDataRowSchema,
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
+import { useUnit } from "@/components/UnitProvider/UnitProvider";
 import { ChevronDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -27,10 +28,11 @@ interface Props {
   projectId: number;
 }
 
-const COLUMNS = ["collection", "id"];
+const COLUMNS = ["id", "unitsets"];
 
 export function UnitsTable({ projectId }: Props) {
-  const useUnitsProps = useUnits(projectId);
+  const useUnitsProps = useUnits(projectId, { unitsets: [] });
+  const { data: unitsets, isLoading: unitsetsLoading } = useUnitsets(projectId);
   const [unit, setUnit] = useState<z.infer<typeof UnitDataResponseSchema>>();
   const router = useRouter();
 
@@ -54,8 +56,32 @@ export function UnitsTable({ projectId }: Props) {
       </div>
     );
   }
+  const selectedUnitsets = useUnitsProps?.params?.unitsets || [];
+
+  function toggleUnitset(unitset: string) {
+    const newUnitsets = selectedUnitsets.includes(unitset) ? [] : [unitset];
+    useUnitsProps.setParams({
+      ...useUnitsProps.params,
+      unitsets: newUnitsets,
+    });
+  }
+
   return (
     <div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {(unitsets || []).map((unitset) => {
+          return (
+            <Button
+              variant={selectedUnitsets.includes(unitset.unitset) ? "secondary" : "outline"}
+              key={unitset.unitset}
+              className={`border-2 border-secondary px-2 py-1`}
+              onClick={() => toggleUnitset(unitset.unitset)}
+            >
+              {unitset.unitset} <span className="ml-1 text-foreground/50">({unitset.count})</span>{" "}
+            </Button>
+          );
+        })}
+      </div>
       <CreateUnitsButton projectId={projectId} />
       <div className="mt-8 w-full">
         <DBTable {...useUnitsProps} onSelect={onSelect} columns={COLUMNS} />
@@ -70,7 +96,7 @@ export function UnitsTable({ projectId }: Props) {
 type CellValue = z.infer<typeof UnitDataValueSchema>;
 type Rows = Record<string, CellValue>[];
 type Columns = string[];
-type Data = { columns: Columns; rows: Rows; possibleId: string[]; id: string; collection: string; overwrite: boolean };
+type Data = { columns: Columns; rows: Rows; possibleId: string[]; id: string; overwrite: boolean };
 type UploadProgress = {
   i: number;
   total: number;
@@ -90,7 +116,6 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
     const overwrite = data.overwrite;
     const batches: z.infer<typeof UnitDataRowSchema>[][] = [];
     const rows = data.rows.map((row) => ({
-      collection: data.collection,
       id: String(row[data.id]),
       data: row,
     }));
@@ -140,7 +165,7 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
         possibleId.push(col);
       }
     });
-    setData({ columns, rows: dataObj, possibleId, id: "", collection: "", overwrite: false });
+    setData({ columns, rows: dataObj, possibleId, id: "", overwrite: false });
   }
 
   function renderForm() {
@@ -156,13 +181,6 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
         <div className="grid grid-cols-[1.2fr,1fr] items-center justify-between gap-3">
           <label className="">Select unique ID column</label>
           <SelectIdDropdown data={data} setData={setData} />
-          <label className="">Set collection label</label>
-          <Input
-            className="min-w-0"
-            placeholder="Collection"
-            value={data.collection}
-            onChange={(e) => setData({ ...data, collection: e.target.value })}
-          />
         </div>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
@@ -175,7 +193,7 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
             <label htmlFor="overwrite">Overwrite if ID exists</label>
           </div>
           <Button
-            disabled={!data.id || !data.collection}
+            disabled={!data.id}
             className=" flex  w-min gap-1"
             variant="secondary"
             onClick={() => startUpload(data)}

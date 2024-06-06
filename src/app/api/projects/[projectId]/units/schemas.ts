@@ -5,17 +5,16 @@ export const UnitDataValueSchema = z.union([z.string(), z.number(), z.boolean()]
 
 export const UnitDataRowSchema = z.object({
   id: z.string(),
-  collection: z.string(),
   data: z.record(z.string(), UnitDataValueSchema),
 });
 
 export const UnitDataTableParamsSchema = TableParamsSchema.extend({
-  collections: z.array(z.string()).optional(),
+  unitsets: z.array(z.string()).optional(),
 });
 
 export const UnitDataResponseSchema = z.object({
   id: z.string(),
-  collection: z.string(),
+  unitsets: z.array(z.string()),
   data: z.record(z.string(), UnitDataValueSchema),
 });
 
