@@ -5,8 +5,15 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1717690699802,
-      "tag": "0000_narrow_strong_guy",
+      "when": 1717737984870,
+      "tag": "0000_greedy_scalphunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1717738656540,
+      "tag": "0001_slow_speed_demon",
       "breakpoints": true
     }
   ]

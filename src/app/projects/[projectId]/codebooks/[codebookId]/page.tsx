@@ -16,7 +16,7 @@ import { LoremIpsum } from "./lorem";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
-export default function Job({ params }: { params: { projectId: number; codebookId: number } }) {
+export default function Codebook({ params }: { params: { projectId: number; codebookId: number } }) {
   const [preview, setPreview] = useState<Codebook | undefined>();
   const { data: codebook, isLoading } = useCodebook(params.projectId, params.codebookId);
 
@@ -25,7 +25,7 @@ export default function Job({ params }: { params: { projectId: number; codebookI
   }, []);
 
   if (isLoading) return <Loading />;
-  if (!codebook) return <div>Codebook not found</div>;
+  if (!codebook) return <div className="ml-10 mt-10">Codebook not found</div>;
 
   return (
     <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-3 lg:grid-cols-2">

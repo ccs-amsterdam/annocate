@@ -1,5 +1,5 @@
 import db, { codebooks, projects } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet, createUpdate } from "@/app/api/routeHelpers";
 import { CodebookResponseSchema, CodebookUpdateBodySchema } from "../schemas";
@@ -8,8 +8,11 @@ import { NextRequest } from "next/server";
 export async function GET(req: NextRequest, { params }: { params: { projectId: number; codebookId: number } }) {
   const { projectId, codebookId } = params;
   return createGet({
-    selectFunction: async (email, params) => {
-      const [codebook] = await db.select().from(codebooks).where(eq(codebooks.id, codebookId));
+    selectFunction: async (email, urlParams) => {
+      const [codebook] = await db
+        .select()
+        .from(codebooks)
+        .where(and(eq(codebooks.projectId, params.projectId), eq(codebooks.id, codebookId)));
       return codebook;
     },
     req,
@@ -24,7 +27,11 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
 export async function POST(req: Request, { params }: { params: { projectId: number; codebookId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      const [codebook] = await db.update(codebooks).set(body).where(eq(codebooks.id, params.codebookId)).returning();
+      const [codebook] = await db
+        .update(codebooks)
+        .set(body)
+        .where(and(eq(codebooks.projectId, params.projectId), eq(codebooks.id, params.codebookId)))
+        .returning();
       return codebook;
     },
     req,

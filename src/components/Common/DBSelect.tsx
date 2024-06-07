@@ -33,6 +33,10 @@ export default function DBSelect<T extends Record<string, Value>>(props: Props<T
 
   const showPagination = props.meta && props.meta.rows > props.meta.pageSize;
 
+  if (props.isLoading) {
+    return <Loading />;
+  }
+
   return (
     <div className={props.className || ""}>
       <div className={` mb-4 flex select-none gap-3  ${showPagination ? "" : "hidden"}`}>

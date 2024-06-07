@@ -13,7 +13,7 @@ import { UsersResponseSchema } from "../api/users/schemas";
 export default function Admin() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-auto flex-col items-center ">
+    <div className="mx-auto mt-10 flex w-full max-w-xl flex-auto flex-col items-center">
       <div className="">
         <h2>Manage users</h2>
         <SimpleDialog

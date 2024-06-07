@@ -14,6 +14,7 @@ import {
   unique,
   index,
   uuid,
+  customType,
 } from "drizzle-orm/pg-core";
 
 import { neon } from "@neondatabase/serverless";
@@ -26,6 +27,17 @@ import { z } from "zod";
 import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
 
 config({ path: ".env.local" });
+
+// postgres-js/drizzle is broken on the jsonb stuff, so this is a workaround till it gets fixed
+const customJsonb = <TData>(name: string) =>
+  customType<{ data: TData; driverData: TData }>({
+    dataType() {
+      return "jsonb";
+    },
+    toDriver(value: TData): TData {
+      return value;
+    },
+  })(name);
 
 // PROJECT TABLES
 
@@ -51,7 +63,7 @@ export const projects = pgTable(
     creator: varchar("creator_email", { length: 256 }).notNull(),
     name: varchar("name", { length: 128 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    config: jsonb("project_config").notNull().$type<ProjectConfig>().default({ description: "" }),
+    config: customJsonb("project_config").notNull().$type<ProjectConfig>().default({ description: "" }),
     frozen: boolean("frozen").notNull().default(false),
   },
   (table) => {
@@ -70,7 +82,7 @@ export const codebooks = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    codebook: jsonb("codebook").notNull().$type<Codebook>(),
+    codebook: customJsonb("codebook").notNull().$type<Codebook>(),
   },
   (table) => {
     return {
@@ -88,7 +100,7 @@ export const units = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     externalId: varchar("unit_id", { length: 256 }).notNull(),
-    data: jsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
+    data: customJsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("modified").notNull().defaultNow(),
   },
@@ -143,10 +155,13 @@ export const layouts = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    layout: jsonb("layout").notNull().$type<UnitLayout>(),
+    layout: customJsonb("layout").notNull().$type<UnitLayout>(),
   },
   (table) => {
-    return { projectIds: index("layouts_project_ids").on(table.projectId) };
+    return {
+      projectIds: index("layouts_project_ids").on(table.projectId),
+      unique: unique("layouts_project_name").on(table.projectId, table.name),
+    };
   },
 );
 
@@ -175,7 +190,7 @@ export const jobSetUnitGroups = pgTable(
     unitGroupId: integer("unit_group_id")
       .notNull()
       .references(() => layouts.id, { onDelete: "cascade" }),
-    rules: jsonb("rules").notNull().$type<Rules>(),
+    rules: customJsonb("rules").notNull().$type<Rules>(),
     codebookId: integer("codebook_id").references(() => codebooks.id, { onDelete: "set null" }),
   },
   (table) => {
@@ -234,8 +249,8 @@ export const jobsetAnnotator = pgTable(
     user: varchar("user_id", { length: 256 }).notNull(),
     jobSetId: integer("jobset_id"),
     email: varchar("email", { length: 256 }), // this is the authenticated email address
-    urlParams: jsonb("url_params").notNull().$type<Record<string, string>>().default({}),
-    statistics: jsonb("statistics").notNull().$type<jobsetAnnotatorStatistics>().default({}),
+    urlParams: customJsonb("url_params").notNull().$type<Record<string, string>>().default({}),
+    statistics: customJsonb("statistics").notNull().$type<jobsetAnnotatorStatistics>().default({}),
   },
   (table) => {
     return {
@@ -267,8 +282,8 @@ export const annotations = pgTable(
     unitId: integer("unit_id").notNull(),
 
     preallocateTime: timestamp("preallocate_time"),
-    annotation: jsonb("annotation").notNull().$type<Annotation[]>(),
-    history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
+    annotation: customJsonb("annotation").notNull().$type<Annotation[]>(),
+    history: customJsonb("history").notNull().$type<AnnotationHistory[]>(),
     status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED"] })
       .$type<ServerUnitStatus>()
       .default("PREALLOCATED"),

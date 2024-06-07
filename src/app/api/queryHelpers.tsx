@@ -95,21 +95,23 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
   };
 }
 
-export function useGet<T>({
+export function useGet<Params extends {}, Response>({
   resource,
   endpoint,
+  params,
   responseSchema,
 }: {
   resource: string;
   endpoint: string;
-  responseSchema: z.ZodType<T>;
+  params?: Params;
+  responseSchema: z.ZodType<Response>;
 }) {
   const { user } = useMiddlecat();
   return useQuery({
     queryKey: [resource, user, endpoint],
     queryFn: async () => {
       if (!user) return;
-      const res = await user.api.get(endpoint);
+      const res = await user.api.get(endpoint, params ? { params } : undefined);
       const data = responseSchema.parse(res.data);
       return data;
     },

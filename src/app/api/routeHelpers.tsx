@@ -33,7 +33,7 @@ type ErrorFunction<T> = (status: number, params?: T) => string | undefined;
 interface CreateGetParams<T> {
   selectFunction: (email: string, params: T) => Promise<any>;
   req: NextRequest;
-  paramSchema?: z.ZodType<T>;
+  paramsSchema?: z.ZodType<T>;
   responseSchema?: z.ZodTypeAny;
   projectId?: number;
   authorizeFunction?: AuthorizeFunction<T>;
@@ -42,7 +42,7 @@ interface CreateGetParams<T> {
 export async function createGet<T>({
   selectFunction,
   req,
-  paramSchema,
+  paramsSchema,
   responseSchema,
   authorizeFunction,
   projectId,
@@ -51,7 +51,7 @@ export async function createGet<T>({
   if (!email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const params = paramSchema ? validateRequestParams(req, paramSchema) : undefined;
+    const params = paramsSchema ? validateRequestParams(req, paramsSchema) : undefined;
     if (authorizeFunction != undefined) {
       const auth = await authorization(email, projectId);
       const authError = await authorizeFunction(auth, params);

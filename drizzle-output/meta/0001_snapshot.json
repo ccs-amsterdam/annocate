@@ -1,6 +1,6 @@
 {
-  "id": "40811155-6deb-4e14-a796-e5892fa38708",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "c408a8b5-f313-4e28-a8be-e67750e86295",
+  "prevId": "40811155-6deb-4e14-a796-e5892fa38708",
   "version": "5",
   "dialect": "pg",
   "tables": {
@@ -477,7 +477,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "layouts_project_name": {
+          "name": "layouts_project_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "name"
+          ]
+        }
+      }
     },
     "managers": {
       "name": "managers",

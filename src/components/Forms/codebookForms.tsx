@@ -157,6 +157,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
           zType={shape.codebook.shape.settings.shape.auto_instruction}
           name="codebook.settings.auto_instruction"
         />
+        {error?.variables?.root ? <div className="text-destructive">{error.variables.root.message}</div> : null}
         <div>
           <Accordion
             value={accordionValue}

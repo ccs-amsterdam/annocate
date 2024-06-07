@@ -1,0 +1,1 @@
+ALTER TABLE "unit_sets" ADD CONSTRAINT "layouts_project_name" UNIQUE("project_id","name");

@@ -7,8 +7,9 @@ class JobServerPreview implements JobServer {
   progress: Progress;
   return_link: string;
   codebookId: string;
+  annotations: Record<string, Annotation[]>;
 
-  constructor(codebook: Codebook, units: RawUnit[]) {
+  constructor(codebook: Codebook, units: RawUnit[], annotations: Record<string, Annotation[]> = {}) {
     this.demodata = {
       units: units.map((u, i) => {
         return {
@@ -30,6 +31,7 @@ class JobServerPreview implements JobServer {
     };
     this.return_link = "/";
     this.codebookId = "demo_codebook";
+    this.annotations = annotations;
   }
 
   async init() {}
@@ -41,11 +43,12 @@ class JobServerPreview implements JobServer {
   async postAnnotations(unit_id: string, annotation: Annotation[], status: Status) {
     try {
       if (!this.demodata.units) throw new Error("No units found");
-      let unit_index = Number(unit_id); // in demo job, we use the index as id
+      this.annotations[unit_id] = annotation;
+      // let unit_index = Number(unit_id); // in demo job, we use the index as id
       //   this.demodata.units[unit_index].annotation = annotation;
       //   this.demodata.units[unit_index].status = this.demodata.units[unit_index].status === "DONE" ? "DONE" : status;
       //   this.progress.n_coded = Math.max(unit_index + 1, this.progress.n_coded);
-      return "DONE";
+      return status;
     } catch (e) {
       console.error(e);
       return "IN_PROGRESS";

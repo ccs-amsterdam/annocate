@@ -12,7 +12,8 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     selectFunction: async (email, params) => {
       return await db
         .select({
-          unitset: unitsets.name,
+          id: unitsets.id,
+          name: unitsets.name,
           count: count(unitsetUnits.unitId),
         })
         .from(unitsets)
@@ -37,7 +38,6 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
         .values({ projectId: params.projectId, name: body.name })
         .onConflictDoNothing()
         .returning();
-
       const unitIds = await db.select({ id: units.id }).from(units).where(inArray(units.externalId, body.unitIds));
 
       const unitsetUnitsValues = unitIds.map((unit) => ({

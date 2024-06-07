@@ -13,15 +13,16 @@ import {
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createTableGet({
     req,
-    tableFunction: (email, urlParams) =>
-      db
+    tableFunction: (email, urlParams) => {
+      return db
         .select({
           id: layouts.id,
           name: layouts.name,
         })
         .from(layouts)
         .where(eq(layouts.projectId, params.projectId))
-        .as("baseQuery"),
+        .as("baseQuery");
+    },
     paramsSchema: UnitLayoutsTableParamsSchema,
     responseSchema: UnitLayoutsResponseSchema,
     idColumn: "id",

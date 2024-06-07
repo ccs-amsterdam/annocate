@@ -72,12 +72,12 @@ export function UnitsTable({ projectId }: Props) {
         {(unitsets || []).map((unitset) => {
           return (
             <Button
-              variant={selectedUnitsets.includes(unitset.unitset) ? "secondary" : "outline"}
-              key={unitset.unitset}
+              variant={selectedUnitsets.includes(unitset.name) ? "secondary" : "outline"}
+              key={unitset.name}
               className={`border-2 border-secondary px-2 py-1`}
-              onClick={() => toggleUnitset(unitset.unitset)}
+              onClick={() => toggleUnitset(unitset.name)}
             >
-              {unitset.unitset} <span className="ml-1 text-foreground/50">({unitset.count})</span>{" "}
+              {unitset.name} <span className="ml-1 text-foreground/50">({unitset.count})</span>{" "}
             </Button>
           );
         })}
@@ -97,11 +97,12 @@ type CellValue = z.infer<typeof UnitDataValueSchema>;
 type Rows = Record<string, CellValue>[];
 type Columns = string[];
 type Data = { columns: Columns; rows: Rows; possibleId: string[]; id: string; overwrite: boolean };
+type DataRow = z.infer<typeof UnitDataRowSchema>;
 type UploadProgress = {
   i: number;
   total: number;
   overwrite: boolean;
-  batches: z.infer<typeof UnitDataRowSchema>[][];
+  batches: DataRow[][];
 };
 
 function CreateUnitsButton({ projectId: projectId }: Props) {
@@ -114,11 +115,13 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
 
   async function startUpload(data: Data) {
     const overwrite = data.overwrite;
-    const batches: z.infer<typeof UnitDataRowSchema>[][] = [];
-    const rows = data.rows.map((row) => ({
-      id: String(row[data.id]),
-      data: row,
-    }));
+    const batches: DataRow[][] = [];
+
+    let rows: DataRow[] = [];
+    data.rows.forEach((row) => {
+      const id = row[data.id];
+      if (id) rows.push({ id: String(id), data: row });
+    });
 
     const batchsize = 100;
     for (let i = 0; i < rows.length; i += batchsize) {

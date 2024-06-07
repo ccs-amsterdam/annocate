@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  UnitLayoutResponseSchema,
   UnitLayoutsCreateBodySchema,
   UnitLayoutsCreateResponseSchema,
   UnitLayoutsResponseSchema,
@@ -41,7 +42,7 @@ export function useUnitLayout(projectId: number, layoutId: number) {
   return useGet({
     resource: "layout",
     endpoint: `projects/${projectId}/units/layouts/${layoutId}`,
-    responseSchema: UnitLayoutsResponseSchema,
+    responseSchema: UnitLayoutResponseSchema,
   });
 }
 

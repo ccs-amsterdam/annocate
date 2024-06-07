@@ -159,7 +159,7 @@ export function DropdownFormField<T extends FieldValues>({ control, name, zType,
                   <ChevronDown className="h-5 w-5 text-primary-foreground hover:text-primary" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="flex flex-col gap-1 p-1" align="start" side="bottom">
+              <DropdownMenuContent className="flex max-w-lg flex-col gap-1 p-1" align="start" side="bottom">
                 {values.map((value) => (
                   <DropdownMenuItem
                     key={value.value}
