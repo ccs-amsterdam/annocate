@@ -1,5 +1,5 @@
 import { Ham, Menu } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 interface Props {
   children: React.ReactNode[] | React.ReactNode;

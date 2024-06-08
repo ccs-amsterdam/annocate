@@ -33,9 +33,11 @@ import {
   UnitTextLayoutSchema,
 } from "@/app/api/projects/[projectId]/units/layouts/schemas";
 import { useColumns } from "@/app/api/projects/[projectId]/units/columns/query";
+import { UnitColumnsResponseSchema } from "@/app/api/projects/[projectId]/units/columns/schemas";
 
 type Layout = z.infer<typeof UnitLayoutSchema>;
 type LayoutUpdateBody = z.input<typeof UnitLayoutsCreateBodySchema>;
+type Column = z.infer<typeof UnitColumnsResponseSchema>;
 
 export function useCreateEmptyLayout(projectId: number) {
   const { mutateAsync } = useCreateUnitLayout(projectId);
@@ -65,6 +67,7 @@ export function useCreateEmptyLayout(projectId: number) {
 interface UpdateLayoutProps {
   projectId: number;
   current: z.infer<typeof UnitLayoutResponseSchema>;
+  columns: Column[];
   afterSubmit?: () => void;
   setPreview?: (layout: Layout | undefined) => void;
 }
@@ -72,6 +75,7 @@ interface UpdateLayoutProps {
 export const UpdateLayout = React.memo(function UpdateLayout({
   projectId,
   current,
+  columns,
   afterSubmit,
   setPreview,
 }: UpdateLayoutProps) {
@@ -81,10 +85,6 @@ export const UpdateLayout = React.memo(function UpdateLayout({
     resolver: zodResolver(UnitLayoutsCreateBodySchema),
     defaultValues: UnitLayoutsCreateBodySchema.parse(current),
   });
-  const [unitsets, setUnitsets] = useState<any>([]);
-  const { data: columns } = useColumns(projectId, unitsets);
-
-  console.log(columns);
 
   const { error } = form.getFieldState("layout");
   const fields = form.getValues("layout.fields");

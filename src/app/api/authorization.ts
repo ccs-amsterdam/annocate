@@ -74,6 +74,10 @@ export async function authorization(email: string, projectId?: number): Promise<
     auth.superAdmin = true;
     auth.role = "admin";
     auth.projectRole = "admin";
+
+    // add if doesn't exist
+    await db.insert(users).values({ email, role: "admin" }).onConflictDoNothing();
+
     return auth;
   }
 

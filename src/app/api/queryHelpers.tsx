@@ -108,7 +108,7 @@ export function useGet<Params extends {}, Response>({
 }) {
   const { user } = useMiddlecat();
   return useQuery({
-    queryKey: [resource, user, endpoint],
+    queryKey: [resource, user, endpoint, params],
     queryFn: async () => {
       if (!user) return;
       const res = await user.api.get(endpoint, params ? { params } : undefined);

@@ -6,14 +6,16 @@ import rehypeExternalLinks from "rehype-external-links";
 import { Button } from "../ui/button";
 
 interface Props {
+  className: string;
+  size?: number;
   children: React.ReactNode;
 }
 
-export function HelpDrawer({ children }: Props) {
+export function HelpDrawer({ className, size = 32, children }: Props) {
   return (
     <Drawer direction="right">
-      <DrawerTrigger className="fixed bottom-5 right-5">
-        <CircleHelp size={32} />
+      <DrawerTrigger className={className}>
+        <CircleHelp size={size} />
       </DrawerTrigger>
       <DrawerContent className="fixed bottom-0 left-auto   right-0 mt-0 h-screen w-[500px] max-w-[90vw]  rounded-none bg-background p-3 py-0 ">
         <div className="prose overflow-auto pb-16 pt-10 dark:prose-invert">{children}</div>

@@ -32,12 +32,10 @@ export async function POST(req: Request) {
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
         const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email));
-        if (!user)
-          throw new Error(
-            `User ${email} is not registered. (You are probably a superadmin, and can register yourself)`,
-          );
+        if (!user) throw new Error(`User ${email} is not registered.`);
         const [project] = await tx.insert(projects).values({ name: body.name, creator: email }).returning();
         await tx.insert(managers).values({ projectId: project.id, userId: user.id, role: "admin" });
+
         return project;
       });
     },

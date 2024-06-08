@@ -9,24 +9,26 @@ import UnitProvider, { useUnit } from "../UnitProvider/UnitProvider";
 import QuestionTask from "../AnnotationInterface/QuestionTask";
 import { Slider } from "../ui/slider";
 import { Annotation } from "@/app/types";
+import { useMiddlecat } from "middlecat-react";
+import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
 
 type Unit = z.infer<typeof UnitDataResponseSchema>;
 type Codebook = z.infer<typeof CodebookSchema>;
 type Layout = z.infer<typeof UnitLayoutSchema>;
 
-// export function Preview({ layout, codebook }: { unit: Unit; layout: Layout; codebook: Codebook }) {
-//   const [jobServer, setJobServer] = useState<JobServerPreview | null>(null);
-//   const annotations = useRef<Record<string, Annotation[]>>({});
+export function Preview({ projectId, layout, codebook }: { projectId: number; layout?: Layout; codebook?: Codebook }) {
+  const { user } = useMiddlecat();
+  const [jobServer, setJobServer] = useState<JobServerPreview | null>(null);
+  const annotations = useRef<Record<string, Annotation[]>>({});
 
-//   useEffect(() => {
-//     if (!layout || !codebook) return;
-//     const unit = { ...unit, unit: { ...unit.unit, codebook: codebook } };
-//     setJobServer(new JobServerPreview(layout, [unit]));
-//   }, [layout, codebook, annotations.current]);
+  useEffect(() => {
+    if (!user) return;
+    setJobServer(new JobServerPreview(projectId, user, codebook, layout, undefined, annotations.current));
+  }, [projectId, user, codebook, layout]);
 
-//   if (!jobServer) return null;
-//   return <PreviewWindow jobServer={jobServer} />;
-// }
+  if (!jobServer) return null;
+  return <PreviewWindow jobServer={jobServer} />;
+}
 
 export function PreviewWindow({ jobServer }: { jobServer: JobServerPreview }) {
   const [focus, setFocus] = useState(false);
@@ -60,10 +62,9 @@ export function PreviewWindow({ jobServer }: { jobServer: JobServerPreview }) {
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
       >
-        <UnitProvider jobServer={jobServer}>
-          <QuestionTask blockEvents={!focus} />
+        <AnnotationInterface jobServer={jobServer}>
           <PreviewAnnotations />
-        </UnitProvider>
+        </AnnotationInterface>
       </div>
     </div>
   );

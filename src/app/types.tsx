@@ -8,6 +8,7 @@ import {
 } from "./api/projects/[projectId]/codebooks/schemas";
 import { z } from "zod";
 import { AnnotationSchema } from "./api/projects/[projectId]/annotations/schemas";
+import { UnitLayoutSchema } from "./api/projects/[projectId]/units/layouts/schemas";
 
 //////////  NEW
 ///////////
@@ -32,6 +33,7 @@ export type Codebook = z.infer<typeof CodebookSchema>;
 export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
+export type Layout = z.infer<typeof UnitLayoutSchema>;
 
 export type ExtendedVariable = Variable & {
   // intermediate values (not stored in backend)

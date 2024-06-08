@@ -71,7 +71,7 @@ export default function Users({ params }: { params: { projectId: number } }) {
 
 function Help() {
   return (
-    <HelpDrawer>
+    <HelpDrawer className="fixed bottom-5 right-5">
       <h3 className="mb-4 ">Manage Units</h3>
       <p>
         Here you manage your coding units. You can upload <b>Unit data</b> and design <b>Layouts</b> for displaying

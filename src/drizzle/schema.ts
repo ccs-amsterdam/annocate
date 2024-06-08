@@ -112,38 +112,6 @@ export const units = pgTable(
   },
 );
 
-export const unitsets = pgTable(
-  "unitsets",
-  {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }).notNull(),
-    created: timestamp("created").notNull().defaultNow(),
-  },
-  (table) => {
-    return {
-      unique: unique("unitsets_project_name").on(table.projectId, table.name),
-    };
-  },
-);
-
-export const unitsetUnits = pgTable(
-  "unitset_units",
-  {
-    unitsetId: integer("unitset_id")
-      .notNull()
-      .references(() => unitsets.id, { onDelete: "cascade" }),
-    unitId: integer("unit_id")
-      .notNull()
-      .references(() => units.id, { onDelete: "cascade" }),
-  },
-  (table) => {
-    return { pk: primaryKey({ columns: [table.unitsetId, table.unitId] }) };
-  },
-);
-
 type UnitLayout = z.input<typeof UnitLayoutSchema>;
 
 export const layouts = pgTable(
@@ -162,6 +130,39 @@ export const layouts = pgTable(
       projectIds: index("layouts_project_ids").on(table.projectId),
       unique: unique("layouts_project_name").on(table.projectId, table.name),
     };
+  },
+);
+
+export const unitsets = pgTable(
+  "unitsets",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }).notNull(),
+    created: timestamp("created").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      projectIds: index("unitsets_project_ids").on(table.projectId),
+      unique: unique("unitsets_project_name").on(table.projectId, table.name),
+    };
+  },
+);
+
+export const unitsetUnits = pgTable(
+  "unitset_units",
+  {
+    unitsetId: integer("unitset_id")
+      .notNull()
+      .references(() => unitsets.id, { onDelete: "cascade" }),
+    unitId: integer("unit_id")
+      .notNull()
+      .references(() => units.id, { onDelete: "cascade" }),
+  },
+  (table) => {
+    return { pk: primaryKey({ columns: [table.unitsetId, table.unitId] }) };
   },
 );
 

@@ -23,7 +23,7 @@ export function AnnotatorLayout({ children }: Props) {
 export function ManagerLayout({ children }: Props) {
   return (
     <div className=" relative flex h-full w-full flex-col items-center">
-      <header className="bg-menu border-primary-light  left-0 top-0 z-0 flex h-[var(--header-height)] w-full justify-center border-b-[1px]  transition-all">
+      <header className="bg-menu left-0  top-0 z-0 flex h-[var(--header-height)] w-full justify-center border-b-[1px] border-primary-light  transition-all">
         <Menu />
       </header>
 

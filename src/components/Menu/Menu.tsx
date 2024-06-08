@@ -6,7 +6,7 @@ import { useParams, useSelectedLayoutSegments } from "next/navigation";
 import { FaChevronRight, FaCog } from "react-icons/fa";
 import { DarkModeButton } from "../Common/Theme";
 import UserMenu from "./UserMenu";
-import ResponsiveButtonGroup from "./ResponsiveButtonGroup";
+import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
 import { ChevronLeft, ChevronRight, Cog } from "lucide-react";
 import React from "react";
 
