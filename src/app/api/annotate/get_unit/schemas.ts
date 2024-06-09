@@ -29,3 +29,11 @@ export const AnnotateUnitSchema = z.object({
   codebook: CodebookSchema.optional(),
   codebook_id: z.number().optional(),
 });
+
+export const AnnotateProgressSchema = z.object({
+  current: z.number(),
+  n_total: z.number(),
+  n_coded: z.number(),
+  seek_backwards: z.boolean().optional(),
+  seek_forwards: z.boolean().optional(),
+});

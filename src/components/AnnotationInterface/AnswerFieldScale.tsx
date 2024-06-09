@@ -45,7 +45,8 @@ const Scale = ({
     return annotations.some((a) => a.variable === variable) ? 1 : 0;
   }
   const nAnswered = countAnswered();
-  const done = items.length === 0 ? nAnswered > 0 : nAnswered > items.length;
+  const done = items.length === 0 ? nAnswered > 0 : nAnswered >= items.length;
+  console.log(items.length, nAnswered, done);
 
   const itemRefs = useMemo(() => {
     return options.map(() => React.createRef<HTMLDivElement>());
@@ -54,7 +55,7 @@ const Scale = ({
   const onKeydown = React.useCallback(
     (event: KeyboardEvent) => {
       const nbuttons = options.length;
-      const nitems = items.length;
+      const nitems = items.length || 1;
       if (selectedButton === undefined) {
         setSelectedButton(0);
         return null;
@@ -81,6 +82,7 @@ const Scale = ({
             if (selectedItem === nitems - 1) newitem = -1;
           }
         }
+
         if (newitem !== null) {
           itemRefs?.[newitem]?.current?.scrollIntoView();
           setSelectedItem(newitem);
@@ -100,6 +102,7 @@ const Scale = ({
             finish: false,
             item: items[selectedItem]?.name,
           });
+          setSelectedItem(selectedItem === nitems - 1 ? -1 : selectedItem + 1);
         }
       }
     },
@@ -152,7 +155,7 @@ const Scale = ({
           onFinish();
         }}
       >
-        {done || items.length === 0 ? <Play /> : `${nAnswered} / ${items.length}`}
+        {done ? <Play /> : `${nAnswered} / ${items.length}`}
       </Button>
     </div>
   );

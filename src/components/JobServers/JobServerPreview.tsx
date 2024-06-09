@@ -15,8 +15,10 @@ import { z } from "zod";
 import { LoremIpsum } from "@/app/projects/[projectId]/codebooks/[codebookId]/lorem";
 import { UnitDataRowSchema } from "@/app/api/projects/[projectId]/units/schemas";
 import { MiddlecatUser } from "middlecat-react";
+import cuid from "cuid";
 
 class JobServerPreview implements JobServer {
+  id: string;
   progress: Progress;
   return_link: string;
   codebook: Codebook;
@@ -34,10 +36,12 @@ class JobServerPreview implements JobServer {
     unitIds?: string[],
     annotations: Record<string, Annotation[]> = {},
   ) {
+    this.id = cuid();
     this.projectId = projectId;
     this.user = user;
     this.codebook = dummyCodebook;
     this.progress = {
+      current: 0,
       n_total: unitIds?.length || dummyUnits.length,
       n_coded: 0,
       seek_backwards: true,
@@ -53,12 +57,24 @@ class JobServerPreview implements JobServer {
   async init() {}
 
   async getUnit(i?: number) {
-    if (i && (i < 0 || i > this.progress.n_total)) return null;
-    if (!this.unitIds) return dummyUnits[i || this.progress.n_coded] || null;
+    let rawUnit: RawUnit | null = null;
+    if (i === undefined || i < 0) i = this.progress.n_coded;
+    if (i > this.progress.n_coded + 1) i = this.progress.n_coded + 1;
 
-    const unitId = this.unitIds[i || this.progress.n_coded];
-    const unit = await this.user.api.get(`/projects/${this.projectId}/units/get`, { params: { id: unitId } });
-    return null;
+    if (i > this.progress.n_total) {
+      this.progress.current = this.progress.n_total + 1;
+      this.progress.n_coded = this.progress.n_total;
+      return { unit: null, progress: this.progress };
+    }
+    if (!this.unitIds) {
+      rawUnit = dummyUnits[i] || null;
+    } else {
+      const unitId = this.unitIds[i];
+      rawUnit = await this.user.api.get(`/projects/${this.projectId}/units/get`, { params: { id: unitId } });
+    }
+    this.progress.current = i;
+    this.progress.n_coded = Math.max(Math.min(i, this.progress.n_total), this.progress.n_coded);
+    return { unit: rawUnit, progress: this.progress };
   }
 
   async postAnnotations(unit_id: string, annotation: Annotation[], status: Status) {
@@ -82,9 +98,7 @@ class JobServerPreview implements JobServer {
 
   async getDebriefing() {
     return {
-      message: "This is the end of the demo job!",
-      link: "/demo",
-      link_text: "return to overview",
+      message: "No more units left!",
     };
   }
 }
@@ -103,7 +117,7 @@ const dummyCodebook: Codebook = {
   ],
 };
 
-const dummyUnits: RawUnit[] = Array.from({ length: 10 }).map((_, i) => {
+const dummyUnits: RawUnit[] = Array.from({ length: 3 }).map((_, i) => {
   return {
     index: i,
     status: "IN_PROGRESS",

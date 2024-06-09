@@ -54,7 +54,7 @@ export function PreviewWindow({ jobServer }: { jobServer: JobServerPreview }) {
       </div>
       <div
         tabIndex={0}
-        className={`border-1 mt-10 rounded-lg  border-foreground/50 bg-foreground/50 p-1  ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`mt-10 overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
         style={{ height: size.height + "px", width: size.width + "px" }}
         onClick={(e) => {
           e.currentTarget.focus();
@@ -62,9 +62,7 @@ export function PreviewWindow({ jobServer }: { jobServer: JobServerPreview }) {
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
       >
-        <AnnotationInterface jobServer={jobServer}>
-          <PreviewAnnotations />
-        </AnnotationInterface>
+        <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
       </div>
     </div>
   );

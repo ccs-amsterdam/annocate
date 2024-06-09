@@ -3,7 +3,7 @@ import Document from "@/components/Document/Document";
 import swipeControl from "@/functions/swipeControl";
 import React, { RefObject, useCallback, useMemo, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
-import Instructions from "./Instructions";
+import ShowQuestion from "./ShowQuestion";
 import QuestionForm from "./QuestionForm";
 // import FeedbackPortal from "./FeedbackPortal";
 import unfoldQuestions from "@/functions/unfoldQuestions";
@@ -70,7 +70,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         <div ref={refs.box} className="oveflow-hidden relative z-20 h-full will-change-auto">
           {/* This div moves around behind the div containing the document to show the swipe code  */}
           <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
-          <div ref={refs.text} className="relative top-0 h-full will-change-auto">
+          <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
             <Document
               unit={unit}
               annotations={[]}
@@ -86,15 +86,11 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
       <div {...menuSwipe} className={` ${singlePage ? "flex-[0_0_auto]" : "flex-[0_1_auto"}`}>
         <QuestionForm
           unit={unit}
+          codebook={codebook}
           annotationLib={annotationLib}
           annotationManager={annotationManager}
           blockEvents={blockEvents}
-        >
-          <Instructions
-            instruction={variable?.instruction || codebook?.settings?.instruction}
-            autoInstruction={codebook?.settings?.auto_instruction || false}
-          />
-        </QuestionForm>
+        />
       </div>
     </div>
   );

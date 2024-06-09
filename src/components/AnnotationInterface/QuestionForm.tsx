@@ -3,7 +3,9 @@ import {
   AnnotationLibrary,
   Answer,
   AnswerItem,
+  Codebook,
   ConditionReport,
+  ExtendedCodebook,
   SetState,
   Unit,
   Variable,
@@ -15,18 +17,17 @@ import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
 import AnswerField from "./AnswerField";
 import QuestionIndexStep from "./QuestionIndexStep";
+import ShowQuestion from "./ShowQuestion";
 
 interface QuestionFormProps {
-  /** Buttons can be passed as children, that will be shown on the topleft of the question form */
-  children: ReactElement | ReactElement[];
-  /** The unit */
   unit: Unit;
+  codebook: Codebook;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   blockEvents: boolean;
 }
 
-const QuestionForm = ({ children, unit, annotationLib, annotationManager, blockEvents }: QuestionFormProps) => {
+const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockEvents }: QuestionFormProps) => {
   const variable = annotationLib.variables[annotationLib.variableIndex];
   const questionRef = useRef<HTMLDivElement>(null);
   const blockAnswer = useRef(false); // to prevent answering double (e.g. with swipe events)
@@ -50,9 +51,9 @@ const QuestionForm = ({ children, unit, annotationLib, annotationManager, blockE
   return (
     <div
       ref={questionRef}
-      className="relative z-30 flex h-full w-full flex-col bg-background  text-[length:inherit] transition-[border]"
+      className="relative z-30 flex h-full w-full flex-col bg-background bg-gradient-to-t from-primary-dark to-primary  text-[length:inherit] text-primary-foreground transition-[border]"
     >
-      <div className="sticky left-0 top-0 z-40 flex w-full  flex-col justify-center border-y border-primary bg-gradient-to-b from-primary/40 from-0% via-primary/20 via-50% to-primary/40 to-100% ">
+      <div className="top-primary sticky left-0 top-0 z-40 flex w-full  flex-col justify-center border-y border-primary-dark  text-primary-foreground ">
         <div className="flex-hidden">
           <QuestionIndexStep
             variables={annotationLib.variables}
@@ -62,15 +63,16 @@ const QuestionForm = ({ children, unit, annotationLib, annotationManager, blockE
           >
             <div className="relative z-20 mb-1 flex flex-auto items-center justify-center py-3 text-[length:inherit] ">
               <div className="  flex items-center justify-between gap-3 text-lg  ">
-                <div>{questionText}</div>
-                <div className="z-50 inline-block translate-y-1">{children}</div>
+                <div className="z-50 inline-block translate-y-1">
+                  <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+                </div>
               </div>
             </div>
           </QuestionIndexStep>
         </div>
       </div>
 
-      <div className="relative flex w-full flex-auto overflow-auto bg-gradient-to-br from-primary/10 to-background py-2 text-[length:inherit] text-foreground">
+      <div className="relative flex w-full flex-auto overflow-auto bg-background/80 py-2 text-[length:inherit] text-foreground">
         <AnswerField
           annotationLib={annotationLib}
           annotationManager={annotationManager}

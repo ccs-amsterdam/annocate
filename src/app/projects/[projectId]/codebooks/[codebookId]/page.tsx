@@ -9,7 +9,7 @@ import UnitProvider, { useUnit } from "@/components/UnitProvider/UnitProvider";
 import { Loading } from "@/components/ui/loader";
 import { Slider } from "@/components/ui/slider";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { LoremIpsum } from "./lorem";

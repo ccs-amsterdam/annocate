@@ -1,8 +1,10 @@
 import { Annotation, Codebook, Status, Progress, JobServer, DemoData, RawUnit, ConditionReport } from "@/app/types";
 import { importCodebook } from "@/functions/codebook";
 import checkConditions from "@/functions/checkConditions";
+import cuid from "cuid";
 
 class JobServerDemo implements JobServer {
+  id: string;
   codebooks: Record<string, Codebook>; // TODO: add codebook interface
   demodata: DemoData;
   progress: Progress;
@@ -10,6 +12,7 @@ class JobServerDemo implements JobServer {
   codebookId: string;
 
   constructor(codebook: Codebook, units: RawUnit[]) {
+    this.id = cuid();
     this.codebooks = { demo_codebook: codebook };
     this.demodata = {
       units: units.map((u, i) => {
@@ -25,6 +28,7 @@ class JobServerDemo implements JobServer {
       }),
     };
     this.progress = {
+      current: 0,
       n_total: units.length,
       n_coded: 0,
       seek_backwards: true,
@@ -45,7 +49,7 @@ class JobServerDemo implements JobServer {
     let unit = this.demodata?.units?.[i];
     // deep copy to make sure no modifications seep into the demodata.units
     unit = JSON.parse(JSON.stringify(unit));
-    return unit || null;
+    return { unit: unit || null, progress: this.progress };
   }
 
   async postAnnotations(unit_id: string, annotation: Annotation[], status: Status) {

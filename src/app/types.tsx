@@ -9,6 +9,7 @@ import {
 import { z } from "zod";
 import { AnnotationSchema } from "./api/projects/[projectId]/annotations/schemas";
 import { UnitLayoutSchema } from "./api/projects/[projectId]/units/layouts/schemas";
+import { AnnotateProgressSchema } from "./api/annotate/get_unit/schemas";
 
 //////////  NEW
 ///////////
@@ -34,6 +35,8 @@ export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
+
+export type Progress = z.infer<typeof AnnotateProgressSchema>;
 
 export type ExtendedVariable = Variable & {
   // intermediate values (not stored in backend)
@@ -63,6 +66,22 @@ export type Annotation = z.infer<typeof AnnotationSchema> & {
   span?: Span;
   select?: () => void;
 };
+
+/**
+ * A class providing everthing needed to run the Annotator component.
+ * In particular, it needs to have a codebook and progress
+ */
+export interface JobServer {
+  id: string;
+  return_link?: string;
+  job_id?: string;
+
+  init: () => void;
+  getUnit: (i?: number) => Promise<{ unit: RawUnit | null; progress: Progress }>;
+  getCodebook: (id: string) => Promise<Codebook>;
+  postAnnotations: (unitId: string, annotation: Annotation[], status: Status) => Promise<Status>;
+  getDebriefing?: () => Promise<Debriefing>;
+}
 
 ///////////
 ///////////
@@ -598,37 +617,8 @@ export interface OauthClients {
   github?: { client_id: string };
 }
 
-/**
- * A class providing everthing needed to run the Annotator component.
- * In particular, it needs to have a codebook and progress
- */
-export interface JobServer {
-  return_link?: string;
-  job_id?: string;
-
-  init: () => void;
-  getUnit: (i?: number) => Promise<RawUnit | null>;
-  getCodebook: (id: string) => Promise<Codebook>;
-  postAnnotations: (unitId: string, annotation: Annotation[], status: Status) => Promise<Status>;
-  getDebriefing?: () => Promise<Debriefing>;
-}
-
 export interface DemoData {
   units?: RawUnit[];
-}
-
-/**
- * An object containing information relevant for codingjob navigation
- */
-export interface Progress {
-  /** Total number of items a coder can coder in this job */
-  n_total: number;
-  /** Number of items that have been coded.  */
-  n_coded: number;
-  /** Should the coder be able to go back to already coded units? */
-  seek_backwards?: boolean;
-  /** Should the coder be able to move forward beyond currently coded units? */
-  seek_forwards?: boolean;
 }
 
 ///// UNIT DATA
