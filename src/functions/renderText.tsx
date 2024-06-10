@@ -3,11 +3,11 @@ import { TextField, Token, RenderedText, FieldRefs } from "@/app/types";
 
 export default function renderText(
   tokens: Token[],
-  textFields: TextField[],
+  text_fields: TextField[],
   containerRef: any,
   fieldRefs: FieldRefs,
 ): RenderedText {
-  const text: RenderedText = textFields.reduce((obj: any, tf: TextField) => {
+  const text: RenderedText = text_fields.reduce((obj: any, tf: TextField) => {
     obj[tf.name] = [];
     return obj;
   }, {});
@@ -24,7 +24,7 @@ export default function renderText(
   let field_name = tokens[0].field;
   let paragraph_nr = tokens[0].paragraph;
 
-  const getTextField = (field_name: string) => textFields.find((tf: TextField) => tf.name === field_name);
+  const getTextField = (field_name: string) => text_fields.find((tf: TextField) => tf.name === field_name);
   let textField = getTextField(field_name);
 
   for (let i = 0; i < tokens.length; i++) {
@@ -76,7 +76,7 @@ const renderField = (
   return (
     <div
       ref={fieldRefs[field]}
-      className="field prose dark:prose-invert max-w-none"
+      className="field prose max-w-none dark:prose-invert"
       key={"tokens-" + field}
       style={{
         gridArea: textField?.grid_area,
@@ -117,13 +117,7 @@ const renderParagraph = (
     );
 
   return (
-    <p
-      key={"par" + textField?.name + "_" + paragraph_nr}
-      className="paragraph noselect"
-      // style={{
-      //   padding: "0px 10px 0px 10px",
-      // }}
-    >
+    <p key={"par" + textField?.name + "_" + paragraph_nr} className="paragraph noselect">
       {tokens}
     </p>
   );
@@ -136,10 +130,9 @@ const renderToken = (token: Token, codingUnit: boolean, keyChain: number) => {
   }
 
   return (
-    <>
+    <React.Fragment key={"token" + token.index + "_" + keyChain}>
       {"  "} {/* hack for safari, which doesn't wrap adjacent span tags */}
       <span
-        key={"token" + token.index + "_" + keyChain}
         tabIndex={token.index}
         ref={token.ref}
         className={codingUnit ? "token codingUnit" : "token"}
@@ -159,6 +152,6 @@ const renderToken = (token: Token, codingUnit: boolean, keyChain: number) => {
           <mark className="relation" />
         </span>
       </span>
-    </>
+    </React.Fragment>
   );
 };

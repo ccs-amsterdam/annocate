@@ -2,10 +2,10 @@ import { createRef } from "react";
 import { MarkdownField, RenderedMarkdown } from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 
-export default function renderMarkdown(markdownFields: MarkdownField[], fieldRefs: any): RenderedMarkdown {
+export default function renderMarkdown(markdown_fields: MarkdownField[], fieldRefs: any): RenderedMarkdown {
   const rm: RenderedMarkdown = {};
 
-  for (let markdownField of markdownFields) {
+  for (let markdownField of markdown_fields) {
     fieldRefs[markdownField.name] = createRef();
 
     // It should not be possible that value is an array due to unfoldFields,

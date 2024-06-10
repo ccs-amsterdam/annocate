@@ -7,14 +7,14 @@ import { TextField, Token, RawToken, RawTokenColumn } from "@/app/types";
 
 /**
  * Tokenize a document, but allowing for multiple text fields to be concatenated as different fields.
- * @param {*} textFields  An array of objects, where each object has the structure {name, value}. 'name' becomes the name of the field, 'value' is the text
+ * @param {*} text_fields  An array of objects, where each object has the structure {name, value}. 'name' becomes the name of the field, 'value' is the text
  *                         each item can also have an 'offset' key with an integer value, in case the value is a subset starting at the [offset] character (this is needed to get the correct positions in the original document)
  *                         each item can also have a 'unit_start' and 'unit_end' key, each with an integer value to indicate where in this textField the codingUnit starts/ends.
  *                         If both unit_start and unit_end is omitted, the whole text is considered codingUnit.
  *                         As an alternative to unit_start and unit_end, can also have context_before and context_after to specify context, which should both be strings
  * @returns
  */
-export const parseTokens = (textFields: TextField[]): Token[] => {
+export const parseTokens = (text_fields: TextField[]): Token[] => {
   const tokens: Token[] = [];
   let token = null;
   let paragraph = 0; // offset can be used if position in original article is known
@@ -23,12 +23,12 @@ export const parseTokens = (textFields: TextField[]): Token[] => {
   let text = null;
 
   let has_unit_start = false;
-  for (let textField of textFields)
+  for (let textField of text_fields)
     if (textField.unit_start != null || textField.context_before != null) has_unit_start = true;
   let unit_started = !has_unit_start; // if unit start not specified, start from beginning
   let unit_ended = false;
 
-  for (let textField of textFields) {
+  for (let textField of text_fields) {
     let field = textField.name || "text";
     let offset = textField.offset || 0;
 
@@ -69,7 +69,6 @@ export const parseTokens = (textFields: TextField[]): Token[] => {
             pre: sent === 0 && term === 0 ? " " + token.pre : token.pre, // add whitespace to first token. (Will be ignored if not needed due to how html is rendered)
             post: token.post,
             codingUnit: unit_started && !unit_ended,
-            annotations: [],
           };
           tokens.push(tokenobj);
           tokenIndex++;
@@ -169,7 +168,6 @@ export const importTokens = (tokens: RawToken[] | RawTokenColumn): Token[] | nul
       pre: token.pre ?? "",
       post: token.post ?? "",
       codingUnit: token.codingUnit ?? true,
-      annotations: token.annotations ?? [],
     };
     preparedTokens.push(preparedToken);
   }

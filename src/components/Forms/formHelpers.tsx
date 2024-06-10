@@ -320,7 +320,6 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
       name={name}
       render={({ field }) => {
         const items = field.value || ([] as CodebookVariableItem[]);
-        console.log(items);
         function setItem(index: number, key: "name" | "label", value: string) {
           items[index][key] = value;
           field.onChange(items);

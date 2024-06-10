@@ -3,13 +3,13 @@ import AnnotateNavigation from "./components/AnnotateNavigation";
 import Body from "./components/Body";
 import useSpanSelector from "./hooks/useSpanSelector";
 import useRelationSelector from "./hooks/useRelationSelector";
-import useUnit from "./hooks/useUnit";
 import SelectVariable from "./components/SelectVariable";
 
 import useVariableMap from "./components/useVariableMap";
-import { VariableMap, Unit, Annotation, SetState, TriggerSelector, ExtendedVariable } from "@/app/types";
+import { VariableMap, ExtendedUnit, Annotation, SetState, TriggerSelector, ExtendedVariable } from "@/app/types";
 import { useCallback } from "react";
 import styled from "styled-components";
+import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 
 const DocumentContainer = styled.div`
   display: flex;
@@ -24,16 +24,8 @@ const DocumentContainer = styled.div`
 `;
 
 interface DocumentProps {
-  /** A unit object, as created in JobServerClass (or standardizeUnit) */
-  unit: Unit;
-  /** An array of annotations */
-  annotations: Annotation[];
   /** An array of variables */
   variables?: ExtendedVariable[];
-  /** An object with settings. Supports "editAll" (and probably more to come) */
-  settings?: {
-    [key: string]: any;
-  };
   /** If true, always show all annotations. This makes sense if the annotations property
    * is already the selection you need. But when coding multiple variables, it can be
    * better to set to false, so coders only see annotations of the variable they're working on
@@ -67,10 +59,7 @@ interface DocumentProps {
  * and easy to use, but behind the scenes it gets dark real fast.
  */
 const Document = ({
-  unit,
-  annotations,
   variables,
-  settings,
   showAll,
   onChangeAnnotations,
   returnVariableMap,
@@ -81,25 +70,29 @@ const Document = ({
   centered,
   bodyStyle,
 }: DocumentProps) => {
+  const {
+    unit: { content },
+    annotationLib,
+    annotationManager,
+  } = useUnit();
+
   const [selectedVariable, setSelectedVariable] = useState<string>("");
   const [variable, fullVariableMap, variableMap, showValues, variableType] = useVariableMap(
     variables,
     selectedVariable,
   );
 
-  const [doc, annotationLib, annotationManager] = useUnit(unit, annotations, fullVariableMap, onChangeAnnotations);
-
   // keep track of current tokens object, to prevent rendering annotations on the wrong text
-  const [currentUnit, setCurrentUnit] = useState(doc);
+  const [currentUnit, setCurrentUnit] = useState(content);
 
   const [spanSelectorPopup, spanSelector, spanSelectorOpen] = useSpanSelector(
-    doc,
+    content,
     annotationLib,
     annotationManager,
     variable,
   );
   const [relationSelectorPopup, relationSelector, relationSelectorOpen] = useRelationSelector(
-    doc,
+    content,
     annotationLib,
     annotationManager,
     variable,
@@ -115,16 +108,16 @@ const Document = ({
 
   const onBodyReady = useCallback(() => {
     if (onReady) onReady();
-    setCurrentUnit(doc);
-  }, [onReady, doc, setCurrentUnit]);
+    setCurrentUnit(content);
+  }, [onReady, content, setCurrentUnit]);
 
   const triggerSelector = variableType === "relation" ? relationSelector : spanSelector;
   const selectorOpen = variableType === "relation" ? relationSelectorOpen : spanSelectorOpen;
   const selectorPopup = variableType === "relation" ? relationSelectorPopup : spanSelectorPopup;
   const annotationMode = variableType === "relation" ? "relationMode" : "spanMode";
-  const currentUnitReady = currentUnit === doc;
+  const currentUnitReady = currentUnit === content;
 
-  if (!doc.tokens && !doc.imageFields) return null;
+  if (!content.tokens && !content.image_fields) return null;
 
   const editMode = variable && "editMode" in variable ? !!variable.editMode : false;
 
@@ -138,12 +131,12 @@ const Document = ({
       />
 
       <Body
-        tokens={doc.tokens}
-        textFields={doc.textFields || []}
-        metaFields={doc.metaFields || []}
-        imageFields={doc.imageFields || []}
-        markdownFields={doc.markdownFields || []}
-        grid={doc.grid}
+        tokens={content.tokens}
+        text_fields={content.text_fields || []}
+        metaFields={[]}
+        image_fields={content.image_fields || []}
+        markdown_fields={content.markdown_fields || []}
+        grid={content.grid}
         onReady={onBodyReady}
         bodyStyle={bodyStyle}
         focus={focus}
@@ -153,7 +146,7 @@ const Document = ({
       />
 
       <AnnotateNavigation
-        tokens={doc.tokens || []}
+        tokens={content.tokens || []}
         annotationLib={annotationLib}
         variable={variable}
         variableType={variableType}

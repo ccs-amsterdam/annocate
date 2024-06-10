@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
-import { useUnit } from "@/components/UnitProvider/UnitProvider";
+import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { ChevronDown, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";

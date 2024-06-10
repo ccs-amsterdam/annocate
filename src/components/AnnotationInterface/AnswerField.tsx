@@ -5,8 +5,9 @@ import SelectCode from "./AnswerFieldSelectCode";
 import Scale from "./AnswerFieldScale";
 import Annotinder from "./AnswerFieldAnnotinder";
 import useSpeedBump from "@/hooks/useSpeedBump";
-import { useUnit } from "../UnitProvider/UnitProvider";
+import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import { toast } from "sonner";
+import { m } from "next-usequerystate/dist/serializer-C_l8WgvO";
 
 interface AnswerFieldProps {
   annotationLib: AnnotationLibrary;
@@ -27,8 +28,7 @@ export interface OnSelectParams {
 }
 
 const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: AnswerFieldProps) => {
-  const { index, selectUnit } = useUnit();
-  const [answerItems, setAnswerItems] = useState<AnswerItem[] | null>(null);
+  const { unit, height, progress, selectUnit } = useUnit();
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +36,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   const variableIndex = annotationLib.variableIndex;
   const variable = variables?.[variableIndex];
 
-  const speedbump = useSpeedBump(annotationLib.unitId + annotationLib.variableIndex, 100);
+  const speedbump = useSpeedBump(String(progress.current || "") + annotationLib.variableIndex, 100);
 
   useEffect(() => {
     // if answer changed but has not been saved, warn users when they try to close the app
@@ -51,7 +51,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [variables, variableIndex, answerItems]);
+  }, [variables, variableIndex]);
 
   useEffect(() => {
     const el = answerRef.current;
@@ -64,7 +64,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     }
 
     // first do a quick update, using a small delay that is enough for most content
-    const timer = setTimeout(() => resize(), 50);
+    const timer = setTimeout(() => resize(), 500);
     // then check whether height needs to change with short intervalls. This is fairly inexpensive
     // and ensures that theres no issues when content is slow to load (e.g., images)
     const interval = setInterval(() => {
@@ -92,7 +92,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
 
   const onFinish = () => {
     annotationManager.finishVariable().then((res) => {
-      if (res.status === "DONE") selectUnit((index || 0) + 1);
+      if (res.status === "DONE") selectUnit((progress.current || 0) + 1);
     });
   };
 
@@ -176,12 +176,19 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   if (annotationLib.previousIndex < variableIndex) animate = "animate-slide-in-right";
   if (annotationLib.previousIndex > variableIndex) animate = "animate-slide-in-left";
 
+  const maxHeightPercent = unit.type === "survey" ? 100 : 40;
+
   return (
     <div
       ref={answerRef}
       className={`relative mx-0 my-auto grid  w-full grid-rows-[auto] overflow-hidden   p-0 text-[length:inherit] text-foreground transition-all `}
     >
-      <div className={`${animate} mt-auto max-h-96 w-full overflow-auto`}>{answerfield}</div>
+      <div
+        className={`${animate} mt-auto w-full overflow-auto`}
+        style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
+      >
+        <div className="py-2">{answerfield}</div>
+      </div>
     </div>
   );
 };

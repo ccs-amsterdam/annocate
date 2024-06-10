@@ -1,5 +1,13 @@
 import { ReactElement, useEffect, useMemo, useState } from "react";
-import { Annotation, AnnotationLibrary, Codebook, ExtendedCodebook, SessionData, Unit, Variable } from "@/app/types";
+import {
+  Annotation,
+  AnnotationLibrary,
+  Codebook,
+  ExtendedCodebook,
+  SessionData,
+  ExtendedUnit,
+  Variable,
+} from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 import styled from "styled-components";
 import { FaQuestionCircle } from "react-icons/fa";
@@ -7,11 +15,11 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import useSessionStorage from "@/hooks/useSessionStorage";
 import hash from "object-hash";
 import { Info } from "lucide-react";
-import { useUnit } from "../UnitProvider/UnitProvider";
+import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import React from "react";
 
 interface InstructionsProps {
-  unit: Unit;
+  unit: ExtendedUnit;
   annotationLib: AnnotationLibrary;
   codebook: Codebook;
 }
@@ -58,9 +66,9 @@ const ShowQuestion = ({ unit, annotationLib, codebook }: InstructionsProps) => {
         setOpen(!!instruction && open);
       }}
     >
-      <DialogTrigger className={`relative ${instruction ? "cursor-pointer" : "cursor-default"}`}>
+      <DialogTrigger className={`relative  ${instruction ? "cursor-pointer" : "cursor-default"}`}>
         {questionText}
-        <Info className={`absolute -right-5 -top-2 h-4  w-4 opacity-80 ${instruction ? "" : "hidden"}`} />
+        <Info className={` absolute -right-4 -top-2  h-4 w-4 opacity-80 ${instruction ? "" : "hidden"}`} />
       </DialogTrigger>
       <DialogContent className="prose w-[90vw] max-w-[800px] dark:prose-invert">
         <Markdown
@@ -74,7 +82,7 @@ const ShowQuestion = ({ unit, annotationLib, codebook }: InstructionsProps) => {
     </Dialog>
   );
 };
-const prepareQuestion = (unit: Unit, question: Variable, annotations: Annotation[]) => {
+const prepareQuestion = (unit: ExtendedUnit, question: Variable, annotations: Annotation[]) => {
   if (!question?.question) return <div />;
   let preparedQuestion = question.question;
 
@@ -88,8 +96,8 @@ const prepareQuestion = (unit: Unit, question: Variable, annotations: Annotation
       const m0: string = m[0];
       const m1: string = m[1];
       let value;
-      if (unit.unit.variables) {
-        value = unit.unit.variables[m1];
+      if (unit.content.variables) {
+        value = unit.content.variables[m1];
       }
       value = annotations.find((a) => a.variable === m1)?.code || value;
 

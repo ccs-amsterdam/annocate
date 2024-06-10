@@ -5,7 +5,6 @@ import {
   AnnotationLibrary,
   AnnotationMap,
   AnnotationRelation,
-  Answer,
   Code,
   CodeHistory,
   CodeMap,
@@ -17,7 +16,7 @@ import {
   Status,
   Token,
   TokenAnnotations,
-  Unit,
+  ExtendedUnit,
   ValidRelation,
   VariableMap,
   VariableStatus,
@@ -27,19 +26,16 @@ import { getColor } from "@/functions/tokenDesign";
 import cuid from "cuid";
 import randomColor from "randomcolor";
 import { useEffect, useState } from "react";
-import checkConditions from "./checkConditions";
-import { addAnnotationsFromAnswer } from "./mapAnswersToAnnotations";
-import { headers } from "next/headers";
 import { toast } from "sonner";
 
-export function useAnnotationManager(unit: Unit, codebook: ExtendedCodebook) {
+export function useAnnotationManager(unit: ExtendedUnit, codebook: ExtendedCodebook) {
   const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(() =>
-    createAnnotationLibrary(unit, codebook, unit.unit.annotations || []),
+    createAnnotationLibrary(unit, codebook, unit.annotations),
   );
   const [annotationManager] = useState<AnnotationManager>(() => new AnnotationManager(setAnnotationLib));
 
   useEffect(() => {
-    setAnnotationLib(createAnnotationLibrary(unit, codebook, unit.unit.annotations || []));
+    setAnnotationLib(createAnnotationLibrary(unit, codebook, unit.annotations || []));
   }, [unit, codebook]);
 
   return { annotationLib, annotationManager };
@@ -55,12 +51,9 @@ export default class AnnotationManager {
     this.annotationLib = {
       type: "code",
       status: "IN_PROGRESS",
-      conditionals: [],
-      conditionReport: null,
       annotations: {},
       byToken: {},
       codeHistory: {},
-      unitId: "",
       variables: [],
       variableIndex: 0,
       variableStatuses: [],
@@ -71,12 +64,12 @@ export default class AnnotationManager {
     this.postAnnotations = async (status: Status) => "IN_PROGRESS";
   }
 
-  initAnnotationLibrary(jobServer: JobServer, unit: Unit, codebook: ExtendedCodebook) {
-    const annotationLib = createAnnotationLibrary(unit, codebook, unit.unit.annotations || []);
+  initAnnotationLibrary(jobServer: JobServer, unit: ExtendedUnit, codebook: ExtendedCodebook) {
+    const annotationLib = createAnnotationLibrary(unit, codebook, unit.annotations);
     this.updateAnnotationLibrary(annotationLib);
     this.postAnnotations = async (status: Status) => {
       try {
-        return await jobServer.postAnnotations(unit.unitId, Object.values(this.annotationLib.annotations), status);
+        return await jobServer.postAnnotations(unit.token, Object.values(this.annotationLib.annotations), status);
       } catch (e) {
         console.error("Error posting annotations", e);
         toast.error("Error posting annotations");
@@ -87,10 +80,7 @@ export default class AnnotationManager {
 
   updateAnnotationLibrary(annotationLib: AnnotationLibrary) {
     this.annotationLib = annotationLib;
-    this.setAnnotationLib({
-      ...annotationLib,
-      variableStatuses: computeVariableStatuses(annotationLib.variables, Object.values(annotationLib.annotations)),
-    });
+    this.setAnnotationLib({ ...annotationLib });
   }
 
   async finishVariable() {
@@ -99,7 +89,10 @@ export default class AnnotationManager {
       return { status, conditionReport: null };
     } else {
       const status = await this.postAnnotations("IN_PROGRESS");
+      this.annotationLib.variableStatuses[this.annotationLib.variableIndex] = "done";
+      this.updateAnnotationLibrary(this.annotationLib);
       this.setVariableIndex(this.annotationLib.variableIndex + 1);
+      console.log(this.annotationLib.variableIndex);
       return { status, conditionReport: null };
     }
   }
@@ -124,7 +117,6 @@ export default class AnnotationManager {
       annotations,
       codeHistory: updateCodeHistory(this.annotationLib.codeHistory, annotation),
       byToken: newTokenDictionary(annotations),
-      conditionReport: checkConditions(this.annotationLib),
     });
   }
 
@@ -208,7 +200,6 @@ export default class AnnotationManager {
       annotations: newAnnotations,
       byToken: newTokenDictionary(this.annotationLib.annotations),
       codeHistory: updateCodeHistory(this.annotationLib.codeHistory, annotation),
-      conditionReport: checkConditions(this.annotationLib),
     });
   }
 
@@ -248,7 +239,7 @@ export default class AnnotationManager {
 }
 
 export function createAnnotationLibrary(
-  unit: Unit,
+  unit: ExtendedUnit,
   codebook: ExtendedCodebook,
   annotations: Annotation[],
 ): AnnotationLibrary {
@@ -258,7 +249,7 @@ export function createAnnotationLibrary(
 
   annotationArray = repairAnnotations(annotationArray, variableMap);
 
-  annotationArray = addTokenIndices(annotationArray, unit.unit.tokens || []);
+  annotationArray = addTokenIndices(annotationArray, unit.content.tokens || []);
   const annotationDict: AnnotationDictionary = {};
 
   for (let a of annotationArray) {
@@ -270,14 +261,11 @@ export function createAnnotationLibrary(
   }
 
   return {
-    type: unit.unitType,
+    type: unit.type,
     status: unit.status,
-    conditionals: unit.conditionals || [],
     annotations: annotationDict,
     byToken: newTokenDictionary(annotationDict),
     codeHistory: initializeCodeHistory(annotationArray),
-    unitId: unit.unitId,
-    conditionReport: unit.report || null,
     variables: codebook.variables,
     variableIndex: 0,
     variableStatuses: computeVariableStatuses(codebook.variables, annotationArray),
@@ -343,6 +331,7 @@ function computeVariableStatuses(variables: ExtendedVariable[], annotations: Ann
     const items = "items" in variable ? variable.items : undefined;
     const suffices = items && items?.length > 0 ? items.map((i) => i.name) : [""];
 
+    let started = false;
     for (let suffix of suffices) {
       const v = suffix ? `${variable.name}.${suffix}` : variable.name;
       for (let a of annotations) {
@@ -350,10 +339,13 @@ function computeVariableStatuses(variables: ExtendedVariable[], annotations: Ann
         if (!a.code) continue;
         if (!codeMap[a.code]) continue;
 
-        variableStatuses[i] = "done";
+        started = true;
         break;
       }
     }
+    if (started) {
+      if (i > 0) variableStatuses[i - 1] = "done";
+    } else break;
   }
   return variableStatuses;
 }

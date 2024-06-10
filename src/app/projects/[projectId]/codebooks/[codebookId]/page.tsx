@@ -5,7 +5,7 @@ import { RawUnit } from "@/app/types";
 import QuestionTask from "@/components/AnnotationInterface/QuestionTask";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
 import JobServerPreview from "@/components/JobServers/JobServerPreview";
-import UnitProvider, { useUnit } from "@/components/UnitProvider/UnitProvider";
+import AnnotatorProvider, { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { Loading } from "@/components/ui/loader";
 import { Slider } from "@/components/ui/slider";
 import useLocalStorage from "@/hooks/useLocalStorage";
@@ -114,21 +114,3 @@ function PreviewAnnotations() {
   //   </div>
   // );
 }
-
-const rawPreviewUnit: RawUnit = {
-  index: 0,
-  status: "IN_PROGRESS",
-  id: "id",
-  type: "code",
-  unit: {
-    codebookId: "demo_codebook",
-    annotations: [],
-    text_fields: [
-      { name: "title", value: LoremIpsum.split("\n\n")[0], style: { fontSize: "1.2rem", fontWeight: "bold" } },
-      {
-        name: "lorem",
-        value: LoremIpsum.split("\n\n").slice(1).join("\n\n"),
-      },
-    ],
-  },
-};

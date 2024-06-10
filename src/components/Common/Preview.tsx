@@ -5,7 +5,7 @@ import useLocalStorage from "@/hooks/useLocalStorage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import JobServerPreview from "../JobServers/JobServerPreview";
-import UnitProvider, { useUnit } from "../UnitProvider/UnitProvider";
+import AnnotatorProvider, { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import QuestionTask from "../AnnotationInterface/QuestionTask";
 import { Slider } from "../ui/slider";
 import { Annotation } from "@/app/types";
@@ -43,18 +43,11 @@ export function PreviewWindow({ jobServer }: { jobServer: JobServerPreview }) {
   if (!jobServer) return null;
 
   return (
-    <div className="flex w-full flex-col items-center">
-      <div className="mt-10 grid w-96 grid-cols-[4rem,1fr,4rem] gap-2">
-        <div>Width</div>
-        <Slider min={300} max={800} value={[size.width]} onValueChange={(width) => setSize({ ...size, width })} />
-        <div>{size.width} px</div>
-        <div>Height</div>
-        <Slider min={500} max={800} value={[size.height]} onValueChange={(height) => setSize({ ...size, height })} />
-        <div>{size.height} px</div>
-      </div>
+    <div className="mt-10 flex w-full flex-col items-center">
+      <PreviewSize size={size} setSize={setSize} />
       <div
         tabIndex={0}
-        className={`mt-10 overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`mt-10 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
         style={{ height: size.height + "px", width: size.width + "px" }}
         onClick={(e) => {
           e.currentTarget.focus();
@@ -64,6 +57,35 @@ export function PreviewWindow({ jobServer }: { jobServer: JobServerPreview }) {
       >
         <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
       </div>
+    </div>
+  );
+}
+
+function PreviewSize({
+  size,
+  setSize,
+}: {
+  size: { width: number; height: number };
+  setSize: (size: { width: number; height: number }) => void;
+}) {
+  return (
+    <div className="grid w-full max-w-[300px] grid-cols-[4rem,1fr]  gap-2 px-4">
+      <div>Width</div>
+      <Slider
+        min={300}
+        max={800}
+        value={[size.width]}
+        onValueChange={(width) => setSize({ ...size, width: width[0] })}
+      />
+      {/* <div>{size.width} px</div> */}
+      <div>Height</div>
+      <Slider
+        min={500}
+        max={800}
+        value={[size.height]}
+        onValueChange={(height) => setSize({ ...size, height: height[0] })}
+      />
+      {/* <div>{size.height} px</div> */}
     </div>
   );
 }

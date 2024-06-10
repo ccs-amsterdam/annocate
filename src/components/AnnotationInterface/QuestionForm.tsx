@@ -1,18 +1,5 @@
-import {
-  Annotation,
-  AnnotationLibrary,
-  Answer,
-  AnswerItem,
-  Codebook,
-  ConditionReport,
-  ExtendedCodebook,
-  SetState,
-  Unit,
-  Variable,
-} from "@/app/types";
+import { Annotation, AnnotationLibrary, Codebook, ExtendedUnit, Variable } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
-import { getMakesIrrelevantArray, processIrrelevantBranching } from "@/functions/irrelevantBranching";
-import { addAnnotationsFromAnswer } from "@/functions/mapAnswersToAnnotations";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
 import AnswerField from "./AnswerField";
@@ -20,7 +7,7 @@ import QuestionIndexStep from "./QuestionIndexStep";
 import ShowQuestion from "./ShowQuestion";
 
 interface QuestionFormProps {
-  unit: Unit;
+  unit: ExtendedUnit;
   codebook: Codebook;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
@@ -30,12 +17,6 @@ interface QuestionFormProps {
 const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockEvents }: QuestionFormProps) => {
   const variable = annotationLib.variables[annotationLib.variableIndex];
   const questionRef = useRef<HTMLDivElement>(null);
-  const blockAnswer = useRef(false); // to prevent answering double (e.g. with swipe events)
-
-  const questionText = useMemo(
-    () => prepareQuestion(unit, variable, Object.values(annotationLib.annotations)),
-    [unit, variable, annotationLib],
-  );
 
   useEffect(() => {
     const container = questionRef.current;
@@ -53,7 +34,7 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
       ref={questionRef}
       className="relative z-30 flex h-full w-full flex-col bg-background bg-gradient-to-t from-primary-dark to-primary  text-[length:inherit] text-primary-foreground transition-[border]"
     >
-      <div className="top-primary sticky left-0 top-0 z-40 flex w-full  flex-col justify-center border-y border-primary-dark  text-primary-foreground ">
+      <div className="top-primary sticky left-0 top-0 z-40 flex w-full  flex-col justify-center border-y-2 border-primary-dark  text-primary-foreground ">
         <div className="flex-hidden">
           <QuestionIndexStep
             variables={annotationLib.variables}
@@ -72,23 +53,14 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
         </div>
       </div>
 
-      <div className="relative flex w-full flex-auto overflow-auto bg-background/80 py-2 text-[length:inherit] text-foreground">
-        <AnswerField
-          annotationLib={annotationLib}
-          annotationManager={annotationManager}
-          // answers={answers}
-          // questions={questions}
-          // questionIndex={questionIndex}
-          // onAnswer={onAnswer}
-          // swipe={swipe}
-          blockEvents={blockEvents}
-        />
+      <div className="relative flex w-full flex-auto overflow-auto bg-background/80  text-[length:inherit] text-foreground">
+        <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
       </div>
     </div>
   );
 };
 
-const prepareQuestion = (unit: Unit, question: Variable, annotations: Annotation[]) => {
+const prepareQuestion = (unit: ExtendedUnit, question: Variable, annotations: Annotation[]) => {
   if (!question?.question) return <div />;
   let preparedQuestion = question.question;
 
@@ -102,8 +74,8 @@ const prepareQuestion = (unit: Unit, question: Variable, annotations: Annotation
       const m0: string = m[0];
       const m1: string = m[1];
       let value;
-      if (unit.unit.variables) {
-        value = unit.unit.variables[m1];
+      if (unit.content.variables) {
+        value = unit.content.variables[m1];
       }
       value = annotations.find((a) => a.variable === m1)?.code || value;
 
@@ -136,114 +108,6 @@ const markedString = (text: string) => {
       }, [])}
     </>
   );
-};
-
-const processAnswer = async (
-  items: AnswerItem[],
-  onlySave = false,
-  unit: Unit,
-  questions: Variable[],
-  answers: Answer[],
-  questionIndex: number,
-  nextUnit: () => void,
-  setAnswers: SetState<Answer[] | null>,
-  setQuestionIndex: SetState<number>,
-  setConditionReport: SetState<ConditionReport | null>,
-  transition: (nextUnit: boolean) => void,
-  blockAnswer: any,
-): Promise<void> => {
-  if (blockAnswer.current) return;
-  if (!questions[questionIndex] || !unit || !answers) return;
-
-  blockAnswer.current = true;
-
-  const variable = questions[questionIndex];
-  const codes = "codes" in variable ? variable.codes : [];
-
-  try {
-    answers[questionIndex].items = items;
-    answers[questionIndex].makes_irrelevant = getMakesIrrelevantArray(items, codes);
-
-    unit.unit.annotations = addAnnotationsFromAnswer(answers[questionIndex], unit.unit.annotations);
-    const irrelevantQuestions = processIrrelevantBranching(unit, questions, answers, questionIndex);
-
-    // next (non-irrelevant) question in unit (null if no remaining)
-    let newQuestionIndex: number | null = null;
-    for (let i = questionIndex + 1; i < questions.length; i++) {
-      if (irrelevantQuestions[i]) {
-        unit.unit.annotations = addAnnotationsFromAnswer(answers[i], unit.unit.annotations);
-        continue;
-      }
-      newQuestionIndex = i;
-      break;
-    }
-
-    const status = newQuestionIndex === null ? "DONE" : "IN_PROGRESS";
-    const cleanAnnotations = (unit.unit.annotations || []).map((a: Annotation): Annotation => {
-      const buildAnnotation: any = {};
-      for (let key of Object.keys(a)) {
-        if (!["type", "field", "offset", "length", "variable", "value", "time_question", "time_answer"].includes(key))
-          continue;
-        buildAnnotation[key] = a[key as keyof Annotation];
-      }
-      return buildAnnotation;
-    });
-
-    if (onlySave) {
-      // if just saving (for multivalue questions)
-      unit.jobServer.postAnnotations(unit.unitId, cleanAnnotations, status);
-      blockAnswer.current = false;
-      return;
-    }
-
-    const start = new Date();
-    const conditionReport: ConditionReport = await unit.jobServer.postAnnotations(
-      unit.unitId,
-      cleanAnnotations,
-      status,
-    );
-
-    conditionReport.reportSuccess = true;
-    setConditionReport(conditionReport);
-    const action = conditionReport?.evaluation?.[questions[questionIndex].name]?.action;
-    if (action === "block") {
-      // TODO to be implemented
-    } else if (action === "retry") {
-      blockAnswer.current = false;
-    } else {
-      let minDelay;
-      if (newQuestionIndex === null) {
-        minDelay = 250;
-        transition(true);
-      } else {
-        minDelay = 150;
-        transition(false);
-      }
-
-      const delay = new Date().getTime() - start.getTime();
-      const extradelay = Math.max(0, minDelay - delay);
-      await new Promise((resolve) => setTimeout(resolve, extradelay));
-
-      // check if there are other variables in the current unit that have an action
-      for (let i = 0; i < questions.length; i++) {
-        const action = conditionReport?.evaluation?.[questions[i].name]?.action;
-        if (action === "block" || action === "retry") newQuestionIndex = i;
-      }
-
-      setAnswers([...answers]);
-      if (newQuestionIndex !== null) {
-        setQuestionIndex(newQuestionIndex);
-      } else {
-        nextUnit();
-      }
-
-      blockAnswer.current = false;
-    }
-  } catch (e) {
-    console.error(e);
-    // just to make certain the annotator doesn't block if something goes wrong
-    blockAnswer.current = false;
-  }
 };
 
 export default React.memo(QuestionForm);

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { hasMinProjectRole } from "../../authorization";
 import { createGet } from "../../routeHelpers";
 import { NextRequest } from "next/server";
-import { AnnotateUnitSchema } from "./schemas";
+import { AnnotateUnitSchema } from "../schemas";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   const { projectId } = params;

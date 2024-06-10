@@ -46,7 +46,6 @@ const Scale = ({
   }
   const nAnswered = countAnswered();
   const done = items.length === 0 ? nAnswered > 0 : nAnswered >= items.length;
-  console.log(items.length, nAnswered, done);
 
   const itemRefs = useMemo(() => {
     return options.map(() => React.createRef<HTMLDivElement>());
@@ -129,7 +128,7 @@ const Scale = ({
 
   return (
     <div className="relative flex h-full flex-col justify-between ">
-      <div className="flex flex-auto items-start justify-between p-2">
+      <div className="flex flex-auto items-start justify-between p-2 pb-0 text-sm">
         <div className="flex max-w-[40%] items-center gap-2 ">{left.code}</div>
 
         <div className="flex max-w-[40%] items-center gap-2 text-right">{right.code}</div>
@@ -244,10 +243,10 @@ const Item = ({
     <div key={itemIndex} style={{ padding, borderRadius: "5px" }}>
       <div>
         <div className="flex justify-center text-center ">
-          <div className="rounded p-1 text-foreground">{itemlabel}</div>
+          <div className="rounded p-1 text-sm text-foreground">{itemlabel}</div>
         </div>
       </div>
-      <div className="m-auto flex max-w-[min(500px,100%)] scroll-m-24 gap-2 p-1 pb-2" ref={itemRef}>
+      <div className="m-auto flex max-w-[min(500px,100%)] scroll-m-24 gap-2 p-1 pb-1" ref={itemRef}>
         {options.map((option, buttonIndex: number) => {
           const varname = itemObj ? `${variable}.${itemObj.name}` : variable;
           const isCurrent = annotations.find((a) => a.variable === varname)?.code === option.code;
@@ -264,7 +263,7 @@ const Item = ({
 
           return (
             <div
-              className={`h-7 max-w-[50%] flex-auto rounded  `}
+              className={`h-5 max-w-[50%] flex-auto rounded  `}
               style={{ background: option.color ? "white" : "hsl(var(--primary))" }}
               key={option.code}
               color={color}

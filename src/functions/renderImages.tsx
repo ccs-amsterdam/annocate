@@ -32,22 +32,22 @@ interface Size {
 
 /** Returns a record where keys are image field names and values are react elements that render the image */
 export default function renderImages(
-  imageFields: ImageField[],
+  image_fields: ImageField[],
   setImagesLoaded: (loaded: boolean) => any,
   containerRef: any,
 ): RenderedImages {
   const images: RenderedImages = {};
 
-  setImagesLoaded(imageFields.length === 0);
+  setImagesLoaded(image_fields.length === 0);
 
-  const imagesLoaded: boolean[] = Array(imageFields.length).fill(false);
+  const imagesLoaded: boolean[] = Array(image_fields.length).fill(false);
   function onImageLoad(index: number) {
     imagesLoaded[index] = true;
     if (!imagesLoaded.some((i) => !i)) setImagesLoaded(true);
   }
 
-  for (let i = 0; i < imageFields.length; i++) {
-    const imageField = imageFields[i];
+  for (let i = 0; i < image_fields.length; i++) {
+    const imageField = image_fields[i];
     images[imageField.name] = (
       <AnnotatableImage
         key={"image-" + imageField.name}

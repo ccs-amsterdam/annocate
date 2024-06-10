@@ -36,11 +36,14 @@ export const UnitGeneralLayoutSchema = z.object({
     description: "The column name in the units data table from which to get the field value.",
     example: "headline, text, image_url, ...",
   }),
-  style: z.record(z.string(), z.string()).openapi({
-    title: "Style",
-    description: "An object with inline CSS properties",
-    example: { fontSize: "1.3em", fontWeight: "bold" },
-  }),
+  style: z
+    .record(z.string(), z.string())
+    .optional()
+    .openapi({
+      title: "Style",
+      description: "An object with inline CSS properties",
+      example: { fontSize: "1.3em", fontWeight: "bold" },
+    }),
 });
 
 export const UnitTextLayoutSchema = UnitGeneralLayoutSchema.extend({
@@ -79,15 +82,20 @@ export const UnitFieldLayoutSchema = z.array(UnitFieldLayoutUnionSchema).refine(
 );
 
 export const UnitLayoutGridSchema = z.object({
-  areas: z.array(z.string()),
+  areas: z.array(z.array(z.string())),
   rows: z.array(z.number()).optional(),
   columns: z.array(z.number()).optional(),
+});
+
+export const UnitVariableSchema = z.object({
+  name: z.string(),
+  column: z.string(),
 });
 
 export const UnitLayoutSchema = z.object({
   grid: UnitLayoutGridSchema.optional(),
   fields: UnitFieldLayoutSchema,
-  variables: z.array(z.string()).optional(),
+  variables: z.array(UnitVariableSchema).optional(),
 });
 
 export const UnitLayoutsTableParamsSchema = TableParamsSchema.extend({});

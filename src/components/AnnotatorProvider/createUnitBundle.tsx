@@ -1,29 +1,27 @@
-import { importTokens, parseTokens } from "./tokens";
+import { importTokens, parseTokens } from "../../functions/tokens";
 import {
-  RawUnit,
-  Annotation,
-  UnitContent,
+  ExtendedUnitContent,
   RawUnitContent,
   TextField,
   MarkdownField,
   ImageField,
-  FieldGrid,
+  PreparedGrid,
   FieldGridInput,
-  Unit,
-  Codebook,
   ExtendedCodebook,
+  AnnotateUnit,
 } from "@/app/types";
-import { importCodebook } from "./codebook";
+import { UnitBundle } from "./AnnotatorProvider";
+import unfoldVariables from "../../functions/unfoldVariables";
 
-export function prepareUnit(rawUnit: RawUnit, codebook: ExtendedCodebook): Unit {
-  const unitContent = processUnitContent(rawUnit, codebook);
+export function createUnitBundle(annotateUnit: AnnotateUnit, codebook: ExtendedCodebook): UnitBundle {
+  codebook = unfoldVariables(codebook, annotateUnit);
+  const content = processUnitContent(annotateUnit);
   return {
-    jobServer: undefined,
-    unitId: rawUnit.id,
-    unitType: rawUnit.type,
-    status: rawUnit.status,
-    report: rawUnit.report,
-    unit: unitContent,
+    unit: {
+      ...annotateUnit,
+      content,
+    },
+    codebook,
   };
 }
 
@@ -33,43 +31,34 @@ export function prepareUnit(rawUnit: RawUnit, codebook: ExtendedCodebook): Unit 
  * @param unit
  * @returns
  */
-export default function processUnitContent(rawUnit: RawUnit, codebook: ExtendedCodebook): UnitContent {
-  const ruc: RawUnitContent = rawUnit.unit;
-  const annotations: Annotation[] = rawUnit.annotation || rawUnit.annotations || []; // singular annotation is deprecated
+export default function processUnitContent(annotateUnit: AnnotateUnit): ExtendedUnitContent {
+  const ruc = annotateUnit.content;
 
-  const content: UnitContent = {
-    textFields: ruc.text_fields || [],
-    imageFields: ruc.image_fields || [],
-    markdownFields: ruc.markdown_fields || [],
-    metaFields: ruc.meta_fields || [],
-    codebook: ruc.codebook ? importCodebook(ruc.codebook) : codebook,
+  const content: ExtendedUnitContent = {
+    text_fields: ruc.text_fields || [],
+    image_fields: ruc.image_fields || [],
+    markdown_fields: ruc.markdown_fields || [],
     variables: ruc.variables,
+    grid: {},
   };
 
-  // !! prepareGrid also removes unused fields from content
+  // !! prepareGrid also removes unused fields from content (by reference)
   content.grid = prepareGrid(ruc.grid, content);
 
   if (ruc.tokens) {
     content.tokens = importTokens(ruc.tokens) || [];
-  } else if (content.textFields) {
-    content.tokens = parseTokens([...content.textFields]);
+  } else if (content.text_fields) {
+    content.tokens = parseTokens([...content.text_fields]);
   }
-
-  // A unit can have pre-defined annotations in rawUnit.unit.annotations
-  // If so, we need to set these annotations on the first time the user starts coding this unit.
-  // We do this by checking if the unit has any annotations in the jobserver, or if the unit is already DONE.
-  const hasAnnotations = annotations && annotations.length > 0;
-
-  content.annotations = hasAnnotations || rawUnit.status === "DONE" ? annotations : ruc.annotations;
 
   return content;
 }
 
-function prepareGrid(grid: FieldGridInput | undefined, content: UnitContent): FieldGrid {
+function prepareGrid(grid: FieldGridInput | undefined, content: ExtendedUnitContent): PreparedGrid {
   // areas should be an array of arrays of the same length, where all values are strings.
   // there is some leeway (inner array can be a single string, and if inner arrays do not have same length, last value is repeated).
   // this is then used to create the grid-template-areas
-  const outputGrid: FieldGrid = {};
+  const outputGrid: PreparedGrid = {};
 
   if (!grid?.areas) return outputGrid;
   let template = [];
@@ -103,16 +92,16 @@ function prepareGrid(grid: FieldGridInput | undefined, content: UnitContent): Fi
   }
 
   // rm all fields that are not in the template
-  if (content.textFields) content.textFields = content.textFields.filter((f: TextField) => used_columns.has(f.name));
-  if (content.imageFields)
-    content.imageFields = content.imageFields.filter((f: ImageField) => used_columns.has(f.name));
-  if (content.markdownFields)
-    content.markdownFields = content.markdownFields.filter((f: MarkdownField) => used_columns.has(f.name));
+  if (content.text_fields) content.text_fields = content.text_fields.filter((f: TextField) => used_columns.has(f.name));
+  if (content.image_fields)
+    content.image_fields = content.image_fields.filter((f: ImageField) => used_columns.has(f.name));
+  if (content.markdown_fields)
+    content.markdown_fields = content.markdown_fields.filter((f: MarkdownField) => used_columns.has(f.name));
 
   // add area names
-  for (let f of content.textFields || []) f.grid_area = areaNameMap[f.name];
-  for (let f of content.imageFields || []) f.grid_area = areaNameMap[f.name];
-  for (let f of content.markdownFields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.text_fields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.image_fields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.markdown_fields || []) f.grid_area = areaNameMap[f.name];
 
   if (template.length > 0) outputGrid.areas = template.join(" ");
 

@@ -25,7 +25,6 @@ const IndexController = ({
 }: IndexControllerProps) => {
   const [activePage, setActivePage] = useState(0);
   const [sliderPage, setSliderPage] = useState(0);
-  console.log(index);
 
   // also keep track of slider as a ref, because touchevents suck (see onTouchEnd below for explanation)
   const slider = useRef(0);
@@ -64,7 +63,7 @@ const IndexController = ({
     }
   };
 
-  if (!n) return null;
+  if (!n) return <div />;
   let progress = (100 * Math.max(0, progressN)) / n;
   if (canGoForward) progress = 0; // linear progress is useless in this case.
 

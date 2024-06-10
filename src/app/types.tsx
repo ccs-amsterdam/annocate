@@ -2,6 +2,7 @@ import { ReactElement, RefObject, Dispatch, SetStateAction, MutableRefObject, CS
 import {
   CodebookCodeSchema,
   CodebookRelationSchema,
+  CodebookResponseSchema,
   CodebookSchema,
   CodebookUnionTypeSchema,
   CodebookVariableItemSchema,
@@ -9,7 +10,14 @@ import {
 import { z } from "zod";
 import { AnnotationSchema } from "./api/projects/[projectId]/annotations/schemas";
 import { UnitLayoutSchema } from "./api/projects/[projectId]/units/layouts/schemas";
-import { AnnotateProgressSchema } from "./api/annotate/get_unit/schemas";
+import {
+  AnnotateProgressSchema,
+  AnnotateUnitSchema,
+  GetCodebookResponseSchema,
+  GetUnitResponseSchema,
+  UnitContentSchema,
+} from "./api/annotate/schemas";
+import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
 
 //////////  NEW
 ///////////
@@ -35,8 +43,23 @@ export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
+export type UnitData = z.infer<typeof UnitDataRowSchema>;
 
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
+export type AnnotateUnit = z.infer<typeof AnnotateUnitSchema>;
+
+export type UnitContent = z.infer<typeof UnitContentSchema>;
+export type ExtendedUnitContent = Omit<UnitContent, "grid"> & {
+  grid: PreparedGrid;
+};
+export type Unit = z.infer<typeof AnnotateUnitSchema>;
+
+export type ExtendedUnit = Omit<Unit, "content"> & {
+  content: ExtendedUnitContent;
+};
+
+export type GetCodebook = z.infer<typeof GetCodebookResponseSchema>;
+export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
 
 export type ExtendedVariable = Variable & {
   // intermediate values (not stored in backend)
@@ -77,9 +100,9 @@ export interface JobServer {
   job_id?: string;
 
   init: () => void;
-  getUnit: (i?: number) => Promise<{ unit: RawUnit | null; progress: Progress }>;
-  getCodebook: (id: string) => Promise<Codebook>;
-  postAnnotations: (unitId: string, annotation: Annotation[], status: Status) => Promise<Status>;
+  getUnit: (i?: number) => Promise<GetUnit>;
+  getCodebook: (id: number) => Promise<Codebook>;
+  postAnnotations: (token: string, annotations: Annotation[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }
 
@@ -206,15 +229,12 @@ export type VariableStatus = "pending" | "done" | "skip";
 export interface AnnotationLibrary {
   type: UnitType;
   status: UnitStatus;
-  conditionals: Conditional[];
   annotations: AnnotationDictionary;
   variables: ExtendedVariable[];
   variableIndex: number;
   variableStatuses: VariableStatus[];
   byToken: TokenAnnotations;
   codeHistory: CodeHistory;
-  unitId: string;
-  conditionReport: ConditionReport | null;
   previousIndex: number;
 }
 export type AnnotationDictionary = Record<AnnotationID, Annotation>;
@@ -617,37 +637,9 @@ export interface OauthClients {
   github?: { client_id: string };
 }
 
-export interface DemoData {
-  units?: RawUnit[];
-}
-
 ///// UNIT DATA
 
 export type UnitType = "train" | "test" | "code" | "survey";
-
-/** A unit after it has been prepared by the jobServer. This is for internal use */
-export interface Unit {
-  unitId: string; // this is the backend id, not the external id
-  unitType: UnitType;
-  unit: UnitContent;
-  jobServer?: any;
-  status: UnitStatus;
-  report?: ConditionReport;
-  conditionals?: Conditional[];
-}
-
-export interface UnitContent {
-  textFields?: TextField[];
-  tokens?: Token[];
-  imageFields?: ImageField[];
-  markdownFields?: MarkdownField[];
-  metaFields?: MetaField[];
-  annotations?: Annotation[];
-  importedAnnotations?: Annotation[];
-  codebook: ExtendedCodebook;
-  variables?: UnitVariables;
-  grid?: FieldGrid;
-}
 
 /**
  * This function gets a unit from the server.
@@ -658,7 +650,7 @@ export type SetUnitIndex = (index: number) => void;
  *  These can be used in questions like: "is this text about [variable]"?.
  */
 export interface UnitVariables {
-  [key: string]: string;
+  [key: string]: string | number | boolean;
 }
 
 /** A unit as it can be served by the backend.
@@ -666,7 +658,6 @@ export interface UnitVariables {
  * here for jobserverdemo
  */
 export interface RawUnit {
-  index: number;
   status: UnitStatus;
   id: string; // this is the backend id, not the external id
   external_id?: string;
@@ -695,12 +686,12 @@ export interface RawUnitContent {
 export type UnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
 
 export interface FieldGridInput {
-  areas?: string[][];
+  areas: string[][];
   rows?: number[];
   columns?: number[];
 }
 
-export interface FieldGrid {
+export interface PreparedGrid {
   areas?: string;
   columns?: string;
   rows?: string;
@@ -802,7 +793,6 @@ export interface Token {
   codingUnit: boolean;
   pre: string;
   post: string;
-  annotations: { name: string; value: string | number }[];
   containerRef?: any; // once rendered, a Token will carry refs for it's own element and it's container element
   ref?: any;
   arrayIndex?: number; // once rendered, the index of the rendered tokens. Can differ from 'index' if current unit is a subset of a document (so index does not start at 0)
@@ -852,11 +842,11 @@ export interface RawTokenColumn {
 export interface Doc {
   /** A processed version of a Unit, for use in the Document component */
   tokens?: Token[];
-  textFields?: TextField[];
+  text_fields?: TextField[];
   metaFields?: MetaField[];
   imageFields?: ImageField[];
-  markdownFields?: MarkdownField[];
-  grid?: FieldGrid;
+  markdown_fields?: MarkdownField[];
+  grid?: PreparedGrid;
 }
 
 export interface DocumentSettings {

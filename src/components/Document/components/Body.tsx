@@ -5,27 +5,27 @@ import renderImages from "@/functions/renderImages";
 import renderMarkdown from "@/functions/renderMarkdown";
 import FocusOverlay from "./FocusOverlay";
 
-import { FieldGrid, FieldRefs, ImageField, MarkdownField, MetaField, TextField, Token } from "@/app/types";
+import { PreparedGrid, FieldRefs, ImageField, MarkdownField, MetaField, TextField, Token } from "@/app/types";
 import styled from "styled-components";
 import { Loader } from "../../../styled/Styled";
 
 const DocumentContent = styled.div<{
-  grid?: FieldGrid;
-  centered: boolean;
-  highLines: boolean;
+  $grid?: PreparedGrid;
+  $centered: boolean;
+  $highLines: boolean;
 }>`
-  display: ${(p) => (p.grid?.areas ? "grid" : null)};
-  margin: ${(p) => (p.centered ? "auto" : "")};
+  display: ${(p) => (p.$grid?.areas ? "grid" : null)};
+  margin: ${(p) => (p.$centered ? "auto" : "")};
   padding-top: 0px;
   padding-bottom: 0px;
   width: 100%;
   z-index: 1;
 
-  grid-template-areas: ${(p) => p.grid?.areas};
-  grid-template-columns: ${(p) => p.grid?.columns};
-  ${(p) => (p.grid?.rows ? `grid-template-rows: ${p.grid.rows};` : `grid-auto-rows: min-content;`)}
+  grid-template-areas: ${(p) => p.$grid?.areas};
+  grid-template-columns: ${(p) => p.$grid?.columns};
+  ${(p) => (p.$grid?.rows ? `grid-template-rows: ${p.$grid.rows};` : `grid-auto-rows: min-content;`)}
   p {
-    line-height: ${(p) => (p.highLines ? "2.5em" : "1.5em")};
+    line-height: ${(p) => (p.$highLines ? "2.5em" : "1.5em")};
   }
 `;
 
@@ -41,11 +41,11 @@ const BodyContainer = styled.div`
 
 interface BodyProps {
   tokens?: Token[];
-  textFields: TextField[];
+  text_fields: TextField[];
   metaFields: MetaField[];
-  imageFields: ImageField[];
-  markdownFields: MarkdownField[];
-  grid?: FieldGrid;
+  image_fields: ImageField[];
+  markdown_fields: MarkdownField[];
+  grid?: PreparedGrid;
   onReady: () => any;
   bodyStyle: CSSProperties | undefined;
   focus: string[] | undefined;
@@ -56,10 +56,10 @@ interface BodyProps {
 
 const Body = ({
   tokens,
-  textFields,
+  text_fields,
   metaFields,
-  imageFields,
-  markdownFields,
+  image_fields,
+  markdown_fields,
   grid,
   onReady,
   bodyStyle = {},
@@ -75,14 +75,14 @@ const Body = ({
 
   useEffect(() => {
     if (!tokens) return;
-    const text = renderText(tokens, textFields, containerRef, fieldRefs);
-    const images = renderImages(imageFields, setImagesLoaded, containerRef);
-    const markdown = renderMarkdown(markdownFields, fieldRefs);
+    const text = renderText(tokens, text_fields, containerRef, fieldRefs);
+    const images = renderImages(image_fields, setImagesLoaded, containerRef);
+    const markdown = renderMarkdown(markdown_fields, fieldRefs);
 
     const content: (ReactElement | ReactElement[])[] = [];
-    if (text) for (const f of textFields) content.push(text[f.name]);
-    if (images) for (const f of imageFields) content.push(images[f.name]);
-    if (markdown) for (const f of markdownFields) content.push(markdown[f.name]);
+    if (text) for (const f of text_fields) content.push(text[f.name]);
+    if (images) for (const f of image_fields) content.push(images[f.name]);
+    if (markdown) for (const f of markdown_fields) content.push(markdown[f.name]);
     setContent(content);
 
     const timer = setInterval(() => {
@@ -90,7 +90,7 @@ const Body = ({
       onReady();
       clearInterval(timer);
     }, 50);
-  }, [tokens, textFields, imageFields, markdownFields, onReady, setImagesLoaded, fieldRefs]);
+  }, [tokens, text_fields, image_fields, markdown_fields, onReady, setImagesLoaded, fieldRefs]);
 
   if (tokens == null) return null;
 
@@ -117,9 +117,9 @@ const Body = ({
       >
         <Loader $active={!imagesLoaded || !currentUnitReady} $radius={0} />
         <DocumentContent
-          centered={centered}
-          highLines={!readOnly}
-          grid={grid}
+          $centered={centered}
+          $highLines={!readOnly}
+          $grid={grid}
           key="content"
           className="DocumentContent"
         >

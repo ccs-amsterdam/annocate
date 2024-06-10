@@ -1,27 +1,22 @@
-import { Annotation, Code, ConditionReport, ExtendedCodebook, SwipeRefs, Swipes, Transition, Unit } from "@/app/types";
+import { ConditionReport, SwipeRefs, Transition } from "@/app/types";
 import Document from "@/components/Document/Document";
 import swipeControl from "@/functions/swipeControl";
-import React, { RefObject, useCallback, useMemo, useRef, useState } from "react";
+import React, { RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
-import ShowQuestion from "./ShowQuestion";
 import QuestionForm from "./QuestionForm";
 // import FeedbackPortal from "./FeedbackPortal";
-import unfoldQuestions from "@/functions/unfoldQuestions";
-import useWatchChange from "@/hooks/useWatchChange";
-import { useUnit } from "../UnitProvider/UnitProvider";
+import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 
 interface QuestionTaskProps {
   blockEvents?: boolean;
 }
 
 const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
-  const { unit, codebook, annotationLib, annotationManager, index, selectUnit } = useUnit();
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [conditionReport, setConditionReport] = useState<ConditionReport | null>(null);
-  const divref = useRef(null);
-  const textref = useRef(null);
-  const boxref = useRef(null);
-  const coderef = useRef(null);
+  const { unit, codebook, annotationLib, annotationManager, progress, selectUnit } = useUnit();
+  const divref = useRef<HTMLDivElement>(null);
+  const textref = useRef<HTMLDivElement>(null);
+  const boxref = useRef<HTMLDivElement>(null);
+  const coderef = useRef<HTMLDivElement>(null);
   const refs = useMemo(() => {
     return { text: textref, box: boxref, code: coderef };
   }, []);
@@ -38,7 +33,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
     annotationManager.processAnswer(variable.name, transition.code, false, variable.fields);
     annotationManager.finishVariable().then((res) => {
       if (res.status === "DONE") {
-        selectUnit(index || 0 + 1);
+        selectUnit(progress.current || 0 + 1);
         nextUnitTransition(refs, transition);
         setTimeout(() => {
           showUnit(refs.text, refs.box, refs.code);
@@ -54,8 +49,6 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   if (!unit) return null;
 
-  const singlePage = unit.unitType === "survey";
-
   return (
     <div className="flex h-full flex-col bg-background" ref={divref}>
       {/* <FeedbackPortal
@@ -63,17 +56,12 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         conditionReport={conditionReport}
         setConditionReport={setConditionReport}
       /> */}
-      <div
-        {...textSwipe}
-        className={`relative z-10 overflow-hidden ${singlePage ? "min-h-0 flex-[1_0_auto]" : "min-h-[40%] flex-[1_1_0]"}`}
-      >
+      <div {...textSwipe} className={`relative z-10 min-h-0 flex-[1_1_0] overflow-hidden`}>
         <div ref={refs.box} className="oveflow-hidden relative z-20 h-full will-change-auto">
           {/* This div moves around behind the div containing the document to show the swipe code  */}
           <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
           <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
             <Document
-              unit={unit}
-              annotations={[]}
               showAll={true}
               onReady={onNewUnit}
               focus={variable?.fields}
@@ -83,7 +71,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
           </div>
         </div>
       </div>
-      <div {...menuSwipe} className={` ${singlePage ? "flex-[0_0_auto]" : "flex-[0_1_auto"}`}>
+      <div {...menuSwipe} className={`flex-[1,1,auto]`}>
         <QuestionForm
           unit={unit}
           codebook={codebook}

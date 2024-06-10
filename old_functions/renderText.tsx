@@ -76,7 +76,7 @@ const renderField = (
   return (
     <div
       ref={fieldRefs[field]}
-      className="field  prose dark:prose-invert max-w-none"
+      className="field  prose max-w-none dark:prose-invert"
       key={"tokens-" + field}
       style={{
         gridArea: textField.grid_area,
