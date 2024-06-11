@@ -214,9 +214,9 @@ export const CodebookSettingsSchema = z.object({
     example: "Here we measure emotion, defined as ...",
   }),
   auto_instruction: z.boolean().optional().openapi({
-    title: "Automatically open instruction the first time",
+    title: "Automatically open instruction",
     description:
-      "If enabled, the instruction is automatically shown to the annotator the first time they encounter this codebook.",
+      "If enabled, the instruction is automatically shown to the annotator the first time they encounter this codebook a session.",
     example: true,
   }),
 });

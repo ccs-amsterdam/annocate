@@ -13,6 +13,7 @@ import { Input } from "../ui/input";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Textarea } from "../ui/textarea";
+import { Switch } from "../ui/switch";
 
 export interface FormOptions {
   value: string;
@@ -89,13 +90,10 @@ export function BooleanFormField<T extends FieldValues>({ control, name, zType }
         name={name}
         render={({ field }) => {
           return (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+            <FormItem className="flex select-none flex-row items-center space-x-3 space-y-0">
               <FormControl>
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="italic ">{field.value ? "enabled" : "disabled"}</FormLabel>
-              </div>
             </FormItem>
           );
         }}

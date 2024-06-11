@@ -28,7 +28,7 @@ export default function Menu() {
     if (!params?.projectId) {
       return (
         <>
-          <NavItem href="/" key="projects">
+          <NavItem href="/" key="home">
             home
           </NavItem>
           <NavItem href="/projects" key="projects">
