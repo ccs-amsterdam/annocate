@@ -100,11 +100,13 @@ export function useGet<Params extends {}, Response>({
   endpoint,
   params,
   responseSchema,
+  disabled,
 }: {
   resource: string;
   endpoint: string;
   params?: Params;
   responseSchema: z.ZodType<Response>;
+  disabled?: boolean;
 }) {
   const { user } = useMiddlecat();
   return useQuery({
@@ -115,7 +117,7 @@ export function useGet<Params extends {}, Response>({
       const data = responseSchema.parse(res.data);
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !disabled,
   });
 }
 
@@ -125,23 +127,30 @@ export function useMutate<Body, Response>({
   endpoint,
   bodySchema,
   responseSchema,
+  invalidateResources,
 }: {
   method?: "post" | "put";
   resource: string;
   endpoint: string;
   bodySchema: z.ZodType<Body>;
   responseSchema?: z.ZodType<Response>;
+  invalidateResources?: string[];
 }) {
   const { user } = useMiddlecat();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: z.infer<typeof bodySchema>) => {
+    mutationFn: async (body: z.infer<typeof bodySchema>) => {
       if (!user) throw new Error("User not found");
-      const res = await user.api[method](endpoint, params);
+      const res = await user.api[method](endpoint, body);
       return responseSchema ? responseSchema.parse(res.data) : res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries([resource, user]);
+      if (invalidateResources) {
+        invalidateResources.forEach((resource) => {
+          queryClient.invalidateQueries([resource, user]);
+        });
+      }
     },
   });
 }

@@ -38,11 +38,12 @@ export function useUpdateUnitLayout(projectId: number, layoutId: number) {
   });
 }
 
-export function useUnitLayout(projectId: number, layoutId: number) {
+export function useUnitLayout(projectId: number, layoutId: number | undefined) {
   return useGet({
     resource: "layout",
     endpoint: `projects/${projectId}/units/layouts/${layoutId}`,
     responseSchema: UnitLayoutResponseSchema,
+    disabled: layoutId === undefined,
   });
 }
 

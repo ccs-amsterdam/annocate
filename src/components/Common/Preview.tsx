@@ -1,62 +1,75 @@
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
-import { UnitDataResponseSchema, UnitDataRowSchema } from "@/app/api/projects/[projectId]/units/schemas";
+import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/units/schemas";
+import { Annotation, Unitset, Codebook, Layout } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
-import JobServerPreview from "../JobServers/JobServerPreview";
-import AnnotatorProvider, { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
-import QuestionTask from "../AnnotationInterface/QuestionTask";
-import { Slider } from "../ui/slider";
-import { Annotation } from "@/app/types";
 import { useMiddlecat } from "middlecat-react";
+import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
+import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import JobServerPreview from "../JobServers/JobServerPreview";
+import { Slider } from "../ui/slider";
+import useWatchChange from "@/hooks/useWatchChange";
+import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
+import { useUnitLayout } from "@/app/api/projects/[projectId]/units/layouts/query";
 
-type Unit = z.infer<typeof UnitDataResponseSchema>;
-type Codebook = z.infer<typeof CodebookSchema>;
-type Layout = z.infer<typeof UnitLayoutSchema>;
+interface Props {
+  projectId: number;
+  layout?: Layout;
+  codebook?: Codebook;
+  unitset?: Unitset;
+}
 
-export function Preview({ projectId, layout, codebook }: { projectId: number; layout?: Layout; codebook?: Codebook }) {
+export function Preview({ projectId, layout, codebook, unitset }: Props) {
   const { user } = useMiddlecat();
   const [jobServer, setJobServer] = useState<JobServerPreview | null>(null);
   const annotations = useRef<Record<string, Annotation[]>>({});
-
-  useEffect(() => {
-    if (!user) return;
-    setJobServer(new JobServerPreview(projectId, user, codebook, layout, undefined, annotations.current));
-  }, [projectId, user, codebook, layout]);
-
-  if (!jobServer) return null;
-  return <PreviewWindow jobServer={jobServer} />;
-}
-
-export function PreviewWindow({ jobServer }: { jobServer: JobServerPreview }) {
-  const [focus, setFocus] = useState(false);
   const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
 
-  //   const jobServer = useMemo(() => {
-  //     if (!preview) return null;
-  //     const unit = { ...rawPreviewUnit, unit: { ...rawPreviewUnit.unit, codebook: preview } };
-  //     return new JobServerPreview(preview, [unit]);
-  //   }, [preview]);
+  // either do this here, or outside of preview and make layout and codebook mandatory
+  // const [selectedCodebookId, setSelectedCodebookId] = useState<number | undefined>();
+  // const [selectedLayoutId, setSelectedLayoutId] = useState<number | undefined>();
+  // const [selectedUnitSetId, setSelectedUnitSetId] = useState<number | undefined>();
+
+  // const { data: selectedCodebook } = useCodebook(projectId, selectedCodebookId);
+  // const { data: selectedLayout } = useUnitLayout(projectId, selectedLayoutId);
+
+  if (useWatchChange([projectId, user, codebook, layout, unitset])) {
+    if (user) setJobServer(new JobServerPreview(projectId, user, codebook, layout, unitset, annotations.current));
+  }
 
   if (!jobServer) return null;
-
   return (
     <div className="mt-10 flex w-full flex-col items-center">
       <PreviewSize size={size} setSize={setSize} />
-      <div
-        tabIndex={0}
-        className={`mt-10 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
-        style={{ height: size.height + "px", width: size.width + "px" }}
-        onClick={(e) => {
-          e.currentTarget.focus();
-        }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
-      >
-        <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
-      </div>
+      <PreviewWindow size={size} jobServer={jobServer} />
+    </div>
+  );
+}
+
+export function PreviewWindow({
+  size,
+  jobServer,
+}: {
+  size: { height: number; width: number };
+  jobServer: JobServerPreview;
+}) {
+  const [focus, setFocus] = useState(false);
+  if (!jobServer) return null;
+
+  return (
+    <div
+      tabIndex={0}
+      className={`mt-10 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
+      style={{ height: size.height + "px", width: size.width + "px" }}
+      onClick={(e) => {
+        e.currentTarget.focus();
+      }}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+    >
+      <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
     </div>
   );
 }

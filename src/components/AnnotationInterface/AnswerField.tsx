@@ -1,6 +1,6 @@
 import { AnnotationLibrary, AnswerItem, Code } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import SelectCode from "./AnswerFieldSelectCode";
 import Scale from "./AnswerFieldScale";
 import Annotinder from "./AnswerFieldAnnotinder";
@@ -60,16 +60,17 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
       if (!innerEl || !answerRef.current) return;
 
       const style = answerRef.current.style;
-      style["grid-template-rows" as any] = innerEl.clientHeight + "px";
+      if (style["grid-template-rows" as any] !== innerEl.clientHeight + "px")
+        style["grid-template-rows" as any] = innerEl.clientHeight + "px";
     }
 
     // first do a quick update, using a small delay that is enough for most content
-    const timer = setTimeout(() => resize(), 500);
+    const timer = setTimeout(() => resize(), 100);
     // then check whether height needs to change with short intervalls. This is fairly inexpensive
     // and ensures that theres no issues when content is slow to load (e.g., images)
     const interval = setInterval(() => {
       resize();
-    }, 100);
+    }, 200);
     return () => {
       clearTimeout(timer);
       clearInterval(interval);

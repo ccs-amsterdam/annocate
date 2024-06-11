@@ -3,7 +3,7 @@
 import { useUnitLayout } from "@/app/api/projects/[projectId]/units/layouts/query";
 import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
 import { Loading } from "@/components/ui/loader";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { UpdateLayout } from "@/components/Forms/layoutForms";
@@ -12,14 +12,13 @@ import { HelpDrawer } from "@/components/Common/HelpDrawer";
 import { useUnitsets } from "@/app/api/projects/[projectId]/units/query";
 import { SimpleDropdown } from "@/components/ui/simpleDropdown";
 import { UnitsetsResponseSchema } from "@/app/api/projects/[projectId]/units/unitsets/schemas";
+import { Preview } from "@/components/Common/Preview";
+import { Layout, Unitset } from "@/app/types";
 
-type Layout = z.infer<typeof UnitLayoutSchema>;
-type UnitSet = z.infer<typeof UnitsetsResponseSchema>;
-
-export default function Layout({ params }: { params: { projectId: number; layoutId: number } }) {
+export default function LayoutPage({ params }: { params: { projectId: number; layoutId: number } }) {
   const [preview, setPreview] = useState<Layout | undefined>();
-  const [selectedUnitsets, setSelectedUnitsets] = useState<string[]>();
-  const { data: columns, isLoading: columnsLoading } = useColumns(params.projectId, selectedUnitsets);
+  const [selectedUnitset, setSelectedUnitset] = useState<Unitset>();
+  const { data: columns, isLoading: columnsLoading } = useColumns(params.projectId, selectedUnitset?.id);
   const { data: unitsets, isLoading: unitsetsLoading } = useUnitsets(params.projectId);
   const { data: layout, isLoading: layoutLoading } = useUnitLayout(params.projectId, params.layoutId);
 
@@ -45,12 +44,14 @@ export default function Layout({ params }: { params: { projectId: number; layout
           options={unitsets}
           optionKey="name"
           placeholder="Select unitset"
-          value={selectedUnitsets?.[0]}
-          setValue={(unitset) => setSelectedUnitsets([unitset])}
+          value={selectedUnitset?.name}
+          onSelect={(unitset) => setSelectedUnitset(unitset)}
         />
       </div>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="relative flex justify-center">{/* <PreviewCodebook preview={preview} /> */}</div>
+        <div className="relative flex justify-center">
+          <Preview projectId={params.projectId} layout={preview} />
+        </div>
         <div className="max-h-[calc(100vh-var(--header-height))] max-w-[600px] overflow-auto py-6">
           <UpdateLayout
             projectId={params.projectId}

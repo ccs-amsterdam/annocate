@@ -1,5 +1,15 @@
 import { LoremIpsum } from "@/app/projects/[projectId]/codebooks/[codebookId]/lorem";
-import { AnnotateUnit, Annotation, Codebook, JobServer, Layout, Progress, Status, UnitData } from "@/app/types";
+import {
+  AnnotateUnit,
+  Annotation,
+  Codebook,
+  JobServer,
+  Layout,
+  Progress,
+  Status,
+  UnitData,
+  Unitset,
+} from "@/app/types";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import cuid from "cuid";
 import { MiddlecatUser } from "middlecat-react";
@@ -11,7 +21,7 @@ class JobServerPreview implements JobServer {
   codebook: Codebook;
   codebookId: number;
   annotations: Record<string, Annotation[]>;
-  unitIds: string[] | undefined;
+  unitset: Unitset | undefined;
   projectId: number;
   user: MiddlecatUser;
   layout: Layout;
@@ -21,7 +31,7 @@ class JobServerPreview implements JobServer {
     user: MiddlecatUser,
     codebook?: Codebook,
     layout?: Layout,
-    unitIds?: string[],
+    unitset?: Unitset,
     annotations: Record<string, Annotation[]> = {},
   ) {
     this.id = cuid();
@@ -30,7 +40,7 @@ class JobServerPreview implements JobServer {
     this.codebook = codebook ?? defaultCodebook;
     this.progress = {
       current: 0,
-      n_total: unitIds?.length || defaultUnits.length,
+      n_total: unitset?.count || defaultUnits.length,
       n_coded: 0,
       seek_backwards: true,
       seek_forwards: false,
@@ -38,7 +48,7 @@ class JobServerPreview implements JobServer {
     this.return_link = "/";
     this.codebookId = 0;
     this.annotations = annotations || {};
-    this.unitIds = unitIds;
+    this.unitset = unitset;
     this.layout = layout || defaultLayout;
   }
 
@@ -55,17 +65,17 @@ class JobServerPreview implements JobServer {
       return { unit: null, progress: this.progress };
     }
 
-    const unitData: UnitData = this.unitIds
-      ? await this.user.api.get(`/projects/${this.projectId}/units/get`, { params: { id: this.unitIds[i] } })
-      : defaultUnits[i];
+    const unitData = defaultUnits[i];
+    // const unitData: UnitData = this.unitIds
+    //   ? await this.user.api.get(`/projects/${this.projectId}/units/get`, { params: { id: this.unitIds[i] } })
+    //   : defaultUnits[i];
 
     // simulate annotation token, used to authorize postAnnotations
-    const token = JSON.stringify({ user: this.user, unitId: unitData.id });
+    const token = JSON.stringify({ user: this.user.email, unitId: unitData.id });
     annotateUnit = createAnnotateUnit({
       token,
       data: unitData.data,
       layout: this.layout,
-      codebook: this.codebook,
       codebook_id: this.codebookId,
       annotations: this.annotations[unitData.id] || [],
     });
@@ -95,6 +105,18 @@ class JobServerPreview implements JobServer {
       message: "No more units left!",
     };
   }
+
+  async getUnitFromServer(i: number) {
+    if (!this.unitset) return defaultUnits[i];
+
+    const unitset = this.unitset.name;
+  }
+}
+
+function getUnitData(i: number, unitset: Unitset | undefined): UnitData {
+  if (unitset) {
+  }
+  return defaultUnits[i];
 }
 
 const defaultCodebook: Codebook = {
@@ -103,7 +125,7 @@ const defaultCodebook: Codebook = {
     {
       type: "select code",
       name: "age",
-      question: "Codebook goes here",
+      question: "Codebook goes hereeeeeeeeeeeee",
       codes: [{ code: "continue" }],
       multiple: false,
       vertical: false,

@@ -8,8 +8,8 @@ interface Params {
   token: string;
   data: Record<string, string | number | boolean>;
   layout: Layout;
-  codebook: Codebook;
-  codebook_id: number;
+  codebook?: Codebook;
+  codebook_id?: number;
   annotations: Annotation[];
 }
 
@@ -24,10 +24,11 @@ export function createAnnotateUnit({ token, data, layout, codebook, codebook_id,
 
     annotations,
   };
-  if (codebook) unit.codebook = codebook;
-  if (codebook_id) unit.codebook_id = codebook_id;
+  if (codebook !== undefined) unit.codebook = codebook;
+  if (codebook_id !== undefined) unit.codebook_id = codebook_id;
 
-  if (!codebook && !codebook_id) throw new Error("Either codebook or codebook_id must be provided");
+  if (codebook === undefined && codebook_id === undefined)
+    throw new Error("Either codebook or codebook_id must be provided");
 
   layout.fields.forEach((field) => {
     if (unit.content.grid?.areas) unit.content.grid.areas.push([field.name]);

@@ -36,11 +36,12 @@ export function useCreateCodebook(projectId: number) {
   });
 }
 
-export function useCodebook(projectId: number, codebookId: number) {
+export function useCodebook(projectId: number, codebookId: number | undefined) {
   return useGet({
     resource: "codebook",
     endpoint: `projects/${projectId}/codebooks/${codebookId}`,
     responseSchema: CodebookResponseSchema,
+    disabled: codebookId === undefined,
   });
 }
 

@@ -7,6 +7,7 @@ import { DarkModeButton } from "../Common/Theme";
 import IndexController from "./IndexController";
 import Finished from "./Finished";
 import { useHeight } from "@/hooks/useHeight";
+import { Loading } from "../ui/loader";
 
 interface Props {
   jobServer: JobServer;
@@ -50,7 +51,8 @@ function AnnotationMenu() {
 }
 
 function AnnotationUnit({ blockEvents, jobServer }: { blockEvents?: boolean; jobServer: JobServer }) {
-  const { progress } = useUnit();
+  const { initialising, progress } = useUnit();
+  if (initialising) return <Loading />;
   if (progress.current >= progress.n_total) return <Finished jobServer={jobServer} />;
   return <QuestionTask blockEvents={blockEvents} />;
 }

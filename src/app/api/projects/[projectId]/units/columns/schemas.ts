@@ -1,9 +1,14 @@
+import exp from "constants";
 import { z } from "zod";
 
 export const UnitColumnsResponseSchema = z.object({
   column: z.string(),
 });
 
+export const UnitsetColumnSchema = z.object({
+  column: z.string(),
+});
+
 export const UnitColumnsParamSchema = z.object({
-  unitsets: z.array(z.string()).optional(),
+  unitsetId: z.number().optional(),
 });

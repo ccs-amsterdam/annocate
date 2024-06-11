@@ -219,35 +219,42 @@ export async function createUpdate<T>({
   }
 }
 
-interface CreateCommonDeleteParams {
-  deleteFunction: (email: string) => PgTableWithColumns<any> | SubqueryWithSelection<any, any>;
+interface CreateCommonDeleteParams<T> {
+  deleteFunction: (email: string, body: T) => Promise<any>;
   req: Request;
-  authorizeFunction: AuthorizeFunction<undefined>;
-  errorFunction: ErrorFunction<undefined>;
+  bodySchema: z.ZodType<T>;
+  authorizeFunction: AuthorizeFunction<T>;
+  errorFunction?: ErrorFunction<T>;
 }
 
-export async function createDelete({
+export async function createDelete<T>({
   deleteFunction,
   req,
+  bodySchema,
   authorizeFunction,
   errorFunction,
-}: CreateCommonDeleteParams) {
+}: CreateCommonDeleteParams<T>) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ message: errorFunction?.(401) || "Unauthorized" }, { status: 401 });
 
+  let bodyCopy: T | undefined = undefined;
   try {
+    const bodyRaw = await req.json();
+    const body = bodySchema.parse(bodyRaw);
+    bodyCopy = body;
+
     if (authorizeFunction != undefined) {
       const auth = await authorization(email);
-      if (!authorizeFunction(auth, undefined))
-        return NextResponse.json({ message: errorFunction?.(403) || "Unauthorized" }, { status: 403 });
+      if (!authorizeFunction(auth, body))
+        return NextResponse.json({ message: errorFunction?.(403, body) || "Unauthorized" }, { status: 403 });
     }
 
-    await deleteFunction(email).returning();
+    await deleteFunction(email, body);
 
     return NextResponse.json({ message: "Success" }, { status: 204 });
   } catch (e: any) {
     console.error(e);
-    return NextResponse.json({ message: errorFunction?.(400) || e.message }, { status: 400 });
+    return NextResponse.json({ message: errorFunction?.(400, bodyCopy) || e.message }, { status: 400 });
   }
 }
 

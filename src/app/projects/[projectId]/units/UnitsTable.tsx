@@ -1,4 +1,4 @@
-import { useUnitsets, useCreateUnits, useUnits } from "@/app/api/projects/[projectId]/units/query";
+import { useUnitsets, useCreateUnits, useUnits, useDeleteUnitsets } from "@/app/api/projects/[projectId]/units/query";
 import {
   UnitDataResponseSchema,
   UnitDataRowSchema,
@@ -18,11 +18,12 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCSVReader } from "react-papaparse";
 import { z } from "zod";
+import { Switch } from "@/components/ui/switch";
 
 interface Props {
   projectId: number;
@@ -31,15 +32,18 @@ interface Props {
 const COLUMNS = ["id", "unitsets"];
 
 export function UnitsTable({ projectId }: Props) {
-  const useUnitsProps = useUnits(projectId, { unitsets: [] });
+  const useUnitsProps = useUnits(projectId, { unitset: undefined });
   const { data: unitsets, isLoading: unitsetsLoading } = useUnitsets(projectId);
   const [unit, setUnit] = useState<z.infer<typeof UnitDataResponseSchema>>();
+  const [deleteSetList, setDeleteSetList] = useState<number[]>([]);
   const router = useRouter();
 
   function onSelect(row: z.infer<typeof UnitDataResponseSchema>) {
     // router.push(`/projects/${projectId}/codebooks/${row.id}`);
     setUnit(row);
   }
+
+  useEffect(() => setDeleteSetList([]), [unitsets]);
 
   function showUnit() {
     if (!unit) return null;
@@ -56,13 +60,12 @@ export function UnitsTable({ projectId }: Props) {
       </div>
     );
   }
-  const selectedUnitsets = useUnitsProps?.params?.unitsets || [];
 
   function toggleUnitset(unitset: string) {
-    const newUnitsets = selectedUnitsets.includes(unitset) ? [] : [unitset];
+    const newUnitset = unitset === useUnitsProps.params.unitset ? undefined : unitset;
     useUnitsProps.setParams({
       ...useUnitsProps.params,
-      unitsets: newUnitsets,
+      unitset: newUnitset,
     });
   }
 
@@ -71,18 +74,32 @@ export function UnitsTable({ projectId }: Props) {
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {(unitsets || []).map((unitset) => {
           return (
-            <Button
-              variant={selectedUnitsets.includes(unitset.name) ? "secondary" : "outline"}
-              key={unitset.name}
-              className={`border-2 border-secondary px-2 py-1`}
-              onClick={() => toggleUnitset(unitset.name)}
-            >
-              {unitset.name} <span className="ml-1 text-foreground/50">({unitset.count})</span>{" "}
-            </Button>
+            <div key={unitset.name} className="flex items-start gap-1">
+              <Button
+                variant={unitset.name === useUnitsProps.params.unitset ? "secondary" : "outline"}
+                className={`border-2 border-secondary px-2 py-1`}
+                onClick={() => toggleUnitset(unitset.name)}
+              >
+                {unitset.name} <span className="ml-1 text-foreground/50">({unitset.count})</span>{" "}
+              </Button>
+              <Checkbox
+                checked={deleteSetList.includes(unitset.id)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setDeleteSetList([...deleteSetList, unitset.id]);
+                  } else {
+                    setDeleteSetList(deleteSetList.filter((id) => id !== unitset.id));
+                  }
+                }}
+              />
+            </div>
           );
         })}
       </div>
-      <CreateUnitsButton projectId={projectId} />
+      <div className="flex items-center gap-3">
+        <CreateUnitsButton projectId={projectId} />
+        <DeleteUnitsets projectId={projectId} deleteSetList={deleteSetList} />
+      </div>
       <div className="mt-8 w-full">
         <DBTable {...useUnitsProps} onSelect={onSelect} columns={COLUMNS} />
       </div>
@@ -93,15 +110,56 @@ export function UnitsTable({ projectId }: Props) {
   );
 }
 
+function DeleteUnitsets({ projectId, deleteSetList }: { projectId: number; deleteSetList: number[] }) {
+  const { mutateAsync } = useDeleteUnitsets(projectId);
+  const [open, setOpen] = useState(false);
+
+  if (!deleteSetList.length) return null;
+
+  return (
+    <SimpleDialog
+      open={open}
+      setOpen={setOpen}
+      header="Delete unitsets"
+      trigger={
+        <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
+          Delete selected sets
+          <Trash className="h-5 w-5" />
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-6">
+        <div>Are you sure you want to delete the selected unit sets?</div>
+        <p>If any units are only in one of the deleted sets, they will be deleted too</p>
+        <div className="flex gap-3">
+          <Button
+            variant="destructive"
+            onClick={() => {
+              mutateAsync({ ids: deleteSetList });
+              setOpen(false);
+            }}
+          >
+            Delete
+          </Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </SimpleDialog>
+  );
+}
+
 type CellValue = z.infer<typeof UnitDataValueSchema>;
 type Rows = Record<string, CellValue>[];
 type Columns = string[];
-type Data = { columns: Columns; rows: Rows; possibleId: string[]; id: string; overwrite: boolean };
+type Data = { columns: Columns; rows: Rows; possibleId: string[]; id: string; overwrite: boolean; unitset: string };
 type DataRow = z.infer<typeof UnitDataRowSchema>;
 type UploadProgress = {
   i: number;
   total: number;
   overwrite: boolean;
+  unitset: string;
   batches: DataRow[][];
 };
 
@@ -115,6 +173,7 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
 
   async function startUpload(data: Data) {
     const overwrite = data.overwrite;
+    const unitset = data.unitset;
     const batches: DataRow[][] = [];
 
     let rows: DataRow[] = [];
@@ -128,13 +187,13 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
       batches.push(rows.slice(i, i + batchsize));
     }
 
-    setProgress({ i: 0, total: batches.length, overwrite, batches });
+    setProgress({ i: 0, total: batches.length, overwrite, batches, unitset });
   }
 
   useEffect(() => {
     if (!progress) return;
     const batch = progress.batches[progress.i];
-    mutateAsync({ overwrite: progress.overwrite, units: batch })
+    mutateAsync({ overwrite: progress.overwrite, unitset: progress.unitset, units: batch })
       .then(() => {
         if (progress.i === progress.total - 1) {
           setProgress(null);
@@ -168,7 +227,7 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
         possibleId.push(col);
       }
     });
-    setData({ columns, rows: dataObj, possibleId, id: "", overwrite: false });
+    setData({ columns, rows: dataObj, possibleId, id: "", overwrite: false, unitset: "" });
   }
 
   function renderForm() {
@@ -184,6 +243,12 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
         <div className="grid grid-cols-[1.2fr,1fr] items-center justify-between gap-3">
           <label className="">Select unique ID column</label>
           <SelectIdDropdown data={data} setData={setData} />
+          <label className="">Add to set, or create new</label>
+          <Input
+            value={data.unitset}
+            onChange={(e) => setData({ ...data, unitset: e.target.value })}
+            placeholder="My favorite units"
+          />
         </div>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
@@ -196,7 +261,7 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
             <label htmlFor="overwrite">Overwrite if ID exists</label>
           </div>
           <Button
-            disabled={!data.id}
+            disabled={!data.id || !data.unitset}
             className=" flex  w-min gap-1"
             variant="secondary"
             onClick={() => startUpload(data)}
@@ -258,7 +323,7 @@ function SelectIdDropdown({ data, setData }: { data: Data; setData: (data: Data)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="flex items-center justify-start gap-2">
+        <Button variant={data.id ? "default" : "outline"} className="flex items-center justify-start gap-2">
           {data.id ? data.id : "Select ID"} <ChevronDown />
         </Button>
       </DropdownMenuTrigger>

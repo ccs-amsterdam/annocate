@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     selectFunction: async (email, urlParams) => {
       const where: SQL[] = [eq(units.projectId, params.projectId)];
       where.push(not(eq(units.externalId, "undefined")));
-      if (urlParams.unitsets && urlParams.unitsets.length > 0) where.push(inArray(unitsets.name, urlParams.unitsets));
+      if (urlParams.unitsetId) where.push(eq(unitsetUnits.unitsetId, urlParams.unitsetId));
 
       const columns = await db
         .select({

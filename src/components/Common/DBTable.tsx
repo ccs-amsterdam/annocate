@@ -32,6 +32,7 @@ export default function DBTable<T extends Record<string, Value>>(props: Props<T>
   }, [props]);
 
   const showPagination = props.hasSearch || (prevProps.meta && prevProps.meta.rows > prevProps.meta.pageSize);
+  console.log(props.data);
   return (
     <div className={props.className || ""}>
       <div className={` mb-4 flex select-none gap-3  ${showPagination ? "" : "hidden"}`}>
@@ -152,11 +153,11 @@ export function DBPagination({ paginate }: { paginate: Paginate }) {
 
 function formatValue(value: Value) {
   if (value instanceof Date) return <span title={value.toLocaleString()}>{value.toDateString()}</span>;
-  if (typeof value === "object") return "";
   if (typeof value === "boolean") return value ? <CheckCircle /> : <Circle />;
   if (typeof value === "number") return value;
 
-  const str = Array.isArray(value) ? value.join(", ") : value;
+  let str = Array.isArray(value) ? value.join(", ") : JSON.stringify(value);
+
   return (
     <div title={str} className="max-w-[20rem] overflow-hidden text-ellipsis whitespace-nowrap">
       {str}

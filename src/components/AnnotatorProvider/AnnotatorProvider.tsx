@@ -1,44 +1,33 @@
 "use client";
-import { GetUnitResponseSchema } from "@/app/api/annotate/schemas";
-import {
-  AnnotationLibrary,
-  CodeBook,
-  Codebook,
-  ExtendedCodebook,
-  GetUnit,
-  JobServer,
-  Progress,
-  RawUnit,
-  ExtendedUnit,
-  AnnotateUnit,
-} from "@/app/types";
+import { AnnotationLibrary, Codebook, ExtendedCodebook, ExtendedUnit, GetUnit, JobServer, Progress } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryState } from "next-usequerystate";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
 import { createUnitBundle } from "./createUnitBundle";
 
 interface UnitContextProps {
   unit: ExtendedUnit;
-  codebook: Codebook;
+  codebook: ExtendedCodebook;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   progress: Progress;
   height: number;
   selectUnit: (i?: number) => void;
+  initialising: boolean;
 }
 
 const UnitContext = createContext<UnitContextProps>({
   unit: initUnit(),
-  codebook: initCodebook(),
+  codebook: importCodebook(initCodebook()),
   annotationLib: initAnnotationLib(),
   annotationManager: new AnnotationManager(() => console.log("AnnotationManager not initialized")),
   progress: initProgress(),
   height: 0,
   selectUnit: (i?: number) => console.log(i),
+  initialising: true,
 });
 export const useUnit = () => useContext(UnitContext);
 
@@ -67,14 +56,13 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     unit: initUnit(),
     codebook: importCodebook(initCodebook()),
   }));
-  const [unit, setUnit] = useState<ExtendedUnit | null>(null);
   const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(initAnnotationLib());
   const [annotationManager] = useState<AnnotationManager>(() => new AnnotationManager(setAnnotationLib));
 
-  const { data: codebookWithId } = useQuery({
+  const { data: codebookWithId, isLoading: codebookLoading } = useQuery({
     queryKey: ["codebook", jobServer.id, getUnit.unit?.codebook_id],
     queryFn: async () => {
-      if (!getUnit.unit?.codebook_id) return null;
+      if (getUnit.unit?.codebook_id === undefined) return null;
       let codebook = await jobServer.getCodebook(getUnit.unit?.codebook_id);
       if (!codebook) {
         console.error("Codebook not found");
@@ -83,7 +71,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
       }
       return { id: getUnit.unit.codebook_id, codebook: importCodebook(codebook) };
     },
-    enabled: !!getUnit.unit?.codebook_id,
+    enabled: getUnit.unit?.codebook_id !== undefined,
     cacheTime: Infinity,
     staleTime: Infinity,
   });
@@ -94,8 +82,10 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
 
   useEffect(() => {
     if (!getUnit.unit) return;
+
     let codebook: ExtendedCodebook;
-    if (getUnit.unit.codebook_id) {
+    if (getUnit.unit.codebook_id !== undefined) {
+      if (codebookLoading) return;
       if (getUnit.unit.codebook_id !== codebookWithId?.id) {
         return;
       }
@@ -108,7 +98,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     setIndex(getUnit.progress.current);
     setUnitBundle(unitBundle);
     annotationManager.initAnnotationLibrary(jobServer, unitBundle.unit, unitBundle.codebook);
-  }, [annotationManager, jobServer, getUnit, codebookWithId, setIndex]);
+  }, [annotationManager, jobServer, getUnit, codebookWithId, codebookLoading, setIndex]);
 
   const selectUnit = useCallback(
     async (i?: number) => {
@@ -127,6 +117,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
         annotationManager,
         height,
         selectUnit,
+        initialising: false,
       }}
     >
       {children}

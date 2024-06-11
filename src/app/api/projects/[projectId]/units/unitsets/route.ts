@@ -1,5 +1,5 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet, createUpdate } from "@/app/api/routeHelpers";
+import { createDelete, createGet, createUpdate } from "@/app/api/routeHelpers";
 import db, { units, layouts, unitsets, unitsetUnits } from "@/drizzle/schema";
 import { count, eq, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
@@ -57,3 +57,15 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     },
   });
 }
+
+// export async function DELETE(req: Request, { params }: { params: { projectId: number; unitsetId: number } }) {
+//   return createDelete({
+//     deleteFunction: async (email, body) => {
+//       await db.delete(unitsets).where(eq(unitsets.id, params.unitsetId));
+//     },
+//     req,
+//     authorizeFunction: async (auth, body) => {
+//       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
+//     },
+//   });
+// }

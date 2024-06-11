@@ -1,7 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import db, { units, unitsets, unitsetUnits } from "@/drizzle/schema";
-import { and, eq, inArray, not, SQL, sql } from "drizzle-orm";
+import { and, eq, not, SQL, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
 
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     tableFunction: (email, urlParams) => {
       const where: SQL[] = [eq(units.projectId, params.projectId)];
       where.push(not(eq(units.externalId, "undefined")));
-      if (urlParams.unitsets && urlParams.unitsets.length > 0) where.push(inArray(unitsets.name, urlParams.unitsets));
+      if (urlParams.unitset) where.push(eq(unitsets.name, urlParams.unitset));
 
       return db
         .select({
@@ -20,8 +20,8 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
           data: units.data,
         })
         .from(units)
-        .leftJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
-        .leftJoin(unitsets, eq(unitsetUnits.unitsetId, unitsets.id))
+        .innerJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
+        .innerJoin(unitsets, eq(unitsetUnits.unitsetId, unitsets.id))
         .where(and(...where))
         .groupBy(units.id)
         .as("baseQuery");
@@ -39,28 +39,48 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
 export async function POST(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      const data = body.units
-        .map((unit) => ({
-          projectId: params.projectId,
-          externalId: unit.id,
-          data: unit.data,
-        }))
-        .filter((unit) => unit.externalId && unit.data);
+      return db.transaction(async (tx) => {
+        const data = body.units
+          .map((unit) => ({
+            projectId: params.projectId,
+            externalId: unit.id,
+            data: unit.data,
+          }))
+          .filter((unit) => unit.externalId && unit.data);
 
-      if (body.overwrite) {
-        await db
-          .insert(units)
-          .values(data)
-          .onConflictDoUpdate({
+        let query = tx.insert(units).values(data).$dynamic();
+
+        if (body.overwrite) {
+          query = query.onConflictDoUpdate({
             target: [units.projectId, units.externalId],
             set: {
               data: sql`excluded.data`,
             },
           });
-      } else {
-        await db.insert(units).values(data);
-      }
-      return null;
+        }
+        const newUnits = await query.returning();
+
+        let [unitset] = await tx
+          .select({ id: unitsets.id })
+          .from(unitsets)
+          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.name, body.unitset)));
+
+        if (!unitset) {
+          [unitset] = await tx.insert(unitsets).values({ projectId: params.projectId, name: body.unitset }).returning();
+        }
+
+        await tx
+          .insert(unitsetUnits)
+          .values(
+            newUnits.map((unit) => ({
+              unitId: unit.id,
+              unitsetId: unitset.id,
+            })),
+          )
+          .onConflictDoNothing();
+
+        return null;
+      });
     },
     req,
     bodySchema: UnitDataCreateBodySchema,
@@ -73,3 +93,12 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
     },
   });
 }
+
+// function setUnitsetPositions(db: any, unitsetId: number) {
+//   return db
+//     .select({ id: unitsetUnits.id })
+//     .from(unitsetUnits)
+//     .where(eq(unitsetUnits.unitsetId, unitsetId))
+//     .orderBy(unitsetUnits.id)
+//     .as("unitsetUnits");
+// }

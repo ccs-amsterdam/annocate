@@ -33,7 +33,7 @@ export default function Codebook({ params }: { params: { projectId: number; code
     <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-3 lg:grid-cols-2">
       <div className="relative flex justify-center">
         {/* <PreviewCodebook projectId={projectId} preview={preview} /> */}
-        <Preview projectId={params.projectId} codebook={preview} />
+        {preview ? <Preview projectId={params.projectId} codebook={preview} /> : <Loading />}
       </div>
       <div className="max-h-[calc(100vh-var(--header-height))] max-w-[600px] overflow-auto py-6">
         <UpdateCodebook

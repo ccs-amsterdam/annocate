@@ -23,23 +23,25 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
 export async function POST(req: Request, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      const overwrite = body.overwrite;
-      delete body.overwrite;
+      return db.transaction(async (tx) => {
+        const overwrite = body.overwrite;
+        delete body.overwrite;
 
-      let query = db
-        .insert(codebooks)
-        .values({ ...body, projectId: params.projectId })
-        .$dynamic();
+        let query = tx
+          .insert(codebooks)
+          .values({ ...body, projectId: params.projectId })
+          .$dynamic();
 
-      if (overwrite) {
-        query = query.onConflictDoUpdate({
-          target: [codebooks.projectId, codebooks.name],
-          set: { ...body },
-        });
-      }
+        if (overwrite) {
+          query = query.onConflictDoUpdate({
+            target: [codebooks.projectId, codebooks.name],
+            set: { ...body },
+          });
+        }
 
-      const [codebook] = await query.returning();
-      return codebook;
+        const [codebook] = await query.returning();
+        return codebook;
+      });
     },
     req,
     bodySchema: CodebookCreateBodySchema,

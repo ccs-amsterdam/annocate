@@ -9,7 +9,13 @@ export const UnitDataRowSchema = z.object({
 });
 
 export const UnitDataTableParamsSchema = TableParamsSchema.extend({
-  unitsets: z.array(z.string()).optional(),
+  unitset: z.string().optional(),
+});
+
+// ids or unitsetIds is XOR
+export const UnitDataDeleteBodySchema = z.object({
+  ids: z.array(z.string()).optional(),
+  unitsetIds: z.array(z.number()).optional(),
 });
 
 export const UnitDataResponseSchema = z.object({
@@ -21,6 +27,7 @@ export const UnitDataResponseSchema = z.object({
 export const UnitDataCreateBodySchema = z.object({
   overwrite: z.boolean().optional(),
   units: z.array(UnitDataRowSchema).max(200),
+  unitset: z.string(),
 });
 
 export const UnitDataCreateResponseSchema = z.object({

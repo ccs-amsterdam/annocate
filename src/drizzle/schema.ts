@@ -160,9 +160,14 @@ export const unitsetUnits = pgTable(
     unitId: integer("unit_id")
       .notNull()
       .references(() => units.id, { onDelete: "cascade" }),
+    position: integer("position"),
   },
   (table) => {
-    return { pk: primaryKey({ columns: [table.unitsetId, table.unitId] }) };
+    return {
+      pk: primaryKey({ columns: [table.unitsetId, table.unitId] }),
+      unitIdx: index("unitset_units_unit_ids").on(table.unitId),
+      positionIdx: index("unitset_units_position_idx").on(table.position),
+    };
   },
 );
 

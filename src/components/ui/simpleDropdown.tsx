@@ -5,13 +5,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 interface Props<T> {
   options: T[];
   optionKey: keyof T;
-
   placeholder: string;
   value: string | undefined;
-  setValue: (value: string) => void;
+  onSelect: (value: T) => void;
 }
 
-export function SimpleDropdown<T extends {}>({ options, optionKey, placeholder, value, setValue }: Props<T>) {
+export function SimpleDropdown<T extends {}>({ options, optionKey, placeholder, value, onSelect }: Props<T>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger disabled={!options || options.length === 0} asChild>
@@ -24,7 +23,7 @@ export function SimpleDropdown<T extends {}>({ options, optionKey, placeholder, 
         {(options || []).map((option) => {
           const key = String(option[optionKey]);
           return (
-            <DropdownMenuItem key={key} onClick={() => setValue(key)}>
+            <DropdownMenuItem key={key} onClick={() => onSelect(option)}>
               {key}
             </DropdownMenuItem>
           );
