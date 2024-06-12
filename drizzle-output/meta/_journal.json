@@ -1,26 +1,12 @@
 {
-  "version": "5",
-  "dialect": "pg",
+  "version": "7",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1717737984870,
-      "tag": "0000_greedy_scalphunter",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1717738656540,
-      "tag": "0001_slow_speed_demon",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1718133758466,
-      "tag": "0002_rich_komodo",
+      "version": "7",
+      "when": 1718197974906,
+      "tag": "0000_white_vector",
       "breakpoints": true
     }
   ]

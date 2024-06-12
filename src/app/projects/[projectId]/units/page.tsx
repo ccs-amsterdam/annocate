@@ -1,5 +1,5 @@
 "use client";
-import { UnitsTable } from "./UnitsTable";
+import { CreateUnitsButton, UnitsTable } from "./UnitsTable";
 import { Loading } from "@/components/ui/loader";
 import { Database, Palette, Plus } from "lucide-react";
 import DBSelect from "@/components/Common/DBSelect";
@@ -13,18 +13,17 @@ import { HelpDrawer } from "@/components/Common/HelpDrawer";
 
 export default function Users({ params }: { params: { projectId: number } }) {
   const useLayoutsProps = useUnitLayouts(params.projectId);
-  const [newLayoutName, setNewLayoutName] = useState("");
-  const { create } = useCreateEmptyLayout(params.projectId);
   const router = useRouter();
 
   return (
-    <div className="mx-auto mt-10 grid max-w-[1400px] grid-cols-1 gap-12 lg:grid-cols-[1fr,1fr] lg:gap-6 lg:px-3">
-      <div className="flex w-full flex-col gap-6">
-        <div className="flex items-center gap-3 bg-primary p-4 text-primary-foreground lg:rounded-md">
+    <div className="mx-auto mt-10 grid max-w-[1400px] grid-cols-1 gap-12 px-3 lg:grid-cols-[1fr,1fr] lg:gap-6">
+      <div className="flex w-full flex-col gap-3">
+        <div className="flex items-center gap-3 rounded-md bg-primary p-4 text-primary-foreground">
           <Palette />
           <h3 className="text-lg font-semibold">Layouts</h3>
         </div>
         <div>
+          <CreateLayout projectId={params.projectId} />
           <DBSelect
             {...useLayoutsProps}
             nameField={"name"}
@@ -32,31 +31,20 @@ export default function Users({ params }: { params: { projectId: number } }) {
             onSelect={(layout) => {
               router.push(`/projects/${params.projectId}/units/layouts/${layout.id}`);
             }}
-          >
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Create new layout"
-                value={newLayoutName}
-                onChange={(e) => setNewLayoutName(e.target.value)}
-              />
-              <Button
-                disabled={!newLayoutName}
-                className="ml-auto flex  w-min gap-1"
-                variant="secondary"
-                onClick={() =>
-                  create(newLayoutName).then(({ id }) => {
-                    router.push(`/projects/${params.projectId}/units/layouts/${id}`);
-                  })
-                }
-              >
-                <Plus />
-              </Button>
-            </div>
-          </DBSelect>
+          />
         </div>
       </div>
-      <div className=" ">
-        <div className="flex items-center gap-3 bg-primary p-4 text-primary-foreground lg:rounded-md">
+      <div className="lg:min-h-[20rem]">
+        <div className="flex items-center gap-3 rounded-md bg-primary p-4 text-primary-foreground">
+          <Database />
+          <h3 className="text-lg font-semibold">Unit sets</h3>
+        </div>
+        <div className="mt-3 px-3 lg:px-0">
+          <CreateUnitsButton projectId={params.projectId} />
+        </div>
+      </div>
+      <div className="mt-6 lg:col-span-2">
+        <div className="flex items-center gap-3 rounded-md bg-secondary p-4 text-secondary-foreground">
           <Database />
           <h3 className="text-lg font-semibold">Data</h3>
         </div>
@@ -65,6 +53,30 @@ export default function Users({ params }: { params: { projectId: number } }) {
         </div>
       </div>
       <Help />
+    </div>
+  );
+}
+
+function CreateLayout({ projectId }: { projectId: number }) {
+  const [newLayoutName, setNewLayoutName] = useState("");
+  const { create } = useCreateEmptyLayout(projectId);
+  const router = useRouter();
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input placeholder="Create new layout" value={newLayoutName} onChange={(e) => setNewLayoutName(e.target.value)} />
+      <Button
+        disabled={!newLayoutName}
+        className="ml-auto flex  w-min gap-1"
+        variant="secondary"
+        onClick={() =>
+          create(newLayoutName).then(({ id }) => {
+            router.push(`/projects/${projectId}/units/layouts/${id}`);
+          })
+        }
+      >
+        <Plus />
+      </Button>
     </div>
   );
 }

@@ -10,8 +10,10 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     req,
     tableFunction: (email, urlParams) => {
       const where: SQL[] = [eq(units.projectId, params.projectId)];
-      where.push(not(eq(units.externalId, "undefined")));
-      if (urlParams.unitset) where.push(eq(unitsets.name, urlParams.unitset));
+
+      // filtering here also affects the unitsets array. If we need to filter in the units table,
+      // combine this with the data field filters
+      // if (urlParams.unitset) where.push(eq(unitsets.name, urlParams.unitset));
 
       return db
         .select({
@@ -61,20 +63,27 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
         const newUnits = await query.returning();
 
         let [unitset] = await tx
-          .select({ id: unitsets.id })
+          .select({ id: unitsets.id, maxPosition: sql<number | null>`max(${unitsetUnits.position})` })
           .from(unitsets)
-          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.name, body.unitset)));
+          .leftJoin(unitsetUnits, eq(unitsets.id, unitsetUnits.unitsetId))
+          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.name, body.unitset)))
+          .groupBy(unitsets.id);
 
         if (!unitset) {
-          [unitset] = await tx.insert(unitsets).values({ projectId: params.projectId, name: body.unitset }).returning();
+          const [newNnitset] = await tx
+            .insert(unitsets)
+            .values({ projectId: params.projectId, name: body.unitset })
+            .returning();
+          unitset = { id: newNnitset.id, maxPosition: null };
         }
 
         await tx
           .insert(unitsetUnits)
           .values(
-            newUnits.map((unit) => ({
+            newUnits.map((unit, i) => ({
               unitId: unit.id,
               unitsetId: unitset.id,
+              position: unitset.maxPosition == null ? i : unitset.maxPosition + i + 1,
             })),
           )
           .onConflictDoNothing();

@@ -1,7 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createUpdate } from "@/app/api/routeHelpers";
 import db, { units, unitsets, unitsetUnits } from "@/drizzle/schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitsetDeleteBodySchema } from "../schemas";
 
@@ -11,19 +11,15 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
       db.transaction(async (tx) => {
         await tx.delete(unitsets).where(and(eq(unitsets.projectId, params.projectId), inArray(unitsets.id, body.ids)));
 
-        // remove any orphaned units
-        const activeUnits = await tx
-          .selectDistinct({ id: units.id })
-          .from(units)
-          .leftJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
-          .where(isNull(unitsetUnits.unitsetId));
-
-        await tx.delete(units).where(
-          inArray(
-            units.id,
-            activeUnits.map((u) => u.id),
-          ),
-        );
+        // delete any orphaned units
+        await tx
+          .delete(units)
+          .where(
+            and(
+              eq(units.projectId, params.projectId),
+              sql`NOT EXISTS (SELECT 1 FROM ${unitsetUnits} WHERE ${unitsetUnits.unitId} = ${units.id})`,
+            ),
+          );
       });
     },
     req,

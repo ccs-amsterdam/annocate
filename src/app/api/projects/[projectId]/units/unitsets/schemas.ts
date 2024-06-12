@@ -24,4 +24,5 @@ export const UnitsetResponseSchema = z.object({
 export const UnitsetsCreateBodySchema = z.object({
   name: z.string(),
   unitIds: z.array(z.string()),
+  method: z.enum(["append", "replace", "delete"]),
 });

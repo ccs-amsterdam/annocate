@@ -8,9 +8,7 @@ export const UnitDataRowSchema = z.object({
   data: z.record(z.string(), UnitDataValueSchema),
 });
 
-export const UnitDataTableParamsSchema = TableParamsSchema.extend({
-  unitset: z.string().optional(),
-});
+export const UnitDataTableParamsSchema = TableParamsSchema.extend({});
 
 // ids or unitsetIds is XOR
 export const UnitDataDeleteBodySchema = z.object({

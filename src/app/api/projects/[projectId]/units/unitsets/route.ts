@@ -1,7 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createDelete, createGet, createUpdate } from "@/app/api/routeHelpers";
 import db, { units, layouts, unitsets, unitsetUnits } from "@/drizzle/schema";
-import { count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitsetsCreateBodySchema, UnitsetsResponseSchema } from "./schemas";
 import { z } from "zod";
@@ -33,27 +33,57 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
 export async function POST(req: Request, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      const [unitset] = await db
-        .insert(unitsets)
-        .values({ projectId: params.projectId, name: body.name })
-        .onConflictDoNothing()
-        .returning();
-      const unitIds = await db.select({ id: units.id }).from(units).where(inArray(units.externalId, body.unitIds));
+      return db.transaction(async (tx) => {
+        const unitIds = await tx.select({ id: units.id }).from(units).where(inArray(units.externalId, body.unitIds));
 
-      const unitsetUnitsValues = unitIds.map((unit) => ({
-        unitId: unit.id,
-        unitsetId: unitset.id,
-      }));
+        let [unitset] = await tx
+          .select({ id: unitsets.id, maxPosition: sql<number | null>`max(${unitsetUnits.position})` })
+          .from(unitsets)
+          .leftJoin(unitsetUnits, eq(unitsets.id, unitsetUnits.unitsetId))
+          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.name, body.name)))
+          .groupBy(unitsets.id);
 
-      await db.insert(unitsetUnits).values(unitsetUnitsValues).onConflictDoNothing();
+        if (!unitset) {
+          const [newNnitset] = await tx
+            .insert(unitsets)
+            .values({ projectId: params.projectId, name: body.name })
+            .returning();
+          unitset = { id: newNnitset.id, maxPosition: null };
+        }
+
+        if (body.method === "replace") {
+          await tx.delete(unitsetUnits).where(eq(unitsetUnits.unitsetId, unitset.id));
+          unitset.maxPosition = null;
+        }
+
+        await tx
+          .insert(unitsetUnits)
+          .values(
+            unitIds.map((unitId, i) => ({
+              unitId: unitId.id,
+              unitsetId: unitset.id,
+              position: unitset.maxPosition == null ? i : unitset.maxPosition + i + 1,
+            })),
+          )
+          .onConflictDoNothing();
+
+        if (body.method === "replace" || body.method === "delete") {
+          // delete any orphaned units
+          await tx
+            .delete(units)
+            .where(
+              and(
+                eq(units.projectId, params.projectId),
+                sql`NOT EXISTS (SELECT 1 FROM ${unitsetUnits} WHERE ${unitsetUnits.unitId} = ${units.id})`,
+              ),
+            );
+        }
+      });
     },
     req,
     bodySchema: UnitsetsCreateBodySchema,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
-    },
-    errorFunction: (status, body) => {
-      if (status === 409) return `Codebook with the name "${body?.name}" already exists in this project`;
     },
   });
 }

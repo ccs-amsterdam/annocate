@@ -156,7 +156,8 @@ function formatValue(value: Value) {
   if (typeof value === "boolean") return value ? <CheckCircle /> : <Circle />;
   if (typeof value === "number") return value;
 
-  let str = Array.isArray(value) ? value.join(", ") : JSON.stringify(value);
+  let str = Array.isArray(value) ? value.join(", ") : value;
+  if (typeof str !== "string") str = JSON.stringify(str);
 
   return (
     <div title={str} className="max-w-[20rem] overflow-hidden text-ellipsis whitespace-nowrap">

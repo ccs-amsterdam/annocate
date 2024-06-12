@@ -32,10 +32,10 @@ interface Props {
 const COLUMNS = ["id", "unitsets"];
 
 export function UnitsTable({ projectId }: Props) {
-  const useUnitsProps = useUnits(projectId, { unitset: undefined });
+  const useUnitsProps = useUnits(projectId, {});
   const { data: unitsets, isLoading: unitsetsLoading } = useUnitsets(projectId);
   const [unit, setUnit] = useState<z.infer<typeof UnitDataResponseSchema>>();
-  const [deleteSetList, setDeleteSetList] = useState<number[]>([]);
+  const [editSetList, setEditSetList] = useState<number[]>([]);
   const router = useRouter();
 
   function onSelect(row: z.infer<typeof UnitDataResponseSchema>) {
@@ -43,7 +43,7 @@ export function UnitsTable({ projectId }: Props) {
     setUnit(row);
   }
 
-  useEffect(() => setDeleteSetList([]), [unitsets]);
+  useEffect(() => setEditSetList([]), [unitsets]);
 
   function showUnit() {
     if (!unit) return null;
@@ -61,12 +61,12 @@ export function UnitsTable({ projectId }: Props) {
     );
   }
 
-  function toggleUnitset(unitset: string) {
-    const newUnitset = unitset === useUnitsProps.params.unitset ? undefined : unitset;
-    useUnitsProps.setParams({
-      ...useUnitsProps.params,
-      unitset: newUnitset,
-    });
+  function toggleEditList(unitsetId: number) {
+    if (editSetList.includes(unitsetId)) {
+      setEditSetList(editSetList.filter((id) => id !== unitsetId));
+    } else {
+      setEditSetList([...editSetList, unitsetId]);
+    }
   }
 
   return (
@@ -76,29 +76,19 @@ export function UnitsTable({ projectId }: Props) {
           return (
             <div key={unitset.name} className="flex items-start gap-1">
               <Button
-                variant={unitset.name === useUnitsProps.params.unitset ? "secondary" : "outline"}
+                variant={editSetList.includes(unitset.id) ? "secondary" : "outline"}
                 className={`border-2 border-secondary px-2 py-1`}
-                onClick={() => toggleUnitset(unitset.name)}
+                onClick={() => toggleEditList(unitset.id)}
               >
                 {unitset.name} <span className="ml-1 text-foreground/50">({unitset.count})</span>{" "}
               </Button>
-              <Checkbox
-                checked={deleteSetList.includes(unitset.id)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setDeleteSetList([...deleteSetList, unitset.id]);
-                  } else {
-                    setDeleteSetList(deleteSetList.filter((id) => id !== unitset.id));
-                  }
-                }}
-              />
             </div>
           );
         })}
       </div>
       <div className="flex items-center gap-3">
         <CreateUnitsButton projectId={projectId} />
-        <DeleteUnitsets projectId={projectId} deleteSetList={deleteSetList} />
+        <DeleteUnitsets projectId={projectId} editSetList={editSetList} />
       </div>
       <div className="mt-8 w-full">
         <DBTable {...useUnitsProps} onSelect={onSelect} columns={COLUMNS} />
@@ -110,11 +100,11 @@ export function UnitsTable({ projectId }: Props) {
   );
 }
 
-function DeleteUnitsets({ projectId, deleteSetList }: { projectId: number; deleteSetList: number[] }) {
+export function DeleteUnitsets({ projectId, editSetList: editSetList }: { projectId: number; editSetList: number[] }) {
   const { mutateAsync } = useDeleteUnitsets(projectId);
   const [open, setOpen] = useState(false);
 
-  if (!deleteSetList.length) return null;
+  if (!editSetList.length) return null;
 
   return (
     <SimpleDialog
@@ -135,7 +125,7 @@ function DeleteUnitsets({ projectId, deleteSetList }: { projectId: number; delet
           <Button
             variant="destructive"
             onClick={() => {
-              mutateAsync({ ids: deleteSetList });
+              mutateAsync({ ids: editSetList });
               setOpen(false);
             }}
           >
@@ -163,7 +153,7 @@ type UploadProgress = {
   batches: DataRow[][];
 };
 
-function CreateUnitsButton({ projectId: projectId }: Props) {
+export function CreateUnitsButton({ projectId: projectId }: Props) {
   const [open, setOpen] = useState(false);
   const { mutateAsync } = useCreateUnits(projectId);
   const [data, setData] = useState<Data | null>(null);
@@ -290,10 +280,10 @@ function CreateUnitsButton({ projectId: projectId }: Props) {
     <SimpleDialog
       open={open}
       setOpen={setOpen}
-      header="Upload units"
+      header="Create units"
       trigger={
         <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
-          Upload units
+          Create units
           <Plus className="h-5 w-5" />
         </Button>
       }

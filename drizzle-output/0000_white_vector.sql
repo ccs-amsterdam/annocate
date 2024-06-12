@@ -54,12 +54,13 @@ CREATE TABLE IF NOT EXISTS "jobset_annotator" (
 	CONSTRAINT "jobset_annotator_user_id_jobset_id_pk" PRIMARY KEY("user_id","jobset_id")
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "unit_sets" (
+CREATE TABLE IF NOT EXISTS "layouts" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"project_id" integer NOT NULL,
 	"name" varchar(256) NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
-	"layout" jsonb NOT NULL
+	"layout" jsonb NOT NULL,
+	CONSTRAINT "layouts_project_name" UNIQUE("project_id","name")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "managers" (
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS "units" (
 CREATE TABLE IF NOT EXISTS "unitset_units" (
 	"unitset_id" integer NOT NULL,
 	"unit_id" integer NOT NULL,
+	"position" integer,
 	CONSTRAINT "unitset_units_unitset_id_unit_id_pk" PRIMARY KEY("unitset_id","unit_id")
 );
 --> statement-breakpoint
@@ -112,86 +114,90 @@ CREATE TABLE IF NOT EXISTS "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "annotations_unit_ids" ON "annotations" ("unit_id");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "codebook_project_ids" ON "codebooks" ("project_id");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "jobs_project_ids" ON "jobs" ("project_id");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "layouts_project_ids" ON "unit_sets" ("project_id");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "managers_userId_index" ON "managers" ("user_uuid");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "units_project_idx" ON "units" ("project_id");--> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "codebooks" ADD CONSTRAINT "codebooks_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "codebooks" ADD CONSTRAINT "codebooks_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "invitations" ADD CONSTRAINT "invitations_jobset_id_jobs_id_fk" FOREIGN KEY ("jobset_id") REFERENCES "jobs"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "invitations" ADD CONSTRAINT "invitations_jobset_id_jobs_id_fk" FOREIGN KEY ("jobset_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "job_set_unit_groups" ADD CONSTRAINT "job_set_unit_groups_job_set_id_jobs_id_fk" FOREIGN KEY ("job_set_id") REFERENCES "jobs"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "job_set_unit_groups" ADD CONSTRAINT "job_set_unit_groups_job_set_id_jobs_id_fk" FOREIGN KEY ("job_set_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "job_set_unit_groups" ADD CONSTRAINT "job_set_unit_groups_unit_group_id_unit_sets_id_fk" FOREIGN KEY ("unit_group_id") REFERENCES "unit_sets"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "job_set_unit_groups" ADD CONSTRAINT "job_set_unit_groups_unit_group_id_layouts_id_fk" FOREIGN KEY ("unit_group_id") REFERENCES "public"."layouts"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "job_set_unit_groups" ADD CONSTRAINT "job_set_unit_groups_codebook_id_codebooks_id_fk" FOREIGN KEY ("codebook_id") REFERENCES "codebooks"("id") ON DELETE set null ON UPDATE no action;
+ ALTER TABLE "job_set_unit_groups" ADD CONSTRAINT "job_set_unit_groups_codebook_id_codebooks_id_fk" FOREIGN KEY ("codebook_id") REFERENCES "public"."codebooks"("id") ON DELETE set null ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "jobs" ADD CONSTRAINT "jobs_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "jobs" ADD CONSTRAINT "jobs_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "unit_sets" ADD CONSTRAINT "unit_sets_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "layouts" ADD CONSTRAINT "layouts_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "managers" ADD CONSTRAINT "managers_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "managers" ADD CONSTRAINT "managers_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "managers" ADD CONSTRAINT "managers_user_uuid_users_uuid_fk" FOREIGN KEY ("user_uuid") REFERENCES "users"("uuid") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "managers" ADD CONSTRAINT "managers_user_uuid_users_uuid_fk" FOREIGN KEY ("user_uuid") REFERENCES "public"."users"("uuid") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "units" ADD CONSTRAINT "units_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "units" ADD CONSTRAINT "units_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "unitset_units" ADD CONSTRAINT "unitset_units_unitset_id_unitsets_id_fk" FOREIGN KEY ("unitset_id") REFERENCES "unitsets"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "unitset_units" ADD CONSTRAINT "unitset_units_unitset_id_unitsets_id_fk" FOREIGN KEY ("unitset_id") REFERENCES "public"."unitsets"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "unitset_units" ADD CONSTRAINT "unitset_units_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "unitset_units" ADD CONSTRAINT "unitset_units_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "unitsets" ADD CONSTRAINT "unitsets_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "unitsets" ADD CONSTRAINT "unitsets_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "annotations_unit_ids" ON "annotations" USING btree ("unit_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "codebook_project_ids" ON "codebooks" USING btree ("project_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "jobs_project_ids" ON "jobs" USING btree ("project_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "layouts_project_ids" ON "layouts" USING btree ("project_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "managers_userId_index" ON "managers" USING btree ("user_uuid");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "units_project_idx" ON "units" USING btree ("project_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "unitset_units_unit_ids" ON "unitset_units" USING btree ("unit_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "unitset_units_position_idx" ON "unitset_units" USING btree ("position");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "unitsets_project_ids" ON "unitsets" USING btree ("project_id");

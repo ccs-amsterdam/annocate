@@ -6,8 +6,8 @@ config({ path: ".env.local" });
 export default {
   schema: "./src/drizzle/schema.ts",
   out: "./drizzle-output",
-  driver: "pg",
+  dialect: "postgresql",
   dbCredentials: {
-    connectionString: process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || "",
+    url: process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || "",
   },
 } satisfies Config;

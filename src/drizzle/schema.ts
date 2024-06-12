@@ -115,7 +115,7 @@ export const units = pgTable(
 type UnitLayout = z.input<typeof UnitLayoutSchema>;
 
 export const layouts = pgTable(
-  "unit_sets",
+  "layouts",
   {
     id: serial("id").primaryKey(),
     projectId: integer("project_id")
@@ -157,14 +157,14 @@ export const unitsetUnits = pgTable(
     unitsetId: integer("unitset_id")
       .notNull()
       .references(() => unitsets.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
     unitId: integer("unit_id")
       .notNull()
       .references(() => units.id, { onDelete: "cascade" }),
-    position: integer("position"),
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.unitsetId, table.unitId] }),
+      pk: primaryKey({ columns: [table.unitsetId, table.position] }),
       unitIdx: index("unitset_units_unit_ids").on(table.unitId),
       positionIdx: index("unitset_units_position_idx").on(table.position),
     };

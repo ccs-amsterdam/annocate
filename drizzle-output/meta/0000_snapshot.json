@@ -1,10 +1,10 @@
 {
-  "id": "40811155-6deb-4e14-a796-e5892fa38708",
+  "id": "7bbdf23b-844c-4473-9850-96e672093eaa",
   "prevId": "00000000-0000-0000-0000-000000000000",
-  "version": "5",
-  "dialect": "pg",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "annotations": {
+    "public.annotations": {
       "name": "annotations",
       "schema": "",
       "columns": {
@@ -74,9 +74,17 @@
         "annotations_unit_ids": {
           "name": "annotations_unit_ids",
           "columns": [
-            "unit_id"
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -92,7 +100,7 @@
       },
       "uniqueConstraints": {}
     },
-    "codebooks": {
+    "public.codebooks": {
       "name": "codebooks",
       "schema": "",
       "columns": {
@@ -132,9 +140,17 @@
         "codebook_project_ids": {
           "name": "codebook_project_ids",
           "columns": [
-            "project_id"
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -164,7 +180,7 @@
         }
       }
     },
-    "invitations": {
+    "public.invitations": {
       "name": "invitations",
       "schema": "",
       "columns": {
@@ -220,7 +236,7 @@
       },
       "uniqueConstraints": {}
     },
-    "job_set_unit_groups": {
+    "public.job_set_unit_groups": {
       "name": "job_set_unit_groups",
       "schema": "",
       "columns": {
@@ -264,10 +280,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "job_set_unit_groups_unit_group_id_unit_sets_id_fk": {
-          "name": "job_set_unit_groups_unit_group_id_unit_sets_id_fk",
+        "job_set_unit_groups_unit_group_id_layouts_id_fk": {
+          "name": "job_set_unit_groups_unit_group_id_layouts_id_fk",
           "tableFrom": "job_set_unit_groups",
-          "tableTo": "unit_sets",
+          "tableTo": "layouts",
           "columnsFrom": [
             "unit_group_id"
           ],
@@ -302,7 +318,7 @@
       },
       "uniqueConstraints": {}
     },
-    "jobs": {
+    "public.jobs": {
       "name": "jobs",
       "schema": "",
       "columns": {
@@ -343,9 +359,17 @@
         "jobs_project_ids": {
           "name": "jobs_project_ids",
           "columns": [
-            "project_id"
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -366,7 +390,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "jobset_annotator": {
+    "public.jobset_annotator": {
       "name": "jobset_annotator",
       "schema": "",
       "columns": {
@@ -416,8 +440,8 @@
       },
       "uniqueConstraints": {}
     },
-    "unit_sets": {
-      "name": "unit_sets",
+    "public.layouts": {
+      "name": "layouts",
       "schema": "",
       "columns": {
         "id": {
@@ -456,15 +480,23 @@
         "layouts_project_ids": {
           "name": "layouts_project_ids",
           "columns": [
-            "project_id"
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "unit_sets_project_id_projects_id_fk": {
-          "name": "unit_sets_project_id_projects_id_fk",
-          "tableFrom": "unit_sets",
+        "layouts_project_id_projects_id_fk": {
+          "name": "layouts_project_id_projects_id_fk",
+          "tableFrom": "layouts",
           "tableTo": "projects",
           "columnsFrom": [
             "project_id"
@@ -477,9 +509,18 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "layouts_project_name": {
+          "name": "layouts_project_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "name"
+          ]
+        }
+      }
     },
-    "managers": {
+    "public.managers": {
       "name": "managers",
       "schema": "",
       "columns": {
@@ -507,9 +548,17 @@
         "managers_userId_index": {
           "name": "managers_userId_index",
           "columns": [
-            "user_uuid"
+            {
+              "expression": "user_uuid",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -551,7 +600,7 @@
       },
       "uniqueConstraints": {}
     },
-    "projects": {
+    "public.projects": {
       "name": "projects",
       "schema": "",
       "columns": {
@@ -609,7 +658,7 @@
         }
       }
     },
-    "units": {
+    "public.units": {
       "name": "units",
       "schema": "",
       "columns": {
@@ -656,9 +705,17 @@
         "units_project_idx": {
           "name": "units_project_idx",
           "columns": [
-            "project_id"
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -688,7 +745,7 @@
         }
       }
     },
-    "unitset_units": {
+    "public.unitset_units": {
       "name": "unitset_units",
       "schema": "",
       "columns": {
@@ -703,9 +760,46 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "unitset_units_unit_ids": {
+          "name": "unitset_units_unit_ids",
+          "columns": [
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "unitset_units_position_idx": {
+          "name": "unitset_units_position_idx",
+          "columns": [
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "unitset_units_unitset_id_unitsets_id_fk": {
           "name": "unitset_units_unitset_id_unitsets_id_fk",
@@ -745,7 +839,7 @@
       },
       "uniqueConstraints": {}
     },
-    "unitsets": {
+    "public.unitsets": {
       "name": "unitsets",
       "schema": "",
       "columns": {
@@ -775,7 +869,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "unitsets_project_ids": {
+          "name": "unitsets_project_ids",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "unitsets_project_id_projects_id_fk": {
           "name": "unitsets_project_id_projects_id_fk",
@@ -803,7 +913,7 @@
         }
       }
     },
-    "users": {
+    "public.users": {
       "name": "users",
       "schema": "",
       "columns": {
