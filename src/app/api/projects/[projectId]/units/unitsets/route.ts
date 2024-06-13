@@ -1,29 +1,32 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createDelete, createGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { units, layouts, unitsets, unitsetUnits } from "@/drizzle/schema";
+import { createGet, createTableGet, createUpdate } from "@/app/api/routeHelpers";
+import db, { layouts, units, unitsets, unitsetUnits } from "@/drizzle/schema";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { UnitsetsCreateBodySchema, UnitsetsResponseSchema } from "./schemas";
 import { z } from "zod";
+import { UnitsetsCreateBodySchema, UnitsetsResponseSchema, UnitsetTableParamsSchema } from "./schemas";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   const { projectId } = params;
-  return createGet({
-    selectFunction: async (email, params) => {
-      return await db
+  return createTableGet({
+    tableFunction: (email, params) => {
+      return db
         .select({
           id: unitsets.id,
           name: unitsets.name,
-          count: count(unitsetUnits.unitId),
+          layout: sql<string>`${layouts.name}`.as(`layout`),
         })
         .from(unitsets)
-        .leftJoin(unitsetUnits, eq(unitsets.id, unitsetUnits.unitsetId))
+        .leftJoin(layouts, eq(unitsets.layoutId, layouts.id))
         .where(eq(unitsets.projectId, projectId))
-        .groupBy(unitsets.id);
+        .as("baseQuery");
     },
     req,
-    responseSchema: z.array(UnitsetsResponseSchema),
+    paramsSchema: UnitsetTableParamsSchema,
+    responseSchema: UnitsetsResponseSchema,
     projectId: params.projectId,
+    queryColumns: ["name", "layout"],
+    idColumn: "id",
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
@@ -37,18 +40,39 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
         const unitIds = await tx.select({ id: units.id }).from(units).where(inArray(units.externalId, body.unitIds));
 
         let [unitset] = await tx
-          .select({ id: unitsets.id, maxPosition: sql<number | null>`max(${unitsetUnits.position})` })
+          .select({
+            id: unitsets.id,
+            layoutId: unitsets.layoutId,
+            maxPosition: sql<number | null>`max(${unitsetUnits.position})`,
+          })
           .from(unitsets)
           .leftJoin(unitsetUnits, eq(unitsets.id, unitsetUnits.unitsetId))
           .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.name, body.name)))
           .groupBy(unitsets.id);
 
+        const [layout] = body.layout
+          ? await tx
+              .insert(layouts)
+              .values({ projectId: params.projectId, name: body.layout, layout: { fields: [] } })
+              .onConflictDoNothing()
+              .returning()
+          : [undefined];
+
         if (!unitset) {
+          // if unitset does not yet exist, create it
+          if (!layout)
+            throw new Error(`Unit set "${body.name}" does not exist yet, so a layout must be provided to create it`);
+
           const [newNnitset] = await tx
             .insert(unitsets)
-            .values({ projectId: params.projectId, name: body.name })
+            .values({ projectId: params.projectId, name: body.name, layoutId: layout.id })
             .returning();
-          unitset = { id: newNnitset.id, maxPosition: null };
+          unitset = { id: newNnitset.id, maxPosition: null, layoutId: layout.id };
+        } else {
+          // if unitset does exist, and layout is provided, update it
+          if (layout && layout.id !== unitset.layoutId) {
+            await tx.update(unitsets).set({ layoutId: layout.id }).where(eq(unitsets.id, unitset.id));
+          }
         }
 
         if (body.method === "replace") {
@@ -87,15 +111,3 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     },
   });
 }
-
-// export async function DELETE(req: Request, { params }: { params: { projectId: number; unitsetId: number } }) {
-//   return createDelete({
-//     deleteFunction: async (email, body) => {
-//       await db.delete(unitsets).where(eq(unitsets.id, params.unitsetId));
-//     },
-//     req,
-//     authorizeFunction: async (auth, body) => {
-//       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
-//     },
-//   });
-// }

@@ -40,7 +40,7 @@ class JobServerPreview implements JobServer {
     this.codebook = codebook ?? defaultCodebook;
     this.progress = {
       current: 0,
-      n_total: unitset?.count || defaultUnits.length,
+      n_total: unitset?.units || defaultUnits.length,
       n_coded: 0,
       seek_backwards: true,
       seek_forwards: false,
@@ -125,7 +125,7 @@ const defaultCodebook: Codebook = {
     {
       type: "select code",
       name: "age",
-      question: "Codebook goes hereeeeeeeeeeeee",
+      question: "Question goes here",
       codes: [{ code: "continue" }],
       multiple: false,
       vertical: false,

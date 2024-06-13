@@ -1,6 +1,6 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { units, unitsets, unitsetUnits } from "@/drizzle/schema";
+import db, { layouts, units, unitsets, unitsetUnits } from "@/drizzle/schema";
 import { and, eq, not, SQL, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
@@ -9,22 +9,13 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
   return createTableGet({
     req,
     tableFunction: (email, urlParams) => {
-      const where: SQL[] = [eq(units.projectId, params.projectId)];
-
-      // filtering here also affects the unitsets array. If we need to filter in the units table,
-      // combine this with the data field filters
-      // if (urlParams.unitset) where.push(eq(unitsets.name, urlParams.unitset));
-
       return db
         .select({
           id: units.externalId,
-          unitsets: sql`array_agg(${unitsets.name})`.as("unitsets"),
           data: units.data,
         })
         .from(units)
-        .innerJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
-        .innerJoin(unitsets, eq(unitsetUnits.unitsetId, unitsets.id))
-        .where(and(...where))
+        .where(eq(units.projectId, params.projectId))
         .groupBy(units.id)
         .as("baseQuery");
     },
@@ -63,18 +54,39 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
         const newUnits = await query.returning();
 
         let [unitset] = await tx
-          .select({ id: unitsets.id, maxPosition: sql<number | null>`max(${unitsetUnits.position})` })
+          .select({
+            id: unitsets.id,
+            layoutId: unitsets.layoutId,
+            maxPosition: sql<number | null>`max(${unitsetUnits.position})`,
+          })
           .from(unitsets)
           .leftJoin(unitsetUnits, eq(unitsets.id, unitsetUnits.unitsetId))
           .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.name, body.unitset)))
           .groupBy(unitsets.id);
 
+        const [layout] = body.layout
+          ? await tx
+              .insert(layouts)
+              .values({ projectId: params.projectId, name: body.layout, layout: { fields: [] } })
+              .onConflictDoNothing()
+              .returning()
+          : [undefined];
+
         if (!unitset) {
+          // if unitset does not yet exist, we create it
+          if (!layout)
+            throw new Error(`Unit set "${body.unitset}" does not exist yet, so a layout must be provided to create it`);
+
           const [newNnitset] = await tx
             .insert(unitsets)
-            .values({ projectId: params.projectId, name: body.unitset })
+            .values({ projectId: params.projectId, name: body.unitset, layoutId: layout.id })
             .returning();
-          unitset = { id: newNnitset.id, maxPosition: null };
+
+          unitset = { id: newNnitset.id, maxPosition: null, layoutId: layout.id };
+        } else {
+          // if unitset does exist, and layout is provided, we update it
+          if (layout && layout.id !== unitset.layoutId)
+            await tx.update(unitsets).set({ layoutId: layout.id }).where(eq(unitsets.id, unitset.id));
         }
 
         await tx

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TableParamsSchema } from "../schemaHelpers";
+import { createTableParamsSchema } from "../schemaHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 
 extendZodWithOpenApi(z);
@@ -29,7 +29,7 @@ export const ProjectsCreatorSchema = z.string().openapi({
   example: "god@everywhere.com",
 });
 
-export const ProjectsTableParamsSchema = TableParamsSchema.extend({});
+export const ProjectsTableParamsSchema = createTableParamsSchema({});
 
 export const ProjectsResponseSchema = z.object({
   id: ProjectsIdSchema,

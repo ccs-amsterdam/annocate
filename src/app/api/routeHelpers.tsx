@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Authorization, UserRole } from "../types";
 import { authenticateUser, authorization } from "./authorization";
-import { TableParamsSchema } from "./schemaHelpers";
+import { createTableParamsSchema } from "./schemaHelpers";
 import { fromZodError } from "zod-validation-error";
 
 interface After {
@@ -25,28 +25,29 @@ interface AuthorizationError {
   status?: number;
 }
 
-type TableParams = z.infer<typeof TableParamsSchema>;
+const TableParamsSchema = createTableParamsSchema({});
+export type TableParams = z.infer<typeof TableParamsSchema>;
 
 type AuthorizeFunction<T> = (auth: Authorization, params: T) => Promise<AuthorizationError | undefined>;
 type ErrorFunction<T> = (status: number, params?: T) => string | undefined;
 
-interface CreateGetParams<T> {
-  selectFunction: (email: string, params: T) => Promise<any>;
+interface CreateGetParams<BodyOut, BodyIn> {
+  selectFunction: (email: string, params: BodyOut) => Promise<any>;
   req: NextRequest;
-  paramsSchema?: z.ZodType<T>;
+  paramsSchema?: z.ZodType<BodyOut, z.ZodTypeDef, BodyIn>;
   responseSchema?: z.ZodTypeAny;
   projectId?: number;
-  authorizeFunction?: AuthorizeFunction<T>;
+  authorizeFunction?: AuthorizeFunction<BodyIn>;
 }
 
-export async function createGet<T>({
+export async function createGet<BodyOut, BodyIn>({
   selectFunction,
   req,
   paramsSchema,
   responseSchema,
   authorizeFunction,
   projectId,
-}: CreateGetParams<T>) {
+}: CreateGetParams<BodyOut, BodyIn>) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
@@ -79,6 +80,7 @@ interface CreateTableGetParams<T> {
   idColumn: string;
   projectId?: number;
   queryColumns?: string[];
+  maxRows?: number;
   authorizeFunction?: AuthorizeFunction<T>;
   errorFunction?: ErrorFunction<T>;
 }
@@ -98,6 +100,7 @@ export async function createTableGet<T>({
   idColumn,
   projectId,
   queryColumns,
+  maxRows,
   authorizeFunction,
   errorFunction,
 }: CreateTableGetParams<T>) {
@@ -162,17 +165,17 @@ export async function createTableGet<T>({
   }
 }
 
-interface CreateCommonUpdateParams<T> {
-  updateFunction: (email: string, body: T) => Promise<any>;
+interface CreateCommonUpdateParams<BodyIn, BodyOut> {
+  updateFunction: (email: string, body: BodyOut) => Promise<any>;
   req: Request;
-  bodySchema: z.ZodType<T>;
-  authorizeFunction: AuthorizeFunction<T>;
+  bodySchema: z.ZodType<BodyOut, z.ZodTypeDef, BodyIn>;
+  authorizeFunction: AuthorizeFunction<BodyOut>;
   projectId?: number;
   responseSchema?: z.ZodTypeAny;
-  errorFunction?: ErrorFunction<T>;
+  errorFunction?: ErrorFunction<BodyOut>;
 }
 
-export async function createUpdate<T>({
+export async function createUpdate<BodyIn, BodyOut>({
   updateFunction,
   req,
   bodySchema,
@@ -180,11 +183,11 @@ export async function createUpdate<T>({
   projectId,
   responseSchema,
   errorFunction,
-}: CreateCommonUpdateParams<T>) {
+}: CreateCommonUpdateParams<BodyIn, BodyOut>) {
   const email = await authenticateUser(req);
   if (!email) return NextResponse.json({ message: errorFunction?.(401) || "Unauthorized" }, { status: 401 });
 
-  let bodyCopy: T | undefined = undefined;
+  let bodyCopy: BodyOut | undefined = undefined;
   try {
     const bodyRaw = await req.json();
     const body = bodySchema.parse(bodyRaw);
@@ -215,45 +218,6 @@ export async function createUpdate<T>({
     if (e instanceof z.ZodError) {
       return NextResponse.json({ message: String(fromZodError(e)) }, { status: 400 });
     }
-    return NextResponse.json({ message: errorFunction?.(400, bodyCopy) || e.message }, { status: 400 });
-  }
-}
-
-interface CreateCommonDeleteParams<T> {
-  deleteFunction: (email: string, body: T) => Promise<any>;
-  req: Request;
-  bodySchema: z.ZodType<T>;
-  authorizeFunction: AuthorizeFunction<T>;
-  errorFunction?: ErrorFunction<T>;
-}
-
-export async function createDelete<T>({
-  deleteFunction,
-  req,
-  bodySchema,
-  authorizeFunction,
-  errorFunction,
-}: CreateCommonDeleteParams<T>) {
-  const email = await authenticateUser(req);
-  if (!email) return NextResponse.json({ message: errorFunction?.(401) || "Unauthorized" }, { status: 401 });
-
-  let bodyCopy: T | undefined = undefined;
-  try {
-    const bodyRaw = await req.json();
-    const body = bodySchema.parse(bodyRaw);
-    bodyCopy = body;
-
-    if (authorizeFunction != undefined) {
-      const auth = await authorization(email);
-      if (!authorizeFunction(auth, body))
-        return NextResponse.json({ message: errorFunction?.(403, body) || "Unauthorized" }, { status: 403 });
-    }
-
-    await deleteFunction(email, body);
-
-    return NextResponse.json({ message: "Success" }, { status: 204 });
-  } catch (e: any) {
-    console.error(e);
     return NextResponse.json({ message: errorFunction?.(400, bodyCopy) || e.message }, { status: 400 });
   }
 }

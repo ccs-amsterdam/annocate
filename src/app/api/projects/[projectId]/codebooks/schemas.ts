@@ -1,4 +1,4 @@
-import { SafeNameSchema, TableParamsSchema } from "@/app/api/schemaHelpers";
+import { SafeNameSchema, createTableParamsSchema } from "@/app/api/schemaHelpers";
 import { FormOptions } from "@/components/Forms/formHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
@@ -249,7 +249,7 @@ export const CodebookSchema = z.object({
 
 ///////////////////////////
 
-export const CodebooksTableParamsSchema = TableParamsSchema.extend({});
+export const CodebooksTableParamsSchema = createTableParamsSchema({});
 
 export const CodebookNameSchema = z.string().min(0).max(128).openapi({
   title: "Name",

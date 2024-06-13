@@ -142,6 +142,9 @@ export const unitsets = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
+    layoutId: integer("layout_id")
+      .notNull()
+      .references(() => layouts.id),
   },
   (table) => {
     return {

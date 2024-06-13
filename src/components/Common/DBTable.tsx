@@ -32,7 +32,6 @@ export default function DBTable<T extends Record<string, Value>>(props: Props<T>
   }, [props]);
 
   const showPagination = props.hasSearch || (prevProps.meta && prevProps.meta.rows > prevProps.meta.pageSize);
-  console.log(props.data);
   return (
     <div className={props.className || ""}>
       <div className={` mb-4 flex select-none gap-3  ${showPagination ? "" : "hidden"}`}>

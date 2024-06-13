@@ -92,9 +92,9 @@ CREATE TABLE IF NOT EXISTS "units" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "unitset_units" (
 	"unitset_id" integer NOT NULL,
+	"position" integer NOT NULL,
 	"unit_id" integer NOT NULL,
-	"position" integer,
-	CONSTRAINT "unitset_units_unitset_id_unit_id_pk" PRIMARY KEY("unitset_id","unit_id")
+	CONSTRAINT "unitset_units_unitset_id_position_pk" PRIMARY KEY("unitset_id","position")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "unitsets" (
@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS "unitsets" (
 	"project_id" integer NOT NULL,
 	"name" varchar(256) NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
+	"layout_id" integer NOT NULL,
 	CONSTRAINT "unitsets_project_name" UNIQUE("project_id","name")
 );
 --> statement-breakpoint
@@ -188,6 +189,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "unitsets" ADD CONSTRAINT "unitsets_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "unitsets" ADD CONSTRAINT "unitsets_layout_id_layouts_id_fk" FOREIGN KEY ("layout_id") REFERENCES "public"."layouts"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
+import { SelectOrCreate } from "../ui/select-or-create";
 
 export interface FormOptions {
   value: string;
@@ -170,6 +171,31 @@ export function DropdownFormField<T extends FieldValues>({ control, name, zType,
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  );
+}
+
+export function SelectOrCreateForm<T extends FieldValues>({ control, name, zType, values }: FormFieldArrayProps<T>) {
+  const openAPI = getOpenApi(zType, name);
+
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem className="flex flex-col">
+          <Title title={openAPI.title} description={openAPI.description} />
+          <FormControl>
+            <SelectOrCreate
+              options={values}
+              optionKey="label"
+              createMessage="Create new layout"
+              value={values.find((v) => v.value === field.value)?.label}
+              onValueChange={(option, value) => field.onChange(value)}
+            />
           </FormControl>
         </FormItem>
       )}

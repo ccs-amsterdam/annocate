@@ -18,7 +18,7 @@ import {
   UnitContentSchema,
 } from "./api/annotate/schemas";
 import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
-import { UnitsetsResponseSchema } from "./api/projects/[projectId]/units/unitsets/schemas";
+import { UnitsetResponseSchema, UnitsetsResponseSchema } from "./api/projects/[projectId]/units/unitsets/schemas";
 
 //////////  NEW
 ///////////
@@ -45,7 +45,8 @@ export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
-export type Unitset = z.infer<typeof UnitsetsResponseSchema>;
+export type Unitset = z.infer<typeof UnitsetResponseSchema>;
+export type UnitsetRow = z.infer<typeof UnitsetsResponseSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 export type AnnotateUnit = z.infer<typeof AnnotateUnitSchema>;
 

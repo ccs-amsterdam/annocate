@@ -8,7 +8,13 @@ import {
 } from "./schemas";
 import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
-import { UnitsetDeleteBodySchema, UnitsetResponseSchema, UnitsetsResponseSchema } from "./unitsets/schemas";
+import {
+  UnitsetDeleteBodySchema,
+  UnitsetResponseSchema,
+  UnitsetsResponseSchema,
+  UnitsetsUpdateBodySchema,
+  UnitsetTableParamsSchema,
+} from "./unitsets/schemas";
 
 export function useUnits(projectId: number, initialParams: z.input<typeof UnitDataTableParamsSchema>) {
   return useTableGet({
@@ -29,11 +35,12 @@ export function useCreateUnits(projectId: number) {
   });
 }
 
-export function useUnitsets(projectId: number) {
-  return useGet({
+export function useUnitsets(projectId: number, initialParams: z.input<typeof UnitsetTableParamsSchema>) {
+  return useTableGet({
     resource: "unitset",
     endpoint: `projects/${projectId}/units/unitsets`,
-    responseSchema: z.array(UnitsetsResponseSchema),
+    initialParams,
+    responseSchema: UnitsetsResponseSchema,
   });
 }
 
@@ -57,14 +64,24 @@ export function useDeleteUnitsets(projectId: number) {
   });
 }
 
-// export function useUnitset(projectId: number, unitsetId: number | undefined) {
-//   return useGet({
-//     resource: "unitUnitsets",
-//     endpoint: `projects/${projectId}/units/unitsets/${unitsetId}`,
-//     responseSchema: UnitsetResponseSchema,
-//     disabled: unitsetId === undefined,
-//   });
-// }
+export function useUnitset(projectid: number, unitsetid: number | undefined) {
+  return useGet({
+    resource: "unitset",
+    endpoint: `projects/${projectid}/units/unitsets/${unitsetid}`,
+    responseSchema: UnitsetResponseSchema,
+    disabled: unitsetid === undefined,
+  });
+}
+
+export function useUpdateUnitset(projectId: number, unitsetid: number) {
+  return useMutate({
+    method: "post",
+    resource: "unitset",
+    endpoint: `projects/${projectId}/units/unitsets/${unitsetid}`,
+    bodySchema: UnitsetsUpdateBodySchema,
+    // invalidateResources: ["unit"],
+  });
+}
 
 export const openapiUnits = createOpenAPIDefinitions(
   ["Unit management"],

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-import { TableParamsSchema } from "../schemaHelpers";
+import { createTableParamsSchema } from "../schemaHelpers";
 import { UserRole, userRole } from "@/app/types";
 import { FormOptions } from "@/components/Forms/formHelpers";
 
@@ -45,7 +45,7 @@ export const UserRoleSchema = z.enum(userRole).openapi({
 
 ////////////////////
 
-export const UsersTableParamsSchema = TableParamsSchema.extend({});
+export const UsersTableParamsSchema = createTableParamsSchema({});
 
 export const UsersResponseSchema = z.object({
   id: UserIdSchema,

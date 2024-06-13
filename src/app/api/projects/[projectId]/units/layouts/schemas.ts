@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { UnitDataValueSchema } from "../schemas";
-import { SafeNameSchema, TableParamsSchema } from "@/app/api/schemaHelpers";
+import { SafeNameSchema, createTableParamsSchema } from "@/app/api/schemaHelpers";
 import { FormOptions } from "@/components/Forms/formHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 
@@ -98,7 +98,7 @@ export const UnitLayoutSchema = z.object({
   variables: z.array(UnitVariableSchema).optional(),
 });
 
-export const UnitLayoutsTableParamsSchema = TableParamsSchema.extend({});
+export const UnitLayoutsTableParamsSchema = createTableParamsSchema({ maxPageSize: 1000 });
 
 export const UnitLayoutsResponseSchema = z.object({
   id: z.number(),

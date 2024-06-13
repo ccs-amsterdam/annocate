@@ -2,9 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMiddlecat } from "middlecat-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { set, z } from "zod";
-import { TableParamsSchema, GetMetaSchema } from "./schemaHelpers";
+import { GetMetaSchema } from "./schemaHelpers";
 import { FieldValues, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TableParams } from "./routeHelpers";
 
 export interface Paginate {
   nextPage: () => void;
@@ -17,8 +18,6 @@ interface Pagination {
   pageTokens: string[];
   page: number;
 }
-
-type TableParams = z.input<typeof TableParamsSchema>;
 
 export function useTableGet<Params extends TableParams, Response extends z.ZodTypeAny>({
   resource,

@@ -1,5 +1,5 @@
 {
-  "id": "7bbdf23b-844c-4473-9850-96e672093eaa",
+  "id": "eb16513d-9555-443c-a8fe-e7e4ffe2d242",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -755,17 +755,17 @@
           "primaryKey": false,
           "notNull": true
         },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "unit_id": {
           "name": "unit_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -829,11 +829,11 @@
         }
       },
       "compositePrimaryKeys": {
-        "unitset_units_unitset_id_unit_id_pk": {
-          "name": "unitset_units_unitset_id_unit_id_pk",
+        "unitset_units_unitset_id_position_pk": {
+          "name": "unitset_units_unitset_id_position_pk",
           "columns": [
             "unitset_id",
-            "unit_id"
+            "position"
           ]
         }
       },
@@ -867,6 +867,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "layout_id": {
+          "name": "layout_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -898,6 +904,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "unitsets_layout_id_layouts_id_fk": {
+          "name": "unitsets_layout_id_layouts_id_fk",
+          "tableFrom": "unitsets",
+          "tableTo": "layouts",
+          "columnsFrom": [
+            "layout_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },

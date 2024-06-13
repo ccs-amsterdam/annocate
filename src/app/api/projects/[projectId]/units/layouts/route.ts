@@ -27,6 +27,11 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     responseSchema: UnitLayoutsResponseSchema,
     idColumn: "id",
     queryColumns: ["name"],
+    projectId: params.projectId,
+
+    authorizeFunction: async (auth, params) => {
+      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
+    },
   });
 }
 
