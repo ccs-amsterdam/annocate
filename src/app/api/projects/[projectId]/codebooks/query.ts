@@ -8,6 +8,7 @@ import {
   CodebookUpdateBodySchema,
 } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
+import { IdResponseSchema } from "@/app/api/schemaHelpers";
 
 export function useCodebooks(projectId: number, initialParams?: z.infer<typeof CodebooksTableParamsSchema>) {
   return useTableGet({
@@ -24,6 +25,7 @@ export function useUpdateCodebook(projectId: number, codebookId: number) {
     resource: `codebook`,
     endpoint: `projects/${projectId}/codebooks/${codebookId}`,
     bodySchema: CodebookUpdateBodySchema,
+    responseSchema: IdResponseSchema,
   });
 }
 
@@ -33,6 +35,7 @@ export function useCreateCodebook(projectId: number) {
     resource: `codebook`,
     endpoint: `projects/${projectId}/codebooks`,
     bodySchema: CodebookCreateBodySchema,
+    responseSchema: IdResponseSchema,
   });
 }
 

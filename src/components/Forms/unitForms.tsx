@@ -1,10 +1,6 @@
-import { useUnitsets, useCreateUnits, useUnits, useDeleteUnitsets } from "@/app/api/projects/[projectId]/units/query";
-import {
-  UnitDataResponseSchema,
-  UnitDataRowSchema,
-  UnitDataValueSchema,
-} from "@/app/api/projects/[projectId]/units/schemas";
-import DBTable from "@/components/Common/DBTable";
+import { UnitDataRowSchema, UnitDataValueSchema } from "@/app/api/projects/[projectId]/units/data/schemas";
+import { useUnitLayouts } from "@/app/api/projects/[projectId]/units/layouts/query";
+import { useCreateUnits, useDeleteUnitsets, useUnitsets } from "@/app/api/projects/[projectId]/units/query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,20 +9,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
-import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { ChevronDown, Plus, Trash } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useCSVReader } from "react-papaparse";
 import { z } from "zod";
-import { Switch } from "@/components/ui/switch";
-import { SimpleDropdown } from "../ui/simpleDropdown";
 import { SelectOrCreate } from "../ui/select-or-create";
-import { useUnitLayouts } from "@/app/api/projects/[projectId]/units/layouts/query";
+import { SimpleDropdown } from "../ui/simpleDropdown";
 
 export function DeleteUnitsets({ projectId, editSetList: editSetList }: { projectId: number; editSetList: number[] }) {
   const { mutateAsync } = useDeleteUnitsets(projectId);
@@ -77,34 +68,27 @@ type Data = {
   possibleId: string[];
   id: string;
   overwrite: boolean;
-  unitset: string;
-  unitsetExists: boolean;
-  layout: string;
+  unitsetId?: number;
 };
 type DataRow = z.infer<typeof UnitDataRowSchema>;
 type UploadProgress = {
   i: number;
   total: number;
   overwrite: boolean;
-  unitset: string;
-  layout: string;
+  unitsetId: number;
   batches: DataRow[][];
 };
 
-export function CreateUnitsButton({ projectId }: { projectId: number }) {
+export function CreateUnitsButton({ projectId, unitsetId }: { projectId: number; unitsetId: number }) {
   const [open, setOpen] = useState(false);
   const { mutateAsync } = useCreateUnits(projectId);
   const [data, setData] = useState<Data | null>(null);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
-  const { data: unitsets } = useUnitsets(projectId, {});
-  const { data: layouts } = useUnitLayouts(projectId);
 
   const { CSVReader } = useCSVReader();
 
   async function startUpload(data: Data) {
-    const overwrite = data.overwrite;
-    const unitset = data.unitset;
-    const layout = data.layout;
+    if (!data.unitsetId) return;
     const batches: DataRow[][] = [];
 
     let rows: DataRow[] = [];
@@ -118,13 +102,13 @@ export function CreateUnitsButton({ projectId }: { projectId: number }) {
       batches.push(rows.slice(i, i + batchsize));
     }
 
-    setProgress({ i: 0, total: batches.length, overwrite, batches, unitset, layout });
+    setProgress({ i: 0, total: batches.length, batches, overwrite: data.overwrite, unitsetId: data.unitsetId });
   }
 
   useEffect(() => {
     if (!progress) return;
     const batch = progress.batches[progress.i];
-    mutateAsync({ overwrite: progress.overwrite, unitset: progress.unitset, units: batch, layout: progress.layout })
+    mutateAsync({ overwrite: progress.overwrite, unitsetId: progress.unitsetId, units: batch })
       .then(() => {
         if (progress.i === progress.total - 1) {
           setProgress(null);
@@ -164,37 +148,35 @@ export function CreateUnitsButton({ projectId }: { projectId: number }) {
       possibleId,
       id: "",
       overwrite: false,
-      unitset: "",
-      unitsetExists: false,
-      layout: "",
+      unitsetId,
     });
   }
 
-  function SelectLayout() {
-    if (!data?.unitset || data.unitsetExists) return null;
-    return (
-      <>
-        <label>
-          {data.unitset ? (data.unitsetExists ? "Select layout" : "Create new layout") : "Select or create layout"}
-        </label>
-        <SelectOrCreate
-          options={layouts || []}
-          optionKey="name"
-          createMessage="Create new layout"
-          placeholder="New or existing"
-          value={data.layout}
-          onValueChange={(option, value) => setData({ ...data, layout: value })}
-        />
-      </>
-    );
-  }
+  // function SelectLayout() {
+  //   if (!data?.unitset || data.unitsetExists) return null;
+  //   return (
+  //     <>
+  //       <label>
+  //         {data.unitset ? (data.unitsetExists ? "Select layout" : "Create new layout") : "Select or create layout"}
+  //       </label>
+  //       <SelectOrCreate
+  //         options={layouts || []}
+  //         optionKey="name"
+  //         createMessage="Create new layout"
+  //         placeholder="New or existing"
+  //         value={data.layout}
+  //         onValueChange={(option, value) => setData({ ...data, layout: value })}
+  //       />
+  //     </>
+  //   );
+  // }
 
   function renderForm() {
     if (!data) return null;
     if (data.possibleId.length === 0)
       return <Label>Data needs to have a column with unique values to serve as an ID</Label>;
 
-    const ready = data.id && data.unitset && (data.unitsetExists || data.layout);
+    const ready = !!data.id;
 
     return (
       <div className="flex w-full flex-col gap-3">
@@ -205,7 +187,7 @@ export function CreateUnitsButton({ projectId }: { projectId: number }) {
         <div className="grid grid-cols-[1.2fr,1fr] items-center justify-between gap-3">
           <label className="">Select unique ID column</label>
           <SelectIdDropdown data={data} setData={setData} />
-          <label className="">
+          {/* <label className="">
             {data.unitset ? (data.unitsetExists ? "Add units to set" : "Create new set") : "Select unit set"}
           </label>
           <SelectOrCreate
@@ -215,14 +197,8 @@ export function CreateUnitsButton({ projectId }: { projectId: number }) {
             placeholder="New or existing"
             value={data.unitset}
             onValueChange={(option, value) => setData({ ...data, unitset: value, unitsetExists: !!option })}
-          />
-          <SelectLayout />
-
-          {/* <Input
-            value={data.unitset}
-            onChange={(e) => setData({ ...data, unitset: e.target.value })}
-            placeholder="My favorite units"
           /> */}
+          {/* <SelectLayout /> */}
         </div>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
 import { useUpdateUnitset } from "@/app/api/projects/[projectId]/units/query";
-import { UnitsetResponseSchema, UnitsetsUpdateBodySchema } from "@/app/api/projects/[projectId]/unitsets/units/schemas";
+import { UnitsetResponseSchema, UnitsetsUpdateBodySchema } from "@/app/api/projects/[projectId]/units/unitsets/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Form } from "../ui/form";
@@ -39,7 +39,6 @@ export const UpdateUnitset = React.memo(function UpdateUnitset({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <TextFormField control={form.control} zType={shape.name} name="name" />
-        <TextFormField control={form.control} zType={shape.layout} name="layout" />
       </form>
     </Form>
   );

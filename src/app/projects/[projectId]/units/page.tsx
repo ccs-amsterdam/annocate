@@ -44,7 +44,7 @@ export default function Users({ params }: { params: { projectId: number } }) {
           <h3 className="text-lg font-semibold">Unit sets</h3>
         </div>
         <div className="mt-3 px-3 lg:px-0">
-          <CreateUnitsButton projectId={params.projectId} />
+          {/* <CreateUnitsButton projectId={params.projectId} /> */}
           <SelectUnitset projectId={params.projectId} />
         </div>
       </div>

@@ -1,29 +1,49 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createUpdate } from "@/app/api/routeHelpers";
 import db, { units, unitsets, unitsetUnits } from "@/drizzle/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { UnitsetUnitsUpdateSchema } from "../../schemas";
 
 export async function POST(req: Request, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
-        const unitIds = await tx.select({ id: units.id }).from(units).where(inArray(units.externalId, body.unitIds));
+        let maxPosition: null | number = null;
+        let unitIds: { id: number }[] | undefined;
 
-        let [unitset] = await tx
-          .select({
-            id: unitsets.id,
-            maxPosition: sql<number | null>`max(${unitsetUnits.position})`,
-          })
-          .from(unitsets)
-          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, body.id)))
-          .groupBy(unitsets.id);
+        // todo: can save one query by returning the unitids within the unitset call (concatenate them)
 
-        if (!unitset) throw new Error(`Unit set "${body.id}" does not exist`);
+        if (body.append) {
+          // if append mode, get the unit ids (for the given external ids), and also
+          // ignore the ones that are already in the unitset. Also get the max position
+          // to use as offset
+          unitIds = await tx
+            .select({ id: units.id })
+            .from(units)
+            .leftJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
+            .where(and(inArray(units.externalId, body.unitIds), isNull(unitsetUnits.unitsetId)));
 
-        if (body.method === "replace") {
-          await tx.delete(unitsetUnits).where(eq(unitsetUnits.unitsetId, unitset.id));
-          unitset.maxPosition = null;
+          let [unitset] = await tx
+            .select({
+              id: unitsets.id,
+              maxPosition: sql<number | null>`max(${unitsetUnits.position})`,
+            })
+            .from(unitsets)
+            .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, body.id)))
+            .groupBy(unitsets.id);
+          if (!unitset) throw new Error(`Cannot appendUnit set "${body.id}" does not exist`);
+          maxPosition = unitset.maxPosition;
+        } else {
+          // if normal mode (overwrite), first check if this unitset is actually in the project.
+          // if so, fetch the unitIds and delete the old unitsetUnits
+          const [unitset] = await tx
+            .select({ id: unitsets.id })
+            .from(unitsets)
+            .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, body.id)));
+          if (!unitset)
+            throw new Error(`Unit set "${body.id}" does not exist is is not in project "${params.projectId}"`);
+          unitIds = await tx.select({ id: units.id }).from(units).where(inArray(units.externalId, body.unitIds));
+          await tx.delete(unitsetUnits).where(eq(unitsetUnits.unitsetId, body.id));
         }
 
         await tx
@@ -31,23 +51,11 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
           .values(
             unitIds.map((unitId, i) => ({
               unitId: unitId.id,
-              unitsetId: unitset.id,
-              position: unitset.maxPosition == null ? i : unitset.maxPosition + i + 1,
+              unitsetId: body.id,
+              position: maxPosition == null ? i : maxPosition + i + 1,
             })),
           )
           .onConflictDoNothing();
-
-        if (body.method === "replace" || body.method === "delete") {
-          // delete any orphaned units
-          await tx
-            .delete(units)
-            .where(
-              and(
-                eq(units.projectId, params.projectId),
-                sql`NOT EXISTS (SELECT 1 FROM ${unitsetUnits} WHERE ${unitsetUnits.unitId} = ${units.id})`,
-              ),
-            );
-        }
       });
     },
     req,

@@ -1,18 +1,12 @@
-import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
-import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
-import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/units/schemas";
-import { Annotation, Unitset, Codebook, Layout } from "@/app/types";
+import { Annotation, Codebook, Layout, Unitset } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
-import { useEffect, useRef, useState } from "react";
-import { z } from "zod";
+import { useRef, useState } from "react";
 import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import JobServerPreview from "../JobServers/JobServerPreview";
 import { Slider } from "../ui/slider";
-import useWatchChange from "@/hooks/useWatchChange";
-import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
-import { useUnitLayout } from "@/app/api/projects/[projectId]/units/layouts/query";
 
 interface Props {
   projectId: number;

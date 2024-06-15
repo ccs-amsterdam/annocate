@@ -53,41 +53,20 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
         }
         const newUnits = await query.returning();
 
+        if (body.unitsetId === undefined) return null;
+
         let [unitset] = await tx
           .select({
             id: unitsets.id,
-            layoutId: unitsets.layoutId,
             maxPosition: sql<number | null>`max(${unitsetUnits.position})`,
           })
           .from(unitsets)
           .leftJoin(unitsetUnits, eq(unitsets.id, unitsetUnits.unitsetId))
-          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.name, body.unitset)))
+          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, body.unitsetId)))
           .groupBy(unitsets.id);
 
-        const [layout] = body.layout
-          ? await tx
-              .insert(layouts)
-              .values({ projectId: params.projectId, name: body.layout, layout: { fields: [] } })
-              .onConflictDoNothing()
-              .returning()
-          : [undefined];
-
-        if (!unitset) {
-          // if unitset does not yet exist, we create it
-          if (!layout)
-            throw new Error(`Unit set "${body.unitset}" does not exist yet, so a layout must be provided to create it`);
-
-          const [newNnitset] = await tx
-            .insert(unitsets)
-            .values({ projectId: params.projectId, name: body.unitset, layoutId: layout.id })
-            .returning();
-
-          unitset = { id: newNnitset.id, maxPosition: null, layoutId: layout.id };
-        } else {
-          // if unitset does exist, and layout is provided, we update it
-          if (layout && layout.id !== unitset.layoutId)
-            await tx.update(unitsets).set({ layoutId: layout.id }).where(eq(unitsets.id, unitset.id));
-        }
+        if (!unitset)
+          throw new Error(`Unitset with id ${body.unitsetId} not found, or not in project ${params.projectId}`);
 
         await tx
           .insert(unitsetUnits)

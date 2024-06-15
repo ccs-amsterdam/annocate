@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { UnitDataValueSchema } from "../schemas";
 import { SafeNameSchema, createTableParamsSchema } from "@/app/api/schemaHelpers";
 import { FormOptions } from "@/components/Forms/formHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";

@@ -1,30 +1,12 @@
-import { useUnitsets, useCreateUnits, useUnits, useDeleteUnitsets } from "@/app/api/projects/[projectId]/units/query";
-import {
-  UnitDataResponseSchema,
-  UnitDataRowSchema,
-  UnitDataValueSchema,
-} from "@/app/api/projects/[projectId]/units/schemas";
+import { useUnits, useUnitsets } from "@/app/api/projects/[projectId]/units/query";
+import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/units/data/schemas";
 import DBTable from "@/components/Common/DBTable";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { SimpleDialog } from "@/components/ui/simpleDialog";
-import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
-import { ChevronDown, Plus, Trash } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { useCSVReader } from "react-papaparse";
-import { z } from "zod";
-import { Switch } from "@/components/ui/switch";
 import { CreateUnitsButton, DeleteUnitsets } from "@/components/Forms/unitForms";
+import { Button } from "@/components/ui/button";
+import { SimpleDialog } from "@/components/ui/simpleDialog";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 
 interface Props {
   projectId: number;
@@ -88,7 +70,7 @@ export function UnitsTable({ projectId }: Props) {
         })}
       </div>
       <div className="flex items-center gap-3">
-        <CreateUnitsButton projectId={projectId} />
+        {/* <CreateUnitsButton projectId={projectId} /> */}
         <DeleteUnitsets projectId={projectId} editSetList={editSetList} />
       </div>
       <div className="mt-8 w-full">

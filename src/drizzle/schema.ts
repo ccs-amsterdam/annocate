@@ -142,9 +142,6 @@ export const unitsets = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    layoutId: integer("layout_id")
-      .notNull()
-      .references(() => layouts.id),
   },
   (table) => {
     return {
@@ -182,6 +179,13 @@ export const jobs = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
+    unitsetId: integer("unitset_id")
+      .notNull()
+      .references(() => unitsets.id),
+    layoutId: integer("layout_id")
+      .notNull()
+      .references(() => layouts.id),
+    codebookId: integer("codebook_id").references(() => codebooks.id),
     modified: timestamp("modified").notNull().defaultNow(),
     deployed: boolean("deployed").notNull().default(false),
   },

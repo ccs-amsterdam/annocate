@@ -127,13 +127,15 @@ export function useMutate<Body, Response>({
   bodySchema,
   responseSchema,
   invalidateResources,
+  mutateFunction,
 }: {
   method?: "post" | "put";
   resource: string;
   endpoint: string;
   bodySchema: z.ZodType<Body>;
-  responseSchema?: z.ZodType<Response>;
+  responseSchema: z.ZodType<Response>;
   invalidateResources?: string[];
+  mutateFunction?: (body: z.infer<typeof bodySchema>) => Promise<Response>;
 }) {
   const { user } = useMiddlecat();
   const queryClient = useQueryClient();

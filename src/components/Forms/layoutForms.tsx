@@ -32,12 +32,11 @@ import {
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
 } from "@/app/api/projects/[projectId]/units/layouts/schemas";
-import { useColumns } from "@/app/api/projects/[projectId]/units/columns/query";
-import { UnitColumnsResponseSchema } from "@/app/api/projects/[projectId]/units/columns/schemas";
+import { UnitsetColumnSchema } from "@/app/api/projects/[projectId]/units/unitsets/schemas";
 
 type Layout = z.infer<typeof UnitLayoutSchema>;
 type LayoutUpdateBody = z.input<typeof UnitLayoutsCreateBodySchema>;
-type Column = z.infer<typeof UnitColumnsResponseSchema>;
+type Column = z.infer<typeof UnitsetColumnSchema>;
 
 export function useCreateEmptyLayout(projectId: number) {
   const { mutateAsync } = useCreateUnitLayout(projectId);

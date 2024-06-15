@@ -3,6 +3,7 @@ import { z } from "zod";
 import { useTableGet } from "@/app/api/queryHelpers";
 import { ProjectUsersCreateOrUpdateSchema, ProjectUsersResponseSchema, ProjectUsersTableParamsSchema } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
+import { IdResponseSchema } from "@/app/api/schemaHelpers";
 
 export function useProjectUsers(projectId: number, initialParams?: z.infer<typeof ProjectUsersTableParamsSchema>) {
   return useTableGet({
@@ -19,6 +20,7 @@ export function useCreateOrUpdateProjectUser(projectId: number) {
     resource: `projectusers`,
     endpoint: `projects/${projectId}/projectusers`,
     bodySchema: ProjectUsersCreateOrUpdateSchema,
+    responseSchema: IdResponseSchema,
   });
 }
 

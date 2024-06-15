@@ -19,26 +19,20 @@ export const UnitsetResponseSchema = z.object({
   name: z.string(),
   units: z.number(),
   columns: z.array(UnitsetColumnSchema),
-  layoutId: z.number(),
-  layout: z.string(),
 });
 
 export const UnitsetsCreateBodySchema = z.object({
   name: z.string(),
-  unitIds: z.array(z.string()),
-  method: z.enum(["append", "replace", "delete"]),
-  layout: z.string().optional(),
 });
 
 export const UnitsetsUpdateBodySchema = z.object({
   name: z.string().optional(),
-  layout: z.string().optional(),
 });
 
 export const UnitsetTableParamsSchema = createTableParamsSchema({ maxPageSize: 1000 });
 
 export const UnitsetUnitsUpdateSchema = z.object({
   id: z.number(),
-  unitIds: z.array(z.string()),
-  method: z.enum(["append", "replace", "delete"]),
+  unitIds: z.array(z.string()).max(10000),
+  append: z.boolean(),
 });

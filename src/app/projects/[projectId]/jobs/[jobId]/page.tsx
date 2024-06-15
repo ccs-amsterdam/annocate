@@ -1,25 +1,23 @@
 "use client";
 
+import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
 import { useUnitLayout } from "@/app/api/projects/[projectId]/units/layouts/query";
-import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
-import { Loading } from "@/components/ui/loader";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
-import { UpdateLayout } from "@/components/Forms/layoutForms";
-import { HelpDrawer } from "@/components/Common/HelpDrawer";
 import { useUnitset, useUnitsets } from "@/app/api/projects/[projectId]/units/query";
-import { SimpleDropdown } from "@/components/ui/simpleDropdown";
-import { UnitsetsResponseSchema } from "@/app/api/projects/[projectId]/unitsets/units/schemas";
+import { Layout } from "@/app/types";
 import { Preview } from "@/components/Common/Preview";
-import { Layout, Unitset, UnitsetRow } from "@/app/types";
+import { UpdateLayout } from "@/components/Forms/layoutForms";
+import { Loading } from "@/components/ui/loader";
+import { SimpleDropdown } from "@/components/ui/simpleDropdown";
 import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
-export default function UnitsetPage({ params }: { params: { projectId: number; unitsetId: number } }) {
+export default function UnitsetPage({ params }: { params: { projectId: number; jobId: number } }) {
   const [layoutPreview, setLayoutPreview] = useState<Layout | undefined>();
 
-  const { data: unitset, isLoading: unitsetLoading } = useUnitset(params.projectId, params.unitsetId);
-  const { data: layout, isLoading: layoutLoading } = useUnitLayout(params.projectId, unitset?.layoutId);
+  const { data: job, isLoading: jobLoading } = useJob(params.projectId, params.jobId);
+  const { data: unitset, isLoading: unitsetLoading } = useUnitset(params.projectId, job?.unitsetId);
+  const { data: layout, isLoading: layoutLoading } = useUnitLayout(params.projectId, job?.layoutId);
 
   const confirmUpdate = useCallback(() => {
     toast.success("Updated layout");

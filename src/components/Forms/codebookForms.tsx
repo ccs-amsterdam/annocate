@@ -33,20 +33,28 @@ import React from "react";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
+type CodebookCreateBodySchema = z.input<typeof CodebookCreateBodySchema>;
 
 export function useCreateEmptyCodebook(projectId: number) {
   const { mutateAsync } = useCreateCodebook(projectId);
 
   const create = useCallback(
     (name: string) => {
-      const newCodebook = {
+      const newCodebook: CodebookCreateBodySchema = {
         name,
         codebook: {
           settings: {
             instruction: "",
             auto_instruction: false,
           },
-          variables: [],
+          variables: [
+            {
+              name: "Variable_1",
+              question: "Question goes here",
+              type: "select code",
+              codes: [{ code: "Example", value: 1, color: "blue" }],
+            },
+          ],
         },
       };
       return mutateAsync(newCodebook);
@@ -136,11 +144,12 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
             <XIcon className="h-5 w-5" />
             Undo changes
           </Button>
+          {error ? <div className="text-destructive">{error.message}</div> : null}
           <Button
-            className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-0"
+            className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-50"
             variant={error ? "destructive" : "secondary"}
             type="submit"
-            disabled={!form.formState.isDirty || variables.length === 0}
+            disabled={!form.formState.isDirty}
           >
             <Save className="h-5 w-5" />
             Save changes
@@ -221,7 +230,7 @@ function WatchForPreview({ form, setPreview }: { form: any; setPreview?: (codebo
       form.trigger();
       const codebook = CodebookSchema.safeParse(watch);
       if (codebook.success) setPreview(codebook.data);
-    }, 1000);
+    }, 250);
     return () => clearTimeout(timeout);
   }, [watch, setPreview, form]);
   return <div></div>;

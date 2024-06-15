@@ -56,3 +56,8 @@ const isSafeName = (name: string) => nameReg.test(name);
 export const SafeNameSchema = z.string().min(1).max(128).refine(isSafeName, {
   message: "Name must be alphanumeric and underscores only",
 });
+
+export const IdResponseSchema = z.object({
+  id: z.number(),
+});
+export const voidResponseSchema = z.object({});

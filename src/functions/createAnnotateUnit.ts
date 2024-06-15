@@ -1,6 +1,6 @@
 import { GetUnitResponseSchema } from "@/app/api/annotate/schemas";
 import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
-import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/units/schemas";
+import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/units/data/schemas";
 import { AnnotateUnit, Annotation, Codebook, Layout, RawUnit, ExtendedUnit, UnitData } from "@/app/types";
 import { z } from "zod";
 

@@ -24,8 +24,7 @@ export const UnitDataResponseSchema = z.object({
 export const UnitDataCreateBodySchema = z.object({
   overwrite: z.boolean().optional(),
   units: z.array(UnitDataRowSchema).max(200),
-  unitset: z.string(),
-  layout: z.string().optional(),
+  unitsetId: z.number().optional(),
 });
 
 export const UnitDataCreateResponseSchema = z.object({

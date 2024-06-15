@@ -231,13 +231,16 @@ export const CodebookUnionTypeSchema = z.union([
   CodebookConfirmTypeSchema,
 ]);
 
-export const CodebookVariablesSchema = z.array(CodebookUnionTypeSchema).refine(
-  (variables) => {
-    const names = variables.map((v) => v.name);
-    return new Set(names).size === names.length;
-  },
-  { message: "Variable names must be unique" },
-);
+export const CodebookVariablesSchema = z
+  .array(CodebookUnionTypeSchema)
+  .min(1)
+  .refine(
+    (variables) => {
+      const names = variables.map((v) => v.name);
+      return new Set(names).size === names.length;
+    },
+    { message: "Variable names must be unique" },
+  );
 
 export const CodebookSchema = z.object({
   variables: CodebookVariablesSchema.openapi({

@@ -1,0 +1,34 @@
+
+
+
+Two common modes for creating jobs:
+
+Advanced version creates multiple jobs at once. 
+- units
+- jobs[]: 
+  - name: unitset
+  - name: layout
+  - name: codebook
+
+Simple version creates a single job.
+- units
+- layout
+- codebook
+
+
+
+!! Split it all up: separate unitset, layout and codebook
+Then in preview mode, the top bar represents the job. Here you select each component.
+In the right column in review mode, you have tabs for each component. 
+If a component is used in other jobs as well, you get a notification that changing it also changes the other job
+
+
+The relation between units and layout is tested at job level. 
+
+Important to give good instruction about when to use projects and when to use jobs.
+A project should ideally have only one type of data. 
+Different layouts are primarily intended to offer different ways of displaying the same data.
+The primary use case would be experiments. 
+
+You can also use layouts to combine different datatypes in the same project.
+You then need to make sure that the layout matches the type of the unitset its matched with in the job.

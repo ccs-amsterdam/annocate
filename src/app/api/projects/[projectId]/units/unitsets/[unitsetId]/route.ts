@@ -2,7 +2,7 @@ import { createGet, createUpdate } from "@/app/api/routeHelpers";
 import { UnitsetResponseSchema, UnitsetsCreateBodySchema, UnitsetsUpdateBodySchema } from "../schemas";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import db, { projects, units, unitsets, unitsetUnits } from "@/drizzle/schema";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { Unitset } from "@/app/types";
 
@@ -16,8 +16,6 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
           name: unitsets.name,
           units: count(unitsetUnits.unitId).as("units"),
           column: sql<string>`jsonb_object_keys(${units.data})`.as("column"),
-          layout: sql<string>`${unitsets.name}`.as("layout"),
-          layoutId: unitsets.layoutId,
         })
         .from(units)
         .innerJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
@@ -31,8 +29,6 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         id: unitsetColumns[0].id,
         name: unitsetColumns[0].name,
         units: unitsetColumns[0].units,
-        layout: unitsetColumns[0].layout,
-        layoutId: unitsetColumns[0].layoutId,
         columns: unitsetColumns.map((c) => ({ column: c.column })),
       };
       return unitset;
@@ -49,12 +45,9 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
 export async function POST(req: Request, { params }: { params: { projectId: number; unitsetId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      const [unitlayout] = await db
-        .update(unitsets)
-        .set(body)
-        .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, params.unitsetId)))
-        .returning();
-      return unitlayout;
+      return db.transaction(async (tx) => {
+        await tx.update(unitsets).set({ name: body.name }).where(eq(unitsets.id, params.unitsetId));
+      });
     },
     req,
     bodySchema: UnitsetsUpdateBodySchema,
