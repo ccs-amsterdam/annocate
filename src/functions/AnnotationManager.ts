@@ -92,7 +92,6 @@ export default class AnnotationManager {
       this.annotationLib.variableStatuses[this.annotationLib.variableIndex] = "done";
       this.updateAnnotationLibrary(this.annotationLib);
       this.setVariableIndex(this.annotationLib.variableIndex + 1);
-      console.log(this.annotationLib.variableIndex);
       return { status, conditionReport: null };
     }
   }
@@ -182,13 +181,10 @@ export default class AnnotationManager {
       if (a.type !== annotation.type) continue;
       if (annotation.type === "field" && a.type === "field" && a.field !== annotation.field) continue;
 
-      console.log(a.code, annotation.code);
       if (a.code === annotation.code) {
-        console.log(1);
         addAnnotation = false;
         if (multiple) delete newAnnotations[a.id];
       } else {
-        console.log(2);
         if (!multiple) delete newAnnotations[a.id];
       }
     }

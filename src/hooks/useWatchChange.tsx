@@ -8,6 +8,10 @@ import { useRef } from "react";
  *    setSomeState(0)
  * }
  *
+ * This is based on a solution in the react documentation for immediately triggering
+ * state updates, as an alternative for useEffect which first completes the render.
+ * 
+ *
  * @param deps an Array of things to watch, similar to the deps array in useEffects, useMemo, etc.
  * @param first should the value be true the first time?
  * @param debug just for convenience: print to console the indices of deps that changed

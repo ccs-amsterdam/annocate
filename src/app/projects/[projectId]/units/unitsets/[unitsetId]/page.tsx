@@ -10,7 +10,7 @@ import { UpdateLayout } from "@/components/Forms/layoutForms";
 import { HelpDrawer } from "@/components/Common/HelpDrawer";
 import { useUnitset, useUnitsets } from "@/app/api/projects/[projectId]/units/query";
 import { SimpleDropdown } from "@/components/ui/simpleDropdown";
-import { UnitsetsResponseSchema } from "@/app/api/projects/[projectId]/units/unitsets/schemas";
+import { UnitsetsResponseSchema } from "@/app/api/projects/[projectId]/unitsets/units/schemas";
 import { Preview } from "@/components/Common/Preview";
 import { Layout, Unitset, UnitsetRow } from "@/app/types";
 import { useRouter } from "next/navigation";

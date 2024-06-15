@@ -1,5 +1,5 @@
 import { useUpdateUnitset } from "@/app/api/projects/[projectId]/units/query";
-import { UnitsetResponseSchema, UnitsetsUpdateBodySchema } from "@/app/api/projects/[projectId]/units/unitsets/schemas";
+import { UnitsetResponseSchema, UnitsetsUpdateBodySchema } from "@/app/api/projects/[projectId]/unitsets/units/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Form } from "../ui/form";

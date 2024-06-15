@@ -65,7 +65,6 @@ export default function Users({ params }: { params: { projectId: number } }) {
 function SelectUnitset({ projectId }: { projectId: number }) {
   const { data: unitsets, isLoading } = useUnitsets(projectId, {});
   const router = useRouter();
-  console.log(unitsets);
 
   const setsByLayout = useMemo(() => {
     const setsByLayout: Record<string, { id: number; name: string }[]> = {};
