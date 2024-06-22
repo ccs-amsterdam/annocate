@@ -5,6 +5,8 @@ import { z } from "zod";
 
 extendZodWithOpenApi(z);
 
+///////////////// VARIABLES
+
 export const variableType = [
   "select code",
   "search code",
@@ -241,6 +243,21 @@ export const CodebookVariablesSchema = z
     },
     { message: "Variable names must be unique" },
   );
+// .transform((variables) => {
+//   if (variables.length > 0) return variables;
+//   return [
+//     {
+//       type: "select code",
+//       name: "default",
+//       question: "Default question",
+//       codes: [],
+//     },
+//   ];
+// });
+
+////////////////////// UNIT LAYOUT
+
+//////////////////////
 
 export const CodebookSchema = z.object({
   variables: CodebookVariablesSchema.openapi({
@@ -249,8 +266,6 @@ export const CodebookSchema = z.object({
   }),
   settings: CodebookSettingsSchema,
 });
-
-///////////////////////////
 
 export const CodebooksTableParamsSchema = createTableParamsSchema({});
 
