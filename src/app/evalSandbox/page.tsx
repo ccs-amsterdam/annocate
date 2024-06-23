@@ -1,5 +1,6 @@
 "use client";
 
+import Markdown from "@/components/Common/Markdown";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,7 @@ import { fromZodError } from "zod-validation-error";
 export default function Users({ params }: { params: { projectId: number } }) {
   const [data, setData] = useState(defaultData);
   const { evalStringTemplate, ready } = useSandboxedEval(data);
-  const [input, setInput] = useState<string>("test this example {{unit.topic}} now");
+  const [input, setInput] = useState<string>("test this example `{{unit.topic}}` now");
   const [output, setOutput] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +40,9 @@ export default function Users({ params }: { params: { projectId: number } }) {
       >
         Run
       </Button>
-      <div>{output}</div>
+      <div>
+        <Markdown>{output}</Markdown>
+      </div>
       <div className="text-red-500">{error}</div>
     </div>
   );

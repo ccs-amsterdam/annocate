@@ -69,8 +69,13 @@ export function useSandboxedEval(data: Record<string, any>) {
       for (let i = 0; i < textParts.length; i++) {
         result += textParts[i];
         if (i >= codeParts.length) continue;
-        const codeResult = await evalInSandbox(codeParts[i], z.coerce.string());
-        result += codeResult;
+
+        try {
+          result += await evalInSandbox(codeParts[i], z.coerce.string());
+        } catch (e) {
+          console.error(`ERROR in script {{${codeParts[i]}}}: `, e);
+          result += "[...]";
+        }
       }
       return result;
     },
