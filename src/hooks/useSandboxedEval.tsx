@@ -1,5 +1,6 @@
 "use cient";
 
+import { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 
@@ -9,7 +10,7 @@ interface IFrameObj {
   iframe: HTMLIFrameElement;
 }
 
-export function useSandboxedEval(data: Record<string, any>, asFunctionBody: boolean = false) {
+export function useSandboxedEval(data: Record<string, any>) {
   const [iframeObj, setIframeObj] = useState<IFrameObj | null>(null);
 
   useEffect(() => {
@@ -17,12 +18,13 @@ export function useSandboxedEval(data: Record<string, any>, asFunctionBody: bool
     const origin = window.location.origin;
     const senderId = window.crypto.randomUUID();
     const receiverId = window.crypto.randomUUID();
-    const iframe = createSandboxedIframe(jsonData, asFunctionBody, origin, senderId, receiverId);
+    const iframe = createSandboxedIframe(jsonData, origin, senderId, receiverId);
+    document.body.appendChild(iframe);
     setIframeObj({ iframe, senderId, receiverId });
     return () => {
       document.body.removeChild(iframe);
     };
-  }, [data, asFunctionBody]);
+  }, [data]);
 
   const evalInSandbox = useCallback(
     <T extends any>(code: string, outputSchema: z.ZodType<T>): Promise<T> => {
@@ -58,16 +60,27 @@ export function useSandboxedEval(data: Record<string, any>, asFunctionBody: bool
     [iframeObj],
   );
 
-  return evalInSandbox;
+  const evalStringTemplate = useCallback(
+    async (str: string): Promise<string> => {
+      const { textParts, codeParts } = parseCodeFromString(str);
+      const codeResultParts: string[] = [];
+
+      let result = "";
+      for (let i = 0; i < textParts.length; i++) {
+        result += textParts[i];
+        if (i >= codeParts.length) continue;
+        const codeResult = await evalInSandbox(codeParts[i], z.coerce.string());
+        result += codeResult;
+      }
+      return result;
+    },
+    [evalInSandbox],
+  );
+
+  return { evalInSandbox, evalStringTemplate, ready: !!iframeObj };
 }
 
-function createSandboxedIframe(
-  jsonData: string,
-  asFunctionBody: boolean,
-  origin: string,
-  senderId: string,
-  receiverId: string,
-) {
+function createSandboxedIframe(jsonData: string, origin: string, senderId: string, receiverId: string) {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("style", "display: none");
   iframe.setAttribute("sandbox", "allow-scripts");
@@ -108,6 +121,25 @@ function createSandboxedIframe(
     </html>
   `;
 
-  document.body.appendChild(iframe);
   return iframe;
+}
+
+function parseCodeFromString(str: string) {
+  const regex = new RegExp(/{{(.*?)}}/); // Match text inside two square brackets
+  const parts = str.split(regex);
+
+  const textParts = parts.filter((p, i) => i % 2 === 0);
+  const codeParts = parts.filter((p, i) => i % 2 === 1);
+
+  return { textParts, codeParts };
+}
+
+function rebuildStringFromParts(textParts: string[], codeResultParts: string[]) {
+  let result = "";
+
+  for (let i = 0; i < textParts.length; i++) {
+    console.log(codeResultParts[i]);
+    result += textParts[i] + (codeResultParts[i] || "");
+  }
+  return result;
 }

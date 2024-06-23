@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loader";
 import { Textarea } from "@/components/ui/textarea";
 import { useSandboxedEval } from "@/hooks/useSandboxedEval";
 import { useState } from "react";
@@ -9,17 +10,18 @@ import { fromZodError } from "zod-validation-error";
 
 export default function Users({ params }: { params: { projectId: number } }) {
   const [data, setData] = useState(defaultData);
-  const seval = useSandboxedEval(data);
-  const [input, setInput] = useState<string>('"test"');
+  const { evalStringTemplate, ready } = useSandboxedEval(data);
+  const [input, setInput] = useState<string>("test this example {{unit.topic}} now");
   const [output, setOutput] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
+  if (!ready) return <Loading />;
   return (
     <div className="mx-auto mt-10 flex max-w-2xl flex-col gap-3">
       <Textarea value={input} onChange={(e) => setInput(e.target.value)} />
       <Button
         onClick={() =>
-          seval(input, z.string())
+          evalStringTemplate(input)
             .then((output) => {
               setOutput(output);
               setError(null);
