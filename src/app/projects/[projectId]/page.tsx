@@ -1,5 +1,6 @@
 "use client";
 import { useCodebooks } from "@/app/api/projects/[projectId]/codebooks/query";
+import { useJobs } from "@/app/api/projects/[projectId]/jobs/query";
 import { useProject } from "@/app/api/projects/query";
 import DBSelect from "@/components/Common/DBSelect";
 import { useCreateEmptyCodebook } from "@/components/Forms/codebookForms";
@@ -10,16 +11,18 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import JobsList from "./jobsList";
 
 export default function Job({ params }: { params: { projectId: number } }) {
-  const { data: job, isLoading, isError } = useProject(params.projectId);
+  const useJobsProps = useJobs(params.projectId);
 
   return (
     <div className="mx-auto mt-10 flex max-w-xl flex-col gap-2 p-3">
-      <Button asChild>
+      <JobsList projectId={params.projectId} />
+      {/* <Button asChild>
         <Link href={`/projects/${params.projectId}/users`}>Users</Link>
       </Button>
-      <Codebooks projectId={params.projectId} />
+      <Codebooks projectId={params.projectId} /> */}
     </div>
   );
 }

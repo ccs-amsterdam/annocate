@@ -47,13 +47,8 @@ export const UnitGeneralLayoutSchema = z.object({
 
 export const UnitTextLayoutSchema = UnitGeneralLayoutSchema.extend({
   type: z.literal("text"),
-  label: z.string().optional(),
-  offset: z.number().optional(),
-  unit_start: z.number().optional(),
-  unit_end: z.number().optional(),
   context_before: z.string().optional(),
   context_after: z.string().optional(),
-  paragraphs: z.boolean().optional(),
 });
 
 export const UnitMarkdownLayoutSchema = UnitGeneralLayoutSchema.extend({
@@ -86,7 +81,7 @@ export const UnitLayoutGridSchema = z.object({
   columns: z.array(z.number()).optional(),
 });
 
-export const UnitVariableSchema = z.object({
+export const UnitMetaSchema = z.object({
   name: z.string(),
   column: z.string(),
 });
@@ -94,34 +89,5 @@ export const UnitVariableSchema = z.object({
 export const UnitLayoutSchema = z.object({
   grid: UnitLayoutGridSchema.optional(),
   fields: UnitFieldLayoutSchema,
-  variables: z.array(UnitVariableSchema).optional(),
-});
-
-export const UnitLayoutsTableParamsSchema = createTableParamsSchema({ maxPageSize: 1000 });
-
-export const UnitLayoutsResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-});
-
-export const UnitLayoutResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  layout: UnitLayoutSchema,
-});
-
-export const UnitLayoutsCreateBodySchema = z.object({
-  name: z.string(),
-  layout: UnitLayoutSchema,
-  overwrite: z.boolean().optional(),
-});
-
-export const UnitLayoutsUpdateBodySchema = z.object({
-  name: z.string().optional(),
-  layout: UnitLayoutSchema.optional(),
-});
-
-export const UnitLayoutsCreateResponseSchema = z.object({
-  id: z.number(),
-  name: z.string(),
+  meta: z.array(UnitMetaSchema).optional(),
 });

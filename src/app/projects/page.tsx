@@ -2,7 +2,7 @@
 
 import { useProjects } from "@/app/api/projects/query";
 import DBTable from "@/components/Common/DBTable";
-import { CreateJob, UpdateJob } from "@/components/Forms/jobForms";
+import { CreateProject, UpdateProject } from "@/components/Forms/projectForms";
 import { Button } from "@/components/ui/button";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { Plus } from "lucide-react";
@@ -28,7 +28,7 @@ export default function Home() {
             </Button>
           }
         >
-          <CreateJob afterSubmit={() => setOpen(false)} />
+          <CreateProject afterSubmit={() => setOpen(false)} />
         </SimpleDialog>
       </div>
       <SelectJob />

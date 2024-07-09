@@ -1,6 +1,9 @@
 "use client";
 
-import { CodebookCodeSchema, CodebookVariableItemSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
+import {
+  CodebookCodeSchema,
+  CodebookVariableItemSchema,
+} from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { Control, FieldValues, Path } from "react-hook-form";

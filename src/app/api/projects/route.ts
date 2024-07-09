@@ -1,4 +1,4 @@
-import db, { projects, managers, users, unitsets } from "@/drizzle/schema";
+import db, { projects, managers, users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { createTableGet, createUpdate } from "../routeHelpers";

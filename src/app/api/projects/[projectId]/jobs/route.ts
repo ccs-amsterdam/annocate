@@ -1,4 +1,4 @@
-import db, { projects, managers, users, unitsets, jobs } from "@/drizzle/schema";
+import db, { projects, managers, users, codebooks, jobs } from "@/drizzle/schema";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
@@ -12,15 +12,12 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         .select({
           id: jobs.id,
           name: jobs.name,
-          unitsetId: jobs.unitsetId,
-          unitsetName: sql<string>`${unitsets.name}`.as("unitsetName"),
-          layoutId: jobs.layoutId,
-          layoutName: sql<string>`${unitsets.name}`.as("layoutName"),
           codebookId: jobs.codebookId,
-          codebookName: sql<string>`${unitsets.name}`.as("codebookName"),
+          codebookName: sql<string>`${codebooks.name}`.as("codebookName"),
         })
         .from(jobs)
         .where(eq(jobs.projectId, params.projectId))
+        .leftJoin(codebooks, eq(jobs.codebookId, codebooks.id))
         .as("baseQuery"),
     req,
     paramsSchema: JobsTableParamsSchema,

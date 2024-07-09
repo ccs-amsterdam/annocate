@@ -137,6 +137,10 @@ function initProgress(): Progress {
 
 function initCodebook(): Codebook {
   return {
+    unit: {
+      fields: [],
+      meta: [],
+    },
     variables: [
       {
         name: "missing",
@@ -158,10 +162,6 @@ function initUnit(): ExtendedUnit {
     status: "IN_PROGRESS",
     content: { grid: { areas: "" } },
     annotations: [],
-    codebook: {
-      settings: {},
-      variables: [],
-    },
   };
 }
 

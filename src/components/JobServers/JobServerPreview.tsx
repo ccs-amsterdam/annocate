@@ -120,6 +120,13 @@ function getUnitData(i: number, unitset: Unitset | undefined): UnitData {
 }
 
 const defaultCodebook: Codebook = {
+  unit: {
+    fields: [
+      { name: "title", type: "text", column: "title", style: { fontSize: "1.2rem", fontWeight: "bold" } },
+      { name: "text", type: "text", column: "text" },
+    ],
+    meta: [],
+  },
   settings: {},
   variables: [
     {

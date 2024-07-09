@@ -1,7 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { layouts, units, unitsets, unitsetUnits } from "@/drizzle/schema";
-import { and, eq, not, SQL, sql } from "drizzle-orm";
+import db, { units, jobUnits } from "@/drizzle/schema";
+import { and, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
 
@@ -51,35 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
             },
           });
         }
-        const newUnits = await query.returning();
-
-        if (body.unitsetId === undefined) return null;
-
-        let [unitset] = await tx
-          .select({
-            id: unitsets.id,
-            maxPosition: sql<number | null>`max(${unitsetUnits.position})`,
-          })
-          .from(unitsets)
-          .leftJoin(unitsetUnits, eq(unitsets.id, unitsetUnits.unitsetId))
-          .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, body.unitsetId)))
-          .groupBy(unitsets.id);
-
-        if (!unitset)
-          throw new Error(`Unitset with id ${body.unitsetId} not found, or not in project ${params.projectId}`);
-
-        await tx
-          .insert(unitsetUnits)
-          .values(
-            newUnits.map((unit, i) => ({
-              unitId: unit.id,
-              unitsetId: unitset.id,
-              position: unitset.maxPosition == null ? i : unitset.maxPosition + i + 1,
-            })),
-          )
-          .onConflictDoNothing();
-
-        return null;
+        return await query.returning();
       });
     },
     req,

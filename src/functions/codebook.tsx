@@ -1,20 +1,10 @@
-import React from "react";
+import { Codebook, ExtendedCodebook, ExtendedVariable, Variable } from "@/app/types";
 import randomColor from "randomcolor";
-import {
-  Code,
-  CodeMap,
-  CodeTree,
-  Variable,
-  AnswerOption,
-  SwipeOptions,
-  Codebook,
-  ExtendedCodebook,
-  ExtendedVariable,
-} from "@/app/types";
 import standardizeColor from "./standardizeColor";
 
 export function importCodebook(codebook: Codebook): ExtendedCodebook {
   return {
+    unit: codebook.unit,
     variables: importVariables(codebook.variables),
     settings: codebook.settings || {},
   };

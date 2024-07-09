@@ -11,13 +11,14 @@ import { AnnotationSchema } from "./api/projects/[projectId]/annotations/schemas
 import {
   CodebookCodeSchema,
   CodebookRelationSchema,
-  CodebookSchema,
   CodebookUnionTypeSchema,
   CodebookVariableItemSchema,
-} from "./api/projects/[projectId]/codebooks/schemas";
+} from "./api/projects/[projectId]/codebooks/variablesSchemas";
+
 import { UnitLayoutSchema } from "./api/projects/[projectId]/units/layouts/schemas";
-import { UnitDataRowSchema } from "./api/projects/[projectId]/units/data/schemas";
+import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
 import { UnitsetResponseSchema, UnitsetsResponseSchema } from "./api/projects/[projectId]/units/unitsets/schemas";
+import { CodebookSchema } from "./api/projects/[projectId]/codebooks/schemas";
 
 //////////  NEW
 ///////////
@@ -69,12 +70,8 @@ export type ExtendedVariable = Variable & {
   validTo?: ValidRelation;
 };
 
-export type ExtendedCodebook = {
+export type ExtendedCodebook = Omit<Codebook, "variables"> & {
   variables: ExtendedVariable[];
-  settings: {
-    instruction?: string;
-    auto_instruction?: boolean;
-  };
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookRelationSchema>;

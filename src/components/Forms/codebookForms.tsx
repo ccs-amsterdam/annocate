@@ -2,19 +2,15 @@
 
 import { useUpdateCodebook, useCreateCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import {
-  CodebookCreateBodySchema,
   CodebookScaleTypeSchema,
-  CodebookSchema,
   CodebookSelectTypeSchema,
-  CodebooksResponseSchema,
-  CodebookUpdateBodySchema,
   CodebookVariableSchema,
   variableTypeOptions,
-} from "@/app/api/projects/[projectId]/codebooks/schemas";
+} from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Save, Watch, XIcon } from "lucide-react";
+import { Plus, Save, Watch, XIcon } from "lucide-react";
 import { use, useCallback, useEffect, useState } from "react";
-import { Control, FieldValues, Path, useForm, useWatch } from "react-hook-form";
+import { Control, FieldValues, Path, useForm, UseFormReturn, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Button } from "../ui/button";
@@ -30,6 +26,19 @@ import {
 } from "./formHelpers";
 import { Form } from "../ui/form";
 import React from "react";
+import {
+  CodebookSchema,
+  CodebookCreateBodySchema,
+  CodebooksResponseSchema,
+  CodebookUpdateBodySchema,
+} from "@/app/api/projects/[projectId]/codebooks/schemas";
+import {
+  fieldTypeOptions,
+  UnitGeneralLayoutSchema,
+  UnitImageLayoutSchema,
+  UnitMarkdownLayoutSchema,
+  UnitTextLayoutSchema,
+} from "@/app/api/projects/[projectId]/codebooks/layoutSchemas";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
@@ -43,6 +52,15 @@ export function useCreateEmptyCodebook(projectId: number) {
       const newCodebook: CodebookCreateBodySchema = {
         name,
         codebook: {
+          unit: {
+            fields: [],
+            meta: [],
+            grid: {
+              areas: [],
+              rows: [],
+              columns: [],
+            },
+          },
           settings: {
             instruction: "",
             auto_instruction: false,
@@ -78,7 +96,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   afterSubmit,
   setPreview,
 }: UpdateCodebookProps) {
-  const [accordionValue, setAccordionValue] = useState<string>("");
   const { mutateAsync } = useUpdateCodebook(projectId, current.id);
   const form = useForm<CodebookUpdateBody>({
     resolver: zodResolver(CodebookCreateBodySchema),
@@ -100,27 +117,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [form]);
-
-  function appendVariable() {
-    const newVariables = [...variables, defaultVariable("Variable_" + (variables.length + 1))];
-    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
-    setAccordionValue("V" + (newVariables.length - 1));
-  }
-
-  function removeVariable(index: number) {
-    const newVariables = variables.filter((_, i) => i !== index);
-    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
-    setAccordionValue("");
-  }
-
-  function moveVariable(index1: number, index2: number) {
-    // insert into the new position. Donn't swap
-    const newVariables = [...variables];
-    const [removed] = newVariables.splice(index1, 1);
-    newVariables.splice(index2, 0, removed);
-    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
-    setAccordionValue("");
-  }
 
   function onSubmit(values: CodebookUpdateBody) {
     if (variables.length === 0) return alert("You need to add at least one variable");
@@ -144,19 +140,33 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
             <XIcon className="h-5 w-5" />
             Undo changes
           </Button>
-          {error ? <div className="text-destructive">{error.message}</div> : null}
+          <div>
+            {error ? <div className="text-destructive">{error.message}</div> : null}
+            {error?.variables?.root ? <div className="text-destructive">{error.variables.root.message}</div> : null}
+          </div>
           <Button
             className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-50"
-            variant={error ? "destructive" : "secondary"}
             type="submit"
-            disabled={!form.formState.isDirty}
+            disabled={!form.formState.isDirty || !!error}
           >
             <Save className="h-5 w-5" />
             Save changes
           </Button>
         </div>
+
         <TextFormField control={form.control} zType={shape.name} name="name" />
-        <TextAreaFormField
+
+        <div>
+          <div className="prose mb-2 mt-6 w-full border-b-2 pb-2  dark:prose-invert">
+            <h3 className="text-foreground/80">Unit of analysis</h3>
+          </div>
+          <UnitFields form={form} />
+        </div>
+        <div>
+          <div className="prose mb-2 mt-6 w-full border-b-2 pb-2 dark:prose-invert">
+            <h3 className="text-foreground/80">Variables</h3>
+          </div>
+          {/* <TextAreaFormField
           control={form.control}
           zType={shape.codebook.shape.settings.shape.instruction}
           name="codebook.settings.instruction"
@@ -165,56 +175,8 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
           control={form.control}
           zType={shape.codebook.shape.settings.shape.auto_instruction}
           name="codebook.settings.auto_instruction"
-        />
-        {error?.variables?.root ? <div className="text-destructive">{error.variables.root.message}</div> : null}
-        <div>
-          <Accordion
-            value={accordionValue}
-            onValueChange={setAccordionValue}
-            type="single"
-            collapsible
-            className="w-full"
-          >
-            {variables.map((variable, index) => {
-              const varName = form.watch(`codebook.variables.${index}.name`);
-              const varQuestion = form.watch(`codebook.variables.${index}.question`);
-              const varType = form.watch(`codebook.variables.${index}.type`);
-              const isActive = accordionValue === "V" + index;
-              const { error } = form.getFieldState(`codebook.variables.${index}`);
-              let bg = isActive ? "bg-primary-light" : "";
-              return (
-                <AccordionItem key={index} value={"V" + index} className={`${bg}  rounded p-3 `}>
-                  <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
-                    <MoveItemInArray move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
-
-                    <div>
-                      <AccordionTrigger className="text-left no-underline hover:no-underline">
-                        <span className="break-all">
-                          {varName.replace(/_/g, " ")}
-                          {varQuestion && <span className="text-base text-primary/70"> - {variable.question}</span>}
-                        </span>
-                      </AccordionTrigger>
-                    </div>
-                  </div>
-                  <AccordionContent className="flex flex-col gap-5 px-1 py-3">
-                    <CodebookVariable type={variable.type} control={form.control} index={index} />
-                    <ConfirmDialog
-                      title="Remove variable"
-                      message="This will remove the variable. Are you sure?"
-                      onAccept={() => removeVariable(index)}
-                    >
-                      <Button variant="destructive" className="ml-auto h-8 rounded-full">
-                        <XIcon />
-                      </Button>
-                    </ConfirmDialog>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
-          <Button type="button" className="mt-3" onClick={() => appendVariable()}>
-            Add Variable
-          </Button>
+        /> */}
+          <Variables form={form} />
         </div>
         <WatchForPreview form={form} setPreview={setPreview} />
       </form>
@@ -234,6 +196,212 @@ function WatchForPreview({ form, setPreview }: { form: any; setPreview?: (codebo
     return () => clearTimeout(timeout);
   }, [watch, setPreview, form]);
   return <div></div>;
+}
+
+function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
+  const [accordionValue, setAccordionValue] = useState<string>("");
+  const fields = form.getValues("codebook.unit.fields");
+
+  function appendField() {
+    const newFields = [...fields, defaultField("Field_" + (fields.length + 1))];
+    form.setValue("codebook.unit.fields", newFields, { shouldDirty: true });
+    setAccordionValue("V" + (newFields.length - 1));
+  }
+
+  function removeField(index: number) {
+    const newFields = fields.filter((_, i) => i !== index);
+    form.setValue("codebook.unit.fields", newFields, { shouldDirty: true });
+    setAccordionValue("");
+  }
+
+  function moveField(index1: number, index2: number) {
+    // insert into the new position. Donn't swap
+    const newFields = [...fields];
+    const [removed] = newFields.splice(index1, 1);
+    newFields.splice(index2, 0, removed);
+    form.setValue("codebook.unit.fields", newFields, { shouldDirty: true });
+    setAccordionValue("");
+  }
+
+  return (
+    <div className="flex flex-col">
+      <Accordion value={accordionValue} onValueChange={setAccordionValue} type="single" collapsible className="w-full">
+        {fields.map((field, index) => {
+          const varName = form.watch(`codebook.unit.fields.${index}.name`);
+          const isActive = accordionValue === "V" + index;
+          const { error } = form.getFieldState(`codebook.unit.fields.${index}`);
+          let bg = isActive ? "bg-primary-light" : "";
+          return (
+            <AccordionItem key={index} value={"V" + index} className={`${bg}  rounded p-3 `}>
+              <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
+                <MoveItemInArray move={moveField} i={index} n={fields.length} bg={bg} error={!!error} />
+
+                <div>
+                  <AccordionTrigger className="text-left no-underline hover:no-underline">
+                    <span className="break-all">{varName.replace(/_/g, " ")}</span>
+                  </AccordionTrigger>
+                </div>
+              </div>
+              <AccordionContent className="flex flex-col gap-5 px-1 py-3">
+                <LayoutField type={field.type} control={form.control} index={index} />
+                <ConfirmDialog
+                  title="Remove field"
+                  message="This will remove the field. Are you sure?"
+                  onAccept={() => removeField(index)}
+                >
+                  <Button variant="destructive" className="ml-auto h-8 rounded-full">
+                    <XIcon />
+                  </Button>
+                </ConfirmDialog>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="ml-auto mt-3 flex w-40 items-center gap-1"
+        onClick={() => appendField()}
+      >
+        add field
+      </Button>
+    </div>
+  );
+}
+
+function LayoutField<T extends FieldValues>({
+  type,
+  control,
+  index,
+}: {
+  type: string;
+  control: Control<T, any>;
+  index: number;
+}) {
+  const generalShape = UnitGeneralLayoutSchema.shape;
+
+  function appendPath(key: string): Path<T> {
+    return `codebook.unit.fields.${index}.${key}` as Path<T>;
+  }
+
+  function renderType() {
+    if (type === "text") {
+      const shape = UnitTextLayoutSchema.shape;
+      return <></>;
+    }
+    if (type === "image") {
+      const shape = UnitImageLayoutSchema.shape;
+      return <></>;
+    }
+    if (type === "markdown") {
+      const shape = UnitMarkdownLayoutSchema.shape;
+      return <></>;
+    }
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <DropdownFormField
+        control={control}
+        zType={generalShape.type}
+        name={appendPath("type")}
+        values={fieldTypeOptions}
+        labelWidth="8rem"
+      />
+      <TextFormField
+        control={control}
+        zType={generalShape.name}
+        name={appendPath("name")}
+        onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
+      />
+      <div>
+        <TextFormField control={control} zType={generalShape.column} name={appendPath("column")} />
+      </div>
+      {renderType()}
+    </div>
+  );
+}
+
+function Variables({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
+  const [accordionValue, setAccordionValue] = useState<string>("");
+
+  const variables = form.getValues("codebook.variables");
+
+  function appendVariable() {
+    const newVariables = [...variables, defaultVariable("Variable_" + (variables.length + 1))];
+    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
+    setAccordionValue("V" + (newVariables.length - 1));
+  }
+
+  function removeVariable(index: number) {
+    const newVariables = variables.filter((_, i) => i !== index);
+    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
+    setAccordionValue("");
+  }
+
+  function moveVariable(index1: number, index2: number) {
+    // insert into the new position. Donn't swap
+    const newVariables = [...variables];
+    const [removed] = newVariables.splice(index1, 1);
+    newVariables.splice(index2, 0, removed);
+    form.setValue("codebook.variables", newVariables, { shouldDirty: true });
+    setAccordionValue("");
+  }
+
+  return (
+    <div className="flex flex-col">
+      <Accordion value={accordionValue} onValueChange={setAccordionValue} type="single" collapsible className="w-full">
+        {variables.map((variable, index) => {
+          const varName = form.watch(`codebook.variables.${index}.name`);
+          const varQuestion = form.watch(`codebook.variables.${index}.question`);
+          const varType = form.watch(`codebook.variables.${index}.type`);
+          const isActive = accordionValue === "V" + index;
+          const { error } = form.getFieldState(`codebook.variables.${index}`);
+          let bg = isActive ? "bg-primary-light" : "";
+          return (
+            <AccordionItem key={index} value={"V" + index} className={`${bg}  rounded p-3 `}>
+              <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
+                <MoveItemInArray move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
+
+                <div>
+                  <AccordionTrigger className="text-left no-underline hover:no-underline">
+                    <span className="break-all">
+                      {varName.replace(/_/g, " ")}
+                      {varQuestion && <span className="text-base text-primary/70"> - {variable.question}</span>}
+                    </span>
+                  </AccordionTrigger>
+                </div>
+              </div>
+              <AccordionContent className="flex flex-col gap-5 px-1 py-3">
+                <CodebookVariable type={variable.type} control={form.control} index={index} />
+                <ConfirmDialog
+                  title="Remove variable"
+                  message="This will remove the variable. Are you sure?"
+                  onAccept={() => removeVariable(index)}
+                >
+                  <Button variant="destructive" className="ml-auto h-8 rounded-full">
+                    <XIcon />
+                  </Button>
+                </ConfirmDialog>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="ml-auto mt-3 w-40"
+        onClick={() => appendVariable()}
+      >
+        add variable
+      </Button>
+    </div>
+  );
 }
 
 function CodebookVariable<T extends FieldValues>({
@@ -294,6 +462,15 @@ function CodebookVariable<T extends FieldValues>({
       {renderType()}
     </div>
   );
+}
+
+function defaultField(name: string): z.input<typeof UnitMarkdownLayoutSchema> {
+  return {
+    name,
+    type: "markdown",
+    column: "",
+    style: { fontSize: "1rem", lineHeight: "1.5rem", fontWeight: "normal", fontStyle: "normal" },
+  };
 }
 
 function defaultVariable(name: string): z.input<typeof CodebookSelectTypeSchema> {

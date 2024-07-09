@@ -1,6 +1,5 @@
-import { UnitDataRowSchema, UnitDataValueSchema } from "@/app/api/projects/[projectId]/units/data/schemas";
-import { useUnitLayouts } from "@/app/api/projects/[projectId]/units/layouts/query";
-import { useCreateUnits, useDeleteUnitsets, useUnitsets } from "@/app/api/projects/[projectId]/units/query";
+import { useCreateUnits } from "@/app/api/projects/[projectId]/units/query";
+import { UnitDataRowSchema, UnitDataValueSchema } from "@/app/api/projects/[projectId]/units/schemas";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,48 +15,6 @@ import { ChevronDown, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCSVReader } from "react-papaparse";
 import { z } from "zod";
-import { SelectOrCreate } from "../ui/select-or-create";
-import { SimpleDropdown } from "../ui/simpleDropdown";
-
-export function DeleteUnitsets({ projectId, editSetList: editSetList }: { projectId: number; editSetList: number[] }) {
-  const { mutateAsync } = useDeleteUnitsets(projectId);
-  const [open, setOpen] = useState(false);
-
-  if (!editSetList.length) return null;
-
-  return (
-    <SimpleDialog
-      open={open}
-      setOpen={setOpen}
-      header="Delete unitsets"
-      trigger={
-        <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
-          Delete selected sets
-          <Trash className="h-5 w-5" />
-        </Button>
-      }
-    >
-      <div className="flex flex-col gap-6">
-        <div>Are you sure you want to delete the selected unit sets?</div>
-        <p>If any units are only in one of the deleted sets, they will be deleted too</p>
-        <div className="flex gap-3">
-          <Button
-            variant="destructive"
-            onClick={() => {
-              mutateAsync({ ids: editSetList });
-              setOpen(false);
-            }}
-          >
-            Delete
-          </Button>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </SimpleDialog>
-  );
-}
 
 type Value = z.infer<typeof UnitDataValueSchema>;
 type Rows = Record<string, Value>[];
@@ -75,11 +32,10 @@ type UploadProgress = {
   i: number;
   total: number;
   overwrite: boolean;
-  unitsetId: number;
   batches: DataRow[][];
 };
 
-export function CreateUnitsButton({ projectId, unitsetId }: { projectId: number; unitsetId: number }) {
+export function CreateUnitsButton({ projectId }: { projectId: number }) {
   const [open, setOpen] = useState(false);
   const { mutateAsync } = useCreateUnits(projectId);
   const [data, setData] = useState<Data | null>(null);
@@ -88,7 +44,6 @@ export function CreateUnitsButton({ projectId, unitsetId }: { projectId: number;
   const { CSVReader } = useCSVReader();
 
   async function startUpload(data: Data) {
-    if (!data.unitsetId) return;
     const batches: DataRow[][] = [];
 
     let rows: DataRow[] = [];
@@ -102,13 +57,13 @@ export function CreateUnitsButton({ projectId, unitsetId }: { projectId: number;
       batches.push(rows.slice(i, i + batchsize));
     }
 
-    setProgress({ i: 0, total: batches.length, batches, overwrite: data.overwrite, unitsetId: data.unitsetId });
+    setProgress({ i: 0, total: batches.length, batches, overwrite: data.overwrite });
   }
 
   useEffect(() => {
     if (!progress) return;
     const batch = progress.batches[progress.i];
-    mutateAsync({ overwrite: progress.overwrite, unitsetId: progress.unitsetId, units: batch })
+    mutateAsync({ overwrite: progress.overwrite, units: batch })
       .then(() => {
         if (progress.i === progress.total - 1) {
           setProgress(null);
@@ -148,7 +103,6 @@ export function CreateUnitsButton({ projectId, unitsetId }: { projectId: number;
       possibleId,
       id: "",
       overwrite: false,
-      unitsetId,
     });
   }
 
@@ -180,25 +134,9 @@ export function CreateUnitsButton({ projectId, unitsetId }: { projectId: number;
 
     return (
       <div className="flex w-full flex-col gap-3">
-        {/* <Button variant="destructive" className="mr-auto " type="button" onClick={() => setData(null)}>
-          Reset
-        </Button> */}
-
         <div className="grid grid-cols-[1.2fr,1fr] items-center justify-between gap-3">
           <label className="">Select unique ID column</label>
           <SelectIdDropdown data={data} setData={setData} />
-          {/* <label className="">
-            {data.unitset ? (data.unitsetExists ? "Add units to set" : "Create new set") : "Select unit set"}
-          </label>
-          <SelectOrCreate
-            options={unitsets || []}
-            optionKey="name"
-            createMessage="Create new set"
-            placeholder="New or existing"
-            value={data.unitset}
-            onValueChange={(option, value) => setData({ ...data, unitset: value, unitsetExists: !!option })}
-          /> */}
-          {/* <SelectLayout /> */}
         </div>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">

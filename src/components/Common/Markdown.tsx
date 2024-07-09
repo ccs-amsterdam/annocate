@@ -1,8 +1,7 @@
-import { CSSProperties, ReactNode } from "react";
+import { CSSProperties } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeExternalLinks from "rehype-external-links";
 import rehypeRaw from "rehype-raw";
-import DOMPurify from "dompurify";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 
 interface MarkdownProps {
   children: string;
@@ -16,24 +15,35 @@ const Markdown = ({ children, style = {} }: MarkdownProps) => {
         components={{
           mark(props) {
             const { node, ...rest } = props;
-            console.log(node, rest);
             const background = String(node?.properties?.background ?? "hsl(var(--secondary))");
             const color = String(node?.properties?.color ?? "hsl(var(--secondary-foreground))");
-            console.log(color);
             return <span className="rounded px-1" style={{ background, color }} {...rest} />;
           },
-          // "==": (props) => {
-          //   const { node, ...rest } = props;
-          //   console.log(node, rest);
-          //   const background = String(node?.properties?.background ?? "hsl(var(--secondary))");
-          //   const color = String(node?.properties?.color ?? "hsl(var(--secondary-foreground))");
-          //   console.log(background);
-          //   return <span className="rounded px-1" style={{ background, color }} {...rest} />;
+          // span(props) {
+          //   const style = props?.node?.properties;
+          //   console.log(style);
+          //   return <span {...props} />;
           // },
+          a(props) {
+            return <a {...props} target="_blank" rel="noopener noreferrer" />;
+          },
         }}
-        rehypePlugins={[[rehypeExternalLinks, { target: "_blank" }], rehypeRaw]}
+        rehypePlugins={[
+          rehypeRaw,
+          [
+            rehypeSanitize,
+            {
+              ...defaultSchema,
+              tagNames: [...(defaultSchema.tagNames || []), "mark"],
+              // attributes: {
+              //   ...defaultSchema.attributes,
+              //   a: [...(defaultSchema.attributes?.a || [])],
+              // },
+            },
+          ],
+        ]}
       >
-        {DOMPurify.sanitize(children)}
+        {children}
       </ReactMarkdown>
     </div>
   );

@@ -71,6 +71,28 @@ export const projects = pgTable(
   },
 );
 
+export const managers = pgTable(
+  "managers",
+  {
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: uuid("user_uuid")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["admin", "manager"] })
+      .notNull()
+      .$type<ProjectRole>()
+      .default("manager"),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.projectId, table.userId] }),
+      userIdIndex: index("managers_userId_index").on(table.userId),
+    };
+  },
+);
+
 type Codebook = z.input<typeof CodebookSchema>;
 
 export const codebooks = pgTable(
@@ -89,6 +111,23 @@ export const codebooks = pgTable(
       projectIds: index("codebook_project_ids").on(table.projectId),
       unq: unique("unique_project_name").on(table.projectId, table.name),
     };
+  },
+);
+
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }).notNull(),
+    codebookId: integer("codebook_id").references(() => codebooks.id),
+    modified: timestamp("modified").notNull().defaultNow(),
+    deployed: boolean("deployed").notNull().default(false),
+  },
+  (table) => {
+    return { projectIds: index("jobs_project_ids").on(table.projectId) };
   },
 );
 
@@ -112,123 +151,22 @@ export const units = pgTable(
   },
 );
 
-type UnitLayout = z.input<typeof UnitLayoutSchema>;
-
-export const layouts = pgTable(
-  "layouts",
+export const jobUnits = pgTable(
+  "job_units",
   {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
+    jobId: integer("job_id")
       .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }).notNull(),
-    created: timestamp("created").notNull().defaultNow(),
-    layout: customJsonb("layout").notNull().$type<UnitLayout>(),
-  },
-  (table) => {
-    return {
-      projectIds: index("layouts_project_ids").on(table.projectId),
-      unique: unique("layouts_project_name").on(table.projectId, table.name),
-    };
-  },
-);
-
-export const unitsets = pgTable(
-  "unitsets",
-  {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }).notNull(),
-    created: timestamp("created").notNull().defaultNow(),
-  },
-  (table) => {
-    return {
-      projectIds: index("unitsets_project_ids").on(table.projectId),
-      unique: unique("unitsets_project_name").on(table.projectId, table.name),
-    };
-  },
-);
-
-export const unitsetUnits = pgTable(
-  "unitset_units",
-  {
-    unitsetId: integer("unitset_id")
-      .notNull()
-      .references(() => unitsets.id, { onDelete: "cascade" }),
+      .references(() => jobs.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     unitId: integer("unit_id")
       .notNull()
-      .references(() => units.id, { onDelete: "cascade" }),
+      .references(() => units.id),
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.unitsetId, table.position] }),
+      pk: primaryKey({ columns: [table.jobId, table.position] }),
       unitIdx: index("unitset_units_unit_ids").on(table.unitId),
       positionIdx: index("unitset_units_position_idx").on(table.position),
-    };
-  },
-);
-
-export const jobs = pgTable(
-  "jobs",
-  {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }).notNull(),
-    unitsetId: integer("unitset_id")
-      .notNull()
-      .references(() => unitsets.id),
-    layoutId: integer("layout_id")
-      .notNull()
-      .references(() => layouts.id),
-    codebookId: integer("codebook_id").references(() => codebooks.id),
-    modified: timestamp("modified").notNull().defaultNow(),
-    deployed: boolean("deployed").notNull().default(false),
-  },
-  (table) => {
-    return { projectIds: index("jobs_project_ids").on(table.projectId) };
-  },
-);
-
-export const jobSetUnitGroups = pgTable(
-  "job_set_unit_groups",
-  {
-    jobSetId: integer("job_set_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    unitGroupId: integer("unit_group_id")
-      .notNull()
-      .references(() => layouts.id, { onDelete: "cascade" }),
-    rules: customJsonb("rules").notNull().$type<Rules>(),
-    codebookId: integer("codebook_id").references(() => codebooks.id, { onDelete: "set null" }),
-  },
-  (table) => {
-    return { pk: primaryKey({ columns: [table.jobSetId, table.unitGroupId] }) };
-  },
-);
-
-export const managers = pgTable(
-  "managers",
-  {
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    userId: uuid("user_uuid")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    role: text("role", { enum: ["admin", "manager"] })
-      .notNull()
-      .$type<ProjectRole>()
-      .default("manager"),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.projectId, table.userId] }),
-      userIdIndex: index("managers_userId_index").on(table.userId),
     };
   },
 );

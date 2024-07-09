@@ -1,5 +1,5 @@
 {
-  "id": "eb16513d-9555-443c-a8fe-e7e4ffe2d242",
+  "id": "fb0266c8-7d96-47ee-9583-55694678e6c2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -236,43 +236,68 @@
       },
       "uniqueConstraints": {}
     },
-    "public.job_set_unit_groups": {
-      "name": "job_set_unit_groups",
+    "public.job_units": {
+      "name": "job_units",
       "schema": "",
       "columns": {
-        "job_set_id": {
-          "name": "job_set_id",
+        "job_id": {
+          "name": "job_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "unit_group_id": {
-          "name": "unit_group_id",
+        "position": {
+          "name": "position",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "rules": {
-          "name": "rules",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "codebook_id": {
-          "name": "codebook_id",
+        "unit_id": {
+          "name": "unit_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "unitset_units_unit_ids": {
+          "name": "unitset_units_unit_ids",
+          "columns": [
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "unitset_units_position_idx": {
+          "name": "unitset_units_position_idx",
+          "columns": [
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
-        "job_set_unit_groups_job_set_id_jobs_id_fk": {
-          "name": "job_set_unit_groups_job_set_id_jobs_id_fk",
-          "tableFrom": "job_set_unit_groups",
+        "job_units_job_id_jobs_id_fk": {
+          "name": "job_units_job_id_jobs_id_fk",
+          "tableFrom": "job_units",
           "tableTo": "jobs",
           "columnsFrom": [
-            "job_set_id"
+            "job_id"
           ],
           "columnsTo": [
             "id"
@@ -280,39 +305,26 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "job_set_unit_groups_unit_group_id_layouts_id_fk": {
-          "name": "job_set_unit_groups_unit_group_id_layouts_id_fk",
-          "tableFrom": "job_set_unit_groups",
-          "tableTo": "layouts",
+        "job_units_unit_id_units_id_fk": {
+          "name": "job_units_unit_id_units_id_fk",
+          "tableFrom": "job_units",
+          "tableTo": "units",
           "columnsFrom": [
-            "unit_group_id"
+            "unit_id"
           ],
           "columnsTo": [
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "job_set_unit_groups_codebook_id_codebooks_id_fk": {
-          "name": "job_set_unit_groups_codebook_id_codebooks_id_fk",
-          "tableFrom": "job_set_unit_groups",
-          "tableTo": "codebooks",
-          "columnsFrom": [
-            "codebook_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "job_set_unit_groups_job_set_id_unit_group_id_pk": {
-          "name": "job_set_unit_groups_job_set_id_unit_group_id_pk",
+        "job_units_job_id_position_pk": {
+          "name": "job_units_job_id_position_pk",
           "columns": [
-            "job_set_id",
-            "unit_group_id"
+            "job_id",
+            "position"
           ]
         }
       },
@@ -339,6 +351,12 @@
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
+        },
+        "codebook_id": {
+          "name": "codebook_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         },
         "modified": {
           "name": "modified",
@@ -384,6 +402,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "jobs_codebook_id_codebooks_id_fk": {
+          "name": "jobs_codebook_id_codebooks_id_fk",
+          "tableFrom": "jobs",
+          "tableTo": "codebooks",
+          "columnsFrom": [
+            "codebook_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -439,86 +470,6 @@
         }
       },
       "uniqueConstraints": {}
-    },
-    "public.layouts": {
-      "name": "layouts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created": {
-          "name": "created",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "layout": {
-          "name": "layout",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "layouts_project_ids": {
-          "name": "layouts_project_ids",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "layouts_project_id_projects_id_fk": {
-          "name": "layouts_project_id_projects_id_fk",
-          "tableFrom": "layouts",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "layouts_project_name": {
-          "name": "layouts_project_name",
-          "nullsNotDistinct": false,
-          "columns": [
-            "project_id",
-            "name"
-          ]
-        }
-      }
     },
     "public.managers": {
       "name": "managers",
@@ -741,193 +692,6 @@
           "columns": [
             "project_id",
             "unit_id"
-          ]
-        }
-      }
-    },
-    "public.unitset_units": {
-      "name": "unitset_units",
-      "schema": "",
-      "columns": {
-        "unitset_id": {
-          "name": "unitset_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unit_id": {
-          "name": "unit_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "unitset_units_unit_ids": {
-          "name": "unitset_units_unit_ids",
-          "columns": [
-            {
-              "expression": "unit_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "unitset_units_position_idx": {
-          "name": "unitset_units_position_idx",
-          "columns": [
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "unitset_units_unitset_id_unitsets_id_fk": {
-          "name": "unitset_units_unitset_id_unitsets_id_fk",
-          "tableFrom": "unitset_units",
-          "tableTo": "unitsets",
-          "columnsFrom": [
-            "unitset_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "unitset_units_unit_id_units_id_fk": {
-          "name": "unitset_units_unit_id_units_id_fk",
-          "tableFrom": "unitset_units",
-          "tableTo": "units",
-          "columnsFrom": [
-            "unit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "unitset_units_unitset_id_position_pk": {
-          "name": "unitset_units_unitset_id_position_pk",
-          "columns": [
-            "unitset_id",
-            "position"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
-    },
-    "public.unitsets": {
-      "name": "unitsets",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created": {
-          "name": "created",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "layout_id": {
-          "name": "layout_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "unitsets_project_ids": {
-          "name": "unitsets_project_ids",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "unitsets_project_id_projects_id_fk": {
-          "name": "unitsets_project_id_projects_id_fk",
-          "tableFrom": "unitsets",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "unitsets_layout_id_layouts_id_fk": {
-          "name": "unitsets_layout_id_layouts_id_fk",
-          "tableFrom": "unitsets",
-          "tableTo": "layouts",
-          "columnsFrom": [
-            "layout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "unitsets_project_name": {
-          "name": "unitsets_project_name",
-          "nullsNotDistinct": false,
-          "columns": [
-            "project_id",
-            "name"
           ]
         }
       }

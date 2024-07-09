@@ -1,8 +1,8 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createUpdate } from "@/app/api/routeHelpers";
-import db, { units, unitsets, unitsetUnits } from "@/drizzle/schema";
+import db, { units, jobs, jobUnits } from "@/drizzle/schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { UnitsetUnitsUpdateSchema } from "../../schemas";
+import { JobUnitsUpdateSchema } from "./schemas";
 
 export async function POST(req: Request, { params }: { params: { projectId: number } }) {
   return createUpdate({
@@ -20,38 +20,39 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
           unitIds = await tx
             .select({ id: units.id })
             .from(units)
-            .leftJoin(unitsetUnits, eq(units.id, unitsetUnits.unitId))
-            .where(and(inArray(units.externalId, body.unitIds), isNull(unitsetUnits.unitsetId)));
+            .leftJoin(jobUnits, eq(units.id, jobUnits.unitId))
+            .where(and(inArray(units.externalId, body.unitIds), isNull(jobUnits.jobId)));
 
-          let [unitset] = await tx
+          let [job] = await tx
             .select({
-              id: unitsets.id,
-              maxPosition: sql<number | null>`max(${unitsetUnits.position})`,
+              id: jobs.id,
+              maxPosition: sql<number | null>`max(${jobUnits.position})`,
             })
-            .from(unitsets)
-            .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, body.id)))
-            .groupBy(unitsets.id);
-          if (!unitset) throw new Error(`Cannot appendUnit set "${body.id}" does not exist`);
-          maxPosition = unitset.maxPosition;
+            .from(jobs)
+            .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, body.id)))
+            .groupBy(jobs.id);
+          if (!job) throw new Error(`Cannot append. Job "${body.id}" does not exist`);
+          maxPosition = job.maxPosition;
         } else {
           // if normal mode (overwrite), first check if this unitset is actually in the project.
           // if so, fetch the unitIds and delete the old unitsetUnits
-          const [unitset] = await tx
-            .select({ id: unitsets.id })
-            .from(unitsets)
-            .where(and(eq(unitsets.projectId, params.projectId), eq(unitsets.id, body.id)));
-          if (!unitset)
-            throw new Error(`Unit set "${body.id}" does not exist is is not in project "${params.projectId}"`);
+          const [job] = await tx
+            .select({ id: jobs.id })
+            .from(jobs)
+            .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, body.id)));
+          if (!job) throw new Error(`Job "${body.id}" does not exist is is not in project "${params.projectId}"`);
           unitIds = await tx.select({ id: units.id }).from(units).where(inArray(units.externalId, body.unitIds));
-          await tx.delete(unitsetUnits).where(eq(unitsetUnits.unitsetId, body.id));
+          await tx.delete(jobUnits).where(eq(jobUnits.jobId, body.id));
         }
 
+        if (!unitIds) return null;
+
         await tx
-          .insert(unitsetUnits)
+          .insert(jobUnits)
           .values(
             unitIds.map((unitId, i) => ({
               unitId: unitId.id,
-              unitsetId: body.id,
+              jobId: body.id,
               position: maxPosition == null ? i : maxPosition + i + 1,
             })),
           )
@@ -59,7 +60,7 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
       });
     },
     req,
-    bodySchema: UnitsetUnitsUpdateSchema,
+    bodySchema: JobUnitsUpdateSchema,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

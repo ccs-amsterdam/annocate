@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Loading } from "../ui/loader";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { Dot } from "lucide-react";
+import { ChevronRight, CircleDot, Dot, DotIcon } from "lucide-react";
 
 type Value = string | number | Date | boolean;
 
@@ -33,7 +33,7 @@ export default function DBSelect<T extends Record<string, Value>>(props: Props<T
 
   const showPagination = props.meta && props.meta.rows > props.meta.pageSize;
 
-  if (props.isLoading) {
+  if (prevProps.isLoading) {
     return <Loading />;
   }
 
@@ -44,14 +44,16 @@ export default function DBSelect<T extends Record<string, Value>>(props: Props<T
         <DBPagination paginate={props.paginate} />
       </div>
       {/* <div className={`mb-3 ${props.isLoading ? "" : "hidden"}`}>Searching...</div> */}
-      <div className="flex flex-col gap-1">
-        {props.data?.map((row, index) => {
+      <div className="flex flex-col ">
+        {prevProps.data?.map((row, index) => {
           return (
             <Button
-              className="flex h-6 max-w-full items-center justify-start gap-2 overflow-hidden text-ellipsis whitespace-nowrap"
               key={index}
-              onClick={() => prevProps.onSelect && prevProps.onSelect(row)}
+              variant="ghost"
+              className="flex h-8 max-w-full items-center justify-start gap-2 overflow-hidden text-ellipsis whitespace-nowrap pl-0 hover:bg-foreground/20"
+              onClick={() => props.onSelect && props.onSelect(row)}
             >
+              <ChevronRight size={16} />
               {String(row[props.nameField])}
             </Button>
           );

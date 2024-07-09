@@ -8,10 +8,10 @@ import { z } from "zod";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 
-export function useJobs(initialParams?: z.input<typeof JobsTableParamsSchema>) {
+export function useJobs(projectId: number, initialParams?: z.input<typeof JobsTableParamsSchema>) {
   return useTableGet({
     resource: "jobs",
-    endpoint: "jobs",
+    endpoint: `projects/${projectId}/jobs`,
     initialParams: initialParams || {},
     responseSchema: JobsResponseSchema,
   });
@@ -28,12 +28,12 @@ export function useJob(projectId: number, jobId: number) {
 export function useCreateJob(projectId: number) {
   return useMutate({
     resource: "jobs",
-    endpoint: "projects/${projectId}/jobs",
+    endpoint: `projects/${projectId}/jobs`,
     bodySchema: JobsCreateSchema,
     responseSchema: JobsResponseSchema,
   });
 }
-export function useUpdateJob(projectId: number, jobId: number) {
+export function useUpdateJob(projectId: number, jobId?: number) {
   return useMutate({
     resource: "jobs",
     endpoint: `projects/${projectId}/jobs/${jobId}`,
