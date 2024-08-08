@@ -11,12 +11,12 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     tableFunction: (email, urlParams) => {
       return db
         .select({
-          id: units.externalId,
+          id: units.unitId,
           data: units.data,
         })
         .from(units)
         .where(eq(units.projectId, params.projectId))
-        .groupBy(units.id)
+        .groupBy(units.unitId)
         .as("baseQuery");
     },
     paramsSchema: UnitDataTableParamsSchema,
@@ -24,8 +24,8 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
-    idColumn: "id",
-    queryColumns: ["id"],
+    idColumn: "unitId",
+    queryColumns: ["unitId"],
   });
 }
 
@@ -36,16 +36,16 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
         const data = body.units
           .map((unit) => ({
             projectId: params.projectId,
-            externalId: unit.id,
+            unitId: unit.id,
             data: unit.data,
           }))
-          .filter((unit) => unit.externalId && unit.data);
+          .filter((unit) => unit.unitId && unit.data);
 
         let query = tx.insert(units).values(data).$dynamic();
 
         if (body.overwrite) {
           query = query.onConflictDoUpdate({
-            target: [units.projectId, units.externalId],
+            target: [units.projectId, units.unitId],
             set: {
               data: sql`excluded.data`,
             },

@@ -1,8 +1,9 @@
 import {
-  JobsCreateSchema,
+  JobCreateSchema,
+  JobResponseSchema,
   JobsResponseSchema,
   JobsTableParamsSchema,
-  JobsUpdateSchema,
+  JobUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/schemas";
 import { z } from "zod";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
@@ -29,7 +30,7 @@ export function useCreateJob(projectId: number) {
   return useMutate({
     resource: "jobs",
     endpoint: `projects/${projectId}/jobs`,
-    bodySchema: JobsCreateSchema,
+    bodySchema: JobCreateSchema,
     responseSchema: JobsResponseSchema,
   });
 }
@@ -37,7 +38,7 @@ export function useUpdateJob(projectId: number, jobId?: number) {
   return useMutate({
     resource: "jobs",
     endpoint: `projects/${projectId}/jobs/${jobId}`,
-    bodySchema: JobsUpdateSchema,
+    bodySchema: JobUpdateSchema,
     responseSchema: JobsResponseSchema,
   });
 }
@@ -56,15 +57,21 @@ export const openapiJobs = createOpenAPIDefinitions(
       path: "/jobs",
       method: "post",
       description: "Create a job",
-      body: JobsUpdateSchema,
+      body: JobUpdateSchema,
       response: JobsResponseSchema,
     },
     {
-      path: "/jobs/{userId}",
+      path: "/jobs/{jobId}",
       method: "post",
       description: "Update a job",
-      body: JobsUpdateSchema,
+      body: JobUpdateSchema,
       response: JobsResponseSchema,
+    },
+    {
+      path: "/jobs/{jobId}",
+      method: "get",
+      description: "Get a job, including a list of its units",
+      response: JobResponseSchema,
     },
   ],
 );

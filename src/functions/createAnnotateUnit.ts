@@ -1,8 +1,4 @@
-import { GetUnitResponseSchema } from "@/app/api/annotate/schemas";
-import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
-import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/units/schemas";
-import { AnnotateUnit, Annotation, Codebook, Layout, RawUnit, ExtendedUnit, UnitData } from "@/app/types";
-import { z } from "zod";
+import { AnnotateUnit, Annotation, Codebook, Layout } from "@/app/types";
 
 interface Params {
   token: string;
@@ -62,10 +58,11 @@ export function createAnnotateUnit({ token, data, layout, codebook, codebook_id,
       });
     }
 
-    (layout.variables || []).forEach((variable) => {
-      if (!unit.content.variables) unit.content.variables = {};
-      unit.content.variables[variable.name] = data[variable.column];
-    });
+    // NOT SURE WHERE TO REPLACE THIS. IN ANY CASE, IT'S ABOUT MAKING MAPPED VARIABLES AVAILABLE IN THE UNIT EVAL
+    // (layout.variables || []).forEach((variable) => {
+    //   if (!unit.content.variables) unit.content.variables = {};
+    //   unit.content.variables[variable.name] = data[variable.column];
+    // });
 
     if (layout.grid) unit.content.grid = layout.grid;
   });

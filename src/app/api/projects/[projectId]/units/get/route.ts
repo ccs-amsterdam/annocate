@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
       return await db
         .select()
         .from(units)
-        .where(and(eq(units.projectId, params.projectId), eq(units.externalId, urlParams.id)));
+        .where(and(eq(units.projectId, params.projectId), eq(units.unitId, urlParams.id)));
     },
     req,
     paramsSchema: GetUnitParamSchema,

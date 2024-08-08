@@ -1,9 +1,6 @@
-import { CircleHelp, LucideMessageCircleQuestion, MessageCircleQuestion, X } from "lucide-react";
-import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTrigger } from "../ui/drawer";
-import Markdown from "./Markdown";
-import ReactMarkdown from "react-markdown";
-import rehypeExternalLinks from "rehype-external-links";
+import { CircleHelp, X } from "lucide-react";
 import { Button } from "../ui/button";
+import { Drawer, DrawerClose, DrawerContent, DrawerTrigger } from "../ui/drawer";
 
 interface Props {
   className: string;

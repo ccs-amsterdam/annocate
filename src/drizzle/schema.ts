@@ -15,6 +15,7 @@ import {
   index,
   uuid,
   customType,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 import { neon } from "@neondatabase/serverless";
@@ -24,7 +25,6 @@ import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/post
 import { Annotation, AnnotationHistory, Rules, UserRole, ServerUnitStatus, ProjectRole } from "@/app/types";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { z } from "zod";
-import { UnitLayoutSchema } from "@/app/api/projects/[projectId]/units/layouts/schemas";
 
 config({ path: ".env.local" });
 
@@ -134,19 +134,17 @@ export const jobs = pgTable(
 export const units = pgTable(
   "units",
   {
-    id: serial("id").primaryKey(),
     projectId: integer("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    externalId: varchar("unit_id", { length: 256 }).notNull(),
+    unitId: varchar("unit_id", { length: 256 }).notNull(),
     data: customJsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("modified").notNull().defaultNow(),
   },
   (table) => {
     return {
-      project_index: index("units_project_idx").on(table.projectId),
-      unique: unique("units_project_external_id").on(table.projectId, table.externalId),
+      pk: primaryKey({ columns: [table.projectId, table.unitId] }),
     };
   },
 );
@@ -156,11 +154,13 @@ export const jobUnits = pgTable(
   {
     jobId: integer("job_id")
       .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
+      .references(() => jobs.id),
     position: integer("position").notNull(),
     unitId: integer("unit_id")
       .notNull()
-      .references(() => units.id),
+      .references(() => units.unitId),
+    // advanced feature: assign specific codebook to specific units
+    codebookId: integer("codebook_id").references(() => codebooks.id),
   },
   (table) => {
     return {
@@ -193,19 +193,25 @@ interface jobsetAnnotatorStatistics {
   blocked?: boolean;
 }
 
-export const jobsetAnnotator = pgTable(
-  "jobset_annotator",
+export const annotator = pgTable(
+  "annotator",
   {
-    // user is either an email address, a string from the user_id url parameter, or a random device_id.
-    user: varchar("user_id", { length: 256 }).notNull(),
-    jobSetId: integer("jobset_id"),
-    email: varchar("email", { length: 256 }), // this is the authenticated email address
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    // annotators can be authenticated or anonymous. If authenticated, look up annotator by authenticatedId (email).
+    // if anonymous, look up by anonymousId (any string).
+    authenticatedId: varchar("authenticated_id", { length: 256 }),
+    anonymousId: varchar("anonymous_id", { length: 256 }),
+    jobId: integer("job_id"),
+    // if created through an invitation, include any url parameters. These can be used for links (completion, screening, etc)
     urlParams: customJsonb("url_params").notNull().$type<Record<string, string>>().default({}),
     statistics: customJsonb("statistics").notNull().$type<jobsetAnnotatorStatistics>().default({}),
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.user, table.jobSetId] }),
+      projectIdx: index("annotator_project_idx").on(table.projectId),
     };
   },
 );

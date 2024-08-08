@@ -63,7 +63,6 @@ export function useSandboxedEval(data: Record<string, any>) {
   const evalStringTemplate = useCallback(
     async (str: string): Promise<string> => {
       const { textParts, codeParts } = parseCodeFromString(str);
-      const codeResultParts: string[] = [];
 
       let result = "";
       for (let i = 0; i < textParts.length; i++) {

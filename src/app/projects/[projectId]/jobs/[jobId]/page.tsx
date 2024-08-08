@@ -1,7 +1,6 @@
 "use client";
 
 import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { useUnitLayout } from "@/app/api/projects/[projectId]/units/layouts/query";
 import { Layout } from "@/app/types";
 import { Preview } from "@/components/Common/Preview";
 import { Loading } from "@/components/ui/loader";

@@ -15,10 +15,10 @@ import {
   CodebookVariableItemSchema,
 } from "./api/projects/[projectId]/codebooks/variablesSchemas";
 
-import { UnitLayoutSchema } from "./api/projects/[projectId]/units/layouts/schemas";
+import { UnitLayoutSchema } from "./api/projects/[projectId]/codebooks/layoutSchemas";
 import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
-import { UnitsetResponseSchema, UnitsetsResponseSchema } from "./api/projects/[projectId]/units/unitsets/schemas";
 import { CodebookSchema } from "./api/projects/[projectId]/codebooks/schemas";
+import { JobsResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
 //////////  NEW
 ///////////
@@ -43,10 +43,9 @@ export type Codebook = z.infer<typeof CodebookSchema>;
 export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
+export type Job = z.infer<typeof JobsResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
-export type Unitset = z.infer<typeof UnitsetResponseSchema>;
-export type UnitsetRow = z.infer<typeof UnitsetsResponseSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 export type AnnotateUnit = z.infer<typeof AnnotateUnitSchema>;
 
@@ -907,25 +906,6 @@ export interface ButtonComponentProps {
 ///// MANAGE USERS
 
 ///// MANAGE JOBS
-
-export interface Job {
-  id: string;
-  title: string;
-  created: string;
-  creator: string;
-  archived?: boolean;
-  restricted?: boolean;
-  jobset_details?: JobSet[];
-  n_total: number;
-}
-
-export interface JobSet {
-  name: string;
-  units?: RawUnit[];
-  codebook?: CodeBook;
-  n_units?: number;
-  rules?: Rules;
-}
 
 export interface Rules {
   ruleset: "crowdcoding" | "fixedset";

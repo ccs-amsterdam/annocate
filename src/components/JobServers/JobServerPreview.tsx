@@ -1,15 +1,5 @@
 import { LoremIpsum } from "@/app/projects/[projectId]/codebooks/[codebookId]/lorem";
-import {
-  AnnotateUnit,
-  Annotation,
-  Codebook,
-  JobServer,
-  Layout,
-  Progress,
-  Status,
-  UnitData,
-  Unitset,
-} from "@/app/types";
+import { AnnotateUnit, Annotation, Codebook, Job, JobServer, Layout, Progress, Status, UnitData } from "@/app/types";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import cuid from "cuid";
 import { MiddlecatUser } from "middlecat-react";
@@ -21,8 +11,8 @@ class JobServerPreview implements JobServer {
   codebook: Codebook;
   codebookId: number;
   annotations: Record<string, Annotation[]>;
-  unitset: Unitset | undefined;
   projectId: number;
+  job: Job | undefined;
   user: MiddlecatUser;
   layout: Layout;
 
@@ -31,7 +21,7 @@ class JobServerPreview implements JobServer {
     user: MiddlecatUser,
     codebook?: Codebook,
     layout?: Layout,
-    unitset?: Unitset,
+    job?: Job,
     annotations: Record<string, Annotation[]> = {},
   ) {
     this.id = cuid();
@@ -40,7 +30,7 @@ class JobServerPreview implements JobServer {
     this.codebook = codebook ?? defaultCodebook;
     this.progress = {
       current: 0,
-      n_total: unitset?.units || defaultUnits.length,
+      n_total: job?.n_units || defaultUnits.length,
       n_coded: 0,
       seek_backwards: true,
       seek_forwards: false,
@@ -48,7 +38,7 @@ class JobServerPreview implements JobServer {
     this.return_link = "/";
     this.codebookId = 0;
     this.annotations = annotations || {};
-    this.unitset = unitset;
+    this.job = job;
     this.layout = layout || defaultLayout;
   }
 
@@ -107,16 +97,9 @@ class JobServerPreview implements JobServer {
   }
 
   async getUnitFromServer(i: number) {
-    if (!this.unitset) return defaultUnits[i];
-
-    const unitset = this.unitset.name;
+    if (!this.job) return defaultUnits[i];
+    await this.user.api.get(`/projects/${this.projectId}/jobs/${this.job.id}/units/${i}`);
   }
-}
-
-function getUnitData(i: number, unitset: Unitset | undefined): UnitData {
-  if (unitset) {
-  }
-  return defaultUnits[i];
 }
 
 const defaultCodebook: Codebook = {

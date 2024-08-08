@@ -8,7 +8,7 @@ import { UnitDataDeleteBodySchema } from "../schemas";
 export async function POST(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      return db.delete(units).where(and(eq(units.projectId, params.projectId), inArray(units.externalId, body.ids)));
+      return db.delete(units).where(and(eq(units.projectId, params.projectId), inArray(units.unitId, body.ids)));
     },
     req,
     bodySchema: UnitDataDeleteBodySchema,
