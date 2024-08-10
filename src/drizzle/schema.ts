@@ -114,23 +114,6 @@ export const codebooks = pgTable(
   },
 );
 
-export const jobs = pgTable(
-  "jobs",
-  {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }).notNull(),
-    codebookId: integer("codebook_id").references(() => codebooks.id),
-    modified: timestamp("modified").notNull().defaultNow(),
-    deployed: boolean("deployed").notNull().default(false),
-  },
-  (table) => {
-    return { projectIds: index("jobs_project_ids").on(table.projectId) };
-  },
-);
-
 export const units = pgTable(
   "units",
   {
@@ -149,24 +132,63 @@ export const units = pgTable(
   },
 );
 
-export const jobUnits = pgTable(
-  "job_units",
+export const jobs = pgTable(
+  "jobs",
   {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }).notNull(),
+    codebookId: integer("codebook_id").references(() => codebooks.id),
+    modified: timestamp("modified").notNull().defaultNow(),
+    deployed: boolean("deployed").notNull().default(false),
+  },
+  (table) => {
+    return { projectIds: index("jobs_project_ids").on(table.projectId) };
+  },
+);
+
+// current idea is that a job has blocks, like pre survey, annotation, post survey.
+// each block has a codebook, which can be a survey or annotation type.
+// annotation blocks furthermore have units, and rules for how to select units.
+export const jobBlocks = pgTable(
+  "job_blocks",
+  {
+    id: serial("id").primaryKey(),
     jobId: integer("job_id")
       .notNull()
-      .references(() => jobs.id),
+      .references(() => jobs.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
-    unitId: integer("unit_id")
-      .notNull()
-      .references(() => units.unitId),
-    // advanced feature: assign specific codebook to specific units
+    type: text("type", { enum: ["survey", "annotation"] }).notNull(),
     codebookId: integer("codebook_id").references(() => codebooks.id),
+    rules: customJsonb("rules").notNull().$type<Rules>(),
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.jobId, table.position] }),
-      unitIdx: index("unitset_units_unit_ids").on(table.unitId),
-      positionIdx: index("unitset_units_position_idx").on(table.position),
+      jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
+    };
+  },
+);
+
+export const jobBlockUnits = pgTable(
+  "job_units",
+  {
+    jobBlockId: integer("job_block_id")
+      .notNull()
+      .references(() => jobBlocks.id),
+    position: integer("position").notNull(),
+    projectId: integer("project_id"),
+    unitId: varchar("unit_id", { length: 256 }),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.jobBlockId, table.position] }),
+      unitReference: foreignKey({
+        columns: [table.projectId, table.unitId],
+        foreignColumns: [units.projectId, units.unitId],
+        name: "block_units_fk",
+      }),
     };
   },
 );

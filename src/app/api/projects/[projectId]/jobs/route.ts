@@ -46,13 +46,9 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
           .returning();
 
         if (externalIds) {
-          const unitIds = await tx
-            .select({ id: units.id })
-            .from(units)
-            .where(and(eq(units.projectId, params.projectId), inArray(units.externalId, externalIds)));
           await tx.insert(jobUnits).values(
-            unitIds.map((unitId, i) => ({
-              unitId: unitId.id,
+            externalIds.map((unitId, i) => ({
+              unitId: unitId,
               jobId: newJob.id,
               position: i,
             })),
