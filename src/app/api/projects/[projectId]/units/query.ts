@@ -8,13 +8,11 @@ import {
 } from "./schemas";
 import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
-import { IdResponseSchema } from "@/app/api/schemaHelpers";
+import { IdResponseSchema, voidResponseSchema } from "@/app/api/schemaHelpers";
 
 export function useUnits(projectId: number, initialParams: z.input<typeof UnitDataTableParamsSchema>) {
   return useTableGet({
-    resource: "unit",
     endpoint: `projects/${projectId}/units`,
-
     initialParams,
     responseSchema: UnitDataResponseSchema,
   });
@@ -23,22 +21,19 @@ export function useUnits(projectId: number, initialParams: z.input<typeof UnitDa
 export function useCreateUnits(projectId: number) {
   return useMutate({
     method: "post",
-    resource: "unit",
     endpoint: `projects/${projectId}/units`,
     bodySchema: UnitDataCreateBodySchema,
-    responseSchema: IdResponseSchema,
-    invalidateResources: ["unitset"],
+    responseSchema: voidResponseSchema,
   });
 }
 
 export function useDeleteUnits(projectId: number) {
   return useMutate({
     method: "post",
-    resource: "unit",
     endpoint: `projects/${projectId}/units/delete`,
     bodySchema: UnitDataDeleteBodySchema,
-    responseSchema: IdResponseSchema,
-    invalidateResources: ["unitset"],
+    responseSchema: voidResponseSchema,
+    invalidateEndpoints: [`projects/${projectId}/units`],
   });
 }
 

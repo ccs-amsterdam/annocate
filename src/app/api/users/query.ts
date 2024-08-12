@@ -5,7 +5,6 @@ import { createOpenAPIDefinitions } from "../openapiHelpers";
 
 export function useUsers(initialParams?: z.input<typeof UsersTableParamsSchema>) {
   return useTableGet({
-    resource: "users",
     endpoint: "users",
     initialParams: initialParams || {},
     responseSchema: UsersResponseSchema,
@@ -14,7 +13,6 @@ export function useUsers(initialParams?: z.input<typeof UsersTableParamsSchema>)
 
 export function useCreateUser() {
   return useMutate({
-    resource: `users`,
     endpoint: `users`,
     bodySchema: UsersCreateBodySchema,
     responseSchema: UsersResponseSchema,
@@ -24,10 +22,10 @@ export function useCreateUser() {
 export function useUpdateUser(userId: string) {
   return useMutate({
     method: `post`,
-    resource: `users`,
     endpoint: `users/${userId}`,
     bodySchema: UsersUpdateBodySchema,
     responseSchema: UsersResponseSchema,
+    invalidateEndpoints: [`users`],
   });
 }
 

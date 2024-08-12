@@ -1,5 +1,5 @@
 import db from "@/drizzle/schema";
-import { and, asc, count, desc, gt, gte, like, lt, lte, or, SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, like, lt, lte, or, sql, SQL } from "drizzle-orm";
 import { PgTableWithColumns, SubqueryWithSelection } from "drizzle-orm/pg-core";
 import jwt from "jsonwebtoken";
 import { NextRequest, NextResponse } from "next/server";
@@ -68,6 +68,41 @@ export async function createGet<BodyOut, BodyIn>({
     if (e instanceof z.ZodError) {
       return NextResponse.json({ message: String(fromZodError(e)) }, { status: 400 });
     }
+    return NextResponse.json(e.message, { status: 400 });
+  }
+}
+
+interface CreateDeleteParams<BodyIn> {
+  deleteFunction: (email: string, body: BodyIn) => Promise<any>;
+  req: NextRequest;
+  paramsSchema?: z.ZodType<BodyIn>;
+  authorizeFunction?: AuthorizeFunction<BodyIn>;
+  projectId?: number;
+}
+
+export async function createDelete<BodyIn>({
+  deleteFunction,
+  req,
+  paramsSchema,
+  authorizeFunction,
+  projectId,
+}: CreateDeleteParams<BodyIn>) {
+  const email = await authenticateUser(req);
+  if (!email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  try {
+    const params = paramsSchema ? validateRequestParams(req, paramsSchema) : undefined;
+    if (authorizeFunction != undefined) {
+      const auth = await authorization(email, projectId);
+      const authError = await authorizeFunction(auth, params);
+      if (authError)
+        return NextResponse.json({ message: authError.message || "Unauthorized" }, { status: authError.status || 403 });
+    }
+
+    const response = await deleteFunction(email, params);
+    return NextResponse.json(response);
+  } catch (e: any) {
+    console.error(e);
     return NextResponse.json(e.message, { status: 400 });
   }
 }
@@ -250,27 +285,55 @@ function queryWithTableFilters(
 
   const direction = params.direction === "desc" ? desc : asc;
   if (params.sort && params.sort !== idColumn) {
-    orderBy.push(direction(table[params.sort]));
+    if (params.sort.includes("->>")) {
+      // this means its a json column. Need to hack it a bit to get it to work in a way that's still injection safe
+      const [key, subkey] = params.sort.split("->>");
+      orderBy.push(direction(sql`${table[key]}->>${subkey}`));
+    } else {
+      orderBy.push(direction(table[params.sort]));
+    }
     orderBy.push(direction(table[idColumn]));
   } else {
     orderBy.push(direction(table[idColumn]));
   }
 
   if (after) {
-    const uniqueOperator = params.direction === "asc" ? gt : lt;
-    const operator = params.direction === "asc" ? gte : lte;
+    // need to filter on values beyond the after value.
+    // and also filter on the ID column for values that equal the after value
+    const operator = params.direction === "asc" ? gt : lt;
+
+    const uniqueFilterColumn = after.find((a) => a.column === idColumn);
+    if (!uniqueFilterColumn) throw new Error("Unique filter column not found");
+    const higherIdFilter = operator(table[idColumn], uniqueFilterColumn.value);
+
+    let onlyById = true;
     for (let { column, value } of after) {
-      if (column === idColumn) where.push(uniqueOperator(table[column], value));
-      else where.push(operator(table[column], value));
+      if (column === idColumn) continue;
+
+      let sqlCol = table[column];
+      if (column.includes("->>")) {
+        const [key, subkey] = column.split("->>");
+        sqlCol = sql`${table[key]}->>${subkey}`;
+      }
+      const beyondAfter = operator(sqlCol, value);
+      const higherId = and(eq(sqlCol, value), higherIdFilter);
+      const either = or(beyondAfter, higherId);
+      if (either) where.push(either);
+      onlyById = false;
     }
+    if (onlyById) where.push(higherIdFilter);
   }
 
-  return db
+  const query = db
     .select()
     .from(table)
-    .limit(params.pageSize)
     .orderBy(...orderBy)
-    .where(and(...where));
+    .where(and(...where))
+    .limit(params.pageSize);
+
+  // console.log(query.toSQL());
+
+  return query;
 }
 
 function queryMeta(
@@ -297,7 +360,14 @@ function createNextToken(commonParams: TableParams, data: any, meta: any, idColu
   if (!hasNext) return "";
 
   const newAfter: After[] = [{ column: idColumn, value: data[data.length - 1][idColumn] }];
-  if (commonParams.sort) newAfter.push({ column: commonParams.sort, value: data[data.length - 1][commonParams.sort] });
+  if (commonParams.sort) {
+    if (commonParams.sort.includes("->>")) {
+      const [key, subkey] = commonParams.sort.split("->>");
+      newAfter.push({ column: commonParams.sort, value: data[data.length - 1][key][subkey] });
+    } else {
+      newAfter.push({ column: commonParams.sort, value: data[data.length - 1][commonParams.sort] });
+    }
+  }
 
   // need to remember some value types for parsing
   for (let i = 0; i < newAfter.length; i++) {

@@ -103,6 +103,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   });
 
   const { error } = form.getFieldState("codebook");
+  const { error: variablesError } = form.getFieldState("codebook.variables");
   const variables = form.getValues("codebook.variables");
 
   useEffect(() => {
@@ -124,6 +125,8 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   }
   const shape = CodebookCreateBodySchema.shape;
 
+  console.log(form.formState.isDirty);
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex flex-col gap-3  p-3 lg:px-8 ">
@@ -142,7 +145,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
           </Button>
           <div>
             {error ? <div className="text-destructive">{error.message}</div> : null}
-            {error?.variables?.root ? <div className="text-destructive">{error.variables.root.message}</div> : null}
+            {variablesError ? <div className="text-destructive">{variablesError.message}</div> : null}
           </div>
           <Button
             className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-50"

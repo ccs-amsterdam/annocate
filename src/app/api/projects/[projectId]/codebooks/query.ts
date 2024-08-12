@@ -12,36 +12,33 @@ import { IdResponseSchema } from "@/app/api/schemaHelpers";
 
 export function useCodebooks(projectId: number, initialParams?: z.infer<typeof CodebooksTableParamsSchema>) {
   return useTableGet({
-    resource: "codebook",
     endpoint: `projects/${projectId}/codebooks`,
     initialParams: initialParams || {},
     responseSchema: CodebooksResponseSchema,
   });
 }
 
-export function useUpdateCodebook(projectId: number, codebookId: number) {
-  return useMutate({
-    method: `post`,
-    resource: `codebook`,
-    endpoint: `projects/${projectId}/codebooks/${codebookId}`,
-    bodySchema: CodebookUpdateBodySchema,
-    responseSchema: IdResponseSchema,
-  });
-}
-
 export function useCreateCodebook(projectId: number) {
   return useMutate({
     method: `post`,
-    resource: `codebook`,
     endpoint: `projects/${projectId}/codebooks`,
     bodySchema: CodebookCreateBodySchema,
     responseSchema: IdResponseSchema,
   });
 }
 
+export function useUpdateCodebook(projectId: number, codebookId: number) {
+  return useMutate({
+    method: `post`,
+    endpoint: `projects/${projectId}/codebooks/${codebookId}`,
+    bodySchema: CodebookUpdateBodySchema,
+    responseSchema: IdResponseSchema,
+    invalidateEndpoints: [`projects/${projectId}/codebooks`],
+  });
+}
+
 export function useCodebook(projectId: number, codebookId: number | undefined) {
   return useGet({
-    resource: "codebook",
     endpoint: `projects/${projectId}/codebooks/${codebookId}`,
     responseSchema: CodebookResponseSchema,
     disabled: codebookId === undefined,

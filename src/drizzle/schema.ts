@@ -109,7 +109,7 @@ export const codebooks = pgTable(
   (table) => {
     return {
       projectIds: index("codebook_project_ids").on(table.projectId),
-      unq: unique("unique_project_name").on(table.projectId, table.name),
+      unq: unique("unique_codebook_name").on(table.projectId, table.name),
     };
   },
 );
@@ -140,12 +140,14 @@ export const jobs = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
-    codebookId: integer("codebook_id").references(() => codebooks.id),
     modified: timestamp("modified").notNull().defaultNow(),
     deployed: boolean("deployed").notNull().default(false),
   },
   (table) => {
-    return { projectIds: index("jobs_project_ids").on(table.projectId) };
+    return {
+      projectIds: index("jobs_project_ids").on(table.projectId),
+      uniqueName: unique("unique_job_name").on(table.projectId, table.name),
+    };
   },
 );
 
@@ -161,34 +163,15 @@ export const jobBlocks = pgTable(
       .references(() => jobs.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     type: text("type", { enum: ["survey", "annotation"] }).notNull(),
-    codebookId: integer("codebook_id").references(() => codebooks.id),
-    rules: customJsonb("rules").notNull().$type<Rules>(),
+    codebookId: integer("codebook_id")
+      .notNull()
+      .references(() => codebooks.id),
+    rules: customJsonb("rules").$type<Rules>(),
+    units: customJsonb("units").$type<string[]>(),
   },
   (table) => {
     return {
       jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
-    };
-  },
-);
-
-export const jobBlockUnits = pgTable(
-  "job_units",
-  {
-    jobBlockId: integer("job_block_id")
-      .notNull()
-      .references(() => jobBlocks.id),
-    position: integer("position").notNull(),
-    projectId: integer("project_id"),
-    unitId: varchar("unit_id", { length: 256 }),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.jobBlockId, table.position] }),
-      unitReference: foreignKey({
-        columns: [table.projectId, table.unitId],
-        foreignColumns: [units.projectId, units.unitId],
-        name: "block_units_fk",
-      }),
     };
   },
 );

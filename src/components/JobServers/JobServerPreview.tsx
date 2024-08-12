@@ -10,18 +10,16 @@ class JobServerPreview implements JobServer {
   return_link: string;
   codebook: Codebook;
   codebookId: number;
+  units: string[] | undefined;
   annotations: Record<string, Annotation[]>;
   projectId: number;
-  job: Job | undefined;
   user: MiddlecatUser;
-  layout: Layout;
 
   constructor(
     projectId: number,
     user: MiddlecatUser,
     codebook?: Codebook,
-    layout?: Layout,
-    job?: Job,
+    units?: string[],
     annotations: Record<string, Annotation[]> = {},
   ) {
     this.id = cuid();
@@ -30,16 +28,15 @@ class JobServerPreview implements JobServer {
     this.codebook = codebook ?? defaultCodebook;
     this.progress = {
       current: 0,
-      n_total: job?.n_units || defaultUnits.length,
       n_coded: 0,
+      n_total: units?.length || defaultUnits.length,
       seek_backwards: true,
       seek_forwards: false,
     };
     this.return_link = "/";
     this.codebookId = 0;
     this.annotations = annotations || {};
-    this.job = job;
-    this.layout = layout || defaultLayout;
+    this.units = units;
   }
 
   async init() {}
@@ -65,7 +62,7 @@ class JobServerPreview implements JobServer {
     annotateUnit = createAnnotateUnit({
       token,
       data: unitData.data,
-      layout: this.layout,
+      layout: this.codebook.unit,
       codebook_id: this.codebookId,
       annotations: this.annotations[unitData.id] || [],
     });
@@ -97,8 +94,8 @@ class JobServerPreview implements JobServer {
   }
 
   async getUnitFromServer(i: number) {
-    if (!this.job) return defaultUnits[i];
-    await this.user.api.get(`/projects/${this.projectId}/jobs/${this.job.id}/units/${i}`);
+    if (!this.units) return defaultUnits[i];
+    await this.user.api.get(`/projects/${this.projectId}/units/get`, { params: { id: this.units[i] } });
   }
 }
 

@@ -93,6 +93,9 @@ export function CreateUnitsButton({ projectId }: { projectId: number }) {
     const possibleId: string[] = [];
     columns.forEach((col) => {
       const values = dataObj.map((row) => String(row[col]));
+      for (let value of values) {
+        if (value.length > 256) return;
+      }
       if (values.length === new Set(values).size) {
         possibleId.push(col);
       }
@@ -128,7 +131,13 @@ export function CreateUnitsButton({ projectId }: { projectId: number }) {
   function renderForm() {
     if (!data) return null;
     if (data.possibleId.length === 0)
-      return <Label>Data needs to have a column with unique values to serve as an ID</Label>;
+      return (
+        <p>
+          Invalid data. We require you to specify an ID column yourself, to ensure that you can link annotations back to
+          your units. An ID column has to have unique values of at most 256 characters. This data does not have a column
+          that meets these requirements.
+        </p>
+      );
 
     const ready = !!data.id;
 

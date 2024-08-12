@@ -7,7 +7,6 @@ import { IdResponseSchema } from "@/app/api/schemaHelpers";
 
 export function useProjectUsers(projectId: number, initialParams?: z.infer<typeof ProjectUsersTableParamsSchema>) {
   return useTableGet({
-    resource: "projectusers",
     endpoint: `projects/${projectId}/projectusers`,
     initialParams: initialParams || {},
     responseSchema: ProjectUsersResponseSchema,
@@ -17,7 +16,6 @@ export function useProjectUsers(projectId: number, initialParams?: z.infer<typeo
 export function useCreateOrUpdateProjectUser(projectId: number) {
   return useMutate({
     method: `post`,
-    resource: `projectusers`,
     endpoint: `projects/${projectId}/projectusers`,
     bodySchema: ProjectUsersCreateOrUpdateSchema,
     responseSchema: IdResponseSchema,

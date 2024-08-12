@@ -19,7 +19,7 @@ interface Props<T> {
   search: (query: string) => void;
   hasSearch: boolean;
   isLoading: boolean;
-  columns?: string[];
+  columns: string[];
   className?: string;
   onSelect?: (row: T) => void;
 }
@@ -44,7 +44,20 @@ export default function DBTable<T extends Record<string, Value>>(props: Props<T>
 }
 
 function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSelect, isLoading, columns }: Props<T>) {
-  const cols = columns || Object.keys(data?.[0] || {});
+  const cols = useMemo(() => {
+    const cols: { key: string; subkey?: string }[] = [];
+    for (const key of columns) {
+      if (typeof data?.[0]?.[key] === "object") {
+        for (const subkey of Object.keys(data?.[0]?.[key])) {
+          cols.push({ key, subkey });
+        }
+      } else {
+        cols.push({ key });
+      }
+    }
+
+    return cols;
+  }, [columns, data]);
 
   if (isLoading) return <Loading />;
   if (!data || !meta) return null;
@@ -70,15 +83,17 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
     <Table className={`w-full ${isLoading ? "opacity-50" : ""} `}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          {cols.map((key, i) => {
+          {cols.map(({ key, subkey }, i) => {
+            const label = subkey || key;
+            const fullKey = subkey ? `${key}->>${subkey}` : key;
             return (
-              <TableHead key={key}>
+              <TableHead key={fullKey}>
                 <div
                   role="button"
                   className={`group flex cursor-pointer select-none items-center gap-3 font-bold text-primary `}
-                  onClick={() => onSort(key)}
+                  onClick={() => onSort(fullKey)}
                 >
-                  {key} {renderSortChevron(key)}
+                  {label} {renderSortChevron(fullKey)}
                 </div>
               </TableHead>
             );
@@ -88,8 +103,8 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
       <TableBody>
         {data.map((row, i) => (
           <TableRow role="button" key={JSON.stringify(row)} onClick={() => onSelect?.(row)}>
-            {cols.map((col, i) => {
-              const value = row[col];
+            {cols.map(({ key, subkey }, i) => {
+              const value = subkey ? (row[key] as any)[subkey] : row[key];
               return <TableCell key={i}>{formatValue(value)}</TableCell>;
             })}
           </TableRow>

@@ -17,9 +17,47 @@ The authentication for AnnoCate will go through [Middlecat](https://github.com/c
 
 ## Development guide
 
+Set up a local Postggres DB.
+
+```bash
+docker run --name postgres -e POSTGRES_USER="devuser" -e POSTGRES_PASSWORD="devpw" -p 5432:5432 -d postgres
+```
+
+Set environment variables in .env.local
+
+```bash
+DATABASE_URL=postgresql://devuser:devpw@localhost:5432/annocate
+ANNOCATE_URL=http://localhost:3000
+SECRET_KEY=a-cryptographic-secret-key
+MIDDLECAT_URL=https://middlecat.net
+SUPERADMIN=your_email_address
+```
+
+You can also set MIDDLECAT_URL to "DEVMODE" to skip Middlecat. Off course, this should only be used for development, as it turns of all authentication
+
+migrate db
+
+```
+npm run migrate
+```
+
+Install and run client
+
 ```bash
 npm install
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+For typescript debugging, use
+
+```bash
+npm run watch
+```
+
+For database debugging, use Drizzle studio
+
+```bash
+npm run studio
+```

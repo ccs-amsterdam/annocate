@@ -6,24 +6,28 @@ extendZodWithOpenApi(z);
 
 export const JobsTableParamsSchema = createTableParamsSchema({});
 
-export const JobSurveyBlockSchema = z.object({
-  type: z.literal("survey"),
+export const JobBlockBaseSchema = z.object({
+  type: z.enum(["survey", "annotation"]),
+  position: z.number(),
   codebookId: z.number(),
 });
 
-export const JobUnitBlockRulesSchema = z.object({
+export const JobSurveyBlockSchema = JobBlockBaseSchema.extend({
+  type: z.literal("survey"),
+});
+
+export const JobAnnotationBlockRulesSchema = z.object({
   method: z.enum(["fixed", "crowd"]),
   maxPerCoder: z.number(),
 });
 
-export const JobUnitsBlockSchema = z.object({
-  type: z.literal("units"),
-  codebookId: z.number(),
+export const JobAnnotationBlockSchema = JobBlockBaseSchema.extend({
+  type: z.literal("annotation"),
   units: z.array(z.string()),
-  rules: JobUnitBlockRulesSchema,
+  rules: JobAnnotationBlockRulesSchema,
 });
 
-export const JobBlockSchema = z.array(z.union([JobSurveyBlockSchema, JobUnitsBlockSchema]));
+export const JobBlockSchema = z.union([JobSurveyBlockSchema, JobAnnotationBlockSchema]);
 
 // current idea is that jobs have blocks.
 // each block has a codebook, which can be a survey or annotation type.
@@ -39,28 +43,16 @@ export const JobUpdateSchema = z.object({
   name: z.string(),
 });
 
-export const AddJobBlockSchema = z.object({
-  block: JobBlockSchema,
-  position: z.number().optional(),
-});
-
-export const MoveJobBlockSchema = z.object({
-  from: z.number(),
-  to: z.number(),
-});
+export const CreateJobBlockSchema = z.union([JobSurveyBlockSchema, JobAnnotationBlockSchema]);
+export const UpdateJobBlockSchema = z.union([JobSurveyBlockSchema.partial(), JobAnnotationBlockSchema.partial()]);
 
 export const JobsResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
-  n_units: z.number(),
-  codebookId: z.number(),
-  codebookName: z.string(),
+  // blocks: z.array(JobBlockSchema),
 });
 
 export const JobResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
-  units: z.array(z.string()),
-  codebookId: z.number(),
-  codebookName: z.string(),
 });

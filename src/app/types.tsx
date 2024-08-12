@@ -18,7 +18,7 @@ import {
 import { UnitLayoutSchema } from "./api/projects/[projectId]/codebooks/layoutSchemas";
 import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
 import { CodebookSchema } from "./api/projects/[projectId]/codebooks/schemas";
-import { JobsResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
+import { JobAnnotationBlockRulesSchema, JobsResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
 //////////  NEW
 ///////////
@@ -48,6 +48,7 @@ export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 export type AnnotateUnit = z.infer<typeof AnnotateUnitSchema>;
+export type Rules = z.infer<typeof JobAnnotationBlockRulesSchema>;
 
 export type UnitContent = z.infer<typeof UnitContentSchema>;
 export type ExtendedUnitContent = Omit<UnitContent, "grid"> & {
@@ -906,11 +907,6 @@ export interface ButtonComponentProps {
 ///// MANAGE USERS
 
 ///// MANAGE JOBS
-
-export interface Rules {
-  ruleset: "crowdcoding" | "fixedset";
-  [key: string]: any;
-}
 
 export interface JobSettings {
   archived?: boolean;

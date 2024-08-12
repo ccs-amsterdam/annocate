@@ -214,7 +214,7 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
   const maxLines = swipe ? 3 : undefined;
 
   function addCode(field: any, values: CodebookCode[]) {
-    values.push({ code: "New code", value: "", color: "" });
+    values.push({ code: "New code", value: undefined, color: "" });
     field.onChange(values);
   }
 
@@ -236,10 +236,6 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
       name={name}
       render={({ field }) => {
         const codes = field.value || ([] as CodebookCode[]);
-        function setCode(index: number, key: "code" | "value" | "color", value: string) {
-          codes[index][key] = value;
-          field.onChange(codes);
-        }
 
         return (
           <FormItem className="flex flex-col">
@@ -274,21 +270,31 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
                           <Input
                             className={inputStyle}
                             value={code.code}
-                            onChange={(v) => setCode(i, "code", v.target.value)}
+                            onChange={(v) => {
+                              codes[i].code = v.target.value;
+                              field.onChange(codes);
+                            }}
                           />
                         </TableCell>
                         <TableCell className={cellStyle}>
                           <Input
                             className={inputStyle}
+                            type="number"
                             value={String(code.value)}
-                            onChange={(v) => setCode(i, "value", v.target.value)}
+                            onChange={(v) => {
+                              codes[i].value = Number(v.target.value);
+                              field.onChange(codes);
+                            }}
                           />
                         </TableCell>
                         <TableCell className={cellStyle}>
                           <Input
                             className={inputStyle}
                             value={String(code.color)}
-                            onChange={(v) => setCode(i, "color", v.target.value)}
+                            onChange={(v) => {
+                              codes[i].color = v.target.value;
+                              field.onChange(codes);
+                            }}
                           />
                         </TableCell>
                         <TableCell className={cellStyle}>

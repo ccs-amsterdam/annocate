@@ -58,7 +58,7 @@ class TokenVerifier {
 const tokenVerifier = new TokenVerifier();
 
 export async function authenticateUser(req: Request): Promise<string | null> {
-  if (process.env.AUTH_DISABLED === "true") {
+  if (process.env.MIDDLECAT_URL === "DEVMODE") {
     return process.env.SUPERADMIN || null;
   }
   const bearer: string | null = req.headers.get("authorization");

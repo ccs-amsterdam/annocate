@@ -1,23 +1,16 @@
 "use client";
 
+import { useCreateJob, useUpdateJob } from "@/app/api/projects/[projectId]/jobs/query";
+import { JobCreateSchema, JobsResponseSchema, JobUpdateSchema } from "@/app/api/projects/[projectId]/jobs/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "../ui/button";
-import { Form, FormItem, FormLabel } from "../ui/form";
+import { Form } from "../ui/form";
 import { TextFormField } from "./formHelpers";
-import { JobsCreateSchema, JobsResponseSchema, JobsUpdateSchema } from "@/app/api/projects/[projectId]/jobs/schemas";
-import { useCreateJob, useUpdateJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import DBSelect from "../Common/DBSelect";
-import { useCreateEmptyCodebook } from "./codebookForms";
-import { useCodebooks } from "@/app/api/projects/[projectId]/codebooks/query";
-import { useEffect, useState } from "react";
-import { Input } from "../ui/input";
-import { ChevronDown, Plus } from "lucide-react";
 
-type JobsCreate = z.infer<typeof JobsCreateSchema>;
-type JobsUpdate = z.infer<typeof JobsUpdateSchema>;
+type JobCreate = z.infer<typeof JobCreateSchema>;
+type JobUpdate = z.infer<typeof JobUpdateSchema>;
 
 interface CreatJobProps {
   projectId: number;
@@ -31,31 +24,21 @@ interface UpdateJobProps {
 
 export function CreateJob({ projectId, afterSubmit }: CreatJobProps) {
   const { mutateAsync } = useCreateJob(projectId);
-  const form = useForm<JobsCreate>({
-    resolver: zodResolver(JobsCreateSchema),
-    defaultValues: { name: "", codebookId: undefined },
+  const form = useForm<JobCreate>({
+    resolver: zodResolver(JobCreateSchema),
+    defaultValues: { name: "" },
   });
 
-  function onSubmit(values: JobsCreate) {
+  function onSubmit(values: JobCreate) {
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
 
-  const codebookId = form.watch("codebookId");
-  const shape = JobsCreateSchema.shape;
+  const shape = JobCreateSchema.shape;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
         <TextFormField control={form.control} zType={shape.name} name="name" />
-        <div className="flex flex-col gap-2">
-          <FormLabel>Codebook</FormLabel>
-          <SelectCodebook
-            projectId={projectId}
-            onSelect={(id: number) => {
-              form.setValue("codebookId", id, { shouldDirty: true });
-            }}
-          />
-        </div>
         <Button type="submit">Create Job</Button>
       </form>
     </Form>
@@ -64,90 +47,80 @@ export function CreateJob({ projectId, afterSubmit }: CreatJobProps) {
 
 export function UpdateJob({ projectId, current, afterSubmit }: UpdateJobProps) {
   const { mutateAsync } = useUpdateJob(projectId, current.id);
-  const form = useForm<JobsUpdate>({
-    resolver: zodResolver(JobsUpdateSchema),
+  const form = useForm<JobUpdate>({
+    resolver: zodResolver(JobUpdateSchema),
     defaultValues: {
       name: "",
-      codebookId: undefined,
     },
   });
 
-  function onSubmit(values: JobsUpdate) {
+  function onSubmit(values: JobUpdate) {
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
 
-  const codebookId = form.watch("codebookId");
-  const shape = JobsUpdateSchema.shape;
+  const shape = JobUpdateSchema.shape;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
         <TextFormField control={form.control} zType={shape.name} name="name" />
-        <div>
-          <FormLabel>Codebook</FormLabel>
-          <SelectCodebook
-            projectId={projectId}
-            onSelect={(id: number) => form.setValue("codebookId", id, { shouldDirty: true })}
-            current={current}
-          />
-        </div>
         <Button type="submit">Create Job</Button>
       </form>
     </Form>
   );
 }
 
-function SelectCodebook(props: {
-  projectId: number;
-  onSelect: (id: number) => void;
-  current?: z.infer<typeof JobsResponseSchema>;
-}) {
-  const [selected, setSelected] = useState(props.current?.codebookName || "");
-  const useCodebooksProps = useCodebooks(props.projectId);
-  const [newName, setNewName] = useState("");
-  const { create } = useCreateEmptyCodebook(props.projectId);
+// function SelectCodebook(props: {
+//   projectId: number;
+//   onSelect: (id: number) => void;
+//   current?: z.infer<typeof JobsResponseSchema>;
+// }) {
+//   const [selected, setSelected] = useState(props.current?.codebookName || "");
+//   const useCodebooksProps = useCodebooks(props.projectId);
+//   const [newName, setNewName] = useState("");
+//   const { create } = useCreateEmptyCodebook(props.projectId);
 
-  useEffect(() => {
-    if (props.current) {
-      setSelected(props.current.codebookName);
-    }
-  }, [props.current]);
+//   useEffect(() => {
+//     if (props.current) {
+//       setSelected(props.current.codebookName);
+//     }
+//   }, [props.current]);
 
-  return (
-    <Popover modal>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className=" flex items-center justify-between gap-2 ">
-          {selected || "Select Codebook"} <ChevronDown />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="max-w-72">
-        <DBSelect
-          {...useCodebooksProps}
-          nameField={"name"}
-          projectId={props.projectId}
-          onSelect={(codebook) => {
-            props.onSelect(codebook.id);
-            setSelected(codebook.name);
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <Input placeholder="New codebook" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <Button
-              disabled={!newName}
-              className="ml-auto flex  w-min gap-1"
-              variant="secondary"
-              onClick={() =>
-                create(newName).then(({ id }) => {
-                  props.onSelect(id);
-                  setSelected(newName);
-                })
-              }
-            >
-              <Plus />
-            </Button>
-          </div>
-        </DBSelect>
-      </PopoverContent>
-    </Popover>
-  );
-}
+//   return (
+//     <Popover modal>
+//       <PopoverTrigger asChild>
+//         <Button variant="outline" className=" flex items-center justify-between gap-2 ">
+//           {selected || "Select Codebook"} <ChevronDown />
+//         </Button>
+//       </PopoverTrigger>
+//       <PopoverContent align="start" className="max-w-72">
+//         <DBSelect
+//           {...useCodebooksProps}
+//           nameField={"name"}
+//           projectId={props.projectId}
+//           onSelect={(codebook) => {
+//             props.onSelect(codebook.id);
+//             setSelected(codebook.name);
+//           }}
+//         >
+//           <div className="flex items-center gap-2">
+//             <Input placeholder="New codebook" value={newName} onChange={(e) => setNewName(e.target.value)} />
+//             <Button
+//               disabled={!newName}
+//               className="ml-auto flex  w-min gap-1"
+//               variant="secondary"
+//               onClick={() =>
+//                 create(newName).then(({ id }) => {
+//                   props.onSelect(id);
+//                   setSelected(newName);
+//                 })
+//               }
+//             >
+//               <Plus />
+//             </Button>
+//           </div>
+//         </DBSelect>
+//       </PopoverContent>
+//     </Popover>
+//   );
+// }

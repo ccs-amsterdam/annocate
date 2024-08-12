@@ -20,12 +20,10 @@ interface Pagination {
 }
 
 export function useTableGet<Params extends TableParams, Response extends z.ZodTypeAny>({
-  resource,
   endpoint,
   initialParams,
   responseSchema,
 }: {
-  resource: string;
   endpoint: string;
   initialParams: Params;
   responseSchema: Response;
@@ -35,7 +33,7 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
   const [params, setParams] = useState<Params>(initialParams);
 
   const { data, isLoading } = useQuery({
-    queryKey: [resource, user, params],
+    queryKey: [endpoint, user, params],
     queryFn: async () => {
       if (!user) return;
       const res = await user.api.get(endpoint, { params });
@@ -95,13 +93,11 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
 }
 
 export function useGet<Params extends {}, Response>({
-  resource,
   endpoint,
   params,
   responseSchema,
   disabled,
 }: {
-  resource: string;
   endpoint: string;
   params?: Params;
   responseSchema: z.ZodType<Response>;
@@ -109,7 +105,7 @@ export function useGet<Params extends {}, Response>({
 }) {
   const { user } = useMiddlecat();
   return useQuery({
-    queryKey: [resource, user, endpoint, params],
+    queryKey: [endpoint, user, params],
     queryFn: async () => {
       if (!user) return;
       const res = await user.api.get(endpoint, params ? { params } : undefined);
@@ -122,19 +118,17 @@ export function useGet<Params extends {}, Response>({
 
 export function useMutate<Body, Response>({
   method = "post",
-  resource,
   endpoint,
   bodySchema,
   responseSchema,
-  invalidateResources,
+  invalidateEndpoints,
   mutateFunction,
 }: {
   method?: "post" | "put";
-  resource: string;
   endpoint: string;
   bodySchema: z.ZodType<Body>;
   responseSchema: z.ZodType<Response>;
-  invalidateResources?: string[];
+  invalidateEndpoints?: string[];
   mutateFunction?: (body: z.infer<typeof bodySchema>) => Promise<Response>;
 }) {
   const { user } = useMiddlecat();
@@ -146,10 +140,10 @@ export function useMutate<Body, Response>({
       return responseSchema ? responseSchema.parse(res.data) : res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([resource, user]);
-      if (invalidateResources) {
-        invalidateResources.forEach((resource) => {
-          queryClient.invalidateQueries([resource, user]);
+      queryClient.invalidateQueries([endpoint, user]);
+      if (invalidateEndpoints) {
+        invalidateEndpoints.forEach((endpoint) => {
+          queryClient.invalidateQueries([endpoint, user]);
         });
       }
     },

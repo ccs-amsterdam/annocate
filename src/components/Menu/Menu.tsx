@@ -41,7 +41,7 @@ export default function Menu() {
       <>
         <NavItem icon={<ChevronLeft />} href="/projects" key="projects"></NavItem>
 
-        <NavItem href={`/projects/${params.projectId}`} key="project">
+        <NavItem href={`/projects/${params.projectId}/jobs`} key="jobs">
           jobs
         </NavItem>
         <NavItem href={`/projects/${params.projectId}/codebooks`} key="codebooks">

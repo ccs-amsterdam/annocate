@@ -10,31 +10,30 @@ import { useGet, useMutate, useTableGet } from "../queryHelpers";
 
 export function useProjects(initialParams?: z.input<typeof ProjectsTableParamsSchema>) {
   return useTableGet({
-    resource: "projects",
     endpoint: "projects",
     initialParams: initialParams || {},
     responseSchema: ProjectsResponseSchema,
   });
 }
 
-export function useProject(projectId: number) {
-  return useGet({ resource: "projects", endpoint: `projects/${projectId}`, responseSchema: ProjectsResponseSchema });
-}
-
 export function useCreateProject() {
   return useMutate({
-    resource: "projects",
     endpoint: "projects",
     bodySchema: ProjectsCreateSchema,
     responseSchema: ProjectsResponseSchema,
   });
 }
+
+export function useProject(projectId: number) {
+  return useGet({ endpoint: `projects/${projectId}`, responseSchema: ProjectsResponseSchema });
+}
+
 export function useUpdateProject(projectId: number) {
   return useMutate({
-    resource: "projects",
     endpoint: `projects/${projectId}`,
     bodySchema: ProjectsUpdateSchema,
     responseSchema: ProjectsResponseSchema,
+    invalidateEndpoints: [`projects`],
   });
 }
 

@@ -1,7 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { units, jobUnits } from "@/drizzle/schema";
-import { and, eq, sql } from "drizzle-orm";
+import db, { units } from "@/drizzle/schema";
+import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         })
         .from(units)
         .where(eq(units.projectId, params.projectId))
-        .groupBy(units.unitId)
+        .groupBy(units.projectId, units.unitId)
         .as("baseQuery");
     },
     paramsSchema: UnitDataTableParamsSchema,
@@ -24,8 +24,8 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
-    idColumn: "unitId",
-    queryColumns: ["unitId"],
+    idColumn: "id",
+    queryColumns: ["id"],
   });
 }
 
@@ -34,11 +34,13 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
         const data = body.units
-          .map((unit) => ({
-            projectId: params.projectId,
-            unitId: unit.id,
-            data: unit.data,
-          }))
+          .map((unit) => {
+            return {
+              projectId: params.projectId,
+              unitId: unit.id,
+              data: unit.data,
+            };
+          })
           .filter((unit) => unit.unitId && unit.data);
 
         let query = tx.insert(units).values(data).$dynamic();
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
             },
           });
         }
-        return await query.returning();
+        return await query;
       });
     },
     req,

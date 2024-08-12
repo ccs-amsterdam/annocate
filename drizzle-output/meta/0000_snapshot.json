@@ -1,5 +1,5 @@
 {
-  "id": "fb0266c8-7d96-47ee-9583-55694678e6c2",
+  "id": "10d940f7-5eab-4de0-b518-6d2570acb954",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -100,6 +100,90 @@
       },
       "uniqueConstraints": {}
     },
+    "public.annotator": {
+      "name": "annotator",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authenticated_id": {
+          "name": "authenticated_id",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anonymous_id": {
+          "name": "anonymous_id",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "url_params": {
+          "name": "url_params",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "statistics": {
+          "name": "statistics",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {
+        "annotator_project_idx": {
+          "name": "annotator_project_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "annotator_project_id_projects_id_fk": {
+          "name": "annotator_project_id_projects_id_fk",
+          "tableFrom": "annotator",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
     "public.codebooks": {
       "name": "codebooks",
       "schema": "",
@@ -170,8 +254,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "unique_project_name": {
-          "name": "unique_project_name",
+        "unique_codebook_name": {
+          "name": "unique_codebook_name",
           "nullsNotDistinct": false,
           "columns": [
             "project_id",
@@ -236,10 +320,16 @@
       },
       "uniqueConstraints": {}
     },
-    "public.job_units": {
-      "name": "job_units",
+    "public.job_blocks": {
+      "name": "job_blocks",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
         "job_id": {
           "name": "job_id",
           "type": "integer",
@@ -252,34 +342,37 @@
           "primaryKey": false,
           "notNull": true
         },
-        "unit_id": {
-          "name": "unit_id",
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codebook_id": {
+          "name": "codebook_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "rules": {
+          "name": "rules",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "units": {
+          "name": "units",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
-        "unitset_units_unit_ids": {
-          "name": "unitset_units_unit_ids",
+        "job_blocks_job_id_idx": {
+          "name": "job_blocks_job_id_idx",
           "columns": [
             {
-              "expression": "unit_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "unitset_units_position_idx": {
-          "name": "unitset_units_position_idx",
-          "columns": [
-            {
-              "expression": "position",
+              "expression": "job_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -292,9 +385,9 @@
         }
       },
       "foreignKeys": {
-        "job_units_job_id_jobs_id_fk": {
-          "name": "job_units_job_id_jobs_id_fk",
-          "tableFrom": "job_units",
+        "job_blocks_job_id_jobs_id_fk": {
+          "name": "job_blocks_job_id_jobs_id_fk",
+          "tableFrom": "job_blocks",
           "tableTo": "jobs",
           "columnsFrom": [
             "job_id"
@@ -305,29 +398,21 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "job_units_unit_id_units_id_fk": {
-          "name": "job_units_unit_id_units_id_fk",
-          "tableFrom": "job_units",
-          "tableTo": "units",
+        "job_blocks_codebook_id_codebooks_id_fk": {
+          "name": "job_blocks_codebook_id_codebooks_id_fk",
+          "tableFrom": "job_blocks",
+          "tableTo": "codebooks",
           "columnsFrom": [
-            "unit_id"
+            "codebook_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "job_units_job_id_position_pk": {
-          "name": "job_units_job_id_position_pk",
-          "columns": [
-            "job_id",
-            "position"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
     "public.jobs": {
@@ -419,57 +504,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "public.jobset_annotator": {
-      "name": "jobset_annotator",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "jobset_id": {
-          "name": "jobset_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "url_params": {
-          "name": "url_params",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "statistics": {
-          "name": "statistics",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "jobset_annotator_user_id_jobset_id_pk": {
-          "name": "jobset_annotator_user_id_jobset_id_pk",
+      "uniqueConstraints": {
+        "unique_job_name": {
+          "name": "unique_job_name",
+          "nullsNotDistinct": false,
           "columns": [
-            "user_id",
-            "jobset_id"
+            "project_id",
+            "name"
           ]
         }
-      },
-      "uniqueConstraints": {}
+      }
     },
     "public.managers": {
       "name": "managers",
@@ -613,12 +657,6 @@
       "name": "units",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
         "project_id": {
           "name": "project_id",
           "type": "integer",
@@ -652,23 +690,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "units_project_idx": {
-          "name": "units_project_idx",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "units_project_id_projects_id_fk": {
           "name": "units_project_id_projects_id_fk",
@@ -684,17 +706,16 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "units_project_external_id": {
-          "name": "units_project_external_id",
-          "nullsNotDistinct": false,
+      "compositePrimaryKeys": {
+        "units_project_id_unit_id_pk": {
+          "name": "units_project_id_unit_id_pk",
           "columns": [
             "project_id",
             "unit_id"
           ]
         }
-      }
+      },
+      "uniqueConstraints": {}
     },
     "public.users": {
       "name": "users",

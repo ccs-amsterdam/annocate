@@ -4,6 +4,7 @@ import { authenticateUser, authorization } from "@/app/api/authorization";
 
 export async function GET(req: Request) {
   const email = await authenticateUser(req);
+
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {

@@ -4,7 +4,7 @@ export interface GeneralTypeAnnotation {
   id: string;
   variable: string;
   code: string | undefined;
-  value: string | number | undefined;
+  value: number | undefined;
 
   created: string;
 

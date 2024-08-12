@@ -1,4 +1,4 @@
-import { Annotation, Codebook, Layout, Unitset } from "@/app/types";
+import { Annotation, Codebook, Layout } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
@@ -12,10 +12,10 @@ interface Props {
   projectId: number;
   layout?: Layout;
   codebook?: Codebook;
-  unitset?: Unitset;
+  units?: string[];
 }
 
-export function Preview({ projectId, layout, codebook, unitset }: Props) {
+export function Preview({ projectId, layout, codebook, units }: Props) {
   const { user } = useMiddlecat();
   const [jobServer, setJobServer] = useState<JobServerPreview | null>(null);
   const annotations = useRef<Record<string, Annotation[]>>({});
@@ -29,8 +29,8 @@ export function Preview({ projectId, layout, codebook, unitset }: Props) {
   // const { data: selectedCodebook } = useCodebook(projectId, selectedCodebookId);
   // const { data: selectedLayout } = useUnitLayout(projectId, selectedLayoutId);
 
-  if (useWatchChange([projectId, user, codebook, layout, unitset])) {
-    if (user) setJobServer(new JobServerPreview(projectId, user, codebook, layout, unitset, annotations.current));
+  if (useWatchChange([projectId, user, codebook, layout, units])) {
+    if (user) setJobServer(new JobServerPreview(projectId, user, codebook, units, annotations.current));
   }
 
   if (!jobServer) return null;

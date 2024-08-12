@@ -9,10 +9,10 @@ interface Props {
   projectId: number;
 }
 
-const COLUMNS = ["id"];
+const COLUMNS = ["data"];
 
 export function UnitsTable({ projectId }: Props) {
-  const useUnitsProps = useUnits(projectId, {});
+  const useUnitsProps = useUnits(projectId, { pageSize: 7 });
   const [unit, setUnit] = useState<z.infer<typeof UnitDataResponseSchema>>();
 
   function onSelect(row: z.infer<typeof UnitDataResponseSchema>) {

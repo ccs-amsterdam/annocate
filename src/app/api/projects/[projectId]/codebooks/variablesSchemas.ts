@@ -35,11 +35,9 @@ export const CodebookCodeSchema = z.object({
     description: "Optionally, you can specify a custom color for displaying the code.",
     example: "#FF0000 | red | yellow | ...",
   }),
-  value: z.union([z.string(), z.number()]).optional().openapi({
+  value: z.number().optional().openapi({
     title: "Value",
-    description:
-      "Optionally, you can specify an additional value related to the code. This can be a number or a string, and doesn't have to be unique",
-    example: "negative | -1 | ...",
+    description: "Optionally, you can specify a numeric value related to the code.",
   }),
 
   required_for: z.array(z.string()).optional(),
