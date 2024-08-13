@@ -92,8 +92,7 @@ export default function Users({ params }: { params: { projectId: number } }) {
 
 function Help() {
   return (
-    <HelpDrawer className="fixed bottom-5 right-5">
-      <h3 className="mb-4 ">Upload units</h3>
+    <HelpDrawer title={"Upload units"} className="fixed bottom-5 right-5">
       <p>Blabla here you can upload units blabla</p>
     </HelpDrawer>
   );

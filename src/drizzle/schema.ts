@@ -65,6 +65,7 @@ export const projects = pgTable(
     created: timestamp("created").notNull().defaultNow(),
     config: customJsonb("project_config").notNull().$type<ProjectConfig>().default({ description: "" }),
     frozen: boolean("frozen").notNull().default(false),
+    unitsUpdated: timestamp("units_updated").notNull().defaultNow(),
   },
   (table) => {
     return { unq: unique("unique_creator_name").on(table.creator, table.name) };
@@ -166,8 +167,8 @@ export const jobBlocks = pgTable(
     codebookId: integer("codebook_id")
       .notNull()
       .references(() => codebooks.id),
-    rules: customJsonb("rules").$type<Rules>(),
-    units: customJsonb("units").$type<string[]>(),
+    rules: customJsonb("rules").notNull().default({}).$type<Rules>(),
+    units: customJsonb("units").notNull().default([]).$type<string[]>(),
   },
   (table) => {
     return {

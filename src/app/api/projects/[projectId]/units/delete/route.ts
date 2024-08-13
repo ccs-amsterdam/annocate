@@ -1,6 +1,6 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createUpdate } from "@/app/api/routeHelpers";
-import db, { units } from "@/drizzle/schema";
+import db, { projects, units } from "@/drizzle/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataDeleteBodySchema } from "../schemas";
@@ -8,7 +8,11 @@ import { UnitDataDeleteBodySchema } from "../schemas";
 export async function POST(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createUpdate({
     updateFunction: async (email, body) => {
-      return db.delete(units).where(and(eq(units.projectId, params.projectId), inArray(units.unitId, body.ids)));
+      return db.transaction(async (tx) => {
+        await tx.delete(units).where(and(eq(units.projectId, params.projectId), inArray(units.unitId, body.ids)));
+        await tx.update(projects).set({ unitsUpdated: new Date() }).where(eq(projects.id, params.projectId));
+        return { success: true };
+      });
     },
     req,
     bodySchema: UnitDataDeleteBodySchema,

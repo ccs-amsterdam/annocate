@@ -1,9 +1,10 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { units } from "@/drizzle/schema";
+import db, { projects, units } from "@/drizzle/schema";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
+import { projectRole } from "@/app/types";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createTableGet({
@@ -53,7 +54,11 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
             },
           });
         }
-        return await query;
+
+        await query;
+        await tx.update(projects).set({ unitsUpdated: new Date() }).where(eq(projects.id, params.projectId));
+
+        return { message: "Units created" };
       });
     },
     req,

@@ -13,6 +13,8 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         .select({
           id: jobs.id,
           name: jobs.name,
+          modified: jobs.modified,
+          deployed: jobs.deployed,
         })
         .from(jobs)
         .where(eq(jobs.projectId, params.projectId))

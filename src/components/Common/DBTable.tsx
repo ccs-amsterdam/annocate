@@ -47,7 +47,9 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
   const cols = useMemo(() => {
     const cols: { key: string; subkey?: string }[] = [];
     for (const key of columns) {
-      if (typeof data?.[0]?.[key] === "object") {
+      const isObject = typeof data?.[0]?.[key] === "object";
+      const isDate = data?.[0]?.[key] instanceof Date;
+      if (isObject && !isDate) {
         for (const subkey of Object.keys(data?.[0]?.[key])) {
           cols.push({ key, subkey });
         }
@@ -80,7 +82,7 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
   }
 
   return (
-    <Table className={`w-full ${isLoading ? "opacity-50" : ""} `}>
+    <Table className={`w-full ${isLoading ? "opacity-50" : ""}`}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           {cols.map(({ key, subkey }, i) => {

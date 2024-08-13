@@ -3,7 +3,7 @@ import { createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import db, { jobBlocks } from "@/drizzle/schema";
 import { and, eq, gte, sql } from "drizzle-orm";
-import { CreateJobBlockSchema } from "../../schemas";
+import { JobBlockCreateSchema } from "../../schemas";
 
 export async function POST(req: Request, { params }: { params: { projectId: number; jobId: number } }) {
   return createUpdate({
@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
       });
     },
     req,
-    bodySchema: CreateJobBlockSchema,
+    bodySchema: JobBlockCreateSchema,
     responseSchema: IdResponseSchema,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };

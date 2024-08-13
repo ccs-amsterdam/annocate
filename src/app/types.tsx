@@ -18,7 +18,12 @@ import {
 import { UnitLayoutSchema } from "./api/projects/[projectId]/codebooks/layoutSchemas";
 import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
 import { CodebookSchema } from "./api/projects/[projectId]/codebooks/schemas";
-import { JobAnnotationBlockRulesSchema, JobsResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
+import {
+  JobAnnotationBlockRulesSchema,
+  JobBlockResponseSchema,
+  JobResponseSchema,
+  JobsResponseSchema,
+} from "./api/projects/[projectId]/jobs/schemas";
 
 //////////  NEW
 ///////////
@@ -44,6 +49,8 @@ export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type Job = z.infer<typeof JobsResponseSchema>;
+export type JobBlock = z.infer<typeof JobBlockResponseSchema>;
+export type JobDetails = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;

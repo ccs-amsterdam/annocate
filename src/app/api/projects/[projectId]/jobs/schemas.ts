@@ -17,8 +17,10 @@ export const JobSurveyBlockSchema = JobBlockBaseSchema.extend({
 });
 
 export const JobAnnotationBlockRulesSchema = z.object({
-  method: z.enum(["fixed", "crowd"]),
-  maxPerCoder: z.number(),
+  maxUnitsPerCoder: z.number().int().min(1).nullish(),
+  maxCodersPerUnit: z.number().int().min(1).nullish(),
+  overlapUnits: z.number().int().min(1).nullish(),
+  randomizeUnits: z.boolean().default(true),
 });
 
 export const JobAnnotationBlockSchema = JobBlockBaseSchema.extend({
@@ -43,16 +45,31 @@ export const JobUpdateSchema = z.object({
   name: z.string(),
 });
 
-export const CreateJobBlockSchema = z.union([JobSurveyBlockSchema, JobAnnotationBlockSchema]);
-export const UpdateJobBlockSchema = z.union([JobSurveyBlockSchema.partial(), JobAnnotationBlockSchema.partial()]);
+export const JobBlockCreateSchema = z.union([JobSurveyBlockSchema, JobAnnotationBlockSchema]);
+export const JobBlockUpdateSchema = z.union([JobSurveyBlockSchema.partial(), JobAnnotationBlockSchema.partial()]);
 
 export const JobsResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
+  modified: z.coerce.date(),
+  deployed: z.boolean(),
   // blocks: z.array(JobBlockSchema),
+});
+
+export const JobBlockResponseSchema = z.object({
+  id: z.number(),
+  type: z.enum(["survey", "annotation"]),
+  position: z.number(),
+  codebookId: z.number(),
+  codebookName: z.string(),
+  rules: JobAnnotationBlockRulesSchema,
+  n_units: z.number(),
 });
 
 export const JobResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
+  modified: z.coerce.date(),
+  deployed: z.boolean(),
+  blocks: z.array(JobBlockResponseSchema),
 });
