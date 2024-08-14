@@ -25,26 +25,29 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         .from(jobs)
         .leftJoin(jobBlocks, eq(jobs.id, jobBlocks.jobId))
         .leftJoin(codebooks, eq(jobBlocks.codebookId, codebooks.id))
-        .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, params.jobId)));
+        .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, params.jobId)))
+        .orderBy(jobBlocks.position);
 
       const blocks = jobWithBlocks
-        .map(({ blockId, type, position, codebookId, rules, n_units }) => ({
+        .map(({ blockId, type, position, codebookId, codebookName, rules, n_units }) => ({
           id: blockId,
           type,
           position,
           codebookId,
+          codebookName,
           rules,
           n_units,
         }))
         .filter((block) => block.id !== null);
 
-      return {
+      const result = {
         id: jobWithBlocks[0].id,
         name: jobWithBlocks[0].name,
         modified: jobWithBlocks[0].modified,
         deployed: jobWithBlocks[0].deployed,
         blocks,
       };
+      return result;
     },
     req,
     responseSchema: JobResponseSchema,

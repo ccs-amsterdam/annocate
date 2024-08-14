@@ -21,6 +21,7 @@ export default function Home() {
         <SimpleDialog
           open={open}
           setOpen={setOpen}
+          header="Create new job"
           trigger={
             <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
               Create new job

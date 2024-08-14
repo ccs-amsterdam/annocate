@@ -16,6 +16,8 @@ import {
   uuid,
   customType,
   uniqueIndex,
+  numeric,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 import { neon } from "@neondatabase/serverless";
@@ -159,10 +161,13 @@ export const jobBlocks = pgTable(
   "job_blocks",
   {
     id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    position: integer("position").notNull(),
+    position: doublePrecision("position").notNull(),
     type: text("type", { enum: ["survey", "annotation"] }).notNull(),
     codebookId: integer("codebook_id")
       .notNull()
@@ -177,19 +182,24 @@ export const jobBlocks = pgTable(
   },
 );
 
+// todo: figure out how to rotate over multiple job ids.
+// one way is to make jobId an array, but then pg doesn't take care of the foreign key constraint.
 export const invitations = pgTable(
   "invitations",
   {
-    jobSetId: integer("jobset_id")
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    secret: varchar("id", { length: 64 }),
+    label: varchar("label", { length: 64 }).notNull(),
+    jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    id: varchar("id", { length: 64 }),
-    label: varchar("label", { length: 64 }).notNull(),
     access: text("access", { enum: ["only_authenticated", "only_anonymous", "user_decides"] }).notNull(),
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.jobSetId, table.id] }),
+      pk: primaryKey({ columns: [table.projectId, table.secret] }),
     };
   },
 );

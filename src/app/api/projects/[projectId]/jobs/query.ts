@@ -1,5 +1,6 @@
 import {
   JobBlockCreateSchema,
+  JobBlockUpdateSchema,
   JobCreateSchema,
   JobResponseSchema,
   JobsResponseSchema,
@@ -27,10 +28,11 @@ export function useCreateJob(projectId: number) {
   });
 }
 
-export function useJob(projectId: number, jobId: number) {
+export function useJob(projectId: number, jobId?: number) {
   return useGet({
     endpoint: `projects/${projectId}/jobs/${jobId}`,
     responseSchema: JobResponseSchema,
+    disabled: !jobId,
   });
 }
 
@@ -47,6 +49,14 @@ export function useCreateJobBlock(projectId: number, jobId: number) {
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
     bodySchema: JobBlockCreateSchema,
+    responseSchema: IdResponseSchema,
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`],
+  });
+}
+export function useUpdateJobBlock(projectId: number, jobId: number, blockId?: number) {
+  return useMutate({
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
+    bodySchema: JobBlockUpdateSchema,
     responseSchema: IdResponseSchema,
     invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`],
   });

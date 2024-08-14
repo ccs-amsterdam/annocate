@@ -1,4 +1,4 @@
-import { useJobs } from "@/app/api/projects/[projectId]/jobs/query";
+import { useJob, useJobs } from "@/app/api/projects/[projectId]/jobs/query";
 import { Job } from "@/app/types";
 import DBTable, { DBPagination, DBSearch } from "@/components/Common/DBTable";
 import { CreateJob } from "@/components/Forms/jobForms";
@@ -15,12 +15,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { JobDetails } from "./jobDetails";
+import { useQueryState } from "next-usequerystate";
 
 const COLUMNS = ["deployed", "modified", "name"];
 
 export default function JobsList({ projectId }: { projectId: number }) {
-  const [job, setJob] = useState<Job | undefined>(undefined);
-  const useJobsProps = useJobs(projectId);
+  const [jobId, setJobId] = useQueryState("jobId");
+  const useJobsProps = useJobs(projectId, { sort: "modified", direction: "desc" });
   const [prevProps, setPrevProps] = useState(() => {
     const { data, meta, isLoading } = useJobsProps;
     return { data, meta, isLoading };
@@ -36,8 +37,8 @@ export default function JobsList({ projectId }: { projectId: number }) {
   return (
     <div className={"flex flex-col gap-3 px-3"}>
       <CreateJobDialog projectId={projectId} />
-      <DBTable {...useJobsProps} columns={COLUMNS} onSelect={setJob} />
-      <JobDrawer projectId={projectId} job={job} onClose={() => setJob(undefined)} />
+      <DBTable {...useJobsProps} columns={COLUMNS} onSelect={(job) => setJobId(String(job.id))} />
+      <JobDrawer projectId={projectId} jobId={Number(jobId)} onClose={() => setJobId(null)} />
     </div>
   );
 }
@@ -58,11 +59,13 @@ function CreateJobDialog(props: { projectId: number }) {
   );
 }
 
-function JobDrawer({ projectId, job, onClose }: { projectId: number; job?: Job; onClose: () => void }) {
+function JobDrawer({ projectId, jobId, onClose }: { projectId: number; jobId?: number; onClose: () => void }) {
+  const { data: job, isLoading } = useJob(projectId, jobId);
+
   return (
     <Drawer
       direction="right"
-      open={!!job}
+      open={!!jobId}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
           onClose();

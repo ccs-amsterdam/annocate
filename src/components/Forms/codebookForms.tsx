@@ -125,8 +125,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   }
   const shape = CodebookCreateBodySchema.shape;
 
-  console.log(form.formState.isDirty);
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex flex-col gap-3  p-3 lg:px-8 ">

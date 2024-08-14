@@ -1,3 +1,4 @@
+import { DialogDescription } from "@radix-ui/react-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 
 export function SimpleDialog({
@@ -6,13 +7,15 @@ export function SimpleDialog({
   open,
   setOpen,
   header,
+  description,
   className,
 }: {
   trigger?: React.ReactNode;
+  header: string;
+  description?: string;
   children: React.ReactNode;
   open?: boolean;
   setOpen?: (open: boolean) => void;
-  header?: string;
   className?: string;
 }) {
   return (
@@ -23,11 +26,10 @@ export function SimpleDialog({
         </DialogTrigger>
       ) : null}
       <DialogContent className={className}>
-        {header ? (
-          <DialogHeader>
-            <DialogTitle>{header}</DialogTitle>
-          </DialogHeader>
-        ) : null}
+        <DialogHeader>
+          <DialogTitle>{header}</DialogTitle>
+          <DialogDescription className={description ? "" : "invisible"}>{description || header}</DialogDescription>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>

@@ -39,7 +39,6 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
           .values({ projectId: params.projectId, ...body })
           .returning();
 
-        console.log(newJob);
         return newJob;
       });
     },

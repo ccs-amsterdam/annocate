@@ -4,8 +4,8 @@ import {
   CodebookCodeSchema,
   CodebookVariableItemSchema,
 } from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
-import { ChevronDown, ChevronRight, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Control, FieldValues, Path } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "../ui/button";
@@ -18,6 +18,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { SelectOrCreate } from "../ui/select-or-create";
+import { useCreateEmptyCodebook } from "./codebookForms";
+import { useCodebooks } from "@/app/api/projects/[projectId]/codebooks/query";
+import { JobBlock } from "@/app/types";
+import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
+import DBSelect from "../Common/DBSelect";
+import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "../ui/dialog";
+import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
 
 export interface FormOptions {
   value: string;
@@ -30,6 +37,8 @@ interface FormFieldProps<T extends FieldValues> {
   name: Path<T>;
   zType: z.ZodTypeAny;
   onChangeInterceptor?: (value: any) => any;
+  clearable?: boolean;
+  className?: string;
 }
 
 interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
@@ -41,15 +50,23 @@ interface CodeFormProps<T extends FieldValues> extends FormFieldProps<T> {
   swipe?: boolean;
 }
 
+export function ClearButton({ onClear }: { onClear: () => void }) {
+  return (
+    <Button type="button" variant="ghost" onClick={onClear}>
+      <X />
+    </Button>
+  );
+}
+
 export function TextFormField<T extends FieldValues>({ control, name, zType, onChangeInterceptor }: FormFieldProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+  const openAPI = OpenAPIMeta(zType, name);
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <Title title={openAPI.title} description={openAPI.description} />
+          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
           <FormControl>
             <Input
               placeholder={openAPI.example}
@@ -66,17 +83,70 @@ export function TextFormField<T extends FieldValues>({ control, name, zType, onC
   );
 }
 
-export function TextAreaFormField<T extends FieldValues>({ control, name, zType }: FormFieldProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+interface NumberFormProps<T extends FieldValues> extends FormFieldProps<T> {
+  min?: number;
+  max?: number;
+}
+
+export function NumberFormField<T extends FieldValues>({
+  control,
+  name,
+  zType,
+  clearable,
+  min,
+  max,
+}: NumberFormProps<T>) {
+  const openAPI = OpenAPIMeta(zType, name);
+
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => {
+        return (
+          <FormItem className="flex flex-col">
+            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+            <div className="flex ">
+              <FormControl>
+                <Input
+                  type="number"
+                  min={min}
+                  max={max}
+                  placeholder={openAPI.example}
+                  value={field.value === null ? "" : field.value}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    field.onChange(Number(value));
+                  }}
+                  className="w-20"
+                />
+              </FormControl>
+              {clearable ? (
+                <ClearButton
+                  onClear={() => {
+                    field.onChange(null);
+                  }}
+                />
+              ) : null}
+            </div>
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
+export function TextAreaFormField<T extends FieldValues>({ control, name, zType, className }: FormFieldProps<T>) {
+  const openAPI = OpenAPIMeta(zType, name);
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className="flex flex-col">
-          <Title title={openAPI.title} description={openAPI.description} />
+        <FormItem className="flex h-full flex-col">
+          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
           <FormControl>
-            <Textarea placeholder={openAPI.example} {...field} />
+            <Textarea placeholder={openAPI.example} {...field} className={className} />
           </FormControl>
         </FormItem>
       )}
@@ -85,10 +155,10 @@ export function TextAreaFormField<T extends FieldValues>({ control, name, zType 
 }
 
 export function BooleanFormField<T extends FieldValues>({ control, name, zType }: FormFieldProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+  const openAPI = OpenAPIMeta(zType, name);
   return (
-    <>
-      <Title title={openAPI.title} description={openAPI.description} />
+    <div className="flex flex-col gap-2">
+      <FormFieldTitle title={openAPI.title} description={openAPI.description} />
       <FormField
         control={control}
         name={name}
@@ -102,7 +172,7 @@ export function BooleanFormField<T extends FieldValues>({ control, name, zType }
           );
         }}
       />
-    </>
+    </div>
   );
 }
 
@@ -113,14 +183,14 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
   values,
   labelWidth = "6rem",
 }: FormFieldArrayProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+  const openAPI = OpenAPIMeta(zType, name);
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <Title title={openAPI?.title || name} description={openAPI?.description} />
+          <FormFieldTitle title={openAPI?.title || name} description={openAPI?.description} />
           <FormControl>
             <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-0">
               {values?.map((value) => (
@@ -143,7 +213,7 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
 }
 
 export function DropdownFormField<T extends FieldValues>({ control, name, zType, values }: FormFieldArrayProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+  const openAPI = OpenAPIMeta(zType, name);
 
   return (
     <FormField
@@ -151,7 +221,7 @@ export function DropdownFormField<T extends FieldValues>({ control, name, zType,
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <Title title={openAPI.title} description={openAPI.description} />
+          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
           <FormControl>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -182,7 +252,7 @@ export function DropdownFormField<T extends FieldValues>({ control, name, zType,
 }
 
 export function SelectOrCreateForm<T extends FieldValues>({ control, name, zType, values }: FormFieldArrayProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+  const openAPI = OpenAPIMeta(zType, name);
 
   return (
     <FormField
@@ -190,7 +260,7 @@ export function SelectOrCreateForm<T extends FieldValues>({ control, name, zType
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <Title title={openAPI.title} description={openAPI.description} />
+          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
           <FormControl>
             <SelectOrCreate
               options={values}
@@ -209,7 +279,7 @@ export function SelectOrCreateForm<T extends FieldValues>({ control, name, zType
 type CodebookCode = z.infer<typeof CodebookCodeSchema>;
 
 export function CodesFormField<T extends FieldValues>({ control, name, zType, swipe }: CodeFormProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+  const openAPI = OpenAPIMeta(zType, name);
 
   const maxLines = swipe ? 3 : undefined;
 
@@ -239,7 +309,7 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
 
         return (
           <FormItem className="flex flex-col">
-            <Title title={openAPI.title} description={openAPI.description} />
+            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
             <FormControl>
               <Table>
                 <TableHeader>
@@ -322,7 +392,7 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
 type CodebookVariableItem = z.infer<typeof CodebookVariableItemSchema>;
 
 export function VariableItemsFormField<T extends FieldValues>({ control, name, zType, swipe }: CodeFormProps<T>) {
-  const openAPI = getOpenApi(zType, name);
+  const openAPI = OpenAPIMeta(zType, name);
 
   const maxLines = swipe ? 3 : undefined;
 
@@ -360,7 +430,7 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
 
         return (
           <FormItem className="flex flex-col">
-            <Title title={openAPI.title} description={openAPI.description} />
+            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
             <FormControl>
               <Table>
                 <TableHeader>
@@ -423,11 +493,95 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
   );
 }
 
-function getOpenApi(zType: z.ZodTypeAny, name: string) {
+interface SelectCodebookProps<T extends FieldValues> {
+  control: Control<T, any>;
+  name: Path<T>;
+  zType: z.ZodTypeAny;
+  projectId: number;
+  current?: JobBlock;
+}
+
+export function SelectCodebookFormField<T extends FieldValues>({
+  control,
+  name,
+  zType,
+  projectId,
+  current,
+}: SelectCodebookProps<T>) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(current?.codebookName || "");
+  const useCodebooksProps = useCodebooks(projectId);
+  const [newName, setNewName] = useState("");
+  const { create } = useCreateEmptyCodebook(projectId);
+  const openAPI = OpenAPIMeta(zType, "codebookId");
+
+  useEffect(() => {
+    if (current) {
+      setSelected(current.codebookName);
+    }
+  }, [current]);
+
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => {
+        function onSelect(id: number, name: string) {
+          setSelected(name);
+          field.onChange(id);
+          setOpen(false);
+        }
+
+        return (
+          <FormItem>
+            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className=" flex min-w-48 items-center justify-between  gap-2">
+                  {selected || "Select Codebook"} <ChevronDown />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-72 bg-background">
+                <DialogHeader>
+                  <DialogTitle className="invisible h-0">Select codebook</DialogTitle>
+                  <DialogDescription>Select or create codebook</DialogDescription>
+                </DialogHeader>
+                <DBSelect
+                  {...useCodebooksProps}
+                  nameField={"name"}
+                  projectId={projectId}
+                  onSelect={(codebook) => onSelect(codebook.id, codebook.name)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Input placeholder="New codebook" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                    <Button
+                      disabled={!newName}
+                      className="ml-auto flex  w-min gap-1"
+                      variant="secondary"
+                      onClick={() =>
+                        create(newName).then(({ id }) => {
+                          onSelect(id, newName);
+                        })
+                      }
+                    >
+                      <Plus />
+                    </Button>
+                  </div>
+                </DBSelect>
+              </DialogContent>
+            </Dialog>
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
+export function OpenAPIMeta(zType: z.ZodTypeAny, name: string) {
   return zType._def?.openapi?.metadata || { title: name, description: "" };
 }
 
-function Title({ title, description }: { title: string; description: string }) {
+export function FormFieldTitle({ title, description }: { title: string; description: string }) {
   const [showDescription, setShowDescription] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -479,14 +633,14 @@ export function MoveItemInArray({
   i: number;
   n: number;
   bg: string;
-  error: boolean;
+  error?: boolean;
   variant?: "default" | "secondary";
 }) {
   const itemArray = Array.from({ length: n }, (_, i) => i);
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild disabled={n === 1}>
-        <Button variant={error ? "destructive" : variant || "default"} className={` h-8 w-8 rounded-full `}>
+        <Button variant={!!error ? "destructive" : variant || "default"} className={` h-8 w-8 rounded-full `}>
           {i + 1}
         </Button>
       </DropdownMenuTrigger>

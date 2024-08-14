@@ -1,5 +1,5 @@
 {
-  "id": "10d940f7-5eab-4de0-b518-6d2570acb954",
+  "id": "85b10a8c-5ebe-4129-ad30-5fa4bf4f45a3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -268,8 +268,8 @@
       "name": "invitations",
       "schema": "",
       "columns": {
-        "jobset_id": {
-          "name": "jobset_id",
+        "project_id": {
+          "name": "project_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -286,6 +286,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "job_id": {
+          "name": "job_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "access": {
           "name": "access",
           "type": "text",
@@ -295,12 +301,25 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "invitations_jobset_id_jobs_id_fk": {
-          "name": "invitations_jobset_id_jobs_id_fk",
+        "invitations_project_id_projects_id_fk": {
+          "name": "invitations_project_id_projects_id_fk",
+          "tableFrom": "invitations",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "invitations_job_id_jobs_id_fk": {
+          "name": "invitations_job_id_jobs_id_fk",
           "tableFrom": "invitations",
           "tableTo": "jobs",
           "columnsFrom": [
-            "jobset_id"
+            "job_id"
           ],
           "columnsTo": [
             "id"
@@ -310,10 +329,10 @@
         }
       },
       "compositePrimaryKeys": {
-        "invitations_jobset_id_id_pk": {
-          "name": "invitations_jobset_id_id_pk",
+        "invitations_project_id_id_pk": {
+          "name": "invitations_project_id_id_pk",
           "columns": [
-            "jobset_id",
+            "project_id",
             "id"
           ]
         }
@@ -330,6 +349,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "job_id": {
           "name": "job_id",
           "type": "integer",
@@ -338,7 +363,7 @@
         },
         "position": {
           "name": "position",
-          "type": "integer",
+          "type": "double precision",
           "primaryKey": false,
           "notNull": true
         },
@@ -358,13 +383,15 @@
           "name": "rules",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "units": {
           "name": "units",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'[]'::jsonb"
         }
       },
       "indexes": {
@@ -385,6 +412,19 @@
         }
       },
       "foreignKeys": {
+        "job_blocks_project_id_projects_id_fk": {
+          "name": "job_blocks_project_id_projects_id_fk",
+          "tableFrom": "job_blocks",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "job_blocks_job_id_jobs_id_fk": {
           "name": "job_blocks_job_id_jobs_id_fk",
           "tableFrom": "job_blocks",
@@ -437,12 +477,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "codebook_id": {
-          "name": "codebook_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "modified": {
           "name": "modified",
           "type": "timestamp",
@@ -487,19 +521,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "jobs_codebook_id_codebooks_id_fk": {
-          "name": "jobs_codebook_id_codebooks_id_fk",
-          "tableFrom": "jobs",
-          "tableTo": "codebooks",
-          "columnsFrom": [
-            "codebook_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -637,6 +658,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "units_updated": {
+          "name": "units_updated",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},

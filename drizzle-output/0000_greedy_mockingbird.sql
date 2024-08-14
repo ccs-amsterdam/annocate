@@ -32,28 +32,29 @@ CREATE TABLE IF NOT EXISTS "codebooks" (
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "invitations" (
-	"jobset_id" integer NOT NULL,
+	"project_id" integer NOT NULL,
 	"id" varchar(64),
 	"label" varchar(64) NOT NULL,
+	"job_id" integer NOT NULL,
 	"access" text NOT NULL,
-	CONSTRAINT "invitations_jobset_id_id_pk" PRIMARY KEY("jobset_id","id")
+	CONSTRAINT "invitations_project_id_id_pk" PRIMARY KEY("project_id","id")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "job_blocks" (
 	"id" serial PRIMARY KEY NOT NULL,
+	"project_id" integer NOT NULL,
 	"job_id" integer NOT NULL,
-	"position" integer NOT NULL,
+	"position" double precision NOT NULL,
 	"type" text NOT NULL,
 	"codebook_id" integer NOT NULL,
-	"rules" jsonb,
-	"units" jsonb
+	"rules" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"units" jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "jobs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"project_id" integer NOT NULL,
 	"name" varchar(256) NOT NULL,
-	"codebook_id" integer,
 	"modified" timestamp DEFAULT now() NOT NULL,
 	"deployed" boolean DEFAULT false NOT NULL,
 	CONSTRAINT "unique_job_name" UNIQUE("project_id","name")
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS "projects" (
 	"created" timestamp DEFAULT now() NOT NULL,
 	"project_config" jsonb DEFAULT '{"description":""}'::jsonb NOT NULL,
 	"frozen" boolean DEFAULT false NOT NULL,
+	"units_updated" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "unique_creator_name" UNIQUE("creator_email","name")
 );
 --> statement-breakpoint
@@ -107,7 +109,19 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- ALTER TABLE "invitations" ADD CONSTRAINT "invitations_jobset_id_jobs_id_fk" FOREIGN KEY ("jobset_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;
+ ALTER TABLE "invitations" ADD CONSTRAINT "invitations_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "invitations" ADD CONSTRAINT "invitations_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "job_blocks" ADD CONSTRAINT "job_blocks_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -126,12 +140,6 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "jobs" ADD CONSTRAINT "jobs_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "jobs" ADD CONSTRAINT "jobs_codebook_id_codebooks_id_fk" FOREIGN KEY ("codebook_id") REFERENCES "public"."codebooks"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

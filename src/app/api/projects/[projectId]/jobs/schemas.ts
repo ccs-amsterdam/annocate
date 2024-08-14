@@ -7,9 +7,15 @@ extendZodWithOpenApi(z);
 export const JobsTableParamsSchema = createTableParamsSchema({});
 
 export const JobBlockBaseSchema = z.object({
-  type: z.enum(["survey", "annotation"]),
-  position: z.number(),
-  codebookId: z.number(),
+  type: z
+    .enum(["survey", "annotation"])
+    .openapi({ title: "Block type", description: "A job can have blocks for surveys and annotation tasks" }),
+  position: z.number().openapi({ title: "Block position", description: "Position of the block in the job" }),
+  codebookId: z.number().openapi({
+    title: "Codebook ID",
+    description:
+      "Every block is tied to a specific codebook. Survey blocks require a 'survey' type codebook, that describes the survey variables. Annotation blocks require an 'annotation' type codebook that describes what questions to ask for each unit in the block, and also how the units are to be displayed",
+  }),
 });
 
 export const JobSurveyBlockSchema = JobBlockBaseSchema.extend({
@@ -17,15 +23,33 @@ export const JobSurveyBlockSchema = JobBlockBaseSchema.extend({
 });
 
 export const JobAnnotationBlockRulesSchema = z.object({
-  maxUnitsPerCoder: z.number().int().min(1).nullish(),
-  maxCodersPerUnit: z.number().int().min(1).nullish(),
-  overlapUnits: z.number().int().min(1).nullish(),
-  randomizeUnits: z.boolean().default(true),
+  maxUnitsPerCoder: z
+    .number()
+    .int()
+    .min(1)
+    .nullish()
+    .openapi({ title: "Max units per coder", description: "The maximum number of units assigned per coder" }),
+  maxCodersPerUnit: z.number().int().min(1).nullish().openapi({
+    title: "Max coders per unit",
+    description: "The maximum number of coders that a unit will be assigned to",
+  }),
+  overlapUnits: z.number().int().min(1).nullish().openapi({
+    title: "Overlap units",
+    description:
+      "Draws a random selection of units that will be assigned to all coders. The typical use case is to calculate intercoder reliability",
+  }),
+  randomizeUnits: z
+    .boolean()
+    .nullish()
+    .openapi({ title: "Randomize units", description: "Randomize the order of units for every coder" }),
 });
 
 export const JobAnnotationBlockSchema = JobBlockBaseSchema.extend({
   type: z.literal("annotation"),
-  units: z.array(z.string()),
+  units: z.array(z.string()).openapi({
+    title: "Unit selection",
+    description: "Optionally, provide a list of unit IDs to use for this block. If left empty, all units will be used.",
+  }),
   rules: JobAnnotationBlockRulesSchema,
 });
 
