@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     tableFunction: (email) =>
       db.select({ id: users.id, email: users.email, role: users.role }).from(users).as("baseQuery"),
     paramsSchema: UsersTableParamsSchema,
+    projectId: null,
     idColumn: "email",
     queryColumns: ["email"],
   });
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
     req,
     bodySchema: UsersCreateBodySchema,
     responseSchema: UsersResponseSchema,
+    projectId: null,
     authorizeFunction: async (auth, body) => {
       if (auth.role !== "admin") return { message: "Need to be Admin to add users" };
     },

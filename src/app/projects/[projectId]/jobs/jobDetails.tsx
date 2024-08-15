@@ -1,4 +1,4 @@
-import { useJob, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
+import { useDeleteJobBlock, useJob, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
 import { JobBlock } from "@/app/types";
 import { MoveItemInArray } from "@/components/Forms/formHelpers";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { SimplePopover } from "@/components/ui/simplePopover";
-import { Plus } from "lucide-react";
+import { Edit, Plus, Trash } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface Props {
@@ -51,6 +53,7 @@ export function JobDetails({ projectId, jobId }: Props) {
                 projectId={projectId}
                 jobId={jobId}
                 n={job.blocks.length}
+                setBlockForm={setBlockForm}
               />
             </>
           );
@@ -75,13 +78,24 @@ interface BlockProps {
   projectId: number;
   jobId: number;
   n: number;
+  setBlockForm: (props: BlockFormProps) => void;
 }
 
-function JobBlockItem({ block, position, projectId, jobId, n }: BlockProps) {
+function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: BlockProps) {
   const { mutateAsync } = useUpdateJobBlock(projectId, jobId, block.id);
+  const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
+  const router = useRouter();
+
+  function showDetails() {
+    const s = block.n_variables > 1 ? "s" : "";
+    if (block.type === "survey") {
+      return `${block.n_variables} variable${s}`;
+    }
+    return `${block.n_variables} variable${s}, ${block.n_units || "all"} units`;
+  }
 
   return (
-    <div className="flex animate-fade-in gap-3 pr-16">
+    <div className="flex animate-fade-in items-center gap-3 pr-16">
       <MoveItemInArray
         i={position}
         n={n}
@@ -91,8 +105,36 @@ function JobBlockItem({ block, position, projectId, jobId, n }: BlockProps) {
           mutateAsync({ position: to });
         }}
       />
-      <div>{block.type}</div>
-      <div className="ml-auto">{block.codebookName}</div>
+      <div
+        role="button"
+        tabIndex={0}
+        className="cursor-pointer rounded px-3 hover:bg-foreground/10"
+        onClick={() => router.push(`/projects/${projectId}/codebooks/${block.codebookId}?jobBlockId=${block.id}`)}
+      >
+        <h4 className="m-0 mt-2 leading-none">{block.codebookName}</h4>
+        <span className="leading-none text-foreground/60">{showDetails()}</span>
+      </div>
+      <div className="ml-auto flex ">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => setBlockForm({ projectId, jobId, position, type: block.type, current: block })}
+        >
+          <Edit className="h-5 w-5" />
+        </Button>
+
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => deleteBlock()}
+          onClickConfirm={{
+            title: "Are you sure?",
+            message: "This will delete the block. It will never return, nor forgive you",
+          }}
+        >
+          <Trash className="h-5 w-5" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -114,14 +156,14 @@ function AddBlockHere({ projectId, jobId, position, setBlockForm }: AddBlockProp
 
   return (
     <div className="flex items-center gap-3">
-      <div className="w-full border-b-2 border-secondary"></div>
+      <div className="w-full border-b-2 border-secondary/50"></div>
       <SimplePopover
         open={open}
         setOpen={setOpen}
         header="Select block type"
         trigger={
-          <Button variant="secondary" size="icon" className="rounded-full p-3">
-            <Plus className="h-5 w-4" />
+          <Button variant="secondary" className="h-8 w-8 rounded-full text-lg">
+            +
           </Button>
         }
       >

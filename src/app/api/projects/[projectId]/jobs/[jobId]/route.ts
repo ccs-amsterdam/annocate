@@ -4,6 +4,7 @@ import db, { codebooks, jobBlocks, jobs } from "@/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobResponseSchema, JobsResponseSchema, JobUpdateSchema } from "../schemas";
+import { n } from "next-usequerystate/dist/serializer-C_l8WgvO";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number; jobId: number } }) {
   return createGet({
@@ -17,24 +18,27 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
           blockId: jobBlocks.id,
           type: jobBlocks.type,
           position: jobBlocks.position,
-          codebookId: jobBlocks.codebookId,
-          codebookName: codebooks.name,
           rules: jobBlocks.rules,
           n_units: sql<number>`jsonb_array_length(${jobBlocks.units})`.mapWith(Number),
+          codebookId: codebooks.id,
+          codebookName: codebooks.name,
+          n_variables: sql<number>`jsonb_array_length(${codebooks.codebook}->'variables')`.mapWith(Number),
         })
         .from(jobs)
         .leftJoin(jobBlocks, eq(jobs.id, jobBlocks.jobId))
         .leftJoin(codebooks, eq(jobBlocks.codebookId, codebooks.id))
         .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, params.jobId)))
         .orderBy(jobBlocks.position);
+      console.log(jobWithBlocks);
 
       const blocks = jobWithBlocks
-        .map(({ blockId, type, position, codebookId, codebookName, rules, n_units }) => ({
+        .map(({ blockId, type, position, codebookId, codebookName, n_variables, rules, n_units }) => ({
           id: blockId,
           type,
           position,
           codebookId,
           codebookName,
+          n_variables,
           rules,
           n_units,
         }))
@@ -72,6 +76,7 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     req,
     bodySchema: JobUpdateSchema,
     responseSchema: JobsResponseSchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
     req,
     bodySchema: UsersUpdateBodySchema,
     responseSchema: UsersResponseSchema,
+    projectId: null,
     authorizeFunction: async (auth, body) => {
       const me = auth.email === body.email;
       if (auth.role !== "admin" && body.role) return { message: "Only admin can update role" };

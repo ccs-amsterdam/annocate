@@ -24,7 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     responseSchema: JobsResponseSchema,
     idColumn: "id",
     queryColumns: ["name"],
+    projectId: params.projectId,
     authorizeFunction: async (auth, params) => {
+      console.log(auth);
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
   });
@@ -48,6 +50,7 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     errorFunction: (status, body) => {
       if (status === 409) return `A job with the name "${body?.name}" already exists in this project`;
     },
+    projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

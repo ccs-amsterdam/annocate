@@ -36,6 +36,7 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     },
     req,
     bodySchema: CodebookUpdateBodySchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

@@ -22,6 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     },
     paramsSchema: UnitDataTableParamsSchema,
     responseSchema: UnitDataResponseSchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
     },
     req,
     bodySchema: UnitDataCreateBodySchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

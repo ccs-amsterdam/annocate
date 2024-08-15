@@ -86,6 +86,7 @@ export const JobBlockResponseSchema = z.object({
   position: z.number(),
   codebookId: z.number(),
   codebookName: z.string(),
+  n_variables: z.number(),
   rules: JobAnnotationBlockRulesSchema,
   n_units: z.number(),
 });

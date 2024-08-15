@@ -1,10 +1,11 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createUpdate } from "@/app/api/routeHelpers";
+import { createDelete, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import db, { jobBlocks } from "@/drizzle/schema";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { JobBlockCreateSchema, JobBlockUpdateSchema } from "../../../schemas";
 import { reindexPositions } from "../route";
+import { NextRequest } from "next/server";
 
 export async function POST(
   req: Request,
@@ -19,9 +20,9 @@ export async function POST(
             .from(jobBlocks)
             .where(eq(jobBlocks.id, params.blockId));
           if (currentPosition.position < body.position) {
-            body.position += 0.1;
+            body.position += 0.5;
           } else {
-            body.position -= 0.1;
+            body.position -= 0.5;
           }
         }
 
@@ -42,7 +43,30 @@ export async function POST(
     req,
     bodySchema: JobBlockUpdateSchema,
     responseSchema: IdResponseSchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
+      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
+    },
+  });
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { projectId: number; jobId: number; blockId: number } },
+) {
+  return createDelete({
+    deleteFunction: (email) => {
+      return db.transaction(async (tx) => {
+        await tx
+          .delete(jobBlocks)
+          .where(and(eq(jobBlocks.projectId, params.projectId), eq(jobBlocks.id, params.blockId)));
+        await reindexPositions(tx, params.jobId);
+        return { success: true };
+      });
+    },
+    req,
+    projectId: params.projectId,
+    authorizeFunction: async (auth) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
   });

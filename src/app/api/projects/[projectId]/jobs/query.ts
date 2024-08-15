@@ -9,7 +9,7 @@ import {
 } from "@/app/api/projects/[projectId]/jobs/schemas";
 import { z } from "zod";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
-import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
+import { useDelete, useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 
 export function useJobs(projectId: number, initialParams?: z.input<typeof JobsTableParamsSchema>) {
@@ -58,6 +58,13 @@ export function useUpdateJobBlock(projectId: number, jobId: number, blockId?: nu
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     bodySchema: JobBlockUpdateSchema,
     responseSchema: IdResponseSchema,
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`],
+  });
+}
+
+export function useDeleteJobBlock(projectId: number, jobId: number, blockId: number) {
+  return useDelete({
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`],
   });
 }

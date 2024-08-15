@@ -69,20 +69,8 @@ export async function authenticateUser(req: Request): Promise<string | null> {
 }
 
 // todo: add JWT to avoid hitting the db for every request
-export async function authorization(email: string, projectId?: number): Promise<Authorization> {
+export async function authorization(email: string, projectId: number | null): Promise<Authorization> {
   const auth: Authorization = { email, role: null, projectRole: null };
-
-  if (email === process.env.SUPERADMIN) {
-    if (projectId) auth.projectId = projectId;
-    auth.superAdmin = true;
-    auth.role = "admin";
-    auth.projectRole = "admin";
-
-    // add if doesn't exist
-    await db.insert(users).values({ email, role: "admin" }).onConflictDoNothing();
-
-    return auth;
-  }
 
   if (projectId) {
     const [user] = await db
@@ -101,6 +89,16 @@ export async function authorization(email: string, projectId?: number): Promise<
       .where(and(eq(users.email, email)));
 
     auth.role = user?.role || null;
+  }
+
+  if (email === process.env.SUPERADMIN) {
+    if (auth.role !== "admin") {
+      auth.role = "admin";
+      await db
+        .insert(users)
+        .values({ email, role: "admin" })
+        .onConflictDoUpdate({ target: users.email, set: { role: "admin" } });
+    }
   }
 
   return auth;

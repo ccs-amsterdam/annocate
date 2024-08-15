@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
         .as("baseQuery"),
     req,
     paramsSchema: ProjectsTableParamsSchema,
+    projectId: null,
     idColumn: "id",
     queryColumns: ["name", "creator"],
   });
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
     req,
     bodySchema: ProjectsUpdateSchema,
     responseSchema: ProjectsResponseSchema,
+    projectId: null,
     authorizeFunction: async (auth, body) => {
       if (!hasMinRole(auth.role, "creator")) return { message: "Need to have the Creator role to make a project" };
     },

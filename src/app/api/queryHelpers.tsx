@@ -107,12 +107,39 @@ export function useGet<Params extends {}, Response>({
   return useQuery({
     queryKey: [endpoint, user, params],
     queryFn: async () => {
-      if (!user) return;
+      if (!user) throw new Error("User not found");
       const res = await user.api.get(endpoint, params ? { params } : undefined);
       const data = responseSchema.parse(res.data);
       return data;
     },
     enabled: !!user && !disabled,
+  });
+}
+
+export function useDelete<Params>({
+  endpoint,
+  params,
+  invalidateEndpoints,
+}: {
+  endpoint: string;
+  params?: Params;
+  invalidateEndpoints?: string[];
+}) {
+  const { user } = useMiddlecat();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("User not found");
+      await user.api.delete(endpoint, { params });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries([endpoint, user]);
+      if (invalidateEndpoints) {
+        invalidateEndpoints.forEach((endpoint) => {
+          queryClient.invalidateQueries([endpoint, user]);
+        });
+      }
+    },
   });
 }
 

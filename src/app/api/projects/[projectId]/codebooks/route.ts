@@ -15,6 +15,10 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         .where(eq(codebooks.projectId, params.projectId))
         .as("baseQuery"),
     paramsSchema: CodebooksTableParamsSchema,
+    projectId: params.projectId,
+    authorizeFunction: async (auth, body) => {
+      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
+    },
     idColumn: "id",
     queryColumns: ["name"],
   });
@@ -46,6 +50,7 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     req,
     bodySchema: CodebookCreateBodySchema,
     responseSchema: CodebookCreateResponseSchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

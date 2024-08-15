@@ -39,6 +39,7 @@ interface FormFieldProps<T extends FieldValues> {
   onChangeInterceptor?: (value: any) => any;
   clearable?: boolean;
   className?: string;
+  placeholder?: string;
 }
 
 interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
@@ -136,7 +137,13 @@ export function NumberFormField<T extends FieldValues>({
   );
 }
 
-export function TextAreaFormField<T extends FieldValues>({ control, name, zType, className }: FormFieldProps<T>) {
+export function TextAreaFormField<T extends FieldValues>({
+  control,
+  name,
+  zType,
+  className,
+  placeholder,
+}: FormFieldProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
   return (
     <FormField
@@ -146,7 +153,7 @@ export function TextAreaFormField<T extends FieldValues>({ control, name, zType,
         <FormItem className="flex h-full flex-col">
           <FormFieldTitle title={openAPI.title} description={openAPI.description} />
           <FormControl>
-            <Textarea placeholder={openAPI.example} {...field} className={className} />
+            <Textarea placeholder={placeholder || openAPI.example} {...field} className={className} />
           </FormControl>
         </FormItem>
       )}

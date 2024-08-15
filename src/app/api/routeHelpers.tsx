@@ -36,7 +36,7 @@ interface CreateGetParams<BodyOut, BodyIn> {
   req: NextRequest;
   paramsSchema?: z.ZodType<BodyOut, z.ZodTypeDef, BodyIn>;
   responseSchema?: z.ZodTypeAny;
-  projectId?: number;
+  projectId: number | null;
   authorizeFunction?: AuthorizeFunction<BodyIn>;
 }
 
@@ -77,7 +77,7 @@ interface CreateDeleteParams<BodyIn> {
   req: NextRequest;
   paramsSchema?: z.ZodType<BodyIn>;
   authorizeFunction?: AuthorizeFunction<BodyIn>;
-  projectId?: number;
+  projectId: number | null;
 }
 
 export async function createDelete<BodyIn>({
@@ -113,7 +113,7 @@ interface CreateTableGetParams<T> {
   paramsSchema: z.ZodType<T>;
   responseSchema?: z.ZodTypeAny;
   idColumn: string;
-  projectId?: number;
+  projectId: number | null;
   queryColumns?: string[];
   maxRows?: number;
   authorizeFunction?: AuthorizeFunction<T>;
@@ -205,7 +205,7 @@ interface CreateCommonUpdateParams<BodyIn, BodyOut> {
   req: Request;
   bodySchema: z.ZodType<BodyOut, z.ZodTypeDef, BodyIn>;
   authorizeFunction: AuthorizeFunction<BodyOut>;
-  projectId?: number;
+  projectId: number | null;
   responseSchema?: z.ZodTypeAny;
   errorFunction?: ErrorFunction<BodyOut>;
 }

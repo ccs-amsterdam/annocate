@@ -10,22 +10,13 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        // await tx
-        //   .update(jobBlocks)
-        //   .set({ position: sql`${jobBlocks.position} + 1` })
-        //   .where(
-        //     and(
-        //       eq(jobBlocks.projectId, params.projectId),
-        //       eq(jobBlocks.jobId, params.jobId),
-        //       gte(jobBlocks.position, body.position),
-        //     ),
-        //   );
-        body.position = body.position - 0.1;
+        body.position = body.position - 0.5;
 
         const [newJobBlock] = await tx
           .insert(jobBlocks)
           .values({ projectId: params.projectId, jobId: params.jobId, ...body })
           .returning();
+
         await reindexPositions(tx, params.jobId);
 
         return newJobBlock;
@@ -34,23 +25,25 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     req,
     bodySchema: JobBlockCreateSchema,
     responseSchema: IdResponseSchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
+      console.log(auth);
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
   });
 }
 
-export async function reindexPositions(tx: any, jobId: number) {
-  const query = tx.execute(sql`
-    WITH position AS
+export async function reindexPositions(tx: any, jobId: number): Promise<void> {
+  tx.execute(sql`
+    WITH new_position AS
     (
         SELECT row_number() over (order by position) AS newpos, id
         FROM ${jobBlocks}
+        WHERE ${jobBlocks.jobId} = ${jobId}
     ) 
-    UPDATE ${jobBlocks} set position = position.newpos-1
-    FROM position
-    WHERE ${jobBlocks.id} = position.id
+    UPDATE ${jobBlocks} 
+    SET position = new_position.newpos-1
+    FROM new_position
+    WHERE ${jobBlocks.id} = new_position.id
     `);
-
-  await query;
 }

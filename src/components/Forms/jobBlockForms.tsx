@@ -121,15 +121,49 @@ export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, curre
   );
 }
 
+function RulesForm({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  const shape = JobAnnotationBlockSchema.shape;
+  const rulesShape = shape.rules.shape;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <NumberFormField
+        control={form.control}
+        min={1}
+        zType={rulesShape.maxCodersPerUnit}
+        name="rules.maxCodersPerUnit"
+        clearable
+      />
+      <NumberFormField
+        control={form.control}
+        min={1}
+        zType={rulesShape.maxUnitsPerCoder}
+        name="rules.maxUnitsPerCoder"
+        clearable
+      />
+      <NumberFormField
+        control={form.control}
+        min={1}
+        zType={rulesShape.overlapUnits}
+        name="rules.overlapUnits"
+        clearable
+      />
+      <BooleanFormField control={form.control} zType={rulesShape.randomizeUnits} name="rules.randomizeUnits" />
+    </div>
+  );
+}
+
 function defaultValues(type: "survey" | "annotation", position: number, current?: JobBlock): JobBlockUpdate {
   if (type === "survey")
     return {
       type: "survey",
+      codebookId: current?.codebookId || undefined,
       position: current?.position || position,
     };
   if (type === "annotation")
     return {
       type: "annotation",
+      codebookId: current?.codebookId || undefined,
       position: current?.position || position,
       units: [],
       rules: current?.rules || { randomizeUnits: true },

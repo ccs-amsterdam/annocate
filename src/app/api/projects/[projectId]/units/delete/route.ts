@@ -16,6 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
     },
     req,
     bodySchema: UnitDataDeleteBodySchema,
+    projectId: params.projectId,
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
