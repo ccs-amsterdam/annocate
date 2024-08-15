@@ -1,17 +1,26 @@
 import { AnnotateUnit, Annotation, Codebook, Layout } from "@/app/types";
 
 interface Params {
+  type: "survey" | "annotation";
   token: string;
-  data: Record<string, string | number | boolean>;
-  layout: Layout;
+  data?: Record<string, string | number | boolean>;
+  layout?: Layout;
   codebook?: Codebook;
   codebook_id?: number;
   annotations: Annotation[];
 }
 
-export function createAnnotateUnit({ token, data, layout, codebook, codebook_id, annotations }: Params): AnnotateUnit {
+export function createAnnotateUnit({
+  type,
+  token,
+  data,
+  layout,
+  codebook,
+  codebook_id,
+  annotations,
+}: Params): AnnotateUnit {
   const unit: AnnotateUnit = {
-    type: "code",
+    type,
     token,
     status: "IN_PROGRESS",
     content: {
@@ -25,6 +34,8 @@ export function createAnnotateUnit({ token, data, layout, codebook, codebook_id,
 
   if (codebook === undefined && codebook_id === undefined)
     throw new Error("Either codebook or codebook_id must be provided");
+
+  if (data === undefined || layout === undefined) return unit;
 
   layout.fields.forEach((field) => {
     if (unit.content.grid?.areas) unit.content.grid.areas.push([field.name]);
@@ -63,9 +74,9 @@ export function createAnnotateUnit({ token, data, layout, codebook, codebook_id,
     //   if (!unit.content.variables) unit.content.variables = {};
     //   unit.content.variables[variable.name] = data[variable.column];
     // });
-
-    if (layout.grid) unit.content.grid = layout.grid;
   });
+
+  if (layout.grid) unit.content.grid = layout.grid;
 
   return unit;
 }

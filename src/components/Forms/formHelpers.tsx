@@ -505,6 +505,7 @@ interface SelectCodebookProps<T extends FieldValues> {
   name: Path<T>;
   zType: z.ZodTypeAny;
   projectId: number;
+  type: "survey" | "annotation";
   current?: JobBlock;
 }
 
@@ -513,13 +514,14 @@ export function SelectCodebookFormField<T extends FieldValues>({
   name,
   zType,
   projectId,
+  type,
   current,
 }: SelectCodebookProps<T>) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(current?.codebookName || "");
   const useCodebooksProps = useCodebooks(projectId);
   const [newName, setNewName] = useState("");
-  const { create } = useCreateEmptyCodebook(projectId);
+  const { create } = useCreateEmptyCodebook(projectId, type);
   const openAPI = OpenAPIMeta(zType, "codebookId");
 
   useEffect(() => {

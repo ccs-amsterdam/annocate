@@ -49,7 +49,7 @@ export const UnitContentSchema = z.object({
   grid: UnitLayoutGridSchema.optional(),
 });
 
-export const UnitTypeSchema = z.enum(["code", "survey"]);
+export const UnitTypeSchema = z.enum(["annotation", "survey"]);
 
 export const AnnotateStatusSchema = z.enum(["IN_PROGRESS", "DONE"]);
 

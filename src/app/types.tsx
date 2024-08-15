@@ -644,7 +644,7 @@ export interface OauthClients {
 
 ///// UNIT DATA
 
-export type UnitType = "train" | "test" | "code" | "survey";
+export type UnitType = "annotation" | "survey";
 
 /**
  * This function gets a unit from the server.

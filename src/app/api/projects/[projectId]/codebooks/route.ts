@@ -1,7 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import db, { codebooks } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { CodebookCreateBodySchema, CodebookCreateResponseSchema, CodebooksTableParamsSchema } from "./schemas";
 
@@ -10,7 +10,13 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     req,
     tableFunction: () =>
       db
-        .select({ id: codebooks.id, projectId: codebooks.projectId, name: codebooks.name, created: codebooks.created })
+        .select({
+          id: codebooks.id,
+          projectId: codebooks.projectId,
+          name: codebooks.name,
+          created: codebooks.created,
+          type: sql<string>`${codebooks.codebook}->>'type'`.as("type"),
+        })
         .from(codebooks)
         .where(eq(codebooks.projectId, params.projectId))
         .as("baseQuery"),

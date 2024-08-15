@@ -1,7 +1,7 @@
-import { ConditionReport, SwipeRefs, Transition } from "@/app/types";
+import { SwipeRefs, Transition } from "@/app/types";
 import Document from "@/components/Document/Document";
 import swipeControl from "@/functions/swipeControl";
-import React, { RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { RefObject, useCallback, useMemo, useRef } from "react";
 import { useSwipeable } from "react-swipeable";
 import QuestionForm from "./QuestionForm";
 // import FeedbackPortal from "./FeedbackPortal";
@@ -12,7 +12,7 @@ interface QuestionTaskProps {
 }
 
 const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
-  const { unit, codebook, annotationLib, annotationManager, progress, selectUnit } = useUnit();
+  const { unit, height, codebook, annotationLib, annotationManager, progress, selectUnit } = useUnit();
   const divref = useRef<HTMLDivElement>(null);
   const textref = useRef<HTMLDivElement>(null);
   const boxref = useRef<HTMLDivElement>(null);
@@ -49,29 +49,34 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   if (!unit) return null;
 
+  // const unitHeight = codebook.type === "survey" ? "max-h-0" : "";
+  // const formHeight = codebook.type === "survey" ? "h-full" : "";
+
   return (
-    <div className="flex h-full flex-col bg-background" ref={divref}>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background" ref={divref}>
       {/* <FeedbackPortal
         variable={variable.name}
         conditionReport={conditionReport}
         setConditionReport={setConditionReport}
       /> */}
-      <div {...textSwipe} className={`relative z-10 min-h-0 flex-[1_1_0] overflow-hidden`}>
-        <div ref={refs.box} className="oveflow-hidden relative z-20 h-full will-change-auto">
-          {/* This div moves around behind the div containing the document to show the swipe code  */}
-          <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
-          <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
-            <Document
-              showAll={true}
-              onReady={onNewUnit}
-              focus={variable?.fields}
-              centered={true}
-              blockEvents={blockEvents}
-            />
+      {codebook.type === "annotation" ? (
+        <div {...textSwipe} className={`relative z-10 min-h-0 flex-[1_1_0] overflow-hidden`}>
+          <div ref={refs.box} className="oveflow-hidden relative z-20 h-full will-change-auto">
+            {/* This div moves around behind the div containing the document to show the swipe code  */}
+            <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
+            <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
+              <Document
+                showAll={true}
+                onReady={onNewUnit}
+                focus={variable?.fields}
+                centered={true}
+                blockEvents={blockEvents}
+              />
+            </div>
           </div>
         </div>
-      </div>
-      <div {...menuSwipe} className={`flex-[1,1,auto]`}>
+      ) : null}
+      <div {...menuSwipe} className={`${codebook.type === "survey" ? "h-full overflow-auto" : null} flex-[1,1,auto]`}>
         <QuestionForm
           unit={unit}
           codebook={codebook}

@@ -21,7 +21,7 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 
   return (
     <AnnotatorProvider jobServer={jobServer} height={height}>
-      <div ref={ref} className="relative grid h-full grid-rows-[min-content,1fr]">
+      <div ref={ref} className="relative grid h-full w-full grid-rows-[min-content,1fr]">
         <AnnotationMenu />
         <AnnotationUnit jobServer={jobServer} blockEvents={blockEvents} />
       </div>

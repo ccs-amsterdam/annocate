@@ -2,9 +2,9 @@ import { Codebook, ExtendedCodebook, ExtendedVariable, Variable } from "@/app/ty
 import randomColor from "randomcolor";
 import standardizeColor from "./standardizeColor";
 
-export function importCodebook(codebook: Codebook): ExtendedCodebook {
+export function importCodebook(codebook: Codebook | ExtendedCodebook): ExtendedCodebook {
   return {
-    unit: codebook.unit,
+    ...codebook,
     variables: importVariables(codebook.variables),
     settings: codebook.settings || {},
   };

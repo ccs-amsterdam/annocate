@@ -204,6 +204,13 @@ h5 {
   font-size: 1em;
 }
 
+pre {
+  min-width: 2px;
+  overflow: auto;
+  width: 20px;
+  display: none;
+}
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);

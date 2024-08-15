@@ -49,7 +49,7 @@ export default class AnnotationManager {
 
   constructor(setAnnotationLib: SetState<AnnotationLibrary>) {
     this.annotationLib = {
-      type: "code",
+      type: "annotation",
       status: "IN_PROGRESS",
       annotations: {},
       byToken: {},
@@ -90,6 +90,7 @@ export default class AnnotationManager {
     } else {
       const status = await this.postAnnotations("IN_PROGRESS");
       this.annotationLib.variableStatuses[this.annotationLib.variableIndex] = "done";
+      this.annotationLib.variableStatuses = [...this.annotationLib.variableStatuses];
       this.updateAnnotationLibrary(this.annotationLib);
       this.setVariableIndex(this.annotationLib.variableIndex + 1);
       return { status, conditionReport: null };

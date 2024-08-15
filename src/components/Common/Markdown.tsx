@@ -10,7 +10,7 @@ interface MarkdownProps {
 
 const Markdown = ({ children, style = {} }: MarkdownProps) => {
   return (
-    <div style={{ ...style }} className="prose max-w-none dark:prose-invert">
+    <div style={{ ...style }} className=" prose w-full min-w-0 dark:prose-invert">
       <ReactMarkdown
         components={{
           mark(props) {

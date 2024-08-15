@@ -64,10 +64,10 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
         style["grid-template-rows" as any] = innerEl.clientHeight + "px";
     }
 
-    // first do a quick update, using a small delay that is enough for most content
+    // first do quick updates, using a small delay that is enough for most content
     const timer = setTimeout(() => resize(), 100);
-    // then check whether height needs to change with short intervalls. This is fairly inexpensive
-    // and ensures that theres no issues when content is slow to load (e.g., images)
+    // then check whether height needs to change with short intervalls. This is sufficiently inexpensive
+    // and ensures that theres no issues when content is slow to load
     const interval = setInterval(() => {
       resize();
     }, 200);

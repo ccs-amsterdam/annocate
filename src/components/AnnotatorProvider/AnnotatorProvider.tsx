@@ -137,6 +137,7 @@ function initProgress(): Progress {
 
 function initCodebook(): Codebook {
   return {
+    type: "annotation",
     unit: {
       fields: [],
       meta: [],
@@ -158,7 +159,7 @@ function initCodebook(): Codebook {
 function initUnit(): ExtendedUnit {
   return {
     token: "",
-    type: "code",
+    type: "annotation",
     status: "IN_PROGRESS",
     content: { grid: { areas: "" } },
     annotations: [],
@@ -167,7 +168,7 @@ function initUnit(): ExtendedUnit {
 
 function initAnnotationLib(): AnnotationLibrary {
   return {
-    type: "code",
+    type: "annotation",
     status: "IN_PROGRESS",
     annotations: {},
     byToken: {},

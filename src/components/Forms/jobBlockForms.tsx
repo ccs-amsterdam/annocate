@@ -110,6 +110,7 @@ export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, curre
           zType={shape.codebookId}
           name="codebookId"
           projectId={projectId}
+          type={type}
           current={current}
         />
         {renderAnnotationFormFields()}

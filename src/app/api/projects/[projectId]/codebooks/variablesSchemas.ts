@@ -39,9 +39,6 @@ export const CodebookCodeSchema = z.object({
     title: "Value",
     description: "Optionally, you can specify a numeric value related to the code.",
   }),
-
-  required_for: z.array(z.string()).optional(),
-  makes_irrelevant: z.array(z.string()).optional(),
 });
 
 export const CodebookCodesSchema = z
@@ -88,14 +85,19 @@ export const CodebookVariableSchema = z.object({
   }),
   question: z.string().max(512).openapi({
     title: "Question",
-    description: "The question that will be shown to the annotator.",
+    description: "The question that will be shown to the annotator. Supports scripts and markdown.",
     example: "What is the question you want to ask?",
   }),
   instruction: z.string().optional().openapi({
     title: "Instruction",
-    description:
-      "Provide specific instructions for this variable. This overwrites the general instruction for the codebook.",
+    description: "Provide specific instructions for this variable. Supports scripts and markdown.",
     example: "Here we measure emotion, defined as ...",
+  }),
+  instructionMode: z.enum(["top", "bottom", "modal", "auto_modal"]).optional().openapi({
+    title: "Instruction Mode",
+    description:
+      "Choose where the instruction should be shown (default is top). Can be at the top, bottom (directly below question), or in a modal that the annotator can open. If set to auto_modal, the instruction will be shown automatically the first time the annotator sees this variable in a session.",
+    example: "top",
   }),
 
   perField: z

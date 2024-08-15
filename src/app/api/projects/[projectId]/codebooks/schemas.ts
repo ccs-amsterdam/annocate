@@ -7,33 +7,41 @@ import { UnitLayoutSchema } from "./layoutSchemas";
 extendZodWithOpenApi(z);
 
 export const CodebookSettingsSchema = z.object({
-  instruction: z.string().optional().openapi({
-    title: "Instruction",
-    description:
-      "Optionally, you can provide additional instructions for the codebook. This is a markdown string, so you can style it as you like",
-    example: "Here we measure emotion, defined as ...",
-  }),
-  auto_instruction: z.boolean().optional().openapi({
-    title: "Automatically open instruction",
-    description:
-      "If enabled, the instruction is automatically shown to the annotator the first time they encounter this codebook a session.",
-    example: true,
-  }),
+  instruction: z
+    .string()
+    .optional()
+    .openapi({
+      title: "Instruction",
+      description: `Codebooks can contain general instructions for the annotator. These will be shown the first time the annotator sees the codebook in a session,
+       and can be opened again by clicking the instruction button.`,
+      example: "Here we measure emotion, defined as ...",
+    }),
 });
 
-///////////////// VARIABLES
-
-export const CodebookSchema = z.object({
-  unit: UnitLayoutSchema.openapi({
-    title: "Unit",
-    description: "Design the units of analysis",
-  }),
+export const CodebookBaseSchema = z.object({
+  type: z.enum(["survey", "annotation"]),
   variables: CodebookVariablesSchema.openapi({
     title: "Variables",
     description: "The variables that will be shown to the annotator",
   }),
   settings: CodebookSettingsSchema,
 });
+
+export const CodebookSurveySchema = CodebookBaseSchema.extend({
+  type: z.literal("survey"),
+});
+
+export const CodebookAnnotationSchema = CodebookBaseSchema.extend({
+  type: z.literal("annotation"),
+  unit: UnitLayoutSchema.openapi({
+    title: "Unit",
+    description: "Design the units of analysis",
+  }),
+});
+
+export const CodebookSchema = z.union([CodebookSurveySchema, CodebookAnnotationSchema]);
+
+//////////////////////////////////////////////////////////
 
 export const CodebooksTableParamsSchema = createTableParamsSchema({});
 
@@ -48,6 +56,7 @@ export const CodebooksResponseSchema = z.object({
   projectId: z.number(),
   created: z.coerce.date(),
   name: z.string(),
+  type: z.enum(["survey", "annotation"]),
 });
 
 export const CodebookResponseSchema = z.object({

@@ -29,8 +29,8 @@ import React from "react";
 import {
   CodebookSchema,
   CodebookCreateBodySchema,
-  CodebooksResponseSchema,
   CodebookUpdateBodySchema,
+  CodebookResponseSchema,
 } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import {
   fieldTypeOptions,
@@ -44,48 +44,9 @@ type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
 type CodebookCreateBodySchema = z.input<typeof CodebookCreateBodySchema>;
 
-export function useCreateEmptyCodebook(projectId: number) {
-  const { mutateAsync } = useCreateCodebook(projectId);
-
-  const create = useCallback(
-    (name: string) => {
-      const newCodebook: CodebookCreateBodySchema = {
-        name,
-        codebook: {
-          unit: {
-            fields: [],
-            meta: [],
-            grid: {
-              areas: [],
-              rows: [],
-              columns: [],
-            },
-          },
-          settings: {
-            instruction: "",
-            auto_instruction: false,
-          },
-          variables: [
-            {
-              name: "Variable_1",
-              question: "Question goes here",
-              type: "select code",
-              codes: [{ code: "Example", value: 1, color: "blue" }],
-            },
-          ],
-        },
-      };
-      return mutateAsync(newCodebook);
-    },
-    [mutateAsync],
-  );
-
-  return { create };
-}
-
 interface UpdateCodebookProps {
   projectId: number;
-  current: z.infer<typeof CodebooksResponseSchema>;
+  current: z.infer<typeof CodebookResponseSchema>;
   afterSubmit?: () => void;
   setPreview?: (codebook: Codebook | undefined) => void;
 }
@@ -118,6 +79,18 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [form]);
+
+  function renderUnitFields() {
+    if (current.codebook.type !== "annotation") return null;
+    return (
+      <div>
+        <div className="prose mb-2 mt-6 w-full border-b-2 pb-2  dark:prose-invert">
+          <h3 className="text-foreground/80">Unit of analysis</h3>
+        </div>
+        <UnitFields form={form} />
+      </div>
+    );
+  }
 
   function onSubmit(values: CodebookUpdateBody) {
     if (variables.length === 0) return alert("You need to add at least one variable");
@@ -157,12 +130,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 
         <TextFormField control={form.control} zType={shape.name} name="name" />
 
-        <div>
-          <div className="prose mb-2 mt-6 w-full border-b-2 pb-2  dark:prose-invert">
-            <h3 className="text-foreground/80">Unit of analysis</h3>
-          </div>
-          <UnitFields form={form} />
-        </div>
+        {renderUnitFields()}
         <div>
           <div className="prose mb-2 mt-6 w-full border-b-2 pb-2 dark:prose-invert">
             <h3 className="text-foreground/80">Variables</h3>
@@ -184,20 +152,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     </Form>
   );
 });
-
-function WatchForPreview({ form, setPreview }: { form: any; setPreview?: (codebook: Codebook | undefined) => void }) {
-  const watch = useWatch({ control: form.control, name: "codebook" });
-  useEffect(() => {
-    if (!setPreview) return;
-    const timeout = setTimeout(() => {
-      form.trigger();
-      const codebook = CodebookSchema.safeParse(watch);
-      if (codebook.success) setPreview(codebook.data);
-    }, 250);
-    return () => clearTimeout(timeout);
-  }, [watch, setPreview, form]);
-  return <div></div>;
-}
 
 function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
   const [accordionValue, setAccordionValue] = useState<string>("");
@@ -459,10 +413,87 @@ function CodebookVariable<T extends FieldValues>({
         onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
       />
       <TextFormField control={control} zType={generalShape.question} name={appendPath("question")} />
-      <TextFormField control={control} zType={generalShape.instruction} name={appendPath("instruction")} />
+      <TextAreaFormField
+        className="resize"
+        control={control}
+        zType={generalShape.instruction}
+        name={appendPath("instruction")}
+      />
       {renderType()}
     </div>
   );
+}
+
+export function useCreateEmptyCodebook(projectId: number, type: "survey" | "annotation" | undefined) {
+  const { mutateAsync } = useCreateCodebook(projectId);
+
+  const create = useCallback(
+    (name: string) => {
+      const unit = {
+        fields: [],
+        meta: [],
+        grid: {
+          areas: [],
+          rows: [],
+          columns: [],
+        },
+      };
+      const settings = {
+        instruction: "",
+      };
+      const variables = [
+        {
+          name: "Variable_1",
+          question: "Question goes here",
+          type: "select code" as const,
+          codes: [
+            { code: "First answer", value: 1 },
+            { code: "Second answer", value: 2 },
+            { code: "Third answer", value: 3 },
+          ],
+        },
+      ];
+
+      if (type === "survey") {
+        const newCodebook: CodebookCreateBodySchema = {
+          name,
+          codebook: {
+            type: "survey",
+            settings,
+            variables,
+          },
+        };
+        return mutateAsync(newCodebook);
+      }
+      const newCodebook: CodebookCreateBodySchema = {
+        name,
+        codebook: {
+          unit,
+          type: "annotation",
+          settings,
+          variables,
+        },
+      };
+      return mutateAsync(newCodebook);
+    },
+    [mutateAsync, type],
+  );
+
+  return { create };
+}
+
+function WatchForPreview({ form, setPreview }: { form: any; setPreview?: (codebook: Codebook | undefined) => void }) {
+  const watch = useWatch({ control: form.control, name: "codebook" });
+  useEffect(() => {
+    if (!setPreview) return;
+    const timeout = setTimeout(() => {
+      form.trigger();
+      const codebook = CodebookSchema.safeParse(watch);
+      if (codebook.success) setPreview(codebook.data);
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [watch, setPreview, form]);
+  return <div></div>;
 }
 
 function defaultField(name: string): z.input<typeof UnitMarkdownLayoutSchema> {

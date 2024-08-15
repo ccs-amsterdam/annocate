@@ -60,9 +60,10 @@ class JobServerPreview implements JobServer {
     // simulate annotation token, used to authorize postAnnotations
     const token = JSON.stringify({ user: this.user.email, unitId: unitData.id });
     annotateUnit = createAnnotateUnit({
+      type: this.codebook.type,
       token,
       data: unitData.data,
-      layout: this.codebook.unit,
+      layout: this.codebook.type === "survey" ? undefined : this.codebook.unit,
       codebook_id: this.codebookId,
       annotations: this.annotations[unitData.id] || [],
     });
@@ -100,6 +101,7 @@ class JobServerPreview implements JobServer {
 }
 
 const defaultCodebook: Codebook = {
+  type: "annotation",
   unit: {
     fields: [
       { name: "title", type: "text", column: "title", style: { fontSize: "1.2rem", fontWeight: "bold" } },

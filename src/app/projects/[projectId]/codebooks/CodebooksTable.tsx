@@ -5,6 +5,7 @@ import { useCreateEmptyCodebook } from "@/components/Forms/codebookForms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
+import { SimpleDropdown } from "@/components/ui/simpleDropdown";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,7 +15,7 @@ interface Props {
   projectId: number;
 }
 
-const COLUMNS = ["name", "created"];
+const COLUMNS = ["name", "type", "created"];
 
 export function CodebooksTable({ projectId }: Props) {
   const useCodebooksProps = useCodebooks(projectId);
@@ -34,11 +35,12 @@ export function CodebooksTable({ projectId }: Props) {
   );
 }
 
-function CreateCodebookButton({ projectId: projectId }: Props) {
+function CreateCodebookButton({ projectId }: Props) {
   const [open, setOpen] = useState(false);
+  const [type, setType] = useState<"survey" | "annotation" | undefined>(undefined);
   const [newName, setNewName] = useState("");
   const router = useRouter();
-  const { create } = useCreateEmptyCodebook(projectId);
+  const { create } = useCreateEmptyCodebook(projectId, type);
 
   return (
     <SimpleDialog
@@ -56,14 +58,27 @@ function CreateCodebookButton({ projectId: projectId }: Props) {
         className="flex items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+          if (!newName || !type) return;
           create(newName).then(({ id }) => router.push(`/projects/${projectId}/codebooks/${id}`));
         }}
       >
         <Input placeholder="New codebook" value={newName} onChange={(e) => setNewName(e.target.value)} />
-        <Button disabled={!newName} className="ml-auto flex  w-min gap-1" variant="secondary">
+        <SimpleDropdown
+          options={typeOptions}
+          optionKey="name"
+          placeholder="Select type"
+          value={type}
+          onSelect={(t) => setType(t.value)}
+        />
+        <Button disabled={!newName || !type} className="ml-auto flex  w-min gap-1" variant="secondary">
           <Plus />
         </Button>
       </form>
     </SimpleDialog>
   );
 }
+
+const typeOptions: { name: string; value: "survey" | "annotation" }[] = [
+  { name: "Survey", value: "survey" },
+  { name: "Annotation", value: "annotation" },
+];
