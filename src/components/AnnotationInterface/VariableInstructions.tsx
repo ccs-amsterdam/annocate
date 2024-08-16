@@ -22,14 +22,14 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
   const instruction = variable?.instruction || codebook?.settings?.instruction;
 
-  if (!instruction) return <div className="my-2">{children}</div>;
+  if (!instruction) return <div className="">{children}</div>;
 
   const mode = variable?.instructionMode || "after";
   const foldable = codebook.type !== "survey";
 
   if (mode === "after") {
     return (
-      <div className="mt-3">
+      <div className="">
         {children}
         <FoldableInstruction instruction={instruction} foldable={foldable} />
       </div>
@@ -37,7 +37,7 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   }
   if (mode === "before") {
     return (
-      <div className="">
+      <div className="mb-1">
         <FoldableInstruction instruction={instruction} foldable={foldable} />
         {children}
       </div>
@@ -81,12 +81,12 @@ function FoldableInstruction({ instruction, foldable }: InstructionsProps) {
     return () => clearInterval(interval);
   }, [show, ref]);
 
-  const icon = show ? <EyeOff className="h-5 w-5 " /> : <Info className="h-5 w-5 " />;
+  const icon = show ? <X className="h-5 w-5 " /> : <Info className="h-5 w-5 " />;
 
   return (
     <div
       style={style}
-      className={`${show ? "my-2" : "mt-1"}  relative flex  min-w-0  overflow-hidden   transition-all`}
+      className={`${show ? "my-2" : "bg-primary pb-1 text-foreground"}  relative flex  min-w-0  overflow-hidden   transition-all`}
     >
       <div ref={ref} className={`  ${show ? " py-1" : "py-3"} w-full overflow-hidden px-9  `}>
         {show ? (
@@ -94,13 +94,13 @@ function FoldableInstruction({ instruction, foldable }: InstructionsProps) {
             {instruction}
           </Markdown>
         ) : (
-          <div className="w-full border-t border-primary "></div>
+          <div className="hidden w-full border-t border-primary "></div>
         )}
       </div>
       <Button
         onClick={() => setShow(!show)}
         variant="ghost"
-        className={` ${foldable ? "" : "hidden"}  absolute right-0 z-30 h-full rounded px-2 text-foreground hover:bg-transparent hover:text-foreground `}
+        className={` ${foldable ? "" : "hidden"} absolute right-0 z-30 h-full rounded px-2 text-foreground text-inherit transition-all hover:bg-transparent hover:text-inherit`}
       >
         <div className="flex gap-2">{icon}</div>
       </Button>
@@ -136,17 +136,23 @@ function ModalInstruction({ instruction, autoInstruction }: InstructionsProps) {
 
   return (
     <Drawer
+      modal={false}
       direction="right"
       open={!!instruction && open}
       onOpenChange={(open) => {
         setOpen(!!instruction && open);
       }}
     >
-      <DrawerTrigger className={`relative ml-auto  cursor-pointer px-2`}>
+      <DrawerTrigger className={`relative ml-auto   cursor-pointer px-2`}>
         <Info className={`ml-auto  inline-block h-5  w-5 `} />
       </DrawerTrigger>
-      <DrawerContent className="fixed bottom-0 left-auto right-0   mt-0 h-screen w-[500px] max-w-[90vw] rounded-none  border-y-0 bg-background p-3  ">
-        <DialogHeader className="invisible">
+      <DrawerContent className="fixed bottom-0 left-auto right-0 mt-0   h-screen w-[500px] max-w-[90vw] rounded-none border-y-0  bg-background  p-3  ">
+        <DrawerClose asChild className="mt-autod ml-auto mt-2 ">
+          <Button variant="ghost" size="icon" className="absolute top-0 mb-auto ml-auto  bg-transparent">
+            <X className="h-5 w-5" />
+          </Button>
+        </DrawerClose>
+        <DialogHeader className="invisible h-0">
           <DialogTitle>Instructions</DialogTitle>
           <DialogDescription>Instructions</DialogDescription>
         </DialogHeader>
@@ -162,7 +168,7 @@ function ModalInstruction({ instruction, autoInstruction }: InstructionsProps) {
           <div className="h-[10vh]" />
         </div>
         <DrawerClose asChild className="mt-auto">
-          <Button variant="outline" size="icon" className="mt-auto w-full bg-background/40 hover:bg-foreground/20">
+          <Button variant="default" className="mt-auto w-full  hover:bg-foreground/20">
             Close
           </Button>
         </DrawerClose>

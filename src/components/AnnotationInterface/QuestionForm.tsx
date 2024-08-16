@@ -44,7 +44,13 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
             variableStatuses={annotationLib.variableStatuses}
             setQuestionIndex={(index: number) => annotationManager.setVariableIndex(index)}
           >
-            <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+            <div
+              className={`relative z-20  flex w-9 flex-auto justify-center bg-primary px-9 py-2 text-[length:inherit]   text-primary-foreground `}
+            >
+              <div className={`flex items-center justify-center gap-3 text-center text-lg `}>
+                <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+              </div>
+            </div>
           </QuestionIndexStep>
         </VariableInstructions>
       </div>

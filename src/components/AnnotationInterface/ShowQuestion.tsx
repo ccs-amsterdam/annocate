@@ -11,7 +11,7 @@ const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
   const questionText = prepareQuestion(unit, variable, Object.values(annotationLib.annotations));
 
-  return <div className="font-bold">{questionText}</div>;
+  return <div className="min-h-8">{questionText}</div>;
 };
 
 const prepareQuestion = (unit: ExtendedUnit, question: Variable, annotations: Annotation[]) => {
