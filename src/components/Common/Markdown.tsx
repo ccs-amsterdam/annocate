@@ -5,12 +5,13 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 
 interface MarkdownProps {
   children: string;
+  compact?: boolean;
   style?: CSSProperties;
 }
 
-const Markdown = ({ children, style = {} }: MarkdownProps) => {
+const Markdown = ({ children, compact, style = {} }: MarkdownProps) => {
   return (
-    <div style={{ ...style }} className=" prose w-full min-w-0 dark:prose-invert">
+    <div style={{ ...style }} className={`${compact ? "prose-sm" : "prose"}   w-full min-w-0 dark:prose-invert `}>
       <ReactMarkdown
         components={{
           mark(props) {

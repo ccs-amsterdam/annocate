@@ -5,6 +5,7 @@ import {
   CodebookScaleTypeSchema,
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
+  InstructionModeOptions,
   variableTypeOptions,
 } from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,7 +47,7 @@ type CodebookCreateBodySchema = z.input<typeof CodebookCreateBodySchema>;
 
 interface UpdateCodebookProps {
   projectId: number;
-  current: z.infer<typeof CodebookResponseSchema>;
+  current: z.input<typeof CodebookResponseSchema>;
   afterSubmit?: () => void;
   setPreview?: (codebook: Codebook | undefined) => void;
 }
@@ -418,6 +419,14 @@ function CodebookVariable<T extends FieldValues>({
         control={control}
         zType={generalShape.instruction}
         name={appendPath("instruction")}
+      />
+      <DropdownFormField
+        control={control}
+        zType={generalShape.instructionMode}
+        name={appendPath("instructionMode")}
+        values={InstructionModeOptions}
+        labelWidth="8rem"
+        placeholder="after (default)"
       />
       {renderType()}
     </div>

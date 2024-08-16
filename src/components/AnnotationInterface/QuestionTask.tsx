@@ -23,6 +23,10 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
 
+  let animate = "";
+  if (annotationLib.previousIndex < annotationLib.variableIndex) animate = "animate-slide-in-right";
+  if (annotationLib.previousIndex > annotationLib.variableIndex) animate = "animate-slide-in-left";
+
   const onNewUnit = useCallback(() => {
     // this is called in the onReady callback in Document
     showUnit(refs.text, refs.box, refs.code);
@@ -76,7 +80,11 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
           </div>
         </div>
       ) : null}
-      <div {...menuSwipe} className={`${codebook.type === "survey" ? "h-full overflow-auto" : null} flex-[1,1,auto]`}>
+      <div
+        {...menuSwipe}
+        key={annotationLib.variableIndex} // needed for performing same animation twice
+        className={`${codebook.type === "survey" ? "h-full overflow-auto" : null} ${animate} flex-[1,1,auto]`}
+      >
         <QuestionForm
           unit={unit}
           codebook={codebook}

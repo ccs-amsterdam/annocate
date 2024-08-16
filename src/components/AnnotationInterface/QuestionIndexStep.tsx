@@ -39,21 +39,23 @@ export default function QuestionIndexStep({
   const hide = variables.length === 1;
 
   return (
-    <div className="relative flex h-full min-h-3 w-full items-center justify-between gap-2 ">
+    <div className="relative flex h-full min-h-6 w-full items-center justify-between gap-2 ">
       <Button
         size="icon"
         variant="ghost"
-        className={`absolute left-0 z-30 h-full rounded-none hover:bg-transparent disabled:opacity-0 ${hide ? "hidden" : ""}`}
+        className={` absolute left-0 z-30 flex h-full w-9 items-start pt-[2px]  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={previousIndex === null}
         onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
       >
         <ChevronLeft />
       </Button>
-      {children}
+      <div className={`relative z-20 mb-1 flex w-9 flex-auto justify-center px-9   text-[length:inherit] `}>
+        <div className={`flex items-center justify-center gap-3 text-center text-lg `}>{children}</div>
+      </div>
       <Button
         size="icon"
         variant="ghost"
-        className={`absolute right-0 z-30 h-full hover:bg-transparent disabled:opacity-0 ${hide ? "hidden" : ""}`}
+        className={`absolute right-0 z-30 flex h-full w-9 items-start bg-transparent pt-[2px] hover:bg-transparent  disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={nextIndex === null}
         onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}
       >

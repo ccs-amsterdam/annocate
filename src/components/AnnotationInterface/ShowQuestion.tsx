@@ -1,11 +1,5 @@
 import { Annotation, AnnotationLibrary, ExtendedCodebook, ExtendedUnit, Variable } from "@/app/types";
-import Markdown from "@/components/Common/Markdown";
-import useSessionStorage from "@/hooks/useSessionStorage";
-import { Info } from "lucide-react";
-import hash from "object-hash";
-import React, { ReactElement, useEffect, useMemo, useState } from "react";
-import { Button } from "../ui/button";
-import { Drawer, DrawerClose, DrawerContent, DrawerTrigger } from "../ui/drawer";
+import React, { ReactElement } from "react";
 
 interface ShowQuestionProps {
   unit: ExtendedUnit;
@@ -13,113 +7,12 @@ interface ShowQuestionProps {
   codebook: ExtendedCodebook;
 }
 
-///////// TODO
-/// integrate questionindex step here. Gives more flexibility
-
 const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
-  const [open, setOpen] = useState(false);
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
   const questionText = prepareQuestion(unit, variable, Object.values(annotationLib.annotations));
-  const instruction = variable?.instruction || codebook?.settings?.instruction;
-  const autoInstruction = true;
 
-  const key = useMemo(() => {
-    return hash({ instruction });
-  }, [instruction]);
-
-  useEffect(() => {
-    if (!instruction) {
-      setOpen(false);
-      return;
-    }
-    if (autoInstruction) {
-      if (!seen) {
-        setOpen(true);
-        setSeen(true);
-      }
-    }
-  }, [instruction, autoInstruction, seen, setSeen]);
-
-  if (!instruction) return <div className="mt-20">{questionText}</div>;
-
-  return (
-    <SurveyInstruction instruction={instruction} open={open} setOpen={setOpen}>
-      {questionText}
-    </SurveyInstruction>
-  );
-
-  return (
-    <ModalInstruction instruction={instruction} open={open} setOpen={setOpen}>
-      {questionText}
-    </ModalInstruction>
-  );
+  return <div className="font-bold">{questionText}</div>;
 };
-
-interface InstructionsProps {
-  children: ReactElement;
-  instruction: string;
-  open: boolean;
-  setOpen: (open: boolean) => void;
-}
-
-function SurveyInstruction({ children, instruction, open, setOpen }: InstructionsProps) {
-  return (
-    <div className="flex  min-w-0 flex-col  px-9">
-      {children}
-      <div className="mt-12">
-        <Markdown style={{ hyphens: "auto" }}>{instruction}</Markdown>
-      </div>
-    </div>
-  );
-}
-
-function ModalInstruction({ children, instruction, open, setOpen }: InstructionsProps) {
-  useEffect(() => {
-    if (!open) return;
-    const stopPropagation = (e: any) => open && e.stopPropagation();
-    const stopWhat = ["keydown", "keyup"];
-    for (const what of stopWhat) document.addEventListener(what, stopPropagation);
-    return () => {
-      for (const what of stopWhat) document.removeEventListener(what, stopPropagation);
-    };
-  }, [open]);
-
-  return (
-    <Drawer
-      direction="right"
-      open={!!instruction && open}
-      onOpenChange={(open) => {
-        setOpen(!!instruction && open);
-      }}
-    >
-      <DrawerTrigger className={`relative  px-9  ${instruction ? "cursor-pointer" : "cursor-default"}`}>
-        {children}
-        <Info
-          className={`ml-3  inline-block h-5 
-          w-5 opacity-80 ${instruction ? "" : "hidden"}`}
-        />
-      </DrawerTrigger>
-      <DrawerContent className="fixed bottom-0 left-auto right-0   mt-0 h-screen w-[700px] max-w-[90vw] rounded-none  border-y-0 bg-background p-3  ">
-        <div className="overflow-auto px-3">
-          <div className="h-[10vh]" />
-          <Markdown
-            style={{
-              hyphens: "auto",
-            }}
-          >
-            {"\n\n\n\n" + instruction || ""}
-          </Markdown>
-          <div className="h-[10vh]" />
-        </div>
-        <DrawerClose className="mt-auto">
-          <Button variant="outline" size="icon" className="mt-auto w-full bg-background/40 hover:bg-foreground/20">
-            Close
-          </Button>
-        </DrawerClose>
-      </DrawerContent>
-    </Drawer>
-  );
-}
 
 const prepareQuestion = (unit: ExtendedUnit, question: Variable, annotations: Annotation[]) => {
   if (!question?.question) return <div />;

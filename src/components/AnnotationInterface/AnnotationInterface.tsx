@@ -30,7 +30,7 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 }
 
 function AnnotationMenu() {
-  const { selectUnit, progress, codebook } = useUnit();
+  const { annotationManager, selectUnit, progress, codebook } = useUnit();
   return (
     <div className="z-20 flex items-center justify-between gap-2 border-b border-foreground bg-gradient-to-b from-primary-dark to-primary px-3 py-2 text-primary-foreground">
       <IndexController

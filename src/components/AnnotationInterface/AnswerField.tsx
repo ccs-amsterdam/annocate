@@ -64,10 +64,9 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
         style["grid-template-rows" as any] = innerEl.clientHeight + "px";
     }
 
-    // first do quick updates, using a small delay that is enough for most content
-    const timer = setTimeout(() => resize(), 100);
-    // then check whether height needs to change with short intervalls. This is sufficiently inexpensive
-    // and ensures that theres no issues when content is slow to load
+    // first do immediate update
+    const timer = setTimeout(() => resize(), 0);
+    // then with intervals for slow loading content
     const interval = setInterval(() => {
       resize();
     }, 200);
@@ -173,10 +172,6 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   //     />
   //   );
 
-  let animate = "";
-  if (annotationLib.previousIndex < variableIndex) animate = "animate-slide-in-right";
-  if (annotationLib.previousIndex > variableIndex) animate = "animate-slide-in-left";
-
   const maxHeightPercent = unit.type === "survey" ? 100 : 40;
 
   return (
@@ -185,7 +180,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
       className={`relative mx-0 my-auto grid  w-full grid-rows-[auto] overflow-hidden   p-0 text-[length:inherit] text-foreground transition-all `}
     >
       <div
-        className={`${animate} mt-auto w-full overflow-auto`}
+        className={`mt-auto w-full overflow-auto`}
         style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
       >
         <div className="py-2">{answerfield}</div>

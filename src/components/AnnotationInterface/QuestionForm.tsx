@@ -6,6 +6,7 @@ import AnswerField from "./AnswerField";
 import QuestionIndexStep from "./QuestionIndexStep";
 import ShowQuestion from "./ShowQuestion";
 import Markdown from "../Common/Markdown";
+import VariableInstructions from "./VariableInstructions";
 
 interface QuestionFormProps {
   unit: ExtendedUnit;
@@ -33,23 +34,19 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
   return (
     <div
       ref={questionRef}
-      className={`${TypeStyling[codebook.type].container} relative z-30 flex  flex-col   text-[length:inherit]  transition-[border]  `}
+      className={`${TypeStyling[codebook.type].container} relative z-30 flex  flex-col    text-[length:inherit] transition-[border]  `}
     >
-      <div className=" z-40 flex w-full flex-col ">
-        <QuestionIndexStep
-          variables={annotationLib.variables}
-          variableIndex={annotationLib.variableIndex}
-          variableStatuses={annotationLib.variableStatuses}
-          setQuestionIndex={(index: number) => annotationManager.setVariableIndex(index)}
-        >
-          <div
-            className={`relative z-20 mb-1 flex flex-auto items-center justify-center bg-background py-3 text-[length:inherit] `}
+      <div className={`${TypeStyling[codebook.type].question} z-40 flex w-full flex-col `}>
+        <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook}>
+          <QuestionIndexStep
+            variables={annotationLib.variables}
+            variableIndex={annotationLib.variableIndex}
+            variableStatuses={annotationLib.variableStatuses}
+            setQuestionIndex={(index: number) => annotationManager.setVariableIndex(index)}
           >
-            <div className={`flex items-center justify-center gap-3 text-lg `}>
-              <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
-            </div>
-          </div>
-        </QuestionIndexStep>
+            <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+          </QuestionIndexStep>
+        </VariableInstructions>
       </div>
 
       {/* {codebook.type === "survey" ? (
@@ -67,10 +64,12 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 
 const TypeStyling = {
   survey: {
-    container: "text-foreground bg-background min-h-[60%]",
+    container: "text-foreground bg-background min-h-[60%] my-auto",
+    question: "mt-6",
   },
   annotation: {
-    container: "border-primary-dark border-t- text-foreground bg-gradient-to-t from-primary-dark/10 to-primary/10",
+    container: "border-primary border-t-4 text-foreground bg-primary-dark/10",
+    question: "",
   },
 };
 

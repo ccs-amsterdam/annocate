@@ -219,7 +219,13 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
   );
 }
 
-export function DropdownFormField<T extends FieldValues>({ control, name, zType, values }: FormFieldArrayProps<T>) {
+export function DropdownFormField<T extends FieldValues>({
+  control,
+  name,
+  zType,
+  values,
+  placeholder,
+}: FormFieldArrayProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
 
   return (
@@ -233,7 +239,7 @@ export function DropdownFormField<T extends FieldValues>({ control, name, zType,
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button className="flex w-full items-center justify-between gap-2">
-                  {field.value}
+                  {field.value || placeholder}
 
                   <ChevronDown className="h-5 w-5 text-primary-foreground hover:text-primary" />
                 </Button>
