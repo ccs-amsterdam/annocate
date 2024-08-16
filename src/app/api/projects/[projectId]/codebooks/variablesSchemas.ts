@@ -45,7 +45,8 @@ export const CodebookCodeSchema = z.object({
   }),
   value: z.number().optional().openapi({
     title: "Value",
-    description: "Optionally, you can specify a numeric value related to the code.",
+    description:
+      "Optionally, you can specify a numeric value related to the code. Needs to be unique within the variable.",
   }),
 });
 
@@ -57,6 +58,14 @@ export const CodebookCodesSchema = z
       return new Set(names).size === names.length;
     },
     { message: "Codes must be unique" },
+  )
+  .refine(
+    (codes) => {
+      // values unique
+      const values = codes.map((c) => c.value);
+      return new Set(values).size === values.length;
+    },
+    { message: "Values must be unique" },
   )
   .openapi({
     title: "Codes",
@@ -72,6 +81,14 @@ export const CodebookSwipeCodesSchema = z
       return new Set(names).size === names.length;
     },
     { message: "Codes must be unique" },
+  )
+  .refine(
+    (codes) => {
+      // values unique
+      const values = codes.map((c) => c.value);
+      return new Set(values).size === values.length;
+    },
+    { message: "Values must be unique" },
   )
   .openapi({
     title: "Codes",

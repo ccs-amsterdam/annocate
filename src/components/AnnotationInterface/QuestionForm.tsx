@@ -74,7 +74,7 @@ const TypeStyling = {
     question: "mt-6",
   },
   annotation: {
-    container: "border-primary border-t-4 text-foreground bg-primary-dark/10",
+    container: "border-primary  text-foreground bg-primary-dark/10",
     question: "",
   },
 };

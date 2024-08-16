@@ -279,6 +279,7 @@ const Item = ({
                   onSelect({ code: options[buttonIndex], finish: false, item: itemObj ? itemObj.name : undefined });
                 }}
               >
+                {/* {isCurrent ? getLongLabel(option) : getShortLabel(option) || option.value || buttonIndex + 1} */}
                 {isCurrent ? option.code : option.value || buttonIndex + 1}
               </button>
             </div>
@@ -288,5 +289,15 @@ const Item = ({
     </div>
   );
 };
+
+// Pretty cool idea, but need to consider first whether makes more sense to include 'short' label in code
+// function getShortLabel(option: Code) {
+//   if (option.code.includes("=")) return option.code.split("=")[0];
+//   return null;
+// }
+// function getLongLabel(option: Code) {
+//   if (option.code.includes("=")) return option.code.split("=")[1];
+//   return option.code;
+// }
 
 export default React.memo(Scale);

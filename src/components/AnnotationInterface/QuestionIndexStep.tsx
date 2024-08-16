@@ -39,11 +39,11 @@ export default function QuestionIndexStep({
   const hide = variables.length === 1;
 
   return (
-    <div className="relative flex h-full min-h-6 w-full items-center justify-between gap-2  ">
+    <div className="relative flex h-full min-h-6 w-full  justify-between gap-2  ">
       <Button
         size="icon"
         variant="ghost"
-        className={` absolute left-0 z-30 flex h-full w-9 items-start pt-[10px]  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
+        className={` absolute left-0 z-30 flex h-12 w-9 items-start pt-[10px]  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={previousIndex === null}
         onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
       >
@@ -53,7 +53,7 @@ export default function QuestionIndexStep({
       <Button
         size="icon"
         variant="ghost"
-        className={`absolute right-0 z-30 flex h-full w-9 items-start bg-transparent
+        className={`absolute right-0 z-30 flex h-12 w-9 items-start bg-transparent
           pt-[10px] hover:bg-transparent  disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={nextIndex === null}
         onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}

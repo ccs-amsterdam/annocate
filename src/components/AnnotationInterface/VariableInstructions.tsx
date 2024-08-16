@@ -38,14 +38,14 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   if (mode === "before") {
     return (
       <div className="mb-1">
-        <FoldableInstruction instruction={instruction} foldable={foldable} />
+        <FoldableInstruction instruction={instruction} foldable={foldable} before={true} />
         {children}
       </div>
     );
   }
 
   return (
-    <div className="mt-3 flex flex-col">
+    <div className="flex flex-col">
       {children}
       <ModalInstruction instruction={instruction} autoInstruction={mode.includes("auto")} />
     </div>
@@ -56,39 +56,40 @@ interface InstructionsProps {
   instruction: string;
   autoInstruction?: boolean;
   foldable?: boolean;
+  before?: boolean;
 }
 
-function getFoldStyle(show: boolean, ref: React.RefObject<HTMLDivElement>) {
+function getFoldStyle(show: boolean, ref: React.RefObject<HTMLDivElement>, before?: boolean) {
   if (!ref.current) return {};
-  if (!show) return { maxHeight: "30px" };
+  if (!show) return { maxHeight: before ? "0px" : "20px" };
 
   const height = ref.current?.scrollHeight;
   return { maxHeight: `${height}px` };
 }
 
-function FoldableInstruction({ instruction, foldable }: InstructionsProps) {
+function FoldableInstruction({ instruction, foldable, before }: InstructionsProps) {
   const [show, setShow] = useState(true);
   const ref = React.useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState(() => getFoldStyle(show, ref));
+  const [style, setStyle] = useState(() => getFoldStyle(show, ref, before));
 
   useEffect(() => {
-    setStyle(getFoldStyle(show, ref));
+    setStyle(getFoldStyle(show, ref, before));
     if (!show) return;
 
     const interval = setInterval(() => {
-      setStyle(getFoldStyle(show, ref));
+      setStyle(getFoldStyle(show, ref, before));
     }, 1000);
     return () => clearInterval(interval);
-  }, [show, ref]);
+  }, [show, ref, before]);
 
   const icon = show ? <X className="h-5 w-5 " /> : <Info className="h-5 w-5 " />;
 
   return (
     <div
       style={style}
-      className={`${show ? "my-2" : "bg-primary pb-1 text-foreground"}  relative flex  min-w-0  overflow-hidden   transition-all`}
+      className={`${show ? "my-2" : "text-foreground"}  relative flex  min-w-0  overflow-visible   transition-all`}
     >
-      <div ref={ref} className={`  ${show ? " py-1" : "py-3"} w-full overflow-hidden px-9  `}>
+      <div ref={ref} className={`  ${show ? "py-1" : "py-3"} w-full overflow-hidden px-9  `}>
         {show ? (
           <Markdown compact style={{ hyphens: "auto", visibility: show ? "visible" : "hidden" }}>
             {instruction}
@@ -100,7 +101,11 @@ function FoldableInstruction({ instruction, foldable }: InstructionsProps) {
       <Button
         onClick={() => setShow(!show)}
         variant="ghost"
-        className={` ${foldable ? "" : "hidden"} absolute right-0 z-30 h-full rounded px-2 text-foreground text-inherit transition-all hover:bg-transparent hover:text-inherit`}
+        className={` 
+          ${foldable ? "" : "hidden"} 
+          ${before && !show ? "-translate-y-6" : ""} 
+          ${!before && !show ? "translate-y-1" : ""}
+          absolute right-0 z-30 h-full rounded px-2 text-foreground text-inherit transition-all hover:bg-transparent hover:text-inherit`}
       >
         <div className="flex gap-2">{icon}</div>
       </Button>
