@@ -18,8 +18,8 @@ class JobServerPreview implements JobServer {
   constructor(
     projectId: number,
     user: MiddlecatUser,
-    codebook?: Codebook,
-    units?: string[],
+    codebook: Codebook,
+    units: string[],
     annotations: Record<string, Annotation[]> = {},
   ) {
     this.id = cuid();

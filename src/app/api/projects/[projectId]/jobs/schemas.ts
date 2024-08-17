@@ -46,9 +46,10 @@ export const JobAnnotationBlockRulesSchema = z.object({
 
 export const JobAnnotationBlockSchema = JobBlockBaseSchema.extend({
   type: z.literal("annotation"),
-  units: z.array(z.string()).openapi({
+  units: z.array(z.string()).max(10000).openapi({
     title: "Unit selection",
-    description: "Optionally, provide a list of unit IDs to use for this block. If left empty, all units will be used.",
+    description:
+      "Optionally, provide a list of unit IDs (max 10000) to use for this block. If left empty, all units will be used.",
   }),
   rules: JobAnnotationBlockRulesSchema,
 });
@@ -90,6 +91,8 @@ export const JobBlockResponseSchema = z.object({
   rules: JobAnnotationBlockRulesSchema,
   n_units: z.number(),
 });
+
+export const JobBlockUnitsResponseSchema = z.array(z.string());
 
 export const JobResponseSchema = z.object({
   id: z.number(),

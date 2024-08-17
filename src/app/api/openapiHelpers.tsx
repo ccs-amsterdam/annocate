@@ -10,7 +10,7 @@ interface PostMethod {
 }
 
 interface GetMethod {
-  method: "get";
+  method: "get" | "delete";
   path: string;
   description: string;
   params?: z.ZodSchema<any>;

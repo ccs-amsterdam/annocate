@@ -4,11 +4,13 @@ import {
   UnitDataCreateResponseSchema,
   UnitDataDeleteBodySchema,
   UnitDataResponseSchema,
+  UnitDataRowSchema,
   UnitDataTableParamsSchema,
 } from "./schemas";
 import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema, voidResponseSchema } from "@/app/api/schemaHelpers";
+import { PreviewUnitsResponseSchema } from "./previewUnits/schemas";
 
 export function useUnits(projectId: number, initialParams: z.input<typeof UnitDataTableParamsSchema>) {
   return useTableGet({
@@ -37,6 +39,21 @@ export function useDeleteUnits(projectId: number) {
   });
 }
 
+export function usePreviewUnits(projectId: number, blockId?: number) {
+  return useGet({
+    endpoint: `projects/${projectId}/units/previewUnits`,
+    params: { blockId },
+    responseSchema: PreviewUnitsResponseSchema,
+  });
+}
+
+export function useGetUnit(projectId: number, unitId: string) {
+  return useGet({
+    endpoint: `projects/${projectId}/units/${unitId}`,
+    responseSchema: UnitDataRowSchema,
+  });
+}
+
 export const openapiUnits = createOpenAPIDefinitions(
   ["Unit management"],
   [
@@ -50,15 +67,28 @@ export const openapiUnits = createOpenAPIDefinitions(
     {
       path: "/projects/{projectId}/units",
       method: "post",
-      description: "Create a unit",
+      description: "Create units",
       body: UnitDataCreateBodySchema,
       response: UnitDataCreateResponseSchema,
     },
     {
-      path: "/projects/{projectId}/units/unitset",
+      path: "/projects/{projectId}/units/delete",
+      method: "post",
+      description: "Delete units",
+      body: UnitDataDeleteBodySchema,
+      response: voidResponseSchema,
+    },
+    {
+      path: "/projects/{projectId}/units/previewUnits",
       method: "get",
-      description: "Get all unit unitset",
-      response: z.array(UnitDataResponseSchema),
+      description: "Preview units",
+      response: PreviewUnitsResponseSchema,
+    },
+    {
+      path: "/projects/{projectId}/units/{unitId}",
+      method: "get",
+      description: "Get a single unit by unitId",
+      response: UnitDataRowSchema,
     },
   ],
 );

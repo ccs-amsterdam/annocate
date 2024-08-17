@@ -1,20 +1,13 @@
 "use client";
 import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
-import { RawUnit } from "@/app/types";
-import QuestionTask from "@/components/AnnotationInterface/QuestionTask";
+import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
+import { Preview } from "@/components/Common/Preview";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
-import JobServerPreview from "@/components/JobServers/JobServerPreview";
-import AnnotatorProvider, { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { Loading } from "@/components/ui/loader";
-import { Slider } from "@/components/ui/slider";
-import useLocalStorage from "@/hooks/useLocalStorage";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { LoremIpsum } from "./lorem";
-import { useMiddlecat } from "middlecat-react";
-import { Preview } from "@/components/Common/Preview";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 
@@ -30,18 +23,19 @@ export default function Codebook({ params }: { params: { projectId: number; code
   if (!codebook) return <div className="ml-10 mt-10">Codebook not found</div>;
 
   return (
-    <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-3 lg:grid-cols-2">
-      <div className="relative flex justify-center">
-        {/* <PreviewCodebook projectId={projectId} preview={preview} /> */}
-        {preview ? <Preview projectId={params.projectId} codebook={preview} /> : <Loading />}
-      </div>
-      <div className="max-h-[calc(100vh-var(--header-height))] max-w-[600px] overflow-auto py-6">
+    <div className="mx-auto  grid max-w-[1600px] grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="mx-auto max-h-[calc(100vh-var(--header-height))] max-w-[600px] overflow-auto py-6">
+        <div className="h-20"></div>
         <UpdateCodebook
           projectId={params.projectId}
           current={codebook}
           setPreview={setPreview}
           afterSubmit={confirmUpdate}
         />
+      </div>
+      <div className="relative flex max-h-[calc(100vh-var(--header-height))] justify-center overflow-auto ">
+        {/* <PreviewCodebook projectId={projectId} preview={preview} /> */}
+        {preview ? <Preview projectId={params.projectId} codebook={preview} /> : <Loading />}
       </div>
     </div>
   );

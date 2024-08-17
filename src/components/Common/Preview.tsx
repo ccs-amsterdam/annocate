@@ -2,24 +2,30 @@ import { Annotation, Codebook, Layout } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import JobServerPreview from "../JobServers/JobServerPreview";
 import { Slider } from "../ui/slider";
+import { Textarea } from "../ui/textarea";
+import { useSearchParams } from "next/navigation";
+import { useJob, useJobBlockUnits } from "@/app/api/projects/[projectId]/jobs/query";
+import { usePreviewUnits } from "@/app/api/projects/[projectId]/units/query";
 
 interface Props {
   projectId: number;
-  layout?: Layout;
-  codebook?: Codebook;
-  units?: string[];
+  codebook: Codebook;
 }
 
-export function Preview({ projectId, layout, codebook, units }: Props) {
+export function Preview({ projectId, codebook }: Props) {
   const { user } = useMiddlecat();
   const [jobServer, setJobServer] = useState<JobServerPreview | null>(null);
   const annotations = useRef<Record<string, Annotation[]>>({});
   const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
+  const [units, setUnits] = useState<string[]>([]);
+
+  const searchparams = useSearchParams();
+  const blockId = searchparams?.get("blockId") ? parseInt(searchparams.get("blockId") as string) : undefined;
 
   // either do this here, or outside of preview and make layout and codebook mandatory
   // const [selectedCodebookId, setSelectedCodebookId] = useState<number | undefined>();
@@ -29,14 +35,17 @@ export function Preview({ projectId, layout, codebook, units }: Props) {
   // const { data: selectedCodebook } = useCodebook(projectId, selectedCodebookId);
   // const { data: selectedLayout } = useUnitLayout(projectId, selectedLayoutId);
 
-  if (useWatchChange([projectId, user, codebook, layout, units])) {
+  if (useWatchChange([projectId, user, codebook, units])) {
     if (user) setJobServer(new JobServerPreview(projectId, user, codebook, units, annotations.current));
   }
 
   if (!jobServer) return null;
   return (
-    <div className="mt-10 flex w-full flex-col items-center">
-      <PreviewSize size={size} setSize={setSize} />
+    <div className="mt-10 flex w-full flex-col items-center pb-4">
+      <div className="mx-auto grid  grid-cols-[100px,1fr] gap-6">
+        <PreviewSize size={size} setSize={setSize} />
+        <PreviewUnits units={units} setUnits={setUnits} projectId={projectId} blockId={blockId} />
+      </div>
       <PreviewWindow size={size} jobServer={jobServer} />
     </div>
   );
@@ -56,7 +65,7 @@ export function PreviewWindow({
     <div
       tabIndex={0}
       className={`mt-10 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
-      style={{ height: size.height + "px", width: size.width + "px" }}
+      style={{ minHeight: size.height + "px", height: size.height + "px", width: size.width + "px" }}
       onClick={(e) => {
         e.currentTarget.focus();
       }}
@@ -76,23 +85,63 @@ function PreviewSize({
   setSize: (size: { width: number; height: number }) => void;
 }) {
   return (
-    <div className="grid w-full max-w-[300px] grid-cols-[4rem,1fr]  gap-2 px-4">
-      <div>Width</div>
-      <Slider
-        min={300}
-        max={800}
-        value={[size.width]}
-        onValueChange={(width) => setSize({ ...size, width: width[0] })}
-      />
+    <div className="flex  flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <div>Width</div>
+        <Slider
+          min={300}
+          max={800}
+          value={[size.width]}
+          onValueChange={(width) => setSize({ ...size, width: width[0] })}
+        />
+      </div>
       {/* <div>{size.width} px</div> */}
-      <div>Height</div>
-      <Slider
-        min={500}
-        max={800}
-        value={[size.height]}
-        onValueChange={(height) => setSize({ ...size, height: height[0] })}
-      />
-      {/* <div>{size.height} px</div> */}
+      <div className="flex flex-col gap-3">
+        <div>Height</div>
+        <Slider
+          min={500}
+          max={800}
+          value={[size.height]}
+          onValueChange={(height) => setSize({ ...size, height: height[0] })}
+        />
+        {/* <div>{size.height} px</div> */}
+      </div>
+    </div>
+  );
+}
+
+function PreviewUnits({
+  units,
+  setUnits,
+  projectId,
+  blockId,
+}: {
+  units: string[];
+  setUnits: (units: string[]) => void;
+  projectId: number;
+  blockId?: number;
+}) {
+  const { data: previewUnits } = usePreviewUnits(projectId, blockId);
+
+  useEffect(() => {
+    if (previewUnits) setUnits(previewUnits);
+  }, [previewUnits, setUnits]);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>Preview units</div>
+      <div className="relative">
+        <Textarea
+          wrap="off"
+          value={units.join("\n")}
+          onChange={(e) => setUnits(e.target.value.split("\n"))}
+          className="w-72"
+          placeholder="Enter unit ids. if empty, use all units"
+        />
+        <div className="absolute bottom-[5px] right-1 bg-background/70 pl-1 pr-1  text-sm italic text-secondary">
+          {blockId ? "Sampled from selected job block" : "Sampled from all units"}
+        </div>
+      </div>
     </div>
   );
 }

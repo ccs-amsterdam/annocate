@@ -27,7 +27,6 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     responseSchema: IdResponseSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
-      console.log(auth);
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
   });

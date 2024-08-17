@@ -36,13 +36,17 @@ export const CodebookCodeSchema = z.object({
   code: z.string().min(1).trim().openapi({
     title: "Code",
     description: "This is the code value that will be shown to the annotator. Needs to be unique within the variable.",
-    example: "Code label shown to user",
+    example: "",
   }),
   color: z.string().optional().openapi({
     title: "Color",
     description: "Optionally, you can specify a custom color for displaying the code.",
     example: "#FF0000 | red | yellow | ...",
   }),
+  // label: z.string().optional().openapi({
+  //   title: "Label",
+  //   description: "Optionally, you can specify a label for the code. If not specified the code value is used.",
+  //   example: "Label shown to user",
   value: z.number().optional().openapi({
     title: "Value",
     description:

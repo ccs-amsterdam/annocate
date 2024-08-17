@@ -26,7 +26,6 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
     queryColumns: ["name"],
     projectId: params.projectId,
     authorizeFunction: async (auth, params) => {
-      console.log(auth);
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
   });

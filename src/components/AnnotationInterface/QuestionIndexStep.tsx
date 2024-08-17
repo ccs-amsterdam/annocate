@@ -3,7 +3,7 @@ import { Answer, SetState, Variable, VariableStatus } from "@/app/types";
 
 import styled from "styled-components";
 import { FaStepForward, FaStepBackward } from "react-icons/fa";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronLeftCircle, ChevronRight, ChevronRightCircle } from "lucide-react";
 import { Button } from "../ui/button";
 
 interface QuestionIndexStepProps {
@@ -43,22 +43,22 @@ export default function QuestionIndexStep({
       <Button
         size="icon"
         variant="ghost"
-        className={` absolute left-0 z-30 flex h-12 w-9 items-start pt-[10px]  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
+        className={` absolute left-0 z-30 flex h-12 w-9 items-start pt-[10px] text-primary-foreground/60  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={previousIndex === null}
         onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
       >
-        <ChevronLeft />
+        <ChevronLeftCircle />
       </Button>
       {children}
       <Button
         size="icon"
         variant="ghost"
-        className={`absolute right-0 z-30 flex h-12 w-9 items-start bg-transparent
-          pt-[10px] hover:bg-transparent  disabled:opacity-0 ${hide ? "invisible" : ""}`}
+        className={`absolute right-0 z-30 flex h-12 w-9 items-start bg-transparent pt-[10px]
+          text-primary-foreground/60 hover:bg-transparent  disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={nextIndex === null}
         onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}
       >
-        <ChevronRight />
+        <ChevronRightCircle />
       </Button>
     </div>
   );

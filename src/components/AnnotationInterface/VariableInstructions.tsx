@@ -82,7 +82,7 @@ function FoldableInstruction({ instruction, foldable, before }: InstructionsProp
     return () => clearInterval(interval);
   }, [show, ref, before]);
 
-  const icon = show ? <X className="h-5 w-5 " /> : <Info className="h-5 w-5 " />;
+  const icon = show ? <EyeOff /> : <Info />;
 
   return (
     <div
@@ -101,13 +101,14 @@ function FoldableInstruction({ instruction, foldable, before }: InstructionsProp
       <Button
         onClick={() => setShow(!show)}
         variant="ghost"
+        size="icon"
         className={` 
           ${foldable ? "" : "hidden"} 
-          ${before && !show ? "-translate-y-6" : ""} 
-          ${!before && !show ? "translate-y-1" : ""}
-          absolute right-0 z-30 h-full rounded px-2 text-foreground text-inherit transition-all hover:bg-transparent hover:text-inherit`}
+          ${before && !show ? "-translate-y-5" : ""} 
+          ${!before && !show ? "translate-y-2" : ""}
+          absolute right-0 z-30 h-full w-9 rounded px-2 text-foreground/60 transition-all hover:bg-transparent hover:text-inherit`}
       >
-        <div className="flex gap-2">{icon}</div>
+        <div className="">{icon}</div>
       </Button>
     </div>
   );

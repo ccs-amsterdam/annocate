@@ -131,6 +131,5 @@ const getPosition = (
     width: pos.width,
     height: pos.height,
   };
-  console.log(position);
   return position;
 };

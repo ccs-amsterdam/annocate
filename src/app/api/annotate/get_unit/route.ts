@@ -8,7 +8,7 @@ import { AnnotateUnitSchema } from "../schemas";
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   const { projectId } = params;
   return createGet({
-    selectFunction: async (email, params) => {
+    selectFunction: async (email, urlParams) => {
       const [job] = await db.select().from(projects).where(eq(projects.id, projectId));
       return job;
     },

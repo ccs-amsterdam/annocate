@@ -2,10 +2,10 @@ import { hasMinProjectRole } from "@/app/api/authorization";
 import { createDelete, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import db, { jobBlocks } from "@/drizzle/schema";
-import { and, eq, gte, sql } from "drizzle-orm";
-import { JobBlockCreateSchema, JobBlockUpdateSchema } from "../../../schemas";
-import { reindexPositions } from "../route";
+import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
+import { JobBlockUpdateSchema } from "../../../schemas";
+import { reindexPositions } from "../route";
 
 export async function POST(
   req: Request,

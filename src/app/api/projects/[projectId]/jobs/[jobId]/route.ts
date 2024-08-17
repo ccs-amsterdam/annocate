@@ -29,7 +29,6 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         .leftJoin(codebooks, eq(jobBlocks.codebookId, codebooks.id))
         .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, params.jobId)))
         .orderBy(jobBlocks.position);
-      console.log(jobWithBlocks);
 
       const blocks = jobWithBlocks
         .map(({ blockId, type, position, codebookId, codebookName, n_variables, rules, n_units }) => ({

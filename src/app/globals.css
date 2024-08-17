@@ -173,8 +173,8 @@ p::-webkit-scrollbar-track {
 /* Handle */
 div::-webkit-scrollbar-thumb,
 p::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--primary));
-  border-radius: 50px;
+  background-color: hsl(var(--primary), 0.2);
+  border-radius: 1px;
 }
 
 /* Handle on hover */

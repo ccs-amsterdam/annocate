@@ -69,10 +69,19 @@ export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, curre
     if (type !== "annotation") return null;
     const shape = JobAnnotationBlockSchema.shape;
     const rulesShape = shape.rules.shape;
+    const unitsPlaceholder = current?.n_units
+      ? `(${current.n_units}) units selected. Enter new list to overwrite selection, or leave empty to keep it`
+      : "Enter list of unit IDs. If empty, all units will be used.";
     return (
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
-          <TextAreaFormField control={form.control} zType={shape.units} name="units" className="h-full overflow-auto" />
+          <TextAreaFormField
+            control={form.control}
+            zType={shape.units}
+            name="units"
+            className="h-full overflow-auto"
+            placeholder={unitsPlaceholder}
+          />
         </div>
         <div className="flex flex-col gap-3">
           <NumberFormField
@@ -119,38 +128,6 @@ export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, curre
         <FormMessage />
       </form>
     </Form>
-  );
-}
-
-function RulesForm({ form }: { form: UseFormReturn<JobBlockCreate> }) {
-  const shape = JobAnnotationBlockSchema.shape;
-  const rulesShape = shape.rules.shape;
-
-  return (
-    <div className="flex flex-col gap-3">
-      <NumberFormField
-        control={form.control}
-        min={1}
-        zType={rulesShape.maxCodersPerUnit}
-        name="rules.maxCodersPerUnit"
-        clearable
-      />
-      <NumberFormField
-        control={form.control}
-        min={1}
-        zType={rulesShape.maxUnitsPerCoder}
-        name="rules.maxUnitsPerCoder"
-        clearable
-      />
-      <NumberFormField
-        control={form.control}
-        min={1}
-        zType={rulesShape.overlapUnits}
-        name="rules.overlapUnits"
-        clearable
-      />
-      <BooleanFormField control={form.control} zType={rulesShape.randomizeUnits} name="rules.randomizeUnits" />
-    </div>
   );
 }
 

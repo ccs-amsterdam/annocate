@@ -109,7 +109,7 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
         role="button"
         tabIndex={0}
         className="cursor-pointer rounded px-3 hover:bg-foreground/10"
-        onClick={() => router.push(`/projects/${projectId}/codebooks/${block.codebookId}?jobBlockId=${block.id}`)}
+        onClick={() => router.push(`/projects/${projectId}/codebooks/${block.codebookId}?blockId=${block.id}`)}
       >
         <h4 className="m-0 mt-2 leading-none">{block.codebookName}</h4>
         <span className="leading-none text-foreground/60">{showDetails()}</span>

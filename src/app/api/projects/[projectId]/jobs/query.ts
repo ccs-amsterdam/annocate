@@ -1,5 +1,6 @@
 import {
   JobBlockCreateSchema,
+  JobBlockUnitsResponseSchema,
   JobBlockUpdateSchema,
   JobCreateSchema,
   JobResponseSchema,
@@ -69,6 +70,14 @@ export function useDeleteJobBlock(projectId: number, jobId: number, blockId: num
   });
 }
 
+export function useJobBlockUnits(projectId: number, jobId?: number, blockId?: number) {
+  return useGet({
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}/units`,
+    responseSchema: JobBlockUnitsResponseSchema,
+    disabled: !blockId || !jobId,
+  });
+}
+
 export const openapiJobs = createOpenAPIDefinitions(
   ["Job management"],
   [
@@ -99,5 +108,14 @@ export const openapiJobs = createOpenAPIDefinitions(
       description: "Get a job, including a list of its units",
       response: JobResponseSchema,
     },
+    { path: "/jobs/{jobId}/blocks", method: "post", description: "Create a block", body: JobBlockCreateSchema },
+    {
+      path: "/jobs/{jobId}/blocks/{blockId}",
+      method: "post",
+      description: "Update a block",
+      body: JobBlockUpdateSchema,
+    },
+    { path: "/jobs/{jobId}/blocks/{blockId}", method: "delete", description: "Delete a block" },
+    { path: "/jobs/{jobId}/blocks/{blockId}/units", method: "get", description: "Get a list of units for a block" },
   ],
 );
