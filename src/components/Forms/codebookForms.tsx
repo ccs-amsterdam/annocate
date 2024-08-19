@@ -88,7 +88,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     return (
       <div className="w-full">
         <div className="prose  mt-6 w-full border-b-2 pb-2  dark:prose-invert">
-          <h3 className="text-foreground/80">Unit of analysis</h3>
+          <h3 className="text-foreground/80">Unit Mapping</h3>
         </div>
         <UnitFields form={form} />
       </div>
@@ -265,16 +265,6 @@ function LayoutField<T extends FieldValues>({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-[12rem,24px,1fr]  gap-3">
-        <TextFormField
-          control={control}
-          zType={generalShape.name}
-          name={appendPath("name")}
-          onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
-        />
-        <Equal className="mt-9" />
-        <TextFormField control={control} zType={generalShape.column} name={appendPath("column")} />
-      </div>
       <div className="grid grid-cols-[12rem,24px,1fr] items-end gap-3">
         <DropdownFormField
           control={control}
@@ -284,10 +274,24 @@ function LayoutField<T extends FieldValues>({
           labelWidth="8rem"
         />
         <div />
-        <StyleToolbar
-          style={style || {}}
-          setStyle={(style) => form.setValue(`codebook.unit.fields.${index}.style`, style, { shouldDirty: true })}
+        {type !== "meta" ? (
+          <StyleToolbar
+            style={style || {}}
+            setStyle={(style) => form.setValue(`codebook.unit.fields.${index}.style`, style, { shouldDirty: true })}
+          />
+        ) : (
+          <div />
+        )}
+      </div>
+      <div className="grid grid-cols-[12rem,24px,1fr]  gap-3">
+        <TextFormField
+          control={control}
+          zType={generalShape.name}
+          name={appendPath("name")}
+          onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
         />
+        <Equal className="mt-9" />
+        <TextFormField control={control} zType={generalShape.column} name={appendPath("column")} />
       </div>
       {renderType()}
     </div>

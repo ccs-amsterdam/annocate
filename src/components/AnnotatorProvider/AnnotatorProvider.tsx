@@ -4,9 +4,10 @@ import AnnotationManager from "@/functions/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryState } from "next-usequerystate";
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { createUnitBundle } from "./createUnitBundle";
+import { useSandboxedEval } from "@/hooks/useSandboxedEval";
 
 interface UnitContextProps {
   unit: ExtendedUnit;
@@ -18,6 +19,7 @@ interface UnitContextProps {
   height: number;
   selectUnit: (i?: number) => void;
   initialising: boolean;
+  evalStringTemplate: (str: string) => Promise<string>;
 }
 
 const UnitContext = createContext<UnitContextProps>({
@@ -30,6 +32,7 @@ const UnitContext = createContext<UnitContextProps>({
   height: 0,
   selectUnit: (i?: number) => console.log(i),
   initialising: true,
+  evalStringTemplate: async (str: string) => str,
 });
 export const useUnit = () => useContext(UnitContext);
 
@@ -45,11 +48,6 @@ export interface UnitBundle {
 }
 
 export default function AnnotatorProvider({ jobServer, height, children }: Props) {
-  const [index, setIndex] = useQueryState("unit", {
-    parse: (query: string) => parseInt(query) || undefined,
-    defaultValue: null,
-  });
-
   const [getUnit, setGetUnit] = useState<GetUnit>({
     unit: null,
     progress: initProgress(),
@@ -61,6 +59,13 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   }));
   const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(initAnnotationLib());
   const [annotationManager] = useState<AnnotationManager>(() => new AnnotationManager(setAnnotationLib));
+
+  const sandboxData = useMemo(() => {
+    return {
+      unit: { test: "dit" },
+    };
+  }, [unitBundle, annotationLib]);
+  const { evalStringTemplate, ready } = useSandboxedEval(sandboxData);
 
   const { data: codebookWithId, isLoading: codebookLoading } = useQuery({
     queryKey: ["codebook", jobServer.id, getUnit.unit?.codebook_id],
@@ -98,10 +103,9 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     }
 
     const unitBundle = createUnitBundle(getUnit.unit, codebook);
-    setIndex(getUnit.progress.current);
     setUnitBundle(unitBundle);
     annotationManager.initAnnotationLibrary(jobServer, unitBundle.unit, unitBundle.codebook);
-  }, [annotationManager, jobServer, getUnit, codebookWithId, codebookLoading, setIndex]);
+  }, [annotationManager, jobServer, getUnit, codebookWithId, codebookLoading]);
 
   const selectUnit = useCallback(
     async (i?: number) => {
@@ -121,7 +125,8 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
         annotationManager,
         height,
         selectUnit,
-        initialising: false,
+        initialising: !ready,
+        evalStringTemplate,
       }}
     >
       {children}

@@ -5,24 +5,27 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 
 extendZodWithOpenApi(z);
 
-export const fieldType = ["text", "image", "markdown"] as const;
+export const fieldType = ["text", "image", "markdown", "meta"] as const;
 export const fieldTypeOptions: FormOptions[] = [
   { value: "text", label: "Text", description: "A plain text. supports token level annotations" },
-  { value: "image", label: "Image", description: "A single image." },
+  // { value: "image", label: "Image", description: "A single image." },
   {
     value: "markdown",
     label: "Markdown",
     description: "A markdown document. Most customizable, but doesn't support token level annotation",
   },
+  {
+    value: "meta",
+    label: "Meta data",
+    description:
+      "Meta data will not be displayed, but can be used in the codebook. For instance, to create questions or codes that differ between units",
+  },
 ];
 
-export const UnitGeneralLayoutSchema = z.object({
-  type: z.enum(["text", "markdown", "image", "variable"]).openapi({
+export const UnitGeneralFieldSchema = z.object({
+  type: z.enum(["text", "markdown", "image", "meta"]).openapi({
     title: "Type",
-    description: `The type of the field. Can be text, markdown, image or variable. 
-                  The markdown type is most flexible in terms of styling, but markdown 
-                  text cannot be annotated (span and relation type variables). 
-                  Text and image types support annotations.`,
+    description: `The type of the field. Can be text, markdown, image or data.`,
     example: "markdown",
   }),
   name: SafeNameSchema.openapi({
@@ -35,6 +38,9 @@ export const UnitGeneralLayoutSchema = z.object({
     description: "The column name in the units data table from which to get the field value.",
     example: "headline, text, image_url, ...",
   }),
+});
+
+export const UnitGeneralLayoutSchema = UnitGeneralFieldSchema.extend({
   style: z
     .record(z.string(), z.string())
     .optional()
@@ -61,10 +67,15 @@ export const UnitImageLayoutSchema = UnitGeneralLayoutSchema.extend({
   caption: z.string().optional(),
 });
 
+export const UnitMetaLayoutSchema = UnitGeneralFieldSchema.extend({
+  type: z.literal("meta"),
+});
+
 export const UnitFieldLayoutUnionSchema = z.union([
   UnitTextLayoutSchema,
   UnitMarkdownLayoutSchema,
   UnitImageLayoutSchema,
+  UnitMetaLayoutSchema,
 ]);
 
 export const UnitFieldLayoutSchema = z.array(UnitFieldLayoutUnionSchema).refine(

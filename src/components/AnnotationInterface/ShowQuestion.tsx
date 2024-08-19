@@ -28,8 +28,8 @@ const prepareQuestion = (unit: ExtendedUnit, question: Variable, annotations: An
       const m0: string = m[0];
       const m1: string = m[1];
       let value;
-      if (unit.content.variables) {
-        value = unit.content.variables[m1];
+      if (unit.content.meta) {
+        value = unit.content.meta[m1];
       }
       value = annotations.find((a) => a.variable === m1)?.code || value;
 

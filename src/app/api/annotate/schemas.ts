@@ -45,7 +45,7 @@ export const UnitContentSchema = z.object({
   image_fields: z.array(UnitImageContentSchema).optional(),
   markdown_fields: z.array(UnitMarkdownContentSchema).optional(),
   tokens: z.array(UnitTokenContentSchema).optional(),
-  variables: UnitVariableSchema.optional(),
+  meta: UnitVariableSchema.optional(),
   grid: UnitLayoutGridSchema.optional(),
 });
 

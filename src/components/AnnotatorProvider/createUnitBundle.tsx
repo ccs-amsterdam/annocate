@@ -38,7 +38,7 @@ export default function processUnitContent(annotateUnit: Unit): ExtendedUnitCont
     text_fields: ruc.text_fields || [],
     image_fields: ruc.image_fields || [],
     markdown_fields: ruc.markdown_fields || [],
-    variables: ruc.variables,
+    meta: ruc.meta || {},
     grid: {},
   };
 

@@ -54,10 +54,8 @@ export function StyleToolbar({ style, setStyle }: Props) {
     for (const line of lines) {
       const [key, value] = line.split(/: +/);
       if (key == null || value == null) continue;
-      console.log("continue", key, value);
       newStyle[key] = value;
     }
-    console.log(newStyle);
     return newStyle;
   }
 
