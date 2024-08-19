@@ -54,7 +54,6 @@ export type JobDetails = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
-export type AnnotateUnit = z.infer<typeof AnnotateUnitSchema>;
 export type Rules = z.infer<typeof JobAnnotationBlockRulesSchema>;
 
 export type UnitContent = z.infer<typeof UnitContentSchema>;

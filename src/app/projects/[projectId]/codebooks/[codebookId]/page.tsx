@@ -23,8 +23,8 @@ export default function Codebook({ params }: { params: { projectId: number; code
   if (!codebook) return <div className="ml-10 mt-10">Codebook not found</div>;
 
   return (
-    <div className="mx-auto  grid max-w-[1600px] grid-cols-1 gap-3 lg:grid-cols-2">
-      <div className="mx-auto max-h-[calc(100vh-var(--header-height))] max-w-[600px] overflow-auto py-6">
+    <div className="mx-auto  grid  grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
+      <div className="mx-auto w-[600px] max-w-[95vw] overflow-auto py-6 xl:max-h-[calc(100vh-var(--header-height))]">
         <div className="h-20"></div>
         <UpdateCodebook
           projectId={params.projectId}
@@ -33,7 +33,7 @@ export default function Codebook({ params }: { params: { projectId: number; code
           afterSubmit={confirmUpdate}
         />
       </div>
-      <div className="relative flex max-h-[calc(100vh-var(--header-height))] justify-center overflow-auto ">
+      <div className="relative flex justify-center overflow-auto xl:h-[calc(100vh-var(--header-height))] ">
         {/* <PreviewCodebook projectId={projectId} preview={preview} /> */}
         {preview ? <Preview projectId={params.projectId} codebook={preview} /> : <Loading />}
       </div>

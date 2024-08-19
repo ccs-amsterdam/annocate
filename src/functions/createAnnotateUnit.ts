@@ -1,4 +1,4 @@
-import { AnnotateUnit, Annotation, Codebook, Layout } from "@/app/types";
+import { Unit, Annotation, Codebook, Layout } from "@/app/types";
 
 interface Params {
   type: "survey" | "annotation";
@@ -10,16 +10,8 @@ interface Params {
   annotations: Annotation[];
 }
 
-export function createAnnotateUnit({
-  type,
-  token,
-  data,
-  layout,
-  codebook,
-  codebook_id,
-  annotations,
-}: Params): AnnotateUnit {
-  const unit: AnnotateUnit = {
+export function createAnnotateUnit({ type, token, data, layout, codebook, codebook_id, annotations }: Params): Unit {
+  const unit: Unit = {
     type,
     token,
     status: "IN_PROGRESS",
@@ -56,6 +48,7 @@ export function createAnnotateUnit({
         type: "markdown",
         name: field.name,
         value,
+        style: field.style,
       });
     }
     if (field.type === "image") {
@@ -66,6 +59,7 @@ export function createAnnotateUnit({
         value,
         alt: field.alt,
         caption: field.caption,
+        style: field.style,
       });
     }
 
@@ -76,7 +70,8 @@ export function createAnnotateUnit({
     // });
   });
 
-  if (layout.grid) unit.content.grid = layout.grid;
+  if (layout.grid && layout.grid.areas.length > 0) unit.content.grid = layout.grid;
+  console.log;
 
   return unit;
 }

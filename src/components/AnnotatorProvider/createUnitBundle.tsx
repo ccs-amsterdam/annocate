@@ -8,12 +8,12 @@ import {
   PreparedGrid,
   FieldGridInput,
   ExtendedCodebook,
-  AnnotateUnit,
+  Unit,
 } from "@/app/types";
 import { UnitBundle } from "./AnnotatorProvider";
 import unfoldVariables from "../../functions/unfoldVariables";
 
-export function createUnitBundle(annotateUnit: AnnotateUnit, codebook: ExtendedCodebook): UnitBundle {
+export function createUnitBundle(annotateUnit: Unit, codebook: ExtendedCodebook): UnitBundle {
   codebook = unfoldVariables(codebook, annotateUnit);
   const content = processUnitContent(annotateUnit);
   return {
@@ -31,7 +31,7 @@ export function createUnitBundle(annotateUnit: AnnotateUnit, codebook: ExtendedC
  * @param unit
  * @returns
  */
-export default function processUnitContent(annotateUnit: AnnotateUnit): ExtendedUnitContent {
+export default function processUnitContent(annotateUnit: Unit): ExtendedUnitContent {
   const ruc = annotateUnit.content;
 
   const content: ExtendedUnitContent = {

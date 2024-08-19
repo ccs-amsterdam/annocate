@@ -9,7 +9,7 @@ import {
   variableTypeOptions,
 } from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Save, Watch, XIcon } from "lucide-react";
+import { Equal, Plus, Save, Watch, XIcon } from "lucide-react";
 import { use, useCallback, useEffect, useState } from "react";
 import { Control, FieldValues, Path, useForm, UseFormReturn, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -40,6 +40,8 @@ import {
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
 } from "@/app/api/projects/[projectId]/codebooks/layoutSchemas";
+import { StyleToolbar } from "../Common/StyleToolbar";
+import { Label } from "../ui/label";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
@@ -84,8 +86,8 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   function renderUnitFields() {
     if (current.codebook.type !== "annotation") return null;
     return (
-      <div>
-        <div className="prose mb-2 mt-6 w-full border-b-2 pb-2  dark:prose-invert">
+      <div className="w-full">
+        <div className="prose  mt-6 w-full border-b-2 pb-2  dark:prose-invert">
           <h3 className="text-foreground/80">Unit of analysis</h3>
         </div>
         <UnitFields form={form} />
@@ -101,9 +103,9 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex flex-col gap-3  p-3 lg:px-8 ">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex w-full flex-col gap-3  p-3 lg:px-8 ">
         <div
-          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)] w-full 
+          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)]  w-full 
           items-center justify-between gap-10 border-b bg-background px-8 ${form.formState.isDirty ? "" : "hidden"} `}
         >
           <Button
@@ -133,7 +135,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 
         {renderUnitFields()}
         <div>
-          <div className="prose mb-2 mt-6 w-full border-b-2 pb-2 dark:prose-invert">
+          <div className="prose  mt-6 w-full border-b-2 pb-2 dark:prose-invert">
             <h3 className="text-foreground/80">Variables</h3>
           </div>
           {/* <TextAreaFormField
@@ -188,7 +190,7 @@ function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
           const { error } = form.getFieldState(`codebook.unit.fields.${index}`);
           let bg = isActive ? "bg-primary-light" : "";
           return (
-            <AccordionItem key={index} value={"V" + index} className={`${bg}  rounded p-3 `}>
+            <AccordionItem key={index} value={"V" + index} className={`${bg}   px-3 `}>
               <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
                 <MoveItemInArray move={moveField} i={index} n={fields.length} bg={bg} error={!!error} />
 
@@ -199,7 +201,7 @@ function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
                 </div>
               </div>
               <AccordionContent className="flex flex-col gap-5 px-1 py-3">
-                <LayoutField type={field.type} control={form.control} index={index} />
+                <LayoutField form={form} type={field.type} control={form.control} index={index} />
                 <ConfirmDialog
                   title="Remove field"
                   message="This will remove the field. Are you sure?"
@@ -228,15 +230,18 @@ function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
 }
 
 function LayoutField<T extends FieldValues>({
+  form,
   type,
   control,
   index,
 }: {
+  form: UseFormReturn<CodebookUpdateBody>;
   type: string;
   control: Control<T, any>;
   index: number;
 }) {
   const generalShape = UnitGeneralLayoutSchema.shape;
+  const style = form.watch(`codebook.unit.fields.${index}.style`);
 
   function appendPath(key: string): Path<T> {
     return `codebook.unit.fields.${index}.${key}` as Path<T>;
@@ -260,21 +265,29 @@ function LayoutField<T extends FieldValues>({
 
   return (
     <div className="flex flex-col gap-5">
-      <DropdownFormField
-        control={control}
-        zType={generalShape.type}
-        name={appendPath("type")}
-        values={fieldTypeOptions}
-        labelWidth="8rem"
-      />
-      <TextFormField
-        control={control}
-        zType={generalShape.name}
-        name={appendPath("name")}
-        onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
-      />
-      <div>
+      <div className="grid grid-cols-[12rem,24px,1fr]  gap-3">
+        <TextFormField
+          control={control}
+          zType={generalShape.name}
+          name={appendPath("name")}
+          onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
+        />
+        <Equal className="mt-9" />
         <TextFormField control={control} zType={generalShape.column} name={appendPath("column")} />
+      </div>
+      <div className="grid grid-cols-[12rem,24px,1fr] items-end gap-3">
+        <DropdownFormField
+          control={control}
+          zType={generalShape.type}
+          name={appendPath("type")}
+          values={fieldTypeOptions}
+          labelWidth="8rem"
+        />
+        <div />
+        <StyleToolbar
+          style={style || {}}
+          setStyle={(style) => form.setValue(`codebook.unit.fields.${index}.style`, style, { shouldDirty: true })}
+        />
       </div>
       {renderType()}
     </div>
@@ -318,18 +331,15 @@ function Variables({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
           const { error } = form.getFieldState(`codebook.variables.${index}`);
           let bg = isActive ? "bg-primary-light" : "";
           return (
-            <AccordionItem key={index} value={"V" + index} className={`${bg}  rounded p-3 `}>
-              <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
+            <AccordionItem key={index} value={"V" + index} className={`${bg}   px-3 `}>
+              <div
+                className={`grid w-full grid-cols-[2rem,1fr] items-center gap-3   ${error ? "text-destructive" : ""}`}
+              >
                 <MoveItemInArray move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
 
-                <div>
-                  <AccordionTrigger className="text-left no-underline hover:no-underline">
-                    <span className="break-all">
-                      {varName.replace(/_/g, " ")}
-                      {varQuestion && <span className="text-base text-primary/70"> - {variable.question}</span>}
-                    </span>
-                  </AccordionTrigger>
-                </div>
+                <AccordionTrigger className="w-full no-underline hover:no-underline">
+                  {varName.replace(/_/g, " ")}
+                </AccordionTrigger>
               </div>
               <AccordionContent className="flex flex-col gap-5 px-1 py-3">
                 <CodebookVariable type={variable.type} control={form.control} index={index} />
@@ -400,22 +410,24 @@ function CodebookVariable<T extends FieldValues>({
 
   return (
     <div className="flex flex-col gap-5">
-      <DropdownFormField
-        control={control}
-        zType={generalShape.type}
-        name={appendPath("type")}
-        values={variableTypeOptions}
-        labelWidth="8rem"
-      />
-      <TextFormField
-        control={control}
-        zType={generalShape.name}
-        name={appendPath("name")}
-        onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <TextFormField
+          control={control}
+          zType={generalShape.name}
+          name={appendPath("name")}
+          onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
+        />
+        <DropdownFormField
+          control={control}
+          zType={generalShape.type}
+          name={appendPath("type")}
+          values={variableTypeOptions}
+          labelWidth="8rem"
+        />
+      </div>
       <TextFormField control={control} zType={generalShape.question} name={appendPath("question")} />
       <TextAreaFormField
-        className="resize"
+        className="resize-y"
         control={control}
         zType={generalShape.instruction}
         name={appendPath("instruction")}

@@ -1,8 +1,8 @@
-import { Annotation, Codebook, Layout } from "@/app/types";
+import { Annotation, Codebook, Layout, Unit, UnitData } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import JobServerPreview from "../JobServers/JobServerPreview";
@@ -11,6 +11,7 @@ import { Textarea } from "../ui/textarea";
 import { useSearchParams } from "next/navigation";
 import { useJob, useJobBlockUnits } from "@/app/api/projects/[projectId]/jobs/query";
 import { usePreviewUnits } from "@/app/api/projects/[projectId]/units/query";
+import { Button } from "../ui/button";
 
 interface Props {
   projectId: number;
@@ -23,6 +24,10 @@ export function Preview({ projectId, codebook }: Props) {
   const annotations = useRef<Record<string, Annotation[]>>({});
   const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
   const [units, setUnits] = useState<string[]>([]);
+  const [previewData, setPreviewData] = useState<{
+    unitData: UnitData;
+    unit: Unit;
+  } | null>(null);
 
   const searchparams = useSearchParams();
   const blockId = searchparams?.get("blockId") ? parseInt(searchparams.get("blockId") as string) : undefined;
@@ -36,17 +41,17 @@ export function Preview({ projectId, codebook }: Props) {
   // const { data: selectedLayout } = useUnitLayout(projectId, selectedLayoutId);
 
   if (useWatchChange([projectId, user, codebook, units])) {
-    if (user) setJobServer(new JobServerPreview(projectId, user, codebook, units, annotations.current));
+    if (user) setJobServer(new JobServerPreview(projectId, user, codebook, units, annotations.current, setPreviewData));
   }
 
   if (!jobServer) return null;
   return (
-    <div className="mt-10 flex w-full flex-col items-center pb-4">
+    <div className="mx-auto mt-10 flex  flex-col items-center pb-4">
       <div className="mx-auto grid  grid-cols-[100px,1fr] gap-6">
         <PreviewSize size={size} setSize={setSize} />
         <PreviewUnits units={units} setUnits={setUnits} projectId={projectId} blockId={blockId} />
       </div>
-      <PreviewWindow size={size} jobServer={jobServer} />
+      <PreviewWindow size={size} jobServer={jobServer} previewData={previewData} />
     </div>
   );
 }
@@ -54,25 +59,55 @@ export function Preview({ projectId, codebook }: Props) {
 export function PreviewWindow({
   size,
   jobServer,
+  previewData,
 }: {
   size: { height: number; width: number };
   jobServer: JobServerPreview;
+  previewData: { unitData: UnitData; unit: Unit } | null;
 }) {
   const [focus, setFocus] = useState(false);
   if (!jobServer) return null;
 
   return (
-    <div
-      tabIndex={0}
-      className={`mt-10 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
-      style={{ minHeight: size.height + "px", height: size.height + "px", width: size.width + "px" }}
-      onClick={(e) => {
-        e.currentTarget.focus();
-      }}
-      onFocus={() => setFocus(true)}
-      onBlur={() => setFocus(false)}
-    >
-      <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
+    <div className="flex flex-wrap items-center justify-center gap-6">
+      <div
+        tabIndex={0}
+        className={`mt-10 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
+        style={{ minHeight: size.height + "px", height: size.height + "px", width: size.width + "px" }}
+        onClick={(e) => {
+          e.currentTarget.focus();
+        }}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+      >
+        <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
+      </div>
+      <div
+        className=" w-[400px] max-w-full pt-10"
+        style={{ minHeight: size.height + "px", height: size.height + "px" }}
+      >
+        <PreviewData previewData={previewData} />
+      </div>
+    </div>
+  );
+}
+
+function PreviewData({ previewData }: { previewData: { unitData: UnitData; unit: Unit } | null }) {
+  if (!previewData) return null;
+  return (
+    <div className="flex max-h-full flex-col gap-6 overflow-auto rounded border">
+      <div>
+        <div className="p-3">Unit columns</div>
+        <pre className="pl-3 text-primary">{JSON.stringify(previewData.unitData?.data || "", undefined, 2)}</pre>
+      </div>
+      <div>
+        <div className="p-3">Mapped content</div>
+        <pre className=" pl-3 text-primary">{JSON.stringify(previewData.unit?.content || "", undefined, 2)}</pre>
+      </div>
+      <div>
+        <div className="p-3">Annotations</div>
+        <pre className="pl-3 text-primary">{JSON.stringify(previewData.unit?.annotations || "", undefined, 2)}</pre>
+      </div>
     </div>
   );
 }
@@ -122,10 +157,14 @@ function PreviewUnits({
   blockId?: number;
 }) {
   const { data: previewUnits } = usePreviewUnits(projectId, blockId);
+  const [changed, setChanged] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (previewUnits) setUnits(previewUnits);
-  }, [previewUnits, setUnits]);
+    if (previewUnits) {
+      setChanged(false);
+      setUnits(previewUnits);
+    }
+  }, [previewUnits, setUnits, setChanged]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -134,12 +173,32 @@ function PreviewUnits({
         <Textarea
           wrap="off"
           value={units.join("\n")}
-          onChange={(e) => setUnits(e.target.value.split("\n"))}
+          onChange={(e) => {
+            if (changed === false) setChanged(true);
+            setUnits(e.target.value.split("\n"));
+          }}
           className="w-72"
           placeholder="Enter unit ids. if empty, use all units"
         />
-        <div className="absolute bottom-[5px] right-1 bg-background/70 pl-1 pr-1  text-sm italic text-secondary">
-          {blockId ? "Sampled from selected job block" : "Sampled from all units"}
+        <div
+          className={`absolute bottom-[5px] right-1 select-none bg-background/70 pl-1  pr-1 text-sm italic text-secondary`}
+        >
+          {changed ? (
+            <Button
+              variant="link"
+              className="h-5"
+              onClick={() => {
+                setChanged(false);
+                setUnits(previewUnits || []);
+              }}
+            >
+              reset sample
+            </Button>
+          ) : blockId ? (
+            "Sampled from selected job block"
+          ) : (
+            "Sampled from all units"
+          )}
         </div>
       </div>
     </div>

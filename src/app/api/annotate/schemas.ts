@@ -86,6 +86,7 @@ export const AnnotateProgressSchema = z.object({
 export const GetUnitResponseSchema = z.object({
   unit: AnnotateUnitSchema.nullable(),
   progress: AnnotateProgressSchema,
+  error: z.string().optional(),
 });
 
 export const GetCodebookResponseSchema = z.object({

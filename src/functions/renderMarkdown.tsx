@@ -13,6 +13,9 @@ export default function renderMarkdown(markdown_fields: MarkdownField[], fieldRe
     let value = markdownField.value;
     if (Array.isArray(value)) value = value.join("");
 
+    if (!markdownField.style) markdownField.style = {};
+    if (!markdownField.style.padding) markdownField.style.padding = "10px";
+
     rm[markdownField.name] = (
       <div
         ref={fieldRefs[markdownField.name]}
@@ -20,17 +23,10 @@ export default function renderMarkdown(markdown_fields: MarkdownField[], fieldRe
         className="field"
         style={{
           gridArea: markdownField.grid_area,
-          padding: "10px",
-          margin: "0px 10px 0px 10px",
-          //width: "100%",
-          fontSize: "1em",
-          //alignSelf: "center",
-          //textAlign: "justify",
-          hyphens: "auto",
-          ...(markdownField.style || {}),
+          fontSize: "1rem",
         }}
       >
-        <Markdown style={{ hyphens: "auto" }}>{value}</Markdown>
+        <Markdown style={markdownField.style}>{value}</Markdown>
       </div>
     );
   }

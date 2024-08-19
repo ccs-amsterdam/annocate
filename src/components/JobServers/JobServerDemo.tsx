@@ -1,15 +1,15 @@
-import { Annotation, Codebook, Status, Progress, JobServer, AnnotateUnit } from "@/app/types";
+import { Annotation, Codebook, Status, Progress, JobServer, Unit } from "@/app/types";
 import cuid from "cuid";
 
 class JobServerDemo implements JobServer {
   id: string;
   codebooks: Record<string, Codebook>; // TODO: add codebook interface
-  demodata: AnnotateUnit[];
+  demodata: Unit[];
   progress: Progress;
   return_link: string;
   codebookId: string;
 
-  constructor(codebook: Codebook, units: AnnotateUnit[]) {
+  constructor(codebook: Codebook, units: Unit[]) {
     this.id = cuid();
     this.codebooks = { 0: codebook };
     this.demodata = units;

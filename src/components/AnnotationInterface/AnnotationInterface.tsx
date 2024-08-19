@@ -19,6 +19,8 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const height = useHeight(ref, []);
 
+  console.log(jobServer);
+
   return (
     <AnnotatorProvider jobServer={jobServer} height={height}>
       <div ref={ref} className="relative grid h-full w-full grid-rows-[min-content,1fr]">
@@ -30,7 +32,7 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 }
 
 function AnnotationMenu() {
-  const { annotationManager, selectUnit, progress, codebook } = useUnit();
+  const { selectUnit, progress } = useUnit();
   return (
     <div className="z-20 flex items-center justify-between gap-2 border-b border-foreground bg-gradient-to-b from-primary-dark to-primary px-3 py-2 text-primary-foreground">
       <IndexController
@@ -51,8 +53,14 @@ function AnnotationMenu() {
 }
 
 function AnnotationUnit({ blockEvents, jobServer }: { blockEvents?: boolean; jobServer: JobServer }) {
-  const { initialising, progress } = useUnit();
+  const { error, initialising, progress } = useUnit();
   if (initialising) return <Loading />;
+  if (error)
+    return (
+      <div className="flex justify-center ">
+        <div className="mt-20 h-min rounded border-2 border-destructive p-3">{error}</div>
+      </div>
+    );
   if (progress.current >= progress.n_total) return <Finished jobServer={jobServer} />;
   return <QuestionTask blockEvents={blockEvents} />;
 }

@@ -8,10 +8,14 @@ import { UnitDataRowSchema } from "../schemas";
 export async function GET(req: NextRequest, { params }: { params: { projectId: number; unitId: string } }) {
   return createGet({
     selectFunction: async (email, urlParams) => {
-      return await db
-        .select()
+      const [unit] = await db
+        .select({
+          id: units.unitId,
+          data: units.data,
+        })
         .from(units)
         .where(and(eq(units.projectId, params.projectId), eq(units.unitId, params.unitId)));
+      return unit;
     },
     req,
     responseSchema: UnitDataRowSchema,

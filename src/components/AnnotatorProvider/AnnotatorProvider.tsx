@@ -14,6 +14,7 @@ interface UnitContextProps {
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   progress: Progress;
+  error: string | undefined;
   height: number;
   selectUnit: (i?: number) => void;
   initialising: boolean;
@@ -25,6 +26,7 @@ const UnitContext = createContext<UnitContextProps>({
   annotationLib: initAnnotationLib(),
   annotationManager: new AnnotationManager(() => console.log("AnnotationManager not initialized")),
   progress: initProgress(),
+  error: undefined,
   height: 0,
   selectUnit: (i?: number) => console.log(i),
   initialising: true,
@@ -51,6 +53,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   const [getUnit, setGetUnit] = useState<GetUnit>({
     unit: null,
     progress: initProgress(),
+    error: "",
   });
   const [unitBundle, setUnitBundle] = useState<UnitBundle>(() => ({
     unit: initUnit(),
@@ -113,6 +116,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
         unit: unitBundle.unit,
         codebook: unitBundle.codebook,
         progress: getUnit.progress,
+        error: getUnit.error,
         annotationLib,
         annotationManager,
         height,

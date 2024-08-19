@@ -149,8 +149,14 @@ function ModalInstruction({ instruction, autoInstruction }: InstructionsProps) {
         setOpen(!!instruction && open);
       }}
     >
-      <DrawerTrigger className={`relative ml-auto   cursor-pointer px-2`}>
-        <Info className={`ml-auto  inline-block h-5  w-5 `} />
+      <DrawerTrigger asChild className={`relative ml-auto   cursor-pointer px-2`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="  h-full translate-y-1 rounded bg-transparent  text-foreground/60 transition-all hover:bg-transparent hover:text-inherit"
+        >
+          <Info className={`ml-auto  inline-block `} />
+        </Button>
       </DrawerTrigger>
       <DrawerContent className="fixed bottom-0 left-auto right-0 mt-0   h-screen w-[500px] max-w-[90vw] rounded-none border-y-0  bg-background  p-3  ">
         <DrawerClose asChild className="mt-autod ml-auto mt-2 ">

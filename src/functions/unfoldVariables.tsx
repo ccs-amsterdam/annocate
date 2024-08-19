@@ -1,4 +1,4 @@
-import { AnnotateUnit, Codebook, ExtendedCodebook, Question, ExtendedUnit, Variable } from "@/app/types";
+import { Unit, Codebook, ExtendedCodebook, Question, ExtendedUnit, Variable } from "@/app/types";
 import { importCodebook } from "./codebook";
 
 /**
@@ -10,7 +10,7 @@ import { importCodebook } from "./codebook";
  * @param unit
  * @returns
  */
-export default function unfoldVariables(codebook: ExtendedCodebook, unit: AnnotateUnit): ExtendedCodebook {
+export default function unfoldVariables(codebook: ExtendedCodebook, unit: Unit): ExtendedCodebook {
   if (!codebook?.variables) return codebook;
 
   let needsUnfold = false;

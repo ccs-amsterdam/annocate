@@ -206,9 +206,6 @@ h5 {
 
 pre {
   min-width: 2px;
-  overflow: auto;
-  width: 20px;
-  display: none;
 }
 
 @keyframes spin {

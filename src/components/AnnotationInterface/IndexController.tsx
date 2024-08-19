@@ -74,6 +74,7 @@ const IndexController = ({
           <Button
             size="icon"
             variant="ghost"
+            className="hover:bg-transparent "
             onClick={() => updatePage(Math.max(1, activePage - 1))}
             disabled={!canGoBack || activePage === 1}
           >
@@ -93,6 +94,7 @@ const IndexController = ({
           <Button
             variant="ghost"
             size="icon"
+            className="hover:bg-transparent"
             onClick={() => {
               if (canGoForward) {
                 updatePage(activePage + 1);
