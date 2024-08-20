@@ -525,7 +525,7 @@ export function SelectCodebookFormField<T extends FieldValues>({
 }: SelectCodebookProps<T>) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(current?.codebookName || "");
-  const useCodebooksProps = useCodebooks(projectId);
+  const useCodebooksProps = useCodebooks(projectId, { type });
   const [newName, setNewName] = useState("");
   const { create } = useCreateEmptyCodebook(projectId, type);
   const openAPI = OpenAPIMeta(zType, "codebookId");

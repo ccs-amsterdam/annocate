@@ -24,7 +24,15 @@ import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
 import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
-import { Annotation, AnnotationHistory, Rules, UserRole, ServerUnitStatus, ProjectRole } from "@/app/types";
+import {
+  Annotation,
+  AnnotationHistory,
+  Rules,
+  UserRole,
+  ServerUnitStatus,
+  ProjectRole,
+  AnnotationDictionary,
+} from "@/app/types";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { z } from "zod";
 
@@ -255,7 +263,7 @@ export const annotations = pgTable(
     unitId: integer("unit_id").notNull(),
 
     preallocateTime: timestamp("preallocate_time"),
-    annotation: customJsonb("annotation").notNull().$type<Annotation[]>(),
+    annotation: customJsonb("annotation").notNull().$type<AnnotationDictionary>(),
     history: customJsonb("history").notNull().$type<AnnotationHistory[]>(),
     status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED"] })
       .$type<ServerUnitStatus>()

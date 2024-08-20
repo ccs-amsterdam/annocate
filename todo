@@ -13,3 +13,37 @@ The encrypted session token doesn't contain the validation data, but just a bool
 Include "done" field in annotation. Set this to true if the annotator confirmed submitting the variable (in case of multi code annotations).
 
 Now always calculate the variablestatuses from scratch on update. Make it so that it stops if a variable is not yet answered (which can happen if codebook changed). Then recalculate once answered, so it should automatically skip over gaps.
+
+Store annotations as an object, and we can in one query add and remove annotations.
+This way we don't have to send redundant annotations, but just a AnnotationDictionary object to 'add',
+and an array of 'rmIds'.
+
+-- Create the table
+CREATE TABLE my_table (
+id serial PRIMARY KEY,
+test text,
+data jsonb NOT NULL
+);
+
+-- Insert example data
+INSERT INTO my_table (test,data)
+VALUES ('testdit', '{
+"id1": "",
+"id2": "",
+"id3": "",
+"id4": ""
+}');
+
+SELECT jsonb_pretty(data)
+FROM my_table
+WHERE id = 1;
+
+UPDATE my_table
+SET data = (data - ARRAY['id1', 'id2']) ||
+'{"idnew1": "", "idnew2":""}'::jsonb,
+test = 'jeej'
+WHERE id=1;
+
+SELECT jsonb_pretty(data), test
+FROM my_table
+WHERE id = 1;

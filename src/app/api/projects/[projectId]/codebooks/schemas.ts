@@ -43,7 +43,15 @@ export const CodebookSchema = z.union([CodebookSurveySchema, CodebookAnnotationS
 
 //////////////////////////////////////////////////////////
 
-export const CodebooksTableParamsSchema = createTableParamsSchema({});
+export const CodebooksTableParamsSchema = createTableParamsSchema({
+  add: {
+    type: z.enum(["survey", "annotation"]).optional().openapi({
+      title: "Type",
+      description: "Filter by codebook type",
+      example: "survey",
+    }),
+  },
+});
 
 export const CodebookNameSchema = z.string().min(0).max(128).openapi({
   title: "Name",

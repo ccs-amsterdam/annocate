@@ -10,6 +10,8 @@ import {
   Status,
   UnitData,
   SetState,
+  AnnotationLibrary,
+  AnnotationDictionary,
 } from "@/app/types";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import cuid from "cuid";
@@ -25,8 +27,9 @@ class JobServerPreview implements JobServer {
   annotations: Record<string, Annotation[]>;
   projectId: number;
   user: MiddlecatUser;
+  current: { unit: number; variable?: string };
 
-  setCurrent: (current: { unit: number; variable: number }) => void;
+  setPreviewVariable: (variable: string) => void;
   setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
 
   constructor(
@@ -35,28 +38,33 @@ class JobServerPreview implements JobServer {
     codebook: Codebook,
     units: string[],
     annotations: Record<string, Annotation[]> = {},
-    current: { unit: number; variable: number },
-    setCurrent: (current: { unit: number; variable: number }) => void,
+    current: { unit: number; variable?: string },
     setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>,
   ) {
     this.sessionId = cuid();
     this.projectId = projectId;
     this.user = user;
     this.codebook = codebook ?? defaultCodebook;
+
     this.progress = {
       currentUnit: Math.min(current.unit, units.length - 1),
-      currentVariable: Math.min(current.variable, this.codebook.variables.length - 1),
+      currentVariable: current.variable ? this.codebook.variables.findIndex((v) => v.name === current.variable) : 0,
       nTotal: units.length,
-      nCoded: 0,
+      nCoded: Math.max(0, Math.min(current.unit, units.length - 1)),
       seekBackwards: true,
-      seekForwards: false,
+      seekForwards: true,
     };
-    this.setCurrent = setCurrent;
+
     this.return_link = "/";
     this.codebookId = 0;
     this.annotations = annotations || {};
+    this.current = current;
     this.units = units;
     this.setPreviewData = setPreviewData;
+    this.setPreviewVariable = (variable: string) => {
+      console.log("setPreviewVariable", variable);
+      this.current.variable = variable;
+    };
   }
 
   async init() {}
@@ -72,7 +80,7 @@ class JobServerPreview implements JobServer {
     }
 
     const unitData = await this.getUnitFromServer(i);
-    if (unitData.error) {
+    if ("error" in unitData) {
       this.updateProgress(i);
       return { unit: null, progress: this.progress, error: unitData.error };
     }
@@ -94,9 +102,9 @@ class JobServerPreview implements JobServer {
     return { unit: annotateUnit, progress: this.progress };
   }
 
-  async postAnnotations(token: string, annotation: Annotation[], status: Status) {
+  async postAnnotations(token: string, add: AnnotationDictionary, rmIds: string[], status: Status) {
     try {
-      this.setAnnotation(token, annotation);
+      this.setAnnotation(token, add, rmIds);
       return status;
     } catch (e) {
       console.error(e);
@@ -117,15 +125,15 @@ class JobServerPreview implements JobServer {
   async updateProgress(i: number) {
     this.progress.currentUnit = i;
     this.progress.nCoded = Math.max(Math.min(i, this.progress.nTotal), this.progress.nCoded);
-    this.setCurrent({ unit: i, variable: 0 });
+    this.current.unit = i;
   }
 
-  async getUnitFromServer(i: number) {
-    if (!this.units || this.units.length === 0) return defaultUnits[i];
+  async getUnitFromServer(i: number): Promise<UnitData | { error: string }> {
+    if (!this.units || this.units.length === 0) return defaultUnits[Math.min(i, defaultUnits.length - 1)];
     const unitId = this.units[i];
     try {
       const unit = await this.user.api.get(`/projects/${this.projectId}/units/${encodeURIComponent(unitId)}`);
-      return unit.data;
+      return unit.data as UnitData;
     } catch (e) {
       return {
         error: `Unit "${unitId}" not found`,
@@ -133,12 +141,23 @@ class JobServerPreview implements JobServer {
     }
   }
 
-  setAnnotation(token: string, annotation: Annotation[]) {
-    const { user, unitId } = JSON.parse(token);
-    this.annotations[`${user}_unit_${unitId}`] = annotation;
+  setAnnotation(token: string, add: AnnotationDictionary, rmIds: string[]) {
+    const { user, unitId, type } = JSON.parse(token);
+
+    let current =
+      type === "survey" ? this.annotations[`${user}_survey`] || [] : this.annotations[`${user}_unit_${unitId}`] || [];
+    console.log(current);
+    current = current.filter((a) => !rmIds.includes(a.id));
+    current = [...current, ...Object.values(add)];
+
+    if (type === "survey") {
+      this.annotations[`${user}_survey`] = current;
+    } else {
+      this.annotations[`${user}_unit_${unitId}`] = current;
+    }
     this.setPreviewData((d) => {
       if (!d) return d;
-      return { ...d, unit: { ...d.unit, annotations: annotation } };
+      return { ...d, unit: { ...d.unit, annotations: current } };
     });
   }
   getAnnotation(token: string) {

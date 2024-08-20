@@ -2,7 +2,7 @@ import { Annotation, Codebook, Layout, Unit, UnitData } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import JobServerPreview from "../JobServers/JobServerPreview";
@@ -22,9 +22,9 @@ export function Preview({ projectId, codebook }: Props) {
   const { user } = useMiddlecat();
   const [jobServer, setJobServer] = useState<JobServerPreview | null>(null);
   const annotations = useRef<Record<string, Annotation[]>>({});
+  const current = useRef<{ unit: number; variable?: string }>({ unit: 0 });
   const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
   const [units, setUnits] = useState<string[]>([]);
-  const [current, setCurrent] = useState<{ unit: number; variable: number }>({ unit: 0, variable: 0 });
   const [previewData, setPreviewData] = useState<{
     unitData: UnitData;
     unit: Unit;
@@ -41,30 +41,27 @@ export function Preview({ projectId, codebook }: Props) {
   // const { data: selectedCodebook } = useCodebook(projectId, selectedCodebookId);
   // const { data: selectedLayout } = useUnitLayout(projectId, selectedLayoutId);
 
+  const reset = useCallback(() => {
+    annotations.current = {};
+    current.current = { unit: 0 };
+    setUnits((units) => [...units]);
+  }, []);
+
   if (useWatchChange([projectId, user, codebook, units])) {
     if (user)
       setJobServer(
-        new JobServerPreview(
-          projectId,
-          user,
-          codebook,
-          units,
-          annotations.current,
-          current,
-          setCurrent,
-          setPreviewData,
-        ),
+        new JobServerPreview(projectId, user, codebook, units, annotations.current, current.current, setPreviewData),
       );
   }
 
   if (!jobServer) return null;
   return (
     <div className="mx-auto mt-10 flex  flex-col items-center pb-4">
-      <div className="mx-auto grid  grid-cols-[100px,1fr] gap-6">
+      <div className="mx-auto  grid grid-cols-[100px,1fr] gap-6">
         <PreviewSize size={size} setSize={setSize} />
         <PreviewUnits units={units} setUnits={setUnits} projectId={projectId} blockId={blockId} />
       </div>
-      <PreviewWindow size={size} jobServer={jobServer} previewData={previewData} />
+      <PreviewWindow size={size} jobServer={jobServer} previewData={previewData} reset={reset} />
     </div>
   );
 }
@@ -73,19 +70,21 @@ export function PreviewWindow({
   size,
   jobServer,
   previewData,
+  reset,
 }: {
   size: { height: number; width: number };
   jobServer: JobServerPreview;
   previewData: { unitData: UnitData; unit: Unit } | null;
+  reset: () => void;
 }) {
   const [focus, setFocus] = useState(false);
   if (!jobServer) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-6">
+    <div className="flex flex-wrap items-start justify-center gap-6">
       <div
         tabIndex={0}
-        className={`mt-10 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`mt-6 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
         style={{ minHeight: size.height + "px", height: size.height + "px", width: size.width + "px" }}
         onClick={(e) => {
           e.currentTarget.focus();
@@ -96,10 +95,13 @@ export function PreviewWindow({
         <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
       </div>
       <div
-        className=" w-[400px] max-w-full pt-10"
-        style={{ minHeight: size.height + "px", height: size.height + "px" }}
+        className=" flex w-[400px] max-w-full flex-col gap-3 pt-6"
+        style={{ minHeight: size.height + "px", height: size.height + 24 + "px" }}
       >
         <PreviewData previewData={previewData} />
+        <Button className="h-12" onClick={reset}>
+          Reset
+        </Button>
       </div>
     </div>
   );

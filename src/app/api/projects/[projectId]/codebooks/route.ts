@@ -1,15 +1,18 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import db, { codebooks } from "@/drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, SQL, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { CodebookCreateBodySchema, CodebookCreateResponseSchema, CodebooksTableParamsSchema } from "./schemas";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createTableGet({
     req,
-    tableFunction: () =>
-      db
+    tableFunction: (email, urlParams) => {
+      const where: SQL[] = [eq(codebooks.projectId, params.projectId)];
+      if (urlParams.type) where.push(eq(sql`${codebooks.codebook}->>'type'`, urlParams.type));
+
+      return db
         .select({
           id: codebooks.id,
           projectId: codebooks.projectId,
@@ -18,8 +21,9 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
           type: sql<string>`${codebooks.codebook}->>'type'`.as("type"),
         })
         .from(codebooks)
-        .where(eq(codebooks.projectId, params.projectId))
-        .as("baseQuery"),
+        .where(and(...where))
+        .as("baseQuery");
+    },
     paramsSchema: CodebooksTableParamsSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {

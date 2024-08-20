@@ -1,63 +1,13 @@
 import { z } from "zod";
 
-export type AnnotationStatus = "IN_PROGRESS" | "DONE";
-
-export interface GeneralTypeAnnotation {
-  id: string;
-  variable: string;
-  code: string | undefined;
-  value: number | undefined;
-
-  created: string;
-  done: boolean;
-
-  color?: string;
-  comment?: string;
-
-  time_question?: string;
-  time_answer?: string;
-
-  // intermediate values (not stored in backend)
-  index?: number;
-  text?: string;
-  positions?: Set<number>;
-  span?: [number, number];
-
-  select?: () => void;
-}
-
-export interface SpanTypeAnnotation extends GeneralTypeAnnotation {
-  type: "span";
-  field: string;
-  offset: number;
-  length: number;
-}
-
-export interface FieldTypeAnnotation extends GeneralTypeAnnotation {
-  type: "field";
-  field: string;
-  id: string;
-}
-
-export interface UnitTypeAnnotation extends GeneralTypeAnnotation {
-  type: "unit";
-  id: string;
-}
-
-export interface RelationTypeAnnotation extends GeneralTypeAnnotation {
-  type: "relation";
-  id: string;
-  fromId: string;
-  toId: string;
-}
-
-export type Annotation = SpanTypeAnnotation | FieldTypeAnnotation | UnitTypeAnnotation | RelationTypeAnnotation;
+export const VariableStatusSchema = z.enum(["pending", "done", "skip"]);
 
 export const GeneralTypeAnnotationSchema = z.object({
   id: z.string(),
   variable: z.string(),
   code: z.string().optional(),
   value: z.union([z.string(), z.number()]).optional(),
+  status: VariableStatusSchema,
 
   created: z.string(),
 });

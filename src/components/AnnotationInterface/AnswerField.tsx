@@ -91,7 +91,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   }, [variable, annotationLib]);
 
   const onFinish = () => {
-    annotationManager.finishVariable().then((res) => {
+    annotationManager.postVariable(true).then((res) => {
       if (res.status === "DONE") selectUnit((progress.currentUnit || 0) + 1);
     });
   };

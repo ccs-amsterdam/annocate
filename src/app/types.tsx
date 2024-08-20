@@ -7,7 +7,7 @@ import {
   GetUnitResponseSchema,
   UnitContentSchema,
 } from "./api/annotate/schemas";
-import { AnnotationSchema } from "./api/projects/[projectId]/annotations/schemas";
+import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
 import {
   CodebookCodeSchema,
   CodebookRelationSchema,
@@ -106,7 +106,7 @@ export interface JobServer {
   init: () => void;
   getUnit: (i?: number) => Promise<GetUnit>;
   getCodebook: (id: number) => Promise<Codebook>;
-  postAnnotations: (token: string, annotations: Annotation[], status: Status) => Promise<Status>;
+  postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }
 
@@ -228,7 +228,7 @@ export type Status = "DONE" | "IN_PROGRESS";
 //   select?: () => void;
 // }
 
-export type VariableStatus = "pending" | "done" | "skip";
+export type VariableStatus = z.infer<typeof VariableStatusSchema>;
 
 export interface AnnotationLibrary {
   sessionId: string;

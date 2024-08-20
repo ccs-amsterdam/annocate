@@ -22,6 +22,7 @@ import {
   VariableStatus,
   VariableValueMap,
 } from "@/app/types";
+import JobServerPreview from "@/components/JobServers/JobServerPreview";
 import { getColor } from "@/functions/tokenDesign";
 import cuid from "cuid";
 import randomColor from "randomcolor";
@@ -33,6 +34,8 @@ export default class AnnotationManager {
   postAnnotations: (status: Status) => Promise<Status>;
   annotationLib: AnnotationLibrary;
   setAnnotationLib: SetState<AnnotationLibrary>;
+  lastAnnotationIds: string[];
+  setPreviewVariable?: (variable: string) => void;
 
   constructor(setAnnotationLib: SetState<AnnotationLibrary>) {
     this.annotationLib = {
@@ -50,20 +53,34 @@ export default class AnnotationManager {
     this.setAnnotationLib = setAnnotationLib;
     this.unitId = "";
     this.postAnnotations = async (status: Status) => "IN_PROGRESS";
+    this.lastAnnotationIds = [];
   }
 
   initAnnotationLibrary(jobServer: JobServer, unit: ExtendedUnit, codebook: ExtendedCodebook) {
-    const annotationLib = createAnnotationLibrary(jobServer.sessionId, unit, codebook, unit.annotations);
+    const annotationLib = createAnnotationLibrary(jobServer, unit, codebook, unit.annotations);
+    this.lastAnnotationIds = Object.keys(annotationLib.annotations);
     this.updateAnnotationLibrary(annotationLib);
     this.postAnnotations = async (status: Status) => {
       try {
-        return await jobServer.postAnnotations(unit.token, Object.values(this.annotationLib.annotations), status);
+        const add: AnnotationDictionary = { ...this.annotationLib.annotations };
+        const rmIds: string[] = [];
+        for (let id of this.lastAnnotationIds) {
+          if (!add[id]) rmIds.push(id);
+          delete add[id];
+        }
+
+        const resStatus = await jobServer.postAnnotations(unit.token, add, rmIds, status);
+        this.lastAnnotationIds = Object.keys(this.annotationLib.annotations);
+        return resStatus;
       } catch (e) {
         console.error("Error posting annotations", e);
         toast.error("Error posting annotations");
         return "IN_PROGRESS";
       }
     };
+
+    // this is just for preview mode
+    this.setPreviewVariable = (jobServer as JobServerPreview).setPreviewVariable;
   }
 
   updateAnnotationLibrary(annotationLib: AnnotationLibrary) {
@@ -71,18 +88,39 @@ export default class AnnotationManager {
     this.setAnnotationLib({ ...annotationLib });
   }
 
-  async finishVariable() {
-    if (this.annotationLib.variableIndex === this.annotationLib.variables.length - 1) {
-      const status = await this.postAnnotations("DONE");
-      return { status, conditionReport: null };
-    } else {
+  async postVariable(finished: boolean) {
+    const varName = topVarName(this.annotationLib.variables[this.annotationLib.variableIndex].name);
+
+    if (!finished) {
+      // this is for intermediate saving of results, so only post
       const status = await this.postAnnotations("IN_PROGRESS");
-      this.annotationLib.variableStatuses[this.annotationLib.variableIndex] = "done";
-      this.annotationLib.variableStatuses = [...this.annotationLib.variableStatuses];
-      this.updateAnnotationLibrary(this.annotationLib);
-      this.setVariableIndex(this.annotationLib.variableIndex + 1);
       return { status, conditionReport: null };
     }
+
+    // if variable finished, also set done status to each annotation of current variable
+    for (let a of Object.values(this.annotationLib.annotations)) {
+      if (topVarName(a.variable) === varName) {
+        if (finished) a.status = "done";
+      }
+    }
+
+    const anyLeft = this.annotationLib.variableStatuses.some(
+      (s, i) => s !== "skip" && i > this.annotationLib.variableIndex,
+    );
+
+    if (!anyLeft) {
+      // if no more variables left, submit the annotations and go to next unit
+      const status = await this.postAnnotations("DONE");
+      return { status, conditionReport: null };
+    }
+
+    // submit the current variable and go to next variableIndex
+    const status = await this.postAnnotations("IN_PROGRESS");
+    this.annotationLib.variableStatuses[this.annotationLib.variableIndex] = "done";
+    this.annotationLib.variableStatuses = [...this.annotationLib.variableStatuses];
+    this.updateAnnotationLibrary(this.annotationLib);
+    this.setVariableIndex(this.annotationLib.variableIndex + 1);
+    return { status, conditionReport: null };
   }
 
   setVariableIndex(index: number) {
@@ -91,6 +129,7 @@ export default class AnnotationManager {
       previousIndex: this.annotationLib.variableIndex,
       variableIndex: index,
     });
+    this.setPreviewVariable?.(this.annotationLib.variables[index].name);
   }
 
   addAnnotation(annotation: Annotation) {
@@ -152,6 +191,7 @@ export default class AnnotationManager {
       id: cuid(),
       created: new Date().toISOString(),
       type: "unit",
+      status: "pending",
       variable: variable,
       code: code.code,
       value: code.value,
@@ -193,6 +233,7 @@ export default class AnnotationManager {
       id: cuid(),
       created: new Date().toISOString(),
       type: "span",
+      status: "pending",
       variable: variable,
       code: code.code,
       value: code.value,
@@ -212,6 +253,7 @@ export default class AnnotationManager {
       id: cuid(),
       created: new Date().toISOString(),
       type: "relation",
+      status: "pending",
       variable: variable,
       code: code.code,
       value: code.value,
@@ -224,7 +266,7 @@ export default class AnnotationManager {
 }
 
 export function createAnnotationLibrary(
-  sessionId: string,
+  jobServer: JobServer,
   unit: ExtendedUnit,
   codebook: ExtendedCodebook,
   annotations: Annotation[],
@@ -247,16 +289,21 @@ export function createAnnotationLibrary(
     a.positions = getTokenPositions(annotationDict, a);
   }
 
+  const { variableStatuses, variableIndex } = computeVariableStatuses(codebook.variables, annotationArray);
+
+  // this is just for preview mode
+  const previewVariableIndex = (jobServer as JobServerPreview).progress.currentVariable || 0;
+
   return {
-    sessionId,
+    sessionId: jobServer.sessionId,
     type: unit.type,
     status: unit.status,
     annotations: annotationDict,
     byToken: newTokenDictionary(annotationDict),
     codeHistory: initializeCodeHistory(annotationArray),
     variables: codebook.variables,
-    variableIndex: 0,
-    variableStatuses: computeVariableStatuses(codebook.variables, annotationArray),
+    variableIndex: Math.min(previewVariableIndex, variableIndex),
+    variableStatuses,
     previousIndex: 0,
   };
 }
@@ -314,28 +361,24 @@ function computeVariableStatuses(variables: ExtendedVariable[], annotations: Ann
 
   for (let i = 0; i < variables.length; i++) {
     const variable = variables[i];
-    const codeMap = variable.codeMap;
 
-    const items = "items" in variable ? variable.items : undefined;
-    const suffices = items && items?.length > 0 ? items.map((i) => i.name) : [""];
-
-    let started = false;
-    for (let suffix of suffices) {
-      const v = suffix ? `${variable.name}.${suffix}` : variable.name;
-      for (let a of annotations) {
-        if (a.variable !== v) continue;
-        if (!a.code) continue;
-        if (!codeMap[a.code]) continue;
-
-        started = true;
-        break;
-      }
+    const varName = topVarName(variable.name);
+    for (let a of annotations) {
+      if (topVarName(a.variable) !== varName) continue;
+      variableStatuses[i] = a.status;
+      break;
     }
-    if (started) {
-      if (i > 0) variableStatuses[i - 1] = "done";
-    } else break;
   }
-  return variableStatuses;
+
+  let variableIndex = 0;
+  for (let i = 1; i < variables.length; i++) {
+    const prev = variableStatuses[i - 1];
+    const current = variableStatuses[i];
+    if ((prev === "done" || prev === "skip") && current === "pending") variableIndex = i;
+    break;
+  }
+
+  return { variableStatuses, variableIndex };
 }
 
 /**
@@ -428,7 +471,7 @@ function getTokenPositions(
 
 function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap) {
   for (let a of Object.values(annotations)) {
-    const varName = a.variable.split(".")[0];
+    const varName = topVarName(a.variable);
     if (variableMap) {
       const codeMap = variableMap[varName].codeMap;
       if (a.code != null && codeMap[a.code]) {
@@ -442,6 +485,10 @@ function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap)
   }
 
   return annotations;
+}
+
+function topVarName(variable: string) {
+  return variable.split(".")[0];
 }
 
 function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
