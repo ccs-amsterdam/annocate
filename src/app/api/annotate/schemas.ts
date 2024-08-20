@@ -41,9 +41,9 @@ export const UnitTokenContentSchema = z.object({
 });
 
 export const UnitContentSchema = z.object({
-  text_fields: z.array(UnitTextContentSchema).optional(),
-  image_fields: z.array(UnitImageContentSchema).optional(),
-  markdown_fields: z.array(UnitMarkdownContentSchema).optional(),
+  textFields: z.array(UnitTextContentSchema).optional(),
+  imageFields: z.array(UnitImageContentSchema).optional(),
+  markdownFields: z.array(UnitMarkdownContentSchema).optional(),
   tokens: z.array(UnitTokenContentSchema).optional(),
   meta: UnitVariableSchema.optional(),
   grid: UnitLayoutGridSchema.optional(),
@@ -51,7 +51,7 @@ export const UnitContentSchema = z.object({
 
 export const UnitTypeSchema = z.enum(["annotation", "survey"]);
 
-export const AnnotateStatusSchema = z.enum(["IN_PROGRESS", "DONE"]);
+export const AnnotateUnitStatusSchema = z.enum(["IN_PROGRESS", "DONE"]);
 
 export const AnnotateToken = z.string().openapi({
   title: "Token",
@@ -63,7 +63,7 @@ export const AnnotateUnitSchema = z
   .object({
     token: z.string(),
     type: UnitTypeSchema,
-    status: AnnotateStatusSchema,
+    status: AnnotateUnitStatusSchema,
     content: UnitContentSchema,
     annotations: z.array(AnnotationSchema),
     codebook: CodebookSchema.optional(),
@@ -76,11 +76,12 @@ export const AnnotateUnitSchema = z
   });
 
 export const AnnotateProgressSchema = z.object({
-  current: z.number(),
-  n_total: z.number(),
-  n_coded: z.number(),
-  seek_backwards: z.boolean().optional(),
-  seek_forwards: z.boolean().optional(),
+  currentUnit: z.number(),
+  currentVariable: z.number(),
+  nTotal: z.number(),
+  nCoded: z.number(),
+  seekBackwards: z.boolean().optional(),
+  seekForwards: z.boolean().optional(),
 });
 
 export const GetUnitResponseSchema = z.object({

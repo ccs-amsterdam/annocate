@@ -50,7 +50,7 @@ export const CodebookCodeSchema = z.object({
   value: z.number().optional().openapi({
     title: "Value",
     description:
-      "Optionally, you can specify a numeric value related to the code. Needs to be unique within the variable.",
+      "Optionally, you can specify a numeric value related to the code. If specified it needs to be unique within the variable.",
   }),
 });
 
@@ -66,7 +66,7 @@ export const CodebookCodesSchema = z
   .refine(
     (codes) => {
       // values unique
-      const values = codes.map((c) => c.value);
+      const values = codes.map((c) => c.value).filter((v) => v != null);
       return new Set(values).size === values.length;
     },
     { message: "Values must be unique" },

@@ -117,7 +117,7 @@ const Document = ({
   const annotationMode = variableType === "relation" ? "relationMode" : "spanMode";
   const currentUnitReady = currentUnit === content;
 
-  if (!content.tokens && !content.image_fields) return null;
+  if (!content.tokens && !content.imageFields) return null;
 
   const editMode = variable && "editMode" in variable ? !!variable.editMode : false;
 
@@ -132,10 +132,10 @@ const Document = ({
 
       <Body
         tokens={content.tokens}
-        text_fields={content.text_fields || []}
+        text_fields={content.textFields || []}
         metaFields={[]}
-        image_fields={content.image_fields || []}
-        markdown_fields={content.markdown_fields || []}
+        image_fields={content.imageFields || []}
+        markdown_fields={content.markdownFields || []}
         grid={content.grid}
         onReady={onBodyReady}
         bodyStyle={bodyStyle}

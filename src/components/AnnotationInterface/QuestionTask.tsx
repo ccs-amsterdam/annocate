@@ -37,7 +37,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
     annotationManager.processAnswer(variable.name, transition.code, false, variable.fields);
     annotationManager.finishVariable().then((res) => {
       if (res.status === "DONE") {
-        selectUnit(progress.current || 0 + 1);
+        selectUnit(progress.currentUnit || 0 + 1);
         nextUnitTransition(refs, transition);
         setTimeout(() => {
           showUnit(refs.text, refs.box, refs.code);
@@ -91,6 +91,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
           annotationLib={annotationLib}
           annotationManager={annotationManager}
           blockEvents={blockEvents}
+          height={height}
         />
       </div>
     </div>

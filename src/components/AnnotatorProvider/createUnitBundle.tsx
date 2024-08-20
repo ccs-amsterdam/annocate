@@ -35,9 +35,9 @@ export default function processUnitContent(annotateUnit: Unit): ExtendedUnitCont
   const ruc = annotateUnit.content;
 
   const content: ExtendedUnitContent = {
-    text_fields: ruc.text_fields || [],
-    image_fields: ruc.image_fields || [],
-    markdown_fields: ruc.markdown_fields || [],
+    textFields: ruc.textFields || [],
+    imageFields: ruc.imageFields || [],
+    markdownFields: ruc.markdownFields || [],
     meta: ruc.meta || {},
     grid: {},
   };
@@ -47,8 +47,8 @@ export default function processUnitContent(annotateUnit: Unit): ExtendedUnitCont
 
   if (ruc.tokens) {
     content.tokens = importTokens(ruc.tokens) || [];
-  } else if (content.text_fields) {
-    content.tokens = parseTokens([...content.text_fields]);
+  } else if (content.textFields) {
+    content.tokens = parseTokens([...content.textFields]);
   }
 
   return content;
@@ -92,16 +92,16 @@ function prepareGrid(grid: FieldGridInput | undefined, content: ExtendedUnitCont
   }
 
   // rm all fields that are not in the template
-  if (content.text_fields) content.text_fields = content.text_fields.filter((f: TextField) => used_columns.has(f.name));
-  if (content.image_fields)
-    content.image_fields = content.image_fields.filter((f: ImageField) => used_columns.has(f.name));
-  if (content.markdown_fields)
-    content.markdown_fields = content.markdown_fields.filter((f: MarkdownField) => used_columns.has(f.name));
+  if (content.textFields) content.textFields = content.textFields.filter((f: TextField) => used_columns.has(f.name));
+  if (content.imageFields)
+    content.imageFields = content.imageFields.filter((f: ImageField) => used_columns.has(f.name));
+  if (content.markdownFields)
+    content.markdownFields = content.markdownFields.filter((f: MarkdownField) => used_columns.has(f.name));
 
   // add area names
-  for (let f of content.text_fields || []) f.grid_area = areaNameMap[f.name];
-  for (let f of content.image_fields || []) f.grid_area = areaNameMap[f.name];
-  for (let f of content.markdown_fields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.textFields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.imageFields || []) f.grid_area = areaNameMap[f.name];
+  for (let f of content.markdownFields || []) f.grid_area = areaNameMap[f.name];
 
   if (template.length > 0) outputGrid.areas = template.join(" ");
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export type AnnotationStatus = "IN_PROGRESS" | "DONE";
+
 export interface GeneralTypeAnnotation {
   id: string;
   variable: string;
@@ -7,6 +9,7 @@ export interface GeneralTypeAnnotation {
   value: number | undefined;
 
   created: string;
+  done: boolean;
 
   color?: string;
   comment?: string;

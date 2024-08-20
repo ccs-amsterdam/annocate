@@ -28,19 +28,6 @@ import randomColor from "randomcolor";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-export function useAnnotationManager(unit: ExtendedUnit, codebook: ExtendedCodebook) {
-  const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(() =>
-    createAnnotationLibrary(unit, codebook, unit.annotations),
-  );
-  const [annotationManager] = useState<AnnotationManager>(() => new AnnotationManager(setAnnotationLib));
-
-  useEffect(() => {
-    setAnnotationLib(createAnnotationLibrary(unit, codebook, unit.annotations || []));
-  }, [unit, codebook]);
-
-  return { annotationLib, annotationManager };
-}
-
 export default class AnnotationManager {
   unitId: string;
   postAnnotations: (status: Status) => Promise<Status>;
@@ -49,6 +36,7 @@ export default class AnnotationManager {
 
   constructor(setAnnotationLib: SetState<AnnotationLibrary>) {
     this.annotationLib = {
+      sessionId: "initializing",
       type: "annotation",
       status: "IN_PROGRESS",
       annotations: {},
@@ -65,7 +53,7 @@ export default class AnnotationManager {
   }
 
   initAnnotationLibrary(jobServer: JobServer, unit: ExtendedUnit, codebook: ExtendedCodebook) {
-    const annotationLib = createAnnotationLibrary(unit, codebook, unit.annotations);
+    const annotationLib = createAnnotationLibrary(jobServer.sessionId, unit, codebook, unit.annotations);
     this.updateAnnotationLibrary(annotationLib);
     this.postAnnotations = async (status: Status) => {
       try {
@@ -236,11 +224,13 @@ export default class AnnotationManager {
 }
 
 export function createAnnotationLibrary(
+  sessionId: string,
   unit: ExtendedUnit,
   codebook: ExtendedCodebook,
   annotations: Annotation[],
 ): AnnotationLibrary {
   const variableMap = createVariableMap(codebook.variables || []);
+
   let annotationArray = annotations || [];
   annotationArray = annotationArray.map((a) => ({ ...a }));
 
@@ -258,6 +248,7 @@ export function createAnnotationLibrary(
   }
 
   return {
+    sessionId,
     type: unit.type,
     status: unit.status,
     annotations: annotationDict,
@@ -437,8 +428,9 @@ function getTokenPositions(
 
 function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap) {
   for (let a of Object.values(annotations)) {
+    const varName = a.variable.split(".")[0];
     if (variableMap) {
-      const codeMap = variableMap[a.variable].codeMap;
+      const codeMap = variableMap[varName].codeMap;
       if (a.code != null && codeMap[a.code]) {
         a.color = getColor(a.code, codeMap);
       }

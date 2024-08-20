@@ -22,53 +22,73 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
   const instruction = variable?.instruction || codebook?.settings?.instruction;
 
+  const mode = variable?.instructionMode || "after";
+  const survey = codebook.type === "survey";
+  const foldable = !survey || mode.includes("modal");
+
+  const sessionVariableKey = annotationLib.sessionId + "." + variable.name;
+  const showOnMount = mode !== "modal";
+  const [show, setShow] = useSessionStorage(sessionVariableKey, showOnMount);
+
   if (!instruction) return <div className="">{children}</div>;
 
-  const mode = variable?.instructionMode || "after";
-  const foldable = codebook.type !== "survey";
+  const questionWithButton = (
+    <div is="button" tabIndex={0} onClick={() => setShow(!show)} className={` z-50 cursor-pointer text-pretty  `}>
+      {children}
+      <Button
+        variant={"ghost"}
+        size={"icon"}
+        className={`${foldable ? "" : "hidden"} ${show ? "hidden" : ""} h-4 rounded bg-transparent text-inherit opacity-60 transition-all hover:bg-transparent hover:text-inherit`}
+      >
+        <Info className="h-5  w-5 translate-y-1" />
+      </Button>
+    </div>
+  );
 
   if (mode === "after") {
     return (
       <div className="">
-        {children}
-        <FoldableInstruction instruction={instruction} foldable={foldable} />
+        {questionWithButton}
+        {survey ? <br /> : null}
+        <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={foldable} />
       </div>
     );
   }
   if (mode === "before") {
     return (
-      <div className="mb-1">
-        <FoldableInstruction instruction={instruction} foldable={foldable} before={true} />
-        {children}
+      <div className="">
+        <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={foldable} />
+        {survey ? <br /> : null}
+        {questionWithButton}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col">
-      {children}
-      <ModalInstruction instruction={instruction} autoInstruction={mode.includes("auto")} />
+      {questionWithButton}
+      <ModalInstruction instruction={instruction} show={show} setShow={setShow} />
     </div>
   );
 };
 
-interface InstructionsProps {
+interface InstructionProps {
   instruction: string;
-  autoInstruction?: boolean;
-  foldable?: boolean;
+  show: boolean;
+  setShow: (show: boolean) => void;
   before?: boolean;
+  foldable?: boolean;
 }
 
 function getFoldStyle(show: boolean, ref: React.RefObject<HTMLDivElement>, before?: boolean) {
   if (!ref.current) return {};
-  if (!show) return { maxHeight: before ? "0px" : "20px" };
+  if (!show) return { maxHeight: "0px" };
 
   const height = ref.current?.scrollHeight;
   return { maxHeight: `${height}px` };
 }
 
-function FoldableInstruction({ instruction, foldable, before }: InstructionsProps) {
-  const [show, setShow] = useState(true);
+function FoldableInstruction({ instruction, show, setShow, foldable, before }: InstructionProps) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState(() => getFoldStyle(show, ref, before));
 
@@ -89,7 +109,7 @@ function FoldableInstruction({ instruction, foldable, before }: InstructionsProp
       style={style}
       className={`${show ? "my-2" : "text-foreground"}  relative flex  min-w-0  overflow-visible   transition-all`}
     >
-      <div ref={ref} className={`  ${show ? "py-1" : "py-3"} w-full overflow-hidden px-9  `}>
+      <div ref={ref} className={`  ${show ? "py-1" : ""} w-full overflow-hidden   `}>
         {show ? (
           <Markdown compact style={{ hyphens: "auto", visibility: show ? "visible" : "hidden" }}>
             {instruction}
@@ -103,10 +123,11 @@ function FoldableInstruction({ instruction, foldable, before }: InstructionsProp
         variant="ghost"
         size="icon"
         className={` 
+          ${show ? "" : "hidden"}
           ${foldable ? "" : "hidden"} 
           ${before && !show ? "-translate-y-5" : ""} 
           ${!before && !show ? "translate-y-2" : ""}
-          absolute right-0 z-30 h-full w-9 rounded px-2 text-foreground/60 transition-all hover:bg-transparent hover:text-inherit`}
+          absolute -right-10 z-50 h-full w-9 rounded px-2 text-primary-foreground/60 transition-all hover:bg-transparent hover:text-inherit`}
       >
         <div className="">{icon}</div>
       </Button>
@@ -114,50 +135,26 @@ function FoldableInstruction({ instruction, foldable, before }: InstructionsProp
   );
 }
 
-function ModalInstruction({ instruction, autoInstruction }: InstructionsProps) {
-  const [open, setOpen] = useState(false);
-  const key = useMemo(() => {
-    return hash({ instruction });
-  }, [instruction]);
-  const [seen, setSeen] = useSessionStorage(key, false);
-
+function ModalInstruction({ instruction, show, setShow }: InstructionProps) {
   useEffect(() => {
-    if (autoInstruction) {
-      if (!seen) {
-        setOpen(true);
-        setSeen(true);
-      }
-    }
-  }, [autoInstruction, seen, setSeen]);
-
-  useEffect(() => {
-    if (!open) return;
-    const stopPropagation = (e: any) => open && e.stopPropagation();
+    if (!show) return;
+    const stopPropagation = (e: any) => show && e.stopPropagation();
     const stopWhat = ["keydown", "keyup"];
     for (const what of stopWhat) document.addEventListener(what, stopPropagation);
     return () => {
       for (const what of stopWhat) document.removeEventListener(what, stopPropagation);
     };
-  }, [open]);
+  }, [show]);
 
   return (
     <Drawer
-      modal={false}
+      modal={true}
       direction="right"
-      open={!!instruction && open}
+      open={show}
       onOpenChange={(open) => {
-        setOpen(!!instruction && open);
+        setShow(!!instruction && open);
       }}
     >
-      <DrawerTrigger asChild className={`relative ml-auto   cursor-pointer px-2`}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="  h-full translate-y-1 rounded bg-transparent  text-foreground/60 transition-all hover:bg-transparent hover:text-inherit"
-        >
-          <Info className={`ml-auto  inline-block `} />
-        </Button>
-      </DrawerTrigger>
       <DrawerContent className="fixed bottom-0 left-auto right-0 mt-0   h-screen w-[500px] max-w-[90vw] rounded-none border-y-0  bg-background  p-3  ">
         <DrawerClose asChild className="mt-autod ml-auto mt-2 ">
           <Button variant="ghost" size="icon" className="absolute top-0 mb-auto ml-auto  bg-transparent">

@@ -99,7 +99,7 @@ export type Annotation = z.infer<typeof AnnotationSchema> & {
  * In particular, it needs to have a codebook and progress
  */
 export interface JobServer {
-  id: string;
+  sessionId: string;
   return_link?: string;
   job_id?: string;
 
@@ -231,6 +231,7 @@ export type Status = "DONE" | "IN_PROGRESS";
 export type VariableStatus = "pending" | "done" | "skip";
 
 export interface AnnotationLibrary {
+  sessionId: string;
   type: UnitType;
   status: UnitStatus;
   annotations: AnnotationDictionary;

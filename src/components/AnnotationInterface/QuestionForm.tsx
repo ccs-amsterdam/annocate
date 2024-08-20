@@ -14,9 +14,10 @@ interface QuestionFormProps {
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   blockEvents: boolean;
+  height: number;
 }
 
-const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockEvents }: QuestionFormProps) => {
+const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockEvents, height }: QuestionFormProps) => {
   const variable = annotationLib.variables[annotationLib.variableIndex];
   const questionRef = useRef<HTMLDivElement>(null);
 
@@ -31,28 +32,27 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 
   if (!unit || !variable) return null;
 
+  const maxHeightPercent = unit.type === "survey" ? 100 : 60;
+
   return (
     <div
       ref={questionRef}
+      style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
       className={`${TypeStyling[codebook.type].container} relative z-30 flex  flex-col    text-[length:inherit] transition-[border]  `}
     >
-      <div className={`${TypeStyling[codebook.type].question} z-40 flex w-full flex-col `}>
-        <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook}>
-          <QuestionIndexStep
-            variables={annotationLib.variables}
-            variableIndex={annotationLib.variableIndex}
-            variableStatuses={annotationLib.variableStatuses}
-            setQuestionIndex={(index: number) => annotationManager.setVariableIndex(index)}
-          >
-            <div
-              className={`relative z-20  flex w-9 flex-auto  bg-primary px-9 py-2 text-[length:inherit]   text-primary-foreground `}
-            >
-              <div className={`flex items-center  gap-3  text-lg `}>
-                <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
-              </div>
-            </div>
-          </QuestionIndexStep>
-        </VariableInstructions>
+      <div className={`${TypeStyling[codebook.type].text} z-40 flex w-full flex-col `}>
+        <QuestionIndexStep
+          variables={annotationLib.variables}
+          variableIndex={annotationLib.variableIndex}
+          variableStatuses={annotationLib.variableStatuses}
+          setQuestionIndex={(index: number) => annotationManager.setVariableIndex(index)}
+        >
+          <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook}>
+            <span className={TypeStyling[codebook.type].question}>
+              <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+            </span>
+          </VariableInstructions>
+        </QuestionIndexStep>
       </div>
 
       {/* {codebook.type === "survey" ? (
@@ -61,7 +61,7 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
         </div>
       ) : null} */}
 
-      <div className="relative flex w-full flex-auto overflow-auto  text-[length:inherit] text-foreground">
+      <div className="relative flex w-full flex-auto  text-[length:inherit] text-foreground">
         <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
       </div>
     </div>
@@ -71,10 +71,12 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 const TypeStyling = {
   survey: {
     container: "text-foreground bg-background min-h-[60%] my-auto",
-    question: "mt-6",
+    text: "mt-6",
+    question: "text-2xl font-bold",
   },
   annotation: {
-    container: "border-primary  text-foreground bg-primary-dark/10",
+    container: "border-primary  text-foreground bg-primary-dark/10 overflow-auto border-t-2  border-primary",
+    text: "bg-primary text-primary-foreground",
     question: "",
   },
 };

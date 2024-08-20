@@ -46,9 +46,9 @@ export default function unfoldVariables(codebook: ExtendedCodebook, unit: Unit):
       if (!Array.isArray(variable.perField)) variable.perField = [variable.perField];
 
       const fields = new Set<string>([]);
-      for (let f of unit.content.text_fields || []) fields.add(f.name);
-      for (let f of unit.content.markdown_fields || []) fields.add(f.name);
-      for (let f of unit.content.image_fields || []) fields.add(f.name);
+      for (let f of unit.content.textFields || []) fields.add(f.name);
+      for (let f of unit.content.markdownFields || []) fields.add(f.name);
+      for (let f of unit.content.imageFields || []) fields.add(f.name);
 
       for (let field of Array.from(fields)) {
         // perField can match on both the exact field and field ignoring any \.[0-9]+ extension.

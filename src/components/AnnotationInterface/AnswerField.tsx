@@ -36,7 +36,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   const variableIndex = annotationLib.variableIndex;
   const variable = variables?.[variableIndex];
 
-  const speedbump = useSpeedBump(String(progress.current || "") + annotationLib.variableIndex, 100);
+  const speedbump = useSpeedBump(String(progress.currentUnit || "") + annotationLib.variableIndex, 100);
 
   useEffect(() => {
     // if answer changed but has not been saved, warn users when they try to close the app
@@ -92,7 +92,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
 
   const onFinish = () => {
     annotationManager.finishVariable().then((res) => {
-      if (res.status === "DONE") selectUnit((progress.current || 0) + 1);
+      if (res.status === "DONE") selectUnit((progress.currentUnit || 0) + 1);
     });
   };
 
@@ -172,17 +172,12 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   //     />
   //   );
 
-  const maxHeightPercent = unit.type === "survey" ? 100 : 40;
-
   return (
     <div
       ref={answerRef}
       className={`relative mx-0 my-auto grid  w-full grid-rows-[auto] overflow-hidden   p-0 text-[length:inherit] text-foreground transition-all `}
     >
-      <div
-        className={`mt-auto w-full overflow-auto`}
-        style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
-      >
+      <div className={`mt-auto w-full overflow-auto`}>
         <div className="py-2">{answerfield}</div>
       </div>
     </div>

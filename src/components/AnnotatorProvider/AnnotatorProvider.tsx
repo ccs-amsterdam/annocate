@@ -68,7 +68,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   const { evalStringTemplate, ready } = useSandboxedEval(sandboxData);
 
   const { data: codebookWithId, isLoading: codebookLoading } = useQuery({
-    queryKey: ["codebook", jobServer.id, getUnit.unit?.codebook_id],
+    queryKey: ["codebook", jobServer.sessionId, getUnit.unit?.codebook_id],
     queryFn: async () => {
       if (getUnit.unit?.codebook_id === undefined) return null;
       let codebook = await jobServer.getCodebook(getUnit.unit?.codebook_id);
@@ -136,11 +136,12 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
 
 function initProgress(): Progress {
   return {
-    current: 0,
-    n_total: 0,
-    n_coded: 0,
-    seek_backwards: false,
-    seek_forwards: false,
+    currentUnit: 0,
+    currentVariable: 0,
+    nTotal: 0,
+    nCoded: 0,
+    seekBackwards: false,
+    seekForwards: false,
   };
 }
 
@@ -177,6 +178,7 @@ function initUnit(): ExtendedUnit {
 
 function initAnnotationLib(): AnnotationLibrary {
   return {
+    sessionId: "initializing",
     type: "annotation",
     status: "IN_PROGRESS",
     annotations: {},

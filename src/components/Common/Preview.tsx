@@ -24,6 +24,7 @@ export function Preview({ projectId, codebook }: Props) {
   const annotations = useRef<Record<string, Annotation[]>>({});
   const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
   const [units, setUnits] = useState<string[]>([]);
+  const [current, setCurrent] = useState<{ unit: number; variable: number }>({ unit: 0, variable: 0 });
   const [previewData, setPreviewData] = useState<{
     unitData: UnitData;
     unit: Unit;
@@ -41,7 +42,19 @@ export function Preview({ projectId, codebook }: Props) {
   // const { data: selectedLayout } = useUnitLayout(projectId, selectedLayoutId);
 
   if (useWatchChange([projectId, user, codebook, units])) {
-    if (user) setJobServer(new JobServerPreview(projectId, user, codebook, units, annotations.current, setPreviewData));
+    if (user)
+      setJobServer(
+        new JobServerPreview(
+          projectId,
+          user,
+          codebook,
+          units,
+          annotations.current,
+          current,
+          setCurrent,
+          setPreviewData,
+        ),
+      );
   }
 
   if (!jobServer) return null;

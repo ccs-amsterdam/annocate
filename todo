@@ -1,3 +1,15 @@
+Make sub table for annotations in DB
 
+composite primary key:
 
-some redundant packages. Like cookies and js-cookie
+- id (as created by client)
+- unitAnnotationId
+- annotation
+
+When posting annotations, just post the ones for current variable, as an upsert using the unique IDs.
+
+The encrypted session token doesn't contain the validation data, but just a boolean for whether or not the variable should be validated. If so, fetch the validation data from the DB.
+
+Include "done" field in annotation. Set this to true if the annotator confirmed submitting the variable (in case of multi code annotations).
+
+Now always calculate the variablestatuses from scratch on update. Make it so that it stops if a variable is not yet answered (which can happen if codebook changed). Then recalculate once answered, so it should automatically skip over gaps.

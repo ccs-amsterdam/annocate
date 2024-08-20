@@ -22,7 +22,7 @@ export function useSandboxedEval(data: Record<string, any>) {
     document.body.appendChild(iframe);
     setIframeObj({ iframe, senderId, receiverId });
     return () => {
-      document.body.removeChild(iframe);
+      if (document.body.contains(iframe)) document.body.removeChild(iframe);
     };
   }, [data]);
 

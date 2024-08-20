@@ -34,8 +34,8 @@ export function createAnnotateUnit({ type, token, data, layout, codebook, codebo
     const value = String(data[field.column] || "");
 
     if (field.type === "text") {
-      if (!unit.content.text_fields) unit.content.text_fields = [];
-      unit.content.text_fields.push({
+      if (!unit.content.textFields) unit.content.textFields = [];
+      unit.content.textFields.push({
         type: "text",
         name: field.name,
         value,
@@ -43,8 +43,8 @@ export function createAnnotateUnit({ type, token, data, layout, codebook, codebo
       });
     }
     if (field.type === "markdown") {
-      if (!unit.content.markdown_fields) unit.content.markdown_fields = [];
-      unit.content.markdown_fields.push({
+      if (!unit.content.markdownFields) unit.content.markdownFields = [];
+      unit.content.markdownFields.push({
         type: "markdown",
         name: field.name,
         value,
@@ -52,8 +52,8 @@ export function createAnnotateUnit({ type, token, data, layout, codebook, codebo
       });
     }
     if (field.type === "image") {
-      if (!unit.content.image_fields) unit.content.image_fields = [];
-      unit.content.image_fields.push({
+      if (!unit.content.imageFields) unit.content.imageFields = [];
+      unit.content.imageFields.push({
         type: "image",
         name: field.name,
         value,

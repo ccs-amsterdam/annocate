@@ -44,7 +44,6 @@ export function usePreviewUnits(projectId: number, blockId?: number) {
     endpoint: `projects/${projectId}/units/previewUnits`,
     params: { blockId },
     responseSchema: PreviewUnitsResponseSchema,
-    disabled: !blockId,
   });
 }
 

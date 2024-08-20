@@ -16,7 +16,7 @@ import cuid from "cuid";
 import { MiddlecatUser } from "middlecat-react";
 
 class JobServerPreview implements JobServer {
-  id: string;
+  sessionId: string;
   progress: Progress;
   return_link: string;
   codebook: Codebook;
@@ -26,6 +26,7 @@ class JobServerPreview implements JobServer {
   projectId: number;
   user: MiddlecatUser;
 
+  setCurrent: (current: { unit: number; variable: number }) => void;
   setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
 
   constructor(
@@ -34,19 +35,23 @@ class JobServerPreview implements JobServer {
     codebook: Codebook,
     units: string[],
     annotations: Record<string, Annotation[]> = {},
+    current: { unit: number; variable: number },
+    setCurrent: (current: { unit: number; variable: number }) => void,
     setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>,
   ) {
-    this.id = cuid();
+    this.sessionId = cuid();
     this.projectId = projectId;
     this.user = user;
     this.codebook = codebook ?? defaultCodebook;
     this.progress = {
-      current: 0,
-      n_coded: 0,
-      n_total: units?.length || defaultUnits.length,
-      seek_backwards: true,
-      seek_forwards: true,
+      currentUnit: Math.min(current.unit, units.length - 1),
+      currentVariable: Math.min(current.variable, this.codebook.variables.length - 1),
+      nTotal: units.length,
+      nCoded: 0,
+      seekBackwards: true,
+      seekForwards: false,
     };
+    this.setCurrent = setCurrent;
     this.return_link = "/";
     this.codebookId = 0;
     this.annotations = annotations || {};
@@ -58,19 +63,17 @@ class JobServerPreview implements JobServer {
 
   async getUnit(i?: number): Promise<GetUnit> {
     let annotateUnit: Unit | null = null;
-    if (i === undefined || i < 0) i = this.progress.n_coded;
-    if (i > this.progress.n_coded + 1) i = this.progress.n_coded + 1;
+    if (i === undefined || i < 0) i = this.progress.nCoded;
+    if (i > this.progress.nCoded + 1) i = this.progress.nCoded + 1;
 
-    if (i >= this.progress.n_total) {
-      this.progress.current = this.progress.n_total + 1;
-      this.progress.n_coded = this.progress.n_total;
+    if (i >= this.progress.nTotal) {
+      this.updateProgress(i);
       return { unit: null, progress: this.progress };
     }
 
     const unitData = await this.getUnitFromServer(i);
     if (unitData.error) {
-      this.progress.current = i;
-      this.progress.n_coded = Math.max(Math.min(i, this.progress.n_total), this.progress.n_coded);
+      this.updateProgress(i);
       return { unit: null, progress: this.progress, error: unitData.error };
     }
 
@@ -85,8 +88,7 @@ class JobServerPreview implements JobServer {
       annotations: this.getAnnotation(token) || [],
     });
 
-    this.progress.current = i;
-    this.progress.n_coded = Math.max(Math.min(i, this.progress.n_total), this.progress.n_coded);
+    this.updateProgress(i);
 
     this.setPreviewData({ unitData, unit: annotateUnit });
     return { unit: annotateUnit, progress: this.progress };
@@ -110,6 +112,12 @@ class JobServerPreview implements JobServer {
     return {
       message: "No more units left!",
     };
+  }
+
+  async updateProgress(i: number) {
+    this.progress.currentUnit = i;
+    this.progress.nCoded = Math.max(Math.min(i, this.progress.nTotal), this.progress.nCoded);
+    this.setCurrent({ unit: i, variable: 0 });
   }
 
   async getUnitFromServer(i: number) {

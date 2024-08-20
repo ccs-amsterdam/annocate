@@ -36,12 +36,12 @@ function AnnotationMenu() {
   return (
     <div className="z-20 flex items-center justify-between gap-2 border-b border-foreground bg-gradient-to-b from-primary-dark to-primary px-3 py-2 text-primary-foreground">
       <IndexController
-        n={progress.n_total}
-        progressN={progress.n_coded}
-        index={progress.current}
+        n={progress.nTotal}
+        progressN={progress.nCoded}
+        index={progress.currentUnit}
         setIndex={selectUnit}
-        canGoBack={!!progress.seek_backwards}
-        canGoForward={!!progress.seek_forwards}
+        canGoBack={!!progress.seekBackwards}
+        canGoForward={!!progress.seekForwards}
       />
       <div>
         <ResponsiveButtonGroup>
@@ -61,6 +61,6 @@ function AnnotationUnit({ blockEvents, jobServer }: { blockEvents?: boolean; job
         <div className="mt-20 h-min rounded border-2 border-destructive p-3">{error}</div>
       </div>
     );
-  if (progress.current >= progress.n_total) return <Finished jobServer={jobServer} />;
+  if (progress.currentUnit >= progress.nTotal) return <Finished jobServer={jobServer} />;
   return <QuestionTask blockEvents={blockEvents} />;
 }
