@@ -20,7 +20,7 @@ import { Switch } from "../ui/switch";
 import { SelectOrCreate } from "../ui/select-or-create";
 import { useCreateEmptyCodebook } from "./codebookForms";
 import { useCodebooks } from "@/app/api/projects/[projectId]/codebooks/query";
-import { JobBlock } from "@/app/types";
+import { JobBlock, JobBlockMeta } from "@/app/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import DBSelect from "../Common/DBSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "../ui/dialog";
@@ -137,26 +137,49 @@ export function NumberFormField<T extends FieldValues>({
   );
 }
 
+interface TextAreaFormProps<T extends FieldValues> extends FormFieldProps<T> {
+  asArray?: boolean;
+}
+
 export function TextAreaFormField<T extends FieldValues>({
   control,
   name,
   zType,
   className,
   placeholder,
-}: FormFieldProps<T>) {
+  asArray,
+}: TextAreaFormProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
   return (
     <FormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <FormItem className="flex h-full flex-col">
-          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
-          <FormControl>
-            <Textarea placeholder={placeholder || openAPI.example} {...field} className={className} />
-          </FormControl>
-        </FormItem>
-      )}
+      render={({ field }) => {
+        const { value, onChange, ...props } = field;
+
+        const realValue = asArray ? (value as string[]).join("\n") : value;
+        const realOnChange = asArray
+          ? (e: any) => {
+              const array = e.target.value.split("\n");
+              onChange(array);
+            }
+          : onChange;
+
+        return (
+          <FormItem className="flex h-full flex-col">
+            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+            <FormControl>
+              <Textarea
+                placeholder={placeholder || openAPI.example}
+                {...props}
+                onChange={realOnChange}
+                value={realValue}
+                className={className}
+              />
+            </FormControl>
+          </FormItem>
+        );
+      }}
     />
   );
 }

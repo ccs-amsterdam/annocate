@@ -1,10 +1,10 @@
 import {
   JobBlockCreateSchema,
-  JobBlockUnitsResponseSchema,
+  JobBlockResponseSchema,
   JobBlockUpdateSchema,
   JobCreateSchema,
   JobResponseSchema,
-  JobsResponseSchema,
+  JobMetaResponseSchema,
   JobsTableParamsSchema,
   JobUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/schemas";
@@ -12,12 +12,13 @@ import { z } from "zod";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { useDelete, useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
+import { projects } from "@/drizzle/schema";
 
 export function useJobs(projectId: number, initialParams?: z.input<typeof JobsTableParamsSchema>) {
   return useTableGet({
     endpoint: `projects/${projectId}/jobs`,
     initialParams: initialParams || {},
-    responseSchema: JobsResponseSchema,
+    responseSchema: JobMetaResponseSchema,
   });
 }
 
@@ -41,7 +42,7 @@ export function useUpdateJob(projectId: number, jobId?: number) {
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}`,
     bodySchema: JobUpdateSchema,
-    responseSchema: JobsResponseSchema,
+    responseSchema: JobMetaResponseSchema,
     invalidateEndpoints: [`projects/${projectId}/jobs`],
   });
 }
@@ -59,7 +60,7 @@ export function useUpdateJobBlock(projectId: number, jobId: number, blockId?: nu
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     bodySchema: JobBlockUpdateSchema,
     responseSchema: IdResponseSchema,
-    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`],
+    invalidateEndpoints: [`projects/${projectId}/jobs`, `projects/${projectId}/jobs/${jobId}`],
   });
 }
 
@@ -70,10 +71,10 @@ export function useDeleteJobBlock(projectId: number, jobId: number, blockId: num
   });
 }
 
-export function useJobBlockUnits(projectId: number, jobId?: number, blockId?: number) {
+export function useJobBlock(projectId: number, jobId?: number, blockId?: number) {
   return useGet({
-    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}/units`,
-    responseSchema: JobBlockUnitsResponseSchema,
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
+    responseSchema: JobBlockResponseSchema,
     disabled: !blockId || !jobId,
   });
 }
@@ -86,21 +87,21 @@ export const openapiJobs = createOpenAPIDefinitions(
       method: "get",
       description: "Get all jobs",
       params: JobsTableParamsSchema,
-      response: JobsResponseSchema,
+      response: JobMetaResponseSchema,
     },
     {
       path: "/jobs",
       method: "post",
       description: "Create a job",
       body: JobUpdateSchema,
-      response: JobsResponseSchema,
+      response: JobMetaResponseSchema,
     },
     {
       path: "/jobs/{jobId}",
       method: "post",
       description: "Update a job",
       body: JobUpdateSchema,
-      response: JobsResponseSchema,
+      response: JobMetaResponseSchema,
     },
     {
       path: "/jobs/{jobId}",

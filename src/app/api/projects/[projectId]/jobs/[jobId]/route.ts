@@ -1,9 +1,9 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { codebooks, jobBlocks, jobs } from "@/drizzle/schema";
-import { and, eq, sql } from "drizzle-orm";
+import db, { codebooks, jobBlocks, jobs, units } from "@/drizzle/schema";
+import { and, count, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { JobResponseSchema, JobsResponseSchema, JobUpdateSchema } from "../schemas";
+import { JobResponseSchema, JobMetaResponseSchema, JobUpdateSchema } from "../schemas";
 import { n } from "next-usequerystate/dist/serializer-C_l8WgvO";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number; jobId: number } }) {
@@ -19,10 +19,10 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
           type: jobBlocks.type,
           position: jobBlocks.position,
           rules: jobBlocks.rules,
-          n_units: sql<number>`jsonb_array_length(${jobBlocks.units})`.mapWith(Number),
+          nUnits: sql<number>`jsonb_array_length(${jobBlocks.units})`.mapWith(Number),
           codebookId: codebooks.id,
           codebookName: codebooks.name,
-          n_variables: sql<number>`jsonb_array_length(${codebooks.codebook}->'variables')`.mapWith(Number),
+          nVariables: sql<number>`jsonb_array_length(${codebooks.codebook}->'variables')`.mapWith(Number),
         })
         .from(jobs)
         .leftJoin(jobBlocks, eq(jobs.id, jobBlocks.jobId))
@@ -30,16 +30,26 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, params.jobId)))
         .orderBy(jobBlocks.position);
 
+      // Not really needed sinced project also has unit count, but might bring it back
+      // If there are annotation blocks without units, we need to get the total units count instead
+      // const needN = jobWithBlocks.some((block) => block.type === "annotation" && block.n_units === 0);
+      // if (needN) {
+      //   const [{ n }] = await db.select({ n: count() }).from(units).where(eq(units.projectId, params.projectId));
+      //   jobWithBlocks.forEach((block) => {
+      //     if (block.type === "annotation" && block.n_units === 0) block.n_units = n;
+      //   });
+      // }
+
       const blocks = jobWithBlocks
-        .map(({ blockId, type, position, codebookId, codebookName, n_variables, rules, n_units }) => ({
+        .map(({ blockId, type, position, codebookId, codebookName, nVariables: nVariables, rules, nUnits }) => ({
           id: blockId,
           type,
           position,
           codebookId,
           codebookName,
-          n_variables,
+          nVariables,
           rules,
-          n_units,
+          nUnits,
         }))
         .filter((block) => block.id !== null);
 
@@ -74,7 +84,7 @@ export async function POST(req: Request, { params }: { params: { projectId: numb
     },
     req,
     bodySchema: JobUpdateSchema,
-    responseSchema: JobsResponseSchema,
+    responseSchema: JobMetaResponseSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };

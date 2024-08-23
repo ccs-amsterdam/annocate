@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "max_units" integer DEFAULT 20000 NOT NULL;

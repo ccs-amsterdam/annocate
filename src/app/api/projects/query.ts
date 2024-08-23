@@ -1,4 +1,5 @@
 import {
+  ProjectResponseSchema,
   ProjectsCreateSchema,
   ProjectsResponseSchema,
   ProjectsTableParamsSchema,
@@ -25,7 +26,7 @@ export function useCreateProject() {
 }
 
 export function useProject(projectId: number) {
-  return useGet({ endpoint: `projects/${projectId}`, responseSchema: ProjectsResponseSchema });
+  return useGet({ endpoint: `projects/${projectId}`, responseSchema: ProjectResponseSchema });
 }
 
 export function useUpdateProject(projectId: number) {

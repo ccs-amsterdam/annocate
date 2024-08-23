@@ -160,6 +160,8 @@ function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
   const [accordionValue, setAccordionValue] = useState<string>("");
   const fields = form.getValues("codebook.unit.fields");
 
+  if (!fields) return null;
+
   function appendField() {
     const newFields = [...fields, defaultField("Field_" + (fields.length + 1))];
     form.setValue("codebook.unit.fields", newFields, { shouldDirty: true });

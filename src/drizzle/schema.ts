@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
+import { type InferSelectModel, type InferInsertModel, max } from "drizzle-orm";
 import {
   boolean,
   primaryKey,
@@ -74,6 +74,7 @@ export const projects = pgTable(
     name: varchar("name", { length: 128 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
     config: customJsonb("project_config").notNull().$type<ProjectConfig>().default({ description: "" }),
+    maxUnits: integer("max_units").notNull().default(20000),
     frozen: boolean("frozen").notNull().default(false),
     unitsUpdated: timestamp("units_updated").notNull().defaultNow(),
   },
@@ -132,6 +133,7 @@ export const units = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     unitId: varchar("unit_id", { length: 256 }).notNull(),
+    position: integer("position").notNull(),
     data: customJsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("modified").notNull().defaultNow(),

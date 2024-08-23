@@ -35,12 +35,26 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
+        const [{ n }] = await tx
+          .select({
+            max: projects.maxUnits,
+            n: sql<number>`COUNT(*)`.mapWith(Number),
+          })
+          .from(units)
+          .leftJoin(projects, eq(projects.id, units.projectId))
+          .where(eq(units.projectId, params.projectId));
+
+        if (n + body.units.length > 20000) {
+          throw new Error("A project can have a maximum of 20,000 units");
+        }
+
         const data = body.units
-          .map((unit) => {
+          .map((unit, i) => {
             return {
               projectId: params.projectId,
               unitId: unit.id,
               data: unit.data,
+              position: n + i,
             };
           })
           .filter((unit) => unit.unitId && unit.data);
@@ -75,6 +89,20 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
   });
 }
 
+export async function reindexUnitPositions(tx: any, projectId: number): Promise<void> {
+  await tx.execute(sql`
+    WITH new_position AS
+    (
+        SELECT row_number() over (order by position) AS newpos, id
+        FROM ${units}
+        WHERE ${units.projectId} = ${projectId}
+    ) 
+    UPDATE ${units} 
+    SET position = new_position.newpos-1
+    FROM new_position
+    WHERE ${units.unitId} = new_position.id
+    `);
+}
 // function setUnitsetPositions(db: any, unitsetId: number) {
 //   return db
 //     .select({ id: unitsetUnits.id })

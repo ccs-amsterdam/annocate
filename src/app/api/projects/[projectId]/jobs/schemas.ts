@@ -49,7 +49,7 @@ export const JobAnnotationBlockSchema = JobBlockBaseSchema.extend({
   units: z.array(z.string()).max(10000).openapi({
     title: "Unit selection",
     description:
-      "Optionally, provide a list of unit IDs (max 10000) to use for this block. If left empty, all units will be used.",
+      "Optionally, provide a list of unit IDs (max 10000) to use for this block. If left empty, all units will be used. Using specific units let's you control the order in which coders see them (if randomization is off), and ensures that the job is not affected if new units are added to the project.",
   }),
   rules: JobAnnotationBlockRulesSchema,
 });
@@ -73,12 +73,22 @@ export const JobUpdateSchema = z.object({
 export const JobBlockCreateSchema = z.union([JobSurveyBlockSchema, JobAnnotationBlockSchema]);
 export const JobBlockUpdateSchema = z.union([JobSurveyBlockSchema.partial(), JobAnnotationBlockSchema.partial()]);
 
-export const JobsResponseSchema = z.object({
+export const JobMetaResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   modified: z.coerce.date(),
   deployed: z.boolean(),
   // blocks: z.array(JobBlockSchema),
+});
+
+export const JobBlockMetaSchema = z.object({
+  id: z.number(),
+  type: z.enum(["survey", "annotation"]),
+  position: z.number(),
+  codebookId: z.number(),
+  codebookName: z.string(),
+  nVariables: z.number(),
+  nUnits: z.number(),
 });
 
 export const JobBlockResponseSchema = z.object({
@@ -87,17 +97,14 @@ export const JobBlockResponseSchema = z.object({
   position: z.number(),
   codebookId: z.number(),
   codebookName: z.string(),
-  n_variables: z.number(),
   rules: JobAnnotationBlockRulesSchema,
-  n_units: z.number(),
+  units: z.array(z.string()),
 });
-
-export const JobBlockUnitsResponseSchema = z.array(z.string());
 
 export const JobResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   modified: z.coerce.date(),
   deployed: z.boolean(),
-  blocks: z.array(JobBlockResponseSchema),
+  blocks: z.array(JobBlockMetaSchema),
 });

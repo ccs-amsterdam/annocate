@@ -10,7 +10,6 @@ import {
 import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema, voidResponseSchema } from "@/app/api/schemaHelpers";
-import { PreviewUnitsResponseSchema } from "./previewUnits/schemas";
 
 export function useUnits(projectId: number, initialParams: z.input<typeof UnitDataTableParamsSchema>) {
   return useTableGet({
@@ -39,11 +38,11 @@ export function useDeleteUnits(projectId: number) {
   });
 }
 
-export function usePreviewUnits(projectId: number, blockId?: number) {
+export function usePreviewUnit(projectId: number, position: number, blockId?: number) {
   return useGet({
-    endpoint: `projects/${projectId}/units/previewUnits`,
-    params: { blockId },
-    responseSchema: PreviewUnitsResponseSchema,
+    endpoint: `projects/${projectId}/units/preview`,
+    params: { blockId, position },
+    responseSchema: UnitDataRowSchema,
   });
 }
 
@@ -67,7 +66,7 @@ export const openapiUnits = createOpenAPIDefinitions(
     {
       path: "/projects/{projectId}/units",
       method: "post",
-      description: "Create units",
+      description: "Create units. By default a project can have up to 20000 units.",
       body: UnitDataCreateBodySchema,
       response: UnitDataCreateResponseSchema,
     },
@@ -82,7 +81,7 @@ export const openapiUnits = createOpenAPIDefinitions(
       path: "/projects/{projectId}/units/previewUnits",
       method: "get",
       description: "Preview units",
-      response: PreviewUnitsResponseSchema,
+      response: UnitDataResponseSchema,
     },
     {
       path: "/projects/{projectId}/units/{unitId}",

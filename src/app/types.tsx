@@ -20,10 +20,13 @@ import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
 import { CodebookSchema } from "./api/projects/[projectId]/codebooks/schemas";
 import {
   JobAnnotationBlockRulesSchema,
+  JobBlockMetaSchema,
   JobBlockResponseSchema,
+  JobBlockSchema,
   JobResponseSchema,
-  JobsResponseSchema,
+  JobMetaResponseSchema,
 } from "./api/projects/[projectId]/jobs/schemas";
+import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
 ///////////
@@ -44,13 +47,15 @@ export interface Authorization {
   projectRole: ProjectRole | null;
 }
 
-export type Codebook = z.infer<typeof CodebookSchema>;
+export type Project = z.infer<typeof ProjectResponseSchema>;
+export type Codebook = z.output<typeof CodebookSchema>;
 export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
-export type Job = z.infer<typeof JobsResponseSchema>;
+export type JobBlockMeta = z.infer<typeof JobBlockMetaSchema>;
 export type JobBlock = z.infer<typeof JobBlockResponseSchema>;
-export type JobDetails = z.infer<typeof JobResponseSchema>;
+export type JobMeta = z.infer<typeof JobMetaResponseSchema>;
+export type Job = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;

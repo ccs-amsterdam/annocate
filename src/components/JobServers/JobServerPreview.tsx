@@ -1,4 +1,4 @@
-import { LoremIpsum } from "@/app/projects/[projectId]/codebooks/[codebookId]/lorem";
+import { LoremIpsum } from "@/app/projects/[projectId]/codebooks/design/lorem";
 import {
   Unit,
   Annotation,
@@ -10,61 +10,89 @@ import {
   Status,
   UnitData,
   SetState,
-  AnnotationLibrary,
   AnnotationDictionary,
+  Job,
+  Project,
 } from "@/app/types";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import cuid from "cuid";
 import { MiddlecatUser } from "middlecat-react";
+import { n } from "next-usequerystate/dist/serializer-C_l8WgvO";
+
+interface JobServerPreviewConstructor {
+  project: Project;
+  user: MiddlecatUser;
+  codebook: Codebook;
+  job?: Job;
+  blockId?: number;
+  annotations?: Record<string, Annotation[]>;
+  current: { unit: number; variable?: string };
+  setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
+}
 
 class JobServerPreview implements JobServer {
   sessionId: string;
   progress: Progress;
   return_link: string;
   codebook: Codebook;
-  codebookId: number;
-  units: string[] | undefined;
+  job: Job | null;
+  blockId: number | null;
   annotations: Record<string, Annotation[]>;
-  projectId: number;
+  project: Project;
   user: MiddlecatUser;
+  defaultUnits: UnitData[];
+  useAllUnits?: boolean;
   current: { unit: number; variable?: string };
+  unitCache: Record<string, UnitData> = {};
 
   setPreviewVariable: (variable: string) => void;
   setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
 
-  constructor(
-    projectId: number,
-    user: MiddlecatUser,
-    codebook: Codebook,
-    units: string[],
-    annotations: Record<string, Annotation[]> = {},
-    current: { unit: number; variable?: string },
-    setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>,
-  ) {
+  constructor({
+    project,
+    user,
+    codebook,
+    job,
+    blockId,
+    annotations,
+    current,
+    setPreviewData,
+  }: JobServerPreviewConstructor) {
     this.sessionId = cuid();
-    this.projectId = projectId;
+    this.project = project;
     this.user = user;
-    this.codebook = codebook ?? defaultCodebook;
+    this.codebook = codebook;
+
+    let nUnits = 7;
+    if (job != null && blockId != null) {
+      nUnits = job.blocks.find((b) => b.id === blockId)?.nUnits ?? 0;
+      if (nUnits === 0) {
+        nUnits = project.nUnits;
+        this.useAllUnits = true;
+      }
+    }
 
     this.progress = {
-      currentUnit: Math.min(current.unit, units.length - 1),
+      currentUnit: Math.min(current.unit, nUnits - 1),
       currentVariable: current.variable ? this.codebook.variables.findIndex((v) => v.name === current.variable) : 0,
-      nTotal: units.length,
-      nCoded: Math.max(0, Math.min(current.unit, units.length - 1)),
+      nTotal: nUnits,
+      nCoded: Math.max(0, Math.min(current.unit, nUnits - 1)),
       seekBackwards: true,
       seekForwards: true,
     };
 
+    this.defaultUnits = createDefaultUnits(codebook, nUnits);
     this.return_link = "/";
-    this.codebookId = 0;
     this.annotations = annotations || {};
     this.current = current;
-    this.units = units;
+    this.job = job || null;
+    this.blockId = blockId || null;
     this.setPreviewData = setPreviewData;
     this.setPreviewVariable = (variable: string) => {
       console.log("setPreviewVariable", variable);
       this.current.variable = variable;
     };
+    this.unitCache = {};
   }
 
   async init() {}
@@ -79,11 +107,15 @@ class JobServerPreview implements JobServer {
       return { unit: null, progress: this.progress };
     }
 
-    const unitData = await this.getUnitFromServer(i);
-    if ("error" in unitData) {
-      this.updateProgress(i);
-      return { unit: null, progress: this.progress, error: unitData.error };
+    if (!this.unitCache[i]) {
+      const newUnitData = await this.getUnitFromServer(i);
+      if ("error" in newUnitData) {
+        this.updateProgress(i);
+        return { unit: null, progress: this.progress, error: newUnitData.error };
+      }
+      this.unitCache[i] = newUnitData;
     }
+    const unitData = this.unitCache[i];
 
     // simulate annotation token, used to authorize postAnnotations
     const token = JSON.stringify({ user: this.user.email, unitId: unitData.id });
@@ -92,7 +124,7 @@ class JobServerPreview implements JobServer {
       token,
       data: unitData.data,
       layout: this.codebook.type === "survey" ? undefined : this.codebook.unit,
-      codebook_id: this.codebookId,
+      codebook_id: 0,
       annotations: this.getAnnotation(token) || [],
     });
 
@@ -129,14 +161,17 @@ class JobServerPreview implements JobServer {
   }
 
   async getUnitFromServer(i: number): Promise<UnitData | { error: string }> {
-    if (!this.units || this.units.length === 0) return defaultUnits[Math.min(i, defaultUnits.length - 1)];
-    const unitId = this.units[i];
+    if (this.job === null || this.blockId === null) {
+      return this.defaultUnits[Math.min(i, this.defaultUnits.length - 1)];
+    }
+
     try {
-      const unit = await this.user.api.get(`/projects/${this.projectId}/units/${encodeURIComponent(unitId)}`);
+      const params = { position: i + 1, blockId: this.useAllUnits ? undefined : this.blockId };
+      const unit = await this.user.api.get(`/projects/${this.project.id}/units/preview`, { params });
       return unit.data as UnitData;
     } catch (e) {
       return {
-        error: `Unit "${unitId}" not found`,
+        error: `Unit not found`,
       };
     }
   }
@@ -166,43 +201,26 @@ class JobServerPreview implements JobServer {
   }
 }
 
-const defaultCodebook: Codebook = {
-  type: "annotation",
-  unit: {
-    fields: [
-      { name: "title", type: "text", column: "title", style: { fontSize: "1.2rem", fontWeight: "bold" } },
-      { name: "text", type: "text", column: "text" },
-    ],
-    meta: [],
-  },
-  settings: {},
-  variables: [
-    {
-      type: "select code",
-      name: "age",
-      question: "Question goes here",
-      codes: [{ code: "continue" }],
-      multiple: false,
-      vertical: false,
-    },
-  ],
-};
+function createDefaultUnits(codebook: Codebook, n: number): UnitData[] {
+  if (codebook.type === "survey") {
+    return [
+      {
+        id: "survey",
+        data: {},
+      },
+    ];
+  }
 
-const defaultUnits: UnitData[] = Array.from({ length: 3 }).map((_, i) => {
-  return {
-    id: `id-${i}`,
-    data: {
-      title: `${LoremIpsum.split("\n\n")[0]} ${i + 1}`,
-      text: LoremIpsum.split("\n\n").slice(1).join("\n\n"),
-    },
-  };
-});
-
-const defaultLayout: Layout = {
-  fields: [
-    { name: "title", type: "text", column: "title", style: { fontSize: "1.2rem", fontWeight: "bold" } },
-    { name: "text", type: "text", column: "text" },
-  ],
-};
+  return Array.from({ length: n }).map((_, i) => {
+    const data: Record<string, string> = {};
+    codebook.unit.fields.forEach((field) => {
+      data[field.name] = `Here goes a ${field.type} field called ${field.name}`;
+    });
+    return {
+      id: `id-${i}`,
+      data,
+    };
+  });
+}
 
 export default JobServerPreview;

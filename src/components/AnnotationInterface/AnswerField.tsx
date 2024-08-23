@@ -6,8 +6,6 @@ import Scale from "./AnswerFieldScale";
 import Annotinder from "./AnswerFieldAnnotinder";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
-import { toast } from "sonner";
-import { m } from "next-usequerystate/dist/serializer-C_l8WgvO";
 
 interface AnswerFieldProps {
   annotationLib: AnnotationLibrary;

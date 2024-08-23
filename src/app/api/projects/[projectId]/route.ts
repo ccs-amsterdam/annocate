@@ -1,19 +1,30 @@
-import db, { projects } from "@/drizzle/schema";
-import { eq } from "drizzle-orm";
+import db, { projects, units } from "@/drizzle/schema";
+import { count, eq } from "drizzle-orm";
 import { hasMinProjectRole } from "../../authorization";
 import { createGet } from "../../routeHelpers";
-import { ProjectsResponseSchema } from "../schemas";
+import { ProjectResponseSchema, ProjectsResponseSchema } from "../schemas";
 import { NextRequest } from "next/server";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   const { projectId } = params;
   return createGet({
     selectFunction: async (email, params) => {
-      const [job] = await db.select().from(projects).where(eq(projects.id, projectId));
+      const [job] = await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          created: projects.created,
+          creator: projects.creator,
+          nUnits: count(units.unitId),
+        })
+        .from(projects)
+        .leftJoin(units, eq(projects.id, units.projectId))
+        .where(eq(projects.id, projectId))
+        .groupBy(projects.id);
       return job;
     },
     req,
-    responseSchema: ProjectsResponseSchema,
+    responseSchema: ProjectResponseSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };

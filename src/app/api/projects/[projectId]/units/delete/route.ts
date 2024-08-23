@@ -4,6 +4,7 @@ import db, { projects, units } from "@/drizzle/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataDeleteBodySchema } from "../schemas";
+import { reindexUnitPositions } from "../route";
 
 export async function POST(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createUpdate({
@@ -11,6 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
       return db.transaction(async (tx) => {
         await tx.delete(units).where(and(eq(units.projectId, params.projectId), inArray(units.unitId, body.ids)));
         await tx.update(projects).set({ unitsUpdated: new Date() }).where(eq(projects.id, params.projectId));
+        await reindexUnitPositions(tx, params.projectId);
         return { success: true };
       });
     },

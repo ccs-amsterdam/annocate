@@ -22,7 +22,7 @@ export function CodebooksTable({ projectId }: Props) {
   const router = useRouter();
 
   function onSelect(row: z.infer<typeof CodebooksResponseSchema>) {
-    router.push(`/projects/${projectId}/codebooks/${row.id}`);
+    router.push(`/projects/${projectId}/codebooks/design?codebookId=${row.id}`);
   }
 
   return (
@@ -59,7 +59,7 @@ function CreateCodebookButton({ projectId }: Props) {
         onSubmit={(e) => {
           e.preventDefault();
           if (!newName || !type) return;
-          create(newName).then(({ id }) => router.push(`/projects/${projectId}/codebooks/${id}`));
+          create(newName).then(({ id }) => router.push(`/projects/${projectId}/codebooks/design?codebookId=${id}`));
         }}
       >
         <Input placeholder="New codebook" value={newName} onChange={(e) => setNewName(e.target.value)} />

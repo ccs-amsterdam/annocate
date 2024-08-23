@@ -1,6 +1,6 @@
 {
-  "id": "0bcb9b1a-1ac7-4311-b2b4-f3ae1f11d6fb",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "94f8bd33-655c-4f9f-879f-d488d9e4d0d5",
+  "prevId": "0bcb9b1a-1ac7-4311-b2b4-f3ae1f11d6fb",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -651,6 +651,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{\"description\":\"\"}'::jsonb"
+        },
+        "max_units": {
+          "name": "max_units",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 20000
         },
         "frozen": {
           "name": "frozen",

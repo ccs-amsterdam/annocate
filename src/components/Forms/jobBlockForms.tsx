@@ -1,36 +1,22 @@
 "use client";
 
-import { useCodebooks } from "@/app/api/projects/[projectId]/codebooks/query";
-import { useCreateJobBlock, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
+import { useCreateJobBlock, useJobBlock, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
 import {
   JobAnnotationBlockSchema,
   JobBlockCreateSchema,
   JobBlockUpdateSchema,
-  JobCreateSchema,
   JobSurveyBlockSchema,
 } from "@/app/api/projects/[projectId]/jobs/schemas";
-import { JobBlock } from "@/app/types";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useForm, UseFormReturn } from "react-hook-form";
-import { z } from "zod";
-import DBSelect from "../Common/DBSelect";
-import { Button } from "../ui/button";
-import { Form, FormField, FormItem, FormMessage } from "../ui/form";
-import { Input } from "../ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { useCreateEmptyCodebook } from "./codebookForms";
-import {
-  BooleanFormField,
-  FormFieldTitle,
-  NumberFormField,
-  OpenAPIMeta,
-  SelectCodebookFormField,
-  TextAreaFormField,
-} from "./formHelpers";
+import { JobBlock, JobBlockMeta } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
-import { TextFieldInput } from "@radix-ui/themes";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "../ui/button";
+import { Form, FormMessage } from "../ui/form";
+import { BooleanFormField, NumberFormField, SelectCodebookFormField, TextAreaFormField } from "./formHelpers";
+import { useEffect } from "react";
+import { Loading } from "../ui/loader";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 type JobBlockUpdate = z.infer<typeof JobBlockUpdateSchema>;
@@ -40,38 +26,64 @@ interface CreatJobBlockProps {
   jobId: number;
   position: number;
   type: "survey" | "annotation";
-  current?: JobBlock;
+  currentId?: number;
   afterSubmit: () => void;
 }
 
-export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, current, afterSubmit }: CreatJobBlockProps) {
+export function CreateOrUpdateJobBlock({
+  projectId,
+  jobId,
+  type,
+  position,
+  currentId,
+  afterSubmit,
+}: CreatJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
-  const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, current?.id);
+  const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, currentId);
+  const { data: current, isLoading } = useJobBlock(projectId, jobId, currentId);
 
+  console.log(current);
   const schema = type === "survey" ? JobSurveyBlockSchema : JobAnnotationBlockSchema;
   const shape = schema.shape;
 
   const form = useForm<JobBlockCreate>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues(type, position, current),
+    disabled: isLoading,
   });
 
-  function onSubmit(values: JobBlockCreate) {
+  useEffect(() => {
     if (current) {
-      updateAsync(values).then(afterSubmit).catch(console.error);
+      form.reset(JobBlockCreateSchema.parse(current));
+    }
+  }, [current, form]);
+
+  function onSubmit(values: JobBlockCreate) {
+    if ("units" in values) values.units = values.units.filter((u) => u !== "");
+
+    if (current) {
+      const updateValues: JobBlockUpdate = { ...values };
+      if (updateValues.type === "annotation") {
+        if (JSON.stringify(updateValues.units) === JSON.stringify(current.units)) {
+          delete updateValues.units;
+        }
+      }
+      updateAsync(updateValues).then(afterSubmit).catch(console.error);
       return;
     } else {
       createAsync(values).then(afterSubmit).catch(console.error);
     }
   }
 
+  function unitsPlaceholder() {
+    if (isLoading) return "Loading units...";
+    return `Select specific units by listing their IDs, or use all units by leaving this field empty. `;
+  }
+
   function renderAnnotationFormFields() {
     if (type !== "annotation") return null;
     const shape = JobAnnotationBlockSchema.shape;
     const rulesShape = shape.rules.shape;
-    const unitsPlaceholder = current?.n_units
-      ? `(${current.n_units}) units selected. Enter new list to overwrite selection, or leave empty to keep it`
-      : "Enter list of unit IDs. If empty, all units will be used.";
     return (
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
@@ -80,7 +92,8 @@ export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, curre
             zType={shape.units}
             name="units"
             className="h-full overflow-auto"
-            placeholder={unitsPlaceholder}
+            placeholder={unitsPlaceholder()}
+            asArray={true}
           />
         </div>
         <div className="flex flex-col gap-3">
@@ -111,6 +124,8 @@ export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, curre
     );
   }
 
+  // if (currentId !== undefined && isLoading) return <Loading />;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
@@ -124,7 +139,9 @@ export function CreateOrUpdateJobBlock({ projectId, jobId, type, position, curre
         />
         {renderAnnotationFormFields()}
         <ErrorMessage errors={form.formState.errors} name="formError" render={({ message }) => <p>{message}</p>} />
-        <Button type="submit">Create {type} block</Button>
+        <Button type="submit">
+          {current ? "update" : "create"} {type} block
+        </Button>
         <FormMessage />
       </form>
     </Form>
@@ -143,7 +160,7 @@ function defaultValues(type: "survey" | "annotation", position: number, current?
       type: "annotation",
       codebookId: current?.codebookId || undefined,
       position: current?.position || position,
-      units: [],
+      units: current?.units || [],
       rules: current?.rules || { randomizeUnits: true },
     };
   throw new Error("Invalid type");

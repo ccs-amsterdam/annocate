@@ -1,5 +1,5 @@
 import { useDeleteJobBlock, useJob, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
-import { JobBlock } from "@/app/types";
+import { JobBlockMeta } from "@/app/types";
 import { MoveItemInArray } from "@/components/Forms/formHelpers";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { SimplePopover } from "@/components/ui/simplePopover";
 import { Edit, Plus, Trash } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React from "react";
 import { useState } from "react";
 
 interface Props {
@@ -21,7 +22,7 @@ interface BlockFormProps {
   jobId: number;
   position: number;
   type: "survey" | "annotation";
-  current?: JobBlock;
+  current?: JobBlockMeta;
 }
 
 export function JobDetails({ projectId, jobId }: Props) {
@@ -44,7 +45,7 @@ export function JobDetails({ projectId, jobId }: Props) {
       <div>
         {job.blocks.map((block, i) => {
           return (
-            <>
+            <React.Fragment key={block.id}>
               <AddBlockHere projectId={projectId} jobId={jobId} position={i} setBlockForm={setBlockForm} />
               <JobBlockItem
                 key={block.id}
@@ -55,7 +56,7 @@ export function JobDetails({ projectId, jobId }: Props) {
                 n={job.blocks.length}
                 setBlockForm={setBlockForm}
               />
-            </>
+            </React.Fragment>
           );
         })}
         <AddBlockHere projectId={projectId} jobId={jobId} position={job.blocks.length} setBlockForm={setBlockForm} />
@@ -66,14 +67,20 @@ export function JobDetails({ projectId, jobId }: Props) {
         open={!!blockForm}
         setOpen={(open) => !open && setBlockForm(null)}
       >
-        {blockForm ? <CreateOrUpdateJobBlock {...blockForm} afterSubmit={() => setBlockForm(null)} /> : null}
+        {blockForm ? (
+          <CreateOrUpdateJobBlock
+            {...blockForm}
+            currentId={blockForm.current?.id}
+            afterSubmit={() => setBlockForm(null)}
+          />
+        ) : null}
       </SimpleDialog>
     </div>
   );
 }
 
 interface BlockProps {
-  block: JobBlock;
+  block: JobBlockMeta;
   position: number;
   projectId: number;
   jobId: number;
@@ -87,11 +94,11 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
   const router = useRouter();
 
   function showDetails() {
-    const s = block.n_variables > 1 ? "s" : "";
+    const s = block.nVariables > 1 ? "s" : "";
     if (block.type === "survey") {
-      return `${block.n_variables} variable${s}`;
+      return `${block.nVariables} variable${s}`;
     }
-    return `${block.n_variables} variable${s}, ${block.n_units || "all"} units`;
+    return `${block.nVariables} variable${s}, ${block.nUnits || "all"} units`;
   }
 
   return (
@@ -109,7 +116,11 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
         role="button"
         tabIndex={0}
         className="cursor-pointer rounded px-3 hover:bg-foreground/10"
-        onClick={() => router.push(`/projects/${projectId}/codebooks/${block.codebookId}?blockId=${block.id}`)}
+        onClick={() =>
+          router.push(
+            `/projects/${projectId}/codebooks/design?codebookId=${block.codebookId}&jobId=${jobId}&blockId=${block.id}`,
+          )
+        }
       >
         <h4 className="m-0 mt-2 leading-none">{block.codebookName}</h4>
         <span className="leading-none text-foreground/60">{showDetails()}</span>

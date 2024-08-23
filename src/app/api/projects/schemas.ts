@@ -29,6 +29,12 @@ export const ProjectsCreatorSchema = z.string().openapi({
   example: "god@everywhere.com",
 });
 
+export const ProjectUnitsSchema = z.number().openapi({
+  title: "Units",
+  description: "The number of units in the job",
+  example: 100,
+});
+
 export const ProjectsTableParamsSchema = createTableParamsSchema({});
 
 export const ProjectsResponseSchema = z.object({
@@ -36,6 +42,10 @@ export const ProjectsResponseSchema = z.object({
   name: ProjectsNameSchema,
   created: ProjectsCreatedSchema,
   creator: ProjectsCreatorSchema,
+});
+
+export const ProjectResponseSchema = ProjectsResponseSchema.extend({
+  nUnits: ProjectUnitsSchema,
 });
 
 export const ProjectsCreateSchema = z.object({

@@ -6,7 +6,7 @@ interface Props<T> {
   options: T[];
   optionKey: keyof T;
   placeholder: string;
-  value: string | undefined;
+  value: string | number | undefined;
   onSelect: (value: T) => void;
 }
 

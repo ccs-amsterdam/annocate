@@ -1,7 +1,7 @@
 "use client";
 
 import { useCreateJob, useUpdateJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { JobCreateSchema, JobsResponseSchema, JobUpdateSchema } from "@/app/api/projects/[projectId]/jobs/schemas";
+import { JobCreateSchema, JobMetaResponseSchema, JobUpdateSchema } from "@/app/api/projects/[projectId]/jobs/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,7 +18,7 @@ interface CreatJobProps {
 }
 interface UpdateJobProps {
   projectId: number;
-  current: z.infer<typeof JobsResponseSchema>;
+  current: z.infer<typeof JobMetaResponseSchema>;
   afterSubmit: () => void;
 }
 

@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS "projects" (
 CREATE TABLE IF NOT EXISTS "units" (
 	"project_id" integer NOT NULL,
 	"unit_id" varchar(256) NOT NULL,
+	"position" integer NOT NULL,
 	"data" jsonb NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
 	"modified" timestamp DEFAULT now() NOT NULL,

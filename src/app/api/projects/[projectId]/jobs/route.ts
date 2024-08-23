@@ -4,7 +4,7 @@ import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import db, { jobs } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { JobCreateSchema, JobsResponseSchema, JobsTableParamsSchema } from "./schemas";
+import { JobCreateSchema, JobMetaResponseSchema, JobsTableParamsSchema } from "./schemas";
 
 export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
   return createTableGet({
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         .as("baseQuery"),
     req,
     paramsSchema: JobsTableParamsSchema,
-    responseSchema: JobsResponseSchema,
+    responseSchema: JobMetaResponseSchema,
     idColumn: "id",
     queryColumns: ["name"],
     projectId: params.projectId,

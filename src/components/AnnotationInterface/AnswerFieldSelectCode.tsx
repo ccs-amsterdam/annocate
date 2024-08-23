@@ -141,9 +141,9 @@ const SelectCode = ({
       const isSelected = selected === i;
       return (
         <Button
-          className={`relative z-0 max-h-20 max-w-full flex-[0.3_0_auto] p-3 text-foreground    hover:bg-foreground hover:text-background
-          ${isCurrent ? "ring-4 ring-primary ring-offset-1" : ""} 
-          ${isSelected ? "bg-foreground text-background " : ""}`}
+          className={`relative z-0 max-h-20 max-w-full flex-[0.3_0_auto] rounded-md p-3 text-foreground transition-transform duration-150 ease-in-out hover:scale-[1.02] 
+          ${isCurrent ? " ring-2 ring-secondary ring-offset-0" : ""} 
+          ${isSelected ? "scale-[1.02] bg-foreground text-background" : ""}`}
           style={{ minWidth }}
           ref={buttonRefs[i].ref}
           variant={"outline"}
@@ -168,6 +168,7 @@ const SelectCode = ({
     });
   };
 
+  const active = selected === options.length;
   return (
     <div className="flex h-full w-full flex-col px-3 py-1">
       <div
@@ -179,7 +180,7 @@ const SelectCode = ({
       {multiple ? (
         <div>
           <Button
-            className={`mt-4 h-8 w-full`}
+            className={`mt-4 h-8 w-full  ${active ? "scale-[1.02] bg-secondary/80" : ""}`}
             variant="secondary"
             ref={finishbutton}
             onClick={() => {
