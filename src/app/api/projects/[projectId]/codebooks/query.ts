@@ -39,7 +39,8 @@ export function useUpdateCodebook(projectId: number, codebookId: number) {
 
 export function useCodebook(projectId: number, codebookId: number | undefined) {
   return useGet({
-    endpoint: `projects/${projectId}/codebooks/${codebookId}`,
+    endpoint: `projects/${projectId}/codebooks`,
+    endpointId: String(codebookId),
     responseSchema: CodebookResponseSchema,
     disabled: codebookId === undefined,
   });

@@ -21,10 +21,12 @@ interface Pagination {
 
 export function useTableGet<Params extends TableParams, Response extends z.ZodTypeAny>({
   endpoint,
+  endpointId,
   initialParams,
   responseSchema,
 }: {
   endpoint: string;
+  endpointId?: string;
   initialParams: Params;
   responseSchema: Response;
 }) {
@@ -33,10 +35,11 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
   const [params, setParams] = useState<Params>(initialParams);
 
   const { data, isLoading } = useQuery({
-    queryKey: [endpoint, user, params],
+    queryKey: endpointId ? [endpoint, endpointId, user, params] : [endpoint, user, params],
     queryFn: async () => {
       if (!user) return;
-      const res = await user.api.get(endpoint, { params });
+      const url = endpointId ? `${endpoint}/${endpointId}` : endpoint;
+      const res = await user.api.get(url, { params });
       const data = z
         .object({
           data: z.array(responseSchema),
@@ -94,21 +97,24 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
 
 export function useGet<Params extends {}, Response>({
   endpoint,
+  endpointId,
   params,
   responseSchema,
   disabled,
 }: {
   endpoint: string;
+  endpointId?: string;
   params?: Params;
   responseSchema: z.ZodType<Response>;
   disabled?: boolean;
 }) {
   const { user } = useMiddlecat();
   return useQuery({
-    queryKey: [endpoint, user, params],
+    queryKey: endpointId ? [endpoint, endpointId, user, params] : [endpoint, user, params],
     queryFn: async () => {
       if (!user) throw new Error("User not found");
-      const res = await user.api.get(endpoint, params ? { params } : undefined);
+      const url = endpointId ? `${endpoint}/${endpointId}` : endpoint;
+      const res = await user.api.get(url, params ? { params } : undefined);
       const data = responseSchema.parse(res.data);
       return data;
     },
@@ -123,7 +129,7 @@ export function useDelete<Params>({
 }: {
   endpoint: string;
   params?: Params;
-  invalidateEndpoints?: string[];
+  invalidateEndpoints?: string[] | ((body?: Params) => string[]);
 }) {
   const { user } = useMiddlecat();
   const queryClient = useQueryClient();
@@ -133,10 +139,11 @@ export function useDelete<Params>({
       await user.api.delete(endpoint, { params });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([endpoint, user]);
+      queryClient.invalidateQueries([endpoint]);
       if (invalidateEndpoints) {
-        invalidateEndpoints.forEach((endpoint) => {
-          queryClient.invalidateQueries([endpoint, user]);
+        const ie = typeof invalidateEndpoints === "function" ? invalidateEndpoints(params) : invalidateEndpoints;
+        ie.forEach((endpoint) => {
+          queryClient.invalidateQueries([endpoint]);
         });
       }
     },
@@ -155,7 +162,7 @@ export function useMutate<Body, Response>({
   endpoint: string;
   bodySchema: z.ZodType<Body>;
   responseSchema: z.ZodType<Response>;
-  invalidateEndpoints?: string[];
+  invalidateEndpoints?: string[] | ((body?: Body) => string[]);
   mutateFunction?: (body: z.infer<typeof bodySchema>) => Promise<Response>;
 }) {
   const { user } = useMiddlecat();
@@ -166,11 +173,13 @@ export function useMutate<Body, Response>({
       const res = await user.api[method](endpoint, body);
       return responseSchema ? responseSchema.parse(res.data) : res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries([endpoint, user]);
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries([endpoint]);
       if (invalidateEndpoints) {
-        invalidateEndpoints.forEach((endpoint) => {
-          queryClient.invalidateQueries([endpoint, user]);
+        const ie = typeof invalidateEndpoints === "function" ? invalidateEndpoints(variables) : invalidateEndpoints;
+        ie.forEach((endpoint) => {
+          console.log("invalidating", endpoint);
+          queryClient.invalidateQueries([endpoint]);
         });
       }
     },

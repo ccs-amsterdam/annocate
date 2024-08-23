@@ -6,9 +6,11 @@ import { JobBlockMeta } from "@/app/types";
 import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { Preview } from "@/components/Common/Preview";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
+import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimpleDropdown } from "@/components/ui/simpleDropdown";
 import { Label } from "@radix-ui/react-dropdown-menu";
+import { FileWarning, TriangleAlert } from "lucide-react";
 import { parseAsInteger, useQueryState } from "next-usequerystate";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -34,6 +36,8 @@ export default function CodebookDesign({ params }: { params: { projectId: number
   if (!codebookId && !jobId) router.push(`/projects/${params.projectId}/codebooks`);
   if (codebookId && codebookLoading) return <Loading />;
 
+  const nJobs = codebook?.nJobs || 0;
+
   return (
     <div className="mx-auto  grid  grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
       <div className="mx-auto w-[600px] max-w-[95vw] overflow-auto py-6 xl:max-h-[calc(100vh-var(--header-height))]">
@@ -48,6 +52,15 @@ export default function CodebookDesign({ params }: { params: { projectId: number
         ) : (
           <div className="h-20"></div>
         )}
+        {nJobs > 1 ? (
+          <div className="flex justify-between gap-3 px-6">
+            <div className="ml-auto flex items-center gap-3 rounded  border-primary px-3 py-2 text-primary">
+              This codebook is used in {nJobs} jobs
+              <TriangleAlert />
+            </div>
+            {/* <Button>Make copy</Button> */}
+          </div>
+        ) : null}
         {codebook ? (
           <UpdateCodebook
             projectId={params.projectId}

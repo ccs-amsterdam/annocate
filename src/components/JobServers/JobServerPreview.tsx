@@ -71,6 +71,7 @@ class JobServerPreview implements JobServer {
         this.useAllUnits = true;
       }
     }
+    if (codebook.type === "survey") nUnits = 1;
 
     this.progress = {
       currentUnit: Math.min(current.unit, nUnits - 1),

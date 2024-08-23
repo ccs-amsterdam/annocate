@@ -52,7 +52,7 @@ export function useCreateJobBlock(projectId: number, jobId: number) {
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
     bodySchema: JobBlockCreateSchema,
     responseSchema: IdResponseSchema,
-    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`],
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`, `projects/${projectId}/codebooks`],
   });
 }
 export function useUpdateJobBlock(projectId: number, jobId: number, blockId?: number) {
@@ -60,14 +60,18 @@ export function useUpdateJobBlock(projectId: number, jobId: number, blockId?: nu
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     bodySchema: JobBlockUpdateSchema,
     responseSchema: IdResponseSchema,
-    invalidateEndpoints: [`projects/${projectId}/jobs`, `projects/${projectId}/jobs/${jobId}`],
+    invalidateEndpoints: [
+      `projects/${projectId}/jobs`,
+      `projects/${projectId}/jobs/${jobId}`,
+      `projects/${projectId}/codebooks`,
+    ],
   });
 }
 
 export function useDeleteJobBlock(projectId: number, jobId: number, blockId: number) {
   return useDelete({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
-    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`],
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`, `projects/${projectId}/codebooks`],
   });
 }
 

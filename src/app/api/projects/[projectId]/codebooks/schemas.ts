@@ -73,6 +73,7 @@ export const CodebookResponseSchema = z.object({
   name: z.string(),
   created: z.coerce.date(),
   codebook: CodebookSchema,
+  nJobs: z.number(),
 });
 
 export const CodebookCreateBodySchema = z.object({
