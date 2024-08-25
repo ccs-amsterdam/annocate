@@ -59,7 +59,14 @@ export function ClearButton({ onClear }: { onClear: () => void }) {
   );
 }
 
-export function TextFormField<T extends FieldValues>({ control, name, zType, onChangeInterceptor }: FormFieldProps<T>) {
+export function TextFormField<T extends FieldValues>({
+  control,
+  name,
+  zType,
+  onChangeInterceptor,
+  className,
+  placeholder,
+}: FormFieldProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
   return (
     <FormField
@@ -70,12 +77,13 @@ export function TextFormField<T extends FieldValues>({ control, name, zType, onC
           <FormFieldTitle title={openAPI.title} description={openAPI.description} />
           <FormControl>
             <Input
-              placeholder={openAPI.example}
+              placeholder={placeholder || openAPI.example}
               {...field}
               onChange={(e) => {
                 if (onChangeInterceptor) e.target.value = onChangeInterceptor(e.target.value);
                 field.onChange(e.target.value);
               }}
+              className={className}
             />
           </FormControl>
         </FormItem>
@@ -96,6 +104,7 @@ export function NumberFormField<T extends FieldValues>({
   clearable,
   min,
   max,
+  className,
 }: NumberFormProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
 
@@ -119,7 +128,7 @@ export function NumberFormField<T extends FieldValues>({
                     const value = e.target.value;
                     field.onChange(Number(value));
                   }}
-                  className="w-20"
+                  className={`${className} w-20`}
                 />
               </FormControl>
               {clearable ? (
@@ -575,7 +584,7 @@ export function SelectCodebookFormField<T extends FieldValues>({
             <FormFieldTitle title={openAPI.title} description={openAPI.description} />
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className=" flex min-w-48 items-center justify-between  gap-2">
+                <Button variant="outline" className=" flex w-full min-w-48 items-center justify-between  gap-2">
                   {selected || "Select Codebook"} <ChevronDown />
                 </Button>
               </DialogTrigger>

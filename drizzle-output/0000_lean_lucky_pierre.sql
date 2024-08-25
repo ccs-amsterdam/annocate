@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS "job_blocks" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"project_id" integer NOT NULL,
 	"job_id" integer NOT NULL,
+	"name" varchar(256) NOT NULL,
 	"position" double precision NOT NULL,
 	"type" text NOT NULL,
 	"codebook_id" integer NOT NULL,
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS "projects" (
 	"name" varchar(128) NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
 	"project_config" jsonb DEFAULT '{"description":""}'::jsonb NOT NULL,
+	"max_units" integer DEFAULT 20000 NOT NULL,
 	"frozen" boolean DEFAULT false NOT NULL,
 	"units_updated" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "unique_creator_name" UNIQUE("creator_email","name")

@@ -14,7 +14,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "../ui/button";
 import { Form, FormMessage } from "../ui/form";
-import { BooleanFormField, NumberFormField, SelectCodebookFormField, TextAreaFormField } from "./formHelpers";
+import {
+  BooleanFormField,
+  NumberFormField,
+  SelectCodebookFormField,
+  TextAreaFormField,
+  TextFormField,
+} from "./formHelpers";
 import { useEffect } from "react";
 import { Loading } from "../ui/loader";
 
@@ -42,14 +48,13 @@ export function CreateOrUpdateJobBlock({
   const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, currentId);
   const { data: current, isLoading } = useJobBlock(projectId, jobId, currentId);
 
-  console.log(current);
   const schema = type === "survey" ? JobSurveyBlockSchema : JobAnnotationBlockSchema;
   const shape = schema.shape;
 
   const form = useForm<JobBlockCreate>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues(type, position, current),
-    disabled: isLoading,
+    disabled: currentId !== undefined && isLoading,
   });
 
   useEffect(() => {
@@ -76,8 +81,8 @@ export function CreateOrUpdateJobBlock({
   }
 
   function unitsPlaceholder() {
-    if (isLoading) return "Loading units...";
-    return `Select specific units by listing their IDs, or use all units by leaving this field empty. `;
+    if (currentId !== undefined && isLoading) return "Loading units...";
+    return `[unit id]\n[unit id]\n...\n\nleave empty to select all`;
   }
 
   function renderAnnotationFormFields() {
@@ -129,14 +134,23 @@ export function CreateOrUpdateJobBlock({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
-        <SelectCodebookFormField
-          control={form.control}
-          zType={shape.codebookId}
-          name="codebookId"
-          projectId={projectId}
-          type={type}
-          current={current}
-        />
+        <div className="grid grid-cols-[1fr,1fr] items-end  gap-3">
+          <SelectCodebookFormField
+            control={form.control}
+            zType={shape.codebookId}
+            name="codebookId"
+            projectId={projectId}
+            type={type}
+            current={current}
+          />
+          <TextFormField
+            control={form.control}
+            zType={shape.name}
+            name="name"
+            className="w-full"
+            placeholder={"(optional)"}
+          />
+        </div>
         {renderAnnotationFormFields()}
         <ErrorMessage errors={form.formState.errors} name="formError" render={({ message }) => <p>{message}</p>} />
         <Button type="submit">
@@ -152,12 +166,14 @@ function defaultValues(type: "survey" | "annotation", position: number, current?
   if (type === "survey")
     return {
       type: "survey",
+      name: current?.name || null,
       codebookId: current?.codebookId || undefined,
       position: current?.position || position,
     };
   if (type === "annotation")
     return {
       type: "annotation",
+      name: current?.name || null,
       codebookId: current?.codebookId || undefined,
       position: current?.position || position,
       units: current?.units || [],

@@ -17,6 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
           deployed: jobs.deployed,
           blockId: jobBlocks.id,
           type: jobBlocks.type,
+          blockName: jobBlocks.name,
           position: jobBlocks.position,
           rules: jobBlocks.rules,
           nUnits: sql<number>`jsonb_array_length(${jobBlocks.units})`.mapWith(Number),
@@ -41,16 +42,29 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
       // }
 
       const blocks = jobWithBlocks
-        .map(({ blockId, type, position, codebookId, codebookName, nVariables: nVariables, rules, nUnits }) => ({
-          id: blockId,
-          type,
-          position,
-          codebookId,
-          codebookName,
-          nVariables,
-          rules,
-          nUnits,
-        }))
+        .map(
+          ({
+            blockId,
+            type,
+            blockName,
+            position,
+            codebookId,
+            codebookName,
+            nVariables: nVariables,
+            rules,
+            nUnits,
+          }) => ({
+            id: blockId,
+            type,
+            name: blockName,
+            position,
+            codebookId,
+            codebookName,
+            nVariables,
+            rules,
+            nUnits,
+          }),
+        )
         .filter((block) => block.id !== null);
 
       const result = {

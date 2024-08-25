@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { SimplePopover } from "@/components/ui/simplePopover";
-import { Edit, Plus, Trash } from "lucide-react";
+import { Book, Edit, Plus, Trash } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React from "react";
@@ -115,15 +115,21 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
       <div
         role="button"
         tabIndex={0}
-        className="cursor-pointer rounded px-3 hover:bg-foreground/10"
+        className="max-w-full cursor-pointer overflow-hidden rounded px-3 hover:bg-foreground/10"
         onClick={() =>
           router.push(
             `/projects/${projectId}/codebooks/design?codebookId=${block.codebookId}&jobId=${jobId}&blockId=${block.id}`,
           )
         }
       >
-        <h4 className="m-0 mt-2 leading-none">{block.codebookName}</h4>
-        <span className="leading-none text-foreground/60">{showDetails()}</span>
+        <h4 className="m-0 mt-2 leading-none">{block.name || block.type}</h4>
+        <div className="mt-1  leading-5">
+          <div className="grid grid-cols-[15px,1fr] items-center gap-2">
+            <Book className=" h-4 w-4 " />
+            <div className=" overflow-hidden text-ellipsis whitespace-nowrap">{block.codebookName}</div>
+          </div>
+          <span className="italic text-foreground/60">{showDetails()}</span>
+        </div>
       </div>
       <div className="ml-auto flex ">
         <Button

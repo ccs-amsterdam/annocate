@@ -1,6 +1,6 @@
 {
-  "id": "94f8bd33-655c-4f9f-879f-d488d9e4d0d5",
-  "prevId": "0bcb9b1a-1ac7-4311-b2b4-f3ae1f11d6fb",
+  "id": "499173e2-fc06-40c5-973a-b14c3d3f62fd",
+  "prevId": "176743c3-0671-409f-aa56-43265ec4ef2c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -360,6 +360,12 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
         },
         "position": {
           "name": "position",

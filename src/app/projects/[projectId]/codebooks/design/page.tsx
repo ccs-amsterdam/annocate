@@ -37,6 +37,7 @@ export default function CodebookDesign({ params }: { params: { projectId: number
   if (codebookId && codebookLoading) return <Loading />;
 
   const nJobs = codebook?.nJobs || 0;
+  console.log(codebook);
 
   return (
     <div className="mx-auto  grid  grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
@@ -52,6 +53,9 @@ export default function CodebookDesign({ params }: { params: { projectId: number
         ) : (
           <div className="h-20"></div>
         )}
+        <h2 className="mb-3 mt-9 px-8">
+          {codebook?.codebook.type === "annotation" ? "Annotation Codebook" : "Survey Codebook"}
+        </h2>
         {nJobs > 1 ? (
           <div className="flex justify-between gap-3 px-6">
             <div className="ml-auto flex items-center gap-3 rounded  border-primary px-3 py-2 text-primary">
@@ -61,6 +65,7 @@ export default function CodebookDesign({ params }: { params: { projectId: number
             {/* <Button>Make copy</Button> */}
           </div>
         ) : null}
+
         {codebook ? (
           <UpdateCodebook
             projectId={params.projectId}
@@ -114,10 +119,9 @@ function PreviewJob({
   if (!job) return <div>Could not load Job</div>;
 
   return (
-    <div className="flex w-full flex-col justify-center p-3 px-9">
-      <div>Job design</div>
+    <div className="mx-8 flex flex-col justify-center gap-1  rounded bg-primary p-3 text-primary-foreground">
+      <h3 className="prose-h3 pl-3">{job.name}</h3>
       <div className="flex items-center gap-3">
-        <Label>{job.name}</Label>
         <SimpleDropdown
           options={blockOptions}
           optionKey={"label"}
@@ -134,5 +138,9 @@ function PreviewJob({
 }
 
 function blockLabel(block: JobBlockMeta) {
+  if (block.name)
+    return `
+    ${block.name}
+  `;
   return `block ${block.position + 1}`;
 }

@@ -11,6 +11,10 @@ export const JobBlockBaseSchema = z.object({
     .enum(["survey", "annotation"])
     .openapi({ title: "Block type", description: "A job can have blocks for surveys and annotation tasks" }),
   position: z.number().openapi({ title: "Block position", description: "Position of the block in the job" }),
+  name: z.string().max(255).nullable().openapi({
+    title: "Block name",
+    description: "Optional name of the block. This name will also be visible to the annotator in the progress bar.",
+  }),
   codebookId: z.number().openapi({
     title: "Codebook ID",
     description:
@@ -84,6 +88,7 @@ export const JobMetaResponseSchema = z.object({
 export const JobBlockMetaSchema = z.object({
   id: z.number(),
   type: z.enum(["survey", "annotation"]),
+  name: z.string().nullable(),
   position: z.number(),
   codebookId: z.number(),
   codebookName: z.string(),
@@ -94,6 +99,7 @@ export const JobBlockMetaSchema = z.object({
 export const JobBlockResponseSchema = z.object({
   id: z.number(),
   type: z.enum(["survey", "annotation"]),
+  name: z.string().nullable(),
   position: z.number(),
   codebookId: z.number(),
   codebookName: z.string(),

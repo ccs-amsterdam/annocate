@@ -18,6 +18,7 @@ export async function GET(
         .select({
           id: jobBlocks.id,
           type: jobBlocks.type,
+          name: jobBlocks.name,
           position: jobBlocks.position,
           rules: jobBlocks.rules,
           codebookId: codebooks.id,

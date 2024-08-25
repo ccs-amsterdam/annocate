@@ -1,5 +1,5 @@
 {
-  "id": "0bcb9b1a-1ac7-4311-b2b4-f3ae1f11d6fb",
+  "id": "176743c3-0671-409f-aa56-43265ec4ef2c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -361,6 +361,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "name": {
+          "name": "name",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "position": {
           "name": "position",
           "type": "double precision",
@@ -651,6 +657,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{\"description\":\"\"}'::jsonb"
+        },
+        "max_units": {
+          "name": "max_units",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 20000
         },
         "frozen": {
           "name": "frozen",

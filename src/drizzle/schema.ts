@@ -177,6 +177,7 @@ export const jobBlocks = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 256 }),
     position: doublePrecision("position").notNull(),
     type: text("type", { enum: ["survey", "annotation"] }).notNull(),
     codebookId: integer("codebook_id")

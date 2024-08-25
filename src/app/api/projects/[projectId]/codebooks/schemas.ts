@@ -69,7 +69,7 @@ export const CodebooksResponseSchema = z.object({
 
 export const CodebookResponseSchema = z.object({
   id: z.number(),
-  projectId: z.number(),
+  // projectId: z.number(),
   name: z.string(),
   created: z.coerce.date(),
   codebook: CodebookSchema,
