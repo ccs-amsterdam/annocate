@@ -101,12 +101,15 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   }
   const shape = CodebookCreateBodySchema.shape;
 
+  const isDirty = form.formState.isDirty;
+  console.log(variables);
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex w-full flex-col gap-3  p-3 lg:px-8 ">
         <div
           className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)]  w-full 
-          items-center justify-between gap-10 border-b bg-background px-8 ${form.formState.isDirty ? "" : "hidden"} `}
+          items-center justify-between gap-10 border-b bg-background px-8 ${isDirty ? "" : "hidden"} `}
         >
           <Button
             type="button"
@@ -124,7 +127,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
           <Button
             className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-50"
             type="submit"
-            disabled={!form.formState.isDirty || !!error}
+            disabled={!isDirty || !!error}
           >
             <Save className="h-5 w-5" />
             Save changes
@@ -538,6 +541,9 @@ function defaultVariable(name: string): z.input<typeof CodebookSelectTypeSchema>
     question: "",
     type: "select code",
     instruction: "",
+    instructionMode: "after",
+    multiple: false,
+    vertical: false,
     codes: [{ code: "Example", value: 1, color: "red" }],
   };
 }

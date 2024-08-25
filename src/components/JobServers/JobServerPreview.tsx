@@ -162,7 +162,7 @@ class JobServerPreview implements JobServer {
   }
 
   async getUnitFromServer(i: number): Promise<UnitData | { error: string }> {
-    if (this.job === null || this.blockId === null) {
+    if (this.codebook.type === "survey" || this.job === null || this.blockId === null) {
       return this.defaultUnits[Math.min(i, this.defaultUnits.length - 1)];
     }
 
