@@ -92,6 +92,7 @@ export const JobBlockMetaSchema = z.object({
   position: z.number(),
   codebookId: z.number(),
   codebookName: z.string(),
+  rules: JobAnnotationBlockRulesSchema,
   nVariables: z.number(),
   nUnits: z.number(),
 });

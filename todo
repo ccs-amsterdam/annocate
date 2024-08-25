@@ -1,3 +1,8 @@
+
+
+RENAME units so that in the annotatorIndex the indices are jobSessionIndex and not unitIndex. 
+Reserve the name units exclusively for units in annotation jobs. 
+
 Make sub table for annotations in DB
 
 composite primary key:

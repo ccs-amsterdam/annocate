@@ -107,6 +107,13 @@ export const managers = pgTable(
 
 type Codebook = z.input<typeof CodebookSchema>;
 
+// NOTE TO SELF
+// Don't need special system for variables where coders can add codes.
+// We can just post them and add them the codebook (efficiently with jsonb)
+// and then also set new updated time. Whenever a coder gets a new unit,
+// we include a join to the codebook table to get the updated time.
+// If the updated time is newer than the coder's last update, we send the new codebook.
+
 export const codebooks = pgTable(
   "codebooks",
   {
@@ -116,6 +123,7 @@ export const codebooks = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
+    updated: timestamp("updated").notNull().defaultNow(),
     codebook: customJsonb("codebook").notNull().$type<Codebook>(),
   },
   (table) => {

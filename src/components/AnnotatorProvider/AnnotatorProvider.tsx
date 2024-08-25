@@ -137,7 +137,6 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
 function initProgress(): Progress {
   return {
     currentUnit: 0,
-    currentVariable: 0,
     nTotal: 0,
     nCoded: 0,
     seekBackwards: false,

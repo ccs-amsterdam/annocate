@@ -102,7 +102,6 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   const shape = CodebookCreateBodySchema.shape;
 
   const isDirty = form.formState.isDirty;
-  console.log(variables);
 
   return (
     <Form {...form}>

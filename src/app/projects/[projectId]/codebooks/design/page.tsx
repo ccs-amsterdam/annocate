@@ -13,7 +13,7 @@ import { Label } from "@radix-ui/react-dropdown-menu";
 import { FileWarning, TriangleAlert } from "lucide-react";
 import { parseAsInteger, useQueryState } from "next-usequerystate";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { set, z } from "zod";
 
@@ -37,7 +37,6 @@ export default function CodebookDesign({ params }: { params: { projectId: number
   if (codebookId && codebookLoading) return <Loading />;
 
   const nJobs = codebook?.nJobs || 0;
-  console.log(codebook);
 
   return (
     <div className="mx-auto  grid  grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
@@ -82,6 +81,8 @@ export default function CodebookDesign({ params }: { params: { projectId: number
             codebook={preview}
             jobId={jobId || undefined}
             blockId={blockId || undefined}
+            setBlockId={setBlockId}
+            setCodebookId={setCodebookId}
           />
         ) : (
           <Loading />

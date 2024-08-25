@@ -25,6 +25,8 @@ interface JobServerPreviewConstructor {
   codebook: Codebook;
   job?: Job;
   blockId?: number;
+  setBlockId: (blockId: number) => void;
+  setCodebookId: (codebookId: number) => void;
   annotations?: Record<string, Annotation[]>;
   current: { unit: number; variable?: string };
   setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
@@ -37,14 +39,18 @@ class JobServerPreview implements JobServer {
   codebook: Codebook;
   job: Job | null;
   blockId: number | null;
+
   annotations: Record<string, Annotation[]>;
   project: Project;
   user: MiddlecatUser;
-  defaultUnits: UnitData[];
-  useAllUnits?: boolean;
+  selectUnitArray: SelectUnitArray[];
   current: { unit: number; variable?: string };
   unitCache: Record<string, UnitData> = {};
+  currentVariable: number;
+  blockIndexRange: [number, number];
 
+  setBlockId: (blockId: number) => void;
+  setCodebookId: (codebookId: number) => void;
   setPreviewVariable: (variable: string) => void;
   setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
 
@@ -54,6 +60,8 @@ class JobServerPreview implements JobServer {
     codebook,
     job,
     blockId,
+    setBlockId,
+    setCodebookId,
     annotations,
     current,
     setPreviewData,
@@ -63,31 +71,31 @@ class JobServerPreview implements JobServer {
     this.user = user;
     this.codebook = codebook;
 
-    let nUnits = 7;
-    if (job != null && blockId != null) {
-      nUnits = job.blocks.find((b) => b.id === blockId)?.nUnits ?? 0;
-      if (nUnits === 0) {
-        nUnits = project.nUnits;
-        this.useAllUnits = true;
-      }
-    }
-    if (codebook.type === "survey") nUnits = 1;
+    this.selectUnitArray = BlocksToUnits(project, codebook, job);
+    const nUnits = this.selectUnitArray.length;
+    this.blockIndexRange = GetBlockIndexRange(this.selectUnitArray, job, blockId);
+
+    console.log(current.unit, this.blockIndexRange);
+    let currentUnit = current.unit;
+    if (current.unit < this.blockIndexRange[0] || current.unit > this.blockIndexRange[1])
+      currentUnit = this.blockIndexRange[0];
 
     this.progress = {
-      currentUnit: Math.min(current.unit, nUnits - 1),
-      currentVariable: current.variable ? this.codebook.variables.findIndex((v) => v.name === current.variable) : 0,
+      currentUnit,
       nTotal: nUnits,
       nCoded: Math.max(0, Math.min(current.unit, nUnits - 1)),
       seekBackwards: true,
       seekForwards: true,
     };
+    this.currentVariable = current.variable ? this.codebook.variables.findIndex((v) => v.name === current.variable) : 0;
 
-    this.defaultUnits = createDefaultUnits(codebook, nUnits);
     this.return_link = "/";
     this.annotations = annotations || {};
     this.current = current;
     this.job = job || null;
     this.blockId = blockId || null;
+    this.setBlockId = setBlockId;
+    this.setCodebookId = setCodebookId;
     this.setPreviewData = setPreviewData;
     this.setPreviewVariable = (variable: string) => {
       console.log("setPreviewVariable", variable);
@@ -100,12 +108,24 @@ class JobServerPreview implements JobServer {
 
   async getUnit(i?: number): Promise<GetUnit> {
     let annotateUnit: Unit | null = null;
-    if (i === undefined || i < 0) i = this.progress.nCoded;
+    if (i === undefined || i < 0) i = this.progress.currentUnit;
+
+    // if we add free navigation, need to ignore this.
     if (i > this.progress.nCoded + 1) i = this.progress.nCoded + 1;
 
     if (i >= this.progress.nTotal) {
       this.updateProgress(i);
       return { unit: null, progress: this.progress };
+    }
+
+    if (this.job != null && this.blockId != null) {
+      const block = this.job.blocks[this.selectUnitArray[i][0]];
+      if (block.id !== this.blockId) {
+        this.updateProgress(i);
+        this.setBlockId(block.id);
+        this.setCodebookId(block.codebookId);
+        return { unit: null, progress: this.progress };
+      }
     }
 
     if (!this.unitCache[i]) {
@@ -163,11 +183,12 @@ class JobServerPreview implements JobServer {
 
   async getUnitFromServer(i: number): Promise<UnitData | { error: string }> {
     if (this.codebook.type === "survey" || this.job === null || this.blockId === null) {
-      return this.defaultUnits[Math.min(i, this.defaultUnits.length - 1)];
+      return createDefaultUnit(this.codebook, i);
     }
 
     try {
-      const params = { position: i + 1, blockId: this.useAllUnits ? undefined : this.blockId };
+      const position = this.selectUnitArray[i][1];
+      const params = { position: position, blockId: this.blockId };
       const unit = await this.user.api.get(`/projects/${this.project.id}/units/preview`, { params });
       return unit.data as UnitData;
     } catch (e) {
@@ -182,7 +203,6 @@ class JobServerPreview implements JobServer {
 
     let current =
       type === "survey" ? this.annotations[`${user}_survey`] || [] : this.annotations[`${user}_unit_${unitId}`] || [];
-    console.log(current);
     current = current.filter((a) => !rmIds.includes(a.id));
     current = [...current, ...Object.values(add)];
 
@@ -202,26 +222,71 @@ class JobServerPreview implements JobServer {
   }
 }
 
-function createDefaultUnits(codebook: Codebook, n: number): UnitData[] {
+function createDefaultUnit(codebook: Codebook, i: number): UnitData {
   if (codebook.type === "survey") {
-    return [
-      {
-        id: "survey",
-        data: {},
-      },
-    ];
+    return {
+      id: "survey",
+      data: {},
+    };
   }
 
-  return Array.from({ length: n }).map((_, i) => {
-    const data: Record<string, string> = {};
-    codebook.unit.fields.forEach((field) => {
-      data[field.name] = `Here goes a ${field.type} field called ${field.name}`;
-    });
-    return {
-      id: `id-${i}`,
-      data,
-    };
+  const data: Record<string, string> = {};
+  codebook.unit.fields.forEach((field) => {
+    data[field.name] = `Here goes a ${field.type} field called ${field.name}`;
   });
+  return {
+    id: `id-${i}`,
+    data,
+  };
+}
+
+type SelectUnitArray = [number, number | null];
+
+// To simulate a job, we create the units selection locally based on the block rules
+// An in the real deal, we need a single array for the job progress.
+// For each index in the job progress we then get a unit (null for survey) and codebookId.
+// To do this locally, we just need an array with tuples: [blockIndex, unitPosition],
+// where unitPosition is the position within the block or project (null for units)
+// We also use some 'rules', but not all (crowd settings don't make sense for preview)
+function BlocksToUnits(project: Project, codebook: Codebook, job?: Job): SelectUnitArray[] {
+  let selectUnitArray: SelectUnitArray[] = [];
+
+  if (!job) {
+    if (codebook.type === "survey") return [[0, null]];
+    selectUnitArray = Array.from({ length: 7 }).map((_, i) => [0, i + 1]);
+    return selectUnitArray;
+  }
+
+  job.blocks.forEach((block, i) => {
+    if (block.type === "survey") {
+      selectUnitArray.push([i, null]);
+      return;
+    }
+
+    let nUnits = block.nUnits || project.nUnits || 1; // if block nUnits is null, it means use all units. If project nUnits is also null, return 1 to give a warning
+    if (block.rules.maxUnitsPerCoder) nUnits = Math.min(nUnits, block.rules.maxUnitsPerCoder);
+
+    let units = Array.from({ length: nUnits }).map((_, j) => ({
+      position: j + 1,
+      random: Math.random(),
+    }));
+    if (block.rules.randomizeUnits) units = units.sort((a, b) => a.random - b.random);
+    const addSelectUnitArray: SelectUnitArray[] = units.map((u) => [i, u.position]);
+    selectUnitArray = [...selectUnitArray, ...addSelectUnitArray];
+  });
+
+  return selectUnitArray;
+}
+
+function GetBlockIndexRange(selectUnitArray: SelectUnitArray[], job?: Job, blockId?: number): [number, number] {
+  if (!job || !blockId) return [0, selectUnitArray.length - 1];
+
+  const blockIndex = job.blocks.findIndex((b) => b.id === blockId);
+  let startIndex = selectUnitArray.findIndex(([i]) => i === blockIndex);
+  if (startIndex === -1) return [0, selectUnitArray.length - 1];
+  let endIndex = selectUnitArray.findLastIndex(([i]) => i === blockIndex);
+  if (endIndex === -1) endIndex = selectUnitArray.length - 1;
+  return [startIndex, endIndex];
 }
 
 export default JobServerPreview;

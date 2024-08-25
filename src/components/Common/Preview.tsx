@@ -26,9 +26,11 @@ interface Props {
   codebook: Codebook;
   jobId?: number;
   blockId?: number;
+  setBlockId: (blockId: number) => void;
+  setCodebookId: (codebookId: number) => void;
 }
 
-export function Preview({ projectId, codebook, jobId, blockId }: Props) {
+export function Preview({ projectId, codebook, jobId, blockId, setBlockId, setCodebookId }: Props) {
   const { user } = useMiddlecat();
   const { data: job } = useJob(projectId, jobId);
   const { data: project } = useProject(projectId);
@@ -48,7 +50,7 @@ export function Preview({ projectId, codebook, jobId, blockId }: Props) {
     setUnits((units) => [...units]);
   }, []);
 
-  if (useWatchChange([project, user, codebook, units])) {
+  if (useWatchChange([project, user, codebook, units, blockId])) {
     if (user && codebook && project) {
       setJobServer(
         new JobServerPreview({
@@ -57,6 +59,8 @@ export function Preview({ projectId, codebook, jobId, blockId }: Props) {
           codebook,
           job,
           blockId,
+          setBlockId,
+          setCodebookId,
           annotations: annotations.current,
           current: current.current,
           setPreviewData,

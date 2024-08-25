@@ -292,7 +292,7 @@ export function createAnnotationLibrary(
   const { variableStatuses, variableIndex } = computeVariableStatuses(codebook.variables, annotationArray);
 
   // this is just for preview mode
-  const previewVariableIndex = (jobServer as JobServerPreview).progress.currentVariable || 0;
+  const previewVariableIndex = (jobServer as JobServerPreview).currentVariable || 0;
 
   return {
     sessionId: jobServer.sessionId,
