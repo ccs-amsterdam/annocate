@@ -10,7 +10,7 @@ import {
 } from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Equal, Plus, Save, Watch, XIcon } from "lucide-react";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { Control, FieldValues, Path, useForm, UseFormReturn, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
@@ -44,6 +44,7 @@ import { StyleToolbar } from "../Common/StyleToolbar";
 import { Label } from "../ui/label";
 import { SetState } from "@/app/types";
 import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
+import { equal } from "assert";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
@@ -71,6 +72,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   const { error } = form.getFieldState("codebook");
   const { error: variablesError } = form.getFieldState("codebook.variables");
   const variables = form.getValues("codebook.variables");
+  const currentAsString = useMemo(() => JSON.stringify(CodebookCreateBodySchema.parse(current)), [current]);
 
   useEffect(() => {
     form.reset(CodebookCreateBodySchema.parse(current));
@@ -103,7 +105,11 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   }
   const shape = CodebookCreateBodySchema.shape;
 
-  const isDirty = form.formState.isDirty;
+  let isDirty = form.formState.isDirty;
+  if (isDirty) {
+    // for some senseless reason, the form can be dirty when the data is completely identical...
+    if (JSON.stringify(form.getValues()) === currentAsString) isDirty = false;
+  }
 
   return (
     <Form {...form}>
