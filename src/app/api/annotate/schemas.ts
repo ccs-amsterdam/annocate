@@ -8,6 +8,7 @@ import {
 import { CodebookSchema } from "../projects/[projectId]/codebooks/schemas";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { AnnotationSchema } from "../projects/[projectId]/annotations/schemas";
+import { error } from "console";
 
 extendZodWithOpenApi(z);
 
@@ -68,6 +69,7 @@ export const AnnotateUnitSchema = z
     annotations: z.array(AnnotationSchema),
     codebook: CodebookSchema.optional(),
     codebook_id: z.number().optional(),
+    codebook_modified: z.coerce.date().optional(),
   })
   .refine((unit) => {
     if (!unit.codebook && !unit.codebook_id) {
@@ -90,5 +92,6 @@ export const GetUnitResponseSchema = z.object({
 });
 
 export const GetCodebookResponseSchema = z.object({
-  codebook: CodebookSchema,
+  codebook: CodebookSchema.nullable(),
+  error: z.string().optional(),
 });

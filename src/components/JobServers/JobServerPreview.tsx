@@ -1,4 +1,5 @@
 import { LoremIpsum } from "@/app/projects/[projectId]/codebooks/design/lorem";
+import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
 import {
   Unit,
   Annotation,
@@ -18,11 +19,12 @@ import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import cuid from "cuid";
 import { MiddlecatUser } from "middlecat-react";
 import { n } from "next-usequerystate/dist/serializer-C_l8WgvO";
+import { FaThemeisle } from "react-icons/fa";
 
 interface JobServerPreviewConstructor {
   project: Project;
   user: MiddlecatUser;
-  codebook: Codebook;
+  codebookPreview: CodebookPreview;
   job?: Job;
   blockId?: number;
   setBlockId: (blockId: number) => void;
@@ -36,10 +38,10 @@ class JobServerPreview implements JobServer {
   sessionId: string;
   progress: Progress;
   return_link: string;
+  codebookId: number;
   codebook: Codebook;
   job: Job | null;
   blockId: number | null;
-
   annotations: Record<string, Annotation[]>;
   project: Project;
   user: MiddlecatUser;
@@ -57,7 +59,7 @@ class JobServerPreview implements JobServer {
   constructor({
     project,
     user,
-    codebook,
+    codebookPreview,
     job,
     blockId,
     setBlockId,
@@ -69,25 +71,27 @@ class JobServerPreview implements JobServer {
     this.sessionId = cuid();
     this.project = project;
     this.user = user;
-    this.codebook = codebook;
 
-    this.selectUnitArray = BlocksToUnits(project, codebook, job);
+    this.codebookId = codebookPreview.id;
+    this.codebook = JSON.parse(JSON.stringify(codebookPreview.codebook));
+
+    this.selectUnitArray = BlocksToUnits(project, this.codebook, job);
     const nUnits = this.selectUnitArray.length;
     this.blockIndexRange = GetBlockIndexRange(this.selectUnitArray, job, blockId);
 
-    console.log(current.unit, this.blockIndexRange);
-    let currentUnit = current.unit;
     if (current.unit < this.blockIndexRange[0] || current.unit > this.blockIndexRange[1])
-      currentUnit = this.blockIndexRange[0];
+      current.unit = this.blockIndexRange[0];
 
     this.progress = {
-      currentUnit,
+      currentUnit: current.unit,
       nTotal: nUnits,
       nCoded: Math.max(0, Math.min(current.unit, nUnits - 1)),
       seekBackwards: true,
       seekForwards: true,
     };
+
     this.currentVariable = current.variable ? this.codebook.variables.findIndex((v) => v.name === current.variable) : 0;
+    if (this.currentVariable === -1) this.currentVariable = 0;
 
     this.return_link = "/";
     this.annotations = annotations || {};
@@ -98,7 +102,6 @@ class JobServerPreview implements JobServer {
     this.setCodebookId = setCodebookId;
     this.setPreviewData = setPreviewData;
     this.setPreviewVariable = (variable: string) => {
-      console.log("setPreviewVariable", variable);
       this.current.variable = variable;
     };
     this.unitCache = {};
@@ -118,8 +121,10 @@ class JobServerPreview implements JobServer {
       return { unit: null, progress: this.progress };
     }
 
+    let codebookId = this.codebookId;
     if (this.job != null && this.blockId != null) {
       const block = this.job.blocks[this.selectUnitArray[i][0]];
+      codebookId = block.codebookId;
       if (block.id !== this.blockId) {
         this.updateProgress(i);
         this.setBlockId(block.id);
@@ -145,7 +150,7 @@ class JobServerPreview implements JobServer {
       token,
       data: unitData.data,
       layout: this.codebook.type === "survey" ? undefined : this.codebook.unit,
-      codebook_id: 0,
+      codebookId,
       annotations: this.getAnnotation(token) || [],
     });
 
@@ -166,7 +171,17 @@ class JobServerPreview implements JobServer {
   }
 
   async getCodebook(id: number) {
-    return this.codebook;
+    if (id !== this.codebookId) {
+      const emptyCodebook: Codebook = {
+        settings: {},
+        type: "survey",
+        variables: [],
+      };
+      return {
+        codebook: emptyCodebook,
+      };
+    }
+    return { codebook: this.codebook };
   }
 
   async getDebriefing() {
@@ -175,20 +190,30 @@ class JobServerPreview implements JobServer {
     };
   }
 
-  async updateProgress(i: number) {
+  updateProgress(i: number) {
     this.progress.currentUnit = i;
     this.progress.nCoded = Math.max(Math.min(i, this.progress.nTotal), this.progress.nCoded);
     this.current.unit = i;
   }
 
   async getUnitFromServer(i: number): Promise<UnitData | { error: string }> {
-    if (this.codebook.type === "survey" || this.job === null || this.blockId === null) {
+    const block = getCurrentBlock(this.job, this.blockId);
+
+    // if block is not null, this has precedence for type, because the preview codebook lags behind
+    const type = block ? block.type : this.codebook.type;
+
+    if (type === "survey" || this.job === null || this.blockId === null) {
       return createDefaultUnit(this.codebook, i);
     }
 
     try {
       const position = this.selectUnitArray[i][1];
-      const params = { position: position, blockId: this.blockId };
+      const params: { position: number | null; blockId?: number } = { position: position, blockId: this.blockId };
+
+      // check if block has units, because if not, the blockId should not be in the params
+      // (need to rethinkg this. Ideally the server checks this, but that's an additional request)
+      if (block && block.nUnits === 0) delete params.blockId;
+
       const unit = await this.user.api.get(`/projects/${this.project.id}/units/preview`, { params });
       return unit.data as UnitData;
     } catch (e) {
@@ -276,6 +301,11 @@ function BlocksToUnits(project: Project, codebook: Codebook, job?: Job): SelectU
   });
 
   return selectUnitArray;
+}
+
+function getCurrentBlock(job: Job | null, blockId: number | null) {
+  if (!job || !blockId) return null;
+  return job.blocks.find((b) => b.id === blockId);
 }
 
 function GetBlockIndexRange(selectUnitArray: SelectUnitArray[], job?: Job, blockId?: number): [number, number] {

@@ -42,6 +42,8 @@ import {
 } from "@/app/api/projects/[projectId]/codebooks/layoutSchemas";
 import { StyleToolbar } from "../Common/StyleToolbar";
 import { Label } from "../ui/label";
+import { SetState } from "@/app/types";
+import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
@@ -51,7 +53,7 @@ interface UpdateCodebookProps {
   projectId: number;
   current: z.input<typeof CodebookResponseSchema>;
   afterSubmit?: () => void;
-  setPreview?: (codebook: Codebook | undefined) => void;
+  setPreview?: SetState<CodebookPreview | undefined>;
 }
 
 export const UpdateCodebook = React.memo(function UpdateCodebook({
@@ -152,7 +154,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
         /> */}
           <Variables form={form} />
         </div>
-        <WatchForPreview form={form} setPreview={setPreview} />
+        <WatchForPreview id={current.id} form={form} setPreview={setPreview} />
       </form>
     </Form>
   );
@@ -511,14 +513,22 @@ export function useCreateEmptyCodebook(projectId: number, type: "survey" | "anno
   return { create };
 }
 
-function WatchForPreview({ form, setPreview }: { form: any; setPreview?: (codebook: Codebook | undefined) => void }) {
+function WatchForPreview({
+  id,
+  form,
+  setPreview,
+}: {
+  id: number;
+  form: any;
+  setPreview?: SetState<CodebookPreview | undefined>;
+}) {
   const watch = useWatch({ control: form.control, name: "codebook" });
   useEffect(() => {
     if (!setPreview) return;
     const timeout = setTimeout(() => {
       form.trigger();
       const codebook = CodebookSchema.safeParse(watch);
-      if (codebook.success) setPreview(codebook.data);
+      if (codebook.success) setPreview({ id, codebook: codebook.data });
     }, 250);
     return () => clearTimeout(timeout);
   }, [watch, setPreview, form]);

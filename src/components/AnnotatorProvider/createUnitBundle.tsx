@@ -9,19 +9,36 @@ import {
   FieldGridInput,
   ExtendedCodebook,
   Unit,
+  SetState,
+  JobServer,
+  GetUnit,
 } from "@/app/types";
 import { UnitBundle } from "./AnnotatorProvider";
 import unfoldVariables from "../../functions/unfoldVariables";
+import AnnotationManager from "@/functions/AnnotationManager";
 
-export function createUnitBundle(annotateUnit: Unit, codebook: ExtendedCodebook): UnitBundle {
-  codebook = unfoldVariables(codebook, annotateUnit);
-  const content = processUnitContent(annotateUnit);
+export function createUnitBundle(
+  jobServer: JobServer,
+  getUnit: GetUnit,
+  codebook: ExtendedCodebook,
+  setUnitBundle: SetState<UnitBundle | null>,
+): UnitBundle {
+  if (!getUnit.unit) throw new Error("Unit is not defined");
+  const unitCodebook = unfoldVariables(codebook, getUnit.unit);
+  const unit = {
+    ...getUnit.unit,
+    content: processUnitContent(getUnit.unit),
+  };
+  const annotationManager = new AnnotationManager();
+  annotationManager.initialize(jobServer, unit, unitCodebook, setUnitBundle);
+
   return {
-    unit: {
-      ...annotateUnit,
-      content,
-    },
-    codebook,
+    unit,
+    codebook: unitCodebook,
+    annotationManager,
+    annotationLib: annotationManager.annotationLib,
+    progress: getUnit.progress,
+    error: getUnit.error,
   };
 }
 

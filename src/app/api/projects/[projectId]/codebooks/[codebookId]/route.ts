@@ -17,6 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
           projectId: codebooks.projectId,
           name: codebooks.name,
           created: codebooks.created,
+          modified: codebooks.modified,
           codebook: codebooks.codebook,
           nJobs: count(jobBlocks.id),
         })

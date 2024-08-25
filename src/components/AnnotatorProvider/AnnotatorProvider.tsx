@@ -4,7 +4,7 @@ import AnnotationManager from "@/functions/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryState } from "next-usequerystate";
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createUnitBundle } from "./createUnitBundle";
 import { useSandboxedEval } from "@/hooks/useSandboxedEval";
@@ -25,8 +25,8 @@ interface UnitContextProps {
 const UnitContext = createContext<UnitContextProps>({
   unit: initUnit(),
   codebook: importCodebook(initCodebook()),
-  annotationLib: initAnnotationLib(),
-  annotationManager: new AnnotationManager(() => console.log("AnnotationManager not initialized")),
+  annotationManager: new AnnotationManager(),
+  annotationLib: new AnnotationManager().annotationLib,
   progress: initProgress(),
   error: undefined,
   height: 0,
@@ -45,84 +45,76 @@ interface Props {
 export interface UnitBundle {
   unit: ExtendedUnit;
   codebook: ExtendedCodebook;
+  annotationLib: AnnotationLibrary;
+  annotationManager: AnnotationManager;
+  progress: Progress;
+  error: string | undefined;
 }
 
+type CodebookCache = Record<number, { modified?: Date; codebook: ExtendedCodebook }>;
+
 export default function AnnotatorProvider({ jobServer, height, children }: Props) {
-  const [getUnit, setGetUnit] = useState<GetUnit>({
-    unit: null,
-    progress: initProgress(),
-    error: "",
-  });
-  const [unitBundle, setUnitBundle] = useState<UnitBundle>(() => ({
-    unit: initUnit(),
-    codebook: importCodebook(initCodebook()),
-  }));
-  const [annotationLib, setAnnotationLib] = useState<AnnotationLibrary>(initAnnotationLib());
-  const [annotationManager] = useState<AnnotationManager>(() => new AnnotationManager(setAnnotationLib));
+  const [unitBundle, setUnitBundle] = useState<UnitBundle | null>(null);
+  const codebookCache = useRef<CodebookCache>({});
 
   const sandboxData = useMemo(() => {
     return {
       unit: { test: "dit" },
     };
-  }, [unitBundle, annotationLib]);
+  }, [unitBundle]);
   const { evalStringTemplate, ready } = useSandboxedEval(sandboxData);
-
-  const { data: codebookWithId, isLoading: codebookLoading } = useQuery({
-    queryKey: ["codebook", jobServer.sessionId, getUnit.unit?.codebook_id],
-    queryFn: async () => {
-      if (getUnit.unit?.codebook_id === undefined) return null;
-      let codebook = await jobServer.getCodebook(getUnit.unit?.codebook_id);
-      if (!codebook) {
-        console.error("Codebook not found");
-        toast.error("Codebook not found");
-        codebook = initCodebook();
-      }
-      return { id: getUnit.unit.codebook_id, codebook: importCodebook(codebook) };
-    },
-    enabled: getUnit.unit?.codebook_id !== undefined,
-    cacheTime: Infinity,
-    staleTime: Infinity,
-  });
-
-  useEffect(() => {
-    jobServer.getUnit().then(setGetUnit);
-  }, [jobServer]);
-
-  useEffect(() => {
-    if (!getUnit.unit) return;
-
-    let codebook: ExtendedCodebook;
-    if (getUnit.unit.codebook_id !== undefined) {
-      if (codebookLoading) return;
-      if (getUnit.unit.codebook_id !== codebookWithId?.id) {
-        return;
-      }
-      codebook = codebookWithId?.codebook;
-    } else {
-      codebook = importCodebook(getUnit.unit.codebook || initCodebook());
-    }
-
-    const unitBundle = createUnitBundle(getUnit.unit, codebook);
-    setUnitBundle(unitBundle);
-    annotationManager.initAnnotationLibrary(jobServer, unitBundle.unit, unitBundle.codebook);
-  }, [annotationManager, jobServer, getUnit, codebookWithId, codebookLoading]);
 
   const selectUnit = useCallback(
     async (i?: number) => {
-      jobServer.getUnit(i).then(setGetUnit);
+      const getUnit = await jobServer.getUnit(i);
+      if (!getUnit.unit) return;
+
+      let codebook: ExtendedCodebook;
+      if (getUnit.unit.codebook_id !== undefined) {
+        const inCache = codebookCache.current[getUnit.unit.codebook_id];
+        if (!inCache || inCache.modified !== getUnit.unit.codebook_modified) {
+          const { codebook, error } = await jobServer.getCodebook(getUnit.unit.codebook_id);
+          if (!codebook) {
+            toast.error(error);
+            setUnitBundle(null);
+            return;
+          }
+          codebookCache.current[getUnit.unit.codebook_id] = {
+            modified: getUnit.unit.codebook_modified,
+            codebook: importCodebook(codebook),
+          };
+        }
+        codebook = codebookCache.current[getUnit.unit.codebook_id].codebook;
+      } else {
+        if (!getUnit.unit.codebook) {
+          toast.error("Error: unit is missing a codebook");
+          setUnitBundle(null);
+          return;
+        }
+        codebook = importCodebook(getUnit.unit.codebook);
+      }
+
+      setUnitBundle(createUnitBundle(jobServer, getUnit, codebook, setUnitBundle));
     },
-    [jobServer],
+    [jobServer, codebookCache],
   );
+
+  useEffect(() => {
+    codebookCache.current = {};
+    selectUnit();
+  }, [jobServer, codebookCache, selectUnit]);
+
+  if (!unitBundle) return null;
 
   return (
     <UnitContext.Provider
       value={{
         unit: unitBundle.unit,
         codebook: unitBundle.codebook,
-        progress: getUnit.progress,
-        error: getUnit.error,
-        annotationLib,
-        annotationManager,
+        annotationLib: unitBundle.annotationLib,
+        annotationManager: unitBundle.annotationManager,
+        progress: unitBundle.progress,
+        error: unitBundle.error,
         height,
         selectUnit,
         initialising: !ready,

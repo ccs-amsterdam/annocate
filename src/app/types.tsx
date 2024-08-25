@@ -110,7 +110,7 @@ export interface JobServer {
 
   init: () => void;
   getUnit: (i?: number) => Promise<GetUnit>;
-  getCodebook: (id: number) => Promise<Codebook>;
+  getCodebook: (id: number) => Promise<GetCodebook>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }

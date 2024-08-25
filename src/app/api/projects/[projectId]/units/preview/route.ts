@@ -11,6 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
   return createGet({
     selectFunction: async (email, urlParams) => {
       const i = Number(urlParams.position - 1);
+      console.log(urlParams);
 
       if (urlParams.blockId !== undefined) {
         const sq = db
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
         })
         .from(units)
         .where(and(eq(units.projectId, projectId), eq(units.position, i)));
+
       return unit;
     },
     req,

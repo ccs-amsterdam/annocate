@@ -22,6 +22,7 @@ import {
   VariableStatus,
   VariableValueMap,
 } from "@/app/types";
+import { UnitBundle } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import JobServerPreview from "@/components/JobServers/JobServerPreview";
 import { getColor } from "@/functions/tokenDesign";
 import cuid from "cuid";
@@ -30,14 +31,13 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default class AnnotationManager {
-  unitId: string;
   postAnnotations: (status: Status) => Promise<Status>;
   annotationLib: AnnotationLibrary;
-  setAnnotationLib: SetState<AnnotationLibrary>;
+  setUnitBundle?: SetState<UnitBundle | null>;
   lastAnnotationIds: string[];
   setPreviewVariable?: (variable: string) => void;
 
-  constructor(setAnnotationLib: SetState<AnnotationLibrary>) {
+  constructor() {
     this.annotationLib = {
       sessionId: "initializing",
       type: "annotation",
@@ -50,16 +50,19 @@ export default class AnnotationManager {
       variableStatuses: [],
       previousIndex: 0,
     };
-    this.setAnnotationLib = setAnnotationLib;
-    this.unitId = "";
-    this.postAnnotations = async (status: Status) => "IN_PROGRESS";
     this.lastAnnotationIds = [];
+    this.postAnnotations = async (status: Status) => status as Status;
   }
 
-  initAnnotationLibrary(jobServer: JobServer, unit: ExtendedUnit, codebook: ExtendedCodebook) {
-    const annotationLib = createAnnotationLibrary(jobServer, unit, codebook, unit.annotations);
-    this.lastAnnotationIds = Object.keys(annotationLib.annotations);
-    this.updateAnnotationLibrary(annotationLib);
+  initialize(
+    jobServer: JobServer,
+    unit: ExtendedUnit,
+    codebook: ExtendedCodebook,
+    setUnitBundle: SetState<UnitBundle | null>,
+  ) {
+    this.annotationLib = createAnnotationLibrary(jobServer, unit, codebook, unit.annotations);
+    this.lastAnnotationIds = Object.keys(this.annotationLib.annotations);
+    this.setUnitBundle = setUnitBundle;
     this.postAnnotations = async (status: Status) => {
       try {
         const add: AnnotationDictionary = { ...this.annotationLib.annotations };
@@ -85,7 +88,7 @@ export default class AnnotationManager {
 
   updateAnnotationLibrary(annotationLib: AnnotationLibrary) {
     this.annotationLib = annotationLib;
-    this.setAnnotationLib({ ...annotationLib });
+    this.setUnitBundle?.((unitBundle) => (unitBundle ? { ...unitBundle, annotationLib: { ...annotationLib } } : null));
   }
 
   async postVariable(finished: boolean) {
@@ -472,7 +475,7 @@ function getTokenPositions(
 function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap) {
   for (let a of Object.values(annotations)) {
     const varName = topVarName(a.variable);
-    if (variableMap) {
+    if (variableMap && variableMap[varName]) {
       const codeMap = variableMap[varName].codeMap;
       if (a.code != null && codeMap[a.code]) {
         a.color = getColor(a.code, codeMap);

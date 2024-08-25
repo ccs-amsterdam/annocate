@@ -123,7 +123,7 @@ export const codebooks = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    updated: timestamp("updated").notNull().defaultNow(),
+    modified: timestamp("updated").notNull().defaultNow(),
     codebook: customJsonb("codebook").notNull().$type<Codebook>(),
   },
   (table) => {

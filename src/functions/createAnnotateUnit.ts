@@ -6,11 +6,11 @@ interface Params {
   data?: Record<string, string | number | boolean>;
   layout?: Layout;
   codebook?: Codebook;
-  codebook_id?: number;
+  codebookId?: number;
   annotations: Annotation[];
 }
 
-export function createAnnotateUnit({ type, token, data, layout, codebook, codebook_id, annotations }: Params): Unit {
+export function createAnnotateUnit({ type, token, data, layout, codebook, codebookId, annotations }: Params): Unit {
   const unit: Unit = {
     type,
     token,
@@ -22,9 +22,9 @@ export function createAnnotateUnit({ type, token, data, layout, codebook, codebo
     annotations,
   };
   if (codebook !== undefined) unit.codebook = codebook;
-  if (codebook_id !== undefined) unit.codebook_id = codebook_id;
+  if (codebookId !== undefined) unit.codebook_id = codebookId;
 
-  if (codebook === undefined && codebook_id === undefined)
+  if (codebook === undefined && codebookId === undefined)
     throw new Error("Either codebook or codebook_id must be provided");
 
   if (data === undefined || layout === undefined) return unit;
@@ -71,7 +71,6 @@ export function createAnnotateUnit({ type, token, data, layout, codebook, codebo
   });
 
   if (layout.grid && layout.grid.areas.length > 0) unit.content.grid = layout.grid;
-  console.log;
 
   return unit;
 }

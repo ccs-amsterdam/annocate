@@ -15,6 +15,13 @@
       "when": 1724581627333,
       "tag": "0001_tense_vertigo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1724609668606,
+      "tag": "0002_kind_redwing",
+      "breakpoints": true
     }
   ]
 }

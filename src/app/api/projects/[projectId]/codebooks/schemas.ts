@@ -72,6 +72,7 @@ export const CodebookResponseSchema = z.object({
   // projectId: z.number(),
   name: z.string(),
   created: z.coerce.date(),
+  modified: z.coerce.date(),
   codebook: CodebookSchema,
   nJobs: z.number(),
 });

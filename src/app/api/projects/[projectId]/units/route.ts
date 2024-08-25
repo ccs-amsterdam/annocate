@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { projectId: 
       return db.transaction(async (tx) => {
         const [{ n }] = await tx
           .select({
-            max: projects.maxUnits,
+            // max: projects.maxUnits,
             n: sql<number>`COUNT(*)`.mapWith(Number),
           })
           .from(units)

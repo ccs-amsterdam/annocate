@@ -18,10 +18,11 @@ import { toast } from "sonner";
 import { set, z } from "zod";
 
 type Codebook = z.infer<typeof CodebookSchema>;
+export type CodebookPreview = { id: number; codebook: Codebook };
 
 export default function CodebookDesign({ params }: { params: { projectId: number; codebookId: number } }) {
   const router = useRouter();
-  const [preview, setPreview] = useState<Codebook | undefined>();
+  const [preview, setPreview] = useState<CodebookPreview | undefined>();
 
   const [codebookId, setCodebookId] = useQueryState<number>("codebookId", parseAsInteger);
   const [jobId, setJobId] = useQueryState<number>("jobId", parseAsInteger);
@@ -34,7 +35,7 @@ export default function CodebookDesign({ params }: { params: { projectId: number
   }, []);
 
   if (!codebookId && !jobId) router.push(`/projects/${params.projectId}/codebooks`);
-  if (codebookId && codebookLoading) return <Loading />;
+  // if (codebookId && codebookLoading) return <Loading />;
 
   const nJobs = codebook?.nJobs || 0;
 
@@ -75,18 +76,14 @@ export default function CodebookDesign({ params }: { params: { projectId: number
         ) : null}
       </div>
       <div className="relative flex justify-center overflow-auto xl:h-[calc(100vh-var(--header-height))] ">
-        {preview ? (
-          <Preview
-            projectId={params.projectId}
-            codebook={preview}
-            jobId={jobId || undefined}
-            blockId={blockId || undefined}
-            setBlockId={setBlockId}
-            setCodebookId={setCodebookId}
-          />
-        ) : (
-          <Loading />
-        )}
+        <Preview
+          projectId={params.projectId}
+          codebookPreview={preview}
+          jobId={jobId || undefined}
+          blockId={blockId || undefined}
+          setBlockId={setBlockId}
+          setCodebookId={setCodebookId}
+        />
       </div>
     </div>
   );

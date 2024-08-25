@@ -20,17 +20,18 @@ import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import { parse } from "path";
 import { SimpleDropdown } from "../ui/simpleDropdown";
 import { useProject } from "@/app/api/projects/query";
+import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
 
 interface Props {
   projectId: number;
-  codebook: Codebook;
+  codebookPreview?: CodebookPreview;
   jobId?: number;
   blockId?: number;
   setBlockId: (blockId: number) => void;
   setCodebookId: (codebookId: number) => void;
 }
 
-export function Preview({ projectId, codebook, jobId, blockId, setBlockId, setCodebookId }: Props) {
+export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId, setCodebookId }: Props) {
   const { user } = useMiddlecat();
   const { data: job } = useJob(projectId, jobId);
   const { data: project } = useProject(projectId);
@@ -44,19 +45,23 @@ export function Preview({ projectId, codebook, jobId, blockId, setBlockId, setCo
     unit: Unit;
   } | null>(null);
 
+  useEffect(() => {
+    console.log("mount");
+  }, []);
+
   const reset = useCallback(() => {
     annotations.current = {};
     current.current = { unit: 0 };
     setUnits((units) => [...units]);
   }, []);
 
-  if (useWatchChange([project, user, codebook, units, blockId])) {
-    if (user && codebook && project) {
+  if (useWatchChange([project, user, codebookPreview, units, blockId])) {
+    if (user && codebookPreview && project) {
       setJobServer(
         new JobServerPreview({
           user,
           project,
-          codebook,
+          codebookPreview,
           job,
           blockId,
           setBlockId,
@@ -69,6 +74,7 @@ export function Preview({ projectId, codebook, jobId, blockId, setBlockId, setCo
     }
   }
 
+  console.log("jobserver", jobServer);
   if (!jobServer) return null;
   return (
     <div className="mx-auto mt-10 flex  flex-col items-center pb-4">
@@ -92,6 +98,7 @@ export function PreviewWindow({
   reset: () => void;
 }) {
   const [focus, setFocus] = useState(false);
+
   if (!jobServer) return null;
 
   return (
