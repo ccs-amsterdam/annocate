@@ -26,7 +26,7 @@ export interface OnSelectParams {
 }
 
 const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: AnswerFieldProps) => {
-  const { unit, height, progress, selectUnit } = useUnit();
+  const { unit, codebook, height, progress, selectUnit } = useUnit();
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
 
@@ -52,14 +52,17 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   }, [variables, variableIndex]);
 
   useEffect(() => {
+    let height = 0;
+    console.log("test");
     const el = answerRef.current;
     function resize() {
       const innerEl = el?.children?.[0];
       if (!innerEl || !answerRef.current) return;
 
+      height = Math.max(height, innerEl.clientHeight);
+
       const style = answerRef.current.style;
-      if (style["grid-template-rows" as any] !== innerEl.clientHeight + "px")
-        style["grid-template-rows" as any] = innerEl.clientHeight + "px";
+      if (style["grid-template-rows" as any] !== height + "px") style["grid-template-rows" as any] = height + "px";
     }
 
     // first do immediate update

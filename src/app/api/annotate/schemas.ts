@@ -79,6 +79,7 @@ export const AnnotateUnitSchema = z
 
 export const AnnotateProgressSchema = z.object({
   currentUnit: z.number(),
+  previousUnit: z.number().optional(),
   nTotal: z.number(),
   nCoded: z.number(),
   seekBackwards: z.boolean().optional(),

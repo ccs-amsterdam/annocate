@@ -2,17 +2,23 @@
 
 import { useUserDetails } from "@/app/api/me/details/query";
 import Link from "next/link";
-import { useParams, useSelectedLayoutSegments } from "next/navigation";
+import { useParams, useRouter, useSelectedLayoutSegments } from "next/navigation";
 import { FaChevronRight, FaCog } from "react-icons/fa";
 import { DarkModeButton } from "../Common/Theme";
 import UserMenu from "./UserMenu";
 import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
 import { ChevronLeft, ChevronRight, Cog } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
 
 export default function Menu() {
   const params = useParams();
+  const router = useRouter();
   const { data: userDetails, isLoading } = useUserDetails();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!userDetails) router.push("/");
+  }, [router, isLoading, userDetails]);
 
   function renderAdmin() {
     if (isLoading) return <Cog className="h-8 w-8 animate-spin-slow text-foreground/50" />;
@@ -25,6 +31,7 @@ export default function Menu() {
   }
 
   function renderNav() {
+    if (!userDetails) return null;
     if (!params?.projectId) {
       return (
         <>

@@ -55,6 +55,7 @@ interface UpdateCodebookProps {
   current: z.input<typeof CodebookResponseSchema>;
   afterSubmit?: () => void;
   setPreview?: SetState<CodebookPreview | undefined>;
+  saveOnChange?: React.MutableRefObject<{ dirty: boolean; save?: () => void }>;
 }
 
 export const UpdateCodebook = React.memo(function UpdateCodebook({
@@ -62,6 +63,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   current,
   afterSubmit,
   setPreview,
+  saveOnChange,
 }: UpdateCodebookProps) {
   const { mutateAsync } = useUpdateCodebook(projectId, current.id);
   const form = useForm<CodebookUpdateBody>({
@@ -111,11 +113,20 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     if (JSON.stringify(form.getValues()) === currentAsString) isDirty = false;
   }
 
+  if (saveOnChange)
+    saveOnChange.current = {
+      dirty: isDirty,
+      save: async () => {
+        const values = form.getValues();
+        await mutateAsync(values).then(afterSubmit).catch(console.error);
+      },
+    };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex w-full flex-col gap-3  p-3 lg:px-8 ">
         <div
-          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)]  w-full 
+          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)]  w-full
           items-center justify-between gap-10 border-b bg-background px-8 ${isDirty ? "" : "hidden"} `}
         >
           <Button

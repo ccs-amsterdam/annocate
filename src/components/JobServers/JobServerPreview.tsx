@@ -114,7 +114,7 @@ class JobServerPreview implements JobServer {
     if (i === undefined || i < 0) i = this.progress.currentUnit;
 
     // if we add free navigation, need to ignore this.
-    if (i > this.progress.nCoded + 1) i = this.progress.nCoded + 1;
+    if (!this.progress.seekForwards && i > this.progress.nCoded + 1) i = this.progress.nCoded + 1;
 
     if (i >= this.progress.nTotal) {
       this.updateProgress(i);
@@ -157,7 +157,7 @@ class JobServerPreview implements JobServer {
     this.updateProgress(i);
 
     this.setPreviewData({ unitData, unit: annotateUnit });
-    return { unit: annotateUnit, progress: this.progress };
+    return { unit: annotateUnit, progress: { ...this.progress } };
   }
 
   async postAnnotations(token: string, add: AnnotationDictionary, rmIds: string[], status: Status) {
@@ -191,6 +191,7 @@ class JobServerPreview implements JobServer {
   }
 
   updateProgress(i: number) {
+    this.progress.previousUnit = this.progress.currentUnit;
     this.progress.currentUnit = i;
     this.progress.nCoded = Math.max(Math.min(i, this.progress.nTotal), this.progress.nCoded);
     this.current.unit = i;

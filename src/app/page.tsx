@@ -1,11 +1,20 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loader";
 import { Settings } from "lucide-react";
 import { useMiddlecat } from "middlecat-react";
 import Link from "next/link";
 
 export default function Home() {
   const { user, loading, signIn, signOut } = useMiddlecat();
+
+  if (loading) return <Loading />;
+  if (!user?.email)
+    return (
+      <div className="mt-[13vh] flex justify-center">
+        <Button onClick={() => signIn()}>Sign in</Button>
+      </div>
+    );
 
   return (
     <div className="mt-[13vh] flex h-full flex-col">

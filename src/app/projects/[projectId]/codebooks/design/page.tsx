@@ -7,24 +7,32 @@ import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { Preview } from "@/components/Common/Preview";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Loading } from "@/components/ui/loader";
 import { SimpleDropdown } from "@/components/ui/simpleDropdown";
 import { Label } from "@radix-ui/react-dropdown-menu";
-import { FileWarning, TriangleAlert } from "lucide-react";
+import { FileWarning, Save, TriangleAlert, X } from "lucide-react";
 import { parseAsInteger, useQueryState } from "next-usequerystate";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { set, z } from "zod";
 
 type Codebook = z.infer<typeof CodebookSchema>;
 export type CodebookPreview = { id: number; codebook: Codebook };
 
+interface SaveOnChange {
+  dirty: boolean;
+  save?: () => Promise<void>;
+}
+
 export default function CodebookDesign({ params }: { params: { projectId: number; codebookId: number } }) {
   const router = useRouter();
   const [preview, setPreview] = useState<CodebookPreview | undefined>();
+  const saveOnChange = useRef<SaveOnChange>({ dirty: false });
 
   const [codebookId, setCodebookId] = useQueryState<number>("codebookId", parseAsInteger);
+  const [safeCodebookId, setSafeCodebookId] = useState<number | null>(null);
   const [jobId, setJobId] = useQueryState<number>("jobId", parseAsInteger);
   const [blockId, setBlockId] = useQueryState<number>("blockId", parseAsInteger);
 
@@ -41,6 +49,12 @@ export default function CodebookDesign({ params }: { params: { projectId: number
 
   return (
     <div className="mx-auto  grid  grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
+      <SaveOnChangeDialog
+        safeCodebookId={safeCodebookId}
+        codebookId={codebookId}
+        setCodebookId={setCodebookId}
+        saveOnChange={saveOnChange.current}
+      />
       <div className="mx-auto w-[600px] max-w-[95vw] overflow-auto py-6 xl:max-h-[calc(100vh-var(--header-height))]">
         {jobId ? (
           <PreviewJob
@@ -48,7 +62,7 @@ export default function CodebookDesign({ params }: { params: { projectId: number
             jobId={jobId}
             blockId={blockId}
             setBlockId={setBlockId}
-            setCodebookId={setCodebookId}
+            setCodebookId={setSafeCodebookId}
           />
         ) : (
           <div className="h-20"></div>
@@ -72,6 +86,7 @@ export default function CodebookDesign({ params }: { params: { projectId: number
             current={codebook}
             setPreview={setPreview}
             afterSubmit={confirmUpdate}
+            saveOnChange={saveOnChange}
           />
         ) : null}
       </div>
@@ -82,7 +97,7 @@ export default function CodebookDesign({ params }: { params: { projectId: number
           jobId={jobId || undefined}
           blockId={blockId || undefined}
           setBlockId={setBlockId}
-          setCodebookId={setCodebookId}
+          setCodebookId={setSafeCodebookId}
         />
       </div>
     </div>
@@ -104,32 +119,38 @@ function PreviewJob({
 }) {
   const { data: job, isLoading: jobLoading } = useJob(projectId, jobId ?? undefined);
 
-  const blockOptions = useMemo(() => {
-    if (!job) return [];
-    return job.blocks
-      .sort((a, b) => a.position - b.position)
-      .map((block) => ({ id: block.id, codebookId: block.codebookId, label: blockLabel(block) }));
-  }, [job]);
-  const block = job?.blocks.find((block) => block.id === blockId);
+  const current = job?.blocks.find((block) => block.id === blockId);
 
   if (jobId === null) return null;
   if (jobLoading) return <Loading />;
   if (!job) return <div>Could not load Job</div>;
 
   return (
-    <div className="mx-8 flex flex-col justify-center gap-1  rounded bg-primary p-3 text-primary-foreground">
-      <h3 className="prose-h3 pl-3">{job.name}</h3>
-      <div className="flex items-center gap-3">
-        <SimpleDropdown
-          options={blockOptions}
-          optionKey={"label"}
-          placeholder="select block"
-          value={block ? blockLabel(block) : undefined}
-          onSelect={(block) => {
-            setBlockId(block.id);
-            setCodebookId(block.codebookId);
-          }}
-        />
+    <div className="mx-8 flex flex-col justify-center gap-2  rounded bg-primary p-3 text-primary-foreground">
+      <h3 className="prose-h3  pl-3">Job: {job.name}</h3>
+      <div className="flex flex-col">
+        {job?.blocks.map((block, i) => {
+          console.log(block);
+          return (
+            <div>
+              <Button
+                key={block.id}
+                onClick={() => {
+                  setBlockId(block.id);
+                  setCodebookId(block.codebookId);
+                }}
+                className={`flex h-8  gap-3 py-0 ${block.id === blockId ? "" : "text-foreground/60"}`}
+                variant="default"
+              >
+                <div className="flex h-6 w-5 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
+                  {i + 1}
+                </div>
+                {block.name ? <div className="rounded-md font-bold ">{block.name}</div> : null}
+                <div className="italic">{`${block.nVariables} ${block.type} variable${block.nVariables === 1 ? "" : "s"}`}</div>
+              </Button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -141,4 +162,62 @@ function blockLabel(block: JobBlockMeta) {
     ${block.name}
   `;
   return `block ${block.position + 1}`;
+}
+
+interface SaveOnChangeDialogProps {
+  safeCodebookId: number | null;
+  codebookId: number | null;
+  setCodebookId: (id: number) => void;
+  saveOnChange: SaveOnChange;
+}
+
+function SaveOnChangeDialog({ safeCodebookId, codebookId, setCodebookId, saveOnChange }: SaveOnChangeDialogProps) {
+  useEffect(() => {
+    const saveable = saveOnChange.dirty && saveOnChange.save;
+    if (safeCodebookId === null) return;
+    if (codebookId !== safeCodebookId && !saveable) setCodebookId(safeCodebookId);
+  }, [safeCodebookId, codebookId, saveOnChange.dirty]);
+
+  if (codebookId === null) return null;
+  if (safeCodebookId === null) return null;
+  if (codebookId === safeCodebookId) return null;
+  const saveable = saveOnChange.dirty && saveOnChange.save;
+  if (!saveable) return null;
+
+  return (
+    <Dialog open={true}>
+      <DialogContent className="prose dark:prose-invert [&>button]:hidden">
+        <DialogHeader>
+          <h3 className="mt-0">Unsaved changes</h3>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <div>
+            You navigated to a different codebook, but there are unsaved changes. Do you want to save these changes?
+          </div>
+          <div className="mt-3 flex justify-between gap-3">
+            <Button
+              className="flex w-min items-center gap-2"
+              variant="destructive"
+              onClick={() => {
+                setCodebookId(safeCodebookId);
+              }}
+            >
+              <X className=" h-5 w-5" />
+              Discard changes
+            </Button>
+            <Button
+              className="flex w-min items-center gap-2"
+              variant="default"
+              onClick={() => {
+                if (saveOnChange.save) saveOnChange.save().then(() => setCodebookId(safeCodebookId));
+              }}
+            >
+              <Save className=" h-5 w-5" />
+              Save changes
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }

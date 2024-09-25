@@ -30,6 +30,10 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
     return () => container.removeEventListener("scroll", handleScroll);
   }, [annotationLib.variableIndex]);
 
+  useEffect(() => {
+    console.log("mount");
+  }, []);
+
   if (!unit || !variable) return null;
 
   const maxHeightPercent = unit.type === "survey" ? 100 : 60;
@@ -40,13 +44,8 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
       style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
       className={`${TypeStyling[codebook.type].container} relative z-30 flex  flex-col    text-[length:inherit] transition-[border]  `}
     >
-      <div className={`${TypeStyling[codebook.type].text} z-40 flex w-full flex-col `}>
-        <QuestionIndexStep
-          variables={annotationLib.variables}
-          variableIndex={annotationLib.variableIndex}
-          variableStatuses={annotationLib.variableStatuses}
-          setQuestionIndex={(index: number) => annotationManager.setVariableIndex(index)}
-        >
+      <div className={`${TypeStyling[codebook.type].text} relative z-40 flex w-full flex-col `}>
+        <QuestionIndexStep>
           <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook}>
             <span className={TypeStyling[codebook.type].question}>
               <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />

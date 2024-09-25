@@ -8,6 +8,7 @@ import FocusOverlay from "./FocusOverlay";
 import { PreparedGrid, FieldRefs, ImageField, MarkdownField, MetaField, TextField, Token } from "@/app/types";
 import styled from "styled-components";
 import { Loader } from "../../../styled/Styled";
+import { useHeight } from "@/hooks/useHeight";
 
 const DocumentContent = styled.div<{
   $grid?: PreparedGrid;

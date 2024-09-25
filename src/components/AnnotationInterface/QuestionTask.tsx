@@ -1,7 +1,7 @@
 import { SwipeRefs, Transition } from "@/app/types";
 import Document from "@/components/Document/Document";
 import swipeControl from "@/functions/swipeControl";
-import React, { RefObject, useCallback, useMemo, useRef } from "react";
+import React, { RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSwipeable } from "react-swipeable";
 import QuestionForm from "./QuestionForm";
 // import FeedbackPortal from "./FeedbackPortal";
@@ -20,12 +20,18 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
   const refs = useMemo(() => {
     return { text: textref, box: boxref, code: coderef };
   }, []);
+  const prevUnit = useRef(0);
 
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
 
-  let animate = "";
-  if (annotationLib.previousIndex < annotationLib.variableIndex) animate = "animate-slide-in-right";
-  if (annotationLib.previousIndex > annotationLib.variableIndex) animate = "animate-slide-in-left";
+  let animateQuestionForm = "";
+  if (annotationLib.previousIndex < annotationLib.variableIndex) animateQuestionForm = "animate-slide-in-right";
+  if (annotationLib.previousIndex > annotationLib.variableIndex) animateQuestionForm = "animate-slide-in-left";
+
+  let animateDocument = "animate-slide-in-right";
+  if ((progress.previousUnit || 0) > (progress.currentUnit || 0)) animateDocument = "animate-slide-in-left";
+  console.log(animateDocument);
+  console.log(progress.previousUnit, progress.currentUnit);
 
   const onNewUnit = useCallback(() => {
     // this is called in the onReady callback in Document
@@ -52,12 +58,12 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
   const menuSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, true));
 
   if (!unit) return null;
-
-  // const unitHeight = codebook.type === "survey" ? "max-h-0" : "";
-  // const formHeight = codebook.type === "survey" ? "h-full" : "";
-
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background" ref={divref}>
+    <div
+      key={unit.token}
+      className={`${animateDocument} flex h-full w-full flex-col overflow-hidden bg-background`}
+      ref={divref}
+    >
       {/* <FeedbackPortal
         variable={variable.name}
         conditionReport={conditionReport}
@@ -70,10 +76,10 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
             <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
             <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
               <Document
+                centered
                 showAll={true}
                 onReady={onNewUnit}
                 focus={variable?.fields}
-                centered={true}
                 blockEvents={blockEvents}
               />
             </div>
@@ -82,8 +88,8 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
       ) : null}
       <div
         {...menuSwipe}
-        key={annotationLib.variableIndex} // needed for performing same animation twice
-        className={`${codebook.type === "survey" ? "h-full overflow-auto" : null} ${animate} flex-[1,1,auto]`}
+        // key={unit.token + annotationLib.variableIndex} // Seems not needed for animate, but keeping it here just in case
+        className={`${codebook.type === "survey" ? "h-full overflow-auto" : null} ${animateQuestionForm} relative flex-[1,1,auto]`}
       >
         <QuestionForm
           unit={unit}

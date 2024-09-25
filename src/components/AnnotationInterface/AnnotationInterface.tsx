@@ -30,17 +30,9 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 }
 
 function AnnotationMenu() {
-  const { selectUnit, progress } = useUnit();
   return (
     <div className="z-20 flex items-center justify-between gap-2 border-b border-foreground bg-gradient-to-b from-primary-dark to-primary px-3 py-2 text-primary-foreground">
-      <IndexController
-        n={progress.nTotal}
-        progressN={progress.nCoded}
-        index={progress.currentUnit}
-        setIndex={selectUnit}
-        canGoBack={!!progress.seekBackwards}
-        canGoForward={!!progress.seekForwards}
-      />
+      <IndexController />
       <div>
         <ResponsiveButtonGroup>
           <DarkModeButton />

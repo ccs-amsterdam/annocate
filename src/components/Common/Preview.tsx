@@ -74,7 +74,6 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
     }
   }
 
-  console.log("jobserver", jobServer);
   if (!jobServer) return null;
   return (
     <div className="mx-auto mt-10 flex  flex-col items-center pb-4">
