@@ -47,9 +47,9 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
       <div className={`${TypeStyling[codebook.type].text} relative z-40 flex w-full flex-col `}>
         <QuestionIndexStep>
           <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook}>
-            <span className={TypeStyling[codebook.type].question}>
+            <div className={`${TypeStyling[codebook.type].question} ${animate}`}>
               <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
-            </span>
+            </div>
           </VariableInstructions>
         </QuestionIndexStep>
       </div>
