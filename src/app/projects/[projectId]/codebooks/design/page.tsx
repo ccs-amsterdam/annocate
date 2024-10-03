@@ -130,9 +130,8 @@ function PreviewJob({
       <h3 className="prose-h3  pl-3">Job: {job.name}</h3>
       <div className="flex flex-col">
         {job?.blocks.map((block, i) => {
-          console.log(block);
           return (
-            <div>
+            <div key={block.id}>
               <Button
                 key={block.id}
                 onClick={() => {

@@ -30,19 +30,19 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
     return () => container.removeEventListener("scroll", handleScroll);
   }, [annotationLib.variableIndex]);
 
-  useEffect(() => {
-    console.log("mount");
-  }, []);
-
   if (!unit || !variable) return null;
 
   const maxHeightPercent = unit.type === "survey" ? 100 : 60;
+
+  let animate = "";
+  if (annotationLib.previousIndex < annotationLib.variableIndex) animate = "animate-slide-in-right";
+  if (annotationLib.previousIndex > annotationLib.variableIndex) animate = "animate-slide-in-left";
 
   return (
     <div
       ref={questionRef}
       style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
-      className={`${TypeStyling[codebook.type].container} relative z-30 flex  flex-col    text-[length:inherit] transition-[border]  `}
+      className={`${TypeStyling[codebook.type].container} relative z-30 flex flex-col  overflow-hidden    text-[length:inherit] transition-[border]  `}
     >
       <div className={`${TypeStyling[codebook.type].text} relative z-40 flex w-full flex-col `}>
         <QuestionIndexStep>
@@ -60,7 +60,7 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
         </div>
       ) : null} */}
 
-      <div className="relative flex w-full flex-auto  text-[length:inherit] text-foreground">
+      <div className={`${animate} relative flex w-full flex-auto  text-[length:inherit] text-foreground`}>
         <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { Annotation, Codebook, Job, Layout, Unit, UnitData } from "@/app/types";
+import { Annotation, Codebook, GetJobState, Job, Layout, Unit, UnitData } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
@@ -45,10 +45,6 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
     unit: Unit;
   } | null>(null);
 
-  useEffect(() => {
-    console.log("mount");
-  }, []);
-
   const reset = useCallback(() => {
     annotations.current = {};
     current.current = { unit: 0 };
@@ -77,7 +73,7 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
   if (!jobServer) return null;
   return (
     <div className="mx-auto mt-10 flex  flex-col items-center pb-4">
-      <div className="grid grid-cols-[200px] gap-6">
+      <div className="grid w-full max-w-60 gap-6">
         <PreviewSize size={size} setSize={setSize} />
       </div>
       <PreviewWindow size={size} jobServer={jobServer} previewData={previewData} reset={reset} />
@@ -115,8 +111,8 @@ export function PreviewWindow({
         <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
       </div>
       <div
-        className=" flex w-[400px] max-w-full flex-col gap-3 pt-6"
-        style={{ minHeight: size.height + "px", height: size.height + 24 + "px" }}
+        className=" flex max-w-full flex-col gap-3 pt-6"
+        style={{ minHeight: size.height + "px", height: size.height + 24 + "px", width: size.width + "px" }}
       >
         <PreviewData previewData={previewData} />
         <Button className="h-12" onClick={reset}>
@@ -155,8 +151,8 @@ function PreviewSize({
   setSize: (size: { width: number; height: number }) => void;
 }) {
   return (
-    <div className="flex  flex-col gap-6">
-      <div className="flex flex-col gap-3">
+    <div className="flex flex-auto gap-6">
+      <div className="flex w-full flex-col gap-3">
         <div>Width</div>
         <Slider
           min={300}
@@ -166,7 +162,7 @@ function PreviewSize({
         />
       </div>
       {/* <div>{size.width} px</div> */}
-      <div className="flex flex-col gap-3">
+      <div className="flex w-full flex-col gap-3">
         <div>Height</div>
         <Slider
           min={500}

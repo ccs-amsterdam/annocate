@@ -6,7 +6,7 @@ export const GeneralTypeAnnotationSchema = z.object({
   id: z.string(),
   variable: z.string(),
   code: z.string().optional(),
-  value: z.union([z.string(), z.number()]).optional(),
+  value: z.number().optional(),
   status: VariableStatusSchema,
 
   created: z.string(),

@@ -24,14 +24,8 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
 
-  let animateQuestionForm = "";
-  if (annotationLib.previousIndex < annotationLib.variableIndex) animateQuestionForm = "animate-slide-in-right";
-  if (annotationLib.previousIndex > annotationLib.variableIndex) animateQuestionForm = "animate-slide-in-left";
-
   let animateDocument = "animate-slide-in-right";
   if ((progress.previousUnit || 0) > (progress.currentUnit || 0)) animateDocument = "animate-slide-in-left";
-  console.log(animateDocument);
-  console.log(progress.previousUnit, progress.currentUnit);
 
   const onNewUnit = useCallback(() => {
     // this is called in the onReady callback in Document
@@ -59,11 +53,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   if (!unit) return null;
   return (
-    <div
-      key={unit.token}
-      className={`${animateDocument} flex h-full w-full flex-col overflow-hidden bg-background`}
-      ref={divref}
-    >
+    <div key={unit.token} className={` flex h-full w-full flex-col overflow-hidden bg-background`} ref={divref}>
       {/* <FeedbackPortal
         variable={variable.name}
         conditionReport={conditionReport}
@@ -71,10 +61,10 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
       /> */}
       {codebook.type === "annotation" ? (
         <div {...textSwipe} className={`relative z-10 min-h-0 flex-[1_1_0] overflow-hidden`}>
-          <div ref={refs.box} className="oveflow-hidden relative z-20 h-full will-change-auto">
+          <div ref={refs.box} className="relative z-20 h-full overflow-hidden will-change-auto">
             {/* This div moves around behind the div containing the document to show the swipe code  */}
             <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
-            <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
+            <div ref={refs.text} className={`${animateDocument} relative top-0 h-full will-change-auto`}>
               <Document
                 centered
                 showAll={true}
@@ -89,7 +79,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
       <div
         {...menuSwipe}
         // key={unit.token + annotationLib.variableIndex} // Seems not needed for animate, but keeping it here just in case
-        className={`${codebook.type === "survey" ? "h-full overflow-auto" : null} ${animateQuestionForm} relative flex-[1,1,auto]`}
+        className={`${codebook.type === "survey" ? "h-full overflow-auto" : null} relative flex-[1,1,auto]`}
       >
         <QuestionForm
           unit={unit}

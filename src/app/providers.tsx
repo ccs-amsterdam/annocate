@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { toast } from "sonner";
+import { SandboxedProvider } from "@/hooks/useSandboxedEval";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const mutationCache = new MutationCache({
@@ -35,7 +36,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <MiddlecatProvider bff="/api/bffAuth" fixedResource="api">
-        {children}
+        <SandboxedProvider>{children}</SandboxedProvider>
       </MiddlecatProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

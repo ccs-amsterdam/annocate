@@ -53,7 +53,6 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
 
   useEffect(() => {
     let height = 0;
-    console.log("test");
     const el = answerRef.current;
     function resize() {
       const innerEl = el?.children?.[0];

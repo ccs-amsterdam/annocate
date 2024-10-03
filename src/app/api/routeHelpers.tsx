@@ -331,8 +331,6 @@ function queryWithTableFilters(
     .where(and(...where))
     .limit(params.pageSize);
 
-  // console.log(query.toSQL());
-
   return query;
 }
 

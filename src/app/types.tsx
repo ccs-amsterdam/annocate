@@ -4,6 +4,7 @@ import {
   AnnotateProgressSchema,
   AnnotateUnitSchema,
   GetCodebookResponseSchema,
+  GetJobStateResponseSchema,
   GetUnitResponseSchema,
   UnitContentSchema,
 } from "./api/annotate/schemas";
@@ -73,6 +74,7 @@ export type ExtendedUnit = Omit<Unit, "content"> & {
 
 export type GetCodebook = z.infer<typeof GetCodebookResponseSchema>;
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
+export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
 
 export type ExtendedVariable = Variable & {
   // intermediate values (not stored in backend)
@@ -106,11 +108,12 @@ export type Annotation = z.infer<typeof AnnotationSchema> & {
 export interface JobServer {
   sessionId: string;
   return_link?: string;
-  job_id?: string;
+  jobId: number;
+  jobState: GetJobState | null;
 
-  init: () => void;
   getUnit: (i?: number) => Promise<GetUnit>;
   getCodebook: (id: number) => Promise<GetCodebook>;
+  registerJobState: (setJobState: SetState<GetJobState | null>) => void;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }

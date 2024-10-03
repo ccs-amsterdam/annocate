@@ -86,6 +86,27 @@ export const AnnotateProgressSchema = z.object({
   seekForwards: z.boolean().optional(),
 });
 
+export const JobBlockSchema = z.object({
+  id: z.number(),
+  label: z.string(),
+  type: UnitTypeSchema,
+  codebookId: z.number(),
+  offset: z.number(),
+  length: z.number(),
+});
+
+const SurveyAnnotationCode = z.union([z.array(z.string()), z.string()]);
+const SurveyAnnotationValue = z.union([z.array(z.number()), z.number()]);
+export const SurveyAnnotationSchema = z.object({
+  code: SurveyAnnotationCode.optional(),
+  value: SurveyAnnotationValue.optional(),
+});
+
+export const GetJobStateResponseSchema = z.object({
+  surveyAnnotations: z.record(z.string(), SurveyAnnotationSchema),
+  blocks: z.array(JobBlockSchema),
+});
+
 export const GetUnitResponseSchema = z.object({
   unit: AnnotateUnitSchema.nullable(),
   progress: AnnotateProgressSchema,

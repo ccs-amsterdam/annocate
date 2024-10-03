@@ -43,14 +43,13 @@ function AnnotationMenu() {
 }
 
 function AnnotationUnit({ blockEvents, jobServer }: { blockEvents?: boolean; jobServer: JobServer }) {
-  const { error, initialising, progress } = useUnit();
-  if (initialising) return <Loading />;
+  const { error, progress, finished } = useUnit();
   if (error)
     return (
       <div className="flex justify-center ">
         <div className="mt-20 h-min rounded border-2 border-destructive p-3">{error}</div>
       </div>
     );
-  if (progress.currentUnit >= progress.nTotal) return <Finished jobServer={jobServer} />;
+  if (finished) return <Finished jobServer={jobServer} />;
   return <QuestionTask blockEvents={blockEvents} />;
 }

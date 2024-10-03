@@ -1,67 +1,33 @@
 import { Annotation, AnnotationLibrary, ExtendedCodebook, ExtendedUnit, Variable } from "@/app/types";
-import React, { ReactElement } from "react";
+import React, { ReactElement, useMemo, useState } from "react";
+import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import useWatchChange from "@/hooks/useWatchChange";
+import { useSandbox } from "@/hooks/useSandboxedEval";
 
 interface ShowQuestionProps {
   unit: ExtendedUnit;
   annotationLib: AnnotationLibrary;
   codebook: ExtendedCodebook;
 }
-
-const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
-  const variable = annotationLib.variables?.[annotationLib.variableIndex];
-  const questionText = prepareQuestion(unit, variable, Object.values(annotationLib.annotations));
-
-  return <span className="min-h-8 text-lg">{questionText}</span>;
+const data = {
+  test: "dit",
 };
 
-const prepareQuestion = (unit: ExtendedUnit, question: Variable, annotations: Annotation[]) => {
-  if (!question?.question) return <div />;
-  let preparedQuestion = question.question;
+const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
+  const { evalStringWithJobState, ready } = useSandbox();
+  const { jobState } = useUnit();
+  const [questionText, setQuestionText] = useState("");
+  const variable = annotationLib.variables?.[annotationLib.variableIndex];
 
-  const regex = /{(.*?)}/g;
-  if (annotations.length > 0) {
-    // matchAll not yet supported by RStudio browser
-    //const matches = [...Array.from(preparedQuestion.matchAll(regex))];
-    //for (let m of matches) {
-    let m: RegExpExecArray | null;
-    while ((m = regex.exec(preparedQuestion))) {
-      const m0: string = m[0];
-      const m1: string = m[1];
-      let value;
-      if (unit.content.meta) {
-        value = unit.content.meta[m1];
-      }
-      value = annotations.find((a) => a.variable === m1)?.code || value;
-
-      if (value) {
-        preparedQuestion = preparedQuestion.replace(m0, "{" + value + "}");
-      }
+  if (useWatchChange([variable.question, jobState, evalStringWithJobState, ready])) {
+    setQuestionText("");
+    if (ready) {
+      evalStringWithJobState(variable.question, jobState).then((v) => console.log(`test: ${v}`));
+      evalStringWithJobState(variable.question, jobState).then(setQuestionText);
     }
   }
 
-  return markedString(preparedQuestion);
-};
-
-const markedString = (text: string) => {
-  const regex = new RegExp(/{(.*?)}/); // Match text inside two curly brackets
-
-  text = text.replace(/(\r\n|\n|\r)/gm, "");
-  return (
-    <>
-      {text.split(regex).reduce((prev: (string | ReactElement)[], current: string, i: number) => {
-        if (i % 2 === 0) {
-          prev.push(current);
-        } else {
-          prev.push(
-            <mark key={i + current} style={{ color: "hsl(var(--primary-foreground))", backgroundColor: "transparent" }}>
-              {current}
-            </mark>,
-          );
-        }
-        return prev;
-      }, [])}
-    </>
-  );
+  return <span className="min-h-8 text-lg">{questionText}</span>;
 };
 
 export default React.memo(ShowQuestion);

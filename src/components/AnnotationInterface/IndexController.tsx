@@ -8,34 +8,15 @@ import { Check, Forward, SkipBack, SkipForward, StepBack, StepForward } from "lu
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import QuestionIndexStep from "./QuestionIndexStep";
 import { k } from "next-usequerystate/dist/serializer-C_l8WgvO";
+import { DropdownMenu, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 interface IndexControllerProps {}
 
 const IndexController = ({}: IndexControllerProps) => {
-  const { selectUnit, progress, annotationLib, annotationManager } = useUnit();
+  const { selectUnit, progress, finished } = useUnit();
+
   const [activePage, setActivePage] = useState(0);
   const [sliderPage, setSliderPage] = useState(0);
-
-  // question index
-  const variables = annotationLib.variables;
-  const variableStatuses = annotationLib.variableStatuses;
-  const variableIndex = annotationLib.variableIndex;
-  const setQuestionIndex = (index: number) => annotationManager.setVariableIndex(index);
-
-  const [canSelect, setCanSelect] = useState<boolean[]>([]);
-
-  useEffect(() => {
-    const cs = Array(variableStatuses.length).fill(false);
-    variableStatuses.forEach((status, i) => {
-      if (status === "done") cs[i] = true;
-      if (i > 0 && variableStatuses[i - 1] === "done") cs[i] = true;
-      if (progress.seekForwards) cs[i] = true;
-    });
-    setCanSelect(cs);
-  }, [progress, variableStatuses]);
-
-  const previousQuestion = getPreviousIndex(variableIndex, canSelect);
-  const nextQuestion = getNextIndex(variableIndex, canSelect);
 
   // unit index
   const n = progress.nTotal;
@@ -43,6 +24,13 @@ const IndexController = ({}: IndexControllerProps) => {
 
   // also keep track of slider as a ref, because touchevents suck (see onTouchEnd below for explanation)
   const slider = useRef(0);
+
+  if (useWatchChange([finished])) {
+    if (finished) {
+      setActivePage(progress.nTotal + 1);
+      setSliderPage(progress.nTotal + 1);
+    }
+  }
 
   if (useWatchChange([progress.currentUnit, n])) {
     if (progress.currentUnit === null || progress.currentUnit < 0) return;
@@ -63,7 +51,6 @@ const IndexController = ({}: IndexControllerProps) => {
     // Changing the range slider directly only updates sliderPage, which shows the value on the slider.
     // the onMouseUp event then process the change
     let newpage: number | null = null;
-    console.log(e.target.value, sliderPage, progress.nCoded, progress.seekForwards, progress.seekBackwards);
     if (Number(e.target.value) > sliderPage) {
       if (progress.seekForwards) {
         newpage = Number(e.target.value);
@@ -82,32 +69,17 @@ const IndexController = ({}: IndexControllerProps) => {
   function counter() {
     const actualPage = progress.currentUnit + 1;
     if (sliderPage > n)
-      <div>
-        return <Check />
-      </div>;
+      return (
+        <div>
+          <Check />
+        </div>
+      );
 
-    let index1 = progress.currentUnit + 1;
-    let index2 = subIndex(variableIndex, canSelect);
-    const hasSub = index2 !== null;
-
-    if (sliderPage !== index1) {
-      index1 = sliderPage;
-      index2 = null;
-    } else {
-      if (sliderPage !== activePage) {
-        index2 = null;
-      }
-    }
-
-    console.log(hasSub);
-
-    if (!hasSub) return <div className="text-center font-semibold">{index1}</div>;
+    let index = progress.currentUnit + 1;
 
     return (
-      <div className="grid grid-cols-[1rem,1px,1rem] text-center font-semibold">
-        <div>{index1}</div>
-        <div>{index2 === null ? "" : "."}</div>
-        <div>{index2}</div>
+      <div className="grid  text-center font-semibold">
+        <div>{sliderPage}</div>
       </div>
     );
   }
@@ -125,15 +97,11 @@ const IndexController = ({}: IndexControllerProps) => {
             variant="ghost"
             className="hover:bg-transparent "
             onClick={() => {
-              if (previousQuestion === null) {
-                updatePage(Math.max(1, activePage - 1));
-              } else {
-                setQuestionIndex(previousQuestion);
-              }
+              updatePage(Math.max(1, activePage - 1));
             }}
             disabled={!progress.seekBackwards || activePage === 1}
           >
-            {previousQuestion === null ? <SkipBack /> : <StepBack />}
+            <StepBack />
           </Button>
         ) : null}
         <div className="mx-auto min-w-6">{counter()}</div>
@@ -143,19 +111,15 @@ const IndexController = ({}: IndexControllerProps) => {
             size="icon"
             className="hover:bg-transparent"
             onClick={() => {
-              if (nextQuestion === null) {
-                if (progress.seekForwards) {
-                  updatePage(activePage + 1);
-                } else {
-                  updatePage(Math.min(progress.nCoded + 1, activePage + 1));
-                }
+              if (progress.seekForwards) {
+                updatePage(activePage + 1);
               } else {
-                setQuestionIndex(nextQuestion);
+                updatePage(Math.min(progress.nCoded + 1, activePage + 1));
               }
             }}
             disabled={!progress.seekForwards && activePage >= progress.nCoded + 1}
           >
-            {nextQuestion === null ? <SkipForward /> : <StepForward />}
+            <StepForward />
           </Button>
         ) : null}
       </div>

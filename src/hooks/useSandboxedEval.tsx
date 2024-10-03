@@ -1,6 +1,7 @@
 "use cient";
 
-import { ReactElement } from "react";
+import { GetJobState } from "@/app/types";
+import { createContext, ReactElement, ReactNode, useContext } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 
@@ -10,24 +11,43 @@ interface IFrameObj {
   iframe: HTMLIFrameElement;
 }
 
-export function useSandboxedEval(data: Record<string, any>) {
+interface SandboxContextProps {
+  evalStringTemplate: (str: string, data: Record<string, any>) => Promise<string>;
+  evalStringWithJobState: (str: string, jobState: GetJobState) => Promise<string>;
+  ready: boolean;
+}
+
+const SandboxContext = createContext<SandboxContextProps>({
+  evalStringTemplate: async () => {
+    throw new Error("Sandbox not ready");
+  },
+  evalStringWithJobState: async () => {
+    throw new Error("Sandbox not ready");
+  },
+  ready: false,
+});
+
+export const useSandbox = () => {
+  return useContext(SandboxContext);
+};
+
+export function SandboxedProvider({ children }: { children: ReactNode }) {
   const [iframeObj, setIframeObj] = useState<IFrameObj | null>(null);
 
   useEffect(() => {
-    const jsonData = JSON.stringify(data);
     const origin = window.location.origin;
     const senderId = window.crypto.randomUUID();
     const receiverId = window.crypto.randomUUID();
-    const iframe = createSandboxedIframe(jsonData, origin, senderId, receiverId);
+    const iframe = createSandboxedIframe(origin, senderId, receiverId);
     document.body.appendChild(iframe);
     setIframeObj({ iframe, senderId, receiverId });
     return () => {
       if (document.body.contains(iframe)) document.body.removeChild(iframe);
     };
-  }, [data]);
+  }, []);
 
   const evalInSandbox = useCallback(
-    <T extends any>(code: string, outputSchema: z.ZodType<T>): Promise<T> => {
+    <T extends any>(code: string, data: Record<string, any>, outputSchema: z.ZodType<T>): Promise<T> => {
       return new Promise((resolve, reject) => {
         if (!iframeObj?.iframe?.contentWindow) {
           reject(new Error("Sandboxed iframe not ready"));
@@ -54,14 +74,14 @@ export function useSandboxedEval(data: Record<string, any>) {
 
         window.addEventListener("message", handleMessage);
 
-        iframeObj.iframe.contentWindow.postMessage({ id: iframeObj.receiverId, code }, "*");
+        iframeObj.iframe.contentWindow.postMessage({ id: iframeObj.receiverId, code, data }, "*");
       });
     },
     [iframeObj],
   );
 
   const evalStringTemplate = useCallback(
-    async (str: string): Promise<string> => {
+    async (str: string, data: Record<string, any>): Promise<string> => {
       const { textParts, codeParts } = parseCodeFromString(str);
 
       let result = "";
@@ -70,7 +90,7 @@ export function useSandboxedEval(data: Record<string, any>) {
         if (i >= codeParts.length) continue;
 
         try {
-          result += await evalInSandbox(codeParts[i], z.coerce.string());
+          result += await evalInSandbox(codeParts[i], data, z.coerce.string());
         } catch (e) {
           console.error(`ERROR in script {{${codeParts[i]}}}: `, e);
           result += "[...]";
@@ -81,16 +101,34 @@ export function useSandboxedEval(data: Record<string, any>) {
     [evalInSandbox],
   );
 
-  return { evalInSandbox, evalStringTemplate, ready: !!iframeObj };
+  const evalStringWithJobState = useCallback(
+    async (str: string, jobState: GetJobState): Promise<string> => {
+      const data = {
+        survey: jobState.surveyAnnotations,
+      };
+      return evalStringTemplate(str, data);
+    },
+    [evalStringTemplate],
+  );
+
+  return (
+    <SandboxContext.Provider
+      value={{
+        evalStringTemplate,
+        evalStringWithJobState,
+        ready: !!iframeObj,
+      }}
+    >
+      {children}
+    </SandboxContext.Provider>
+  );
 }
 
-function createSandboxedIframe(jsonData: string, origin: string, senderId: string, receiverId: string) {
+function createSandboxedIframe(origin: string, senderId: string, receiverId: string) {
   const iframe = document.createElement("iframe");
   iframe.setAttribute("style", "display: none");
   iframe.setAttribute("sandbox", "allow-scripts");
   iframe.setAttribute("id", "sandy");
-
-  const jsonStringEncoded = encodeURIComponent(jsonData);
 
   iframe.srcdoc = `<!doctype html>
     <html>
@@ -99,11 +137,10 @@ function createSandboxedIframe(jsonData: string, origin: string, senderId: strin
                 delete window.fetch;
                 delete window.XMLHttpRequest;
 
-                const jsonString = decodeURIComponent("${jsonStringEncoded}");
-                const {unit, survey} = JSON.parse(jsonString)
-    
                 const handleMessage = (event) => {
-                    let { id, code} = event.data;
+                    let { id, code, data} = event.data;
+                    const {unit, survey} = data;
+                    const d = data
 
                     try {
                         if (event.source !== window.parent) throw new Error("Invalid source");
@@ -116,7 +153,7 @@ function createSandboxedIframe(jsonData: string, origin: string, senderId: strin
                         window.parent.postMessage({ id: "${senderId}", result }, "${origin}");
                     } catch (error) {
                         window.parent.postMessage({ id: "${senderId}", error: error.message }, "${origin}");
-                    }   
+                    }
                 };
                 window.addEventListener("message", handleMessage);
                 window.parent.postMessage({ id: "${senderId}", ready: true }, "*")
@@ -142,7 +179,6 @@ function rebuildStringFromParts(textParts: string[], codeResultParts: string[]) 
   let result = "";
 
   for (let i = 0; i < textParts.length; i++) {
-    console.log(codeResultParts[i]);
     result += textParts[i] + (codeResultParts[i] || "");
   }
   return result;

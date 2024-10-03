@@ -516,7 +516,7 @@ function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
   const emptyAnnotation = {
     ...annotations[id],
     id: cuid(),
-    value: "EMPTY",
+    code: "EMPTY",
     color: "grey",
   };
   annotations[emptyAnnotation.id] = emptyAnnotation;

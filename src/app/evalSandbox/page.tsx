@@ -4,14 +4,14 @@ import Markdown from "@/components/Common/Markdown";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { Textarea } from "@/components/ui/textarea";
-import { useSandboxedEval } from "@/hooks/useSandboxedEval";
+import { useSandbox } from "@/hooks/useSandboxedEval";
 import { useState } from "react";
 import { ZodError, z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
 export default function Users({ params }: { params: { projectId: number } }) {
   const [data, setData] = useState(defaultData);
-  const { evalStringTemplate, ready } = useSandboxedEval(data);
+  const { evalStringTemplate, ready } = useSandbox();
   const [input, setInput] = useState<string>("test this example `{{unit.topic}}` now");
   const [output, setOutput] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export default function Users({ params }: { params: { projectId: number } }) {
       <Textarea value={input} onChange={(e) => setInput(e.target.value)} />
       <Button
         onClick={() =>
-          evalStringTemplate(input)
+          evalStringTemplate(input, defaultData)
             .then((output) => {
               setOutput(output);
               setError(null);

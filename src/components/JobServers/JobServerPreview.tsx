@@ -14,6 +14,7 @@ import {
   AnnotationDictionary,
   Job,
   Project,
+  GetJobState,
 } from "@/app/types";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import cuid from "cuid";
@@ -40,7 +41,9 @@ class JobServerPreview implements JobServer {
   return_link: string;
   codebookId: number;
   codebook: Codebook;
+  jobId: number;
   job: Job | null;
+  jobState: GetJobState | null;
   blockId: number | null;
   annotations: Record<string, Annotation[]>;
   project: Project;
@@ -54,6 +57,7 @@ class JobServerPreview implements JobServer {
   setBlockId: (blockId: number) => void;
   setCodebookId: (codebookId: number) => void;
   setPreviewVariable: (variable: string) => void;
+  setJobState: SetState<GetJobState | null> | null;
   setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
 
   constructor({
@@ -69,6 +73,10 @@ class JobServerPreview implements JobServer {
     setPreviewData,
   }: JobServerPreviewConstructor) {
     this.sessionId = cuid();
+    this.jobId = job?.id || -1;
+    this.jobState = null;
+    this.setJobState = null;
+
     this.project = project;
     this.user = user;
 
@@ -107,7 +115,11 @@ class JobServerPreview implements JobServer {
     this.unitCache = {};
   }
 
-  async init() {}
+  async registerJobState(setJobState: SetState<GetJobState | null>) {
+    this.jobState = prepareJobState(this.user.email, this.project, this.job || undefined, this.annotations);
+    this.setJobState = setJobState;
+    this.setJobState(this.jobState);
+  }
 
   async getUnit(i?: number): Promise<GetUnit> {
     let annotateUnit: Unit | null = null;
@@ -144,7 +156,7 @@ class JobServerPreview implements JobServer {
     const unitData = this.unitCache[i];
 
     // simulate annotation token, used to authorize postAnnotations
-    const token = JSON.stringify({ user: this.user.email, unitId: unitData.id });
+    const token = JSON.stringify({ user: this.user.email, unitId: unitData.id, type: this.codebook.type });
     annotateUnit = createAnnotateUnit({
       type: this.codebook.type,
       token,
@@ -234,6 +246,10 @@ class JobServerPreview implements JobServer {
 
     if (type === "survey") {
       this.annotations[`${user}_survey`] = current;
+      if (this.jobState && this.setJobState) {
+        this.jobState.surveyAnnotations = createSurveyAnnotations(this.user.email, current);
+        this.setJobState(this.jobState);
+      }
     } else {
       this.annotations[`${user}_unit_${unitId}`] = current;
     }
@@ -266,6 +282,13 @@ function createDefaultUnit(codebook: Codebook, i: number): UnitData {
   };
 }
 
+// This gives deterministic results if randomizeUnits is used, which prevents
+// messing up live editing of the codingjob (because the preview would change)
+const randomUnits = Array.from({ length: 100000 }).map((_, i) => ({
+  position: i + 1,
+  random: Math.random(),
+}));
+
 type SelectUnitArray = [number, number | null];
 
 // To simulate a job, we create the units selection locally based on the block rules
@@ -292,10 +315,8 @@ function BlocksToUnits(project: Project, codebook: Codebook, job?: Job): SelectU
     let nUnits = block.nUnits || project.nUnits || 1; // if block nUnits is null, it means use all units. If project nUnits is also null, return 1 to give a warning
     if (block.rules.maxUnitsPerCoder) nUnits = Math.min(nUnits, block.rules.maxUnitsPerCoder);
 
-    let units = Array.from({ length: nUnits }).map((_, j) => ({
-      position: j + 1,
-      random: Math.random(),
-    }));
+    let units = randomUnits.slice(0, nUnits);
+
     if (block.rules.randomizeUnits) units = units.sort((a, b) => a.random - b.random);
     const addSelectUnitArray: SelectUnitArray[] = units.map((u) => [i, u.position]);
     selectUnitArray = [...selectUnitArray, ...addSelectUnitArray];
@@ -318,6 +339,58 @@ function GetBlockIndexRange(selectUnitArray: SelectUnitArray[], job?: Job, block
   let endIndex = selectUnitArray.findLastIndex(([i]) => i === blockIndex);
   if (endIndex === -1) endIndex = selectUnitArray.length - 1;
   return [startIndex, endIndex];
+}
+
+function createSurveyAnnotations(user: string, annotations?: Annotation[]) {
+  const surveyAnnotations: GetJobState["surveyAnnotations"] = {};
+
+  function setOrAppend<T>(current: T | T[] | undefined, value: T) {
+    if (current === undefined) return value;
+    if (Array.isArray(current)) return [...current, value];
+    return [value];
+  }
+
+  if (annotations) {
+    for (let ann of annotations) {
+      if (!surveyAnnotations[ann.variable]) surveyAnnotations[ann.variable] = {};
+      if (ann.code) {
+        surveyAnnotations[ann.variable].code = setOrAppend(surveyAnnotations[ann.variable].code, ann.code);
+      }
+      if (ann.value) {
+        surveyAnnotations[ann.variable].value = setOrAppend(surveyAnnotations[ann.variable].value, ann.value);
+      }
+    }
+  }
+  return surveyAnnotations;
+}
+
+function prepareJobState(
+  user: string,
+  project: Project,
+  job: Job | undefined,
+  annotations: Record<string, Annotation[]> | undefined,
+) {
+  const jobState: GetJobState = { blocks: [], surveyAnnotations: {} };
+
+  if (job) {
+    let offset = 0;
+    for (let block of job.blocks) {
+      const jobblock = {
+        id: block.id,
+        label: block.name || "",
+        codebookId: block.codebookId,
+        type: block.type,
+        offset: offset,
+        length: block.type === "survey" ? 1 : block.nUnits || project.nUnits || 1,
+      };
+      jobState.blocks.push(jobblock);
+      offset += jobblock.length;
+    }
+  }
+
+  if (annotations) jobState.surveyAnnotations = createSurveyAnnotations(user, annotations[`${user}_survey`]);
+
+  return jobState;
 }
 
 export default JobServerPreview;
