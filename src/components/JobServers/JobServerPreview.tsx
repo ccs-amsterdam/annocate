@@ -247,7 +247,7 @@ class JobServerPreview implements JobServer {
     if (type === "survey") {
       this.annotations[`${user}_survey`] = current;
       if (this.jobState && this.setJobState) {
-        this.jobState.surveyAnnotations = createSurveyAnnotations(this.user.email, current);
+        this.jobState = { ...this.jobState, surveyAnnotations: createSurveyAnnotations(this.user.email, current) };
         this.setJobState(this.jobState);
       }
     } else {

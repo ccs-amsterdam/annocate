@@ -298,12 +298,22 @@ export const annotations = pgTable(
 );
 
 function getDB(): NeonHttpDatabase | PostgresJsDatabase {
-  if (process.env.NEON_DATABASE_URL) {
-    const queryClient = neon(process.env.NEON_DATABASE_URL || "");
+  const db_url = process.env.TEST_MODE ? process.env.TEST_DATABASE_URL : process.env.DATABASE_URL;
+  if (!db_url) {
+    if (process.env.TEST_MODE) {
+      throw new Error("TEST_DATABASE_URL not set");
+    } else {
+      throw new Error("DATABASE_URL not set");
+    }
+  }
+  const use_neon = db_url.includes("neon.tech");
+
+  if (use_neon) {
+    const queryClient = neon(db_url);
     const db = drizzleNeon(queryClient);
     return db;
   } else {
-    const queryClient = postgres(process.env.DATABASE_URL || "");
+    const queryClient = postgres(db_url);
     const db = drizzlePostgres(queryClient);
     return db;
   }

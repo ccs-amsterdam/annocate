@@ -8,7 +8,10 @@
     "dev": "next dev",
     "migrate": "drizzle-kit generate && tsx src/drizzle/migrate.ts",
     "studio": "drizzle-kit studio",
-    "watch": "tsc -w"
+    "watch": "tsc -w",
+    "test:reset": "cross-env TEST_MODE=true tsx src/drizzle/reset_test_db.ts",
+    "test:migrate": "cross-env TEST_MODE=true tsx src/drizzle/migrate",
+    "dev:test": "npm run test:reset && npm run test:migrate && cross-env TEST_MODE=true npm run dev"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.0.0",
@@ -87,6 +90,7 @@
     "@types/swagger-ui-react": "^4.18.3",
     "@types/uuid": "^9.0.8",
     "autoprefixer": "^10.4.16",
+    "cross-env": "^7.0.3",
     "dotenv": "^16.3.1",
     "drizzle-kit": "^0.22.7",
     "pg": "^8.12.0",

@@ -113,12 +113,12 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     selectUnit();
   }, [jobServer, codebookCache, selectUnit]);
 
-  if (!jobState || !unitBundle) return null;
+  if (!jobServer.jobState || !unitBundle) return null;
 
   return (
     <UnitContext.Provider
       value={{
-        jobState: jobState,
+        jobState: jobServer.jobState,
         unit: unitBundle.unit,
         codebook: unitBundle.codebook,
         annotationLib: unitBundle.annotationLib,
