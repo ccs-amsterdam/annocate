@@ -1,6 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { projects, units } from "@/drizzle/schema";
+import { projects, units } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
@@ -96,8 +97,8 @@ export async function reindexUnitPositions(tx: any, projectId: number): Promise<
         SELECT row_number() over (order by position) AS newpos, id
         FROM ${units}
         WHERE ${units.projectId} = ${projectId}
-    ) 
-    UPDATE ${units} 
+    )
+    UPDATE ${units}
     SET position = new_position.newpos-1
     FROM new_position
     WHERE ${units.unitId} = new_position.id

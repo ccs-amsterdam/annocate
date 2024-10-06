@@ -20,10 +20,6 @@ import {
   doublePrecision,
 } from "drizzle-orm/pg-core";
 
-import { neon } from "@neondatabase/serverless";
-import postgres from "postgres";
-import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
-import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import {
   Annotation,
   AnnotationHistory,
@@ -32,6 +28,9 @@ import {
   ServerUnitStatus,
   ProjectRole,
   AnnotationDictionary,
+  ProjectConfig,
+  Codebook,
+  JobsetAnnotatorStatistics,
 } from "@/app/types";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { z } from "zod";
@@ -61,10 +60,6 @@ export const users = pgTable("users", {
     .$type<UserRole>()
     .default("guest"),
 });
-
-export interface ProjectConfig {
-  description: string;
-}
 
 export const projects = pgTable(
   "projects",
@@ -104,8 +99,6 @@ export const managers = pgTable(
     };
   },
 );
-
-type Codebook = z.input<typeof CodebookSchema>;
 
 // NOTE TO SELF
 // Don't need special system for variables where coders can add codes.
@@ -223,11 +216,6 @@ export const invitations = pgTable(
   },
 );
 
-interface jobsetAnnotatorStatistics {
-  damage?: number;
-  blocked?: boolean;
-}
-
 export const annotator = pgTable(
   "annotator",
   {
@@ -242,7 +230,7 @@ export const annotator = pgTable(
     jobId: integer("job_id"),
     // if created through an invitation, include any url parameters. These can be used for links (completion, screening, etc)
     urlParams: customJsonb("url_params").notNull().$type<Record<string, string>>().default({}),
-    statistics: customJsonb("statistics").notNull().$type<jobsetAnnotatorStatistics>().default({}),
+    statistics: customJsonb("statistics").notNull().$type<JobsetAnnotatorStatistics>().default({}),
   },
   (table) => {
     return {
@@ -296,28 +284,3 @@ export const annotations = pgTable(
     };
   },
 );
-
-function getDB(): NeonHttpDatabase | PostgresJsDatabase {
-  const db_url = process.env.TEST_MODE ? process.env.TEST_DATABASE_URL : process.env.DATABASE_URL;
-  if (!db_url) {
-    if (process.env.TEST_MODE) {
-      throw new Error("TEST_DATABASE_URL not set");
-    } else {
-      throw new Error("DATABASE_URL not set");
-    }
-  }
-  const use_neon = db_url.includes("neon.tech");
-
-  if (use_neon) {
-    const queryClient = neon(db_url);
-    const db = drizzleNeon(queryClient);
-    return db;
-  } else {
-    const queryClient = postgres(db_url);
-    const db = drizzlePostgres(queryClient);
-    return db;
-  }
-}
-
-const db = getDB();
-export default db;

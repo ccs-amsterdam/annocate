@@ -1,6 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet } from "@/app/api/routeHelpers";
-import db, { jobBlocks, units } from "@/drizzle/schema";
+import { jobBlocks, units } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataRowSchema } from "../schemas";

@@ -1,6 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import db, { codebooks } from "@/drizzle/schema";
+import { codebooks } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { and, eq, SQL, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { CodebookCreateBodySchema, CodebookCreateResponseSchema, CodebooksTableParamsSchema } from "./schemas";

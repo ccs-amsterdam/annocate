@@ -5,7 +5,8 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const config = {
     middlecat_url: process.env.MIDDLECAT_URL || "",
-    authorization: process.env.MIDDLECAT_URL === "DEVMODE" ? "no_auth" : "authenticated",
+    authorization:
+      process.env.MIDDLECAT_URL === "DEVMODE" || process.env.TEST_MODE === "true" ? "no_auth" : "authenticated",
   };
 
   return NextResponse.json(config, {

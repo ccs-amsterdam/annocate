@@ -1,4 +1,5 @@
-import db, { codebooks, jobBlocks, projects } from "@/drizzle/schema";
+import { codebooks, jobBlocks, projects } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { and, count, eq, sql } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet, createUpdate } from "@/app/api/routeHelpers";

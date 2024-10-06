@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { createUpdate } from "../../routeHelpers";
 import { UsersUpdateBodySchema, UsersResponseSchema } from "../schemas";
-import db, { users } from "@/drizzle/schema";
+import { users } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest, { params }: { params: { userId: string } }) {

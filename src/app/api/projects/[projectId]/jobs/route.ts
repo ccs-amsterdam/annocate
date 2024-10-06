@@ -1,7 +1,8 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
-import db, { jobs } from "@/drizzle/schema";
+import { jobs } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobCreateSchema, JobMetaResponseSchema, JobsTableParamsSchema } from "./schemas";

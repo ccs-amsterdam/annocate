@@ -1,6 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createUpdate } from "@/app/api/routeHelpers";
-import db, { projects, units } from "@/drizzle/schema";
+import { projects, units } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataDeleteBodySchema } from "../schemas";

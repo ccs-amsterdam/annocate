@@ -1,5 +1,6 @@
 import { Authorization, ProjectRole, UserRole } from "@/app/types";
-import db, { managers, users } from "@/drizzle/schema";
+import { managers, users } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 
@@ -58,7 +59,7 @@ class TokenVerifier {
 const tokenVerifier = new TokenVerifier();
 
 export async function authenticateUser(req: Request): Promise<string | null> {
-  if (process.env.MIDDLECAT_URL === "DEVMODE") {
+  if (process.env.MIDDLECAT_URL === "DEVMODE" || process.env.TEST_MODE === "true") {
     return process.env.SUPERADMIN || null;
   }
   const bearer: string | null = req.headers.get("authorization");

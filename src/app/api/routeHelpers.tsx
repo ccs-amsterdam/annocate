@@ -1,4 +1,4 @@
-import db from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { and, asc, count, desc, eq, gt, gte, like, lt, lte, or, sql, SQL } from "drizzle-orm";
 import { PgTableWithColumns, SubqueryWithSelection } from "drizzle-orm/pg-core";
 import jwt from "jsonwebtoken";

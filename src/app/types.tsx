@@ -34,6 +34,17 @@ import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/sc
 ///////////
 ///////////
 ///////////
+
+// DB TYPES
+export interface ProjectConfig {
+  description: string;
+}
+export interface JobsetAnnotatorStatistics {
+  damage?: number;
+  blocked?: boolean;
+}
+//
+
 export const userRole = ["guest", "creator", "admin"] as const;
 export type UserRole = (typeof userRole)[number];
 

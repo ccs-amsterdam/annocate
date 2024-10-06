@@ -1,4 +1,5 @@
-import db, { managers, users } from "@/drizzle/schema";
+import { managers, users } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";

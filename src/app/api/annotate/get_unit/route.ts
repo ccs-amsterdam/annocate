@@ -1,4 +1,5 @@
-import db, { projects } from "@/drizzle/schema";
+import { projects } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 import { hasMinProjectRole } from "../../authorization";
 import { createGet } from "../../routeHelpers";

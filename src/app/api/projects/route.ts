@@ -1,4 +1,5 @@
-import db, { projects, managers, users } from "@/drizzle/schema";
+import { projects, managers, users } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { createTableGet, createUpdate } from "../routeHelpers";
@@ -6,6 +7,7 @@ import { ProjectsTableParamsSchema, ProjectsUpdateSchema, ProjectsResponseSchema
 import { hasMinRole } from "../authorization";
 
 export async function GET(req: NextRequest) {
+  console.log(req);
   return createTableGet({
     tableFunction: (email) =>
       db

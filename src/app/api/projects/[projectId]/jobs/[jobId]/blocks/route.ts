@@ -1,7 +1,8 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
-import db, { jobBlocks, units } from "@/drizzle/schema";
+import { jobBlocks, units } from "@/drizzle/schema";
+import db from "@/drizzle/drizzle";
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { JobBlockCreateSchema } from "../../schemas";
 import { PgDialect, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
@@ -44,8 +45,8 @@ export async function reindexPositions(tx: any, jobId: number): Promise<void> {
         SELECT row_number() over (order by position) AS newpos, id
         FROM ${jobBlocks}
         WHERE ${jobBlocks.jobId} = ${jobId}
-    ) 
-    UPDATE ${jobBlocks} 
+    )
+    UPDATE ${jobBlocks}
     SET position = new_position.newpos-1
     FROM new_position
     WHERE ${jobBlocks.id} = new_position.id
