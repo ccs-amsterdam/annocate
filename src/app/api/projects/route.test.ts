@@ -4,16 +4,16 @@
 import * as apiProjects from "./route";
 import * as apiProjectId from "./[projectId]/route";
 import { ProjectsCreateSchema } from "./schemas";
-import { disconnectDB, TestGET, TestPOST } from "../testHelpers";
+import { disconnectDB, testGET, testPOST } from "../testHelpers";
 
 afterAll(disconnectDB);
 
 describe("Project endpoints", () => {
-  const name = "test";
+  const name = "test project endpoints";
   let createdId = 0;
 
   it("POST /projects", async () => {
-    const res = await TestPOST(apiProjects, undefined, ProjectsCreateSchema, { name });
+    const res = await testPOST(apiProjects, undefined, { name });
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -21,7 +21,7 @@ describe("Project endpoints", () => {
   });
 
   it("GET /projects", async () => {
-    const res = await TestGET(apiProjects, undefined);
+    const res = await testGET(apiProjects, undefined);
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -31,7 +31,7 @@ describe("Project endpoints", () => {
   });
 
   it("GET /projects/projectId", async () => {
-    const res = await TestGET(apiProjectId, { projectId: createdId });
+    const res = await testGET(apiProjectId, { projectId: createdId });
     expect(res.status).toBe(200);
 
     const body = await res.json();
