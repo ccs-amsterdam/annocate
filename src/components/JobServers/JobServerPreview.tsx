@@ -15,12 +15,11 @@ import {
   Job,
   Project,
   GetJobState,
+  SurveyAnnotations,
 } from "@/app/types";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import cuid from "cuid";
 import { MiddlecatUser } from "middlecat-react";
-import { n } from "next-usequerystate/dist/serializer-C_l8WgvO";
-import { FaThemeisle } from "react-icons/fa";
 
 interface JobServerPreviewConstructor {
   project: Project;
@@ -32,7 +31,13 @@ interface JobServerPreviewConstructor {
   setCodebookId: (codebookId: number) => void;
   annotations?: Record<string, Annotation[]>;
   current: { unit: number; variable?: string };
-  setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
+  setPreviewData: SetState<PreviewData | null>;
+}
+
+export interface PreviewData {
+  unitData: UnitData;
+  unit: Unit;
+  surveyAnnotations: SurveyAnnotations;
 }
 
 class JobServerPreview implements JobServer {
@@ -58,7 +63,7 @@ class JobServerPreview implements JobServer {
   setCodebookId: (codebookId: number) => void;
   setPreviewVariable: (variable: string) => void;
   setJobState: SetState<GetJobState | null> | null;
-  setPreviewData: SetState<{ unitData: UnitData; unit: Unit } | null>;
+  setPreviewData: SetState<PreviewData | null>;
 
   constructor({
     project,
@@ -168,7 +173,11 @@ class JobServerPreview implements JobServer {
 
     this.updateProgress(i);
 
-    this.setPreviewData({ unitData, unit: annotateUnit });
+    this.setPreviewData((previewData) => ({
+      surveyAnnotations: previewData?.surveyAnnotations || {},
+      unitData,
+      unit: annotateUnit,
+    }));
     return { unit: annotateUnit, progress: { ...this.progress } };
   }
 
@@ -255,11 +264,16 @@ class JobServerPreview implements JobServer {
     }
     this.setPreviewData((d) => {
       if (!d) return d;
-      return { ...d, unit: { ...d.unit, annotations: current } };
+      return {
+        ...d,
+        unit: { ...d.unit, annotations: current },
+        surveyAnnotations: this?.jobState?.surveyAnnotations || {},
+      };
     });
   }
   getAnnotation(token: string) {
-    const { user, unitId } = JSON.parse(token);
+    const { user, unitId, type } = JSON.parse(token);
+    if (type === "survey") return this.annotations[`${user}_survey`];
     return this.annotations[`${user}_unit_${unitId}`];
   }
 }

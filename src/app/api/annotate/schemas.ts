@@ -101,9 +101,10 @@ export const SurveyAnnotationSchema = z.object({
   code: SurveyAnnotationCode.optional(),
   value: SurveyAnnotationValue.optional(),
 });
+export const SurveyAnnotationsSchema = z.record(z.string(), SurveyAnnotationSchema);
 
 export const GetJobStateResponseSchema = z.object({
-  surveyAnnotations: z.record(z.string(), SurveyAnnotationSchema),
+  surveyAnnotations: SurveyAnnotationsSchema,
   blocks: z.array(JobBlockSchema),
 });
 

@@ -109,7 +109,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 
   let isDirty = form.formState.isDirty;
   if (isDirty) {
-    // for some senseless reason, the form can be dirty when the data is completely identical...
+    // for some reason, the form can be dirty when the data is completely identical...
     if (JSON.stringify(form.getValues()) === currentAsString) isDirty = false;
   }
 

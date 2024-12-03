@@ -52,7 +52,7 @@
 
   [data-dark="on"] {
     --background: 0, 0%, 14%;
-    --foreground: 222.2, 84%, 90%;
+    --foreground: 222.2, 84%, 100%;
     --foreground-reverse: 222.2, 84%, 10%;
     --header: 0, 0%, 20%;
 

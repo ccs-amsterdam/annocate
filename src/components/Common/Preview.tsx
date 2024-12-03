@@ -5,7 +5,7 @@ import { useMiddlecat } from "middlecat-react";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
-import JobServerPreview from "../JobServers/JobServerPreview";
+import JobServerPreview, { PreviewData } from "../JobServers/JobServerPreview";
 import { Slider } from "../ui/slider";
 import { Textarea } from "../ui/textarea";
 import { useSearchParams } from "next/navigation";
@@ -21,6 +21,7 @@ import { parse } from "path";
 import { SimpleDropdown } from "../ui/simpleDropdown";
 import { useProject } from "@/app/api/projects/query";
 import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
+import React from "react";
 
 interface Props {
   projectId: number;
@@ -40,10 +41,7 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
   const current = useRef<{ unit: number; variable?: string }>({ unit: 0 });
   const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
   const [units, setUnits] = useState<string[]>([]);
-  const [previewData, setPreviewData] = useState<{
-    unitData: UnitData;
-    unit: Unit;
-  } | null>(null);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
 
   const reset = useCallback(() => {
     annotations.current = {};
@@ -89,7 +87,7 @@ export function PreviewWindow({
 }: {
   size: { height: number; width: number };
   jobServer: JobServerPreview;
-  previewData: { unitData: UnitData; unit: Unit } | null;
+  previewData: PreviewData | null;
   reset: () => void;
 }) {
   const [focus, setFocus] = useState(false);
@@ -114,7 +112,7 @@ export function PreviewWindow({
         className=" flex max-w-full flex-col gap-3 pt-6"
         style={{ minHeight: size.height + "px", height: size.height + 24 + "px", width: size.width + "px" }}
       >
-        <PreviewData previewData={previewData} />
+        <PreviewDataWindow previewData={previewData} />
         <Button className="h-12" onClick={reset}>
           Reset
         </Button>
@@ -123,22 +121,57 @@ export function PreviewWindow({
   );
 }
 
-function PreviewData({ previewData }: { previewData: { unitData: UnitData; unit: Unit } | null }) {
+function PreviewDataWindow({ previewData }: { previewData: PreviewData | null }) {
   if (!previewData) return null;
   return (
-    <div className="flex max-h-full flex-col gap-6 overflow-auto rounded border">
-      <div>
-        <div className="p-3">Unit columns</div>
-        <pre className="pl-3 text-primary">{JSON.stringify(previewData.unitData?.data || "", undefined, 2)}</pre>
+    <div className="flex max-h-full flex-col gap-6 overflow-auto rounded">
+      <div className="p-3">
+        <h3 className="mb-3">Unit data</h3>
+        <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
+          {Object.entries(previewData.unitData?.data || {}).map(([column, value]) => {
+            return (
+              <React.Fragment key={column}>
+                <div className="text-primary">{column}</div>
+                <div className="line-clamp-3 overflow-auto text-sm">{value}</div>
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
-      <div>
+      <div className="p-3">
+        <h3 className="mb-3">Survey answers</h3>
+        <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
+          {Object.entries(previewData.surveyAnnotations || {}).map(([variable, values]) => {
+            return (
+              <React.Fragment key={variable}>
+                <div className="text-primary">{variable}</div>
+                <div className="line-clamp-3 overflow-auto text-sm">
+                  {values.code} ({values.value})
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+      <div className="p-3">
+        <h3 className="mb-3">Annotations</h3>
+        <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
+          {(previewData.unit?.annotations || []).map((annotation) => {
+            return (
+              <React.Fragment key={annotation.id}>
+                <div className="text-primary">{annotation.variable}</div>
+                <div className="line-clamp-3 overflow-auto text-sm">
+                  {annotation.code} ({annotation.value})
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+      {/* <div>
         <div className="p-3">Mapped content</div>
         <pre className=" pl-3 text-primary">{JSON.stringify(previewData.unit?.content || "", undefined, 2)}</pre>
-      </div>
-      <div>
-        <div className="p-3">Annotations</div>
-        <pre className="pl-3 text-primary">{JSON.stringify(previewData.unit?.annotations || "", undefined, 2)}</pre>
-      </div>
+      </div> */}
     </div>
   );
 }

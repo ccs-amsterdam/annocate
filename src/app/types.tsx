@@ -6,6 +6,7 @@ import {
   GetCodebookResponseSchema,
   GetJobStateResponseSchema,
   GetUnitResponseSchema,
+  SurveyAnnotationsSchema,
   UnitContentSchema,
 } from "./api/annotate/schemas";
 import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
@@ -128,6 +129,8 @@ export interface JobServer {
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }
+
+export type SurveyAnnotations = z.infer<typeof SurveyAnnotationsSchema>;
 
 ///////////
 ///////////

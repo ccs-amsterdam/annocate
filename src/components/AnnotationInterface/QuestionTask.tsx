@@ -59,6 +59,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         conditionReport={conditionReport}
         setConditionReport={setConditionReport}
       /> */}
+
       {codebook.type === "annotation" ? (
         <div {...textSwipe} className={`relative z-10 min-h-0 flex-[1_1_0] overflow-hidden`}>
           <div ref={refs.box} className="relative z-20 h-full overflow-hidden will-change-auto">
@@ -76,6 +77,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
           </div>
         </div>
       ) : null}
+
       <div
         {...menuSwipe}
         // key={unit.token + annotationLib.variableIndex} // Seems not needed for animate, but keeping it here just in case

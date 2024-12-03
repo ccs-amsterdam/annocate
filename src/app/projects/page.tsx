@@ -21,10 +21,10 @@ export default function Home() {
         <SimpleDialog
           open={open}
           setOpen={setOpen}
-          header="Create new job"
+          header="Create new project"
           trigger={
             <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
-              Create new job
+              Create new project
               <Plus className="h-5 w-5" />
             </Button>
           }

@@ -22,7 +22,6 @@ const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
   if (useWatchChange([variable.question, jobState, evalStringWithJobState, ready])) {
     setQuestionText("");
     if (ready) {
-      evalStringWithJobState(variable.question, jobState).then((v) => console.log(`test: ${v}`));
       evalStringWithJobState(variable.question, jobState).then(setQuestionText);
     }
   }

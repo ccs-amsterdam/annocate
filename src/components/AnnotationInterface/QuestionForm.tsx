@@ -70,11 +70,11 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 const TypeStyling = {
   survey: {
     container: "text-foreground bg-background min-h-full my-auto",
-    text: "mt-6",
-    question: "text-2xl font-bold",
+    text: "mt-6 w-full",
+    question: "text-2xl font-bold text-center",
   },
   annotation: {
-    container: "border-primary  text-foreground bg-primary-dark/10 overflow-auto border-t-2  border-primary",
+    container: "border-primary  text-foreground  overflow-auto border-t-2  border-primary",
     text: "bg-primary text-primary-foreground",
     question: "",
   },

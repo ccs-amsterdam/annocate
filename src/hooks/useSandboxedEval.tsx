@@ -139,7 +139,7 @@ function createSandboxedIframe(origin: string, senderId: string, receiverId: str
 
                 const handleMessage = (event) => {
                     let { id, code, data} = event.data;
-                    const {unit, survey} = data;
+                    const {survey} = data
                     const d = data
 
                     try {

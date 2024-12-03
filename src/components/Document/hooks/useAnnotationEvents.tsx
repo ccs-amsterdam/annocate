@@ -62,8 +62,10 @@ export default function useAnnotationEvents(
 
   // reset selection if events get unblocked
   useEffect(() => {
-    if (!eventsBlocked) setTokenSelection([]);
-    (document.activeElement as HTMLElement).blur();
+    if (!eventsBlocked) {
+      setTokenSelection([]);
+      (document.activeElement as HTMLElement).blur();
+    }
   }, [eventsBlocked]);
 
   // reset selections when data changes

@@ -97,6 +97,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
+    console.log(code, multiple, finish);
     let varname = variable.name;
     if (item) varname += `.${item}`;
     annotationManager.processAnswer(varname, code, !!multiple, variable.fields);
