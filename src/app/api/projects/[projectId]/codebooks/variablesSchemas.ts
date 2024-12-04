@@ -109,7 +109,7 @@ export const CodebookVariableSchema = z.object({
   name: SafeNameSchema.openapi({
     title: "Name",
     description:
-      "The name of the variable. Will not be shown to user, so pick a name that works well in your analysis software (e.g., avoid spaces). Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
+      "The name of the variable. Will not be visible to annotators. Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
     example: "variable_name",
   }),
   question: z.string().max(512).openapi({
@@ -120,7 +120,6 @@ export const CodebookVariableSchema = z.object({
   instruction: z.string().optional().openapi({
     title: "Instruction",
     description: "Provide specific instructions for this variable. Supports scripts and markdown.",
-    example: "Here we measure emotion, defined as ...",
   }),
   instructionMode: z.enum(InstructionMode).optional().openapi({
     title: "Instruction Mode",

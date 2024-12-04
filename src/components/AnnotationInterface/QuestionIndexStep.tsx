@@ -37,21 +37,21 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
   const hide = variables.length === 1;
 
   return (
-    <div className="flex h-full w-full items-center justify-between gap-1  ">
+    <div className="flex h-full w-full items-start justify-between gap-1  ">
       <Button
         size="icon"
         variant="ghost"
-        className={`  z-30 flex   text-inherit opacity-60  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
+        className={`z-30  mt-[2px] flex   text-inherit opacity-60  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={previousIndex === null}
         onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
       >
         <StepBack />
       </Button>
-      <span className="py-2">{children}</span>
+      <div className="w-full py-2">{children}</div>
       <Button
         size="icon"
         variant="ghost"
-        className={` z-30 flex   bg-transparent
+        className={` z-30 mt-[2px] flex   bg-transparent
           text-inherit opacity-60 hover:bg-transparent  disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={nextIndex === null}
         onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}

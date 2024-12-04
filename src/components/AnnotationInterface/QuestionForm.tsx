@@ -76,7 +76,7 @@ const TypeStyling = {
   annotation: {
     container: "border-primary  text-foreground  overflow-auto border-t-2  border-primary",
     text: "bg-primary text-primary-foreground",
-    question: "",
+    question: "text-center",
   },
 };
 

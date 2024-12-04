@@ -1,7 +1,7 @@
 import { Annotation, AnnotationLibrary, ExtendedCodebook, ExtendedUnit, ExtendedVariable, Variable } from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 import useSessionStorage from "@/hooks/useSessionStorage";
-import { ChevronDown, ChevronRight, ChevronUp, Eye, EyeOff, Info, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Eye, EyeOff, Info, InfoIcon, X } from "lucide-react";
 import hash from "object-hash";
 import React, { ReactElement, useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
@@ -32,23 +32,21 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
 
   if (!instruction) return <div className="">{children}</div>;
 
-  const questionWithButton = (
-    <div is="button" tabIndex={0} onClick={() => setShow(!show)} className={` z-50 cursor-pointer text-pretty  `}>
+  const question = (
+    <div
+      tabIndex={0}
+      // is="button"
+      // onClick={() => setShow(!show)}
+      className={`${foldable ? "" : ""} relative z-50 w-full  text-pretty  `}
+    >
       {children}
-      <Button
-        variant={"ghost"}
-        size={"icon"}
-        className={`${foldable ? "" : "hidden"} ${show ? "hidden" : ""} h-4 rounded bg-transparent text-inherit opacity-60 transition-all hover:bg-transparent hover:text-inherit`}
-      >
-        <Info className="h-5  w-5 translate-y-1" />
-      </Button>
     </div>
   );
 
   if (mode === "after") {
     return (
-      <div className="">
-        {questionWithButton}
+      <div className="w-full">
+        {question}
         {survey ? <br /> : null}
         <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={foldable} />
       </div>
@@ -56,17 +54,16 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   }
   if (mode === "before") {
     return (
-      <div className="">
+      <div className="w-full">
         <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={foldable} />
-        {survey ? <br /> : null}
-        {questionWithButton}
+        {question}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col">
-      {questionWithButton}
+      {question}
       <ModalInstruction instruction={instruction} show={show} setShow={setShow} />
     </div>
   );
@@ -80,9 +77,8 @@ interface InstructionProps {
   foldable?: boolean;
 }
 
-function getFoldStyle(show: boolean, ref: React.RefObject<HTMLDivElement>, before?: boolean) {
+function getFoldStyle(ref: React.RefObject<HTMLDivElement>, before?: boolean) {
   if (!ref.current) return {};
-  if (!show) return { maxHeight: "0px" };
 
   const height = ref.current?.scrollHeight;
   return { maxHeight: `${height}px` };
@@ -90,14 +86,14 @@ function getFoldStyle(show: boolean, ref: React.RefObject<HTMLDivElement>, befor
 
 function FoldableInstruction({ instruction, show, setShow, foldable, before }: InstructionProps) {
   const ref = React.useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState(() => getFoldStyle(show, ref, before));
+  const [style, setStyle] = useState(() => getFoldStyle(ref, before));
 
   useEffect(() => {
-    setStyle(getFoldStyle(show, ref, before));
+    setStyle(getFoldStyle(ref, before));
     if (!show) return;
 
     const interval = setInterval(() => {
-      setStyle(getFoldStyle(show, ref, before));
+      setStyle(getFoldStyle(ref, before));
     }, 1000);
     return () => clearInterval(interval);
   }, [show, ref, before]);
@@ -107,30 +103,28 @@ function FoldableInstruction({ instruction, show, setShow, foldable, before }: I
   return (
     <div
       style={style}
-      className={`${show ? "my-2" : "text-foreground"}  relative flex  min-w-0  overflow-visible   transition-all`}
+      className={`${show ? "" : "text-foreground"} flexmin-w-0 relative   overflow-visible   transition-all`}
     >
-      <div ref={ref} className={`  ${show ? "py-1" : ""} w-full overflow-hidden   `}>
+      <div
+        onClick={() => setShow(!show)}
+        ref={ref}
+        className={`  ${show ? "py-1" : ""} w-full cursor-pointer overflow-hidden  `}
+      >
         {show ? (
           <Markdown compact style={{ hyphens: "auto", visibility: show ? "visible" : "hidden" }}>
-            {instruction}
+            {instruction + (foldable ? " &nbsp;&nbsp;&#x2718;" : "")}
           </Markdown>
         ) : (
-          <div className="hidden w-full border-t border-primary "></div>
+          <Button
+            onClick={() => setShow(!show)}
+            variant="ghost"
+            size="icon"
+            className="flex h-6 w-full justify-center hover:bg-transparent"
+          >
+            <InfoIcon className="p-[3px] text-primary-foreground/70" />
+          </Button>
         )}
       </div>
-      <Button
-        onClick={() => setShow(!show)}
-        variant="ghost"
-        size="icon"
-        className={` 
-          ${show ? "" : "hidden"}
-          ${foldable ? "" : "hidden"} 
-          ${before && !show ? "-translate-y-5" : ""} 
-          ${!before && !show ? "translate-y-2" : ""}
-          absolute -right-10 z-50 h-full w-9 rounded px-2 text-primary-foreground/60 transition-all hover:bg-transparent hover:text-inherit`}
-      >
-        <div className="">{icon}</div>
-      </Button>
     </div>
   );
 }

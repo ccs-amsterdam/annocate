@@ -14,7 +14,6 @@ export const CodebookSettingsSchema = z.object({
       title: "Instruction",
       description: `Codebooks can contain general instructions for the annotator. These will be shown the first time the annotator sees the codebook in a session,
        and can be opened again by clicking the instruction button.`,
-      example: "Here we measure emotion, defined as ...",
     }),
 });
 

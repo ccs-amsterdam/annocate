@@ -124,7 +124,7 @@ export function PreviewWindow({
 function PreviewDataWindow({ previewData }: { previewData: PreviewData | null }) {
   if (!previewData) return null;
   return (
-    <div className="flex max-h-full flex-col gap-6 overflow-auto rounded">
+    <div className="flex max-h-full flex-col  overflow-auto rounded">
       <div className="p-3">
         <h3 className="mb-3">Unit data</h3>
         <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
@@ -154,7 +154,7 @@ function PreviewDataWindow({ previewData }: { previewData: PreviewData | null })
         </div>
       </div>
       <div className="p-3">
-        <h3 className="mb-3">Annotations</h3>
+        <h3 className="mb-3">Current unit Annotations</h3>
         <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
           {(previewData.unit?.annotations || []).map((annotation) => {
             return (

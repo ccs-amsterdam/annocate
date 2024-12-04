@@ -35,7 +35,7 @@ const Markdown = ({ children, compact, style = {} }: MarkdownProps) => {
             rehypeSanitize,
             {
               ...defaultSchema,
-              tagNames: [...(defaultSchema.tagNames || []), "mark"],
+              tagNames: [...(defaultSchema.tagNames || []), "mark", "u"],
               // attributes: {
               //   ...defaultSchema.attributes,
               //   a: [...(defaultSchema.attributes?.a || [])],

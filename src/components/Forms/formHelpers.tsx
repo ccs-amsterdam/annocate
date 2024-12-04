@@ -4,7 +4,14 @@ import {
   CodebookCodeSchema,
   CodebookVariableItemSchema,
 } from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
-import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  LucideMessageCircleQuestion,
+  MessageCircleQuestionIcon,
+  Plus,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Control, FieldValues, Path } from "react-hook-form";
 import { z } from "zod";
@@ -25,6 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover
 import DBSelect from "../Common/DBSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "../ui/dialog";
 import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
+import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from "../ui/tooltip";
 
 export interface FormOptions {
   value: string;
@@ -629,7 +637,6 @@ export function OpenAPIMeta(zType: z.ZodTypeAny, name: string) {
 }
 
 export function FormFieldTitle({ title, description }: { title: string; description: string }) {
-  const [showDescription, setShowDescription] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   function descriptionStyle(showDescription: boolean) {
@@ -644,26 +651,27 @@ export function FormFieldTitle({ title, description }: { title: string; descript
     };
   }
 
-  const chevron = !showDescription ? (
-    <ChevronRight className="h-5 w-5 text-foreground/50 hover:text-primary" />
-  ) : (
-    <ChevronDown className="h-5 w-5 text-foreground/50 hover:text-primary" />
-  );
   return (
     <div>
-      <div
-        className="flex items-center gap-1"
-        onClick={() => {
-          if (description) setShowDescription(!showDescription);
-        }}
-      >
-        <FormLabel>{title}</FormLabel>
-        {description ? chevron : null}
-        <FormMessage className="ml-2" />
+      <div className="flex items-center gap-1">
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger
+            tabIndex={-1}
+            className="flex items-center gap-2 text-base underline"
+            onClick={(e) => {
+              e.preventDefault();
+            }}
+          >
+            {title}
+          </TooltipTrigger>
+          <TooltipPortal>
+            <TooltipContent side="top" sideOffset={3} className="w-[400px]">
+              {description}
+            </TooltipContent>
+          </TooltipPortal>
+        </Tooltip>
       </div>
-      <FormDescription ref={ref} className="overflow-hidden transition-all" style={descriptionStyle(showDescription)}>
-        {description}
-      </FormDescription>
+      <FormMessage className="mt-1" />
     </div>
   );
 }

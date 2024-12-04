@@ -13,7 +13,7 @@ export const JobBlockBaseSchema = z.object({
   position: z.number().openapi({ title: "Block position", description: "Position of the block in the job" }),
   name: z.string().max(255).nullable().openapi({
     title: "Block name",
-    description: "Optional name of the block. This name will also be visible to the annotator in the progress bar.",
+    description: "Optional name of the block.",
   }),
   codebookId: z.number().openapi({
     title: "Codebook ID",
