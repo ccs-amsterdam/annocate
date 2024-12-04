@@ -38,6 +38,7 @@ interface CreateGetParams<BodyOut, BodyIn> {
   responseSchema?: z.ZodTypeAny;
   projectId: number | null;
   authorizeFunction?: AuthorizeFunction<BodyIn>;
+  authenticationRequired?: boolean;
 }
 
 export async function createGet<BodyOut, BodyIn>({
@@ -47,9 +48,10 @@ export async function createGet<BodyOut, BodyIn>({
   responseSchema,
   authorizeFunction,
   projectId,
+  authenticationRequired = true,
 }: CreateGetParams<BodyOut, BodyIn>) {
   const email = await authenticateUser(req);
-  if (!email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  if (!email && authenticationRequired) return NextResponse.json({ message: "Unauthenticated" }, { status: 401 });
 
   try {
     const params = paramsSchema ? validateRequestParams(req, paramsSchema) : undefined;

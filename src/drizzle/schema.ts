@@ -239,16 +239,6 @@ export const annotator = pgTable(
   },
 );
 
-// routine:
-// - check annotations for index
-// - if doesn't exist, complete following steps to allocate new units
-// - get jobsetunitgroups
-// - separately get units of each group, using rules to determine which to get
-// - negative join on anntoations to skip already annotated units
-// - concatenate units in these groups (maybe directly using union?)
-// - preallocate annotations so that already coded annotations keep their index,
-//   and new annotations are allocated at the end
-
 export const annotations = pgTable(
   "annotations",
   {
@@ -257,6 +247,7 @@ export const annotations = pgTable(
     // - for registered users, it's the email address
     // - for invitations that include u_* params, it's the param string
     // - for invitations without user_id, it's the device_id
+    // We prepend with email:, id:, device: to distinguish between them
     user: varchar("user_id", { length: 256 }).notNull(),
     index: integer("index").notNull(),
     unitId: integer("unit_id").notNull(),
@@ -264,7 +255,7 @@ export const annotations = pgTable(
     preallocateTime: timestamp("preallocate_time"),
     annotation: customJsonb("annotation").notNull().$type<AnnotationDictionary>(),
     history: customJsonb("history").notNull().$type<AnnotationHistory[]>(),
-    status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED"] })
+    status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED", "STOLEN"] })
       .$type<ServerUnitStatus>()
       .default("PREALLOCATED"),
 

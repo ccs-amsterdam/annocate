@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { hasMinProjectRole } from "../../authorization";
 import { createGet } from "../../routeHelpers";
 import { NextRequest } from "next/server";
-import { AnnotateUnitSchema } from "../schemas";
+import { AnnotateUnitSchema, GetUnitParamsSchema } from "../schemas";
 
 // steps
 // 1. try to get a unit for a user in a job
@@ -24,10 +24,12 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
       return job;
     },
     req,
+    paramsSchema: GetUnitParamsSchema,
     responseSchema: AnnotateUnitSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, params) => {
-      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
+      return undefined;
     },
+    authenticationRequired: false,
   });
 }

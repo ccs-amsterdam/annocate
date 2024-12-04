@@ -4,10 +4,10 @@ import {
   UnitLayoutGridSchema,
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
-} from "../projects/[projectId]/codebooks/layoutSchemas";
-import { CodebookSchema } from "../projects/[projectId]/codebooks/schemas";
+} from "@/app/api/projects/[projectId]/codebooks/layoutSchemas";
+import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-import { AnnotationSchema } from "../projects/[projectId]/annotations/schemas";
+import { AnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";
 
 extendZodWithOpenApi(z);
@@ -103,6 +103,10 @@ export const SurveyAnnotationSchema = z.object({
 });
 export const SurveyAnnotationsSchema = z.record(z.string(), SurveyAnnotationSchema);
 
+export const GetJobStateParamsSchema = z.object({
+  userId: z.string().optional(),
+});
+
 export const GetJobStateResponseSchema = z.object({
   surveyAnnotations: SurveyAnnotationsSchema,
   blocks: z.array(JobBlockSchema),
@@ -117,4 +121,9 @@ export const GetUnitResponseSchema = z.object({
 export const GetCodebookResponseSchema = z.object({
   codebook: CodebookSchema.nullable(),
   error: z.string().optional(),
+});
+
+export const GetUnitParamsSchema = z.object({
+  userId: z.string().optional(),
+  unitId: z.string().optional(),
 });

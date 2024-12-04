@@ -149,7 +149,7 @@ export type FullScreenNode = MutableRefObject<HTMLDivElement | null>;
 export type Span = [number, number];
 export type Edge = [number, number];
 
-export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
+export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED" | "STOLEN";
 export type Status = "DONE" | "IN_PROGRESS";
 
 // need to do this at some point but damn

@@ -58,13 +58,13 @@ class TokenVerifier {
 
 const tokenVerifier = new TokenVerifier();
 
-export async function authenticateUser(req: Request): Promise<string | null> {
+export async function authenticateUser(req: Request): Promise<string> {
   if (process.env.MIDDLECAT_URL === "DEVMODE" || process.env.TEST_MODE === "true") {
-    return process.env.SUPERADMIN || null;
+    return process.env.SUPERADMIN || "";
   }
   const bearer: string | null = req.headers.get("authorization");
   const access_token = bearer?.split(" ")[1] || "";
-  if (!access_token) return null;
+  if (!access_token) return "";
 
   return await tokenVerifier.verifyToken(access_token);
 }
