@@ -10,8 +10,9 @@ import { checkUnitIds, reindexPositions } from "../route";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { projectId: number; jobId: number; blockId: number } },
+  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> }
 ) {
+  const params = await props.params;
   const { projectId } = params;
   return createGet({
     selectFunction: async (email, urlParams) => {
@@ -44,8 +45,9 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params }: { params: { projectId: number; jobId: number; blockId: number } },
+  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> }
 ) {
+  const params = await props.params;
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
@@ -91,8 +93,9 @@ export async function POST(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { projectId: number; jobId: number; blockId: number } },
+  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> }
 ) {
+  const params = await props.params;
   return createDelete({
     deleteFunction: (email) => {
       return db.transaction(async (tx) => {

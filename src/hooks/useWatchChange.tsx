@@ -18,7 +18,7 @@ import { useRef } from "react";
  * @returns
  */
 function useWatchChange(deps: any[], first: boolean = true, debug: boolean = false): boolean {
-  const prevDeps = useRef<any[]>();
+  const prevDeps = useRef<any[]>(undefined);
   let value = first;
   if (prevDeps.current != null) value = hasChanged(prevDeps.current, deps, debug);
   prevDeps.current = deps;

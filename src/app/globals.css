@@ -155,7 +155,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--hsl(var(--primary-dark)));
+  background: hsl(var(--primary-dark));
 }
 
 div::-webkit-scrollbar,
@@ -180,7 +180,7 @@ p::-webkit-scrollbar-thumb {
 /* Handle on hover */
 div::-webkit-scrollbar-thumb:hover,
 p::-webkit-scrollbar-thumb:hover {
-  background: var(--hsl(var(--primary-dark)));
+  background: hsl(var(--primary-dark));
 }
 
 h1 {

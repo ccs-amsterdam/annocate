@@ -69,7 +69,7 @@ const Body = ({
   readOnly,
   currentUnitReady,
 }: BodyProps) => {
-  const [content, setContent] = useState<(ReactElement | ReactElement[])[]>([]);
+  const [content, setContent] = useState<(ReactElement<any> | ReactElement<any>[])[]>([]);
   const fieldRefs: FieldRefs = useMemo(() => ({}), []);
   const containerRef = useRef(null);
   const [imagesLoaded, setImagesLoaded] = useState(true);
@@ -80,7 +80,7 @@ const Body = ({
     const images = renderImages(image_fields, setImagesLoaded, containerRef);
     const markdown = renderMarkdown(markdown_fields, fieldRefs);
 
-    const content: (ReactElement | ReactElement[])[] = [];
+    const content: (ReactElement<any> | ReactElement<any>[])[] = [];
     if (text) for (const f of text_fields) content.push(text[f.name]);
     if (images) for (const f of image_fields) content.push(images[f.name]);
     if (markdown) for (const f of markdown_fields) content.push(markdown[f.name]);

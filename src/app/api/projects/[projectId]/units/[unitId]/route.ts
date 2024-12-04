@@ -6,7 +6,11 @@ import { createGet } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
 import { UnitDataRowSchema } from "../schemas";
 
-export async function GET(req: NextRequest, { params }: { params: { projectId: number; unitId: string } }) {
+export async function GET(
+  req: NextRequest,
+  props: { params: Promise<{ projectId: number; unitId: string }> }
+) {
+  const params = await props.params;
   return createGet({
     selectFunction: async (email, urlParams) => {
       const [unit] = await db

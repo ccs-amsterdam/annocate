@@ -1,6 +1,6 @@
 import { RefObject, useEffect, useState } from "react";
 
-export function useHeight(ref: RefObject<HTMLDivElement>, watch?: any) {
+export function useHeight(ref: RefObject<HTMLDivElement | null>, watch?: any) {
   const [height, setHeight] = useState(0);
 
   useEffect(() => {

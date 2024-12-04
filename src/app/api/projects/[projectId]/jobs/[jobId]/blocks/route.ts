@@ -8,7 +8,11 @@ import { JobBlockCreateSchema } from "../../schemas";
 import { PgDialect, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import { check } from "drizzle-orm/mysql-core";
 
-export async function POST(req: Request, { params }: { params: { projectId: number; jobId: number } }) {
+export async function POST(
+  req: Request,
+  props: { params: Promise<{ projectId: number; jobId: number }> }
+) {
+  const params = await props.params;
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {

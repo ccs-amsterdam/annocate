@@ -68,7 +68,7 @@ export default function renderText(
 const renderField = (
   textField: TextField | undefined,
   paragraph_key: string,
-  paragraphs: ReactElement[],
+  paragraphs: ReactElement<any>[],
   field: string,
   fieldRefs: any,
 ) => {
@@ -105,7 +105,7 @@ const renderField = (
 const renderParagraph = (
   textField: TextField | undefined,
   paragraph_nr: number,
-  tokens: ReactElement[],
+  tokens: ReactElement<any>[],
   end: boolean,
 ) => {
   if (textField?.paragraphs != null && !textField?.paragraphs)

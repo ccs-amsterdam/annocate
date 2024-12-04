@@ -99,7 +99,7 @@ const BodyDiv = styled.div`
 
 interface QuestionFormProps {
   /** Buttons can be passed as children, that will be shown on the topleft of the question form */
-  children: ReactElement | ReactElement[];
+  children: ReactElement<any> | ReactElement<any>[];
   /** The unit */
   unit: Unit;
   /** The tokens of the unit. Used to include span offset and length in the annotation
@@ -273,22 +273,20 @@ const markedString = (text: string) => {
   const regex = new RegExp(/{(.*?)}/); // Match text inside two curly brackets
 
   text = text.replace(/(\r\n|\n|\r)/gm, "");
-  return (
-    <>
-      {text.split(regex).reduce((prev: (string | ReactElement)[], current: string, i: number) => {
-        if (i % 2 === 0) {
-          prev.push(current);
-        } else {
-          prev.push(
-            <mark key={i + current} style={{ color: "hsl(var(--primary-foreground))", backgroundColor: "transparent" }}>
-              {current}
-            </mark>,
-          );
-        }
-        return prev;
-      }, [])}
-    </>
-  );
+  return (<>
+    {text.split(regex).reduce((prev: (string | ReactElement<any>)[], current: string, i: number) => {
+      if (i % 2 === 0) {
+        prev.push(current);
+      } else {
+        prev.push(
+          <mark key={i + current} style={{ color: "hsl(var(--primary-foreground))", backgroundColor: "transparent" }}>
+            {current}
+          </mark>,
+        );
+      }
+      return prev;
+    }, [])}
+  </>);
 };
 
 const processAnswer = async (

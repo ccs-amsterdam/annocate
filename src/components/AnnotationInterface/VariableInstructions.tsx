@@ -9,7 +9,7 @@ import { Drawer, DrawerClose, DrawerContent, DrawerTrigger } from "../ui/drawer"
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface VariableInstructionsProps {
-  children: ReactElement;
+  children: ReactElement<any>;
   unit: ExtendedUnit;
   annotationLib: AnnotationLibrary;
   codebook: ExtendedCodebook;
@@ -77,7 +77,7 @@ interface InstructionProps {
   foldable?: boolean;
 }
 
-function getFoldStyle(ref: React.RefObject<HTMLDivElement>, before?: boolean) {
+function getFoldStyle(ref: React.RefObject<HTMLDivElement | null>, before?: boolean) {
   if (!ref.current) return {};
 
   const height = ref.current?.scrollHeight;

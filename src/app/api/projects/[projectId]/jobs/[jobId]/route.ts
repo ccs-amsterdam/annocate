@@ -7,7 +7,11 @@ import { NextRequest } from "next/server";
 import { JobResponseSchema, JobMetaResponseSchema, JobUpdateSchema } from "../schemas";
 import { n } from "next-usequerystate/dist/serializer-C_l8WgvO";
 
-export async function GET(req: NextRequest, { params }: { params: { projectId: number; jobId: number } }) {
+export async function GET(
+  req: NextRequest,
+  props: { params: Promise<{ projectId: number; jobId: number }> }
+) {
+  const params = await props.params;
   return createGet({
     selectFunction: async (email, urlParams) => {
       const jobWithBlocks = await db
@@ -86,7 +90,11 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
   });
 }
 
-export async function POST(req: Request, { params }: { params: { projectId: number; jobId: number } }) {
+export async function POST(
+  req: Request,
+  props: { params: Promise<{ projectId: number; jobId: number }> }
+) {
+  const params = await props.params;
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {

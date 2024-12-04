@@ -1,10 +1,12 @@
-"use client";
+"use client";;
+import { use } from "react";
 import { HelpDrawer } from "@/components/Common/HelpDrawer";
 import { Database } from "lucide-react";
 import { UnitsTable } from "./UnitsTable";
 import { CreateUnitsButton } from "@/components/Forms/unitForms";
 
-export default function Users({ params }: { params: { projectId: number } }) {
+export default function Users(props: { params: Promise<{ projectId: number }> }) {
+  const params = use(props.params);
   return (
     <div>
       <div className="mt-6 lg:col-span-2">

@@ -8,7 +8,7 @@ import {
   GetUnitResponseSchema,
   SurveyAnnotationsSchema,
   UnitContentSchema,
-} from "./api/annotate/schemas";
+} from "./api/annotate/[jobId]/schemas";
 import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
 import {
   CodebookCodeSchema,
@@ -56,7 +56,7 @@ export interface Authorization {
   email: string;
   role: UserRole | null;
   superAdmin?: boolean;
-  projectId?: number;
+  projectId?: number | null;
   projectRole: ProjectRole | null;
 }
 
@@ -406,7 +406,7 @@ export interface QuestionItem {
   rows?: number;
   optional?: boolean;
   autocomplete?: string;
-  ref?: RefObject<HTMLElement>;
+  ref?: RefObject<HTMLElement | null>;
 }
 
 export type QuestionItemType = "email" | "number" | "textarea" | "text";
@@ -443,7 +443,7 @@ export interface AnswerOption {
   makes_irrelevant?: string[];
   /** Like makes_irrelevant, but the questions become irrelevant if this option is NOT chosen */
   required_for?: string[];
-  ref?: RefObject<HTMLElement>;
+  ref?: RefObject<HTMLElement | null>;
 }
 
 /** An object that maps an AnswerOption to left, right and up swipes */
@@ -456,9 +456,9 @@ export interface SwipeOptions {
 
 /** the refs to html elements used in swipeControl */
 export interface SwipeRefs {
-  text: RefObject<HTMLElement>;
-  box: RefObject<HTMLElement>;
-  code: RefObject<HTMLElement>;
+  text: RefObject<HTMLElement | null>;
+  box: RefObject<HTMLElement | null>;
+  code: RefObject<HTMLElement | null>;
 }
 
 /** Used in AnswerField to manage answers given in the sub components */
@@ -555,7 +555,7 @@ export interface CodeSelectorOption {
   /** used in buttons to set text color */
   textColor?: string;
   /** If the options are rendered as buttons, the ref enables navigation */
-  ref?: RefObject<HTMLElement>;
+  ref?: RefObject<HTMLElement | null>;
   /** A string for looking up the option in text search */
   queryText?: string;
 }
@@ -568,7 +568,7 @@ export interface CodeSelectorDropdownOption {
   /** Used in dropdown for searching string match */
   text?: string;
   /** Used in dropdown to render label */
-  content?: ReactElement;
+  content?: ReactElement<any>;
 }
 
 export type TokenSelection = [number, number | null] | [] | null;
@@ -742,7 +742,7 @@ export interface TextField extends Field {
 }
 
 export interface RenderedText {
-  [key: string]: ReactElement[];
+  [key: string]: ReactElement<any>[];
 }
 
 export interface ImageField extends Field {
@@ -752,13 +752,13 @@ export interface ImageField extends Field {
 }
 
 export interface RenderedImages {
-  [key: string]: ReactElement;
+  [key: string]: ReactElement<any>;
 }
 
 export interface MarkdownField extends Field {}
 
 export interface RenderedMarkdown {
-  [key: string]: ReactElement;
+  [key: string]: ReactElement<any>;
 }
 
 export interface MetaField {
@@ -881,7 +881,7 @@ export interface DocumentSettings {
 }
 
 export interface FieldRefs {
-  [field: string]: RefObject<HTMLElement>;
+  [field: string]: RefObject<HTMLElement | null>;
 }
 
 export interface VariableValueMap {

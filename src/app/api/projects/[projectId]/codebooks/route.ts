@@ -6,7 +6,8 @@ import { and, eq, SQL, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { CodebookCreateBodySchema, CodebookCreateResponseSchema, CodebooksTableParamsSchema } from "./schemas";
 
-export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
+  const params = await props.params;
   return createTableGet({
     req,
     tableFunction: (email, urlParams) => {
@@ -35,7 +36,8 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
   });
 }
 
-export async function POST(req: Request, { params }: { params: { projectId: number } }) {
+export async function POST(req: Request, props: { params: Promise<{ projectId: number }> }) {
+  const params = await props.params;
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {

@@ -23,7 +23,7 @@ const useRelationSelector = (
   annotationLib: AnnotationLibrary,
   annotationManager: AnnotationManager,
   variable: ExtendedVariable | null,
-): [ReactElement | null, TriggerSelector, boolean] => {
+): [ReactElement<any> | null, TriggerSelector, boolean] => {
   const [open, setOpen] = useState(false);
   const positionRef = useRef<HTMLSpanElement | null>(null);
   const [edge, setEdge] = useState<RelationOption | null>(null);

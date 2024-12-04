@@ -4,7 +4,7 @@ import { FullScreenNode } from "@/app/types";
 import { FaCompress, FaExpand } from "react-icons/fa";
 
 interface FullSceenWindowProps {
-  children: (fullSceenNode: FullScreenNode, fullSceenButton: ReactElement) => ReactElement;
+  children: (fullSceenNode: FullScreenNode, fullSceenButton: ReactElement<any>) => ReactElement<any>;
   askFullScreen: boolean;
 }
 
@@ -31,7 +31,7 @@ export const FullScreenWindow = ({ children, askFullScreen }: FullSceenWindowPro
 };
 
 interface DOMNodeProviderProps {
-  children: (fullScreenNode: FullScreenNode) => ReactElement;
+  children: (fullScreenNode: FullScreenNode) => ReactElement<any>;
 }
 
 const DOMNodeProvider = ({ children }: DOMNodeProviderProps) => {

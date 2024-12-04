@@ -7,7 +7,8 @@ import { NextRequest } from "next/server";
 import { UnitDataDeleteBodySchema } from "../schemas";
 import { reindexUnitPositions } from "../route";
 
-export async function POST(req: NextRequest, { params }: { params: { projectId: number } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
+  const params = await props.params;
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {

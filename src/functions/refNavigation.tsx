@@ -10,7 +10,7 @@ interface Position {
   height: number;
 }
 interface hasHTMLRef {
-  ref?: RefObject<HTMLElement>;
+  ref?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -110,8 +110,8 @@ const calcColOverlap = (a: Position, b: Position): number => {
 };
 
 const getPosition = (
-  ref: RefObject<HTMLElement> | undefined,
-  horizontalRef?: RefObject<HTMLElement> | undefined,
+  ref: RefObject<HTMLElement | null> | undefined,
+  horizontalRef?: RefObject<HTMLElement | null> | undefined,
 ): Position => {
   if (!ref?.current) return { top: 0, bottom: 0, left: 0, right: 0, x: 0, width: 0, height: 0 };
   const pos = ref.current.getBoundingClientRect();

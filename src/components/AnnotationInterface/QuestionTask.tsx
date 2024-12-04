@@ -118,7 +118,7 @@ const nextQuestionTransition = (r: SwipeRefs, trans: Transition | undefined) => 
   // }
 };
 
-const hideUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, code: RefObject<HTMLElement>): void => {
+const hideUnit = (text: RefObject<HTMLElement | null>, box: RefObject<HTMLElement | null>, code: RefObject<HTMLElement | null>): void => {
   if (!text.current || !box.current || !code.current) return;
   code.current.innerText = "";
   text.current.style.transition = ``;
@@ -128,7 +128,7 @@ const hideUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, cod
   text.current.style.transform = "translateX(0%) translateY(0%)";
 };
 
-const showUnit = (text: RefObject<HTMLElement>, box: RefObject<HTMLElement>, code: RefObject<HTMLElement>): void => {
+const showUnit = (text: RefObject<HTMLElement | null>, box: RefObject<HTMLElement | null>, code: RefObject<HTMLElement | null>): void => {
   if (!text.current || !box.current || !code.current) return;
   code.current.innerText = "";
   box.current.style.transition = `opacity 200ms linear`;

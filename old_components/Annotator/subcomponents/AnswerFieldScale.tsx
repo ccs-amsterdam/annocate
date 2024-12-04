@@ -48,7 +48,7 @@ const Scale = ({ items, answerItems, options, onSelect, onFinish, blockEvents, q
   // if canDelete is TRUE, also contains a delete button, which passes null to onSelect
   const [selectedItem, setSelectedItem] = useState(0);
   const [selectedButton, setSelectedButton] = useState(null);
-  const continueButtonRef = useRef();
+  const continueButtonRef = useRef(undefined);
 
   const onKeydown = React.useCallback(
     (event: KeyboardEvent) => {
@@ -178,7 +178,7 @@ interface ItemsProps {
   options: AnswerOption[];
   selectedButton: number;
   onSelect: (params: OnSelectParams) => void;
-  continueButtonRef: RefObject<HTMLDivElement>;
+  continueButtonRef: RefObject<HTMLDivElement | null>;
 }
 
 const Items = ({
@@ -290,7 +290,7 @@ const Item = ({ itemObj, answerItems, selectedItem, itemIndex, options, selected
   }, [itemObj, ref]);
 
   return (
-    <div key={itemIndex} style={{ padding, borderRadius: "5px" }}>
+    (<div key={itemIndex} style={{ padding, borderRadius: "5px" }}>
       <div>
         <div
           style={{
@@ -338,7 +338,7 @@ const Item = ({ itemObj, answerItems, selectedItem, itemIndex, options, selected
           }
 
           return (
-            <ItemButton
+            (<ItemButton
               key={option.code}
               selected={isSelected}
               current={isCurrent}
@@ -346,18 +346,18 @@ const Item = ({ itemObj, answerItems, selectedItem, itemIndex, options, selected
               color={color}
             >
               <button
-                ref={option.ref as React.RefObject<HTMLButtonElement>}
+                ref={option.ref as React.RefObject<HTMLButtonElement | null>}
                 onClick={() => {
                   onSelect({ value: options[buttonIndex].code, itemIndex });
                 }}
               >
                 {isCurrent ? option.code : buttonIndex + 1}
               </button>
-            </ItemButton>
+            </ItemButton>)
           );
         })}
       </div>
-    </div>
+    </div>)
   );
 };
 

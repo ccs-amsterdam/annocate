@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   description: "Annotation and Content Analysis Tool",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = cookies();
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
   const dark = cookieStore.get("dark");
   const fontsize = cookieStore.get("fontsize");
 

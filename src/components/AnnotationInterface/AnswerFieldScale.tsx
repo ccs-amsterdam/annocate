@@ -165,11 +165,11 @@ interface ItemsProps {
   annotations: Annotation[];
   selectedItem: number;
   items: VariableItem[];
-  itemRefs: RefObject<HTMLDivElement>[];
+  itemRefs: RefObject<HTMLDivElement | null>[];
   options: Code[];
   selectedButton?: number;
   onSelect: (params: OnSelectParams) => void;
-  continueButtonRef: RefObject<HTMLButtonElement>;
+  continueButtonRef: RefObject<HTMLButtonElement | null>;
 }
 
 const Items = ({
@@ -213,7 +213,7 @@ const Items = ({
 
 interface ItemProps {
   itemObj: QuestionItem | undefined;
-  itemRef: RefObject<HTMLDivElement>;
+  itemRef: RefObject<HTMLDivElement | null>;
   variable: string;
   annotations: Annotation[];
   selectedItem: number;

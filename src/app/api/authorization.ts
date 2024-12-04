@@ -3,6 +3,18 @@ import { managers, users } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import { typesafeEncrypt } from "@/functions/typesafeEncrypt";
+import { z } from "zod";
+
+const authTokenEncryptor = new typesafeEncrypt(
+  z.object({
+    email: z.string(),
+    role: z.enum(["admin", "guest", "creator"]).nullable(),
+    projectRole: z.enum(["admin", "manager"]).nullable(),
+    projectId: z.coerce.number().nullish(),
+  }),
+);
 
 class TokenVerifier {
   publicKey: string | null = null;
@@ -69,11 +81,21 @@ export async function authenticateUser(req: Request): Promise<string> {
   return await tokenVerifier.verifyToken(access_token);
 }
 
-// todo: add JWT to avoid hitting the db for every request
 export async function authorization(email: string, projectId: number | null): Promise<Authorization> {
-  const auth: Authorization = { email, role: null, projectRole: null };
+  const cookieStore = await cookies();
+  const auth: Authorization = { projectId, email, role: null, projectRole: null };
 
-  if (projectId) {
+  const authTokenCookieName = projectId != null ? `session-${projectId}` : "session";
+
+  // first check if valid auth token for current user exists in cookie. If so, return values and update cookie
+  try {
+    const session = authTokenEncryptor.cookieToDecrypted(cookieStore, authTokenCookieName, 60 * 15);
+    if (session.email === email) return session;
+  } catch (e) {
+    // token expired or invalid. Need to fetch new token
+  }
+
+  if (projectId != null) {
     const [user] = await db
       .select({ role: users.role, projectRole: managers.role })
       .from(users)
@@ -101,6 +123,8 @@ export async function authorization(email: string, projectId: number | null): Pr
         .onConflictDoUpdate({ target: users.email, set: { role: "admin" } });
     }
   }
+
+  authTokenEncryptor.encrytedToCookie(cookieStore, authTokenCookieName, auth, 60 * 15);
 
   return auth;
 }

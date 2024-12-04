@@ -92,7 +92,7 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
         try {
           result += await evalInSandbox(codeParts[i], data, z.coerce.string());
         } catch (e) {
-          console.error(`ERROR in script {{${codeParts[i]}}}: `, e);
+          console.log(`ERROR in script {{${codeParts[i]}}}: `, e);
           result += "[...]";
         }
       }

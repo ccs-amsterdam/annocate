@@ -5,7 +5,8 @@ import { users } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 
-export async function POST(req: NextRequest, { params }: { params: { userId: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   return createUpdate({
     updateFunction: async (email, body) => {
       const [user] = await db.update(users).set(body).where(eq(users.id, params.userId)).returning();

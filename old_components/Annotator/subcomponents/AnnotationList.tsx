@@ -301,7 +301,7 @@ function recursiveRelationText(
   annMap: AnnotationMap,
   annotation: Annotation,
   depth: number = 0,
-  elements: ReactElement[] = [],
+  elements: ReactElement<any>[] = [],
   keySuffix: string = "",
 ) {
   const key = annotation.id + "_" + depth + "_" + keySuffix;

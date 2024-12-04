@@ -8,6 +8,8 @@ import { Authorization, UserRole } from "../types";
 import { authenticateUser, authorization } from "./authorization";
 import { createTableParamsSchema } from "./schemaHelpers";
 import { fromZodError } from "zod-validation-error";
+import { cookies } from "next/headers";
+import { typesafeEncrypt } from "@/functions/typesafeEncrypt";
 
 interface After {
   column: string;
@@ -355,6 +357,27 @@ function queryMeta(
     .where(and(...where));
 }
 
+const nextTokenEncryptor = new typesafeEncrypt(
+  z.object({
+    commonParams: TableParamsSchema,
+    meta: z.object({
+      page: z.number(),
+      pageSize: z.number(),
+      rows: z.number(),
+      sort: z.string(),
+      direction: z.string(),
+    }),
+    after: z.array(
+      z.object({
+        column: z.string(),
+        value: z.union([z.number(), z.string(), z.date(), z.boolean()]),
+        isDate: z.boolean().optional(),
+        isBoolean: z.boolean().optional(),
+      }),
+    ),
+  }),
+);
+
 function createNextToken(commonParams: TableParams, data: any, meta: any, idColumn: string) {
   const hasNext = (meta.page + 1) * meta.pageSize < meta.rows;
   if (!hasNext) return "";
@@ -376,14 +399,10 @@ function createNextToken(commonParams: TableParams, data: any, meta: any, idColu
   }
 
   const nextParams = { commonParams, meta, after: newAfter };
-  return jwt.sign(nextParams, process.env.SECRET_KEY as string);
+  return nextTokenEncryptor.encrypt(nextParams);
 }
 function parseNextToken(token: string) {
-  const { commonParams, after, meta } = jwt.verify(token, process.env.SECRET_KEY as string) as {
-    commonParams: TableParams;
-    meta: any;
-    after: After[];
-  };
+  const { commonParams, after, meta } = nextTokenEncryptor.decrypt(token);
 
   // parse date strings back into Date objects
   for (let i = 0; i < after.length; i++) {

@@ -119,10 +119,10 @@ const AnnotinderStyledButton = ({
   if (!option) return null;
 
   return (
-    <CodeButton
+    (<CodeButton
       className={`flex`}
       key={option.code}
-      ref={option.ref as React.RefObject<HTMLButtonElement>}
+      ref={option.ref as React.RefObject<HTMLButtonElement | null>}
       $background={option.color}
       disabled={option == null || speedbump}
       $selected={option.code === value}
@@ -135,9 +135,8 @@ const AnnotinderStyledButton = ({
       }}
     >
       {icon}
-
       <span>{option?.code || ""}</span>
-    </CodeButton>
+    </CodeButton>)
   );
 };
 

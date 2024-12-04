@@ -80,7 +80,7 @@ const StyledButtonGroup = styled.div`
 `;
 
 interface MenuButtonGroupProps {
-  children: ReactElement | ReactElement[];
+  children: ReactElement<any> | ReactElement<any>[];
 }
 
 const MenuButtonGroup = ({ children }: MenuButtonGroupProps) => {

@@ -33,7 +33,7 @@ export async function testGET<Params>(
 }
 
 export async function testPOST<Params, Data>(
-  endpoint: { POST: NextEndpointMethod<Params> },
+  endpoint: { POST: NextEndpointMethod<Promise<Params>> },
   params: Params,
   data?: Record<string, any>,
 ) {
@@ -44,7 +44,7 @@ export async function testPOST<Params, Data>(
     headers: { "Content-Type": "application/json" },
   });
   const nextReq = new NextRequest(req);
-  return endpoint.POST(nextReq, { params });
+  return endpoint.POST(nextReq, { params: Promise.resolve(params) });
 }
 
 export async function createTestProject(query: z.infer<typeof ProjectsCreateSchema>) {

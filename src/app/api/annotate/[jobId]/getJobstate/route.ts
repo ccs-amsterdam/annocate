@@ -12,17 +12,19 @@ import {
 } from "../schemas";
 import { cookies } from "next/headers";
 
-export async function GET(req: NextRequest, { params }: { params: { jobId: number } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ jobId: number }> }) {
+  const params = await props.params;
   const { jobId } = params;
   const cookieStore = await cookies();
 
   return createGet({
     selectFunction: async (email, urlParams) => {
       console.log(email, urlParams);
+      return { test: "this" };
     },
     req,
     paramsSchema: GetJobStateParamsSchema,
-    responseSchema: GetJobStateResponseSchema,
+    // responseSchema: GetJobStateResponseSchema,
     projectId: null,
     authorizeFunction: async (auth, params) => {
       return undefined;

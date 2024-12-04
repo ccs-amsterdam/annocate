@@ -310,7 +310,7 @@ interface AnnotationPopupProps {
 }
 
 const AnnotationPopup = ({ tokens, tokenIndex, annotationLib, showValues }: AnnotationPopupProps) => {
-  const ref = useRef<HTMLDivElement>();
+  const ref = useRef<HTMLDivElement>(undefined);
 
   const content = useMemo(() => {
     if (!tokenIndex) return null;
@@ -320,7 +320,7 @@ const AnnotationPopup = ({ tokens, tokenIndex, annotationLib, showValues }: Anno
 
     const tokenAnnotations = annotationIds.map((id) => annotationLib.annotations[id]);
     const ids = Object.keys(tokenAnnotations);
-    const list = ids.reduce((arr: ReactElement[], id, i) => {
+    const list = ids.reduce((arr: ReactElement<any>[], id, i) => {
       const variable = tokenAnnotations[i].variable;
       const value = tokenAnnotations[i].code;
       if (!showValues?.[variable]) return arr;

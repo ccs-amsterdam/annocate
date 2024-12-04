@@ -7,7 +7,6 @@ import { ProjectsTableParamsSchema, ProjectsUpdateSchema, ProjectsResponseSchema
 import { hasMinRole } from "../authorization";
 
 export async function GET(req: NextRequest) {
-  console.log(req);
   return createTableGet({
     tableFunction: (email) =>
       db

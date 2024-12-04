@@ -18,7 +18,7 @@ interface SearchCodeProps {
 }
 
 const SearchCode = ({ options, values, multiple, onSelect, onFinish, blockEvents = false }: SearchCodeProps) => {
-  const ref = useRef<HTMLInputElement>();
+  const ref = useRef<HTMLInputElement>(undefined);
   const changed = useRef(false);
   const [focuson, setFocuson] = useState("dropdown");
 

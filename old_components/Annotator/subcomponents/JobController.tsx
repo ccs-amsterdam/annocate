@@ -11,16 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface JobControllerProps {
-  children: ReactElement;
+  children: ReactElement<any>;
   jobServer: JobServer;
   codebook: CodeBook;
   unitIndex: number;
   setUnitIndex: (index: number) => void;
   unitProgress: number;
-  fullScreenButton: ReactElement;
+  fullScreenButton: ReactElement<any>;
   fullScreenNode: FullScreenNode;
   cantLeave: boolean;
-  authForm?: ReactElement;
+  authForm?: ReactElement<any>;
   health?: any;
 }
 

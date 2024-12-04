@@ -23,11 +23,11 @@ export default function StyledComponentsRegistry({
   if (typeof window !== "undefined") return <>{children}</>;
 
   return (
-    <StyleSheetManager
-      sheet={styledComponentsStyleSheet.instance}
-      shouldForwardProp={isPropValid}
-    >
-      {children as React.ReactChild}
-    </StyleSheetManager>
+    (<StyleSheetManager
+        sheet={styledComponentsStyleSheet.instance}
+        shouldForwardProp={isPropValid}
+      >
+      {children as React.ReactElement<any> | number | string}
+    </StyleSheetManager>)
   );
 }

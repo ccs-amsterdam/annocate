@@ -6,7 +6,8 @@ import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import { ProjectUsersTableParamsSchema, ProjectUsersResponseSchema, ProjectUsersCreateOrUpdateSchema } from "./schemas";
 import { hasMinProjectRole } from "@/app/api/authorization";
 
-export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
+  const params = await props.params;
   return createTableGet({
     req,
     projectId: params.projectId,
@@ -26,7 +27,8 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: n
   });
 }
 
-export async function POST(req: NextRequest, { params }: { params: { projectId: number } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
+  const params = await props.params;
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {

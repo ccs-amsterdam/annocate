@@ -187,7 +187,7 @@ const ButtonSelection = ({ id, options, onSelect }: ButtonSelectionProps) => {
     for (let option of filteredOptions) {
       if (option.value.cancel)
         cancelButton = (
-          <div key={option.label + "_" + i} className={`closeIcon`} ref={option.ref as React.RefObject<HTMLDivElement>}>
+          <div key={option.label + "_" + i} className={`closeIcon`} ref={option.ref as React.RefObject<HTMLDivElement | null>}>
             <FaWindowClose
               size="100%"
               color={selected === 0 ? "var(--foreground)" : "var(--primary-light)"}
@@ -252,8 +252,8 @@ const button = (
   setSelected: SetState<number>,
 ) => {
   return (
-    <CodeButton
-      ref={option.ref as React.RefObject<HTMLButtonElement>}
+    (<CodeButton
+      ref={option.ref as React.RefObject<HTMLButtonElement | null>}
       key={option.label + "_" + i}
       $selected={i === selected}
       $background={option.color}
@@ -272,7 +272,7 @@ const button = (
         {option.tag ? <span className="Tag">{option.tag}: </span> : null}
         {option.label}
       </span>
-    </CodeButton>
+    </CodeButton>)
   );
 };
 

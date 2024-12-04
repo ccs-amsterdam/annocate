@@ -33,7 +33,7 @@ const Portal = styled.div<{ smallScreen?: boolean }>`
 `;
 
 interface Props {
-  children: ReactElement | ReactElement[];
+  children: ReactElement<any> | ReactElement<any>[];
   open: boolean;
   setOpen: SetState<boolean>;
   positionRef: any;

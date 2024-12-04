@@ -220,7 +220,7 @@ interface InputProps {
 }
 
 const Input = ({ answerItems, onSelect, item, itemIndex }: InputProps) => {
-  item.ref = useRef();
+  item.ref = useRef(undefined);
   const value = answerItems?.[itemIndex]?.values?.[0]; // for all non-multiple forms
 
   function onFocus(): void {
@@ -235,9 +235,9 @@ const Input = ({ answerItems, onSelect, item, itemIndex }: InputProps) => {
 
   if (item?.type === "number") {
     return (
-      <input
+      (<input
         key={item.name}
-        ref={item.ref as RefObject<HTMLInputElement>}
+        ref={item.ref as RefObject<HTMLInputElement | null>}
         type={"number"}
         min={item?.min}
         max={item?.max}
@@ -256,15 +256,15 @@ const Input = ({ answerItems, onSelect, item, itemIndex }: InputProps) => {
             (item.max != null && Number(value) > item.max);
           onSelect({ value, itemIndex, invalid });
         }}
-      />
+      />)
     );
   }
 
   if (item?.type === "textarea") {
     return (
-      <textarea
+      (<textarea
         key={item.name}
-        ref={item.ref as RefObject<HTMLTextAreaElement>}
+        ref={item.ref as RefObject<HTMLTextAreaElement | null>}
         rows={item?.rows || 5}
         value={value || ""}
         onFocus={onFocus}
@@ -273,18 +273,18 @@ const Input = ({ answerItems, onSelect, item, itemIndex }: InputProps) => {
           const value = e.target.value === "" ? null : e.target.value;
           onSelect({ value, itemIndex });
         }}
-      ></textarea>
+      ></textarea>)
     );
   }
 
   // text input, but with validation and autocomplete
   if (item?.type === "email")
     return (
-      <input
+      (<input
         type="email"
         name="email"
         key={item.name}
-        ref={item.ref as RefObject<HTMLInputElement>}
+        ref={item.ref as RefObject<HTMLInputElement | null>}
         autoComplete={"email"}
         value={value || ""}
         style={{
@@ -299,14 +299,14 @@ const Input = ({ answerItems, onSelect, item, itemIndex }: InputProps) => {
           const invalid = !!e.target.validationMessage;
           onSelect({ value, itemIndex, invalid });
         }}
-      />
+      />)
     );
 
   // regular text input
   return (
-    <input
+    (<input
       key={item.name}
-      ref={item.ref as RefObject<HTMLInputElement>}
+      ref={item.ref as RefObject<HTMLInputElement | null>}
       autoComplete={item?.autocomplete}
       value={value || ""}
       style={{ maxWidth: "300px", textAlign: "center" }}
@@ -316,7 +316,7 @@ const Input = ({ answerItems, onSelect, item, itemIndex }: InputProps) => {
         const value = e.target.value === "" ? null : e.target.value;
         onSelect({ value, itemIndex });
       }}
-    />
+    />)
   );
 };
 

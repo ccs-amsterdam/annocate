@@ -138,8 +138,8 @@ const SelectCode = ({
       const isCurrent = values.includes(option.code);
 
       return (
-        <CodeButton
-          ref={option.ref as React.RefObject<HTMLButtonElement>}
+        (<CodeButton
+          ref={option.ref as React.RefObject<HTMLButtonElement | null>}
           $background={option.color}
           $selected={i === selected}
           $current={isCurrent}
@@ -161,7 +161,7 @@ const SelectCode = ({
           }}
         >
           <div style={{ minWidth, maxWidth: "min-content" }}>{option.code}</div>
-        </CodeButton>
+        </CodeButton>)
       );
     });
   };

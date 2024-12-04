@@ -6,7 +6,8 @@ import { createGet } from "../../routeHelpers";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "../schemas";
 import { NextRequest } from "next/server";
 
-export async function GET(req: NextRequest, { params }: { params: { projectId: number } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
+  const params = await props.params;
   const { projectId } = params;
   return createGet({
     selectFunction: async (email, params) => {

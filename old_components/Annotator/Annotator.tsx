@@ -22,7 +22,7 @@ interface AnnotatorProps {
   jobServer: JobServer;
   askFullScreen?: boolean;
   cantLeave?: boolean;
-  authForm?: ReactElement;
+  authForm?: ReactElement<any>;
 }
 
 const Annotator = ({ jobServer, askFullScreen = false, cantLeave = false, authForm }: AnnotatorProps) => {
@@ -41,10 +41,10 @@ const Annotator = ({ jobServer, askFullScreen = false, cantLeave = false, authFo
   }, [jobServer, setUnitIndex]);
 
   return (
-    <FullScreenWindow askFullScreen={askFullScreen}>
+    (<FullScreenWindow askFullScreen={askFullScreen}>
       {(fullScreenNode, fullScreenButton) => (
         // FullScreenWindow passes on the fullScreenNode needed to mount popups, and a fullScreenButton to handle on/off
-        <JobController
+        (<JobController
           jobServer={jobServer}
           codebook={indexedUnit?.unit?.unit?.codebook || jobServer?.codebook}
           unitIndex={indexedUnit?.index}
@@ -64,9 +64,9 @@ const Annotator = ({ jobServer, askFullScreen = false, cantLeave = false, authFo
               fullScreenNode={fullScreenNode}
             />
           </StyledSegment>
-        </JobController>
+        </JobController>)
       )}
-    </FullScreenWindow>
+    </FullScreenWindow>)
   );
 };
 

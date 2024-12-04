@@ -14,7 +14,7 @@ import { Label } from "@radix-ui/react-dropdown-menu";
 import { FileWarning, Save, TriangleAlert, X } from "lucide-react";
 import { parseAsInteger, useQueryState } from "next-usequerystate";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
 import { toast } from "sonner";
 import { set, z } from "zod";
 
@@ -26,7 +26,8 @@ interface SaveOnChange {
   save?: () => Promise<void>;
 }
 
-export default function CodebookDesign({ params }: { params: { projectId: number; codebookId: number } }) {
+export default function CodebookDesign(props: { params: Promise<{ projectId: number; codebookId: number }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const [preview, setPreview] = useState<CodebookPreview | undefined>();
   const saveOnChange = useRef<SaveOnChange>({ dirty: false });
