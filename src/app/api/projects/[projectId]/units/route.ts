@@ -6,6 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
 import { projectRole } from "@/app/types";
+import { reindexUnitPositions } from "./helpers";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
   const params = await props.params;
@@ -91,26 +92,3 @@ export async function POST(req: NextRequest, props: { params: Promise<{ projectI
     },
   });
 }
-
-export async function reindexUnitPositions(tx: any, projectId: number): Promise<void> {
-  await tx.execute(sql`
-    WITH new_position AS
-    (
-        SELECT row_number() over (order by position) AS newpos, id
-        FROM ${units}
-        WHERE ${units.projectId} = ${projectId}
-    )
-    UPDATE ${units}
-    SET position = new_position.newpos-1
-    FROM new_position
-    WHERE ${units.unitId} = new_position.id
-    `);
-}
-// function setUnitsetPositions(db: any, unitsetId: number) {
-//   return db
-//     .select({ id: unitsetUnits.id })
-//     .from(unitsetUnits)
-//     .where(eq(unitsetUnits.unitsetId, unitsetId))
-//     .orderBy(unitsetUnits.id)
-//     .as("unitsetUnits");
-// }

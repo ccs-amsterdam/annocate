@@ -176,7 +176,7 @@ function SaveOnChangeDialog({ safeCodebookId, codebookId, setCodebookId, saveOnC
     const saveable = saveOnChange.dirty && saveOnChange.save;
     if (safeCodebookId === null) return;
     if (codebookId !== safeCodebookId && !saveable) setCodebookId(safeCodebookId);
-  }, [safeCodebookId, codebookId, saveOnChange.dirty]);
+  }, [safeCodebookId, codebookId, saveOnChange.dirty, saveOnChange.save, setCodebookId]);
 
   if (codebookId === null) return null;
   if (safeCodebookId === null) return null;

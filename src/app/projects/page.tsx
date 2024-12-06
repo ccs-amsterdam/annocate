@@ -44,7 +44,7 @@ function SelectJob() {
   const router = useRouter();
 
   function onSelect(row: z.infer<typeof ProjectsResponseSchema>) {
-    router.push(`/projects/${row.id}`);
+    router.push(`/projects/${row.id}/jobs`);
   }
 
   return <DBTable className="mt-8 w-full p-3" {...jobs} onSelect={onSelect} columns={COLUMNS} />;

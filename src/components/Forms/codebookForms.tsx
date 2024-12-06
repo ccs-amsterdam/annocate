@@ -548,7 +548,7 @@ function WatchForPreview({
       if (codebook.success) setPreview({ id, codebook: codebook.data });
     }, 250);
     return () => clearTimeout(timeout);
-  }, [watch, setPreview, form]);
+  }, [watch, setPreview, form, id]);
   return <div></div>;
 }
 

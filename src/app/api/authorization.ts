@@ -85,13 +85,18 @@ export async function authorization(email: string, projectId: number | null): Pr
   const cookieStore = await cookies();
   const auth: Authorization = { projectId, email, role: null, projectRole: null };
 
-  const authTokenCookieName = projectId != null ? `session-${projectId}` : "session";
+  const authTokenCookieName = projectId != null ? `projects:session` : "session";
 
   // first check if valid auth token for current user exists in cookie. If so, return values and update cookie
   try {
     const session = authTokenEncryptor.cookieToDecrypted(cookieStore, authTokenCookieName, 60 * 15);
-    if (session.email === email) return session;
+    if (projectId !== null) {
+      if (session.email === email && session.projectId === projectId) return session;
+    } else {
+      if (session.email === email) return session;
+    }
   } catch (e) {
+    console.log("expired");
     // token expired or invalid. Need to fetch new token
   }
 
@@ -124,7 +129,7 @@ export async function authorization(email: string, projectId: number | null): Pr
     }
   }
 
-  authTokenEncryptor.encrytedToCookie(cookieStore, authTokenCookieName, auth, 60 * 15);
+  authTokenEncryptor.encryptedToCookie(cookieStore, authTokenCookieName, auth, 60 * 15);
 
   return auth;
 }

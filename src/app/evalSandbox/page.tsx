@@ -9,7 +9,7 @@ import { useState } from "react";
 import { ZodError, z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
-export default function Users({ params }: { params: { projectId: number } }) {
+export default function Sandbox() {
   const [data, setData] = useState(defaultData);
   const { evalStringTemplate, ready } = useSandbox();
   const [input, setInput] = useState<string>("test this example `{{unit.topic}}` now");

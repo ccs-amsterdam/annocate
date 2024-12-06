@@ -5,7 +5,7 @@ import db from "@/drizzle/drizzle";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataDeleteBodySchema } from "../schemas";
-import { reindexUnitPositions } from "../route";
+import { reindexUnitPositions } from "../helpers";
 
 export async function POST(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
   const params = await props.params;

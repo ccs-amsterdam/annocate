@@ -1,18 +1,19 @@
 "use client";
 
 import { RiFontSize2 } from "react-icons/ri";
-import useCookie from "@/hooks/useCookie";
 import useIsClient from "@/hooks/useIsClient";
 import { Loader, Moon, Sun, SunMoon } from "lucide-react";
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { Button } from "@radix-ui/themes";
+import useLocalStorage from "@/hooks/useLocalStorage";
 
 function setDataset(dataset: string, value: string) {
+  if (typeof window === "undefined") return;
   document.documentElement.dataset[dataset] = value;
 }
 
 export const DarkModeButton = () => {
-  const [dark, setDark] = useCookie("dark", "off");
+  const [dark, setDark] = useLocalStorage("dark", "off");
   const isClient = useIsClient();
 
   const onClick = () => {
@@ -50,21 +51,4 @@ export const DarkModeButton = () => {
   }
 
   return <Button>{icon}</Button>;
-};
-
-const fontsizes = ["small", "medium", "large"];
-
-export const FontSizeButton = () => {
-  const [fontsize, setFontsize] = useCookie("fontsize", "medium");
-  const selected = fontsizes.findIndex((x) => x === fontsize);
-  const isClient = useIsClient();
-
-  const onClick = () => {
-    const next = selected < fontsizes.length - 1 ? selected + 1 : 0;
-    setDataset("fontsize", fontsizes[next]);
-    setFontsize(fontsizes[next]);
-  };
-
-  if (!isClient) return <RiFontSize2 className="Rendering" />;
-  return <RiFontSize2 onClick={onClick} />;
 };

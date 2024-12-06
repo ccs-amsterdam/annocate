@@ -6,11 +6,11 @@ import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobBlockResponseSchema, JobBlockUpdateSchema } from "../../../schemas";
-import { checkUnitIds, reindexPositions } from "../route";
+import { checkUnitIds, reindexPositions } from "../helpers";
 
 export async function GET(
   req: NextRequest,
-  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> }
+  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> },
 ) {
   const params = await props.params;
   const { projectId } = params;
@@ -45,7 +45,7 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> }
+  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> },
 ) {
   const params = await props.params;
   return createUpdate({
@@ -93,7 +93,7 @@ export async function POST(
 
 export async function DELETE(
   req: NextRequest,
-  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> }
+  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> },
 ) {
   const params = await props.params;
   return createDelete({
