@@ -65,6 +65,14 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
     <div className="flex flex-col">
       {question}
       <ModalInstruction instruction={instruction} show={show} setShow={setShow} />
+      <Button
+        onClick={() => setShow(!show)}
+        variant="ghost"
+        size="icon"
+        className="flex h-6 w-full justify-center hover:bg-transparent"
+      >
+        <InfoIcon className="p-[3px] text-primary-foreground/70" />
+      </Button>
     </div>
   );
 };

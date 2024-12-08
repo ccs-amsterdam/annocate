@@ -2,19 +2,19 @@
 import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { JobBlockMeta } from "@/app/types";
+import { JobBlockMeta, SetState } from "@/app/types";
 import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { Preview } from "@/components/Common/Preview";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loading } from "@/components/ui/loader";
 import { SimpleDropdown } from "@/components/ui/simpleDropdown";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { FileWarning, Save, TriangleAlert, X } from "lucide-react";
 import { parseAsInteger, useQueryState } from "next-usequerystate";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, use } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, use, SetStateAction } from "react";
 import { toast } from "sonner";
 import { set, z } from "zod";
 
@@ -23,27 +23,30 @@ export type CodebookPreview = { id: number; codebook: Codebook };
 
 interface SaveOnChange {
   dirty: boolean;
+  error: boolean;
   save?: () => Promise<void>;
 }
 
-export default function CodebookDesign(props: { params: Promise<{ projectId: number; codebookId: number }> }) {
+export default function JobDesign(props: { params: Promise<{ projectId: number; jobId: number }> }) {
   const params = use(props.params);
   const router = useRouter();
   const [preview, setPreview] = useState<CodebookPreview | undefined>();
-  const saveOnChange = useRef<SaveOnChange>({ dirty: false });
 
-  const [codebookId, setCodebookId] = useQueryState<number>("codebookId", parseAsInteger);
-  const [safeCodebookId, setSafeCodebookId] = useState<number | null>(null);
-  const [jobId, setJobId] = useQueryState<number>("jobId", parseAsInteger);
+  const [switchBlock, setSwitchBlock] = useState<number | null>(null);
+  const [resetTrigger, setResetTrigger] = useState(0);
   const [blockId, setBlockId] = useQueryState<number>("blockId", parseAsInteger);
 
+  const saveOnChange = useRef<SaveOnChange>({ dirty: false, error: false });
+
+  const { data: job } = useJob(params.projectId, params.jobId ?? undefined);
+  const codebookId = job?.blocks.find((block) => block.id === blockId)?.codebookId;
   const { data: codebook, isLoading: codebookLoading } = useCodebook(params.projectId, codebookId ?? undefined);
 
   const confirmUpdate = useCallback(() => {
     toast.success("Updated codebook");
   }, []);
 
-  if (!codebookId && !jobId) router.push(`/projects/${params.projectId}/codebooks`);
+  if (!codebookId) router.push(`/projects/${params.projectId}/codebooks`);
   // if (codebookId && codebookLoading) return <Loading />;
 
   const nJobs = codebook?.nJobs || 0;
@@ -51,23 +54,20 @@ export default function CodebookDesign(props: { params: Promise<{ projectId: num
   return (
     <div className="mx-auto  grid  grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
       <SaveOnChangeDialog
-        safeCodebookId={safeCodebookId}
-        codebookId={codebookId}
-        setCodebookId={setCodebookId}
+        switchBlock={switchBlock}
+        setSwitchBlock={setSwitchBlock}
+        blockId={blockId}
+        setBlockId={setBlockId}
         saveOnChange={saveOnChange.current}
+        setResetTrigger={setResetTrigger}
       />
       <div className="mx-auto w-[600px] max-w-[95vw] overflow-auto py-6 xl:max-h-[calc(100vh-var(--header-height))]">
-        {jobId ? (
-          <PreviewJob
-            projectId={params.projectId}
-            jobId={jobId}
-            blockId={blockId}
-            setBlockId={setBlockId}
-            setCodebookId={setSafeCodebookId}
-          />
-        ) : (
-          <div className="h-20"></div>
-        )}
+        <PreviewJob
+          projectId={params.projectId}
+          jobId={params.jobId}
+          blockId={blockId}
+          setSwitchBlock={setSwitchBlock}
+        />
         <h2 className="mb-3 mt-9 px-8">
           {codebook?.codebook.type === "annotation" ? "Annotation Codebook" : "Survey Codebook"}
         </h2>
@@ -95,10 +95,10 @@ export default function CodebookDesign(props: { params: Promise<{ projectId: num
         <Preview
           projectId={params.projectId}
           codebookPreview={preview}
-          jobId={jobId || undefined}
+          jobId={params.jobId}
           blockId={blockId || undefined}
-          setBlockId={setBlockId}
-          setCodebookId={setSafeCodebookId}
+          setBlockId={setSwitchBlock}
+          resetTrigger={resetTrigger}
         />
       </div>
     </div>
@@ -109,14 +109,12 @@ function PreviewJob({
   projectId,
   jobId,
   blockId,
-  setBlockId,
-  setCodebookId,
+  setSwitchBlock,
 }: {
   projectId: number;
   jobId: number;
   blockId: number | null;
-  setBlockId: (id: number) => void;
-  setCodebookId: (id: number) => void;
+  setSwitchBlock: (id: number) => void;
 }) {
   const { data: job, isLoading: jobLoading } = useJob(projectId, jobId ?? undefined);
 
@@ -136,8 +134,7 @@ function PreviewJob({
               <Button
                 key={block.id}
                 onClick={() => {
-                  setBlockId(block.id);
-                  setCodebookId(block.codebookId);
+                  setSwitchBlock(block.id);
                 }}
                 className={`flex h-8  gap-3 py-0 ${block.id === blockId ? "" : "text-foreground/60"}`}
                 variant="default"
@@ -165,22 +162,31 @@ function blockLabel(block: JobBlockMeta) {
 }
 
 interface SaveOnChangeDialogProps {
-  safeCodebookId: number | null;
-  codebookId: number | null;
-  setCodebookId: (id: number) => void;
+  switchBlock: number | null;
+  setSwitchBlock: (id: number | null) => void;
+  blockId: number | null;
+  setBlockId: (id: number) => void;
   saveOnChange: SaveOnChange;
+  setResetTrigger: SetState<number>;
 }
 
-function SaveOnChangeDialog({ safeCodebookId, codebookId, setCodebookId, saveOnChange }: SaveOnChangeDialogProps) {
+function SaveOnChangeDialog({
+  switchBlock,
+  setSwitchBlock,
+  blockId,
+  setBlockId,
+  saveOnChange,
+  setResetTrigger,
+}: SaveOnChangeDialogProps) {
   useEffect(() => {
     const saveable = saveOnChange.dirty && saveOnChange.save;
-    if (safeCodebookId === null) return;
-    if (codebookId !== safeCodebookId && !saveable) setCodebookId(safeCodebookId);
-  }, [safeCodebookId, codebookId, saveOnChange.dirty, saveOnChange.save, setCodebookId]);
+    if (switchBlock === null) return;
+    if (blockId !== switchBlock && !saveable) setBlockId(switchBlock);
+  }, [switchBlock, blockId, saveOnChange.dirty, saveOnChange.save, setBlockId]);
 
-  if (codebookId === null) return null;
-  if (safeCodebookId === null) return null;
-  if (codebookId === safeCodebookId) return null;
+  if (blockId === null) return null;
+  if (switchBlock === null) return null;
+  if (blockId === switchBlock) return null;
   const saveable = saveOnChange.dirty && saveOnChange.save;
   if (!saveable) return null;
 
@@ -188,28 +194,41 @@ function SaveOnChangeDialog({ safeCodebookId, codebookId, setCodebookId, saveOnC
     <Dialog open={true}>
       <DialogContent className="prose dark:prose-invert [&>button]:hidden">
         <DialogHeader>
-          <h3 className="mt-0">Unsaved changes</h3>
+          <DialogTitle className="mt-0">Unsaved changes</DialogTitle>
+          <DialogDescription></DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div>
-            You navigated to a different codebook, but there are unsaved changes. Do you want to save these changes?
+            You are navigating to a different codebook, but there are unsaved changes. Do you want to save these
+            changes?
           </div>
           <div className="mt-3 flex justify-between gap-3">
             <Button
               className="flex w-min items-center gap-2"
+              variant="outline"
+              onClick={() => {
+                setSwitchBlock(blockId);
+                setResetTrigger((prev) => prev + 1);
+              }}
+            >
+              Go back
+            </Button>
+            <Button
+              className="flex w-min items-center gap-2"
               variant="destructive"
               onClick={() => {
-                setCodebookId(safeCodebookId);
+                setBlockId(switchBlock);
               }}
             >
               <X className=" h-5 w-5" />
               Discard changes
             </Button>
             <Button
+              disabled={saveOnChange.error}
               className="flex w-min items-center gap-2"
               variant="default"
               onClick={() => {
-                if (saveOnChange.save) saveOnChange.save().then(() => setCodebookId(safeCodebookId));
+                if (saveOnChange.save) saveOnChange.save().then(() => setBlockId(switchBlock));
               }}
             >
               <Save className=" h-5 w-5" />

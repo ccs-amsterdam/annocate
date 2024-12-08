@@ -6,7 +6,6 @@ import StyledComponentRegistry from "./registry";
 import SetResponsiveSize from "@/components/Common/SetResponsiveSize";
 import { Toaster } from "@/components/ui/sonner";
 import { PageLayout } from "./PageLayout";
-import Script from "next/script";
 import useLocalStorage from "@/hooks/useLocalStorage";
 
 const font = Poppins({
@@ -24,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script id="before-hydration">
+        <script id="set-style-before-hydration">
           {`
             const localDarkMode = JSON.parse(localStorage.getItem("dark"))
             const defaultDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "on" : "off";

@@ -20,7 +20,7 @@ import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import { parse } from "path";
 import { SimpleDropdown } from "../ui/simpleDropdown";
 import { useProject } from "@/app/api/projects/query";
-import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
+import { CodebookPreview } from "@/app/projects/[projectId]/jobs/[jobId]/design/page";
 import React from "react";
 
 interface Props {
@@ -29,10 +29,10 @@ interface Props {
   jobId?: number;
   blockId?: number;
   setBlockId: (blockId: number) => void;
-  setCodebookId: (codebookId: number) => void;
+  resetTrigger?: number;
 }
 
-export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId, setCodebookId }: Props) {
+export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId, resetTrigger }: Props) {
   const { user } = useMiddlecat();
   const { data: job } = useJob(projectId, jobId);
   const { data: project } = useProject(projectId);
@@ -49,7 +49,8 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
     setUnits((units) => [...units]);
   }, []);
 
-  if (useWatchChange([project, user, codebookPreview, units, blockId])) {
+  console.log(resetTrigger);
+  if (useWatchChange([project, user, codebookPreview, units, blockId, resetTrigger])) {
     if (user && codebookPreview && project) {
       setJobServer(
         new JobServerPreview({
@@ -59,7 +60,6 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
           job,
           blockId,
           setBlockId,
-          setCodebookId,
           annotations: annotations.current,
           current: current.current,
           setPreviewData,
@@ -69,6 +69,7 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
   }
 
   if (!jobServer) return null;
+
   return (
     <div className="mx-auto mt-10 flex  flex-col items-center pb-4">
       <div className="grid w-full max-w-60 gap-6">

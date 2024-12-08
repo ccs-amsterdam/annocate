@@ -116,11 +116,7 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
         role="button"
         tabIndex={0}
         className="max-w-full cursor-pointer overflow-hidden rounded px-3 hover:bg-foreground/10"
-        onClick={() =>
-          router.push(
-            `/projects/${projectId}/codebooks/design?codebookId=${block.codebookId}&jobId=${jobId}&blockId=${block.id}`,
-          )
-        }
+        onClick={() => router.push(`/projects/${projectId}/jobs/${jobId}/design?blockId=${block.id}`)}
       >
         <h4 className="m-0 mt-2 leading-none">{block.name || block.type}</h4>
         <div className="mt-1  leading-5">

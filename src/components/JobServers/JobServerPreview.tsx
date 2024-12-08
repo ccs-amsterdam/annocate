@@ -1,5 +1,5 @@
-import { LoremIpsum } from "@/app/projects/[projectId]/codebooks/design/lorem";
-import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
+import { LoremIpsum } from "@/app/projects/[projectId]/jobs/[jobId]/design/lorem";
+import { CodebookPreview } from "@/app/projects/[projectId]/jobs/[jobId]/design/page";
 import {
   Unit,
   Annotation,
@@ -28,7 +28,6 @@ interface JobServerPreviewConstructor {
   job?: Job;
   blockId?: number;
   setBlockId: (blockId: number) => void;
-  setCodebookId: (codebookId: number) => void;
   annotations?: Record<string, Annotation[]>;
   current: { unit: number; variable?: string };
   setPreviewData: SetState<PreviewData | null>;
@@ -60,7 +59,6 @@ class JobServerPreview implements JobServer {
   blockIndexRange: [number, number];
 
   setBlockId: (blockId: number) => void;
-  setCodebookId: (codebookId: number) => void;
   setPreviewVariable: (variable: string) => void;
   setJobState: SetState<GetJobState | null> | null;
   setPreviewData: SetState<PreviewData | null>;
@@ -72,7 +70,6 @@ class JobServerPreview implements JobServer {
     job,
     blockId,
     setBlockId,
-    setCodebookId,
     annotations,
     current,
     setPreviewData,
@@ -112,7 +109,6 @@ class JobServerPreview implements JobServer {
     this.job = job || null;
     this.blockId = blockId || null;
     this.setBlockId = setBlockId;
-    this.setCodebookId = setCodebookId;
     this.setPreviewData = setPreviewData;
     this.setPreviewVariable = (variable: string) => {
       this.current.variable = variable;
@@ -145,7 +141,6 @@ class JobServerPreview implements JobServer {
       if (block.id !== this.blockId) {
         this.updateProgress(i);
         this.setBlockId(block.id);
-        this.setCodebookId(block.codebookId);
         return { unit: null, progress: this.progress };
       }
     }

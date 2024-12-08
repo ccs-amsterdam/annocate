@@ -9,9 +9,6 @@ interface ShowQuestionProps {
   annotationLib: AnnotationLibrary;
   codebook: ExtendedCodebook;
 }
-const data = {
-  test: "dit",
-};
 
 const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
   const { evalStringWithJobState, ready } = useSandbox();

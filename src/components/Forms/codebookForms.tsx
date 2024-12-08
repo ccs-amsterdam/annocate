@@ -43,7 +43,7 @@ import {
 import { StyleToolbar } from "../Common/StyleToolbar";
 import { Label } from "../ui/label";
 import { SetState } from "@/app/types";
-import { CodebookPreview } from "@/app/projects/[projectId]/codebooks/design/page";
+import { CodebookPreview } from "@/app/projects/[projectId]/jobs/[jobId]/design/page";
 import { equal } from "assert";
 
 type Codebook = z.infer<typeof CodebookSchema>;
@@ -55,7 +55,7 @@ interface UpdateCodebookProps {
   current: z.input<typeof CodebookResponseSchema>;
   afterSubmit?: () => void;
   setPreview?: SetState<CodebookPreview | undefined>;
-  saveOnChange?: React.MutableRefObject<{ dirty: boolean; save?: () => void }>;
+  saveOnChange?: React.MutableRefObject<{ dirty: boolean; error: boolean; save?: () => void }>;
 }
 
 export const UpdateCodebook = React.memo(function UpdateCodebook({
@@ -113,9 +113,16 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     if (JSON.stringify(form.getValues()) === currentAsString) isDirty = false;
   }
 
+  // TODO
+  // Add "saveAs" argument to mutate codebook endpoint. If given, create copy with this name.
+  // When saving a codebook that is used in multiple jobs, ask if the user wants to save or copy as.
+  // this argument can also be passed to the saveOnChange.save function, so this question can
+  // also be asked from the onChange modal
+
   if (saveOnChange)
     saveOnChange.current = {
       dirty: isDirty,
+      error: !!error,
       save: async () => {
         const values = form.getValues();
         await mutateAsync(values).then(afterSubmit).catch(console.error);
