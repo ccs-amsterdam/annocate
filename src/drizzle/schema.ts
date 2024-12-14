@@ -220,21 +220,19 @@ export const annotator = pgTable(
   "annotator",
   {
     id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    // annotators can be authenticated or anonymous. If authenticated, look up annotator by authenticatedId (email).
-    // if anonymous, look up by anonymousId (any string).
-    authenticatedId: varchar("authenticated_id", { length: 256 }),
-    anonymousId: varchar("anonymous_id", { length: 256 }),
-    jobId: integer("job_id"),
+    jobId: integer("job_id").notNull(),
+    // userId can be email:{email}, user:{from url params} or device:{random device id}
+    userId: varchar("user_id", { length: 256 }).notNull(),
+    email: varchar("email", { length: 256 }),
     // if created through an invitation, include any url parameters. These can be used for links (completion, screening, etc)
     urlParams: customJsonb("url_params").notNull().$type<Record<string, string>>().default({}),
     statistics: customJsonb("statistics").notNull().$type<JobsetAnnotatorStatistics>().default({}),
   },
   (table) => {
     return {
-      projectIdx: index("annotator_project_idx").on(table.projectId),
+      jobIdx: index("annotator_project_idx").on(table.jobId),
+      userIdx: index("annotator_user_idx").on(table.userId),
+      uniqueUser: unique("unique_user").on(table.jobId, table.userId),
     };
   },
 );
@@ -242,13 +240,7 @@ export const annotator = pgTable(
 export const annotations = pgTable(
   "annotations",
   {
-    jobSetId: integer("jobset_id").notNull(),
-    // user string depends on type of user
-    // - for registered users, it's the email address
-    // - for invitations that include u_* params, it's the param string
-    // - for invitations without user_id, it's the device_id
-    // We prepend with email:, id:, device: to distinguish between them
-    user: varchar("user_id", { length: 256 }).notNull(),
+    annotatorId: integer("annotator_id").notNull(),
     index: integer("index").notNull(),
     unitId: integer("unit_id").notNull(),
 
@@ -270,7 +262,7 @@ export const annotations = pgTable(
   },
   (table) => {
     return {
-      pk: primaryKey({ columns: [table.jobSetId, table.user, table.index] }),
+      pk: primaryKey({ columns: [table.annotatorId, table.index] }),
       unitIds: index("annotations_unit_ids").on(table.unitId),
     };
   },

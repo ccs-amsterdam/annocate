@@ -46,9 +46,6 @@ export default function JobDesign(props: { params: Promise<{ projectId: number; 
     toast.success("Updated codebook");
   }, []);
 
-  if (!codebookId) router.push(`/projects/${params.projectId}/codebooks`);
-  // if (codebookId && codebookLoading) return <Loading />;
-
   const nJobs = codebook?.nJobs || 0;
 
   return (

@@ -225,7 +225,7 @@ function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
                 <MoveItemInArray move={moveField} i={index} n={fields.length} bg={bg} error={!!error} />
 
                 <div>
-                  <AccordionTrigger className="text-left no-underline hover:no-underline">
+                  <AccordionTrigger className="text-left text-base no-underline hover:no-underline">
                     <span className="break-all">{varName.replace(/_/g, " ")}</span>
                   </AccordionTrigger>
                 </div>
@@ -371,7 +371,7 @@ function Variables({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
               >
                 <MoveItemInArray move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
 
-                <AccordionTrigger className="w-full no-underline hover:no-underline">
+                <AccordionTrigger className="w-full text-base no-underline hover:no-underline">
                   {varName.replace(/_/g, " ")}
                 </AccordionTrigger>
               </div>

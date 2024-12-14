@@ -1,1 +1,0 @@
-ALTER TABLE "codebooks" ADD COLUMN "updated" timestamp DEFAULT now() NOT NULL;

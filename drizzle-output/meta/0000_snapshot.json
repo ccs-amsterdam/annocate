@@ -1,5 +1,5 @@
 {
-  "id": "176743c3-0671-409f-aa56-43265ec4ef2c",
+  "id": "8c3d3715-81c2-4202-b9db-aaa21356fe22",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -8,15 +8,9 @@
       "name": "annotations",
       "schema": "",
       "columns": {
-        "jobset_id": {
-          "name": "jobset_id",
+        "annotator_id": {
+          "name": "annotator_id",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
         },
@@ -89,11 +83,10 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "annotations_jobset_id_user_id_index_pk": {
-          "name": "annotations_jobset_id_user_id_index_pk",
+        "annotations_annotator_id_index_pk": {
+          "name": "annotations_annotator_id_index_pk",
           "columns": [
-            "jobset_id",
-            "user_id",
+            "annotator_id",
             "index"
           ]
         }
@@ -110,27 +103,21 @@
           "primaryKey": true,
           "notNull": true
         },
-        "project_id": {
-          "name": "project_id",
+        "job_id": {
+          "name": "job_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "authenticated_id": {
-          "name": "authenticated_id",
+        "email": {
+          "name": "email",
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": false
         },
-        "anonymous_id": {
-          "name": "anonymous_id",
+        "invitation_id": {
+          "name": "invitation_id",
           "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "job_id": {
-          "name": "job_id",
-          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -154,7 +141,7 @@
           "name": "annotator_project_idx",
           "columns": [
             {
-              "expression": "project_id",
+              "expression": "job_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -166,23 +153,19 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "annotator_project_id_projects_id_fk": {
-          "name": "annotator_project_id_projects_id_fk",
-          "tableFrom": "annotator",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {
+        "unique_user_invitation": {
+          "name": "unique_user_invitation",
+          "nullsNotDistinct": false,
+          "columns": [
+            "job_id",
+            "email",
+            "invitation_id"
+          ]
+        }
+      }
     },
     "public.codebooks": {
       "name": "codebooks",
@@ -208,6 +191,13 @@
         },
         "created": {
           "name": "created",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated": {
+          "name": "updated",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
@@ -365,7 +355,7 @@
           "name": "name",
           "type": "varchar(256)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "position": {
           "name": "position",

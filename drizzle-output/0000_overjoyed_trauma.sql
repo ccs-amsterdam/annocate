@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS "annotations" (
-	"jobset_id" integer NOT NULL,
-	"user_id" varchar(256) NOT NULL,
+	"annotator_id" integer NOT NULL,
 	"index" integer NOT NULL,
 	"unit_id" integer NOT NULL,
 	"preallocate_time" timestamp,
@@ -9,17 +8,17 @@ CREATE TABLE IF NOT EXISTS "annotations" (
 	"status" text DEFAULT 'PREALLOCATED',
 	"device_id" varchar(64),
 	"authenticated" boolean NOT NULL,
-	CONSTRAINT "annotations_jobset_id_user_id_index_pk" PRIMARY KEY("jobset_id","user_id","index")
+	CONSTRAINT "annotations_annotator_id_index_pk" PRIMARY KEY("annotator_id","index")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "annotator" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"project_id" integer NOT NULL,
-	"authenticated_id" varchar(256),
-	"anonymous_id" varchar(256),
-	"job_id" integer,
+	"job_id" integer NOT NULL,
+	"email" varchar(256),
+	"invitation_id" varchar(256),
 	"url_params" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"statistics" jsonb DEFAULT '{}'::jsonb NOT NULL
+	"statistics" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	CONSTRAINT "unique_user_invitation" UNIQUE("job_id","email","invitation_id")
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "codebooks" (
@@ -27,6 +26,7 @@ CREATE TABLE IF NOT EXISTS "codebooks" (
 	"project_id" integer NOT NULL,
 	"name" varchar(256) NOT NULL,
 	"created" timestamp DEFAULT now() NOT NULL,
+	"updated" timestamp DEFAULT now() NOT NULL,
 	"codebook" jsonb NOT NULL,
 	CONSTRAINT "unique_codebook_name" UNIQUE("project_id","name")
 );
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS "job_blocks" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"project_id" integer NOT NULL,
 	"job_id" integer NOT NULL,
-	"name" varchar(256) NOT NULL,
+	"name" varchar(256),
 	"position" double precision NOT NULL,
 	"type" text NOT NULL,
 	"codebook_id" integer NOT NULL,
@@ -98,12 +98,6 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"role" text DEFAULT 'guest' NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "annotator" ADD CONSTRAINT "annotator_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "codebooks" ADD CONSTRAINT "codebooks_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
@@ -166,7 +160,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "annotations_unit_ids" ON "annotations" USING btree ("unit_id");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "annotator_project_idx" ON "annotator" USING btree ("project_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "annotator_project_idx" ON "annotator" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "codebook_project_ids" ON "codebooks" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "job_blocks_job_id_idx" ON "job_blocks" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "jobs_project_ids" ON "jobs" USING btree ("project_id");--> statement-breakpoint
