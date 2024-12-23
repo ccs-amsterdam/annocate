@@ -1,5 +1,4 @@
 import z from "zod";
-import { queryClient } from "@/drizzle/drizzle";
 import { NextRequest, NextResponse } from "next/server";
 
 import * as apiProjects from "@/app/api/projects/route";
@@ -11,11 +10,6 @@ import { UnitDataCreateBodySchema } from "./projects/[projectId]/units/schemas";
 import { Codebook, UnitData } from "../types";
 import { CodebookCreateBodySchema } from "./projects/[projectId]/codebooks/schemas";
 import { JobCreateSchema } from "./projects/[projectId]/jobs/schemas";
-
-export function disconnectDB() {
-  // how to close depends on the client. "end" works for pg, but not for Neon (which shouldn't be used for testing)
-  if ("end" in queryClient) queryClient.end();
-}
 
 type NextEndpointMethod<Params> = (req: NextRequest, { params }: { params: Params }) => Promise<NextResponse<any>>;
 

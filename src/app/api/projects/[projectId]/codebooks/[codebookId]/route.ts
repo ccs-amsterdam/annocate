@@ -42,13 +42,11 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: n
   const params = await props.params;
   return createUpdate({
     updateFunction: async (email, body) => {
-      console.log(body);
       const [codebook] = await db
         .update(codebooks)
         .set(body)
         .where(and(eq(codebooks.projectId, params.projectId), eq(codebooks.id, params.codebookId)))
         .returning();
-      console.log("llllllllllllllllllllllllllllll");
       return codebook;
     },
     req,

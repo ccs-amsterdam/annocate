@@ -50,5 +50,9 @@ export const DarkModeButton = () => {
     );
   }
 
-  return <Button>{icon}</Button>;
+  return (
+    <Button variant="ghost" size="icon">
+      {icon}
+    </Button>
+  );
 };

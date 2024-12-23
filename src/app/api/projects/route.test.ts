@@ -4,9 +4,7 @@
 import * as apiProjects from "./route";
 import * as apiProjectId from "./[projectId]/route";
 import { ProjectsCreateSchema } from "./schemas";
-import { disconnectDB, testGET, testPOST } from "../testHelpers";
-
-afterAll(disconnectDB);
+import { testGET, testPOST } from "../testHelpers";
 
 describe("Project endpoints", () => {
   const name = "test project endpoints";

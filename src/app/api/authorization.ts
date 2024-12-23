@@ -96,7 +96,7 @@ export async function authorization(email: string, projectId: number | null): Pr
       if (session.email === email) return session;
     }
   } catch (e) {
-    console.log("expired");
+    console.log("Need to authenticate");
     // token expired or invalid. Need to fetch new token
   }
 

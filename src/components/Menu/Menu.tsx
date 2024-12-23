@@ -9,6 +9,7 @@ import UserMenu from "./UserMenu";
 import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
 import { ChevronLeft, ChevronRight, Cog } from "lucide-react";
 import React, { useEffect } from "react";
+import { Button } from "../ui/button";
 
 export default function Menu() {
   const params = useParams();
@@ -25,7 +26,9 @@ export default function Menu() {
     if (userDetails?.role !== "admin") return null;
     return (
       <Link href="/admin">
-        <Cog className="h-8 w-8 hover:text-foreground" />
+        <Button variant="ghost" size="icon">
+          <Cog className="h-8 w-8" />
+        </Button>
       </Link>
     );
   }
@@ -67,7 +70,7 @@ export default function Menu() {
   return (
     <menu className="w-full px-2">
       <div className="m-0 flex min-h-[3.8rem] list-none items-center gap-2 px-3 pb-0 pt-1 text-xl text-foreground">
-        <div key="left" className="mt-1 flex min-h-[3rem] flex-auto items-center ">
+        <div key="left" className="mt-1 flex min-h-[3rem] flex-auto items-center">
           {renderNav()}
         </div>
 
