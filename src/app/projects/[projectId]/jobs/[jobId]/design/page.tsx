@@ -12,7 +12,7 @@ import { Loading } from "@/components/ui/loader";
 import { SimpleDropdown } from "@/components/ui/simpleDropdown";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { FileWarning, Save, TriangleAlert, X } from "lucide-react";
-import { parseAsInteger, useQueryState } from "next-usequerystate";
+import { parseAsInteger, useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, use, SetStateAction } from "react";
 import { toast } from "sonner";

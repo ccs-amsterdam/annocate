@@ -12,7 +12,7 @@ import {
 import AnnotationManager from "@/functions/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
 import { useQuery } from "@tanstack/react-query";
-import { useQueryState } from "next-usequerystate";
+import { useQueryState } from "nuqs";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createUnitBundle } from "./createUnitBundle";

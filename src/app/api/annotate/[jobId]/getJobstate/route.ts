@@ -67,16 +67,13 @@ async function getOrCreateJobState(jobId: number, userId: string) {
 async function computeJobState(annotatorId: number) {
   // jobstate has the nr of units done, and current index (lowest not done index)
 
-  const n = await db.$count(annotations, eq(annotations.annotatorId, annotatorId))
+  const n = await db.$count(annotations, eq(annotations.annotatorId, annotatorId));
 
   const [job] = await db
-    .select({
-      n:
-    })
+    .select()
     .from(annotations)
     .where(eq(annotations.annotatorId, annotatorId))
-    .orderBy(annotations.annotatorId, annotations.index)
-    .
+    .orderBy(annotations.annotatorId, annotations.index);
 }
 
 // On first start, allocate units

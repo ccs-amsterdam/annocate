@@ -7,7 +7,6 @@ import { Button } from "../ui/button";
 import { Check, Forward, SkipBack, SkipForward, StepBack, StepForward } from "lucide-react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import QuestionIndexStep from "./QuestionIndexStep";
-import { k } from "next-usequerystate/dist/serializer-C_l8WgvO";
 import { DropdownMenu, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 interface IndexControllerProps {}

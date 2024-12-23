@@ -9,6 +9,7 @@ import { fromZodError } from "zod-validation-error";
 import { toast } from "sonner";
 import { SandboxedProvider } from "@/hooks/useSandboxedEval";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const mutationCache = new MutationCache({
@@ -38,7 +39,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <MiddlecatProvider bff="/api/bffAuth" fixedResource="api">
         <TooltipProvider>
-          <SandboxedProvider>{children}</SandboxedProvider>
+          <SandboxedProvider>
+            <NuqsAdapter>{children}</NuqsAdapter>
+          </SandboxedProvider>
         </TooltipProvider>
       </MiddlecatProvider>
       <ReactQueryDevtools initialIsOpen={false} />

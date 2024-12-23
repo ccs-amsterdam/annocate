@@ -139,11 +139,11 @@ export function useDelete<Params>({
       await user.api.delete(endpoint, { params });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([endpoint]);
+      queryClient.invalidateQueries({ queryKey: [endpoint] });
       if (invalidateEndpoints) {
         const ie = typeof invalidateEndpoints === "function" ? invalidateEndpoints(params) : invalidateEndpoints;
         ie.forEach((endpoint) => {
-          queryClient.invalidateQueries([endpoint]);
+          queryClient.invalidateQueries({ queryKey: [endpoint] });
         });
       }
     },
@@ -174,12 +174,12 @@ export function useMutate<Body, Response>({
       return responseSchema ? responseSchema.parse(res.data) : res.data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries([endpoint]);
+      queryClient.invalidateQueries({ queryKey: [endpoint] });
       if (invalidateEndpoints) {
         const ie = typeof invalidateEndpoints === "function" ? invalidateEndpoints(variables) : invalidateEndpoints;
         ie.forEach((endpoint) => {
           console.log("invalidating", endpoint);
-          queryClient.invalidateQueries([endpoint]);
+          queryClient.invalidateQueries({ queryKey: [endpoint] });
         });
       }
     },

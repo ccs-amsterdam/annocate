@@ -15,7 +15,7 @@ import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
 import { Loading } from "../ui/loader";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { DropdownMenu, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { parseAsInteger, useQueryState } from "next-usequerystate";
+import { parseAsInteger, useQueryState } from "nuqs";
 import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import { parse } from "path";
 import { SimpleDropdown } from "../ui/simpleDropdown";

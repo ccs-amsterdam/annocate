@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { JobDetails } from "./jobDetails";
-import { useQueryState } from "next-usequerystate";
+import { useQueryState } from "nuqs";
 
 const COLUMNS = ["deployed", "modified", "name"];
 

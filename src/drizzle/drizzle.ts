@@ -5,7 +5,8 @@ import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
 
 import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
-import { PostgresJsDatabase, drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
+import { NodePgDatabase, drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
 config({ path: ".env.local" });
 
@@ -25,7 +26,7 @@ function getDB() {
     const db = drizzleNeon(queryClient);
     return { db, queryClient };
   } else {
-    const queryClient = postgres(db_url);
+    const queryClient = new Pool({ connectionString: db_url });
     const db = drizzlePostgres(queryClient);
     return { db, queryClient };
   }
