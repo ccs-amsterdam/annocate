@@ -1,4 +1,4 @@
-import { annotator, projects } from "@/drizzle/schema";
+import { annotations, annotator, projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, or, and } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
@@ -12,6 +12,7 @@ import {
 } from "../schemas";
 import { cookies } from "next/headers";
 import { getDeviceId } from "@/functions/getDeviceId";
+import { JobsetAnnotatorStatistics } from "@/app/types";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ jobId: number }> }) {
   const params = await props.params;
@@ -23,19 +24,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ jobId: nu
       let deviceId = getDeviceId(cookieStore, params.jobId);
       const userId = getUserId(email, urlParams.userId, deviceId);
 
-      // check if jobState exists
-      const [jobState] = await db
-        .select()
-        .from(annotator)
-        .where(and(eq(annotator.jobId, jobId), eq(annotator.userId, userId)))
-        .limit(1);
-
-      if (jobState) {
-        return jobState.id;
-      }
-
-      // create jobState
-      await db.insert(annotator).values({ jobId, userId }).execute();
+      const jobState = await getOrCreateJobState(jobId, userId);
 
       return { test: "this" };
     },
@@ -54,6 +43,40 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
   if (userId) return "userId:" + userId;
   if (email) return "email:" + email;
   return "device:" + deviceId;
+}
+
+async function getOrCreateJobState(jobId: number, userId: string) {
+  const [ann] = await db
+    .select()
+    .from(annotator)
+    .where(and(eq(annotator.jobId, jobId), eq(annotator.userId, userId)))
+    .limit(1);
+
+  if (ann) {
+    // TODO: verify jobaccess
+    // compute jobstate
+    return ann;
+  }
+
+  const [newAnn] = await db.insert(annotator).values({ jobId, userId }).returning();
+  // TODO: verify jobaccess
+  // allocate units and return jobstate
+  return newAnn;
+}
+
+async function computeJobState(annotatorId: number) {
+  // jobstate has the nr of units done, and current index (lowest not done index)
+
+  const n = await db.$count(annotations, eq(annotations.annotatorId, annotatorId))
+
+  const [job] = await db
+    .select({
+      n:
+    })
+    .from(annotations)
+    .where(eq(annotations.annotatorId, annotatorId))
+    .orderBy(annotations.annotatorId, annotations.index)
+    .
 }
 
 // On first start, allocate units

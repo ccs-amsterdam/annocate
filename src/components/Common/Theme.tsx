@@ -4,8 +4,8 @@ import { RiFontSize2 } from "react-icons/ri";
 import useIsClient from "@/hooks/useIsClient";
 import { Loader, Moon, Sun, SunMoon } from "lucide-react";
 import { ReactNode, useEffect } from "react";
-import { Button } from "@radix-ui/themes";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import { Button } from "../ui/button";
 
 function setDataset(dataset: string, value: string) {
   if (typeof window === "undefined") return;
