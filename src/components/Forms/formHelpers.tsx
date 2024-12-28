@@ -1,5 +1,3 @@
-"use client";
-
 import {
   CodebookCodeSchema,
   CodebookVariableItemSchema,
@@ -85,8 +83,9 @@ export function TextFormField<T extends FieldValues>({
           <FormFieldTitle title={openAPI.title} description={openAPI.description} />
           <FormControl>
             <Input
-              placeholder={placeholder || openAPI.example}
+              placeholder={placeholder || openAPI.example || ""}
               {...field}
+              value={field.value || ""}
               onChange={(e) => {
                 if (onChangeInterceptor) e.target.value = onChangeInterceptor(e.target.value);
                 field.onChange(e.target.value);
@@ -124,7 +123,7 @@ export function NumberFormField<T extends FieldValues>({
         return (
           <FormItem className="flex flex-col">
             <FormFieldTitle title={openAPI.title} description={openAPI.description} />
-            <div className="flex ">
+            <div className="flex">
               <FormControl>
                 <Input
                   type="number"
@@ -592,7 +591,7 @@ export function SelectCodebookFormField<T extends FieldValues>({
             <FormFieldTitle title={openAPI.title} description={openAPI.description} />
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className=" flex w-full min-w-48 items-center justify-between  gap-2">
+                <Button variant="outline" className="flex w-full min-w-48 items-center justify-between gap-2">
                   {selected || "Select Codebook"} <ChevronDown />
                 </Button>
               </DialogTrigger>
@@ -611,7 +610,7 @@ export function SelectCodebookFormField<T extends FieldValues>({
                     <Input placeholder="New codebook" value={newName} onChange={(e) => setNewName(e.target.value)} />
                     <Button
                       disabled={!newName}
-                      className="ml-auto flex  w-min gap-1"
+                      className="ml-auto flex w-min gap-1"
                       variant="secondary"
                       onClick={() =>
                         create(newName).then(({ id }) => {
@@ -695,7 +694,7 @@ export function MoveItemInArray({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild disabled={n === 1}>
-        <Button variant={!!error ? "destructive" : variant || "default"} className={` h-8 w-8 rounded-full `}>
+        <Button variant={!!error ? "destructive" : variant || "default"} className={`h-8 w-8 rounded-full`}>
           {i + 1}
         </Button>
       </DropdownMenuTrigger>
@@ -709,7 +708,7 @@ export function MoveItemInArray({
           if (j === i) return null;
           return (
             <DropdownMenuItem key={j} onClick={() => move(i, j)} className="p-0">
-              <Button variant="secondary" className="h-8 w-8 rounded-full hover:border-none ">
+              <Button variant="secondary" className="h-8 w-8 rounded-full hover:border-none">
                 {j + 1}
               </Button>
             </DropdownMenuItem>

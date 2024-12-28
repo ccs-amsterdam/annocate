@@ -11,7 +11,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { ProjectsResponseSchema } from "../api/projects/schemas";
 
-export default function Home() {
+export default function Projects() {
   const [open, setOpen] = useState(false);
 
   return (
@@ -23,7 +23,7 @@ export default function Home() {
           setOpen={setOpen}
           header="Create new project"
           trigger={
-            <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
+            <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2">
               Create new project
               <Plus className="h-5 w-5" />
             </Button>

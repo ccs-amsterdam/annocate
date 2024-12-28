@@ -2,7 +2,6 @@ import { config } from "dotenv";
 import { type InferSelectModel, type InferInsertModel, max } from "drizzle-orm";
 
 import { neon } from "@neondatabase/serverless";
-import postgres from "postgres";
 
 import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { NodePgDatabase, drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";

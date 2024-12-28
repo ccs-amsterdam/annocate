@@ -2,7 +2,6 @@ import "@/app/globals.css";
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import Providers from "./providers";
-import StyledComponentRegistry from "./registry";
 import SetResponsiveSize from "@/components/Common/SetResponsiveSize";
 import { Toaster } from "@/components/ui/sonner";
 import { PageLayout } from "./PageLayout";
@@ -35,12 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={font.className}>
         <SetResponsiveSize />
-        <StyledComponentRegistry>
-          <Providers>
-            <PageLayout>{children}</PageLayout>
-            <Toaster />
-          </Providers>
-        </StyledComponentRegistry>
+        <Providers>
+          <PageLayout>{children}</PageLayout>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

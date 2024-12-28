@@ -37,16 +37,16 @@ import { z } from "zod";
 
 config({ path: ".env.local" });
 
-// postgres-js/drizzle is broken on the jsonb stuff, so this is a workaround till it gets fixed
-const customJsonb = <TData>(name: string) =>
-  customType<{ data: TData; driverData: TData }>({
-    dataType() {
-      return "jsonb";
-    },
-    toDriver(value: TData): TData {
-      return value;
-    },
-  })(name);
+// // postgres-js/drizzle is broken on the jsonb stuff, so this is a workaround till it gets fixed
+// const customJsonb = <TData>(name: string) =>
+//   customType<{ data: TData; driverData: TData }>({
+//     dataType() {
+//       return "jsonb";
+//     },
+//     toDriver(value: TData): TData {
+//       return value;
+//     },
+//   })(name);
 
 // PROJECT TABLES
 
@@ -68,13 +68,13 @@ export const projects = pgTable(
     creator: varchar("creator_email", { length: 256 }).notNull(),
     name: varchar("name", { length: 128 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
-    config: customJsonb("project_config").notNull().$type<ProjectConfig>().default({ description: "" }),
+    config: jsonb("project_config").notNull().$type<ProjectConfig>().default({ description: "" }),
     maxUnits: integer("max_units").notNull().default(20000),
     frozen: boolean("frozen").notNull().default(false),
     unitsUpdated: timestamp("units_updated").notNull().defaultNow(),
   },
   (table) => {
-    return { unq: unique("unique_creator_name").on(table.creator, table.name) };
+    return [{ unq: unique("unique_creator_name").on(table.creator, table.name) }];
   },
 );
 
@@ -93,10 +93,12 @@ export const managers = pgTable(
       .default("manager"),
   },
   (table) => {
-    return {
-      pk: primaryKey({ columns: [table.projectId, table.userId] }),
-      userIdIndex: index("managers_userId_index").on(table.userId),
-    };
+    return [
+      {
+        pk: primaryKey({ columns: [table.projectId, table.userId] }),
+        userIdIndex: index("managers_userId_index").on(table.userId),
+      },
+    ];
   },
 );
 
@@ -117,13 +119,15 @@ export const codebooks = pgTable(
     name: varchar("name", { length: 256 }).notNull(),
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("updated").notNull().defaultNow(),
-    codebook: customJsonb("codebook").notNull().$type<Codebook>(),
+    codebook: jsonb("codebook").notNull().$type<Codebook>(),
   },
   (table) => {
-    return {
-      projectIds: index("codebook_project_ids").on(table.projectId),
-      unq: unique("unique_codebook_name").on(table.projectId, table.name),
-    };
+    return [
+      {
+        projectIds: index("codebook_project_ids").on(table.projectId),
+        unq: unique("unique_codebook_name").on(table.projectId, table.name),
+      },
+    ];
   },
 );
 
@@ -135,14 +139,16 @@ export const units = pgTable(
       .references(() => projects.id, { onDelete: "cascade" }),
     unitId: varchar("unit_id", { length: 256 }).notNull(),
     position: integer("position").notNull(),
-    data: customJsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
+    data: jsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("modified").notNull().defaultNow(),
   },
   (table) => {
-    return {
-      pk: primaryKey({ columns: [table.projectId, table.unitId] }),
-    };
+    return [
+      {
+        pk: primaryKey({ columns: [table.projectId, table.unitId] }),
+      },
+    ];
   },
 );
 
@@ -158,10 +164,12 @@ export const jobs = pgTable(
     deployed: boolean("deployed").notNull().default(false),
   },
   (table) => {
-    return {
-      projectIds: index("jobs_project_ids").on(table.projectId),
-      uniqueName: unique("unique_job_name").on(table.projectId, table.name),
-    };
+    return [
+      {
+        projectIds: index("jobs_project_ids").on(table.projectId),
+        uniqueName: unique("unique_job_name").on(table.projectId, table.name),
+      },
+    ];
   },
 );
 
@@ -184,13 +192,15 @@ export const jobBlocks = pgTable(
     codebookId: integer("codebook_id")
       .notNull()
       .references(() => codebooks.id),
-    rules: customJsonb("rules").notNull().default({}).$type<Rules>(),
-    units: customJsonb("units").notNull().default([]).$type<string[]>(),
+    rules: jsonb("rules").notNull().default({}).$type<Rules>(),
+    units: jsonb("units").notNull().default([]).$type<string[]>(),
   },
   (table) => {
-    return {
-      jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
-    };
+    return [
+      {
+        jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
+      },
+    ];
   },
 );
 
@@ -210,9 +220,11 @@ export const invitations = pgTable(
     access: text("access", { enum: ["only_authenticated", "only_anonymous", "user_decides"] }).notNull(),
   },
   (table) => {
-    return {
-      pk: primaryKey({ columns: [table.projectId, table.secret] }),
-    };
+    return [
+      {
+        pk: primaryKey({ columns: [table.projectId, table.secret] }),
+      },
+    ];
   },
 );
 
@@ -225,28 +237,31 @@ export const annotator = pgTable(
     userId: varchar("user_id", { length: 256 }).notNull(),
     email: varchar("email", { length: 256 }),
     // if created through an invitation, include any url parameters. These can be used for links (completion, screening, etc)
-    urlParams: customJsonb("url_params").notNull().$type<Record<string, string>>().default({}),
-    statistics: customJsonb("statistics").notNull().$type<JobsetAnnotatorStatistics>().default({}),
+    urlParams: jsonb("url_params").notNull().$type<Record<string, string>>().default({}),
+    statistics: jsonb("statistics").notNull().$type<JobsetAnnotatorStatistics>().default({}),
   },
   (table) => {
-    return {
-      jobIdx: index("annotator_project_idx").on(table.jobId),
-      userIdx: index("annotator_user_idx").on(table.userId),
-      uniqueUser: unique("unique_user").on(table.jobId, table.userId),
-    };
+    return [
+      {
+        jobIdx: index("annotator_project_idx").on(table.jobId),
+        userIdx: index("annotator_user_idx").on(table.userId),
+        uniqueUser: unique("unique_user").on(table.jobId, table.userId),
+      },
+    ];
   },
 );
 
 export const annotations = pgTable(
   "annotations",
   {
+    jobBlockId: integer("job_block_id").notNull(),
     annotatorId: integer("annotator_id").notNull(),
-    index: integer("index").notNull(),
-    unitId: integer("unit_id").notNull(),
+    unitId: integer("unit_id"), // can be null for job level annotations (e.g., survey questions)
 
-    preallocateTime: timestamp("preallocate_time"),
-    annotation: customJsonb("annotation").notNull().$type<AnnotationDictionary>(),
-    history: customJsonb("history").notNull().$type<AnnotationHistory[]>(),
+    index: integer("index"),
+
+    annotation: jsonb("annotation").notNull().$type<AnnotationDictionary>(),
+    history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
     status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED", "STOLEN"] })
       .$type<ServerUnitStatus>()
       .default("PREALLOCATED"),
@@ -261,9 +276,11 @@ export const annotations = pgTable(
     authenticated: boolean("authenticated").notNull(),
   },
   (table) => {
-    return {
-      pk: primaryKey({ columns: [table.annotatorId, table.index] }),
-      unitIds: index("annotations_unit_ids").on(table.unitId),
-    };
+    return [
+      {
+        pk: primaryKey({ columns: [table.unitId, table.annotatorId] }),
+        indexIdx: index("annotations_index_idx").on(table.annotatorId, table.index),
+      },
+    ];
   },
 );

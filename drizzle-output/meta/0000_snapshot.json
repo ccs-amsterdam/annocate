@@ -1,5 +1,5 @@
 {
-  "id": "8c3d3715-81c2-4202-b9db-aaa21356fe22",
+  "id": "0b45edf6-76cf-4a7a-9c09-9e3db6fa4945",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -8,14 +8,14 @@
       "name": "annotations",
       "schema": "",
       "columns": {
-        "annotator_id": {
-          "name": "annotator_id",
+        "job_block_id": {
+          "name": "job_block_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "index": {
-          "name": "index",
+        "annotator_id": {
+          "name": "annotator_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -24,11 +24,11 @@
           "name": "unit_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "preallocate_time": {
-          "name": "preallocate_time",
-          "type": "timestamp",
+        "index": {
+          "name": "index",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -64,34 +64,13 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "annotations_unit_ids": {
-          "name": "annotations_unit_ids",
-          "columns": [
-            {
-              "expression": "unit_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "annotations_annotator_id_index_pk": {
-          "name": "annotations_annotator_id_index_pk",
-          "columns": [
-            "annotator_id",
-            "index"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.annotator": {
       "name": "annotator",
@@ -109,14 +88,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "email": {
-          "name": "email",
+        "user_id": {
+          "name": "user_id",
           "type": "varchar(256)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "invitation_id": {
-          "name": "invitation_id",
+        "email": {
+          "name": "email",
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": false
@@ -136,36 +115,13 @@
           "default": "'{}'::jsonb"
         }
       },
-      "indexes": {
-        "annotator_project_idx": {
-          "name": "annotator_project_idx",
-          "columns": [
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "unique_user_invitation": {
-          "name": "unique_user_invitation",
-          "nullsNotDistinct": false,
-          "columns": [
-            "job_id",
-            "email",
-            "invitation_id"
-          ]
-        }
-      }
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.codebooks": {
       "name": "codebooks",
@@ -210,23 +166,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "codebook_project_ids": {
-          "name": "codebook_project_ids",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "codebooks_project_id_projects_id_fk": {
           "name": "codebooks_project_id_projects_id_fk",
@@ -243,16 +183,10 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "unique_codebook_name": {
-          "name": "unique_codebook_name",
-          "nullsNotDistinct": false,
-          "columns": [
-            "project_id",
-            "name"
-          ]
-        }
-      }
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.invitations": {
       "name": "invitations",
@@ -318,16 +252,11 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "invitations_project_id_id_pk": {
-          "name": "invitations_project_id_id_pk",
-          "columns": [
-            "project_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.job_blocks": {
       "name": "job_blocks",
@@ -390,23 +319,7 @@
           "default": "'[]'::jsonb"
         }
       },
-      "indexes": {
-        "job_blocks_job_id_idx": {
-          "name": "job_blocks_job_id_idx",
-          "columns": [
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "job_blocks_project_id_projects_id_fk": {
           "name": "job_blocks_project_id_projects_id_fk",
@@ -449,7 +362,10 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.jobs": {
       "name": "jobs",
@@ -488,23 +404,7 @@
           "default": false
         }
       },
-      "indexes": {
-        "jobs_project_ids": {
-          "name": "jobs_project_ids",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "jobs_project_id_projects_id_fk": {
           "name": "jobs_project_id_projects_id_fk",
@@ -521,16 +421,10 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "unique_job_name": {
-          "name": "unique_job_name",
-          "nullsNotDistinct": false,
-          "columns": [
-            "project_id",
-            "name"
-          ]
-        }
-      }
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.managers": {
       "name": "managers",
@@ -556,23 +450,7 @@
           "default": "'manager'"
         }
       },
-      "indexes": {
-        "managers_userId_index": {
-          "name": "managers_userId_index",
-          "columns": [
-            {
-              "expression": "user_uuid",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "managers_project_id_projects_id_fk": {
           "name": "managers_project_id_projects_id_fk",
@@ -601,16 +479,11 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "managers_project_id_user_uuid_pk": {
-          "name": "managers_project_id_user_uuid_pk",
-          "columns": [
-            "project_id",
-            "user_uuid"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.projects": {
       "name": "projects",
@@ -673,16 +546,10 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "unique_creator_name": {
-          "name": "unique_creator_name",
-          "nullsNotDistinct": false,
-          "columns": [
-            "creator_email",
-            "name"
-          ]
-        }
-      }
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.units": {
       "name": "units",
@@ -743,16 +610,11 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "units_project_id_unit_id_pk": {
-          "name": "units_project_id_unit_id_pk",
-          "columns": [
-            "project_id",
-            "unit_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {}
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.users": {
       "name": "users",
@@ -804,11 +666,18 @@
             "email"
           ]
         }
-      }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {},
   "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

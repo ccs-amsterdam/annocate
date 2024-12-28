@@ -1,5 +1,3 @@
-"use client";
-
 import { useCreateJobBlock, useJobBlock, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
 import {
   JobAnnotationBlockSchema,
@@ -46,7 +44,7 @@ export function CreateOrUpdateJobBlock({
 }: CreatJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
   const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, currentId);
-  const { data: current, isLoading } = useJobBlock(projectId, jobId, currentId);
+  const { data: current, isLoading, isPending } = useJobBlock(projectId, jobId, currentId);
 
   const schema = type === "survey" ? JobSurveyBlockSchema : JobAnnotationBlockSchema;
   const shape = schema.shape;
@@ -54,13 +52,12 @@ export function CreateOrUpdateJobBlock({
   const form = useForm<JobBlockCreate>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues(type, position, current),
-    disabled: currentId !== undefined && isLoading,
+    // disabled: currentId !== undefined && isLoading,
   });
 
   useEffect(() => {
-    if (current) {
-      form.reset(JobBlockCreateSchema.parse(current));
-    }
+    if (!current) return;
+    form.reset(JobBlockCreateSchema.parse(current));
   }, [current, form]);
 
   function onSubmit(values: JobBlockCreate) {
@@ -129,12 +126,10 @@ export function CreateOrUpdateJobBlock({
     );
   }
 
-  // if (currentId !== undefined && isLoading) return <Loading />;
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
-        <div className="grid grid-cols-[1fr,1fr] items-end  gap-3">
+        <div className="grid grid-cols-[1fr,1fr] items-end gap-3">
           <SelectCodebookFormField
             control={form.control}
             zType={shape.codebookId}
@@ -166,14 +161,14 @@ function defaultValues(type: "survey" | "annotation", position: number, current?
   if (type === "survey")
     return {
       type: "survey",
-      name: current?.name || null,
+      name: current?.name || undefined,
       codebookId: current?.codebookId || undefined,
       position: current?.position || position,
     };
   if (type === "annotation")
     return {
       type: "annotation",
-      name: current?.name || null,
+      name: current?.name || undefined,
       codebookId: current?.codebookId || undefined,
       position: current?.position || position,
       units: current?.units || [],

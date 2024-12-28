@@ -36,16 +36,16 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({ mutationCache, queryCache, defaultOptions }));
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <MiddlecatProvider bff="/api/bffAuth" fixedResource="api">
+    <MiddlecatProvider bff="/api/bffAuth" fixedResource="api">
+      <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <SandboxedProvider>
             <NuqsAdapter>{children}</NuqsAdapter>
           </SandboxedProvider>
         </TooltipProvider>
-      </MiddlecatProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </MiddlecatProvider>
   );
 }
 

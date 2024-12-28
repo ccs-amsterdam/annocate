@@ -14,12 +14,12 @@ import { Button } from "../ui/button";
 export default function Menu() {
   const params = useParams();
   const router = useRouter();
-  const { data: userDetails, isLoading } = useUserDetails();
+  const { data: userDetails, isLoading, isPending } = useUserDetails();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isPending) return;
     if (!userDetails) router.push("/");
-  }, [router, isLoading, userDetails]);
+  }, [router, isPending, userDetails]);
 
   function renderAdmin() {
     if (isLoading) return <Cog className="h-8 w-8 animate-spin-slow text-foreground/50" />;

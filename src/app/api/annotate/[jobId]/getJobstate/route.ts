@@ -1,4 +1,4 @@
-import { annotations, annotator, projects } from "@/drizzle/schema";
+import { annotations, annotator, jobBlocks, jobs, projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, or, and } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
@@ -24,7 +24,14 @@ export async function GET(req: NextRequest, props: { params: Promise<{ jobId: nu
       let deviceId = getDeviceId(cookieStore, params.jobId);
       const userId = getUserId(email, urlParams.userId, deviceId);
 
-      const jobState = await getOrCreateJobState(jobId, userId);
+      const { jobState, isNew } = await getOrCreateJobState(jobId, userId);
+
+      if (isNew) {
+        const { currentUnit, nTotal, nCoded } = await allocateJobUnits(jobState.jobId, jobState.userId);
+      }
+
+      // const surveyAnnotations = await db
+      // const blocks = await db.select().from()
 
       return { test: "this" };
     },
@@ -45,6 +52,30 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
   return "device:" + deviceId;
 }
 
+async function allocateJobUnits(jobId: number, userId: string) {
+  const blocks = await db
+    .select({
+      position: jobBlocks.position,
+      type: jobBlocks.type,
+      codebookId: jobBlocks.codebookId,
+      rules: jobBlocks.rules,
+      units: jobBlocks.units,
+      modified: jobs.modified,
+      deployed: jobs.deployed,
+    })
+    .from(jobBlocks)
+    .where(eq(jobBlocks.jobId, jobId))
+    .leftJoin(jobs, eq(jobs.projectId, projects.id))
+    .orderBy(jobBlocks.position);
+
+  db.transaction(async (tx) => {
+    for (let block of blocks) {
+    }
+  });
+
+  return { currentUnit: 0, nTotal: 0, nCoded: 0 };
+}
+
 async function getOrCreateJobState(jobId: number, userId: string) {
   const [ann] = await db
     .select()
@@ -55,13 +86,13 @@ async function getOrCreateJobState(jobId: number, userId: string) {
   if (ann) {
     // TODO: verify jobaccess
     // compute jobstate
-    return ann;
+    return { jobState: ann, isNew: false };
   }
 
   const [newAnn] = await db.insert(annotator).values({ jobId, userId }).returning();
   // TODO: verify jobaccess
   // allocate units and return jobstate
-  return newAnn;
+  return { jobState: newAnn, isNew: true };
 }
 
 async function computeJobState(annotatorId: number) {
