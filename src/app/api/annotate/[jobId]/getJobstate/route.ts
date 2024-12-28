@@ -1,6 +1,6 @@
 import { annotations, annotator, jobBlocks, jobs, projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, and, sql } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
@@ -70,6 +70,62 @@ async function allocateJobUnits(jobId: number, userId: string) {
 
   db.transaction(async (tx) => {
     for (let block of blocks) {
+    }
+  });
+
+  return { currentUnit: 0, nTotal: 0, nCoded: 0 };
+}
+
+interface Allocation {
+  jobBlockId: number;
+  annotatorId: number;
+  unitId: number | null;
+  index: number;
+}
+
+async function reAllocateJobUnits(jobId: number, annotatorId: number) {
+  const blocks = await db
+    .select({
+      position: jobBlocks.position,
+      type: jobBlocks.type,
+      codebookId: jobBlocks.codebookId,
+      rules: jobBlocks.rules,
+      units: jobBlocks.units,
+      modified: jobs.modified,
+      deployed: jobs.deployed,
+      unitIds: sql<string[] | null>`ARRAY_AGG(${annotations.unitId})`.as("unitIds"),
+    })
+    .from(jobBlocks)
+    .where(and(eq(annotations.annotatorId, annotatorId), eq(jobBlocks.jobId, jobId)))
+    .leftJoin(jobs, eq(jobs.projectId, projects.id))
+    .leftJoin(annotations, eq(annotations.jobBlockId, jobBlocks.id))
+    .groupBy(jobBlocks.id)
+    .orderBy(jobBlocks.position, annotations.index);
+
+  db.transaction(async (tx) => {
+    tx.update(annotations).set({ index: null }).where(eq(annotations.annotatorId, annotatorId));
+    const allocations: Allocation[] = [];
+    let index = 0;
+    for (let block of blocks) {
+      let nTotal = block.units.length;
+      if (block.rules.maxUnitsPerCoder) nTotal = Math.min(nTotal, block.rules.maxUnitsPerCoder);
+
+      // TODO: here implement the logic for allocating units
+
+      // const nUnits = block.units.length;
+      // const nCoded = block.unitIds?.length || 0;
+      // const nRemaining = nUnits - nCoded;
+
+      // const nToAllocate = Math.min(nRemaining, 10);
+      // const unitIds = block.unitIds.slice(0, nToAllocate);
+      // const indexes = Array.from({ length: nToAllocate }, (_, i) => nCoded + i);
+      // const allocation = unitIds.map((unitId, i) => ({
+      //   jobBlockId: block.id,
+      //   annotatorId,
+      //   unitId,
+      //   index: indexes[i],
+      // }));
+      // allocations.push(...allocation);
     }
   });
 

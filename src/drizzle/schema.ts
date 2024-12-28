@@ -279,7 +279,7 @@ export const annotations = pgTable(
     return [
       {
         pk: primaryKey({ columns: [table.unitId, table.annotatorId] }),
-        indexIdx: index("annotations_index_idx").on(table.annotatorId, table.index),
+        annotatorIndexIdx: index("annotations_annotator_index_idx").on(table.annotatorId, table.index),
       },
     ];
   },
