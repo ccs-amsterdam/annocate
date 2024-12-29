@@ -1,7 +1,15 @@
 
 
-RENAME units so that in the annotatorIndex the indices are jobSessionIndex and not unitIndex. 
-Reserve the name units exclusively for units in annotation jobs. 
+EFFICIENT UNIT MANAGEMENT
+
+Make hook that fetches ALL units for a project, and stores them in indexedDB.
+When the hook is mounted, first only get list of unit ids and hashes, to check whether indexedDB is still in sync
+If not, update the unit ids that need updating.
+
+
+
+RENAME units so that in the annotatorIndex the indices are jobSessionIndex and not unitIndex.
+Reserve the name units exclusively for units in annotation jobs.
 
 Make sub table for annotations in DB
 

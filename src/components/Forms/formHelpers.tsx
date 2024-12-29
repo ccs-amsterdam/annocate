@@ -130,7 +130,7 @@ export function NumberFormField<T extends FieldValues>({
                   min={min}
                   max={max}
                   placeholder={openAPI.example}
-                  value={field.value === null ? "" : field.value}
+                  value={field.value == null ? "" : field.value}
                   onChange={(e) => {
                     const value = e.target.value;
                     field.onChange(Number(value));
@@ -287,7 +287,9 @@ export function DropdownFormField<T extends FieldValues>({
                 {values.map((value) => (
                   <DropdownMenuItem
                     key={value.value}
-                    onClick={() => field.onChange(value.value)}
+                    onClick={() => {
+                      field.onChange(value.value);
+                    }}
                     className="flex flex-col items-start p-1"
                   >
                     <div className="font-bold">{value.label}</div>

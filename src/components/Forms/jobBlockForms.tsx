@@ -1,5 +1,6 @@
 import { useCreateJobBlock, useJobBlock, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
 import {
+  distributionModeOptions,
   JobAnnotationBlockSchema,
   JobBlockCreateSchema,
   JobBlockUpdateSchema,
@@ -14,6 +15,7 @@ import { Button } from "../ui/button";
 import { Form, FormMessage } from "../ui/form";
 import {
   BooleanFormField,
+  DropdownFormField,
   NumberFormField,
   SelectCodebookFormField,
   TextAreaFormField,
@@ -55,6 +57,8 @@ export function CreateOrUpdateJobBlock({
     // disabled: currentId !== undefined && isLoading,
   });
 
+  const mode = form.watch("rules.mode");
+
   useEffect(() => {
     if (!current) return;
     form.reset(JobBlockCreateSchema.parse(current));
@@ -87,7 +91,7 @@ export function CreateOrUpdateJobBlock({
     const shape = JobAnnotationBlockSchema.shape;
     const rulesShape = shape.rules.shape;
     return (
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid min-h-80 grid-cols-1 gap-3 md:grid-cols-2">
         <div>
           <TextAreaFormField
             control={form.control}
@@ -99,28 +103,42 @@ export function CreateOrUpdateJobBlock({
           />
         </div>
         <div className="flex flex-col gap-3">
-          <NumberFormField
+          <DropdownFormField
             control={form.control}
-            min={1}
-            zType={rulesShape.maxCodersPerUnit}
-            name="rules.maxCodersPerUnit"
-            clearable
+            values={distributionModeOptions}
+            zType={rulesShape.mode}
+            name="rules.mode"
           />
-          <NumberFormField
-            control={form.control}
-            min={1}
-            zType={rulesShape.maxUnitsPerCoder}
-            name="rules.maxUnitsPerCoder"
-            clearable
-          />
-          <NumberFormField
-            control={form.control}
-            min={1}
-            zType={rulesShape.overlapUnits}
-            name="rules.overlapUnits"
-            clearable
-          />
-          <BooleanFormField control={form.control} zType={rulesShape.randomizeUnits} name="rules.randomizeUnits" />
+          {mode === "crowd" ? (
+            <NumberFormField
+              control={form.control}
+              min={1}
+              zType={rulesShape.maxCodersPerUnit}
+              name="rules.maxCodersPerUnit"
+              clearable
+            />
+          ) : null}
+          {mode === "expert" || mode === "crowd" ? (
+            <NumberFormField
+              control={form.control}
+              min={1}
+              zType={rulesShape.maxUnitsPerCoder}
+              name="rules.maxUnitsPerCoder"
+              clearable
+            />
+          ) : null}
+          {mode === "expert" || mode === "crowd" ? (
+            <NumberFormField
+              control={form.control}
+              min={1}
+              zType={rulesShape.overlapUnits}
+              name="rules.overlapUnits"
+              clearable
+            />
+          ) : null}
+          {mode === "fixed" || mode === "expert" ? (
+            <BooleanFormField control={form.control} zType={rulesShape.randomizeUnits} name="rules.randomizeUnits" />
+          ) : null}
         </div>
       </div>
     );
@@ -172,7 +190,7 @@ function defaultValues(type: "survey" | "annotation", position: number, current?
       codebookId: current?.codebookId || undefined,
       position: current?.position || position,
       units: current?.units || [],
-      rules: current?.rules || { randomizeUnits: true },
+      rules: current?.rules || { mode: "expert", randomizeUnits: true },
     };
   throw new Error("Invalid type");
 }

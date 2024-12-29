@@ -1,6 +1,6 @@
 import { annotations, annotator, jobBlocks, jobs, projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
-import { eq, or, and, sql } from "drizzle-orm";
+import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
@@ -12,7 +12,7 @@ import {
 } from "../schemas";
 import { cookies } from "next/headers";
 import { getDeviceId } from "@/functions/getDeviceId";
-import { JobsetAnnotatorStatistics } from "@/app/types";
+import { JobsetAnnotatorStatistics, Rules } from "@/app/types";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ jobId: number }> }) {
   const params = await props.params;
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ jobId: nu
       let deviceId = getDeviceId(cookieStore, params.jobId);
       const userId = getUserId(email, urlParams.userId, deviceId);
 
-      const { jobState, isNew } = await getOrCreateJobState(jobId, userId);
+      const { jobState, isNew } = await getOrCreateJobState(jobId, userId, urlParams);
 
       if (isNew) {
         const { currentUnit, nTotal, nCoded } = await allocateJobUnits(jobState.jobId, jobState.userId);
@@ -81,11 +81,13 @@ interface Allocation {
   annotatorId: number;
   unitId: number | null;
   index: number;
+  isSurvey?: boolean;
 }
 
 async function reAllocateJobUnits(jobId: number, annotatorId: number) {
   const blocks = await db
     .select({
+      id: jobBlocks.id,
       position: jobBlocks.position,
       type: jobBlocks.type,
       codebookId: jobBlocks.codebookId,
@@ -106,8 +108,22 @@ async function reAllocateJobUnits(jobId: number, annotatorId: number) {
     tx.update(annotations).set({ index: null }).where(eq(annotations.annotatorId, annotatorId));
     const allocations: Allocation[] = [];
     let index = 0;
+
     for (let block of blocks) {
+      if (block.type === "survey") {
+        allocations.push({
+          jobBlockId: block.id,
+          annotatorId,
+          unitId: null,
+          index: index++,
+          isSurvey: true,
+        });
+      }
+
       let nTotal = block.units.length;
+
+      const overlapUnits = block.rules.overlapUnits ? await getOverlapUnits(block.id, block.rules.overlapUnits) : [];
+
       if (block.rules.maxUnitsPerCoder) nTotal = Math.min(nTotal, block.rules.maxUnitsPerCoder);
 
       // TODO: here implement the logic for allocating units
@@ -132,7 +148,34 @@ async function reAllocateJobUnits(jobId: number, annotatorId: number) {
   return { currentUnit: 0, nTotal: 0, nCoded: 0 };
 }
 
-async function getOrCreateJobState(jobId: number, userId: string) {
+async function prepareUnitAllocation(blockId: number, units: string[], rules: Rules) {
+  if (rules.mode === "fixed") {
+  }
+  if (rules.mode === "expert") {
+    const { maxCodersPerUnit, randomizeUnits } = rules;
+    const overlapUnits = rules.overlapUnits ? await getOverlapUnits(blockId, rules.overlapUnits) : [];
+  }
+  if (rules.mode === "crowd") {
+    const { maxCodersPerUnit, maxUnitsPerCoder } = rules;
+    const overlapUnits = rules.overlapUnits ? await getOverlapUnits(blockId, rules.overlapUnits) : [];
+  }
+}
+
+async function getOverlapUnits(jobBlockId: number, n: number) {
+  const alreadyAssigned = await db
+    .selectDistinct({ unitId: annotations.unitId })
+    .from(annotations)
+    .where(and(eq(annotations.jobBlockId, jobBlockId), eq(annotations.isOverlap, true), isNotNull(annotations.unitId)))
+    .limit(n);
+
+  return alreadyAssigned.map((row) => row.unitId);
+}
+
+async function getOrCreateJobState(
+  jobId: number,
+  userId: string,
+  urlParams: Record<string, string | number> | undefined,
+) {
   const [ann] = await db
     .select()
     .from(annotator)
@@ -145,7 +188,12 @@ async function getOrCreateJobState(jobId: number, userId: string) {
     return { jobState: ann, isNew: false };
   }
 
-  const [newAnn] = await db.insert(annotator).values({ jobId, userId }).returning();
+  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+
+  const [newAnn] = await db
+    .insert(annotator)
+    .values({ projectId: job.projectId, jobId, userId, urlParams })
+    .returning();
   // TODO: verify jobaccess
   // allocate units and return jobstate
   return { jobState: newAnn, isNew: true };

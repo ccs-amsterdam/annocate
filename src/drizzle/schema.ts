@@ -232,12 +232,15 @@ export const annotator = pgTable(
   "annotator",
   {
     id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id), // this is to avoid losing annotations if job is deleted
     jobId: integer("job_id").notNull(),
     // userId can be email:{email}, user:{from url params} or device:{random device id}
     userId: varchar("user_id", { length: 256 }).notNull(),
-    email: varchar("email", { length: 256 }),
+
     // if created through an invitation, include any url parameters. These can be used for links (completion, screening, etc)
-    urlParams: jsonb("url_params").notNull().$type<Record<string, string>>().default({}),
+    urlParams: jsonb("url_params").notNull().$type<Record<string, string | number>>().default({}),
     statistics: jsonb("statistics").notNull().$type<JobsetAnnotatorStatistics>().default({}),
   },
   (table) => {
@@ -245,6 +248,7 @@ export const annotator = pgTable(
       {
         jobIdx: index("annotator_project_idx").on(table.jobId),
         userIdx: index("annotator_user_idx").on(table.userId),
+        projectIdx: index("annotator_project_idx").on(table.projectId),
         uniqueUser: unique("unique_user").on(table.jobId, table.userId),
       },
     ];
@@ -255,7 +259,9 @@ export const annotations = pgTable(
   "annotations",
   {
     jobBlockId: integer("job_block_id").notNull(),
-    annotatorId: integer("annotator_id").notNull(),
+    annotatorId: integer("annotator_id")
+      .notNull()
+      .references(() => annotator.id, { onDelete: "cascade" }),
     unitId: integer("unit_id"), // can be null for job level annotations (e.g., survey questions)
 
     index: integer("index"),
@@ -266,19 +272,23 @@ export const annotations = pgTable(
       .$type<ServerUnitStatus>()
       .default("PREALLOCATED"),
 
-    // We register the device id for cases where we want extra privacy security.
+    // We register the device id and email for cases where we want extra privacy security.
     // We store a random device ID in an httponly cookie.
-    // If the user is not authenticated, and the device id doesnt exist or match, then
-    // all annotations that were made (with a different device) will be invisible and
+    // If both the email and deviceId don't exist or match, then
+    // all annotations that were made will be invisible and
     // immutable. This way, if a user changes devices, they can still continue with the job,
     // but if their login links somehow leaks, it doesn't expose their annotations
     deviceId: varchar("device_id", { length: 64 }),
-    authenticated: boolean("authenticated").notNull(),
+    email: varchar("email", { length: 256 }),
+
+    isOverlap: boolean("is_overlap").notNull().default(false),
+    isSurvey: boolean("is_survey").notNull().default(false),
+    // isGold: boolean("is_gold").notNull().default(false),
   },
   (table) => {
     return [
       {
-        pk: primaryKey({ columns: [table.unitId, table.annotatorId] }),
+        pk: primaryKey({ columns: [table.jobBlockId, table.annotatorId, table.unitId] }),
         annotatorIndexIdx: index("annotations_annotator_index_idx").on(table.annotatorId, table.index),
       },
     ];

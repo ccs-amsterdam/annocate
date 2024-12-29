@@ -103,10 +103,11 @@ export const SurveyAnnotationSchema = z.object({
 });
 export const SurveyAnnotationsSchema = z.record(z.string(), SurveyAnnotationSchema);
 
-export const GetJobStateParamsSchema = z.object({
-  userId: z.string().optional(),
-  params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
-});
+export const GetJobStateParamsSchema = z
+  .object({
+    userId: z.string().optional(),
+  })
+  .catchall(z.union([z.string(), z.number()]));
 
 export const GetJobStateResponseSchema = z.object({
   surveyAnnotations: SurveyAnnotationsSchema,
