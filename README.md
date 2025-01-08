@@ -29,10 +29,12 @@ Set environment variables in .env.local
 DATABASE_URL=postgresql://devuser:devpw@localhost:5432/annocate
 TEST_DATABASE_URL=postgresql://devuser:devpw@localhost:5432/annocate_test
 ANNOCATE_URL=http://localhost:3000
-SECRET_KEY=a-cryptographic-secret-key
+SECRET_KEY=[a 256 bit key in base64] (openssl rand -base64 32)
 MIDDLECAT_URL=https://middlecat.net
 SUPERADMIN=your_email_address
 ```
+
+
 
 You can also set MIDDLECAT_URL to "DEVMODE" to skip Middlecat. Off course, this should only be used for development, as it turns of all authentication
 If you're hosting serverless, we recommend using Neon.tech for the postgres database. If you use a Neon Database URL it will automatically use the right driver.

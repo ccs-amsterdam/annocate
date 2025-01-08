@@ -1,5 +1,5 @@
 {
-  "id": "0b45edf6-76cf-4a7a-9c09-9e3db6fa4945",
+  "id": "ace984aa-a633-44fc-9037-3f7e48cc9b14",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -57,15 +57,43 @@
           "primaryKey": false,
           "notNull": false
         },
-        "authenticated": {
-          "name": "authenticated",
+        "email": {
+          "name": "email",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_overlap": {
+          "name": "is_overlap",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": false
+        },
+        "is_survey": {
+          "name": "is_survey",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "annotations_annotator_id_annotator_id_fk": {
+          "name": "annotations_annotator_id_annotator_id_fk",
+          "tableFrom": "annotations",
+          "tableTo": "annotator",
+          "columnsFrom": [
+            "annotator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -82,6 +110,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "job_id": {
           "name": "job_id",
           "type": "integer",
@@ -93,12 +127,6 @@
           "type": "varchar(256)",
           "primaryKey": false,
           "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": false
         },
         "url_params": {
           "name": "url_params",
@@ -116,7 +144,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "annotator_project_id_projects_id_fk": {
+          "name": "annotator_project_id_projects_id_fk",
+          "tableFrom": "annotator",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

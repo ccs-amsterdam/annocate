@@ -7,14 +7,16 @@ CREATE TABLE "annotations" (
 	"history" jsonb NOT NULL,
 	"status" text DEFAULT 'PREALLOCATED',
 	"device_id" varchar(64),
-	"authenticated" boolean NOT NULL
+	"email" varchar(256),
+	"is_overlap" boolean DEFAULT false NOT NULL,
+	"is_survey" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "annotator" (
 	"id" serial PRIMARY KEY NOT NULL,
+	"project_id" integer NOT NULL,
 	"job_id" integer NOT NULL,
 	"user_id" varchar(256) NOT NULL,
-	"email" varchar(256),
 	"url_params" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"statistics" jsonb DEFAULT '{}'::jsonb NOT NULL
 );
@@ -91,6 +93,8 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
+ALTER TABLE "annotations" ADD CONSTRAINT "annotations_annotator_id_annotator_id_fk" FOREIGN KEY ("annotator_id") REFERENCES "public"."annotator"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "annotator" ADD CONSTRAINT "annotator_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "codebooks" ADD CONSTRAINT "codebooks_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

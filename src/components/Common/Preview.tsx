@@ -2,26 +2,20 @@ import { Annotation, Codebook, GetJobState, Job, Layout, Unit, UnitData } from "
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AnnotationInterface } from "../AnnotationInterface/AnnotationInterface";
-import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import JobServerPreview, { PreviewData } from "../JobServers/JobServerPreview";
 import { Slider } from "../ui/slider";
 import { Textarea } from "../ui/textarea";
-import { useSearchParams } from "next/navigation";
-import { usePreviewUnit } from "@/app/api/projects/[projectId]/units/query";
 import { Button } from "../ui/button";
 import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
 import { Loading } from "../ui/loader";
 import { Label } from "@radix-ui/react-dropdown-menu";
 import { DropdownMenu, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { parseAsInteger, useQueryState } from "nuqs";
-import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
-import { parse } from "path";
 import { SimpleDropdown } from "../ui/simpleDropdown";
-import { useProject } from "@/app/api/projects/query";
 import { CodebookPreview } from "@/app/projects/[projectId]/jobs/[jobId]/design/page";
 import React from "react";
+import { useProject } from "@/app/api/projects/query";
 
 interface Props {
   projectId: number;
@@ -70,7 +64,7 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
   if (!jobServer) return null;
 
   return (
-    <div className="mx-auto mt-10 flex  flex-col items-center pb-4">
+    <div className="mx-auto mt-10 flex flex-col items-center pb-4">
       <div className="grid w-full max-w-60 gap-6">
         <PreviewSize size={size} setSize={setSize} />
       </div>
@@ -98,7 +92,7 @@ export function PreviewWindow({
     <div className="flex flex-wrap items-start justify-center gap-6">
       <div
         tabIndex={0}
-        className={`mt-6 max-w-full overflow-hidden rounded-lg   border border-foreground/50   ${focus ? " ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`mt-6 max-w-full overflow-hidden rounded-lg border border-foreground/50 ${focus ? "ring-4 ring-secondary ring-offset-2" : ""}`}
         style={{ minHeight: size.height + "px", height: size.height + "px", width: size.width + "px" }}
         onClick={(e) => {
           e.currentTarget.focus();
@@ -109,7 +103,7 @@ export function PreviewWindow({
         <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
       </div>
       <div
-        className=" flex max-w-full flex-col gap-3 pt-6"
+        className="flex max-w-full flex-col gap-3 pt-6"
         style={{ minHeight: size.height + "px", height: size.height + 24 + "px", width: size.width + "px" }}
       >
         <PreviewDataWindow previewData={previewData} />
@@ -125,10 +119,10 @@ function PreviewDataWindow({ previewData }: { previewData: PreviewData | null })
   if (!previewData) return null;
   const isSurvey = previewData.unit?.type === "survey";
   return (
-    <div className="flex max-h-full flex-col  overflow-auto rounded">
+    <div className="flex max-h-full flex-col overflow-auto rounded">
       <div className={`${isSurvey ? "hidden" : ""} p-3`}>
         <h3 className="mb-3">Unit data</h3>
-        <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
+        <div className="grid grid-cols-[min-content,1fr] gap-x-3">
           {Object.entries(previewData.unitData?.data || {}).map(([column, value]) => {
             return (
               <React.Fragment key={column}>
@@ -141,7 +135,7 @@ function PreviewDataWindow({ previewData }: { previewData: PreviewData | null })
       </div>
       <div className="p-3">
         <h3 className="mb-3">Survey answers</h3>
-        <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
+        <div className="grid grid-cols-[min-content,1fr] gap-x-3">
           {Object.entries(previewData.surveyAnnotations || {}).map(([variable, values]) => {
             return (
               <React.Fragment key={variable}>
@@ -154,9 +148,9 @@ function PreviewDataWindow({ previewData }: { previewData: PreviewData | null })
           })}
         </div>
       </div>
-      <div className={`${isSurvey ? "hidden" : ""} p-3 `}>
+      <div className={`${isSurvey ? "hidden" : ""} p-3`}>
         <h3 className="mb-3">Current unit Annotations</h3>
-        <div className="grid grid-cols-[min-content,1fr] gap-x-3 ">
+        <div className="grid grid-cols-[min-content,1fr] gap-x-3">
           {(previewData.unit?.annotations || []).map((annotation) => {
             return (
               <React.Fragment key={annotation.id}>
