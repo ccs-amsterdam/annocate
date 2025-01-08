@@ -43,7 +43,7 @@ export const distributionModeOptions: FormOptions[] = [
 ];
 
 export const JobAnnotationBlockRulesSchema = z.object({
-  mode: z.enum(distributionMode).openapi({
+  mode: z.enum(distributionMode).nullish().openapi({
     title: "Distribution mode",
     description:
       "Fixed: Every annotator gets the same units, either in the specified order or randomized. Expert: Every unit is assigned to a single annotator (except for overlap units). Crowd: Units are assigned to multiple annotators",

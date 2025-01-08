@@ -13,15 +13,17 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
   return createTableGet({
     req,
     tableFunction: (email, urlParams) => {
-      return db
-        .select({
-          id: units.unitId,
-          data: units.data,
-        })
-        .from(units)
-        .where(eq(units.projectId, params.projectId))
-        .groupBy(units.projectId, units.unitId)
-        .as("baseQuery");
+      return (
+        db
+          .select({
+            id: units.unitId,
+            data: units.data,
+          })
+          .from(units)
+          .where(eq(units.projectId, params.projectId))
+          // .groupBy(units.projectId, units.unitId, units.data)
+          .as("baseQuery")
+      );
     },
     paramsSchema: UnitDataTableParamsSchema,
     responseSchema: UnitDataResponseSchema,
