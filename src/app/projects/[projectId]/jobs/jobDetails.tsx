@@ -1,5 +1,5 @@
 import { useDeleteJobBlock, useJob, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/query";
-import { JobBlockMeta } from "@/app/types";
+import { Job, JobBlockMeta } from "@/app/types";
 import { MoveItemInArray } from "@/components/Forms/formHelpers";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ interface BlockFormProps {
   projectId: number;
   jobId: number;
   position: number;
-  type: "survey" | "annotation";
+  phase: "preSurvey" | "postSurvey" | "annotate";
   current?: JobBlockMeta;
 }
 
@@ -35,32 +35,18 @@ export function JobDetails({ projectId, jobId }: Props) {
   function dialogHeader() {
     if (!blockForm) return "...";
     const what = blockForm.current ? "Update" : "Add";
-    const type = blockForm.type === "survey" ? "survey" : "annotation task";
+    let type = "Annotate";
+    if (blockForm.phase === "preSurvey") type = "Pre-survey";
+    if (blockForm.phase === "postSurvey") type = "Post-survey";
     return `${what} ${type}`;
   }
 
   return (
     <div>
       <div></div>
-      <div>
-        {job.blocks.map((block, i) => {
-          return (
-            <React.Fragment key={block.id}>
-              <AddBlockHere projectId={projectId} jobId={jobId} position={i} setBlockForm={setBlockForm} />
-              <JobBlockItem
-                key={block.id}
-                block={block}
-                position={i}
-                projectId={projectId}
-                jobId={jobId}
-                n={job.blocks.length}
-                setBlockForm={setBlockForm}
-              />
-            </React.Fragment>
-          );
-        })}
-        <AddBlockHere projectId={projectId} jobId={jobId} position={job.blocks.length} setBlockForm={setBlockForm} />
-      </div>
+      <PhaseBlocks job={job} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="preSurvey" />
+      <PhaseBlocks job={job} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="annotate" />
+      <PhaseBlocks job={job} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="postSurvey" />
       <SimpleDialog
         className="max-h-full"
         header={dialogHeader()}
@@ -79,6 +65,49 @@ export function JobDetails({ projectId, jobId }: Props) {
   );
 }
 
+interface PhaseBlocksProps {
+  job: Job;
+  projectId: number;
+  jobId: number;
+  setBlockForm: (props: BlockFormProps) => void;
+  phase: "preSurvey" | "postSurvey" | "annotate";
+}
+
+function PhaseBlocks({ job, projectId, jobId, setBlockForm, phase }: PhaseBlocksProps) {
+  let label = "Annotate";
+  if (phase === "preSurvey") label = "Pre-survey";
+  if (phase === "postSurvey") label = "Post-survey";
+
+  return (
+    <div>
+      <h4>{label}</h4>
+      {job.blocks.map((block, i) => {
+        return (
+          <React.Fragment key={block.id}>
+            <AddBlockHere projectId={projectId} jobId={jobId} phase={phase} position={i} setBlockForm={setBlockForm} />
+            <JobBlockItem
+              key={block.id}
+              block={block}
+              position={i}
+              projectId={projectId}
+              jobId={jobId}
+              n={job.blocks.length}
+              setBlockForm={setBlockForm}
+            />
+          </React.Fragment>
+        );
+      })}
+      <AddBlockHere
+        projectId={projectId}
+        jobId={jobId}
+        phase={phase}
+        position={job.blocks.length}
+        setBlockForm={setBlockForm}
+      />
+    </div>
+  );
+}
+
 interface BlockProps {
   block: JobBlockMeta;
   position: number;
@@ -92,14 +121,6 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
   const { mutateAsync } = useUpdateJobBlock(projectId, jobId, block.id);
   const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
   const router = useRouter();
-
-  function showDetails() {
-    const s = block.nVariables > 1 ? "s" : "";
-    if (block.type === "survey") {
-      return `${block.nVariables} variable${s}`;
-    }
-    return `${block.nVariables} variable${s}, ${block.nUnits || "all"} units`;
-  }
 
   return (
     <div className="flex animate-fade-in items-center gap-3 pr-16">
@@ -118,20 +139,18 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
         className="max-w-full cursor-pointer overflow-hidden rounded px-3 hover:bg-foreground/10"
         onClick={() => router.push(`/projects/${projectId}/jobs/${jobId}/design?blockId=${block.id}`)}
       >
-        <h4 className="m-0 mt-2 leading-none">{block.name || block.type}</h4>
-        <div className="mt-1  leading-5">
+        <div className="mt-1 leading-5">
           <div className="grid grid-cols-[15px,1fr] items-center gap-2">
-            <Book className=" h-4 w-4 " />
-            <div className=" overflow-hidden text-ellipsis whitespace-nowrap">{block.codebookName}</div>
+            <Book className="h-4 w-4" />
+            <div className="overflow-hidden text-ellipsis whitespace-nowrap">{block.codebookName}</div>
           </div>
-          <span className="italic text-foreground/60">{showDetails()}</span>
         </div>
       </div>
-      <div className="ml-auto flex ">
+      <div className="ml-auto flex">
         <Button
           size="icon"
           variant="ghost"
-          onClick={() => setBlockForm({ projectId, jobId, position, type: block.type, current: block })}
+          onClick={() => setBlockForm({ projectId, jobId, position, phase: block.phase, current: block })}
         >
           <Edit className="h-5 w-5" />
         </Button>
@@ -155,43 +174,26 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
 interface AddBlockProps {
   projectId: number;
   jobId: number;
+  phase: "preSurvey" | "postSurvey" | "annotate";
   position: number;
   setBlockForm: (props: BlockFormProps) => void;
 }
 
-function AddBlockHere({ projectId, jobId, position, setBlockForm }: AddBlockProps) {
+function AddBlockHere({ projectId, jobId, phase, position, setBlockForm }: AddBlockProps) {
   const [open, setOpen] = useState(false);
-
-  function onSelect(type: "survey" | "annotation") {
-    setBlockForm({ projectId, jobId, position, type });
-    setOpen(false);
-  }
 
   return (
     <div className="flex items-center gap-3">
       <div className="w-full border-b-2 border-secondary/50"></div>
-      <SimplePopover
-        open={open}
-        setOpen={setOpen}
-        header="Select block type"
-        trigger={
-          <Button variant="secondary" className="h-8 w-8 rounded-full text-lg">
-            +
-          </Button>
-        }
+      <Button
+        variant="secondary"
+        className="h-8 w-8 rounded-full text-lg"
+        onClick={() => {
+          setBlockForm({ projectId, jobId, position, phase });
+        }}
       >
-        <div
-          className="flex flex-col
-        gap-2"
-        >
-          <Button variant="secondary" onClick={() => onSelect("survey")}>
-            Survey
-          </Button>
-          <Button variant="secondary" onClick={() => onSelect("annotation")}>
-            Annotation task
-          </Button>
-        </div>
-      </SimplePopover>
+        +
+      </Button>
     </div>
   );
 }

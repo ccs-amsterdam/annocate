@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
           name: projects.name,
           created: projects.created,
           creator: projects.creator,
-          nUnits: count(units.unitId),
+          nUnits: count(units.id),
         })
         .from(projects)
         .leftJoin(units, eq(projects.id, units.projectId))

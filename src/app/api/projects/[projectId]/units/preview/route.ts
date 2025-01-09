@@ -1,6 +1,6 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet } from "@/app/api/routeHelpers";
-import { jobBlocks, units } from "@/drizzle/schema";
+import { jobBlocks, jobBlockSets, jobs, jobSetUnits, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
@@ -14,35 +14,23 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
     selectFunction: async (email, urlParams) => {
       const i = Number(urlParams.position - 1);
 
-      if (urlParams.blockId !== undefined) {
-        const sq = db
-          .select({
-            projectId: jobBlocks.projectId,
-            getId: sql`${jobBlocks.units}->>${rawInt(i)}`.as("getId"),
-          })
-          .from(jobBlocks)
-          .where(and(eq(jobBlocks.projectId, projectId), eq(jobBlocks.id, urlParams.blockId)))
-          .as("sq");
-
-        const [unit] = await db
-          .select({
-            id: units.unitId,
-            data: units.data,
-          })
-          .from(units)
-          .innerJoin(sq, and(eq(units.projectId, sq.projectId), eq(units.unitId, sq.getId)));
-
-        return unit;
-      }
-
       const [unit] = await db
         .select({
-          id: units.unitId,
+          id: units.externalId,
           data: units.data,
         })
-        .from(units)
-        .where(and(eq(units.projectId, projectId), eq(units.position, i)));
-
+        .from(jobBlocks)
+        .leftJoin(jobBlockSets, eq(jobBlockSets.jobBlockId, jobBlocks.id))
+        .leftJoin(jobs, eq(jobs.id, jobBlocks.jobId))
+        .leftJoin(jobSetUnits, eq(jobSetUnits.jobSetId, jobBlockSets.jobSetId))
+        .leftJoin(units, eq(units.id, jobSetUnits.unitId))
+        .where(
+          and(
+            eq(jobs.projectId, projectId),
+            eq(jobBlockSets.jobSetId, urlParams.jobSetId),
+            eq(jobSetUnits.position, i),
+          ),
+        );
       return unit;
     },
     req,

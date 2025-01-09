@@ -2,7 +2,7 @@ import { jobBlocks, units } from "@/drizzle/schema";
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import db from "@/drizzle/drizzle";
 
-export async function reindexPositions(tx: any, jobId: number): Promise<void> {
+export async function reindexJobBlockPositions(tx: any, jobId: number): Promise<void> {
   await tx.execute(sql`
     WITH new_position AS
     (

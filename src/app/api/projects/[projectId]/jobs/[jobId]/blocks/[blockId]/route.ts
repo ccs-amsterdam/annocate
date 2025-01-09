@@ -6,7 +6,7 @@ import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobBlockResponseSchema, JobBlockUpdateSchema } from "../../../schemas";
-import { checkUnitIds, reindexPositions } from "../helpers";
+import { checkUnitIds, reindexJobBlockPositions } from "../helpers";
 
 export async function GET(
   req: NextRequest,
@@ -75,7 +75,7 @@ export async function POST(
 
         if (body.position !== undefined) {
           // if position changed, reindex positions
-          await reindexPositions(tx, params.jobId);
+          await reindexJobBlockPositions(tx, params.jobId);
         }
 
         return newJobBlock;
@@ -102,7 +102,7 @@ export async function DELETE(
         await tx
           .delete(jobBlocks)
           .where(and(eq(jobBlocks.projectId, params.projectId), eq(jobBlocks.id, params.blockId)));
-        await reindexPositions(tx, params.jobId);
+        await reindexJobBlockPositions(tx, params.jobId);
         return { success: true };
       });
     },

@@ -7,7 +7,7 @@ import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { JobBlockCreateSchema } from "../../schemas";
 import { PgDialect, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
 import { check } from "drizzle-orm/mysql-core";
-import { checkUnitIds, reindexPositions } from "./helpers";
+import { checkUnitIds, reindexJobBlockPositions } from "./helpers";
 
 export async function POST(req: Request, props: { params: Promise<{ projectId: number; jobId: number }> }) {
   const params = await props.params;
@@ -25,7 +25,7 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: n
           .values({ projectId: params.projectId, jobId: params.jobId, ...body })
           .returning();
 
-        await reindexPositions(tx, params.jobId);
+        await reindexJobBlockPositions(tx, params.jobId);
 
         return newJobBlock;
       });

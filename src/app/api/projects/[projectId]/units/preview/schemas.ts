@@ -1,6 +1,6 @@
 import { z } from "zod";
 
 export const PreviewUnitParamsSchema = z.object({
-  blockId: z.coerce.number().optional(),
+  jobSetId: z.coerce.number(),
   position: z.coerce.number(),
 });

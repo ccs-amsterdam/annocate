@@ -52,7 +52,6 @@ class JobServerPreview implements JobServer {
   annotations: Record<string, Annotation[]>;
   project: Project;
   user: MiddlecatUser;
-  selectUnitArray: SelectUnitArray[];
   current: { unit: number; variable?: string };
   unitCache: Record<string, UnitData> = {};
   currentVariable: number;
@@ -85,12 +84,12 @@ class JobServerPreview implements JobServer {
     this.codebookId = codebookPreview.id;
     this.codebook = JSON.parse(JSON.stringify(codebookPreview.codebook));
 
-    this.selectUnitArray = BlocksToUnits(project, this.codebook, job);
-    const nUnits = this.selectUnitArray.length;
-    this.blockIndexRange = GetBlockIndexRange(this.selectUnitArray, job, blockId);
+    //this.selectUnitArray = BlocksToUnits(project, this.codebook, job);
+    //const nUnits = this.selectUnitArray.length;
+    //this.blockIndexRange = GetBlockIndexRange(this.selectUnitArray, job, blockId);
 
-    if (current.unit < this.blockIndexRange[0] || current.unit > this.blockIndexRange[1])
-      current.unit = this.blockIndexRange[0];
+    //if (current.unit < this.blockIndexRange[0] || current.unit > this.blockIndexRange[1])
+    //  current.unit = this.blockIndexRange[0];
 
     this.progress = {
       currentUnit: current.unit,
@@ -300,54 +299,9 @@ const randomUnits = Array.from({ length: 100000 }).map((_, i) => ({
 
 type SelectUnitArray = [number, number | null];
 
-// To simulate a job, we create the units selection locally based on the block rules
-// An in the real deal, we need a single array for the job progress.
-// For each index in the job progress we then get a unit (null for survey) and codebookId.
-// To do this locally, we just need an array with tuples: [blockIndex, unitPosition],
-// where unitPosition is the position within the block or project (null for units)
-// We also use some 'rules', but not all (crowd settings don't make sense for preview)
-function BlocksToUnits(project: Project, codebook: Codebook, job?: Job): SelectUnitArray[] {
-  let selectUnitArray: SelectUnitArray[] = [];
-
-  if (!job) {
-    if (codebook.type === "survey") return [[0, null]];
-    selectUnitArray = Array.from({ length: 7 }).map((_, i) => [0, i + 1]);
-    return selectUnitArray;
-  }
-
-  job.blocks.forEach((block, i) => {
-    if (block.type === "survey") {
-      selectUnitArray.push([i, null]);
-      return;
-    }
-
-    let nUnits = block.nUnits || project.nUnits || 1; // if block nUnits is null, it means use all units. If project nUnits is also null, return 1 to give a warning
-    if (block.rules.maxUnitsPerCoder) nUnits = Math.min(nUnits, block.rules.maxUnitsPerCoder);
-
-    let units = randomUnits.slice(0, nUnits);
-
-    if (block.rules.randomizeUnits) units = units.sort((a, b) => a.random - b.random);
-    const addSelectUnitArray: SelectUnitArray[] = units.map((u) => [i, u.position]);
-    selectUnitArray = [...selectUnitArray, ...addSelectUnitArray];
-  });
-
-  return selectUnitArray;
-}
-
 function getCurrentBlock(job: Job | null, blockId: number | null) {
   if (!job || !blockId) return null;
   return job.blocks.find((b) => b.id === blockId);
-}
-
-function GetBlockIndexRange(selectUnitArray: SelectUnitArray[], job?: Job, blockId?: number): [number, number] {
-  if (!job || !blockId) return [0, selectUnitArray.length - 1];
-
-  const blockIndex = job.blocks.findIndex((b) => b.id === blockId);
-  let startIndex = selectUnitArray.findIndex(([i]) => i === blockIndex);
-  if (startIndex === -1) return [0, selectUnitArray.length - 1];
-  let endIndex = selectUnitArray.findLastIndex(([i]) => i === blockIndex);
-  if (endIndex === -1) endIndex = selectUnitArray.length - 1;
-  return [startIndex, endIndex];
 }
 
 function createSurveyAnnotations(user: string, annotations?: Annotation[]) {
@@ -382,18 +336,14 @@ function prepareJobState(
   const jobState: GetJobState = { blocks: [], surveyAnnotations: {} };
 
   if (job) {
-    let offset = 0;
     for (let block of job.blocks) {
       const jobblock = {
         id: block.id,
-        label: block.name || "",
         codebookId: block.codebookId,
-        type: block.type,
-        offset: offset,
-        length: block.type === "survey" ? 1 : block.nUnits || project.nUnits || 1,
+        phase: block.phase,
+        position: block.position,
       };
       jobState.blocks.push(jobblock);
-      offset += jobblock.length;
     }
   }
 

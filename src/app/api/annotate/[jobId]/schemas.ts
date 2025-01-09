@@ -88,11 +88,9 @@ export const AnnotateProgressSchema = z.object({
 
 export const JobBlockSchema = z.object({
   id: z.number(),
-  label: z.string(),
-  type: UnitTypeSchema,
+  phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
+  position: z.number(),
   codebookId: z.number(),
-  offset: z.number(),
-  length: z.number(),
 });
 
 const SurveyAnnotationCode = z.union([z.array(z.string()), z.string()]);

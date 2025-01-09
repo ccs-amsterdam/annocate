@@ -5,8 +5,6 @@ import db from "@/drizzle/drizzle";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
-import { projectRole } from "@/app/types";
-import { reindexUnitPositions } from "./helpers";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
   const params = await props.params;
@@ -16,7 +14,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
       return (
         db
           .select({
-            id: units.unitId,
+            id: units.externalId,
             data: units.data,
           })
           .from(units)
@@ -58,18 +56,18 @@ export async function POST(req: NextRequest, props: { params: Promise<{ projectI
           .map((unit, i) => {
             return {
               projectId: params.projectId,
-              unitId: unit.id,
+              externalId: unit.id,
               data: unit.data,
               position: n + i,
             };
           })
-          .filter((unit) => unit.unitId && unit.data);
+          .filter((unit) => unit.externalId && unit.data);
 
         let query = tx.insert(units).values(data).$dynamic();
 
         if (body.overwrite) {
           query = query.onConflictDoUpdate({
-            target: [units.projectId, units.unitId],
+            target: [units.projectId, units.externalId],
             set: {
               data: sql`excluded.data`,
             },

@@ -1,5 +1,5 @@
 {
-  "id": "ace984aa-a633-44fc-9037-3f7e48cc9b14",
+  "id": "0e1a4503-e926-48a1-ae5d-cf3fd984d935",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -22,12 +22,6 @@
         },
         "unit_id": {
           "name": "unit_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "index": {
-          "name": "index",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -110,12 +104,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "project_id": {
-          "name": "project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
         "job_id": {
           "name": "job_id",
           "type": "integer",
@@ -145,12 +133,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "annotator_project_id_projects_id_fk": {
-          "name": "annotator_project_id_projects_id_fk",
+        "annotator_job_id_jobs_id_fk": {
+          "name": "annotator_job_id_jobs_id_fk",
           "tableFrom": "annotator",
-          "tableTo": "projects",
+          "tableTo": "jobs",
           "columnsFrom": [
-            "project_id"
+            "job_id"
           ],
           "columnsTo": [
             "id"
@@ -300,6 +288,58 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.job_block_sets": {
+      "name": "job_block_sets",
+      "schema": "",
+      "columns": {
+        "job_block_id": {
+          "name": "job_block_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_set_id": {
+          "name": "job_set_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "job_block_sets_job_block_id_job_blocks_id_fk": {
+          "name": "job_block_sets_job_block_id_job_blocks_id_fk",
+          "tableFrom": "job_block_sets",
+          "tableTo": "job_blocks",
+          "columnsFrom": [
+            "job_block_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_block_sets_job_set_id_job_sets_id_fk": {
+          "name": "job_block_sets_job_set_id_job_sets_id_fk",
+          "tableFrom": "job_block_sets",
+          "tableTo": "job_sets",
+          "columnsFrom": [
+            "job_set_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.job_blocks": {
       "name": "job_blocks",
       "schema": "",
@@ -310,33 +350,21 @@
           "primaryKey": true,
           "notNull": true
         },
-        "project_id": {
-          "name": "project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
         "job_id": {
           "name": "job_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
-          "type": "varchar(256)",
+        "phase": {
+          "name": "phase",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "position": {
           "name": "position",
           "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -345,37 +373,10 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "rules": {
-          "name": "rules",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "units": {
-          "name": "units",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "job_blocks_project_id_projects_id_fk": {
-          "name": "job_blocks_project_id_projects_id_fk",
-          "tableFrom": "job_blocks",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "job_blocks_job_id_jobs_id_fk": {
           "name": "job_blocks_job_id_jobs_id_fk",
           "tableFrom": "job_blocks",
@@ -400,6 +401,109 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.job_set_units": {
+      "name": "job_set_units",
+      "schema": "",
+      "columns": {
+        "job_set_id": {
+          "name": "job_set_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "job_set_units_job_set_id_job_sets_id_fk": {
+          "name": "job_set_units_job_set_id_job_sets_id_fk",
+          "tableFrom": "job_set_units",
+          "tableTo": "job_sets",
+          "columnsFrom": [
+            "job_set_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_set_units_unit_id_units_id_fk": {
+          "name": "job_set_units_unit_id_units_id_fk",
+          "tableFrom": "job_set_units",
+          "tableTo": "units",
+          "columnsFrom": [
+            "unit_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.job_sets": {
+      "name": "job_sets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "job_sets_job_id_jobs_id_fk": {
+          "name": "job_sets_job_id_jobs_id_fk",
+          "tableFrom": "job_sets",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -597,6 +701,12 @@
       "name": "units",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
         "project_id": {
           "name": "project_id",
           "type": "integer",
@@ -606,12 +716,6 @@
         "unit_id": {
           "name": "unit_id",
           "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },

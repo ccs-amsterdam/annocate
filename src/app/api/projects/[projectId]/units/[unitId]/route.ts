@@ -6,20 +6,17 @@ import { createGet } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
 import { UnitDataRowSchema } from "../schemas";
 
-export async function GET(
-  req: NextRequest,
-  props: { params: Promise<{ projectId: number; unitId: string }> }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number; unitId: string }> }) {
   const params = await props.params;
   return createGet({
     selectFunction: async (email, urlParams) => {
       const [unit] = await db
         .select({
-          id: units.unitId,
+          id: units.externalId,
           data: units.data,
         })
         .from(units)
-        .where(and(eq(units.projectId, params.projectId), eq(units.unitId, params.unitId)));
+        .where(and(eq(units.projectId, params.projectId), eq(units.externalId, params.unitId)));
       return unit;
     },
     req,

@@ -37,17 +37,6 @@ import { z } from "zod";
 
 config({ path: ".env.local" });
 
-// // postgres-js/drizzle is broken on the jsonb stuff, so this is a workaround till it gets fixed
-// const customJsonb = <TData>(name: string) =>
-//   customType<{ data: TData; driverData: TData }>({
-//     dataType() {
-//       return "jsonb";
-//     },
-//     toDriver(value: TData): TData {
-//       return value;
-//     },
-//   })(name);
-
 // PROJECT TABLES
 
 export const users = pgTable("users", {
@@ -134,11 +123,11 @@ export const codebooks = pgTable(
 export const units = pgTable(
   "units",
   {
+    id: serial("id").primaryKey(),
     projectId: integer("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    unitId: varchar("unit_id", { length: 256 }).notNull(),
-    position: integer("position").notNull(),
+    externalId: varchar("unit_id", { length: 256 }).notNull(),
     data: jsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("modified").notNull().defaultNow(),
@@ -146,7 +135,7 @@ export const units = pgTable(
   (table) => {
     return [
       {
-        pk: primaryKey({ columns: [table.projectId, table.unitId] }),
+        projectUnitUidx: uniqueIndex("project_unit_uidx").on(table.projectId, table.externalId),
       },
     ];
   },
@@ -173,32 +162,82 @@ export const jobs = pgTable(
   },
 );
 
-// current idea is that a job has blocks, like pre survey, annotation, post survey.
-// each block has a codebook, which can be a survey or annotation type.
-// annotation blocks furthermore have units, and rules for how to select units.
+// This is for creating experimental groups and assigning specific coders
+export const jobSets = pgTable(
+  "job_sets",
+  {
+    id: serial("id").primaryKey(),
+    jobId: integer("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 128 }).notNull(),
+  },
+  (table) => {
+    return [
+      {
+        jobIds: index("job_sets_job_ids_idx").on(table.jobId),
+        uniqueJobJobsetName: unique("jobset_job_name_unique").on(table.jobId, table.name),
+      },
+    ];
+  },
+);
+
+export const jobSetUnits = pgTable(
+  "job_set_units",
+  {
+    jobSetId: integer("job_set_id")
+      .notNull()
+      .references(() => jobSets.id, { onDelete: "cascade" }),
+    unitId: integer("unit_id")
+      .notNull()
+      .references(() => units.id),
+    position: integer("position").notNull(),
+  },
+  (table) => {
+    return [
+      {
+        pk: primaryKey({ columns: [table.jobSetId, table.unitId, table.position] }),
+      },
+    ];
+  },
+);
+
 export const jobBlocks = pgTable(
   "job_blocks",
   {
     id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }),
+    phase: text("phase", { enum: ["preSurvey", "annotate", "postSurvey"] }).notNull(),
     position: doublePrecision("position").notNull(),
-    type: text("type", { enum: ["survey", "annotation"] }).notNull(),
     codebookId: integer("codebook_id")
       .notNull()
       .references(() => codebooks.id),
-    rules: jsonb("rules").notNull().default({}).$type<Rules>(),
-    units: jsonb("units").notNull().default([]).$type<string[]>(),
   },
   (table) => {
     return [
       {
         jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
+      },
+    ];
+  },
+);
+
+export const jobBlockSets = pgTable(
+  "job_block_sets",
+  {
+    jobBlockId: integer("job_block_id")
+      .notNull()
+      .references(() => jobBlocks.id, { onDelete: "cascade" }),
+    jobSetId: integer("job_set_id")
+      .notNull()
+      .references(() => jobSets.id, { onDelete: "cascade" }),
+  },
+  (table) => {
+    return [
+      {
+        pk: primaryKey({ columns: [table.jobBlockId, table.jobSetId] }),
       },
     ];
   },
@@ -232,10 +271,9 @@ export const annotator = pgTable(
   "annotator",
   {
     id: serial("id").primaryKey(),
-    projectId: integer("project_id")
+    jobId: integer("job_id")
       .notNull()
-      .references(() => projects.id), // this is to avoid losing annotations if job is deleted
-    jobId: integer("job_id").notNull(),
+      .references(() => jobs.id),
     // userId can be email:{email}, user:{from url params} or device:{random device id}
     userId: varchar("user_id", { length: 256 }).notNull(),
 
@@ -248,7 +286,6 @@ export const annotator = pgTable(
       {
         jobIdx: index("annotator_project_idx").on(table.jobId),
         userIdx: index("annotator_user_idx").on(table.userId),
-        projectIdx: index("annotator_project_idx").on(table.projectId),
         uniqueUser: unique("unique_user").on(table.jobId, table.userId),
       },
     ];
@@ -263,8 +300,6 @@ export const annotations = pgTable(
       .notNull()
       .references(() => annotator.id, { onDelete: "cascade" }),
     unitId: integer("unit_id"), // can be null for job level annotations (e.g., survey questions)
-
-    index: integer("index"),
 
     annotation: jsonb("annotation").notNull().$type<AnnotationDictionary>(),
     history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
@@ -289,7 +324,6 @@ export const annotations = pgTable(
     return [
       {
         pk: primaryKey({ columns: [table.jobBlockId, table.annotatorId, table.unitId] }),
-        annotatorIndexIdx: index("annotations_annotator_index_idx").on(table.annotatorId, table.index),
       },
     ];
   },
