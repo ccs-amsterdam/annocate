@@ -82,6 +82,7 @@ function PhaseBlocks({ job, projectId, jobId, setBlockForm, phase }: PhaseBlocks
     <div>
       <h4>{label}</h4>
       {job.blocks.map((block, i) => {
+        if (block.phase !== phase) return null;
         return (
           <React.Fragment key={block.id}>
             <AddBlockHere projectId={projectId} jobId={jobId} phase={phase} position={i} setBlockForm={setBlockForm} />

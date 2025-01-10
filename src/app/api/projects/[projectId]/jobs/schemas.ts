@@ -113,3 +113,11 @@ export const JobResponseSchema = z.object({
   deployed: z.boolean(),
   blocks: z.array(JobBlockMetaSchema),
 });
+
+export const JobSetSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  unitIds: z.array(z.number()),
+});
+
+export const JobSetsResponseSchema = z.array(JobSetSchema);
