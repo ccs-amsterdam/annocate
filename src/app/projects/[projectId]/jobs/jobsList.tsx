@@ -44,16 +44,22 @@ export default function JobsList({ projectId }: { projectId: number }) {
 }
 
 function CreateJobDialog(props: { projectId: number }) {
+  const [openForm, setOpenForm] = useState(false);
   return (
-    <Popover>
+    <Popover open={openForm} onOpenChange={setOpenForm}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
+        <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2">
           Create new jobs
           <Plus className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="max-w-[400px]">
-        <CreateJob projectId={props.projectId} afterSubmit={() => {}} />
+        <CreateJob
+          projectId={props.projectId}
+          afterSubmit={() => {
+            setOpenForm(false);
+          }}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -72,7 +78,7 @@ function JobDrawer({ projectId, jobId, onClose }: { projectId: number; jobId?: n
         }
       }}
     >
-      <DrawerContent className="fixed bottom-0 left-auto   right-0 mt-0 h-screen w-[500px] max-w-[90vw]  rounded-none bg-background p-3 ">
+      <DrawerContent className="fixed bottom-0 left-auto right-0 mt-0 h-screen w-[500px] max-w-[90vw] rounded-none bg-background p-3">
         <DrawerHeader>
           <DrawerTitle>{job?.name || ""}</DrawerTitle>
           <DrawerDescription>Last edited on {job?.modified?.toDateString() || ""}</DrawerDescription>

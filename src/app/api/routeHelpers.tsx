@@ -9,7 +9,7 @@ import { authenticateUser, authorization } from "./authorization";
 import { createTableParamsSchema } from "./schemaHelpers";
 import { fromZodError } from "zod-validation-error";
 import { cookies } from "next/headers";
-import { typesafeEncrypt } from "@/functions/typesafeEncrypt";
+import { typesafeCookieSession } from "@/functions/typesafeEncrypt";
 
 interface After {
   column: string;
@@ -357,7 +357,7 @@ function queryMeta(
     .where(and(...where));
 }
 
-const nextTokenEncryptor = new typesafeEncrypt(
+const nextTokenEncryptor = new typesafeCookieSession(
   z.object({
     commonParams: TableParamsSchema,
     meta: z.object({

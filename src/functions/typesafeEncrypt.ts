@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import { z } from "zod";
 
-export class typesafeEncrypt<T extends z.ZodRawShape> {
+export class typesafeCookieSession<T extends z.ZodRawShape> {
   schema: z.ZodObject<T>;
   algorithm: string;
   keys: string[];

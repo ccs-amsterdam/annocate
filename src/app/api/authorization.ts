@@ -4,17 +4,9 @@ import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { typesafeEncrypt } from "@/functions/typesafeEncrypt";
-import { z } from "zod";
-
-const authTokenEncryptor = new typesafeEncrypt(
-  z.object({
-    email: z.string(),
-    role: z.enum(["admin", "guest", "creator"]).nullable(),
-    projectRole: z.enum(["admin", "manager"]).nullable(),
-    projectId: z.coerce.number().nullish(),
-  }),
-);
+import { typesafeCookieSession } from "@/functions/typesafeEncrypt";
+import { OK, z } from "zod";
+import { projectRoleCache, typesafeLRUCache } from "@/functions/caching";
 
 class TokenVerifier {
   publicKey: string | null = null;
@@ -85,19 +77,18 @@ export async function authorization(email: string, projectId: number | null): Pr
   const cookieStore = await cookies();
   const auth: Authorization = { projectId, email, role: null, projectRole: null };
 
-  const authTokenCookieName = projectId != null ? `projects:session` : "session";
+  const authTokenKey = projectId != null ? `projects:session` : "session";
 
   // first check if valid auth token for current user exists in cookie. If so, return values and update cookie
-  try {
-    const session = authTokenEncryptor.cookieToDecrypted(cookieStore, authTokenCookieName, 60 * 15);
+
+  const session = projectRoleCache.get(authTokenKey);
+  console.log(session);
+  if (session) {
     if (projectId !== null) {
       if (session.email === email && session.projectId === projectId) return session;
     } else {
       if (session.email === email) return session;
     }
-  } catch (e) {
-    console.log("Need to authenticate");
-    // token expired or invalid. Need to fetch new token
   }
 
   if (projectId != null) {
@@ -129,7 +120,7 @@ export async function authorization(email: string, projectId: number | null): Pr
     }
   }
 
-  authTokenEncryptor.encryptedToCookie(cookieStore, authTokenCookieName, auth, 60 * 15);
+  projectRoleCache.set(authTokenKey, auth);
 
   return auth;
 }

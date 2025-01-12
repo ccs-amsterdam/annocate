@@ -85,7 +85,7 @@ function PhaseBlocks({ job, projectId, jobId, setBlockForm, phase }: PhaseBlocks
         if (block.phase !== phase) return null;
         return (
           <React.Fragment key={block.id}>
-            <AddBlockHere projectId={projectId} jobId={jobId} phase={phase} position={i} setBlockForm={setBlockForm} />
+            {/* <AddBlockHere projectId={projectId} jobId={jobId} phase={phase} position={i} setBlockForm={setBlockForm} /> */}
             <JobBlockItem
               key={block.id}
               block={block}
@@ -184,11 +184,11 @@ function AddBlockHere({ projectId, jobId, phase, position, setBlockForm }: AddBl
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex h-3 items-center gap-3">
       <div className="w-full border-b-2 border-secondary/50"></div>
       <Button
-        variant="secondary"
-        className="h-8 w-8 rounded-full text-lg"
+        variant="outline"
+        className="h-6 w-6 rounded-full border-secondary text-lg text-secondary"
         onClick={() => {
           setBlockForm({ projectId, jobId, position, phase });
         }}

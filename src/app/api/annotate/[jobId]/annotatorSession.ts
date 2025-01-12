@@ -1,4 +1,4 @@
-import { typesafeEncrypt } from "@/functions/typesafeEncrypt";
+import { typesafeCookieSession } from "@/functions/typesafeEncrypt";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
@@ -7,7 +7,7 @@ Keep a session:
 - user can annotate for this annotatorId
 */
 
-const AnnotatorSessionEncryptor = new typesafeEncrypt(
+const AnnotatorSessionEncryptor = new typesafeCookieSession(
   z.object({
     annotatorId: z.number(),
   }),

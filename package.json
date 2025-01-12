@@ -49,6 +49,7 @@
     "eslint-config-next": "15.1.2",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
+    "lru-cache": "^11.0.2",
     "lucide-react": "^0.469.0",
     "middlecat-react": "^0.4.2",
     "next": "15.1.2",

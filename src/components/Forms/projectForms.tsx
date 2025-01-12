@@ -37,7 +37,7 @@ export function CreateProject({ afterSubmit }: CreateProjectProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <TextFormField control={form.control} zType={shape.name} name="name" />
-        <Button type="submit">Create Job</Button>
+        <Button type="submit">Create Project</Button>
       </form>
     </Form>
   );

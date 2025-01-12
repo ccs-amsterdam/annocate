@@ -19,13 +19,10 @@ export async function GET(
       const [block] = await db
         .select({
           id: jobBlocks.id,
-          type: jobBlocks.type,
-          name: jobBlocks.name,
+          phase: jobBlocks.phase,
           position: jobBlocks.position,
-          rules: jobBlocks.rules,
           codebookId: codebooks.id,
           codebookName: codebooks.name,
-          units: jobBlocks.units,
         })
         .from(jobBlocks)
         .leftJoin(jobs, eq(jobs.id, jobBlocks.jobId))
@@ -51,9 +48,9 @@ export async function POST(
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        if (body.type === "annotation" && body.units) {
-          await checkUnitIds(tx, body.units, params.projectId);
-        }
+        // if (body.type === "annotation" && body.units) {
+        //   await checkUnitIds(tx, body.units, params.projectId);
+        // }
 
         if (body.position !== undefined) {
           const [currentPosition] = await tx
@@ -70,7 +67,8 @@ export async function POST(
         const [newJobBlock] = await tx
           .update(jobBlocks)
           .set({ ...body })
-          .where(and(eq(jobBlocks.id, params.blockId), eq(jobBlocks.projectId, params.projectId)))
+          .leftJoin(jobs, eq(jobs.id, jobBlocks.jobId))
+          .where(and(eq(jobBlocks.id, params.blockId), eq(jobs.projectId, params.projectId)))
           .returning();
 
         if (body.position !== undefined) {
