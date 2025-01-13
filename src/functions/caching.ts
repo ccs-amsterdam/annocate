@@ -21,27 +21,30 @@ export class typesafeLRUCache<T extends z.ZodRawShape> {
       ttl: options.ttl || 1000 * 60 * 15,
       updateAgeOnGet: options.updateAgeOnGet ?? true,
     });
+    console.log("wtf");
   }
 
-  toArray(data: z.infer<typeof this.schema>) {
-    return this.keys.map((key) => data[key]);
+  serialize(data: z.infer<typeof this.schema>) {
+    const values = this.keys.map((key) => data[key]);
+    return JSON.stringify(values.length === 1 ? values[0] : values);
   }
 
-  fromArray(data: any) {
+  deserialize(str: string) {
+    const values = JSON.parse(str);
+    const data = Array.isArray(values) ? values : [values];
     const obj: any = {};
     this.keys.map((key, i) => (obj[key] = data[i]));
     return this.schema.parse(obj);
   }
 
   set(key: string, data: z.infer<typeof this.schema>) {
-    const str = JSON.stringify(this.toArray(data));
+    const str = this.serialize(data);
     this.cache.set(key, str);
   }
 
-  get(key: string) {
+  get(key: string): z.infer<typeof this.schema> | null {
     const str = this.cache.get(key);
-    if (str) console.log("cache hits");
-    return str ? this.fromArray(JSON.parse(str)) : null;
+    return str ? this.deserialize(str) : null;
   }
 }
 
@@ -54,10 +57,8 @@ export const projectRoleCache = new typesafeLRUCache(
     projectId: z.coerce.number().nullish(),
   }),
   {
-    max: 1000,
+    max: 2500,
     ttl: 1000 * 60 * 5,
     updateAgeOnGet: false,
   },
 );
-
-export const

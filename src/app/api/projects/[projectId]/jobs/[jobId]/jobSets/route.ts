@@ -9,7 +9,7 @@ import { and, eq, sql } from "drizzle-orm";
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number; jobId: number }> }) {
   const params = await props.params;
   return createGet({
-    selectFunction: async (email, urlParams) => {
+    selectFunction: async (_email, _urlParams) => {
       return db
         .select({
           id: jobSets.id,
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
     req,
     projectId: params.projectId,
     responseSchema: JobSetsResponseSchema,
-    authorizeFunction: async (auth, params) => {
+    authorizeFunction: async (auth, _params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
   });

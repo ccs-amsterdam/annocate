@@ -4,9 +4,24 @@ import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { typesafeCookieSession } from "@/functions/typesafeEncrypt";
-import { OK, z } from "zod";
-import { projectRoleCache, typesafeLRUCache } from "@/functions/caching";
+import { typesafeLRUCache } from "@/functions/caching";
+import { z } from "zod";
+
+// Cache for checking user project role
+console.log("DOES THIS GET CALLED AGAIN? ");
+export const projectRoleCache = new typesafeLRUCache(
+  z.object({
+    email: z.string(),
+    role: z.enum(["admin", "guest", "creator"]).nullable(),
+    projectRole: z.enum(["admin", "manager"]).nullable(),
+    projectId: z.coerce.number().nullish(),
+  }),
+  {
+    max: 2500,
+    ttl: 1000 * 60 * 5,
+    updateAgeOnGet: false,
+  },
+);
 
 class TokenVerifier {
   publicKey: string | null = null;
@@ -77,20 +92,24 @@ export async function authorization(email: string, projectId: number | null): Pr
   const cookieStore = await cookies();
   const auth: Authorization = { projectId, email, role: null, projectRole: null };
 
-  const authTokenKey = projectId != null ? `projects:session` : "session";
+  const authTokenKey = email + projectId;
 
   // first check if valid auth token for current user exists in cookie. If so, return values and update cookie
-
   const session = projectRoleCache.get(authTokenKey);
-  console.log(session);
+  console.log("SESSION", session);
   if (session) {
     if (projectId !== null) {
+      console.log(email, projectId);
       if (session.email === email && session.projectId === projectId) return session;
     } else {
+      console.log(email);
       if (session.email === email) return session;
     }
   }
 
+  console.log("DB CALL");
+
+  // If not in cache, get from db
   if (projectId != null) {
     const [user] = await db
       .select({ role: users.role, projectRole: managers.role })
