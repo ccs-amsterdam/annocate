@@ -5,27 +5,22 @@ interface Params {
   token: string;
   data?: Record<string, string | number | boolean>;
   layout?: Layout;
-  codebook?: Codebook;
-  codebookId?: number;
+  blockId: number;
   annotations: Annotation[];
 }
 
-export function createAnnotateUnit({ type, token, data, layout, codebook, codebookId, annotations }: Params): Unit {
+export function createAnnotateUnit({ type, token, data, layout, blockId, annotations }: Params): Unit {
   const unit: Unit = {
     type,
     token,
     status: "IN_PROGRESS",
+    blockId: blockId,
     content: {
       grid: { areas: [] },
     },
 
     annotations,
   };
-  if (codebook !== undefined) unit.codebook = codebook;
-  if (codebookId !== undefined) unit.codebook_id = codebookId;
-
-  if (codebook === undefined && codebookId === undefined)
-    throw new Error("Either codebook or codebook_id must be provided");
 
   if (data === undefined || layout === undefined) return unit;
 

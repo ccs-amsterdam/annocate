@@ -2,7 +2,7 @@ import { annotations, annotator, jobBlocks, jobs, projects } from "@/drizzle/sch
 import db from "@/drizzle/drizzle";
 import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet } from "@/app/api/routeHelpers";
+import { createGet, safeParams } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
 import {
   AnnotateUnitSchema,
@@ -14,8 +14,8 @@ import { cookies } from "next/headers";
 import { getDeviceId } from "@/functions/getDeviceId";
 import { JobsetAnnotatorStatistics, Rules } from "@/app/types";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ jobId: number }> }) {
-  const params = await props.params;
+export async function GET(req: NextRequest, props: { params: Promise<{ jobId: string }> }) {
+  const params = safeParams(await props.params);
   const { jobId } = params;
   const cookieStore = await cookies();
 

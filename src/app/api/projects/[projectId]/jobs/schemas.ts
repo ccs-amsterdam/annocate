@@ -7,19 +7,6 @@ extendZodWithOpenApi(z);
 
 export const JobsTableParamsSchema = createTableParamsSchema({});
 
-export const JobBlockSchema = z.object({
-  phase: z.enum(["preSurvey", "annotate", "postSurvey"]).openapi({
-    title: "Job phase",
-    description: "A job can have multiple phases. Pre-survey, annotation, and post-survey",
-  }),
-  position: z.number().openapi({ title: "Block position", description: "Position of the block in the job" }),
-  codebookId: z.number().openapi({
-    title: "Codebook ID",
-    description:
-      "Every block is tied to a specific codebook. Survey blocks require a 'survey' type codebook, that describes the survey variables. Annotation blocks require an 'annotation' type codebook that describes what questions to ask for each unit in the block, and also how the units are to be displayed",
-  }),
-});
-
 export const distributionMode = ["fixed", "expert", "crowd"] as const;
 export const distributionModeOptions: FormOptions[] = [
   {
@@ -78,9 +65,6 @@ export const JobUpdateSchema = z.object({
   name: z.string(),
 });
 
-export const JobBlockCreateSchema = JobBlockSchema;
-export const JobBlockUpdateSchema = JobBlockSchema.partial();
-
 export const JobMetaResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -91,19 +75,10 @@ export const JobMetaResponseSchema = z.object({
 
 export const JobBlockMetaSchema = z.object({
   id: z.number(),
+  name: z.string(),
   phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
   position: z.number(),
-  codebookId: z.number(),
-  codebookName: z.string(),
   nVariables: z.number(),
-});
-
-export const JobBlockResponseSchema = z.object({
-  id: z.number(),
-  phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
-  position: z.number(),
-  codebookId: z.number(),
-  codebookName: z.string(),
 });
 
 export const JobResponseSchema = z.object({

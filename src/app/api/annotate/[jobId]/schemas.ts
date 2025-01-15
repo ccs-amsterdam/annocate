@@ -4,8 +4,8 @@ import {
   UnitLayoutGridSchema,
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
-} from "@/app/api/projects/[projectId]/codebooks/layoutSchemas";
-import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
+import { CodebookSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { AnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";
@@ -60,22 +60,14 @@ export const AnnotateToken = z.string().openapi({
   example: "1234",
 });
 
-export const AnnotateUnitSchema = z
-  .object({
-    token: z.string(),
-    type: UnitTypeSchema,
-    status: AnnotateUnitStatusSchema,
-    content: UnitContentSchema,
-    annotations: z.array(AnnotationSchema),
-    codebook: CodebookSchema.optional(),
-    codebook_id: z.number().optional(),
-    codebook_modified: z.coerce.date().optional(),
-  })
-  .refine((unit) => {
-    if (!unit.codebook && !unit.codebook_id) {
-      throw new Error("Either codebook or codebook_id must be provided");
-    }
-  });
+export const AnnotateUnitSchema = z.object({
+  token: z.string(),
+  type: UnitTypeSchema,
+  status: AnnotateUnitStatusSchema,
+  content: UnitContentSchema,
+  annotations: z.array(AnnotationSchema),
+  blockId: z.number(),
+});
 
 export const AnnotateProgressSchema = z.object({
   currentUnit: z.number(),
@@ -90,7 +82,6 @@ export const JobBlockSchema = z.object({
   id: z.number(),
   phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
   position: z.number(),
-  codebookId: z.number(),
 });
 
 const SurveyAnnotationCode = z.union([z.array(z.string()), z.string()]);

@@ -1,13 +1,13 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet, createUpdate } from "@/app/api/routeHelpers";
-import { codebooks, jobBlocks, jobs, units } from "@/drizzle/schema";
+import { createGet, createUpdate, safeParams } from "@/app/api/routeHelpers";
+import { jobBlocks, jobs, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, count, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobResponseSchema, JobMetaResponseSchema, JobUpdateSchema } from "../schemas";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number; jobId: number }> }) {
-  const params = await props.params;
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
+  const params = safeParams(await props.params);
   return createGet({
     selectFunction: async (email, urlParams) => {
       const jobWithBlocks = await db
@@ -17,15 +17,13 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
           modified: jobs.modified,
           deployed: jobs.deployed,
           blockId: jobBlocks.id,
+          blockName: jobBlocks.name,
           phase: jobBlocks.phase,
           position: jobBlocks.position,
-          codebookId: codebooks.id,
-          codebookName: codebooks.name,
-          nVariables: sql<number>`jsonb_array_length(${codebooks.codebook}->'variables')`.mapWith(Number),
+          nVariables: sql<number>`jsonb_array_length(${jobBlocks.codebook}->'variables')`.mapWith(Number),
         })
         .from(jobs)
         .leftJoin(jobBlocks, eq(jobs.id, jobBlocks.jobId))
-        .leftJoin(codebooks, eq(jobBlocks.codebookId, codebooks.id))
         .where(and(eq(jobs.projectId, params.projectId), eq(jobs.id, params.jobId)))
         .orderBy(jobBlocks.position);
 
@@ -40,12 +38,11 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
       // }
 
       const blocks = jobWithBlocks
-        .map(({ phase, blockId, position, codebookId, codebookName, nVariables: nVariables }) => ({
+        .map(({ phase, blockId, position, blockName, nVariables: nVariables }) => ({
           id: blockId,
           phase,
+          name: blockName,
           position,
-          codebookId,
-          codebookName,
           nVariables,
         }))
         .filter((block) => block.id !== null);
@@ -68,8 +65,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
   });
 }
 
-export async function POST(req: Request, props: { params: Promise<{ projectId: number; jobId: number }> }) {
-  const params = await props.params;
+export async function POST(req: Request, props: { params: Promise<{ projectId: string; jobId: string }> }) {
+  const params = safeParams(await props.params);
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {

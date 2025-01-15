@@ -1,13 +1,13 @@
 "use client";
 
-import { useUpdateCodebook, useCreateCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
+import { useUpdateCodebook, useCreateCodebook } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/";
 import {
   CodebookScaleTypeSchema,
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
   InstructionModeOptions,
   variableTypeOptions,
-} from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variablesSchemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Equal, Plus, Save, Watch, XIcon } from "lucide-react";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
@@ -27,19 +27,14 @@ import {
 } from "./formHelpers";
 import { Form } from "../ui/form";
 import React from "react";
-import {
-  CodebookSchema,
-  CodebookCreateBodySchema,
-  CodebookUpdateBodySchema,
-  CodebookResponseSchema,
-} from "@/app/api/projects/[projectId]/codebooks/schemas";
+import { CodebookSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import {
   fieldTypeOptions,
   UnitGeneralLayoutSchema,
   UnitImageLayoutSchema,
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
-} from "@/app/api/projects/[projectId]/codebooks/layoutSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
 import { StyleToolbar } from "../Common/StyleToolbar";
 import { Label } from "../ui/label";
 import { SetState } from "@/app/types";
@@ -47,12 +42,16 @@ import { CodebookPreview } from "@/app/projects/[projectId]/jobs/[jobId]/design/
 import { equal } from "assert";
 
 type Codebook = z.infer<typeof CodebookSchema>;
-type CodebookUpdateBody = z.input<typeof CodebookUpdateBodySchema>;
-type CodebookCreateBodySchema = z.input<typeof CodebookCreateBodySchema>;
+
+export const CodebookUpdateSchema = z.object({
+  jobBlockId: z.number(),
+  codebook: CodebookSchema,
+});
+type CodebookUpdate = z.input<typeof CodebookUpdateSchema>;
 
 interface UpdateCodebookProps {
   projectId: number;
-  current: z.input<typeof CodebookResponseSchema>;
+  current: z.input<typeof CodebookUpdateSchema>;
   afterSubmit?: () => void;
   setPreview?: SetState<CodebookPreview | undefined>;
   saveOnChange?: React.MutableRefObject<{ dirty: boolean; error: boolean; save?: () => void }>;
@@ -66,18 +65,18 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
   saveOnChange,
 }: UpdateCodebookProps) {
   const { mutateAsync } = useUpdateCodebook(projectId, current.id);
-  const form = useForm<CodebookUpdateBody>({
-    resolver: zodResolver(CodebookCreateBodySchema),
-    defaultValues: CodebookCreateBodySchema.parse(current),
+  const form = useForm<CodebookUpdate>({
+    resolver: zodResolver(CodebookUpdateSchema),
+    defaultValues: CodebookUpdateSchema.parse(current),
   });
 
   const { error } = form.getFieldState("codebook");
   const { error: variablesError } = form.getFieldState("codebook.variables");
   const variables = form.getValues("codebook.variables");
-  const currentAsString = useMemo(() => JSON.stringify(CodebookCreateBodySchema.parse(current)), [current]);
+  const currentAsString = useMemo(() => JSON.stringify(CodebookUpdateSchema.parse(current)), [current]);
 
   useEffect(() => {
-    form.reset(CodebookCreateBodySchema.parse(current));
+    form.reset(CodebookUpdateSchema.parse(current));
   }, [current, form]);
 
   useEffect(() => {
@@ -93,7 +92,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     if (current.codebook.type !== "annotation") return null;
     return (
       <div className="w-full">
-        <div className="prose  mt-6 w-full border-b-2 pb-2  dark:prose-invert">
+        <div className="prose mt-6 w-full border-b-2 pb-2 dark:prose-invert">
           <h3 className="text-foreground/80">Unit Mapping</h3>
         </div>
         <UnitFields form={form} />
@@ -101,11 +100,11 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
     );
   }
 
-  function onSubmit(values: CodebookUpdateBody) {
+  function onSubmit(values: CodebookUpdate) {
     if (variables.length === 0) return alert("You need to add at least one variable");
     mutateAsync(values).then(afterSubmit).catch(console.error);
   }
-  const shape = CodebookCreateBodySchema.shape;
+  const shape = CodebookUpdateSchema.shape;
 
   let isDirty = form.formState.isDirty;
   if (isDirty) {
@@ -131,16 +130,15 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex w-full flex-col gap-3  p-3 lg:px-8 ">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="relative flex w-full flex-col gap-3 p-3 lg:px-8">
         <div
-          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)]  w-full
-          items-center justify-between gap-10 border-b bg-background px-8 ${isDirty ? "" : "hidden"} `}
+          className={`fixed left-0 top-0 z-50 flex h-[var(--header-height)] w-full items-center justify-between gap-10 border-b bg-background px-8 ${isDirty ? "" : "hidden"} `}
         >
           <Button
             type="button"
-            className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-0"
+            className="flex w-min items-center gap-2 shadow-lg disabled:opacity-0"
             variant="destructive"
-            onClick={() => form.reset(CodebookCreateBodySchema.parse(current))}
+            onClick={() => form.reset(CodebookUpdateSchema.parse(current))}
           >
             <XIcon className="h-5 w-5" />
             Undo changes
@@ -150,7 +148,7 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
             {variablesError ? <div className="text-destructive">{variablesError.message}</div> : null}
           </div>
           <Button
-            className="  flex w-min  items-center gap-2 shadow-lg disabled:opacity-50"
+            className="flex w-min items-center gap-2 shadow-lg disabled:opacity-50"
             type="submit"
             disabled={!isDirty || !!error}
           >
@@ -159,11 +157,9 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
           </Button>
         </div>
 
-        <TextFormField control={form.control} zType={shape.name} name="name" />
-
         {renderUnitFields()}
         <div>
-          <div className="prose  mt-6 w-full border-b-2 pb-2 dark:prose-invert">
+          <div className="prose mt-6 w-full border-b-2 pb-2 dark:prose-invert">
             <h3 className="text-foreground/80">Variables</h3>
           </div>
           {/* <TextAreaFormField
@@ -178,13 +174,13 @@ export const UpdateCodebook = React.memo(function UpdateCodebook({
         /> */}
           <Variables form={form} />
         </div>
-        <WatchForPreview id={current.id} form={form} setPreview={setPreview} />
+        <WatchForPreview id={current.jobBlockId} form={form} setPreview={setPreview} />
       </form>
     </Form>
   );
 });
 
-function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
+function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateSchema> }) {
   const [accordionValue, setAccordionValue] = useState<string>("");
   const fields = form.getValues("codebook.unit.fields");
 
@@ -220,8 +216,8 @@ function UnitFields({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
           const { error } = form.getFieldState(`codebook.unit.fields.${index}`);
           let bg = isActive ? "bg-primary-light" : "";
           return (
-            <AccordionItem key={index} value={"V" + index} className={`${bg}   px-3 `}>
-              <div className={`grid grid-cols-[2rem,1fr] items-center gap-3  ${error ? "text-destructive" : ""}`}>
+            <AccordionItem key={index} value={"V" + index} className={`${bg} px-3`}>
+              <div className={`grid grid-cols-[2rem,1fr] items-center gap-3 ${error ? "text-destructive" : ""}`}>
                 <MoveItemInArray move={moveField} i={index} n={fields.length} bg={bg} error={!!error} />
 
                 <div>
@@ -313,7 +309,7 @@ function LayoutField<T extends FieldValues>({
           <div />
         )}
       </div>
-      <div className="grid grid-cols-[12rem,24px,1fr]  gap-3">
+      <div className="grid grid-cols-[12rem,24px,1fr] gap-3">
         <TextFormField
           control={control}
           zType={generalShape.name}
@@ -365,10 +361,8 @@ function Variables({ form }: { form: UseFormReturn<CodebookUpdateBody> }) {
           const { error } = form.getFieldState(`codebook.variables.${index}`);
           let bg = isActive ? "bg-primary-light" : "";
           return (
-            <AccordionItem key={index} value={"V" + index} className={`${bg}   px-3 `}>
-              <div
-                className={`grid w-full grid-cols-[2rem,1fr] items-center gap-3   ${error ? "text-destructive" : ""}`}
-              >
+            <AccordionItem key={index} value={"V" + index} className={`${bg} px-3`}>
+              <div className={`grid w-full grid-cols-[2rem,1fr] items-center gap-3 ${error ? "text-destructive" : ""}`}>
                 <MoveItemInArray move={moveVariable} i={index} n={variables.length} bg={bg} error={!!error} />
 
                 <AccordionTrigger className="w-full text-base no-underline hover:no-underline">
@@ -479,62 +473,49 @@ function CodebookVariable<T extends FieldValues>({
   );
 }
 
-export function useCreateEmptyCodebook(projectId: number, type: "survey" | "annotation" | undefined) {
-  const { mutateAsync } = useCreateCodebook(projectId);
-
-  const create = useCallback(
-    (name: string) => {
-      const unit = {
-        fields: [],
-        meta: [],
-        grid: {
-          areas: [],
-          rows: [],
-          columns: [],
-        },
-      };
-      const settings = {
-        instruction: "",
-      };
-      const variables = [
-        {
-          name: "Variable_1",
-          question: "Question goes here",
-          type: "select code" as const,
-          codes: [
-            { code: "First answer", value: 1 },
-            { code: "Second answer", value: 2 },
-            { code: "Third answer", value: 3 },
-          ],
-        },
-      ];
-
-      if (type === "survey") {
-        const newCodebook: CodebookCreateBodySchema = {
-          name,
-          codebook: {
-            type: "survey",
-            settings,
-            variables,
-          },
-        };
-        return mutateAsync(newCodebook);
-      }
-      const newCodebook: CodebookCreateBodySchema = {
-        name,
-        codebook: {
-          unit,
-          type: "annotation",
-          settings,
-          variables,
-        },
-      };
-      return mutateAsync(newCodebook);
+export function emptyCodebook(projectId: number, type: "survey" | "annotation" | undefined) {
+  const unit = {
+    fields: [],
+    meta: [],
+    grid: {
+      areas: [],
+      rows: [],
+      columns: [],
     },
-    [mutateAsync, type],
-  );
+  };
 
-  return { create };
+  const settings = {
+    instruction: "",
+  };
+
+  const variables = [
+    {
+      name: "Variable_1",
+      question: "Question goes here",
+      type: "select code" as const,
+      codes: [
+        { code: "First answer", value: 1 },
+        { code: "Second answer", value: 2 },
+        { code: "Third answer", value: 3 },
+      ],
+    },
+  ];
+
+  if (type === "survey") {
+    const newCodebook: Codebook = {
+      type: "survey",
+      settings,
+      variables,
+    };
+    return newCodebook;
+  }
+  const newCodebook: Codebook = {
+    unit,
+    type: "annotation",
+    settings,
+    variables,
+  };
+  return newCodebook;
 }
 
 function WatchForPreview({

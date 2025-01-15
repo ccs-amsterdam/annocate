@@ -39,6 +39,9 @@ export const CodebookAnnotationSchema = CodebookBaseSchema.extend({
 });
 
 export const CodebookSchema = z.union([CodebookSurveySchema, CodebookAnnotationSchema]);
+export const CodebookUpdateSchema = z.object({
+  codebook: CodebookSchema,
+});
 
 //////////////////////////////////////////////////////////
 
@@ -58,40 +61,26 @@ export const CodebookNameSchema = z.string().min(0).max(128).openapi({
   example: "My first codebook",
 });
 
-export const CodebooksResponseSchema = z.object({
-  id: z.number(),
-  projectId: z.number(),
-  created: z.coerce.date(),
-  name: z.string(),
-  type: z.enum(["survey", "annotation"]),
-});
-
-export const CodebookResponseSchema = z.object({
-  id: z.number(),
-  // projectId: z.number(),
-  name: z.string(),
-  created: z.coerce.date(),
-  modified: z.coerce.date(),
-  codebook: CodebookSchema,
-  nJobs: z.number(),
-});
-
-export const CodebookCreateBodySchema = z.object({
-  name: CodebookNameSchema,
-  codebook: CodebookSchema,
-  overwrite: z.boolean().optional().openapi({
-    title: "Overwrite",
-    description: "If a codebook with the same name already exists, overwrite it",
-    example: true,
+export const JobBlockSchema = z.object({
+  name: z.string().openapi({
+    title: "Block name",
+    description: "A short for yourself to remember what this block is about",
   }),
+  phase: z.enum(["preSurvey", "annotate", "postSurvey"]).openapi({
+    title: "Job phase",
+    description: "A job can have multiple phases. Pre-survey, annotation, and post-survey",
+  }),
+  position: z.number().openapi({ title: "Block position", description: "Position of the block in the job" }),
+  codebook: CodebookSchema,
 });
 
-export const CodebookCreateResponseSchema = z.object({
+export const JobBlockCreateSchema = JobBlockSchema;
+export const JobBlockUpdateSchema = JobBlockSchema.partial();
+
+export const JobBlockResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
-});
-
-export const CodebookUpdateBodySchema = z.object({
-  name: CodebookNameSchema.optional(),
-  codebook: CodebookSchema.optional(),
+  phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
+  position: z.number(),
+  codebook: CodebookSchema,
 });

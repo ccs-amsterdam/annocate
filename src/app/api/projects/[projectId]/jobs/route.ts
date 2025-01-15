@@ -1,5 +1,5 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
+import { createTableGet, createUpdate, safeParams } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { jobs } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
@@ -7,8 +7,8 @@ import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobCreateSchema, JobMetaResponseSchema, JobsTableParamsSchema } from "./schemas";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
-  const params = await props.params;
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
+  const params = safeParams(await props.params);
   return createTableGet({
     tableFunction: (email) =>
       db
@@ -33,8 +33,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
   });
 }
 
-export async function POST(req: Request, props: { params: Promise<{ projectId: number }> }) {
-  const params = await props.params;
+export async function POST(req: Request, props: { params: Promise<{ projectId: string }> }) {
+  const params = safeParams(await props.params);
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {

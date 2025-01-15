@@ -4,24 +4,7 @@ import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { typesafeLRUCache } from "@/functions/caching";
-import { z } from "zod";
-
-// Cache for checking user project role
-console.log("DOES THIS GET CALLED AGAIN? ");
-export const projectRoleCache = new typesafeLRUCache(
-  z.object({
-    email: z.string(),
-    role: z.enum(["admin", "guest", "creator"]).nullable(),
-    projectRole: z.enum(["admin", "manager"]).nullable(),
-    projectId: z.coerce.number().nullish(),
-  }),
-  {
-    max: 2500,
-    ttl: 1000 * 60 * 5,
-    updateAgeOnGet: false,
-  },
-);
+import { cachedProjectRole, codebookInProjectCache, projectRoleCache } from "@/functions/caching";
 
 class TokenVerifier {
   publicKey: string | null = null;
@@ -90,44 +73,7 @@ export async function authenticateUser(req: Request): Promise<string> {
 
 export async function authorization(email: string, projectId: number | null): Promise<Authorization> {
   const cookieStore = await cookies();
-  const auth: Authorization = { projectId, email, role: null, projectRole: null };
-
-  const authTokenKey = email + projectId;
-
-  // first check if valid auth token for current user exists in cookie. If so, return values and update cookie
-  const session = projectRoleCache.get(authTokenKey);
-  console.log("SESSION", session);
-  if (session) {
-    if (projectId !== null) {
-      console.log(email, projectId);
-      if (session.email === email && session.projectId === projectId) return session;
-    } else {
-      console.log(email);
-      if (session.email === email) return session;
-    }
-  }
-
-  console.log("DB CALL");
-
-  // If not in cache, get from db
-  if (projectId != null) {
-    const [user] = await db
-      .select({ role: users.role, projectRole: managers.role })
-      .from(users)
-      .leftJoin(managers, eq(users.id, managers.userId))
-      .where(and(eq(users.email, email), eq(managers.projectId, projectId)));
-
-    auth.role = user?.role || null;
-    auth.projectRole = user?.projectRole || null;
-    auth.projectId = projectId;
-  } else {
-    const [user] = await db
-      .select({ role: users.role })
-      .from(users)
-      .where(and(eq(users.email, email)));
-
-    auth.role = user?.role || null;
-  }
+  const auth: Authorization = await cachedProjectRole(email, projectId);
 
   if (email === process.env.SUPERADMIN) {
     if (auth.role !== "admin") {
@@ -138,8 +84,6 @@ export async function authorization(email: string, projectId: number | null): Pr
         .onConflictDoUpdate({ target: users.email, set: { role: "admin" } });
     }
   }
-
-  projectRoleCache.set(authTokenKey, auth);
 
   return auth;
 }
@@ -161,3 +105,22 @@ export function hasMinProjectRole(role: ProjectRole | null, minRole: ProjectRole
   const minRoleIndex = sortedRoles.indexOf(minRole);
   return roleIndex >= minRoleIndex;
 }
+
+// export async function codebookInProject(projectId: number | null, codebookId: number) {
+//   if (!projectId) return false;
+
+//   const key = `${codebookId}-${projectId}`;
+//   let inProject = codebookInProjectCache.get(key);
+
+//   if (inProject === null) {
+//     const [codebook] = await db
+//       .select({ projectId: codebooks.projectId })
+//       .from(codebooks)
+//       .where(eq(codebooks.id, codebookId));
+
+//     inProject = { true: codebook.projectId === projectId };
+//     codebookInProjectCache.set(key, inProject);
+//   }
+
+//   return inProject.true;
+// }

@@ -2,7 +2,7 @@ import { projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet } from "@/app/api/routeHelpers";
+import { createGet, safeParams } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
 import { AnnotateUnitSchema, GetUnitParamsSchema } from "../schemas";
 
@@ -16,8 +16,8 @@ import { AnnotateUnitSchema, GetUnitParamsSchema } from "../schemas";
 //    - get blocks. loop over blocks and prelloacate units. this can be done concurrently. Just include both a block_index and unit_index, then after allocating re-index the indices.
 //    - if there are no units left, first check if uncoded units can be stolen from other users.
 
-export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
-  const params = await props.params;
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
+  const params = safeParams(await props.params);
   const { projectId } = params;
   return createGet({
     selectFunction: async (email, urlParams) => {

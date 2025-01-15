@@ -1,8 +1,8 @@
-"use client";;
+"use client";
 import { use } from "react";
 import { CodebooksTable } from "./CodebooksTable";
 
-export default function Codebooks(props: { params: Promise<{ projectId: number }> }) {
+export default function Codebooks(props: { params: Promise<{ projectId: string }> }) {
   const params = use(props.params);
   return (
     <div className="mx-auto mt-10 max-w-xl">

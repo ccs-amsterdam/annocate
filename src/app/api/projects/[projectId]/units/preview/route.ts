@@ -1,5 +1,5 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet } from "@/app/api/routeHelpers";
+import { createGet, safeParams } from "@/app/api/routeHelpers";
 import { jobBlocks, jobBlockSets, jobs, jobSetUnits, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq, sql } from "drizzle-orm";
@@ -7,8 +7,8 @@ import { NextRequest } from "next/server";
 import { UnitDataRowSchema } from "../schemas";
 import { PreviewUnitParamsSchema } from "./schemas";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
-  const params = await props.params;
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
+  const params = safeParams(await props.params);
   const { projectId } = params;
   return createGet({
     selectFunction: async (email, urlParams) => {

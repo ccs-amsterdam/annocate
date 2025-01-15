@@ -9,7 +9,6 @@ export function useUserDetails() {
     queryKey: ["user"],
     queryFn: async () => {
       if (!user) return;
-      console.log(user);
       const res = await user.api.get("me/details");
       const userDetails: Authorization = res.data;
       return userDetails;

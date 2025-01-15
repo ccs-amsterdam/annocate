@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
-import { createUpdate } from "../../routeHelpers";
+import { createUpdate, safeParams } from "../../routeHelpers";
 import { UsersUpdateBodySchema, UsersResponseSchema } from "../schemas";
 import { users } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest, props: { params: Promise<{ userId: string }> }) {
-  const params = await props.params;
+  const params = safeParams(await props.params);
   return createUpdate({
     updateFunction: async (email, body) => {
       const [user] = await db.update(users).set(body).where(eq(users.id, params.userId)).returning();

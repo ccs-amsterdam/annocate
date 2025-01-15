@@ -52,7 +52,7 @@
     "lru-cache": "^11.0.2",
     "lucide-react": "^0.469.0",
     "middlecat-react": "^0.4.2",
-    "next": "15.1.2",
+    "next": "^15.2.0-canary.11",
     "next-themes": "^0.4.4",
     "node-mocks-http": "^1.16.2",
     "nuqs": "^2.2.3",

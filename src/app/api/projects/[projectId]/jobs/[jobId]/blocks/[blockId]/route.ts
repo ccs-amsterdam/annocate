@@ -1,5 +1,5 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createDelete, createGet, createUpdate } from "@/app/api/routeHelpers";
+import { createDelete, createGet, createUpdate, safeParams } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { codebooks, jobBlocks, jobs } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
@@ -10,10 +10,10 @@ import { checkUnitIds, reindexJobBlockPositions } from "../helpers";
 
 export async function GET(
   req: NextRequest,
-  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> },
+  props: { params: Promise<{ projectId: string; jobId: string; blockId: string }> },
 ) {
-  const params = await props.params;
-  const { projectId } = params;
+  const params = safeParams(await props.params);
+
   return createGet({
     selectFunction: async (email, urlParams) => {
       const [block] = await db
@@ -27,7 +27,7 @@ export async function GET(
         .from(jobBlocks)
         .leftJoin(jobs, eq(jobs.id, jobBlocks.jobId))
         .leftJoin(codebooks, eq(jobBlocks.codebookId, codebooks.id))
-        .where(and(eq(jobs.projectId, projectId), eq(jobBlocks.id, params.blockId)));
+        .where(and(eq(jobs.projectId, params.projectId), eq(jobBlocks.id, params.blockId)));
 
       return block;
     },
@@ -42,9 +42,10 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> },
+  props: { params: Promise<{ projectId: string; jobId: string; blockId: string }> },
 ) {
-  const params = await props.params;
+  const params = safeParams(await props.params);
+
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
@@ -91,9 +92,10 @@ export async function POST(
 
 export async function DELETE(
   req: NextRequest,
-  props: { params: Promise<{ projectId: number; jobId: number; blockId: number }> },
+  props: { params: Promise<{ projectId: number; jobId: string; blockId: string }> },
 ) {
-  const params = await props.params;
+  const params = safeParams(await props.params);
+
   return createDelete({
     deleteFunction: (email) => {
       return db.transaction(async (tx) => {

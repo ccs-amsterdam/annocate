@@ -15,19 +15,19 @@ import {
   CodebookRelationSchema,
   CodebookUnionTypeSchema,
   CodebookVariableItemSchema,
-} from "./api/projects/[projectId]/codebooks/variablesSchemas";
+} from "./api/projects/[projectId]/jobs/[jobId]/blocks/variablesSchemas";
 
-import { UnitLayoutSchema } from "./api/projects/[projectId]/codebooks/layoutSchemas";
+import { UnitLayoutSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
 import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
-import { CodebookSchema } from "./api/projects/[projectId]/codebooks/schemas";
+import { CodebookSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import {
-  JobAnnotationBlockRulesSchema,
+  JobRulesSchema,
   JobBlockMetaSchema,
-  JobBlockResponseSchema,
-  JobBlockSchema,
   JobResponseSchema,
   JobMetaResponseSchema,
 } from "./api/projects/[projectId]/jobs/schemas";
+
+import { JobBlockResponseSchema, JobBlockSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
@@ -56,7 +56,7 @@ export interface Authorization {
   email: string;
   role: UserRole | null;
   superAdmin?: boolean;
-  projectId?: number | null;
+  projectId: number | null;
   projectRole: ProjectRole | null;
 }
 
@@ -72,7 +72,7 @@ export type Job = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
-export type Rules = z.infer<typeof JobAnnotationBlockRulesSchema>;
+export type Rules = z.infer<typeof JobRulesSchema>;
 
 export type UnitContent = z.infer<typeof UnitContentSchema>;
 export type ExtendedUnitContent = Omit<UnitContent, "grid"> & {

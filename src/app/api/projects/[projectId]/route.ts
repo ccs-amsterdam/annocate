@@ -2,12 +2,12 @@ import { projects, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { count, eq } from "drizzle-orm";
 import { hasMinProjectRole } from "../../authorization";
-import { createGet } from "../../routeHelpers";
+import { createGet, safeParams } from "../../routeHelpers";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "../schemas";
 import { NextRequest } from "next/server";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ projectId: number }> }) {
-  const params = await props.params;
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
+  const params = safeParams(await props.params);
   const { projectId } = params;
   return createGet({
     selectFunction: async (email, params) => {

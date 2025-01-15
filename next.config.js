@@ -30,6 +30,9 @@ const nextConfig = {
   compiler: {
     styledComponents: {},
   },
+  experimental: {
+    dynamicIO: true,
+  },
 };
 
 module.exports = nextConfig;

@@ -27,7 +27,7 @@ interface SaveOnChange {
   save?: () => Promise<void>;
 }
 
-export default function JobDesign(props: { params: Promise<{ projectId: number; jobId: number }> }) {
+export default function JobDesign(props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = use(props.params);
   const router = useRouter();
   const [preview, setPreview] = useState<CodebookPreview | undefined>();
@@ -49,7 +49,7 @@ export default function JobDesign(props: { params: Promise<{ projectId: number; 
   const nJobs = codebook?.nJobs || 0;
 
   return (
-    <div className="mx-auto  grid  grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
+    <div className="mx-auto grid grid-cols-1 gap-3 xl:grid-cols-[auto,1fr]">
       <SaveOnChangeDialog
         switchBlock={switchBlock}
         setSwitchBlock={setSwitchBlock}
@@ -70,7 +70,7 @@ export default function JobDesign(props: { params: Promise<{ projectId: number; 
         </h2>
         {nJobs > 1 ? (
           <div className="flex justify-between gap-3 px-6">
-            <div className="ml-auto flex items-center gap-3 rounded  border-primary px-3 py-2 text-primary">
+            <div className="ml-auto flex items-center gap-3 rounded border-primary px-3 py-2 text-primary">
               This codebook is used in {nJobs} jobs
               <TriangleAlert />
             </div>
@@ -88,7 +88,7 @@ export default function JobDesign(props: { params: Promise<{ projectId: number; 
           />
         ) : null}
       </div>
-      <div className="relative flex justify-center overflow-auto xl:h-[calc(100vh-var(--header-height))] ">
+      <div className="relative flex justify-center overflow-auto xl:h-[calc(100vh-var(--header-height))]">
         <Preview
           projectId={params.projectId}
           codebookPreview={preview}
@@ -122,8 +122,8 @@ function PreviewJob({
   if (!job) return <div>Could not load Job</div>;
 
   return (
-    <div className="mx-8 flex flex-col justify-center gap-2  rounded bg-primary p-3 text-primary-foreground">
-      <h3 className="prose-h3  pl-3">Job: {job.name}</h3>
+    <div className="mx-8 flex flex-col justify-center gap-2 rounded bg-primary p-3 text-primary-foreground">
+      <h3 className="prose-h3 pl-3">Job: {job.name}</h3>
       <div className="flex flex-col">
         {job?.blocks.map((block, i) => {
           return (
@@ -133,13 +133,13 @@ function PreviewJob({
                 onClick={() => {
                   setSwitchBlock(block.id);
                 }}
-                className={`flex h-8  gap-3 py-0 ${block.id === blockId ? "" : "text-foreground/60"}`}
+                className={`flex h-8 gap-3 py-0 ${block.id === blockId ? "" : "text-foreground/60"}`}
                 variant="default"
               >
                 <div className="flex h-6 w-5 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
                   {i + 1}
                 </div>
-                {block.name ? <div className="rounded-md font-bold ">{block.name}</div> : null}
+                {block.name ? <div className="rounded-md font-bold">{block.name}</div> : null}
                 <div className="italic">{`${block.nVariables} ${block.type} variable${block.nVariables === 1 ? "" : "s"}`}</div>
               </Button>
             </div>
@@ -217,7 +217,7 @@ function SaveOnChangeDialog({
                 setBlockId(switchBlock);
               }}
             >
-              <X className=" h-5 w-5" />
+              <X className="h-5 w-5" />
               Discard changes
             </Button>
             <Button
@@ -228,7 +228,7 @@ function SaveOnChangeDialog({
                 if (saveOnChange.save) saveOnChange.save().then(() => setBlockId(switchBlock));
               }}
             >
-              <Save className=" h-5 w-5" />
+              <Save className="h-5 w-5" />
               Save changes
             </Button>
           </div>

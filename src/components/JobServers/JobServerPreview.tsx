@@ -161,7 +161,7 @@ class JobServerPreview implements JobServer {
       token,
       data: unitData.data,
       layout: this.codebook.type === "survey" ? undefined : this.codebook.unit,
-      codebookId,
+      blockId,
       annotations: this.getAnnotation(token) || [],
     });
 
@@ -339,7 +339,6 @@ function prepareJobState(
     for (let block of job.blocks) {
       const jobblock = {
         id: block.id,
-        codebookId: block.codebookId,
         phase: block.phase,
         position: block.position,
       };

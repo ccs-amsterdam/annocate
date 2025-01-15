@@ -97,7 +97,6 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
-    console.log(code, multiple, finish);
     let varname = variable.name;
     if (item) varname += `.${item}`;
     annotationManager.processAnswer(varname, code, !!multiple, variable.fields);
@@ -176,7 +175,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   return (
     <div
       ref={answerRef}
-      className={`relative mx-0 my-auto grid  w-full grid-rows-[auto] overflow-hidden   p-0 text-[length:inherit] text-foreground transition-all `}
+      className={`relative mx-0 my-auto grid w-full grid-rows-[auto] overflow-hidden p-0 text-[length:inherit] text-foreground transition-all`}
     >
       <div className={`mt-auto w-full overflow-auto`}>
         <div className="py-2">{answerfield}</div>

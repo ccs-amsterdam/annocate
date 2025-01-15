@@ -32,7 +32,7 @@ import {
   Codebook,
   JobsetAnnotatorStatistics,
 } from "@/app/types";
-import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
+import { CodebookSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { z } from "zod";
 
 config({ path: ".env.local" });
@@ -86,35 +86,6 @@ export const managers = pgTable(
       {
         pk: primaryKey({ columns: [table.projectId, table.userId] }),
         userIdIndex: index("managers_userId_index").on(table.userId),
-      },
-    ];
-  },
-);
-
-// NOTE TO SELF
-// Don't need special system for variables where coders can add codes.
-// We can just post them and add them the codebook (efficiently with jsonb)
-// and then also set new updated time. Whenever a coder gets a new unit,
-// we include a join to the codebook table to get the updated time.
-// If the updated time is newer than the coder's last update, we send the new codebook.
-
-export const codebooks = pgTable(
-  "codebooks",
-  {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 256 }).notNull(),
-    created: timestamp("created").notNull().defaultNow(),
-    modified: timestamp("updated").notNull().defaultNow(),
-    codebook: jsonb("codebook").notNull().$type<Codebook>(),
-  },
-  (table) => {
-    return [
-      {
-        projectIds: index("codebook_project_ids").on(table.projectId),
-        unq: unique("unique_codebook_name").on(table.projectId, table.name),
       },
     ];
   },
@@ -209,11 +180,10 @@ export const jobBlocks = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 128 }).notNull(),
     phase: text("phase", { enum: ["preSurvey", "annotate", "postSurvey"] }).notNull(),
     position: doublePrecision("position").notNull(),
-    codebookId: integer("codebook_id")
-      .notNull()
-      .references(() => codebooks.id),
+    codebook: jsonb("codebook").notNull().$type<Codebook>(),
   },
   (table) => {
     return [
