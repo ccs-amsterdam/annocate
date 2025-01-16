@@ -1,11 +1,12 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createTableGet, createUpdate, safeParams } from "@/app/api/routeHelpers";
+import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { jobs } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobCreateSchema, JobMetaResponseSchema, JobsTableParamsSchema } from "./schemas";
+import { safeParams } from "@/functions/utils";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
   const params = safeParams(await props.params);

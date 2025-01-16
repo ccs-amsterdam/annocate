@@ -2,9 +2,10 @@ import { projects, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, and } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet, safeParams } from "@/app/api/routeHelpers";
+import { createGet } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
 import { UnitDataRowSchema } from "../schemas";
+import { safeParams } from "@/functions/utils";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; unitId: string }> }) {
   const params = safeParams(await props.params);

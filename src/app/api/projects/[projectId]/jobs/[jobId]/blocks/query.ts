@@ -1,80 +1,56 @@
-import { useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
+import { useDelete, useGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { z } from "zod";
-import {
-  CodebookCreateBodySchema,
-  CodebookResponseSchema,
-  CodebooksResponseSchema,
-  CodebooksTableParamsSchema,
-  CodebookUpdateBodySchema,
-} from "./schemas";
+import { JobBlockCreateSchema, JobBlockResponseSchema, JobBlockUpdateSchema } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 
-export function useCodebooks(projectId: number, initialParams?: z.infer<typeof CodebooksTableParamsSchema>) {
-  return useTableGet({
-    endpoint: `projects/${projectId}/codebooks`,
-    initialParams: initialParams || {},
-    responseSchema: CodebooksResponseSchema,
-  });
-}
-
-export function useCreateCodebook(projectId: number) {
+export function useCreateJobBlock(projectId: number, jobId: number) {
   return useMutate({
-    method: `post`,
-    endpoint: `projects/${projectId}/codebooks`,
-    bodySchema: CodebookCreateBodySchema,
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
+    bodySchema: JobBlockCreateSchema,
     responseSchema: IdResponseSchema,
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`, `projects/${projectId}/codebooks`],
   });
 }
-
-export function useUpdateCodebook(projectId: number, codebookId: number) {
+export function useUpdateJobBlock(projectId: number, jobId: number, blockId?: number) {
   return useMutate({
-    method: `post`,
-    endpoint: `projects/${projectId}/codebooks/${codebookId}`,
-    bodySchema: CodebookUpdateBodySchema,
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
+    bodySchema: JobBlockUpdateSchema,
     responseSchema: IdResponseSchema,
-    invalidateEndpoints: [`projects/${projectId}/codebooks`],
+    invalidateEndpoints: [
+      `projects/${projectId}/jobs`,
+      `projects/${projectId}/jobs/${jobId}`,
+      `projects/${projectId}/codebooks`,
+    ],
   });
 }
 
-export function useCodebook(projectId: number, codebookId: number | undefined) {
+export function useDeleteJobBlock(projectId: number, jobId: number, blockId: number) {
+  return useDelete({
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}`, `projects/${projectId}/codebooks`],
+  });
+}
+
+export function useJobBlock(projectId: number, jobId?: number, blockId?: number) {
   return useGet({
-    endpoint: `projects/${projectId}/codebooks`,
-    endpointId: String(codebookId),
-    responseSchema: CodebookResponseSchema,
-    disabled: codebookId === undefined,
+    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
+    responseSchema: JobBlockResponseSchema,
+    disabled: !blockId || !jobId,
   });
 }
 
 export const openapiCodebook = createOpenAPIDefinitions(
   ["Codebook management"],
   [
+    { path: "/jobs/{jobId}/blocks", method: "post", description: "Create a block", body: JobBlockCreateSchema },
     {
-      path: "/projects/{projectId}/codebooks",
-      method: "get",
-      description: "Get all codebooks",
-      params: CodebooksTableParamsSchema,
-      response: CodebooksResponseSchema,
-    },
-    {
-      path: "/projects/{projectId}/codebooks",
+      path: "/jobs/{jobId}/blocks/{blockId}",
       method: "post",
-      description: "Create a codebook",
-      body: CodebookCreateBodySchema,
-      response: CodebookResponseSchema,
+      description: "Update a block",
+      body: JobBlockUpdateSchema,
     },
-    {
-      path: "/projects/{projectId}/codebooks/{codebookId}",
-      method: "get",
-      description: "Get a codebook",
-      response: CodebookResponseSchema,
-    },
-    {
-      path: "/projects/{projectId}/codebooks/{codebookId}",
-      method: "post",
-      description: "Update a codebook",
-      body: CodebookUpdateBodySchema,
-      response: CodebookResponseSchema,
-    },
+    { path: "/jobs/{jobId}/blocks/{blockId}", method: "delete", description: "Delete a block" },
+    { path: "/jobs/{jobId}/blocks/{blockId}/units", method: "get", description: "Get a list of units for a block" },
   ],
 );

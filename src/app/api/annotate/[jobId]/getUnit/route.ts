@@ -2,7 +2,8 @@ import { projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet, safeParams } from "@/app/api/routeHelpers";
+import { createGet } from "@/app/api/routeHelpers";
+import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
 import { AnnotateUnitSchema, GetUnitParamsSchema } from "../schemas";
 

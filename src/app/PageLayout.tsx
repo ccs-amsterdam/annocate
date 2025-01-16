@@ -1,6 +1,7 @@
 "use client";
 
 import Menu from "@/components/Menu/Menu";
+import useScrollState from "@/hooks/useScrollState";
 import { usePathname } from "next/navigation";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 
 export function PageLayout({ children }: Props) {
   const path = usePathname();
+  useScrollState();
 
   if (path?.startsWith("/annotator")) {
     return <AnnotatorLayout>{children}</AnnotatorLayout>;
@@ -22,8 +24,8 @@ export function AnnotatorLayout({ children }: Props) {
 
 export function ManagerLayout({ children }: Props) {
   return (
-    <div className=" relative flex h-full w-full flex-col items-center">
-      <header className="bg-menu left-0  top-0 z-0 flex h-[var(--header-height)] w-full justify-center border-b-[1px] border-primary-light  transition-all">
+    <div className="relative flex h-full w-full flex-col items-center">
+      <header className="bg-menu left-0 top-0 z-0 flex h-[var(--header-height)] w-full justify-center border-b-[calc(0px+var(--nav-border-height))] border-primary-light">
         <Menu />
       </header>
 

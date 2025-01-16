@@ -1,10 +1,11 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet, createUpdate, safeParams } from "@/app/api/routeHelpers";
+import { createGet, createUpdate } from "@/app/api/routeHelpers";
 import { jobBlocks, jobs, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, count, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { JobResponseSchema, JobMetaResponseSchema, JobUpdateSchema } from "../schemas";
+import { safeParams } from "@/functions/utils";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(await props.params);
@@ -19,8 +20,9 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
           blockId: jobBlocks.id,
           blockName: jobBlocks.name,
           phase: jobBlocks.phase,
+          type: jobBlocks.type,
+          parentId: jobBlocks.parentId,
           position: jobBlocks.position,
-          nVariables: sql<number>`jsonb_array_length(${jobBlocks.codebook}->'variables')`.mapWith(Number),
         })
         .from(jobs)
         .leftJoin(jobBlocks, eq(jobs.id, jobBlocks.jobId))
@@ -38,18 +40,21 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
       // }
 
       const blocks = jobWithBlocks
-        .map(({ phase, blockId, position, blockName, nVariables: nVariables }) => ({
+        .map(({ phase, type, blockId, parentId, position, blockName }) => ({
           id: blockId,
-          phase,
           name: blockName,
+          type,
+          phase,
+          parentId,
           position,
-          nVariables,
         }))
         .filter((block) => block.id !== null);
 
       const result = {
         id: jobWithBlocks[0].id,
         name: jobWithBlocks[0].name,
+        type: jobWithBlocks[0].type,
+        phase: jobWithBlocks[0].phase,
         modified: jobWithBlocks[0].modified,
         deployed: jobWithBlocks[0].deployed,
         blocks,

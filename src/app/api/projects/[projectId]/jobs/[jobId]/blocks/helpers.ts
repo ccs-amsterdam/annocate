@@ -6,7 +6,7 @@ export async function reindexJobBlockPositions(tx: any, jobId: number): Promise<
   await tx.execute(sql`
     WITH new_position AS
     (
-        SELECT row_number() over (order by position) AS newpos, id
+        SELECT id, phase, row_number() OVER (PARTITION BY phase, parent_id ORDER BY position) AS newpos
         FROM ${jobBlocks}
         WHERE ${jobBlocks.jobId} = ${jobId}
     )

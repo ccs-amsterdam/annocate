@@ -15,6 +15,7 @@ At present it is being re-implemented in this repository, under the name of Anno
 
 The authentication for AnnoCate will go through [Middlecat](https://github.com/ccs-amsterdam/middlecat), which maintains the integration with the AmCAT infrastructure. This can also be used for standalone AnnoCate servers, with the benefit that people that trust us can rely on our Middlecat server, so they do not need to handle authentication themselves.
 
+
 ## Development guide
 
 Set up a local Postggres DB.
@@ -34,6 +35,13 @@ MIDDLECAT_URL=https://middlecat.net
 SUPERADMIN=your_email_address
 ```
 
+## Use pnpm
+
+Somehow nextjs canary doesn't work well with npm. pnpm fixed it.
+
+```bash
+sudo npm install -g pnpm
+```
 
 
 You can also set MIDDLECAT_URL to "DEVMODE" to skip Middlecat. Off course, this should only be used for development, as it turns of all authentication
@@ -42,14 +50,14 @@ If you're hosting serverless, we recommend using Neon.tech for the postgres data
 migrate db
 
 ```
-npm run migrate
+pnpm run migrate
 ```
 
 Install and run client
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -57,11 +65,11 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 For typescript debugging, use
 
 ```bash
-npm run watch
+pnpm run watch
 ```
 
 For database debugging, use Drizzle studio
 
 ```bash
-npm run studio
+pnpm run studio
 ```

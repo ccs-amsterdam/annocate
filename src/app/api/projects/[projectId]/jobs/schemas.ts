@@ -77,8 +77,8 @@ export const JobBlockMetaSchema = z.object({
   id: z.number(),
   name: z.string(),
   phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
+  type: z.enum(["surveyQuestion", "unitLayout", "annotationQuestion"]),
   position: z.number(),
-  nVariables: z.number(),
 });
 
 export const JobResponseSchema = z.object({

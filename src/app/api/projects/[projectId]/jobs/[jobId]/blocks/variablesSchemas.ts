@@ -106,12 +106,6 @@ export const CodebookVariableSchema = z.object({
     description: "Choose a format in which the variable will be presented to the annotator.",
     example: "select code",
   }),
-  name: SafeNameSchema.openapi({
-    title: "Name",
-    description:
-      "The name of the variable. Will not be visible to annotators. Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
-    example: "variable_name",
-  }),
   question: z.string().max(512).openapi({
     title: "Question",
     description: "The question that will be shown to the annotator. Supports scripts and markdown.",
@@ -236,7 +230,7 @@ export const CodebookConfirmTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["confirm"]),
 });
 
-export const CodebookUnionTypeSchema = z.union([
+export const VariableSchema = z.union([
   CodebookSpanTypeSchema,
   CodebookRelationTypeSchema,
   CodebookScaleTypeSchema,
@@ -247,7 +241,7 @@ export const CodebookUnionTypeSchema = z.union([
 ]);
 
 export const CodebookVariablesSchema = z
-  .array(CodebookUnionTypeSchema)
+  .array(VariableSchema)
   .min(1)
   .refine(
     (variables) => {

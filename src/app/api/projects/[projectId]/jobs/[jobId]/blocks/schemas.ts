@@ -1,7 +1,7 @@
-import { createTableParamsSchema } from "@/app/api/schemaHelpers";
+import { createTableParamsSchema, SafeNameSchema } from "@/app/api/schemaHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { CodebookVariablesSchema } from "./variablesSchemas";
+import { CodebookVariablesSchema, VariableSchema } from "./variablesSchemas";
 import { UnitLayoutSchema } from "./layoutSchemas";
 
 extendZodWithOpenApi(z);
@@ -38,6 +38,12 @@ export const CodebookAnnotationSchema = CodebookBaseSchema.extend({
   }),
 });
 
+// !!!!!!!!!!!!!!!!
+// We WILL still have a codebook schema, but this will be for the full collection
+// of Job Blocks. This won't have a form, and is only meant for the API, so that
+// in R and stuff you can just upload a full validated codebook at once. Only on webclient
+// do we need the separate jobblock endpoints
+
 export const CodebookSchema = z.union([CodebookSurveySchema, CodebookAnnotationSchema]);
 export const CodebookUpdateSchema = z.object({
   codebook: CodebookSchema,
@@ -55,23 +61,24 @@ export const CodebooksTableParamsSchema = createTableParamsSchema({
   },
 });
 
-export const CodebookNameSchema = z.string().min(0).max(128).openapi({
-  title: "Name",
-  description: "The name of the codebook",
-  example: "My first codebook",
-});
-
 export const JobBlockSchema = z.object({
-  name: z.string().openapi({
-    title: "Block name",
-    description: "A short for yourself to remember what this block is about",
+  name: SafeNameSchema.openapi({
+    title: "Name",
+    description:
+      "The name of the block. Will not be visible to annotators. Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
+    example: "unique_block_name",
   }),
   phase: z.enum(["preSurvey", "annotate", "postSurvey"]).openapi({
     title: "Job phase",
     description: "A job can have multiple phases. Pre-survey, annotation, and post-survey",
   }),
+  parentId: z.number().nullable().openapi({ title: "Job Block parent ID", description: "The ID of another job Block" }),
   position: z.number().openapi({ title: "Block position", description: "Position of the block in the job" }),
-  codebook: CodebookSchema,
+  type: z.enum(["surveyQuestion", "unitLayout", "annotationQuestion"]).openapi({
+    title: "Block type",
+    description: "The type of the block. A survey question, a unit layout, or an annotation question",
+  }),
+  block: VariableSchema,
 });
 
 export const JobBlockCreateSchema = JobBlockSchema;
@@ -81,6 +88,8 @@ export const JobBlockResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
+  type: z.enum(["surveyQuestion", "unitLayout", "annotationQuestion"]),
+  parentId: z.number().nullable(),
   position: z.number(),
-  codebook: CodebookSchema,
+  block: VariableSchema,
 });

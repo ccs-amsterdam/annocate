@@ -2,7 +2,7 @@ import { annotations, annotator, jobBlocks, jobs, projects } from "@/drizzle/sch
 import db from "@/drizzle/drizzle";
 import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet, safeParams } from "@/app/api/routeHelpers";
+import { createGet, safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
 import {
   AnnotateUnitSchema,

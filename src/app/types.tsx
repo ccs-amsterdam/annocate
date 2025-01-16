@@ -13,7 +13,7 @@ import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectI
 import {
   CodebookCodeSchema,
   CodebookRelationSchema,
-  CodebookUnionTypeSchema,
+  VariableSchema,
   CodebookVariableItemSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/blocks/variablesSchemas";
 
@@ -62,7 +62,7 @@ export interface Authorization {
 
 export type Project = z.infer<typeof ProjectResponseSchema>;
 export type Codebook = z.output<typeof CodebookSchema>;
-export type Variable = z.infer<typeof CodebookUnionTypeSchema>;
+export type Variable = z.infer<typeof VariableSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type JobBlockMeta = z.infer<typeof JobBlockMetaSchema>;

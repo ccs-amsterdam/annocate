@@ -18,6 +18,7 @@ import {
   uniqueIndex,
   numeric,
   doublePrecision,
+  AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 import {
@@ -31,6 +32,7 @@ import {
   ProjectConfig,
   Codebook,
   JobsetAnnotatorStatistics,
+  Variable,
 } from "@/app/types";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { z } from "zod";
@@ -182,32 +184,19 @@ export const jobBlocks = pgTable(
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
     phase: text("phase", { enum: ["preSurvey", "annotate", "postSurvey"] }).notNull(),
+    parentId: integer("parent_id").references((): AnyPgColumn => jobBlocks.id),
     position: doublePrecision("position").notNull(),
-    codebook: jsonb("codebook").notNull().$type<Codebook>(),
+    type: text("type", { enum: ["surveyQuestion", "unitLayout", "annotationQuestion"] }).notNull(),
+    block: jsonb("block").notNull().$type<Variable>(),
+
+    setsFlags: jsonb("sets_flags").$type<string[]>(),
+    ifFlags: jsonb("if_flags").$type<string[]>(),
   },
   (table) => {
     return [
       {
         jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
-      },
-    ];
-  },
-);
-
-export const jobBlockSets = pgTable(
-  "job_block_sets",
-  {
-    jobBlockId: integer("job_block_id")
-      .notNull()
-      .references(() => jobBlocks.id, { onDelete: "cascade" }),
-    jobSetId: integer("job_set_id")
-      .notNull()
-      .references(() => jobSets.id, { onDelete: "cascade" }),
-  },
-  (table) => {
-    return [
-      {
-        pk: primaryKey({ columns: [table.jobBlockId, table.jobSetId] }),
+        uniqueName: unique("unique_job_block_name").on(table.jobId, table.name),
       },
     ];
   },

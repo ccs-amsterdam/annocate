@@ -1,5 +1,5 @@
 {
-  "id": "e92b16c9-e2df-4d4e-81f8-6a118d56f165",
+  "id": "7c09a1a5-a626-4f73-b325-2379d3718829",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -153,71 +153,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.codebooks": {
-      "name": "codebooks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(256)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created": {
-          "name": "created",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated": {
-          "name": "updated",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "codebook": {
-          "name": "codebook",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "codebooks_project_id_projects_id_fk": {
-          "name": "codebooks_project_id_projects_id_fk",
-          "tableFrom": "codebooks",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.invitations": {
       "name": "invitations",
       "schema": "",
@@ -288,58 +223,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.job_block_sets": {
-      "name": "job_block_sets",
-      "schema": "",
-      "columns": {
-        "job_block_id": {
-          "name": "job_block_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "job_set_id": {
-          "name": "job_set_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "job_block_sets_job_block_id_job_blocks_id_fk": {
-          "name": "job_block_sets_job_block_id_job_blocks_id_fk",
-          "tableFrom": "job_block_sets",
-          "tableTo": "job_blocks",
-          "columnsFrom": [
-            "job_block_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "job_block_sets_job_set_id_job_sets_id_fk": {
-          "name": "job_block_sets_job_set_id_job_sets_id_fk",
-          "tableFrom": "job_block_sets",
-          "tableTo": "job_sets",
-          "columnsFrom": [
-            "job_set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.job_blocks": {
       "name": "job_blocks",
       "schema": "",
@@ -356,11 +239,23 @@
           "primaryKey": false,
           "notNull": true
         },
+        "name": {
+          "name": "name",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "phase": {
           "name": "phase",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         },
         "position": {
           "name": "position",
@@ -368,11 +263,29 @@
           "primaryKey": false,
           "notNull": true
         },
-        "codebook_id": {
-          "name": "codebook_id",
-          "type": "integer",
+        "type": {
+          "name": "type",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "block": {
+          "name": "block",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sets_flags": {
+          "name": "sets_flags",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "if_flags": {
+          "name": "if_flags",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -390,12 +303,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "job_blocks_codebook_id_codebooks_id_fk": {
-          "name": "job_blocks_codebook_id_codebooks_id_fk",
+        "job_blocks_parent_id_job_blocks_id_fk": {
+          "name": "job_blocks_parent_id_job_blocks_id_fk",
           "tableFrom": "job_blocks",
-          "tableTo": "codebooks",
+          "tableTo": "job_blocks",
           "columnsFrom": [
-            "codebook_id"
+            "parent_id"
           ],
           "columnsTo": [
             "id"

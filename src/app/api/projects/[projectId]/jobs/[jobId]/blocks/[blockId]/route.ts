@@ -1,12 +1,16 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createDelete, createGet, createUpdate, safeParams } from "@/app/api/routeHelpers";
+import { createDelete, createGet, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
-import { codebooks, jobBlocks, jobs } from "@/drizzle/schema";
+import { jobBlocks, jobs } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { JobBlockResponseSchema, JobBlockUpdateSchema } from "../../../schemas";
+import {
+  JobBlockResponseSchema,
+  JobBlockUpdateSchema,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { checkUnitIds, reindexJobBlockPositions } from "../helpers";
+import { safeParams } from "@/functions/utils";
 
 export async function GET(
   req: NextRequest,
@@ -19,16 +23,18 @@ export async function GET(
       const [block] = await db
         .select({
           id: jobBlocks.id,
+          name: jobBlocks.name,
+          type: jobBlocks.type,
           phase: jobBlocks.phase,
+          parentId: jobBlocks.parentId,
           position: jobBlocks.position,
-          codebookId: codebooks.id,
-          codebookName: codebooks.name,
+          block: jobBlocks.block,
         })
         .from(jobBlocks)
         .leftJoin(jobs, eq(jobs.id, jobBlocks.jobId))
-        .leftJoin(codebooks, eq(jobBlocks.codebookId, codebooks.id))
-        .where(and(eq(jobs.projectId, params.projectId), eq(jobBlocks.id, params.blockId)));
+        .where(eq(jobBlocks.id, params.blockId));
 
+      console.log(block);
       return block;
     },
     req,
@@ -49,10 +55,6 @@ export async function POST(
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        // if (body.type === "annotation" && body.units) {
-        //   await checkUnitIds(tx, body.units, params.projectId);
-        // }
-
         if (body.position !== undefined) {
           const [currentPosition] = await tx
             .select({ position: jobBlocks.position })
@@ -68,8 +70,7 @@ export async function POST(
         const [newJobBlock] = await tx
           .update(jobBlocks)
           .set({ ...body })
-          .leftJoin(jobs, eq(jobs.id, jobBlocks.jobId))
-          .where(and(eq(jobBlocks.id, params.blockId), eq(jobs.projectId, params.projectId)))
+          .where(eq(jobBlocks.id, params.blockId))
           .returning();
 
         if (body.position !== undefined) {
@@ -99,9 +100,7 @@ export async function DELETE(
   return createDelete({
     deleteFunction: (email) => {
       return db.transaction(async (tx) => {
-        await tx
-          .delete(jobBlocks)
-          .where(and(eq(jobBlocks.projectId, params.projectId), eq(jobBlocks.id, params.blockId)));
+        await tx.delete(jobBlocks).where(eq(jobBlocks.id, params.blockId));
         await reindexJobBlockPositions(tx, params.jobId);
         return { success: true };
       });

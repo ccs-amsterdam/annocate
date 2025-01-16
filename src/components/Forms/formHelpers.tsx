@@ -23,8 +23,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { SelectOrCreate } from "../ui/select-or-create";
-import { useCreateEmptyCodebook } from "./codebookForms";
-import { useCodebooks } from "@/app/api/projects/[projectId]/codebooks/query";
 import { JobBlock, JobBlockMeta } from "@/app/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import DBSelect from "../Common/DBSelect";
@@ -46,6 +44,7 @@ interface FormFieldProps<T extends FieldValues> {
   clearable?: boolean;
   className?: string;
   placeholder?: string;
+  disableMessage?: boolean;
 }
 
 interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
@@ -204,7 +203,6 @@ export function BooleanFormField<T extends FieldValues>({ control, name, zType }
   const openAPI = OpenAPIMeta(zType, name);
   return (
     <div className="flex flex-col gap-2">
-      <FormFieldTitle title={openAPI.title} description={openAPI.description} />
       <FormField
         control={control}
         name={name}
@@ -214,6 +212,7 @@ export function BooleanFormField<T extends FieldValues>({ control, name, zType }
               <FormControl>
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
+              <FormFieldTitle title={openAPI.title} description={openAPI.description} />
             </FormItem>
           );
         }}
@@ -264,6 +263,7 @@ export function DropdownFormField<T extends FieldValues>({
   zType,
   values,
   placeholder,
+  disableMessage,
 }: FormFieldArrayProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
 
@@ -273,7 +273,7 @@ export function DropdownFormField<T extends FieldValues>({
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+          <FormFieldTitle title={openAPI.title} description={openAPI.description} disableMessage={disableMessage} />
           <FormControl>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -547,97 +547,19 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
   );
 }
 
-interface SelectCodebookProps<T extends FieldValues> {
-  control: Control<T, any>;
-  name: Path<T>;
-  zType: z.ZodTypeAny;
-  projectId: number;
-  type: "survey" | "annotation";
-  current?: JobBlock;
-}
-
-export function SelectCodebookFormField<T extends FieldValues>({
-  control,
-  name,
-  zType,
-  projectId,
-  type,
-  current,
-}: SelectCodebookProps<T>) {
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState(current?.codebookName || "");
-  const useCodebooksProps = useCodebooks(projectId, { type });
-  const [newName, setNewName] = useState("");
-  const { create } = useCreateEmptyCodebook(projectId, type);
-  const openAPI = OpenAPIMeta(zType, "codebookId");
-
-  useEffect(() => {
-    if (current) {
-      setSelected(current.codebookName);
-    }
-  }, [current]);
-
-  return (
-    <FormField
-      control={control}
-      name={name}
-      render={({ field }) => {
-        function onSelect(id: number, name: string) {
-          setSelected(name);
-          field.onChange(id);
-          setOpen(false);
-        }
-
-        return (
-          <FormItem>
-            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="flex w-full min-w-48 items-center justify-between gap-2">
-                  {selected || "Select Codebook"} <ChevronDown />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-72 bg-background">
-                <DialogHeader>
-                  <DialogTitle className="invisible h-0">Select codebook</DialogTitle>
-                  <DialogDescription>Select or create codebook</DialogDescription>
-                </DialogHeader>
-                <DBSelect
-                  {...useCodebooksProps}
-                  nameField={"name"}
-                  projectId={projectId}
-                  onSelect={(codebook) => onSelect(codebook.id, codebook.name)}
-                >
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="New codebook" value={newName} onChange={(e) => setNewName(e.target.value)} />
-                    <Button
-                      disabled={!newName}
-                      className="ml-auto flex w-min gap-1"
-                      variant="secondary"
-                      onClick={() =>
-                        create(newName).then(({ id }) => {
-                          onSelect(id, newName);
-                        })
-                      }
-                    >
-                      <Plus />
-                    </Button>
-                  </div>
-                </DBSelect>
-              </DialogContent>
-            </Dialog>
-          </FormItem>
-        );
-      }}
-    />
-  );
-}
-
 export function OpenAPIMeta(zType: z.ZodTypeAny, name: string) {
   return zType._def?.openapi?.metadata || { title: name, description: "" };
 }
 
-export function FormFieldTitle({ title, description }: { title: string; description: string }) {
+export function FormFieldTitle({
+  title,
+  description,
+  disableMessage,
+}: {
+  title: string;
+  description: string;
+  disableMessage?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   function descriptionStyle(showDescription: boolean) {
@@ -658,12 +580,13 @@ export function FormFieldTitle({ title, description }: { title: string; descript
         <Tooltip delayDuration={200}>
           <TooltipTrigger
             tabIndex={-1}
-            className="flex items-center gap-2 text-base underline"
+            className="flex items-center gap-[1px] font-normal"
             onClick={(e) => {
               e.preventDefault();
             }}
           >
             {title}
+            <span className="font-sm opacity-50">*</span>
           </TooltipTrigger>
           <TooltipPortal>
             <TooltipContent side="top" sideOffset={3} className="w-[400px]">
@@ -672,7 +595,7 @@ export function FormFieldTitle({ title, description }: { title: string; descript
           </TooltipPortal>
         </Tooltip>
       </div>
-      <FormMessage className="mt-1" />
+      {disableMessage ? null : <FormMessage className="mt-1" />}
     </div>
   );
 }
@@ -696,7 +619,7 @@ export function MoveItemInArray({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild disabled={n === 1}>
-        <Button variant={!!error ? "destructive" : variant || "default"} className={`h-8 w-8 rounded-full`}>
+        <Button variant={!!error ? "destructive" : variant || "default"} size="icon" className={`h-6 w-6 rounded-full`}>
           {i + 1}
         </Button>
       </DropdownMenuTrigger>
@@ -710,7 +633,7 @@ export function MoveItemInArray({
           if (j === i) return null;
           return (
             <DropdownMenuItem key={j} onClick={() => move(i, j)} className="p-0">
-              <Button variant="secondary" className="h-8 w-8 rounded-full hover:border-none">
+              <Button variant="secondary" size="icon" className="h-6 w-6 rounded-full hover:border-none">
                 {j + 1}
               </Button>
             </DropdownMenuItem>

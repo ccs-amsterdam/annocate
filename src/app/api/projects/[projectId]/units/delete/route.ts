@@ -1,10 +1,11 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createUpdate, safeParams } from "@/app/api/routeHelpers";
+import { createUpdate } from "@/app/api/routeHelpers";
 import { projects, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataDeleteBodySchema } from "../schemas";
+import { safeParams } from "@/functions/utils";
 
 export async function POST(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
   const params = safeParams(await props.params);

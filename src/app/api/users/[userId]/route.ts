@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { createUpdate, safeParams } from "../../routeHelpers";
+import { createUpdate } from "../../routeHelpers";
 import { UsersUpdateBodySchema, UsersResponseSchema } from "../schemas";
 import { users } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq } from "drizzle-orm";
+import { safeParams } from "@/functions/utils";
 
 export async function POST(req: NextRequest, props: { params: Promise<{ userId: string }> }) {
   const params = safeParams(await props.params);
