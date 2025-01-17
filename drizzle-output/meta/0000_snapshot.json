@@ -1,5 +1,5 @@
 {
-  "id": "77bee70a-6f04-4e3d-9f7d-fd0a320ec03d",
+  "id": "b8aa8bfd-a2cd-461f-a67c-d278dc951a7c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -88,7 +88,16 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "annotations_job_block_id_annotator_id_unit_id_pk": {
+          "name": "annotations_job_block_id_annotator_id_unit_id_pk",
+          "columns": [
+            "job_block_id",
+            "annotator_id",
+            "unit_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -131,7 +140,38 @@
           "default": "'{}'::jsonb"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "annotator_project_idx": {
+          "name": "annotator_project_idx",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "annotator_user_idx": {
+          "name": "annotator_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "annotator_job_id_jobs_id_fk": {
           "name": "annotator_job_id_jobs_id_fk",
@@ -148,7 +188,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "unique_user": {
+          "name": "unique_user",
+          "nullsNotDistinct": false,
+          "columns": [
+            "job_id",
+            "user_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -217,7 +266,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "invitations_project_id_id_pk": {
+          "name": "invitations_project_id_id_pk",
+          "columns": [
+            "project_id",
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -288,7 +345,23 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "job_blocks_job_id_idx": {
+          "name": "job_blocks_job_id_idx",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "job_blocks_job_id_jobs_id_fk": {
           "name": "job_blocks_job_id_jobs_id_fk",
@@ -318,7 +391,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "unique_job_block_name": {
+          "name": "unique_job_block_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "job_id",
+            "name"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -375,7 +457,16 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "job_set_units_job_set_id_unit_id_position_pk": {
+          "name": "job_set_units_job_set_id_unit_id_position_pk",
+          "columns": [
+            "job_set_id",
+            "unit_id",
+            "position"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -404,7 +495,23 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "job_sets_job_ids_idx": {
+          "name": "job_sets_job_ids_idx",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "job_sets_job_id_jobs_id_fk": {
           "name": "job_sets_job_id_jobs_id_fk",
@@ -421,7 +528,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "jobset_job_name_unique": {
+          "name": "jobset_job_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "job_id",
+            "name"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -463,7 +579,23 @@
           "default": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "jobs_project_ids": {
+          "name": "jobs_project_ids",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "jobs_project_id_projects_id_fk": {
           "name": "jobs_project_id_projects_id_fk",
@@ -480,7 +612,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "unique_job_name": {
+          "name": "unique_job_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "name"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -509,7 +650,23 @@
           "default": "'manager'"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "managers_userId_index": {
+          "name": "managers_userId_index",
+          "columns": [
+            {
+              "expression": "user_uuid",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "managers_project_id_projects_id_fk": {
           "name": "managers_project_id_projects_id_fk",
@@ -538,7 +695,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "managers_project_id_user_uuid_pk": {
+          "name": "managers_project_id_user_uuid_pk",
+          "columns": [
+            "project_id",
+            "user_uuid"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -605,7 +770,16 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "unique_creator_name": {
+          "name": "unique_creator_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "creator_email",
+            "name"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -653,7 +827,29 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "project_unit_uidx": {
+          "name": "project_unit_uidx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "units_project_id_projects_id_fk": {
           "name": "units_project_id_projects_id_fk",

@@ -64,9 +64,7 @@ export const projects = pgTable(
     frozen: boolean("frozen").notNull().default(false),
     unitsUpdated: timestamp("units_updated").notNull().defaultNow(),
   },
-  (table) => {
-    return [{ unq: unique("unique_creator_name").on(table.creator, table.name) }];
-  },
+  (table) => ({ unq: unique("unique_creator_name").on(table.creator, table.name) }),
 );
 
 export const managers = pgTable(
@@ -83,14 +81,10 @@ export const managers = pgTable(
       .$type<ProjectRole>()
       .default("manager"),
   },
-  (table) => {
-    return [
-      {
-        pk: primaryKey({ columns: [table.projectId, table.userId] }),
-        userIdIndex: index("managers_userId_index").on(table.userId),
-      },
-    ];
-  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.projectId, table.userId] }),
+    userIdIndex: index("managers_userId_index").on(table.userId),
+  }),
 );
 
 export const units = pgTable(
@@ -105,13 +99,9 @@ export const units = pgTable(
     created: timestamp("created").notNull().defaultNow(),
     modified: timestamp("modified").notNull().defaultNow(),
   },
-  (table) => {
-    return [
-      {
-        projectUnitUidx: uniqueIndex("project_unit_uidx").on(table.projectId, table.externalId),
-      },
-    ];
-  },
+  (table) => ({
+    projectUnitUidx: uniqueIndex("project_unit_uidx").on(table.projectId, table.externalId),
+  }),
 );
 
 export const jobs = pgTable(
@@ -125,14 +115,10 @@ export const jobs = pgTable(
     modified: timestamp("modified").notNull().defaultNow(),
     deployed: boolean("deployed").notNull().default(false),
   },
-  (table) => {
-    return [
-      {
-        projectIds: index("jobs_project_ids").on(table.projectId),
-        uniqueName: unique("unique_job_name").on(table.projectId, table.name),
-      },
-    ];
-  },
+  (table) => ({
+    projectIds: index("jobs_project_ids").on(table.projectId),
+    uniqueName: unique("unique_job_name").on(table.projectId, table.name),
+  }),
 );
 
 // This is for creating experimental groups and assigning specific coders
@@ -145,14 +131,10 @@ export const jobSets = pgTable(
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
   },
-  (table) => {
-    return [
-      {
-        jobIds: index("job_sets_job_ids_idx").on(table.jobId),
-        uniqueJobJobsetName: unique("jobset_job_name_unique").on(table.jobId, table.name),
-      },
-    ];
-  },
+  (table) => ({
+    jobIds: index("job_sets_job_ids_idx").on(table.jobId),
+    uniqueJobJobsetName: unique("jobset_job_name_unique").on(table.jobId, table.name),
+  }),
 );
 
 export const jobSetUnits = pgTable(
@@ -166,13 +148,9 @@ export const jobSetUnits = pgTable(
       .references(() => units.id),
     position: integer("position").notNull(),
   },
-  (table) => {
-    return [
-      {
-        pk: primaryKey({ columns: [table.jobSetId, table.unitId, table.position] }),
-      },
-    ];
-  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.jobSetId, table.unitId, table.position] }),
+  }),
 );
 
 export const jobBlocks = pgTable(
@@ -192,14 +170,10 @@ export const jobBlocks = pgTable(
     setsFlags: jsonb("sets_flags").$type<string[]>(),
     ifFlags: jsonb("if_flags").$type<string[]>(),
   },
-  (table) => {
-    return [
-      {
-        jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
-        uniqueName: unique("unique_job_block_name").on(table.jobId, table.name),
-      },
-    ];
-  },
+  (table) => ({
+    jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
+    uniqueName: unique("unique_job_block_name").on(table.jobId, table.name),
+  }),
 );
 
 // todo: figure out how to rotate over multiple job ids.
@@ -217,13 +191,9 @@ export const invitations = pgTable(
       .references(() => jobs.id, { onDelete: "cascade" }),
     access: text("access", { enum: ["only_authenticated", "only_anonymous", "user_decides"] }).notNull(),
   },
-  (table) => {
-    return [
-      {
-        pk: primaryKey({ columns: [table.projectId, table.secret] }),
-      },
-    ];
-  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.projectId, table.secret] }),
+  }),
 );
 
 export const annotator = pgTable(
@@ -240,15 +210,11 @@ export const annotator = pgTable(
     urlParams: jsonb("url_params").notNull().$type<Record<string, string | number>>().default({}),
     statistics: jsonb("statistics").notNull().$type<JobsetAnnotatorStatistics>().default({}),
   },
-  (table) => {
-    return [
-      {
-        jobIdx: index("annotator_project_idx").on(table.jobId),
-        userIdx: index("annotator_user_idx").on(table.userId),
-        uniqueUser: unique("unique_user").on(table.jobId, table.userId),
-      },
-    ];
-  },
+  (table) => ({
+    jobIdx: index("annotator_project_idx").on(table.jobId),
+    userIdx: index("annotator_user_idx").on(table.userId),
+    uniqueUser: unique("unique_user").on(table.jobId, table.userId),
+  }),
 );
 
 export const annotations = pgTable(
@@ -279,11 +245,7 @@ export const annotations = pgTable(
     isSurvey: boolean("is_survey").notNull().default(false),
     // isGold: boolean("is_gold").notNull().default(false),
   },
-  (table) => {
-    return [
-      {
-        pk: primaryKey({ columns: [table.jobBlockId, table.annotatorId, table.unitId] }),
-      },
-    ];
-  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.jobBlockId, table.annotatorId, table.unitId] }),
+  }),
 );

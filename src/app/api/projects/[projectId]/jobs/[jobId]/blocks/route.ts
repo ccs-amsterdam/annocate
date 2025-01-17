@@ -35,5 +35,8 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },
+    errorFunction: (status, body) => {
+      if (status === 409) return `A block named "${body?.name}" already exists in this job`;
+    },
   });
 }
