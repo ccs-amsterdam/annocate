@@ -115,7 +115,7 @@ export const CodebookVariableSchema = z.object({
     title: "Instruction",
     description: "Provide specific instructions for this variable. Supports scripts and markdown.",
   }),
-  instructionMode: z.enum(InstructionMode).optional().openapi({
+  instructionMode: z.enum(InstructionMode).nullish().openapi({
     title: "Add instructions",
     description:
       "Choose where the instruction should be shown (default is after). Can be before or after the question, or in a modal that the annotator can open. If set to auto_modal, the instruction will be shown automatically the first time the annotator sees this variable in a session.",
