@@ -94,19 +94,21 @@ export function CreateOrUpdateJobBlock({
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full w-full flex-col gap-3">
         <div className="mb-6 flex gap-3">
           {header && <h2 className="text-lg font-semibold">{header}</h2>}
-          <Button
-            onClick={(e) => {
-              e.preventDefault();
-              onCancel();
-            }}
-            variant="outline"
-            className="ml-auto"
-          >
-            cancel
-          </Button>
-          <Button type="submit" className="mt-auto" variant="secondary">
-            {current ? "Save changes" : "Create"}
-          </Button>
+          <div className="ml-auto flex w-[180px] gap-3">
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                onCancel();
+              }}
+              variant="outline"
+              className="flex-auto"
+            >
+              cancel
+            </Button>
+            <Button type="submit" className="flex-auto" variant="secondary">
+              {current ? "Save changes" : "Create"}
+            </Button>
+          </div>
         </div>
         <ErrorMessage errors={form.formState.errors} name="formError" render={({ message }) => <p>{message}</p>} />
         <BlockVariable form={form} control={form.control} />

@@ -52,12 +52,11 @@ export function BlockVariable<T extends FieldValues>({
       const shape = CodebookSelectTypeSchema.shape;
       return (
         <>
-          <div className="flex gap-6">
-            <h5 className="mr-auto">Selection options</h5>
+          <CodesField form={form} />
+          <div className="ml-auto flex gap-6">
             <MultipleField form={form} />
             <VerticalField form={form} />
           </div>
-          <CodesField form={form} />
         </>
       );
     }
@@ -65,8 +64,8 @@ export function BlockVariable<T extends FieldValues>({
       const shape = CodebookScaleTypeSchema.shape;
       return (
         <>
-          <CodesFormField control={control} name={appendPath("codes")} zType={shape.codes} />
-          <VariableItemsFormField control={control} name={appendPath("items")} zType={shape.items} />
+          <CodesField form={form} />
+          <ItemsField form={form} />
         </>
       );
     }
@@ -74,7 +73,7 @@ export function BlockVariable<T extends FieldValues>({
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div className="grid grid-cols-[1fr,180px] items-end gap-2">
         <NameField form={form} />
         <TypeField form={form} />
@@ -113,7 +112,7 @@ function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
           placeholder="No instructions"
         />
       </div>
-      {instructionMode !== null ? <InstructionField form={form} /> : null}
+      {instructionMode != null ? <InstructionField form={form} /> : <div></div>}
     </>
   );
 }
@@ -158,7 +157,13 @@ function VerticalField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
 
 function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
-    <CodesFormField control={form.control} name="block.codes" zType={CodebookSelectTypeSchema.shape.codes} hideTitle />
+    <CodesFormField
+      form={form}
+      control={form.control}
+      name="block.codes"
+      zType={CodebookSelectTypeSchema.shape.codes}
+      hideTitle
+    />
   );
 }
 

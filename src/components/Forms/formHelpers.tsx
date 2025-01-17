@@ -8,15 +8,16 @@ import {
   LucideMessageCircleQuestion,
   MessageCircleQuestionIcon,
   Plus,
+  PlusIcon,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Control, FieldValues, Path } from "react-hook-form";
+import { Control, ControllerRenderProps, FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, useFormField } from "../ui/form";
 import { Input } from "../ui/input";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
@@ -54,6 +55,7 @@ interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
 }
 
 interface CodeFormProps<T extends FieldValues> extends FormFieldProps<T> {
+  form?: UseFormReturn<any>;
   swipe?: boolean;
 }
 
@@ -354,31 +356,39 @@ export function SelectOrCreateForm<T extends FieldValues>({ control, name, zType
 
 type CodebookCode = z.infer<typeof CodebookCodeSchema>;
 
-export function CodesFormField<T extends FieldValues>({ control, name, zType, swipe, hideTitle }: CodeFormProps<T>) {
+export function CodesFormField<T extends FieldValues>({
+  form,
+  control,
+  name,
+  zType,
+  swipe,
+  hideTitle,
+}: CodeFormProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
+  const test = useFormField();
 
   const maxLines = swipe ? 3 : undefined;
 
-  function addCode(field: any, values: CodebookCode[]) {
+  function addCode(field: ControllerRenderProps<T>, values: CodebookCode[]) {
     values.push({ code: "New code", value: undefined, color: "" });
     field.onChange(values);
   }
 
-  function rmCode(field: any, values: CodebookCode[], index: number) {
+  function rmCode(field: ControllerRenderProps<T>, values: CodebookCode[], index: number) {
     values.splice(index, 1);
     field.onChange(values);
   }
 
-  function moveCode(field: any, values: CodebookCode[], i: number, j: number) {
+  function moveCode(field: ControllerRenderProps<T>, values: CodebookCode[], i: number, j: number) {
     const temp = values[i];
     values[i] = values[j];
     values[j] = temp;
     field.onChange(values);
   }
 
-  const inputStyle = "h-7 rounded-none focus-visible:ring-0 border-0 border-b ";
-  const cellStyle = "p-1 rounded-none hover:bg-transparent";
-  const tableHeadStyle = "h-6 px-3 py-1 text-foreground text-base ";
+  const inputStyle = "h-7 px-2 rounded-none focus-visible:ring-0 border-0 rounded ";
+  const cellStyle = "py-1 px-1 rounded-none hover:bg-transparent";
+  const tableHeadStyle = "h-8 px-3 py-1 text-foreground text-base  ";
 
   return (
     <FormField
@@ -397,19 +407,28 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
             />
             <FormControl>
               <Table>
-                <TableHeader>
-                  <TableRow className="h-6 border-none p-0">
-                    <TableHead className="w-3"></TableHead>
+                <TableHeader className="border-">
+                  <TableRow className="border-none p-0">
+                    <TableHead className={`${tableHeadStyle} w-3 rounded-l`}></TableHead>
                     <TableHead className={`${tableHeadStyle} `}>
                       Code{"  "}
                       <span className="opacity-50">*</span>
                     </TableHead>
                     <TableHead className={`${tableHeadStyle} w-24`}> Value</TableHead>
                     <TableHead className={`${tableHeadStyle} w-28`}> Color</TableHead>
+                    <TableHead className={`${tableHeadStyle} w-3 rounded-r`}></TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="">
                   {codes.map((code, i) => {
+                    const codeState = form?.getFieldState(`block.codes[${i}]`);
+                    const codeError = "code" in (codeState?.error || {});
+                    const valueError = "value" in (codeState?.error || {});
+                    const colorError = "color" in (codeState?.error || {});
+                    const codeInputStyle = codeError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
+                    const valueInputStyle = valueError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
+                    const colorInputStyle = colorError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
+
                     if (maxLines && i >= maxLines) return null;
                     return (
                       <TableRow key={i} className="border-none hover:bg-transparent">
@@ -419,12 +438,12 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
                             i={i}
                             n={codes.length}
                             bg="bg-background"
-                            error={false}
+                            error={codeState?.invalid}
                           />
                         </TableCell>
                         <TableCell className={cellStyle}>
                           <Input
-                            className={inputStyle}
+                            className={codeInputStyle}
                             value={code.code}
                             onChange={(v) => {
                               codes[i].code = v.target.value;
@@ -434,7 +453,7 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
                         </TableCell>
                         <TableCell className={cellStyle}>
                           <Input
-                            className={inputStyle}
+                            className={valueInputStyle}
                             type="number"
                             value={String(code.value)}
                             onChange={(v) => {
@@ -445,7 +464,7 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
                         </TableCell>
                         <TableCell className={cellStyle}>
                           <Input
-                            className={inputStyle}
+                            className={colorInputStyle}
                             value={String(code.color)}
                             onChange={(v) => {
                               codes[i].color = v.target.value;
@@ -465,8 +484,16 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
                 </TableBody>
               </Table>
             </FormControl>
-            <Button type="button" onClick={() => addCode(field, codes)}>
-              Add code
+            <Button
+              variant={"secondary"}
+              size="icon"
+              className={`mx-1 h-6 w-6 rounded-full`}
+              onClick={(e) => {
+                e.preventDefault();
+                addCode(field, codes);
+              }}
+            >
+              <PlusIcon />
             </Button>
           </FormItem>
         );
