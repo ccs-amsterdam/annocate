@@ -31,7 +31,7 @@ import { DialogDescription, DialogTitle } from "@radix-ui/react-dialog";
 import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from "../ui/tooltip";
 
 export interface FormOptions {
-  value: string;
+  value: string | null;
   label: string;
   description?: string;
 }
@@ -45,6 +45,7 @@ interface FormFieldProps<T extends FieldValues> {
   className?: string;
   placeholder?: string;
   disableMessage?: boolean;
+  hideTitle?: boolean;
 }
 
 interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
@@ -73,13 +74,14 @@ export function TextFormField<T extends FieldValues>({
   placeholder,
 }: FormFieldProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
+
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+          <FormFieldTitle title={openAPI.title} description={openAPI.description} required={!zType.isOptional()} />
           <FormControl>
             <Input
               placeholder={placeholder || openAPI.example || ""}
@@ -121,7 +123,7 @@ export function NumberFormField<T extends FieldValues>({
       render={({ field }) => {
         return (
           <FormItem className="flex flex-col">
-            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+            <FormFieldTitle title={openAPI.title} description={openAPI.description} required={!zType.isOptional()} />
             <div className="flex">
               <FormControl>
                 <Input
@@ -163,6 +165,7 @@ export function TextAreaFormField<T extends FieldValues>({
   className,
   placeholder,
   asArray,
+  hideTitle,
 }: TextAreaFormProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
   return (
@@ -182,7 +185,12 @@ export function TextAreaFormField<T extends FieldValues>({
 
         return (
           <FormItem className="flex h-full flex-col">
-            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+            <FormFieldTitle
+              title={openAPI.title}
+              description={openAPI.description}
+              hideTitle={hideTitle}
+              required={!zType.isOptional()}
+            />
             <FormControl>
               <Textarea
                 placeholder={placeholder || openAPI.example}
@@ -212,7 +220,7 @@ export function BooleanFormField<T extends FieldValues>({ control, name, zType }
               <FormControl>
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
-              <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+              <FormFieldTitle title={openAPI.title} description={openAPI.description} required={!zType.isOptional()} />
             </FormItem>
           );
         }}
@@ -235,7 +243,11 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <FormFieldTitle title={openAPI?.title || name} description={openAPI?.description} />
+          <FormFieldTitle
+            title={openAPI?.title || name}
+            description={openAPI?.description}
+            required={!zType.isOptional()}
+          />
           <FormControl>
             <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-0">
               {values?.map((value) => (
@@ -264,6 +276,7 @@ export function DropdownFormField<T extends FieldValues>({
   values,
   placeholder,
   disableMessage,
+  hideTitle,
 }: FormFieldArrayProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
 
@@ -271,36 +284,45 @@ export function DropdownFormField<T extends FieldValues>({
     <FormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <FormItem className="flex flex-col">
-          <FormFieldTitle title={openAPI.title} description={openAPI.description} disableMessage={disableMessage} />
-          <FormControl>
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button className="flex w-full items-center justify-between gap-2">
-                  {field.value || placeholder}
+      render={({ field }) => {
+        const fieldLabel = values.find((v) => v.value === field.value)?.label || placeholder;
+        return (
+          <FormItem className="flex flex-col">
+            <FormFieldTitle
+              title={openAPI.title}
+              description={openAPI.description}
+              disableMessage={disableMessage}
+              required={!zType.isOptional()}
+              hideTitle={hideTitle}
+            />
+            <FormControl>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button className="flex w-full items-center justify-between gap-2">
+                    {fieldLabel}
 
-                  <ChevronDown className="h-5 w-5 text-primary-foreground hover:text-primary" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="flex max-w-lg flex-col gap-1 p-1" align="start" side="bottom">
-                {values.map((value) => (
-                  <DropdownMenuItem
-                    key={value.value}
-                    onClick={() => {
-                      field.onChange(value.value);
-                    }}
-                    className="flex flex-col items-start p-1"
-                  >
-                    <div className="font-bold">{value.label}</div>
-                    <div className="text-foreground/70">{value.description}</div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </FormControl>
-        </FormItem>
-      )}
+                    <ChevronDown className="h-5 w-5 text-primary-foreground hover:text-primary" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="flex max-w-lg flex-col gap-1 p-1" align="start" side="bottom">
+                  {values.map((value) => (
+                    <DropdownMenuItem
+                      key={value.value}
+                      onClick={() => {
+                        field.onChange(value.value);
+                      }}
+                      className="flex flex-col items-start p-1"
+                    >
+                      <div className="font-bold">{value.label}</div>
+                      <div className="text-foreground/70">{value.description}</div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </FormControl>
+          </FormItem>
+        );
+      }}
     />
   );
 }
@@ -314,7 +336,7 @@ export function SelectOrCreateForm<T extends FieldValues>({ control, name, zType
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col">
-          <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+          <FormFieldTitle title={openAPI.title} description={openAPI.description} required={!zType.isOptional()} />
           <FormControl>
             <SelectOrCreate
               options={values}
@@ -332,7 +354,7 @@ export function SelectOrCreateForm<T extends FieldValues>({ control, name, zType
 
 type CodebookCode = z.infer<typeof CodebookCodeSchema>;
 
-export function CodesFormField<T extends FieldValues>({ control, name, zType, swipe }: CodeFormProps<T>) {
+export function CodesFormField<T extends FieldValues>({ control, name, zType, swipe, hideTitle }: CodeFormProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
 
   const maxLines = swipe ? 3 : undefined;
@@ -354,6 +376,10 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
     field.onChange(values);
   }
 
+  const inputStyle = "h-7 rounded-none focus-visible:ring-0 border-0 border-b ";
+  const cellStyle = "p-1 rounded-none hover:bg-transparent";
+  const tableHeadStyle = "h-6 px-3 py-1 text-foreground text-base ";
+
   return (
     <FormField
       control={control}
@@ -363,30 +389,36 @@ export function CodesFormField<T extends FieldValues>({ control, name, zType, sw
 
         return (
           <FormItem className="flex flex-col">
-            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+            <FormFieldTitle
+              title={openAPI.title}
+              description={openAPI.description}
+              hideTitle={hideTitle}
+              required={!zType.isOptional()}
+            />
             <FormControl>
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="h-6 border-none p-0">
                     <TableHead className="w-3"></TableHead>
-                    <TableHead className="h-6 w-1/2 px-3 py-1">Code</TableHead>
-                    <TableHead className="h-6 px-3 py-1">Value</TableHead>
-                    <TableHead className="h-6 px-3 py-1">Color</TableHead>
+                    <TableHead className={`${tableHeadStyle} `}>
+                      Code{"  "}
+                      <span className="opacity-50">*</span>
+                    </TableHead>
+                    <TableHead className={`${tableHeadStyle} w-24`}> Value</TableHead>
+                    <TableHead className={`${tableHeadStyle} w-28`}> Color</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {codes.map((code, i) => {
                     if (maxLines && i >= maxLines) return null;
-                    const inputStyle = "h-7 rounded-none focus-visible:ring-0";
-                    const cellStyle = "p-1 rounded-none hover:bg-transparent ";
                     return (
-                      <TableRow key={i} className="hover:bg-transparent">
+                      <TableRow key={i} className="border-none hover:bg-transparent">
                         <TableCell className={cellStyle}>
                           <MoveItemInArray
                             move={(i, j) => moveCode(field, codes, i, j)}
                             i={i}
                             n={codes.length}
-                            bg="bg-primary-light"
+                            bg="bg-background"
                             error={false}
                           />
                         </TableCell>
@@ -484,7 +516,7 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
 
         return (
           <FormItem className="flex flex-col">
-            <FormFieldTitle title={openAPI.title} description={openAPI.description} />
+            <FormFieldTitle title={openAPI.title} description={openAPI.description} required={!zType.isOptional()} />
             <FormControl>
               <Table>
                 <TableHeader>
@@ -555,10 +587,14 @@ export function FormFieldTitle({
   title,
   description,
   disableMessage,
+  hideTitle,
+  required,
 }: {
   title: string;
   description: string;
   disableMessage?: boolean;
+  hideTitle?: boolean;
+  required?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -576,7 +612,7 @@ export function FormFieldTitle({
 
   return (
     <div>
-      <div className="flex items-center gap-1">
+      <div className={`flex items-center gap-1 ${hideTitle ? "hidden" : ""}`}>
         <Tooltip delayDuration={200}>
           <TooltipTrigger
             tabIndex={-1}
@@ -586,7 +622,7 @@ export function FormFieldTitle({
             }}
           >
             {title}
-            <span className="font-sm opacity-50">*</span>
+            {required ? <span className="font-sm opacity-70">*</span> : null}
           </TooltipTrigger>
           <TooltipPortal>
             <TooltipContent side="top" sideOffset={3} className="w-[400px]">
@@ -624,7 +660,7 @@ export function MoveItemInArray({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className={`flex min-w-72 items-center gap-[11px] overflow-auto border-none shadow-none ${bg} `}
+        className={`flex items-center gap-[11px] overflow-auto rounded-none border-none pl-3 text-secondary shadow-none ${bg} `}
         side="right"
         sideOffset={8}
       >

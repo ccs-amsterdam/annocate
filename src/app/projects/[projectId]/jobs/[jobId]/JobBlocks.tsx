@@ -36,11 +36,10 @@ export function JobBlocks({ projectId, jobId }: Props) {
 
   function header() {
     if (!blockForm) return "...";
-    const what = blockForm.current ? "Update" : "Create";
     let type = "Annotation question";
     if (blockForm.phase === "preSurvey") type = "Pre-survey question";
     if (blockForm.phase === "postSurvey") type = "Post-survey question";
-    return `${what} ${type}`;
+    return `${type}`;
   }
 
   function conditionalRenderLeft() {
@@ -50,17 +49,13 @@ export function JobBlocks({ projectId, jobId }: Props) {
     if (!!blockForm)
       return (
         <div className="flex h-full w-full animate-slide-in-right flex-col gap-6 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-lg">{header()}</div>
-            <Button className="flex gap-3" variant="ghost" onClick={() => setBlockForm(null)}>
-              <X />
-            </Button>
-          </div>
           <CreateOrUpdateJobBlock
             {...blockForm}
+            header={header()}
             currentId={blockForm.current?.id}
             afterSubmit={() => setBlockForm(null)}
             setPreview={setPreview}
+            onCancel={() => setBlockForm(null)}
           />
         </div>
       );
@@ -76,22 +71,7 @@ export function JobBlocks({ projectId, jobId }: Props) {
   function conditionalRenderRight() {
     if (!blockForm) return null; // here can put branching stuff. Or total preview
 
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-lg">{header()}</div>
-          <Button className="flex gap-3" variant="ghost" onClick={() => setBlockForm(null)}>
-            <X />
-          </Button>
-        </div>
-        <CreateOrUpdateJobBlock
-          {...blockForm}
-          currentId={blockForm.current?.id}
-          afterSubmit={() => setBlockForm(null)}
-          setPreview={setPreview}
-        />
-      </div>
-    );
+    return null;
   }
 
   return (

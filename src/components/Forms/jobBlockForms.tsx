@@ -33,6 +33,8 @@ interface CreateJobBlockProps {
   setPreview: (block: JobBlockUpdate) => void;
   currentId?: number;
   afterSubmit: () => void;
+  onCancel: () => void;
+  header?: string;
 }
 
 export function CreateOrUpdateJobBlock({
@@ -45,6 +47,8 @@ export function CreateOrUpdateJobBlock({
   setPreview,
   currentId,
   afterSubmit,
+  onCancel,
+  header,
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
   const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, currentId);
@@ -88,17 +92,24 @@ export function CreateOrUpdateJobBlock({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full w-full flex-col gap-3">
+        <div className="mb-6 flex gap-3">
+          {header && <h2 className="text-lg font-semibold">{header}</h2>}
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              onCancel();
+            }}
+            variant="outline"
+            className="ml-auto"
+          >
+            cancel
+          </Button>
+          <Button type="submit" className="mt-auto" variant="secondary">
+            {current ? "Save changes" : "Create"}
+          </Button>
+        </div>
         <ErrorMessage errors={form.formState.errors} name="formError" render={({ message }) => <p>{message}</p>} />
-        <TextFormField
-          control={form.control}
-          zType={shape.name}
-          name={"name"}
-          onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
-        />
         <BlockVariable form={form} control={form.control} />
-        <Button type="submit" className="mt-auto" disabled={!form.formState.isValid}>
-          {current ? "update" : "create"} {type} block
-        </Button>
         <FormMessage />
       </form>
     </Form>

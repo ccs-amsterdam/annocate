@@ -24,12 +24,12 @@ export const variableTypeOptions: FormOptions[] = [
   { value: "confirm", label: "Confirm", description: "Ask annotator to confirm something" },
 ];
 
-export const InstructionMode = ["before", "after", "modal", "auto_modal"] as const;
+export const InstructionMode = ["inline", "modal", "auto_modal"] as const;
 export const InstructionModeOptions: FormOptions[] = [
-  { value: "before", label: "Before", description: "Show the instruction before the question" },
-  { value: "after", label: "After", description: "Show the instruction after the question" },
-  { value: "modal", label: "Modal", description: "Show the instruction in a modal" },
-  { value: "auto_modal", label: "Auto Modal", description: "Modal that automatically opens the first time" },
+  { value: null, label: "No instructions", description: "Do not show instructions" },
+  { value: "inline", label: "Inline", description: "Show the instructions before the question" },
+  { value: "modal", label: "Modal", description: "Optional instruction in a pop-up screen" },
+  { value: "auto_modal", label: "Auto Modal", description: "Like modal, but automatically opens first time" },
 ];
 
 export const CodebookCodeSchema = z.object({
@@ -116,10 +116,10 @@ export const CodebookVariableSchema = z.object({
     description: "Provide specific instructions for this variable. Supports scripts and markdown.",
   }),
   instructionMode: z.enum(InstructionMode).optional().openapi({
-    title: "Instruction Mode",
+    title: "Add instructions",
     description:
       "Choose where the instruction should be shown (default is after). Can be before or after the question, or in a modal that the annotator can open. If set to auto_modal, the instruction will be shown automatically the first time the annotator sees this variable in a session.",
-    example: "after",
+    example: "inline",
   }),
 
   perField: z

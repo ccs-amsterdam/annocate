@@ -18,6 +18,8 @@ import {
 } from "./formHelpers";
 import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { renderURL } from "nuqs/dist/_tsup-dts-rollup";
+import { Button } from "../ui/button";
+import { useState } from "react";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 
@@ -40,21 +42,7 @@ export function BlockVariable<T extends FieldValues>({
 
     return (
       <>
-        <TextFormField control={control} zType={generalShape.question} name={appendPath("question")} />
-        <TextAreaFormField
-          className="resize-y"
-          control={control}
-          zType={generalShape.instruction}
-          name={appendPath("instruction")}
-        />
-        <DropdownFormField
-          control={control}
-          zType={generalShape.instructionMode}
-          name={appendPath("instructionMode")}
-          values={InstructionModeOptions}
-          labelWidth="8rem"
-          placeholder="after (default)"
-        />
+        <QuestionField form={form} />
       </>
     );
   }
@@ -64,9 +52,12 @@ export function BlockVariable<T extends FieldValues>({
       const shape = CodebookSelectTypeSchema.shape;
       return (
         <>
-          <BooleanFormField control={control} zType={shape.multiple} name={appendPath("multiple")} />
-          <BooleanFormField control={control} zType={shape.vertical} name={appendPath("vertical")} />
-          <CodesFormField control={control} name={appendPath("codes")} zType={shape.codes} />
+          <div className="flex gap-6">
+            <h5 className="mr-auto">Selection options</h5>
+            <MultipleField form={form} />
+            <VerticalField form={form} />
+          </div>
+          <CodesField form={form} />
         </>
       );
     }
@@ -84,31 +75,95 @@ export function BlockVariable<T extends FieldValues>({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-1 gap-3">
-        <DropdownFormField
-          control={control}
-          zType={generalShape.type}
-          name={appendPath("type")}
-          values={variableTypeOptions}
-          labelWidth="8rem"
-          placeholder="Select question type"
-          disableMessage
-        />
+      <div className="grid grid-cols-[1fr,180px] items-end gap-2">
+        <NameField form={form} />
+        <TypeField form={form} />
       </div>
       {renderStandard()}
-      {renderType()} {type ? <div></div> : null}
+      {renderType()}
     </div>
   );
 }
 
-export function defaultSelect(name: string): z.input<typeof CodebookSelectTypeSchema> {
-  return {
-    question: "",
-    type: "select code",
-    instruction: "",
-    instructionMode: "after",
-    multiple: false,
-    vertical: false,
-    codes: [{ code: "First option", value: 1, color: "red" }],
-  };
+function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <TextFormField
+      control={form.control}
+      zType={JobBlockCreateSchema.shape.name}
+      name={"name"}
+      onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
+    />
+  );
+}
+
+function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  const [showInstruction, setShowInstruction] = useState(false);
+  const instructionMode = form.watch("block.instructionMode");
+
+  return (
+    <>
+      <div className="grid grid-cols-[1fr,180px] items-end gap-2">
+        <TextFormField control={form.control} zType={CodebookVariableSchema.shape.question} name="block.question" />
+        <DropdownFormField
+          control={form.control}
+          zType={CodebookVariableSchema.shape.instructionMode}
+          name="block.instructionMode"
+          values={InstructionModeOptions}
+          labelWidth="8rem"
+          placeholder="No instructions"
+        />
+      </div>
+      {instructionMode !== null ? <InstructionField form={form} /> : null}
+    </>
+  );
+}
+
+function InstructionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <div className="flex flex-col">
+      <TextAreaFormField
+        control={form.control}
+        zType={CodebookVariableSchema.shape.instruction}
+        name={"block.instruction"}
+      />
+    </div>
+  );
+}
+
+function TypeField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <DropdownFormField
+      control={form.control}
+      zType={CodebookVariableSchema.shape.type}
+      name="block.type"
+      values={variableTypeOptions}
+      labelWidth="8rem"
+      placeholder="Select question type"
+      disableMessage
+    />
+  );
+}
+
+function MultipleField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.multiple} name="block.multiple" />
+  );
+}
+
+function VerticalField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.vertical} name="block.vertical" />
+  );
+}
+
+function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <CodesFormField control={form.control} name="block.codes" zType={CodebookSelectTypeSchema.shape.codes} hideTitle />
+  );
+}
+
+function ItemsField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <VariableItemsFormField control={form.control} name="block.items" zType={CodebookScaleTypeSchema.shape.items} />
+  );
 }
