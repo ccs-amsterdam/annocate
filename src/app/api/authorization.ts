@@ -4,7 +4,7 @@ import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { cachedProjectRole, codebookInProjectCache, projectRoleCache } from "@/functions/caching";
+import { cachedUserRole, codebookInProjectCache, projectRoleCache } from "@/functions/caching";
 
 class TokenVerifier {
   publicKey: string | null = null;
@@ -72,8 +72,7 @@ export async function authenticateUser(req: Request): Promise<string> {
 }
 
 export async function authorization(email: string, projectId: number | null): Promise<Authorization> {
-  const cookieStore = await cookies();
-  const auth: Authorization = await cachedProjectRole(email, projectId);
+  const auth: Authorization = await cachedUserRole(email, projectId);
 
   if (email === process.env.SUPERADMIN) {
     if (auth.role !== "admin") {

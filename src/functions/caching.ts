@@ -1,36 +1,36 @@
 import db from "@/drizzle/drizzle";
 import { eq, and } from "drizzle-orm";
-import { managers, users } from "@/drizzle/schema";
+import { managers, projects, users } from "@/drizzle/schema";
 import { LRUCache } from "lru-cache";
 import { z } from "zod";
 import { Authorization } from "@/app/types";
 
-export async function cachedProjectRole(email: string, projectId: number | null) {
+export async function cachedUserRole(email: string, projectId: number | null) {
   "use cache";
-  console.log("DB: fetching project role");
 
   const auth: Authorization = { projectId, email, role: null, projectRole: null };
 
   if (projectId != null) {
-    const [user] = await db
-      .select({ role: users.role, projectRole: managers.role })
-      .from(users)
-      .leftJoin(managers, eq(users.id, managers.userId))
-      .where(and(eq(users.email, email), eq(managers.projectId, projectId)));
+    const [projectUser] = await db
+      .select({ projectId: projects.id, role: users.role, projectRole: managers.role })
+      .from(projects)
+      .leftJoin(managers, eq(projects.id, managers.projectId))
+      .leftJoin(users, eq(managers.userId, users.id))
+      .where(and(eq(users.email, email), eq(projects.id, projectId)))
+      .limit(1);
 
-    auth.role = user?.role || null;
-    auth.projectRole = user?.projectRole || null;
-    auth.projectId = projectId;
-  } else {
-    const [user] = await db
-      .select({ role: users.role })
-      .from(users)
-      .where(and(eq(users.email, email)));
+    if (!projectUser) throw new Error("Project doesn't exist");
 
-    auth.role = user?.role || null;
+    return { projectId, email, role: projectUser?.role || null, projectRole: projectUser?.projectRole };
+    auth.role = projectUser?.role || null;
   }
 
-  return auth;
+  const [user] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(and(eq(users.email, email)));
+
+  return { projectId, email, role: user?.role || null, projectRole: null };
 }
 
 interface Options {

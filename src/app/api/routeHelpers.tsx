@@ -59,10 +59,17 @@ export async function createGet<BodyOut, BodyIn>({
   try {
     const params = paramsSchema ? validateRequestParams(req, paramsSchema) : undefined;
     if (authorizeFunction != undefined) {
-      const auth = await authorization(email, projectId);
-      const authError = await authorizeFunction(auth, params);
-      if (authError)
-        return NextResponse.json({ message: authError.message || "Unauthorized" }, { status: authError.status || 403 });
+      try {
+        const auth = await authorization(email, projectId);
+        const authError = await authorizeFunction(auth, params);
+        if (authError)
+          return NextResponse.json(
+            { message: authError.message || "Unauthorized" },
+            { status: authError.status || 403 },
+          );
+      } catch (e: any) {
+        return NextResponse.json({ message: String(e.message) }, { status: 403 });
+      }
     }
 
     const response = await selectFunction(email, params);
@@ -98,10 +105,17 @@ export async function createDelete<BodyIn>({
   try {
     const params = paramsSchema ? validateRequestParams(req, paramsSchema) : undefined;
     if (authorizeFunction != undefined) {
-      const auth = await authorization(email, projectId);
-      const authError = await authorizeFunction(auth, params);
-      if (authError)
-        return NextResponse.json({ message: authError.message || "Unauthorized" }, { status: authError.status || 403 });
+      try {
+        const auth = await authorization(email, projectId);
+        const authError = await authorizeFunction(auth, params);
+        if (authError)
+          return NextResponse.json(
+            { message: authError.message || "Unauthorized" },
+            { status: authError.status || 403 },
+          );
+      } catch (e: any) {
+        return NextResponse.json({ message: String(e.message) }, { status: 403 });
+      }
     }
 
     const response = await deleteFunction(email, params);
@@ -153,13 +167,17 @@ export async function createTableGet<T>({
     paramCopy = params;
 
     if (authorizeFunction != undefined) {
-      const auth = await authorization(email, projectId);
-      const authError = await authorizeFunction(auth, params);
-      if (authError)
-        return NextResponse.json(
-          { message: authError.message || errorFunction?.(authError.status || 403, params) || "Unauthorized" },
-          { status: authError.status || 403 },
-        );
+      try {
+        const auth = await authorization(email, projectId);
+        const authError = await authorizeFunction(auth, params);
+        if (authError)
+          return NextResponse.json(
+            { message: authError.message || errorFunction?.(authError.status || 403, params) || "Unauthorized" },
+            { status: authError.status || 403 },
+          );
+      } catch (e: any) {
+        return NextResponse.json({ message: String(e.message) }, { status: 403 });
+      }
     }
 
     const table = tableFunction(email, params);
@@ -234,13 +252,17 @@ export async function createUpdate<BodyIn, BodyOut>({
     bodyCopy = body;
 
     if (authorizeFunction != undefined) {
-      const auth = await authorization(email, projectId);
-      const authError = await authorizeFunction(auth, body);
-      if (authError)
-        return NextResponse.json(
-          { message: authError.message || errorFunction?.(authError.status || 403) || "Unauthorized" },
-          { status: authError.status || 403 },
-        );
+      try {
+        const auth = await authorization(email, projectId);
+        const authError = await authorizeFunction(auth, body);
+        if (authError)
+          return NextResponse.json(
+            { message: authError.message || errorFunction?.(authError.status || 403) || "Unauthorized" },
+            { status: authError.status || 403 },
+          );
+      } catch (e: any) {
+        return NextResponse.json({ message: String(e.message) }, { status: 403 });
+      }
     }
 
     const response = await updateFunction(email, body);

@@ -96,7 +96,7 @@ export function CreateOrUpdateJobBlock({
           onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
         />
         <BlockVariable form={form} control={form.control} />
-        <Button type="submit" className="mt-auto">
+        <Button type="submit" className="mt-auto" disabled={!form.formState.isValid}>
           {current ? "update" : "create"} {type} block
         </Button>
         <FormMessage />
