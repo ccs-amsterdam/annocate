@@ -24,6 +24,9 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
     selectFunction: async (email, urlParams) => {
       const [job] = await db.select().from(projects).where(eq(projects.id, projectId));
       return job;
+
+      // this should check the job for which unit fields are public
+      // this can be done by checking all unitlayout fields for any fields used
     },
     req,
     paramsSchema: GetUnitParamsSchema,

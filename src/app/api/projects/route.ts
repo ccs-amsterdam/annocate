@@ -46,6 +46,7 @@ export async function POST(req: Request) {
     responseSchema: ProjectsResponseSchema,
     projectId: null,
     authorizeFunction: async (auth, body) => {
+      console.log(auth);
       if (!hasMinRole(auth.role, "creator")) return { message: "Need to have the Creator role to make a project" };
     },
   });

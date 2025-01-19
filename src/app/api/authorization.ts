@@ -74,16 +74,6 @@ export async function authenticateUser(req: Request): Promise<string> {
 export async function authorization(email: string, projectId: number | null): Promise<Authorization> {
   const auth: Authorization = await cachedUserRole(email, projectId);
 
-  if (email === process.env.SUPERADMIN) {
-    if (auth.role !== "admin") {
-      auth.role = "admin";
-      await db
-        .insert(users)
-        .values({ email, role: "admin" })
-        .onConflictDoUpdate({ target: users.email, set: { role: "admin" } });
-    }
-  }
-
   return auth;
 }
 

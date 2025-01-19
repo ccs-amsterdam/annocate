@@ -106,7 +106,7 @@ export function CreateOrUpdateJobBlock({
               cancel
             </Button>
             <Button type="submit" className="flex-auto" variant="secondary">
-              {current ? "Save changes" : "Create"}
+              {current ? "Save" : "Create"}
             </Button>
           </div>
         </div>

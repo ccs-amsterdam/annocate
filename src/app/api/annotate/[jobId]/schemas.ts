@@ -84,13 +84,13 @@ export const JobBlockSchema = z.object({
   position: z.number(),
 });
 
-const SurveyAnnotationCode = z.union([z.array(z.string()), z.string()]);
-const SurveyAnnotationValue = z.union([z.array(z.number()), z.number()]);
-export const SurveyAnnotationSchema = z.object({
-  code: SurveyAnnotationCode.optional(),
-  value: SurveyAnnotationValue.optional(),
+const JobStateAnnotationCode = z.union([z.array(z.string()), z.string()]);
+const JobStateAnnotationValue = z.union([z.array(z.number()), z.number()]);
+export const JobStateAnnotationSchema = z.object({
+  code: JobStateAnnotationCode.optional(),
+  value: JobStateAnnotationValue.optional(),
 });
-export const SurveyAnnotationsSchema = z.record(z.string(), SurveyAnnotationSchema);
+export const JobStateAnnotationsSchema = z.record(z.string(), JobStateAnnotationSchema);
 
 export const GetJobStateParamsSchema = z
   .object({
@@ -99,14 +99,15 @@ export const GetJobStateParamsSchema = z
   .catchall(z.union([z.string(), z.number()]));
 
 export const GetJobStateResponseSchema = z.object({
-  surveyAnnotations: SurveyAnnotationsSchema,
+  surveyAnnotations: JobStateAnnotationsSchema,
+  unitAnnotations: JobStateAnnotationsSchema,
   blocks: z.array(JobBlockSchema),
 });
 
 export const GetUnitResponseSchema = z.object({
-  unit: AnnotateUnitSchema.nullable(),
-  progress: AnnotateProgressSchema,
-  error: z.string().optional(),
+  token: z.string(),
+  data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+  annotations: z.array(AnnotationSchema),
 });
 
 export const GetCodebookResponseSchema = z.object({

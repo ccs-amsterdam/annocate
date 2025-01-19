@@ -6,7 +6,7 @@ import {
   GetCodebookResponseSchema,
   GetJobStateResponseSchema,
   GetUnitResponseSchema,
-  SurveyAnnotationsSchema,
+  JobStateAnnotationsSchema,
   UnitContentSchema,
 } from "./api/annotate/[jobId]/schemas";
 import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
@@ -118,19 +118,19 @@ export type Annotation = z.infer<typeof AnnotationSchema> & {
  * In particular, it needs to have a codebook and progress
  */
 export interface JobServer {
-  sessionId: string;
-  return_link?: string;
   jobId: number;
-  jobState: GetJobState | null;
+  userId: string;
+  progress: Progress;
+  jobState: GetJobState;
+  setJobState: SetState<GetJobState | null>;
 
   getUnit: (i?: number) => Promise<GetUnit>;
-  getCodebook: (id: number) => Promise<GetCodebook>;
-  registerJobState: (setJobState: SetState<GetJobState | null>) => void;
+  getCodebook: (phase: "preSurvey" | "annotate" | "postSurvey") => Promise<GetCodebook>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }
 
-export type SurveyAnnotations = z.infer<typeof SurveyAnnotationsSchema>;
+export type JobStateAnnotations = z.infer<typeof JobStateAnnotationsSchema>;
 
 ///////////
 ///////////

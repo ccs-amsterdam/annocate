@@ -250,7 +250,7 @@ class JobServerPreview implements JobServer {
     if (type === "survey") {
       this.annotations[`${user}_survey`] = current;
       if (this.jobState && this.setJobState) {
-        this.jobState = { ...this.jobState, surveyAnnotations: createSurveyAnnotations(this.user.email, current) };
+        this.jobState = { ...this.jobState, surveyAnnotations: createJobStateAnnotations(this.user.email, current) };
         this.setJobState(this.jobState);
       }
     } else {
@@ -304,7 +304,7 @@ function getCurrentBlock(job: Job | null, blockId: number | null) {
   return job.blocks.find((b) => b.id === blockId);
 }
 
-function createSurveyAnnotations(user: string, annotations?: Annotation[]) {
+function createJobStateAnnotations(annotations?: Annotation[]) {
   const surveyAnnotations: GetJobState["surveyAnnotations"] = {};
 
   function setOrAppend<T>(current: T | T[] | undefined, value: T) {
@@ -346,7 +346,7 @@ function prepareJobState(
     }
   }
 
-  if (annotations) jobState.surveyAnnotations = createSurveyAnnotations(user, annotations[`${user}_survey`]);
+  if (annotations) jobState.surveyAnnotations = createJobStateAnnotations(user, annotations[`${user}_survey`]);
 
   return jobState;
 }

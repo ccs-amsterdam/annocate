@@ -20,17 +20,28 @@ export async function cachedUserRole(email: string, projectId: number | null) {
       .limit(1);
 
     if (!projectUser) throw new Error("Project doesn't exist");
-
-    return { projectId, email, role: projectUser?.role || null, projectRole: projectUser?.projectRole };
     auth.role = projectUser?.role || null;
+    auth.projectRole = projectUser?.projectRole || null;
+  } else {
+    const [user] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(and(eq(users.email, email)));
+
+    auth.role = user?.role || null;
   }
 
-  const [user] = await db
-    .select({ role: users.role })
-    .from(users)
-    .where(and(eq(users.email, email)));
+  if (email === process.env.SUPERADMIN) {
+    if (auth.role !== "admin") {
+      auth.role = "admin";
+      await db
+        .insert(users)
+        .values({ email, role: "admin" })
+        .onConflictDoUpdate({ target: users.email, set: { role: "admin" } });
+    }
+  }
 
-  return { projectId, email, role: user?.role || null, projectRole: null };
+  return auth;
 }
 
 interface Options {

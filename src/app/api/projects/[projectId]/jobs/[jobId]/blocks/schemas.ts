@@ -34,7 +34,7 @@ export const CodebookAnnotationSchema = CodebookBaseSchema.extend({
   type: z.literal("annotation"),
   unit: UnitLayoutSchema.openapi({
     title: "Unit",
-    description: "Design the units of analysis",
+    description: "Default unit design",
   }),
 });
 
