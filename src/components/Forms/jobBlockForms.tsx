@@ -9,7 +9,7 @@ import {
   JobBlockCreateSchema,
   JobBlockMetaUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { JobBlock } from "@/app/types";
+import { JobBlock, JobBlockContent } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
@@ -22,7 +22,6 @@ import { BlockVariable } from "./variableForms";
 import { TextFormField } from "./formHelpers";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
-type JobBlockUpdate = z.infer<typeof JobBlockMetaUpdateSchema>;
 type JobBlockContentUpdate = z.infer<typeof JobBlockContentUpdateSchema>;
 
 interface CreateJobBlockProps {
@@ -54,7 +53,7 @@ export function CreateOrUpdateJobBlock({
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
   const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, currentId);
-  const { data: currentContent, isLoading, isPending } = useJobBlockContent(projectId, jobId, currentId);
+  const { data: currentContent, isLoading } = useJobBlockContent(projectId, jobId, currentId);
   const current: JobBlockCreate | undefined = useMemo(
     () => (currentContent ? { ...currentContent, phase, position, parentId } : undefined),
     [currentContent, phase, parentId, position],
@@ -68,23 +67,14 @@ export function CreateOrUpdateJobBlock({
     defaultValues: defaultValues(type, phase, parentId, position),
     // disabled: currentId !== undefined && isLoading,
   });
-  useUpdatePreview({ form, setPreview });
+  // useUpdatePreview({ form, setPreview });
 
   useEffect(() => {
     if (!current) return;
     form.reset(JobBlockCreateSchema.parse(current));
   }, [current, form]);
 
-  useEffect(() => {
-    function beforeUnload(e: BeforeUnloadEvent) {
-      e.returnValue = "Are you sure you want to leave? Any changes might be lost";
-    }
-    window.addEventListener("beforeunload", beforeUnload);
-    return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, []);
-
   function onSubmit(values: JobBlockCreate) {
-    console.log(values);
     if (current) {
       const updateValues: JobBlockContentUpdate = { ...values };
       updateAsync(updateValues).then(afterSubmit).catch(console.error);
@@ -138,7 +128,6 @@ function useUpdatePreview({
     if (!setPreview) return;
     const timeout = setTimeout(() => {
       const jobBlock = JobBlockCreateSchema.safeParse(watch);
-      console.log(jobBlock.data);
       if (jobBlock.success) setPreview(jobBlock.data);
     }, 250);
     return () => clearTimeout(timeout);
@@ -146,16 +135,16 @@ function useUpdatePreview({
 }
 
 function defaultValues(
-  type: JobBlock["type"],
+  type: JobBlockContent["type"],
   phase: JobBlock["phase"],
   parentId: number | null,
   position: number,
   current?: JobBlock,
-): JobBlockUpdate {
+) {
   return {
     type,
     phase,
-    parentId: current?.parentId || parentId || null,
+    parentId: current?.parentId || parentId,
     position: current?.position || position,
   };
 }

@@ -120,7 +120,7 @@ function PhaseBlocks({ blocks, projectId, jobId, setBlockForm, phase }: PhaseBlo
         <AddBlockHere
           projectId={projectId}
           jobId={jobId}
-          parentId={0}
+          parentId={null}
           phase={phase}
           position={0}
           setBlockForm={setBlockForm}

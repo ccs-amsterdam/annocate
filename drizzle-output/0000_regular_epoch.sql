@@ -39,8 +39,6 @@ CREATE TABLE "job_blocks" (
 	"position" double precision NOT NULL,
 	"type" text NOT NULL,
 	"block" jsonb NOT NULL,
-	"sets_flags" jsonb,
-	"if_flags" jsonb,
 	CONSTRAINT "unique_job_block_name" UNIQUE("job_id","name")
 );
 --> statement-breakpoint
@@ -116,11 +114,11 @@ ALTER TABLE "job_sets" ADD CONSTRAINT "job_sets_job_id_jobs_id_fk" FOREIGN KEY (
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "managers" ADD CONSTRAINT "managers_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "managers" ADD CONSTRAINT "managers_user_uuid_users_uuid_fk" FOREIGN KEY ("user_uuid") REFERENCES "public"."users"("uuid") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "units" ADD CONSTRAINT "units_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "units" ADD CONSTRAINT "units_project_id_jobs_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "annotator_project_idx" ON "annotator" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX "annotator_user_idx" ON "annotator" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "job_blocks_job_id_idx" ON "job_blocks" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX "job_sets_job_ids_idx" ON "job_sets" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX "jobs_project_ids" ON "jobs" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX "managers_userId_index" ON "managers" USING btree ("user_uuid");--> statement-breakpoint
-CREATE UNIQUE INDEX "project_unit_uidx" ON "units" USING btree ("project_id","unit_id");
+CREATE UNIQUE INDEX "job_unit_uidx" ON "units" USING btree ("project_id","unit_id");

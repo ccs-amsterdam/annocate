@@ -27,9 +27,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
         .from(jobBlocks)
         .where(eq(jobBlocks.jobId, params.jobId));
 
-      const test = sortNestedBlocks(blocks);
-      console.log(test);
-      return test;
+      return sortNestedBlocks(blocks);
     },
     req,
     responseSchema: z.array(JobBlockMetaResponseSchema),

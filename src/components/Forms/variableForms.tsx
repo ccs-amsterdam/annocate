@@ -31,10 +31,10 @@ export function BlockVariable<T extends FieldValues>({
   control: Control<T, any>;
 }) {
   const generalShape = CodebookVariableSchema.shape;
-  const type = form.watch("block.type");
+  const type = form.watch("content.type");
 
   function appendPath(key: string): Path<T> {
-    return `block.${key}` as Path<T>;
+    return `content.${key}` as Path<T>;
   }
 
   function renderStandard() {
@@ -97,16 +97,16 @@ function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
 
 function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   const [showInstruction, setShowInstruction] = useState(false);
-  const instructionMode = form.watch("block.instructionMode");
+  const instructionMode = form.watch("content.instructionMode");
 
   return (
     <>
       <div className="grid grid-cols-[1fr,180px] items-end gap-2">
-        <TextFormField control={form.control} zType={CodebookVariableSchema.shape.question} name="block.question" />
+        <TextFormField control={form.control} zType={CodebookVariableSchema.shape.question} name="content.question" />
         <DropdownFormField
           control={form.control}
           zType={CodebookVariableSchema.shape.instructionMode}
-          name="block.instructionMode"
+          name="content.instructionMode"
           values={InstructionModeOptions}
           labelWidth="8rem"
           placeholder="No instructions"
@@ -123,7 +123,7 @@ function InstructionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
       <TextAreaFormField
         control={form.control}
         zType={CodebookVariableSchema.shape.instruction}
-        name={"block.instruction"}
+        name={"content.instruction"}
       />
     </div>
   );
@@ -134,7 +134,7 @@ function TypeField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
     <DropdownFormField
       control={form.control}
       zType={CodebookVariableSchema.shape.type}
-      name="block.type"
+      name="content.type"
       values={variableTypeOptions}
       labelWidth="8rem"
       placeholder="Select question type"
@@ -145,13 +145,13 @@ function TypeField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
 
 function MultipleField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
-    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.multiple} name="block.multiple" />
+    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.multiple} name="content.multiple" />
   );
 }
 
 function VerticalField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
-    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.vertical} name="block.vertical" />
+    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.vertical} name="content.vertical" />
   );
 }
 
@@ -160,7 +160,7 @@ function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
     <CodesFormField
       form={form}
       control={form.control}
-      name="block.codes"
+      name="content.codes"
       zType={CodebookSelectTypeSchema.shape.codes}
       hideTitle
     />
@@ -169,6 +169,6 @@ function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
 
 function ItemsField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
-    <VariableItemsFormField control={form.control} name="block.items" zType={CodebookScaleTypeSchema.shape.items} />
+    <VariableItemsFormField control={form.control} name="content.items" zType={CodebookScaleTypeSchema.shape.items} />
   );
 }

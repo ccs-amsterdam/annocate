@@ -1,5 +1,5 @@
 {
-  "id": "3218cb7c-9176-4102-972a-91a56bc7c5ac",
+  "id": "dbb8ceae-1040-448d-9473-65fab10270bf",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -331,18 +331,6 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
-        },
-        "sets_flags": {
-          "name": "sets_flags",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "if_flags": {
-          "name": "if_flags",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -828,8 +816,8 @@
         }
       },
       "indexes": {
-        "project_unit_uidx": {
-          "name": "project_unit_uidx",
+        "job_unit_uidx": {
+          "name": "job_unit_uidx",
           "columns": [
             {
               "expression": "project_id",
@@ -851,10 +839,10 @@
         }
       },
       "foreignKeys": {
-        "units_project_id_projects_id_fk": {
-          "name": "units_project_id_projects_id_fk",
+        "units_project_id_jobs_id_fk": {
+          "name": "units_project_id_jobs_id_fk",
           "tableFrom": "units",
-          "tableTo": "projects",
+          "tableTo": "jobs",
           "columnsFrom": [
             "project_id"
           ],

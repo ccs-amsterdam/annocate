@@ -10,8 +10,6 @@ export function sortNestedBlocks(blocks: T[]): T[] {
     sortedBlocks.push(...sortNestedBlocksInPhase(phaseBlocks));
   }
 
-  console.log(sortedBlocks);
-
   return sortedBlocks;
 }
 
