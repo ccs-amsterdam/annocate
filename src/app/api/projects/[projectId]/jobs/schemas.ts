@@ -73,20 +73,11 @@ export const JobMetaResponseSchema = z.object({
   // blocks: z.array(JobBlockSchema),
 });
 
-export const JobBlockMetaSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
-  type: z.enum(["surveyQuestion", "unitLayout", "annotationQuestion"]),
-  position: z.number(),
-});
-
 export const JobResponseSchema = z.object({
   id: z.number(),
   name: z.string(),
   modified: z.coerce.date(),
   deployed: z.boolean(),
-  blocks: z.array(JobBlockMetaSchema),
 });
 
 export const JobSetSchema = z.object({

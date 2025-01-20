@@ -1,7 +1,13 @@
-import { useDeleteJobBlock, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { JobBlockUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import {
+  useDeleteJobBlock,
+  useJobBlockContent,
+  useJobBlocksMeta,
+  useUpdateJobBlockMeta,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
+import { JobBlockMetaUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { Job, JobBlock, JobBlockMeta } from "@/app/types";
+import { Job, JobBlock, JobBlockMeta, JobBlockPosition } from "@/app/types";
+import { JobBlockPreview } from "./JobBlockPreview";
 import { MoveItemInArray } from "@/components/Forms/formHelpers";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
@@ -24,15 +30,16 @@ interface BlockFormProps {
   projectId: number;
   jobId: number;
   position: JobBlock["position"];
+  parentId: JobBlock["parentId"];
   phase: JobBlock["phase"];
   type: JobBlock["type"];
-  current?: JobBlockMeta;
+  currentId?: number;
 }
 
 export function JobBlocks({ projectId, jobId }: Props) {
-  const { data: job, isLoading } = useJob(projectId, jobId);
+  const { data: blocks, isLoading } = useJobBlocksMeta(projectId, jobId);
   const [blockForm, setBlockForm] = useState<BlockFormProps | null>(null);
-  const [preview, setPreview] = useState<z.infer<typeof JobBlockUpdateSchema> | null>(null);
+  const [preview, setPreview] = useState<z.infer<typeof JobBlockMetaUpdateSchema> | null>(null);
 
   function header() {
     if (!blockForm) return "...";
@@ -44,7 +51,7 @@ export function JobBlocks({ projectId, jobId }: Props) {
 
   function conditionalRenderLeft() {
     if (isLoading) return <Loading />;
-    if (!job) return <div>Job not found</div>;
+    if (!blocks) return <div>Job blocks not found</div>;
 
     if (!!blockForm)
       return (
@@ -52,7 +59,7 @@ export function JobBlocks({ projectId, jobId }: Props) {
           <CreateOrUpdateJobBlock
             {...blockForm}
             header={header()}
-            currentId={blockForm.current?.id}
+            currentId={blockForm.currentId}
             afterSubmit={() => setBlockForm(null)}
             setPreview={setPreview}
             onCancel={() => setBlockForm(null)}
@@ -61,17 +68,27 @@ export function JobBlocks({ projectId, jobId }: Props) {
       );
     return (
       <div className="flex animate-slide-in-left flex-col gap-6">
-        <PhaseBlocks job={job} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="preSurvey" />
-        <PhaseBlocks job={job} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="annotate" />
-        <PhaseBlocks job={job} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="postSurvey" />
+        <PhaseBlocks
+          blocks={blocks}
+          projectId={projectId}
+          jobId={jobId}
+          setBlockForm={setBlockForm}
+          phase="preSurvey"
+        />
+        <PhaseBlocks blocks={blocks} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="annotate" />
+        <PhaseBlocks
+          blocks={blocks}
+          projectId={projectId}
+          jobId={jobId}
+          setBlockForm={setBlockForm}
+          phase="postSurvey"
+        />
       </div>
     );
   }
 
   function conditionalRenderRight() {
-    if (!blockForm) return null; // here can put branching stuff. Or total preview
-
-    return null;
+    return <JobBlockPreview projectId={projectId} jobId={jobId} />;
   }
 
   return (
@@ -83,14 +100,14 @@ export function JobBlocks({ projectId, jobId }: Props) {
 }
 
 interface PhaseBlocksProps {
-  job: Job;
+  blocks: JobBlockPosition[];
   projectId: number;
   jobId: number;
   setBlockForm: (props: BlockFormProps) => void;
   phase: "preSurvey" | "postSurvey" | "annotate";
 }
 
-function PhaseBlocks({ job, projectId, jobId, setBlockForm, phase }: PhaseBlocksProps) {
+function PhaseBlocks({ blocks, projectId, jobId, setBlockForm, phase }: PhaseBlocksProps) {
   let label = "Annotate";
   if (phase === "preSurvey") label = "Pre-survey";
   if (phase === "postSurvey") label = "Post-survey";
@@ -100,10 +117,17 @@ function PhaseBlocks({ job, projectId, jobId, setBlockForm, phase }: PhaseBlocks
       <div className="flex items-center gap-1 rounded bg-primary p-3 text-primary-foreground">
         <h4 className="whitespace-nowrap">{label}</h4>
 
-        <AddBlockHere projectId={projectId} jobId={jobId} phase={phase} position={0} setBlockForm={setBlockForm} />
+        <AddBlockHere
+          projectId={projectId}
+          jobId={jobId}
+          parentId={0}
+          phase={phase}
+          position={0}
+          setBlockForm={setBlockForm}
+        />
       </div>
       <div className="px-3">
-        {job.blocks.map((block, i) => {
+        {blocks.map((block, i) => {
           if (block.phase !== phase) return null;
           return (
             <React.Fragment key={block.id}>
@@ -114,7 +138,7 @@ function PhaseBlocks({ job, projectId, jobId, setBlockForm, phase }: PhaseBlocks
                 position={i}
                 projectId={projectId}
                 jobId={jobId}
-                n={job.blocks.length}
+                n={blocks.length}
                 setBlockForm={setBlockForm}
               />
             </React.Fragment>
@@ -133,7 +157,7 @@ function PhaseBlocks({ job, projectId, jobId, setBlockForm, phase }: PhaseBlocks
 }
 
 interface BlockProps {
-  block: JobBlockMeta;
+  block: JobBlockPosition;
   position: number;
   projectId: number;
   jobId: number;
@@ -142,9 +166,13 @@ interface BlockProps {
 }
 
 function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: BlockProps) {
-  const { mutateAsync } = useUpdateJobBlock(projectId, jobId, block.id);
+  const { mutateAsync } = useUpdateJobBlockMeta(projectId, jobId, block.id);
   const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
+  const { data: content, isLoading: contentLoading } = useJobBlockContent(projectId, jobId, block.id);
   const router = useRouter();
+
+  const name = contentLoading ? "...loading" : content?.name || "could not load block";
+  const type = content?.type;
 
   return (
     <div className="flex animate-fade-in items-center gap-1">
@@ -161,7 +189,7 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
         <div className="mt-1">
           <div className="grid grid-cols-[1fr] items-center gap-2">
             {/* <Book className="h-4 w-4" /> */}
-            <div className="overflow-hidden text-ellipsis whitespace-nowrap">{block.name.replaceAll("_", " ")}</div>
+            <div className="overflow-hidden text-ellipsis whitespace-nowrap">{name.replaceAll("_", " ")}</div>
           </div>
         </div>
       </div>
@@ -169,9 +197,19 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
         <Button
           size="icon"
           variant="ghost"
-          onClick={() =>
-            setBlockForm({ projectId, jobId, position, phase: block.phase, type: block.type, current: block })
-          }
+          disabled={!type}
+          onClick={() => {
+            if (!type) return null;
+            setBlockForm({
+              projectId,
+              jobId,
+              position,
+              parentId: block.parentId,
+              phase: block.phase,
+              type: type,
+              currentId: block.id,
+            });
+          }}
         >
           <Edit className="h-5 w-5" />
         </Button>
@@ -191,6 +229,7 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
           projectId={projectId}
           jobId={jobId}
           phase={block.phase}
+          parentId={null}
           position={position + 1}
           setBlockForm={setBlockForm}
         />
@@ -203,6 +242,7 @@ interface AddBlockProps {
   projectId: number;
   jobId: number;
   phase: "preSurvey" | "postSurvey" | "annotate";
+  parentId: number | null;
   position: number;
   setBlockForm: (props: BlockFormProps) => void;
 }
@@ -213,7 +253,7 @@ const typeLabel = {
   annotationQuestion: "Annotation question",
 };
 
-function AddBlockHere({ projectId, jobId, phase, position, setBlockForm }: AddBlockProps) {
+function AddBlockHere({ projectId, jobId, phase, parentId, position, setBlockForm }: AddBlockProps) {
   const [open, setOpen] = useState(false);
 
   const options: JobBlock["type"][] = useMemo(() => {
@@ -235,7 +275,7 @@ function AddBlockHere({ projectId, jobId, phase, position, setBlockForm }: AddBl
             size="icon"
             onClick={(e) => {
               if (options.length === 1) {
-                setBlockForm({ projectId, jobId, position, phase, type: options[0] });
+                setBlockForm({ projectId, jobId, parentId, position, phase, type: options[0] });
                 e.preventDefault();
                 e.stopPropagation();
               }
@@ -251,7 +291,7 @@ function AddBlockHere({ projectId, jobId, phase, position, setBlockForm }: AddBl
               <Button
                 key={type}
                 onClick={() => {
-                  setBlockForm({ projectId, jobId, position, phase, type });
+                  setBlockForm({ projectId, jobId, parentId, position, phase, type });
                   setOpen(false);
                 }}
               >

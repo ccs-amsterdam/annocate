@@ -1,14 +1,15 @@
 import {
   useCreateJobBlock,
-  useJobBlock,
-  useUpdateJobBlock,
+  useJobBlockContent,
+  useUpdateJobBlockContent,
+  useUpdateJobBlockMeta,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
 import {
+  JobBlockContentUpdateSchema,
   JobBlockCreateSchema,
-  JobBlockSchema,
-  JobBlockUpdateSchema,
+  JobBlockMetaUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { JobBlock, JobBlockMeta } from "@/app/types";
+import { JobBlock } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
@@ -21,16 +22,17 @@ import { BlockVariable } from "./variableForms";
 import { TextFormField } from "./formHelpers";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
-type JobBlockUpdate = z.infer<typeof JobBlockUpdateSchema>;
+type JobBlockUpdate = z.infer<typeof JobBlockMetaUpdateSchema>;
+type JobBlockContentUpdate = z.infer<typeof JobBlockContentUpdateSchema>;
 
 interface CreateJobBlockProps {
   projectId: number;
   jobId: number;
   phase: JobBlock["phase"];
   type: JobBlock["type"];
-  parentId?: number;
+  parentId: number | null;
   position: number;
-  setPreview: (block: JobBlockUpdate) => void;
+  setPreview: (block: JobBlockCreate) => void;
   currentId?: number;
   afterSubmit: () => void;
   onCancel: () => void;
@@ -51,17 +53,22 @@ export function CreateOrUpdateJobBlock({
   header,
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
-  const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, currentId);
-  const { data: current, isLoading, isPending } = useJobBlock(projectId, jobId, currentId);
+  const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, currentId);
+  const { data: currentContent, isLoading, isPending } = useJobBlockContent(projectId, jobId, currentId);
+  const current: JobBlockCreate | undefined = useMemo(
+    () => (currentContent ? { ...currentContent, phase, position, parentId } : undefined),
+    [currentContent, phase, parentId, position],
+  );
 
-  const schema = JobBlockSchema;
+  const schema = JobBlockCreateSchema;
   const shape = schema.shape;
 
   const form = useForm<JobBlockCreate>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues(type, phase, parentId, position, current),
+    defaultValues: defaultValues(type, phase, parentId, position),
     // disabled: currentId !== undefined && isLoading,
   });
+  useUpdatePreview({ form, setPreview });
 
   useEffect(() => {
     if (!current) return;
@@ -79,7 +86,7 @@ export function CreateOrUpdateJobBlock({
   function onSubmit(values: JobBlockCreate) {
     console.log(values);
     if (current) {
-      const updateValues: JobBlockUpdate = { ...values };
+      const updateValues: JobBlockContentUpdate = { ...values };
       updateAsync(updateValues).then(afterSubmit).catch(console.error);
       return;
     } else {
@@ -119,26 +126,29 @@ export function CreateOrUpdateJobBlock({
 }
 
 function useUpdatePreview({
-  phase,
   form,
   setPreview,
 }: {
-  phase: "preSurvey" | "annotate" | "postSurvey";
   form: UseFormReturn<JobBlockCreate>;
-  setPreview: (block: JobBlockUpdate) => void;
+  setPreview: (block: JobBlockCreate) => void;
 }) {
   const watch = useWatch({ control: form.control });
 
   useEffect(() => {
-    const data = JobBlockSchema.safeParse(watch);
-    if (data.success) setPreview(data.data);
-  }, [watch, setPreview]);
+    if (!setPreview) return;
+    const timeout = setTimeout(() => {
+      const jobBlock = JobBlockCreateSchema.safeParse(watch);
+      console.log(jobBlock.data);
+      if (jobBlock.success) setPreview(jobBlock.data);
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [watch, setPreview, form]);
 }
 
 function defaultValues(
   type: JobBlock["type"],
   phase: JobBlock["phase"],
-  parentId: number | undefined,
+  parentId: number | null,
   position: number,
   current?: JobBlock,
 ): JobBlockUpdate {

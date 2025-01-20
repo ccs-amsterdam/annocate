@@ -16,16 +16,3 @@ export async function reindexJobBlockPositions(tx: any, jobId: number): Promise<
     WHERE ${jobBlocks.id} = new_position.id
     `);
 }
-
-export async function checkUnitIds(tx: any, unitIds: string[], projectId: number): Promise<void> {
-  const [{ n }] = await db
-    .select({
-      n: sql<number>`COUNT(*)`.mapWith(Number),
-    })
-    .from(units)
-    .where(and(eq(units.projectId, projectId), inArray(units.unitId, unitIds)));
-
-  if (n !== unitIds.length) {
-    throw new Error(`Invalid unitIds: ${unitIds.length - n} (out of ${unitIds.length}} not found`);
-  }
-}

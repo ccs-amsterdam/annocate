@@ -33,7 +33,7 @@ export function Preview({ projectId, codebookPreview, jobId, blockId, setBlockId
   const [jobServer, setJobServer] = useState<JobServerPreview | null>(null);
   const annotations = useRef<Record<string, Annotation[]>>({});
   const current = useRef<{ unit: number; variable?: string }>({ unit: 0 });
-  const [size, setSize] = useLocalStorage("size", { width: 400, height: 500 });
+  const [size, setSize = useLocalStorage("size", { width: 400, height: 500 });
   const [units, setUnits] = useState<string[]>([]);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
 

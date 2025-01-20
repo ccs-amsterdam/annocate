@@ -1,5 +1,15 @@
 
 
+!!!!!
+
+Update all endpoints to add validation that requested resources are really in the projects that the users says they are in.
+Currently we only authorize on project.
+
+Replace all Request with NextRequest type (see routehelpers)
+
+!!!!!
+
+
 EFFICIENT UNIT MANAGEMENT
 
 Make hook that fetches ALL units for a project, and stores them in indexedDB.

@@ -5,7 +5,6 @@ import {
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
-import { CodebookSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { AnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";
@@ -69,7 +68,10 @@ export const AnnotateUnitSchema = z.object({
   blockId: z.number(),
 });
 
+export const PhaseSchema = z.enum(["preSurvey", "annotate", "postSurvey"]);
+
 export const AnnotateProgressSchema = z.object({
+  phase: PhaseSchema,
   currentUnit: z.number(),
   previousUnit: z.number().optional(),
   nTotal: z.number(),
@@ -80,7 +82,7 @@ export const AnnotateProgressSchema = z.object({
 
 export const JobBlockSchema = z.object({
   id: z.number(),
-  phase: z.enum(["preSurvey", "annotate", "postSurvey"]),
+  phase: PhaseSchema,
   position: z.number(),
 });
 
@@ -108,11 +110,7 @@ export const GetUnitResponseSchema = z.object({
   token: z.string(),
   data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
   annotations: z.array(AnnotationSchema),
-});
-
-export const GetCodebookResponseSchema = z.object({
-  codebook: CodebookSchema.nullable(),
-  error: z.string().optional(),
+  progress: AnnotateProgressSchema,
 });
 
 export const GetUnitParamsSchema = z.object({

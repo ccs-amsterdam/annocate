@@ -1,40 +1,45 @@
 import {
   Annotation,
   AnnotationDictionary,
+  Codebook,
   GetCodebook,
   GetJobState,
   GetUnit,
   JobBlock,
   JobServer,
+  Layout,
+  Phase,
   Progress,
   SetState,
   Status,
   Unit,
   UnitData,
+  Variable,
 } from "@/app/types";
 import db from "@/drizzle/drizzle";
 import { and, eq } from "drizzle-orm";
 import { jobSetUnits } from "@/drizzle/schema";
 import { MiddlecatUser } from "middlecat-react";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
+import { sortNestedBlocks } from "@/functions/sortNestedBlocks";
 
 interface MockServer {
   progress: Progress;
   setProgress: SetState<Progress>;
-  annotations: Record<number | "survey", Annotation[]>;
-  setAnnotations: SetState<Record<number | "survey", Annotation[]>>;
+  unitCache: Record<string, Omit<GetUnit, "progress">>;
+  setUnitCache: SetState<Record<string, Omit<GetUnit, "progress">>>;
 }
 
 interface JobServerDesignInit {
   projectId: number;
   jobId: number;
-  initialProgress: Progress;
   initialJobState: GetJobState;
   setJobState: SetState<GetJobState | null>;
 
   user: MiddlecatUser;
   mockServer: MockServer;
   jobBlocks: JobBlock[];
+  unitLayout: Layout;
 }
 
 class JobServerDesign implements JobServer {
@@ -49,90 +54,119 @@ class JobServerDesign implements JobServer {
   user: MiddlecatUser;
   mockServer: MockServer;
   jobBlocks: JobBlock[];
+  unitLayout: Layout;
 
-  unitCache: Record<number, GetUnit> = {};
+  unitCache: Record<string, Omit<GetUnit, "progress">>;
+  codebookCache: Record<string, GetCodebook>;
 
   constructor({
     jobId,
-    initialProgress,
     initialJobState,
     setJobState,
     user,
     projectId,
     mockServer,
     jobBlocks,
+    unitLayout,
   }: JobServerDesignInit) {
     this.jobId = jobId;
     this.userId = user.email;
-    this.progress = initialProgress;
     this.jobState = initialJobState;
     this.setJobState = setJobState;
+
+    this.progress = mockServer.progress;
 
     this.projectId = projectId;
     this.user = user;
     this.mockServer = mockServer;
     this.jobBlocks = jobBlocks;
+    this.unitLayout = unitLayout;
+
+    this.unitCache = mockServer.unitCache;
+    this.codebookCache = {};
   }
 
-  async getUnit(i?: number): Promise<GetUnit> {
+  async getUnit(phase: Phase, i?: number): Promise<GetUnit> {
     if (i === undefined) i = this.progress.nCoded;
 
-    if (this.unitCache[i]) return this.unitCache[i];
+    const isSurvey = phase === "preSurvey" || phase === "postSurvey";
+    const key = isSurvey ? "survey" : String(i);
 
-    const unit: UnitData = await this.user.api.get(`/projects/${this.projectId}/jobs/${this.jobId}/units/${i}`);
-    const annotations: Annotation[] = [];
-    const token =
-      "normally, this is used for authorization to post annotations (e.g. contains encrypted annotationID to write to";
+    if (!this.unitCache[key]) {
+      let data = {};
 
-    const getUnit = {
-      token,
-      data: unit.data,
-      annotations,
-    };
-    this.unitCache[i] = getUnit;
-    return getUnit;
+      if (phase === "annotate") {
+        const jobHasUnits = this.progress.nTotal > 0;
+        const unit: UnitData = jobHasUnits
+          ? await this.user.api.get(`/projects/${this.projectId}/jobs/${this.jobId}/units/${i}`)
+          : fakeUnit(i);
+        const data = unit.data;
+      }
+
+      const annotations: Annotation[] = [];
+      const token = JSON.stringify({ key }); // on real server this must be encrypted
+
+      this.updateUnitCache(key, { token, data, annotations });
+    }
+
+    this.updateProgress(i);
+    return { ...this.unitCache[i], progress: this.progress };
   }
 
-  async getCodebook(phase: "preSurvey" | "postSurvey" | "annotate"): Promise<GetCodebook> {
-    const phaseBlocks = this.jobBlocks.filter((b) => b.phase === phase);
-    const roots = phaseBlocks.filter((b) => !b.parentId);
-    const sortedBlocks = sortNestedBlocks(roots);
+  async getCodebook(phase: Phase): Promise<GetCodebook> {
+    if (!this.codebookCache[phase]) {
+      const phaseBlocks = this.jobBlocks.filter((b) => b.phase === phase);
+      const sortedBlocks = sortNestedBlocks(phaseBlocks);
 
-    const type = phase === "annotate" ? "annotation" : "survey";
-
-    return {
-      codebook: {
-        type,
+      const codebook: GetCodebook = {
         blocks: sortedBlocks,
-        settings: {},
-      },
+      };
+      if (phase === "annotate") codebook.layout = this.unitLayout;
+
+      this.codebookCache[phase] = codebook;
+    }
+
+    return this.codebookCache[phase];
+  }
+
+  async postAnnotations(token: string, add: AnnotationDictionary, rmIds: string[], status: Status): Promise<Status> {
+    const { key } = JSON.parse(token);
+    const unit = this.unitCache[key];
+    unit.annotations = unit.annotations.filter((a) => !rmIds.includes(a.id));
+    unit.annotations = [...unit.annotations, ...Object.values(add)];
+
+    this.updateUnitCache(key, unit);
+    return status;
+  }
+
+  updateProgress(currentUnit: number) {
+    this.progress = {
+      ...this.progress,
+      currentUnit,
+      nCoded: Math.max(this.progress.nCoded, currentUnit),
     };
+    this.mockServer.setProgress({ ...this.progress });
   }
 
-  async postAnnotations(token: string, add: AnnotationDictionary, rmIds: string[], status: Status) {
-    let current =
-      type === "survey" ? this.annotations[`${user}_survey`] || [] : this.annotations[`${user}_unit_${unitId}`] || [];
-    current = current.filter((a) => !rmIds.includes(a.id));
-    current = [...current, ...Object.values(add)];
-
-    const annotations = this.mockServer.annotations[unitId] || [];
-    const newAnnotations = annotations.filter((a) => !rmIds.includes(a.id)).concat(Object.values(add));
-    this.mockServer.setAnnotations({ ...this.mockServer.annotations, [unitId]: newAnnotations });
-  }
-}
-
-function createJobStateAnnotations(annotations: Record<number | "survey", Annotation[]>, unitId: number) {
-  const surveyAnnotations: GetJobState["surveyAnnotations"] = {};
-  const unitAnnotations: GetJobState["unitAnnotations"] = {};
-
-  function setOrAppend<T>(current: T | T[] | undefined, value: T) {
-    if (current === undefined) return value;
-    if (Array.isArray(current)) return [...current, value];
-    return [value];
+  updateUnitCache(key: string, data: Omit<GetUnit, "progress">) {
+    this.unitCache[key] = data;
+    this.mockServer.setUnitCache({ ...this.unitCache });
   }
 
-  if (annotations) {
-    for (let ann of annotations["survey"]) {
+  updateJobState(unitIndex: number | null) {
+    const surveyAnnotations: GetJobState["surveyAnnotations"] = {};
+    const unitAnnotations: GetJobState["unitAnnotations"] = {};
+
+    function setOrAppend<T>(current: T | T[] | undefined, value: T) {
+      if (current === undefined) return value;
+      if (Array.isArray(current)) return [...current, value];
+      return [value];
+    }
+
+    const survey = this.unitCache["survey"]?.annotations || [];
+    const unit = this.unitCache[String(unitIndex)]?.annotations || [];
+
+    for (let ann of survey) {
       if (!surveyAnnotations[ann.variable]) surveyAnnotations[ann.variable] = {};
       if (ann.code) {
         surveyAnnotations[ann.variable].code = setOrAppend(surveyAnnotations[ann.variable].code, ann.code);
@@ -141,7 +175,7 @@ function createJobStateAnnotations(annotations: Record<number | "survey", Annota
         surveyAnnotations[ann.variable].value = setOrAppend(surveyAnnotations[ann.variable].value, ann.value);
       }
     }
-    for (let ann of annotations[unitId]) {
+    for (let ann of unit) {
       if (!unitAnnotations[ann.variable]) unitAnnotations[ann.variable] = {};
       if (ann.code) {
         unitAnnotations[ann.variable].code = setOrAppend(unitAnnotations[ann.variable].code, ann.code);
@@ -150,18 +184,14 @@ function createJobStateAnnotations(annotations: Record<number | "survey", Annota
         unitAnnotations[ann.variable].value = setOrAppend(unitAnnotations[ann.variable].value, ann.value);
       }
     }
+    this.setJobState({ ...this.jobState, surveyAnnotations, unitAnnotations });
   }
-  return { surveyAnnotations, unitAnnotations };
+}
+function fakeUnit(i: number): UnitData {
+  return {
+    id: "unit" + i,
+    data: { text: `This is unit ${i}` },
+  };
 }
 
-function sortNestedBlocks(parents: JobBlock[]): JobBlock[] {
-  let sortedBlocks: JobBlock[] = [];
-  const sortedParents = parents.sort((a, b) => a.position - b.position);
-  for (let parent of sortedParents) {
-    sortedBlocks.push(parent);
-    const children = phaseBlocks.filter((b) => b.parentId === parent.id);
-    if (children.length === 0) continue;
-    sortedBlocks = [...sortedBlocks, ...sortNestedBlocks(children)];
-  }
-  return sortedBlocks;
-}
+export default JobServerDesign;

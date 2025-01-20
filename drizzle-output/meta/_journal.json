@@ -8,6 +8,27 @@
       "when": 1737291582062,
       "tag": "0000_rare_bastion",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1737364237330,
+      "tag": "0001_same_eternity",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1737367828093,
+      "tag": "0002_concerned_mauler",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1737369370790,
+      "tag": "0003_steady_kabuki",
+      "breakpoints": true
     }
   ]
 }

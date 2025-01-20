@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMiddlecat } from "middlecat-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { set, z } from "zod";
@@ -21,12 +21,10 @@ interface Pagination {
 
 export function useTableGet<Params extends TableParams, Response extends z.ZodTypeAny>({
   endpoint,
-  endpointId,
   initialParams,
   responseSchema,
 }: {
   endpoint: string;
-  endpointId?: string;
   initialParams: Params;
   responseSchema: Response;
 }) {
@@ -35,10 +33,10 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
   const [params, setParams] = useState<Params>(initialParams);
 
   const { data, isLoading } = useQuery({
-    queryKey: endpointId ? [endpoint, endpointId, user, params] : [endpoint, user, params],
+    queryKey: [endpoint, user, params],
     queryFn: async () => {
       if (!user) return;
-      const url = endpointId ? `${endpoint}/${endpointId}` : endpoint;
+      const url = endpoint;
       const res = await user.api.get(url, { params });
       const data = z
         .object({
@@ -97,28 +95,59 @@ export function useTableGet<Params extends TableParams, Response extends z.ZodTy
 
 export function useGet<Params extends {}, Response>({
   endpoint,
-  endpointId,
   params,
   responseSchema,
   disabled,
 }: {
   endpoint: string;
-  endpointId?: string;
   params?: Params;
   responseSchema: z.ZodType<Response>;
   disabled?: boolean;
 }) {
   const { user } = useMiddlecat();
   return useQuery({
-    queryKey: endpointId ? [endpoint, endpointId, user, params] : [endpoint, user, params],
+    queryKey: [endpoint, user, params],
     queryFn: async () => {
       if (!user) throw new Error("User not found");
-      const url = endpointId ? `${endpoint}/${endpointId}` : endpoint;
+      const url = endpoint;
       const res = await user.api.get(url, params ? { params } : undefined);
       const data = responseSchema.parse(res.data);
       return data;
     },
     enabled: !!user && !disabled,
+  });
+}
+
+export function useListGet<Params extends {}, Response>({
+  endpoints,
+  params,
+  responseSchema,
+  disabled,
+}: {
+  endpoints: string[];
+  params?: Params;
+  responseSchema: z.ZodType<Response>;
+  disabled?: boolean;
+}) {
+  const { user } = useMiddlecat();
+  return useQueries({
+    queries: endpoints.map((endpoint) => ({
+      queryKey: [endpoint, user, params],
+      queryFn: async () => {
+        if (!user) throw new Error("User not found");
+        const url = endpoint;
+        const res = await user.api.get(url, params ? { params } : undefined);
+        const data = responseSchema.parse(res.data);
+        return data;
+      },
+      enabled: !!user && !disabled,
+    })),
+    combine: (results) => {
+      return {
+        data: results.map((r) => r.data),
+        isLoading: results.some((r) => r.isLoading),
+      };
+    },
   });
 }
 

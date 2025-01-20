@@ -3,10 +3,10 @@ import { z } from "zod";
 import {
   AnnotateProgressSchema,
   AnnotateUnitSchema,
-  GetCodebookResponseSchema,
   GetJobStateResponseSchema,
   GetUnitResponseSchema,
   JobStateAnnotationsSchema,
+  PhaseSchema,
   UnitContentSchema,
 } from "./api/annotate/[jobId]/schemas";
 import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
@@ -19,7 +19,6 @@ import {
 
 import { UnitLayoutSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
 import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
-import { CodebookSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import {
   JobRulesSchema,
   JobBlockMetaSchema,
@@ -27,7 +26,12 @@ import {
   JobMetaResponseSchema,
 } from "./api/projects/[projectId]/jobs/schemas";
 
-import { JobBlockResponseSchema, JobBlockSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import {
+  JobBlockContentResponseSchema,
+  JobBlockMetaResponseSchema,
+  JobBlockResponseSchema,
+  JobBlockSchema,
+} from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
@@ -61,11 +65,12 @@ export interface Authorization {
 }
 
 export type Project = z.infer<typeof ProjectResponseSchema>;
-export type Codebook = z.output<typeof CodebookSchema>;
 export type Variable = z.infer<typeof VariableSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type JobBlockMeta = z.infer<typeof JobBlockMetaSchema>;
+export type JobBlockPosition = z.infer<typeof JobBlockMetaResponseSchema>;
+export type JobBlockContent = z.infer<typeof JobBlockContentResponseSchema>;
 export type JobBlock = z.infer<typeof JobBlockResponseSchema>;
 export type JobMeta = z.infer<typeof JobMetaResponseSchema>;
 export type Job = z.infer<typeof JobResponseSchema>;
@@ -73,6 +78,12 @@ export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 export type Rules = z.infer<typeof JobRulesSchema>;
+export type Phase = z.infer<typeof PhaseSchema>;
+
+export interface Codebook {
+  blocks: JobBlock[];
+  layout?: Layout;
+}
 
 export type UnitContent = z.infer<typeof UnitContentSchema>;
 export type ExtendedUnitContent = Omit<UnitContent, "grid"> & {
@@ -84,7 +95,7 @@ export type ExtendedUnit = Omit<Unit, "content"> & {
   content: ExtendedUnitContent;
 };
 
-export type GetCodebook = z.infer<typeof GetCodebookResponseSchema>;
+export type GetCodebook = Codebook;
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
 export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
 
@@ -124,8 +135,8 @@ export interface JobServer {
   jobState: GetJobState;
   setJobState: SetState<GetJobState | null>;
 
-  getUnit: (i?: number) => Promise<GetUnit>;
-  getCodebook: (phase: "preSurvey" | "annotate" | "postSurvey") => Promise<GetCodebook>;
+  getUnit: (phase: Phase, i?: number) => Promise<GetUnit>;
+  getCodebook: (phase: Phase) => Promise<GetCodebook>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }

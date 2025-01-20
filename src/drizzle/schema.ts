@@ -87,23 +87,6 @@ export const managers = pgTable(
   }),
 );
 
-export const units = pgTable(
-  "units",
-  {
-    id: serial("id").primaryKey(),
-    projectId: integer("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    externalId: varchar("unit_id", { length: 256 }).notNull(),
-    data: jsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
-    created: timestamp("created").notNull().defaultNow(),
-    modified: timestamp("modified").notNull().defaultNow(),
-  },
-  (table) => ({
-    projectUnitUidx: uniqueIndex("project_unit_uidx").on(table.projectId, table.externalId),
-  }),
-);
-
 export const jobs = pgTable(
   "jobs",
   {
@@ -118,6 +101,23 @@ export const jobs = pgTable(
   (table) => ({
     projectIds: index("jobs_project_ids").on(table.projectId),
     uniqueName: unique("unique_job_name").on(table.projectId, table.name),
+  }),
+);
+
+export const units = pgTable(
+  "units",
+  {
+    id: serial("id").primaryKey(),
+    jobId: integer("project_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    externalId: varchar("unit_id", { length: 256 }).notNull(),
+    data: jsonb("data").notNull().$type<Record<string, string | number | boolean>>(),
+    created: timestamp("created").notNull().defaultNow(),
+    modified: timestamp("modified").notNull().defaultNow(),
+  },
+  (table) => ({
+    jobUnitUidx: uniqueIndex("job_unit_uidx").on(table.jobId, table.externalId),
   }),
 );
 
@@ -165,10 +165,7 @@ export const jobBlocks = pgTable(
     parentId: integer("parent_id").references((): AnyPgColumn => jobBlocks.id),
     position: doublePrecision("position").notNull(),
     type: text("type", { enum: ["surveyQuestion", "unitLayout", "annotationQuestion"] }).notNull(),
-    block: jsonb("block").notNull().$type<Variable>(),
-
-    setsFlags: jsonb("sets_flags").$type<string[]>(),
-    ifFlags: jsonb("if_flags").$type<string[]>(),
+    content: jsonb("block").notNull().$type<Variable>(),
   },
   (table) => ({
     jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),

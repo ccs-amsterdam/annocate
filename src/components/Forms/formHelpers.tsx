@@ -24,7 +24,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Textarea } from "../ui/textarea";
 import { Switch } from "../ui/switch";
 import { SelectOrCreate } from "../ui/select-or-create";
-import { JobBlock, JobBlockMeta } from "@/app/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@radix-ui/react-popover";
 import DBSelect from "../Common/DBSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "../ui/dialog";
