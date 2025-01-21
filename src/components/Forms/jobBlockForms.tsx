@@ -2,14 +2,15 @@ import {
   useCreateJobBlock,
   useJobBlockContent,
   useUpdateJobBlockContent,
-  useUpdateJobBlockMeta,
+  useUpdateJobBlockTree,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
 import {
+  JobBlockContentSchemaBase,
   JobBlockContentUpdateSchema,
   JobBlockCreateSchema,
-  JobBlockMetaUpdateSchema,
+  JobBlockTreeUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { JobBlock, JobBlockContent } from "@/app/types";
+import { JobBlockResponse, JobBlockContentResponse } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
@@ -18,8 +19,10 @@ import { Button } from "../ui/button";
 import { Form, FormMessage } from "../ui/form";
 import { useEffect, useMemo } from "react";
 import { Loading } from "../ui/loader";
-import { BlockVariable } from "./variableForms";
+import { VariableBlockForm } from "./variableBlockForm";
 import { TextFormField } from "./formHelpers";
+import { AnnotationPhaseBlockForm } from "./AnnotationPhaseBlockForm";
+import { SurveyPhaseBlockForm } from "./SurveyPhaseBlockForm";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 type JobBlockContentUpdate = z.infer<typeof JobBlockContentUpdateSchema>;
@@ -27,8 +30,7 @@ type JobBlockContentUpdate = z.infer<typeof JobBlockContentUpdateSchema>;
 interface CreateJobBlockProps {
   projectId: number;
   jobId: number;
-  phase: JobBlock["phase"];
-  type: JobBlock["type"];
+  type: JobBlockResponse["type"];
   parentId: number | null;
   position: number;
   setPreview: (block: JobBlockCreate) => void;
@@ -41,7 +43,6 @@ interface CreateJobBlockProps {
 export function CreateOrUpdateJobBlock({
   projectId,
   jobId,
-  phase,
   type,
   parentId,
   position,
@@ -55,16 +56,15 @@ export function CreateOrUpdateJobBlock({
   const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, currentId);
   const { data: currentContent, isLoading } = useJobBlockContent(projectId, jobId, currentId);
   const current: JobBlockCreate | undefined = useMemo(
-    () => (currentContent ? { ...currentContent, phase, position, parentId } : undefined),
-    [currentContent, phase, parentId, position],
+    () => (currentContent ? { ...currentContent, position, parentId } : undefined),
+    [currentContent, parentId, position],
   );
 
   const schema = JobBlockCreateSchema;
-  const shape = schema.shape;
 
   const form = useForm<JobBlockCreate>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues(type, phase, parentId, position),
+    defaultValues: defaultValues(type, parentId, position),
     // disabled: currentId !== undefined && isLoading,
   });
   // useUpdatePreview({ form, setPreview });
@@ -82,6 +82,13 @@ export function CreateOrUpdateJobBlock({
     } else {
       createAsync(values).then(afterSubmit).catch(console.error);
     }
+  }
+
+  function renderForm() {
+    if (type === "annotationQuestion") return <VariableBlockForm form={form} control={form.control} />;
+    if (type === "surveyQuestion") return <VariableBlockForm form={form} control={form.control} />;
+    if (type === "annotationPhase") return <AnnotationPhaseBlockForm form={form} control={form.control} />;
+    if (type === "surveyPhase") return <SurveyPhaseBlockForm form={form} control={form.control} />;
   }
 
   if (isLoading) return <Loading />;
@@ -108,10 +115,21 @@ export function CreateOrUpdateJobBlock({
           </div>
         </div>
         <ErrorMessage errors={form.formState.errors} name="formError" render={({ message }) => <p>{message}</p>} />
-        <BlockVariable form={form} control={form.control} />
+        {renderForm()}
         <FormMessage />
       </form>
     </Form>
+  );
+}
+
+export function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  return (
+    <TextFormField
+      control={form.control}
+      zType={JobBlockContentSchemaBase.shape.name}
+      name={"name"}
+      onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
+    />
   );
 }
 
@@ -134,17 +152,11 @@ function useUpdatePreview({
   }, [watch, setPreview, form]);
 }
 
-function defaultValues(
-  type: JobBlockContent["type"],
-  phase: JobBlock["phase"],
-  parentId: number | null,
-  position: number,
-  current?: JobBlock,
-) {
+function defaultValues(type: JobBlockContentResponse["type"], parentId: number | null, position: number) {
   return {
     type,
-    phase,
-    parentId: current?.parentId || parentId,
-    position: current?.position || position,
+    parentId: parentId,
+    position: position,
+    content: {},
   };
 }

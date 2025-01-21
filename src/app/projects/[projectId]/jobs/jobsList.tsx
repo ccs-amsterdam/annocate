@@ -1,5 +1,4 @@
 import { useJob, useJobs } from "@/app/api/projects/[projectId]/jobs/query";
-import { JobMeta } from "@/app/types";
 import DBTable, { DBPagination, DBSearch } from "@/components/Common/DBTable";
 import { CreateJob } from "@/components/Forms/jobForms";
 import { Button } from "@/components/ui/button";

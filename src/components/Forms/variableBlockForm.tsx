@@ -5,8 +5,8 @@ import {
   CodebookVariableSchema,
   InstructionModeOptions,
   variableTypeOptions,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variablesSchemas";
-import { Control, FieldValues, Path, UseFormReturn } from "react-hook-form";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
+import { Control, FieldValues, Path, UseFormReturn, WatchObserver } from "react-hook-form";
 import { z } from "zod";
 import {
   BooleanFormField,
@@ -17,13 +17,16 @@ import {
   VariableItemsFormField,
 } from "./formHelpers";
 import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { renderURL } from "nuqs/dist/_tsup-dts-rollup";
 import { Button } from "../ui/button";
 import { useState } from "react";
+import { NameField } from "./jobBlockForms";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 
-export function BlockVariable<T extends FieldValues>({
+// !!! This is just so TS will warn you if you dare change the name of the content field, since this value is hardcoded in this file
+const tsCanary: keyof JobBlockCreate = "content";
+
+export function VariableBlockForm<T extends FieldValues>({
   form,
   control,
 }: {
@@ -32,10 +35,6 @@ export function BlockVariable<T extends FieldValues>({
 }) {
   const generalShape = CodebookVariableSchema.shape;
   const type = form.watch("content.type");
-
-  function appendPath(key: string): Path<T> {
-    return `content.${key}` as Path<T>;
-  }
 
   function renderStandard() {
     if (!type) return null;
@@ -81,17 +80,6 @@ export function BlockVariable<T extends FieldValues>({
       {renderStandard()}
       {renderType()}
     </div>
-  );
-}
-
-function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
-  return (
-    <TextFormField
-      control={form.control}
-      zType={JobBlockCreateSchema.shape.name}
-      name={"name"}
-      onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
-    />
   );
 }
 

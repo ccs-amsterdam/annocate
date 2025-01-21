@@ -7,6 +7,8 @@ Currently we only authorize on project.
 
 Replace all Request with NextRequest type (see routehelpers)
 
+Figure out wth Drizzle's partial returning doesn't work, and then update all returning statements
+
 !!!!!
 
 

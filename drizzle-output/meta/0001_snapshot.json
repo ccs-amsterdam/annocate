@@ -1,6 +1,6 @@
 {
-  "id": "bc62ffca-f348-4e3b-be49-265ce2e208f4",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "f1cacedd-b8e7-4bba-9103-0602311c7d9c",
+  "prevId": "bc62ffca-f348-4e3b-be49-265ce2e208f4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -299,12 +299,6 @@
         "name": {
           "name": "name",
           "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phase": {
-          "name": "phase",
-          "type": "text",
           "primaryKey": false,
           "notNull": true
         },

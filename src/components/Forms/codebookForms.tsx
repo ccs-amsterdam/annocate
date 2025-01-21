@@ -7,7 +7,7 @@ import {
   CodebookVariableSchema,
   InstructionModeOptions,
   variableTypeOptions,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variablesSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Equal, Plus, Save, Watch, XIcon } from "lucide-react";
 import { use, useCallback, useEffect, useMemo, useState } from "react";

@@ -1,9 +1,4 @@
-import type { PlanetScaleDatabase } from "drizzle-orm/planetscale-serverless";
-import type * as schema from "../drizzle/schema";
-import { neon } from "@neondatabase/serverless";
-import postgres from "postgres";
-import { NeonHttpDatabase, drizzle as drizzleNeon } from "drizzle-orm/neon-http";
-import { NodePgDatabase, drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
+import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import { config } from "dotenv";
 import { Pool } from "pg";

@@ -37,7 +37,7 @@ export const RelationTypeAnnotationSchema = GeneralTypeAnnotationSchema.extend({
   toId: z.string(),
 });
 
-export const AnnotationSchema = z.union([
+export const AnnotationSchema = z.discriminatedUnion("type", [
   SpanTypeAnnotationSchema,
   FieldTypeAnnotationSchema,
   UnitTypeAnnotationSchema,

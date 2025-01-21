@@ -2,11 +2,11 @@ import {
   useDeleteJobBlock,
   useJobBlockContent,
   useJobBlocksMeta,
-  useUpdateJobBlockMeta,
+  useUpdateJobBlockTree,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { JobBlockMetaUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import { JobBlockTreeUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { Job, JobBlock, JobBlockMeta, JobBlockPosition } from "@/app/types";
+import { JobResponse, JobBlockResponse, JobBlockTreeResponse } from "@/app/types";
 import { JobBlockPreview } from "./JobBlockPreview";
 import { MoveItemInArray } from "@/components/Forms/formHelpers";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
@@ -29,23 +29,24 @@ interface Props {
 interface BlockFormProps {
   projectId: number;
   jobId: number;
-  position: JobBlock["position"];
-  parentId: JobBlock["parentId"];
-  phase: JobBlock["phase"];
-  type: JobBlock["type"];
+  position: JobBlockResponse["position"];
+  parentId: JobBlockResponse["parentId"];
+  type: JobBlockResponse["type"];
   currentId?: number;
 }
 
 export function JobBlocks({ projectId, jobId }: Props) {
   const { data: blocks, isLoading } = useJobBlocksMeta(projectId, jobId);
   const [blockForm, setBlockForm] = useState<BlockFormProps | null>(null);
-  const [preview, setPreview] = useState<z.infer<typeof JobBlockMetaUpdateSchema> | null>(null);
+  const [preview, setPreview] = useState<z.infer<typeof JobBlockTreeUpdateSchema> | null>(null);
 
   function header() {
     if (!blockForm) return "...";
+    if (blockForm.type === "surveyPhase") return "Survey phase";
+    if (blockForm.type === "annotationPhase") return "Annotation phase";
+    if (blockForm.type === "surveyQuestion") return "Survey question";
+    if (blockForm.type === "annotationQuestion") return "Annotation question";
     let type = "Annotation question";
-    if (blockForm.phase === "preSurvey") type = "Pre-survey question";
-    if (blockForm.phase === "postSurvey") type = "Post-survey question";
     return `${type}`;
   }
 
@@ -66,23 +67,30 @@ export function JobBlocks({ projectId, jobId }: Props) {
           />
         </div>
       );
+
     return (
-      <div className="flex animate-slide-in-left flex-col gap-6">
-        <PhaseBlocks
-          blocks={blocks}
-          projectId={projectId}
-          jobId={jobId}
-          setBlockForm={setBlockForm}
-          phase="preSurvey"
-        />
-        <PhaseBlocks blocks={blocks} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} phase="annotate" />
-        <PhaseBlocks
-          blocks={blocks}
-          projectId={projectId}
-          jobId={jobId}
-          setBlockForm={setBlockForm}
-          phase="postSurvey"
-        />
+      <div className="flex animate-slide-in-left flex-col">
+        {(blocks || []).map((block) => {
+          return (
+            <JobBlockItem
+              key={block.id}
+              block={block}
+              projectId={projectId}
+              jobId={jobId}
+              setBlockForm={setBlockForm}
+            />
+          );
+        })}
+        <div className="mt-12">
+          <CreateBlock
+            newBlock
+            projectId={projectId}
+            jobId={jobId}
+            parentId={null}
+            position={99999}
+            setBlockForm={setBlockForm}
+          />
+        </div>
       </div>
     );
   }
@@ -99,74 +107,89 @@ export function JobBlocks({ projectId, jobId }: Props) {
   );
 }
 
-interface PhaseBlocksProps {
-  blocks: JobBlockPosition[];
+interface CreateBlockProps {
   projectId: number;
   jobId: number;
+  parentId: number | null;
+  position: number;
   setBlockForm: (props: BlockFormProps) => void;
-  phase: "preSurvey" | "postSurvey" | "annotate";
+  newBlock?: boolean;
 }
 
-function PhaseBlocks({ blocks, projectId, jobId, setBlockForm, phase }: PhaseBlocksProps) {
-  let label = "Annotate";
-  if (phase === "preSurvey") label = "Pre-survey";
-  if (phase === "postSurvey") label = "Post-survey";
+const typeLabel = {
+  surveyQuestion: "Survey question",
+  annotationQuestion: "Annotation question",
+  surveyPhase: "Survey phase",
+  annotationPhase: "Annotation phase",
+};
+
+function CreateBlock({ projectId, jobId, parentId, position, setBlockForm, newBlock }: CreateBlockProps) {
+  const [open, setOpen] = useState(false);
+  const { data: parent, isLoading: parentLoading } = useJobBlockContent(projectId, jobId, parentId || undefined);
+
+  const options: JobBlockResponse["type"][] = useMemo(() => {
+    if (!parent) return ["surveyPhase", "annotationPhase"];
+    if (parent.type === "surveyPhase") return ["surveyQuestion"];
+    if (parent.type === "annotationPhase") return ["annotationQuestion"];
+    if (parent.type === "surveyQuestion") return ["surveyQuestion"];
+    if (parent.type === "annotationQuestion") return ["annotationQuestion"];
+    return [];
+  }, [parent]);
+
+  if (parentLoading) return "...loading";
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-1 rounded bg-primary p-3 text-primary-foreground">
-        <h4 className="whitespace-nowrap">{label}</h4>
-
-        <AddBlockHere
-          projectId={projectId}
-          jobId={jobId}
-          parentId={null}
-          phase={phase}
-          position={0}
-          setBlockForm={setBlockForm}
-        />
-      </div>
-      <div className="px-3">
-        {blocks.map((block, i) => {
-          if (block.phase !== phase) return null;
-          return (
-            <React.Fragment key={block.id}>
-              {/* <AddBlockHere projectId={projectId} jobId={jobId} phase={phase} position={i} setBlockForm={setBlockForm} /> */}
-              <JobBlockItem
-                key={block.id}
-                block={block}
-                position={i}
-                projectId={projectId}
-                jobId={jobId}
-                n={blocks.length}
-                setBlockForm={setBlockForm}
-              />
-            </React.Fragment>
-          );
-        })}
-      </div>
-      {/* <AddBlockHere
-        projectId={projectId}
-        jobId={jobId}
-        phase={phase}
-        position={job.blocks.length}
-        setBlockForm={setBlockForm}
-      /> */}
+    <div className="ml-auto flex h-3 items-center gap-3">
+      {/* <div className="w-full border-b-2 border-secondary/30"></div> */}
+      <SimplePopover
+        open={open}
+        setOpen={setOpen}
+        trigger={
+          <Button
+            variant={newBlock ? "secondary" : "ghost"}
+            size={newBlock ? "default" : "icon"}
+            onClick={(e) => {
+              if (options.length === 1) {
+                setBlockForm({ projectId, jobId, parentId, position, type: options[0] });
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+          >
+            {newBlock ? "Create new phase" : null}
+            <PlusIcon />
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          {options.map((type) => {
+            return (
+              <Button
+                key={type}
+                onClick={() => {
+                  setBlockForm({ projectId, jobId, parentId, position, type });
+                  setOpen(false);
+                }}
+              >
+                {typeLabel[type]}
+              </Button>
+            );
+          })}
+        </div>
+      </SimplePopover>
     </div>
   );
 }
 
 interface BlockProps {
-  block: JobBlockPosition;
-  position: number;
+  block: JobBlockTreeResponse;
   projectId: number;
   jobId: number;
-  n: number;
   setBlockForm: (props: BlockFormProps) => void;
 }
 
-function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: BlockProps) {
-  const { mutateAsync } = useUpdateJobBlockMeta(projectId, jobId, block.id);
+function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
+  const { mutateAsync } = useUpdateJobBlockTree(projectId, jobId, block.id);
   const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
   const { data: content, isLoading: contentLoading } = useJobBlockContent(projectId, jobId, block.id);
   const router = useRouter();
@@ -176,16 +199,7 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
 
   return (
     <div className="flex animate-fade-in items-center gap-1">
-      <MoveItemInArray
-        i={position}
-        n={n}
-        bg={"background"}
-        variant="secondary"
-        move={(_, to) => {
-          mutateAsync({ position: to });
-        }}
-      />
-      <div className="max-w-full overflow-hidden rounded px-3">
+      <div className="max-w-full overflow-hidden rounded px-3" style={{ marginLeft: `${block.level}rem` }}>
         <div className="mt-1">
           <div className="grid grid-cols-[1fr] items-center gap-2">
             {/* <Book className="h-4 w-4" /> */}
@@ -197,15 +211,27 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
         <Button
           size="icon"
           variant="ghost"
+          onClick={() => deleteBlock()}
+          onClickConfirm={{
+            title: "Are you sure?",
+            message: "This will delete the block. It will never return, nor forgive you",
+          }}
+          disabled={!!block.children}
+        >
+          <Trash className="h-5 w-5" />
+        </Button>
+
+        <Button
+          size="icon"
+          variant="ghost"
           disabled={!type}
           onClick={() => {
             if (!type) return null;
             setBlockForm({
               projectId,
               jobId,
-              position,
+              position: block.position,
               parentId: block.parentId,
-              phase: block.phase,
               type: type,
               currentId: block.id,
             });
@@ -214,23 +240,11 @@ function JobBlockItem({ block, position, projectId, jobId, n, setBlockForm }: Bl
           <Edit className="h-5 w-5" />
         </Button>
 
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => deleteBlock()}
-          onClickConfirm={{
-            title: "Are you sure?",
-            message: "This will delete the block. It will never return, nor forgive you",
-          }}
-        >
-          <Trash className="h-5 w-5" />
-        </Button>
-        <AddBlockHere
+        <CreateBlock
           projectId={projectId}
           jobId={jobId}
-          phase={block.phase}
-          parentId={null}
-          position={position + 1}
+          parentId={block.id}
+          position={block.children + 1}
           setBlockForm={setBlockForm}
         />
       </div>
@@ -247,16 +261,10 @@ interface AddBlockProps {
   setBlockForm: (props: BlockFormProps) => void;
 }
 
-const typeLabel = {
-  surveyQuestion: "Survey question",
-  unitLayout: "Unit layout",
-  annotationQuestion: "Annotation question",
-};
-
 function AddBlockHere({ projectId, jobId, phase, parentId, position, setBlockForm }: AddBlockProps) {
   const [open, setOpen] = useState(false);
 
-  const options: JobBlock["type"][] = useMemo(() => {
+  const options: JobBlockResponse["type"][] = useMemo(() => {
     if (phase === "preSurvey") return ["surveyQuestion"];
     if (phase === "postSurvey") return ["surveyQuestion"];
     if (phase === "annotate") return ["annotationQuestion", "unitLayout"];

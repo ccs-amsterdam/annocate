@@ -5,7 +5,7 @@ import {
   GetCodebook,
   GetJobState,
   GetUnit,
-  JobBlock,
+  JobBlockResponse,
   JobServer,
   Layout,
   Phase,
@@ -38,7 +38,7 @@ interface JobServerDesignInit {
 
   user: MiddlecatUser;
   mockServer: MockServer;
-  jobBlocks: JobBlock[];
+  jobBlocks: JobBlockResponse[];
   unitLayout: Layout;
 }
 
@@ -53,7 +53,7 @@ class JobServerDesign implements JobServer {
   projectId: number;
   user: MiddlecatUser;
   mockServer: MockServer;
-  jobBlocks: JobBlock[];
+  jobBlocks: JobBlockResponse[];
   unitLayout: Layout;
 
   unitCache: Record<string, Omit<GetUnit, "progress">>;

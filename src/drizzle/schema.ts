@@ -33,8 +33,11 @@ import {
   Codebook,
   JobsetAnnotatorStatistics,
   Variable,
+  access,
+  Access,
+  BlockType,
+  JobBlockContent,
 } from "@/app/types";
-import { CodebookSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { z } from "zod";
 
 config({ path: ".env.local" });
@@ -161,17 +164,23 @@ export const jobBlocks = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
-    phase: text("phase", { enum: ["preSurvey", "annotate", "postSurvey"] }).notNull(),
     parentId: integer("parent_id").references((): AnyPgColumn => jobBlocks.id),
     position: doublePrecision("position").notNull(),
-    type: text("type", { enum: ["surveyQuestion", "unitLayout", "annotationQuestion"] }).notNull(),
-    content: jsonb("block").notNull().$type<Variable>(),
+    type: text("type", {
+      enum: ["surveyPhase", "annotationPhase", "surveyQuestion", "unitLayout", "annotationQuestion"],
+    })
+      .$type<BlockType>()
+      .notNull(),
+    content: jsonb("block").notNull().$type<JobBlockContent["content"]>(),
   },
   (table) => ({
     jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
     uniqueName: unique("unique_job_block_name").on(table.jobId, table.name),
   }),
 );
+
+// ADD TABLE
+// jobBlockUnitSets: jobBlockId, unitSetId  (on delete cascade)
 
 // todo: figure out how to rotate over multiple job ids.
 // one way is to make jobId an array, but then pg doesn't take care of the foreign key constraint.
@@ -186,7 +195,7 @@ export const invitations = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    access: text("access", { enum: ["only_authenticated", "only_anonymous", "user_decides"] }).notNull(),
+    access: text("access", { enum: access }).$type<Access>().notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.projectId, table.secret] }),

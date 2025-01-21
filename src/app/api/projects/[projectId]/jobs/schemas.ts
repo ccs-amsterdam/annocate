@@ -86,4 +86,4 @@ export const JobSetSchema = z.object({
   unitIds: z.array(z.number()),
 });
 
-export const JobSetsResponseSchema = z.array(JobSetSchema);
+export const JobSetResponseSchema = z.array(JobSetSchema);

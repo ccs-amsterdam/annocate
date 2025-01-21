@@ -3,8 +3,8 @@ import { z } from "zod";
 import {
   JobBlockContentResponseSchema,
   JobBlockCreateSchema,
-  JobBlockMetaResponseSchema,
-  JobBlockMetaUpdateSchema,
+  JobBlockTreeResponseSchema,
+  JobBlockTreeUpdateSchema,
   JobBlockContentUpdateSchema,
 } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
@@ -21,10 +21,10 @@ export function useCreateJobBlock(projectId: number, jobId: number) {
   });
 }
 
-export function useUpdateJobBlockMeta(projectId: number, jobId: number, blockId?: number) {
+export function useUpdateJobBlockTree(projectId: number, jobId: number, blockId?: number) {
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}/meta`,
-    bodySchema: JobBlockMetaUpdateSchema,
+    bodySchema: JobBlockTreeUpdateSchema,
     responseSchema: IdResponseSchema,
     invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
   });
@@ -49,7 +49,7 @@ export function useDeleteJobBlock(projectId: number, jobId: number, blockId: num
 export function useJobBlocksMeta(projectId: number, jobId?: number) {
   return useGet({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
-    responseSchema: z.array(JobBlockMetaResponseSchema),
+    responseSchema: z.array(JobBlockTreeResponseSchema),
     disabled: !jobId,
   });
 }
@@ -81,7 +81,7 @@ export const openapiCodebook = createOpenAPIDefinitions(
       path: "/jobs/{jobId}/blocks/{blockId}",
       method: "post",
       description: "Update a block",
-      body: JobBlockMetaUpdateSchema,
+      body: JobBlockTreeUpdateSchema,
     },
     { path: "/jobs/{jobId}/blocks/{blockId}", method: "delete", description: "Delete a block" },
     { path: "/jobs/{jobId}/blocks/{blockId}/units", method: "get", description: "Get a list of units for a block" },

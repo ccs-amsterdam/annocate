@@ -1,4 +1,4 @@
-import { Annotation, Codebook, GetJobState, Job, Layout, Unit, UnitData } from "@/app/types";
+import { Annotation, Codebook, GetJobState, JobResponse, Layout, Unit, UnitData } from "@/app/types";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";

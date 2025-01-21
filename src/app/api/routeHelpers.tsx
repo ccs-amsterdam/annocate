@@ -122,6 +122,7 @@ export async function createDelete<BodyIn>({
     return NextResponse.json(response);
   } catch (e: any) {
     console.error(e);
+    console.log(e.message);
     return NextResponse.json(e.message, { status: 400 });
   }
 }

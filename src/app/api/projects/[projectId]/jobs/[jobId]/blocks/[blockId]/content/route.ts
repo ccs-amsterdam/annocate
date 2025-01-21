@@ -6,11 +6,13 @@ import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import {
   JobBlockContentResponseSchema,
+  JobBlockContentTypeValidator,
   JobBlockContentUpdateSchema,
-  JobBlockMetaResponseSchema,
+  JobBlockTreeResponseSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { safeParams } from "@/functions/utils";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
+import { z } from "zod";
 
 export async function GET(
   req: NextRequest,
@@ -50,13 +52,19 @@ export async function POST(
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        const [newJobBlock] = await tx
+        const [jb] = await tx
           .update(jobBlocks)
           .set({ ...body })
           .where(eq(jobBlocks.id, params.blockId))
-          .returning();
+          .returning(); // here should return only type
 
-        return newJobBlock;
+        if (body.content) {
+          // this throws an error if the content is invalid for this type,
+          // and automatically rolls back the transaction
+          JobBlockContentTypeValidator.parse({ type: jb.type, content: body.content });
+        }
+
+        return jb;
       });
     },
     req,

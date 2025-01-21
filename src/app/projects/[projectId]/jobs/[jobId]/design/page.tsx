@@ -2,7 +2,7 @@
 import { useCodebook } from "@/app/api/projects/[projectId]/codebooks/query";
 import { CodebookSchema } from "@/app/api/projects/[projectId]/codebooks/schemas";
 import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { JobBlockMeta, SetState } from "@/app/types";
+import { SetState } from "@/app/types";
 import { useUnit } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { Preview } from "@/components/Common/Preview";
 import { UpdateCodebook } from "@/components/Forms/codebookForms";
@@ -148,14 +148,6 @@ function PreviewJob({
       </div>
     </div>
   );
-}
-
-function blockLabel(block: JobBlockMeta) {
-  if (block.name)
-    return `
-    ${block.name}
-  `;
-  return `block ${block.position + 1}`;
 }
 
 interface SaveOnChangeDialogProps {

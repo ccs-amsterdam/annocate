@@ -1,7 +1,7 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet } from "@/app/api/routeHelpers";
 import { NextRequest } from "next/server";
-import { JobSetsResponseSchema } from "../../schemas";
+import { JobSetResponseSchema } from "../../schemas";
 import db from "@/drizzle/drizzle";
 import { jobs, jobSets, jobSetUnits } from "@/drizzle/schema";
 import { and, eq, sql } from "drizzle-orm";
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
     },
     req,
     projectId: params.projectId,
-    responseSchema: JobSetsResponseSchema,
+    responseSchema: JobSetResponseSchema,
     authorizeFunction: async (auth, _params) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

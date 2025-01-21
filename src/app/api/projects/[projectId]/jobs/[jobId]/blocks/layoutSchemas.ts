@@ -38,6 +38,11 @@ export const UnitGeneralFieldSchema = z.object({
     description: "The column name in the units data table from which to get the field value.",
     example: "headline, text, image_url, ...",
   }),
+  example: z.string().optional().openapi({
+    title: "Example",
+    description:
+      "Provide an example value for the field. This is purely for helping you create and test a job. Example values are used in the job preview",
+  }),
 });
 
 export const UnitGeneralLayoutSchema = UnitGeneralFieldSchema.extend({
@@ -71,7 +76,7 @@ export const UnitMetaLayoutSchema = UnitGeneralFieldSchema.extend({
   type: z.literal("meta"),
 });
 
-export const UnitFieldLayoutUnionSchema = z.union([
+export const UnitFieldLayoutUnionSchema = z.discriminatedUnion("type", [
   UnitTextLayoutSchema,
   UnitMarkdownLayoutSchema,
   UnitImageLayoutSchema,

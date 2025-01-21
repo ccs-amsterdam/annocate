@@ -12,8 +12,8 @@ import {
   UnitData,
   SetState,
   AnnotationDictionary,
-  Job,
-  Project,
+  JobResponse,
+  ProjectResponse,
   GetJobState,
   SurveyAnnotations,
 } from "@/app/types";
@@ -22,10 +22,10 @@ import cuid from "cuid";
 import { MiddlecatUser } from "middlecat-react";
 
 interface JobServerPreviewConstructor {
-  project: Project;
+  project: ProjectResponse;
   user: MiddlecatUser;
   codebookPreview: CodebookPreview;
-  job?: Job;
+  job?: JobResponse;
   blockId?: number;
   setBlockId: (blockId: number) => void;
   annotations?: Record<string, Annotation[]>;
@@ -46,11 +46,11 @@ class JobServerPreview implements JobServer {
   codebookId: number;
   codebook: Codebook;
   jobId: number;
-  job: Job | null;
+  job: JobResponse | null;
   jobState: GetJobState | null;
   blockId: number | null;
   annotations: Record<string, Annotation[]>;
-  project: Project;
+  project: ProjectResponse;
   user: MiddlecatUser;
   current: { unit: number; variable?: string };
   unitCache: Record<string, UnitData> = {};
@@ -299,7 +299,7 @@ const randomUnits = Array.from({ length: 100000 }).map((_, i) => ({
 
 type SelectUnitArray = [number, number | null];
 
-function getCurrentBlock(job: Job | null, blockId: number | null) {
+function getCurrentBlock(job: JobResponse | null, blockId: number | null) {
   if (!job || !blockId) return null;
   return job.blocks.find((b) => b.id === blockId);
 }
@@ -329,8 +329,8 @@ function createJobStateAnnotations(annotations?: Annotation[]) {
 
 function prepareJobState(
   user: string,
-  project: Project,
-  job: Job | undefined,
+  project: ProjectResponse,
+  job: JobResponse | undefined,
   annotations: Record<string, Annotation[]> | undefined,
 ) {
   const jobState: GetJobState = { blocks: [], surveyAnnotations: {} };

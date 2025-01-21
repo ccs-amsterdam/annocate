@@ -15,22 +15,18 @@ import {
   CodebookRelationSchema,
   VariableSchema,
   CodebookVariableItemSchema,
-} from "./api/projects/[projectId]/jobs/[jobId]/blocks/variablesSchemas";
+} from "./api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 
 import { UnitLayoutSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
 import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
-import {
-  JobRulesSchema,
-  JobBlockMetaSchema,
-  JobResponseSchema,
-  JobMetaResponseSchema,
-} from "./api/projects/[projectId]/jobs/schemas";
+import { JobRulesSchema, JobResponseSchema, JobMetaResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
 import {
   JobBlockContentResponseSchema,
-  JobBlockMetaResponseSchema,
+  JobBlockTreeResponseSchema,
   JobBlockResponseSchema,
-  JobBlockSchema,
+  JobBlockTreeSchema,
+  JobBlockContentSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
@@ -56,6 +52,18 @@ export type UserRole = (typeof userRole)[number];
 export const projectRole = ["manager", "admin"] as const;
 export type ProjectRole = (typeof projectRole)[number];
 
+export const access = ["only_authenticated", "only_anonymous", "user_decides"] as const;
+export type Access = (typeof access)[number];
+
+export const blockType = [
+  "surveyPhase",
+  "annotationPhase",
+  "surveyQuestion",
+  "unitLayout",
+  "annotationQuestion",
+] as const;
+export type BlockType = (typeof blockType)[number];
+
 export interface Authorization {
   email: string;
   role: UserRole | null;
@@ -64,16 +72,16 @@ export interface Authorization {
   projectRole: ProjectRole | null;
 }
 
-export type Project = z.infer<typeof ProjectResponseSchema>;
+export type JobBlockContent = z.infer<typeof JobBlockContentSchema>;
+
+export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
 export type Variable = z.infer<typeof VariableSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
-export type JobBlockMeta = z.infer<typeof JobBlockMetaSchema>;
-export type JobBlockPosition = z.infer<typeof JobBlockMetaResponseSchema>;
-export type JobBlockContent = z.infer<typeof JobBlockContentResponseSchema>;
-export type JobBlock = z.infer<typeof JobBlockResponseSchema>;
-export type JobMeta = z.infer<typeof JobMetaResponseSchema>;
-export type Job = z.infer<typeof JobResponseSchema>;
+export type JobBlockTreeResponse = z.infer<typeof JobBlockTreeResponseSchema>;
+export type JobBlockContentResponse = z.infer<typeof JobBlockContentResponseSchema>;
+export type JobBlockResponse = z.infer<typeof JobBlockResponseSchema>;
+export type JobResponse = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataRowSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
@@ -81,7 +89,7 @@ export type Rules = z.infer<typeof JobRulesSchema>;
 export type Phase = z.infer<typeof PhaseSchema>;
 
 export interface Codebook {
-  blocks: JobBlock[];
+  blocks: JobBlockResponse[];
   layout?: Layout;
 }
 

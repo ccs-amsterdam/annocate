@@ -4,13 +4,13 @@ import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { jobBlocks, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
-import { JobBlockContentResponseSchema, JobBlockCreateSchema, JobBlockMetaResponseSchema } from "./schemas";
+import { JobBlockContentResponseSchema, JobBlockCreateSchema, JobBlockTreeResponseSchema } from "./schemas";
 import { PgDialect, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
-import { reindexJobBlockPositions } from "./helpers";
 import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
 import { sortNestedBlocks } from "@/functions/sortNestedBlocks";
 import { z } from "zod";
+import { isValidParent, reindexJobBlockPositions } from "./helpers";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(await props.params);
@@ -20,7 +20,6 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
       const blocks = await db
         .select({
           id: jobBlocks.id,
-          phase: jobBlocks.phase,
           parentId: jobBlocks.parentId,
           position: jobBlocks.position,
         })
@@ -30,7 +29,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
       return sortNestedBlocks(blocks);
     },
     req,
-    responseSchema: z.array(JobBlockMetaResponseSchema),
+    responseSchema: z.array(JobBlockTreeResponseSchema),
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
@@ -44,12 +43,28 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        body.position = body.position - 0.5;
+        console.log(body);
+        if (body.parentId !== null) {
+          // If parent is given, check if allowed
+          const [parent] = await tx
+            .select({
+              id: jobBlocks.id,
+              position: jobBlocks.position,
+              type: jobBlocks.type,
+              parentId: jobBlocks.parentId,
+            })
+            .from(jobBlocks)
+            .where(and(eq(jobBlocks.jobId, params.jobId), eq(jobBlocks.id, body.parentId)));
 
-        const [newJobBlock] = await tx
-          .insert(jobBlocks)
-          .values({ jobId: params.jobId, ...body })
-          .returning();
+          if (!parent) return { message: "Invalid parent id" };
+          if (!isValidParent(body.type, parent.type))
+            return { message: `Invalid parent type: ${parent.type} cannot be parent of ${body.type}` };
+        }
+
+        body.position = body.position - 0.5;
+        const values = { jobId: params.jobId, ...body };
+
+        const [newJobBlock] = await tx.insert(jobBlocks).values(values).returning();
 
         await reindexJobBlockPositions(tx, params.jobId);
 
