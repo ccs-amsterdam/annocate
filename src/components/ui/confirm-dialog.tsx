@@ -11,26 +11,49 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./alert-dialog";
+import { useState } from "react";
+import { Input } from "./input";
 
 interface Props {
   children: React.ReactNode;
   title: string;
   message: string;
+  enterText?: string;
   onAccept: () => void;
 }
 
-export function ConfirmDialog({ children, title, message, onAccept }: Props) {
+export function ConfirmDialog({ children, title, message, enterText, onAccept }: Props) {
+  const [text, setText] = useState("");
+  const ready = !enterText || text === enterText;
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{message}</AlertDialogDescription>
+          <AlertDialogDescription>
+            <div>{message}</div>
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter className="flex items-end">
+          {enterText ? (
+            <div className="mr-auto w-56">
+              <div className="mb-1 text-sm font-normal text-foreground/70">
+                Enter <span className="text-base text-primary">{enterText}</span> to confirm
+              </div>
+              <Input
+                placeholder={`enter confirmation text`}
+                className={ready ? "bg-primary/10" : "bg-destructive/10"}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+            </div>
+          ) : null}
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onAccept}>Accept</AlertDialogAction>
+          <AlertDialogAction disabled={!ready} onClick={onAccept}>
+            Yes
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

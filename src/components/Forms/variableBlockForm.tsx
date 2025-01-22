@@ -6,7 +6,7 @@ import {
   InstructionModeOptions,
   variableTypeOptions,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
-import { Control, FieldValues, Path, UseFormReturn, WatchObserver } from "react-hook-form";
+import { Control, FieldValues, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import {
   BooleanFormField,
@@ -17,7 +17,6 @@ import {
   VariableItemsFormField,
 } from "./formHelpers";
 import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { Button } from "../ui/button";
 import { useState } from "react";
 import { NameField } from "./jobBlockForms";
 

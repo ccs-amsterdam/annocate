@@ -1,1 +1,0 @@
-ALTER TABLE "job_blocks" DROP COLUMN "phase";

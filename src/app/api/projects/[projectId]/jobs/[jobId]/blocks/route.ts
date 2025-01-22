@@ -1,35 +1,33 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
-import { jobBlocks, units } from "@/drizzle/schema";
+import { jobBlocks } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
-import { JobBlockContentResponseSchema, JobBlockCreateSchema, JobBlockTreeResponseSchema } from "./schemas";
-import { PgDialect, PgQueryResultHKT, PgTransaction } from "drizzle-orm/pg-core";
+import { and, eq, getTableColumns } from "drizzle-orm";
+import { JobBlockCreateSchema, JobBlocksParamsSchema, JobBlocksResponseSchema } from "./schemas";
 import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
-import { sortNestedBlocks } from "@/functions/sortNestedBlocks";
+import { sortNestedBlocks } from "@/functions/treeFunctions";
 import { z } from "zod";
-import { isValidParent, reindexJobBlockPositions } from "./helpers";
+import { reindexJobBlockPositions } from "./helpers";
+import { isValidParent } from "@/functions/treeFunctions";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(await props.params);
 
   return createGet({
-    selectFunction: async (email) => {
-      const blocks = await db
-        .select({
-          id: jobBlocks.id,
-          parentId: jobBlocks.parentId,
-          position: jobBlocks.position,
-        })
-        .from(jobBlocks)
-        .where(eq(jobBlocks.jobId, params.jobId));
+    selectFunction: async (email, urlParams) => {
+      const { id, parentId, position, ...rest } = getTableColumns(jobBlocks);
+      const tree = { id, parentId, position };
+      const columns = !!urlParams.treeOnly ? { ...tree } : { ...rest, ...tree };
+
+      const blocks = await db.select(columns).from(jobBlocks).where(eq(jobBlocks.jobId, params.jobId));
 
       return sortNestedBlocks(blocks);
     },
     req,
-    responseSchema: z.array(JobBlockTreeResponseSchema),
+    paramsSchema: JobBlocksParamsSchema,
+    responseSchema: z.array(JobBlocksResponseSchema),
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
@@ -43,7 +41,6 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        console.log(body);
         if (body.parentId !== null) {
           // If parent is given, check if allowed
           const [parent] = await tx

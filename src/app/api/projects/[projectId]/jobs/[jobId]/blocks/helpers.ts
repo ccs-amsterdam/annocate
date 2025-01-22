@@ -19,19 +19,30 @@ export async function reindexJobBlockPositions(tx: any, jobId: number): Promise<
     `);
 }
 
-const validParents: Record<BlockType, (BlockType | null)[]> = {
-  annotationPhase: [null],
-  surveyPhase: [null],
-  unitLayout: ["annotationPhase", "annotationQuestion"],
-  annotationQuestion: ["annotationPhase", "annotationQuestion", "unitLayout"],
-  surveyQuestion: ["surveyPhase", "surveyQuestion"],
+export const validParents: Record<BlockType, (BlockType | "ROOT")[]> = {
+  annotationPhase: ["ROOT"],
+  surveyPhase: ["ROOT"],
+  annotationQuestion: ["annotationPhase"],
+  surveyQuestion: ["surveyPhase"],
 };
+
+export const validChildren: Record<BlockType | "ROOT", BlockType[]> = Object.entries(validParents).reduce(
+  (acc, [child, parents]) => {
+    for (const parent of parents) {
+      if (!acc[parent]) acc[parent] = [];
+      acc[parent].push(child as BlockType);
+    }
+    return acc;
+  },
+  {} as Record<BlockType | "ROOT", BlockType[]>,
+);
 
 export function isValidParent(type: BlockType, parentType: BlockType | null) {
   const valid = validParents[type];
-  return valid.includes(parentType);
+  return valid.includes(parentType ?? "ROOT");
 }
 
+// Find a way around this. Don't like it
 export async function updateJobBlockTreeValues(
   update: {
     id: number;

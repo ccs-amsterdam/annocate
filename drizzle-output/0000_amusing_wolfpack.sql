@@ -34,7 +34,6 @@ CREATE TABLE "job_blocks" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"job_id" integer NOT NULL,
 	"name" varchar(128) NOT NULL,
-	"phase" text NOT NULL,
 	"parent_id" integer,
 	"position" double precision NOT NULL,
 	"type" text NOT NULL,

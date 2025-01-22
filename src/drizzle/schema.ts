@@ -163,9 +163,10 @@ export const jobBlocks = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
-    name: varchar("name", { length: 128 }).notNull(),
+    name: varchar("name", { length: 128 }),
     parentId: integer("parent_id").references((): AnyPgColumn => jobBlocks.id),
     position: doublePrecision("position").notNull(),
+
     type: text("type", {
       enum: ["surveyPhase", "annotationPhase", "surveyQuestion", "unitLayout", "annotationQuestion"],
     })
@@ -175,7 +176,7 @@ export const jobBlocks = pgTable(
   },
   (table) => ({
     jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
-    uniqueName: unique("unique_job_block_name").on(table.jobId, table.name),
+    uniqueName: unique("unique_job_block_name").on(table.jobId, table.name).nullsNotDistinct(),
   }),
 );
 

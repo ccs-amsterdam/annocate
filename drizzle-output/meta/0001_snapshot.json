@@ -1,6 +1,6 @@
 {
-  "id": "f1cacedd-b8e7-4bba-9103-0602311c7d9c",
-  "prevId": "bc62ffca-f348-4e3b-be49-265ce2e208f4",
+  "id": "cfadddc9-02df-40c7-8e0f-1296a3988518",
+  "prevId": "c64c0807-0df2-4992-829b-f3c1bc049c54",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -376,7 +376,7 @@
       "uniqueConstraints": {
         "unique_job_block_name": {
           "name": "unique_job_block_name",
-          "nullsNotDistinct": false,
+          "nullsNotDistinct": true,
           "columns": [
             "job_id",
             "name"

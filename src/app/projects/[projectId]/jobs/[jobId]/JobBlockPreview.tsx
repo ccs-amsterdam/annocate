@@ -12,7 +12,12 @@ interface Props {
 
 export function JobBlockPreview({ projectId, jobId }: Props) {
   const { user } = useMiddlecat();
+
+  // try doing this with just the tree instead of all jobblockcontent
+  // we might need to do the same in the real jobBlock to fetch the
+  // root blocks separately
   const jobBlocks = useListJobBlockContent(projectId, jobId);
+
   const [progress, setProgress] = useState<Progress>({
     phase: "preSurvey",
     currentUnit: 0,

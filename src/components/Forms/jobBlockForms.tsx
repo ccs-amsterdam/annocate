@@ -1,6 +1,6 @@
 import {
   useCreateJobBlock,
-  useJobBlockContent,
+  useJobBlock,
   useUpdateJobBlockContent,
   useUpdateJobBlockTree,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
@@ -54,7 +54,7 @@ export function CreateOrUpdateJobBlock({
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
   const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, currentId);
-  const { data: currentContent, isLoading } = useJobBlockContent(projectId, jobId, currentId);
+  const { data: currentContent, isLoading } = useJobBlock(projectId, jobId, currentId);
   const current: JobBlockCreate | undefined = useMemo(
     () => (currentContent ? { ...currentContent, position, parentId } : undefined),
     [currentContent, parentId, position],
@@ -123,10 +123,14 @@ export function CreateOrUpdateJobBlock({
 }
 
 export function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  // If block type has a name, use this form field
+  // blocks with name: annotationQuestion, surveyQuestion
+  // blocks without name: annotationPhase, surveyPhase
+  // Names have to be unique if not null.
   return (
     <TextFormField
       control={form.control}
-      zType={JobBlockContentSchemaBase.shape.name}
+      zType={JobBlockCreateSchema}
       name={"name"}
       onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
     />

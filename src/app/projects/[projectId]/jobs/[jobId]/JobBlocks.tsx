@@ -1,25 +1,20 @@
 import {
   useDeleteJobBlock,
-  useJobBlockContent,
-  useJobBlocksMeta,
+  useJobBlock,
+  useJobBlocksTree,
   useUpdateJobBlockTree,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
 import { JobBlockTreeUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { useJob } from "@/app/api/projects/[projectId]/jobs/query";
-import { JobResponse, JobBlockResponse, JobBlockTreeResponse } from "@/app/types";
-import { JobBlockPreview } from "./JobBlockPreview";
-import { MoveItemInArray } from "@/components/Forms/formHelpers";
+import { JobBlockResponse, JobBlockTreeResponse } from "@/app/types";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
-import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { SimplePopover } from "@/components/ui/simplePopover";
-import { ArrowLeft, Book, Edit, Plus, PlusIcon, Trash, X } from "lucide-react";
-import Link from "next/link";
+import { Edit, PlusIcon, Trash, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useMemo } from "react";
 import { useState } from "react";
 import { z } from "zod";
+import { getValidChildren } from "@/functions/treeFunctions";
 
 interface Props {
   projectId: number;
@@ -36,7 +31,7 @@ interface BlockFormProps {
 }
 
 export function JobBlocks({ projectId, jobId }: Props) {
-  const { data: blocks, isLoading } = useJobBlocksMeta(projectId, jobId);
+  const { data: blocks, isLoading } = useJobBlocksTree(projectId, jobId);
   const [blockForm, setBlockForm] = useState<BlockFormProps | null>(null);
   const [preview, setPreview] = useState<z.infer<typeof JobBlockTreeUpdateSchema> | null>(null);
 
@@ -96,13 +91,17 @@ export function JobBlocks({ projectId, jobId }: Props) {
   }
 
   function conditionalRenderRight() {
-    return <JobBlockPreview projectId={projectId} jobId={jobId} />;
+    if (!blockForm) return "(show full preview)";
+    if (blockForm.type === "annotationPhase") return "(show unit layout design)";
+    if (blockForm.type === "surveyPhase") return "(show survey design)";
+    if (blockForm.type === "surveyQuestion" || blockForm.type === "annotationQuestion")
+      return "(show specific question design)";
   }
 
   return (
     <div className="mx-auto grid w-full grid-cols-1 gap-3 md:grid-cols-[600px,1fr] md:gap-9">
       {conditionalRenderLeft()}
-      {conditionalRenderRight()}
+      <div className="w-full text-center">{conditionalRenderRight()}</div>
     </div>
   );
 }
@@ -125,18 +124,14 @@ const typeLabel = {
 
 function CreateBlock({ projectId, jobId, parentId, position, setBlockForm, newBlock }: CreateBlockProps) {
   const [open, setOpen] = useState(false);
-  const { data: parent, isLoading: parentLoading } = useJobBlockContent(projectId, jobId, parentId || undefined);
+  const { data: parent, isLoading: parentLoading } = useJobBlock(projectId, jobId, parentId || undefined);
 
-  const options: JobBlockResponse["type"][] = useMemo(() => {
-    if (!parent) return ["surveyPhase", "annotationPhase"];
-    if (parent.type === "surveyPhase") return ["surveyQuestion"];
-    if (parent.type === "annotationPhase") return ["annotationQuestion"];
-    if (parent.type === "surveyQuestion") return ["surveyQuestion"];
-    if (parent.type === "annotationQuestion") return ["annotationQuestion"];
-    return [];
-  }, [parent]);
+  if (parentLoading) return null;
 
-  if (parentLoading) return "...loading";
+  const parentType = parentId ? parent?.type : null;
+  const options = parentType !== undefined ? getValidChildren(parentType) : [];
+
+  if (options.length === 0) return null;
 
   return (
     <div className="ml-auto flex h-3 items-center gap-3">
@@ -191,19 +186,54 @@ interface BlockProps {
 function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
   const { mutateAsync } = useUpdateJobBlockTree(projectId, jobId, block.id);
   const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
-  const { data: content, isLoading: contentLoading } = useJobBlockContent(projectId, jobId, block.id);
+  const { data: content, isLoading: contentLoading } = useJobBlock(projectId, jobId, block.id);
   const router = useRouter();
 
-  const name = contentLoading ? "...loading" : content?.name || "could not load block";
+  function header() {
+    if (!content) return "...loading";
+    if (content.type === "annotationPhase") return "Annotation";
+    if (content.type === "surveyPhase") return "Survey";
+    return content.name.replaceAll("_", " ");
+  }
+
+  function blockStyle() {
+    if (block.level === 0) return "bg-primary/10 rounded-t border-b mb-1 font-bold";
+  }
+
   const type = content?.type;
 
   return (
-    <div className="flex animate-fade-in items-center gap-1">
+    <div className={`flex animate-fade-in items-center gap-1 ${blockStyle()}`}>
       <div className="max-w-full overflow-hidden rounded px-3" style={{ marginLeft: `${block.level}rem` }}>
         <div className="mt-1">
-          <div className="grid grid-cols-[1fr] items-center gap-2">
+          <div className="flex items-center">
             {/* <Book className="h-4 w-4" /> */}
-            <div className="overflow-hidden text-ellipsis whitespace-nowrap">{name.replaceAll("_", " ")}</div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hover:bg-transparent hover:underline"
+              disabled={!type}
+              onClick={() => {
+                if (!type) return null;
+                setBlockForm({
+                  projectId,
+                  jobId,
+                  position: block.position,
+                  parentId: block.parentId,
+                  type: type,
+                  currentId: block.id,
+                });
+              }}
+            >
+              {header()}
+            </Button>
+            <CreateBlock
+              projectId={projectId}
+              jobId={jobId}
+              parentId={block.id}
+              position={block.children + 1}
+              setBlockForm={setBlockForm}
+            />
           </div>
         </div>
       </div>
@@ -214,101 +244,13 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
           onClick={() => deleteBlock()}
           onClickConfirm={{
             title: "Are you sure?",
-            message: "This will delete the block. It will never return, nor forgive you",
-          }}
-          disabled={!!block.children}
-        >
-          <Trash className="h-5 w-5" />
-        </Button>
-
-        <Button
-          size="icon"
-          variant="ghost"
-          disabled={!type}
-          onClick={() => {
-            if (!type) return null;
-            setBlockForm({
-              projectId,
-              jobId,
-              position: block.position,
-              parentId: block.parentId,
-              type: type,
-              currentId: block.id,
-            });
+            message: `This will delete the block ${block.children > 0 ? "AND all it's children (!!!)" : ""}. Are you sure?`,
+            enterText: block.children > 0 ? "delete" : undefined,
           }}
         >
-          <Edit className="h-5 w-5" />
+          <X className="h-5 w-5" />
         </Button>
-
-        <CreateBlock
-          projectId={projectId}
-          jobId={jobId}
-          parentId={block.id}
-          position={block.children + 1}
-          setBlockForm={setBlockForm}
-        />
       </div>
-    </div>
-  );
-}
-
-interface AddBlockProps {
-  projectId: number;
-  jobId: number;
-  phase: "preSurvey" | "postSurvey" | "annotate";
-  parentId: number | null;
-  position: number;
-  setBlockForm: (props: BlockFormProps) => void;
-}
-
-function AddBlockHere({ projectId, jobId, phase, parentId, position, setBlockForm }: AddBlockProps) {
-  const [open, setOpen] = useState(false);
-
-  const options: JobBlockResponse["type"][] = useMemo(() => {
-    if (phase === "preSurvey") return ["surveyQuestion"];
-    if (phase === "postSurvey") return ["surveyQuestion"];
-    if (phase === "annotate") return ["annotationQuestion", "unitLayout"];
-    return [];
-  }, [phase]);
-
-  return (
-    <div className="ml-auto flex h-3 items-center gap-3">
-      {/* <div className="w-full border-b-2 border-secondary/30"></div> */}
-      <SimplePopover
-        open={open}
-        setOpen={setOpen}
-        trigger={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              if (options.length === 1) {
-                setBlockForm({ projectId, jobId, parentId, position, phase, type: options[0] });
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }}
-          >
-            <PlusIcon />
-          </Button>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          {options.map((type) => {
-            return (
-              <Button
-                key={type}
-                onClick={() => {
-                  setBlockForm({ projectId, jobId, parentId, position, phase, type });
-                  setOpen(false);
-                }}
-              >
-                {typeLabel[type]}
-              </Button>
-            );
-          })}
-        </div>
-      </SimplePopover>
     </div>
   );
 }

@@ -1,11 +1,127 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createDelete } from "@/app/api/routeHelpers";
+import { createDelete, createGet, createUpdate } from "@/app/api/routeHelpers";
 import { jobBlocks } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
-import { eq, or, sql } from "drizzle-orm";
+import { eq, inArray, or, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { isValidParent, reindexJobBlockPositions } from "../helpers";
+import { getRecursiveChildren, isValidParent } from "@/functions/treeFunctions";
 import { safeParams } from "@/functions/utils";
+import { reindexJobBlockPositions } from "../helpers";
+import {
+  JobBlockContentTypeValidator,
+  JobBlockDeleteSchema,
+  JobBlockResponseSchema,
+  JobBlockUpdateSchema,
+} from "../schemas";
+import { sortNestedBlocks } from "@/functions/treeFunctions";
+import { IdResponseSchema } from "@/app/api/schemaHelpers";
+
+export async function GET(
+  req: NextRequest,
+  props: { params: Promise<{ projectId: string; jobId: string; blockId: string }> },
+) {
+  const params = safeParams(await props.params);
+
+  return createGet({
+    selectFunction: async (email, urlParams) => {
+      const [block] = await db
+        .select({
+          id: jobBlocks.id,
+          name: jobBlocks.name,
+          type: jobBlocks.type,
+          content: jobBlocks.content,
+        })
+        .from(jobBlocks)
+        .where(eq(jobBlocks.id, params.blockId));
+
+      return block;
+    },
+    req,
+    responseSchema: JobBlockResponseSchema,
+    projectId: params.projectId,
+    authorizeFunction: async (auth, params) => {
+      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
+    },
+  });
+}
+
+export async function POST(
+  req: Request,
+  props: { params: Promise<{ projectId: string; jobId: string; blockId: string }> },
+) {
+  const params = safeParams(await props.params);
+
+  return createUpdate({
+    updateFunction: async (email, body) => {
+      return db.transaction(async (tx) => {
+        // TREE UPDATE
+        // If position or parent is given, we need to check whether the tree is still valid
+        if (body.position != null || body.parentId != null) {
+          const blocks = await tx
+            .select({
+              id: jobBlocks.id,
+              position: jobBlocks.position,
+              type: jobBlocks.type,
+              parentId: jobBlocks.parentId,
+            })
+            .from(jobBlocks)
+            .where(eq(jobBlocks.jobId, params.jobId));
+
+          const i = blocks.findIndex((block) => block.id === params.blockId);
+          if (i === -1) return { message: "Invalid block id" };
+
+          if (body.parentId) {
+            const parent = blocks.find((block) => block.id === body.parentId);
+            if (!parent) return { message: "Invalid parent id" };
+            if (!isValidParent(blocks[i].type, parent.type))
+              return { message: `Invalid parent type: ${parent.type} cannot be parent of ${blocks[i].type}` };
+
+            // this throws an error if there are cycles
+            blocks[i].parentId = body.parentId;
+            sortNestedBlocks(blocks);
+          }
+
+          if (body.position) {
+            const current = blocks[i].position;
+            if (current < body.position) {
+              body.position += 0.5;
+            } else {
+              body.position -= 0.5;
+            }
+          }
+        }
+
+        const [updatedJobBlock] = await tx
+          .update(jobBlocks)
+          .set({ ...body })
+          .where(eq(jobBlocks.id, params.blockId))
+          .returning(); // here should only return type, but Drizzle is complaining that it can't
+
+        // CONTENT UPDATE
+        // If content was also updated, we need to validate it
+        // (for which we first retrieved the type from the update query above)
+        // If the content is invalid for this type, an error is thrown and the transaction is rolled back
+        if (body.content) {
+          JobBlockContentTypeValidator.parse({ type: updatedJobBlock.type, content: body.content });
+        }
+
+        // if position or parent is updated, reindex positions so that they are integers starting at 0 within parents
+        if (body.position != null || body.parentId != null) {
+          await reindexJobBlockPositions(tx, params.jobId);
+        }
+
+        return { id: params.blockId };
+      });
+    },
+    req,
+    bodySchema: JobBlockUpdateSchema,
+    responseSchema: IdResponseSchema,
+    projectId: params.projectId,
+    authorizeFunction: async (auth, body) => {
+      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
+    },
+  });
+}
 
 export async function DELETE(
   req: NextRequest,
@@ -14,53 +130,30 @@ export async function DELETE(
   const params = safeParams(await props.params);
 
   return createDelete({
-    deleteFunction: (email) => {
+    deleteFunction: (email, urlParams) => {
       return db.transaction(async (tx) => {
-        // this doesnt actually work, because the delete already triggers the
-        // foreignkey constraint. For now just keep it simple that you can't
-        // delete if has children. But leaving the code here in case we want
-        // to let parents adopt children. (this just requires 1 additional db call)
+        if (urlParams.recursive) {
+          const blocks = await tx
+            .select({
+              id: jobBlocks.id,
+              parentId: jobBlocks.parentId,
+            })
+            .from(jobBlocks)
+            .where(eq(jobBlocks.jobId, params.jobId));
 
-        const [deleted] = await tx.delete(jobBlocks).where(eq(jobBlocks.id, params.blockId)).returning();
-
-        // The deleted block's parent needs to adopt the children
-        const relatives = await tx
-          .select({
-            id: jobBlocks.id,
-            type: jobBlocks.type,
-            parentId: jobBlocks.parentId,
-          })
-          .from(jobBlocks)
-          .where(or(eq(jobBlocks.parentId, deleted.id), eq(jobBlocks.id, deleted.parentId || -1)));
-
-        const parent = relatives.find((r) => r.id === deleted.parentId);
-        const children = relatives.filter((r) => r.parentId === deleted.id) || [];
-
-        const parentType = parent?.type || null;
-        const invalidChildTypes = new Set<string>();
-        for (const child of children) {
-          if (!isValidParent(child.type, parentType)) {
-            invalidChildTypes.add(child.type);
-          }
-        }
-        if (invalidChildTypes.size > 0) {
-          throw new Error(
-            `Cannot delete this block: parent (${parentType}) can't adopt children (${Array.from(invalidChildTypes).join(", ")})`,
-          );
+          const allChildren = getRecursiveChildren(blocks, params.blockId);
+          const childIds = allChildren.map((child) => child.id);
+          await tx.delete(jobBlocks).where(inArray(jobBlocks.id, childIds)).returning();
         }
 
-        // Set children to new parent. Increment position to put them at the end of the parent's children
-        await tx
-          .update(jobBlocks)
-          .set({ parentId: parent?.id || null, position: sql`${jobBlocks.position} + 99999` })
-          .where(eq(jobBlocks.parentId, deleted.id));
+        await tx.delete(jobBlocks).where(eq(jobBlocks.id, params.blockId)).returning();
 
-        await reindexJobBlockPositions(tx, params.jobId);
         return { success: true };
       });
     },
     req,
     projectId: params.projectId,
+    paramsSchema: JobBlockDeleteSchema,
     authorizeFunction: async (auth) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

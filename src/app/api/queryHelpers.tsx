@@ -155,10 +155,12 @@ export function useDelete<Params>({
   endpoint,
   params,
   invalidateEndpoints,
+  dontInvalidateSelf,
 }: {
   endpoint: string;
   params?: Params;
   invalidateEndpoints?: string[] | ((body?: Params) => string[]);
+  dontInvalidateSelf?: boolean; // prevent trying to refresh itself
 }) {
   const { user } = useMiddlecat();
   const queryClient = useQueryClient();
@@ -168,7 +170,7 @@ export function useDelete<Params>({
       await user.api.delete(endpoint, { params });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [endpoint] });
+      if (!dontInvalidateSelf) queryClient.invalidateQueries({ queryKey: [endpoint] });
       if (invalidateEndpoints) {
         const ie = typeof invalidateEndpoints === "function" ? invalidateEndpoints(params) : invalidateEndpoints;
         ie.forEach((endpoint) => {

@@ -21,7 +21,6 @@ import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId
 import { renderURL } from "nuqs/dist/_tsup-dts-rollup";
 import { Button } from "../ui/button";
 import { useState } from "react";
-import { NameField } from "./jobBlockForms";
 import {
   fieldTypeOptions,
   UnitGeneralLayoutSchema,
@@ -50,9 +49,6 @@ export function AnnotationPhaseBlockForm<T extends FieldValues>({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-[1fr,180px] items-end gap-2">
-        <NameField form={form} />
-      </div>
       <UnitFields form={form} />
     </div>
   );

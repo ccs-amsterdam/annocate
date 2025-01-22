@@ -55,13 +55,7 @@ export type ProjectRole = (typeof projectRole)[number];
 export const access = ["only_authenticated", "only_anonymous", "user_decides"] as const;
 export type Access = (typeof access)[number];
 
-export const blockType = [
-  "surveyPhase",
-  "annotationPhase",
-  "surveyQuestion",
-  "unitLayout",
-  "annotationQuestion",
-] as const;
+export const blockType = ["surveyPhase", "annotationPhase", "surveyQuestion", "annotationQuestion"] as const;
 export type BlockType = (typeof blockType)[number];
 
 export interface Authorization {

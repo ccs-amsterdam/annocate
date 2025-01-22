@@ -21,7 +21,7 @@ import { and, eq } from "drizzle-orm";
 import { jobSetUnits } from "@/drizzle/schema";
 import { MiddlecatUser } from "middlecat-react";
 import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
-import { sortNestedBlocks } from "@/functions/sortNestedBlocks";
+import { sortNestedBlocks } from "@/functions/treeFunctions";
 
 interface MockServer {
   progress: Progress;

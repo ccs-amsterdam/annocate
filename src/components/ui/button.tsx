@@ -36,7 +36,7 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  onClickConfirm?: { title: string; message: string };
+  onClickConfirm?: { title: string; message: string; enterText?: string };
   asChild?: boolean;
 }
 
@@ -51,6 +51,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         <ConfirmDialog
           title={onClickConfirm.title}
           message={onClickConfirm.message}
+          enterText={onClickConfirm.enterText}
           onAccept={() => !!event && onClick(event)}
         >
           <Comp
