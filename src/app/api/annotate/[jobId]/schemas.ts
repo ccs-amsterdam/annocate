@@ -8,6 +8,8 @@ import {
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { AnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";
+import { blockType } from "@/app/types";
+import { UnitDataSchema } from "../../projects/[projectId]/units/schemas";
 
 extendZodWithOpenApi(z);
 
@@ -55,29 +57,36 @@ export const AnnotateUnitStatusSchema = z.enum(["IN_PROGRESS", "DONE"]);
 
 export const AnnotateToken = z.string().openapi({
   title: "Token",
-  description: "A signed JWT token that provides (temporary) access to annotate this unit.",
-  example: "1234",
+  description: "A secret token that is need to submit the annotations (in jobServer.postAnnotations)",
+  example: "jesfdlfji",
 });
 
 export const AnnotateUnitSchema = z.object({
   token: z.string(),
   type: UnitTypeSchema,
   status: AnnotateUnitStatusSchema,
-  content: UnitContentSchema,
+  data: UnitDataSchema.optional(),
   annotations: z.array(AnnotationSchema),
-  blockId: z.number(),
 });
 
 export const PhaseSchema = z.enum(["preSurvey", "annotate", "postSurvey"]);
 
-export const AnnotateProgressSchema = z.object({
-  phase: PhaseSchema,
+export const SurveyPhaseSchema = z.object({
+  type: z.literal("survey"),
+});
+export const AnnotatePhaseSchema = z.object({
+  type: z.literal("annotation"),
   currentUnit: z.number(),
-  previousUnit: z.number().optional(),
   nTotal: z.number(),
   nCoded: z.number(),
-  seekBackwards: z.boolean().optional(),
+});
+
+export const AnnotateProgressSchema = z.object({
+  phase: z.number(),
+  phasesCoded: z.number(),
+  phases: z.array(z.discriminatedUnion("type", [SurveyPhaseSchema, AnnotatePhaseSchema])),
   seekForwards: z.boolean().optional(),
+  seekBackwards: z.boolean().optional(),
 });
 
 export const JobBlockSchema = z.object({
@@ -103,14 +112,14 @@ export const GetJobStateParamsSchema = z
 export const GetJobStateResponseSchema = z.object({
   surveyAnnotations: JobStateAnnotationsSchema,
   unitAnnotations: JobStateAnnotationsSchema,
-  blocks: z.array(JobBlockSchema),
 });
 
 export const GetUnitResponseSchema = z.object({
   token: z.string(),
-  data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+  data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
   annotations: z.array(AnnotationSchema),
   progress: AnnotateProgressSchema,
+  status: AnnotateUnitStatusSchema,
 });
 
 export const GetUnitParamsSchema = z.object({

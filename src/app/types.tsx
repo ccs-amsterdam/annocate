@@ -18,16 +18,16 @@ import {
 } from "./api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 
 import { UnitLayoutSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
-import { UnitDataRowSchema } from "./api/projects/[projectId]/units/schemas";
+import { UnitDataResponseSchema, UnitDataRowSchema, UnitDataSchema } from "./api/projects/[projectId]/units/schemas";
 import { JobRulesSchema, JobResponseSchema, JobMetaResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
 import {
-  JobBlockContentResponseSchema,
-  JobBlockTreeResponseSchema,
-  JobBlockResponseSchema,
+  JobBlocksResponseSchemaAddTree,
   JobBlockTreeSchema,
   JobBlockContentSchema,
+  JobBlocksResponseSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import { VariableSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
@@ -72,19 +72,23 @@ export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
 export type Variable = z.infer<typeof VariableSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
-export type JobBlockTreeResponse = z.infer<typeof JobBlockTreeResponseSchema>;
-export type JobBlockContentResponse = z.infer<typeof JobBlockContentResponseSchema>;
-export type JobBlockResponse = z.infer<typeof JobBlockResponseSchema>;
+export type JobBlocksResponse = z.infer<typeof JobBlocksResponseSchema>;
 export type JobResponse = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
-export type UnitData = z.infer<typeof UnitDataRowSchema>;
+export type UnitData = z.infer<typeof UnitDataSchema>;
+export type UnitDataResponse = z.infer<typeof UnitDataResponseSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 export type Rules = z.infer<typeof JobRulesSchema>;
 export type Phase = z.infer<typeof PhaseSchema>;
 
-export interface Codebook {
-  blocks: JobBlockResponse[];
+export type CodebookVariable = z.infer<typeof VariableSchema> & {
+  name: string;
   layout?: Layout;
+};
+
+export interface Codebook {
+  type: BlockType;
+  variables: CodebookVariable[];
 }
 
 export type UnitContent = z.infer<typeof UnitContentSchema>;
@@ -101,7 +105,7 @@ export type GetCodebook = Codebook;
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
 export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
 
-export type ExtendedVariable = Variable & {
+export type ExtendedVariable = CodebookVariable & {
   // intermediate values (not stored in backend)
   codeMap: Record<string, Code>;
   validFrom?: ValidRelation;
@@ -133,12 +137,12 @@ export type Annotation = z.infer<typeof AnnotationSchema> & {
 export interface JobServer {
   jobId: number;
   userId: string;
-  progress: Progress;
-  jobState: GetJobState;
-  setJobState: SetState<GetJobState | null>;
+  setJobState: SetState<GetJobState> | null;
+  initialized: boolean;
 
-  getUnit: (phase: Phase, i?: number) => Promise<GetUnit>;
-  getCodebook: (phase: Phase) => Promise<GetCodebook>;
+  init: (setJobState: SetState<GetJobState>) => Promise<void>;
+  getUnit: (phaseNumber?: number, unitIndex?: number) => Promise<GetUnit>;
+  getCodebook: (phaseNumber: number) => Promise<GetCodebook>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 }

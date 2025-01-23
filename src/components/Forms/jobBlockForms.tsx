@@ -1,6 +1,5 @@
 import {
   useCreateJobBlock,
-  useJobBlock,
   useUpdateJobBlockContent,
   useUpdateJobBlockTree,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
@@ -8,9 +7,9 @@ import {
   JobBlockContentSchemaBase,
   JobBlockContentUpdateSchema,
   JobBlockCreateSchema,
-  JobBlockTreeUpdateSchema,
+  JobBlocksTreeUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { JobBlockResponse, JobBlockContentResponse } from "@/app/types";
+import { JobBlocksResponse } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
@@ -30,14 +29,15 @@ type JobBlockContentUpdate = z.infer<typeof JobBlockContentUpdateSchema>;
 interface CreateJobBlockProps {
   projectId: number;
   jobId: number;
-  type: JobBlockResponse["type"];
+  type: JobBlocksResponse["type"];
   parentId: number | null;
   position: number;
   setPreview: (block: JobBlockCreate) => void;
-  currentId?: number;
+  current?: JobBlocksResponse;
   afterSubmit: () => void;
   onCancel: () => void;
   header?: string;
+  defaultName?: string;
 }
 
 export function CreateOrUpdateJobBlock({
@@ -47,25 +47,20 @@ export function CreateOrUpdateJobBlock({
   parentId,
   position,
   setPreview,
-  currentId,
+  current,
   afterSubmit,
   onCancel,
   header,
+  defaultName,
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
-  const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, currentId);
-  const { data: currentContent, isLoading } = useJobBlock(projectId, jobId, currentId);
-  const current: JobBlockCreate | undefined = useMemo(
-    () => (currentContent ? { ...currentContent, position, parentId } : undefined),
-    [currentContent, parentId, position],
-  );
+  const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, current?.id);
 
   const schema = JobBlockCreateSchema;
 
   const form = useForm<JobBlockCreate>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues(type, parentId, position),
-    // disabled: currentId !== undefined && isLoading,
+    defaultValues: current ?? { type, parentId, position, name: defaultName || "", content: {} },
   });
   // useUpdatePreview({ form, setPreview });
 
@@ -90,8 +85,6 @@ export function CreateOrUpdateJobBlock({
     if (type === "annotationPhase") return <AnnotationPhaseBlockForm form={form} control={form.control} />;
     if (type === "surveyPhase") return <SurveyPhaseBlockForm form={form} control={form.control} />;
   }
-
-  if (isLoading) return <Loading />;
 
   return (
     <Form {...form}>
@@ -154,13 +147,4 @@ function useUpdatePreview({
     }, 250);
     return () => clearTimeout(timeout);
   }, [watch, setPreview, form]);
-}
-
-function defaultValues(type: JobBlockContentResponse["type"], parentId: number | null, position: number) {
-  return {
-    type,
-    parentId: parentId,
-    position: position,
-    content: {},
-  };
 }

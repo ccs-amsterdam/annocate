@@ -23,7 +23,7 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
     <AnnotatorProvider jobServer={jobServer} height={height}>
       <div ref={ref} className="relative grid h-full w-full grid-rows-[min-content,1fr]">
         <AnnotationMenu />
-        <AnnotationUnit jobServer={jobServer} blockEvents={blockEvents} />
+        {/* <AnnotationUnit jobServer={jobServer} blockEvents={blockEvents} /> */}
       </div>
     </AnnotatorProvider>
   );
@@ -46,7 +46,7 @@ function AnnotationUnit({ blockEvents, jobServer }: { blockEvents?: boolean; job
   const { error, progress, finished } = useUnit();
   if (error)
     return (
-      <div className="flex justify-center ">
+      <div className="flex justify-center">
         <div className="mt-20 h-min rounded border-2 border-destructive p-3">{error}</div>
       </div>
     );

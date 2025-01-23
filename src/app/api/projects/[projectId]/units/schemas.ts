@@ -2,10 +2,11 @@ import { createTableParamsSchema } from "@/app/api/schemaHelpers";
 import { z } from "zod";
 
 export const UnitDataValueSchema = z.union([z.string(), z.number(), z.boolean()]);
+export const UnitDataSchema = z.record(z.string(), UnitDataValueSchema);
 
 export const UnitDataRowSchema = z.object({
   id: z.string(),
-  data: z.record(z.string(), UnitDataValueSchema),
+  data: UnitDataSchema,
 });
 
 export const UnitDataTableParamsSchema = createTableParamsSchema({});
@@ -16,7 +17,7 @@ export const UnitDataDeleteBodySchema = z.object({
 
 export const UnitDataResponseSchema = z.object({
   id: z.string(),
-  data: z.record(z.string(), UnitDataValueSchema),
+  data: UnitDataSchema,
 });
 
 export const UnitDataCreateBodySchema = z.object({

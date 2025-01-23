@@ -673,7 +673,7 @@ export function MoveItemInArray({
   move: (index1: number, index2: number) => void;
   i: number;
   n: number;
-  bg: string;
+  bg?: string;
   error?: boolean;
   variant?: "default" | "secondary";
 }) {
@@ -686,7 +686,7 @@ export function MoveItemInArray({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className={`flex items-center gap-[11px] overflow-auto rounded-none border-none pl-3 text-secondary shadow-none ${bg} `}
+        className={`flex items-center gap-[11px] overflow-auto rounded-none border-none pl-3 text-secondary shadow-none ${bg || ""} `}
         side="right"
         sideOffset={8}
       >

@@ -4,7 +4,7 @@ import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { jobBlocks } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq, getTableColumns } from "drizzle-orm";
-import { JobBlockCreateSchema, JobBlocksParamsSchema, JobBlocksResponseSchema } from "./schemas";
+import { JobBlockCreateSchema, JobBlocksResponseSchema } from "./schemas";
 import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
@@ -17,16 +17,10 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
 
   return createGet({
     selectFunction: async (email, urlParams) => {
-      const { id, parentId, position, ...rest } = getTableColumns(jobBlocks);
-      const tree = { id, parentId, position };
-      const columns = !!urlParams.treeOnly ? { ...tree } : { ...rest, ...tree };
-
-      const blocks = await db.select(columns).from(jobBlocks).where(eq(jobBlocks.jobId, params.jobId));
-
+      const blocks = await db.select().from(jobBlocks).where(eq(jobBlocks.jobId, params.jobId));
       return sortNestedBlocks(blocks);
     },
     req,
-    paramsSchema: JobBlocksParamsSchema,
     responseSchema: z.array(JobBlocksResponseSchema),
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {

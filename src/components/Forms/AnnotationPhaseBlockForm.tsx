@@ -25,13 +25,16 @@ import {
   fieldTypeOptions,
   UnitGeneralLayoutSchema,
   UnitImageLayoutSchema,
+  UnitLayoutColumnSchema,
+  UnitLayoutTemplateSchema,
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
 import { StyleToolbar } from "../Common/StyleToolbar";
 import { Equal, XIcon } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@radix-ui/react-accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ConfirmDialog } from "../ui/confirm-dialog";
+import { NameField } from "./jobBlockForms";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 
@@ -49,6 +52,9 @@ export function AnnotationPhaseBlockForm<T extends FieldValues>({
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-[1fr,180px] items-end gap-2">
+        <NameField form={form} />
+      </div>
       <UnitFields form={form} />
     </div>
   );
@@ -56,7 +62,7 @@ export function AnnotationPhaseBlockForm<T extends FieldValues>({
 
 function UnitFields({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   const [accordionValue, setAccordionValue] = useState<string>("");
-  const fields = form.getValues("content.layout.fields");
+  const fields = form.getValues("content.layout.fields") || [];
 
   if (!fields) return null;
 
@@ -82,35 +88,41 @@ function UnitFields({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="mt-6 flex flex-col">
       <Accordion value={accordionValue} onValueChange={setAccordionValue} type="single" collapsible className="w-full">
         {fields.map((field, index) => {
           const varName = form.watch(`content.layout.fields.${index}.name`);
           const isActive = accordionValue === "V" + index;
           const { error } = form.getFieldState(`content.layout.fields.${index}`);
-          let bg = isActive ? "bg-primary-light" : "";
           return (
-            <AccordionItem key={index} value={"V" + index} className={`${bg} px-3`}>
-              <div className={`grid grid-cols-[2rem,1fr] items-center gap-3 ${error ? "text-destructive" : ""}`}>
-                <MoveItemInArray move={moveField} i={index} n={fields.length} bg={bg} error={!!error} />
+            <AccordionItem key={index} value={"V" + index}>
+              <div
+                className={`grid grid-cols-[2rem,1fr,min-content] items-center gap-3 ${error ? "text-destructive" : ""}`}
+              >
+                <MoveItemInArray move={moveField} i={index} n={fields.length} error={!!error} />
 
-                <div>
-                  <AccordionTrigger className="text-left text-base no-underline hover:no-underline">
-                    <span className="break-all">{varName.replace(/_/g, " ")}</span>
-                  </AccordionTrigger>
-                </div>
-              </div>
-              <AccordionContent className="flex flex-col gap-5 px-1 py-3">
-                <LayoutField form={form} type={field.type} control={form.control} index={index} />
-                <ConfirmDialog
-                  title="Remove field"
-                  message="This will remove the field. Are you sure?"
-                  onAccept={() => removeField(index)}
+                <AccordionTrigger className="w-full text-left text-base no-underline hover:no-underline">
+                  <span className="break-all">{varName.replace(/_/g, " ")}</span>
+                </AccordionTrigger>
+
+                <Button
+                  variant="ghost"
+                  className=""
+                  size="icon"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    removeField(index);
+                  }}
+                  onClickConfirm={{
+                    title: "Remove field",
+                    message: "This will remove the field. Are you sure?",
+                  }}
                 >
-                  <Button variant="destructive" className="ml-auto h-8 rounded-full">
-                    <XIcon />
-                  </Button>
-                </ConfirmDialog>
+                  <XIcon />
+                </Button>
+              </div>
+              <AccordionContent className="flex flex-col gap-5 py-2 pb-6 pr-2">
+                <LayoutField form={form} type={field.type} control={form.control} index={index} />
               </AccordionContent>
             </AccordionItem>
           );
@@ -118,9 +130,8 @@ function UnitFields({ form }: { form: UseFormReturn<JobBlockCreate> }) {
       </Accordion>
       <Button
         type="button"
-        variant="secondary"
         size="sm"
-        className="ml-auto mt-3 flex w-40 items-center gap-1"
+        className="mr-auto mt-1 flex w-40 items-center gap-1"
         onClick={() => appendField()}
       >
         add field
@@ -163,8 +174,15 @@ function LayoutField<T extends FieldValues>({
     return null;
   }
 
+  function mappingForm() {
+    if (type === "markdown") {
+      return <TextAreaFormField control={control} zType={UnitLayoutTemplateSchema} name={appendPath("template")} />;
+    }
+    return <TextFormField control={control} zType={UnitLayoutColumnSchema} name={appendPath("column")} />;
+  }
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 py-3">
       <div className="grid grid-cols-[12rem,24px,1fr] items-end gap-3">
         <DropdownFormField
           control={control}
@@ -191,7 +209,7 @@ function LayoutField<T extends FieldValues>({
           onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
         />
         <Equal className="mt-9" />
-        <TextFormField control={control} zType={generalShape.column} name={appendPath("column")} />
+        {mappingForm()}
       </div>
       {renderType()}
     </div>

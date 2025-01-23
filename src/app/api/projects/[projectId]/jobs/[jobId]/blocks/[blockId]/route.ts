@@ -7,43 +7,9 @@ import { NextRequest } from "next/server";
 import { getRecursiveChildren, isValidParent } from "@/functions/treeFunctions";
 import { safeParams } from "@/functions/utils";
 import { reindexJobBlockPositions } from "../helpers";
-import {
-  JobBlockContentTypeValidator,
-  JobBlockDeleteSchema,
-  JobBlockResponseSchema,
-  JobBlockUpdateSchema,
-} from "../schemas";
+import { JobBlockContentTypeValidator, JobBlockDeleteSchema, JobBlockUpdateSchema } from "../schemas";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
-
-export async function GET(
-  req: NextRequest,
-  props: { params: Promise<{ projectId: string; jobId: string; blockId: string }> },
-) {
-  const params = safeParams(await props.params);
-
-  return createGet({
-    selectFunction: async (email, urlParams) => {
-      const [block] = await db
-        .select({
-          id: jobBlocks.id,
-          name: jobBlocks.name,
-          type: jobBlocks.type,
-          content: jobBlocks.content,
-        })
-        .from(jobBlocks)
-        .where(eq(jobBlocks.id, params.blockId));
-
-      return block;
-    },
-    req,
-    responseSchema: JobBlockResponseSchema,
-    projectId: params.projectId,
-    authorizeFunction: async (auth, params) => {
-      if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
-    },
-  });
-}
 
 export async function POST(
   req: Request,
@@ -68,13 +34,13 @@ export async function POST(
             .where(eq(jobBlocks.jobId, params.jobId));
 
           const i = blocks.findIndex((block) => block.id === params.blockId);
-          if (i === -1) return { message: "Invalid block id" };
+          if (i === -1) throw new Error("Block not found");
 
           if (body.parentId) {
             const parent = blocks.find((block) => block.id === body.parentId);
-            if (!parent) return { message: "Invalid parent id" };
+            if (!parent) throw new Error("Parent not found");
             if (!isValidParent(blocks[i].type, parent.type))
-              return { message: `Invalid parent type: ${parent.type} cannot be parent of ${blocks[i].type}` };
+              throw new Error(`Invalid parent type: ${parent.type} cannot be parent of ${blocks[i].type}`);
 
             // this throws an error if there are cycles
             blocks[i].parentId = body.parentId;

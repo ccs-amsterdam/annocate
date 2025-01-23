@@ -8,6 +8,7 @@ import {
   GetUnit,
   JobServer,
   Progress,
+  Unit,
 } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
@@ -15,19 +16,19 @@ import { useQuery } from "@tanstack/react-query";
 import { useQueryState } from "nuqs";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { createUnitBundle } from "./createUnitBundle";
+import { createUnitBundle } from "./unitProcessing";
 import useWatchChange from "@/hooks/useWatchChange";
 
 interface UnitContextProps {
   jobState: GetJobState;
-  unit: ExtendedUnit;
+  unit: Unit;
   codebook: ExtendedCodebook;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   progress: Progress;
   error: string | undefined;
   height: number;
-  selectUnit: (i?: number) => void;
+  selectUnit: (phaseNumber?: number, unitIndex?: number) => void;
   finished?: boolean;
 }
 
@@ -52,7 +53,7 @@ interface Props {
 }
 
 export interface UnitBundle {
-  unit: ExtendedUnit;
+  unit: Unit;
   codebook: ExtendedCodebook;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
@@ -60,65 +61,38 @@ export interface UnitBundle {
   error: string | undefined;
 }
 
-type CodebookCache = Record<number, { modified?: Date; codebook: ExtendedCodebook }>;
-
 export default function AnnotatorProvider({ jobServer, height, children }: Props) {
   const [finished, setFinished] = useState(false);
   const [unitBundle, setUnitBundle] = useState<UnitBundle | null>(null);
-  const [jobState, setJobState] = useState<GetJobState | null>(null);
-  const codebookCache = useRef<CodebookCache>({});
-
-  useEffect(() => {
-    jobServer.registerJobState(setJobState);
-  }, [jobServer, setJobState]);
+  const [jobState, setJobState] = useState<GetJobState>(initJobState);
 
   const selectUnit = useCallback(
-    async (i?: number) => {
-      const getUnit = await jobServer.getUnit(i);
-      setFinished(getUnit.progress.currentUnit >= getUnit.progress.nTotal);
-      if (!getUnit.unit) return;
+    async (phaseNumber?: number, unitIndex?: number) => {
+      if (!jobServer.initialized) await jobServer.init(setJobState);
+      const getUnit = await jobServer.getUnit(phaseNumber, unitIndex);
 
-      let codebook: ExtendedCodebook;
-      if (getUnit.unit.codebook_id !== undefined) {
-        const inCache = codebookCache.current[getUnit.unit.codebook_id];
-        if (!inCache || inCache.modified !== getUnit.unit.codebook_modified) {
-          const { codebook, error } = await jobServer.getCodebook(getUnit.unit.codebook_id);
-          if (!codebook) {
-            toast.error(error);
-            setUnitBundle(null);
-            return;
-          }
-          codebookCache.current[getUnit.unit.codebook_id] = {
-            modified: getUnit.unit.codebook_modified,
-            codebook: importCodebook(codebook),
-          };
-        }
-        codebook = codebookCache.current[getUnit.unit.codebook_id].codebook;
-      } else {
-        if (!getUnit.unit.codebook) {
-          toast.error("Error: unit is missing a codebook");
-          setUnitBundle(null);
-          return;
-        }
-        codebook = importCodebook(getUnit.unit.codebook);
+      if (getUnit.progress.phase >= getUnit.progress.phases.length) {
+        setFinished(true);
+        return;
       }
 
-      setUnitBundle(createUnitBundle(jobServer, getUnit, codebook, setUnitBundle));
+      const codebook = await jobServer.getCodebook(getUnit.progress.phase);
+      const extendedCodebook = importCodebook(codebook);
+      setUnitBundle(createUnitBundle(jobServer, getUnit, extendedCodebook, setUnitBundle));
     },
-    [jobServer, codebookCache, setFinished],
+    [jobServer, setFinished, setJobState],
   );
 
   useEffect(() => {
-    codebookCache.current = {};
     selectUnit();
-  }, [jobServer, codebookCache, selectUnit]);
+  }, [jobServer, selectUnit]);
 
-  if (!jobServer.jobState || !unitBundle) return null;
+  if (!jobServer.initialized || !unitBundle) return null;
 
   return (
     <UnitContext.Provider
       value={{
-        jobState: jobServer.jobState,
+        jobState,
         unit: unitBundle.unit,
         codebook: unitBundle.codebook,
         annotationLib: unitBundle.annotationLib,
@@ -135,30 +109,26 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   );
 }
 
+// We initialize a bunch of stuff instead of starting with nulls, because
+// this avoids a lot of null checks in the code.
+
 function initJobState(): GetJobState {
   return {
-    blocks: [],
     surveyAnnotations: {},
+    unitAnnotations: {},
   };
 }
 
 function initProgress(): Progress {
   return {
-    currentUnit: 0,
-    nTotal: 0,
-    nCoded: 0,
-    seekBackwards: false,
-    seekForwards: false,
+    phase: 0,
+    phases: [{ type: "survey" }],
   };
 }
 
 function initCodebook(): Codebook {
   return {
-    type: "annotation",
-    unit: {
-      fields: [],
-      meta: [],
-    },
+    type: "annotationPhase",
     variables: [
       {
         name: "missing",
@@ -169,7 +139,6 @@ function initCodebook(): Codebook {
         codes: [{ code: "continue" }],
       },
     ],
-    settings: {},
   };
 }
 

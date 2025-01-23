@@ -33,16 +33,23 @@ export const UnitGeneralFieldSchema = z.object({
     description: "A unique name for the field",
     example: "field_name",
   }),
-  column: z.string().openapi({
-    title: "Column",
-    description: "The column name in the units data table from which to get the field value.",
-    example: "headline, text, image_url, ...",
-  }),
   example: z.string().optional().openapi({
     title: "Example",
     description:
       "Provide an example value for the field. This is purely for helping you create and test a job. Example values are used in the job preview",
   }),
+});
+
+export const UnitLayoutColumnSchema = z.string().openapi({
+  title: "Column",
+  description: "The column name in the units data table from which to get the field value.",
+  example: "headline, text, image_url, ...",
+});
+
+export const UnitLayoutTemplateSchema = z.string().openapi({
+  title: "Template",
+  description: "A markdown template in which you can refer to column in the unit data",
+  example: "# {{headline}}\n\n{{text}}",
 });
 
 export const UnitGeneralLayoutSchema = UnitGeneralFieldSchema.extend({
@@ -58,21 +65,25 @@ export const UnitGeneralLayoutSchema = UnitGeneralFieldSchema.extend({
 
 export const UnitTextLayoutSchema = UnitGeneralLayoutSchema.extend({
   type: z.literal("text"),
+  column: UnitLayoutColumnSchema,
   context_before: z.string().optional(),
   context_after: z.string().optional(),
 });
 
 export const UnitMarkdownLayoutSchema = UnitGeneralLayoutSchema.extend({
   type: z.literal("markdown"),
+  template: UnitLayoutTemplateSchema,
 });
 
 export const UnitImageLayoutSchema = UnitGeneralLayoutSchema.extend({
   type: z.literal("image"),
+  column: UnitLayoutColumnSchema,
   alt: z.string().optional(),
   caption: z.string().optional(),
 });
 
 export const UnitMetaLayoutSchema = UnitGeneralFieldSchema.extend({
+  column: UnitLayoutColumnSchema,
   type: z.literal("meta"),
 });
 

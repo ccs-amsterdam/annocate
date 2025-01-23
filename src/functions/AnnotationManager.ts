@@ -16,13 +16,14 @@ import {
   Status,
   Token,
   TokenAnnotations,
-  ExtendedUnit,
   ValidRelation,
   VariableMap,
   VariableStatus,
   VariableValueMap,
+  Unit,
 } from "@/app/types";
 import { UnitBundle } from "@/components/AnnotatorProvider/AnnotatorProvider";
+import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import JobServerPreview from "@/components/JobServers/JobServerPreview";
 import { getColor } from "@/functions/tokenDesign";
 import cuid from "cuid";
@@ -54,12 +55,7 @@ export default class AnnotationManager {
     this.postAnnotations = async (status: Status) => status as Status;
   }
 
-  initialize(
-    jobServer: JobServer,
-    unit: ExtendedUnit,
-    codebook: ExtendedCodebook,
-    setUnitBundle: SetState<UnitBundle | null>,
-  ) {
+  initialize(jobServer: JobServer, unit: Unit, codebook: ExtendedCodebook, setUnitBundle: SetState<UnitBundle | null>) {
     this.annotationLib = createAnnotationLibrary(jobServer, unit, codebook, unit.annotations);
     this.lastAnnotationIds = Object.keys(this.annotationLib.annotations);
     this.setUnitBundle = setUnitBundle;
@@ -81,9 +77,6 @@ export default class AnnotationManager {
         return "IN_PROGRESS";
       }
     };
-
-    // this is just for preview mode
-    this.setPreviewVariable = (jobServer as JobServerPreview).setPreviewVariable;
   }
 
   updateAnnotationLibrary(annotationLib: AnnotationLibrary) {
@@ -132,7 +125,6 @@ export default class AnnotationManager {
       previousIndex: this.annotationLib.variableIndex,
       variableIndex: index,
     });
-    this.setPreviewVariable?.(this.annotationLib.variables[index].name);
   }
 
   addAnnotation(annotation: Annotation) {
@@ -270,7 +262,7 @@ export default class AnnotationManager {
 
 export function createAnnotationLibrary(
   jobServer: JobServer,
-  unit: ExtendedUnit,
+  unit: Unit,
   codebook: ExtendedCodebook,
   annotations: Annotation[],
 ): AnnotationLibrary {
@@ -281,31 +273,31 @@ export function createAnnotationLibrary(
 
   annotationArray = repairAnnotations(annotationArray, variableMap);
 
-  annotationArray = addTokenIndices(annotationArray, unit.content.tokens || []);
+  // ATTENTION: this needs to be moved to after the layout has been applied
+  // annotationArray = addTokenIndices(annotationArray, unit.content.tokens || []);
+
   const annotationDict: AnnotationDictionary = {};
 
   for (let a of annotationArray) {
     annotationDict[a.id] = a;
   }
 
-  for (let a of Object.values(annotationDict) || []) {
-    a.positions = getTokenPositions(annotationDict, a);
-  }
+  // ATTENTION: this needs to be moved to after the layout has been applied
+  // for (let a of Object.values(annotationDict) || []) {
+  //   a.positions = getTokenPositions(annotationDict, a);
+  // }
 
   const { variableStatuses, variableIndex } = computeVariableStatuses(codebook.variables, annotationArray);
 
-  // this is just for preview mode
-  const previewVariableIndex = (jobServer as JobServerPreview).currentVariable || 0;
-
   return {
-    sessionId: jobServer.sessionId,
+    sessionId: "maybe we can drop this?", // jobServer.sessionId
     type: unit.type,
     status: unit.status,
     annotations: annotationDict,
     byToken: newTokenDictionary(annotationDict),
     codeHistory: initializeCodeHistory(annotationArray),
     variables: codebook.variables,
-    variableIndex: Math.min(previewVariableIndex, variableIndex),
+    variableIndex: variableIndex,
     variableStatuses,
     previousIndex: 0,
   };

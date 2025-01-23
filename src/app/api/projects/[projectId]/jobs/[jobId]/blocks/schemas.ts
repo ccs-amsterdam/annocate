@@ -8,13 +8,6 @@ import { AnnotationPhaseSchema, SurveyPhaseSchema } from "./phaseSchemas";
 
 extendZodWithOpenApi(z);
 
-export const JobBlocksParamsSchema = z.object({
-  treeOnly: z.coerce
-    .boolean()
-    .optional()
-    .openapi({ title: "Tree only", description: "Only return the tree structure of the job blocks" }),
-});
-
 // We split the jobBlock into the position and content information.
 // This is for efficient updating and caching in the web client
 export const JobBlockTreeSchema = z.object({
@@ -23,6 +16,12 @@ export const JobBlockTreeSchema = z.object({
 });
 
 export const JobBlockContentSchemaBase = z.object({
+  name: SafeNameSchema.openapi({
+    title: "Name",
+    description:
+      "The name of the block. Will not be visible to annotators. Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
+    example: "unique_block_name",
+  }),
   type: z.enum(blockType).openapi({
     title: "Block type",
     description:
@@ -30,22 +29,13 @@ export const JobBlockContentSchemaBase = z.object({
   }),
 });
 
-const JobBlockNameSchema = SafeNameSchema.openapi({
-  title: "Name",
-  description:
-    "The name of the block. Will not be visible to annotators. Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
-  example: "unique_block_name",
-});
-
 export const JobBlockContentSurveyQuestionSchema = JobBlockContentSchemaBase.extend({
   type: z.literal("surveyQuestion"),
-  name: JobBlockNameSchema,
   content: VariableSchema,
 });
 
 export const JobBlockContentAnnotationQuestionSchema = JobBlockContentSchemaBase.extend({
   type: z.literal("annotationQuestion"),
-  name: JobBlockNameSchema,
   content: VariableSchema,
 });
 
@@ -59,18 +49,7 @@ export const JobBlockContentSurveyPhaseSchema = JobBlockContentSchemaBase.extend
   content: SurveyPhaseSchema,
 });
 
-export const JobBlockSurveyGroupSchema = z.object({
-  type: z.enum(["group"]),
-  name: JobBlockNameSchema.optional(),
-  // content has branching logic
-});
-
-export const JobBlockAnnotationGroupSchema = z.object({
-  type: z.enum(["group"]),
-  name: JobBlockNameSchema.optional(),
-  // content has branching plus unit layout
-});
-
+// This is used for type hinting the drizzle/ps table definitions
 export const JobBlockContentSchema = z.discriminatedUnion("type", [
   JobBlockContentSurveyQuestionSchema,
   JobBlockContentAnnotationQuestionSchema,
@@ -78,6 +57,7 @@ export const JobBlockContentSchema = z.discriminatedUnion("type", [
   JobBlockContentSurveyPhaseSchema,
 ]);
 
+// This is used to validate content in the update endpoint
 export const JobBlockContentTypeValidator = z.discriminatedUnion("type", [
   JobBlockContentSurveyQuestionSchema.pick({ type: true, content: true }),
   JobBlockContentAnnotationQuestionSchema.pick({ type: true, content: true }),
@@ -95,15 +75,15 @@ export const JobBlockCreateSchema = z.discriminatedUnion("type", [
 ]);
 
 // UPDATE
-export const JobBlockTreeUpdateSchema = JobBlockTreeSchema.partial();
+export const JobBlocksTreeUpdateSchema = JobBlockTreeSchema.partial();
 
 export const JobBlockContentUpdateSchema = z.object({
-  name: JobBlockNameSchema.optional(),
+  name: JobBlockContentSchemaBase.shape.name.optional(),
   content: z.union([VariableSchema, AnnotationPhaseSchema, SurveyPhaseSchema]).optional(),
 });
 
 export const JobBlockUpdateSchema = JobBlockTreeSchema.partial().extend({
-  name: JobBlockNameSchema.optional(),
+  name: JobBlockContentSchemaBase.shape.name.optional(),
   content: z.union([VariableSchema, AnnotationPhaseSchema, SurveyPhaseSchema]).optional(),
 });
 
@@ -118,25 +98,17 @@ export const JobBlockDeleteSchema = z.object({
 
 // RESPONSE
 
-export const JobBlockTreeResponseSchema = JobBlockTreeSchema.extend({
+// This is the trimmed down version of JobBlocksResponse, for efficient caching client side
+export const JobBlocksResponseSchemaAddTree = JobBlockTreeSchema.extend({
   id: z.number(),
   level: z.number(),
   children: z.number(),
 });
 
-export const JobBlockResponseSchema = z.discriminatedUnion("type", [
-  JobBlockContentSurveyQuestionSchema.extend({ id: z.number() }),
-  JobBlockContentAnnotationQuestionSchema.extend({ id: z.number() }),
-  JobBlockContentAnnotationPhaseSchema.extend({ id: z.number() }),
-  JobBlockContentSurveyPhaseSchema.extend({ id: z.number() }),
-]);
-
-export const JobBlocksResponseSchema = z.union([
-  JobBlockTreeResponseSchema,
-  z.discriminatedUnion("type", [
-    JobBlockTreeResponseSchema.merge(JobBlockContentSurveyQuestionSchema).extend({ id: z.number() }),
-    JobBlockTreeResponseSchema.merge(JobBlockContentAnnotationQuestionSchema).extend({ id: z.number() }),
-    JobBlockTreeResponseSchema.merge(JobBlockContentAnnotationPhaseSchema).extend({ id: z.number() }),
-    JobBlockTreeResponseSchema.merge(JobBlockContentSurveyPhaseSchema).extend({ id: z.number() }),
-  ]),
+// When getting all blocks, we do include the tree details (and sort by tree branches)
+export const JobBlocksResponseSchema = z.discriminatedUnion("type", [
+  JobBlocksResponseSchemaAddTree.merge(JobBlockContentSurveyQuestionSchema).extend({ id: z.number() }),
+  JobBlocksResponseSchemaAddTree.merge(JobBlockContentAnnotationQuestionSchema).extend({ id: z.number() }),
+  JobBlocksResponseSchemaAddTree.merge(JobBlockContentAnnotationPhaseSchema).extend({ id: z.number() }),
+  JobBlocksResponseSchemaAddTree.merge(JobBlockContentSurveyPhaseSchema).extend({ id: z.number() }),
 ]);

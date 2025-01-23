@@ -23,22 +23,24 @@ export function createUnitBundle(
   codebook: ExtendedCodebook,
   setUnitBundle: SetState<UnitBundle | null>,
 ): UnitBundle {
-  if (!getUnit.unit) throw new Error("Unit is not defined");
-  const unitCodebook = unfoldVariables(codebook, getUnit.unit);
   const unit = {
-    ...getUnit.unit,
-    content: processUnitContent(getUnit.unit),
+    token: getUnit.token,
+    type: getUnit.progress.phases[getUnit.progress.phase].type,
+    status: getUnit.status,
+    data: getUnit.data,
+    annotations: getUnit.annotations,
   };
+
   const annotationManager = new AnnotationManager();
-  annotationManager.initialize(jobServer, unit, unitCodebook, setUnitBundle);
+  annotationManager.initialize(jobServer, unit, codebook, setUnitBundle);
 
   return {
     unit,
-    codebook: unitCodebook,
+    codebook: codebook,
     annotationManager,
     annotationLib: annotationManager.annotationLib,
     progress: getUnit.progress,
-    error: getUnit.error,
+    error: undefined,
   };
 }
 

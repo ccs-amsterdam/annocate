@@ -4,12 +4,7 @@ import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet, safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
-import {
-  AnnotateUnitSchema,
-  GetJobStateParamsSchema,
-  GetJobStateResponseSchema,
-  GetUnitParamsSchema,
-} from "../schemas";
+import { GetJobStateParamsSchema, GetJobStateResponseSchema, GetUnitParamsSchema } from "../schemas";
 import { cookies } from "next/headers";
 import { getDeviceId } from "@/functions/getDeviceId";
 import { JobsetAnnotatorStatistics, Rules } from "@/app/types";

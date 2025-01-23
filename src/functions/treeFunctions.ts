@@ -1,5 +1,21 @@
 import { BlockType } from "@/app/types";
-import { JobBlockResponse, JobBlockTreeResponse } from "@/app/types";
+import { JobBlocksResponse, JobBlocksTreeResponse } from "@/app/types";
+
+export const validParents: Record<BlockType, (BlockType | "ROOT")[]> = {
+  annotationPhase: ["ROOT", "annotationPhase"],
+  surveyPhase: ["ROOT", "surveyPhase"],
+  annotationQuestion: ["annotationPhase"],
+  surveyQuestion: ["surveyPhase"], //
+};
+
+export function getValidChildren(type: BlockType | null): BlockType[] {
+  return validChildren[type ?? "ROOT"] ?? [];
+}
+
+export function isValidParent(type: BlockType, parentType: BlockType | null): boolean {
+  const valid = validParents[type];
+  return valid.includes(parentType ?? "ROOT");
+}
 
 interface Add {
   level: number;
@@ -75,15 +91,6 @@ function createParentMap<T extends Edges>(blocks: T[]): Map<number | null, T[]> 
   return parentMap;
 }
 
-export const validParents: Record<BlockType, (BlockType | "ROOT")[]> = {
-  annotationPhase: ["ROOT"],
-  surveyPhase: ["ROOT"],
-  annotationQuestion: ["annotationPhase"], // , "annotationGroup"],
-  surveyQuestion: ["surveyPhase"], // , "surveyGroup"],
-  // annotationGroup: ["annotationPhase", "annotationQuestion"],
-  // surveyGroup: ["surveyPhase", "surveyQuestion"],
-};
-
 const validChildren: Record<BlockType | "ROOT", BlockType[]> = Object.entries(validParents).reduce(
   (acc, [child, parents]) => {
     for (const parent of parents) {
@@ -94,12 +101,3 @@ const validChildren: Record<BlockType | "ROOT", BlockType[]> = Object.entries(va
   },
   {} as Record<BlockType | "ROOT", BlockType[]>,
 );
-
-export function getValidChildren(type: BlockType | null): BlockType[] {
-  return validChildren[type ?? "ROOT"] ?? [];
-}
-
-export function isValidParent(type: BlockType, parentType: BlockType | null): boolean {
-  const valid = validParents[type];
-  return valid.includes(parentType ?? "ROOT");
-}

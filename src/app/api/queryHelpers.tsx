@@ -181,20 +181,46 @@ export function useDelete<Params>({
   });
 }
 
+/**
+ * Updates the cache for a specific endpoint without calling DB.
+ * Great for response UI and limiting calls, but need to be extra carefull that
+ * the cache is updated correctly. Any stuff that happens to the data server-side
+ * needs to be replicated here. To use, provide the endpoint, the responseSchema
+ * for this endpoint, and a function (oldData) => newData
+ *
+ * @param endpoint - The endpoint to update.
+ * @param responseSchema - The Zod schema for the endpoint response
+ * @param f - The function to update the old data.
+ */
+export function updateEndpoint<T>(endpoint: string, responseSchema: z.ZodType<T>, f: (oldData: T) => T) {
+  const queryClient = useQueryClient();
+  queryClient.setQueryData([endpoint], f);
+}
+
+/**
+ * Custom hook for making a mutation request.
+ *
+ * @param method - The HTTP method to use for the mutation.
+ * @param endpoint - The endpoint to send the mutation request to.
+ * @param bodySchema - The Zod schema for validating the request body.
+ * @param responseSchema - The Zod schema for validating the response.
+ * @param invalidateEndpoints - Other endpoints to invalidate on success.
+ * @param manualUpdate - Function to manually update the cache instead of invalidating it. Use the updateEndpoint function.
+ */
 export function useMutate<Body, Response>({
   method = "post",
   endpoint,
   bodySchema,
   responseSchema,
   invalidateEndpoints,
-  mutateFunction,
+  manualUpdate,
 }: {
   method?: "post" | "put";
   endpoint: string;
   bodySchema: z.ZodType<Body>;
   responseSchema: z.ZodType<Response>;
   invalidateEndpoints?: string[] | ((body?: Body) => string[]);
-  mutateFunction?: (body: z.infer<typeof bodySchema>) => Promise<Response>;
+  manualUpdate?: (body: z.infer<typeof bodySchema>) => void;
 }) {
   const { user } = useMiddlecat();
   const queryClient = useQueryClient();
@@ -205,7 +231,13 @@ export function useMutate<Body, Response>({
       return responseSchema ? responseSchema.parse(res.data) : res.data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: [endpoint] });
+      if (manualUpdate) {
+        // Manually update the cache for the endpoint, to avoid db calls
+        manualUpdate(data);
+      } else {
+        queryClient.invalidateQueries({ queryKey: [endpoint] });
+      }
+
       if (invalidateEndpoints) {
         const ie = typeof invalidateEndpoints === "function" ? invalidateEndpoints(variables) : invalidateEndpoints;
         ie.forEach((endpoint) => {

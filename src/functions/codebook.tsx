@@ -6,7 +6,6 @@ export function importCodebook(codebook: Codebook | ExtendedCodebook): ExtendedC
   return {
     ...codebook,
     variables: importVariables(codebook.variables),
-    settings: codebook.settings || {},
   };
 }
 

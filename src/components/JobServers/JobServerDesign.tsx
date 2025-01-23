@@ -1,11 +1,13 @@
 import {
   Annotation,
   AnnotationDictionary,
+  BlockType,
   Codebook,
   GetCodebook,
   GetJobState,
   GetUnit,
-  JobBlockResponse,
+  JobBlockContent,
+  JobBlocksResponse,
   JobServer,
   Layout,
   Phase,
@@ -14,6 +16,7 @@ import {
   Status,
   Unit,
   UnitData,
+  UnitDataResponse,
   Variable,
 } from "@/app/types";
 import db from "@/drizzle/drizzle";
@@ -24,136 +27,166 @@ import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
 
 interface MockServer {
+  // This way we can have some persistance when updating the job
+  // in design mode
   progress: Progress;
   setProgress: SetState<Progress>;
-  unitCache: Record<string, Omit<GetUnit, "progress">>;
-  setUnitCache: SetState<Record<string, Omit<GetUnit, "progress">>>;
+  jobState: GetJobState;
+  setJobState: SetState<GetJobState>;
+  unitCache: Record<number | string, Omit<GetUnit, "progress">>;
 }
 
-interface JobServerDesignInit {
+interface JobServerDesignConstructor {
   projectId: number;
   jobId: number;
-  initialJobState: GetJobState;
-  setJobState: SetState<GetJobState | null>;
 
   user: MiddlecatUser;
   mockServer: MockServer;
-  jobBlocks: JobBlockResponse[];
-  unitLayout: Layout;
+  jobBlocks: JobBlocksResponse[];
+  useRealUnits?: boolean;
 }
 
 class JobServerDesign implements JobServer {
   jobId: number;
   userId: string;
-  progress: Progress;
-  jobState: GetJobState;
-  setJobState: SetState<GetJobState | null>;
+  setJobState: SetState<GetJobState> | null;
+  initialized: boolean;
 
   // The following properties are only for the Design implementation
   projectId: number;
   user: MiddlecatUser;
   mockServer: MockServer;
-  jobBlocks: JobBlockResponse[];
-  unitLayout: Layout;
+  jobBlocks: JobBlocksResponse[];
+  useRealUnits: boolean;
 
-  unitCache: Record<string, Omit<GetUnit, "progress">>;
+  unitCache: Record<number | string, Omit<GetUnit, "progress">>;
   codebookCache: Record<string, GetCodebook>;
 
-  constructor({
-    jobId,
-    initialJobState,
-    setJobState,
-    user,
-    projectId,
-    mockServer,
-    jobBlocks,
-    unitLayout,
-  }: JobServerDesignInit) {
+  constructor({ jobId, user, projectId, mockServer, jobBlocks, useRealUnits }: JobServerDesignConstructor) {
     this.jobId = jobId;
     this.userId = user.email;
-    this.jobState = initialJobState;
-    this.setJobState = setJobState;
-
-    this.progress = mockServer.progress;
+    this.setJobState = null;
+    this.initialized = false;
 
     this.projectId = projectId;
     this.user = user;
     this.mockServer = mockServer;
     this.jobBlocks = jobBlocks;
-    this.unitLayout = unitLayout;
+    this.useRealUnits = !!useRealUnits;
 
     this.unitCache = mockServer.unitCache;
     this.codebookCache = {};
   }
 
-  async getUnit(phase: Phase, i?: number): Promise<GetUnit> {
-    if (i === undefined) i = this.progress.nCoded;
+  async init(setJobState: SetState<GetJobState>) {
+    // we await this to get initial jobState and progress from the server
+    // In the design version we don't have to, and instead get the
+    // jobState and progress from react states. This allows keeping state
+    // when refreshing the class
+    const jobState = this.mockServer.jobState;
+    this.setJobState = setJobState;
+    this.setJobState(jobState);
 
-    const isSurvey = phase === "preSurvey" || phase === "postSurvey";
-    const key = isSurvey ? "survey" : String(i);
+    // add endpoitns for n units
+    const nTotal = this.useRealUnits ? 0 : 5;
 
-    if (!this.unitCache[key]) {
-      let data = {};
+    const phases: Progress["phases"] = this.jobBlocks
+      .filter((b) => b.parentId === null)
+      .map((phase) => {
+        if (phase.type === "surveyPhase") {
+          return {
+            type: "survey",
+          };
+        } else {
+          return {
+            type: "annotation",
+            nCoded: 0,
+            nTotal,
+            currentUnit: 0,
+          };
+        }
+      });
+    this.mockServer.progress = { ...this.mockServer.progress, phase: 0, phasesCoded: 0, phases };
+    this.mockServer.setProgress({ ...this.mockServer.progress });
 
-      if (phase === "annotate") {
-        const jobHasUnits = this.progress.nTotal > 0;
-        const unit: UnitData = jobHasUnits
-          ? await this.user.api.get(`/projects/${this.projectId}/jobs/${this.jobId}/units/${i}`)
-          : fakeUnit(i);
-        const data = unit.data;
-      }
-
-      const annotations: Annotation[] = [];
-      const token = JSON.stringify({ key }); // on real server this must be encrypted
-
-      this.updateUnitCache(key, { token, data, annotations });
-    }
-
-    this.updateProgress(i);
-    return { ...this.unitCache[i], progress: this.progress };
+    this.initialized = true;
   }
 
-  async getCodebook(phase: Phase): Promise<GetCodebook> {
-    if (!this.codebookCache[phase]) {
-      const phaseBlocks = this.jobBlocks.filter((b) => b.phase === phase);
-      const sortedBlocks = sortNestedBlocks(phaseBlocks);
+  async getUnit(phaseNumber?: number, unitIndex?: number): Promise<GetUnit> {
+    if (phaseNumber === undefined) phaseNumber = this.mockServer.progress.phase;
+    const phase = this.mockServer.progress.phases[phaseNumber];
 
-      const codebook: GetCodebook = {
-        blocks: sortedBlocks,
-      };
-      if (phase === "annotate") codebook.layout = this.unitLayout;
+    if (phase.type === "survey") {
+      if (!this.unitCache["survey"]) {
+        const token = JSON.stringify({ key: "survey" });
+        this.updateUnitCache("survey", { token, annotations: [], status: "IN_PROGRESS" });
+      }
+      this.updateProgress(phaseNumber);
+      return { ...this.unitCache["survey"], progress: this.mockServer.progress };
+    } else {
+      // phase == annotate
+      unitIndex = unitIndex === undefined || unitIndex > phase.nCoded + 1 ? phase.nCoded : unitIndex;
+      if (!this.unitCache[unitIndex]) {
+        const unit: UnitDataResponse = this.useRealUnits
+          ? await this.user.api.get(`/projects/${this.projectId}/jobs/${this.jobId}/units/${unitIndex}`)
+          : fakeUnit(unitIndex);
+        const data = unit.data;
 
-      this.codebookCache[phase] = codebook;
+        const token = JSON.stringify({ key: unitIndex });
+        this.updateUnitCache(unitIndex, { token, data, annotations: [], status: "IN_PROGRESS" });
+      }
+      console.log(phaseNumber, unitIndex);
+      this.updateProgress(phaseNumber, unitIndex);
+      return { ...this.unitCache[unitIndex], progress: this.mockServer.progress };
     }
+  }
 
-    return this.codebookCache[phase];
+  async getCodebook(phaseNumber: number): Promise<GetCodebook> {
+    // on server, we can use the positions of the roots to get this per phase
+    // In creating progress, we include max position for roots
+    if (phaseNumber > this.mockServer.progress.phases.length) throw new Error("Phase number higher than nr of phases");
+
+    if (!this.codebookCache[phaseNumber]) {
+      this.codebookCache[phaseNumber] = preparePhaseCodebooks(phaseNumber, this.jobBlocks);
+    }
+    return this.codebookCache[phaseNumber];
   }
 
   async postAnnotations(token: string, add: AnnotationDictionary, rmIds: string[], status: Status): Promise<Status> {
-    const { key } = JSON.parse(token);
+    const ptoken = JSON.parse(token);
+    const key: number | "survey" = ptoken.key;
     const unit = this.unitCache[key];
     unit.annotations = unit.annotations.filter((a) => !rmIds.includes(a.id));
     unit.annotations = [...unit.annotations, ...Object.values(add)];
+    unit.status = status;
 
     this.updateUnitCache(key, unit);
+    this.updateJobState(key);
     return status;
   }
 
-  updateProgress(currentUnit: number) {
-    this.progress = {
-      ...this.progress,
-      currentUnit,
-      nCoded: Math.max(this.progress.nCoded, currentUnit),
-    };
-    this.mockServer.setProgress({ ...this.progress });
+  updateProgress(phaseNumber: number, unitIndex?: number) {
+    this.mockServer.progress.phase = phaseNumber;
+    this.mockServer.progress.phasesCoded = Math.max(this.mockServer.progress.phase, phaseNumber);
+
+    if (unitIndex !== undefined) {
+      const phase = this.mockServer.progress.phases[phaseNumber];
+      if (phase.type === "annotation") {
+        phase.nCoded = Math.max(phase.nCoded, unitIndex);
+        phase.currentUnit = unitIndex;
+      }
+    }
+
+    this.mockServer.setProgress({ ...this.mockServer.progress });
   }
 
-  updateUnitCache(key: string, data: Omit<GetUnit, "progress">) {
+  updateUnitCache(key: number | "survey", data: Omit<GetUnit, "progress">) {
     this.unitCache[key] = data;
-    this.mockServer.setUnitCache({ ...this.unitCache });
   }
 
-  updateJobState(unitIndex: number | null) {
+  updateJobState(unitIndex: number | "survey") {
+    if (!this.setJobState) return;
+
     const surveyAnnotations: GetJobState["surveyAnnotations"] = {};
     const unitAnnotations: GetJobState["unitAnnotations"] = {};
 
@@ -164,7 +197,7 @@ class JobServerDesign implements JobServer {
     }
 
     const survey = this.unitCache["survey"]?.annotations || [];
-    const unit = this.unitCache[String(unitIndex)]?.annotations || [];
+    const unit = unitIndex !== "survey" ? this.unitCache[unitIndex]?.annotations || [] : [];
 
     for (let ann of survey) {
       if (!surveyAnnotations[ann.variable]) surveyAnnotations[ann.variable] = {};
@@ -184,14 +217,49 @@ class JobServerDesign implements JobServer {
         unitAnnotations[ann.variable].value = setOrAppend(unitAnnotations[ann.variable].value, ann.value);
       }
     }
-    this.setJobState({ ...this.jobState, surveyAnnotations, unitAnnotations });
+
+    this.setJobState({ surveyAnnotations, unitAnnotations });
   }
 }
-function fakeUnit(i: number): UnitData {
+
+function fakeUnit(i: number): UnitDataResponse {
   return {
     id: "unit" + i,
     data: { text: `This is unit ${i}` },
   };
+}
+
+function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
+  const phaseBlocks: JobBlocksResponse[] = [];
+  let phaseStarted = false;
+  let type: BlockType | null = null;
+
+  for (let block of blocks) {
+    if (block.parentId === null) {
+      // if root block
+      if (phaseStarted) break;
+      if (block.position === phase) {
+        phaseStarted = true;
+        type = block.type;
+      }
+    }
+
+    if (phaseStarted) phaseBlocks.push(block);
+  }
+
+  if (!type) throw new Error("Phase not found");
+
+  const codebook: Codebook = { type, variables: [] };
+  let layout: Layout | undefined = undefined;
+
+  for (let block of phaseBlocks) {
+    if ("layout" in block.content) layout = block.content.layout;
+    if (block.type === "annotationQuestion" || block.type === "surveyQuestion") {
+      codebook.variables.push({ name: block.name, layout, ...block.content });
+    }
+  }
+
+  return codebook;
 }
 
 export default JobServerDesign;
