@@ -42,12 +42,12 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
     <div
       ref={questionRef}
       style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
-      className={`${TypeStyling[codebook.type].container} relative z-30 flex flex-col  overflow-hidden    text-[length:inherit] transition-[border]  `}
+      className={`${getCodebookStyling(codebook).container} relative z-30 flex flex-col overflow-hidden text-[length:inherit] transition-[border]`}
     >
-      <div className={`${TypeStyling[codebook.type].text} relative z-40 flex w-full flex-col `}>
+      <div className={`${getCodebookStyling(codebook).text} relative z-40 flex w-full flex-col`}>
         <QuestionIndexStep>
           <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook}>
-            <div className={`${TypeStyling[codebook.type].question} ${animate}`}>
+            <div className={`${getCodebookStyling(codebook).question} ${animate}`}>
               <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
             </div>
           </VariableInstructions>
@@ -60,25 +60,27 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
         </div>
       ) : null} */}
 
-      <div className={`${animate} relative flex w-full flex-auto  text-[length:inherit] text-foreground`}>
+      <div className={`${animate} relative flex w-full flex-auto text-[length:inherit] text-foreground`}>
         <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
       </div>
     </div>
   );
 };
 
-const TypeStyling = {
-  survey: {
-    container: "text-foreground bg-background min-h-full my-auto",
-    text: "mt-6 w-full",
-    question: "text-2xl font-bold text-center",
-  },
-  annotation: {
+function getCodebookStyling(codebook: Codebook) {
+  if (codebook.type.includes("survey")) {
+    return {
+      container: "text-foreground bg-background min-h-full my-auto",
+      text: "mt-6 w-full",
+      question: "text-2xl font-bold text-center",
+    };
+  }
+  return {
     container: "border-primary  text-foreground  overflow-auto border-t-2  border-primary",
     text: "bg-primary text-primary-foreground",
     question: "text-center",
-  },
-};
+  };
+}
 
 // const prepareQuestion = (unit: ExtendedUnit, question: Variable, annotations: Annotation[]) => {
 //   if (!question?.question) return <div />;

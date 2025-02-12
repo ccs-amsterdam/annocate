@@ -112,15 +112,19 @@ class JobServerDesign implements JobServer {
     this.initialized = true;
   }
 
-  async getUnit(phaseNumber?: number, unitIndex?: number): Promise<GetUnit> {
+  async getUnit(phaseNumber?: number, unitIndex?: number): Promise<GetUnit | null> {
     if (phaseNumber === undefined) phaseNumber = this.mockServer.progress.phase;
     const phase = this.mockServer.progress.phases[phaseNumber];
+
+    // if DONE
+    if (phase === undefined) return null;
 
     if (phase.type === "survey") {
       if (!this.unitCache["survey"]) {
         const token = JSON.stringify({ key: "survey" });
         this.updateUnitCache("survey", { token, annotations: [], status: "IN_PROGRESS" });
       }
+
       this.updateProgress(phaseNumber);
       return { ...this.unitCache["survey"], progress: this.mockServer.progress };
     } else {
@@ -135,7 +139,7 @@ class JobServerDesign implements JobServer {
         const token = JSON.stringify({ key: unitIndex });
         this.updateUnitCache(unitIndex, { token, data, annotations: [], status: "IN_PROGRESS" });
       }
-      console.log(phaseNumber, unitIndex);
+
       this.updateProgress(phaseNumber, unitIndex);
       return { ...this.unitCache[unitIndex], progress: this.mockServer.progress };
     }

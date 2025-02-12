@@ -29,6 +29,7 @@ interface UnitContextProps {
   error: string | undefined;
   height: number;
   selectUnit: (phaseNumber?: number, unitIndex?: number) => void;
+  finishUnit: () => void;
   finished?: boolean;
 }
 
@@ -42,6 +43,7 @@ const UnitContext = createContext<UnitContextProps>({
   error: undefined,
   height: 0,
   selectUnit: (i?: number) => console.log(i),
+  finishUnit: () => console.log("finishUnit"),
   finished: false,
 });
 export const useUnit = () => useContext(UnitContext);
@@ -69,12 +71,18 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   const selectUnit = useCallback(
     async (phaseNumber?: number, unitIndex?: number) => {
       if (!jobServer.initialized) await jobServer.init(setJobState);
+
       const getUnit = await jobServer.getUnit(phaseNumber, unitIndex);
 
-      if (getUnit.progress.phase >= getUnit.progress.phases.length) {
+      if (getUnit === null) {
         setFinished(true);
         return;
       }
+
+      // if (getUnit.progress.phase >= getUnit.progress.phases.length) {
+      //   setFinished(true);
+      //   return;
+      // }
 
       const codebook = await jobServer.getCodebook(getUnit.progress.phase);
       const extendedCodebook = importCodebook(codebook);
@@ -82,6 +90,28 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     },
     [jobServer, setFinished, setJobState],
   );
+
+  const finishUnit = useCallback(() => {
+    if (!unitBundle) return;
+    const { progress } = unitBundle;
+    const phase = progress.phases[progress.phase];
+
+    // If we are in a survey phase, we just move to the next phase
+    if (phase.type === "survey") {
+      selectUnit(progress.phase + 1);
+      return;
+    }
+
+    // If we are in an annotation phase, we move to the next unit,
+    // or the next phase if we are at the last unit
+    if (phase.type === "annotation") {
+      if (phase.currentUnit + 1 >= phase.nTotal) {
+        selectUnit(progress.phase + 1);
+      } else {
+        selectUnit(progress.phase, phase.currentUnit + 1);
+      }
+    }
+  }, [selectUnit, unitBundle]);
 
   useEffect(() => {
     selectUnit();
@@ -101,6 +131,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
         error: unitBundle.error,
         height,
         selectUnit,
+        finishUnit,
         finished,
       }}
     >

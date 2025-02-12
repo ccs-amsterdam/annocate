@@ -141,7 +141,7 @@ export interface JobServer {
   initialized: boolean;
 
   init: (setJobState: SetState<GetJobState>) => Promise<void>;
-  getUnit: (phaseNumber?: number, unitIndex?: number) => Promise<GetUnit>;
+  getUnit: (phaseNumber?: number, unitIndex?: number) => Promise<GetUnit | null>;
   getCodebook: (phaseNumber: number) => Promise<GetCodebook>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;

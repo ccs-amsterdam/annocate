@@ -1,16 +1,15 @@
 import { useRef, useState } from "react";
 import useWatchChange from "@/hooks/useWatchChange";
 import { Button } from "../ui/button";
-import { Check, StepBack, StepForward } from "lucide-react";
+import { Check, ListCheck, StepBack, StepForward } from "lucide-react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 
 interface IndexControllerProps {}
 
 const IndexController = ({}: IndexControllerProps) => {
   return (
-    <div className="flex w-full items-center">
+    <div className="flex h-full w-full items-center">
       <PhaseIndexController />
-      <UnitIndexController />
     </div>
   );
 };
@@ -24,12 +23,12 @@ const PhaseIndexController = ({}: IndexControllerProps) => {
   const n = progress.phases.length;
   const index = progress.phase;
 
-  const phaseMin = progress.phase === 0;
-  const phaseMax = progress.phase === progress.phases.length - 1;
-  const unitMin = !hasUnits || phase.currentUnit === 0;
-  const unitMax = !hasUnits || phase.currentUnit === phase.nTotal - 1;
-  const phaseCodedMax = progress.phase >= progress.phasesCoded;
-  const unitsCodedmax = !hasUnits || phase.currentUnit >= phase.nCoded;
+  // const phaseMin = progress.phase === 0;
+  // const phaseMax = progress.phase === progress.phases.length - 1;
+  // const unitMin = !hasUnits || phase.currentUnit === 0;
+  // const unitMax = !hasUnits || phase.currentUnit === phase.nTotal - 1;
+  // const phaseCodedMax = progress.phase >= progress.phasesCoded;
+  // const unitsCodedmax = !hasUnits || phase.currentUnit >= phase.nCoded;
 
   if (useWatchChange([finished])) {
     if (finished) {
@@ -43,57 +42,43 @@ const PhaseIndexController = ({}: IndexControllerProps) => {
     setActivePage(page);
   }
 
-  const updatePage = (page: number) => {
-    if (page !== activePage) {
-      selectUnit(page - 1);
-      setActivePage(page);
-    }
-  };
-
   const value = hasUnits ? `${progress.phase} - ${phase.currentUnit + 1}` : progress.phase;
 
   return (
-    <div className="mr-1 flex select-none items-center">
-      {progress.seekBackwards || progress.seekForwards ? (
-        <Button
-          size="icon"
-          variant="ghost"
-          className="hover:bg-transparent"
-          onClick={() => {
-            updatePage(Math.max(1, activePage - 1));
-          }}
-          disabled={!progress.seekBackwards || (phaseMin && unitMin)}
-        >
-          <StepBack />
-        </Button>
-      ) : null}
-      <div className="mx-auto min-w-12">
-        <div className="grid text-center font-semibold">
-          <div>{value}</div>
-        </div>
-      </div>
-      {progress.seekForwards || progress.seekBackwards ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="hover:bg-transparent"
-          onClick={() => {
-            if (progress.seekForwards) {
-              updatePage(activePage + 1);
-            } else {
-              updatePage(Math.min(progress.phasesCoded + 1, activePage + 1));
-            }
-          }}
-          disabled={(!progress.seekForwards && phaseCodedMax && unitsCodedmax) || (phaseMax && unitMax)}
-        >
-          <StepForward />
-        </Button>
-      ) : null}
-    </div>
+    <button className="flex h-full items-center gap-2 py-1">
+      {progress.phases.map((phase, i) => {
+        const current = i === progress.phase;
+        const todo = i > progress.phasesCoded;
+        const done = i < progress.phasesCoded;
+
+        const hasUnits = phase.type === "annotation";
+        if (hasUnits && current) return <UnitIndexController />;
+        return (
+          <div
+            key={i}
+            className={`${current || finished ? "border-foreground" : ""} flex h-full min-w-9 items-center justify-center border-b px-1`}
+          >
+            <img
+              src={"/assets/cat_progress.png"}
+              className="h-8 scale-x-[-1] transform bg-transparent invert dark:invert-[0]"
+              style={{ display: current ? "block" : "none" }}
+              alt="Cat Loader"
+            />
+            <img
+              src={"/assets/fish.png"}
+              className="h-8 scale-x-[-1] transform bg-transparent p-2 invert dark:invert-[0]"
+              style={{ display: todo ? "block" : "none" }}
+              alt="Cat Loader"
+            />
+            <ListCheck style={{ display: done ? "block" : "none" }} />
+          </div>
+        );
+      })}
+    </button>
   );
 };
 
-const UnitIndexController = ({}: IndexControllerProps) => {
+const UnitIndexController = () => {
   const { selectUnit, progress, finished } = useUnit();
   const uProgress = progress.phases[progress.phase];
   if (uProgress.type !== "annotation") return null;
@@ -175,9 +160,9 @@ const UnitIndexController = ({}: IndexControllerProps) => {
 
   return (
     <input
-      className={`mb-[2px] ml-6 min-w-1 max-w-36 flex-auto rounded`}
+      className={`mb-[2px] ml-2 min-w-1 max-w-36 flex-auto rounded`}
       style={{
-        fill: "black",
+        fill: "secondary",
         background: `
          linear-gradient(
          to right,
@@ -205,33 +190,5 @@ const UnitIndexController = ({}: IndexControllerProps) => {
     />
   );
 };
-
-function getPreviousIndex(questionIndex: number, canSelect: boolean[]) {
-  for (let i = questionIndex - 1; i >= 0; i--) {
-    if (!canSelect?.[i]) continue;
-    return i;
-  }
-  return null;
-}
-function getNextIndex(questionIndex: number, canSelect: boolean[]) {
-  for (let i = questionIndex + 1; i < canSelect.length; i++) {
-    if (!canSelect?.[i]) continue;
-    return i;
-  }
-  return null;
-}
-function subIndex(quesionIndex: number, canSelect: boolean[]) {
-  // this is different from the actual question index, because it's the index of the selectable questions
-  let question = 0;
-  let total = 0;
-  for (let i = 0; i < canSelect.length; i++) {
-    if (canSelect[i]) {
-      total++;
-      if (i < quesionIndex) question++;
-    }
-  }
-  if (total <= 1) return null;
-  return question + 1;
-}
 
 export default IndexController;

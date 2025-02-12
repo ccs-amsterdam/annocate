@@ -23,7 +23,7 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
     <AnnotatorProvider jobServer={jobServer} height={height}>
       <div ref={ref} className="relative grid h-full w-full grid-rows-[min-content,1fr]">
         <AnnotationMenu />
-        {/* <AnnotationUnit jobServer={jobServer} blockEvents={blockEvents} /> */}
+        <AnnotationUnit jobServer={jobServer} blockEvents={blockEvents} />
       </div>
     </AnnotatorProvider>
   );
@@ -31,7 +31,7 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 
 function AnnotationMenu() {
   return (
-    <div className="z-20 flex items-center justify-between gap-2 border-b border-foreground bg-gradient-to-b from-primary-dark to-primary px-3 py-2 text-primary-foreground">
+    <div className="z-20 flex items-center justify-between gap-2 border-b border-b-[calc(0px+var(--nav-border-height))] border-foreground px-3 py-2">
       <IndexController />
       <div>
         <ResponsiveButtonGroup>

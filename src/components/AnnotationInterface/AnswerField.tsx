@@ -26,7 +26,7 @@ export interface OnSelectParams {
 }
 
 const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: AnswerFieldProps) => {
-  const { unit, codebook, height, progress, selectUnit } = useUnit();
+  const { unit, codebook, height, progress, finishUnit } = useUnit();
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +34,8 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   const variableIndex = annotationLib.variableIndex;
   const variable = variables?.[variableIndex];
 
-  const speedbump = useSpeedBump(String(progress.currentUnit || "") + annotationLib.variableIndex, 100);
+  // TODO remove speedbumps (jeej)
+  const speedbump = false;
 
   useEffect(() => {
     // if answer changed but has not been saved, warn users when they try to close the app
@@ -92,11 +93,12 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
 
   const onFinish = () => {
     annotationManager.postVariable(true).then((res) => {
-      if (res.status === "DONE") selectUnit((progress.currentUnit || 0) + 1);
+      if (res.status === "DONE") finishUnit();
     });
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
+    console.log(code);
     let varname = variable.name;
     if (item) varname += `.${item}`;
     annotationManager.processAnswer(varname, code, !!multiple, variable.fields);

@@ -21,12 +21,13 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
 
   const [progress, setProgress] = useState<Progress>(initProgress);
   const [jobState, setJobState] = useState<GetJobState>(initJobState);
+  const [resetCounter, setResetCounter] = useState(0);
   const unitCache = useRef<UnitCache>({});
 
   useEffect(() => {}, [blocks]);
 
   const jobServer = useMemo(() => {
-    if (!blocks || !user) return null;
+    if (!blocks || blocks.length === 0 || !user) return null;
 
     return new JobServerDesign({
       projectId,
@@ -35,9 +36,9 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
       mockServer: { progress, setProgress, jobState, setJobState, unitCache: unitCache.current },
       jobBlocks: blocks || [],
     });
-  }, [blocks, user]);
+  }, [blocks, user, resetCounter]);
 
-  if (!jobServer) return <div>Loading...</div>;
+  if (!jobServer) return null;
 
   return (
     <div>
@@ -46,6 +47,7 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
         reset={() => {
           setJobState(initJobState());
           setProgress(initProgress());
+          setResetCounter((i) => i + 1);
           unitCache.current = {};
         }}
       />
@@ -63,7 +65,7 @@ function initProgress(): Progress {
   return {
     phase: 0,
     phasesCoded: 0,
-    phases: [],
+    phases: [{ type: "survey" }],
     seekForwards: true,
     seekBackwards: true,
   };
@@ -78,7 +80,7 @@ export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign
     <div className="flex flex-wrap items-start justify-center gap-6">
       <div
         tabIndex={0}
-        className={`h-full w-full max-w-full overflow-hidden rounded-lg border border-foreground/50 ${focus ? "ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`h-full min-h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-foreground/50 ${focus ? "ring-4 ring-secondary ring-offset-2" : ""}`}
         onClick={(e) => {
           e.currentTarget.focus();
         }}

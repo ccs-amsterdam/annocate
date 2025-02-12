@@ -471,12 +471,20 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 5px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  background: hsl(var(--primary-foreground));
+  background-image: url("/assets/cat_progress.png");
+  background-size: 40px;
+  background-repeat: no-repeat;
+  background-position: 50%;
+  transform: scaleX(-1);
   cursor: pointer;
   border-radius: 10px;
+}
+
+[data-dark="off"] input[type="range"]::-webkit-slider-thumb {
+  filter: invert(100%);
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -487,6 +495,7 @@ input[type="range"]::-moz-range-thumb {
   background: hsl(var(--secondary));
   cursor: pointer;
   border-radius: 0px;
+  /* transform: translateY(20px); */
 }
 
 .fullscreen {
