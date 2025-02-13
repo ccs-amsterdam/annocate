@@ -26,7 +26,7 @@ export const UnitImageContentSchema = UnitImageLayoutSchema.extend({
 export const UnitMarkdownContentSchema = UnitMarkdownLayoutSchema.extend({
   grid_area: z.string().optional(),
   value: UnitFieldValueSchema,
-}).omit({ column: true });
+}).omit({ template: true });
 
 export const UnitVariableSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]));
 

@@ -1,4 +1,12 @@
-import { Annotation, AnnotationLibrary, ExtendedCodebook, ExtendedUnit, ExtendedVariable, Variable } from "@/app/types";
+import {
+  Annotation,
+  AnnotationLibrary,
+  ExtendedCodebook,
+  ExtendedUnit,
+  ExtendedVariable,
+  Unit,
+  Variable,
+} from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 import useSessionStorage from "@/hooks/useSessionStorage";
 import { ChevronDown, ChevronRight, ChevronUp, Eye, EyeOff, Info, InfoIcon, X } from "lucide-react";
@@ -10,7 +18,7 @@ import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface VariableInstructionsProps {
   children: ReactElement<any>;
-  unit: ExtendedUnit;
+  unit: Unit;
   annotationLib: AnnotationLibrary;
   codebook: ExtendedCodebook;
 }
@@ -20,10 +28,10 @@ interface VariableInstructionsProps {
 
 const VariableInstructions = ({ children, unit, annotationLib, codebook }: VariableInstructionsProps) => {
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
-  const instruction = variable?.instruction || codebook?.settings?.instruction;
+  const instruction = variable?.instruction;
 
   const mode = variable?.instructionMode || "after";
-  const survey = codebook.type === "survey";
+  const survey = codebook.type.includes("survey");
   const foldable = !survey || mode.includes("modal");
 
   const sessionVariableKey = annotationLib.sessionId + "." + variable.name;
@@ -37,7 +45,7 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
       tabIndex={0}
       // is="button"
       // onClick={() => setShow(!show)}
-      className={`${foldable ? "" : ""} relative z-50 w-full  text-pretty  `}
+      className={`${foldable ? "" : ""} relative z-50 w-full text-pretty`}
     >
       {children}
     </div>
@@ -49,14 +57,6 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
         {question}
         {survey ? <br /> : null}
         <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={foldable} />
-      </div>
-    );
-  }
-  if (mode === "before") {
-    return (
-      <div className="w-full">
-        <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={foldable} />
-        {question}
       </div>
     );
   }
@@ -111,12 +111,12 @@ function FoldableInstruction({ instruction, show, setShow, foldable, before }: I
   return (
     <div
       style={style}
-      className={`${show ? "" : "text-foreground"} flexmin-w-0 relative   overflow-visible   transition-all`}
+      className={`${show ? "" : "text-foreground"} flexmin-w-0 relative overflow-visible transition-all`}
     >
       <div
         onClick={() => setShow(!show)}
         ref={ref}
-        className={`  ${show ? "py-1" : ""} w-full cursor-pointer overflow-hidden  `}
+        className={` ${show ? "py-1" : ""} w-full cursor-pointer overflow-hidden`}
       >
         {show ? (
           <Markdown compact style={{ hyphens: "auto", visibility: show ? "visible" : "hidden" }}>
@@ -157,9 +157,9 @@ function ModalInstruction({ instruction, show, setShow }: InstructionProps) {
         setShow(!!instruction && open);
       }}
     >
-      <DrawerContent className="fixed bottom-0 left-auto right-0 mt-0   h-screen w-[500px] max-w-[90vw] rounded-none border-y-0  bg-background  p-3  ">
-        <DrawerClose asChild className="mt-autod ml-auto mt-2 ">
-          <Button variant="ghost" size="icon" className="absolute top-0 mb-auto ml-auto  bg-transparent">
+      <DrawerContent className="fixed bottom-0 left-auto right-0 mt-0 h-screen w-[500px] max-w-[90vw] rounded-none border-y-0 bg-background p-3">
+        <DrawerClose asChild className="mt-autod ml-auto mt-2">
+          <Button variant="ghost" size="icon" className="absolute top-0 mb-auto ml-auto bg-transparent">
             <X className="h-5 w-5" />
           </Button>
         </DrawerClose>
@@ -179,7 +179,7 @@ function ModalInstruction({ instruction, show, setShow }: InstructionProps) {
           <div className="h-[10vh]" />
         </div>
         <DrawerClose asChild className="mt-auto">
-          <Button variant="default" className="mt-auto w-full  hover:bg-foreground/20">
+          <Button variant="default" className="mt-auto w-full hover:bg-foreground/20">
             Close
           </Button>
         </DrawerClose>

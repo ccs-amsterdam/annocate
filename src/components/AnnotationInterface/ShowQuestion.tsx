@@ -1,11 +1,11 @@
-import { Annotation, AnnotationLibrary, ExtendedCodebook, ExtendedUnit, Variable } from "@/app/types";
+import { Annotation, AnnotationLibrary, ExtendedCodebook, ExtendedUnit, Unit, Variable } from "@/app/types";
 import React, { ReactElement, useMemo, useState } from "react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useSandbox } from "@/hooks/useSandboxedEval";
 
 interface ShowQuestionProps {
-  unit: ExtendedUnit;
+  unit: Unit;
   annotationLib: AnnotationLibrary;
   codebook: ExtendedCodebook;
 }

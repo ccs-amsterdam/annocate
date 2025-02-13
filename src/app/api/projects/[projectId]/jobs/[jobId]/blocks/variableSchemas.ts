@@ -239,25 +239,3 @@ export const VariableSchema = z.discriminatedUnion("type", [
   CodebookSearchTypeSchema,
   CodebookConfirmTypeSchema,
 ]);
-
-export const CodebookVariablesSchema = z
-  .array(VariableSchema)
-  .min(1)
-  .refine(
-    (variables) => {
-      const names = variables.map((v) => v.name);
-      return new Set(names).size === names.length;
-    },
-    { message: "Variable names must be unique" },
-  );
-// .transform((variables) => {
-//   if (variables.length > 0) return variables;
-//   return [
-//     {
-//       type: "select code",
-//       name: "default",
-//       question: "Default question",
-//       codes: [],
-//     },
-//   ];
-// });

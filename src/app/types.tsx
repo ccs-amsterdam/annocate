@@ -6,7 +6,6 @@ import {
   GetJobStateResponseSchema,
   GetUnitResponseSchema,
   JobStateAnnotationsSchema,
-  PhaseSchema,
   UnitContentSchema,
 } from "./api/annotate/[jobId]/schemas";
 import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
@@ -27,7 +26,6 @@ import {
   JobBlockContentSchema,
   JobBlocksResponseSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { VariableSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
@@ -79,7 +77,6 @@ export type UnitData = z.infer<typeof UnitDataSchema>;
 export type UnitDataResponse = z.infer<typeof UnitDataResponseSchema>;
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 export type Rules = z.infer<typeof JobRulesSchema>;
-export type Phase = z.infer<typeof PhaseSchema>;
 
 export type CodebookVariable = z.infer<typeof VariableSchema> & {
   name: string;

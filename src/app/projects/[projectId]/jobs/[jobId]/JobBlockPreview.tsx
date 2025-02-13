@@ -1,5 +1,5 @@
 import { useJobBlocks } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { GetJobState, GetJobState, GetUnit, Progress } from "@/app/types";
+import { GetJobState, GetUnit, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";

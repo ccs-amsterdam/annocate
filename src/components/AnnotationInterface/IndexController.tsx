@@ -13,8 +13,6 @@ import {
   StepForward,
 } from "lucide-react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
-import { Progress } from "@/app/types";
-import { OK } from "zod";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 interface IndexControllerProps {}

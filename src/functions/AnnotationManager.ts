@@ -23,8 +23,6 @@ import {
   Unit,
 } from "@/app/types";
 import { UnitBundle } from "@/components/AnnotatorProvider/AnnotatorProvider";
-import JobServerDesign from "@/components/JobServers/JobServerDesign";
-import JobServerPreview from "@/components/JobServers/JobServerPreview";
 import { getColor } from "@/functions/tokenDesign";
 import cuid from "cuid";
 import randomColor from "randomcolor";
@@ -56,6 +54,10 @@ export default class AnnotationManager {
   }
 
   initialize(jobServer: JobServer, unit: Unit, codebook: ExtendedCodebook, setUnitBundle: SetState<UnitBundle | null>) {
+    // TODO
+    // Here add step where we perform any needed tokenization, based on any tokenization settings in codebook
+    // This is needed in createAnnotationLibrary to match annotations to tokenindices
+
     this.annotationLib = createAnnotationLibrary(jobServer, unit, codebook, unit.annotations);
     this.lastAnnotationIds = Object.keys(this.annotationLib.annotations);
     this.setUnitBundle = setUnitBundle;

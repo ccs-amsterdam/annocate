@@ -1,7 +1,7 @@
 import { createTableParamsSchema, SafeNameSchema } from "@/app/api/schemaHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { CodebookVariablesSchema, VariableSchema } from "./variableSchemas";
+import { VariableSchema } from "./variableSchemas";
 import { UnitLayoutSchema } from "./layoutSchemas";
 import { blockType } from "@/app/types";
 import { AnnotationPhaseSchema, SurveyPhaseSchema } from "./phaseSchemas";

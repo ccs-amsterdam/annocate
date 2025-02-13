@@ -156,7 +156,8 @@ function initJobState(): GetJobState {
 function initProgress(): Progress {
   return {
     phase: 0,
-    phases: [{ type: "survey" }],
+    phases: [{ type: "survey", label: "" }],
+    phasesCoded: 0,
   };
 }
 

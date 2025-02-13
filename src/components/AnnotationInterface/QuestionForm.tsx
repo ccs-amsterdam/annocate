@@ -1,4 +1,4 @@
-import { Annotation, AnnotationLibrary, Codebook, ExtendedCodebook, ExtendedUnit, Variable } from "@/app/types";
+import { Annotation, AnnotationLibrary, Codebook, ExtendedCodebook, ExtendedUnit, Unit, Variable } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
@@ -9,7 +9,7 @@ import Markdown from "../Common/Markdown";
 import VariableInstructions from "./VariableInstructions";
 
 interface QuestionFormProps {
-  unit: ExtendedUnit;
+  unit: Unit;
   codebook: ExtendedCodebook;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
