@@ -93,13 +93,16 @@ class JobServerDesign implements JobServer {
     const phases: Progress["phases"] = this.jobBlocks
       .filter((b) => b.parentId === null)
       .map((phase) => {
+        const label = phase.name.replaceAll("_", " "); // TODO: Add label that can overwrite the default
         if (phase.type === "surveyPhase") {
           return {
             type: "survey",
+            label,
           };
         } else {
           return {
             type: "annotation",
+            label,
             nCoded: 0,
             nTotal,
             currentUnit: 0,

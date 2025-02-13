@@ -69,13 +69,13 @@ export const AnnotateUnitSchema = z.object({
   annotations: z.array(AnnotationSchema),
 });
 
-export const PhaseSchema = z.enum(["preSurvey", "annotate", "postSurvey"]);
-
 export const SurveyPhaseSchema = z.object({
   type: z.literal("survey"),
+  label: z.string(),
 });
 export const AnnotatePhaseSchema = z.object({
   type: z.literal("annotation"),
+  label: z.string(),
   currentUnit: z.number(),
   nTotal: z.number(),
   nCoded: z.number(),
@@ -87,12 +87,6 @@ export const AnnotateProgressSchema = z.object({
   phases: z.array(z.discriminatedUnion("type", [SurveyPhaseSchema, AnnotatePhaseSchema])),
   seekForwards: z.boolean().optional(),
   seekBackwards: z.boolean().optional(),
-});
-
-export const JobBlockSchema = z.object({
-  id: z.number(),
-  phase: PhaseSchema,
-  position: z.number(),
 });
 
 const JobStateAnnotationCode = z.union([z.array(z.string()), z.string()]);

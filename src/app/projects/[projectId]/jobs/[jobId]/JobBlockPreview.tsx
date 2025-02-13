@@ -65,7 +65,7 @@ function initProgress(): Progress {
   return {
     phase: 0,
     phasesCoded: 0,
-    phases: [{ type: "survey" }],
+    phases: [{ type: "survey", label: "" }],
     seekForwards: true,
     seekBackwards: true,
   };

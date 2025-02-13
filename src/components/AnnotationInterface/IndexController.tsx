@@ -1,51 +1,41 @@
 import { useRef, useState } from "react";
 import useWatchChange from "@/hooks/useWatchChange";
 import { Button } from "../ui/button";
-import { Check, CheckCircle2, CheckSquare, ListCheck, Play, Square, StepBack, StepForward } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  CheckSquare,
+  ChevronDown,
+  ListCheck,
+  Play,
+  Square,
+  StepBack,
+  StepForward,
+} from "lucide-react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import { Progress } from "@/app/types";
 import { OK } from "zod";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 interface IndexControllerProps {}
 
 const IndexController = ({}: IndexControllerProps) => {
   return (
-    <div className="flex h-full w-full items-center justify-between">
-      <PhaseIndexController />
-      <UnitIndexController />
+    <div className="flex h-full w-full select-none items-center gap-5">
+      <Navigation global />
+      <Phase />
+      <UnitSlider navigation />
+
+      {/* <div className="mx-auto flex items-center gap-3">
+        <UnitSlider navigation />
+        <Navigation />
+      </div> */}
     </div>
   );
 };
 
-const PhaseIndexController = ({}: IndexControllerProps) => {
+const PhaseSelector = ({}: IndexControllerProps) => {
   const { selectUnit, progress, finished } = useUnit();
-  const [activePage, setActivePage] = useState(0);
-
-  const phase = progress.phases[progress.phase];
-  const hasUnits = phase.type === "annotation";
-  const n = progress.phases.length;
-  const index = progress.phase;
-
-  // const phaseMin = progress.phase === 0;
-  // const phaseMax = progress.phase === progress.phases.length - 1;
-  // const unitMin = !hasUnits || phase.currentUnit === 0;
-  // const unitMax = !hasUnits || phase.currentUnit === phase.nTotal - 1;
-  // const phaseCodedMax = progress.phase >= progress.phasesCoded;
-  // const unitsCodedmax = !hasUnits || phase.currentUnit >= phase.nCoded;
-
-  if (useWatchChange([finished])) {
-    if (finished) {
-      setActivePage(progress.phases.length + 1);
-    }
-  }
-
-  if (useWatchChange([index, n])) {
-    if (index === null || index < 0) return;
-    const page = index === null ? n + 1 : Math.min(index + 1, n + 1);
-    setActivePage(page);
-  }
-
-  const value = hasUnits ? `${progress.phase} - ${phase.currentUnit + 1}` : progress.phase;
 
   return (
     <button className="flex h-full items-center gap-1 py-1">
@@ -58,11 +48,42 @@ const PhaseIndexController = ({}: IndexControllerProps) => {
 
         return (
           <Button className="h-12 w-12 p-0" variant="ghost" onClick={() => selectUnit(i)}>
-            <ProgressIndicator status={status} style="cat" />
+            <ProgressIndicator status={status} style="default" />
           </Button>
         );
       })}
     </button>
+  );
+};
+
+const Phase = ({ dropdown }: { dropdown?: boolean }) => {
+  const { selectUnit, progress, finished } = useUnit();
+  const phase = progress.phases[progress.phase];
+  if (!dropdown) {
+    return <div className="flex items-center gap-2">{phase.label}</div>;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className={"flex items-center gap-2"}>
+        {phase.label}
+        <ChevronDown size={16} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {progress.phases.map((phase, i) => {
+          return (
+            <DropdownMenuItem
+              key={i + phase.label}
+              onClick={() => {
+                selectUnit(i);
+              }}
+            >
+              {phase.label}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -93,19 +114,80 @@ function ProgressIndicator({ status, style }: { status: "active" | "done" | "tod
   }
 }
 
-const UnitIndexController = () => {
+const Navigation = ({ global }: { global?: boolean }) => {
+  const { selectUnit, progress, finished } = useUnit();
+  const phase = progress.phases[progress.phase];
+  let hasPrevPhase = progress.phase === 0;
+  let hasNextPhase = progress.phase === progress.phases.length - 1;
+
+  if (!global) {
+    // if not global, only show navigation for phases with units
+    if (phase.type !== "annotation") return null;
+    // if not global, we only allow navigation within the current phase
+    hasPrevPhase = true;
+    hasNextPhase = true;
+  }
+
+  const hasPrevUnit = phase.type === "survey" || phase.currentUnit === 0;
+  const hasNextUnit = phase.type === "survey" || phase.currentUnit === phase.nTotal - 1;
+
+  const canGoBack = progress.seekBackwards && (!hasPrevPhase || !hasPrevUnit);
+  const canGoForward = progress.seekForwards && (!hasNextPhase || !hasNextUnit);
+
+  const previous = () => {
+    if (!canGoBack) return;
+    if (hasPrevUnit) {
+      selectUnit(progress.phase - 1);
+    } else {
+      selectUnit(progress.phase, phase.currentUnit - 1);
+    }
+  };
+
+  const next = () => {
+    if (!canGoForward) return;
+    if (hasNextUnit) {
+      selectUnit(progress.phase + 1);
+    } else {
+      selectUnit(progress.phase, phase.currentUnit + 1);
+    }
+  };
+
+  return (
+    <div className="flex items-center">
+      {progress.seekBackwards || progress.seekForwards ? (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="hover:bg-transparent"
+          onClick={() => previous()}
+          disabled={!canGoBack}
+        >
+          <StepBack className="" />
+        </Button>
+      ) : null}
+      {progress.seekForwards || progress.seekBackwards ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mx-0 hover:bg-transparent"
+          onClick={() => next()}
+          disabled={!canGoForward}
+        >
+          <StepForward />
+        </Button>
+      ) : null}
+    </div>
+  );
+};
+
+const UnitSlider = ({ navigation }: { navigation?: boolean }) => {
   const { selectUnit, progress, finished } = useUnit();
   const uProgress = progress.phases[progress.phase];
   if (uProgress.type !== "annotation") return null;
+  const n = uProgress.nTotal;
 
   const [activePage, setActivePage] = useState(0);
   const [sliderPage, setSliderPage] = useState(0);
-
-  // unit index
-  const n = uProgress.nTotal;
-  const isFirstPhase = progress.phase === 0;
-  const isLastPhase = progress.phase === progress.phases.length - 1;
-  const index = uProgress.currentUnit;
 
   // also keep track of slider as a ref, because touchevents suck (see onTouchEnd below for explanation)
   const slider = useRef(0);
@@ -125,12 +207,6 @@ const UnitIndexController = () => {
   }
 
   const updatePage = (page: number) => {
-    console.log(page);
-    if (page < 1) {
-      selectUnit(Math.max(progress.phase - 1, 0));
-    } else if (page > n) {
-      selectUnit(progress.phase + 1);
-    }
     if (page !== activePage) {
       selectUnit(progress.phase, page - 1);
       setActivePage(page);
@@ -182,40 +258,7 @@ const UnitIndexController = () => {
   if (progress.seekForwards) uProgressPct = 0; // linear uProgress is useless in this case.
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="mr-1 flex items-center">
-        {progress.seekBackwards || progress.seekForwards ? (
-          <Button
-            size="icon"
-            variant="ghost"
-            className="hover:bg-transparent"
-            onClick={() => {
-              updatePage(Math.max(0, activePage - 1));
-            }}
-            disabled={!progress.seekBackwards || activePage === 0 || isFirstPhase}
-          >
-            <StepBack />
-          </Button>
-        ) : null}
-        <div className="mx-auto min-w-6">{counter()}</div>
-        {progress.seekForwards || progress.seekBackwards ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-transparent"
-            onClick={() => {
-              if (progress.seekForwards) {
-                updatePage(activePage + 1);
-              } else {
-                updatePage(Math.min(progress.nCoded + 1, activePage + 1));
-              }
-            }}
-            disabled={!progress.seekForwards && activePage >= progress.nCoded + 1}
-          >
-            <StepForward />
-          </Button>
-        ) : null}
-      </div>
+    <div className="flex items-center gap-6">
       <input
         className={`mb-[5px] ml-2 h-full min-w-1 max-w-36 flex-auto rounded`}
         style={{
@@ -229,7 +272,7 @@ const UnitIndexController = () => {
           `,
         }}
         min={1}
-        max={n + 1}
+        max={n}
         onChange={updateSliderPage}
         onMouseDown={(e) => e.stopPropagation()}
         onMouseUp={(e) => {
@@ -245,6 +288,7 @@ const UnitIndexController = () => {
         type="range"
         value={sliderPage}
       />
+      <div>{counter()}</div>
     </div>
   );
 };

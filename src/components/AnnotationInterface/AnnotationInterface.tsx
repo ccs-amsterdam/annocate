@@ -33,7 +33,7 @@ function AnnotationMenu() {
   return (
     <div className="z-20 flex h-14 items-center justify-between gap-2 border-b border-b-[calc(0px+var(--nav-border-height))] border-foreground px-3">
       <IndexController />
-      <div>
+      <div className="flex-1">
         <ResponsiveButtonGroup>
           <DarkModeButton />
         </ResponsiveButtonGroup>
