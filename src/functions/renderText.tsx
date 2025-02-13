@@ -1,13 +1,13 @@
 import React, { createRef, ReactElement } from "react";
-import { TextField, Token, RenderedText, FieldRefs } from "@/app/types";
+import { ProcessedTextField, Token, RenderedText, FieldRefs } from "@/app/types";
 
 export default function renderText(
   tokens: Token[],
-  text_fields: TextField[],
+  text_fields: ProcessedTextField[],
   containerRef: any,
   fieldRefs: FieldRefs,
 ): RenderedText {
-  const text: RenderedText = text_fields.reduce((obj: any, tf: TextField) => {
+  const text: RenderedText = text_fields.reduce((obj: any, tf: ProcessedTextField) => {
     obj[tf.name] = [];
     return obj;
   }, {});
@@ -24,7 +24,7 @@ export default function renderText(
   let field_name = tokens[0].field;
   let paragraph_nr = tokens[0].paragraph;
 
-  const getTextField = (field_name: string) => text_fields.find((tf: TextField) => tf.name === field_name);
+  const getTextField = (field_name: string) => text_fields.find((tf: ProcessedTextField) => tf.name === field_name);
   let textField = getTextField(field_name);
 
   for (let i = 0; i < tokens.length; i++) {
@@ -66,7 +66,7 @@ export default function renderText(
 }
 
 const renderField = (
-  textField: TextField | undefined,
+  textField: ProcessedTextField | undefined,
   paragraph_key: string,
   paragraphs: ReactElement<any>[],
   field: string,
@@ -103,7 +103,7 @@ const renderField = (
 };
 
 const renderParagraph = (
-  textField: TextField | undefined,
+  textField: ProcessedTextField | undefined,
   paragraph_nr: number,
   tokens: ReactElement<any>[],
   end: boolean,

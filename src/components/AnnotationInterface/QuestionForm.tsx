@@ -1,4 +1,4 @@
-import { Annotation, AnnotationLibrary, Codebook, ExtendedCodebook, ExtendedUnit, Unit, Variable } from "@/app/types";
+import { AnnotationLibrary, Codebook, ExtendedCodebook, Unit } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";

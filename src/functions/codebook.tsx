@@ -1,4 +1,4 @@
-import { Codebook, ExtendedCodebook, ExtendedVariable, Variable } from "@/app/types";
+import { Codebook, CodebookVariable, ExtendedCodebook, ExtendedVariable } from "@/app/types";
 import randomColor from "randomcolor";
 import standardizeColor from "./standardizeColor";
 
@@ -9,7 +9,7 @@ export function importCodebook(codebook: Codebook | ExtendedCodebook): ExtendedC
   };
 }
 
-const importVariables = (variables: Variable[]): ExtendedVariable[] => {
+const importVariables = (variables: CodebookVariable[]): ExtendedVariable[] => {
   // checks and preparation of variables
   return variables.map((variable) => {
     const fillMissingColor = ["annotinder"].includes(variable.type);

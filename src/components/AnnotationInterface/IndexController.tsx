@@ -180,29 +180,31 @@ const Navigation = ({ global }: { global?: boolean }) => {
 
 const UnitSlider = ({ navigation }: { navigation?: boolean }) => {
   const { selectUnit, progress, finished } = useUnit();
-  const uProgress = progress.phases[progress.phase];
-  if (uProgress.type !== "annotation") return null;
-  const n = uProgress.nTotal;
-
   const [activePage, setActivePage] = useState(0);
   const [sliderPage, setSliderPage] = useState(0);
-
   // also keep track of slider as a ref, because touchevents suck (see onTouchEnd below for explanation)
   const slider = useRef(0);
 
-  if (useWatchChange([finished])) {
+  const uProgress = progress.phases[progress.phase];
+  const hasUnits = uProgress.type === "annotation";
+  const currentUnit = hasUnits ? uProgress.currentUnit : 0;
+  const n = hasUnits ? uProgress.nTotal : 0;
+
+  if (useWatchChange([finished]) && hasUnits) {
     if (finished) {
       setActivePage(uProgress.nTotal + 1);
       setSliderPage(uProgress.nTotal + 1);
     }
   }
 
-  if (useWatchChange([uProgress.currentUnit, n])) {
+  if (useWatchChange([currentUnit, n]) && hasUnits) {
     if (uProgress.currentUnit === null || uProgress.currentUnit < 0) return;
     const page = uProgress.currentUnit === null ? uProgress.nTotal + 1 : Math.min(uProgress.currentUnit + 1, n + 1);
     setActivePage(page);
     setSliderPage(page);
   }
+
+  if (uProgress.type !== "annotation") return null;
 
   const updatePage = (page: number) => {
     if (page !== activePage) {

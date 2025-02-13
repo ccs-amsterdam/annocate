@@ -4,9 +4,10 @@ import { HelpDrawer } from "@/components/Common/HelpDrawer";
 import { Database } from "lucide-react";
 import { UnitsTable } from "./UnitsTable";
 import { CreateUnitsButton } from "@/components/Forms/unitForms";
+import { safeParams } from "@/functions/utils";
 
 export default function Users(props: { params: Promise<{ projectId: string }> }) {
-  const params = use(props.params);
+  const params = safeParams(use(props.params));
   return (
     <div>
       <div className="mt-6 lg:col-span-2">

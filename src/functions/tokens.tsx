@@ -3,7 +3,7 @@ import nlp from "compromise";
 // would be better, but jest doesn't allow it.
 //import nlp from "compromise/one";
 
-import { TextField, Token, RawToken, RawTokenColumn } from "@/app/types";
+import { ProcessedTextField, Token, RawToken, RawTokenColumn } from "@/app/types";
 
 /**
  * Tokenize a document, but allowing for multiple text fields to be concatenated as different fields.
@@ -14,7 +14,7 @@ import { TextField, Token, RawToken, RawTokenColumn } from "@/app/types";
  *                         As an alternative to unit_start and unit_end, can also have context_before and context_after to specify context, which should both be strings
  * @returns
  */
-export const parseTokens = (text_fields: TextField[]): Token[] => {
+export const parseTokens = (text_fields: ProcessedTextField[]): Token[] => {
   const tokens: Token[] = [];
   let token = null;
   let paragraph = 0; // offset can be used if position in original article is known

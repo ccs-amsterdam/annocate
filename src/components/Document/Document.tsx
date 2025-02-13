@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties } from "react";
+import React, { useState, useEffect, CSSProperties, useMemo } from "react";
 import AnnotateNavigation from "./components/AnnotateNavigation";
 import Body from "./components/Body";
 import useSpanSelector from "./hooks/useSpanSelector";
@@ -6,10 +6,12 @@ import useRelationSelector from "./hooks/useRelationSelector";
 import SelectVariable from "./components/SelectVariable";
 
 import useVariableMap from "./components/useVariableMap";
-import { VariableMap, ExtendedUnit, Annotation, SetState, TriggerSelector, ExtendedVariable } from "@/app/types";
+import { VariableMap, Annotation, SetState, TriggerSelector, ExtendedVariable, Doc, Unit } from "@/app/types";
 import { useCallback } from "react";
 import styled from "styled-components";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import { useQuery } from "@tanstack/react-query";
+import { useContent } from "./hooks/useContent";
 
 const DocumentContainer = styled.div`
   display: flex;
@@ -54,11 +56,42 @@ interface DocumentProps {
   bodyStyle?: CSSProperties;
 }
 
+interface DocumentReadyProps extends DocumentProps {
+  content: Doc;
+  contentLoading: boolean;
+  unit: Unit;
+  annotationLib: any;
+  annotationManager: any;
+}
+
+const Document = (props: DocumentProps) => {
+  const { unit, annotationLib, annotationManager } = useUnit();
+  const { loading, content } = useContent();
+
+  if (!content) return null;
+
+  return (
+    <DocumentReady
+      {...props}
+      content={content}
+      contentLoading={loading}
+      unit={unit}
+      annotationLib={annotationLib}
+      annotationManager={annotationManager}
+    />
+  );
+};
+
 /**
  * This is hopefully the only Component in this folder that you'll ever see. It should be fairly isolated
  * and easy to use, but behind the scenes it gets dark real fast.
  */
-const Document = ({
+const DocumentReady = ({
+  content,
+  contentLoading,
+  unit,
+  annotationLib,
+  annotationManager,
   variables,
   showAll,
   onChangeAnnotations,
@@ -69,13 +102,7 @@ const Document = ({
   focus,
   centered,
   bodyStyle,
-}: DocumentProps) => {
-  const {
-    unit: { content },
-    annotationLib,
-    annotationManager,
-  } = useUnit();
-
+}: DocumentReadyProps) => {
   const [selectedVariable, setSelectedVariable] = useState<string>("");
   const [variable, fullVariableMap, variableMap, showValues, variableType] = useVariableMap(
     variables,
@@ -83,7 +110,7 @@ const Document = ({
   );
 
   // keep track of current tokens object, to prevent rendering annotations on the wrong text
-  const [currentUnit, setCurrentUnit] = useState(content);
+  const [currentUnit, setCurrentUnit] = useState<Doc>(() => content);
 
   const [spanSelectorPopup, spanSelector, spanSelectorOpen] = useSpanSelector(
     content,
@@ -154,7 +181,7 @@ const Document = ({
         disableAnnotations={!onChangeAnnotations || !variableMap}
         editMode={editMode}
         triggerSelector={triggerSelector}
-        eventsBlocked={!!(selectorOpen || blockEvents)}
+        eventsBlocked={!!(selectorOpen || blockEvents || contentLoading)}
         showAll={!!showAll}
         currentUnitReady={currentUnitReady}
       />

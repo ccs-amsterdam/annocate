@@ -1,5 +1,5 @@
-import { useUnits } from "@/app/api/projects/[projectId]/units/query";
-import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/units/schemas";
+import { useUnits } from "@/app/api/projects/[projectId]/jobs/[jobId]/units/query";
+import { UnitDataResponseSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/units/schemas";
 import DBTable from "@/components/Common/DBTable";
 import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { useState } from "react";
@@ -23,7 +23,7 @@ export function UnitsTable({ projectId }: Props) {
   function showUnit() {
     if (!unit) return null;
     return (
-      <div className="prose flex max-w-full flex-col  dark:prose-invert">
+      <div className="prose flex max-w-full flex-col dark:prose-invert">
         {Object.entries(unit.data).map(([key, value]) => {
           return (
             <div key={key} className="">

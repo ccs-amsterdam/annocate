@@ -12,6 +12,7 @@ import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { useJob } from "../../query";
 import { useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useJobBlocks(projectId: number, jobId?: number) {
   return useGet({
@@ -62,27 +63,33 @@ export function useUpdateJobBlockTree(projectId: number, jobId: number, blockId?
 }
 
 export function useUpdateJobBlockContent(projectId: number, jobId: number, blockId?: number) {
+  const queryClient = useQueryClient();
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     bodySchema: JobBlockContentUpdateSchema,
     responseSchema: IdResponseSchema,
     manualUpdate: (data) => {
-      updateEndpoint(`projects/${projectId}/jobs/${jobId}/blocks`, z.array(JobBlocksResponseSchema), (oldData) => {
-        const newData = oldData.map((block) => {
-          if (block.id === blockId) {
-            for (const [key, value] of Object.entries(data)) {
-              if (!["name", "content"].includes(key)) {
-                throw new Error(`!! check the useUpdateJobBlockContent manual update function`);
+      updateEndpoint(
+        queryClient,
+        `projects/${projectId}/jobs/${jobId}/blocks`,
+        z.array(JobBlocksResponseSchema),
+        (oldData) => {
+          const newData = oldData.map((block) => {
+            if (block.id === blockId) {
+              for (const [key, value] of Object.entries(data)) {
+                if (!["name", "content"].includes(key)) {
+                  throw new Error(`!! check the useUpdateJobBlockContent manual update function`);
+                }
+                if (data.name) block.name = data.name;
+                if (data.content) block.content = data.content;
               }
-              if (data.name) block.name = data.name;
-              if (data.content) block.content = data.content;
             }
-          }
-          return block;
-        });
+            return block;
+          });
 
-        return newData;
-      });
+          return newData;
+        },
+      );
     },
   });
 }

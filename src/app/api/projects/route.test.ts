@@ -29,7 +29,7 @@ describe("Project endpoints", () => {
   });
 
   it("GET /projects/projectId", async () => {
-    const res = await testGET(apiProjectId, Promise.resolve({ projectId: createdId }));
+    const res = await testGET(apiProjectId, Promise.resolve({ projectId: String(createdId) }));
     expect(res.status).toBe(200);
 
     const body = await res.json();

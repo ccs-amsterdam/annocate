@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Answer, SetState, Variable, VariableStatus } from "@/app/types";
 
 import styled from "styled-components";
 import { FaStepForward, FaStepBackward } from "react-icons/fa";
@@ -37,11 +36,11 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
   const hide = variables.length === 1;
 
   return (
-    <div className="flex h-full w-full items-start justify-between gap-1  ">
+    <div className="flex h-full w-full items-start justify-between gap-1">
       <Button
         size="icon"
         variant="ghost"
-        className={`z-30  mt-[2px] flex   text-inherit opacity-60  hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
+        className={`z-30 mt-[2px] flex text-inherit opacity-60 hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={previousIndex === null}
         onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
       >
@@ -51,8 +50,7 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
       <Button
         size="icon"
         variant="ghost"
-        className={` z-30 mt-[2px] flex   bg-transparent
-          text-inherit opacity-60 hover:bg-transparent  disabled:opacity-0 ${hide ? "invisible" : ""}`}
+        className={`z-30 mt-[2px] flex bg-transparent text-inherit opacity-60 hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
         disabled={nextIndex === null}
         onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}
       >

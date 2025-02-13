@@ -1,8 +1,8 @@
 import { createRef } from "react";
-import { MarkdownField, RenderedMarkdown } from "@/app/types";
+import { ProcessedMarkdownField, RenderedMarkdown } from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 
-export default function renderMarkdown(markdown_fields: MarkdownField[], fieldRefs: any): RenderedMarkdown {
+export default function renderMarkdown(markdown_fields: ProcessedMarkdownField[], fieldRefs: any): RenderedMarkdown {
   const rm: RenderedMarkdown = {};
 
   for (let markdownField of markdown_fields) {

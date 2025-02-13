@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { Variable, SetState, ExtendedVariable } from "@/app/types";
+import { SetState, ExtendedVariable, CodebookVariable } from "@/app/types";
 
 interface SelectVariableProps {
   variables?: ExtendedVariable[];
@@ -175,7 +175,7 @@ const SelectVariable = ({ variables, variable, setVariable, blockEvents }: Selec
 interface VariableMenuProps {
   variable: string;
   setVariable: SetState<string>;
-  variables: Variable[];
+  variables: CodebookVariable[];
   variableNames: string[];
 }
 

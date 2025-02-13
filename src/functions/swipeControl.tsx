@@ -1,10 +1,10 @@
 import { SwipeEventData } from "react-swipeable";
-import { Code, Question, SetState, SwipeRefs, Swipes, Transition, Variable } from "@/app/types";
+import { Code, CodebookVariable, SwipeRefs, Swipes, Transition } from "@/app/types";
 import { z } from "zod";
 import { get } from "http";
 
 const swipeControl = (
-  question: Variable,
+  question: CodebookVariable,
   refs: SwipeRefs,
   onSwipe: (transition: Transition) => void,
   alwaysDoVertical: boolean,

@@ -1,38 +1,27 @@
 import {
-  Annotation,
   AnnotationDictionary,
   BlockType,
   Codebook,
   GetCodebook,
-  GetJobState,
+  JobState,
   GetUnit,
-  JobBlockContent,
   JobBlocksResponse,
   JobServer,
   Layout,
-  Phase,
   Progress,
   SetState,
   Status,
-  Unit,
-  UnitData,
   UnitDataResponse,
-  Variable,
 } from "@/app/types";
-import db from "@/drizzle/drizzle";
-import { and, eq } from "drizzle-orm";
-import { jobSetUnits } from "@/drizzle/schema";
 import { MiddlecatUser } from "middlecat-react";
-import { createAnnotateUnit } from "@/functions/createAnnotateUnit";
-import { sortNestedBlocks } from "@/functions/treeFunctions";
 
 interface MockServer {
   // This way we can have some persistance when updating the job
   // in design mode
   progress: Progress;
   setProgress: SetState<Progress>;
-  jobState: GetJobState;
-  setJobState: SetState<GetJobState>;
+  jobState: JobState;
+  setJobState: SetState<JobState>;
   unitCache: Record<number | string, Omit<GetUnit, "progress">>;
 }
 
@@ -49,7 +38,7 @@ interface JobServerDesignConstructor {
 class JobServerDesign implements JobServer {
   jobId: number;
   userId: string;
-  setJobState: SetState<GetJobState> | null;
+  setJobState: SetState<JobState> | null;
   initialized: boolean;
 
   // The following properties are only for the Design implementation
@@ -78,7 +67,7 @@ class JobServerDesign implements JobServer {
     this.codebookCache = {};
   }
 
-  async init(setJobState: SetState<GetJobState>) {
+  async init(setJobState: SetState<JobState>) {
     // we await this to get initial jobState and progress from the server
     // In the design version we don't have to, and instead get the
     // jobState and progress from react states. This allows keeping state
@@ -129,6 +118,7 @@ class JobServerDesign implements JobServer {
       }
 
       this.updateProgress(phaseNumber);
+      this.updateJobState("survey");
       return { ...this.unitCache["survey"], progress: this.mockServer.progress };
     } else {
       // phase == annotate
@@ -144,6 +134,7 @@ class JobServerDesign implements JobServer {
       }
 
       this.updateProgress(phaseNumber, unitIndex);
+      this.updateJobState(unitIndex);
       return { ...this.unitCache[unitIndex], progress: this.mockServer.progress };
     }
   }
@@ -194,8 +185,9 @@ class JobServerDesign implements JobServer {
   updateJobState(unitIndex: number | "survey") {
     if (!this.setJobState) return;
 
-    const surveyAnnotations: GetJobState["surveyAnnotations"] = {};
-    const unitAnnotations: GetJobState["unitAnnotations"] = {};
+    const unitData = this.unitCache[unitIndex]?.data || {};
+    const surveyAnnotations: JobState["surveyAnnotations"] = {};
+    const unitAnnotations: JobState["unitAnnotations"] = {};
 
     function setOrAppend<T>(current: T | T[] | undefined, value: T) {
       if (current === undefined) return value;
@@ -225,7 +217,7 @@ class JobServerDesign implements JobServer {
       }
     }
 
-    this.setJobState({ surveyAnnotations, unitAnnotations });
+    this.setJobState({ unitData, surveyAnnotations, unitAnnotations });
   }
 }
 

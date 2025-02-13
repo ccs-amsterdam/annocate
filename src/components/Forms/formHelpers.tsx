@@ -1,7 +1,7 @@
 import {
   CodebookCodeSchema,
   CodebookVariableItemSchema,
-} from "@/app/api/projects/[projectId]/codebooks/variablesSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import {
   ChevronDown,
   ChevronRight,
@@ -254,7 +254,7 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
               {values?.map((value) => (
                 <FormItem key={value.value} className="flex items-center space-x-3 space-y-0">
                   <FormControl>
-                    <RadioGroupItem value={value.value} />
+                    <RadioGroupItem value={value.value ?? ""} />
                   </FormControl>
                   <FormLabel style={{ width: labelWidth }} className="font-normal">
                     {value.label}

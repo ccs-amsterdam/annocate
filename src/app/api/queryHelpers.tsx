@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMiddlecat } from "middlecat-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { set, z } from "zod";
@@ -192,8 +192,12 @@ export function useDelete<Params>({
  * @param responseSchema - The Zod schema for the endpoint response
  * @param f - The function to update the old data.
  */
-export function updateEndpoint<T>(endpoint: string, responseSchema: z.ZodType<T>, f: (oldData: T) => T) {
-  const queryClient = useQueryClient();
+export function updateEndpoint<T>(
+  queryClient: QueryClient,
+  endpoint: string,
+  responseSchema: z.ZodType<T>,
+  f: (oldData: T) => T,
+) {
   queryClient.setQueryData([endpoint], f);
 }
 

@@ -13,7 +13,7 @@ const SafeParamsSchema = z.object({
   jobId: z.coerce.number(),
   blockId: z.coerce.number(),
   codebookId: z.coerce.number(),
-  userId: z.coerce.number(),
+  userId: z.string(),
   unitId: z.coerce.string(),
 });
 type SafeParams = z.infer<typeof SafeParamsSchema>;

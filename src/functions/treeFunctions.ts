@@ -1,5 +1,4 @@
 import { BlockType } from "@/app/types";
-import { JobBlocksResponse, JobBlocksTreeResponse } from "@/app/types";
 
 export const validParents: Record<BlockType, (BlockType | "ROOT")[]> = {
   annotationPhase: ["ROOT", "annotationPhase"],

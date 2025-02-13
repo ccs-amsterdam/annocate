@@ -1,12 +1,4 @@
-import {
-  Annotation,
-  AnnotationLibrary,
-  ExtendedCodebook,
-  ExtendedUnit,
-  ExtendedVariable,
-  Unit,
-  Variable,
-} from "@/app/types";
+import { Annotation, AnnotationLibrary, ExtendedCodebook, Unit } from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 import useSessionStorage from "@/hooks/useSessionStorage";
 import { ChevronDown, ChevronRight, ChevronUp, Eye, EyeOff, Info, InfoIcon, X } from "lucide-react";

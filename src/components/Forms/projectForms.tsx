@@ -1,5 +1,3 @@
-"use client";
-
 import { useUpdateProject, useCreateProject } from "@/app/api/projects/query";
 import { ProjectsUpdateSchema, ProjectsResponseSchema } from "@/app/api/projects/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";

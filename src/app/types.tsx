@@ -6,7 +6,6 @@ import {
   GetJobStateResponseSchema,
   GetUnitResponseSchema,
   JobStateAnnotationsSchema,
-  UnitContentSchema,
 } from "./api/annotate/[jobId]/schemas";
 import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
 import {
@@ -16,8 +15,16 @@ import {
   CodebookVariableItemSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 
-import { UnitLayoutSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
-import { UnitDataResponseSchema, UnitDataRowSchema, UnitDataSchema } from "./api/projects/[projectId]/units/schemas";
+import {
+  UnitFieldLayoutSchema,
+  UnitLayoutGridSchema,
+  UnitLayoutSchema,
+} from "./api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
+import {
+  UnitDataResponseSchema,
+  UnitDataRowSchema,
+  UnitDataSchema,
+} from "./api/projects/[projectId]/jobs/[jobId]/units/schemas";
 import { JobRulesSchema, JobResponseSchema, JobMetaResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
 import {
@@ -67,7 +74,6 @@ export interface Authorization {
 export type JobBlockContent = z.infer<typeof JobBlockContentSchema>;
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
-export type Variable = z.infer<typeof VariableSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type JobBlocksResponse = z.infer<typeof JobBlocksResponseSchema>;
@@ -88,19 +94,16 @@ export interface Codebook {
   variables: CodebookVariable[];
 }
 
-export type UnitContent = z.infer<typeof UnitContentSchema>;
-export type ExtendedUnitContent = Omit<UnitContent, "grid"> & {
-  grid: PreparedGrid;
-};
 export type Unit = z.infer<typeof AnnotateUnitSchema>;
 
-export type ExtendedUnit = Omit<Unit, "content"> & {
-  content: ExtendedUnitContent;
-};
+// TODO: We can probably remove all extended unit stuff now that we're making the content dynamic inside Document
 
 export type GetCodebook = Codebook;
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
 export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
+export type JobState = GetJobState & {
+  unitData: UnitData;
+};
 
 export type ExtendedVariable = CodebookVariable & {
   // intermediate values (not stored in backend)
@@ -134,10 +137,10 @@ export type Annotation = z.infer<typeof AnnotationSchema> & {
 export interface JobServer {
   jobId: number;
   userId: string;
-  setJobState: SetState<GetJobState> | null;
+  setJobState: SetState<JobState> | null;
   initialized: boolean;
 
-  init: (setJobState: SetState<GetJobState>) => Promise<void>;
+  init: (setJobState: SetState<JobState>) => Promise<void>;
   getUnit: (phaseNumber?: number, unitIndex?: number) => Promise<GetUnit | null>;
   getCodebook: (phaseNumber: number) => Promise<GetCodebook>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
@@ -343,33 +346,6 @@ export interface FieldAnnotations {
 //     [to: string]: AnnotationMap;
 //   };
 // }
-
-///// CODEBOOK
-
-/** The codebook after the raw codebook has been processed  */
-export interface CodeBook {
-  type: "annotate" | "questions";
-  variables?: Variable[];
-  questions?: Question[];
-  settings?: {
-    instruction?: string;
-    auto_instruction?: boolean;
-    no_table?: boolean;
-    text_window_size?: number | string;
-  };
-}
-
-/** The codebook in the JSON input format. */
-export interface RawCodeBook {
-  type: "annotate" | "questions";
-  variables?: any;
-  questions?: any;
-  settings?: {
-    no_table?: boolean;
-  };
-}
-
-///// QUESTIONS MODE
 
 export interface Question {
   name: string;
@@ -712,10 +688,10 @@ export interface RawUnit {
 }
 
 export interface RawUnitContent {
-  text_fields?: TextField[];
+  text_fields?: ProcessedTextField[];
   tokens?: RawToken[] | RawTokenColumn;
-  image_fields?: ImageField[];
-  markdown_fields?: MarkdownField[];
+  image_fields?: ProcessedImageField[];
+  markdown_fields?: ProcessedMarkdownField[];
   meta_fields?: MetaField[];
   annotations?: Annotation[];
   codebook?: Codebook;
@@ -738,14 +714,14 @@ export interface PreparedGrid {
   rows?: string;
 }
 
-export interface Field {
+export interface ProcessedField {
   name: string;
   value: string;
   grid_area?: string;
   style?: CSSProperties;
 }
 
-export interface TextField extends Field {
+export interface ProcessedTextField extends ProcessedField {
   label?: string;
   offset?: number;
   unit_start?: number;
@@ -759,7 +735,7 @@ export interface RenderedText {
   [key: string]: ReactElement<any>[];
 }
 
-export interface ImageField extends Field {
+export interface ProcessedImageField extends ProcessedField {
   alt?: string;
   base64?: boolean;
   caption?: string;
@@ -769,7 +745,7 @@ export interface RenderedImages {
   [key: string]: ReactElement<any>;
 }
 
-export interface MarkdownField extends Field {}
+export interface ProcessedMarkdownField extends ProcessedField {}
 
 export interface RenderedMarkdown {
   [key: string]: ReactElement<any>;
@@ -882,12 +858,11 @@ export interface RawTokenColumn {
 
 export interface Doc {
   /** A processed version of a Unit, for use in the Document component */
-  tokens?: Token[];
-  text_fields?: TextField[];
-  metaFields?: MetaField[];
-  imageFields?: ImageField[];
-  markdown_fields?: MarkdownField[];
-  grid?: PreparedGrid;
+  tokens: Token[];
+  textFields: ProcessedTextField[];
+  imageFields: ProcessedImageField[];
+  markdownFields: ProcessedMarkdownField[];
+  grid: PreparedGrid;
 }
 
 export interface DocumentSettings {

@@ -1,15 +1,5 @@
 "use client";
-import {
-  AnnotationLibrary,
-  Codebook,
-  ExtendedCodebook,
-  ExtendedUnit,
-  GetJobState,
-  GetUnit,
-  JobServer,
-  Progress,
-  Unit,
-} from "@/app/types";
+import { AnnotationLibrary, Codebook, ExtendedCodebook, JobServer, JobState, Progress, Unit } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
 import { useQuery } from "@tanstack/react-query";
@@ -17,10 +7,9 @@ import { useQueryState } from "nuqs";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createUnitBundle } from "./unitProcessing";
-import useWatchChange from "@/hooks/useWatchChange";
 
 interface UnitContextProps {
-  jobState: GetJobState;
+  jobState: JobState;
   unit: Unit;
   codebook: ExtendedCodebook;
   annotationLib: AnnotationLibrary;
@@ -66,7 +55,7 @@ export interface UnitBundle {
 export default function AnnotatorProvider({ jobServer, height, children }: Props) {
   const [finished, setFinished] = useState(false);
   const [unitBundle, setUnitBundle] = useState<UnitBundle | null>(null);
-  const [jobState, setJobState] = useState<GetJobState>(initJobState);
+  const [jobState, setJobState] = useState<JobState>(initJobState);
 
   const selectUnit = useCallback(
     async (phaseNumber?: number, unitIndex?: number) => {
@@ -146,10 +135,11 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
 // We initialize a bunch of stuff instead of starting with nulls, because
 // this avoids a lot of null checks in the code.
 
-function initJobState(): GetJobState {
+function initJobState(): JobState {
   return {
     surveyAnnotations: {},
     unitAnnotations: {},
+    unitData: {},
   };
 }
 
@@ -177,12 +167,12 @@ function initCodebook(): Codebook {
   };
 }
 
-function initUnit(): ExtendedUnit {
+function initUnit(): Unit {
   return {
     token: "",
     type: "annotation",
     status: "IN_PROGRESS",
-    content: { grid: { areas: "" } },
+    data: {},
     annotations: [],
   };
 }

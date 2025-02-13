@@ -9,8 +9,6 @@ import {
 import { Control, FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import {
-  BooleanFormField,
-  CodesFormField,
   DropdownFormField,
   MoveItemInArray,
   TextAreaFormField,
@@ -220,7 +218,7 @@ function defaultField(name: string): z.input<typeof UnitMarkdownLayoutSchema> {
   return {
     name,
     type: "markdown",
-    column: "",
+    template: "",
     style: { fontSize: "1rem", lineHeight: "1.5rem", fontWeight: "normal", fontStyle: "normal" },
   };
 }

@@ -82,16 +82,10 @@ export const UnitImageLayoutSchema = UnitGeneralLayoutSchema.extend({
   caption: z.string().optional(),
 });
 
-export const UnitMetaLayoutSchema = UnitGeneralFieldSchema.extend({
-  column: UnitLayoutColumnSchema,
-  type: z.literal("meta"),
-});
-
 export const UnitFieldLayoutUnionSchema = z.discriminatedUnion("type", [
   UnitTextLayoutSchema,
   UnitMarkdownLayoutSchema,
   UnitImageLayoutSchema,
-  UnitMetaLayoutSchema,
 ]);
 
 export const UnitFieldLayoutSchema = z.array(UnitFieldLayoutUnionSchema).refine(

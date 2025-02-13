@@ -7,7 +7,10 @@ import { NextRequest } from "next/server";
 import { UnitDataRowSchema } from "../schemas";
 import { safeParams } from "@/functions/utils";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; unitId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  props: { params: Promise<{ projectId: string; jobId: string; unitId: string }> },
+) {
   const params = safeParams(await props.params);
   return createGet({
     selectFunction: async (email, urlParams) => {
@@ -17,7 +20,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
           data: units.data,
         })
         .from(units)
-        .where(and(eq(units.projectId, params.projectId), eq(units.externalId, params.unitId)));
+        .where(and(eq(units.jobId, params.jobId), eq(units.externalId, params.unitId)));
       return unit;
     },
     req,

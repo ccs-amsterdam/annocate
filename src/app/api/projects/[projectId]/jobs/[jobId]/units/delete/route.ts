@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ projectI
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
-        await tx.delete(units).where(and(eq(units.projectId, params.projectId), inArray(units.externalId, body.ids)));
+        await tx.delete(units).where(and(inArray(units.externalId, body.ids)));
         await tx.update(projects).set({ unitsUpdated: new Date() }).where(eq(projects.id, params.projectId));
         return { success: true };
       });

@@ -1,5 +1,5 @@
 import { useJobBlocks } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { GetJobState, GetUnit, Progress } from "@/app/types";
+import { GetUnit, JobState, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
   const { data: blocks, isLoading: blocksLoading } = useJobBlocks(projectId, jobId);
 
   const [progress, setProgress] = useState<Progress>(initProgress);
-  const [jobState, setJobState] = useState<GetJobState>(initJobState);
+  const [jobState, setJobState] = useState<JobState>(initJobState);
   const [resetCounter, setResetCounter] = useState(0);
   const unitCache = useRef<UnitCache>({});
 
@@ -55,10 +55,11 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
   );
 }
 
-function initJobState(): GetJobState {
+function initJobState(): JobState {
   return {
     unitAnnotations: {},
     surveyAnnotations: {},
+    unitData: {},
   };
 }
 function initProgress(): Progress {

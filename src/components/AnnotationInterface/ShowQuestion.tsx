@@ -1,4 +1,4 @@
-import { Annotation, AnnotationLibrary, ExtendedCodebook, ExtendedUnit, Unit, Variable } from "@/app/types";
+import { Annotation, AnnotationLibrary, ExtendedCodebook, Unit } from "@/app/types";
 import React, { ReactElement, useMemo, useState } from "react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import useWatchChange from "@/hooks/useWatchChange";

@@ -9,47 +9,13 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { AnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";
 import { blockType } from "@/app/types";
-import { UnitDataSchema } from "../../projects/[projectId]/units/schemas";
+import { UnitDataSchema } from "../../projects/[projectId]/jobs/[jobId]/units/schemas";
 
 extendZodWithOpenApi(z);
 
 export const UnitFieldValueSchema = z.string();
 
-export const UnitTextContentSchema = UnitTextLayoutSchema.extend({
-  grid_area: z.string().optional(),
-  value: UnitFieldValueSchema,
-}).omit({ column: true });
-export const UnitImageContentSchema = UnitImageLayoutSchema.extend({
-  grid_area: z.string().optional(),
-  value: UnitFieldValueSchema,
-}).omit({ column: true });
-export const UnitMarkdownContentSchema = UnitMarkdownLayoutSchema.extend({
-  grid_area: z.string().optional(),
-  value: UnitFieldValueSchema,
-}).omit({ template: true });
-
 export const UnitVariableSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]));
-
-export const UnitTokenContentSchema = z.object({
-  field: z.string(),
-  paragraph: z.number(),
-  index: z.number(),
-  offset: z.number(),
-  length: z.number(),
-  text: z.string(),
-  codingUnit: z.boolean(),
-  pre: z.string(),
-  post: z.string(),
-});
-
-export const UnitContentSchema = z.object({
-  textFields: z.array(UnitTextContentSchema).optional(),
-  imageFields: z.array(UnitImageContentSchema).optional(),
-  markdownFields: z.array(UnitMarkdownContentSchema).optional(),
-  tokens: z.array(UnitTokenContentSchema).optional(),
-  meta: UnitVariableSchema.optional(),
-  grid: UnitLayoutGridSchema.optional(),
-});
 
 export const UnitTypeSchema = z.enum(["annotation", "survey"]);
 

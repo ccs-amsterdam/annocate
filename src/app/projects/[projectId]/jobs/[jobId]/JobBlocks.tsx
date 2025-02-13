@@ -5,7 +5,7 @@ import {
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
 import { JobBlocksTreeUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { JobBlocksResponse } from "@/app/types";
-import { CreateOrUpdateJobBlock, TEST } from "@/components/Forms/jobBlockForms";
+import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimplePopover } from "@/components/ui/simplePopover";

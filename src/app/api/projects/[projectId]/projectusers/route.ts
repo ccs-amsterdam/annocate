@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
 import { ProjectUsersTableParamsSchema, ProjectUsersResponseSchema, ProjectUsersCreateOrUpdateSchema } from "./schemas";
 import { hasMinProjectRole } from "@/app/api/authorization";
+import { safeParams } from "@/functions/utils";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
   const params = safeParams(await props.params);

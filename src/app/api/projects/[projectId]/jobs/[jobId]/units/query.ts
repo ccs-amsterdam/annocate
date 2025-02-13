@@ -38,14 +38,6 @@ export function useDeleteUnits(projectId: number) {
   });
 }
 
-export function usePreviewUnit(projectId: number, position: number, blockId?: number) {
-  return useGet({
-    endpoint: `projects/${projectId}/units/preview`,
-    params: { blockId, position },
-    responseSchema: UnitDataRowSchema,
-  });
-}
-
 export function useGetUnit(projectId: number, unitId: string) {
   return useGet({
     endpoint: `projects/${projectId}/units/${unitId}`,

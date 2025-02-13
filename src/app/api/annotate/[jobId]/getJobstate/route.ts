@@ -2,12 +2,13 @@ import { annotations, annotator, jobBlocks, jobs, projects } from "@/drizzle/sch
 import db from "@/drizzle/drizzle";
 import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
-import { createGet, safeParams } from "@/functions/utils";
+import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
 import { GetJobStateParamsSchema, GetJobStateResponseSchema, GetUnitParamsSchema } from "../schemas";
 import { cookies } from "next/headers";
 import { getDeviceId } from "@/functions/getDeviceId";
 import { JobsetAnnotatorStatistics, Rules } from "@/app/types";
+import { createGet } from "@/app/api/routeHelpers";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ jobId: string }> }) {
   const params = safeParams(await props.params);
@@ -21,9 +22,9 @@ export async function GET(req: NextRequest, props: { params: Promise<{ jobId: st
 
       const { jobState, isNew } = await getOrCreateJobState(jobId, userId, urlParams);
 
-      if (isNew) {
-        const { currentUnit, nTotal, nCoded } = await allocateJobUnits(jobState.jobId, jobState.userId);
-      }
+      // if (isNew) {
+      //   const { currentUnit, nTotal, nCoded } = await allocateJobUnits(jobState.jobId, jobState.userId);
+      // }
 
       // const surveyAnnotations = await db
       // const blocks = await db.select().from()
@@ -47,29 +48,29 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
   return "device:" + deviceId;
 }
 
-async function allocateJobUnits(jobId: number, userId: string) {
-  const blocks = await db
-    .select({
-      position: jobBlocks.position,
-      type: jobBlocks.type,
-      codebookId: jobBlocks.codebookId,
-      rules: jobBlocks.rules,
-      units: jobBlocks.units,
-      modified: jobs.modified,
-      deployed: jobs.deployed,
-    })
-    .from(jobBlocks)
-    .where(eq(jobBlocks.jobId, jobId))
-    .leftJoin(jobs, eq(jobs.projectId, projects.id))
-    .orderBy(jobBlocks.position);
+// async function allocateJobUnits(jobId: number, userId: string) {
+//   const blocks = await db
+//     .select({
+//       position: jobBlocks.position,
+//       type: jobBlocks.type,
+//       codebookId: jobBlocks.codebookId,
+//       rules: jobBlocks.rules,
+//       units: jobBlocks.units,
+//       modified: jobs.modified,
+//       deployed: jobs.deployed,
+//     })
+//     .from(jobBlocks)
+//     .where(eq(jobBlocks.jobId, jobId))
+//     .leftJoin(jobs, eq(jobs.projectId, projects.id))
+//     .orderBy(jobBlocks.position);
 
-  db.transaction(async (tx) => {
-    for (let block of blocks) {
-    }
-  });
+//   db.transaction(async (tx) => {
+//     for (let block of blocks) {
+//     }
+//   });
 
-  return { currentUnit: 0, nTotal: 0, nCoded: 0 };
-}
+//   return { currentUnit: 0, nTotal: 0, nCoded: 0 };
+// }
 
 interface Allocation {
   jobBlockId: number;
@@ -79,69 +80,69 @@ interface Allocation {
   isSurvey?: boolean;
 }
 
-async function reAllocateJobUnits(jobId: number, annotatorId: number) {
-  const blocks = await db
-    .select({
-      id: jobBlocks.id,
-      position: jobBlocks.position,
-      type: jobBlocks.type,
-      codebookId: jobBlocks.codebookId,
-      rules: jobBlocks.rules,
-      units: jobBlocks.units,
-      modified: jobs.modified,
-      deployed: jobs.deployed,
-      unitIds: sql<string[] | null>`ARRAY_AGG(${annotations.unitId})`.as("unitIds"),
-    })
-    .from(jobBlocks)
-    .where(and(eq(annotations.annotatorId, annotatorId), eq(jobBlocks.jobId, jobId)))
-    .leftJoin(jobs, eq(jobs.projectId, projects.id))
-    .leftJoin(annotations, eq(annotations.jobBlockId, jobBlocks.id))
-    .groupBy(jobBlocks.id)
-    .orderBy(jobBlocks.position, annotations.index);
+// async function reAllocateJobUnits(jobId: number, annotatorId: number) {
+//   const blocks = await db
+//     .select({
+//       id: jobBlocks.id,
+//       position: jobBlocks.position,
+//       type: jobBlocks.type,
+//       codebookId: jobBlocks.codebookId,
+//       rules: jobBlocks.rules,
+//       units: jobBlocks.units,
+//       modified: jobs.modified,
+//       deployed: jobs.deployed,
+//       unitIds: sql<string[] | null>`ARRAY_AGG(${annotations.unitId})`.as("unitIds"),
+//     })
+//     .from(jobBlocks)
+//     .where(and(eq(annotations.annotatorId, annotatorId), eq(jobBlocks.jobId, jobId)))
+//     .leftJoin(jobs, eq(jobs.projectId, projects.id))
+//     .leftJoin(annotations, eq(annotations.jobBlockId, jobBlocks.id))
+//     .groupBy(jobBlocks.id)
+//     .orderBy(jobBlocks.position, annotations.index);
 
-  db.transaction(async (tx) => {
-    tx.update(annotations).set({ index: null }).where(eq(annotations.annotatorId, annotatorId));
-    const allocations: Allocation[] = [];
-    let index = 0;
+//   db.transaction(async (tx) => {
+//     tx.update(annotations).set({ index: null }).where(eq(annotations.annotatorId, annotatorId));
+//     const allocations: Allocation[] = [];
+//     let index = 0;
 
-    for (let block of blocks) {
-      if (block.type === "survey") {
-        allocations.push({
-          jobBlockId: block.id,
-          annotatorId,
-          unitId: null,
-          index: index++,
-          isSurvey: true,
-        });
-      }
+//     for (let block of blocks) {
+//       if (block.type === "survey") {
+//         allocations.push({
+//           jobBlockId: block.id,
+//           annotatorId,
+//           unitId: null,
+//           index: index++,
+//           isSurvey: true,
+//         });
+//       }
 
-      let nTotal = block.units.length;
+//       let nTotal = block.units.length;
 
-      const overlapUnits = block.rules.overlapUnits ? await getOverlapUnits(block.id, block.rules.overlapUnits) : [];
+//       const overlapUnits = block.rules.overlapUnits ? await getOverlapUnits(block.id, block.rules.overlapUnits) : [];
 
-      if (block.rules.maxUnitsPerCoder) nTotal = Math.min(nTotal, block.rules.maxUnitsPerCoder);
+//       if (block.rules.maxUnitsPerCoder) nTotal = Math.min(nTotal, block.rules.maxUnitsPerCoder);
 
-      // TODO: here implement the logic for allocating units
+//       // TODO: here implement the logic for allocating units
 
-      // const nUnits = block.units.length;
-      // const nCoded = block.unitIds?.length || 0;
-      // const nRemaining = nUnits - nCoded;
+//       // const nUnits = block.units.length;
+//       // const nCoded = block.unitIds?.length || 0;
+//       // const nRemaining = nUnits - nCoded;
 
-      // const nToAllocate = Math.min(nRemaining, 10);
-      // const unitIds = block.unitIds.slice(0, nToAllocate);
-      // const indexes = Array.from({ length: nToAllocate }, (_, i) => nCoded + i);
-      // const allocation = unitIds.map((unitId, i) => ({
-      //   jobBlockId: block.id,
-      //   annotatorId,
-      //   unitId,
-      //   index: indexes[i],
-      // }));
-      // allocations.push(...allocation);
-    }
-  });
+//       // const nToAllocate = Math.min(nRemaining, 10);
+//       // const unitIds = block.unitIds.slice(0, nToAllocate);
+//       // const indexes = Array.from({ length: nToAllocate }, (_, i) => nCoded + i);
+//       // const allocation = unitIds.map((unitId, i) => ({
+//       //   jobBlockId: block.id,
+//       //   annotatorId,
+//       //   unitId,
+//       //   index: indexes[i],
+//       // }));
+//       // allocations.push(...allocation);
+//     }
+//   });
 
-  return { currentUnit: 0, nTotal: 0, nCoded: 0 };
-}
+//   return { currentUnit: 0, nTotal: 0, nCoded: 0 };
+// }
 
 async function prepareUnitAllocation(blockId: number, units: string[], rules: Rules) {
   if (rules.mode === "fixed") {
@@ -185,26 +186,23 @@ async function getOrCreateJobState(
 
   const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
 
-  const [newAnn] = await db
-    .insert(annotator)
-    .values({ projectId: job.projectId, jobId, userId, urlParams })
-    .returning();
+  const [newAnn] = await db.insert(annotator).values({ jobId, userId, urlParams }).returning();
   // TODO: verify jobaccess
   // allocate units and return jobstate
   return { jobState: newAnn, isNew: true };
 }
 
-async function computeJobState(annotatorId: number) {
-  // jobstate has the nr of units done, and current index (lowest not done index)
+// async function computeJobState(annotatorId: number) {
+//   // jobstate has the nr of units done, and current index (lowest not done index)
 
-  const n = await db.$count(annotations, eq(annotations.annotatorId, annotatorId));
+//   const n = await db.$count(annotations, eq(annotations.annotatorId, annotatorId));
 
-  const [job] = await db
-    .select()
-    .from(annotations)
-    .where(eq(annotations.annotatorId, annotatorId))
-    .orderBy(annotations.annotatorId, annotations.index);
-}
+//   const [job] = await db
+//     .select()
+//     .from(annotations)
+//     .where(eq(annotations.annotatorId, annotatorId))
+//     .orderBy(annotations.annotatorId, annotations.index);
+// }
 
 // On first start, allocate units
 // If units are finite, can be stolen.

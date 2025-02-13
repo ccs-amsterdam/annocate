@@ -5,7 +5,15 @@ import renderImages from "@/functions/renderImages";
 import renderMarkdown from "@/functions/renderMarkdown";
 import FocusOverlay from "./FocusOverlay";
 
-import { PreparedGrid, FieldRefs, ImageField, MarkdownField, MetaField, TextField, Token } from "@/app/types";
+import {
+  PreparedGrid,
+  FieldRefs,
+  ProcessedImageField,
+  ProcessedMarkdownField,
+  MetaField,
+  ProcessedTextField,
+  Token,
+} from "@/app/types";
 import styled from "styled-components";
 import { Loader } from "../../../styled/Styled";
 import { useHeight } from "@/hooks/useHeight";
@@ -42,10 +50,10 @@ const BodyContainer = styled.div`
 
 interface BodyProps {
   tokens?: Token[];
-  text_fields: TextField[];
+  text_fields: ProcessedTextField[];
   metaFields: MetaField[];
-  image_fields: ImageField[];
-  markdown_fields: MarkdownField[];
+  image_fields: ProcessedImageField[];
+  markdown_fields: ProcessedMarkdownField[];
   grid?: PreparedGrid;
   onReady: () => any;
   bodyStyle: CSSProperties | undefined;

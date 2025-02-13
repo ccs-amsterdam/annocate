@@ -1,13 +1,13 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createTableGet, createUpdate } from "@/app/api/routeHelpers";
-import { projects, units } from "@/drizzle/schema";
+import { jobs, projects, units } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { UnitDataCreateBodySchema, UnitDataResponseSchema, UnitDataTableParamsSchema } from "./schemas";
 import { safeParams } from "@/functions/utils";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(await props.params);
   return createTableGet({
     req,
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
             data: units.data,
           })
           .from(units)
-          .where(eq(units.projectId, params.projectId))
+          .where(eq(units.jobId, params.jobId))
           // .groupBy(units.projectId, units.unitId, units.data)
           .as("baseQuery")
       );
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
   });
 }
 
-export async function POST(req: NextRequest, props: { params: Promise<{ projectId: string }> }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(await props.params);
   return createUpdate({
     updateFunction: async (email, body) => {
@@ -46,8 +46,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ projectI
             n: sql<number>`COUNT(*)`.mapWith(Number),
           })
           .from(units)
-          .leftJoin(projects, eq(projects.id, units.projectId))
-          .where(eq(units.projectId, params.projectId));
+          .leftJoin(jobs, eq(jobs.id, units.jobId))
+          .where(eq(units.jobId, params.jobId));
 
         if (n + body.units.length > 20000) {
           throw new Error("A project can have a maximum of 20,000 units");
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ projectI
         const data = body.units
           .map((unit, i) => {
             return {
-              projectId: params.projectId,
+              jobId: params.jobId,
               externalId: unit.id,
               data: unit.data,
               position: n + i,
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ projectI
 
         if (body.overwrite) {
           query = query.onConflictDoUpdate({
-            target: [units.projectId, units.externalId],
+            target: [units.jobId, units.externalId],
             set: {
               data: sql`excluded.data`,
             },

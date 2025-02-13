@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
-import { ImageField, RenderedImages } from "@/app/types";
+import { ProcessedImageField, RenderedImages } from "@/app/types";
 
 const StyledFigure = styled.figure<{ hasCaption: boolean }>`
   display: flex;
@@ -32,7 +32,7 @@ interface Size {
 
 /** Returns a record where keys are image field names and values are react elements that render the image */
 export default function renderImages(
-  image_fields: ImageField[],
+  image_fields: ProcessedImageField[],
   setImagesLoaded: (loaded: boolean) => any,
   containerRef: any,
 ): RenderedImages {
@@ -61,7 +61,7 @@ export default function renderImages(
 }
 
 interface AnnotatableImageProps {
-  imageField: ImageField;
+  imageField: ProcessedImageField;
   onImageLoad: () => any;
 }
 
