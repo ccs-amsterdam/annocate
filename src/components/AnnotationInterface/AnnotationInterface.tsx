@@ -31,7 +31,7 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 
 function AnnotationMenu() {
   return (
-    <div className="z-20 flex items-center justify-between gap-2 border-b border-b-[calc(0px+var(--nav-border-height))] border-foreground px-3 py-2">
+    <div className="z-20 flex h-14 items-center justify-between gap-2 border-b border-b-[calc(0px+var(--nav-border-height))] border-foreground px-3">
       <IndexController />
       <div>
         <ResponsiveButtonGroup>

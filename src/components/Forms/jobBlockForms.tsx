@@ -55,6 +55,7 @@ export function CreateOrUpdateJobBlock({
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
   const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, current?.id);
+  console.log("loog?");
 
   const schema = JobBlockCreateSchema;
 

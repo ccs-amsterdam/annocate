@@ -77,6 +77,8 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
       if (getUnit === null) {
         setFinished(true);
         return;
+      } else {
+        setFinished(false);
       }
 
       // if (getUnit.progress.phase >= getUnit.progress.phases.length) {
@@ -115,6 +117,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
 
   useEffect(() => {
     selectUnit();
+    setFinished(false);
   }, [jobServer, selectUnit]);
 
   if (!jobServer.initialized || !unitBundle) return null;

@@ -5,7 +5,7 @@ import {
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
 import { JobBlocksTreeUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { JobBlocksResponse } from "@/app/types";
-import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
+import { CreateOrUpdateJobBlock, TEST } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimplePopover } from "@/components/ui/simplePopover";
@@ -238,8 +238,8 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
 function getDefaultName(blocks: JobBlocksResponse[], type: JobBlocksResponse["type"]) {
   const nameLabel = getLabel(type).replaceAll(" ", "_");
   let name = `${nameLabel}_1`;
-  let i = 2;
-  while (blocks.find((block) => block.name === name)) {
+  for (let i = 2; i < 1000; i++) {
+    if (!blocks.find((block) => block.name === name)) break;
     name = `${nameLabel}_${i}`;
   }
   return name;

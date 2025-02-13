@@ -1,15 +1,18 @@
 import { useRef, useState } from "react";
 import useWatchChange from "@/hooks/useWatchChange";
 import { Button } from "../ui/button";
-import { Check, ListCheck, StepBack, StepForward } from "lucide-react";
+import { Check, CheckCircle2, CheckSquare, ListCheck, Play, Square, StepBack, StepForward } from "lucide-react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import { Progress } from "@/app/types";
+import { OK } from "zod";
 
 interface IndexControllerProps {}
 
 const IndexController = ({}: IndexControllerProps) => {
   return (
-    <div className="flex h-full w-full items-center">
+    <div className="flex h-full w-full items-center justify-between">
       <PhaseIndexController />
+      <UnitIndexController />
     </div>
   );
 };
@@ -45,38 +48,50 @@ const PhaseIndexController = ({}: IndexControllerProps) => {
   const value = hasUnits ? `${progress.phase} - ${phase.currentUnit + 1}` : progress.phase;
 
   return (
-    <button className="flex h-full items-center gap-2 py-1">
+    <button className="flex h-full items-center gap-1 py-1">
       {progress.phases.map((phase, i) => {
-        const current = i === progress.phase;
-        const todo = i > progress.phasesCoded;
-        const done = i < progress.phasesCoded;
+        let status: Status = "todo";
+        if (i === progress.phase) status = "active";
+        if (i < progress.phasesCoded || finished) status = "done";
 
         const hasUnits = phase.type === "annotation";
-        if (hasUnits && current) return <UnitIndexController />;
+
         return (
-          <div
-            key={i}
-            className={`${current || finished ? "border-foreground" : ""} flex h-full min-w-9 items-center justify-center border-b px-1`}
-          >
-            <img
-              src={"/assets/cat_progress.png"}
-              className="h-8 scale-x-[-1] transform bg-transparent invert dark:invert-[0]"
-              style={{ display: current ? "block" : "none" }}
-              alt="Cat Loader"
-            />
-            <img
-              src={"/assets/fish.png"}
-              className="h-8 scale-x-[-1] transform bg-transparent p-2 invert dark:invert-[0]"
-              style={{ display: todo ? "block" : "none" }}
-              alt="Cat Loader"
-            />
-            <ListCheck style={{ display: done ? "block" : "none" }} />
-          </div>
+          <Button className="h-12 w-12 p-0" variant="ghost" onClick={() => selectUnit(i)}>
+            <ProgressIndicator status={status} style="cat" />
+          </Button>
         );
       })}
     </button>
   );
 };
+
+// any style other than default must have `${style}_active.png`,
+// `${style}_done.png`, `${style}_todo.png` in the assets folder
+type Style = "default" | "cat";
+type Status = "active" | "done" | "todo";
+
+function ProgressImg({ src }: { src: string }) {
+  return (
+    <img
+      src={`/assets/${src}.png`}
+      className="h-full scale-x-[-1] transform bg-transparent object-contain p-2 invert dark:invert-[0]"
+      alt={src}
+    />
+  );
+}
+
+function ProgressIndicator({ status, style }: { status: "active" | "done" | "todo"; style: Style }) {
+  if (style !== "default") return <ProgressImg src={`${style}_${status}`} />;
+  switch (status) {
+    case "active":
+      return <Play />;
+    case "done":
+      return <Check />;
+    case "todo":
+      return <Square />;
+  }
+}
 
 const UnitIndexController = () => {
   const { selectUnit, progress, finished } = useUnit();
@@ -88,6 +103,8 @@ const UnitIndexController = () => {
 
   // unit index
   const n = uProgress.nTotal;
+  const isFirstPhase = progress.phase === 0;
+  const isLastPhase = progress.phase === progress.phases.length - 1;
   const index = uProgress.currentUnit;
 
   // also keep track of slider as a ref, because touchevents suck (see onTouchEnd below for explanation)
@@ -108,6 +125,12 @@ const UnitIndexController = () => {
   }
 
   const updatePage = (page: number) => {
+    console.log(page);
+    if (page < 1) {
+      selectUnit(Math.max(progress.phase - 1, 0));
+    } else if (page > n) {
+      selectUnit(progress.phase + 1);
+    }
     if (page !== activePage) {
       selectUnit(progress.phase, page - 1);
       setActivePage(page);
@@ -159,35 +182,70 @@ const UnitIndexController = () => {
   if (progress.seekForwards) uProgressPct = 0; // linear uProgress is useless in this case.
 
   return (
-    <input
-      className={`mb-[2px] ml-2 min-w-1 max-w-36 flex-auto rounded`}
-      style={{
-        fill: "secondary",
-        background: `
+    <div className="flex items-center gap-3">
+      <div className="mr-1 flex items-center">
+        {progress.seekBackwards || progress.seekForwards ? (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="hover:bg-transparent"
+            onClick={() => {
+              updatePage(Math.max(0, activePage - 1));
+            }}
+            disabled={!progress.seekBackwards || activePage === 0 || isFirstPhase}
+          >
+            <StepBack />
+          </Button>
+        ) : null}
+        <div className="mx-auto min-w-6">{counter()}</div>
+        {progress.seekForwards || progress.seekBackwards ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover:bg-transparent"
+            onClick={() => {
+              if (progress.seekForwards) {
+                updatePage(activePage + 1);
+              } else {
+                updatePage(Math.min(progress.nCoded + 1, activePage + 1));
+              }
+            }}
+            disabled={!progress.seekForwards && activePage >= progress.nCoded + 1}
+          >
+            <StepForward />
+          </Button>
+        ) : null}
+      </div>
+      <input
+        className={`mb-[5px] ml-2 h-full min-w-1 max-w-36 flex-auto rounded`}
+        style={{
+          fill: "secondary",
+          background: `
          linear-gradient(
          to right,
           hsl(var(--secondary)) ${uProgressPct}%,
           hsl(var(--primary-light)) ${uProgressPct}% 100%,
           hsl(var(--primary-light)) 100%
           `,
-      }}
-      min={1}
-      max={n + 1}
-      onChange={updateSliderPage}
-      onMouseDown={(e) => e.stopPropagation()}
-      onMouseUp={(e) => {
-        e.stopPropagation();
-        updatePage(slider.current);
-      }}
-      onTouchEnd={(e) => {
-        // For touch events onChange runs after onTouchEnd, so we use setTimeout
-        // to put it on the callback Queue. We also need a ref for sliderPage otherwise
-        // it sets the previous state
-        setTimeout(() => updatePage(slider.current), 0);
-      }}
-      type="range"
-      value={sliderPage}
-    />
+        }}
+        min={1}
+        max={n + 1}
+        onChange={updateSliderPage}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseUp={(e) => {
+          e.stopPropagation();
+          updatePage(slider.current);
+        }}
+        onTouchEnd={(e) => {
+          // For touch events onChange runs after onTouchEnd, so we use setTimeout
+          // to put it on the callback Queue. We also need a ref for sliderPage otherwise
+          // it sets the previous state
+          setTimeout(() => updatePage(slider.current), 0);
+        }}
+        type="range"
+        value={sliderPage}
+      />
+    </div>
   );
 };
 
