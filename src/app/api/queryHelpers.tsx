@@ -198,7 +198,8 @@ export function updateEndpoint<T>(
   responseSchema: z.ZodType<T>,
   f: (oldData: T) => T,
 ) {
-  queryClient.setQueryData([endpoint], f);
+  const { user } = useMiddlecat();
+  queryClient.setQueryData([endpoint, user, undefined], f);
 }
 
 /**

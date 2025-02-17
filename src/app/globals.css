@@ -110,6 +110,9 @@
   }
 }
 
+#Document {
+}
+
 @layer base {
   * {
     @apply border-border;

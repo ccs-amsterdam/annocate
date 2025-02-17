@@ -19,10 +19,11 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
   const { user } = useMiddlecat();
   const { data: blocks, isLoading: blocksLoading } = useJobBlocks(projectId, jobId);
 
-  const [progress, setProgress] = useState<Progress>(initProgress);
-  const [jobState, setJobState] = useState<JobState>(initJobState);
-  const [resetCounter, setResetCounter] = useState(0);
-  const unitCache = useRef<UnitCache>({});
+  const [mockServer, setMockServer] = useState<{ progress: Progress; jobState: JobState; unitCache: UnitCache }>({
+    progress: initProgress(),
+    jobState: initJobState(),
+    unitCache: {},
+  });
 
   useEffect(() => {}, [blocks]);
 
@@ -33,10 +34,10 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
       projectId,
       jobId,
       user,
-      mockServer: { progress, setProgress, jobState, setJobState, unitCache: unitCache.current },
+      mockServer,
       jobBlocks: blocks || [],
     });
-  }, [blocks, user, resetCounter]);
+  }, [blocks, user, mockServer]);
 
   if (!jobServer) return null;
 
@@ -45,10 +46,11 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
       <PreviewWindow
         jobServer={jobServer}
         reset={() => {
-          setJobState(initJobState());
-          setProgress(initProgress());
-          setResetCounter((i) => i + 1);
-          unitCache.current = {};
+          setMockServer({
+            progress: initProgress(),
+            jobState: initJobState(),
+            unitCache: {},
+          });
         }}
       />
     </div>
@@ -81,7 +83,7 @@ export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign
     <div className="flex flex-wrap items-start justify-center gap-6">
       <div
         tabIndex={0}
-        className={`h-full min-h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-foreground/50 ${focus ? "ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-foreground/50 ${focus ? "ring-4 ring-secondary ring-offset-2" : ""}`}
         onClick={(e) => {
           e.currentTarget.focus();
         }}

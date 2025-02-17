@@ -17,7 +17,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
   const textref = useRef<HTMLDivElement>(null);
   const boxref = useRef<HTMLDivElement>(null);
   const coderef = useRef<HTMLDivElement>(null);
-  const { animateDocument } = usePageTransition({ progress });
+  const { animateUnit } = useProgressTransition({ progress });
   const refs = useMemo(() => {
     return { text: textref, box: boxref, code: coderef };
   }, []);
@@ -49,8 +49,13 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
   const menuSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, true));
 
   if (!unit) return null;
+
   return (
-    <div key={unit.token} className={`flex h-full w-full flex-col overflow-hidden bg-background`} ref={divref}>
+    <div
+      key={unit.token}
+      className={`${animateUnit} flex h-full w-full flex-col overflow-hidden bg-background`}
+      ref={divref}
+    >
       {/* <FeedbackPortal
         variable={variable.name}
         conditionReport={conditionReport}
@@ -58,11 +63,11 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
       /> */}
 
       {codebook.type.includes("annotation") ? (
-        <div {...textSwipe} className={`relative z-10 min-h-0 flex-[1_1_0] overflow-hidden`}>
+        <div {...textSwipe} className={`relative z-10 h-full min-h-0 flex-auto overflow-hidden`}>
           <div ref={refs.box} className="relative z-20 h-full overflow-hidden will-change-auto">
             {/* This div moves around behind the div containing the document to show the swipe code  */}
             <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
-            <div ref={refs.text} className={`${animateDocument} relative top-0 h-full will-change-auto`}>
+            <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
               <Document
                 centered
                 showAll={true}
@@ -78,7 +83,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
       <div
         {...menuSwipe}
         // key={unit.token + annotationLib.variableIndex} // Seems not needed for animate, but keeping it here just in case
-        className={`${codebook.type.includes("survey") ? "h-full overflow-auto" : null} relative flex-[1,1,auto]`}
+        className={`${codebook.type.includes("survey") ? "h-full overflow-auto" : null} relative flex-auto`}
       >
         <QuestionForm
           unit={unit}
@@ -145,26 +150,26 @@ const showUnit = (
   text.current.style.filter = "";
 };
 
-function usePageTransition({ progress }: { progress: Progress }) {
+function useProgressTransition({ progress }: { progress: Progress }) {
   const prevUnit = useRef({ phase: -1, unit: 0 });
-  const animateDocument = useRef("animate-slide-in-right");
 
-  useEffect(() => {
+  const animateUnit = useMemo(() => {
+    let animateUnit = "animate-slide-in-bottom";
+
     const phase = progress.phases[progress.phase];
     const currentUnit = phase.type === "annotation" ? phase.currentUnit : 0;
-
-    animateDocument.current = "animate-slide-in-right";
     if (
       (progress.phase === prevUnit.current.phase && currentUnit < prevUnit.current.unit) ||
       progress.phase < prevUnit.current.phase
     )
-      animateDocument.current = "animate-slide-in-right";
+      animateUnit = "animate-slide-in-top";
 
-    const timer = setTimeout(() => (prevUnit.current = { phase: progress.phase, unit: currentUnit }), 10);
-    return () => clearTimeout(timer);
+    prevUnit.current = { phase: progress.phase, unit: currentUnit };
+
+    return animateUnit;
   }, [progress]);
 
-  return { animateDocument };
+  return { animateUnit };
 }
 
 export default React.memo(QuestionTask);

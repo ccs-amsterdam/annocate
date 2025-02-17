@@ -137,7 +137,7 @@ export type Annotation = z.infer<typeof AnnotationSchema> & {
 export interface JobServer {
   jobId: number;
   userId: string;
-  setJobState: SetState<JobState> | null;
+  setJobState: ((jobState: JobState) => void) | null;
   initialized: boolean;
 
   init: (setJobState: SetState<JobState>) => Promise<void>;

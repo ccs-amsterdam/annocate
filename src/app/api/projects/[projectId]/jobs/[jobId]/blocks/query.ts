@@ -68,29 +68,32 @@ export function useUpdateJobBlockContent(projectId: number, jobId: number, block
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     bodySchema: JobBlockContentUpdateSchema,
     responseSchema: IdResponseSchema,
-    manualUpdate: (data) => {
-      updateEndpoint(
-        queryClient,
-        `projects/${projectId}/jobs/${jobId}/blocks`,
-        z.array(JobBlocksResponseSchema),
-        (oldData) => {
-          const newData = oldData.map((block) => {
-            if (block.id === blockId) {
-              for (const [key, value] of Object.entries(data)) {
-                if (!["name", "content"].includes(key)) {
-                  throw new Error(`!! check the useUpdateJobBlockContent manual update function`);
-                }
-                if (data.name) block.name = data.name;
-                if (data.content) block.content = data.content;
-              }
-            }
-            return block;
-          });
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
+    // not working atm. Implement later (just optimization)
+    // manualUpdate: (data) => {
+    //   updateEndpoint(
+    //     queryClient,
+    //     `projects/${projectId}/jobs/${jobId}/blocks`,
+    //     z.array(JobBlocksResponseSchema),
+    //     (oldData) => {
+    //       console.log(oldData);
+    //       const newData = oldData.map((block) => {
+    //         if (block.id === blockId) {
+    //           for (const [key, value] of Object.entries(data)) {
+    //             if (!["name", "content"].includes(key)) {
+    //               throw new Error(`!! check the useUpdateJobBlockContent manual update function`);
+    //             }
+    //             if (data.name) block.name = data.name;
+    //             if (data.content) block.content = data.content;
+    //           }
+    //         }
+    //         return block;
+    //       });
 
-          return newData;
-        },
-      );
-    },
+    //       return newData;
+    //     },
+    //   );
+    // },
   });
 }
 

@@ -19,9 +19,7 @@ interface MockServer {
   // This way we can have some persistance when updating the job
   // in design mode
   progress: Progress;
-  setProgress: SetState<Progress>;
   jobState: JobState;
-  setJobState: SetState<JobState>;
   unitCache: Record<number | string, Omit<GetUnit, "progress">>;
 }
 
@@ -38,7 +36,7 @@ interface JobServerDesignConstructor {
 class JobServerDesign implements JobServer {
   jobId: number;
   userId: string;
-  setJobState: SetState<JobState> | null;
+  setJobState: ((jobState: JobState) => void) | null;
   initialized: boolean;
 
   // The following properties are only for the Design implementation
@@ -69,11 +67,12 @@ class JobServerDesign implements JobServer {
 
   async init(setJobState: SetState<JobState>) {
     // we await this to get initial jobState and progress from the server
-    // In the design version we don't have to, and instead get the
-    // jobState and progress from react states. This allows keeping state
-    // when refreshing the class
+    // In the design version we use a mockServer
     const jobState = this.mockServer.jobState;
-    this.setJobState = setJobState;
+    this.setJobState = (jobState) => {
+      this.mockServer.jobState = jobState;
+      setJobState(jobState);
+    };
     this.setJobState(jobState);
 
     // add endpoitns for n units
@@ -99,8 +98,6 @@ class JobServerDesign implements JobServer {
         }
       });
     this.mockServer.progress = { ...this.mockServer.progress, phase: 0, phasesCoded: 0, phases };
-    this.mockServer.setProgress({ ...this.mockServer.progress });
-
     this.initialized = true;
   }
 
@@ -119,7 +116,7 @@ class JobServerDesign implements JobServer {
 
       this.updateProgress(phaseNumber);
       this.updateJobState("survey");
-      return { ...this.unitCache["survey"], progress: this.mockServer.progress };
+      return { ...this.unitCache["survey"], progress: { ...this.mockServer.progress } };
     } else {
       // phase == annotate
       unitIndex = unitIndex === undefined || unitIndex > phase.nCoded + 1 ? phase.nCoded : unitIndex;
@@ -135,7 +132,7 @@ class JobServerDesign implements JobServer {
 
       this.updateProgress(phaseNumber, unitIndex);
       this.updateJobState(unitIndex);
-      return { ...this.unitCache[unitIndex], progress: this.mockServer.progress };
+      return { ...this.unitCache[unitIndex], progress: { ...this.mockServer.progress } };
     }
   }
 
@@ -174,8 +171,6 @@ class JobServerDesign implements JobServer {
         phase.currentUnit = unitIndex;
       }
     }
-
-    this.mockServer.setProgress({ ...this.mockServer.progress });
   }
 
   updateUnitCache(key: number | "survey", data: Omit<GetUnit, "progress">) {

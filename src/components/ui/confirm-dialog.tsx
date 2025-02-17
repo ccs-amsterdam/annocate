@@ -32,9 +32,7 @@ export function ConfirmDialog({ children, title, message, enterText, onAccept }:
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>
-            <div>{message}</div>
-          </AlertDialogDescription>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex items-end">
           {enterText ? (
