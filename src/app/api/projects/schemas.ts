@@ -44,9 +44,7 @@ export const ProjectsResponseSchema = z.object({
   creator: ProjectsCreatorSchema,
 });
 
-export const ProjectResponseSchema = ProjectsResponseSchema.extend({
-  nUnits: ProjectUnitsSchema,
-});
+export const ProjectResponseSchema = ProjectsResponseSchema.extend({});
 
 export const ProjectsCreateSchema = z.object({
   name: ProjectsNameSchema,

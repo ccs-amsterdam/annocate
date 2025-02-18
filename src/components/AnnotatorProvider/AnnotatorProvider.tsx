@@ -58,7 +58,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   const [jobState, setJobState] = useState<JobState>(initJobState);
 
   const selectUnit = useCallback(
-    async (phaseNumber?: number, unitIndex?: number) => {
+    async (phaseNumber?: number, unitIndex?: number, variableIndex?: number) => {
       if (!jobServer.initialized) await jobServer.init(setJobState);
 
       const getUnit = await jobServer.getUnit(phaseNumber, unitIndex);
@@ -70,20 +70,19 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
         setFinished(false);
       }
 
-      // if (getUnit.progress.phase >= getUnit.progress.phases.length) {
-      //   setFinished(true);
-      //   return;
-      // }
-
-      const codebook = await jobServer.getCodebook(getUnit.progress.phase);
-      const extendedCodebook = importCodebook(codebook);
-      setUnitBundle(createUnitBundle(jobServer, getUnit, extendedCodebook, setUnitBundle));
+      const rawCodebook = await jobServer.getCodebook(getUnit.progress.phase);
+      const codebook = importCodebook(rawCodebook);
+      setUnitBundle(createUnitBundle({ jobServer, getUnit, codebook, setUnitBundle, variableIndex }));
     },
     [jobServer, setFinished, setJobState],
   );
 
   const finishUnit = useCallback(() => {
-    if (!unitBundle) return;
+    if (jobServer.previewMode) {
+      return previewToast(unitBundle);
+    }
+
+    if (!unitBundle) return null;
     const { progress } = unitBundle;
     const phase = progress.phases[progress.phase];
 
@@ -102,7 +101,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
         selectUnit(progress.phase, phase.currentUnit + 1);
       }
     }
-  }, [selectUnit, unitBundle]);
+  }, [jobServer, selectUnit, unitBundle]);
 
   useEffect(() => {
     selectUnit();
@@ -190,4 +189,17 @@ function initAnnotationLib(): AnnotationLibrary {
     variableStatuses: [],
     previousIndex: 0,
   };
+}
+
+function previewToast(unitBundle: UnitBundle | null) {
+  if (!unitBundle) {
+    return toast("Preview annotation");
+  }
+  const prettyAnnotation = JSON.stringify(Object.values(unitBundle.annotationLib.annotations), null, 2);
+  return toast(
+    <div>
+      <h4 className={"mb-2 font-bold"}>Preview annotations:</h4>
+      <pre>{prettyAnnotation}</pre>
+    </div>,
+  );
 }

@@ -28,6 +28,7 @@ export function useCreateJob(projectId: number) {
 }
 
 export function useJob(projectId: number, jobId?: number) {
+  console.log(jobId);
   return useGet({
     endpoint: `projects/${projectId}/jobs/${jobId}`,
     responseSchema: JobResponseSchema,

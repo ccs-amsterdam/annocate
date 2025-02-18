@@ -57,8 +57,9 @@ const PhaseSelector = ({}: IndexControllerProps) => {
 const Phase = ({ dropdown }: { dropdown?: boolean }) => {
   const { selectUnit, progress, finished } = useUnit();
   const phase = progress.phases[progress.phase];
+  const label = phase.label;
   if (!dropdown) {
-    return <div className="flex items-center gap-2">{phase.label}</div>;
+    return <div className="flex items-center gap-2">{label}</div>;
   }
 
   return (
@@ -134,7 +135,9 @@ const Navigation = ({ global }: { global?: boolean }) => {
 
   const previous = () => {
     if (!canGoBack) return;
-    if (hasPrevUnit) {
+    if (finished) {
+      selectUnit(progress.phases.length - 1);
+    } else if (hasPrevUnit) {
       selectUnit(progress.phase - 1);
     } else {
       selectUnit(progress.phase, phase.currentUnit - 1);

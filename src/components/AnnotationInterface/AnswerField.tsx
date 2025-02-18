@@ -26,7 +26,7 @@ export interface OnSelectParams {
 }
 
 const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: AnswerFieldProps) => {
-  const { unit, codebook, height, progress, finishUnit } = useUnit();
+  const { finishUnit } = useUnit();
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
 

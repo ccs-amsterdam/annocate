@@ -32,12 +32,13 @@ interface CreateJobBlockProps {
   type: JobBlocksResponse["type"];
   parentId: number | null;
   position: number;
-  setPreview: (block: JobBlockCreate) => void;
+  setPreview: (block: JobBlocksResponse | null) => void;
   current?: JobBlocksResponse;
   afterSubmit: () => void;
   onCancel: () => void;
   header?: string;
   defaultName?: string;
+  setChangesPending: (value: boolean) => void;
 }
 
 export function CreateOrUpdateJobBlock({
@@ -52,6 +53,7 @@ export function CreateOrUpdateJobBlock({
   onCancel,
   header,
   defaultName,
+  setChangesPending,
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
   const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, current?.id);
@@ -62,7 +64,8 @@ export function CreateOrUpdateJobBlock({
     resolver: zodResolver(schema),
     defaultValues: current ?? { type, parentId, position, name: defaultName || "", content: {} },
   });
-  // useUpdatePreview({ form, setPreview });
+  useWatchChanges({ form, setChangesPending });
+  useUpdatePreview({ form, setPreview });
 
   useEffect(() => {
     if (!current) return;
@@ -86,11 +89,13 @@ export function CreateOrUpdateJobBlock({
     if (type === "surveyPhase") return <SurveyPhaseBlockForm form={form} control={form.control} />;
   }
 
+  const name = form.watch("name");
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full w-full flex-col gap-3">
         <div className="mb-6 flex gap-3">
-          {header && <h2 className="text-lg font-semibold">{header}</h2>}
+          {header && <h2 className="text-lg font-semibold">{name.replaceAll("_", " ")}</h2>}
           <div className="ml-auto flex w-[180px] gap-3">
             <Button
               onClick={(e) => {
@@ -130,12 +135,25 @@ export function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   );
 }
 
+function useWatchChanges({
+  form,
+  setChangesPending,
+}: {
+  form: UseFormReturn<JobBlockCreate>;
+  setChangesPending: (value: boolean) => void;
+}) {
+  const watch = useWatch({ control: form.control });
+  useEffect(() => {
+    setChangesPending(form.formState.isDirty);
+  }, [watch, form, setChangesPending]);
+}
+
 function useUpdatePreview({
   form,
   setPreview,
 }: {
   form: UseFormReturn<JobBlockCreate>;
-  setPreview: (block: JobBlockCreate) => void;
+  setPreview: (block: JobBlocksResponse | null) => void;
 }) {
   const watch = useWatch({ control: form.control });
 
@@ -143,8 +161,12 @@ function useUpdatePreview({
     if (!setPreview) return;
     const timeout = setTimeout(() => {
       const jobBlock = JobBlockCreateSchema.safeParse(watch);
-      if (jobBlock.success) setPreview(jobBlock.data);
-    }, 250);
+      if (jobBlock.success) {
+        setPreview({ ...jobBlock.data, id: 0, level: 0, children: 0, position: 0 });
+      } else {
+        setPreview(null);
+      }
+    }, 500);
     return () => clearTimeout(timeout);
   }, [watch, setPreview, form]);
 }

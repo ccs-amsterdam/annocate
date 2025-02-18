@@ -48,7 +48,7 @@ export function ConfirmDialog({ children, title, message, enterText, onAccept }:
               />
             </div>
           ) : null}
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={() => setText("")}>Cancel</AlertDialogCancel>
           <AlertDialogAction disabled={!ready} onClick={onAccept}>
             Yes
           </AlertDialogAction>

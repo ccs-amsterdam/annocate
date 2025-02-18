@@ -12,6 +12,7 @@ import {
   SetState,
   Status,
   UnitDataResponse,
+  CodebookVariable,
 } from "@/app/types";
 import { MiddlecatUser } from "middlecat-react";
 
@@ -31,6 +32,8 @@ interface JobServerDesignConstructor {
   mockServer: MockServer;
   jobBlocks: JobBlocksResponse[];
   useRealUnits?: boolean;
+
+  previewMode?: boolean;
 }
 
 class JobServerDesign implements JobServer {
@@ -45,11 +48,20 @@ class JobServerDesign implements JobServer {
   mockServer: MockServer;
   jobBlocks: JobBlocksResponse[];
   useRealUnits: boolean;
+  previewMode: boolean;
 
   unitCache: Record<number | string, Omit<GetUnit, "progress">>;
   codebookCache: Record<string, GetCodebook>;
 
-  constructor({ jobId, user, projectId, mockServer, jobBlocks, useRealUnits }: JobServerDesignConstructor) {
+  constructor({
+    jobId,
+    user,
+    projectId,
+    mockServer,
+    jobBlocks,
+    useRealUnits,
+    previewMode,
+  }: JobServerDesignConstructor) {
     this.jobId = jobId;
     this.userId = user.email;
     this.setJobState = null;
@@ -59,6 +71,9 @@ class JobServerDesign implements JobServer {
     this.user = user;
     this.mockServer = mockServer;
     this.jobBlocks = jobBlocks;
+
+    this.previewMode = !!previewMode;
+
     this.useRealUnits = !!useRealUnits;
 
     this.unitCache = mockServer.unitCache;
@@ -82,7 +97,7 @@ class JobServerDesign implements JobServer {
       .filter((b) => b.parentId === null)
       .map((phase) => {
         const label = phase.name.replaceAll("_", " "); // TODO: Add label that can overwrite the default
-        if (phase.type === "surveyPhase") {
+        if (phase.type.includes("survey")) {
           return {
             type: "survey",
             label,
@@ -97,6 +112,7 @@ class JobServerDesign implements JobServer {
           };
         }
       });
+
     this.mockServer.progress = { ...this.mockServer.progress, phase: 0, phasesCoded: 0, phases };
     this.initialized = true;
   }
@@ -119,7 +135,7 @@ class JobServerDesign implements JobServer {
       return { ...this.unitCache["survey"], progress: { ...this.mockServer.progress } };
     } else {
       // phase == annotate
-      unitIndex = unitIndex === undefined || unitIndex > phase.nCoded + 1 ? phase.nCoded : unitIndex;
+      unitIndex = unitIndex === undefined || unitIndex > phase.nCoded + 1 ? phase.currentUnit : unitIndex;
       if (!this.unitCache[unitIndex]) {
         const unit: UnitDataResponse = this.useRealUnits
           ? await this.user.api.get(`/projects/${this.projectId}/jobs/${this.jobId}/units/${unitIndex}`)

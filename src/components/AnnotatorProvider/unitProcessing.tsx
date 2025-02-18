@@ -17,12 +17,19 @@ import {
 import { UnitBundle } from "./AnnotatorProvider";
 import AnnotationManager from "@/functions/AnnotationManager";
 
-export function createUnitBundle(
-  jobServer: JobServer,
-  getUnit: GetUnit,
-  codebook: ExtendedCodebook,
-  setUnitBundle: SetState<UnitBundle | null>,
-): UnitBundle {
+export function createUnitBundle({
+  jobServer,
+  getUnit,
+  codebook,
+  setUnitBundle,
+  variableIndex,
+}: {
+  jobServer: JobServer;
+  getUnit: GetUnit;
+  codebook: ExtendedCodebook;
+  setUnitBundle: SetState<UnitBundle | null>;
+  variableIndex?: number;
+}): UnitBundle {
   const unit = {
     token: getUnit.token,
     type: getUnit.progress.phases[getUnit.progress.phase].type,
@@ -32,7 +39,7 @@ export function createUnitBundle(
   };
 
   const annotationManager = new AnnotationManager();
-  annotationManager.initialize(jobServer, unit, codebook, setUnitBundle);
+  annotationManager.initialize({ jobServer, unit, codebook, setUnitBundle, variableIndex });
 
   return {
     unit,

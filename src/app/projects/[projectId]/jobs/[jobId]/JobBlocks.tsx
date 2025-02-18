@@ -4,7 +4,7 @@ import {
   useUpdateJobBlockTree,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
 import { JobBlocksTreeUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { JobBlocksResponse } from "@/app/types";
+import { JobBlockContent, JobBlocksResponse } from "@/app/types";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
@@ -31,35 +31,25 @@ interface BlockFormProps {
 export function JobBlocks({ projectId, jobId }: Props) {
   const { data: blocks, isLoading, isPending } = useJobBlocks(projectId, jobId);
   const [blockForm, setBlockForm] = useState<BlockFormProps | null>(null);
-  const [preview, setPreview] = useState<z.infer<typeof JobBlocksTreeUpdateSchema> | null>(null);
+  const [preview, setPreview] = useState<JobBlocksResponse | null>(null);
+  const [changesPending, setChangesPending] = useState(false);
 
   function conditionalRenderLeft() {
     if (isLoading || isPending) return <Loading />;
     if (!blocks) return <div>Job blocks not found</div>;
 
-    if (blockForm) {
-      const current = blocks.find((block) => block.id === blockForm.currentId);
+    const disabled = !!blockForm && changesPending;
+
+    if (!!blockForm && changesPending) {
       return (
-        <div className="flex h-full w-full animate-slide-in-right flex-col gap-6 p-3">
-          <CreateOrUpdateJobBlock
-            projectId={projectId}
-            jobId={jobId}
-            parentId={blockForm.parentId}
-            type={blockForm.type}
-            position={blockForm.position}
-            header={getLabel(blockForm.type)}
-            current={current}
-            afterSubmit={() => setBlockForm(null)}
-            setPreview={setPreview}
-            onCancel={() => setBlockForm(null)}
-            defaultName={getDefaultName(blocks, blockForm.type)}
-          />
+        <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
+          <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
         </div>
       );
     }
 
     return (
-      <div className="flex animate-slide-in-left flex-col">
+      <div className={` ${disabled ? "pointer-events-none opacity-50" : ""} flex animate-slide-in-left flex-col`}>
         {(blocks || []).map((block) => {
           return (
             <JobBlockItem
@@ -79,17 +69,38 @@ export function JobBlocks({ projectId, jobId }: Props) {
   }
 
   function conditionalRenderRight() {
-    if (!blockForm) return <JobBlockPreview projectId={projectId} jobId={jobId} />;
-    if (blockForm.type === "annotationPhase") return "(show unit layout design)";
-    if (blockForm.type === "surveyPhase") return "(show survey design)";
-    if (blockForm.type === "surveyQuestion" || blockForm.type === "annotationQuestion")
-      return "(show specific question design)";
+    if (!blockForm)
+      return (
+        <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
+          <JobBlockPreview projectId={projectId} jobId={jobId} preview={null} />
+        </div>
+      );
+    if (!blocks) return null;
+    const current = blocks.find((block) => block.id === blockForm.currentId);
+    return (
+      <div className="flex h-full w-full animate-slide-in-left flex-col gap-6 p-3">
+        <CreateOrUpdateJobBlock
+          projectId={projectId}
+          jobId={jobId}
+          parentId={blockForm.parentId}
+          type={blockForm.type}
+          position={blockForm.position}
+          header={getLabel(blockForm.type)}
+          current={current}
+          afterSubmit={() => setBlockForm(null)}
+          setPreview={setPreview}
+          onCancel={() => setBlockForm(null)}
+          defaultName={getDefaultName(blocks, blockForm.type)}
+          setChangesPending={setChangesPending}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="mx-auto grid w-full grid-cols-1 gap-3 md:grid-cols-[600px,1fr] md:gap-9">
+    <div className="mx-auto grid w-full grid-cols-1 gap-16 lg:grid-cols-[600px,1fr] lg:gap-9">
       {conditionalRenderLeft()}
-      <div className="w-full text-center">{conditionalRenderRight()}</div>
+      <div className="mx-auto text-center">{conditionalRenderRight()}</div>
     </div>
   );
 }
@@ -174,22 +185,20 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
   const isPhase = block.type === "annotationPhase" || block.type === "surveyPhase";
 
   function header() {
-    const label = block.name.replaceAll("_", " ");
-    if (block.type === "annotationPhase") return "Annotation - " + label;
-    if (block.type === "surveyPhase") return "Survey - " + label;
     return block.name.replaceAll("_", " ");
   }
 
   function blockStyle() {
-    if (block.level === 0)
-      return `${block.position > 0 ? "mt-6" : ""} bg-primary text-primary-foreground rounded-t border-b mb-1 font-bold`;
+    if (block.type.includes("Phase"))
+      return `${block.position > 0 ? "mt-6" : ""} bg-primary text-primary-foreground rounded-t border-b font-bold`;
+    if (block.level > 0) return "bg-primary/10";
     if (isPhase) return "";
   }
 
   return (
     <div
       className={`flex animate-fade-in items-center gap-1 ${blockStyle()}`}
-      style={{ marginLeft: `${block.level}rem` }}
+      style={{ paddingLeft: `${block.level}rem` }}
     >
       <div className="max-w-full overflow-hidden rounded">
         <div className="mt-1">

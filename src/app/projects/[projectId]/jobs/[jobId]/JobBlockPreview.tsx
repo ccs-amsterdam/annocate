@@ -1,5 +1,5 @@
 import { useJobBlocks } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { GetUnit, JobState, Progress } from "@/app/types";
+import { GetUnit, JobBlocksResponse, JobState, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,12 @@ import { useRef, useState } from "react";
 interface Props {
   projectId: number;
   jobId: number;
+  preview: JobBlocksResponse | null;
 }
 
 type UnitCache = Record<number | string, Omit<GetUnit, "progress">>;
 
-export function JobBlockPreview({ projectId, jobId }: Props) {
+export function JobBlockPreview({ projectId, jobId, preview }: Props) {
   const { user } = useMiddlecat();
   const { data: blocks, isLoading: blocksLoading } = useJobBlocks(projectId, jobId);
 
@@ -25,19 +26,20 @@ export function JobBlockPreview({ projectId, jobId }: Props) {
     unitCache: {},
   });
 
-  useEffect(() => {}, [blocks]);
-
   const jobServer = useMemo(() => {
     if (!blocks || blocks.length === 0 || !user) return null;
+
+    const jobBlocks = preview ? createPreviewPhase(blocks, preview) : blocks || [];
 
     return new JobServerDesign({
       projectId,
       jobId,
       user,
       mockServer,
-      jobBlocks: blocks || [],
+      jobBlocks,
+      previewMode: !!preview,
     });
-  }, [blocks, user, mockServer]);
+  }, [blocks, user, mockServer, preview]);
 
   if (!jobServer) return null;
 
@@ -75,7 +77,7 @@ function initProgress(): Progress {
 }
 
 export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign; reset: () => void }) {
-  const [focus, setFocus] = useState(false);
+  const [blockEvents, setBlockEvents] = useState(true);
 
   if (!jobServer) return null;
 
@@ -83,14 +85,14 @@ export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign
     <div className="flex flex-wrap items-start justify-center gap-6">
       <div
         tabIndex={0}
-        className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-foreground/50 ${focus ? "ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-foreground/50 ${!blockEvents ? "ring-4 ring-secondary ring-offset-2" : ""}`}
         onClick={(e) => {
           e.currentTarget.focus();
         }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
+        onFocus={() => setBlockEvents(false)}
+        onBlur={() => setBlockEvents(true)}
       >
-        <AnnotationInterface jobServer={jobServer} blockEvents={!focus} />
+        <AnnotationInterface jobServer={jobServer} blockEvents={blockEvents} />
       </div>
       <div className="flex max-w-full flex-col gap-3 pt-6">
         {/* <PreviewDataWindow previewData={previewData} /> */}
@@ -100,6 +102,17 @@ export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign
       </div>
     </div>
   );
+}
+
+function createPreviewPhase(jobBlocks: JobBlocksResponse[], block: JobBlocksResponse): JobBlocksResponse[] {
+  // if a preview block is given, we need to trace back it's
+  // parent blocks to simulate how it would look like in the context
+  // of the job. We set the positions to 0, because we only lookt
+  // at one block per level
+  const parentIndex = jobBlocks.findIndex((b) => b.id === block.parentId);
+  if (parentIndex === -1) return [block];
+  const parent = { ...jobBlocks[parentIndex], position: 0 };
+  return [...createPreviewPhase(jobBlocks, parent), block];
 }
 
 // function PreviewDataWindow({ previewData }: { previewData: GetJobState | null }) {

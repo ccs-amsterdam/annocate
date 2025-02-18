@@ -25,8 +25,8 @@ export function useCreateProject() {
   });
 }
 
-export function useProject(projectId: number) {
-  return useGet({ endpoint: `projects/${projectId}`, responseSchema: ProjectResponseSchema });
+export function useProject(projectId: number | undefined) {
+  return useGet({ endpoint: `projects/${projectId}`, responseSchema: ProjectResponseSchema, disabled: !projectId });
 }
 
 export function useUpdateProject(projectId: number) {

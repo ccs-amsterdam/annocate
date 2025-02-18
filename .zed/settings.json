@@ -3,5 +3,18 @@
 // For a full list of overridable settings, and general information on folder-specific settings,
 // see the documentation: https://zed.dev/docs/configuring-zed#settings-files
 {
-  "file_scan_exclusions": ["**/old_components/*", "**/old_functions/*", "**/old_hooks/*"]
+  "file_scan_exclusions": ["**/old_components/*", "**/old_functions/*", "**/old_hooks/*"],
+  "lsp": {
+    "vtsls": {
+      "settings": {
+        "typescript": {
+          "tsserver": {
+            "experimental": {
+              "enableProjectDiagnostics": true
+            }
+          }
+        }
+      }
+    }
+  }
 }

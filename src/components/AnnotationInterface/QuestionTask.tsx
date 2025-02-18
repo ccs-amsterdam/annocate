@@ -51,11 +51,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
   if (!unit) return null;
 
   return (
-    <div
-      key={unit.token}
-      className={`${animateUnit} flex h-full w-full flex-col overflow-hidden bg-background`}
-      ref={divref}
-    >
+    <div key={unit.token} className={`flex h-full w-full flex-col overflow-hidden bg-background`} ref={divref}>
       {/* <FeedbackPortal
         variable={variable.name}
         conditionReport={conditionReport}
@@ -67,7 +63,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
           <div ref={refs.box} className="relative z-20 h-full overflow-hidden will-change-auto">
             {/* This div moves around behind the div containing the document to show the swipe code  */}
             <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
-            <div ref={refs.text} className={`relative top-0 h-full will-change-auto`}>
+            <div ref={refs.text} className={`${animateUnit} relative top-0 h-full will-change-auto`}>
               <Document
                 centered
                 showAll={true}

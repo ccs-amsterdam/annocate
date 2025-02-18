@@ -70,14 +70,14 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 function getCodebookStyling(codebook: Codebook) {
   if (codebook.type.includes("survey")) {
     return {
-      container: "text-foreground bg-background min-h-full my-auto",
+      container: "text-foreground bg-background min-h-full  ",
       text: "mt-6 w-full",
       question: "text-2xl font-bold text-center",
     };
   }
   return {
-    container: "border-primary  text-foreground  overflow-auto border-t-2  border-primary",
-    text: "bg-primary text-primary-foreground",
+    container: "  text-foreground  overflow-auto border-t pt-1 border-foreground",
+    text: "",
     question: "text-center",
   };
 }

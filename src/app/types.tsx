@@ -81,13 +81,14 @@ export type JobResponse = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataSchema>;
 export type UnitDataResponse = z.infer<typeof UnitDataResponseSchema>;
-export type Progress = z.infer<typeof AnnotateProgressSchema>;
 export type Rules = z.infer<typeof JobRulesSchema>;
 
 export type CodebookVariable = z.infer<typeof VariableSchema> & {
   name: string;
   layout?: Layout;
 };
+
+export type Progress = z.infer<typeof AnnotateProgressSchema>;
 
 export interface Codebook {
   type: BlockType;
@@ -145,6 +146,8 @@ export interface JobServer {
   getCodebook: (phaseNumber: number) => Promise<GetCodebook>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
+
+  previewMode?: boolean;
 }
 
 export type JobStateAnnotations = z.infer<typeof JobStateAnnotationsSchema>;

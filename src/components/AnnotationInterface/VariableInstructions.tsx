@@ -43,12 +43,11 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
     </div>
   );
 
-  if (mode === "after") {
+  if (mode === "inline") {
     return (
       <div className="w-full">
+        <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={false} />
         {question}
-        {survey ? <br /> : null}
-        <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={foldable} />
       </div>
     );
   }
@@ -105,11 +104,7 @@ function FoldableInstruction({ instruction, show, setShow, foldable, before }: I
       style={style}
       className={`${show ? "" : "text-foreground"} flexmin-w-0 relative overflow-visible transition-all`}
     >
-      <div
-        onClick={() => setShow(!show)}
-        ref={ref}
-        className={` ${show ? "py-1" : ""} w-full cursor-pointer overflow-hidden`}
-      >
+      <div onClick={() => setShow(!show)} ref={ref} className={` ${show ? "py-1" : ""} w-full overflow-hidden`}>
         {show ? (
           <Markdown compact style={{ hyphens: "auto", visibility: show ? "visible" : "hidden" }}>
             {instruction + (foldable ? " &nbsp;&nbsp;&#x2718;" : "")}

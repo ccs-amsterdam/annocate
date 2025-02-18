@@ -53,12 +53,24 @@ export default class AnnotationManager {
     this.postAnnotations = async (status: Status) => status as Status;
   }
 
-  initialize(jobServer: JobServer, unit: Unit, codebook: ExtendedCodebook, setUnitBundle: SetState<UnitBundle | null>) {
+  initialize({
+    jobServer,
+    unit,
+    codebook,
+    setUnitBundle,
+    variableIndex,
+  }: {
+    jobServer: JobServer;
+    unit: Unit;
+    codebook: ExtendedCodebook;
+    setUnitBundle: SetState<UnitBundle | null>;
+    variableIndex?: number;
+  }) {
     // TODO
     // Here add step where we perform any needed tokenization, based on any tokenization settings in codebook
     // This is needed in createAnnotationLibrary to match annotations to tokenindices
 
-    this.annotationLib = createAnnotationLibrary(jobServer, unit, codebook, unit.annotations);
+    this.annotationLib = createAnnotationLibrary(jobServer, unit, codebook, unit.annotations, variableIndex);
     this.lastAnnotationIds = Object.keys(this.annotationLib.annotations);
     this.setUnitBundle = setUnitBundle;
     this.postAnnotations = async (status: Status) => {
@@ -267,6 +279,7 @@ export function createAnnotationLibrary(
   unit: Unit,
   codebook: ExtendedCodebook,
   annotations: Annotation[],
+  focusVariableIndex?: number,
 ): AnnotationLibrary {
   const variableMap = createVariableMap(codebook.variables || []);
 
@@ -299,7 +312,7 @@ export function createAnnotationLibrary(
     byToken: newTokenDictionary(annotationDict),
     codeHistory: initializeCodeHistory(annotationArray),
     variables: codebook.variables,
-    variableIndex: variableIndex,
+    variableIndex: focusVariableIndex ?? variableIndex,
     variableStatuses,
     previousIndex: 0,
   };
