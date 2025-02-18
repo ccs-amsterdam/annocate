@@ -46,7 +46,7 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
       >
         <StepBack />
       </Button>
-      <div className="w-full py-2">{children}</div>
+      <div className="h-full py-2">{children}</div>
       <Button
         size="icon"
         variant="ghost"

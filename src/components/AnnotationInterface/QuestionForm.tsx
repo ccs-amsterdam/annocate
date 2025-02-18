@@ -45,20 +45,15 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
       className={`${getCodebookStyling(codebook).container} relative z-30 flex flex-col overflow-hidden text-[length:inherit] transition-[border]`}
     >
       <div className={`${getCodebookStyling(codebook).text} relative z-40 flex w-full flex-col`}>
+        <div className="px-3">
+          <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook} />
+        </div>
         <QuestionIndexStep>
-          <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook}>
-            <div className={`${getCodebookStyling(codebook).question} ${animate}`}>
-              <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
-            </div>
-          </VariableInstructions>
+          <div className={`${getCodebookStyling(codebook).question} ${animate}`}>
+            <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+          </div>
         </QuestionIndexStep>
       </div>
-
-      {/* {codebook.type === "survey" ? (
-        <div className="px-9">
-          <Markdown>{variable.instruction}</Markdown>
-        </div>
-      ) : null} */}
 
       <div className={`${animate} relative flex w-full flex-auto text-[length:inherit] text-foreground`}>
         <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
@@ -71,12 +66,12 @@ function getCodebookStyling(codebook: Codebook) {
   if (codebook.type.includes("survey")) {
     return {
       container: "text-foreground bg-background min-h-full  ",
-      text: "mt-6 w-full",
-      question: "text-2xl font-bold text-center",
+      text: "mt-6 w-full h-full flex-auto text-start",
+      question: "text-2xl font-bold text-center border",
     };
   }
   return {
-    container: "  text-foreground  overflow-auto border-t pt-1 border-foreground",
+    container: "text-foreground  overflow-auto border-t pt-1 border-foreground",
     text: "",
     question: "text-center",
   };

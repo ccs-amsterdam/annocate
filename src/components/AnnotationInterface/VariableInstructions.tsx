@@ -9,7 +9,7 @@ import { Drawer, DrawerClose, DrawerContent, DrawerTrigger } from "../ui/drawer"
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface VariableInstructionsProps {
-  children: ReactElement<any>;
+  children?: ReactElement<any>;
   unit: Unit;
   annotationLib: AnnotationLibrary;
   codebook: ExtendedCodebook;
@@ -22,13 +22,15 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
   const instruction = variable?.instruction;
 
-  const mode = variable?.instructionMode || "after";
-  const survey = codebook.type.includes("survey");
-  const foldable = !survey || mode.includes("modal");
+  const mode = variable?.instructionMode;
 
   const sessionVariableKey = annotationLib.sessionId + "." + variable.name;
   const showOnMount = mode !== "modal";
   const [show, setShow] = useSessionStorage(sessionVariableKey, showOnMount);
+
+  if (!mode) return <div className="">{children}</div>;
+  const survey = codebook.type.includes("survey");
+  const foldable = !survey || mode.includes("modal");
 
   if (!instruction) return <div className="">{children}</div>;
 
@@ -45,7 +47,7 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
 
   if (mode === "inline") {
     return (
-      <div className="w-full">
+      <div className="flex h-full w-full flex-col gap-3">
         <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={false} />
         {question}
       </div>
@@ -116,7 +118,7 @@ function FoldableInstruction({ instruction, show, setShow, foldable, before }: I
             size="icon"
             className="flex h-6 w-full justify-center hover:bg-transparent"
           >
-            <InfoIcon className="p-[3px] text-primary-foreground/70" />
+            <InfoIcon className="p-[3px] text-foreground/70" />
           </Button>
         )}
       </div>
