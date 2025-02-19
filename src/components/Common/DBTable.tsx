@@ -34,7 +34,7 @@ export default function DBTable<T extends Record<string, Value>>(props: Props<T>
   const showPagination = props.hasSearch || (prevProps.meta && prevProps.meta.rows > prevProps.meta.pageSize);
   return (
     <div className={props.className || ""}>
-      <div className={` mb-4 flex select-none gap-3  ${showPagination ? "" : "hidden"}`}>
+      <div className={`mb-4 flex select-none gap-3 ${showPagination ? "" : "hidden"}`}>
         <DBSearch search={props.search} isLoading={props.isLoading} />
         <DBPagination paginate={props.paginate} />
       </div>
@@ -92,7 +92,7 @@ function RenderTable<T extends Record<string, Value>>({ data, meta, sortBy, onSe
               <TableHead key={fullKey}>
                 <div
                   role="button"
-                  className={`group flex cursor-pointer select-none items-center gap-3 font-bold text-primary `}
+                  className={`group flex cursor-pointer select-none items-center gap-3 font-bold text-primary`}
                   onClick={() => onSort(fullKey)}
                 >
                   {label} {renderSortChevron(fullKey)}
@@ -132,7 +132,7 @@ export function DBSearch({ search, isLoading }: { search: (query: string) => voi
   return (
     <div className="relative">
       <Input
-        className="flex-shrink-1 h-9  min-w-0 border-none bg-primary/30"
+        className="flex-shrink-1 h-9 min-w-0 border-none bg-primary/30"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search"

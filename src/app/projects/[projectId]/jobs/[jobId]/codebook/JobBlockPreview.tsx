@@ -7,11 +7,13 @@ import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
 import React, { useEffect, useMemo } from "react";
 import { useRef, useState } from "react";
+import { ZodError } from "zod";
+import { fromError } from "zod-validation-error";
 
 interface Props {
   projectId: number;
   jobId: number;
-  preview: JobBlocksResponse | null;
+  preview?: JobBlocksResponse | ZodError;
 }
 
 type UnitCache = Record<number | string, Omit<GetUnit, "progress">>;
@@ -28,8 +30,9 @@ export function JobBlockPreview({ projectId, jobId, preview }: Props) {
 
   const jobServer = useMemo(() => {
     if (!blocks || blocks.length === 0 || !user) return null;
+    if (preview instanceof ZodError) return null;
 
-    const jobBlocks = preview ? createPreviewPhase(blocks, preview) : blocks || [];
+    const jobBlocks = preview !== undefined ? createPreviewPhase(blocks, preview) : blocks || [];
 
     return new JobServerDesign({
       projectId,
@@ -40,6 +43,14 @@ export function JobBlockPreview({ projectId, jobId, preview }: Props) {
       previewMode: !!preview,
     });
   }, [blocks, user, mockServer, preview]);
+
+  if (preview instanceof ZodError) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div>Solve validation errors to show preview</div>
+      </div>
+    );
+  }
 
   if (!jobServer) return null;
 

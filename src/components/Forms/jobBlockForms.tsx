@@ -13,10 +13,10 @@ import { JobBlocksResponse } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { Button } from "../ui/button";
 import { Form, FormMessage } from "../ui/form";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Loading } from "../ui/loader";
 import { VariableBlockForm } from "./variableBlockForm";
 import { TextFormField } from "./formHelpers";
@@ -32,7 +32,7 @@ interface CreateJobBlockProps {
   type: JobBlocksResponse["type"];
   parentId: number | null;
   position: number;
-  setPreview: (block: JobBlocksResponse | null) => void;
+  setPreview: (block: JobBlocksResponse | undefined | ZodError) => void;
   current?: JobBlocksResponse;
   afterSubmit: () => void;
   onCancel: () => void;
@@ -153,20 +153,28 @@ function useUpdatePreview({
   setPreview,
 }: {
   form: UseFormReturn<JobBlockCreate>;
-  setPreview: (block: JobBlocksResponse | null) => void;
+  setPreview: (block: JobBlocksResponse | undefined | ZodError) => void;
 }) {
   const watch = useWatch({ control: form.control });
+  const triggerRef = useRef(false);
 
   useEffect(() => {
     if (!setPreview) return;
     const timeout = setTimeout(() => {
-      const jobBlock = JobBlockCreateSchema.safeParse(watch);
-      if (jobBlock.success) {
-        setPreview({ ...jobBlock.data, id: 0, level: 0, children: 0, position: 0 });
-      } else {
-        setPreview(null);
+      try {
+        const jobBlock = JobBlockCreateSchema.parse(watch);
+        setPreview({ ...jobBlock, id: 0, level: 0, children: 0, position: 0 });
+        triggerRef.current = true;
+        form.trigger();
+      } catch (e: any) {
+        if (e instanceof ZodError) setPreview(e);
+        if (triggerRef.current) form.trigger();
       }
     }, 500);
-    return () => clearTimeout(timeout);
+
+    return () => {
+      // setPreview(undefined);
+      clearTimeout(timeout);
+    };
   }, [watch, setPreview, form]);
 }

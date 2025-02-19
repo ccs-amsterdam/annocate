@@ -12,7 +12,7 @@ import { SimplePopover } from "@/components/ui/simplePopover";
 import { Book, Edit, PlusIcon, Trash, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { getValidChildren } from "@/functions/treeFunctions";
 import { JobBlockPreview } from "./JobBlockPreview";
 
@@ -31,7 +31,7 @@ interface BlockFormProps {
 export function JobBlocks({ projectId, jobId }: Props) {
   const { data: blocks, isLoading, isPending } = useJobBlocks(projectId, jobId);
   const [blockForm, setBlockForm] = useState<BlockFormProps | null>(null);
-  const [preview, setPreview] = useState<JobBlocksResponse | null>(null);
+  const [preview, setPreview] = useState<JobBlocksResponse | undefined | ZodError>(undefined);
   const [changesPending, setChangesPending] = useState(false);
 
   function conditionalRenderLeft() {
@@ -49,7 +49,9 @@ export function JobBlocks({ projectId, jobId }: Props) {
     }
 
     return (
-      <div className={` ${disabled ? "pointer-events-none opacity-50" : ""} flex animate-slide-in-left flex-col`}>
+      <div
+        className={` ${disabled ? "pointer-events-none opacity-50" : ""} flex w-max min-w-[400px] animate-slide-in-left flex-col`}
+      >
         {(blocks || []).map((block) => {
           return (
             <JobBlockItem
@@ -72,7 +74,7 @@ export function JobBlocks({ projectId, jobId }: Props) {
     if (!blockForm)
       return (
         <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
-          <JobBlockPreview projectId={projectId} jobId={jobId} preview={null} />
+          <JobBlockPreview projectId={projectId} jobId={jobId} preview={undefined} />
         </div>
       );
     if (!blocks) return null;
@@ -80,6 +82,7 @@ export function JobBlocks({ projectId, jobId }: Props) {
     return (
       <div className="flex h-full w-full animate-slide-in-left flex-col gap-6 p-3">
         <CreateOrUpdateJobBlock
+          key={blockForm.currentId ?? "new" + blockForm.type}
           projectId={projectId}
           jobId={jobId}
           parentId={blockForm.parentId}
@@ -190,7 +193,7 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
 
   function blockStyle() {
     if (block.type.includes("Phase"))
-      return `${block.position > 0 ? "mt-6" : ""} bg-primary text-primary-foreground rounded-t border-b font-bold`;
+      return `${block.position > 0 ? "mt-6" : ""} bg-primary/10  rounded-t border-b font-bold`;
     if (block.level > 0) return "bg-primary/10";
     if (isPhase) return "";
   }
