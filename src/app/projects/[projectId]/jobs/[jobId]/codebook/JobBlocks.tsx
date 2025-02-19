@@ -34,53 +34,125 @@ export function JobBlocks({ projectId, jobId }: Props) {
   const [preview, setPreview] = useState<JobBlocksResponse | undefined | ZodError>(undefined);
   const [changesPending, setChangesPending] = useState(false);
 
-  function conditionalRenderLeft() {
-    if (isLoading || isPending) return <Loading />;
-    if (!blocks) return <div>Job blocks not found</div>;
+  const windowProps: WindowProps = {
+    projectId,
+    jobId,
+    blockForm,
+    setBlockForm,
+    preview,
+    setPreview,
+    changesPending,
+    setChangesPending,
+    blocks,
+    isLoading,
+    isPending,
+  };
 
-    const disabled = !!blockForm && changesPending;
+  return (
+    <div className="mx-auto grid w-full grid-cols-1 gap-16 lg:grid-cols-[600px,1fr] lg:gap-9">
+      <LeftWindow {...windowProps} />
+      <RightWindow {...windowProps} />
+    </div>
+  );
+}
 
-    if (!!blockForm && changesPending) {
-      return (
-        <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
-          <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
-        </div>
-      );
-    }
+interface WindowProps {
+  projectId: number;
+  jobId: number;
+  blockForm: BlockFormProps | null;
+  setBlockForm: (props: BlockFormProps | null) => void;
+  preview: JobBlocksResponse | undefined | ZodError;
+  setPreview: (value: JobBlocksResponse | undefined | ZodError) => void;
+  changesPending: boolean;
+  setChangesPending: (value: boolean) => void;
+  blocks: JobBlocksResponse[] | undefined;
+  isLoading: boolean;
+  isPending: boolean;
+}
 
+function LeftWindow({
+  projectId,
+  jobId,
+  blockForm,
+  setBlockForm,
+  preview,
+  changesPending,
+  blocks,
+  isLoading,
+  isPending,
+}: WindowProps) {
+  if (isLoading || isPending) return <Loading />;
+  if (!blocks) return <div>Job blocks not found</div>;
+
+  const disabled = !!blockForm && changesPending;
+
+  if (!!blockForm && changesPending) {
     return (
-      <div
-        className={` ${disabled ? "pointer-events-none opacity-50" : ""} flex w-max min-w-[400px] animate-slide-in-left flex-col`}
-      >
-        {(blocks || []).map((block) => {
-          return (
-            <JobBlockItem
-              key={block.id}
-              block={block}
-              projectId={projectId}
-              jobId={jobId}
-              setBlockForm={setBlockForm}
-            />
-          );
-        })}
-        <div className="mt-12">
-          <CreateBlock newBlock parent={null} position={99999} setBlockForm={setBlockForm} />
-        </div>
+      <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
+        <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
       </div>
     );
   }
 
-  function conditionalRenderRight() {
-    if (!blockForm)
-      return (
-        <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
-          <JobBlockPreview projectId={projectId} jobId={jobId} preview={undefined} />
-        </div>
-      );
-    if (!blocks) return null;
-    const current = blocks.find((block) => block.id === blockForm.currentId);
+  return (
+    <div
+      className={` ${disabled ? "pointer-events-none opacity-50" : ""} flex w-max min-w-[400px] animate-slide-in-left flex-col`}
+    >
+      {(blocks || []).map((block) => {
+        return (
+          <JobBlockItem key={block.id} block={block} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} />
+        );
+      })}
+      <div className="mt-12">
+        <CreateBlock newBlock parent={null} position={99999} setBlockForm={setBlockForm} />
+      </div>
+    </div>
+  );
+}
+
+interface RightWindowProps {
+  projectId: number;
+  jobId: number;
+  blockForm: BlockFormProps | null;
+  setBlockForm: (props: BlockFormProps | null) => void;
+  preview: JobBlocksResponse | undefined | ZodError;
+  changesPending: boolean;
+  blocks: JobBlocksResponse[] | undefined;
+  isLoading: boolean;
+  isPending: boolean;
+}
+
+function RightWindow({
+  projectId,
+  jobId,
+  blockForm,
+  setBlockForm,
+  blocks,
+  preview,
+  setPreview,
+  setChangesPending,
+}: WindowProps) {
+  if (!blockForm)
     return (
-      <div className="flex h-full w-full animate-slide-in-left flex-col gap-6 p-3">
+      <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
+        <JobBlockPreview projectId={projectId} jobId={jobId} preview={undefined} />
+      </div>
+    );
+
+  if (!blocks) return null;
+  const current = blocks.find((block) => block.id === blockForm.currentId);
+
+  function blockPreview() {
+    return (
+      <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
+        <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full animate-slide-in-left flex-col gap-6 p-3">
+      <div className="ml-auto w-[600px]">
         <CreateOrUpdateJobBlock
           key={blockForm.currentId ?? "new" + blockForm.type}
           projectId={projectId}
@@ -97,13 +169,6 @@ export function JobBlocks({ projectId, jobId }: Props) {
           setChangesPending={setChangesPending}
         />
       </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto grid w-full grid-cols-1 gap-16 lg:grid-cols-[600px,1fr] lg:gap-9">
-      {conditionalRenderLeft()}
-      <div className="mx-auto text-center">{conditionalRenderRight()}</div>
     </div>
   );
 }

@@ -67,7 +67,7 @@ function getCodebookStyling(codebook: Codebook) {
     return {
       container: "text-foreground bg-background min-h-full  ",
       text: "mt-6 w-full h-full flex-auto text-start",
-      question: "text-2xl font-bold text-center border",
+      question: "text-2xl font-bold text-center ",
     };
   }
   return {

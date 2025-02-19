@@ -1,39 +1,93 @@
 "use client";
 
-import { FaUser } from "react-icons/fa";
-import { useMiddlecat } from "middlecat-react";
+import { useState } from "react";
+import { User, Settings, Moon, Sun, ShieldCheck, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { useMiddlecat } from "middlecat-react";
+import { useUserDetails } from "@/app/api/me/details/query";
+import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "../ui/dialog";
+import { useDarkMode } from "@/hooks/useDarkMode";
+import AdminPanel from "./AdminPanel";
+import { Loading } from "../ui/loader";
 
 export default function UserMenu() {
-  const { user, loading, signIn, signOut, fixedResource } = useMiddlecat();
+  const { user, loading, signOut } = useMiddlecat();
+  const [adminDialog, setAdminDialog] = useState(false);
+  const [dark, setDark] = useDarkMode();
 
-  function renderAuth() {
-    if (loading) return null;
-    if (user?.email)
-      return (
-        <div className="flex flex-col gap-3">
-          <div className=" flex items-center gap-3">
-            <img src={user.image} alt="profile" className="h-7 w-7 rounded" referrerPolicy="no-referrer" />
-            {user.name || user.email}
-          </div>
-          <Button className="ml-auto mt-10" onClick={() => signOut(true)}>
-            Sign out
-          </Button>
-        </div>
-      );
-    return <Button onClick={() => signIn(fixedResource)}>Sign in</Button>;
-  }
+  if (!user) return <Loader className="animate-spin-slow" />;
 
   return (
-    <Popover>
-      <PopoverTrigger>
-        <User className="h-8 w-8" />
-      </PopoverTrigger>
-      <PopoverContent className="mr-2 mt-5">
-        <div className="flex flex-col gap-3">{renderAuth()}</div>
-      </PopoverContent>
-    </Popover>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          <User />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" data-side="right">
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{user.name}</p>
+              <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Settings</DropdownMenuLabel>
+            <DropdownMenuItem>
+              <div className="flex w-full items-center justify-between">
+                <div className="flex items-center">
+                  {dark ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />}
+                  <span>Dark Mode</span>
+                </div>
+                <Switch checked={dark} onCheckedChange={setDark} />
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <RenderAdmin setAdminDialog={setAdminDialog} />
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => signOut(false)}>Log out</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Dialog open={adminDialog} onOpenChange={setAdminDialog}>
+        <DialogContent
+          onInteractOutside={(e) => e.preventDefault()}
+          className="max-h-[50rem] w-[90vw] max-w-2xl items-start"
+        >
+          <DialogTitle>Admin Panel</DialogTitle>
+          <DialogDescription>Manage users</DialogDescription>
+          <AdminPanel />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function RenderAdmin({ setAdminDialog }: { setAdminDialog: (value: boolean) => void }) {
+  const { user, loading } = useMiddlecat();
+  const { data: userDetails } = useUserDetails();
+  const router = useRouter();
+
+  if (loading) return null;
+  if (userDetails?.role !== "admin") return null;
+
+  return (
+    <DropdownMenuItem onClick={() => setAdminDialog(true)}>
+      <ShieldCheck className="mr-2 h-4 w-4" />
+      <span>Admin Panel</span>
+    </DropdownMenuItem>
   );
 }

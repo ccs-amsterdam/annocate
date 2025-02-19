@@ -1,16 +1,29 @@
 "use client";
 
-import { RiFontSize2 } from "react-icons/ri";
 import useIsClient from "@/hooks/useIsClient";
-import { Loader, Moon, Sun, SunMoon } from "lucide-react";
-import { ReactNode, useEffect } from "react";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { Button } from "../ui/button";
+import { Moon, Sun, SunMoon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ReactNode } from "react";
 
 function setDataset(dataset: string, value: string) {
   if (typeof window === "undefined") return;
   document.documentElement.dataset[dataset] = value;
 }
+
+export const useDarkMode = () => {
+  const [ls, setLs] = useLocalStorage("dark", "off");
+  const isClient = useIsClient();
+
+  const setDark = (bool: true) => {
+    const mode = bool ? "on" : "off";
+    setDataset("dark", mode);
+    setLs(mode);
+  };
+
+  const dark = isClient ? ls === "on" : false;
+  return [dark, setDark] as const;
+};
 
 export const DarkModeButton = () => {
   const [dark, setDark] = useLocalStorage("dark", "off");

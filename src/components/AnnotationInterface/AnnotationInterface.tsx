@@ -3,11 +3,11 @@ import AnnotatorProvider, { useUnit } from "../AnnotatorProvider/AnnotatorProvid
 import QuestionTask from "./QuestionTask";
 import { ReactNode, useRef } from "react";
 import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
-import { DarkModeButton } from "../Common/Theme";
 import IndexController from "./IndexController";
 import Finished from "./Finished";
 import { useHeight } from "@/hooks/useHeight";
 import { Loading } from "../ui/loader";
+import { DarkModeButton } from "@/hooks/useDarkMode";
 
 interface Props {
   jobServer: JobServer;
@@ -34,9 +34,9 @@ function AnnotationMenu() {
     <div className="z-20 flex h-14 items-center justify-between gap-2 border-b-[calc(0px+var(--nav-border-height))] border-foreground px-3">
       <IndexController />
       <div className="flex-1">
-        <ResponsiveButtonGroup>
+        {/* <ResponsiveButtonGroup>
           <DarkModeButton />
-        </ResponsiveButtonGroup>
+        </ResponsiveButtonGroup> */}
       </div>
     </div>
   );

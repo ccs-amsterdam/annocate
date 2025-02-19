@@ -4,7 +4,6 @@ import { useUserDetails } from "@/app/api/me/details/query";
 import Link from "next/link";
 import { useParams, useRouter, useSelectedLayoutSegments } from "next/navigation";
 import { FaChevronRight, FaCog } from "react-icons/fa";
-import { DarkModeButton } from "../Common/Theme";
 import UserMenu from "./UserMenu";
 import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
 import { ChevronLeft, Home, ChevronRight, Cog, Folder } from "lucide-react";
@@ -53,17 +52,13 @@ export default function Menu() {
 
   return (
     <menu className="w-full px-2">
-      <div className="m-0 flex min-h-[3.8rem] list-none items-center gap-2 px-3 pb-0 pt-1 text-xl text-foreground">
+      <div className="m-0 flex min-h-[3.8rem] list-none items-center gap-2 px-3 text-foreground">
         <div key="left" className="mt-1 flex min-h-[3rem] flex-auto items-center">
           <Breadcrumbs project={project} job={job} />
         </div>
 
         <div key="right" className="flex h-full items-center justify-end">
-          <ResponsiveButtonGroup>
-            {renderAdmin()}
-            <DarkModeButton />
-            <UserMenu />
-          </ResponsiveButtonGroup>
+          <UserMenu />
         </div>
       </div>
     </menu>

@@ -9,7 +9,6 @@ import { safeParams } from "@/functions/utils";
 
 export default function JobManagementPage(props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(use(props.params));
-  console.log(params);
 
   return (
     <div className="container mx-auto mt-16 max-w-3xl py-8">

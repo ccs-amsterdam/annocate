@@ -17,7 +17,6 @@ export default function Projects() {
   return (
     <div className="mx-auto mt-10 flex w-full max-w-5xl flex-auto flex-col items-center">
       <div className="">
-        <h2>Manage Projects</h2>
         <SimpleDialog
           open={open}
           setOpen={setOpen}

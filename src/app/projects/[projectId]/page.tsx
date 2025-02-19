@@ -4,7 +4,7 @@ import { use, useEffect } from "react";
 import JobsList from "./jobsList";
 import { safeParams } from "@/functions/utils";
 
-export default function Job(props: { params: Promise<{ projectId: string }> }) {
+export default function Project(props: { params: Promise<{ projectId: string }> }) {
   const params = safeParams(use(props.params));
 
   return (

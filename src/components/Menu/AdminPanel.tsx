@@ -7,21 +7,20 @@ import { SimpleDialog } from "@/components/ui/simpleDialog";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
-import { useUsers } from "../api/users/query";
-import { UsersResponseSchema } from "../api/users/schemas";
+import { useUsers } from "@/app/api/users/query";
+import { UsersResponseSchema } from "@/app/api/users/schemas";
 
-export default function Admin() {
+export default function AdminPanel() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mx-auto mt-10 flex w-full max-w-xl flex-auto flex-col items-center">
+    <div className="mx-auto flex w-full max-w-xl flex-auto flex-col items-center">
       <div className="">
-        <h2>Manage users</h2>
         <SimpleDialog
           open={open}
           setOpen={setOpen}
           header="Create new user"
           trigger={
-            <Button variant="ghost" className="mx-auto mt-2 flex items-center gap-2 ">
+            <Button variant="ghost" className="mx-auto flex items-center gap-2">
               Create new user
               <Plus className="h-5 w-5" />
             </Button>
@@ -51,7 +50,7 @@ function UserTable() {
       <SimpleDialog open={open} setOpen={setOpen} header={`${selectedUser?.email}`}>
         {selectedUser ? <UpdateUser current={selectedUser} afterSubmit={() => setOpen(false)} /> : null}
       </SimpleDialog>
-      <DBTable className="mt-8 w-full p-3" {...useUsersProps} onSelect={onSelect} columns={COLUMNS} />
+      <DBTable className="w-full p-3" {...useUsersProps} onSelect={onSelect} columns={COLUMNS} />
     </>
   );
 }
