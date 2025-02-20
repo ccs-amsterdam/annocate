@@ -71,7 +71,7 @@ function getCodebookStyling(codebook: Codebook) {
     };
   }
   return {
-    container: "text-foreground  overflow-auto border-t pt-1 border-foreground",
+    container: "text-foreground  overflow-auto pt-1 bg-primary/10 border-t border-primary/30",
     text: "",
     question: "text-center",
   };

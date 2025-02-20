@@ -22,6 +22,7 @@ export const useDarkMode = () => {
   };
 
   const dark = isClient ? ls === "on" : false;
+  console.log("in hook", dark);
   return [dark, setDark] as const;
 };
 

@@ -13,6 +13,7 @@ import {
   Doc,
   Layout,
   GetJobState,
+  JobState,
 } from "@/app/types";
 import { UnitBundle } from "./AnnotatorProvider";
 import AnnotationManager from "@/functions/AnnotationManager";
@@ -54,8 +55,8 @@ export function createUnitBundle({
 interface ProcessUnitContentParams {
   unit: Unit;
   layout: Layout;
-  evalStringWithJobState: (str: string, jobState: GetJobState) => Promise<string>;
-  jobState: GetJobState;
+  evalStringWithJobState: (str: string, jobState: JobState) => Promise<string>;
+  jobState: JobState;
 }
 
 export async function processUnitContent({

@@ -197,8 +197,7 @@ class JobServerDesign implements JobServer {
     if (!this.setJobState) return;
 
     const unitData = this.unitCache[unitIndex]?.data || {};
-    const surveyAnnotations: JobState["surveyAnnotations"] = {};
-    const unitAnnotations: JobState["unitAnnotations"] = {};
+    const annotations: JobState["annotations"] = {};
 
     function setOrAppend<T>(current: T | T[] | undefined, value: T) {
       if (current === undefined) return value;
@@ -209,26 +208,17 @@ class JobServerDesign implements JobServer {
     const survey = this.unitCache["survey"]?.annotations || [];
     const unit = unitIndex !== "survey" ? this.unitCache[unitIndex]?.annotations || [] : [];
 
-    for (let ann of survey) {
-      if (!surveyAnnotations[ann.variable]) surveyAnnotations[ann.variable] = {};
+    for (let ann of [...survey, ...unit]) {
+      if (!annotations[ann.variable]) annotations[ann.variable] = {};
       if (ann.code) {
-        surveyAnnotations[ann.variable].code = setOrAppend(surveyAnnotations[ann.variable].code, ann.code);
+        annotations[ann.variable].code = setOrAppend(annotations[ann.variable].code, ann.code);
       }
       if (ann.value) {
-        surveyAnnotations[ann.variable].value = setOrAppend(surveyAnnotations[ann.variable].value, ann.value);
-      }
-    }
-    for (let ann of unit) {
-      if (!unitAnnotations[ann.variable]) unitAnnotations[ann.variable] = {};
-      if (ann.code) {
-        unitAnnotations[ann.variable].code = setOrAppend(unitAnnotations[ann.variable].code, ann.code);
-      }
-      if (ann.value) {
-        unitAnnotations[ann.variable].value = setOrAppend(unitAnnotations[ann.variable].value, ann.value);
+        annotations[ann.variable].value = setOrAppend(annotations[ann.variable].value, ann.value);
       }
     }
 
-    this.setJobState({ unitData, surveyAnnotations, unitAnnotations });
+    this.setJobState({ unitData, annotations });
   }
 }
 

@@ -1,6 +1,6 @@
 "use cient";
 
-import { GetJobState } from "@/app/types";
+import { GetJobState, JobState } from "@/app/types";
 import { createContext, ReactElement, ReactNode, useContext } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
@@ -13,7 +13,7 @@ interface IFrameObj {
 
 interface SandboxContextProps {
   evalStringTemplate: (str: string, data: Record<string, any>) => Promise<string>;
-  evalStringWithJobState: (str: string, jobState: GetJobState) => Promise<string>;
+  evalStringWithJobState: (str: string, jobState: JobState) => Promise<string>;
   ready: boolean;
 }
 
@@ -64,6 +64,7 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
           window.removeEventListener("message", handleMessage);
           try {
             const { id, result, error } = event.data;
+            console.log(result, error);
             if (error) reject(error);
             if (id !== iframeObj.senderId) throw new Error("Invalid response id");
             resolve(outputSchema.parse(result));
@@ -90,23 +91,22 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
         if (i >= codeParts.length) continue;
 
         try {
+          console.log(codeParts[i]);
           result += await evalInSandbox(codeParts[i], data, z.coerce.string());
         } catch (e) {
           console.log(`ERROR in script {{${codeParts[i]}}}: `, e);
           result += "[...]";
         }
       }
+      console.log(result);
       return result;
     },
     [evalInSandbox],
   );
 
   const evalStringWithJobState = useCallback(
-    async (str: string, jobState: GetJobState): Promise<string> => {
-      const data = {
-        survey: jobState.surveyAnnotations,
-      };
-      return evalStringTemplate(str, data);
+    async (str: string, jobState: JobState): Promise<string> => {
+      return evalStringTemplate(str, jobState);
     },
     [evalStringTemplate],
   );
@@ -139,8 +139,10 @@ function createSandboxedIframe(origin: string, senderId: string, receiverId: str
 
                 const handleMessage = (event) => {
                     let { id, code, data} = event.data;
-                    const {survey} = data
-                    const d = data
+
+                    function FIELD(str) data?.unitData?.[str]
+                    function CODE(str) data?.annotations?.[str]?.code
+                    function VALUE(str) data?.annotations?.[str]?.value
 
                     try {
                         if (event.source !== window.parent) throw new Error("Invalid source");

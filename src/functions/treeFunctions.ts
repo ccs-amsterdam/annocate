@@ -1,10 +1,10 @@
 import { BlockType } from "@/app/types";
 
 export const validParents: Record<BlockType, (BlockType | "ROOT")[]> = {
-  annotationPhase: ["ROOT", "annotationPhase"],
-  surveyPhase: ["ROOT", "surveyPhase"],
-  annotationQuestion: ["ROOT", "annotationPhase"],
-  surveyQuestion: ["ROOT", "surveyPhase"], //
+  annotationPhase: ["ROOT"],
+  surveyPhase: ["ROOT"],
+  annotationQuestion: ["annotationPhase"],
+  surveyQuestion: ["surveyPhase"],
 };
 
 export function getValidChildren(type: BlockType | null): BlockType[] {

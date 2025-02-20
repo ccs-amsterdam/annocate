@@ -257,9 +257,8 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
   }
 
   function blockStyle() {
-    if (block.type.includes("Phase"))
-      return `${block.position > 0 ? "mt-6" : ""} bg-primary/10  rounded-t border-b font-bold`;
-    if (block.level > 0) return "bg-primary/10";
+    if (block.type.includes("Phase")) return `${block.position > 0 ? "mt-6" : ""}   font-bold`;
+    if (block.level > 0) return "";
     if (isPhase) return "";
   }
 

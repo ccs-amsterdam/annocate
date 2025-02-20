@@ -68,10 +68,6 @@ const Document = (props: DocumentProps) => {
   const { unit, annotationLib, annotationManager } = useUnit();
   const { loading, content } = useContent();
 
-  useEffect(() => {
-    console.log("wtfddd");
-  }, [content]);
-
   if (!content) return null;
 
   return (

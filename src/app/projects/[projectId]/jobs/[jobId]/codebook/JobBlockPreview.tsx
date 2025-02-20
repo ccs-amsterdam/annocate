@@ -3,6 +3,7 @@ import { GetUnit, JobBlocksResponse, JobState, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";
+import { useDarkMode } from "@/hooks/useDarkMode";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useMiddlecat } from "middlecat-react";
 import React, { useEffect, useMemo } from "react";
@@ -30,9 +31,9 @@ export function JobBlockPreview({ projectId, jobId, preview }: Props) {
 
   const jobServer = useMemo(() => {
     if (!blocks || blocks.length === 0 || !user) return null;
-    if (preview instanceof ZodError) return null;
 
-    const jobBlocks = preview !== undefined ? createPreviewPhase(blocks, preview) : blocks || [];
+    const jobBlocks = createPreviewPhase(blocks, preview);
+    if (!jobBlocks) return null;
 
     return new JobServerDesign({
       projectId,
@@ -72,8 +73,7 @@ export function JobBlockPreview({ projectId, jobId, preview }: Props) {
 
 function initJobState(): JobState {
   return {
-    unitAnnotations: {},
-    surveyAnnotations: {},
+    annotations: {},
     unitData: {},
   };
 }
@@ -96,7 +96,7 @@ export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign
     <div className="flex flex-wrap items-start justify-center gap-6">
       <div
         tabIndex={0}
-        className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-foreground/50 ${!blockEvents ? "ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-primary/20 ${!blockEvents ? "ring-4 ring-secondary ring-offset-2" : ""}`}
         onClick={(e) => {
           e.currentTarget.focus();
         }}
@@ -115,15 +115,41 @@ export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign
   );
 }
 
-function createPreviewPhase(jobBlocks: JobBlocksResponse[], block: JobBlocksResponse): JobBlocksResponse[] {
+function createPreviewPhase(
+  jobBlocks: JobBlocksResponse[],
+  block: JobBlocksResponse | ZodError | undefined,
+): JobBlocksResponse[] | null {
+  if (block === undefined) return jobBlocks;
+  if (block instanceof ZodError) return null;
+  if (block.type === "surveyPhase") return null;
+
+  const blocks = addParentBlocks(jobBlocks, block);
+  if (block.type === "annotationPhase")
+    blocks.push({
+      id: 0,
+      name: "dummy",
+      level: 0,
+      children: 0,
+      type: "annotationQuestion",
+      parentId: block.id,
+      position: 0,
+      content: {
+        type: "select code",
+        question: "This is what the annotator sees",
+        codes: [{ code: "Next" }],
+      },
+    });
+  return blocks;
+}
+
+function addParentBlocks(jobBlocks: JobBlocksResponse[], block: JobBlocksResponse): JobBlocksResponse[] {
   // if a preview block is given, we need to trace back it's
   // parent blocks to simulate how it would look like in the context
-  // of the job. We set the positions to 0, because we only lookt
-  // at one block per level
+  // of the job.
   const parentIndex = jobBlocks.findIndex((b) => b.id === block.parentId);
   if (parentIndex === -1) return [block];
   const parent = { ...jobBlocks[parentIndex], position: 0 };
-  return [...createPreviewPhase(jobBlocks, parent), block];
+  return [...addParentBlocks(jobBlocks, parent), block];
 }
 
 // function PreviewDataWindow({ previewData }: { previewData: GetJobState | null }) {

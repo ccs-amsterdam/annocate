@@ -70,8 +70,7 @@ export const GetJobStateParamsSchema = z
   .catchall(z.union([z.string(), z.number()]));
 
 export const GetJobStateResponseSchema = z.object({
-  surveyAnnotations: JobStateAnnotationsSchema,
-  unitAnnotations: JobStateAnnotationsSchema,
+  annotations: JobStateAnnotationsSchema,
 });
 
 export const GetUnitResponseSchema = z.object({

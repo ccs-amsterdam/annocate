@@ -136,8 +136,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
 
 function initJobState(): JobState {
   return {
-    surveyAnnotations: {},
-    unitAnnotations: {},
+    annotations: {},
     unitData: {},
   };
 }
