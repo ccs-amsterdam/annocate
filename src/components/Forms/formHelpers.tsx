@@ -51,6 +51,7 @@ interface FormFieldProps<T extends FieldValues> {
 interface FormFieldArrayProps<T extends FieldValues> extends FormFieldProps<T> {
   values: FormOptions[];
   labelWidth?: string;
+  variant?: "default" | "secondary" | "destructive" | "ghost" | "outline";
 }
 
 interface CodeFormProps<T extends FieldValues> extends FormFieldProps<T> {
@@ -179,7 +180,8 @@ export function TextAreaFormField<T extends FieldValues>({
         const realValue = asArray ? (value as string[]).join("\n") : value;
         const realOnChange = asArray
           ? (e: any) => {
-              const array = e.target.value.split("\n");
+              const target = e.target as HTMLTextAreaElement;
+              const array = target.value.split("\n");
               onChange(array);
             }
           : onChange;
@@ -278,6 +280,7 @@ export function DropdownFormField<T extends FieldValues>({
   placeholder,
   disableMessage,
   hideTitle,
+  variant,
 }: FormFieldArrayProps<T>) {
   const openAPI = OpenAPIMeta(zType, name);
 
@@ -299,7 +302,7 @@ export function DropdownFormField<T extends FieldValues>({
             <FormControl>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button className="flex w-full items-center justify-between gap-2">
+                  <Button variant={variant || "default"} className="flex w-full items-center justify-between gap-2">
                     {fieldLabel}
 
                     <ChevronDown className="h-5 w-5 text-primary-foreground hover:text-primary" />
@@ -454,7 +457,7 @@ export function CodesFormField<T extends FieldValues>({
                           <Input
                             className={valueInputStyle}
                             type="number"
-                            value={String(code.value)}
+                            value={String(code.value) || ""}
                             onChange={(v) => {
                               codes[i].value = Number(v.target.value);
                               field.onChange(codes);
@@ -464,7 +467,7 @@ export function CodesFormField<T extends FieldValues>({
                         <TableCell className={cellStyle}>
                           <Input
                             className={colorInputStyle}
-                            value={String(code.color)}
+                            value={String(code.color) || ""}
                             onChange={(v) => {
                               codes[i].color = v.target.value;
                               field.onChange(codes);
@@ -484,15 +487,13 @@ export function CodesFormField<T extends FieldValues>({
               </Table>
             </FormControl>
             <Button
-              variant={"secondary"}
-              size="icon"
-              className={`mx-1 h-6 w-6 rounded-full`}
+              variant={codes.length > 0 ? "ghost" : "default"}
               onClick={(e) => {
                 e.preventDefault();
                 addCode(field, codes);
               }}
             >
-              <PlusIcon />
+              {codes.length > 0 ? "Add Code" : "Create codes"}
             </Button>
           </FormItem>
         );

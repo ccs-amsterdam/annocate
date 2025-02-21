@@ -1,4 +1,4 @@
-import { Bold, Edit, Italic, Underline } from "lucide-react";
+import { AlignCenter, Bold, Edit, Italic, Underline } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { CSSProperties, useEffect, useState } from "react";
@@ -9,9 +9,10 @@ import { Textarea } from "../ui/textarea";
 interface Props {
   style: Record<string, string>;
   setStyle: (style: Record<string, string>) => void;
+  positionBottom?: boolean;
 }
 
-export function StyleToolbar({ style, setStyle }: Props) {
+export function StyleToolbar({ style, setStyle, positionBottom }: Props) {
   const [customStyle, setCustomStyle] = useState<string>("");
 
   function buttonActive(key: keyof CSSProperties, value: string) {
@@ -28,10 +29,16 @@ export function StyleToolbar({ style, setStyle }: Props) {
     }
   }
 
-  function buttonProps(key: keyof CSSProperties, value: string, position?: "left" | "right") {
+  function buttonProps(
+    key: keyof CSSProperties,
+    value: string,
+    position?: "left" | "right" | "leftBottom" | "rightBottom",
+  ) {
     let rounded = "";
     if (position === "left") rounded = "rounded-l";
     if (position === "right") rounded = "rounded-r";
+    if (position === "leftBottom") rounded = "rounded-bl";
+    if (position === "rightBottom") rounded = "rounded-br";
 
     return {
       className: `${buttonActive(key, value)} rounded-none ${rounded}`,
@@ -67,25 +74,33 @@ export function StyleToolbar({ style, setStyle }: Props) {
     style.fontSize !== undefined ? Math.round(Number(style.fontSize.replace(/r?em/, "") || 1) * 100) : 100;
 
   return (
-    <div className="flex ">
-      <Button type="button" size="icon" variant="ghost" {...buttonProps("fontWeight", "bold", "left")}>
+    <div className="flex">
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        {...buttonProps("fontWeight", "bold", positionBottom ? "leftBottom" : "left")}
+      >
         <Bold />
       </Button>
       <Button type="button" size="icon" variant="ghost" {...buttonProps("fontStyle", "italic")}>
         <Italic />
       </Button>
+      <Button type="button" size="icon" variant="ghost" {...buttonProps("textAlign", "center")}>
+        <AlignCenter />
+      </Button>
 
       <div className="relative flex items-center">
         <Input
           type="number"
-          className=" z-10 w-[70px] border-none bg-transparent text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="z-10 w-[70px] border-none bg-transparent text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
           min={10}
           max={400}
           step={10}
           value={fontSize}
           onChange={(e) => setStyle({ ...style, fontSize: Number(e.target.value) / 100 + "em" })}
         />
-        <div className="absolute right-4 top-[9px] z-0 select-none ">%</div>
+        <div className="absolute right-4 top-[9px] z-0 select-none">%</div>
       </div>
       <Popover>
         <PopoverTrigger className="ml-auto">

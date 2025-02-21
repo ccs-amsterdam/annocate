@@ -47,7 +47,7 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const evalInSandbox = useCallback(
-    <T extends any>(code: string, data: Record<string, any>, outputSchema: z.ZodType<T>): Promise<T> => {
+    <T extends any>(script: string, data: Record<string, any>, outputSchema: z.ZodType<T>): Promise<T> => {
       return new Promise((resolve, reject) => {
         if (!iframeObj?.iframe?.contentWindow) {
           reject(new Error("Sandboxed iframe not ready"));
@@ -57,25 +57,25 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
         const handleMessage = (event: MessageEvent) => {
           if (!iframeObj.iframe.contentWindow) return;
           if (event.source !== iframeObj.iframe.contentWindow) return;
-          if (event.data.ready) {
-            iframeObj.iframe.contentWindow.postMessage({ id: iframeObj.receiverId, code }, "*");
-          }
+          // if (event.data.ready) {
+          //   iframeObj.iframe.contentWindow.postMessage({ id: iframeObj.receiverId, script }, "*");
+          // }
 
-          window.removeEventListener("message", handleMessage);
           try {
             const { id, result, error } = event.data;
-            console.log(result, error);
             if (error) reject(error);
             if (id !== iframeObj.senderId) throw new Error("Invalid response id");
             resolve(outputSchema.parse(result));
           } catch (error) {
             reject(error);
           }
+          window.removeEventListener("message", handleMessage);
         };
 
         window.addEventListener("message", handleMessage);
 
-        iframeObj.iframe.contentWindow.postMessage({ id: iframeObj.receiverId, code, data }, "*");
+        console.log(data);
+        iframeObj.iframe.contentWindow.postMessage({ id: iframeObj.receiverId, script, data }, "*");
       });
     },
     [iframeObj],
@@ -83,18 +83,18 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
 
   const evalStringTemplate = useCallback(
     async (str: string, data: Record<string, any>): Promise<string> => {
-      const { textParts, codeParts } = parseCodeFromString(str);
+      const { textParts, scriptParts } = parseScriptFromString(str);
 
       let result = "";
       for (let i = 0; i < textParts.length; i++) {
         result += textParts[i];
-        if (i >= codeParts.length) continue;
+        if (i >= scriptParts.length) continue;
 
         try {
-          console.log(codeParts[i]);
-          result += await evalInSandbox(codeParts[i], data, z.coerce.string());
+          console.log(scriptParts[i]);
+          result += await evalInSandbox(scriptParts[i], data, z.coerce.string());
         } catch (e) {
-          console.log(`ERROR in script {{${codeParts[i]}}}: `, e);
+          console.log(`ERROR in script {{${scriptParts[i]}}}: `, e);
           result += "[...]";
         }
       }
@@ -138,11 +138,12 @@ function createSandboxedIframe(origin: string, senderId: string, receiverId: str
                 delete window.XMLHttpRequest;
 
                 const handleMessage = (event) => {
-                    let { id, code, data} = event.data;
+                    let { id, script, data} = event.data;
 
-                    function FIELD(str) data?.unitData?.[str]
-                    function CODE(str) data?.annotations?.[str]?.code
-                    function VALUE(str) data?.annotations?.[str]?.value
+                    // Accessor functions
+                    const unit = (str) => data?.unitData?.[str]
+                    const code = (str) => data?.annotations?.[str]?.code
+                    const value = (str) => data?.annotations?.[str]?.value
 
                     try {
                         if (event.source !== window.parent) throw new Error("Invalid source");
@@ -151,7 +152,7 @@ function createSandboxedIframe(origin: string, senderId: string, receiverId: str
 
                         id = null;
                         event = null;
-                        const result = eval("(() => " + code + ")()");
+                        const result = eval("(() => " + script + ")()");
                         window.parent.postMessage({ id: "${senderId}", result }, "${origin}");
                     } catch (error) {
                         window.parent.postMessage({ id: "${senderId}", error: error.message }, "${origin}");
@@ -167,21 +168,22 @@ function createSandboxedIframe(origin: string, senderId: string, receiverId: str
   return iframe;
 }
 
-function parseCodeFromString(str: string) {
+function replaceShorthand(str: string, accessor: string): string {
+  const regex = new RegExp(`\\b${accessor}\\$(\\w+)`, "g");
+  return str.replace(regex, `{{${accessor}('$1')}}`);
+}
+
+function parseScriptFromString(str: string) {
+  for (let accessor of ["unit", "code", "value"]) {
+    str = replaceShorthand(str, accessor);
+  }
+  console.log(str);
+
   const regex = new RegExp(/{{(.*?)}}/); // Match text inside two square brackets
   const parts = str.split(regex);
 
   const textParts = parts.filter((p, i) => i % 2 === 0);
-  const codeParts = parts.filter((p, i) => i % 2 === 1);
+  const scriptParts = parts.filter((p, i) => i % 2 === 1);
 
-  return { textParts, codeParts };
-}
-
-function rebuildStringFromParts(textParts: string[], codeResultParts: string[]) {
-  let result = "";
-
-  for (let i = 0; i < textParts.length; i++) {
-    result += textParts[i] + (codeResultParts[i] || "");
-  }
-  return result;
+  return { textParts, scriptParts };
 }

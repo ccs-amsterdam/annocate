@@ -3,7 +3,6 @@ import {
   CodebookScaleTypeSchema,
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
-  InstructionModeOptions,
   variableTypeOptions,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import { Control, FieldValues, UseFormReturn } from "react-hook-form";
@@ -19,6 +18,9 @@ import {
 import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { useState } from "react";
 import { NameField } from "./jobBlockForms";
+import { StyleToolbar } from "../Common/StyleToolbar";
+import { Instrument_Sans } from "next/font/google";
+import VariableInstructions from "../AnnotationInterface/VariableInstructions";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 
@@ -34,15 +36,10 @@ export function VariableBlockForm<T extends FieldValues>({
 }) {
   const generalShape = CodebookVariableSchema.shape;
   const type = form.watch("content.type");
+  const questionStyle = form.watch("content.questionStyle");
 
-  function renderStandard() {
-    if (!type) return null;
-
-    return (
-      <>
-        <QuestionField form={form} />
-      </>
-    );
+  if (!questionStyle) {
+    form.setValue("content.questionStyle", { textAlign: "center", fontWeight: "bold", fontSize: "1.1em" });
   }
 
   function renderType() {
@@ -76,41 +73,56 @@ export function VariableBlockForm<T extends FieldValues>({
         <NameField form={form} />
         <TypeField form={form} />
       </div>
-      {renderStandard()}
-      {renderType()}
+      <DefaultFields form={form}>{renderType()}</DefaultFields>
     </div>
   );
 }
 
-function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
-  const [showInstruction, setShowInstruction] = useState(false);
-  const instructionMode = form.watch("content.instructionMode");
-
+function DefaultFields({ form, children }: { form: UseFormReturn<JobBlockCreate>; children: React.ReactNode }) {
+  const type = form.watch("content.type");
+  if (!type) return null;
   return (
     <>
-      <div className="grid grid-cols-[1fr,180px] items-end gap-2">
-        <TextFormField control={form.control} zType={CodebookVariableSchema.shape.question} name="content.question" />
-        <DropdownFormField
-          control={form.control}
-          zType={CodebookVariableSchema.shape.instructionMode}
-          name="content.instructionMode"
-          values={InstructionModeOptions}
-          labelWidth="8rem"
-          placeholder="No instructions"
-        />
-      </div>
-      {instructionMode != null ? <InstructionField form={form} /> : <div></div>}
+      <QuestionField form={form} />
+      {children}
+      <InstructionField form={form} />
     </>
   );
 }
 
+function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  const style = form.watch(`content.questionStyle`);
+
+  return (
+    <div className="flex flex-col">
+      <TextAreaFormField
+        control={form.control}
+        zType={CodebookVariableSchema.shape.question}
+        name={"content.question"}
+        className="rounded-bl-none"
+      />
+      <StyleToolbar
+        positionBottom
+        style={style || {}}
+        setStyle={(style) => form.setValue(`content.questionStyle`, style, { shouldDirty: true })}
+      />
+    </div>
+  );
+}
+
 function InstructionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+  const style = form.watch(`content.instructionStyle`);
   return (
     <div className="flex flex-col">
       <TextAreaFormField
         control={form.control}
         zType={CodebookVariableSchema.shape.instruction}
         name={"content.instruction"}
+      />
+      <StyleToolbar
+        positionBottom
+        style={style || {}}
+        setStyle={(style) => form.setValue(`content.instructionStyle`, style, { shouldDirty: true })}
       />
     </div>
   );

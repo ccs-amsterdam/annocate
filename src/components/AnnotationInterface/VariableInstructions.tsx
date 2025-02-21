@@ -22,15 +22,11 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   const variable = annotationLib.variables?.[annotationLib.variableIndex];
   const instruction = variable?.instruction;
 
-  const mode = variable?.instructionMode;
-
   const sessionVariableKey = annotationLib.sessionId + "." + variable.name;
-  const showOnMount = mode !== "modal";
+  const showOnMount = variable.instructionAuto;
   const [show, setShow] = useSessionStorage(sessionVariableKey, showOnMount);
 
-  if (!mode) return <div className="">{children}</div>;
   const survey = codebook.type.includes("survey");
-  const foldable = !survey || mode.includes("modal");
 
   if (!instruction) return <div className="">{children}</div>;
 
@@ -39,20 +35,11 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
       tabIndex={0}
       // is="button"
       // onClick={() => setShow(!show)}
-      className={`${foldable ? "" : ""} relative z-50 w-full text-pretty`}
+      className={`relative z-50 w-full text-pretty`}
     >
       {children}
     </div>
   );
-
-  if (mode === "inline") {
-    return (
-      <div className="flex h-full w-full flex-col gap-3">
-        <FoldableInstruction instruction={instruction} show={!foldable || show} setShow={setShow} foldable={false} />
-        {question}
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col">

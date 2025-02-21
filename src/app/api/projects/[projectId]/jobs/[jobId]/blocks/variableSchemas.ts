@@ -24,14 +24,6 @@ export const variableTypeOptions: FormOptions[] = [
   { value: "confirm", label: "Confirm", description: "Ask annotator to confirm something" },
 ];
 
-export const InstructionMode = ["inline", "modal", "auto_modal"] as const;
-export const InstructionModeOptions: FormOptions[] = [
-  { value: null, label: "No instructions", description: "Do not show instructions" },
-  { value: "inline", label: "Inline", description: "Show the instructions before the question" },
-  { value: "modal", label: "Modal", description: "Optional instruction in a pop-up screen" },
-  { value: "auto_modal", label: "Auto Modal", description: "Like modal, but automatically opens first time" },
-];
-
 export const CodebookCodeSchema = z.object({
   code: z.string().min(1).trim().openapi({
     title: "Code",
@@ -106,20 +98,34 @@ export const CodebookVariableSchema = z.object({
     description: "Choose a format in which the variable will be presented to the annotator.",
     example: "select code",
   }),
-  question: z.string().max(512).openapi({
+  question: z.string().openapi({
     title: "Question",
     description: "The question that will be shown to the annotator. Supports scripts and markdown.",
-    example: "What is the question you want to ask?",
+    example: "You can use **markdown**, scipts like {{'this'}}, and variables like data$column",
   }),
+  questionStyle: z
+    .record(z.string(), z.string())
+    .optional()
+    .openapi({
+      title: "Question style",
+      description: "An object with inline CSS properties",
+      example: { fontSize: "1.3em", fontWeight: "bold" },
+    }),
   instruction: z.string().optional().openapi({
     title: "Instruction",
     description: "Provide specific instructions for this variable. Supports scripts and markdown.",
   }),
-  instructionMode: z.enum(InstructionMode).nullish().openapi({
-    title: "Add instructions",
-    description:
-      "Choose where the instruction should be shown (default is after). Can be before or after the question, or in a modal that the annotator can open. If set to auto_modal, the instruction will be shown automatically the first time the annotator sees this variable in a session.",
-    example: "inline",
+  instructionStyle: z
+    .record(z.string(), z.string())
+    .optional()
+    .openapi({
+      title: "Question style",
+      description: "An object with inline CSS properties",
+      example: { fontSize: "1.3em", fontWeight: "bold" },
+    }),
+  instructionAuto: z.boolean().optional().openapi({
+    title: "Auto Instruction",
+    description: "If true, the instruction modal will automatically be opened the first time the variable is shown.",
   }),
 
   perField: z

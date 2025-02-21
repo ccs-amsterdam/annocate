@@ -3,7 +3,6 @@ import {
   CodebookScaleTypeSchema,
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
-  InstructionModeOptions,
   variableTypeOptions,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import { Control, FieldValues, Path, UseFormReturn } from "react-hook-form";

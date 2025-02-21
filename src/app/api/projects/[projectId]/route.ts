@@ -20,6 +20,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
           creator: projects.creator,
         })
         .from(projects)
+        .where(eq(projects.id, projectId))
         .groupBy(projects.id);
       return job;
     },
