@@ -3,7 +3,6 @@ import AnnotationManager from "@/functions/AnnotationManager";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
 import AnswerField from "./AnswerField";
-import QuestionIndexStep from "./QuestionIndexStep";
 import ShowQuestion from "./ShowQuestion";
 import Markdown from "../Common/Markdown";
 import VariableInstructions from "./VariableInstructions";
@@ -35,8 +34,8 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
   const maxHeightPercent = unit.type === "survey" ? 100 : 60;
 
   let animate = "";
-  if (annotationLib.previousIndex < annotationLib.variableIndex) animate = "animate-slide-in-right";
-  if (annotationLib.previousIndex > annotationLib.variableIndex) animate = "animate-slide-in-left";
+  if (annotationLib.previousIndex < annotationLib.variableIndex) animate = "animate-slide-in-right ease-out";
+  if (annotationLib.previousIndex > annotationLib.variableIndex) animate = "animate-slide-in-left ease-out";
 
   return (
     <div
@@ -48,14 +47,15 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
         <div className="px-3">
           <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook} />
         </div>
-        <QuestionIndexStep>
-          <div className={`${getCodebookStyling(codebook).question} ${animate}`}>
-            <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
-          </div>
-        </QuestionIndexStep>
+        <div className={`${getCodebookStyling(codebook).question} ${animate}`}>
+          <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+        </div>
       </div>
 
-      <div className={`${animate} relative flex w-full flex-auto text-[length:inherit] text-foreground`}>
+      <div
+        key={annotationLib.variableIndex}
+        className={`${animate} relative flex w-full flex-auto text-[length:inherit] text-foreground will-change-transform`}
+      >
         <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
       </div>
     </div>

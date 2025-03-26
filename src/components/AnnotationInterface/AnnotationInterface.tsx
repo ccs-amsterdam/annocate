@@ -3,11 +3,11 @@ import AnnotatorProvider, { useUnit } from "../AnnotatorProvider/AnnotatorProvid
 import QuestionTask from "./QuestionTask";
 import { ReactNode, useRef } from "react";
 import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
-import IndexController from "./IndexController";
 import Finished from "./Finished";
 import { useHeight } from "@/hooks/useHeight";
 import { Loading } from "../ui/loader";
 import { DarkModeButton } from "@/hooks/useDarkMode";
+import Navigation from "./Navigation";
 
 interface Props {
   jobServer: JobServer;
@@ -31,12 +31,14 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 
 function AnnotationMenu() {
   return (
-    <div className="z-20 flex h-14 items-center justify-between gap-2 border-b border-primary/30 bg-primary/10 px-3">
-      <IndexController />
-      <div className="flex-1">
-        {/* <ResponsiveButtonGroup>
+    <div className="z-50 bg-primary text-primary-foreground">
+      <div className="z-50 flex h-14 items-center justify-between gap-2 px-3">
+        <Navigation />
+        <div className="flex-1">
+          {/* <ResponsiveButtonGroup>
           <DarkModeButton />
         </ResponsiveButtonGroup> */}
+        </div>
       </div>
     </div>
   );

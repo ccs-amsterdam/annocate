@@ -74,7 +74,6 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
 
         window.addEventListener("message", handleMessage);
 
-        console.log(data);
         iframeObj.iframe.contentWindow.postMessage({ id: iframeObj.receiverId, script, data }, "*");
       });
     },
@@ -91,14 +90,12 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
         if (i >= scriptParts.length) continue;
 
         try {
-          console.log(scriptParts[i]);
           result += await evalInSandbox(scriptParts[i], data, z.coerce.string());
         } catch (e) {
           console.log(`ERROR in script {{${scriptParts[i]}}}: `, e);
           result += "[...]";
         }
       }
-      console.log(result);
       return result;
     },
     [evalInSandbox],
@@ -177,7 +174,6 @@ function parseScriptFromString(str: string) {
   for (let accessor of ["unit", "code", "value"]) {
     str = replaceShorthand(str, accessor);
   }
-  console.log(str);
 
   const regex = new RegExp(/{{(.*?)}}/); // Match text inside two square brackets
   const parts = str.split(regex);

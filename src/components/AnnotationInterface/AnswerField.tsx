@@ -52,30 +52,33 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     };
   }, [variables, variableIndex]);
 
-  useEffect(() => {
-    let height = 0;
-    const el = answerRef.current;
-    function resize() {
-      const innerEl = el?.children?.[0];
-      if (!innerEl || !answerRef.current) return;
+  // WE USED TO ANIMATE HEIGHT CHANGES OF ANSWERFIELD, BUT NOW WE SLIDE IN FROM RIGHT
+  // SO THIS IS NO LONGER NEEDED (AND IT'S A BIT OF A HACK)
+  //
+  // useEffect(() => {
+  //   let height = 0;
+  //   const el = answerRef.current;
+  //   function resize() {
+  //     const innerEl = el?.children?.[0];
+  //     if (!innerEl || !answerRef.current) return;
 
-      height = Math.max(height, innerEl.clientHeight);
+  //     height = Math.max(height, innerEl.clientHeight);
 
-      const style = answerRef.current.style;
-      if (style["grid-template-rows" as any] !== height + "px") style["grid-template-rows" as any] = height + "px";
-    }
+  //     const style = answerRef.current.style;
+  //     if (style["grid-template-rows" as any] !== height + "px") style["grid-template-rows" as any] = height + "px";
+  //   }
 
-    // first do immediate update
-    const timer = setTimeout(() => resize(), 0);
-    // then with intervals for slow loading content
-    const interval = setInterval(() => {
-      resize();
-    }, 200);
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
-  }, [answerRef]);
+  //   // first do immediate update
+  //   const timer = setTimeout(() => resize(), 0);
+  //   // then with intervals for slow loading content
+  //   const interval = setInterval(() => {
+  //     resize();
+  //   }, 200);
+  //   return () => {
+  //     clearTimeout(timer);
+  //     clearInterval(interval);
+  //   };
+  // }, [answerRef]);
 
   const annotations = useMemo(() => {
     let fullVariableNames: Record<string, boolean> = {};
@@ -98,7 +101,6 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
-    console.log(code);
     let varname = variable.name;
     if (item) varname += `.${item}`;
     annotationManager.processAnswer(varname, code, !!multiple, variable.fields);

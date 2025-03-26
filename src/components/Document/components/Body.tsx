@@ -1,5 +1,4 @@
 import React, { CSSProperties, useEffect, useRef, useState, useMemo, ReactElement } from "react";
-import Meta from "./Meta";
 import renderText from "@/functions/renderText";
 import renderImages from "@/functions/renderImages";
 import renderMarkdown from "@/functions/renderMarkdown";
@@ -15,7 +14,6 @@ import {
   Token,
 } from "@/app/types";
 import styled from "styled-components";
-import { Loader } from "../../../styled/Styled";
 import { useHeight } from "@/hooks/useHeight";
 
 const DocumentContent = styled.div<{
@@ -113,18 +111,17 @@ const Body = ({
         ...bodyStyle,
       }}
     >
-      <Meta metaFields={metaFields} />
       <div
         key="fields"
         style={{
           position: "relative",
           flex: "1 1 97%",
           display: "flex",
-          paddingTop: "10px",
+          paddingTop: "40px",
           width: "100%",
         }}
       >
-        <Loader $active={!imagesLoaded || !currentUnitReady} $radius={0} />
+        {/* <Loader $active={!imagesLoaded || !currentUnitReady} $radius={0} /> */}
         <DocumentContent
           $centered={centered}
           $highLines={!readOnly}

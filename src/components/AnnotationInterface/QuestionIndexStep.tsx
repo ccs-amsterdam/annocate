@@ -1,8 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 import styled from "styled-components";
 import { FaStepForward, FaStepBackward } from "react-icons/fa";
-import { ChevronLeft, ChevronLeftCircle, ChevronRight, ChevronRightCircle, StepBack, StepForward } from "lucide-react";
+import {
+  CheckCircle,
+  ChevronLeft,
+  ChevronLeftCircle,
+  ChevronRight,
+  ChevronRightCircle,
+  Circle,
+  Dot,
+  StepBack,
+  StepForward,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 
@@ -18,59 +28,50 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
   const variableIndex = annotationLib.variableIndex;
   const setQuestionIndex = (index: number) => annotationManager.setVariableIndex(index);
 
-  const [canSelect, setCanSelect] = useState<boolean[]>([]);
-
-  useEffect(() => {
+  const canSelect: boolean[] = useMemo(() => {
     const cs = Array(variableStatuses.length).fill(false);
     variableStatuses.forEach((status, i) => {
       if (status === "done") cs[i] = true;
       if (i > 0 && variableStatuses[i - 1] === "done") cs[i] = true;
     });
-    setCanSelect(cs);
+    return cs;
   }, [variableStatuses]);
 
-  const previousIndex = getPreviousIndex(variableIndex, canSelect);
-  const nextIndex = getNextIndex(variableIndex, canSelect);
+  let validVariable = 0;
+  let endReached = false;
+  let showAll = true;
 
-  // hide if only 1 question that is not yet done
-  const hide = variables.length === 1;
+  const noneDone = variableStatuses.every((status) => status !== "done") && variableIndex === 0;
+  if (!showAll && noneDone) return null;
 
   return (
-    <div className="flex h-full w-full items-start justify-between gap-1">
-      <Button
-        size="icon"
-        variant="ghost"
-        className={`z-30 mt-[2px] flex text-inherit opacity-60 hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
-        disabled={previousIndex === null}
-        onClick={() => previousIndex !== null && setQuestionIndex(previousIndex)}
-      >
-        <StepBack />
-      </Button>
-      <div className="h-full py-2">{children}</div>
-      <Button
-        size="icon"
-        variant="ghost"
-        className={`z-30 mt-[2px] flex bg-transparent text-inherit opacity-60 hover:bg-transparent disabled:opacity-0 ${hide ? "invisible" : ""}`}
-        disabled={nextIndex === null}
-        onClick={() => nextIndex !== null && setQuestionIndex(nextIndex)}
-      >
-        <StepForward />
-      </Button>
+    <div className="flex w-full items-center justify-center px-2">
+      {variableStatuses.map((status, i) => {
+        if (!showAll && status === "skip") return null;
+        validVariable++;
+
+        if (!showAll && endReached) return null;
+        if (i >= variableIndex && status === "pending") endReached = true;
+
+        let dotStyle = canSelect[i] ? "text-foreground hover:text-secondary hover:scale-150" : "text-foreground/50";
+        if (variableIndex === i) dotStyle = "text-primary scale-150";
+
+        return (
+          <Button
+            key={i}
+            variant="ghost"
+            size="icon"
+            disabled={!canSelect[i]}
+            className={`z-30 flex h-6 rounded-none bg-background/80 py-5 hover:bg-background disabled:opacity-100`}
+            onClick={() => {
+              if (variableIndex === i) return;
+              setQuestionIndex(i);
+            }}
+          >
+            <Dot className={`h-10 w-10 ${dotStyle}`} />
+          </Button>
+        );
+      })}
     </div>
   );
-}
-
-function getPreviousIndex(questionIndex: number, canSelect: boolean[]) {
-  for (let i = questionIndex - 1; i >= 0; i--) {
-    if (!canSelect?.[i]) continue;
-    return i;
-  }
-  return null;
-}
-function getNextIndex(questionIndex: number, canSelect: boolean[]) {
-  for (let i = questionIndex + 1; i < canSelect.length; i++) {
-    if (!canSelect?.[i]) continue;
-    return i;
-  }
-  return null;
 }

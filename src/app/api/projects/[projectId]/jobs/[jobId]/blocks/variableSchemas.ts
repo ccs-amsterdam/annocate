@@ -50,6 +50,12 @@ export const CodebookCodesSchema = z
   .array(CodebookCodeSchema)
   .refine(
     (codes) => {
+      return codes.length > 0;
+    },
+    { message: "At least one code is required" },
+  )
+  .refine(
+    (codes) => {
       const names = codes.map((c) => c.code || "");
       return new Set(names).size === names.length;
     },

@@ -126,6 +126,7 @@ class JobServerDesign implements JobServer {
 
     if (phase.type === "survey") {
       if (!this.unitCache["survey"]) {
+        // TODO Token is normally encrypted, and includes secret info like whether this is a gold unit.
         const token = JSON.stringify({ key: "survey" });
         this.updateUnitCache("survey", { token, annotations: [], status: "IN_PROGRESS" });
       }
@@ -153,8 +154,9 @@ class JobServerDesign implements JobServer {
   }
 
   async getCodebook(phaseNumber: number): Promise<GetCodebook> {
-    // on server, we can use the positions of the roots to get this per phase
-    // In creating progress, we include max position for roots
+    // We can either get the codebook from the server per phase, or get the full codebook
+    // and then on client filter it per phase. We'll focus on client filtering first, because
+    // this is faster, less server load, and easiest to implement. We can always change this later.
     if (phaseNumber > this.mockServer.progress.phases.length) throw new Error("Phase number higher than nr of phases");
 
     if (!this.codebookCache[phaseNumber]) {

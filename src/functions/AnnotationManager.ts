@@ -26,7 +26,6 @@ import { UnitBundle } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { getColor } from "@/functions/tokenDesign";
 import cuid from "cuid";
 import randomColor from "randomcolor";
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default class AnnotationManager {
@@ -34,7 +33,6 @@ export default class AnnotationManager {
   annotationLib: AnnotationLibrary;
   setUnitBundle?: SetState<UnitBundle | null>;
   lastAnnotationIds: string[];
-  setPreviewVariable?: (variable: string) => void;
 
   constructor() {
     this.annotationLib = {
@@ -288,7 +286,8 @@ export function createAnnotationLibrary(
 
   annotationArray = repairAnnotations(annotationArray, variableMap);
 
-  // ATTENTION: this needs to be moved to after the layout has been applied
+  // HERE apply layout to unit (extended unit)
+
   // annotationArray = addTokenIndices(annotationArray, unit.content.tokens || []);
 
   const annotationDict: AnnotationDictionary = {};

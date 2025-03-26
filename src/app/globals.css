@@ -14,13 +14,13 @@
     --card: 0, 0%, 100%;
     --card-foreground: 222.2, 84%, 4rgb (0, 0, 0) 0.9%;
 
-    --primary: 174, 80%, 35%;
-    --primary-foreground: 222.2, 47.4%, 100%;
-    --primary-dark: 174, 80%, 25%;
-    --primary-light: 174, 30%, 80%;
+    --primary: 174, 50%, 45%;
+    --primary-foreground: 222.2, 47.4%, 0%;
+    --primary-light: 174, 50%, 35%;
+    --primary-dark: 174, 30%, 20%;
 
-    --secondary: 44, 64%, 60%;
-    --secondary-foreground: 222.2, 47.4%, 0%;
+    --secondary: 44, 64%, 53%;
+    --secondary-foreground: 222.2, 47.4%, 10%;
 
     --muted: 0, 0%, 50%;
     --muted-foreground: 0.4, 16.3%, 46.9%;
@@ -63,10 +63,8 @@
 
     --primary: 174, 50%, 45%;
     --primary-foreground: 222.2, 47.4%, 0%;
-    --primary-dark: 174, 50%, 35%;
-    --primary-light: 174, 30%, 20%;
-
-    --primary-light: 174, 30%, 20%;
+    --primary-light: 174, 50%, 35%;
+    --primary-dark: 174, 30%, 20%;
 
     --secondary: 44, 64%, 53%;
     --secondary-foreground: 222.2, 47.4%, 10%;
@@ -178,8 +176,8 @@ p::-webkit-scrollbar-track {
 /* Handle */
 div::-webkit-scrollbar-thumb,
 p::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--primary), 0.2);
-  border-radius: 1px;
+  background-color: hsl(var(--primary), 1);
+  border-radius: 0px;
 }
 
 /* Handle on hover */
@@ -436,40 +434,39 @@ span.token.annotated.allRight > span.text {
 
 /* Annotator style */
 
-input[type="range"] {
+.unit-slider[type="range"] {
   border-radius: 2px;
-  height: 14px;
-  margin-top: 5px;
-  background-color: hsl(var(--primary)) !important;
-  outline: none;
+  height: 15px;
+  margin-top: 2px;
+  background: linear-gradient(
+    to right,
+    hsl(var(--primary-foreground), 0.4) var(--progress, "0%"),
+    hsl(var(--primary-foreground), 0.2) var(--progress, "0%") 100%
+  );
   cursor: crosshair;
   -webkit-appearance: none;
   -moz-appearance: none;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+.unit-slider[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
+  width: max(var(--thumb-width, 10%), 20px);
   height: 20px;
   padding: 0;
-  background: hsl(var(--primary));
-  /* background-image: url("/assets/cat_active.png");
-  background-size: 40px;
-  background-repeat: no-repeat;
-  background-position: 50%; */
+  background: hsl(var(--primary-dark));
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
-input[type="range"]::-moz-range-thumb {
+.unit-slider[type="range"]::-moz-range-thumb {
   appearance: none;
-  width: 10px;
-  height: 24px;
+  width: 10%;
+  height: 20px;
   padding: 0;
-  background: hsl(var(--secondary));
+  background: hsl(var(--primary-dark));
   cursor: pointer;
-  border-radius: 0px;
-  /* transform: translateY(20px); */
+  position: relative;
+  border-radius: 2px;
 }
 
 .fullscreen {

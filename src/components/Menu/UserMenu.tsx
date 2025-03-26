@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Settings, Moon, Sun, ShieldCheck, Loader } from "lucide-react";
+import { User, Settings, Moon, Sun, ShieldCheck, Loader, MenuIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,7 +35,7 @@ export default function UserMenu() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger>
-          <User />
+          <MenuIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" data-side="right">
           <DropdownMenuLabel className="font-normal">
