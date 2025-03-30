@@ -1,8 +1,8 @@
-import { Codebook, CodebookVariable, ExtendedCodebook, ExtendedVariable } from "@/app/types";
+import { CodebookPhase, CodebookVariable, ExtendedCodebook, ExtendedVariable } from "@/app/types";
 import randomColor from "randomcolor";
 import standardizeColor from "./standardizeColor";
 
-export function importCodebook(codebook: Codebook | ExtendedCodebook): ExtendedCodebook {
+export function importCodebook(codebook: CodebookPhase): ExtendedCodebook {
   return {
     ...codebook,
     variables: importVariables(codebook.variables),
@@ -33,3 +33,36 @@ const importVariables = (variables: CodebookVariable[]): ExtendedVariable[] => {
     return eVariable;
   });
 };
+
+// function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
+//   const phaseBlocks: JobBlocksResponse[] = [];
+//   let phaseStarted = false;
+//   let type: BlockType | null = null;
+
+//   for (let block of blocks) {
+//     if (block.parentId === null) {
+//       // if root block
+//       if (phaseStarted) break;
+//       if (block.position === phase) {
+//         phaseStarted = true;
+//         type = block.type;
+//       }
+//     }
+
+//     if (phaseStarted) phaseBlocks.push(block);
+//   }
+
+//   if (!type) throw new Error("Phase not found");
+
+//   const codebook: CodebookPhase = { type, variables: [] };
+//   let layout: Layout | undefined = undefined;
+
+//   for (let block of phaseBlocks) {
+//     if ("layout" in block.content) layout = block.content.layout;
+//     if (block.type === "annotationQuestion" || block.type === "surveyQuestion") {
+//       codebook.variables.push({ name: block.name, layout, ...block.content });
+//     }
+//   }
+
+//   return codebook;
+// }

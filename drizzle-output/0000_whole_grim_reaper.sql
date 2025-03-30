@@ -33,12 +33,12 @@ CREATE TABLE "invitations" (
 CREATE TABLE "job_blocks" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"job_id" integer NOT NULL,
-	"name" varchar(128) NOT NULL,
 	"parent_id" integer,
 	"position" double precision NOT NULL,
+	"name" varchar(128),
 	"type" text NOT NULL,
 	"block" jsonb NOT NULL,
-	CONSTRAINT "unique_job_block_name" UNIQUE("job_id","name")
+	CONSTRAINT "unique_job_block_name" UNIQUE NULLS NOT DISTINCT("job_id","name")
 );
 --> statement-breakpoint
 CREATE TABLE "job_set_units" (

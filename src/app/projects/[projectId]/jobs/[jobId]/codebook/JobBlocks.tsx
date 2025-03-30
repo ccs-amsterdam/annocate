@@ -1,10 +1,5 @@
-import {
-  useDeleteJobBlock,
-  useJobBlocks,
-  useUpdateJobBlockTree,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { JobBlocksTreeUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { JobBlockContent, JobBlocksResponse } from "@/app/types";
+import { useDeleteJobBlock, useJobBlocks } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
+import { JobBlocksResponse } from "@/app/types";
 import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
@@ -108,18 +103,6 @@ function LeftWindow({
       </div>
     </div>
   );
-}
-
-interface RightWindowProps {
-  projectId: number;
-  jobId: number;
-  blockForm: BlockFormProps | null;
-  setBlockForm: (props: BlockFormProps | null) => void;
-  preview: JobBlocksResponse | undefined | ZodError;
-  changesPending: boolean;
-  blocks: JobBlocksResponse[] | undefined;
-  isLoading: boolean;
-  isPending: boolean;
 }
 
 function RightWindow({
@@ -242,11 +225,10 @@ interface BlockProps {
   block: JobBlocksResponse;
   projectId: number;
   jobId: number;
-  setBlockForm: (props: BlockFormProps) => void;
+  setBlockForm: (props: BlockFormProps | null) => void;
 }
 
 function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
-  const { mutateAsync: updateTree } = useUpdateJobBlockTree(projectId, jobId, block.id);
   const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
   const router = useRouter();
 
@@ -264,40 +246,33 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
 
   return (
     <div
-      className={`flex animate-fade-in items-center gap-1 ${blockStyle()}`}
+      className={`flex animate-fade-in items-center gap-1 ${blockStyle()} group cursor-pointer hover:text-primary`}
       style={{ paddingLeft: `${block.level}rem` }}
+      is="button"
+      onClick={() => {
+        if (!block.type) return null;
+        setBlockForm({
+          position: block.position,
+          parentId: block.parentId,
+          type: block.type,
+          currentId: block.id,
+        });
+      }}
     >
       <div className="max-w-full overflow-hidden rounded">
         <div className="mt-1">
-          <div className="flex items-center">
-            {/* {isPhase ? <CreateBlock parent={block} position={block.children + 1} setBlockForm={setBlockForm} /> : null} */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hover:bg-transparent hover:underline"
-              disabled={!block.type}
-              onClick={() => {
-                if (!block.type) return null;
-                setBlockForm({
-                  position: block.position,
-                  parentId: block.parentId,
-                  type: block.type,
-                  currentId: block.id,
-                });
-              }}
-            >
-              {header()}
-            </Button>
-          </div>
+          <div className="flex items-center px-3">{header()}</div>
         </div>
       </div>
-      <div className="ml-auto flex items-center">
-        {}
+      <div className="text ml-auto flex items-center opacity-0 group-hover:opacity-100">
         <CreateBlock parent={block} position={block.children + 1} setBlockForm={setBlockForm} />
         <Button
           size="icon"
           variant="ghost"
-          onClick={() => deleteBlock()}
+          onClick={() => {
+            setBlockForm(null);
+            deleteBlock();
+          }}
           onClickConfirm={{
             title: "Are you sure?",
             message: `This will delete the block ${block.children > 0 ? "AND all it's children (!!!)" : ""}. Are you sure?`,

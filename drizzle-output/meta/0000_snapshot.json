@@ -1,5 +1,5 @@
 {
-  "id": "c64c0807-0df2-4992-829b-f3c1bc049c54",
+  "id": "8cab01a6-af97-41f8-9559-ec8feac874d8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -296,12 +296,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": true
-        },
         "parent_id": {
           "name": "parent_id",
           "type": "integer",
@@ -313,6 +307,12 @@
           "type": "double precision",
           "primaryKey": false,
           "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
         },
         "type": {
           "name": "type",
@@ -376,7 +376,7 @@
       "uniqueConstraints": {
         "unique_job_block_name": {
           "name": "unique_job_block_name",
-          "nullsNotDistinct": false,
+          "nullsNotDistinct": true,
           "columns": [
             "job_id",
             "name"

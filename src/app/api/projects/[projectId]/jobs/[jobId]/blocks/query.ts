@@ -2,23 +2,28 @@ import { updateEndpoint, useDelete, useGet, useListGet, useMutate, useTableGet }
 import { z } from "zod";
 import {
   JobBlockCreateSchema,
-  JobBlocksTreeUpdateSchema,
-  JobBlockContentUpdateSchema,
   JobBlockUpdateSchema,
   JobBlocksResponseSchema,
   JobBlockDeleteSchema,
+  JobBlocksServerResponseSchema,
+  JobBlocksUpdateResponseSchema,
 } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { useJob } from "../../query";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { sortNestedBlocks } from "@/functions/treeFunctions";
 
 export function useJobBlocks(projectId: number, jobId?: number) {
   return useGet({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
     responseSchema: z.array(JobBlocksResponseSchema),
     disabled: !jobId,
+    processResponse: (data) => {
+      const serverResponse = z.array(JobBlocksServerResponseSchema).parse(data);
+      return sortNestedBlocks(serverResponse);
+    },
   });
 }
 
@@ -35,8 +40,27 @@ export function useUpdateJobBlock(projectId: number, jobId: number, blockId: num
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     bodySchema: JobBlockUpdateSchema,
-    responseSchema: IdResponseSchema,
-    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
+    responseSchema: JobBlocksUpdateResponseSchema,
+    // invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
+    manualUpdateSchema: z.array(JobBlocksResponseSchema),
+    manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
+    manualUpdate: (result, oldData) => {
+      console.log(result, oldData);
+      const newData = oldData.map((block) => {
+        let newBlock = block;
+        if (result.block && block.id === result.block.id) {
+          newBlock = { ...block, ...result.block };
+        }
+        if (result.tree) {
+          const treeUpdate = result.tree.find((block) => block.id === newBlock.id);
+          if (treeUpdate) {
+            newBlock = { ...newBlock, ...treeUpdate };
+          }
+        }
+        return newBlock;
+      });
+      return sortNestedBlocks(newData);
+    },
   });
 }
 
@@ -49,54 +73,6 @@ export function useDeleteJobBlock(projectId: number, jobId: number, blockId: num
   });
 }
 
-// We separate updating the tree and content, because when updating the content
-// we can update the cache manually without requiring a refetch of the data.
-// (we do currently refetch content when tree is updated, which might be avoided,
-// but we can think of this later)
-export function useUpdateJobBlockTree(projectId: number, jobId: number, blockId?: number) {
-  return useMutate({
-    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
-    bodySchema: JobBlocksTreeUpdateSchema,
-    responseSchema: IdResponseSchema,
-    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
-  });
-}
-
-export function useUpdateJobBlockContent(projectId: number, jobId: number, blockId?: number) {
-  const queryClient = useQueryClient();
-  return useMutate({
-    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
-    bodySchema: JobBlockContentUpdateSchema,
-    responseSchema: IdResponseSchema,
-    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
-    // not working atm. Implement later (just optimization)
-    // manualUpdate: (data) => {
-    //   updateEndpoint(
-    //     queryClient,
-    //     `projects/${projectId}/jobs/${jobId}/blocks`,
-    //     z.array(JobBlocksResponseSchema),
-    //     (oldData) => {
-    //       console.log(oldData);
-    //       const newData = oldData.map((block) => {
-    //         if (block.id === blockId) {
-    //           for (const [key, value] of Object.entries(data)) {
-    //             if (!["name", "content"].includes(key)) {
-    //               throw new Error(`!! check the useUpdateJobBlockContent manual update function`);
-    //             }
-    //             if (data.name) block.name = data.name;
-    //             if (data.content) block.content = data.content;
-    //           }
-    //         }
-    //         return block;
-    //       });
-
-    //       return newData;
-    //     },
-    //   );
-    // },
-  });
-}
-
 export const openapiCodebook = createOpenAPIDefinitions(
   ["Codebook management"],
   [
@@ -104,7 +80,7 @@ export const openapiCodebook = createOpenAPIDefinitions(
       path: "/jobs/{jobId}/blocks",
       method: "get",
       description: "Get a list of blocks for a job",
-      response: z.array(JobBlocksResponseSchema),
+      response: z.array(JobBlocksServerResponseSchema),
     },
     {
       path: "/jobs/{jobId}/blocks",

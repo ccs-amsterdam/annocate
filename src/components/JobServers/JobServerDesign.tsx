@@ -1,7 +1,7 @@
 import {
   AnnotationDictionary,
   BlockType,
-  Codebook,
+  CodebookPhase,
   GetCodebook,
   JobState,
   GetUnit,
@@ -236,11 +236,12 @@ function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
   let phaseStarted = false;
   let type: BlockType | null = null;
 
+  let phaseNr = 0;
   for (let block of blocks) {
     if (block.parentId === null) {
       // if root block
       if (phaseStarted) break;
-      if (block.position === phase) {
+      if (phaseNr++ === phase) {
         phaseStarted = true;
         type = block.type;
       }
@@ -251,7 +252,7 @@ function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
 
   if (!type) throw new Error("Phase not found");
 
-  const codebook: Codebook = { type, variables: [] };
+  const codebook: CodebookPhase = { type, variables: [] };
   let layout: Layout | undefined = undefined;
 
   for (let block of phaseBlocks) {

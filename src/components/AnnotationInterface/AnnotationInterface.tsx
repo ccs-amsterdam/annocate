@@ -32,9 +32,9 @@ export function AnnotationInterface({ jobServer, blockEvents }: Props) {
 function AnnotationMenu() {
   return (
     <div className="z-50 bg-primary text-primary-foreground">
-      <div className="z-50 flex h-14 items-center justify-between gap-2 px-3">
+      <div className="z-50 flex h-14 items-center justify-between gap-2">
         <Navigation />
-        <div className="flex-1">
+        <div className="flex-1 px-3">
           {/* <ResponsiveButtonGroup>
           <DarkModeButton />
         </ResponsiveButtonGroup> */}

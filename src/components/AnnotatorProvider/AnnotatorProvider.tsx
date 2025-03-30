@@ -1,5 +1,5 @@
 "use client";
-import { AnnotationLibrary, Codebook, ExtendedCodebook, JobServer, JobState, Progress, Unit } from "@/app/types";
+import { AnnotationLibrary, CodebookPhase, ExtendedCodebook, JobServer, JobState, Progress, Unit } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
 import { useQuery } from "@tanstack/react-query";
@@ -149,7 +149,7 @@ function initProgress(): Progress {
   };
 }
 
-function initCodebook(): Codebook {
+function initCodebook(): CodebookPhase {
   return {
     type: "annotationPhase",
     variables: [

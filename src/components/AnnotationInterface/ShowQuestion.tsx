@@ -26,7 +26,7 @@ const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
 
   if (!questionText) return null;
   return (
-    <span className="min-h-8 text-base">
+    <span className="min-h-8 text-left text-base">
       <Markdown compact style={variable.questionStyle}>
         {questionText}
       </Markdown>

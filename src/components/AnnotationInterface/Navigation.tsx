@@ -6,7 +6,9 @@ import {
   CheckCircle2,
   CheckSquare,
   ChevronDown,
+  List,
   ListCheck,
+  Menu,
   Play,
   Square,
   StepBack,
@@ -21,29 +23,25 @@ interface NavigationProps {}
 
 const Navigation = ({}: NavigationProps) => {
   return (
-    <div className="flex h-full w-full select-none items-center gap-5">
+    <div className="flex h-full w-full select-none items-center">
+      <NavigationDropdown />
       <NavigationButtons global />
-      <Phase />
       <UnitSlider navigation />
     </div>
   );
 };
 
-const Phase = ({ dropdown }: { dropdown?: boolean }) => {
+const NavigationDropdown = () => {
   const { selectUnit, progress, finished } = useUnit();
   const phase = progress.phases[progress.phase];
   const label = phase.label;
-  if (!dropdown) {
-    return <div className="flex items-center gap-2">{label}</div>;
-  }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className={"flex items-center gap-2"}>
-        {phase.label}
-        <ChevronDown size={16} />
+      <DropdownMenuTrigger className={"flex items-center gap-2 px-3"}>
+        <List />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start" sideOffset={16} className="rounded-l-none rounded-t-none border-l-0">
         {progress.phases.map((phase, i) => {
           return (
             <DropdownMenuItem

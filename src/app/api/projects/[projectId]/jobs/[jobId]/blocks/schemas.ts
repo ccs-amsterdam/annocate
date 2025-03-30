@@ -8,14 +8,7 @@ import { AnnotationPhaseSchema, SurveyPhaseSchema } from "./phaseSchemas";
 
 extendZodWithOpenApi(z);
 
-// We split the jobBlock into the position and content information.
-// This is for efficient updating and caching in the web client
-export const JobBlockTreeSchema = z.object({
-  parentId: z.number().nullable().openapi({ title: "Job Block parent ID", description: "The ID of another job Block" }),
-  position: z.number().openapi({ title: "Block position", description: "Position of the block in the job" }),
-});
-
-export const JobBlockContentSchemaBase = z.object({
+export const JobBlockSchemaBase = z.object({
   name: SafeNameSchema.openapi({
     title: "Name",
     description:
@@ -27,68 +20,51 @@ export const JobBlockContentSchemaBase = z.object({
     description:
       "The type of the block. Can be 'surveyPhase', 'annotationPhase', 'surveyQuestion' or 'annotationQuestion'",
   }),
+  parentId: z.number().nullable().openapi({
+    title: "Job Block parent ID",
+    description: "The ID of the parent of this block, or null if it is a root block",
+  }),
+  position: z.number().openapi({
+    title: "Position",
+    description: "The position of the block in the list of children of the parent block",
+  }),
 });
 
-export const JobBlockContentSurveyQuestionSchema = JobBlockContentSchemaBase.extend({
+export const JobBlockSurveyQuestionSchema = JobBlockSchemaBase.extend({
   type: z.literal("surveyQuestion"),
   content: VariableSchema,
 });
 
-export const JobBlockContentAnnotationQuestionSchema = JobBlockContentSchemaBase.extend({
+export const JobBlockAnnotationQuestionSchema = JobBlockSchemaBase.extend({
   type: z.literal("annotationQuestion"),
   content: VariableSchema,
 });
 
-export const JobBlockContentAnnotationPhaseSchema = JobBlockContentSchemaBase.extend({
+export const JobBlockAnnotationPhaseSchema = JobBlockSchemaBase.extend({
   type: z.literal("annotationPhase"),
   content: AnnotationPhaseSchema,
 });
 
-export const JobBlockContentSurveyPhaseSchema = JobBlockContentSchemaBase.extend({
+export const JobBlockSurveyPhaseSchema = JobBlockSchemaBase.extend({
   type: z.literal("surveyPhase"),
   content: SurveyPhaseSchema,
 });
 
-// This is used for type hinting the drizzle/ps table definitions
-export const JobBlockContentSchema = z.discriminatedUnion("type", [
-  JobBlockContentSurveyQuestionSchema,
-  JobBlockContentAnnotationQuestionSchema,
-  JobBlockContentAnnotationPhaseSchema,
-  JobBlockContentSurveyPhaseSchema,
-]);
-
-// This is used to validate content in the update endpoint
-export const JobBlockContentTypeValidator = z.discriminatedUnion("type", [
-  JobBlockContentSurveyQuestionSchema.pick({ type: true, content: true }),
-  JobBlockContentAnnotationQuestionSchema.pick({ type: true, content: true }),
-  JobBlockContentAnnotationPhaseSchema.pick({ type: true, content: true }),
-  JobBlockContentSurveyPhaseSchema.pick({ type: true, content: true }),
-]);
-
-// CREATE
-
 export const JobBlockCreateSchema = z.discriminatedUnion("type", [
-  JobBlockTreeSchema.merge(JobBlockContentSurveyQuestionSchema),
-  JobBlockTreeSchema.merge(JobBlockContentAnnotationQuestionSchema),
-  JobBlockTreeSchema.merge(JobBlockContentAnnotationPhaseSchema),
-  JobBlockTreeSchema.merge(JobBlockContentSurveyPhaseSchema),
+  JobBlockSurveyQuestionSchema,
+  JobBlockAnnotationQuestionSchema,
+  JobBlockAnnotationPhaseSchema,
+  JobBlockSurveyPhaseSchema,
 ]);
 
-// UPDATE
-export const JobBlocksTreeUpdateSchema = JobBlockTreeSchema.partial();
-
-export const JobBlockContentUpdateSchema = z.object({
-  name: JobBlockContentSchemaBase.shape.name.optional(),
-  content: z.union([VariableSchema, AnnotationPhaseSchema, SurveyPhaseSchema]).optional(),
-});
-
-export const JobBlockUpdateSchema = JobBlockTreeSchema.partial().extend({
-  name: JobBlockContentSchemaBase.shape.name.optional(),
+export const JobBlockUpdateSchema = z.object({
+  name: JobBlockSchemaBase.shape.name.optional(),
+  parentId: JobBlockSchemaBase.shape.parentId.optional(),
+  position: JobBlockSchemaBase.shape.position.optional(),
   content: z.union([VariableSchema, AnnotationPhaseSchema, SurveyPhaseSchema]).optional(),
 });
 
 // DELETE
-
 export const JobBlockDeleteSchema = z.object({
   recursive: z.coerce.boolean().optional().openapi({
     title: "Recursive",
@@ -98,17 +74,36 @@ export const JobBlockDeleteSchema = z.object({
 
 // RESPONSE
 
-// This is the trimmed down version of JobBlocksResponse, for efficient caching client side
-export const JobBlocksResponseSchemaAddTree = JobBlockTreeSchema.extend({
+// For this endpoint we process the response from the server client side,
+// so the response schema for the server is different from the response schema for the client
+export const JobBlocksServerResponseSchema = z.discriminatedUnion("type", [
+  JobBlockSurveyQuestionSchema.extend({ id: z.number() }),
+  JobBlockAnnotationQuestionSchema.extend({ id: z.number() }),
+  JobBlockAnnotationPhaseSchema.extend({ id: z.number() }),
+  JobBlockSurveyPhaseSchema.extend({ id: z.number() }),
+]);
+
+export const JobBlocksResponseAddSchema = JobBlockSchemaBase.extend({
   id: z.number(),
   level: z.number(),
   children: z.number(),
 });
 
-// When getting all blocks, we do include the tree details (and sort by tree branches)
 export const JobBlocksResponseSchema = z.discriminatedUnion("type", [
-  JobBlocksResponseSchemaAddTree.merge(JobBlockContentSurveyQuestionSchema).extend({ id: z.number() }),
-  JobBlocksResponseSchemaAddTree.merge(JobBlockContentAnnotationQuestionSchema).extend({ id: z.number() }),
-  JobBlocksResponseSchemaAddTree.merge(JobBlockContentAnnotationPhaseSchema).extend({ id: z.number() }),
-  JobBlocksResponseSchemaAddTree.merge(JobBlockContentSurveyPhaseSchema).extend({ id: z.number() }),
+  JobBlocksResponseAddSchema.merge(JobBlockSurveyQuestionSchema),
+  JobBlocksResponseAddSchema.merge(JobBlockAnnotationQuestionSchema),
+  JobBlocksResponseAddSchema.merge(JobBlockAnnotationPhaseSchema),
+  JobBlocksResponseAddSchema.merge(JobBlockSurveyPhaseSchema),
 ]);
+
+// omit name
+export const JobBlocksUpdateResponseSchema = z.object({
+  tree: z.array(
+    z.object({
+      id: z.number(),
+      parentId: z.number().nullable(),
+      position: z.number(),
+    }),
+  ),
+  block: JobBlocksServerResponseSchema,
+});

@@ -1,14 +1,5 @@
-import {
-  useCreateJobBlock,
-  useUpdateJobBlockContent,
-  useUpdateJobBlockTree,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import {
-  JobBlockContentSchemaBase,
-  JobBlockContentUpdateSchema,
-  JobBlockCreateSchema,
-  JobBlocksTreeUpdateSchema,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import { useCreateJobBlock, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
+import { JobBlockCreateSchema, JobBlockUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { JobBlocksResponse } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,7 +15,7 @@ import { AnnotationPhaseBlockForm } from "./AnnotationPhaseBlockForm";
 import { SurveyPhaseBlockForm } from "./SurveyPhaseBlockForm";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
-type JobBlockContentUpdate = z.infer<typeof JobBlockContentUpdateSchema>;
+type JobBlockUpdate = z.infer<typeof JobBlockUpdateSchema>;
 
 interface CreateJobBlockProps {
   projectId: number;
@@ -56,7 +47,7 @@ export function CreateOrUpdateJobBlock({
   setChangesPending,
 }: CreateJobBlockProps) {
   const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
-  const { mutateAsync: updateAsync } = useUpdateJobBlockContent(projectId, jobId, current?.id);
+  const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, current?.id || -1);
 
   const schema = JobBlockCreateSchema;
 
@@ -74,7 +65,7 @@ export function CreateOrUpdateJobBlock({
 
   function onSubmit(values: JobBlockCreate) {
     if (current) {
-      const updateValues: JobBlockContentUpdate = { ...values };
+      const updateValues: JobBlockUpdate = { ...values };
       updateAsync(updateValues).then(afterSubmit).catch(console.error);
       return;
     } else {

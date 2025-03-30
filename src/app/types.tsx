@@ -27,12 +27,7 @@ import {
 } from "./api/projects/[projectId]/jobs/[jobId]/units/schemas";
 import { JobRulesSchema, JobResponseSchema, JobMetaResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
-import {
-  JobBlocksResponseSchemaAddTree,
-  JobBlockTreeSchema,
-  JobBlockContentSchema,
-  JobBlocksResponseSchema,
-} from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import { JobBlocksResponseSchema, JobBlockCreateSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
@@ -71,7 +66,7 @@ export interface Authorization {
   projectRole: ProjectRole | null;
 }
 
-export type JobBlockContent = z.infer<typeof JobBlockContentSchema>;
+export type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
@@ -90,7 +85,7 @@ export type CodebookVariable = z.infer<typeof VariableSchema> & {
 
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 
-export interface Codebook {
+export interface CodebookPhase {
   type: BlockType;
   variables: CodebookVariable[];
 }
@@ -99,7 +94,7 @@ export type Unit = z.infer<typeof AnnotateUnitSchema>;
 
 // TODO: We can probably remove all extended unit stuff now that we're making the content dynamic inside Document
 
-export type GetCodebook = Codebook;
+export type GetCodebook = CodebookPhase;
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
 export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
 export type JobState = GetJobState & {
@@ -113,7 +108,7 @@ export type ExtendedVariable = CodebookVariable & {
   validTo?: ValidRelation;
 };
 
-export type ExtendedCodebook = Omit<Codebook, "variables"> & {
+export type ExtendedCodebook = Omit<CodebookPhase, "variables"> & {
   variables: ExtendedVariable[];
 };
 
@@ -697,7 +692,7 @@ export interface RawUnitContent {
   markdown_fields?: ProcessedMarkdownField[];
   meta_fields?: MetaField[];
   annotations?: Annotation[];
-  codebook?: Codebook;
+  codebook?: CodebookPhase;
   codebookId?: string;
   variables?: UnitVariables;
   grid?: FieldGridInput;

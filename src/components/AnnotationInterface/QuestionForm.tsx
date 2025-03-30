@@ -1,4 +1,4 @@
-import { AnnotationLibrary, Codebook, ExtendedCodebook, Unit } from "@/app/types";
+import { AnnotationLibrary, CodebookPhase, ExtendedCodebook, Unit } from "@/app/types";
 import AnnotationManager from "@/functions/AnnotationManager";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
@@ -6,6 +6,7 @@ import AnswerField from "./AnswerField";
 import ShowQuestion from "./ShowQuestion";
 import Markdown from "../Common/Markdown";
 import VariableInstructions from "./VariableInstructions";
+import QuestionIndexStep from "./QuestionIndexStep";
 
 interface QuestionFormProps {
   unit: Unit;
@@ -43,10 +44,8 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
       style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
       className={`${getCodebookStyling(codebook).container} relative z-30 flex flex-col overflow-hidden text-[length:inherit] transition-[border]`}
     >
-      <div className={`${getCodebookStyling(codebook).text} relative z-40 flex w-full flex-col`}>
-        <div className="px-3">
-          <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook} />
-        </div>
+      <div className={`${getCodebookStyling(codebook).text} relative z-40 flex w-full flex-col px-3 pt-1`}>
+        {/* <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook} /> */}
         <div className={`${getCodebookStyling(codebook).question} ${animate}`}>
           <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
         </div>
@@ -62,10 +61,10 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
   );
 };
 
-function getCodebookStyling(codebook: Codebook) {
+function getCodebookStyling(codebook: CodebookPhase) {
   if (codebook.type.includes("survey")) {
     return {
-      container: "text-foreground bg-background min-h-full  ",
+      container: "text-foreground bg-background min-h-full pt-6  ",
       text: "mt-6 w-full h-full flex-auto text-start",
       question: "text-2xl font-bold text-center ",
     };

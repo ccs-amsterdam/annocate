@@ -269,6 +269,7 @@ export async function createUpdate<BodyIn, BodyOut>({
     const response = await updateFunction(email, body);
 
     if (responseSchema) return NextResponse.json(responseSchema.parse(response));
+
     return NextResponse.json({ message: "Success" }, { status: 200 });
   } catch (e: any) {
     console.error(e);

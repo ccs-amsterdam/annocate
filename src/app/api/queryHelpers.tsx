@@ -98,11 +98,13 @@ export function useGet<Params extends {}, Response>({
   params,
   responseSchema,
   disabled,
+  processResponse,
 }: {
   endpoint: string;
   params?: Params;
   responseSchema: z.ZodType<Response>;
   disabled?: boolean;
+  processResponse?: (data: any) => Response;
 }) {
   const { user } = useMiddlecat();
   return useQuery({
@@ -111,7 +113,8 @@ export function useGet<Params extends {}, Response>({
       if (!user) throw new Error("User not found");
       const url = endpoint;
       const res = await user.api.get(url, params ? { params } : undefined);
-      const data = responseSchema.parse(res.data);
+      const processedData = processResponse ? processResponse(res.data) : res.data;
+      const data = responseSchema.parse(processedData);
       return data;
     },
     enabled: !!user && !disabled,
@@ -212,20 +215,24 @@ export function updateEndpoint<T>(
  * @param invalidateEndpoints - Other endpoints to invalidate on success.
  * @param manualUpdate - Function to manually update the cache instead of invalidating it. Use the updateEndpoint function.
  */
-export function useMutate<Body, Response>({
+export function useMutate<Body, Response, Update>({
   method = "post",
   endpoint,
   bodySchema,
   responseSchema,
   invalidateEndpoints,
   manualUpdate,
+  manualUpdateSchema,
+  manualUpdateEndpoint,
 }: {
   method?: "post" | "put";
   endpoint: string;
   bodySchema: z.ZodType<Body>;
   responseSchema: z.ZodType<Response>;
   invalidateEndpoints?: string[] | ((body?: Body) => string[]);
-  manualUpdate?: (body: z.infer<typeof bodySchema>) => void;
+  manualUpdate?: (result: Response, oldData: Update) => void;
+  manualUpdateSchema?: z.ZodType<Update>;
+  manualUpdateEndpoint?: string;
 }) {
   const { user } = useMiddlecat();
   const queryClient = useQueryClient();
@@ -238,7 +245,9 @@ export function useMutate<Body, Response>({
     onSuccess: (data, variables) => {
       if (manualUpdate) {
         // Manually update the cache for the endpoint, to avoid db calls
-        manualUpdate(data);
+        queryClient.setQueryData([manualUpdateEndpoint ?? endpoint, user, undefined], (oldData) =>
+          manualUpdate(data, oldData as Update),
+        );
       } else {
         queryClient.invalidateQueries({ queryKey: [endpoint] });
       }

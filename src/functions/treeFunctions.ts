@@ -27,6 +27,25 @@ interface Tree {
   position: number;
 }
 
+export function createsCycle<T extends Tree>(blocks: T[], checkId: number): boolean {
+  const maxTries = blocks.length;
+
+  function recursiveCheck(id: number, i: number): boolean {
+    // This shouldn't happen, but is a fail safe to prevent infinite loops.
+    if (i > maxTries) return true;
+
+    const block = blocks.find((b) => b.id === id);
+    if (!block) throw "Block not found";
+
+    if (block.parentId === null) return false;
+    if (block.parentId === checkId) return true;
+
+    return recursiveCheck(block.parentId, i + 1);
+  }
+
+  return recursiveCheck(checkId, 0);
+}
+
 /**
  * Sorts an array of blocks into a nested structure based on their phases and parent-child relationships.
  * Trows an error if a cycle is encountered
@@ -81,7 +100,7 @@ export function getRecursiveChildren<T extends Edges>(blocks: T[], id: number): 
   return recursiveGet(id);
 }
 
-function createParentMap<T extends Edges>(blocks: T[]): Map<number | null, T[]> {
+export function createParentMap<T extends Edges>(blocks: T[]): Map<number | null, T[]> {
   const parentMap = new Map<number | null, T[]>();
   for (const block of blocks) {
     if (!parentMap.has(block.parentId)) parentMap.set(block.parentId, []);

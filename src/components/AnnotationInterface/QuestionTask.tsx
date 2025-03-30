@@ -44,7 +44,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
   const textSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, false));
   const menuSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, true));
 
-  if (!unit) return null;
+  if (!unit || !variable) return null;
 
   const hasContent = !!variable.layout;
 
@@ -60,9 +60,9 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         setConditionReport={setConditionReport}
       /> */}
 
-      <div className="absolute w-full">
+      {/* <div className="absolute w-full">
         <QuestionIndexStep />
-      </div>
+      </div> */}
 
       {hasContent ? (
         <div {...textSwipe} className={`relative z-10 h-full min-h-0 flex-auto overflow-hidden`}>

@@ -41,7 +41,7 @@ export function StyleToolbar({ style, setStyle, positionBottom }: Props) {
     if (position === "rightBottom") rounded = "rounded-br";
 
     return {
-      className: `${buttonActive(key, value)} rounded-none ${rounded}`,
+      className: `${buttonActive(key, value)} rounded-none ${rounded} h-6 w-8 p-2`,
       onClick: () => setOrRmStyle(key, value),
     };
   }
@@ -90,17 +90,17 @@ export function StyleToolbar({ style, setStyle, positionBottom }: Props) {
         <AlignCenter />
       </Button>
 
-      <div className="relative flex items-center">
+      <div className="relative flex text-sm">
         <Input
           type="number"
-          className="z-10 w-[70px] border-none bg-transparent text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="z-10 h-6 w-[66px] border-none bg-transparent py-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
           min={10}
           max={400}
           step={10}
           value={fontSize}
           onChange={(e) => setStyle({ ...style, fontSize: Number(e.target.value) / 100 + "em" })}
         />
-        <div className="absolute right-4 top-[9px] z-0 select-none">%</div>
+        <div className="absolute right-4 top-0 z-0 h-6 select-none">%</div>
       </div>
       <Popover>
         <PopoverTrigger className="ml-auto">
