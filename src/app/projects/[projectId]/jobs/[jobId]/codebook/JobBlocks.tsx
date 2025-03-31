@@ -44,7 +44,7 @@ export function JobBlocks({ projectId, jobId }: Props) {
   };
 
   return (
-    <div className="mx-auto grid w-full grid-cols-1 gap-16 lg:grid-cols-[600px,1fr] lg:gap-9">
+    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[1fr,600px] gap-9">
       <LeftWindow {...windowProps} />
       <RightWindow {...windowProps} />
     </div>
@@ -81,26 +81,36 @@ function LeftWindow({
 
   const disabled = !!blockForm && changesPending;
 
-  if (!!blockForm && changesPending) {
+  function blockPreview() {
+    if (!blockForm || !changesPending) return null;
     return (
-      <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
-        <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
+      <div className="absolute flex w-full justify-center">
+        <div className="ml-auto w-full max-w-[500px] animate-slide-in-right px-3">
+          <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={` ${disabled ? "pointer-events-none opacity-50" : ""} flex w-max min-w-[400px] animate-slide-in-left flex-col`}
-    >
-      {(blocks || []).map((block) => {
-        return (
-          <JobBlockItem key={block.id} block={block} projectId={projectId} jobId={jobId} setBlockForm={setBlockForm} />
-        );
-      })}
-      <div className="mt-12">
-        <CreateBlock newBlock parent={null} position={99999} setBlockForm={setBlockForm} />
+    <div className={`relative flex w-full min-w-[400px] animate-slide-in-left flex-col`}>
+      <div className={`${disabled ? "pointer-events-none opacity-50" : ""}`}>
+        {(blocks || []).map((block) => {
+          return (
+            <JobBlockItem
+              key={block.id}
+              block={block}
+              projectId={projectId}
+              jobId={jobId}
+              setBlockForm={setBlockForm}
+            />
+          );
+        })}
+        <div className="mt-12">
+          <CreateBlock newBlock parent={null} position={99999} setBlockForm={setBlockForm} />
+        </div>
       </div>
+      {blockPreview()}
     </div>
   );
 }
@@ -113,6 +123,7 @@ function RightWindow({
   blocks,
   preview,
   setPreview,
+  changesPending,
   setChangesPending,
 }: WindowProps) {
   if (!blockForm)
@@ -125,17 +136,9 @@ function RightWindow({
   if (!blocks) return null;
   const current = blocks.find((block) => block.id === blockForm.currentId);
 
-  function blockPreview() {
-    return (
-      <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
-        <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full w-full animate-slide-in-left flex-col gap-6 p-3">
-      <div className="ml-auto w-[600px]">
+      <div className="w-[600px]">
         <CreateOrUpdateJobBlock
           key={blockForm.currentId ?? "new" + blockForm.type}
           projectId={projectId}

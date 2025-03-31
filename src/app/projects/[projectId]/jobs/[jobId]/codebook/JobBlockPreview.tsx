@@ -3,8 +3,11 @@ import { GetUnit, JobBlocksResponse, JobState, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import useWatchChange from "@/hooks/useWatchChange";
+import { SquareCheckIcon, SquareIcon } from "lucide-react";
 import { useMiddlecat } from "middlecat-react";
 import React, { useEffect, useMemo } from "react";
 import { useRef, useState } from "react";
@@ -55,9 +58,12 @@ export function JobBlockPreview({ projectId, jobId, preview }: Props) {
 
   if (!jobServer) return null;
 
+  const mode = preview ? "changes" : "job";
+
   return (
     <div>
       <PreviewWindow
+        mode={mode}
         jobServer={jobServer}
         reset={() => {
           setMockServer({
@@ -87,13 +93,43 @@ function initProgress(): Progress {
   };
 }
 
-export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign; reset: () => void }) {
+export function PreviewWindow({
+  mode,
+  jobServer,
+  reset,
+}: {
+  mode: "changes" | "job";
+  jobServer: JobServerDesign;
+  reset: () => void;
+}) {
   const [blockEvents, setBlockEvents] = useState(true);
+  const [freeNav, setFreeNav] = useState(false);
 
   if (!jobServer) return null;
+  const title = mode === "changes" ? "Preview of changes" : "Job preview";
 
   return (
-    <div className="flex flex-wrap items-start justify-center gap-6">
+    <div className="flex flex-wrap items-start justify-center gap-3">
+      <div className="flex h-10 w-full items-center rounded">
+        <h4>{title}</h4>
+        {/* <PreviewDataWindow previewData={previewData} /> */}
+        <div className={`${mode === "job" ? "" : "hidden"} ml-auto flex`}>
+          <Button
+            variant="ghost"
+            className="ml-auto flex gap-3 hover:bg-transparent"
+            onClick={() => {
+              if (freeNav) reset();
+              setFreeNav(!freeNav);
+            }}
+          >
+            Can skip
+            {freeNav ? <SquareCheckIcon /> : <SquareIcon />}
+          </Button>
+          <Button variant="ghost" className="hover:bg-transparent" onClick={reset}>
+            Reset
+          </Button>
+        </div>
+      </div>
       <div
         tabIndex={0}
         className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-primary/20 ${!blockEvents ? "ring-4 ring-secondary ring-offset-2" : ""}`}
@@ -104,12 +140,6 @@ export function PreviewWindow({ jobServer, reset }: { jobServer: JobServerDesign
         onBlur={() => setBlockEvents(true)}
       >
         <AnnotationInterface jobServer={jobServer} blockEvents={blockEvents} />
-      </div>
-      <div className="flex max-w-full flex-col gap-3 pt-6">
-        {/* <PreviewDataWindow previewData={previewData} /> */}
-        <Button className="h-12" onClick={reset}>
-          Reset
-        </Button>
       </div>
     </div>
   );
