@@ -4,7 +4,6 @@ import { z } from "zod";
 import { VariableSchema } from "./variableSchemas";
 import { UnitLayoutSchema } from "./layoutSchemas";
 import { blockType } from "@/app/types";
-import { AnnotationPhaseSchema, SurveyPhaseSchema } from "./phaseSchemas";
 
 extendZodWithOpenApi(z);
 
@@ -14,11 +13,6 @@ export const JobBlockSchemaBase = z.object({
     description:
       "The name of the block. Will not be visible to annotators. Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
     example: "unique_block_name",
-  }),
-  type: z.enum(blockType).openapi({
-    title: "Block type",
-    description:
-      "The type of the block. Can be 'surveyPhase', 'annotationPhase', 'surveyQuestion' or 'annotationQuestion'",
   }),
   parentId: z.number().nullable().openapi({
     title: "Job Block parent ID",
@@ -30,38 +24,36 @@ export const JobBlockSchemaBase = z.object({
   }),
 });
 
-export const JobBlockSurveyQuestionSchema = JobBlockSchemaBase.extend({
+export const JobBlockSurveyQuestionSchema = z.object({
   type: z.literal("surveyQuestion"),
-  content: VariableSchema,
+  variable: VariableSchema,
 });
 
-export const JobBlockAnnotationQuestionSchema = JobBlockSchemaBase.extend({
+export const JobBlockAnnotationQuestionSchema = z.object({
   type: z.literal("annotationQuestion"),
-  content: VariableSchema,
+  variable: VariableSchema,
 });
 
-export const JobBlockAnnotationPhaseSchema = JobBlockSchemaBase.extend({
+export const JobBlockAnnotationPhaseSchema = z.object({
   type: z.literal("annotationPhase"),
-  content: AnnotationPhaseSchema,
+  layout: UnitLayoutSchema,
 });
 
-export const JobBlockSurveyPhaseSchema = JobBlockSchemaBase.extend({
+export const JobBlockSurveyPhaseSchema = z.object({
   type: z.literal("surveyPhase"),
-  content: SurveyPhaseSchema,
 });
 
-export const JobBlockCreateSchema = z.discriminatedUnion("type", [
+export const JobBlockDataSchema = z.discriminatedUnion("type", [
   JobBlockSurveyQuestionSchema,
   JobBlockAnnotationQuestionSchema,
   JobBlockAnnotationPhaseSchema,
   JobBlockSurveyPhaseSchema,
 ]);
 
-export const JobBlockUpdateSchema = z.object({
-  name: JobBlockSchemaBase.shape.name.optional(),
-  parentId: JobBlockSchemaBase.shape.parentId.optional(),
-  position: JobBlockSchemaBase.shape.position.optional(),
-  content: z.union([VariableSchema, AnnotationPhaseSchema, SurveyPhaseSchema]).optional(),
+export const JobBlockCreateSchema = JobBlockSchemaBase.extend({ data: JobBlockDataSchema });
+
+export const JobBlockUpdateSchema = JobBlockSchemaBase.partial().extend({
+  data: JobBlockDataSchema.optional(),
 });
 
 // DELETE
@@ -76,34 +68,33 @@ export const JobBlockDeleteSchema = z.object({
 
 // For this endpoint we process the response from the server client side,
 // so the response schema for the server is different from the response schema for the client
-export const JobBlocksServerResponseSchema = z.discriminatedUnion("type", [
-  JobBlockSurveyQuestionSchema.extend({ id: z.number() }),
-  JobBlockAnnotationQuestionSchema.extend({ id: z.number() }),
-  JobBlockAnnotationPhaseSchema.extend({ id: z.number() }),
-  JobBlockSurveyPhaseSchema.extend({ id: z.number() }),
-]);
+export const JobBlocksServerResponseSchema = JobBlockSchemaBase.extend({ id: z.number(), data: JobBlockDataSchema });
 
-export const JobBlocksResponseAddSchema = JobBlockSchemaBase.extend({
+export const JobBlocksResponseSchema = JobBlockSchemaBase.extend({
   id: z.number(),
   level: z.number(),
   children: z.number(),
+  data: JobBlockDataSchema,
 });
 
-export const JobBlocksResponseSchema = z.discriminatedUnion("type", [
-  JobBlocksResponseAddSchema.merge(JobBlockSurveyQuestionSchema),
-  JobBlocksResponseAddSchema.merge(JobBlockAnnotationQuestionSchema),
-  JobBlocksResponseAddSchema.merge(JobBlockAnnotationPhaseSchema),
-  JobBlocksResponseAddSchema.merge(JobBlockSurveyPhaseSchema),
-]);
+const TreeUpdateSchema = z.array(
+  z.object({
+    id: z.number(),
+    parentId: z.number().nullable(),
+    position: z.number(),
+  }),
+);
 
-// omit name
-export const JobBlocksUpdateResponseSchema = z.object({
-  tree: z.array(
-    z.object({
-      id: z.number(),
-      parentId: z.number().nullable(),
-      position: z.number(),
-    }),
-  ),
+export const JobBlocksCreateResponseSchema = z.object({
+  tree: TreeUpdateSchema,
   block: JobBlocksServerResponseSchema,
+});
+
+export const JobBlocksUpdateResponseSchema = z.object({
+  tree: TreeUpdateSchema.optional(),
+  block: z.object({
+    id: z.number(),
+    name: z.string().optional(),
+    data: JobBlockDataSchema.optional(),
+  }),
 });

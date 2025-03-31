@@ -1,5 +1,5 @@
 {
-  "id": "8cab01a6-af97-41f8-9559-ec8feac874d8",
+  "id": "a13932ec-d2e2-44a9-bb12-6f7793d37d88",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -296,6 +296,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "name": {
+          "name": "name",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "parent_id": {
           "name": "parent_id",
           "type": "integer",
@@ -308,20 +314,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "block": {
-          "name": "block",
+        "data": {
+          "name": "data",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true

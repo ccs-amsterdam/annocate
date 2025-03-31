@@ -36,12 +36,12 @@ interface UnitProgress {
 }
 
 function initJob(codebook: JobBlocksResponse[], globalAnnotations: Annotation[]) {
-  const codebookPhases = createCodebookPhases(codebook);
+  // const codebookPhases = createCodebookPhases(codebook);
   // const jobState = initJobState(globalAnnotations);
-  const progress = initProgress(codebookPhases, globalAnnotations);
-  return {
-    progress,
-  };
+  // const progress = initProgress(codebookPhases, globalAnnotations);
+  // return {
+  //   progress,
+  // };
 }
 
 function initProgress(codebookPhases: CodebookPhase[], globalAnnotations: Annotation[]): Progress {
@@ -63,43 +63,43 @@ function initProgress(codebookPhases: CodebookPhase[], globalAnnotations: Annota
 
 // function initJobState(globalAnnotations: Annotation[]): JobState {}
 
-export function createCodebookPhases(blocks: JobBlocksResponse[]): CodebookPhase[] {
-  const parentMap = createParentMap(blocks);
+// export function createCodebookPhases(blocks: JobBlocksResponse[]): CodebookPhase[] {
+//   const parentMap = createParentMap(blocks);
 
-  const phases = blocks.filter((b) => b.parentId === null);
+//   const phases = blocks.filter((b) => b.parentId === null);
 
-  return phases.map((phase) => ({
-    type: phase.type,
-    variables: recursiveGetVariables(parentMap, phase, {}),
-  }));
-}
+//   return phases.map((phase) => ({
+//     type: phase.data.type,
+//     variables: recursiveGetVariables(parentMap, phase, {}),
+//   }));
+// }
 
-interface Inheritable {
-  layout?: Layout;
-}
+// interface Inheritable {
+//   layout?: Layout;
+// }
 
-function recursiveGetVariables(
-  parentMap: Map<number | null, JobBlocksResponse[]>,
-  parent: JobBlocksResponse,
-  inherit: Inheritable,
-): CodebookVariable[] {
-  // Children in JobBlocksResponse are sorted
-  const children = parentMap.get(parent.id) ?? [];
+// function recursiveGetVariables(
+//   parentMap: Map<number | null, JobBlocksResponse[]>,
+//   parent: JobBlocksResponse,
+//   inherit: Inheritable,
+// ): CodebookVariable[] {
+//   // Children in JobBlocksResponse are sorted
+//   const children = parentMap.get(parent.id) ?? [];
 
-  // inheritables
-  if ("layout" in parent.content) inherit.layout = parent.content.layout;
+//   // inheritables
+//   if ("layout" in parent.data.content) inherit.layout = parent.data.content.layout;
 
-  const variables: CodebookVariable[] = [];
-  for (let child of children) {
-    const isLeaf = child.type === "annotationQuestion" || child.type === "surveyQuestion";
+//   const variables: CodebookVariable[] = [];
+//   for (let child of children) {
+//     const isLeaf = child.data.type === "annotationQuestion" || child.data.type === "surveyQuestion";
 
-    if (isLeaf) {
-      const variable: CodebookVariable = { name: child.name, ...child.content, ...inherit };
-      variables.push(variable);
-    } else {
-      variables.push(...recursiveGetVariables(parentMap, child, inherit));
-    }
-  }
+//     if (isLeaf) {
+//       const variable: CodebookVariable = { name: child.name, ...child.data.content, ...inherit };
+//       variables.push(variable);
+//     } else {
+//       variables.push(...recursiveGetVariables(parentMap, child, inherit));
+//     }
+//   }
 
-  return variables;
-}
+//   return variables;
+// }

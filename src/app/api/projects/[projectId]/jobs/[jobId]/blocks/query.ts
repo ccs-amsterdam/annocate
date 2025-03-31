@@ -7,6 +7,7 @@ import {
   JobBlockDeleteSchema,
   JobBlocksServerResponseSchema,
   JobBlocksUpdateResponseSchema,
+  JobBlocksCreateResponseSchema,
 } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
@@ -31,8 +32,24 @@ export function useCreateJobBlock(projectId: number, jobId: number) {
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
     bodySchema: JobBlockCreateSchema,
-    responseSchema: IdResponseSchema,
-    invalidateEndpoints: [],
+    responseSchema: JobBlocksCreateResponseSchema,
+    // EXPERIMENTAL!! If you get weird behavior with failing updates, disable the
+    // manual update steps. (manual updates is an optimization only)
+    manualUpdateSchema: z.array(JobBlocksResponseSchema),
+    manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
+    manualUpdate: (result, oldData) => {
+      oldData.push({ ...result.block, level: -1, children: 0 });
+
+      const newData = oldData.map((block) => {
+        const treeUpdate = result.tree.find((edge) => edge.id === block.id);
+        if (treeUpdate) {
+          return { ...block, treeUpdate };
+        }
+        return block;
+      });
+
+      return sortNestedBlocks(newData);
+    },
   });
 }
 
@@ -41,6 +58,8 @@ export function useUpdateJobBlock(projectId: number, jobId: number, blockId: num
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     bodySchema: JobBlockUpdateSchema,
     responseSchema: JobBlocksUpdateResponseSchema,
+    // EXPERIMENTAL!! If you get weird behavior with failing updates, disable the
+    // manual update steps and enable the invalidateEndpoints. (manual updates is an optimization only)
     // invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
     manualUpdateSchema: z.array(JobBlocksResponseSchema),
     manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
@@ -52,7 +71,7 @@ export function useUpdateJobBlock(projectId: number, jobId: number, blockId: num
           newBlock = { ...block, ...result.block };
         }
         if (result.tree) {
-          const treeUpdate = result.tree.find((block) => block.id === newBlock.id);
+          const treeUpdate = result.tree.find((edge) => edge.id === newBlock.id);
           if (treeUpdate) {
             newBlock = { ...newBlock, ...treeUpdate };
           }

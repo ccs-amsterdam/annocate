@@ -127,9 +127,9 @@ const Scale = ({
   const right = options[options.length - 1];
 
   return (
-    <div className="relative flex h-full flex-col justify-between ">
+    <div className="relative flex h-full flex-col justify-between">
       <div className="flex flex-auto items-start justify-between p-2 pb-0 text-sm">
-        <div className="flex max-w-[40%] items-center gap-2 ">{left.code}</div>
+        <div className="flex max-w-[40%] items-center gap-2">{left.code}</div>
 
         <div className="flex max-w-[40%] items-center gap-2 text-right">{right.code}</div>
       </div>
@@ -235,14 +235,14 @@ const Item = ({
   onSelect,
 }: ItemProps) => {
   const colorstep = 90 / options.length;
-  const itemlabel = itemObj ? itemObj.label || itemObj.name : "";
+  const itemlabel = itemObj ? itemObj.label || itemObj.name?.replaceAll("_", " ") : "";
   //const background = itemIndex % 2 !== 0 ? "#6666660b" : "#6666661b";
   const padding = "0px 0px 10px 0px";
 
   return (
     <div key={itemIndex} style={{ padding, borderRadius: "5px" }}>
       <div>
-        <div className="flex justify-center text-center ">
+        <div className="flex justify-center text-center">
           <div className="rounded p-1 text-sm text-foreground">{itemlabel}</div>
         </div>
       </div>
@@ -263,7 +263,7 @@ const Item = ({
 
           return (
             <div
-              className={`h-5 max-w-[50%] flex-auto rounded  `}
+              className={`h-5 max-w-[50%] flex-auto rounded`}
               style={{ background: option.color ? "white" : "hsl(var(--primary))" }}
               key={option.code}
               color={color}
@@ -273,7 +273,7 @@ const Item = ({
                   background: isCurrent ? "hsl(var(--secondary))" : option.color,
                   color: option.color || isCurrent ? "black" : "white",
                 }}
-                className={`${isSelected ? " ring-4 ring-secondary ring-offset-1" : ""} relative z-10 h-full w-full cursor-pointer   overflow-hidden text-ellipsis whitespace-nowrap rounded border-transparent px-1 text-sm font-bold  `}
+                className={`${isSelected ? "ring-4 ring-secondary ring-offset-1" : ""} relative z-10 h-full w-full cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap rounded border-transparent px-1 text-sm font-bold`}
                 // ref={option.ref as React.RefObject<HTMLButtonElement>}
                 onClick={() => {
                   onSelect({ code: options[buttonIndex], finish: false, item: itemObj ? itemObj.name : undefined });

@@ -14,7 +14,10 @@ import {
   TextFormField,
   VariableItemsFormField,
 } from "./formHelpers";
-import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import {
+  JobBlockAnnotationPhaseSchema,
+  JobBlockCreateSchema,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { renderURL } from "nuqs/dist/_tsup-dts-rollup";
 import { Button } from "../ui/button";
 import { useState } from "react";
@@ -34,9 +37,6 @@ import { ConfirmDialog } from "../ui/confirm-dialog";
 import { NameField } from "./jobBlockForms";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
-
-// !!! This is just so TS will warn you if you dare change the name of the content field, since this value is hardcoded in this file
-const tsCanary: keyof JobBlockCreate = "content";
 
 export function AnnotationPhaseBlockForm<T extends FieldValues>({
   form,
@@ -59,19 +59,19 @@ export function AnnotationPhaseBlockForm<T extends FieldValues>({
 
 function UnitFields({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   const [accordionValue, setAccordionValue] = useState<string>("");
-  const fields = form.getValues("content.layout.fields") || [];
+  const fields = form.getValues("data.layout.fields") || [];
 
   if (!fields) return null;
 
   function appendField() {
     const newFields = [...fields, defaultField("Field_" + (fields.length + 1))];
-    form.setValue("content.layout.fields", newFields, { shouldDirty: true });
+    form.setValue("data.layout.fields", newFields, { shouldDirty: true });
     setAccordionValue("V" + (newFields.length - 1));
   }
 
   function removeField(index: number) {
     const newFields = fields.filter((_, i) => i !== index);
-    form.setValue("content.layout.fields", newFields, { shouldDirty: true });
+    form.setValue("data.layout.fields", newFields, { shouldDirty: true });
     setAccordionValue("");
   }
 
@@ -80,7 +80,7 @@ function UnitFields({ form }: { form: UseFormReturn<JobBlockCreate> }) {
     const newFields = [...fields];
     const [removed] = newFields.splice(index1, 1);
     newFields.splice(index2, 0, removed);
-    form.setValue("content.layout.fields", newFields, { shouldDirty: true });
+    form.setValue("data.layout.fields", newFields, { shouldDirty: true });
     setAccordionValue("");
   }
 
@@ -88,9 +88,9 @@ function UnitFields({ form }: { form: UseFormReturn<JobBlockCreate> }) {
     <div className="mt-6 flex flex-col">
       <Accordion value={accordionValue} onValueChange={setAccordionValue} type="single" collapsible className="w-full">
         {fields.map((field, index) => {
-          const varName = form.watch(`content.layout.fields.${index}.name`);
+          const varName = form.watch(`data.layout.fields.${index}.name`);
           const isActive = accordionValue === "V" + index;
-          const { error } = form.getFieldState(`content.layout.fields.${index}`);
+          const { error } = form.getFieldState(`data.layout.fields.${index}`);
           return (
             <AccordionItem key={index} value={"V" + index}>
               <div
@@ -149,10 +149,10 @@ function LayoutField<T extends FieldValues>({
   index: number;
 }) {
   const generalShape = UnitGeneralLayoutSchema.shape;
-  const style = form.watch(`content.layout.fields.${index}.style`);
+  const style = form.watch(`data.layout.fields.${index}.style`);
 
   function appendPath(key: string): Path<T> {
-    return `content.layout.fields.${index}.${key}` as Path<T>;
+    return `data.layout.fields.${index}.${key}` as Path<T>;
   }
 
   function renderType() {
@@ -192,7 +192,7 @@ function LayoutField<T extends FieldValues>({
         {type !== "meta" ? (
           <StyleToolbar
             style={style || {}}
-            setStyle={(style) => form.setValue(`content.layout.fields.${index}.style`, style, { shouldDirty: true })}
+            setStyle={(style) => form.setValue(`data.layout.fields.${index}.style`, style, { shouldDirty: true })}
           />
         ) : (
           <div />

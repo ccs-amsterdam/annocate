@@ -27,7 +27,11 @@ import {
 } from "./api/projects/[projectId]/jobs/[jobId]/units/schemas";
 import { JobRulesSchema, JobResponseSchema, JobMetaResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
-import { JobBlocksResponseSchema, JobBlockCreateSchema } from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import {
+  JobBlocksResponseSchema,
+  JobBlockCreateSchema,
+  JobBlockDataSchema,
+} from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
@@ -66,6 +70,7 @@ export interface Authorization {
   projectRole: ProjectRole | null;
 }
 
+export type JobBlockData = z.infer<typeof JobBlockDataSchema>;
 export type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;

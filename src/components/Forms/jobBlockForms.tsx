@@ -20,7 +20,7 @@ type JobBlockUpdate = z.infer<typeof JobBlockUpdateSchema>;
 interface CreateJobBlockProps {
   projectId: number;
   jobId: number;
-  type: JobBlocksResponse["type"];
+  type: JobBlocksResponse["data"]["type"];
   parentId: number | null;
   position: number;
   setPreview: (block: JobBlocksResponse | undefined | ZodError) => void;
@@ -53,7 +53,7 @@ export function CreateOrUpdateJobBlock({
 
   const form = useForm<JobBlockCreate>({
     resolver: zodResolver(schema),
-    defaultValues: current ?? { type, parentId, position, name: defaultName || "", content: {} },
+    defaultValues: current ?? { parentId, position, name: defaultName || "", data: { type } },
   });
   useWatchChanges({ form, setChangesPending });
   useUpdatePreview({ form, setPreview });

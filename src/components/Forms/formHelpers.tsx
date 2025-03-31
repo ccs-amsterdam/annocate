@@ -376,20 +376,6 @@ export function CodesFormField<T extends FieldValues>({
     field.onChange(values);
   }
 
-  function rmCode(field: ControllerRenderProps<T>, values: CodebookCode[], index: number) {
-    values.splice(index, 1);
-    field.onChange(values);
-  }
-
-  function moveCode(field: ControllerRenderProps<T>, values: CodebookCode[], i: number, j: number) {
-    const temp = values[i];
-    values[i] = values[j];
-    values[j] = temp;
-    field.onChange(values);
-  }
-
-  const inputStyle = "h-7 px-2 rounded-none focus-visible:ring-0 border-0 rounded ";
-  const cellStyle = "py-1 px-1 rounded-none hover:bg-transparent";
   const tableHeadStyle = "h-8 px-3 py-1 text-foreground text-base  ";
 
   return (
@@ -411,77 +397,22 @@ export function CodesFormField<T extends FieldValues>({
               <Table>
                 <TableHeader className="border-">
                   <TableRow className="border-none p-0">
-                    <TableHead className={`${tableHeadStyle} w-3 rounded-l`}></TableHead>
-                    <TableHead className={`${tableHeadStyle} `}>
-                      Code{"  "}
-                      <span className="opacity-50">*</span>
+                    <TableHead className={`${tableHeadStyle} pl-0`}>
+                      <DescriptionTooltip
+                        title={openAPI.title}
+                        description={openAPI.description}
+                        required={!zType.isOptional()}
+                      />
                     </TableHead>
                     <TableHead className={`${tableHeadStyle} w-24`}> Value</TableHead>
                     <TableHead className={`${tableHeadStyle} w-28`}> Color</TableHead>
+                    <TableHead className={`${tableHeadStyle} w-3 rounded-l`}></TableHead>
                     <TableHead className={`${tableHeadStyle} w-3 rounded-r`}></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="">
                   {codes.map((code, i) => {
-                    const codeState = form?.getFieldState(`block.codes[${i}]`);
-                    const codeError = "code" in (codeState?.error || {});
-                    const valueError = "value" in (codeState?.error || {});
-                    const colorError = "color" in (codeState?.error || {});
-                    const codeInputStyle = codeError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
-                    const valueInputStyle = valueError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
-                    const colorInputStyle = colorError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
-
-                    if (maxLines && i >= maxLines) return null;
-                    return (
-                      <TableRow key={i} className="border-none hover:bg-transparent">
-                        <TableCell className={cellStyle}>
-                          <MoveItemInArray
-                            move={(i, j) => moveCode(field, codes, i, j)}
-                            i={i}
-                            n={codes.length}
-                            bg="bg-background"
-                            error={codeState?.invalid}
-                          />
-                        </TableCell>
-                        <TableCell className={cellStyle}>
-                          <Input
-                            className={codeInputStyle}
-                            value={code.code}
-                            onChange={(v) => {
-                              codes[i].code = v.target.value;
-                              field.onChange(codes);
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell className={cellStyle}>
-                          <Input
-                            className={valueInputStyle}
-                            type="number"
-                            value={String(code.value) || ""}
-                            onChange={(v) => {
-                              codes[i].value = Number(v.target.value);
-                              field.onChange(codes);
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell className={cellStyle}>
-                          <Input
-                            className={colorInputStyle}
-                            value={String(code.color) || ""}
-                            onChange={(v) => {
-                              codes[i].color = v.target.value;
-                              field.onChange(codes);
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell className={cellStyle}>
-                          <X
-                            className="h-5 w-5 cursor-pointer text-foreground/50 hover:text-destructive"
-                            onClick={() => rmCode(field, codes, i)}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
+                    return <CodesFormFieldRow key={i} {...{ form, control, zType, name, field, codes, i, maxLines }} />;
                   })}
                 </TableBody>
               </Table>
@@ -502,24 +433,127 @@ export function CodesFormField<T extends FieldValues>({
   );
 }
 
-type CodebookVariableItem = z.infer<typeof CodebookVariableItemSchema>;
+function CodesFormFieldRow<T extends FieldValues>({
+  form,
+  field,
+  codes,
+  i,
+  maxLines,
+}: CodeFormProps<T> & {
+  field: ControllerRenderProps<T>;
+  codes: CodebookCode[];
+  i: number;
+  maxLines: number | undefined;
+}) {
+  const code = codes[i];
+  const [value, setValue] = useState(String(code.value) || "");
 
-export function VariableItemsFormField<T extends FieldValues>({ control, name, zType, swipe }: CodeFormProps<T>) {
-  const openAPI = OpenAPIMeta(zType, name);
+  const inputStyle = "h-7 px-3 rounded-none focus-visible:ring-0 border-0 rounded ";
+  const cellStyle = "py-1 px-1 rounded-none hover:bg-transparent";
 
-  const maxLines = swipe ? 3 : undefined;
+  const codeState = form?.getFieldState(`block.codes[${i}]`);
+  const codeError = "code" in (codeState?.error || {});
+  const valueError = "value" in (codeState?.error || {});
+  const colorError = "color" in (codeState?.error || {});
+  const codeInputStyle = codeError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
+  const valueInputStyle = valueError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
+  const colorInputStyle = colorError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
 
-  function addVariable(field: any, values: CodebookVariableItem[]) {
-    values.push({ name: "new_item", label: "" });
-    field.onChange(values);
-  }
+  const hasValues = codes.some((c) => c.value !== undefined);
+  console.log(codes);
 
-  function rmVariable(field: any, values: CodebookVariableItem[], index: number) {
+  function rmCode(field: ControllerRenderProps<T>, values: CodebookCode[], index: number) {
     values.splice(index, 1);
     field.onChange(values);
   }
 
-  function moveVariable(field: any, values: CodebookVariableItem[], i: number, j: number) {
+  function moveCode(field: ControllerRenderProps<T>, values: CodebookCode[], i: number, j: number) {
+    const temp = values[i];
+    values[i] = values[j];
+    values[j] = temp;
+    field.onChange(values);
+  }
+
+  if (maxLines && i >= maxLines) return null;
+  return (
+    <TableRow key={i} className="border-none hover:bg-transparent">
+      <TableCell className={`${cellStyle} pl-0`}>
+        <Input
+          className={codeInputStyle}
+          value={code.code}
+          onChange={(v) => {
+            codes[i].code = v.target.value;
+            field.onChange(codes);
+          }}
+        />
+      </TableCell>
+      <TableCell className={cellStyle}>
+        <Input
+          className={valueInputStyle}
+          type="number"
+          value={value}
+          placeholder={hasValues ? "NA" : ""}
+          onChange={(v) => {
+            setValue(v.target.value);
+            console.log(v.target.value);
+            if (v.target.value === "") {
+              codes[i].value = undefined;
+              field.onChange(codes);
+            }
+            if (Number(v.target.value)) {
+              codes[i].value = Number(v.target.value);
+              field.onChange(codes);
+            }
+          }}
+        />
+      </TableCell>
+      <TableCell className={cellStyle}>
+        <Input
+          className={colorInputStyle}
+          value={String(code.color) || ""}
+          onChange={(v) => {
+            codes[i].color = v.target.value;
+            field.onChange(codes);
+          }}
+        />
+      </TableCell>
+      <TableCell className={cellStyle}>
+        <MoveItemInArray
+          move={(i, j) => moveCode(field, codes, i, j)}
+          i={i}
+          n={codes.length}
+          bg="bg-background"
+          error={codeState?.invalid}
+        />
+      </TableCell>
+      <TableCell className={cellStyle}>
+        <X
+          className="h-5 w-5 cursor-pointer text-foreground/50 hover:text-destructive"
+          onClick={() => rmCode(field, codes, i)}
+        />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+type CodebookVariableItem = z.infer<typeof CodebookVariableItemSchema>;
+
+export function VariableItemsFormField<T extends FieldValues>({ form, control, name, zType, swipe }: CodeFormProps<T>) {
+  const openAPI = OpenAPIMeta(zType, name);
+
+  const maxLines = swipe ? 3 : undefined;
+
+  function addItem(field: any, values: CodebookVariableItem[]) {
+    values.push({ name: "new_item", label: "" });
+    field.onChange(values);
+  }
+
+  function rmItem(field: any, values: CodebookVariableItem[], index: number) {
+    values.splice(index, 1);
+    field.onChange(values);
+  }
+
+  function moveItem(field: any, values: CodebookVariableItem[], i: number, j: number) {
     const temp = values[i];
     values[i] = values[j];
     values[j] = temp;
@@ -529,6 +563,10 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
   function forceAlphaNumeric(value: string) {
     return value.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "");
   }
+
+  const tableHeadStyle = "h-8 px-3 py-1 text-foreground text-base  ";
+  const inputStyle = "h-7 px-2 rounded-none focus-visible:ring-0 border-0 rounded ";
+  const cellStyle = "py-1 px-1 rounded-none hover:bg-transparent";
 
   return (
     <FormField
@@ -543,51 +581,66 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
 
         return (
           <FormItem className="flex flex-col">
-            <FormFieldTitle title={openAPI.title} description={openAPI.description} required={!zType.isOptional()} />
+            <FormFieldTitle
+              title={openAPI.title}
+              description={openAPI.description}
+              hideTitle
+              required={!zType.isOptional()}
+            />
             <FormControl>
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="border-">
+                  <TableRow className="border-none p-0">
+                    <TableHead className={`${tableHeadStyle} h-6 py-1 pl-0`}>
+                      <DescriptionTooltip
+                        title={openAPI.title}
+                        description={openAPI.description}
+                        required={!zType.isOptional()}
+                      />
+                    </TableHead>
+                    <TableHead className={`${tableHeadStyle} h-6 w-2/3 px-3 py-1`}>Label</TableHead>
                     <TableHead className="w-3"></TableHead>
-                    <TableHead className="h-6 px-3 py-1">Name</TableHead>
-                    <TableHead className="h-6 w-2/3 px-3 py-1">Label</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item, i) => {
+                    const codeState = form?.getFieldState(`block.items[${i}]`);
+                    const nameError = "name" in (codeState?.error || {});
+                    const labelError = "label" in (codeState?.error || {});
+                    const nameInputStyle = nameError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
+                    const labelInputStyle = labelError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
+
                     if (maxLines && i >= maxLines) return null;
-                    const inputStyle = "h-7 rounded-none focus-visible:ring-0";
-                    const cellStyle = "p-1 rounded-none hover:bg-transparent ";
                     return (
-                      <TableRow key={i} className="hover:bg-transparent">
-                        <TableCell className={cellStyle}>
-                          <MoveItemInArray
-                            move={(i, j) => moveVariable(field, items, i, j)}
-                            i={i}
-                            n={items.length}
-                            bg="bg-primary-light"
-                            error={false}
-                            variant="secondary"
-                          />
-                        </TableCell>
-                        <TableCell className={cellStyle}>
+                      <TableRow key={i} className="border-none hover:bg-transparent">
+                        <TableCell className={`${cellStyle} pl-0`}>
                           <Input
-                            className={inputStyle}
+                            className={nameInputStyle}
                             value={item.name}
                             onChange={(v) => setItem(i, "name", forceAlphaNumeric(v.target.value))}
                           />
                         </TableCell>
                         <TableCell className={cellStyle}>
                           <Input
-                            className={inputStyle}
+                            className={labelInputStyle}
                             value={String(item.label)}
                             onChange={(v) => setItem(i, "label", v.target.value)}
                           />
                         </TableCell>
                         <TableCell className={cellStyle}>
+                          <MoveItemInArray
+                            move={(i, j) => moveItem(field, items, i, j)}
+                            i={i}
+                            n={items.length}
+                            bg="bg-background/40"
+                            error={false}
+                            variant="default"
+                          />
+                        </TableCell>
+                        <TableCell className={cellStyle}>
                           <X
                             className="h-5 w-5 cursor-pointer text-foreground/50 hover:text-destructive"
-                            onClick={() => rmVariable(field, items, i)}
+                            onClick={() => rmItem(field, items, i)}
                           />
                         </TableCell>
                       </TableRow>
@@ -596,8 +649,14 @@ export function VariableItemsFormField<T extends FieldValues>({ control, name, z
                 </TableBody>
               </Table>
             </FormControl>
-            <Button type="button" variant="secondary" onClick={() => addVariable(field, items)}>
-              Add Item
+            <Button
+              variant={items.length > 0 ? "ghost" : "default"}
+              onClick={(e) => {
+                e.preventDefault();
+                addItem(field, items);
+              }}
+            >
+              {items.length > 0 ? "Add Item" : "Create items"}
             </Button>
           </FormItem>
         );
@@ -625,41 +684,43 @@ export function FormFieldTitle({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  function descriptionStyle(showDescription: boolean) {
-    if (!showDescription || !ref.current)
-      return {
-        maxHeight: "0",
-      };
-    const descriptionHeight = ref.current?.scrollHeight;
-    return {
-      maxHeight: `${descriptionHeight}px`,
-      margin: "0.5rem 0 0.5rem 0",
-    };
-  }
-
   return (
     <div>
       <div className={`flex items-center gap-1 ${hideTitle ? "hidden" : ""}`}>
-        <Tooltip delayDuration={200}>
-          <TooltipTrigger
-            tabIndex={-1}
-            className="flex items-center gap-[1px] font-normal"
-            onClick={(e) => {
-              e.preventDefault();
-            }}
-          >
-            {title}
-            {required ? <span className="font-sm opacity-70">*</span> : null}
-          </TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent side="top" sideOffset={3} className="w-[400px]">
-              {description}
-            </TooltipContent>
-          </TooltipPortal>
-        </Tooltip>
+        <DescriptionTooltip title={title} description={description} required={required} />
       </div>
       {disableMessage ? null : <FormMessage className="mt-1" />}
     </div>
+  );
+}
+
+function DescriptionTooltip({
+  title,
+  description,
+  required,
+}: {
+  title: string;
+  description: string;
+  required?: boolean;
+}) {
+  return (
+    <Tooltip delayDuration={200}>
+      <TooltipTrigger
+        tabIndex={-1}
+        className="flex items-center gap-[1px] font-normal"
+        onClick={(e) => {
+          e.preventDefault();
+        }}
+      >
+        {title}
+        {required ? <span className="font-sm opacity-70">*</span> : null}
+      </TooltipTrigger>
+      <TooltipPortal>
+        <TooltipContent side="top" sideOffset={3} className="w-[400px]">
+          {description}
+        </TooltipContent>
+      </TooltipPortal>
+    </Tooltip>
   );
 }
 

@@ -6,7 +6,7 @@ import { eq, inArray, or, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { getRecursiveChildren, isValidParent, createsCycle } from "@/functions/treeFunctions";
 import { safeParams } from "@/functions/utils";
-import { reindexJobBlockPositions } from "../helpers";
+import { reIndexCodebookTree } from "../helpers";
 import {
   JobBlockCreateSchema,
   JobBlockDeleteSchema,
@@ -15,6 +15,8 @@ import {
 } from "../schemas";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
+import { JobBlockData } from "@/app/types";
+import { z } from "zod";
 
 export async function POST(
   req: Request,
@@ -25,12 +27,7 @@ export async function POST(
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
-        // We first perform the actual update. Then afterwards we perform additional
-        // validation checks. If we fail any of these, we rollback the transaction.
-
-        // We subtract 0.5 from the position to ensure that the new block is placed
-        // before the block at that position (if it already exists)
-        if (body.position) body.position = body.position - 0.5;
+        const updated: z.infer<typeof JobBlocksUpdateResponseSchema> = { block: { id: params.blockId } };
 
         const [updatedJobBlock] = await tx
           .update(jobBlocks)
@@ -38,41 +35,33 @@ export async function POST(
           .where(eq(jobBlocks.id, params.blockId))
           .returning();
 
-        // CONTENT UPDATE VALIDATION
-        if (body.content) {
-          JobBlockCreateSchema.parse(updatedJobBlock);
+        if (body.name) updated.block.name = updatedJobBlock.name;
+        if (body.data) updated.block.data = body.data;
+
+        const positionChanged = body.position && body.position !== updatedJobBlock.position;
+        const parentChanged = body.parentId && body.parentId !== updatedJobBlock.parentId;
+        const typeChanged = body.data?.type && body.data.type !== updatedJobBlock.data.type;
+
+        if (positionChanged || parentChanged || typeChanged) {
+          // RE-INDEX TREE AND VALIDATION
+          if (body.position) body.position = body.position - 0.5;
+          const tree = await reIndexCodebookTree(tx, params.jobId);
+
+          if (createsCycle(tree, params.blockId)) throw new Error("Cycle detected in block tree");
+
+          const i = tree.findIndex((block) => block.id === params.blockId);
+          if (i === -1) throw new Error("Block not found");
+
+          const parent = tree.find((block) => block.id === body.parentId);
+          if (!parent) throw new Error("Parent not found");
+
+          if (!isValidParent(tree[i].type, parent.type))
+            throw new Error(`Invalid parent type: ${parent.type} cannot be parent of ${tree[i].type}`);
+
+          updated.tree = tree.map((block) => ({ id: block.id, parentId: block.parentId, position: block.position }));
         }
 
-        // If no position update, we're done
-        if (!body.parentId && !body.position) {
-          return { block: updatedJobBlock };
-        }
-
-        // TREE UPDATE VALIDATION
-        let treeData = await db
-          .select({
-            id: jobBlocks.id,
-            position: jobBlocks.position,
-            type: jobBlocks.type,
-            parentId: jobBlocks.parentId,
-          })
-          .from(jobBlocks)
-          .where(eq(jobBlocks.jobId, params.jobId));
-
-        if (createsCycle(treeData, params.blockId)) throw new Error("Cycle detected in block tree");
-
-        const i = treeData.findIndex((block) => block.id === params.blockId);
-        if (i === -1) throw new Error("Block not found");
-
-        const parent = treeData.find((block) => block.id === body.parentId);
-        if (!parent) throw new Error("Parent not found");
-
-        if (!isValidParent(treeData[i].type, parent.type))
-          throw new Error(`Invalid parent type: ${parent.type} cannot be parent of ${treeData[i].type}`);
-
-        const tree = treeData.map((block) => ({ id: block.id, parentId: block.parentId, position: block.position }));
-
-        return { tree, block: updatedJobBlock };
+        return updated;
       });
     },
     req,

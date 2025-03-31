@@ -7,15 +7,7 @@ extendZodWithOpenApi(z);
 
 ///////////////// VARIABLES
 
-export const variableType = [
-  "select code",
-  "search code",
-  "scale",
-  "annotinder",
-  "confirm",
-  "span",
-  "relation",
-] as const;
+export const variableType = ["select code", "search code", "scale", "annotinder", "confirm"] as const;
 export const variableTypeOptions: FormOptions[] = [
   { value: "select code", label: "Select Code", description: "Select one or multiple buttons" },
   { value: "search code", label: "Search Code", description: "Search and select one or multiple items from a list" },
@@ -176,7 +168,7 @@ export const CodebookVariableItemsSchema = z
   .openapi({
     title: "Items",
     description:
-      "The items for which the question is asked. The name is for your own use, and will be concatenated with the variable name to store the results. The label is shown to the user",
+      "The items for which the question is asked. The item name combines with the variable name (variable.item). The label is shown to the user. If no label is provided, the name is shown (with underscores replaced by spaces).",
   });
 
 export const CodebookParamsVerticalSchema = z.boolean().optional().openapi({

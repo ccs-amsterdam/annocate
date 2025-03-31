@@ -34,7 +34,7 @@ import {
   access,
   Access,
   BlockType,
-  JobBlockCreate,
+  JobBlockData,
 } from "@/app/types";
 import { z } from "zod";
 
@@ -161,16 +161,11 @@ export const jobBlocks = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 128 }).notNull(),
     parentId: integer("parent_id").references((): AnyPgColumn => jobBlocks.id),
     position: doublePrecision("position").notNull(),
-    name: varchar("name", { length: 128 }),
 
-    type: text("type", {
-      enum: ["surveyPhase", "annotationPhase", "surveyQuestion", "unitLayout", "annotationQuestion"],
-    })
-      .$type<BlockType>()
-      .notNull(),
-    content: jsonb("block").notNull().$type<JobBlockCreate["content"]>(),
+    data: jsonb("data").notNull().$type<JobBlockData>(),
   },
   (table) => ({
     jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),

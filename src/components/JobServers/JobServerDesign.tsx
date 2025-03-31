@@ -97,7 +97,7 @@ class JobServerDesign implements JobServer {
       .filter((b) => b.parentId === null)
       .map((phase) => {
         const label = phase.name.replaceAll("_", " "); // TODO: Add label that can overwrite the default
-        if (phase.type.includes("survey")) {
+        if (phase.data.type.includes("survey")) {
           return {
             type: "survey",
             label,
@@ -243,7 +243,7 @@ function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
       if (phaseStarted) break;
       if (phaseNr++ === phase) {
         phaseStarted = true;
-        type = block.type;
+        type = block.data.type;
       }
     }
 
@@ -256,9 +256,10 @@ function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
   let layout: Layout | undefined = undefined;
 
   for (let block of phaseBlocks) {
-    if ("layout" in block.content) layout = block.content.layout;
-    if (block.type === "annotationQuestion" || block.type === "surveyQuestion") {
-      codebook.variables.push({ name: block.name, layout, ...block.content });
+    if ("layout" in block.data) layout = block.data.layout;
+
+    if (block.data.type === "annotationQuestion" || block.data.type === "surveyQuestion") {
+      codebook.variables.push({ name: block.name, layout, ...block.data.variable });
     }
   }
 

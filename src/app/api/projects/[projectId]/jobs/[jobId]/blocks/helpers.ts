@@ -1,10 +1,17 @@
 import { jobBlocks, units } from "@/drizzle/schema";
 import { and, eq, gte, inArray, SQL, sql } from "drizzle-orm";
 import db from "@/drizzle/drizzle";
-import { BlockType } from "@/app/types";
+import { BlockType, JobBlockData } from "@/app/types";
 
-export async function reindexJobBlockPositions(tx: any, jobId: number): Promise<void> {
-  await tx.execute(sql`
+interface ReIndexPositionsReturn {
+  id: number;
+  parentId: number;
+  position: number;
+  type: JobBlockData["type"];
+}
+
+export async function reIndexCodebookTree(tx: any, jobId: number): Promise<ReIndexPositionsReturn[]> {
+  const res = await tx.execute(sql<ReIndexPositionsReturn[]>`
     WITH new_position AS
     (
         SELECT id, row_number() OVER (PARTITION BY parent_id ORDER BY position) AS newpos
@@ -16,7 +23,9 @@ export async function reindexJobBlockPositions(tx: any, jobId: number): Promise<
     SET position = new_position.newpos-1
     FROM new_position
     WHERE ${jobBlocks.id} = new_position.id
+    RETURNING ${jobBlocks.id}, ${jobBlocks.parentId} AS "parentId", ${jobBlocks.position}, ${jobBlocks.data}->>'type' AS type
     `);
+  return res.rows;
 }
 
 export const validParents: Record<BlockType, (BlockType | "ROOT")[]> = {

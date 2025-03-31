@@ -3,14 +3,15 @@ import { createGet, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { jobBlocks } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
-import { and, eq, getTableColumns } from "drizzle-orm";
-import { JobBlockCreateSchema, JobBlocksResponseSchema } from "./schemas";
+import { and, eq, getTableColumns, sql } from "drizzle-orm";
+import { JobBlockCreateSchema, JobBlocksCreateResponseSchema, JobBlocksResponseSchema } from "./schemas";
 import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
 import { z } from "zod";
-import { reindexJobBlockPositions } from "./helpers";
+import { reIndexCodebookTree } from "./helpers";
 import { isValidParent } from "@/functions/treeFunctions";
+import { JobBlockData } from "@/app/types";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(await props.params);
@@ -35,36 +36,28 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
   return createUpdate({
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
-        if (body.parentId !== null) {
-          // If parent is given, check if allowed
-          const [parent] = await tx
-            .select({
-              id: jobBlocks.id,
-              position: jobBlocks.position,
-              type: jobBlocks.type,
-              parentId: jobBlocks.parentId,
-            })
-            .from(jobBlocks)
-            .where(and(eq(jobBlocks.jobId, params.jobId), eq(jobBlocks.id, body.parentId)));
-
-          if (!parent) return { message: "Invalid parent id" };
-          if (!isValidParent(body.type, parent.type))
-            return { message: `Invalid parent type: ${parent.type} cannot be parent of ${body.type}` };
-        }
-
         body.position = body.position - 0.5;
         const values = { jobId: params.jobId, ...body };
 
         const [newJobBlock] = await tx.insert(jobBlocks).values(values).returning();
 
-        await reindexJobBlockPositions(tx, params.jobId);
+        let treeData = await reIndexCodebookTree(tx, params.jobId);
 
-        return newJobBlock;
+        if (body.parentId !== null) {
+          const parent = treeData.find((block) => block.id === body.parentId);
+          if (!parent) throw new Error("Invalid parent id");
+          if (!isValidParent(body.data.type, parent.type))
+            throw new Error(`Invalid parent type: ${parent.type} cannot be parent of ${body.data.type}`);
+        }
+
+        const tree = treeData.map((block) => ({ id: block.id, parentId: block.parentId, position: block.position }));
+        console.log(tree, newJobBlock);
+        return { tree, block: newJobBlock };
       });
     },
     req,
     bodySchema: JobBlockCreateSchema,
-    responseSchema: IdResponseSchema,
+    responseSchema: JobBlocksCreateResponseSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };

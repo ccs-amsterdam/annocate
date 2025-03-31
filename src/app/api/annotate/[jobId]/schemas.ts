@@ -8,7 +8,6 @@ import {
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { AnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";
-import { blockType } from "@/app/types";
 import { UnitDataSchema } from "../../projects/[projectId]/jobs/[jobId]/units/schemas";
 
 extendZodWithOpenApi(z);

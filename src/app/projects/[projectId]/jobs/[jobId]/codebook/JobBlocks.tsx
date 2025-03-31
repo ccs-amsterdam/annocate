@@ -19,7 +19,7 @@ interface Props {
 interface BlockFormProps {
   position: JobBlocksResponse["position"];
   parentId: JobBlocksResponse["parentId"];
-  type: JobBlocksResponse["type"];
+  type: JobBlocksResponse["data"]["type"];
   currentId?: number;
 }
 
@@ -172,7 +172,7 @@ const typeLabel = {
 
 function CreateBlock({ parent, position, setBlockForm, newBlock }: CreateBlockProps) {
   const [open, setOpen] = useState(false);
-  const options = getValidChildren(parent?.type || null);
+  const options = getValidChildren(parent?.data.type || null);
   const parentId = parent?.id || null;
 
   if (options.length === 0) return null;
@@ -232,14 +232,14 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
   const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
   const router = useRouter();
 
-  const isPhase = block.type === "annotationPhase" || block.type === "surveyPhase";
+  const isPhase = block.data.type === "annotationPhase" || block.data.type === "surveyPhase";
 
   function header() {
     return block.name.replaceAll("_", " ");
   }
 
   function blockStyle() {
-    if (block.type.includes("Phase")) return `${block.position > 0 ? "mt-6" : ""}   font-bold`;
+    if (block.data.type.includes("Phase")) return `${block.position > 0 ? "mt-6" : ""}   font-bold`;
     if (block.level > 0) return "";
     if (isPhase) return "";
   }
@@ -250,11 +250,11 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
       style={{ paddingLeft: `${block.level}rem` }}
       is="button"
       onClick={() => {
-        if (!block.type) return null;
+        if (!block.data.type) return null;
         setBlockForm({
           position: block.position,
           parentId: block.parentId,
-          type: block.type,
+          type: block.data.type,
           currentId: block.id,
         });
       }}
@@ -286,7 +286,7 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
   );
 }
 
-function getDefaultName(blocks: JobBlocksResponse[], type: JobBlocksResponse["type"]) {
+function getDefaultName(blocks: JobBlocksResponse[], type: JobBlocksResponse["data"]["type"]) {
   const nameLabel = getLabel(type).replaceAll(" ", "_");
   let name = `${nameLabel}_1`;
   for (let i = 2; i < 1000; i++) {
@@ -296,7 +296,7 @@ function getDefaultName(blocks: JobBlocksResponse[], type: JobBlocksResponse["ty
   return name;
 }
 
-function getLabel(type: JobBlocksResponse["type"]) {
+function getLabel(type: JobBlocksResponse["data"]["type"]) {
   if (type === "surveyPhase") return "Survey phase";
   if (type === "annotationPhase") return "Annotation phase";
   if (type === "surveyQuestion") return "Survey question";

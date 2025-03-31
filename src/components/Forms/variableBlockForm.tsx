@@ -3,6 +3,7 @@ import {
   CodebookScaleTypeSchema,
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
+  VariableSchema,
   variableTypeOptions,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import { Control, FieldValues, UseFormReturn } from "react-hook-form";
@@ -15,7 +16,11 @@ import {
   TextFormField,
   VariableItemsFormField,
 } from "./formHelpers";
-import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import {
+  JobBlockAnnotationQuestionSchema,
+  JobBlockCreateSchema,
+  JobBlockSurveyQuestionSchema,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { useState } from "react";
 import { NameField } from "./jobBlockForms";
 import { StyleToolbar } from "../Common/StyleToolbar";
@@ -23,9 +28,6 @@ import { Instrument_Sans } from "next/font/google";
 import VariableInstructions from "../AnnotationInterface/VariableInstructions";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
-
-// !!! This is just so TS will warn you if you dare change the name of the content field, since this value is hardcoded in this file
-const tsCanary: keyof JobBlockCreate = "content";
 
 export function VariableBlockForm<T extends FieldValues>({
   form,
@@ -35,11 +37,11 @@ export function VariableBlockForm<T extends FieldValues>({
   control: Control<T, any>;
 }) {
   const generalShape = CodebookVariableSchema.shape;
-  const type = form.watch("content.type");
-  const questionStyle = form.watch("content.questionStyle");
+  const type = form.watch("data.variable.type");
+  const questionStyle = form.watch("data.variable.questionStyle");
 
   if (!questionStyle) {
-    form.setValue("content.questionStyle", { textAlign: "center", fontWeight: "bold", fontSize: "1.1em" });
+    form.setValue("data.variable.questionStyle", { textAlign: "center", fontWeight: "bold", fontSize: "1.1em" });
   }
 
   function renderType() {
@@ -79,7 +81,7 @@ export function VariableBlockForm<T extends FieldValues>({
 }
 
 function DefaultFields({ form, children }: { form: UseFormReturn<JobBlockCreate>; children: React.ReactNode }) {
-  const type = form.watch("content.type");
+  const type = form.watch("data.variable.type");
   if (!type) return null;
   return (
     <>
@@ -91,38 +93,38 @@ function DefaultFields({ form, children }: { form: UseFormReturn<JobBlockCreate>
 }
 
 function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
-  const style = form.watch(`content.questionStyle`);
+  const style = form.watch(`data.variable.questionStyle`);
 
   return (
     <div className="flex flex-col">
       <TextAreaFormField
         control={form.control}
         zType={CodebookVariableSchema.shape.question}
-        name={"content.question"}
+        name={"data.variable.question"}
         className="rounded-bl-none"
       />
       <StyleToolbar
         positionBottom
         style={style || {}}
-        setStyle={(style) => form.setValue(`content.questionStyle`, style, { shouldDirty: true })}
+        setStyle={(style) => form.setValue(`data.variable.questionStyle`, style, { shouldDirty: true })}
       />
     </div>
   );
 }
 
 function InstructionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
-  const style = form.watch(`content.instructionStyle`);
+  const style = form.watch(`data.variable.instructionStyle`);
   return (
     <div className="flex flex-col">
       <TextAreaFormField
         control={form.control}
         zType={CodebookVariableSchema.shape.instruction}
-        name={"content.instruction"}
+        name={"data.variable.instruction"}
       />
       <StyleToolbar
         positionBottom
         style={style || {}}
-        setStyle={(style) => form.setValue(`content.instructionStyle`, style, { shouldDirty: true })}
+        setStyle={(style) => form.setValue(`data.variable.instructionStyle`, style, { shouldDirty: true })}
       />
     </div>
   );
@@ -133,7 +135,7 @@ function TypeField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
     <DropdownFormField
       control={form.control}
       zType={CodebookVariableSchema.shape.type}
-      name="content.type"
+      name="data.variable.type"
       values={variableTypeOptions}
       labelWidth="8rem"
       placeholder="Select question type"
@@ -144,13 +146,21 @@ function TypeField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
 
 function MultipleField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
-    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.multiple} name="content.multiple" />
+    <BooleanFormField
+      control={form.control}
+      zType={CodebookSelectTypeSchema.shape.multiple}
+      name="data.variable.multiple"
+    />
   );
 }
 
 function VerticalField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
-    <BooleanFormField control={form.control} zType={CodebookSelectTypeSchema.shape.vertical} name="content.vertical" />
+    <BooleanFormField
+      control={form.control}
+      zType={CodebookSelectTypeSchema.shape.vertical}
+      name="data.variable.vertical"
+    />
   );
 }
 
@@ -159,7 +169,7 @@ function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
     <CodesFormField
       form={form}
       control={form.control}
-      name="content.codes"
+      name="data.variable.codes"
       zType={CodebookSelectTypeSchema.shape.codes}
       hideTitle
     />
@@ -168,6 +178,11 @@ function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
 
 function ItemsField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
-    <VariableItemsFormField control={form.control} name="content.items" zType={CodebookScaleTypeSchema.shape.items} />
+    <VariableItemsFormField
+      form={form}
+      control={form.control}
+      name="data.variable.items"
+      zType={CodebookScaleTypeSchema.shape.items}
+    />
   );
 }
