@@ -1,7 +1,7 @@
 import { createTableParamsSchema, SafeNameSchema } from "@/app/api/schemaHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { VariableSchema } from "./variableSchemas";
+import { QuestionVariableSchema, SpanVariableSchema } from "./variableSchemas";
 import { UnitLayoutSchema } from "./layoutSchemas";
 import { blockType } from "@/app/types";
 
@@ -24,30 +24,48 @@ export const JobBlockSchemaBase = z.object({
   }),
 });
 
-export const JobBlockSurveyQuestionSchema = z.object({
-  type: z.literal("surveyQuestion"),
-  variable: VariableSchema,
+export const JobBlockDataTypeSchema = z.object({
+  type: z.enum(blockType).openapi({
+    title: "Type",
+    description: "The type of the block",
+  }),
 });
 
-export const JobBlockAnnotationQuestionSchema = z.object({
-  type: z.literal("annotationQuestion"),
-  variable: VariableSchema,
+export const JobBlockQuestionVariableSchema = JobBlockDataTypeSchema.extend({
+  type: z.literal("Question task"),
+  variable: QuestionVariableSchema,
 });
 
-export const JobBlockAnnotationPhaseSchema = z.object({
-  type: z.literal("annotationPhase"),
+export const JobBlockSpanVariableSchema = JobBlockDataTypeSchema.extend({
+  type: z.literal("Annotation task"),
+  variable: SpanVariableSchema,
+});
+
+export const JobBlockAnnotationPhaseSchema = JobBlockDataTypeSchema.extend({
+  type: z.literal("Annotation phase"),
   layout: UnitLayoutSchema,
 });
 
-export const JobBlockSurveyPhaseSchema = z.object({
-  type: z.literal("surveyPhase"),
+export const JobBlockSurveyPhaseSchema = JobBlockDataTypeSchema.extend({
+  type: z.literal("Survey phase"),
+});
+
+export const JobBlockAnnotationGroupSchema = JobBlockDataTypeSchema.extend({
+  type: z.literal("Annotation group"),
+  layout: UnitLayoutSchema,
+});
+
+export const JobBlockSurveyGroupSchema = JobBlockDataTypeSchema.extend({
+  type: z.literal("Survey group"),
 });
 
 export const JobBlockDataSchema = z.discriminatedUnion("type", [
-  JobBlockSurveyQuestionSchema,
-  JobBlockAnnotationQuestionSchema,
+  JobBlockQuestionVariableSchema,
+  JobBlockSpanVariableSchema,
   JobBlockAnnotationPhaseSchema,
+  JobBlockAnnotationGroupSchema,
   JobBlockSurveyPhaseSchema,
+  JobBlockSurveyGroupSchema,
 ]);
 
 export const JobBlockCreateSchema = JobBlockSchemaBase.extend({ data: JobBlockDataSchema });

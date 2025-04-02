@@ -234,12 +234,12 @@ export const CodebookConfirmTypeSchema = CodebookVariableSchema.extend({
   type: z.enum(["confirm"]),
 });
 
-export const VariableSchema = z.discriminatedUnion("type", [
-  CodebookSpanTypeSchema,
-  CodebookRelationTypeSchema,
+export const QuestionVariableSchema = z.discriminatedUnion("type", [
   CodebookScaleTypeSchema,
   CodebookAnnotinderTypeSchema,
   CodebookSelectTypeSchema,
   CodebookSearchTypeSchema,
   CodebookConfirmTypeSchema,
 ]);
+
+export const SpanVariableSchema = z.discriminatedUnion("type", [CodebookSpanTypeSchema, CodebookRelationTypeSchema]);

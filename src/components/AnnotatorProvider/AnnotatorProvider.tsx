@@ -151,7 +151,7 @@ function initProgress(): Progress {
 
 function initCodebook(): CodebookPhase {
   return {
-    type: "annotationPhase",
+    type: "Survey phase",
     variables: [
       {
         name: "missing",

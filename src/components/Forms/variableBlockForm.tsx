@@ -3,7 +3,6 @@ import {
   CodebookScaleTypeSchema,
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
-  VariableSchema,
   variableTypeOptions,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 import { Control, FieldValues, UseFormReturn } from "react-hook-form";
@@ -16,16 +15,9 @@ import {
   TextFormField,
   VariableItemsFormField,
 } from "./formHelpers";
-import {
-  JobBlockAnnotationQuestionSchema,
-  JobBlockCreateSchema,
-  JobBlockSurveyQuestionSchema,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { useState } from "react";
+import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
 import { NameField } from "./jobBlockForms";
 import { StyleToolbar } from "../Common/StyleToolbar";
-import { Instrument_Sans } from "next/font/google";
-import VariableInstructions from "../AnnotationInterface/VariableInstructions";
 
 type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
 

@@ -74,10 +74,9 @@ export function CreateOrUpdateJobBlock({
   }
 
   function renderForm() {
-    if (type === "annotationQuestion") return <VariableBlockForm form={form} control={form.control} />;
-    if (type === "surveyQuestion") return <VariableBlockForm form={form} control={form.control} />;
-    if (type === "annotationPhase") return <AnnotationPhaseBlockForm form={form} control={form.control} />;
-    if (type === "surveyPhase") return <SurveyPhaseBlockForm form={form} control={form.control} />;
+    if (type === "Question task") return <VariableBlockForm form={form} control={form.control} />;
+    if (type === "Annotation phase") return <AnnotationPhaseBlockForm form={form} control={form.control} />;
+    if (type === "Survey phase") return <SurveyPhaseBlockForm form={form} control={form.control} />;
   }
 
   const name = form.watch("name");

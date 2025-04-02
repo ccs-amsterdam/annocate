@@ -19,7 +19,7 @@
     --primary-light: 174, 50%, 35%;
     --primary-dark: 174, 30%, 20%;
 
-    --secondary: 44, 64%, 53%;
+    --secondary: 39, 100%, 86%;
     --secondary-foreground: 222.2, 47.4%, 10%;
 
     --muted: 0, 0%, 50%;
@@ -61,14 +61,6 @@
     --card: 0, 0%, 100%;
     --card-foreground: 222.2, 84%, 4rgb (0, 0, 0) 0.9%;
 
-    --primary: 174, 50%, 45%;
-    --primary-foreground: 222.2, 47.4%, 0%;
-    --primary-light: 174, 50%, 35%;
-    --primary-dark: 174, 30%, 20%;
-
-    --secondary: 44, 64%, 53%;
-    --secondary-foreground: 222.2, 47.4%, 10%;
-
     --muted: 0, 0%, 50%;
     --muted-foreground: 0.4, 16.3%, 46.9%;
 
@@ -87,11 +79,6 @@
     --border: 214.3, 31.8%, 91.4%;
     --input: 214.3, 31.8%, 91.4%;
     --ring: 222.2, 84%, 4.9%;
-
-    --radius: 0.5rem;
-
-    --navbar-height: 80px;
-    --navbar-height-md: 112px;
 
     --popover: 0, 0%, 14%;
     --popover-foreground: 222.2, 84%, 90%;

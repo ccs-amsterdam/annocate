@@ -151,10 +151,10 @@ function createPreviewPhase(
 ): JobBlocksResponse[] | null {
   if (block === undefined) return jobBlocks;
   if (block instanceof ZodError) return null;
-  if (block.data.type === "surveyPhase") return null;
+  if (block.data.type === "Survey phase") return null;
 
   const blocks = addParentBlocks(jobBlocks, block);
-  if (block.data.type === "annotationPhase")
+  if (block.data.type === "Annotation phase")
     blocks.push({
       id: 0,
       name: "dummy",
@@ -163,11 +163,12 @@ function createPreviewPhase(
       parentId: block.id,
       position: 0,
       data: {
-        type: "annotationQuestion",
+        type: "Question task",
         variable: {
           type: "select code",
-          question: "This is what the annotator sees",
-          codes: [{ code: "Next" }],
+          question: "Preview of unit layout",
+          questionStyle: { fontSize: "16px", textAlign: "center" },
+          codes: [{ code: "go to next unit" }],
         },
       },
     });

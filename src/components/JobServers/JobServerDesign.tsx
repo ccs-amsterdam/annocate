@@ -258,7 +258,7 @@ function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
   for (let block of phaseBlocks) {
     if ("layout" in block.data) layout = block.data.layout;
 
-    if (block.data.type === "annotationQuestion" || block.data.type === "surveyQuestion") {
+    if (block.data.type === "Question task") {
       codebook.variables.push({ name: block.name, layout, ...block.data.variable });
     }
   }

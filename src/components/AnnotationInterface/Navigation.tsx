@@ -41,7 +41,11 @@ const NavigationDropdown = () => {
       <DropdownMenuTrigger className={"flex items-center gap-2 px-3"}>
         <List />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" sideOffset={16} className="rounded-l-none rounded-t-none border-l-0">
+      <DropdownMenuContent
+        align="start"
+        sideOffset={16}
+        className="rounded-l-none rounded-t-none border-l-0 border-t-0"
+      >
         {progress.phases.map((phase, i) => {
           return (
             <DropdownMenuItem

@@ -53,7 +53,7 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 
       <div
         key={annotationLib.variableIndex}
-        className={`${animate} relative flex w-full flex-auto text-[length:inherit] text-foreground will-change-transform`}
+        className={`${animate} relative flex h-full w-full flex-auto text-[length:inherit] text-foreground will-change-transform`}
       >
         <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
       </div>

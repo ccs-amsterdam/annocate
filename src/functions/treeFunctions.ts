@@ -1,19 +1,72 @@
 import { BlockType } from "@/app/types";
 
-export const validParents: Record<BlockType, (BlockType | "ROOT")[]> = {
-  annotationPhase: ["ROOT"],
-  surveyPhase: ["ROOT"],
-  annotationQuestion: ["annotationPhase"],
-  surveyQuestion: ["surveyPhase"],
+type Phase = "annotation" | "survey";
+type TreeType = "root" | "phase" | "group" | "leaf";
+
+export const blockType = [
+  "Survey phase",
+  "Survey group",
+  "Annotation phase",
+  "Annotation group",
+  "Question task",
+  "Annotation task",
+] as const;
+
+const typeMap: Record<BlockType | "root", { phases: Phase[]; treeType: TreeType }> = {
+  root: { phases: ["survey", "annotation"], treeType: "root" },
+  // phases
+  "Survey phase": { phases: ["survey"], treeType: "phase" },
+  "Annotation phase": { phases: ["annotation"], treeType: "phase" },
+  // groups
+  "Survey group": { phases: ["survey"], treeType: "group" },
+  "Annotation group": { phases: ["annotation"], treeType: "group" },
+  // leafs
+  "Question task": { phases: [], treeType: "leaf" },
+  "Annotation task": { phases: ["annotation"], treeType: "leaf" },
 };
 
-export function getValidChildren(type: BlockType | null): BlockType[] {
-  return validChildren[type ?? "ROOT"] ?? [];
+/**
+ * Codebook item types are related to each other in a tree structure.
+ * Here we defined the tree properties of each type.
+ * - phases: defined what phases a type can be part of.
+ * - treeType: defined in what positions of the tree a type can be.
+ */
+export function codebookItemTypeDetails(type: BlockType | null): {
+  phases: Phase[];
+  treeType: TreeType;
+} {
+  return typeMap[type ?? "root"];
 }
 
 export function isValidParent(type: BlockType, parentType: BlockType | null): boolean {
-  const valid = validParents[type];
-  return valid.includes(parentType ?? "ROOT");
+  const typeDetails = codebookItemTypeDetails(type);
+
+  // If the parent is null, the type must be a root
+  if (parentType === null) {
+    return typeDetails.treeType === "phase";
+  }
+
+  // The child can not have any phases that the parent does not have
+  const parentDetails = codebookItemTypeDetails(parentType);
+  for (const phase of typeDetails.phases) {
+    if (!parentDetails.phases.includes(phase)) return false;
+  }
+
+  return true;
+}
+
+export function getValidChildren(type: BlockType | null): Record<"phase" | "group" | "leaf", BlockType[]> {
+  const children = { phase: [], group: [], leaf: [] } as Record<"phase" | "group" | "leaf", BlockType[]>;
+
+  const typeDetails = codebookItemTypeDetails(type);
+  if (typeDetails.treeType === "leaf") return children;
+
+  for (const option of blockType) {
+    if (!isValidParent(option, type)) continue;
+    const optionDetails = codebookItemTypeDetails(option);
+    if (optionDetails.treeType !== "root") children[optionDetails.treeType].push(option);
+  }
+  return children;
 }
 
 interface Add {
@@ -108,14 +161,3 @@ export function createParentMap<T extends Edges>(blocks: T[]): Map<number | null
   }
   return parentMap;
 }
-
-const validChildren: Record<BlockType | "ROOT", BlockType[]> = Object.entries(validParents).reduce(
-  (acc, [child, parents]) => {
-    for (const parent of parents) {
-      if (!acc[parent]) acc[parent] = [];
-      acc[parent].push(child as BlockType);
-    }
-    return acc;
-  },
-  {} as Record<BlockType | "ROOT", BlockType[]>,
-);

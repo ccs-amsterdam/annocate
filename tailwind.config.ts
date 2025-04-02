@@ -100,19 +100,19 @@ const config = {
           to: { opacity: "1" },
         },
         "slide-in-left": {
-          from: { transform: "translateX(-100px)", opacity: "0" },
+          from: { transform: "translateX(-200px)", opacity: "0" },
           to: { transform: "translateX(0)", opacity: "1" },
         },
         "slide-in-right": {
-          from: { transform: "translateX(100px)", opacity: "0" },
+          from: { transform: "translateX(200px)", opacity: "0" },
           to: { transform: "translateX(0)", opacity: "1" },
         },
         "slide-in-top": {
-          from: { transform: "translateY(-100px)", opacity: "0" },
+          from: { transform: "translateY(-200px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
         "slide-in-bottom": {
-          from: { transform: "translateY(100px)", opacity: "0" },
+          from: { transform: "translateY(200px)", opacity: "0" },
           to: { transform: "translateY(0)", opacity: "1" },
         },
       },

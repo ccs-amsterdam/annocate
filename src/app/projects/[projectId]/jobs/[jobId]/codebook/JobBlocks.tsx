@@ -4,23 +4,37 @@ import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimplePopover } from "@/components/ui/simplePopover";
-import { Book, Edit, PlusIcon, Trash, X } from "lucide-react";
+import { Book, Edit, FolderPlusIcon, ListPlusIcon, PlusIcon, Trash, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z, ZodError } from "zod";
-import { getValidChildren } from "@/functions/treeFunctions";
 import { JobBlockPreview } from "./JobBlockPreview";
+import { CreateBlockDropdown } from "./CreateBlockDropdown";
 
 interface Props {
   projectId: number;
   jobId: number;
 }
 
-interface BlockFormProps {
+export interface BlockFormProps {
   position: JobBlocksResponse["position"];
   parentId: JobBlocksResponse["parentId"];
   type: JobBlocksResponse["data"]["type"];
   currentId?: number;
+}
+
+interface WindowProps {
+  projectId: number;
+  jobId: number;
+  blockForm: BlockFormProps | null;
+  setBlockForm: (props: BlockFormProps | null) => void;
+  preview: JobBlocksResponse | undefined | ZodError;
+  setPreview: (value: JobBlocksResponse | undefined | ZodError) => void;
+  changesPending: boolean;
+  setChangesPending: (value: boolean) => void;
+  blocks: JobBlocksResponse[] | undefined;
+  isLoading: boolean;
+  isPending: boolean;
 }
 
 export function JobBlocks({ projectId, jobId }: Props) {
@@ -51,21 +65,33 @@ export function JobBlocks({ projectId, jobId }: Props) {
   );
 }
 
-interface WindowProps {
-  projectId: number;
-  jobId: number;
-  blockForm: BlockFormProps | null;
-  setBlockForm: (props: BlockFormProps | null) => void;
-  preview: JobBlocksResponse | undefined | ZodError;
-  setPreview: (value: JobBlocksResponse | undefined | ZodError) => void;
-  changesPending: boolean;
-  setChangesPending: (value: boolean) => void;
-  blocks: JobBlocksResponse[] | undefined;
-  isLoading: boolean;
-  isPending: boolean;
+function LeftWindow(props: WindowProps) {
+  if (props.isLoading || props.isPending) return <Loading />;
+  if (!props.blocks) return <div>Job blocks not found</div>;
+
+  return (
+    <div className={`relative flex w-full min-w-[400px] flex-col animate-in slide-in-from-top`}>
+      <ShowJobBlocksList {...props} />
+
+      <div className="absolute flex w-full justify-center">
+        <ShowBlockPreview {...props} />
+      </div>
+    </div>
+  );
 }
 
-function LeftWindow({
+function RightWindow(props: WindowProps) {
+  const blockForm = props.blockForm;
+  if (!blockForm) return <ShowJobPreview {...props} />;
+
+  return (
+    <div className="flex h-full w-full flex-col gap-6 animate-in slide-in-from-right">
+      <ShowJobBlockForm {...props} />
+    </div>
+  );
+}
+
+function ShowJobBlocksList({
   projectId,
   jobId,
   blockForm,
@@ -76,21 +102,7 @@ function LeftWindow({
   isLoading,
   isPending,
 }: WindowProps) {
-  if (isLoading || isPending) return <Loading />;
-  if (!blocks) return <div>Job blocks not found</div>;
-
   const disabled = !!blockForm && changesPending;
-
-  function blockPreview() {
-    if (!blockForm || !changesPending) return null;
-    return (
-      <div className="absolute flex w-full justify-center">
-        <div className="ml-auto w-full max-w-[500px] animate-slide-in-right px-3">
-          <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`relative flex w-full min-w-[400px] animate-slide-in-left flex-col`}>
@@ -99,143 +111,88 @@ function LeftWindow({
           return (
             <JobBlockItem
               key={block.id}
+              blocks={blocks || []}
               block={block}
               projectId={projectId}
               jobId={jobId}
+              blockForm={blockForm}
               setBlockForm={setBlockForm}
             />
           );
         })}
-        <div className="mt-12">
-          <CreateBlock newBlock parent={null} position={99999} setBlockForm={setBlockForm} />
-        </div>
       </div>
-      {blockPreview()}
+      <div className="flex justify-end">
+        <CreateBlockDropdown blocks={blocks || []} id={null} setBlockForm={setBlockForm} />
+      </div>
     </div>
   );
 }
 
-function RightWindow({
+function ShowBlockPreview({ projectId, jobId, blockForm, preview, changesPending }: WindowProps) {
+  if (!blockForm || !changesPending) return null;
+  return (
+    <div className="ml-auto w-full max-w-[500px] animate-slide-in-right px-3">
+      <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
+    </div>
+  );
+}
+
+function ShowJobPreview({ projectId, jobId, blockForm, preview, changesPending }: WindowProps) {
+  return (
+    <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
+      <JobBlockPreview projectId={projectId} jobId={jobId} preview={undefined} />
+    </div>
+  );
+}
+
+function ShowJobBlockForm({
   projectId,
   jobId,
   blockForm,
   setBlockForm,
-  blocks,
-  preview,
   setPreview,
-  changesPending,
   setChangesPending,
+  blocks,
 }: WindowProps) {
-  if (!blockForm)
-    return (
-      <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
-        <JobBlockPreview projectId={projectId} jobId={jobId} preview={undefined} />
-      </div>
-    );
-
+  if (!blockForm) return null;
   if (!blocks) return null;
   const current = blocks.find((block) => block.id === blockForm.currentId);
 
   return (
-    <div className="flex h-full w-full animate-slide-in-left flex-col gap-6 p-3">
-      <div className="w-[600px]">
-        <CreateOrUpdateJobBlock
-          key={blockForm.currentId ?? "new" + blockForm.type}
-          projectId={projectId}
-          jobId={jobId}
-          parentId={blockForm.parentId}
-          type={blockForm.type}
-          position={blockForm.position}
-          header={getLabel(blockForm.type)}
-          current={current}
-          afterSubmit={() => setBlockForm(null)}
-          setPreview={setPreview}
-          onCancel={() => setBlockForm(null)}
-          defaultName={getDefaultName(blocks, blockForm.type)}
-          setChangesPending={setChangesPending}
-        />
-      </div>
-    </div>
-  );
-}
-
-interface CreateBlockProps {
-  parent: JobBlocksResponse | null;
-  position: number;
-  setBlockForm: (props: BlockFormProps) => void;
-  newBlock?: boolean;
-}
-
-const typeLabel = {
-  surveyQuestion: "Survey question",
-  annotationQuestion: "Annotation question",
-  surveyPhase: "Survey phase",
-  annotationPhase: "Annotation phase",
-};
-
-function CreateBlock({ parent, position, setBlockForm, newBlock }: CreateBlockProps) {
-  const [open, setOpen] = useState(false);
-  const options = getValidChildren(parent?.data.type || null);
-  const parentId = parent?.id || null;
-
-  if (options.length === 0) return null;
-
-  return (
-    <div className="ml-auto flex h-3 items-center gap-3">
-      {/* <div className="w-full border-b-2 border-secondary/30"></div> */}
-      <SimplePopover
-        open={open}
-        setOpen={setOpen}
-        trigger={
-          <Button
-            variant={newBlock ? "secondary" : "ghost"}
-            size={newBlock ? "default" : "icon"}
-            className="flex items-center gap-3"
-            onClick={(e) => {
-              if (options.length === 1) {
-                setBlockForm({ parentId, position, type: options[0] });
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }}
-          >
-            {newBlock ? "Create new phase" : null}
-            <PlusIcon />
-          </Button>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          {options.map((type) => {
-            return (
-              <Button
-                key={type}
-                onClick={() => {
-                  setBlockForm({ parentId, position, type });
-                  setOpen(false);
-                }}
-              >
-                {typeLabel[type]}
-              </Button>
-            );
-          })}
-        </div>
-      </SimplePopover>
+    <div className="w-[600px]">
+      <CreateOrUpdateJobBlock
+        key={blockForm.currentId ?? "new" + blockForm.type}
+        projectId={projectId}
+        jobId={jobId}
+        parentId={blockForm.parentId}
+        type={blockForm.type}
+        position={blockForm.position}
+        header={getLabel(blockForm.type)}
+        current={current}
+        afterSubmit={() => setBlockForm(null)}
+        setPreview={setPreview}
+        onCancel={() => setBlockForm(null)}
+        defaultName={getDefaultName(blocks, blockForm.type)}
+        setChangesPending={setChangesPending}
+      />
     </div>
   );
 }
 
 interface BlockProps {
+  blocks: JobBlocksResponse[];
   block: JobBlocksResponse;
   projectId: number;
   jobId: number;
+  blockForm: BlockFormProps | null;
   setBlockForm: (props: BlockFormProps | null) => void;
 }
 
-function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
+function JobBlockItem({ blocks, block, projectId, jobId, blockForm, setBlockForm }: BlockProps) {
   const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
   const router = useRouter();
 
-  const isPhase = block.data.type === "annotationPhase" || block.data.type === "surveyPhase";
+  const isPhase = block.data.type === "Annotation phase" || block.data.type === "Survey phase";
 
   function header() {
     return block.name.replaceAll("_", " ");
@@ -248,27 +205,24 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
   }
 
   return (
-    <div
-      className={`flex animate-fade-in items-center gap-1 ${blockStyle()} group cursor-pointer hover:text-primary`}
-      style={{ paddingLeft: `${block.level}rem` }}
-      is="button"
-      onClick={() => {
-        if (!block.data.type) return null;
-        setBlockForm({
-          position: block.position,
-          parentId: block.parentId,
-          type: block.data.type,
-          currentId: block.id,
-        });
-      }}
-    >
-      <div className="max-w-full overflow-hidden rounded">
-        <div className="mt-1">
-          <div className="flex items-center px-3">{header()}</div>
-        </div>
-      </div>
-      <div className="text ml-auto flex items-center opacity-0 group-hover:opacity-100">
-        <CreateBlock parent={block} position={block.children + 1} setBlockForm={setBlockForm} />
+    <div tabIndex={0} is="button" className={`flex animate-fade-in items-center gap-1 ${blockStyle()} group gap-3`}>
+      <Button
+        variant="ghost"
+        className={`${blockForm?.currentId === block.id ? "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground" : "hover:bg-secondary/10"} flex h-8 w-full max-w-lg justify-start overflow-hidden text-ellipsis whitespace-nowrap px-3 transition-none`}
+        onClick={() => {
+          if (!block.data.type) return null;
+          setBlockForm({
+            position: block.position,
+            parentId: block.parentId,
+            type: block.data.type,
+            currentId: block.id,
+          });
+        }}
+      >
+        <div style={{ paddingLeft: `${block.level}rem` }}>{header()}</div>
+      </Button>
+      <div className="text flex items-center opacity-20 transition-none group-focus-within:opacity-100 group-hover:opacity-100">
+        <CreateBlockDropdown blocks={blocks || []} id={block.id} setBlockForm={setBlockForm} />
         <Button
           size="icon"
           variant="ghost"
@@ -276,6 +230,7 @@ function JobBlockItem({ block, projectId, jobId, setBlockForm }: BlockProps) {
             setBlockForm(null);
             deleteBlock();
           }}
+          className="transition-none"
           onClickConfirm={{
             title: "Are you sure?",
             message: `This will delete the block ${block.children > 0 ? "AND all it's children (!!!)" : ""}. Are you sure?`,
@@ -300,9 +255,8 @@ function getDefaultName(blocks: JobBlocksResponse[], type: JobBlocksResponse["da
 }
 
 function getLabel(type: JobBlocksResponse["data"]["type"]) {
-  if (type === "surveyPhase") return "Survey phase";
-  if (type === "annotationPhase") return "Annotation phase";
-  if (type === "surveyQuestion") return "Survey question";
-  if (type === "annotationQuestion") return "Annotation question";
+  if (type === "Survey phase") return "Survey phase";
+  if (type === "Annotation phase") return "Annotation phase";
+  if (type === "Question task") return "Question task";
   return type;
 }

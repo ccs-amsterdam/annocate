@@ -11,8 +11,9 @@ import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectI
 import {
   CodebookCodeSchema,
   CodebookRelationSchema,
-  VariableSchema,
+  QuestionVariableSchema,
   CodebookVariableItemSchema,
+  SpanVariableSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
 
 import {
@@ -59,7 +60,14 @@ export type ProjectRole = (typeof projectRole)[number];
 export const access = ["only_authenticated", "only_anonymous", "user_decides"] as const;
 export type Access = (typeof access)[number];
 
-export const blockType = ["surveyPhase", "annotationPhase", "surveyQuestion", "annotationQuestion"] as const;
+export const blockType = [
+  "Survey phase",
+  "Survey group",
+  "Annotation phase",
+  "Annotation group",
+  "Question task",
+  "Annotation task",
+] as const;
 export type BlockType = (typeof blockType)[number];
 
 export interface Authorization {
@@ -83,7 +91,10 @@ export type UnitData = z.infer<typeof UnitDataSchema>;
 export type UnitDataResponse = z.infer<typeof UnitDataResponseSchema>;
 export type Rules = z.infer<typeof JobRulesSchema>;
 
-export type CodebookVariable = z.infer<typeof VariableSchema> & {
+export type QuestionVariable = z.infer<typeof QuestionVariableSchema>;
+export type SpanVariable = z.infer<typeof SpanVariableSchema>;
+export type VariableSchema = QuestionVariable | SpanVariable;
+export type CodebookVariable = VariableSchema & {
   name: string;
   layout?: Layout;
 };
@@ -349,39 +360,6 @@ export interface FieldAnnotations {
 //     [to: string]: AnnotationMap;
 //   };
 // }
-
-export interface Question {
-  name: string;
-  type: QuestionType;
-  question?: string;
-  instruction?: string;
-  codes?: Code[];
-  items?: QuestionItem[];
-  vertical?: boolean;
-  same_size?: boolean;
-  swipeOptions?: SwipeOptions;
-  options?: AnswerOption[];
-  multiple?: boolean;
-  fields?: string[];
-  /** An array of variable names. If given, unit annotations of this variable are
-   * highlighted when this question is asked
-   */
-  showAnnotations?: string[];
-  /** An array of variable names. If given, this question will be asked for each
-   * individual annotation of this variable.
-   */
-  perAnnotation?: string[];
-  /** If true, than each annotation in perAnnotation is focussed on */
-  focusAnnotations: boolean;
-  /** An array of strings that match field names. A name can also refer to a
-   * numbered field, so that 'comment' would e.g., match 'comment.1', 'comment.2', etc.
-   */
-  perField?: string[];
-  /** This is not to be passed via the codebook, but is automatically generated if perAnnotation is used.
-   * The annotatino can then be highlighted, and the field, offset and length are stored in the answer
-   */
-  annotation?: Annotation;
-}
 
 export interface Transition {
   direction?: "left" | "right" | "up";
