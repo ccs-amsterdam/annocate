@@ -1,6 +1,9 @@
-import { useDeleteJobBlock, useJobBlocks } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { JobBlocksResponse } from "@/app/types";
-import { CreateOrUpdateJobBlock } from "@/components/Forms/jobBlockForms";
+import {
+  useDeleteCodebookNode,
+  useCodebookNodes,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
+import { CodebookNodesResponse } from "@/app/types";
+import { CreateOrUpdateCodebookNodes } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimplePopover } from "@/components/ui/simplePopover";
@@ -8,51 +11,51 @@ import { Book, Edit, FolderPlusIcon, ListPlusIcon, PlusIcon, Trash, X } from "lu
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z, ZodError } from "zod";
-import { JobBlockPreview } from "./JobBlockPreview";
-import { CreateBlockDropdown } from "./CreateBlockDropdown";
+import { CodebookNodePreview } from "./JobBlockPreview";
+import { CreateNodeDropdown } from "./CreateBlockDropdown";
 
 interface Props {
   projectId: number;
   jobId: number;
 }
 
-export interface BlockFormProps {
-  position: JobBlocksResponse["position"];
-  parentId: JobBlocksResponse["parentId"];
-  type: JobBlocksResponse["data"]["type"];
+export interface CodebookNodeFormProps {
+  position: CodebookNodesResponse["position"];
+  parentId: CodebookNodesResponse["parentId"];
+  type: CodebookNodesResponse["data"]["type"];
   currentId?: number;
 }
 
 interface WindowProps {
   projectId: number;
   jobId: number;
-  blockForm: BlockFormProps | null;
-  setBlockForm: (props: BlockFormProps | null) => void;
-  preview: JobBlocksResponse | undefined | ZodError;
-  setPreview: (value: JobBlocksResponse | undefined | ZodError) => void;
+  codebookNodeForm: CodebookNodeFormProps | null;
+  setCodebookNodeForm: (props: CodebookNodeFormProps | null) => void;
+  preview: CodebookNodesResponse | undefined | ZodError;
+  setPreview: (value: CodebookNodesResponse | undefined | ZodError) => void;
   changesPending: boolean;
   setChangesPending: (value: boolean) => void;
-  blocks: JobBlocksResponse[] | undefined;
+  codebookNodes: CodebookNodesResponse[] | undefined;
   isLoading: boolean;
   isPending: boolean;
 }
 
-export function JobBlocks({ projectId, jobId }: Props) {
-  const { data: blocks, isLoading, isPending } = useJobBlocks(projectId, jobId);
-  const [blockForm, setBlockForm] = useState<BlockFormProps | null>(null);
-  const [preview, setPreview] = useState<JobBlocksResponse | undefined | ZodError>(undefined);
+export function CodebookNodes({ projectId, jobId }: Props) {
+  const { data: codebookNodes, isLoading, isPending } = useCodebookNodes(projectId, jobId);
+  const [CodebookNodeForm, setCodebookNodeForm] = useState<CodebookNodeFormProps | null>(null);
+  const [preview, setPreview] = useState<CodebookNodesResponse | undefined | ZodError>(undefined);
   const [changesPending, setChangesPending] = useState(false);
 
   const windowProps: WindowProps = {
     projectId,
     jobId,
-    blockForm,
-    setBlockForm,
+    codebookNodeForm: CodebookNodeForm,
+    setCodebookNodeForm: setCodebookNodeForm,
     preview,
     setPreview,
     changesPending,
     setChangesPending,
-    blocks,
+    codebookNodes,
     isLoading,
     isPending,
   };
@@ -67,174 +70,178 @@ export function JobBlocks({ projectId, jobId }: Props) {
 
 function LeftWindow(props: WindowProps) {
   if (props.isLoading || props.isPending) return <Loading />;
-  if (!props.blocks) return <div>Job blocks not found</div>;
+  if (!props.codebookNodes) return <div>Codebook not found</div>;
 
   return (
     <div className={`relative flex w-full min-w-[400px] flex-col animate-in slide-in-from-top`}>
-      <ShowJobBlocksList {...props} />
+      <ShowCodebookNodesList {...props} />
 
       <div className="absolute flex w-full justify-center">
-        <ShowBlockPreview {...props} />
+        <ShowCodebookNodePreview {...props} />
       </div>
     </div>
   );
 }
 
 function RightWindow(props: WindowProps) {
-  const blockForm = props.blockForm;
-  if (!blockForm) return <ShowJobPreview {...props} />;
+  const CodebookNodeForm = props.codebookNodeForm;
+  if (!CodebookNodeForm) return <ShowJobPreview {...props} />;
 
   return (
     <div className="flex h-full w-full flex-col gap-6 animate-in slide-in-from-right">
-      <ShowJobBlockForm {...props} />
+      <ShowCodebookNodesForm {...props} />
     </div>
   );
 }
 
-function ShowJobBlocksList({
+function ShowCodebookNodesList({
   projectId,
   jobId,
-  blockForm,
-  setBlockForm,
+  codebookNodeForm,
+  setCodebookNodeForm: setCodebookNodeForm,
   preview,
   changesPending,
-  blocks,
+  codebookNodes: codebookNodes,
   isLoading,
   isPending,
 }: WindowProps) {
-  const disabled = !!blockForm && changesPending;
+  const disabled = !!codebookNodeForm && changesPending;
 
   return (
     <div className={`relative flex w-full min-w-[400px] animate-slide-in-left flex-col`}>
       <div className={`${disabled ? "pointer-events-none opacity-50" : ""}`}>
-        {(blocks || []).map((block) => {
+        {(codebookNodes || []).map((node) => {
           return (
-            <JobBlockItem
-              key={block.id}
-              blocks={blocks || []}
-              block={block}
+            <CodebookNode
+              key={node.id}
+              nodes={codebookNodes || []}
+              node={node}
               projectId={projectId}
               jobId={jobId}
-              blockForm={blockForm}
-              setBlockForm={setBlockForm}
+              codebookNodeForm={codebookNodeForm}
+              setCodebookNodeForm={setCodebookNodeForm}
             />
           );
         })}
       </div>
       <div className="flex justify-end">
-        <CreateBlockDropdown blocks={blocks || []} id={null} setBlockForm={setBlockForm} />
+        <CreateNodeDropdown codebookNodes={codebookNodes || []} id={null} setCodebookNodeForm={setCodebookNodeForm} />
       </div>
     </div>
   );
 }
 
-function ShowBlockPreview({ projectId, jobId, blockForm, preview, changesPending }: WindowProps) {
-  if (!blockForm || !changesPending) return null;
+function ShowCodebookNodePreview({ projectId, jobId, codebookNodeForm, preview, changesPending }: WindowProps) {
+  if (!codebookNodeForm || !changesPending) return null;
   return (
     <div className="ml-auto w-full max-w-[500px] animate-slide-in-right px-3">
-      <JobBlockPreview projectId={projectId} jobId={jobId} preview={preview} />
+      <CodebookNodePreview projectId={projectId} jobId={jobId} preview={preview} />
     </div>
   );
 }
 
-function ShowJobPreview({ projectId, jobId, blockForm, preview, changesPending }: WindowProps) {
+function ShowJobPreview({ projectId, jobId, codebookNodeForm, preview, changesPending }: WindowProps) {
   return (
     <div className="mx-auto w-full animate-slide-in-right lg:w-[450px]">
-      <JobBlockPreview projectId={projectId} jobId={jobId} preview={undefined} />
+      <CodebookNodePreview projectId={projectId} jobId={jobId} preview={undefined} />
     </div>
   );
 }
 
-function ShowJobBlockForm({
+function ShowCodebookNodesForm({
   projectId,
   jobId,
-  blockForm,
-  setBlockForm,
+  codebookNodeForm,
+  setCodebookNodeForm,
   setPreview,
   setChangesPending,
-  blocks,
+  codebookNodes,
 }: WindowProps) {
-  if (!blockForm) return null;
-  if (!blocks) return null;
-  const current = blocks.find((block) => block.id === blockForm.currentId);
+  if (!codebookNodeForm) return null;
+  if (!codebookNodes) return null;
+  const current = codebookNodes.find((node) => node.id === codebookNodeForm.currentId);
 
   return (
     <div className="w-[600px]">
-      <CreateOrUpdateJobBlock
-        key={blockForm.currentId ?? "new" + blockForm.type}
+      <CreateOrUpdateCodebookNodes
+        key={codebookNodeForm.currentId ?? "new" + codebookNodeForm.type}
         projectId={projectId}
         jobId={jobId}
-        parentId={blockForm.parentId}
-        type={blockForm.type}
-        position={blockForm.position}
-        header={getLabel(blockForm.type)}
+        parentId={codebookNodeForm.parentId}
+        type={codebookNodeForm.type}
+        position={codebookNodeForm.position}
+        header={getLabel(codebookNodeForm.type)}
         current={current}
-        afterSubmit={() => setBlockForm(null)}
+        afterSubmit={() => setCodebookNodeForm(null)}
         setPreview={setPreview}
-        onCancel={() => setBlockForm(null)}
-        defaultName={getDefaultName(blocks, blockForm.type)}
+        onCancel={() => setCodebookNodeForm(null)}
+        defaultName={getDefaultName(codebookNodes, codebookNodeForm.type)}
         setChangesPending={setChangesPending}
       />
     </div>
   );
 }
 
-interface BlockProps {
-  blocks: JobBlocksResponse[];
-  block: JobBlocksResponse;
+interface CodebookNodeProps {
+  nodes: CodebookNodesResponse[];
+  node: CodebookNodesResponse;
   projectId: number;
   jobId: number;
-  blockForm: BlockFormProps | null;
-  setBlockForm: (props: BlockFormProps | null) => void;
+  codebookNodeForm: CodebookNodeFormProps | null;
+  setCodebookNodeForm: (props: CodebookNodeFormProps | null) => void;
 }
 
-function JobBlockItem({ blocks, block, projectId, jobId, blockForm, setBlockForm }: BlockProps) {
-  const { mutateAsync: deleteBlock } = useDeleteJobBlock(projectId, jobId, block.id);
+function CodebookNode({ nodes, node, projectId, jobId, codebookNodeForm, setCodebookNodeForm }: CodebookNodeProps) {
+  const { mutateAsync: deleteCodebookNode } = useDeleteCodebookNode(projectId, jobId, node.id);
   const router = useRouter();
 
-  const isPhase = block.data.type === "Annotation phase" || block.data.type === "Survey phase";
+  const isPhase = node.data.type === "Annotation phase" || node.data.type === "Survey phase";
 
   function header() {
-    return block.name.replaceAll("_", " ");
+    return node.name.replaceAll("_", " ");
   }
 
-  function blockStyle() {
-    if (block.data.type.includes("Phase")) return `${block.position > 0 ? "mt-6" : ""}   font-bold`;
-    if (block.level > 0) return "";
+  function codebookNodeStyle() {
+    if (node.data.type.includes("Phase")) return `${node.position > 0 ? "mt-6" : ""}   font-bold`;
+    if (node.level > 0) return "";
     if (isPhase) return "";
   }
 
   return (
-    <div tabIndex={0} is="button" className={`flex animate-fade-in items-center gap-1 ${blockStyle()} group gap-3`}>
+    <div
+      tabIndex={0}
+      is="button"
+      className={`flex animate-fade-in items-center gap-1 ${codebookNodeStyle()} group gap-3`}
+    >
       <Button
         variant="ghost"
-        className={`${blockForm?.currentId === block.id ? "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground" : "hover:bg-secondary/10"} flex h-8 w-full max-w-lg justify-start overflow-hidden text-ellipsis whitespace-nowrap px-3 transition-none`}
+        className={`${codebookNodeForm?.currentId === node.id ? "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground" : "hover:bg-secondary/10"} flex h-8 w-full max-w-lg justify-start overflow-hidden text-ellipsis whitespace-nowrap px-3 transition-none`}
         onClick={() => {
-          if (!block.data.type) return null;
-          setBlockForm({
-            position: block.position,
-            parentId: block.parentId,
-            type: block.data.type,
-            currentId: block.id,
+          if (!node.data.type) return null;
+          setCodebookNodeForm({
+            position: node.position,
+            parentId: node.parentId,
+            type: node.data.type,
+            currentId: node.id,
           });
         }}
       >
-        <div style={{ paddingLeft: `${block.level}rem` }}>{header()}</div>
+        <div style={{ paddingLeft: `${node.level}rem` }}>{header()}</div>
       </Button>
       <div className="text flex items-center opacity-20 transition-none group-focus-within:opacity-100 group-hover:opacity-100">
-        <CreateBlockDropdown blocks={blocks || []} id={block.id} setBlockForm={setBlockForm} />
+        <CreateNodeDropdown codebookNodes={nodes || []} id={node.id} setCodebookNodeForm={setCodebookNodeForm} />
         <Button
           size="icon"
           variant="ghost"
           onClick={() => {
-            setBlockForm(null);
-            deleteBlock();
+            setCodebookNodeForm(null);
+            deleteCodebookNode();
           }}
           className="transition-none"
           onClickConfirm={{
             title: "Are you sure?",
-            message: `This will delete the block ${block.children > 0 ? "AND all it's children (!!!)" : ""}. Are you sure?`,
-            enterText: block.children > 0 ? "delete" : undefined,
+            message: `This will delete the codebook item ${node.children > 0 ? "AND all it's children (!!!)" : ""}. Are you sure?`,
+            enterText: node.children > 0 ? "delete" : undefined,
           }}
         >
           <X className="h-5 w-5" />
@@ -244,17 +251,17 @@ function JobBlockItem({ blocks, block, projectId, jobId, blockForm, setBlockForm
   );
 }
 
-function getDefaultName(blocks: JobBlocksResponse[], type: JobBlocksResponse["data"]["type"]) {
+function getDefaultName(nodes: CodebookNodesResponse[], type: CodebookNodesResponse["data"]["type"]) {
   const nameLabel = getLabel(type).replaceAll(" ", "_");
   let name = `${nameLabel}_1`;
   for (let i = 2; i < 1000; i++) {
-    if (!blocks.find((block) => block.name === name)) break;
+    if (!nodes.find((block) => block.name === name)) break;
     name = `${nameLabel}_${i}`;
   }
   return name;
 }
 
-function getLabel(type: JobBlocksResponse["data"]["type"]) {
+function getLabel(type: CodebookNodesResponse["data"]["type"]) {
   if (type === "Survey phase") return "Survey phase";
   if (type === "Annotation phase") return "Annotation phase";
   if (type === "Question task") return "Question task";

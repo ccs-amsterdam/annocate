@@ -33,8 +33,8 @@ import {
   JobsetAnnotatorStatistics,
   access,
   Access,
-  BlockType,
-  JobBlockData,
+  CodebookNodeType,
+  CodebookNodeData,
 } from "@/app/types";
 import { z } from "zod";
 
@@ -154,27 +154,27 @@ export const jobSetUnits = pgTable(
   }),
 );
 
-export const jobBlocks = pgTable(
-  "job_blocks",
+// The codebook is a DAG, where nodes have different types. The types are inside
+// the data field (for validation purposes). The types correspond to valid positions
+// in the DAG, as specified in treeFunctions.ts (see codebookNodeTypeDetails).
+export const codebookNodes = pgTable(
+  "codebook_nodes",
   {
     id: serial("id").primaryKey(),
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
-    parentId: integer("parent_id").references((): AnyPgColumn => jobBlocks.id),
+    parentId: integer("parent_id").references((): AnyPgColumn => codebookNodes.id),
     position: doublePrecision("position").notNull(),
 
-    data: jsonb("data").notNull().$type<JobBlockData>(),
+    data: jsonb("data").notNull().$type<CodebookNodeData>(),
   },
   (table) => ({
     jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
     uniqueName: unique("unique_job_block_name").on(table.jobId, table.name).nullsNotDistinct(),
   }),
 );
-
-// ADD TABLE
-// jobBlockUnitSets: jobBlockId, unitSetId  (on delete cascade)
 
 // todo: figure out how to rotate over multiple job ids.
 // one way is to make jobId an array, but then pg doesn't take care of the foreign key constraint.
@@ -220,11 +220,16 @@ export const annotator = pgTable(
 export const annotations = pgTable(
   "annotations",
   {
-    jobBlockId: integer("job_block_id").notNull(),
+    codebookItemId: integer("codebook_item_id").notNull(),
     annotatorId: integer("annotator_id")
       .notNull()
       .references(() => annotator.id, { onDelete: "cascade" }),
     unitId: integer("unit_id"), // can be null for job level annotations (e.g., survey questions)
+    // here add reference to codebookNode. We'll store annotations per variable.
+    // Also make sure to keep an updated id, and when writing annotations include a timestamp.
+    // this way if a coder closes a device before saving, we can still submit the annotations later.
+    // By storing per variable, we also keep it simple by always writing all annotations for the
+    // variable instead of keeping an added/rm list. (we might do this later if needed)
 
     annotation: jsonb("annotation").notNull().$type<AnnotationDictionary>(),
     history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
@@ -246,6 +251,6 @@ export const annotations = pgTable(
     // isGold: boolean("is_gold").notNull().default(false),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.jobBlockId, table.annotatorId, table.unitId] }),
+    pk: primaryKey({ columns: [table.codebookItemId, table.annotatorId, table.unitId] }),
   }),
 );

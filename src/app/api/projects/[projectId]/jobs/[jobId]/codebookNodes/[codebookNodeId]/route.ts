@@ -1,6 +1,6 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createDelete, createGet, createUpdate } from "@/app/api/routeHelpers";
-import { jobBlocks } from "@/drizzle/schema";
+import { codebookNodes } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, inArray, or, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
@@ -8,14 +8,14 @@ import { getRecursiveChildren, isValidParent, createsCycle } from "@/functions/t
 import { safeParams } from "@/functions/utils";
 import { reIndexCodebookTree } from "../helpers";
 import {
-  JobBlockCreateSchema,
-  JobBlockDeleteSchema,
-  JobBlocksUpdateResponseSchema,
-  JobBlockUpdateSchema,
+  CodebookNodeCreateSchema,
+  CodebookNodeDeleteSchema,
+  CodebookNodeUpdateResponseSchema,
+  CodebookNodeUpdateSchema,
 } from "../schemas";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
-import { JobBlockData } from "@/app/types";
+import { CodebookNodeData } from "@/app/types";
 import { z } from "zod";
 
 export async function POST(
@@ -27,20 +27,20 @@ export async function POST(
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
-        const updated: z.infer<typeof JobBlocksUpdateResponseSchema> = { block: { id: params.blockId } };
+        const updated: z.infer<typeof CodebookNodeUpdateResponseSchema> = { block: { id: params.blockId } };
 
-        const [updatedJobBlock] = await tx
-          .update(jobBlocks)
+        const [updatedCodebookNode] = await tx
+          .update(codebookNodes)
           .set({ ...body })
-          .where(eq(jobBlocks.id, params.blockId))
+          .where(eq(codebookNodes.id, params.blockId))
           .returning();
 
-        if (body.name) updated.block.name = updatedJobBlock.name;
+        if (body.name) updated.block.name = updatedCodebookNode.name;
         if (body.data) updated.block.data = body.data;
 
-        const positionChanged = body.position && body.position !== updatedJobBlock.position;
-        const parentChanged = body.parentId && body.parentId !== updatedJobBlock.parentId;
-        const typeChanged = body.data?.type && body.data.type !== updatedJobBlock.data.type;
+        const positionChanged = body.position && body.position !== updatedCodebookNode.position;
+        const parentChanged = body.parentId && body.parentId !== updatedCodebookNode.parentId;
+        const typeChanged = body.data?.type && body.data.type !== updatedCodebookNode.data.type;
 
         if (positionChanged || parentChanged || typeChanged) {
           // RE-INDEX TREE AND VALIDATION
@@ -65,8 +65,8 @@ export async function POST(
       });
     },
     req,
-    bodySchema: JobBlockUpdateSchema,
-    responseSchema: JobBlocksUpdateResponseSchema,
+    bodySchema: CodebookNodeUpdateSchema,
+    responseSchema: CodebookNodeUpdateResponseSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
@@ -86,25 +86,25 @@ export async function DELETE(
         if (urlParams.recursive) {
           const blocks = await tx
             .select({
-              id: jobBlocks.id,
-              parentId: jobBlocks.parentId,
+              id: codebookNodes.id,
+              parentId: codebookNodes.parentId,
             })
-            .from(jobBlocks)
-            .where(eq(jobBlocks.jobId, params.jobId));
+            .from(codebookNodes)
+            .where(eq(codebookNodes.jobId, params.jobId));
 
           const allChildren = getRecursiveChildren(blocks, params.blockId);
           const childIds = allChildren.map((child) => child.id);
-          await tx.delete(jobBlocks).where(inArray(jobBlocks.id, childIds)).returning();
+          await tx.delete(codebookNodes).where(inArray(codebookNodes.id, childIds)).returning();
         }
 
-        await tx.delete(jobBlocks).where(eq(jobBlocks.id, params.blockId)).returning();
+        await tx.delete(codebookNodes).where(eq(codebookNodes.id, params.blockId)).returning();
 
         return { success: true };
       });
     },
     req,
     projectId: params.projectId,
-    paramsSchema: JobBlockDeleteSchema,
+    paramsSchema: CodebookNodeDeleteSchema,
     authorizeFunction: async (auth) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
     },

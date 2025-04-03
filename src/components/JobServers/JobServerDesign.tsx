@@ -1,11 +1,11 @@
 import {
   AnnotationDictionary,
-  BlockType,
+  CodebookNodeType,
   CodebookPhase,
   GetCodebook,
   JobState,
   GetUnit,
-  JobBlocksResponse,
+  CodebookNodesResponse,
   JobServer,
   Layout,
   Progress,
@@ -30,7 +30,7 @@ interface JobServerDesignConstructor {
 
   user: MiddlecatUser;
   mockServer: MockServer;
-  jobBlocks: JobBlocksResponse[];
+  codebookNodes: CodebookNodesResponse[];
   useRealUnits?: boolean;
 
   previewMode?: boolean;
@@ -46,7 +46,7 @@ class JobServerDesign implements JobServer {
   projectId: number;
   user: MiddlecatUser;
   mockServer: MockServer;
-  jobBlocks: JobBlocksResponse[];
+  codebookNodes: CodebookNodesResponse[];
   useRealUnits: boolean;
   previewMode: boolean;
 
@@ -58,7 +58,7 @@ class JobServerDesign implements JobServer {
     user,
     projectId,
     mockServer,
-    jobBlocks,
+    codebookNodes,
     useRealUnits,
     previewMode,
   }: JobServerDesignConstructor) {
@@ -70,7 +70,7 @@ class JobServerDesign implements JobServer {
     this.projectId = projectId;
     this.user = user;
     this.mockServer = mockServer;
-    this.jobBlocks = jobBlocks;
+    this.codebookNodes = codebookNodes;
 
     this.previewMode = !!previewMode;
 
@@ -93,7 +93,7 @@ class JobServerDesign implements JobServer {
     // add endpoitns for n units
     const nTotal = this.useRealUnits ? 0 : 5;
 
-    const phases: Progress["phases"] = this.jobBlocks
+    const phases: Progress["phases"] = this.codebookNodes
       .filter((b) => b.parentId === null)
       .map((phase) => {
         const label = phase.name.replaceAll("_", " "); // TODO: Add label that can overwrite the default
@@ -160,7 +160,7 @@ class JobServerDesign implements JobServer {
     if (phaseNumber > this.mockServer.progress.phases.length) throw new Error("Phase number higher than nr of phases");
 
     if (!this.codebookCache[phaseNumber]) {
-      this.codebookCache[phaseNumber] = preparePhaseCodebooks(phaseNumber, this.jobBlocks);
+      this.codebookCache[phaseNumber] = preparePhaseCodebooks(phaseNumber, this.codebookNodes);
     }
     return this.codebookCache[phaseNumber];
   }
@@ -231,23 +231,23 @@ function fakeUnit(i: number): UnitDataResponse {
   };
 }
 
-function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
-  const phaseBlocks: JobBlocksResponse[] = [];
+function preparePhaseCodebooks(phase: number, nodes: CodebookNodesResponse[]) {
+  const phaseNodes: CodebookNodesResponse[] = [];
   let phaseStarted = false;
-  let type: BlockType | null = null;
+  let type: CodebookNodeType | null = null;
 
   let phaseNr = 0;
-  for (let block of blocks) {
-    if (block.parentId === null) {
+  for (let node of nodes) {
+    if (node.parentId === null) {
       // if root block
       if (phaseStarted) break;
       if (phaseNr++ === phase) {
         phaseStarted = true;
-        type = block.data.type;
+        type = node.data.type;
       }
     }
 
-    if (phaseStarted) phaseBlocks.push(block);
+    if (phaseStarted) phaseNodes.push(node);
   }
 
   if (!type) throw new Error("Phase not found");
@@ -255,11 +255,11 @@ function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
   const codebook: CodebookPhase = { type, variables: [] };
   let layout: Layout | undefined = undefined;
 
-  for (let block of phaseBlocks) {
-    if ("layout" in block.data) layout = block.data.layout;
+  for (let node of phaseNodes) {
+    if ("layout" in node.data) layout = node.data.layout;
 
-    if (block.data.type === "Question task") {
-      codebook.variables.push({ name: block.name, layout, ...block.data.variable });
+    if (node.data.type === "Question task") {
+      codebook.variables.push({ name: node.name, layout, ...node.data.variable });
     }
   }
 

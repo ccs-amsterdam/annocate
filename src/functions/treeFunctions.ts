@@ -1,4 +1,4 @@
-import { BlockType } from "@/app/types";
+import { CodebookNodeType } from "@/app/types";
 
 type Phase = "annotation" | "survey";
 type TreeType = "root" | "phase" | "group" | "leaf";
@@ -12,7 +12,7 @@ export const blockType = [
   "Annotation task",
 ] as const;
 
-const typeMap: Record<BlockType | "root", { phases: Phase[]; treeType: TreeType }> = {
+const typeMap: Record<CodebookNodeType | "root", { phases: Phase[]; treeType: TreeType }> = {
   root: { phases: ["survey", "annotation"], treeType: "root" },
   // phases
   "Survey phase": { phases: ["survey"], treeType: "phase" },
@@ -31,14 +31,14 @@ const typeMap: Record<BlockType | "root", { phases: Phase[]; treeType: TreeType 
  * - phases: defined what phases a type can be part of.
  * - treeType: defined in what positions of the tree a type can be.
  */
-export function codebookItemTypeDetails(type: BlockType | null): {
+export function codebookItemTypeDetails(type: CodebookNodeType | null): {
   phases: Phase[];
   treeType: TreeType;
 } {
   return typeMap[type ?? "root"];
 }
 
-export function isValidParent(type: BlockType, parentType: BlockType | null): boolean {
+export function isValidParent(type: CodebookNodeType, parentType: CodebookNodeType | null): boolean {
   const typeDetails = codebookItemTypeDetails(type);
 
   // If the parent is null, the type must be a root
@@ -55,8 +55,10 @@ export function isValidParent(type: BlockType, parentType: BlockType | null): bo
   return true;
 }
 
-export function getValidChildren(type: BlockType | null): Record<"phase" | "group" | "leaf", BlockType[]> {
-  const children = { phase: [], group: [], leaf: [] } as Record<"phase" | "group" | "leaf", BlockType[]>;
+export function getValidChildren(
+  type: CodebookNodeType | null,
+): Record<"phase" | "group" | "leaf", CodebookNodeType[]> {
+  const children = { phase: [], group: [], leaf: [] } as Record<"phase" | "group" | "leaf", CodebookNodeType[]>;
 
   const typeDetails = codebookItemTypeDetails(type);
   if (typeDetails.treeType === "leaf") return children;

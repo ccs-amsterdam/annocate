@@ -1,7 +1,7 @@
 import {
   CodebookCodeSchema,
   CodebookVariableItemSchema,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/variableSchemas";
 import {
   ChevronDown,
   ChevronRight,
@@ -451,7 +451,7 @@ function CodesFormFieldRow<T extends FieldValues>({
   const inputStyle = "h-7 px-3 rounded-none focus-visible:ring-0 border-0 rounded ";
   const cellStyle = "py-1 px-1 rounded-none hover:bg-transparent";
 
-  const codeState = form?.getFieldState(`block.codes[${i}]`);
+  const codeState = form?.getFieldState(`variable.codes[${i}]`);
   const codeError = "code" in (codeState?.error || {});
   const valueError = "value" in (codeState?.error || {});
   const colorError = "color" in (codeState?.error || {});
@@ -604,7 +604,7 @@ export function VariableItemsFormField<T extends FieldValues>({ form, control, n
                 </TableHeader>
                 <TableBody>
                   {items.map((item, i) => {
-                    const codeState = form?.getFieldState(`block.items[${i}]`);
+                    const codeState = form?.getFieldState(`variable.items[${i}]`);
                     const nameError = "name" in (codeState?.error || {});
                     const labelError = "label" in (codeState?.error || {});
                     const nameInputStyle = nameError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;

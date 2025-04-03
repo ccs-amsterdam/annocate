@@ -70,7 +70,6 @@ export const JobMetaResponseSchema = z.object({
   name: z.string(),
   modified: z.coerce.date(),
   deployed: z.boolean(),
-  // blocks: z.array(JobBlockSchema),
 });
 
 export const JobResponseSchema = z.object({

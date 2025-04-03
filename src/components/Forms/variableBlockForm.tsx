@@ -4,7 +4,7 @@ import {
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
   variableTypeOptions,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/variableSchemas";
 import { Control, FieldValues, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -15,17 +15,17 @@ import {
   TextFormField,
   VariableItemsFormField,
 } from "./formHelpers";
-import { JobBlockCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+import { CodebookNodeCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 import { NameField } from "./jobBlockForms";
 import { StyleToolbar } from "../Common/StyleToolbar";
 
-type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
+type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 
-export function VariableBlockForm<T extends FieldValues>({
+export function VariableNodeForm<T extends FieldValues>({
   form,
   control,
 }: {
-  form: UseFormReturn<JobBlockCreate>;
+  form: UseFormReturn<CodebookNodeCreate>;
   control: Control<T, any>;
 }) {
   const generalShape = CodebookVariableSchema.shape;
@@ -72,7 +72,7 @@ export function VariableBlockForm<T extends FieldValues>({
   );
 }
 
-function DefaultFields({ form, children }: { form: UseFormReturn<JobBlockCreate>; children: React.ReactNode }) {
+function DefaultFields({ form, children }: { form: UseFormReturn<CodebookNodeCreate>; children: React.ReactNode }) {
   const type = form.watch("data.variable.type");
   if (!type) return null;
   return (
@@ -84,7 +84,7 @@ function DefaultFields({ form, children }: { form: UseFormReturn<JobBlockCreate>
   );
 }
 
-function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function QuestionField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   const style = form.watch(`data.variable.questionStyle`);
 
   return (
@@ -104,7 +104,7 @@ function QuestionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   );
 }
 
-function InstructionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function InstructionField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   const style = form.watch(`data.variable.instructionStyle`);
   return (
     <div className="flex flex-col">
@@ -122,7 +122,7 @@ function InstructionField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   );
 }
 
-function TypeField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function TypeField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <DropdownFormField
       control={form.control}
@@ -136,7 +136,7 @@ function TypeField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   );
 }
 
-function MultipleField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function MultipleField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <BooleanFormField
       control={form.control}
@@ -146,7 +146,7 @@ function MultipleField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   );
 }
 
-function VerticalField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function VerticalField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <BooleanFormField
       control={form.control}
@@ -156,7 +156,7 @@ function VerticalField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   );
 }
 
-function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function CodesField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <CodesFormField
       form={form}
@@ -168,7 +168,7 @@ function CodesField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   );
 }
 
-function ItemsField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function ItemsField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <VariableItemsFormField
       form={form}

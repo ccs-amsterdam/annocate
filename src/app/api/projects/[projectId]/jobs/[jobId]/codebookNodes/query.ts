@@ -1,13 +1,13 @@
 import { updateEndpoint, useDelete, useGet, useListGet, useMutate, useTableGet } from "@/app/api/queryHelpers";
 import { z } from "zod";
 import {
-  JobBlockCreateSchema,
-  JobBlockUpdateSchema,
-  JobBlocksResponseSchema,
-  JobBlockDeleteSchema,
-  JobBlocksServerResponseSchema,
-  JobBlocksUpdateResponseSchema,
-  JobBlocksCreateResponseSchema,
+  CodebookNodeCreateSchema,
+  CodebookNodeUpdateSchema,
+  CodebookNodeResponseSchema,
+  CodebookNodeDeleteSchema,
+  CodebookNodeServerResponseSchema,
+  CodebookNodeUpdateResponseSchema,
+  CodebookNodeCreateResponseSchema,
 } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
@@ -16,26 +16,26 @@ import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
 
-export function useJobBlocks(projectId: number, jobId?: number) {
+export function useCodebookNodes(projectId: number, jobId?: number) {
   return useGet({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
-    responseSchema: z.array(JobBlocksResponseSchema),
+    responseSchema: z.array(CodebookNodeResponseSchema),
     disabled: !jobId,
     processResponse: (data) => {
-      const serverResponse = z.array(JobBlocksServerResponseSchema).parse(data);
+      const serverResponse = z.array(CodebookNodeServerResponseSchema).parse(data);
       return sortNestedBlocks(serverResponse);
     },
   });
 }
 
-export function useCreateJobBlock(projectId: number, jobId: number) {
+export function useCreateCodebookNode(projectId: number, jobId: number) {
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
-    bodySchema: JobBlockCreateSchema,
-    responseSchema: JobBlocksCreateResponseSchema,
+    bodySchema: CodebookNodeCreateSchema,
+    responseSchema: CodebookNodeCreateResponseSchema,
     // EXPERIMENTAL!! If you get weird behavior with failing updates, disable the
     // manual update steps. (manual updates is an optimization only)
-    manualUpdateSchema: z.array(JobBlocksResponseSchema),
+    manualUpdateSchema: z.array(CodebookNodeResponseSchema),
     manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
     manualUpdate: (result, oldData) => {
       oldData.push({ ...result.block, level: -1, children: 0 });
@@ -53,15 +53,15 @@ export function useCreateJobBlock(projectId: number, jobId: number) {
   });
 }
 
-export function useUpdateJobBlock(projectId: number, jobId: number, blockId: number) {
+export function useUpdateCodebookNode(projectId: number, jobId: number, blockId: number) {
   return useMutate({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
-    bodySchema: JobBlockUpdateSchema,
-    responseSchema: JobBlocksUpdateResponseSchema,
+    bodySchema: CodebookNodeUpdateSchema,
+    responseSchema: CodebookNodeUpdateResponseSchema,
     // EXPERIMENTAL!! If you get weird behavior with failing updates, disable the
     // manual update steps and enable the invalidateEndpoints. (manual updates is an optimization only)
     // invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
-    manualUpdateSchema: z.array(JobBlocksResponseSchema),
+    manualUpdateSchema: z.array(CodebookNodeResponseSchema),
     manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
     manualUpdate: (result, oldData) => {
       console.log(result, oldData);
@@ -83,7 +83,7 @@ export function useUpdateJobBlock(projectId: number, jobId: number, blockId: num
   });
 }
 
-export function useDeleteJobBlock(projectId: number, jobId: number, blockId: number) {
+export function useDeleteCodebookNode(projectId: number, jobId: number, blockId: number) {
   return useDelete({
     endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
     invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
@@ -99,20 +99,20 @@ export const openapiCodebook = createOpenAPIDefinitions(
       path: "/jobs/{jobId}/blocks",
       method: "get",
       description: "Get a list of blocks for a job",
-      response: z.array(JobBlocksServerResponseSchema),
+      response: z.array(CodebookNodeServerResponseSchema),
     },
     {
       path: "/jobs/{jobId}/blocks",
       method: "post",
       description: "Create a block",
-      body: JobBlockCreateSchema,
+      body: CodebookNodeCreateSchema,
       response: IdResponseSchema,
     },
     {
       path: "/jobs/{jobId}/blocks/{blockId}",
       method: "post",
       description: "Update a block",
-      body: JobBlockUpdateSchema,
+      body: CodebookNodeUpdateSchema,
       response: IdResponseSchema,
     },
     {

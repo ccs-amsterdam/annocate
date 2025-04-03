@@ -2,7 +2,7 @@ import {
   Annotation,
   CodebookPhase,
   CodebookVariable,
-  JobBlocksResponse,
+  CodebookNodesResponse,
   JobState,
   Layout,
   Progress,
@@ -30,12 +30,12 @@ import { createParentMap } from "@/functions/treeFunctions";
 
 // Here need some way to get the done units per phase
 interface UnitProgress {
-  blockId: number;
+  codebookNodeId: number;
   nTotal: number;
   nCoded: number;
 }
 
-function initJob(codebook: JobBlocksResponse[], globalAnnotations: Annotation[]) {
+function initJob(codebook: CodebookNodesResponse[], globalAnnotations: Annotation[]) {
   // const codebookPhases = createCodebookPhases(codebook);
   // const jobState = initJobState(globalAnnotations);
   // const progress = initProgress(codebookPhases, globalAnnotations);

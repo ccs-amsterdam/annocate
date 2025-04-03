@@ -1,6 +1,12 @@
-import { useCreateJobBlock, useUpdateJobBlock } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { JobBlockCreateSchema, JobBlockUpdateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
-import { JobBlocksResponse } from "@/app/types";
+import {
+  useCreateCodebookNode,
+  useUpdateCodebookNode,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
+import {
+  CodebookNodeCreateSchema,
+  CodebookNodeUpdateSchema,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
+import { CodebookNodesResponse } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
@@ -9,22 +15,22 @@ import { Button } from "../ui/button";
 import { Form, FormMessage } from "../ui/form";
 import { useEffect, useMemo, useRef } from "react";
 import { Loading } from "../ui/loader";
-import { VariableBlockForm } from "./variableBlockForm";
+import { VariableNodeForm } from "./variableBlockForm";
 import { TextFormField } from "./formHelpers";
-import { AnnotationPhaseBlockForm } from "./AnnotationPhaseBlockForm";
-import { SurveyPhaseBlockForm } from "./SurveyPhaseBlockForm";
+import { AnnotationPhaseNodeForm } from "./AnnotationPhaseBlockForm";
+import { SurveyPhaseNodeForm } from "./SurveyPhaseBlockForm";
 
-type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
-type JobBlockUpdate = z.infer<typeof JobBlockUpdateSchema>;
+type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
+type CodebookNodeUpdate = z.infer<typeof CodebookNodeUpdateSchema>;
 
-interface CreateJobBlockProps {
+interface CreateCodebookNodeProps {
   projectId: number;
   jobId: number;
-  type: JobBlocksResponse["data"]["type"];
+  type: CodebookNodesResponse["data"]["type"];
   parentId: number | null;
   position: number;
-  setPreview: (block: JobBlocksResponse | undefined | ZodError) => void;
-  current?: JobBlocksResponse;
+  setPreview: (codebookNode: CodebookNodesResponse | undefined | ZodError) => void;
+  current?: CodebookNodesResponse;
   afterSubmit: () => void;
   onCancel: () => void;
   header?: string;
@@ -32,7 +38,7 @@ interface CreateJobBlockProps {
   setChangesPending: (value: boolean) => void;
 }
 
-export function CreateOrUpdateJobBlock({
+export function CreateOrUpdateCodebookNodes({
   projectId,
   jobId,
   type,
@@ -45,13 +51,13 @@ export function CreateOrUpdateJobBlock({
   header,
   defaultName,
   setChangesPending,
-}: CreateJobBlockProps) {
-  const { mutateAsync: createAsync } = useCreateJobBlock(projectId, jobId);
-  const { mutateAsync: updateAsync } = useUpdateJobBlock(projectId, jobId, current?.id || -1);
+}: CreateCodebookNodeProps) {
+  const { mutateAsync: createAsync } = useCreateCodebookNode(projectId, jobId);
+  const { mutateAsync: updateAsync } = useUpdateCodebookNode(projectId, jobId, current?.id || -1);
 
-  const schema = JobBlockCreateSchema;
+  const schema = CodebookNodeCreateSchema;
 
-  const form = useForm<JobBlockCreate>({
+  const form = useForm<CodebookNodeCreate>({
     resolver: zodResolver(schema),
     defaultValues: current ?? { parentId, position, name: defaultName || "", data: { type } },
   });
@@ -60,12 +66,12 @@ export function CreateOrUpdateJobBlock({
 
   useEffect(() => {
     if (!current) return;
-    form.reset(JobBlockCreateSchema.parse(current));
+    form.reset(CodebookNodeCreateSchema.parse(current));
   }, [current, form]);
 
-  function onSubmit(values: JobBlockCreate) {
+  function onSubmit(values: CodebookNodeCreate) {
     if (current) {
-      const updateValues: JobBlockUpdate = { ...values };
+      const updateValues: CodebookNodeUpdate = { ...values };
       updateAsync(updateValues).then(afterSubmit).catch(console.error);
       return;
     } else {
@@ -74,9 +80,9 @@ export function CreateOrUpdateJobBlock({
   }
 
   function renderForm() {
-    if (type === "Question task") return <VariableBlockForm form={form} control={form.control} />;
-    if (type === "Annotation phase") return <AnnotationPhaseBlockForm form={form} control={form.control} />;
-    if (type === "Survey phase") return <SurveyPhaseBlockForm form={form} control={form.control} />;
+    if (type === "Question task") return <VariableNodeForm form={form} control={form.control} />;
+    if (type === "Annotation phase") return <AnnotationPhaseNodeForm form={form} control={form.control} />;
+    if (type === "Survey phase") return <SurveyPhaseNodeForm form={form} control={form.control} />;
   }
 
   const name = form.watch("name");
@@ -110,7 +116,7 @@ export function CreateOrUpdateJobBlock({
   );
 }
 
-export function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+export function NameField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   // If block type has a name, use this form field
   // blocks with name: annotationQuestion, surveyQuestion
   // blocks without name: annotationPhase, surveyPhase
@@ -118,7 +124,7 @@ export function NameField({ form }: { form: UseFormReturn<JobBlockCreate> }) {
   return (
     <TextFormField
       control={form.control}
-      zType={JobBlockCreateSchema}
+      zType={CodebookNodeCreateSchema}
       name={"name"}
       onChangeInterceptor={(v) => v.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "")}
     />
@@ -129,7 +135,7 @@ function useWatchChanges({
   form,
   setChangesPending,
 }: {
-  form: UseFormReturn<JobBlockCreate>;
+  form: UseFormReturn<CodebookNodeCreate>;
   setChangesPending: (value: boolean) => void;
 }) {
   const watch = useWatch({ control: form.control });
@@ -142,8 +148,8 @@ function useUpdatePreview({
   form,
   setPreview,
 }: {
-  form: UseFormReturn<JobBlockCreate>;
-  setPreview: (block: JobBlocksResponse | undefined | ZodError) => void;
+  form: UseFormReturn<CodebookNodeCreate>;
+  setPreview: (codebookNode: CodebookNodesResponse | undefined | ZodError) => void;
 }) {
   const watch = useWatch({ control: form.control });
   const triggerRef = useRef(false);
@@ -152,8 +158,8 @@ function useUpdatePreview({
     if (!setPreview) return;
     const timeout = setTimeout(() => {
       try {
-        const jobBlock = JobBlockCreateSchema.parse(watch);
-        setPreview({ ...jobBlock, id: 0, level: 0, children: 0, position: 0 });
+        const codebookNode = CodebookNodeCreateSchema.parse(watch);
+        setPreview({ ...codebookNode, id: 0, level: 0, children: 0, position: 0 });
         triggerRef.current = true;
         form.trigger();
       } catch (e: any) {

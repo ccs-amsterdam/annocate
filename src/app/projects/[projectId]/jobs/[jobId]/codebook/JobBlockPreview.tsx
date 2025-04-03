@@ -1,5 +1,5 @@
-import { useJobBlocks } from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/query";
-import { GetUnit, JobBlocksResponse, JobState, Progress } from "@/app/types";
+import { useCodebookNodes } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
+import { GetUnit, CodebookNodesResponse, JobState, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";
@@ -17,14 +17,14 @@ import { fromError } from "zod-validation-error";
 interface Props {
   projectId: number;
   jobId: number;
-  preview?: JobBlocksResponse | ZodError;
+  preview?: CodebookNodesResponse | ZodError;
 }
 
 type UnitCache = Record<number | string, Omit<GetUnit, "progress">>;
 
-export function JobBlockPreview({ projectId, jobId, preview }: Props) {
+export function CodebookNodePreview({ projectId, jobId, preview }: Props) {
   const { user } = useMiddlecat();
-  const { data: blocks, isLoading: blocksLoading } = useJobBlocks(projectId, jobId);
+  const { data: codebookNodes, isLoading: codebookLoading } = useCodebookNodes(projectId, jobId);
 
   const [mockServer, setMockServer] = useState<{ progress: Progress; jobState: JobState; unitCache: UnitCache }>({
     progress: initProgress(),
@@ -33,20 +33,20 @@ export function JobBlockPreview({ projectId, jobId, preview }: Props) {
   });
 
   const jobServer = useMemo(() => {
-    if (!blocks || blocks.length === 0 || !user) return null;
+    if (!codebookNodes || codebookNodes.length === 0 || !user) return null;
 
-    const jobBlocks = createPreviewPhase(blocks, preview);
-    if (!jobBlocks) return null;
+    const codebookPhase = createPreviewPhase(codebookNodes, preview);
+    if (!codebookPhase) return null;
 
     return new JobServerDesign({
       projectId,
       jobId,
       user,
       mockServer,
-      jobBlocks,
+      codebookNodes: codebookPhase,
       previewMode: !!preview,
     });
-  }, [blocks, user, mockServer, preview]);
+  }, [codebookNodes, user, mockServer, preview]);
 
   if (preview instanceof ZodError) {
     return (
@@ -146,21 +146,21 @@ export function PreviewWindow({
 }
 
 function createPreviewPhase(
-  jobBlocks: JobBlocksResponse[],
-  block: JobBlocksResponse | ZodError | undefined,
-): JobBlocksResponse[] | null {
-  if (block === undefined) return jobBlocks;
-  if (block instanceof ZodError) return null;
-  if (block.data.type === "Survey phase") return null;
+  codebookNodes: CodebookNodesResponse[],
+  codebookNode: CodebookNodesResponse | ZodError | undefined,
+): CodebookNodesResponse[] | null {
+  if (codebookNode === undefined) return codebookNodes;
+  if (codebookNode instanceof ZodError) return null;
+  if (codebookNode.data.type === "Survey phase") return null;
 
-  const blocks = addParentBlocks(jobBlocks, block);
-  if (block.data.type === "Annotation phase")
-    blocks.push({
+  const nodes = addParentNodes(codebookNodes, codebookNode);
+  if (codebookNode.data.type === "Annotation phase")
+    nodes.push({
       id: 0,
       name: "dummy",
       level: 0,
       children: 0,
-      parentId: block.id,
+      parentId: codebookNode.id,
       position: 0,
       data: {
         type: "Question task",
@@ -172,17 +172,20 @@ function createPreviewPhase(
         },
       },
     });
-  return blocks;
+  return nodes;
 }
 
-function addParentBlocks(jobBlocks: JobBlocksResponse[], block: JobBlocksResponse): JobBlocksResponse[] {
-  // if a preview block is given, we need to trace back it's
-  // parent blocks to simulate how it would look like in the context
+function addParentNodes(
+  codebookNodes: CodebookNodesResponse[],
+  codebookNode: CodebookNodesResponse,
+): CodebookNodesResponse[] {
+  // if a preview node is given, we need to trace back it's
+  // parent nodes to simulate how it would look like in the context
   // of the job.
-  const parentIndex = jobBlocks.findIndex((b) => b.id === block.parentId);
-  if (parentIndex === -1) return [block];
-  const parent = { ...jobBlocks[parentIndex], position: 0 };
-  return [...addParentBlocks(jobBlocks, parent), block];
+  const parentIndex = codebookNodes.findIndex((b) => b.id === codebookNode.parentId);
+  if (parentIndex === -1) return [codebookNode];
+  const parent = { ...codebookNodes[parentIndex], position: 0 };
+  return [...addParentNodes(codebookNodes, parent), codebookNode];
 }
 
 // function PreviewDataWindow({ previewData }: { previewData: GetJobState | null }) {

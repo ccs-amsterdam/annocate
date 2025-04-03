@@ -34,11 +34,6 @@ const importVariables = (variables: CodebookVariable[]): ExtendedVariable[] => {
   });
 };
 
-// function preparePhaseCodebooks(phase: number, blocks: JobBlocksResponse[]) {
-//   const phaseBlocks: JobBlocksResponse[] = [];
-//   let phaseStarted = false;
-//   let type: BlockType | null = null;
-
 //   for (let block of blocks) {
 //     if (block.parentId === null) {
 //       // if root block

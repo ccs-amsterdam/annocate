@@ -2,18 +2,18 @@
 import { Control, FieldValues, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import {
-  JobBlockCreateSchema,
-  JobBlockSurveyPhaseSchema,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+  CodebookNodeCreateSchema,
+  CodebookNodeSurveyPhaseSchema,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 import { NameField } from "./jobBlockForms";
 
-type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
+type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 
-export function SurveyPhaseBlockForm<T extends FieldValues>({
+export function SurveyPhaseNodeForm<T extends FieldValues>({
   form,
   control,
 }: {
-  form: UseFormReturn<JobBlockCreate>;
+  form: UseFormReturn<CodebookNodeCreate>;
   control: Control<T, any>;
 }) {
   return (

@@ -4,7 +4,7 @@ import {
   CodebookSelectTypeSchema,
   CodebookVariableSchema,
   variableTypeOptions,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/variableSchemas";
 import { Control, FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -15,9 +15,9 @@ import {
   VariableItemsFormField,
 } from "./formHelpers";
 import {
-  JobBlockAnnotationPhaseSchema,
-  JobBlockCreateSchema,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+  CodebookNodeAnnotationPhaseSchema,
+  CodebookNodeCreateSchema,
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 import { renderURL } from "nuqs/dist/_tsup-dts-rollup";
 import { Button } from "../ui/button";
 import { useState } from "react";
@@ -29,20 +29,20 @@ import {
   UnitLayoutTemplateSchema,
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/layoutSchemas";
 import { StyleToolbar } from "../Common/StyleToolbar";
 import { Equal, XIcon } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { NameField } from "./jobBlockForms";
 
-type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
+type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 
-export function AnnotationPhaseBlockForm<T extends FieldValues>({
+export function AnnotationPhaseNodeForm<T extends FieldValues>({
   form,
   control,
 }: {
-  form: UseFormReturn<JobBlockCreate>;
+  form: UseFormReturn<CodebookNodeCreate>;
   control: Control<T, any>;
 }) {
   const generalShape = CodebookVariableSchema.shape;
@@ -57,7 +57,7 @@ export function AnnotationPhaseBlockForm<T extends FieldValues>({
   );
 }
 
-function UnitFields({ form }: { form: UseFormReturn<JobBlockCreate> }) {
+function UnitFields({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   const [accordionValue, setAccordionValue] = useState<string>("");
   const fields = form.getValues("data.layout.fields") || [];
 
@@ -143,7 +143,7 @@ function LayoutField<T extends FieldValues>({
   control,
   index,
 }: {
-  form: UseFormReturn<JobBlockCreate>;
+  form: UseFormReturn<CodebookNodeCreate>;
   type: string;
   control: Control<T, any>;
   index: number;

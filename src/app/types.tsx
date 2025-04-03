@@ -14,13 +14,13 @@ import {
   QuestionVariableSchema,
   CodebookVariableItemSchema,
   SpanVariableSchema,
-} from "./api/projects/[projectId]/jobs/[jobId]/blocks/variableSchemas";
+} from "./api/projects/[projectId]/jobs/[jobId]/codebookNodes/variableSchemas";
 
 import {
   UnitFieldLayoutSchema,
   UnitLayoutGridSchema,
   UnitLayoutSchema,
-} from "./api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
+} from "./api/projects/[projectId]/jobs/[jobId]/codebookNodes/layoutSchemas";
 import {
   UnitDataResponseSchema,
   UnitDataRowSchema,
@@ -29,10 +29,10 @@ import {
 import { JobRulesSchema, JobResponseSchema, JobMetaResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
 import {
-  JobBlocksResponseSchema,
-  JobBlockCreateSchema,
-  JobBlockDataSchema,
-} from "./api/projects/[projectId]/jobs/[jobId]/blocks/schemas";
+  CodebookNodeResponseSchema,
+  CodebookNodeCreateSchema,
+  CodebookNodeDataSchema,
+} from "./api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
 //////////  NEW
@@ -60,7 +60,7 @@ export type ProjectRole = (typeof projectRole)[number];
 export const access = ["only_authenticated", "only_anonymous", "user_decides"] as const;
 export type Access = (typeof access)[number];
 
-export const blockType = [
+export const codebookNodeType = [
   "Survey phase",
   "Survey group",
   "Annotation phase",
@@ -68,7 +68,7 @@ export const blockType = [
   "Question task",
   "Annotation task",
 ] as const;
-export type BlockType = (typeof blockType)[number];
+export type CodebookNodeType = (typeof codebookNodeType)[number];
 
 export interface Authorization {
   email: string;
@@ -78,13 +78,13 @@ export interface Authorization {
   projectRole: ProjectRole | null;
 }
 
-export type JobBlockData = z.infer<typeof JobBlockDataSchema>;
-export type JobBlockCreate = z.infer<typeof JobBlockCreateSchema>;
+export type CodebookNodeData = z.infer<typeof CodebookNodeDataSchema>;
+export type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
-export type JobBlocksResponse = z.infer<typeof JobBlocksResponseSchema>;
+export type CodebookNodesResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type JobResponse = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataSchema>;
@@ -102,7 +102,7 @@ export type CodebookVariable = VariableSchema & {
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 
 export interface CodebookPhase {
-  type: BlockType;
+  type: CodebookNodeType;
   variables: CodebookVariable[];
 }
 

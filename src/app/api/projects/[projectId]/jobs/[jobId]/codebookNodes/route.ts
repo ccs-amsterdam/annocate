@@ -1,28 +1,28 @@
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { createGet, createUpdate } from "@/app/api/routeHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
-import { jobBlocks } from "@/drizzle/schema";
+import { codebookNodes } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { and, eq, getTableColumns, sql } from "drizzle-orm";
-import { JobBlockCreateSchema, JobBlocksCreateResponseSchema, JobBlocksResponseSchema } from "./schemas";
+import { CodebookNodeCreateSchema, CodebookNodeCreateResponseSchema, CodebookNodeResponseSchema } from "./schemas";
 import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
 import { sortNestedBlocks } from "@/functions/treeFunctions";
 import { z } from "zod";
 import { reIndexCodebookTree } from "./helpers";
 import { isValidParent } from "@/functions/treeFunctions";
-import { JobBlockData } from "@/app/types";
+import { CodebookNodeData } from "@/app/types";
 
 export async function GET(req: NextRequest, props: { params: Promise<{ projectId: string; jobId: string }> }) {
   const params = safeParams(await props.params);
 
   return createGet({
     selectFunction: async (email, urlParams) => {
-      const blocks = await db.select().from(jobBlocks).where(eq(jobBlocks.jobId, params.jobId));
+      const blocks = await db.select().from(codebookNodes).where(eq(codebookNodes.jobId, params.jobId));
       return sortNestedBlocks(blocks);
     },
     req,
-    responseSchema: z.array(JobBlocksResponseSchema),
+    responseSchema: z.array(CodebookNodeResponseSchema),
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };
@@ -39,7 +39,7 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
         body.position = body.position - 0.5;
         const values = { jobId: params.jobId, ...body };
 
-        const [newJobBlock] = await tx.insert(jobBlocks).values(values).returning();
+        const [newCodebookNode] = await tx.insert(codebookNodes).values(values).returning();
 
         let treeData = await reIndexCodebookTree(tx, params.jobId);
 
@@ -51,13 +51,13 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
         }
 
         const tree = treeData.map((block) => ({ id: block.id, parentId: block.parentId, position: block.position }));
-        console.log(tree, newJobBlock);
-        return { tree, block: newJobBlock };
+        console.log(tree, newCodebookNode);
+        return { tree, block: newCodebookNode };
       });
     },
     req,
-    bodySchema: JobBlockCreateSchema,
-    responseSchema: JobBlocksCreateResponseSchema,
+    bodySchema: CodebookNodeCreateSchema,
+    responseSchema: CodebookNodeCreateResponseSchema,
     projectId: params.projectId,
     authorizeFunction: async (auth, body) => {
       if (!hasMinProjectRole(auth.projectRole, "manager")) return { message: "Unauthorized" };

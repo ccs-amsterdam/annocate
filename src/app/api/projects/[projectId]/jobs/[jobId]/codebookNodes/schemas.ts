@@ -3,11 +3,11 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 import { QuestionVariableSchema, SpanVariableSchema } from "./variableSchemas";
 import { UnitLayoutSchema } from "./layoutSchemas";
-import { blockType } from "@/app/types";
+import { codebookNodeType } from "@/app/types";
 
 extendZodWithOpenApi(z);
 
-export const JobBlockSchemaBase = z.object({
+export const CodebookNodeSchemaBase = z.object({
   name: SafeNameSchema.openapi({
     title: "Name",
     description:
@@ -24,58 +24,58 @@ export const JobBlockSchemaBase = z.object({
   }),
 });
 
-export const JobBlockDataTypeSchema = z.object({
-  type: z.enum(blockType).openapi({
+export const CodebookNodeDataTypeSchema = z.object({
+  type: z.enum(codebookNodeType).openapi({
     title: "Type",
     description: "The type of the block",
   }),
 });
 
-export const JobBlockQuestionVariableSchema = JobBlockDataTypeSchema.extend({
+export const CodebookNodeQuestionVariableSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Question task"),
   variable: QuestionVariableSchema,
 });
 
-export const JobBlockSpanVariableSchema = JobBlockDataTypeSchema.extend({
+export const CodebookNodeSpanVariableSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation task"),
   variable: SpanVariableSchema,
 });
 
-export const JobBlockAnnotationPhaseSchema = JobBlockDataTypeSchema.extend({
+export const CodebookNodeAnnotationPhaseSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation phase"),
   layout: UnitLayoutSchema,
 });
 
-export const JobBlockSurveyPhaseSchema = JobBlockDataTypeSchema.extend({
+export const CodebookNodeSurveyPhaseSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Survey phase"),
 });
 
-export const JobBlockAnnotationGroupSchema = JobBlockDataTypeSchema.extend({
+export const CodebookNodeAnnotationGroupSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation group"),
   layout: UnitLayoutSchema,
 });
 
-export const JobBlockSurveyGroupSchema = JobBlockDataTypeSchema.extend({
+export const CodebookNodeSurveyGroupSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Survey group"),
 });
 
-export const JobBlockDataSchema = z.discriminatedUnion("type", [
-  JobBlockQuestionVariableSchema,
-  JobBlockSpanVariableSchema,
-  JobBlockAnnotationPhaseSchema,
-  JobBlockAnnotationGroupSchema,
-  JobBlockSurveyPhaseSchema,
-  JobBlockSurveyGroupSchema,
+export const CodebookNodeDataSchema = z.discriminatedUnion("type", [
+  CodebookNodeQuestionVariableSchema,
+  CodebookNodeSpanVariableSchema,
+  CodebookNodeAnnotationPhaseSchema,
+  CodebookNodeAnnotationGroupSchema,
+  CodebookNodeSurveyPhaseSchema,
+  CodebookNodeSurveyGroupSchema,
 ]);
 
-export const JobBlockCreateSchema = JobBlockSchemaBase.extend({ data: JobBlockDataSchema });
+export const CodebookNodeCreateSchema = CodebookNodeSchemaBase.extend({ data: CodebookNodeDataSchema });
 
-export const JobBlockUpdateSchema = JobBlockSchemaBase.partial().extend({
-  data: JobBlockDataSchema.optional(),
+export const CodebookNodeUpdateSchema = CodebookNodeSchemaBase.partial().extend({
+  data: CodebookNodeDataSchema.optional(),
 });
 
 // DELETE
-export const JobBlockDeleteSchema = z.object({
+export const CodebookNodeDeleteSchema = z.object({
   recursive: z.coerce.boolean().optional().openapi({
     title: "Recursive",
     description: "Delete all children blocks. If false, trying to delete a block with children will throw an error",
@@ -86,13 +86,16 @@ export const JobBlockDeleteSchema = z.object({
 
 // For this endpoint we process the response from the server client side,
 // so the response schema for the server is different from the response schema for the client
-export const JobBlocksServerResponseSchema = JobBlockSchemaBase.extend({ id: z.number(), data: JobBlockDataSchema });
+export const CodebookNodeServerResponseSchema = CodebookNodeSchemaBase.extend({
+  id: z.number(),
+  data: CodebookNodeDataSchema,
+});
 
-export const JobBlocksResponseSchema = JobBlockSchemaBase.extend({
+export const CodebookNodeResponseSchema = CodebookNodeSchemaBase.extend({
   id: z.number(),
   level: z.number(),
   children: z.number(),
-  data: JobBlockDataSchema,
+  data: CodebookNodeDataSchema,
 });
 
 const TreeUpdateSchema = z.array(
@@ -103,16 +106,16 @@ const TreeUpdateSchema = z.array(
   }),
 );
 
-export const JobBlocksCreateResponseSchema = z.object({
+export const CodebookNodeCreateResponseSchema = z.object({
   tree: TreeUpdateSchema,
-  block: JobBlocksServerResponseSchema,
+  block: CodebookNodeServerResponseSchema,
 });
 
-export const JobBlocksUpdateResponseSchema = z.object({
+export const CodebookNodeUpdateResponseSchema = z.object({
   tree: TreeUpdateSchema.optional(),
   block: z.object({
     id: z.number(),
     name: z.string().optional(),
-    data: JobBlockDataSchema.optional(),
+    data: CodebookNodeDataSchema.optional(),
   }),
 });

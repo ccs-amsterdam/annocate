@@ -4,7 +4,7 @@ import {
   UnitLayoutGridSchema,
   UnitMarkdownLayoutSchema,
   UnitTextLayoutSchema,
-} from "@/app/api/projects/[projectId]/jobs/[jobId]/blocks/layoutSchemas";
+} from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/layoutSchemas";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { AnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";

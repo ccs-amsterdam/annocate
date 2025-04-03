@@ -1,5 +1,5 @@
-import { JobBlocksResponse } from "@/app/types";
-import { BlockFormProps } from "./JobBlocks";
+import { CodebookNodesResponse } from "@/app/types";
+import { CodebookNodeFormProps } from "./JobBlocks";
 import { codebookItemTypeDetails, getValidChildren } from "@/functions/treeFunctions";
 import {
   DropdownMenu,
@@ -29,65 +29,25 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  blocks: JobBlocksResponse[];
+  codebookNodes: CodebookNodesResponse[];
   id: number | null;
-  setBlockForm: (props: BlockFormProps) => void;
+  setCodebookNodeForm: (props: CodebookNodeFormProps) => void;
 }
 
-export function CreateBlockDropdown({ blocks, id, setBlockForm }: Props) {
+export function CreateNodeDropdown({
+  codebookNodes: codebookNodes,
+  id,
+  setCodebookNodeForm: setCodebookNodeForm,
+}: Props) {
   const [position, setPosition] = useState<number | null>(null);
 
   useEffect(() => {
     setPosition(null);
-  }, [blocks, id]);
+  }, [codebookNodes, id]);
 
-  const block = blocks.find((block) => block.id === id);
-  const options = getValidChildren(block?.data.type || null);
-  const positions = blocks.filter((block) => block.parentId === id);
-
-  function triggerLabel() {
-    if (position === null) return "choose position";
-    return `Position ${(position ?? positions.length) + 1}`;
-  }
-
-  function positionSelector() {
-    if (positions.length <= 1) return null;
-
-    return (
-      <DropdownMenuGroup>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="flex items-center gap-2">
-            <ListOrdered size={16} /> {triggerLabel()}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            {positions.map((block, i) => (
-              <DropdownMenuItem
-                key={block.id}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setPosition(block.position);
-                }}
-                className="flex items-center gap-2 pl-0"
-              >
-                <Dot className={position === i ? "" : "invisible"} />
-                {block.name}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                setPosition(positions.length);
-              }}
-              className="flex items-center gap-2 pl-0"
-            >
-              <Dot className={position === positions.length || position == null ? "" : "invisible"} />
-              Last
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-      </DropdownMenuGroup>
-    );
-  }
+  const codebookNode = codebookNodes.find((node) => node.id === id);
+  const options = getValidChildren(codebookNode?.data.type || null);
+  const positions = codebookNodes.filter((node) => node.parentId === id);
 
   function dropdownItems(treeType: "phase" | "group" | "leaf") {
     return options[treeType].map((option) => {
@@ -102,13 +62,58 @@ export function CreateBlockDropdown({ blocks, id, setBlockForm }: Props) {
         <DropdownMenuItem
           key={option}
           className="flex items-center gap-2"
-          onClick={() => setBlockForm({ type: option, parentId: block?.parentId || null, position: position ?? 99999 })}
+          onClick={() =>
+            setCodebookNodeForm({ type: option, parentId: codebookNode?.parentId || null, position: position ?? 99999 })
+          }
         >
           {icon}
           {option}
         </DropdownMenuItem>
       );
     });
+  }
+
+  function positionSelector() {
+    if (positions.length <= 1) return null;
+    const triggerLabel = position === null ? "choose position" : `Position ${positions.length + 1}`;
+
+    return (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex items-center gap-2">
+              <ListOrdered size={16} /> {triggerLabel}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {positions.map((node, i) => (
+                <DropdownMenuItem
+                  key={node.id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPosition(node.position);
+                  }}
+                  className="flex items-center gap-2 pl-0"
+                >
+                  <Dot className={position === i ? "" : "invisible"} />
+                  {node.name}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPosition(positions.length);
+                }}
+                className="flex items-center gap-2 pl-0"
+              >
+                <Dot className={position === positions.length || position == null ? "" : "invisible"} />
+                Last
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+      </>
+    );
   }
 
   return (
@@ -123,7 +128,6 @@ export function CreateBlockDropdown({ blocks, id, setBlockForm }: Props) {
           {dropdownItems("group")}
           {dropdownItems("leaf")}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
         {positionSelector()}
       </DropdownMenuContent>
     </DropdownMenu>

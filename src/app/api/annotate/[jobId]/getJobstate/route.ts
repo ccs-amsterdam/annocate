@@ -1,4 +1,4 @@
-import { annotations, annotator, jobBlocks, jobs, projects } from "@/drizzle/schema";
+import { annotations, annotator, codebookNodes, jobs, projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
@@ -48,102 +48,6 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
   return "device:" + deviceId;
 }
 
-// async function allocateJobUnits(jobId: number, userId: string) {
-//   const blocks = await db
-//     .select({
-//       position: jobBlocks.position,
-//       type: jobBlocks.type,
-//       codebookId: jobBlocks.codebookId,
-//       rules: jobBlocks.rules,
-//       units: jobBlocks.units,
-//       modified: jobs.modified,
-//       deployed: jobs.deployed,
-//     })
-//     .from(jobBlocks)
-//     .where(eq(jobBlocks.jobId, jobId))
-//     .leftJoin(jobs, eq(jobs.projectId, projects.id))
-//     .orderBy(jobBlocks.position);
-
-//   db.transaction(async (tx) => {
-//     for (let block of blocks) {
-//     }
-//   });
-
-//   return { currentUnit: 0, nTotal: 0, nCoded: 0 };
-// }
-
-interface Allocation {
-  jobBlockId: number;
-  annotatorId: number;
-  unitId: number | null;
-  index: number;
-  isSurvey?: boolean;
-}
-
-// async function reAllocateJobUnits(jobId: number, annotatorId: number) {
-//   const blocks = await db
-//     .select({
-//       id: jobBlocks.id,
-//       position: jobBlocks.position,
-//       type: jobBlocks.type,
-//       codebookId: jobBlocks.codebookId,
-//       rules: jobBlocks.rules,
-//       units: jobBlocks.units,
-//       modified: jobs.modified,
-//       deployed: jobs.deployed,
-//       unitIds: sql<string[] | null>`ARRAY_AGG(${annotations.unitId})`.as("unitIds"),
-//     })
-//     .from(jobBlocks)
-//     .where(and(eq(annotations.annotatorId, annotatorId), eq(jobBlocks.jobId, jobId)))
-//     .leftJoin(jobs, eq(jobs.projectId, projects.id))
-//     .leftJoin(annotations, eq(annotations.jobBlockId, jobBlocks.id))
-//     .groupBy(jobBlocks.id)
-//     .orderBy(jobBlocks.position, annotations.index);
-
-//   db.transaction(async (tx) => {
-//     tx.update(annotations).set({ index: null }).where(eq(annotations.annotatorId, annotatorId));
-//     const allocations: Allocation[] = [];
-//     let index = 0;
-
-//     for (let block of blocks) {
-//       if (block.type === "survey") {
-//         allocations.push({
-//           jobBlockId: block.id,
-//           annotatorId,
-//           unitId: null,
-//           index: index++,
-//           isSurvey: true,
-//         });
-//       }
-
-//       let nTotal = block.units.length;
-
-//       const overlapUnits = block.rules.overlapUnits ? await getOverlapUnits(block.id, block.rules.overlapUnits) : [];
-
-//       if (block.rules.maxUnitsPerCoder) nTotal = Math.min(nTotal, block.rules.maxUnitsPerCoder);
-
-//       // TODO: here implement the logic for allocating units
-
-//       // const nUnits = block.units.length;
-//       // const nCoded = block.unitIds?.length || 0;
-//       // const nRemaining = nUnits - nCoded;
-
-//       // const nToAllocate = Math.min(nRemaining, 10);
-//       // const unitIds = block.unitIds.slice(0, nToAllocate);
-//       // const indexes = Array.from({ length: nToAllocate }, (_, i) => nCoded + i);
-//       // const allocation = unitIds.map((unitId, i) => ({
-//       //   jobBlockId: block.id,
-//       //   annotatorId,
-//       //   unitId,
-//       //   index: indexes[i],
-//       // }));
-//       // allocations.push(...allocation);
-//     }
-//   });
-
-//   return { currentUnit: 0, nTotal: 0, nCoded: 0 };
-// }
-
 async function prepareUnitAllocation(blockId: number, units: string[], rules: Rules) {
   if (rules.mode === "fixed") {
   }
@@ -157,11 +61,17 @@ async function prepareUnitAllocation(blockId: number, units: string[], rules: Ru
   }
 }
 
-async function getOverlapUnits(jobBlockId: number, n: number) {
+async function getOverlapUnits(codebookItemId: number, n: number) {
   const alreadyAssigned = await db
     .selectDistinct({ unitId: annotations.unitId })
     .from(annotations)
-    .where(and(eq(annotations.jobBlockId, jobBlockId), eq(annotations.isOverlap, true), isNotNull(annotations.unitId)))
+    .where(
+      and(
+        eq(annotations.codebookItemId, codebookItemId),
+        eq(annotations.isOverlap, true),
+        isNotNull(annotations.unitId),
+      ),
+    )
     .limit(n);
 
   return alreadyAssigned.map((row) => row.unitId);
