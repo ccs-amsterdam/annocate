@@ -1,5 +1,5 @@
 import { useCodebookNodes } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
-import { GetUnit, CodebookNodesResponse, JobState, Progress } from "@/app/types";
+import { GetUnit, CodebookNode, JobState, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { fromError } from "zod-validation-error";
 interface Props {
   projectId: number;
   jobId: number;
-  preview?: CodebookNodesResponse | ZodError;
+  preview?: CodebookNode | ZodError;
 }
 
 type UnitCache = Record<number | string, Omit<GetUnit, "progress">>;
@@ -146,9 +146,9 @@ export function PreviewWindow({
 }
 
 function createPreviewPhase(
-  codebookNodes: CodebookNodesResponse[],
-  codebookNode: CodebookNodesResponse | ZodError | undefined,
-): CodebookNodesResponse[] | null {
+  codebookNodes: CodebookNode[],
+  codebookNode: CodebookNode | ZodError | undefined,
+): CodebookNode[] | null {
   if (codebookNode === undefined) return codebookNodes;
   if (codebookNode instanceof ZodError) return null;
   if (codebookNode.data.type === "Survey phase") return null;
@@ -175,10 +175,7 @@ function createPreviewPhase(
   return nodes;
 }
 
-function addParentNodes(
-  codebookNodes: CodebookNodesResponse[],
-  codebookNode: CodebookNodesResponse,
-): CodebookNodesResponse[] {
+function addParentNodes(codebookNodes: CodebookNode[], codebookNode: CodebookNode): CodebookNode[] {
   // if a preview node is given, we need to trace back it's
   // parent nodes to simulate how it would look like in the context
   // of the job.

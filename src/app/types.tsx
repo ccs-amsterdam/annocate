@@ -29,9 +29,9 @@ import {
 import { JobRulesSchema, JobResponseSchema, JobMetaResponseSchema } from "./api/projects/[projectId]/jobs/schemas";
 
 import {
-  CodebookNodeResponseSchema,
   CodebookNodeCreateSchema,
   CodebookNodeDataSchema,
+  CodebookNodeResponseSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
 
@@ -80,11 +80,15 @@ export interface Authorization {
 
 export type CodebookNodeData = z.infer<typeof CodebookNodeDataSchema>;
 export type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
+export type CodebookNodeResponse = z.infer<typeof CodebookNodeResponseSchema>;
+export type CodebookNode = CodebookNodeResponse & {
+  level: number;
+  children: number;
+};
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
-export type CodebookNodesResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type JobResponse = z.infer<typeof JobResponseSchema>;
 export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataSchema>;

@@ -1,5 +1,5 @@
 CREATE TABLE "annotations" (
-	"job_block_id" integer NOT NULL,
+	"codebook_item_id" integer NOT NULL,
 	"annotator_id" integer NOT NULL,
 	"unit_id" integer,
 	"annotation" jsonb NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE "annotations" (
 	"email" varchar(256),
 	"is_overlap" boolean DEFAULT false NOT NULL,
 	"is_survey" boolean DEFAULT false NOT NULL,
-	CONSTRAINT "annotations_job_block_id_annotator_id_unit_id_pk" PRIMARY KEY("job_block_id","annotator_id","unit_id")
+	CONSTRAINT "annotations_codebook_item_id_annotator_id_unit_id_pk" PRIMARY KEY("codebook_item_id","annotator_id","unit_id")
 );
 --> statement-breakpoint
 CREATE TABLE "annotator" (
@@ -21,6 +21,16 @@ CREATE TABLE "annotator" (
 	CONSTRAINT "unique_user" UNIQUE("job_id","user_id")
 );
 --> statement-breakpoint
+CREATE TABLE "codebook_nodes" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"job_id" integer NOT NULL,
+	"name" varchar(128) NOT NULL,
+	"parent_id" integer,
+	"position" double precision NOT NULL,
+	"data" jsonb NOT NULL,
+	CONSTRAINT "unique_codebook_node_name" UNIQUE NULLS NOT DISTINCT("job_id","name")
+);
+--> statement-breakpoint
 CREATE TABLE "invitations" (
 	"project_id" integer NOT NULL,
 	"id" varchar(64),
@@ -28,16 +38,6 @@ CREATE TABLE "invitations" (
 	"job_id" integer NOT NULL,
 	"access" text NOT NULL,
 	CONSTRAINT "invitations_project_id_id_pk" PRIMARY KEY("project_id","id")
-);
---> statement-breakpoint
-CREATE TABLE "job_blocks" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"job_id" integer NOT NULL,
-	"name" varchar(128) NOT NULL,
-	"parent_id" integer,
-	"position" double precision NOT NULL,
-	"data" jsonb NOT NULL,
-	CONSTRAINT "unique_job_block_name" UNIQUE NULLS NOT DISTINCT("job_id","name")
 );
 --> statement-breakpoint
 CREATE TABLE "job_set_units" (
@@ -102,10 +102,10 @@ CREATE TABLE "users" (
 --> statement-breakpoint
 ALTER TABLE "annotations" ADD CONSTRAINT "annotations_annotator_id_annotator_id_fk" FOREIGN KEY ("annotator_id") REFERENCES "public"."annotator"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "annotator" ADD CONSTRAINT "annotator_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "codebook_nodes" ADD CONSTRAINT "codebook_nodes_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "codebook_nodes" ADD CONSTRAINT "codebook_nodes_parent_id_codebook_nodes_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."codebook_nodes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitations" ADD CONSTRAINT "invitations_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "job_blocks" ADD CONSTRAINT "job_blocks_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "job_blocks" ADD CONSTRAINT "job_blocks_parent_id_job_blocks_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."job_blocks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "job_set_units" ADD CONSTRAINT "job_set_units_job_set_id_job_sets_id_fk" FOREIGN KEY ("job_set_id") REFERENCES "public"."job_sets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "job_set_units" ADD CONSTRAINT "job_set_units_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "job_sets" ADD CONSTRAINT "job_sets_job_id_jobs_id_fk" FOREIGN KEY ("job_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -115,7 +115,7 @@ ALTER TABLE "managers" ADD CONSTRAINT "managers_user_uuid_users_uuid_fk" FOREIGN
 ALTER TABLE "units" ADD CONSTRAINT "units_project_id_jobs_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."jobs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "annotator_project_idx" ON "annotator" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX "annotator_user_idx" ON "annotator" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "job_blocks_job_id_idx" ON "job_blocks" USING btree ("job_id");--> statement-breakpoint
+CREATE INDEX "codebook_nodes_job_id_idx" ON "codebook_nodes" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX "job_sets_job_ids_idx" ON "job_sets" USING btree ("job_id");--> statement-breakpoint
 CREATE INDEX "jobs_project_ids" ON "jobs" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX "managers_userId_index" ON "managers" USING btree ("user_uuid");--> statement-breakpoint

@@ -1,5 +1,5 @@
-import { CodebookNodesResponse } from "@/app/types";
-import { CodebookNodeFormProps } from "./JobBlocks";
+import { CodebookNode } from "@/app/types";
+import { CodebookNodeFormProps } from "./CodebookNodes";
 import { codebookItemTypeDetails, getValidChildren } from "@/functions/treeFunctions";
 import {
   DropdownMenu,
@@ -29,7 +29,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  codebookNodes: CodebookNodesResponse[];
+  codebookNodes: CodebookNode[];
   id: number | null;
   setCodebookNodeForm: (props: CodebookNodeFormProps) => void;
 }

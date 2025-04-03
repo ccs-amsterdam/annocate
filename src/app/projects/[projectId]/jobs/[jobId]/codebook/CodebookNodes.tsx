@@ -2,7 +2,7 @@ import {
   useDeleteCodebookNode,
   useCodebookNodes,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
-import { CodebookNodesResponse } from "@/app/types";
+import { CodebookNode } from "@/app/types";
 import { CreateOrUpdateCodebookNodes } from "@/components/Forms/jobBlockForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
@@ -11,7 +11,7 @@ import { Book, Edit, FolderPlusIcon, ListPlusIcon, PlusIcon, Trash, X } from "lu
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z, ZodError } from "zod";
-import { CodebookNodePreview } from "./JobBlockPreview";
+import { CodebookNodePreview } from "./CodebookNodePreview";
 import { CreateNodeDropdown } from "./CreateBlockDropdown";
 
 interface Props {
@@ -20,9 +20,9 @@ interface Props {
 }
 
 export interface CodebookNodeFormProps {
-  position: CodebookNodesResponse["position"];
-  parentId: CodebookNodesResponse["parentId"];
-  type: CodebookNodesResponse["data"]["type"];
+  position: CodebookNode["position"];
+  parentId: CodebookNode["parentId"];
+  type: CodebookNode["data"]["type"];
   currentId?: number;
 }
 
@@ -31,11 +31,11 @@ interface WindowProps {
   jobId: number;
   codebookNodeForm: CodebookNodeFormProps | null;
   setCodebookNodeForm: (props: CodebookNodeFormProps | null) => void;
-  preview: CodebookNodesResponse | undefined | ZodError;
-  setPreview: (value: CodebookNodesResponse | undefined | ZodError) => void;
+  preview: CodebookNode | undefined | ZodError;
+  setPreview: (value: CodebookNode | undefined | ZodError) => void;
   changesPending: boolean;
   setChangesPending: (value: boolean) => void;
-  codebookNodes: CodebookNodesResponse[] | undefined;
+  codebookNodes: CodebookNode[] | undefined;
   isLoading: boolean;
   isPending: boolean;
 }
@@ -43,7 +43,7 @@ interface WindowProps {
 export function CodebookNodes({ projectId, jobId }: Props) {
   const { data: codebookNodes, isLoading, isPending } = useCodebookNodes(projectId, jobId);
   const [CodebookNodeForm, setCodebookNodeForm] = useState<CodebookNodeFormProps | null>(null);
-  const [preview, setPreview] = useState<CodebookNodesResponse | undefined | ZodError>(undefined);
+  const [preview, setPreview] = useState<CodebookNode | undefined | ZodError>(undefined);
   const [changesPending, setChangesPending] = useState(false);
 
   const windowProps: WindowProps = {
@@ -112,7 +112,7 @@ function ShowCodebookNodesList({
       <div className={`${disabled ? "pointer-events-none opacity-50" : ""}`}>
         {(codebookNodes || []).map((node) => {
           return (
-            <CodebookNode
+            <CodebookNodeRow
               key={node.id}
               nodes={codebookNodes || []}
               node={node}
@@ -183,15 +183,15 @@ function ShowCodebookNodesForm({
 }
 
 interface CodebookNodeProps {
-  nodes: CodebookNodesResponse[];
-  node: CodebookNodesResponse;
+  nodes: CodebookNode[];
+  node: CodebookNode;
   projectId: number;
   jobId: number;
   codebookNodeForm: CodebookNodeFormProps | null;
   setCodebookNodeForm: (props: CodebookNodeFormProps | null) => void;
 }
 
-function CodebookNode({ nodes, node, projectId, jobId, codebookNodeForm, setCodebookNodeForm }: CodebookNodeProps) {
+function CodebookNodeRow({ nodes, node, projectId, jobId, codebookNodeForm, setCodebookNodeForm }: CodebookNodeProps) {
   const { mutateAsync: deleteCodebookNode } = useDeleteCodebookNode(projectId, jobId, node.id);
   const router = useRouter();
 
@@ -251,7 +251,7 @@ function CodebookNode({ nodes, node, projectId, jobId, codebookNodeForm, setCode
   );
 }
 
-function getDefaultName(nodes: CodebookNodesResponse[], type: CodebookNodesResponse["data"]["type"]) {
+function getDefaultName(nodes: CodebookNode[], type: CodebookNode["data"]["type"]) {
   const nameLabel = getLabel(type).replaceAll(" ", "_");
   let name = `${nameLabel}_1`;
   for (let i = 2; i < 1000; i++) {
@@ -261,7 +261,7 @@ function getDefaultName(nodes: CodebookNodesResponse[], type: CodebookNodesRespo
   return name;
 }
 
-function getLabel(type: CodebookNodesResponse["data"]["type"]) {
+function getLabel(type: CodebookNode["data"]["type"]) {
   if (type === "Survey phase") return "Survey phase";
   if (type === "Annotation phase") return "Annotation phase";
   if (type === "Question task") return "Question task";

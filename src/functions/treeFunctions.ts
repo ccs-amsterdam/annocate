@@ -1,9 +1,9 @@
-import { CodebookNodeType } from "@/app/types";
+import { CodebookNode, CodebookNodeResponse, CodebookNodeType } from "@/app/types";
 
 type Phase = "annotation" | "survey";
 type TreeType = "root" | "phase" | "group" | "leaf";
 
-export const blockType = [
+export const codebookNodeType = [
   "Survey phase",
   "Survey group",
   "Annotation phase",
@@ -63,7 +63,7 @@ export function getValidChildren(
   const typeDetails = codebookItemTypeDetails(type);
   if (typeDetails.treeType === "leaf") return children;
 
-  for (const option of blockType) {
+  for (const option of codebookNodeType) {
     if (!isValidParent(option, type)) continue;
     const optionDetails = codebookItemTypeDetails(option);
     if (optionDetails.treeType !== "root") children[optionDetails.treeType].push(option);
@@ -82,58 +82,50 @@ interface Tree {
   position: number;
 }
 
-export function createsCycle<T extends Tree>(blocks: T[], checkId: number): boolean {
-  const maxTries = blocks.length;
+export function createsCycle<T extends Tree>(nodes: T[], checkId: number): boolean {
+  const maxTries = nodes.length;
 
   function recursiveCheck(id: number, i: number): boolean {
     // This shouldn't happen, but is a fail safe to prevent infinite loops.
     if (i > maxTries) return true;
 
-    const block = blocks.find((b) => b.id === id);
-    if (!block) throw "Block not found";
+    const node = nodes.find((b) => b.id === id);
+    if (!node) throw "Block not found";
 
-    if (block.parentId === null) return false;
-    if (block.parentId === checkId) return true;
+    if (node.parentId === null) return false;
+    if (node.parentId === checkId) return true;
 
-    return recursiveCheck(block.parentId, i + 1);
+    return recursiveCheck(node.parentId, i + 1);
   }
 
   return recursiveCheck(checkId, 0);
 }
 
-/**
- * Sorts an array of blocks into a nested structure based on their phases and parent-child relationships.
- * Trows an error if a cycle is encountered
- * Automatically re-indexes positions to integers starting from 0 per parent
- *
- * @param {T[]} blocks - The array of blocks to be sorted.
- * @returns {T[]} - The sorted array of blocks.
- */
-export function sortNestedBlocks<T extends Tree>(blocks: T[]): (T & Add)[] {
-  const roots = blocks.filter((b) => !b.parentId);
+export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
+  const roots = nodes.filter((b) => !b.parentId);
   const used = new Set<number>(); // prevent infinite loops
-  const parentMap = createParentMap(blocks);
+  const parentMap = createParentMap(nodes);
 
-  function recursiveSort(parents: T[], level: number): (T & Add)[] {
-    let sortedBlocks: (T & Add)[] = [];
+  function recursiveProcess(parents: CodebookNodeResponse[], level: number): CodebookNode[] {
+    let codebook: CodebookNode[] = [];
     const sortedParents = parents.sort((a, b) => a.position - b.position);
     let i = 0;
     for (let parent of sortedParents) {
-      if (used.has(parent.id)) throw new Error("Cycle detected in block tree");
+      if (used.has(parent.id)) throw new Error("Cycle detected in codebook");
       used.add(parent.id);
 
       const children = parentMap.get(parent.id) ?? [];
 
       parent.position = i++;
-      sortedBlocks.push({ ...parent, level, children: children.length });
+      codebook.push({ ...parent, level, children: children.length });
 
       if (children.length === 0) continue;
-      sortedBlocks.push(...recursiveSort(children, level + 1));
+      codebook.push(...recursiveProcess(children, level + 1));
     }
-    return sortedBlocks;
+    return codebook;
   }
 
-  return recursiveSort(roots, 0);
+  return recursiveProcess(roots, 0);
 }
 
 interface Edges {
@@ -141,8 +133,8 @@ interface Edges {
   parentId: number | null;
 }
 
-export function getRecursiveChildren<T extends Edges>(blocks: T[], id: number): T[] {
-  const parentMap = createParentMap(blocks);
+export function getRecursiveChildren<T extends Edges>(nodes: T[], id: number): T[] {
+  const parentMap = createParentMap(nodes);
 
   function recursiveGet(parentId: number): T[] {
     const result = parentMap.get(parentId) ?? [];
@@ -155,11 +147,11 @@ export function getRecursiveChildren<T extends Edges>(blocks: T[], id: number): 
   return recursiveGet(id);
 }
 
-export function createParentMap<T extends Edges>(blocks: T[]): Map<number | null, T[]> {
+export function createParentMap<T extends Edges>(nodes: T[]): Map<number | null, T[]> {
   const parentMap = new Map<number | null, T[]>();
-  for (const block of blocks) {
-    if (!parentMap.has(block.parentId)) parentMap.set(block.parentId, []);
-    parentMap.get(block.parentId)?.push(block);
+  for (const node of nodes) {
+    if (!parentMap.has(node.parentId)) parentMap.set(node.parentId, []);
+    parentMap.get(node.parentId)?.push(node);
   }
   return parentMap;
 }

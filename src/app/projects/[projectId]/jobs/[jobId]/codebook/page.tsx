@@ -1,6 +1,6 @@
 "use client";
 import { use } from "react";
-import { CodebookNodes } from "./JobBlocks";
+import { CodebookNodes } from "./CodebookNodes";
 import { safeParams } from "@/functions/utils";
 
 export default function Job(props: { params: Promise<{ projectId: string; jobId: string }> }) {

@@ -26,9 +26,6 @@ export async function GET(req: NextRequest, props: { params: Promise<{ jobId: st
       //   const { currentUnit, nTotal, nCoded } = await allocateJobUnits(jobState.jobId, jobState.userId);
       // }
 
-      // const surveyAnnotations = await db
-      // const blocks = await db.select().from()
-
       return { test: "this" };
     },
     req,
@@ -46,19 +43,6 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
   if (userId) return "userId:" + userId;
   if (email) return "email:" + email;
   return "device:" + deviceId;
-}
-
-async function prepareUnitAllocation(blockId: number, units: string[], rules: Rules) {
-  if (rules.mode === "fixed") {
-  }
-  if (rules.mode === "expert") {
-    const { maxCodersPerUnit, randomizeUnits } = rules;
-    const overlapUnits = rules.overlapUnits ? await getOverlapUnits(blockId, rules.overlapUnits) : [];
-  }
-  if (rules.mode === "crowd") {
-    const { maxCodersPerUnit, maxUnitsPerCoder } = rules;
-    const overlapUnits = rules.overlapUnits ? await getOverlapUnits(blockId, rules.overlapUnits) : [];
-  }
 }
 
 async function getOverlapUnits(codebookItemId: number, n: number) {

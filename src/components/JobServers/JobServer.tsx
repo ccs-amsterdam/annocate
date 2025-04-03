@@ -1,12 +1,4 @@
-import {
-  Annotation,
-  CodebookPhase,
-  CodebookVariable,
-  CodebookNodesResponse,
-  JobState,
-  Layout,
-  Progress,
-} from "@/app/types";
+import { Annotation, CodebookPhase, CodebookVariable, CodebookNode, JobState, Layout, Progress } from "@/app/types";
 import { createParentMap } from "@/functions/treeFunctions";
 
 // TODO:
@@ -35,7 +27,7 @@ interface UnitProgress {
   nCoded: number;
 }
 
-function initJob(codebook: CodebookNodesResponse[], globalAnnotations: Annotation[]) {
+function initJob(codebook: CodebookNode[], globalAnnotations: Annotation[]) {
   // const codebookPhases = createCodebookPhases(codebook);
   // const jobState = initJobState(globalAnnotations);
   // const progress = initProgress(codebookPhases, globalAnnotations);

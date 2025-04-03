@@ -3,90 +3,86 @@ import { z } from "zod";
 import {
   CodebookNodeCreateSchema,
   CodebookNodeUpdateSchema,
-  CodebookNodeResponseSchema,
-  CodebookNodeDeleteSchema,
-  CodebookNodeServerResponseSchema,
   CodebookNodeUpdateResponseSchema,
   CodebookNodeCreateResponseSchema,
+  CodebookNodeResponseSchema,
 } from "./schemas";
 import { createOpenAPIDefinitions } from "@/app/api/openapiHelpers";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { useJob } from "../../query";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { sortNestedBlocks } from "@/functions/treeFunctions";
+import { prepareCodebook } from "@/functions/treeFunctions";
 
 export function useCodebookNodes(projectId: number, jobId?: number) {
+  const responseSchema = z.array(CodebookNodeResponseSchema).transform(prepareCodebook);
+
   return useGet({
-    endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
-    responseSchema: z.array(CodebookNodeResponseSchema),
+    endpoint: `projects/${projectId}/jobs/${jobId}/codebookNodes`,
+    responseSchema,
     disabled: !jobId,
-    processResponse: (data) => {
-      const serverResponse = z.array(CodebookNodeServerResponseSchema).parse(data);
-      return sortNestedBlocks(serverResponse);
-    },
   });
 }
 
 export function useCreateCodebookNode(projectId: number, jobId: number) {
   return useMutate({
-    endpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
+    endpoint: `projects/${projectId}/jobs/${jobId}/codebookNodes`,
     bodySchema: CodebookNodeCreateSchema,
     responseSchema: CodebookNodeCreateResponseSchema,
     // EXPERIMENTAL!! If you get weird behavior with failing updates, disable the
     // manual update steps. (manual updates is an optimization only)
-    manualUpdateSchema: z.array(CodebookNodeResponseSchema),
-    manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
+    manualUpdateEndpointSchema: z.array(CodebookNodeResponseSchema).transform(prepareCodebook),
+    manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/codebookNodes`,
     manualUpdate: (result, oldData) => {
-      oldData.push({ ...result.block, level: -1, children: 0 });
+      oldData.push({ ...result.node, level: -1, children: 0 });
 
-      const newData = oldData.map((block) => {
-        const treeUpdate = result.tree.find((edge) => edge.id === block.id);
+      const newData = oldData.map((node) => {
+        const treeUpdate = result.tree.find((edge) => edge.id === node.id);
         if (treeUpdate) {
-          return { ...block, treeUpdate };
+          return { ...node, treeUpdate };
         }
-        return block;
+        return node;
       });
 
-      return sortNestedBlocks(newData);
+      return prepareCodebook(newData);
     },
   });
 }
 
-export function useUpdateCodebookNode(projectId: number, jobId: number, blockId: number) {
+export function useUpdateCodebookNode(projectId: number, jobId: number, codebookNodeId: number) {
   return useMutate({
-    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
+    endpoint: `projects/${projectId}/jobs/${jobId}/codebookNodes/${codebookNodeId}`,
     bodySchema: CodebookNodeUpdateSchema,
     responseSchema: CodebookNodeUpdateResponseSchema,
     // EXPERIMENTAL!! If you get weird behavior with failing updates, disable the
     // manual update steps and enable the invalidateEndpoints. (manual updates is an optimization only)
-    // invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
-    manualUpdateSchema: z.array(CodebookNodeResponseSchema),
-    manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/blocks`,
+    // invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/codebookNodes`],
+    manualUpdateEndpointSchema: z.array(CodebookNodeResponseSchema).transform(prepareCodebook),
+    manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/codebookNodes`,
     manualUpdate: (result, oldData) => {
       console.log(result, oldData);
-      const newData = oldData.map((block) => {
-        let newBlock = block;
-        if (result.block && block.id === result.block.id) {
-          newBlock = { ...block, ...result.block };
+      const newData = oldData.map((node) => {
+        let newNode = node;
+        if (result.node && node.id === result.node.id) {
+          newNode = { ...node, ...result.node };
         }
         if (result.tree) {
-          const treeUpdate = result.tree.find((edge) => edge.id === newBlock.id);
+          const treeUpdate = result.tree.find((edge) => edge.id === newNode.id);
           if (treeUpdate) {
-            newBlock = { ...newBlock, ...treeUpdate };
+            newNode = { ...newNode, ...treeUpdate };
           }
         }
-        return newBlock;
+        return newNode;
       });
-      return sortNestedBlocks(newData);
+      return prepareCodebook(newData);
     },
   });
 }
 
-export function useDeleteCodebookNode(projectId: number, jobId: number, blockId: number) {
+export function useDeleteCodebookNode(projectId: number, jobId: number, codebookNodeId: number) {
   return useDelete({
-    endpoint: `projects/${projectId}/jobs/${jobId}/blocks/${blockId}`,
-    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/blocks`],
+    endpoint: `projects/${projectId}/jobs/${jobId}/codebookNodes/${codebookNodeId}`,
+    invalidateEndpoints: [`projects/${projectId}/jobs/${jobId}/codebookNodes`],
     params: { recursive: true },
     dontInvalidateSelf: true,
   });
@@ -96,29 +92,29 @@ export const openapiCodebook = createOpenAPIDefinitions(
   ["Codebook management"],
   [
     {
-      path: "/jobs/{jobId}/blocks",
+      path: "/jobs/{jobId}/codebookNodes",
       method: "get",
-      description: "Get a list of blocks for a job",
-      response: z.array(CodebookNodeServerResponseSchema),
+      description: "Get the codebook (a list of codebook nodes)",
+      response: z.array(CodebookNodeResponseSchema),
     },
     {
-      path: "/jobs/{jobId}/blocks",
+      path: "/jobs/{jobId}/codebookNodes",
       method: "post",
-      description: "Create a block",
+      description: "Create a codebook node",
       body: CodebookNodeCreateSchema,
       response: IdResponseSchema,
     },
     {
-      path: "/jobs/{jobId}/blocks/{blockId}",
+      path: "/jobs/{jobId}/codebookNodes/{codebookNodeId}",
       method: "post",
-      description: "Update a block",
+      description: "Update a codebook node",
       body: CodebookNodeUpdateSchema,
       response: IdResponseSchema,
     },
     {
-      path: "/jobs/{jobId}/blocks/{blockId}",
+      path: "/jobs/{jobId}/codebookNodes/{codebookNodeId}",
       method: "delete",
-      description: "Delete a block",
+      description: "Delete a codebook node",
       response: IdResponseSchema,
     },
   ],

@@ -5,7 +5,7 @@ import {
   GetCodebook,
   JobState,
   GetUnit,
-  CodebookNodesResponse,
+  CodebookNode,
   JobServer,
   Layout,
   Progress,
@@ -30,7 +30,7 @@ interface JobServerDesignConstructor {
 
   user: MiddlecatUser;
   mockServer: MockServer;
-  codebookNodes: CodebookNodesResponse[];
+  codebookNodes: CodebookNode[];
   useRealUnits?: boolean;
 
   previewMode?: boolean;
@@ -46,7 +46,7 @@ class JobServerDesign implements JobServer {
   projectId: number;
   user: MiddlecatUser;
   mockServer: MockServer;
-  codebookNodes: CodebookNodesResponse[];
+  codebookNodes: CodebookNode[];
   useRealUnits: boolean;
   previewMode: boolean;
 
@@ -231,8 +231,8 @@ function fakeUnit(i: number): UnitDataResponse {
   };
 }
 
-function preparePhaseCodebooks(phase: number, nodes: CodebookNodesResponse[]) {
-  const phaseNodes: CodebookNodesResponse[] = [];
+function preparePhaseCodebooks(phase: number, nodes: CodebookNode[]) {
+  const phaseNodes: CodebookNode[] = [];
   let phaseStarted = false;
   let type: CodebookNodeType | null = null;
 

@@ -11,7 +11,7 @@ export function cn(...inputs: ClassValue[]) {
 const SafeParamsSchema = z.object({
   projectId: z.coerce.number(),
   jobId: z.coerce.number(),
-  blockId: z.coerce.number(),
+  codebookNodeId: z.coerce.number(),
   codebookId: z.coerce.number(),
   userId: z.string(),
   unitId: z.coerce.string(),

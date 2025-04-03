@@ -1,5 +1,5 @@
 {
-  "id": "a13932ec-d2e2-44a9-bb12-6f7793d37d88",
+  "id": "7956da74-d732-467b-b62f-d1a058c6a1c4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -8,8 +8,8 @@
       "name": "annotations",
       "schema": "",
       "columns": {
-        "job_block_id": {
-          "name": "job_block_id",
+        "codebook_item_id": {
+          "name": "codebook_item_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -89,10 +89,10 @@
         }
       },
       "compositePrimaryKeys": {
-        "annotations_job_block_id_annotator_id_unit_id_pk": {
-          "name": "annotations_job_block_id_annotator_id_unit_id_pk",
+        "annotations_codebook_item_id_annotator_id_unit_id_pk": {
+          "name": "annotations_codebook_item_id_annotator_id_unit_id_pk",
           "columns": [
-            "job_block_id",
+            "codebook_item_id",
             "annotator_id",
             "unit_id"
           ]
@@ -202,6 +202,107 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.codebook_nodes": {
+      "name": "codebook_nodes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "codebook_nodes_job_id_idx": {
+          "name": "codebook_nodes_job_id_idx",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "codebook_nodes_job_id_jobs_id_fk": {
+          "name": "codebook_nodes_job_id_jobs_id_fk",
+          "tableFrom": "codebook_nodes",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "codebook_nodes_parent_id_codebook_nodes_id_fk": {
+          "name": "codebook_nodes_parent_id_codebook_nodes_id_fk",
+          "tableFrom": "codebook_nodes",
+          "tableTo": "codebook_nodes",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unique_codebook_node_name": {
+          "name": "unique_codebook_node_name",
+          "nullsNotDistinct": true,
+          "columns": [
+            "job_id",
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.invitations": {
       "name": "invitations",
       "schema": "",
@@ -276,107 +377,6 @@
         }
       },
       "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.job_blocks": {
-      "name": "job_blocks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "job_id": {
-          "name": "job_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "position": {
-          "name": "position",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "data": {
-          "name": "data",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "job_blocks_job_id_idx": {
-          "name": "job_blocks_job_id_idx",
-          "columns": [
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "job_blocks_job_id_jobs_id_fk": {
-          "name": "job_blocks_job_id_jobs_id_fk",
-          "tableFrom": "job_blocks",
-          "tableTo": "jobs",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "job_blocks_parent_id_job_blocks_id_fk": {
-          "name": "job_blocks_parent_id_job_blocks_id_fk",
-          "tableFrom": "job_blocks",
-          "tableTo": "job_blocks",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "unique_job_block_name": {
-          "name": "unique_job_block_name",
-          "nullsNotDistinct": true,
-          "columns": [
-            "job_id",
-            "name"
-          ]
-        }
-      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

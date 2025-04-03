@@ -119,7 +119,7 @@ export const jobInProject = new typesafeLRUCache(
   { max: 2000 },
 );
 
-export const blockInJob = new typesafeLRUCache(
+export const codebookNodeInJob = new typesafeLRUCache(
   z.object({
     true: z.boolean(),
   }),

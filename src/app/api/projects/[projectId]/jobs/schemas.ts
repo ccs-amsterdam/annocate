@@ -51,12 +51,6 @@ export const JobRulesSchema = z.object({
     .openapi({ title: "Randomize units", description: "Randomize the order of units for every coder" }),
 });
 
-// current idea is that jobs have blocks.
-// each block has a codebook, which can be a survey or annotation type.
-// annotation blocks furthermore have units, and rules for how to select units.
-// add 'preview' at block level.
-// and at codebook level.
-
 export const JobCreateSchema = z.object({
   name: z.string(),
 });

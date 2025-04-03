@@ -13,30 +13,30 @@ import {
   CodebookNodeUpdateResponseSchema,
   CodebookNodeUpdateSchema,
 } from "../schemas";
-import { sortNestedBlocks } from "@/functions/treeFunctions";
+import { prepareCodebook } from "@/functions/treeFunctions";
 import { IdResponseSchema } from "@/app/api/schemaHelpers";
 import { CodebookNodeData } from "@/app/types";
 import { z } from "zod";
 
 export async function POST(
   req: Request,
-  props: { params: Promise<{ projectId: string; jobId: string; blockId: string }> },
+  props: { params: Promise<{ projectId: string; jobId: string; codebookNodeId: string }> },
 ) {
   const params = safeParams(await props.params);
 
   return createUpdate({
     updateFunction: async (email, body) => {
       return db.transaction(async (tx) => {
-        const updated: z.infer<typeof CodebookNodeUpdateResponseSchema> = { block: { id: params.blockId } };
+        const updated: z.infer<typeof CodebookNodeUpdateResponseSchema> = { node: { id: params.codebookNodeId } };
 
         const [updatedCodebookNode] = await tx
           .update(codebookNodes)
           .set({ ...body })
-          .where(eq(codebookNodes.id, params.blockId))
+          .where(eq(codebookNodes.id, params.codebookNodeId))
           .returning();
 
-        if (body.name) updated.block.name = updatedCodebookNode.name;
-        if (body.data) updated.block.data = body.data;
+        if (body.name) updated.node.name = updatedCodebookNode.name;
+        if (body.data) updated.node.data = body.data;
 
         const positionChanged = body.position && body.position !== updatedCodebookNode.position;
         const parentChanged = body.parentId && body.parentId !== updatedCodebookNode.parentId;
@@ -47,18 +47,18 @@ export async function POST(
           if (body.position) body.position = body.position - 0.5;
           const tree = await reIndexCodebookTree(tx, params.jobId);
 
-          if (createsCycle(tree, params.blockId)) throw new Error("Cycle detected in block tree");
+          if (createsCycle(tree, params.codebookNodeId)) throw new Error("Cycle detected in codebook");
 
-          const i = tree.findIndex((block) => block.id === params.blockId);
-          if (i === -1) throw new Error("Block not found");
+          const i = tree.findIndex((node) => node.id === params.codebookNodeId);
+          if (i === -1) throw new Error("Codebook node not found");
 
-          const parent = tree.find((block) => block.id === body.parentId);
+          const parent = tree.find((node) => node.id === body.parentId);
           if (!parent) throw new Error("Parent not found");
 
           if (!isValidParent(tree[i].type, parent.type))
             throw new Error(`Invalid parent type: ${parent.type} cannot be parent of ${tree[i].type}`);
 
-          updated.tree = tree.map((block) => ({ id: block.id, parentId: block.parentId, position: block.position }));
+          updated.tree = tree.map((node) => ({ id: node.id, parentId: node.parentId, position: node.position }));
         }
 
         return updated;
@@ -76,7 +76,7 @@ export async function POST(
 
 export async function DELETE(
   req: NextRequest,
-  props: { params: Promise<{ projectId: number; jobId: string; blockId: string }> },
+  props: { params: Promise<{ projectId: number; jobId: string; codebookNodeId: string }> },
 ) {
   const params = safeParams(await props.params);
 
@@ -84,7 +84,7 @@ export async function DELETE(
     deleteFunction: (email, urlParams) => {
       return db.transaction(async (tx) => {
         if (urlParams.recursive) {
-          const blocks = await tx
+          const nodes = await tx
             .select({
               id: codebookNodes.id,
               parentId: codebookNodes.parentId,
@@ -92,12 +92,12 @@ export async function DELETE(
             .from(codebookNodes)
             .where(eq(codebookNodes.jobId, params.jobId));
 
-          const allChildren = getRecursiveChildren(blocks, params.blockId);
+          const allChildren = getRecursiveChildren(nodes, params.codebookNodeId);
           const childIds = allChildren.map((child) => child.id);
           await tx.delete(codebookNodes).where(inArray(codebookNodes.id, childIds)).returning();
         }
 
-        await tx.delete(codebookNodes).where(eq(codebookNodes.id, params.blockId)).returning();
+        await tx.delete(codebookNodes).where(eq(codebookNodes.id, params.codebookNodeId)).returning();
 
         return { success: true };
       });

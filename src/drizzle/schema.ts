@@ -171,8 +171,8 @@ export const codebookNodes = pgTable(
     data: jsonb("data").notNull().$type<CodebookNodeData>(),
   },
   (table) => ({
-    jobIdIdx: index("job_blocks_job_id_idx").on(table.jobId),
-    uniqueName: unique("unique_job_block_name").on(table.jobId, table.name).nullsNotDistinct(),
+    jobIdIdx: index("codebook_nodes_job_id_idx").on(table.jobId),
+    uniqueName: unique("unique_codebook_node_name").on(table.jobId, table.name).nullsNotDistinct(),
   }),
 );
 

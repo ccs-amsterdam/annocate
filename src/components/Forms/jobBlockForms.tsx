@@ -6,7 +6,7 @@ import {
   CodebookNodeCreateSchema,
   CodebookNodeUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
-import { CodebookNodesResponse } from "@/app/types";
+import { CodebookNode } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
@@ -26,11 +26,11 @@ type CodebookNodeUpdate = z.infer<typeof CodebookNodeUpdateSchema>;
 interface CreateCodebookNodeProps {
   projectId: number;
   jobId: number;
-  type: CodebookNodesResponse["data"]["type"];
+  type: CodebookNode["data"]["type"];
   parentId: number | null;
   position: number;
-  setPreview: (codebookNode: CodebookNodesResponse | undefined | ZodError) => void;
-  current?: CodebookNodesResponse;
+  setPreview: (codebookNode: CodebookNode | undefined | ZodError) => void;
+  current?: CodebookNode;
   afterSubmit: () => void;
   onCancel: () => void;
   header?: string;
@@ -149,7 +149,7 @@ function useUpdatePreview({
   setPreview,
 }: {
   form: UseFormReturn<CodebookNodeCreate>;
-  setPreview: (codebookNode: CodebookNodesResponse | undefined | ZodError) => void;
+  setPreview: (codebookNode: CodebookNode | undefined | ZodError) => void;
 }) {
   const watch = useWatch({ control: form.control });
   const triggerRef = useRef(false);
