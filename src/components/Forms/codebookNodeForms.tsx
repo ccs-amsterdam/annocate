@@ -1,5 +1,6 @@
 import {
   useCreateCodebookNode,
+  useDeleteCodebookNode,
   useUpdateCodebookNode,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
 import {
@@ -20,6 +21,8 @@ import { TextFormField } from "./formHelpers";
 import { AnnotationPhaseNodeForm } from "./AnnotationPhaseBlockForm";
 import { SurveyPhaseNodeForm } from "./SurveyPhaseBlockForm";
 import { prepareCodebook } from "@/functions/treeFunctions";
+import { DeleteNodeButton } from "@/app/projects/[projectId]/jobs/[jobId]/codebook/DeleteNodeButton";
+import { Trash, Undo, X } from "lucide-react";
 
 type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 type CodebookNodeUpdate = z.infer<typeof CodebookNodeUpdateSchema>;
@@ -95,17 +98,9 @@ export function CreateOrUpdateCodebookNodes({
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full w-full flex-col gap-3">
         <div className="mb-6 flex gap-3">
           {header && <h2 className="text-lg font-semibold">{name.replaceAll("_", " ")}</h2>}
-          <div className="ml-auto flex w-[180px] gap-3">
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                onCancel();
-              }}
-              variant="outline"
-              className="flex-auto"
-            >
-              cancel
-            </Button>
+          <div className="ml-auto flex gap-3">
+            <DeleteButton node={current} projectId={projectId} jobId={jobId} afterSubmit={afterSubmit} />
+            <CancelButton onCancel={onCancel} />
             <Button type="submit" className="flex-auto" variant="secondary" disabled={current && !changesPending}>
               {current ? "Save" : "Create"}
             </Button>
@@ -116,6 +111,55 @@ export function CreateOrUpdateCodebookNodes({
         <FormMessage />
       </form>
     </Form>
+  );
+}
+
+function CancelButton({ onCancel }: { onCancel: () => void }) {
+  return (
+    <Button
+      size="icon"
+      onClick={(e) => {
+        e.preventDefault();
+        onCancel();
+      }}
+      variant="outline"
+      className="flex-auto"
+    >
+      <Undo />
+    </Button>
+  );
+}
+
+function DeleteButton({
+  node,
+  projectId,
+  jobId,
+  afterSubmit,
+}: {
+  node: CodebookNode | undefined;
+  projectId: number;
+  jobId: number;
+  afterSubmit: () => void;
+}) {
+  const { mutateAsync: deleteAsync } = useDeleteCodebookNode(projectId, jobId, node?.id || -1);
+  if (!node) return null;
+  return (
+    <Button
+      size="icon"
+      onClick={(e) => {
+        e.preventDefault();
+        deleteAsync().then(afterSubmit).catch(console.error);
+      }}
+      className={`${node ? "" : "hidden"}`}
+      variant="outline"
+      onClickConfirm={{
+        title: "Are you sure?",
+        message: `This will delete this codebook item${node.children.length > 0 ? " AND all it's children (!!!)" : ""}. Are you sure?`,
+        enterText: node.children.length > 0 ? "delete" : undefined,
+      }}
+    >
+      <Trash size={20} className="" />
+    </Button>
   );
 }
 

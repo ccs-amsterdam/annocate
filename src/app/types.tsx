@@ -89,7 +89,7 @@ export type CodebookNodeData = z.infer<typeof CodebookNodeDataSchema>;
 export type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 export type CodebookNodeResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type CodebookNode = CodebookNodeResponse & {
-  parentPath: CodebookNode[];
+  parentPath: CodebookNodeResponse[];
   children: number[];
   typeDetails: TypeDetails;
 };

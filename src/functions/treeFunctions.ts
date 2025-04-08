@@ -115,16 +115,18 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
       const children = parentMap.get(parent.id) ?? [];
 
       parent.position = i;
+
+      const allChildren = children.length > 0 ? recursiveProcess(children, [...parentPath, parent]) : [];
+
       const nodeParent = {
         ...parent,
+        position: i,
         parentPath,
-        children: children.map((child) => child.id),
+        children: allChildren.map((child) => child.id),
         typeDetails: codebookNodeTypeDetails(parent.data.type),
       };
       codebook.push(nodeParent);
-
-      if (children.length === 0) continue;
-      codebook.push(...recursiveProcess(children, [...parentPath, nodeParent]));
+      codebook.push(...allChildren);
     }
     return codebook;
   }

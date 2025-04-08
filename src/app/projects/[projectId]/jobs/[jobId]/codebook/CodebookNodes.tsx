@@ -33,6 +33,7 @@ import { CreateNodeDropdown } from "./CreateNodeDropdown";
 import { DeleteNodeButton } from "./DeleteNodeButton";
 import { CancelMoveButton, MoveNodeButton, MoveNodeInsideButton, useMoveableNodes } from "./MoveNodeButton";
 import { NodeIcon } from "./NodeIcon";
+import { FoldButton } from "./FoldButton";
 
 interface Props {
   projectId: number;
@@ -142,7 +143,7 @@ function ShowCodebookNodesList({
   codebookNodes,
 }: WindowProps) {
   const disabled = !!codebookNodeForm && changesPending;
-  const { moveableNodes: rows, ...moveProps } = useMoveableNodes({ projectId, jobId, nodes: codebookNodes || [] });
+  const moveProps = useMoveableNodes({ projectId, jobId, nodes: codebookNodes || [] });
   const [folded, setFolded] = useState<Set<number>>(new Set());
 
   function header() {
@@ -167,7 +168,7 @@ function ShowCodebookNodesList({
     <div className={`relative flex w-full min-w-[400px] animate-slide-in-left flex-col gap-3`}>
       <div className="flex items-center justify-between rounded-none border-b py-1">{header()}</div>
       <div className={`${disabled ? "pointer-events-none opacity-50" : ""}`}>
-        {rows.map((node, i) => {
+        {(codebookNodes || []).map((node, i) => {
           if (node.parentPath.some((p) => folded.has(p.id))) return null;
           return (
             <CodebookNodeRow
@@ -264,64 +265,36 @@ function CodebookNodeRow(props: CodebookNodeRowProps) {
     let cname = "";
     if (isMove) cname = " text-primary";
     if (isPhase) cname += " text-lg font-bold";
-    if (isGroup) cname += " font-semibold";
+    if (isGroup) cname += "  ";
     if (moveNode && !canMoveNode) {
       cname += " opacity-50";
     } else {
-      if (node.typeDetails.treeType === "leaf") cname += "  ";
+      if (node.typeDetails.treeType === "leaf") cname += "  italic";
     }
 
-    if (node.name === ".movePlaceholder") {
-      if (!moveNode) return null;
-      return <GripHorizontal size={16} className={cname} />;
-    }
     return <span className={cname}>{node.name.replaceAll("_", " ")}</span>;
   }
 
-  function moveable() {
-    if (canMoveNode && node.name !== ".movePlaceholder") return "MoveableNodeTrigger cursor-pointer";
-    return "";
-  }
+  const moveable = canMoveNode ? "MoveableNodeTrigger cursor-pointer" : "";
 
   function folderIndentation() {
     const level = node.parentPath.length;
     let phaseBg = "bg-secondary/40";
     if (node.parentPath?.[0]?.data.type === "Annotation phase") phaseBg = "bg-primary/40";
+    const roundedTop = node.position === 0 ? "rounded-t-md" : "";
+    const roundedBottom = node.position === node.parentPath.length - 1 ? "" : "";
 
     if (level === 0) return null;
     return Array.from({ length: level }).map((_, i) => {
-      return <div key={i} className={`${i === 0 ? "ml-4" : "ml-3"} ${phaseBg} mr-1 h-full w-1 flex-shrink-0`} />;
+      return (
+        <div
+          key={i}
+          className={`${i === 0 ? "ml-[0.675rem]" : "ml-[0.5rem]"} ${phaseBg} mr-4 h-full w-1 flex-shrink-0 ${roundedTop} ${roundedBottom}`}
+        />
+      );
     });
   }
 
-  function foldButton() {
-    if (!isPhase && !isGroup) return null;
-    const isFolded = folded.has(node.id);
-    return (
-      <Button
-        size="icon"
-        variant="ghost"
-        className="h-8"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (isFolded) {
-            setFolded(new Set([...folded].filter((id) => id !== node.id)));
-          } else {
-            setFolded(new Set([...folded, node.id]));
-          }
-        }}
-      >
-        {isFolded ? (
-          <ChevronDownIcon size={18} className="opacity-70" />
-        ) : (
-          <ChevronRightIcon size={18} className="opacity-70" />
-        )}
-      </Button>
-    );
-  }
-
-  const rowHeight = node.name === ".movePlaceholder" ? "h-4" : "h-8";
   const phaseIndent = isPhase && globalPosition > 0 ? "mt-4" : "";
   const buttonWidth = "w-full";
 
@@ -329,12 +302,13 @@ function CodebookNodeRow(props: CodebookNodeRowProps) {
     <div
       tabIndex={0}
       is="button"
-      className={`MoveableNode ${phaseIndent} ${rowHeight} group flex animate-fade-in items-center gap-2 ${transition} group`}
+      className={`MoveableNode ${phaseIndent} group flex h-8 animate-fade-in items-center gap-2 ${transition} group`}
     >
       {folderIndentation()}
+      <FoldButton {...props} />
       <Button
         variant="ghost"
-        className={`${moveable()} ${isSelected ? "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground" : "hover:bg-secondary/20"} ${rowHeight} ${buttonWidth} flex justify-start overflow-visible text-ellipsis whitespace-nowrap px-2 transition-none transition-transform disabled:opacity-100 disabled:hover:bg-transparent`}
+        className={`${moveable} ${isSelected ? "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground" : "hover:bg-secondary/20"} h-8 ${buttonWidth} flex justify-start overflow-visible text-ellipsis whitespace-nowrap px-2 transition-none transition-transform disabled:opacity-100 disabled:hover:bg-transparent`}
         onClick={(e) => {
           if (!node.data.type) return null;
           if (moveNode) {
@@ -359,7 +333,6 @@ function CodebookNodeRow(props: CodebookNodeRowProps) {
             tailwindSize={isPhase ? 5 : 4}
           />
           {header()}
-          {foldButton()}
         </div>
       </Button>
 
@@ -400,6 +373,10 @@ function CodebookNodeRowButtons(props: CodebookNodeRowProps) {
     return <MoveNodeInsideButton {...props} />;
   }
 
+  function foldButton() {
+    return <FoldButton {...props} />;
+  }
+
   if (props.node.name === ".movePlaceholder") return null;
 
   return (
@@ -407,7 +384,8 @@ function CodebookNodeRowButtons(props: CodebookNodeRowProps) {
       className={`${props.moveNode ? "" : "opacity-20"} text flex items-center transition-none group-focus-within:opacity-100 group-hover:opacity-100`}
     >
       {createChild()}
-      {deleteNode()}
+      {/* {foldButton()} */}
+      {/* {deleteNode()} */}
       {moveNode()}
       {cancelMove()}
       {moveNodeInside()}

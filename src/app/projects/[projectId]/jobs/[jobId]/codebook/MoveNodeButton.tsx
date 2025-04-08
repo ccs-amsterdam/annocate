@@ -33,8 +33,6 @@ export function useMoveableNodes({ projectId, jobId, nodes }: Props) {
   const [movePending, setMovePending] = useState(false);
   const { mutateAsync: updateAsync } = useUpdateCodebookNode(projectId, jobId, moveNode?.id || -1);
 
-  const moveableNodes = useMemo(() => addMoveableNodes(nodes), [nodes]);
-
   function moveFrom(node: CodebookNode) {
     setMoveNode(node);
   }
@@ -62,42 +60,9 @@ export function useMoveableNodes({ projectId, jobId, nodes }: Props) {
     setMoveNode(null);
   }
 
-  return { moveableNodes, moveNode, movePending, moveFrom, moveTo, canMove, cancelMove };
+  return { moveNode, movePending, moveFrom, moveTo, canMove, cancelMove };
 }
 
-function addMoveableNodes(codebookNodes: CodebookNode[]) {
-  // adds dummy nodes to places where a node can be moved
-  const nodes: CodebookNode[] = [];
-  let folders: CodebookNode[] = [];
-
-  function addFolderPlaceholders(parentPath: CodebookNode[]) {
-    while (folders.length > parentPath.length) {
-      const folder = folders.pop();
-      if (!folder) break;
-      nodes.push({
-        ...folder,
-        name: ".movePlaceholder",
-        id: folder.id + 0.5,
-        parentId: folder.id,
-        parentPath: [...folder.parentPath, folder],
-        position: folder.children.length,
-        typeDetails: {
-          treeType: "leaf",
-          phases: [],
-        },
-      });
-    }
-  }
-
-  for (let node of codebookNodes) {
-    addFolderPlaceholders(node.parentPath);
-    if (node.typeDetails.treeType !== "leaf") folders.push(node);
-    nodes.push(node);
-  }
-  addFolderPlaceholders([]);
-
-  return nodes;
-}
 export function MoveNodeButton(props: CodebookNodeRowProps) {
   return (
     <Button
@@ -131,7 +96,7 @@ export function CancelMoveButton(props: CodebookNodeRowProps) {
 
 export function MoveNodeInsideButton(props: CodebookNodeRowProps) {
   if (!props.moveNode) return null;
-  if (!isValidParent(props.moveNode.data.type, props.node.data.type)) return null;
+  const valid = isValidParent(props.moveNode.data.type, props.node.data.type);
 
   return (
     <Button
@@ -145,6 +110,7 @@ export function MoveNodeInsideButton(props: CodebookNodeRowProps) {
         e.stopPropagation();
       }}
       className="MoveableExclude h-8 w-8 transition-none"
+      disabled={!valid}
     >
       <FolderPlus size={16} />
     </Button>

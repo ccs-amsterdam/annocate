@@ -88,11 +88,12 @@ export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebook
                     e.preventDefault();
                     setPosition(node.position);
                   }}
-                  className={"relative flex h-8 pl-0 focus:bg-transparent"}
+                  className={"relative flex h-8 min-w-48 pl-0 focus:bg-transparent"}
                 >
                   <Dot className={position === i ? "" : "invisible"} />
                   <div className="w-3">{i + 1}</div>
-                  <div className="ml-2 flex min-w-32 translate-y-4 items-center text-xs opacity-60">{node.name}</div>
+                  <div className="ml-4 flex translate-y-4 items-center text-xs opacity-60">{node.name}</div>
+                  <div className="absolute left-12 h-[1px] w-[calc(100%-4rem)] bg-primary/30" />
                 </DropdownMenuItem>
               ))}
               <DropdownMenuItem
@@ -104,6 +105,7 @@ export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebook
               >
                 <Dot className={position === positions.length || position == null ? "" : "invisible"} />
                 <div className="w-3">{positions.length + 1}</div>
+                <div className="absolute left-12 h-[1px] w-[calc(100%-4rem)] bg-primary/30" />
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
