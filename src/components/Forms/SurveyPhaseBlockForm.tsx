@@ -5,7 +5,7 @@ import {
   CodebookNodeCreateSchema,
   CodebookNodeSurveyPhaseSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
-import { NameField } from "./jobBlockForms";
+import { NameField } from "./codebookNodeForms";
 
 type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 

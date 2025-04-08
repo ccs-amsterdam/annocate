@@ -8,7 +8,7 @@ import { PageLayout } from "./PageLayout";
 import useLocalStorage from "@/hooks/useLocalStorage";
 
 const font = Poppins({
-  weight: "500",
+  weight: ["200", "400", "600", "700"],
   subsets: ["latin"],
   display: "swap",
 });

@@ -29,22 +29,25 @@ export async function POST(
       return db.transaction(async (tx) => {
         const updated: z.infer<typeof CodebookNodeUpdateResponseSchema> = { node: { id: params.codebookNodeId } };
 
+        // This way, if position is given as an integer and overlaps with an existing position,
+        // make sure the updated node always comes before the existing node
+        if (body.position !== undefined) body.position = body.position - 0.0001;
+
         const [updatedCodebookNode] = await tx
           .update(codebookNodes)
           .set({ ...body })
           .where(eq(codebookNodes.id, params.codebookNodeId))
           .returning();
 
+        // We return everything that changed to enable client side updates
         if (body.name) updated.node.name = updatedCodebookNode.name;
         if (body.data) updated.node.data = body.data;
 
-        const positionChanged = body.position && body.position !== updatedCodebookNode.position;
-        const parentChanged = body.parentId && body.parentId !== updatedCodebookNode.parentId;
-        const typeChanged = body.data?.type && body.data.type !== updatedCodebookNode.data.type;
-
+        const positionChanged = body.position !== undefined;
+        const parentChanged = body.parentId !== undefined;
+        const typeChanged = body.data?.type !== undefined;
         if (positionChanged || parentChanged || typeChanged) {
           // RE-INDEX TREE AND VALIDATION
-          if (body.position) body.position = body.position - 0.5;
           const tree = await reIndexCodebookTree(tx, params.jobId);
 
           if (createsCycle(tree, params.codebookNodeId)) throw new Error("Cycle detected in codebook");
@@ -53,10 +56,9 @@ export async function POST(
           if (i === -1) throw new Error("Codebook node not found");
 
           const parent = tree.find((node) => node.id === body.parentId);
-          if (!parent) throw new Error("Parent not found");
 
-          if (!isValidParent(tree[i].type, parent.type))
-            throw new Error(`Invalid parent type: ${parent.type} cannot be parent of ${tree[i].type}`);
+          if (!isValidParent(tree[i].type, parent?.type || null))
+            throw new Error(`Invalid parent type: ${parent?.type || "root"} cannot be parent of ${tree[i].type}`);
 
           updated.tree = tree.map((node) => ({ id: node.id, parentId: node.parentId, position: node.position }));
         }

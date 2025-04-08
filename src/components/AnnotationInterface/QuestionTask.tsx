@@ -120,7 +120,8 @@ function useProgressTransition({ progress }: { progress: Progress }) {
   const prevUnit = useRef({ phase: -1, unit: 0 });
 
   const animateUnit = useMemo(() => {
-    let animateUnit = "animate-slide-in-bottom ease-out";
+    // dont animate on first render (phase -1)
+    let animateUnit = prevUnit.current.phase === -1 ? "" : "animate-slide-in-bottom ease-out";
 
     const phase = progress.phases[progress.phase];
     const currentUnit = phase.type === "annotation" ? phase.currentUnit : 0;

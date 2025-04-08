@@ -1,7 +1,7 @@
 import { JobServer } from "@/app/types";
 import AnnotatorProvider, { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import QuestionTask from "./QuestionTask";
-import { ReactNode, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
 import Finished from "./Finished";
 import { useHeight } from "@/hooks/useHeight";

@@ -34,7 +34,7 @@ export function useCreateCodebookNode(projectId: number, jobId: number) {
     manualUpdateEndpointSchema: z.array(CodebookNodeResponseSchema).transform(prepareCodebook),
     manualUpdateEndpoint: `projects/${projectId}/jobs/${jobId}/codebookNodes`,
     manualUpdate: (result, oldData) => {
-      oldData.push({ ...result.node, level: -1, children: 0 });
+      // the added properties are dummies, that will be set correctly in prepareCodebook
 
       const newData = oldData.map((node) => {
         const treeUpdate = result.tree.find((edge) => edge.id === node.id);
@@ -44,7 +44,7 @@ export function useCreateCodebookNode(projectId: number, jobId: number) {
         return node;
       });
 
-      return prepareCodebook(newData);
+      return prepareCodebook([...newData, result.node]);
     },
   });
 }
@@ -74,6 +74,7 @@ export function useUpdateCodebookNode(projectId: number, jobId: number, codebook
         }
         return newNode;
       });
+      console.log(newData);
       return prepareCodebook(newData);
     },
   });

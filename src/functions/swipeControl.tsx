@@ -11,9 +11,6 @@ const swipeControl = (
   triggerdist: number = 110,
 ) => {
   if (!question) return {};
-  const swipeable = ["annotinder"];
-  if (!swipeable.includes(question.type)) return {};
-
   if (question.type !== "annotinder") return {};
 
   let swipeOptions = getSwipeOptions(question.codes);

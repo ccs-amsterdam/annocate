@@ -1,4 +1,8 @@
 
+- Add cancel button to remove
+- add a dummy row to an empty phase or group (otherwise can't move inside)
+- Moving 'after' needs to separately check for allowed parents (something goes wrong still)
+
 
 !!!!!
 
@@ -10,6 +14,17 @@ Replace all Request with NextRequest type (see routehelpers)
 Figure out wth Drizzle's partial returning doesn't work, and then update all returning statements
 
 !!!!!
+
+RATE AND RESOURCE LIMITING
+Rate limits are at the user level.
+Resource limits are at the SERVER WRITER level.
+SERVER WRITERS can further allocate resources to projects.
+For instance, they can set that:
+- every user on the project can make at most x jobs
+- upload at most x units
+- invite at most x coders
+This way a SERVER WRITER can do things like give access to all students in a course.
+
 
 
 EFFICIENT UNIT MANAGEMENT

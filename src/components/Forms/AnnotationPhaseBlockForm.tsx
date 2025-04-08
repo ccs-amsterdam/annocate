@@ -1,9 +1,8 @@
 "use client";
 import {
-  CodebookScaleTypeSchema,
-  CodebookSelectTypeSchema,
-  CodebookVariableSchema,
-  variableTypeOptions,
+  CodebookQuestionScaleTypeSchema,
+  CodebookQuestionSelectTypeSchema,
+  CodebookQuestionVariableBaseSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/variableSchemas";
 import { Control, FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
@@ -34,7 +33,7 @@ import { StyleToolbar } from "../Common/StyleToolbar";
 import { Equal, XIcon } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { NameField } from "./jobBlockForms";
+import { NameField } from "./codebookNodeForms";
 
 type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 
@@ -45,7 +44,7 @@ export function AnnotationPhaseNodeForm<T extends FieldValues>({
   form: UseFormReturn<CodebookNodeCreate>;
   control: Control<T, any>;
 }) {
-  const generalShape = CodebookVariableSchema.shape;
+  const generalShape = CodebookQuestionVariableBaseSchema.shape;
 
   return (
     <div className="flex flex-col gap-6">

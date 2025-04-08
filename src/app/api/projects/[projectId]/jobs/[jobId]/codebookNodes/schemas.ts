@@ -1,7 +1,7 @@
 import { createTableParamsSchema, SafeNameSchema } from "@/app/api/schemaHelpers";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
-import { QuestionVariableSchema, SpanVariableSchema } from "./variableSchemas";
+import { CodebookQuestionVariableSchema, CodebookAnnotationVariableSchema } from "./variableSchemas";
 import { UnitLayoutSchema } from "./layoutSchemas";
 import { codebookNodeType } from "@/app/types";
 
@@ -32,13 +32,13 @@ export const CodebookNodeDataTypeSchema = z.object({
 });
 
 export const CodebookNodeQuestionVariableSchema = CodebookNodeDataTypeSchema.extend({
-  type: z.literal("Question task"),
-  variable: QuestionVariableSchema,
+  type: z.literal("Question"),
+  variable: CodebookQuestionVariableSchema,
 });
 
-export const CodebookNodeSpanVariableSchema = CodebookNodeDataTypeSchema.extend({
+export const CodebookNodeAnnotationVariableSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation task"),
-  variable: SpanVariableSchema,
+  variable: CodebookAnnotationVariableSchema,
 });
 
 export const CodebookNodeAnnotationPhaseSchema = CodebookNodeDataTypeSchema.extend({
@@ -61,7 +61,7 @@ export const CodebookNodeSurveyGroupSchema = CodebookNodeDataTypeSchema.extend({
 
 export const CodebookNodeDataSchema = z.discriminatedUnion("type", [
   CodebookNodeQuestionVariableSchema,
-  CodebookNodeSpanVariableSchema,
+  CodebookNodeAnnotationVariableSchema,
   CodebookNodeAnnotationPhaseSchema,
   CodebookNodeAnnotationGroupSchema,
   CodebookNodeSurveyPhaseSchema,

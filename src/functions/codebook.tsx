@@ -12,7 +12,7 @@ export function importCodebook(codebook: CodebookPhase): ExtendedCodebook {
 const importVariables = (variables: CodebookVariable[]): ExtendedVariable[] => {
   // checks and preparation of variables
   return variables.map((variable) => {
-    const fillMissingColor = ["annotinder"].includes(variable.type);
+    const fillMissingColor = variable.type === "annotinder";
 
     const eVariable: ExtendedVariable = {
       ...variable,

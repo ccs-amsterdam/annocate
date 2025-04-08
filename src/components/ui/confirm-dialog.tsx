@@ -38,11 +38,11 @@ export function ConfirmDialog({ children, title, message, enterText, onAccept }:
           {enterText ? (
             <div className="mr-auto w-56">
               <div className="mb-1 text-sm font-normal text-foreground/70">
-                Enter <span className="text-base text-primary">{enterText}</span> to confirm
+                Enter "<span className="text-base text-primary">{enterText}</span>" to confirm
               </div>
               <Input
                 placeholder={`enter confirmation text`}
-                className={ready ? "bg-primary/10" : "bg-destructive/10"}
+                className={ready ? "bg-primary/10" : "bg-background"}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />

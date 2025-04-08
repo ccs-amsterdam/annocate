@@ -11,6 +11,7 @@ export const getValidTokenRelations = (
   variable: ExtendedVariable,
 ): ValidTokenRelations | null => {
   if (variable.type !== "relation") return null;
+
   const valid: ValidTokenRelations = {};
 
   for (let key of Object.keys(annotationLib.byToken)) {

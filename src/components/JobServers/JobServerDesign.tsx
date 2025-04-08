@@ -258,7 +258,7 @@ function preparePhaseCodebooks(phase: number, nodes: CodebookNode[]) {
   for (let node of phaseNodes) {
     if ("layout" in node.data) layout = node.data.layout;
 
-    if (node.data.type === "Question task") {
+    if (node.data.type === "Question") {
       codebook.variables.push({ name: node.name, layout, ...node.data.variable });
     }
   }

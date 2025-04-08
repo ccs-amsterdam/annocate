@@ -10,10 +10,10 @@ import {
 import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
 import {
   CodebookCodeSchema,
-  CodebookRelationSchema,
-  QuestionVariableSchema,
+  CodebookAnnotationRelationSchema,
+  CodebookQuestionVariableSchema,
   CodebookVariableItemSchema,
-  SpanVariableSchema,
+  CodebookAnnotationVariableSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/codebookNodes/variableSchemas";
 
 import {
@@ -65,10 +65,17 @@ export const codebookNodeType = [
   "Survey group",
   "Annotation phase",
   "Annotation group",
-  "Question task",
+  "Question",
   "Annotation task",
 ] as const;
 export type CodebookNodeType = (typeof codebookNodeType)[number];
+
+export type Phase = "annotation" | "survey";
+export type TreeType = "root" | "phase" | "group" | "leaf";
+export interface TypeDetails {
+  phases: Phase[];
+  treeType: TreeType;
+}
 
 export interface Authorization {
   email: string;
@@ -82,8 +89,9 @@ export type CodebookNodeData = z.infer<typeof CodebookNodeDataSchema>;
 export type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 export type CodebookNodeResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type CodebookNode = CodebookNodeResponse & {
-  level: number;
-  children: number;
+  parentPath: CodebookNode[];
+  children: number[];
+  typeDetails: TypeDetails;
 };
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
@@ -95,9 +103,9 @@ export type UnitData = z.infer<typeof UnitDataSchema>;
 export type UnitDataResponse = z.infer<typeof UnitDataResponseSchema>;
 export type Rules = z.infer<typeof JobRulesSchema>;
 
-export type QuestionVariable = z.infer<typeof QuestionVariableSchema>;
-export type SpanVariable = z.infer<typeof SpanVariableSchema>;
-export type VariableSchema = QuestionVariable | SpanVariable;
+export type QuestionVariable = z.infer<typeof CodebookQuestionVariableSchema>;
+export type AnnotationVariable = z.infer<typeof CodebookAnnotationVariableSchema>;
+export type VariableSchema = QuestionVariable | AnnotationVariable;
 export type CodebookVariable = VariableSchema & {
   name: string;
   layout?: Layout;
@@ -132,7 +140,7 @@ export type ExtendedCodebook = Omit<CodebookPhase, "variables"> & {
   variables: ExtendedVariable[];
 };
 
-export type AnnotationRelation = z.infer<typeof CodebookRelationSchema>;
+export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;
 
 export type Annotation = z.infer<typeof AnnotationSchema> & {
   color?: string;

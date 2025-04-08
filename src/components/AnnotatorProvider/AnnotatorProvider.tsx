@@ -108,7 +108,8 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     setFinished(false);
   }, [jobServer, selectUnit]);
 
-  if (!jobServer.initialized || !unitBundle) return null;
+  // if (!jobServer.initialized || !unitBundle) return null;
+  if (!unitBundle) return null;
 
   return (
     <UnitContext.Provider

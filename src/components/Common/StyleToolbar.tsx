@@ -1,4 +1,4 @@
-import { AlignCenter, Bold, Edit, Italic, Underline } from "lucide-react";
+import { AlignCenter, AlignLeft, Bold, Edit, Italic, Underline } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { CSSProperties, useEffect, useState } from "react";
@@ -10,9 +10,10 @@ interface Props {
   style: Record<string, string>;
   setStyle: (style: Record<string, string>) => void;
   positionBottom?: boolean;
+  forMarkdown?: boolean;
 }
 
-export function StyleToolbar({ style, setStyle, positionBottom }: Props) {
+export function StyleToolbar({ style, setStyle, positionBottom, forMarkdown }: Props) {
   const [customStyle, setCustomStyle] = useState<string>("");
 
   function buttonActive(key: keyof CSSProperties, value: string) {
@@ -75,32 +76,34 @@ export function StyleToolbar({ style, setStyle, positionBottom }: Props) {
 
   return (
     <div className="flex">
-      <Button
-        type="button"
-        size="icon"
-        variant="ghost"
-        {...buttonProps("fontWeight", "bold", positionBottom ? "leftBottom" : "left")}
-      >
-        <Bold />
-      </Button>
-      <Button type="button" size="icon" variant="ghost" {...buttonProps("fontStyle", "italic")}>
-        <Italic />
+      <Button type="button" size="icon" variant="ghost" {...buttonProps("textAlign", "left", "leftBottom")}>
+        <AlignLeft />
       </Button>
       <Button type="button" size="icon" variant="ghost" {...buttonProps("textAlign", "center")}>
         <AlignCenter />
       </Button>
+      {forMarkdown ? null : (
+        <>
+          <Button type="button" size="icon" variant="ghost" {...buttonProps("fontWeight", "bold")}>
+            <Bold />
+          </Button>
+          <Button type="button" size="icon" variant="ghost" {...buttonProps("fontStyle", "italic")}>
+            <Italic />
+          </Button>
+        </>
+      )}
 
-      <div className="relative flex text-sm">
+      <div className="relative flex py-[0.05rem] text-[1rem] text-foreground/70">
         <Input
           type="number"
-          className="z-10 h-6 w-[66px] border-none bg-transparent py-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="z-10 h-6 w-[66px] border-none bg-transparent py-0 text-[1rem] text-foreground/70 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
           min={10}
           max={400}
           step={10}
           value={fontSize}
           onChange={(e) => setStyle({ ...style, fontSize: Number(e.target.value) / 100 + "em" })}
         />
-        <div className="absolute right-4 top-0 z-0 h-6 select-none">%</div>
+        <div className="absolute right-3 z-0 select-none pt-[0.14rem]">%</div>
       </div>
       <Popover>
         <PopoverTrigger className="ml-auto">

@@ -1,9 +1,9 @@
 "use client";
 import {
-  CodebookScaleTypeSchema,
-  CodebookSelectTypeSchema,
-  CodebookVariableSchema,
-  variableTypeOptions,
+  CodebookQuestionScaleTypeSchema,
+  CodebookQuestionSelectTypeSchema,
+  CodebookQuestionVariableBaseSchema,
+  answerTypeOptions,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/variableSchemas";
 import { Control, FieldValues, UseFormReturn } from "react-hook-form";
 import { z } from "zod";
@@ -16,19 +16,19 @@ import {
   VariableItemsFormField,
 } from "./formHelpers";
 import { CodebookNodeCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
-import { NameField } from "./jobBlockForms";
+import { NameField } from "./codebookNodeForms";
 import { StyleToolbar } from "../Common/StyleToolbar";
 
 type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 
-export function VariableNodeForm<T extends FieldValues>({
+export function QuestionVariableForm<T extends FieldValues>({
   form,
   control,
 }: {
   form: UseFormReturn<CodebookNodeCreate>;
   control: Control<T, any>;
 }) {
-  const generalShape = CodebookVariableSchema.shape;
+  const generalShape = CodebookQuestionVariableBaseSchema.shape;
   const type = form.watch("data.variable.type");
   const questionStyle = form.watch("data.variable.questionStyle");
 
@@ -38,7 +38,7 @@ export function VariableNodeForm<T extends FieldValues>({
 
   function renderType() {
     if (type === "select code") {
-      const shape = CodebookSelectTypeSchema.shape;
+      const shape = CodebookQuestionSelectTypeSchema.shape;
       return (
         <>
           <CodesField form={form} />
@@ -50,7 +50,7 @@ export function VariableNodeForm<T extends FieldValues>({
       );
     }
     if (type === "scale") {
-      const shape = CodebookScaleTypeSchema.shape;
+      const shape = CodebookQuestionScaleTypeSchema.shape;
       return (
         <>
           <CodesField form={form} />
@@ -91,7 +91,7 @@ function QuestionField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
     <div className="flex flex-col">
       <TextAreaFormField
         control={form.control}
-        zType={CodebookVariableSchema.shape.question}
+        zType={CodebookQuestionVariableBaseSchema.shape.question}
         name={"data.variable.question"}
         className="rounded-bl-none"
       />
@@ -99,6 +99,7 @@ function QuestionField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
         positionBottom
         style={style || {}}
         setStyle={(style) => form.setValue(`data.variable.questionStyle`, style, { shouldDirty: true })}
+        forMarkdown
       />
     </div>
   );
@@ -110,7 +111,7 @@ function InstructionField({ form }: { form: UseFormReturn<CodebookNodeCreate> })
     <div className="flex flex-col">
       <TextAreaFormField
         control={form.control}
-        zType={CodebookVariableSchema.shape.instruction}
+        zType={CodebookQuestionVariableBaseSchema.shape.instruction}
         name={"data.variable.instruction"}
       />
       <StyleToolbar
@@ -126,11 +127,11 @@ function TypeField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <DropdownFormField
       control={form.control}
-      zType={CodebookVariableSchema.shape.type}
+      zType={CodebookQuestionVariableBaseSchema.shape.type}
       name="data.variable.type"
-      values={variableTypeOptions}
+      values={answerTypeOptions}
       labelWidth="8rem"
-      placeholder="Select question type"
+      placeholder="Select answer type"
       disableMessage
     />
   );
@@ -140,7 +141,7 @@ function MultipleField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <BooleanFormField
       control={form.control}
-      zType={CodebookSelectTypeSchema.shape.multiple}
+      zType={CodebookQuestionSelectTypeSchema.shape.multiple}
       name="data.variable.multiple"
     />
   );
@@ -150,7 +151,7 @@ function VerticalField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
   return (
     <BooleanFormField
       control={form.control}
-      zType={CodebookSelectTypeSchema.shape.vertical}
+      zType={CodebookQuestionSelectTypeSchema.shape.vertical}
       name="data.variable.vertical"
     />
   );
@@ -162,7 +163,7 @@ function CodesField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
       form={form}
       control={form.control}
       name="data.variable.codes"
-      zType={CodebookSelectTypeSchema.shape.codes}
+      zType={CodebookQuestionSelectTypeSchema.shape.codes}
       hideTitle
     />
   );
@@ -174,7 +175,7 @@ function ItemsField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
       form={form}
       control={form.control}
       name="data.variable.items"
-      zType={CodebookScaleTypeSchema.shape.items}
+      zType={CodebookQuestionScaleTypeSchema.shape.items}
     />
   );
 }

@@ -104,7 +104,6 @@ export function PreviewWindow({
 }) {
   const [blockEvents, setBlockEvents] = useState(true);
   const [freeNav, setFreeNav] = useState(false);
-
   if (!jobServer) return null;
   const title = mode === "changes" ? "Preview of changes" : "Job preview";
 
@@ -158,12 +157,13 @@ function createPreviewPhase(
     nodes.push({
       id: 0,
       name: "dummy",
-      level: 0,
-      children: 0,
+      parentPath: [],
+      children: [],
+      typeDetails: { phases: [], treeType: "leaf" },
       parentId: codebookNode.id,
       position: 0,
       data: {
-        type: "Question task",
+        type: "Question",
         variable: {
           type: "select code",
           question: "Preview of unit layout",

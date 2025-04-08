@@ -15,10 +15,11 @@ import { Button } from "../ui/button";
 import { Form, FormMessage } from "../ui/form";
 import { useEffect, useMemo, useRef } from "react";
 import { Loading } from "../ui/loader";
-import { VariableNodeForm } from "./variableBlockForm";
+import { QuestionVariableForm } from "./questionVariableForm";
 import { TextFormField } from "./formHelpers";
 import { AnnotationPhaseNodeForm } from "./AnnotationPhaseBlockForm";
 import { SurveyPhaseNodeForm } from "./SurveyPhaseBlockForm";
+import { prepareCodebook } from "@/functions/treeFunctions";
 
 type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 type CodebookNodeUpdate = z.infer<typeof CodebookNodeUpdateSchema>;
@@ -35,6 +36,7 @@ interface CreateCodebookNodeProps {
   onCancel: () => void;
   header?: string;
   defaultName?: string;
+  changesPending: boolean;
   setChangesPending: (value: boolean) => void;
 }
 
@@ -50,6 +52,7 @@ export function CreateOrUpdateCodebookNodes({
   onCancel,
   header,
   defaultName,
+  changesPending,
   setChangesPending,
 }: CreateCodebookNodeProps) {
   const { mutateAsync: createAsync } = useCreateCodebookNode(projectId, jobId);
@@ -80,7 +83,7 @@ export function CreateOrUpdateCodebookNodes({
   }
 
   function renderForm() {
-    if (type === "Question task") return <VariableNodeForm form={form} control={form.control} />;
+    if (type === "Question") return <QuestionVariableForm form={form} control={form.control} />;
     if (type === "Annotation phase") return <AnnotationPhaseNodeForm form={form} control={form.control} />;
     if (type === "Survey phase") return <SurveyPhaseNodeForm form={form} control={form.control} />;
   }
@@ -103,7 +106,7 @@ export function CreateOrUpdateCodebookNodes({
             >
               cancel
             </Button>
-            <Button type="submit" className="flex-auto" variant="secondary">
+            <Button type="submit" className="flex-auto" variant="secondary" disabled={current && !changesPending}>
               {current ? "Save" : "Create"}
             </Button>
           </div>
@@ -159,14 +162,15 @@ function useUpdatePreview({
     const timeout = setTimeout(() => {
       try {
         const codebookNode = CodebookNodeCreateSchema.parse(watch);
-        setPreview({ ...codebookNode, id: 0, level: 0, children: 0, position: 0 });
+        const preparedCodebook = prepareCodebook([{ ...codebookNode, id: 0, position: 0 }]);
+        setPreview(preparedCodebook[0]);
         triggerRef.current = true;
         form.trigger();
       } catch (e: any) {
         if (e instanceof ZodError) setPreview(e);
         if (triggerRef.current) form.trigger();
       }
-    }, 500);
+    }, 200);
 
     return () => {
       // setPreview(undefined);

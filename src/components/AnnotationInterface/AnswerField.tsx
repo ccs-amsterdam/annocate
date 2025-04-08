@@ -42,7 +42,6 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       const msg = "If you leave now, any changes made in the current unit will not be saved."; // most browsers actually show default message
-      e.returnValue = msg;
       return msg;
     };
 
@@ -109,7 +108,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
 
   let answerfield = null;
 
-  if (variable.type === "select code")
+  if (variable.type === "select code") {
     answerfield = (
       <SelectCode
         options={variable.codes || []}
@@ -123,6 +122,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
         speedbump={speedbump}
       />
     );
+  }
 
   // if (question?.type === "search code")
   //   answerfield = (

@@ -42,6 +42,10 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
 
         let treeData = await reIndexCodebookTree(tx, params.jobId);
 
+        // the new codebook node position could be updated by reindex
+        const updatedPosition = treeData.find((node) => node.id === newCodebookNode.id)?.position;
+        if (updatedPosition !== undefined) newCodebookNode.position = updatedPosition;
+
         if (body.parentId !== null) {
           const parent = treeData.find((node) => node.id === body.parentId);
           if (!parent) throw new Error("Invalid parent id");
@@ -50,6 +54,7 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
         }
 
         const tree = treeData.map((node) => ({ id: node.id, parentId: node.parentId, position: node.position }));
+
         return { tree, node: newCodebookNode };
       });
     },

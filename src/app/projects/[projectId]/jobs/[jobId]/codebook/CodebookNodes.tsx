@@ -2,17 +2,37 @@ import {
   useDeleteCodebookNode,
   useCodebookNodes,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
-import { CodebookNode } from "@/app/types";
-import { CreateOrUpdateCodebookNodes } from "@/components/Forms/jobBlockForms";
+import { CodebookNode, SetState } from "@/app/types";
+import { CreateOrUpdateCodebookNodes } from "@/components/Forms/codebookNodeForms";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loader";
 import { SimplePopover } from "@/components/ui/simplePopover";
-import { Book, Edit, FolderPlusIcon, ListPlusIcon, PlusIcon, Trash, X } from "lucide-react";
+import {
+  ArrowRight,
+  Book,
+  ChevronDown,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  Edit,
+  Ellipsis,
+  FolderPlusIcon,
+  Grid,
+  Grip,
+  GripHorizontal,
+  ListPlusIcon,
+  Plus,
+  PlusIcon,
+  Trash,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { SetStateAction, useRef, useState } from "react";
 import { z, ZodError } from "zod";
 import { CodebookNodePreview } from "./CodebookNodePreview";
-import { CreateNodeDropdown } from "./CreateBlockDropdown";
+import { CreateNodeDropdown } from "./CreateNodeDropdown";
+import { DeleteNodeButton } from "./DeleteNodeButton";
+import { CancelMoveButton, MoveNodeButton, MoveNodeInsideButton, useMoveableNodes } from "./MoveNodeButton";
+import { NodeIcon } from "./NodeIcon";
 
 interface Props {
   projectId: number;
@@ -24,6 +44,24 @@ export interface CodebookNodeFormProps {
   parentId: CodebookNode["parentId"];
   type: CodebookNode["data"]["type"];
   currentId?: number;
+}
+
+export interface CodebookNodeRowProps {
+  nodes: CodebookNode[];
+  node: CodebookNode;
+  projectId: number;
+  jobId: number;
+  codebookNodeForm: CodebookNodeFormProps | null;
+  setCodebookNodeForm: (props: CodebookNodeFormProps | null) => void;
+  moveNode: CodebookNode | null;
+  movePending: boolean;
+  moveFrom: (node: CodebookNode) => void;
+  moveTo: (node: { parentId: number | null; position: number }) => void;
+  canMove: (node: CodebookNode) => boolean;
+  cancelMove: () => void;
+  globalPosition: number;
+  folded: Set<number>;
+  setFolded: SetState<Set<number>>;
 }
 
 interface WindowProps {
@@ -98,19 +136,39 @@ function ShowCodebookNodesList({
   projectId,
   jobId,
   codebookNodeForm,
-  setCodebookNodeForm: setCodebookNodeForm,
+  setCodebookNodeForm,
   preview,
   changesPending,
-  codebookNodes: codebookNodes,
-  isLoading,
-  isPending,
+  codebookNodes,
 }: WindowProps) {
   const disabled = !!codebookNodeForm && changesPending;
+  const { moveableNodes: rows, ...moveProps } = useMoveableNodes({ projectId, jobId, nodes: codebookNodes || [] });
+  const [folded, setFolded] = useState<Set<number>>(new Set());
+
+  function header() {
+    if (moveProps.moveNode)
+      return (
+        <>
+          <span className="text-lg">Select new position</span>
+          <Button className="h-8" variant="ghost" onClick={() => moveProps.cancelMove()}>
+            Cancel
+          </Button>
+        </>
+      );
+    return (
+      <>
+        <span className="text-lg">Codebook</span>
+        <CreateNodeDropdown nodes={codebookNodes || []} id={null} setCodebookNodeForm={setCodebookNodeForm} />
+      </>
+    );
+  }
 
   return (
-    <div className={`relative flex w-full min-w-[400px] animate-slide-in-left flex-col`}>
+    <div className={`relative flex w-full min-w-[400px] animate-slide-in-left flex-col gap-3`}>
+      <div className="flex items-center justify-between rounded-none border-b py-1">{header()}</div>
       <div className={`${disabled ? "pointer-events-none opacity-50" : ""}`}>
-        {(codebookNodes || []).map((node) => {
+        {rows.map((node, i) => {
+          if (node.parentPath.some((p) => folded.has(p.id))) return null;
           return (
             <CodebookNodeRow
               key={node.id}
@@ -120,12 +178,13 @@ function ShowCodebookNodesList({
               jobId={jobId}
               codebookNodeForm={codebookNodeForm}
               setCodebookNodeForm={setCodebookNodeForm}
+              globalPosition={i}
+              folded={folded}
+              setFolded={setFolded}
+              {...moveProps}
             />
           );
         })}
-      </div>
-      <div className="flex justify-end">
-        <CreateNodeDropdown codebookNodes={codebookNodes || []} id={null} setCodebookNodeForm={setCodebookNodeForm} />
       </div>
     </div>
   );
@@ -152,6 +211,7 @@ function ShowCodebookNodesForm({
   projectId,
   jobId,
   codebookNodeForm,
+  changesPending,
   setCodebookNodeForm,
   setPreview,
   setChangesPending,
@@ -176,77 +236,181 @@ function ShowCodebookNodesForm({
         setPreview={setPreview}
         onCancel={() => setCodebookNodeForm(null)}
         defaultName={getDefaultName(codebookNodes, codebookNodeForm.type)}
+        changesPending={changesPending}
         setChangesPending={setChangesPending}
       />
     </div>
   );
 }
 
-interface CodebookNodeProps {
-  nodes: CodebookNode[];
-  node: CodebookNode;
-  projectId: number;
-  jobId: number;
-  codebookNodeForm: CodebookNodeFormProps | null;
-  setCodebookNodeForm: (props: CodebookNodeFormProps | null) => void;
-}
+function CodebookNodeRow(props: CodebookNodeRowProps) {
+  const { node, codebookNodeForm, setCodebookNodeForm, canMove, globalPosition, moveNode, moveTo, folded, setFolded } =
+    props;
+  const isSelected = codebookNodeForm?.currentId === node.id;
+  const isMove = moveNode && (moveNode.id === node.id || node.parentPath.some((p) => moveNode?.id === p.id));
+  const canMoveNode = moveNode && canMove(node);
+  const isPhase = node.typeDetails.treeType === "phase";
+  const isGroup = node.typeDetails.treeType === "group";
 
-function CodebookNodeRow({ nodes, node, projectId, jobId, codebookNodeForm, setCodebookNodeForm }: CodebookNodeProps) {
-  const { mutateAsync: deleteCodebookNode } = useDeleteCodebookNode(projectId, jobId, node.id);
-  const router = useRouter();
-
-  const isPhase = node.data.type === "Annotation phase" || node.data.type === "Survey phase";
+  const lastPosition = useRef(globalPosition);
+  let transition =
+    lastPosition.current === globalPosition
+      ? ""
+      : lastPosition.current > globalPosition
+        ? "animate-in slide-in-from-bottom"
+        : "animate-in slide-in-from-top";
 
   function header() {
-    return node.name.replaceAll("_", " ");
+    let cname = "";
+    if (isMove) cname = " text-primary";
+    if (isPhase) cname += " text-lg font-bold";
+    if (isGroup) cname += " font-semibold";
+    if (moveNode && !canMoveNode) {
+      cname += " opacity-50";
+    } else {
+      if (node.typeDetails.treeType === "leaf") cname += "  ";
+    }
+
+    if (node.name === ".movePlaceholder") {
+      if (!moveNode) return null;
+      return <GripHorizontal size={16} className={cname} />;
+    }
+    return <span className={cname}>{node.name.replaceAll("_", " ")}</span>;
   }
 
-  function codebookNodeStyle() {
-    if (node.data.type.includes("Phase")) return `${node.position > 0 ? "mt-6" : ""}   font-bold`;
-    if (node.level > 0) return "";
-    if (isPhase) return "";
+  function moveable() {
+    if (canMoveNode && node.name !== ".movePlaceholder") return "MoveableNodeTrigger cursor-pointer";
+    return "";
   }
+
+  function folderIndentation() {
+    const level = node.parentPath.length;
+    let phaseBg = "bg-secondary/40";
+    if (node.parentPath?.[0]?.data.type === "Annotation phase") phaseBg = "bg-primary/40";
+
+    if (level === 0) return null;
+    return Array.from({ length: level }).map((_, i) => {
+      return <div key={i} className={`${i === 0 ? "ml-4" : "ml-3"} ${phaseBg} mr-1 h-full w-1 flex-shrink-0`} />;
+    });
+  }
+
+  function foldButton() {
+    if (!isPhase && !isGroup) return null;
+    const isFolded = folded.has(node.id);
+    return (
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isFolded) {
+            setFolded(new Set([...folded].filter((id) => id !== node.id)));
+          } else {
+            setFolded(new Set([...folded, node.id]));
+          }
+        }}
+      >
+        {isFolded ? (
+          <ChevronDownIcon size={18} className="opacity-70" />
+        ) : (
+          <ChevronRightIcon size={18} className="opacity-70" />
+        )}
+      </Button>
+    );
+  }
+
+  const rowHeight = node.name === ".movePlaceholder" ? "h-4" : "h-8";
+  const phaseIndent = isPhase && globalPosition > 0 ? "mt-4" : "";
+  const buttonWidth = "w-full";
 
   return (
     <div
       tabIndex={0}
       is="button"
-      className={`flex animate-fade-in items-center gap-1 ${codebookNodeStyle()} group gap-3`}
+      className={`MoveableNode ${phaseIndent} ${rowHeight} group flex animate-fade-in items-center gap-2 ${transition} group`}
     >
+      {folderIndentation()}
       <Button
         variant="ghost"
-        className={`${codebookNodeForm?.currentId === node.id ? "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground" : "hover:bg-secondary/10"} flex h-8 w-full max-w-lg justify-start overflow-hidden text-ellipsis whitespace-nowrap px-3 transition-none`}
-        onClick={() => {
+        className={`${moveable()} ${isSelected ? "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground" : "hover:bg-secondary/20"} ${rowHeight} ${buttonWidth} flex justify-start overflow-visible text-ellipsis whitespace-nowrap px-2 transition-none transition-transform disabled:opacity-100 disabled:hover:bg-transparent`}
+        onClick={(e) => {
           if (!node.data.type) return null;
-          setCodebookNodeForm({
-            position: node.position,
-            parentId: node.parentId,
-            type: node.data.type,
-            currentId: node.id,
-          });
+          if (moveNode) {
+            if (canMoveNode) moveTo(node);
+            e.stopPropagation();
+          } else {
+            setCodebookNodeForm({
+              position: node.position,
+              parentId: node.parentId,
+              type: node.data.type,
+              currentId: node.id,
+            });
+          }
         }}
+        disabled={(!props.moveNode && props.node.name === ".movePlaceholder") || (!!props.moveNode && !canMoveNode)}
+        // disabled={!!props.moveNode}
       >
-        <div style={{ paddingLeft: `${node.level}rem` }}>{header()}</div>
+        <div className={"MoveableLabel flex w-full items-center gap-3 transition-transform"}>
+          <NodeIcon
+            type={node.name === ".movePlaceholder" || node.typeDetails.treeType === "leaf" ? null : node.data.type}
+            className="opacity-60"
+            tailwindSize={isPhase ? 5 : 4}
+          />
+          {header()}
+          {foldButton()}
+        </div>
       </Button>
-      <div className="text flex items-center opacity-20 transition-none group-focus-within:opacity-100 group-hover:opacity-100">
-        <CreateNodeDropdown codebookNodes={nodes || []} id={node.id} setCodebookNodeForm={setCodebookNodeForm} />
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => {
-            setCodebookNodeForm(null);
-            deleteCodebookNode();
-          }}
-          className="transition-none"
-          onClickConfirm={{
-            title: "Are you sure?",
-            message: `This will delete the codebook item ${node.children > 0 ? "AND all it's children (!!!)" : ""}. Are you sure?`,
-            enterText: node.children > 0 ? "delete" : undefined,
-          }}
-        >
-          <X className="h-5 w-5" />
-        </Button>
+
+      <div className="ml-auto">
+        <CodebookNodeRowButtons {...props} />
       </div>
+    </div>
+  );
+}
+
+function CodebookNodeRowButtons(props: CodebookNodeRowProps) {
+  function createChild() {
+    if (props.moveNode) return null;
+    if (props.node.typeDetails.treeType === "leaf") return null;
+    return <CreateNodeDropdown {...props} id={props.node.id} />;
+  }
+
+  function deleteNode() {
+    if (props.moveNode) return null;
+    return <DeleteNodeButton {...props} />;
+  }
+
+  function moveNode() {
+    if (props.moveNode) return null;
+    return <MoveNodeButton {...props} />;
+  }
+
+  function cancelMove() {
+    if (!props.moveNode) return null;
+    if (props.node.id !== props.moveNode.id) return null;
+    return <CancelMoveButton {...props} />;
+  }
+
+  function moveNodeInside() {
+    if (!props.moveNode) return null;
+    if (props.node.id === props.moveNode.id) return null;
+    if (props.node.typeDetails.treeType === "leaf") return null;
+    return <MoveNodeInsideButton {...props} />;
+  }
+
+  if (props.node.name === ".movePlaceholder") return null;
+
+  return (
+    <div
+      className={`${props.moveNode ? "" : "opacity-20"} text flex items-center transition-none group-focus-within:opacity-100 group-hover:opacity-100`}
+    >
+      {createChild()}
+      {deleteNode()}
+      {moveNode()}
+      {cancelMove()}
+      {moveNodeInside()}
     </div>
   );
 }
@@ -264,6 +428,6 @@ function getDefaultName(nodes: CodebookNode[], type: CodebookNode["data"]["type"
 function getLabel(type: CodebookNode["data"]["type"]) {
   if (type === "Survey phase") return "Survey phase";
   if (type === "Annotation phase") return "Annotation phase";
-  if (type === "Question task") return "Question task";
+  if (type === "Question") return "Question";
   return type;
 }

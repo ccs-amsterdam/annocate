@@ -1,18 +1,15 @@
-import { CodebookNode, CodebookNodeResponse, CodebookNodeType } from "@/app/types";
-
-type Phase = "annotation" | "survey";
-type TreeType = "root" | "phase" | "group" | "leaf";
+import { CodebookNode, CodebookNodeResponse, CodebookNodeType, Phase, TreeType, TypeDetails } from "@/app/types";
 
 export const codebookNodeType = [
   "Survey phase",
   "Survey group",
   "Annotation phase",
   "Annotation group",
-  "Question task",
+  "Question",
   "Annotation task",
 ] as const;
 
-const typeMap: Record<CodebookNodeType | "root", { phases: Phase[]; treeType: TreeType }> = {
+const typeMap: Record<CodebookNodeType | "root", TypeDetails> = {
   root: { phases: ["survey", "annotation"], treeType: "root" },
   // phases
   "Survey phase": { phases: ["survey"], treeType: "phase" },
@@ -21,7 +18,7 @@ const typeMap: Record<CodebookNodeType | "root", { phases: Phase[]; treeType: Tr
   "Survey group": { phases: ["survey"], treeType: "group" },
   "Annotation group": { phases: ["annotation"], treeType: "group" },
   // leafs
-  "Question task": { phases: [], treeType: "leaf" },
+  Question: { phases: [], treeType: "leaf" },
   "Annotation task": { phases: ["annotation"], treeType: "leaf" },
 };
 
@@ -31,23 +28,26 @@ const typeMap: Record<CodebookNodeType | "root", { phases: Phase[]; treeType: Tr
  * - phases: defined what phases a type can be part of.
  * - treeType: defined in what positions of the tree a type can be.
  */
-export function codebookItemTypeDetails(type: CodebookNodeType | null): {
+export function codebookNodeTypeDetails(type: CodebookNodeType | null): {
   phases: Phase[];
   treeType: TreeType;
 } {
   return typeMap[type ?? "root"];
 }
 
-export function isValidParent(type: CodebookNodeType, parentType: CodebookNodeType | null): boolean {
-  const typeDetails = codebookItemTypeDetails(type);
+/**
 
-  // If the parent is null, the type must be a root
-  if (parentType === null) {
-    return typeDetails.treeType === "phase";
-  }
+
+*/
+export function isValidParent(type: CodebookNodeType, parentType: CodebookNodeType | null): boolean {
+  const typeDetails = codebookNodeTypeDetails(type);
+  const parentDetails = codebookNodeTypeDetails(parentType);
+
+  // Root can only have phase children, and phase an only have root parents
+  if (parentDetails.treeType === "root" && typeDetails.treeType !== "phase") return false;
+  if (typeDetails.treeType === "phase" && parentDetails.treeType !== "root") return false;
 
   // The child can not have any phases that the parent does not have
-  const parentDetails = codebookItemTypeDetails(parentType);
   for (const phase of typeDetails.phases) {
     if (!parentDetails.phases.includes(phase)) return false;
   }
@@ -60,20 +60,15 @@ export function getValidChildren(
 ): Record<"phase" | "group" | "leaf", CodebookNodeType[]> {
   const children = { phase: [], group: [], leaf: [] } as Record<"phase" | "group" | "leaf", CodebookNodeType[]>;
 
-  const typeDetails = codebookItemTypeDetails(type);
+  const typeDetails = codebookNodeTypeDetails(type);
   if (typeDetails.treeType === "leaf") return children;
 
   for (const option of codebookNodeType) {
     if (!isValidParent(option, type)) continue;
-    const optionDetails = codebookItemTypeDetails(option);
+    const optionDetails = codebookNodeTypeDetails(option);
     if (optionDetails.treeType !== "root") children[optionDetails.treeType].push(option);
   }
   return children;
-}
-
-interface Add {
-  level: number;
-  children: number;
 }
 
 interface Tree {
@@ -106,26 +101,35 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
   const used = new Set<number>(); // prevent infinite loops
   const parentMap = createParentMap(nodes);
 
-  function recursiveProcess(parents: CodebookNodeResponse[], level: number): CodebookNode[] {
+  function recursiveProcess(parents: CodebookNodeResponse[], parentPath: CodebookNode["parentPath"]): CodebookNode[] {
     let codebook: CodebookNode[] = [];
     const sortedParents = parents.sort((a, b) => a.position - b.position);
-    let i = 0;
-    for (let parent of sortedParents) {
+
+    const n = sortedParents.length;
+    for (let i = 0; i < n; i++) {
+      const parent = sortedParents[i];
+
       if (used.has(parent.id)) throw new Error("Cycle detected in codebook");
       used.add(parent.id);
 
       const children = parentMap.get(parent.id) ?? [];
 
-      parent.position = i++;
-      codebook.push({ ...parent, level, children: children.length });
+      parent.position = i;
+      const nodeParent = {
+        ...parent,
+        parentPath,
+        children: children.map((child) => child.id),
+        typeDetails: codebookNodeTypeDetails(parent.data.type),
+      };
+      codebook.push(nodeParent);
 
       if (children.length === 0) continue;
-      codebook.push(...recursiveProcess(children, level + 1));
+      codebook.push(...recursiveProcess(children, [...parentPath, nodeParent]));
     }
     return codebook;
   }
 
-  return recursiveProcess(roots, 0);
+  return recursiveProcess(roots, []);
 }
 
 interface Edges {

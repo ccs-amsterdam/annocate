@@ -5,22 +5,18 @@
 @layer base {
   :root {
     --header-height: 70px;
+    --radius: 0.5rem;
+    --navbar-height: 80px;
+    --navbar-height-md: 112px;
+    --nav-border-height: 0px;
 
-    --background: 0, 0%, 100%;
+    /* Light mode defaults */
+    --background: 240, 10%, 99%;
     --foreground: 222.2, 84%, 10%;
-    --foreground-reverse: 222.2, 84%, 90%;
     --header: 0, 0%, 80%;
 
     --card: 0, 0%, 100%;
     --card-foreground: 222.2, 84%, 4rgb (0, 0, 0) 0.9%;
-
-    --primary: 174, 50%, 45%;
-    --primary-foreground: 222.2, 47.4%, 0%;
-    --primary-light: 174, 50%, 35%;
-    --primary-dark: 174, 30%, 20%;
-
-    --secondary: 39, 100%, 86%;
-    --secondary-foreground: 222.2, 47.4%, 10%;
 
     --muted: 0, 0%, 50%;
     --muted-foreground: 0.4, 16.3%, 46.9%;
@@ -41,21 +37,22 @@
     --input: 214.3, 31.8%, 80.4%;
     --ring: 174, 80%, 30%;
 
-    --radius: 0.5rem;
-
-    --navbar-height: 80px;
-    --navbar-height-md: 112px;
-
     --popover: 0, 0%, 100%;
     --popover-foreground: 222.2, 84%, 10%;
 
-    --nav-border-height: 0px;
+    /* Color defaults */
+    --primary: 174, 50%, 45%;
+    --primary-foreground: 222.2, 47.4%, 0%;
+    --primary-light: 174, 50%, 35%;
+    --primary-dark: 174, 30%, 20%;
+
+    --secondary: 39, 100%, 80%;
+    --secondary-foreground: 222.2, 47.4%, 10%;
   }
 
   [data-dark="on"] {
     --background: 0, 0%, 14%;
     --foreground: 222.2, 84%, 100%;
-    --foreground-reverse: 222.2, 84%, 10%;
     --header: 0, 0%, 20%;
 
     --card: 0, 0%, 100%;
@@ -561,4 +558,9 @@ span.token.annotated.allRight > span.text {
 .fade-enter-active,
 .fade-exit-active {
   transition: opacity 500ms;
+}
+
+.MoveableNode .MoveableNodeTrigger:hover .MoveableLabel {
+  transform: translateY(0.4rem);
+  transition: all 0.2s ease;
 }
