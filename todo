@@ -1,7 +1,4 @@
 
-- Add cancel button to remove
-- add a dummy row to an empty phase or group (otherwise can't move inside)
-- Moving 'after' needs to separately check for allowed parents (something goes wrong still)
 
 
 !!!!!

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { CodebookNodeRowProps } from "./CodebookNodes";
 import { useDeleteCodebookNode } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
+import { CodebookNodeRowProps } from "./CodebookList";
 
 export function DeleteNodeButton({ setCodebookNodeForm, projectId, jobId, node }: CodebookNodeRowProps) {
   const { mutateAsync: deleteCodebookNode } = useDeleteCodebookNode(projectId, jobId, node.id);

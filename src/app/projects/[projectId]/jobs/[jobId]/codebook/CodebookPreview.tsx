@@ -1,5 +1,5 @@
 import { useCodebookNodes } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
-import { GetUnit, CodebookNode, JobState, Progress } from "@/app/types";
+import { GetUnit, CodebookNode, JobState, Progress, CodebookNodeResponse } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/components/JobServers/JobServerDesign";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ interface Props {
 
 type UnitCache = Record<number | string, Omit<GetUnit, "progress">>;
 
-export function CodebookNodePreview({ projectId, jobId, preview }: Props) {
+export function CodebookPreview({ projectId, jobId, preview }: Props) {
   const { user } = useMiddlecat();
   const { data: codebookNodes, isLoading: codebookLoading } = useCodebookNodes(projectId, jobId);
 
@@ -105,13 +105,11 @@ export function PreviewWindow({
   const [blockEvents, setBlockEvents] = useState(true);
   const [freeNav, setFreeNav] = useState(false);
   if (!jobServer) return null;
-  const title = mode === "changes" ? "Preview of changes" : "Job preview";
 
   return (
     <div className="flex flex-wrap items-start justify-center gap-3">
-      <div className="flex h-10 w-full items-center rounded">
-        <h4>{title}</h4>
-        {/* <PreviewDataWindow previewData={previewData} /> */}
+      <div className={`${mode === "changes" ? "hidden" : ""} flex h-10 w-full items-center rounded`}>
+        <h4>Job preview</h4>
         <div className={`${mode === "job" ? "" : "hidden"} ml-auto flex`}>
           <Button
             variant="ghost"
@@ -131,7 +129,7 @@ export function PreviewWindow({
       </div>
       <div
         tabIndex={0}
-        className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg border border-primary/20 ${!blockEvents ? "ring-4 ring-secondary ring-offset-2" : ""}`}
+        className={`h-[600px] w-full max-w-full overflow-hidden rounded-lg ${!blockEvents ? "ring-4 ring-secondary ring-offset-2" : ""}`}
         onClick={(e) => {
           e.currentTarget.focus();
         }}
@@ -159,7 +157,8 @@ function createPreviewPhase(
       name: "dummy",
       parentPath: [],
       children: [],
-      typeDetails: { phases: [], treeType: "leaf" },
+      treeType: "leaf",
+      phase: "annotation",
       parentId: codebookNode.id,
       position: 0,
       data: {
@@ -184,59 +183,3 @@ function addParentNodes(codebookNodes: CodebookNode[], codebookNode: CodebookNod
   const parent = { ...codebookNodes[parentIndex], position: 0 };
   return [...addParentNodes(codebookNodes, parent), codebookNode];
 }
-
-// function PreviewDataWindow({ previewData }: { previewData: GetJobState | null }) {
-//   if (!previewData) return null;
-//   const isSurvey = previewData.unit?.type === "survey";
-//   return (
-//     <div className="flex max-h-full flex-col overflow-auto rounded">
-//       <div className={`${isSurvey ? "hidden" : ""} p-3`}>
-//         <h3 className="mb-3">Unit data</h3>
-//         <div className="grid grid-cols-[min-content,1fr] gap-x-3">
-//           {Object.entries(previewData.unitData?.data || {}).map(([column, value]) => {
-//             return (
-//               <React.Fragment key={column}>
-//                 <div className="text-primary">{column}</div>
-//                 <div className="line-clamp-3 overflow-auto text-sm">{value}</div>
-//               </React.Fragment>
-//             );
-//           })}
-//         </div>
-//       </div>
-//       <div className="p-3">
-//         <h3 className="mb-3">Survey answers</h3>
-//         <div className="grid grid-cols-[min-content,1fr] gap-x-3">
-//           {Object.entries(previewData.surveyAnnotations || {}).map(([variable, values]) => {
-//             return (
-//               <React.Fragment key={variable}>
-//                 <div className="text-primary">{variable}</div>
-//                 <div className="line-clamp-3 overflow-auto text-sm">
-//                   {values.code} ({values.value})
-//                 </div>
-//               </React.Fragment>
-//             );
-//           })}
-//         </div>
-//       </div>
-//       <div className={`${isSurvey ? "hidden" : ""} p-3`}>
-//         <h3 className="mb-3">Current unit Annotations</h3>
-//         <div className="grid grid-cols-[min-content,1fr] gap-x-3">
-//           {(previewData.unit?.annotations || []).map((annotation) => {
-//             return (
-//               <React.Fragment key={annotation.id}>
-//                 <div className="text-primary">{annotation.variable}</div>
-//                 <div className="line-clamp-3 overflow-auto text-sm">
-//                   {annotation.code} ({annotation.value})
-//                 </div>
-//               </React.Fragment>
-//             );
-//           })}
-//         </div>
-//       </div>
-//       {/* <div>
-//         <div className="p-3">Mapped content</div>
-//         <pre className=" pl-3 text-primary">{JSON.stringify(previewData.unit?.content || "", undefined, 2)}</pre>
-//       </div> */}
-//     </div>
-//   );
-// }

@@ -106,19 +106,20 @@ export function StyleToolbar({ style, setStyle, positionBottom, forMarkdown }: P
         <div className="absolute right-3 z-0 select-none pt-[0.14rem]">%</div>
       </div>
       <Popover>
-        <PopoverTrigger className="ml-auto">
-          <Edit />
+        <PopoverTrigger className="ml-auto p-1">
+          <Edit size={16} className="text-foreground/60" />
         </PopoverTrigger>
         <PopoverContent className="h-96 w-96 max-w-[95vw]">
           <div className="flex h-full flex-col gap-3">
-            <p className="text-sm">
+            <p className="text-sm font-light">
               Manually specify CSS properties. Names must be in camel case (e.g., fontSize, fontWeight)
             </p>
             <Textarea
-              className="h-full flex-auto"
+              className="h-full flex-auto font-mono"
               value={customStyle}
               placeholder="fontSize: 1em"
               onChange={(e) => setCustomStyle(e.target.value)}
+              spellCheck="false"
             />
             <Button type="button" onClick={() => setStyle(TextToJSON(customStyle))}>
               Update

@@ -99,6 +99,7 @@ const CodebookQuestionStyle = z
 const CodebookInstruction = z.string().optional().openapi({
   title: "Instruction",
   description: "Provide specific instructions for this variable. Supports scripts and markdown.",
+  example: "## Political topic\n\nA **political topic** is defined as ...",
 });
 
 const CodebookInstructionStyle = z

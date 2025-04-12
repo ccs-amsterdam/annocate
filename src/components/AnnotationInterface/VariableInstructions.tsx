@@ -26,8 +26,6 @@ const VariableInstructions = ({ children, unit, annotationLib, codebook }: Varia
   const showOnMount = variable.instructionAuto;
   const [show, setShow] = useSessionStorage(sessionVariableKey, showOnMount);
 
-  const survey = codebook.type.includes("survey");
-
   if (!instruction) return <div className="">{children}</div>;
 
   const question = (

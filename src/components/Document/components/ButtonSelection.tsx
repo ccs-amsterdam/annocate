@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useDeferredValue, useRef } from "react";
-import { CodeButton } from "../../../styled/StyledSemantic";
 import { moveDown, moveUp } from "@/functions/refNavigation";
 import { CodeSelectorOption, CodeSelectorValue, SetState } from "@/app/types";
 import { FaWindowClose } from "react-icons/fa";
 import styled from "styled-components";
 import { RiDeleteBin2Line } from "react-icons/ri";
 import standardizeColor from "@/functions/standardizeColor";
+import { Button } from "@/components/ui/button";
 
 const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
@@ -47,7 +47,7 @@ const StyledDiv = styled.div<{ showSearch?: boolean }>`
         if (p.showSearch)
           return `
           padding: 0.1rem 0.5rem;
-          max-height: 3rem; 
+          max-height: 3rem;
           `;
         return `
           border: none;
@@ -188,7 +188,11 @@ const ButtonSelection = ({ id, options, onSelect }: ButtonSelectionProps) => {
     for (let option of filteredOptions) {
       if (option.value.cancel)
         cancelButton = (
-          <div key={option.label + "_" + i} className={`closeIcon`} ref={option.ref as React.RefObject<HTMLDivElement | null>}>
+          <div
+            key={option.label + "_" + i}
+            className={`closeIcon`}
+            ref={option.ref as React.RefObject<HTMLDivElement | null>}
+          >
             <FaWindowClose
               size="100%"
               color={selected === 0 ? "var(--foreground)" : "var(--primary-light)"}
@@ -253,15 +257,16 @@ const button = (
   setSelected: SetState<number>,
 ) => {
   return (
-    (<CodeButton
+    <Button
       ref={option.ref as React.RefObject<HTMLButtonElement | null>}
       key={option.label + "_" + i}
-      $selected={i === selected}
-      $background={option.color}
-      $compact
+      // $selected={i === selected}
+      // $background={option.color}
+      // $compact
       style={{
         paddingRight: rm ? "3rem" : "",
       }}
+      className={`${i === selected ? "border-foreground" : ""} `}
       onMouseOver={() => setSelected(i)}
       onClick={(e) => {
         e.preventDefault();
@@ -273,7 +278,7 @@ const button = (
         {option.tag ? <span className="Tag">{option.tag}: </span> : null}
         {option.label}
       </span>
-    </CodeButton>)
+    </Button>
   );
 };
 

@@ -91,7 +91,8 @@ export type CodebookNodeResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type CodebookNode = CodebookNodeResponse & {
   parentPath: CodebookNodeResponse[];
   children: number[];
-  typeDetails: TypeDetails;
+  treeType: TreeType;
+  phase: Phase;
 };
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
@@ -114,7 +115,7 @@ export type CodebookVariable = VariableSchema & {
 export type Progress = z.infer<typeof AnnotateProgressSchema>;
 
 export interface CodebookPhase {
-  type: CodebookNodeType;
+  type: Phase;
   variables: CodebookVariable[];
 }
 

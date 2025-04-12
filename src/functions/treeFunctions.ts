@@ -47,6 +47,8 @@ export function isValidParent(type: CodebookNodeType, parentType: CodebookNodeTy
   if (parentDetails.treeType === "root" && typeDetails.treeType !== "phase") return false;
   if (typeDetails.treeType === "phase" && parentDetails.treeType !== "root") return false;
 
+  if (parentDetails.treeType === "leaf") return false;
+
   // The child can not have any phases that the parent does not have
   for (const phase of typeDetails.phases) {
     if (!parentDetails.phases.includes(phase)) return false;
@@ -97,17 +99,23 @@ export function createsCycle<T extends Tree>(nodes: T[], checkId: number): boole
 }
 
 export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
-  const roots = nodes.filter((b) => !b.parentId);
+  const phases = nodes.filter((b) => !b.parentId);
   const used = new Set<number>(); // prevent infinite loops
   const parentMap = createParentMap(nodes);
 
-  function recursiveProcess(parents: CodebookNodeResponse[], parentPath: CodebookNode["parentPath"]): CodebookNode[] {
+  function recursiveProcess(
+    parents: CodebookNodeResponse[],
+    parentPath: CodebookNode["parentPath"],
+    insidePhase?: Phase,
+  ): CodebookNode[] {
     let codebook: CodebookNode[] = [];
     const sortedParents = parents.sort((a, b) => a.position - b.position);
 
     const n = sortedParents.length;
     for (let i = 0; i < n; i++) {
       const parent = sortedParents[i];
+      const typeDetails = codebookNodeTypeDetails(parent.data.type);
+      const phase = insidePhase ?? typeDetails.phases[0]; // if not insidePhase, the current node is a phase
 
       if (used.has(parent.id)) throw new Error("Cycle detected in codebook");
       used.add(parent.id);
@@ -116,14 +124,15 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
 
       parent.position = i;
 
-      const allChildren = children.length > 0 ? recursiveProcess(children, [...parentPath, parent]) : [];
+      const allChildren = children.length > 0 ? recursiveProcess(children, [...parentPath, parent], phase) : [];
 
       const nodeParent = {
         ...parent,
         position: i,
         parentPath,
         children: allChildren.map((child) => child.id),
-        typeDetails: codebookNodeTypeDetails(parent.data.type),
+        treeType: typeDetails.treeType,
+        phase,
       };
       codebook.push(nodeParent);
       codebook.push(...allChildren);
@@ -131,7 +140,7 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
     return codebook;
   }
 
-  return recursiveProcess(roots, []);
+  return recursiveProcess(phases, []);
 }
 
 interface Edges {

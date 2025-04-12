@@ -18,6 +18,8 @@ import {
 import { CodebookNodeCreateSchema } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 import { NameField } from "./codebookNodeForms";
 import { StyleToolbar } from "../Common/StyleToolbar";
+import { Button } from "../ui/button";
+import { X } from "lucide-react";
 
 type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 
@@ -106,19 +108,39 @@ function QuestionField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
 }
 
 function InstructionField({ form }: { form: UseFormReturn<CodebookNodeCreate> }) {
+  const instruction = form.watch(`data.variable.instruction`);
   const style = form.watch(`data.variable.instructionStyle`);
+
   return (
-    <div className="flex flex-col">
-      <TextAreaFormField
-        control={form.control}
-        zType={CodebookQuestionVariableBaseSchema.shape.instruction}
-        name={"data.variable.instruction"}
-      />
-      <StyleToolbar
-        positionBottom
-        style={style || {}}
-        setStyle={(style) => form.setValue(`data.variable.instructionStyle`, style, { shouldDirty: true })}
-      />
+    <div className="relative flex min-h-10 w-full flex-col gap-3">
+      <div className={instruction === undefined ? "hidden" : "flex flex-col pt-2"}>
+        <TextAreaFormField
+          control={form.control}
+          zType={CodebookQuestionVariableBaseSchema.shape.instruction}
+          name={"data.variable.instruction"}
+        />
+        <StyleToolbar
+          positionBottom
+          style={style || {}}
+          setStyle={(style) => form.setValue(`data.variable.instructionStyle`, style, { shouldDirty: true })}
+          forMarkdown
+        />
+      </div>
+      <Button
+        type="button"
+        className={`${!instruction ? "" : "hidden"} absolute right-0 top-0 ml-auto font-thin`}
+        variant={instruction === undefined ? "default" : "ghost"}
+        size={instruction === undefined ? "sm" : "icon"}
+        onClick={() => {
+          if (instruction === undefined) {
+            form.setValue("data.variable.instruction", "");
+          } else {
+            form.setValue("data.variable.instruction", undefined);
+          }
+        }}
+      >
+        {instruction === undefined ? "Add instruction" : <X />}
+      </Button>
     </div>
   );
 }

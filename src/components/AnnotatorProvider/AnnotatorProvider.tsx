@@ -152,7 +152,7 @@ function initProgress(): Progress {
 
 function initCodebook(): CodebookPhase {
   return {
-    type: "Survey phase",
+    type: "survey",
     variables: [
       {
         name: "missing",

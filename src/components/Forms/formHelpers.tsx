@@ -258,7 +258,7 @@ export function RadioFormField<T extends FieldValues, Z extends string>({
                   <FormControl>
                     <RadioGroupItem value={value.value ?? ""} />
                   </FormControl>
-                  <FormLabel style={{ width: labelWidth }} className="font-normal">
+                  <FormLabel style={{ width: labelWidth }} className="">
                     {value.label}
                   </FormLabel>
                   {value.description ? <FormDescription className="w-full">{value.description}</FormDescription> : null}
@@ -302,7 +302,10 @@ export function DropdownFormField<T extends FieldValues>({
             <FormControl>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant={variant || "default"} className="flex w-full items-center justify-between gap-2">
+                  <Button
+                    variant={variant || "default"}
+                    className="font-inherit flex w-full items-center justify-between gap-2 font-light"
+                  >
                     {fieldLabel}
 
                     <ChevronDown className="h-5 w-5 text-primary-foreground hover:text-primary" />
@@ -317,8 +320,8 @@ export function DropdownFormField<T extends FieldValues>({
                       }}
                       className="flex flex-col items-start p-1"
                     >
-                      <div className="font-bold">{value.label}</div>
-                      <div className="text-foreground/70">{value.description}</div>
+                      <div className="font-normal">{value.label}</div>
+                      <div className="font-light text-foreground/70">{value.description}</div>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -372,11 +375,18 @@ export function CodesFormField<T extends FieldValues>({
   const maxLines = swipe ? 3 : undefined;
 
   function addCode(field: ControllerRenderProps<T>, values: CodebookCode[]) {
-    values.push({ code: "New code", value: undefined, color: "" });
+    values.push({
+      code: getUniqueName(
+        values.map((v) => v.code),
+        "code ",
+      ),
+      value: undefined,
+      color: "",
+    });
     field.onChange(values);
   }
 
-  const tableHeadStyle = "h-8 px-3 py-1 text-foreground text-base  ";
+  const tableHeadStyle = "h-8 px-3 py-1 text-foreground text-base font-thin ";
 
   return (
     <FormField
@@ -394,7 +404,7 @@ export function CodesFormField<T extends FieldValues>({
               required={!zType.isOptional()}
             />
             <FormControl>
-              <Table>
+              <Table className="">
                 <TableHeader className="border-">
                   <TableRow className="border-none p-0">
                     <TableHead className={`${tableHeadStyle} pl-0`}>
@@ -414,18 +424,22 @@ export function CodesFormField<T extends FieldValues>({
                   {codes.map((code, i) => {
                     return <CodesFormFieldRow key={i} {...{ form, control, zType, name, field, codes, i, maxLines }} />;
                   })}
+                  <TableRow>
+                    <TableCell className="px-0 py-1 pr-1 hover:bg-transparent">
+                      <Button
+                        className="h-7 w-full justify-start rounded px-3 py-2"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          addCode(field, codes);
+                        }}
+                      >
+                        Add Code
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </FormControl>
-            <Button
-              variant={codes.length > 0 ? "ghost" : "default"}
-              onClick={(e) => {
-                e.preventDefault();
-                addCode(field, codes);
-              }}
-            >
-              {codes.length > 0 ? "Add Code" : "Create codes"}
-            </Button>
           </FormItem>
         );
       }}
@@ -460,7 +474,6 @@ function CodesFormFieldRow<T extends FieldValues>({
   const colorInputStyle = colorError ? `${inputStyle} bg-destructive` : `${inputStyle} bg-primary/30`;
 
   const hasValues = codes.some((c) => c.value !== undefined);
-  console.log(codes);
 
   function rmCode(field: ControllerRenderProps<T>, values: CodebookCode[], index: number) {
     values.splice(index, 1);
@@ -544,7 +557,13 @@ export function VariableItemsFormField<T extends FieldValues>({ form, control, n
   const maxLines = swipe ? 3 : undefined;
 
   function addItem(field: any, values: CodebookVariableItem[]) {
-    values.push({ name: "new_item", label: "" });
+    values.push({
+      name: getUniqueName(
+        values.map((v) => v.name),
+        "item ",
+      ),
+      label: "",
+    });
     field.onChange(values);
   }
 
@@ -564,7 +583,7 @@ export function VariableItemsFormField<T extends FieldValues>({ form, control, n
     return value.replace(/ /g, "_").replace(/[^a-zA-Z0-9_]/g, "");
   }
 
-  const tableHeadStyle = "h-8 px-3 py-1 text-foreground text-base  ";
+  const tableHeadStyle = "h-8 px-3 py-1 text-foreground text-base font-inherit";
   const inputStyle = "h-7 px-2 rounded-none focus-visible:ring-0 border-0 rounded ";
   const cellStyle = "py-1 px-1 rounded-none hover:bg-transparent";
 
@@ -589,7 +608,7 @@ export function VariableItemsFormField<T extends FieldValues>({ form, control, n
             />
             <FormControl>
               <Table>
-                <TableHeader className="border-">
+                <TableHeader className="font-inherit">
                   <TableRow className="border-none p-0">
                     <TableHead className={`${tableHeadStyle} h-6 py-1 pl-0`}>
                       <DescriptionTooltip
@@ -707,7 +726,7 @@ function DescriptionTooltip({
     <Tooltip delayDuration={200}>
       <TooltipTrigger
         tabIndex={-1}
-        className="flex items-center gap-[1px] font-normal"
+        className="flex items-center gap-[1px]"
         onClick={(e) => {
           e.preventDefault();
         }}
@@ -768,4 +787,11 @@ export function MoveItemInArray({
   );
 }
 
-// export function radioForm();
+function getUniqueName(current: string[], defaultName: string) {
+  let name = `${defaultName}1`;
+  for (let i = 2; i < 1000; i++) {
+    if (!current.includes(name)) break;
+    name = `${defaultName}${i}`;
+  }
+  return name;
+}

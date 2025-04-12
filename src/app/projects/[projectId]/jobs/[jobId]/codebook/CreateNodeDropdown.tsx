@@ -34,10 +34,9 @@ interface Props {
   id: number | null;
   nodes: CodebookNode[];
   setCodebookNodeForm: (props: CodebookNodeFormProps) => void;
-  disabled?: boolean;
 }
 
-export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebookNodeForm, disabled }: Props) {
+export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebookNodeForm }: Props) {
   const [position, setPosition] = useState<number | null>(null);
 
   useEffect(() => {
@@ -45,6 +44,8 @@ export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebook
   }, [nodes, id]);
 
   const codebookNode = nodes.find((node) => node.id === id);
+  if (codebookNode?.treeType === "leaf") return <Button size="icon" className="invisible h-8 w-8" />;
+
   const options = getValidChildren(codebookNode?.data.type || null);
   const positions = nodes.filter((node) => node.parentId === id);
 
@@ -81,32 +82,33 @@ export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebook
               <ListOrdered size={16} /> {triggerLabel}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent sideOffset={-60} avoidCollisions={false}>
-              {positions.map((node, i) => (
+              <div className="ShiftGroup">
+                {positions.map((node, i) => (
+                  <DropdownMenuItem
+                    key={node.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPosition(node.position);
+                    }}
+                    className={"ShiftDown relative flex h-8 min-w-48 pl-0 hover:bg-foreground/10 focus:bg-transparent"}
+                    data-selected={String(position === i)}
+                  >
+                    <Dot className={position === i ? "" : "invisible"} />
+                    <div className="w-3">{i + 1}</div>
+                    <div className="ShiftDownContent ml-4 flex items-center text-xs opacity-60">{node.name}</div>
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuItem
-                  key={node.id}
                   onClick={(e) => {
                     e.preventDefault();
-                    setPosition(node.position);
+                    setPosition(positions.length);
                   }}
-                  className={"relative flex h-8 min-w-48 pl-0 focus:bg-transparent"}
+                  className={"relative flex h-8 pl-0 focus:bg-transparent"}
                 >
-                  <Dot className={position === i ? "" : "invisible"} />
-                  <div className="w-3">{i + 1}</div>
-                  <div className="ml-4 flex translate-y-4 items-center text-xs opacity-60">{node.name}</div>
-                  <div className="absolute left-12 h-[1px] w-[calc(100%-4rem)] bg-primary/30" />
+                  <Dot className={position === positions.length || position == null ? "" : "invisible"} />
+                  <div className="w-3">{positions.length + 1}</div>
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setPosition(positions.length);
-                }}
-                className={"relative flex h-8 pl-0 focus:bg-transparent"}
-              >
-                <Dot className={position === positions.length || position == null ? "" : "invisible"} />
-                <div className="w-3">{positions.length + 1}</div>
-                <div className="absolute left-12 h-[1px] w-[calc(100%-4rem)] bg-primary/30" />
-              </DropdownMenuItem>
+              </div>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         </DropdownMenuGroup>
@@ -116,8 +118,8 @@ export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebook
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={disabled}>
-        <Button size="icon" className="h-8 w-8" variant="ghost">
+      <DropdownMenuTrigger asChild>
+        <Button size="icon" className="h-8 w-8 hover:bg-secondary/20" variant="ghost">
           <Plus size={16} />
         </Button>
       </DropdownMenuTrigger>

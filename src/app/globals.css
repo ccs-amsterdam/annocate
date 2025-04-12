@@ -560,7 +560,8 @@ span.token.annotated.allRight > span.text {
   transition: opacity 500ms;
 }
 
-.MoveableNode .MoveableNodeTrigger:hover .MoveableLabel {
-  transform: translateY(0.4rem);
+.ShiftDown[data-selected="true"] .ShiftDownContent,
+.ShiftDown[data-selected="true"] ~ .ShiftDown .ShiftDownContent {
+  transform: translateY(2rem);
   transition: all 0.2s ease;
 }

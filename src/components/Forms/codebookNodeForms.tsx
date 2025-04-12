@@ -7,14 +7,14 @@ import {
   CodebookNodeCreateSchema,
   CodebookNodeUpdateSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
-import { CodebookNode } from "@/app/types";
+import { CodebookNode, CodebookNodeResponse } from "@/app/types";
 import { ErrorMessage } from "@hookform/error-message";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, UseFormReturn, useWatch } from "react-hook-form";
 import { z, ZodError } from "zod";
 import { Button } from "../ui/button";
 import { Form, FormMessage } from "../ui/form";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loading } from "../ui/loader";
 import { QuestionVariableForm } from "./questionVariableForm";
 import { TextFormField } from "./formHelpers";
@@ -22,7 +22,7 @@ import { AnnotationPhaseNodeForm } from "./AnnotationPhaseBlockForm";
 import { SurveyPhaseNodeForm } from "./SurveyPhaseBlockForm";
 import { prepareCodebook } from "@/functions/treeFunctions";
 import { DeleteNodeButton } from "@/app/projects/[projectId]/jobs/[jobId]/codebook/DeleteNodeButton";
-import { Trash, Undo, X } from "lucide-react";
+import { ArrowBigLeft, ArrowBigUp, ArrowLeft, Eye, EyeOff, Trash, Trash2, Undo, X } from "lucide-react";
 
 type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 type CodebookNodeUpdate = z.infer<typeof CodebookNodeUpdateSchema>;
@@ -33,7 +33,7 @@ interface CreateCodebookNodeProps {
   type: CodebookNode["data"]["type"];
   parentId: number | null;
   position: number;
-  setPreview: (codebookNode: CodebookNode | undefined | ZodError) => void;
+  setPreview?: (codebookNode: CodebookNode | undefined | ZodError) => void;
   current?: CodebookNode;
   afterSubmit: () => void;
   onCancel: () => void;
@@ -68,7 +68,7 @@ export function CreateOrUpdateCodebookNodes({
     defaultValues: current ?? { parentId, position, name: defaultName || "", data: { type } },
   });
   useWatchChanges({ form, setChangesPending });
-  useUpdatePreview({ form, setPreview });
+  useUpdatePreview({ parentId, position, form, setPreview });
 
   useEffect(() => {
     if (!current) return;
@@ -95,12 +95,11 @@ export function CreateOrUpdateCodebookNodes({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full w-full flex-col gap-3">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex h-full w-full flex-col gap-3 font-light">
         <div className="mb-6 flex gap-3">
           {header && <h2 className="text-lg font-semibold">{name.replaceAll("_", " ")}</h2>}
           <div className="ml-auto flex gap-3">
             <DeleteButton node={current} projectId={projectId} jobId={jobId} afterSubmit={afterSubmit} />
-            <CancelButton onCancel={onCancel} />
             <Button type="submit" className="flex-auto" variant="secondary" disabled={current && !changesPending}>
               {current ? "Save" : "Create"}
             </Button>
@@ -111,22 +110,6 @@ export function CreateOrUpdateCodebookNodes({
         <FormMessage />
       </form>
     </Form>
-  );
-}
-
-function CancelButton({ onCancel }: { onCancel: () => void }) {
-  return (
-    <Button
-      size="icon"
-      onClick={(e) => {
-        e.preventDefault();
-        onCancel();
-      }}
-      variant="outline"
-      className="flex-auto"
-    >
-      <Undo />
-    </Button>
   );
 }
 
@@ -158,7 +141,7 @@ function DeleteButton({
         enterText: node.children.length > 0 ? "delete" : undefined,
       }}
     >
-      <Trash size={20} className="" />
+      <Trash2 size={20} className="" />
     </Button>
   );
 }
@@ -192,11 +175,15 @@ function useWatchChanges({
 }
 
 function useUpdatePreview({
+  parentId,
+  position,
   form,
   setPreview,
 }: {
+  parentId: number | null;
+  position: number;
   form: UseFormReturn<CodebookNodeCreate>;
-  setPreview: (codebookNode: CodebookNode | undefined | ZodError) => void;
+  setPreview?: (codebookNode: CodebookNode | undefined | ZodError) => void;
 }) {
   const watch = useWatch({ control: form.control });
   const triggerRef = useRef(false);
@@ -206,8 +193,17 @@ function useUpdatePreview({
     const timeout = setTimeout(() => {
       try {
         const codebookNode = CodebookNodeCreateSchema.parse(watch);
-        const preparedCodebook = prepareCodebook([{ ...codebookNode, id: 0, position: 0 }]);
-        setPreview(preparedCodebook[0]);
+        const preview: CodebookNode = {
+          id: -1,
+          ...codebookNode,
+          parentId,
+          position,
+          parentPath: [],
+          children: [],
+          treeType: "leaf",
+          phase: "survey",
+        };
+        setPreview(preview);
         triggerRef.current = true;
         form.trigger();
       } catch (e: any) {
@@ -220,5 +216,5 @@ function useUpdatePreview({
       // setPreview(undefined);
       clearTimeout(timeout);
     };
-  }, [watch, setPreview, form]);
+  }, [watch, setPreview, form, parentId, position]);
 }

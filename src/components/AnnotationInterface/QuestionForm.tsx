@@ -62,7 +62,7 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 };
 
 function getCodebookStyling(codebook: CodebookPhase) {
-  if (codebook.type.includes("survey")) {
+  if (codebook.type === "survey") {
     return {
       container: "text-foreground bg-background min-h-full pt-6  ",
       text: "mt-6 w-full h-full flex-auto text-start",

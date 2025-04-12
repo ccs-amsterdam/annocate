@@ -12,8 +12,11 @@ import {
   Undo,
   Undo2Icon,
   FolderPlus,
+  ArrowDownNarrowWide,
+  ArrowBigDownDashIcon,
+  CornerRightDown,
+  FolderDown,
 } from "lucide-react";
-import { CodebookNodeRowProps } from "./CodebookNodes";
 import {
   useDeleteCodebookNode,
   useUpdateCodebookNode,
@@ -21,6 +24,7 @@ import {
 import { isValidParent } from "@/functions/treeFunctions";
 import { useMemo, useState } from "react";
 import { CodebookNode } from "@/app/types";
+import { CodebookNodeRowProps } from "./CodebookList";
 
 interface Props {
   projectId: number;
@@ -28,7 +32,16 @@ interface Props {
   nodes: CodebookNode[];
 }
 
-export function useMoveableNodes({ projectId, jobId, nodes }: Props) {
+export interface UseMoveProps {
+  moveNode: CodebookNode | null;
+  movePending: boolean;
+  moveFrom: (node: CodebookNode) => void;
+  moveTo: ({ parentId, position }: { parentId: number | null; position: number }) => void;
+  canMove: (node: CodebookNode) => { here: boolean; inside: boolean };
+  cancelMove: () => void;
+}
+
+export function useMoveableNodes({ projectId, jobId, nodes }: Props): UseMoveProps {
   const [moveNode, setMoveNode] = useState<CodebookNode | null>(null);
   const [movePending, setMovePending] = useState(false);
   const { mutateAsync: updateAsync } = useUpdateCodebookNode(projectId, jobId, moveNode?.id || -1);
@@ -45,15 +58,17 @@ export function useMoveableNodes({ projectId, jobId, nodes }: Props) {
   }
 
   function canMove(node: CodebookNode) {
+    if (!moveNode || moveNode.id === node.id) return { here: false, inside: false };
+
+    let inside = isValidParent(moveNode.data.type, node.data.type);
+
+    let here = true;
     const parent = nodes.find((n) => n.id === node.parentId);
+    if (!isValidParent(moveNode.data.type, parent?.data.type || null)) here = false;
+    if (node.parentId === moveNode.parentId && node.position === moveNode.position + 1) here = false;
+    if (node.parentPath.some((p) => moveNode.id === p.id)) here = false;
 
-    if (!moveNode) return false;
-    if (!isValidParent(moveNode.data.type, parent?.data.type || null)) return false;
-    if (node.id === moveNode.id) return false;
-    if (node.parentId === moveNode.parentId && node.position === moveNode.position + 1) return false;
-    if (node.parentPath.some((p) => moveNode.id === p.id)) return false;
-
-    return true;
+    return { here, inside };
   }
 
   function cancelMove() {
@@ -69,10 +84,10 @@ export function MoveNodeButton(props: CodebookNodeRowProps) {
       size="icon"
       variant="ghost"
       onClick={() => {
-        props.moveFrom(props.node);
+        props.move.moveFrom(props.node);
         props.setCodebookNodeForm(null);
       }}
-      className="h-8 w-8 transition-none"
+      className="h-8 w-8 transition-none hover:bg-secondary/20"
     >
       <Grip size={16} />
     </Button>
@@ -85,9 +100,9 @@ export function CancelMoveButton(props: CodebookNodeRowProps) {
       size="icon"
       variant="ghost"
       onClick={() => {
-        props.cancelMove();
+        props.move.cancelMove();
       }}
-      className="h-8 w-8 transition-none"
+      className="h-8 w-8 transition-none hover:bg-secondary/20"
     >
       <Undo2Icon size={16} />
     </Button>
@@ -95,24 +110,24 @@ export function CancelMoveButton(props: CodebookNodeRowProps) {
 }
 
 export function MoveNodeInsideButton(props: CodebookNodeRowProps) {
-  if (!props.moveNode) return null;
-  const valid = isValidParent(props.moveNode.data.type, props.node.data.type);
+  if (!props.move.moveNode) return null;
+  const valid = isValidParent(props.move.moveNode.data.type, props.node.data.type);
 
   return (
     <Button
       size="icon"
       variant="ghost"
       onClick={() => {
-        props.moveTo({ parentId: props.node.id, position: 99999 });
+        props.move.moveTo({ parentId: props.node.id, position: 99999 });
       }}
       onMouseOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
       }}
-      className="MoveableExclude h-8 w-8 transition-none"
+      className={`MoveableExclude h-8 w-8 transition-none hover:bg-secondary/20 disabled:opacity-0`}
       disabled={!valid}
     >
-      <FolderPlus size={16} />
+      <FolderDown size={16} />
     </Button>
   );
 }

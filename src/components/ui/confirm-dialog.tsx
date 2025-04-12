@@ -15,20 +15,22 @@ import { useState } from "react";
 import { Input } from "./input";
 
 interface Props {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   title: string;
   message: string;
   enterText?: string;
   onAccept: () => void;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
 }
 
-export function ConfirmDialog({ children, title, message, enterText, onAccept }: Props) {
+export function ConfirmDialog({ children, title, message, enterText, onAccept, open, setOpen }: Props) {
   const [text, setText] = useState("");
   const ready = !enterText || text === enterText;
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      {children ? <AlertDialogTrigger asChild>{children}</AlertDialogTrigger> : null}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

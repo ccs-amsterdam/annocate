@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { CodebookNodeRowProps } from "./CodebookNodes";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { CodebookNodeRowProps } from "./CodebookList";
 
 export function FoldButton({ node, folded, setFolded }: CodebookNodeRowProps) {
-  const isPhase = node.typeDetails.treeType === "phase";
-  const isGroup = node.typeDetails.treeType === "group";
+  const isPhase = node.treeType === "phase";
+  const isGroup = node.treeType === "group";
 
   if (!isPhase && !isGroup) return null;
   const isFolded = folded.has(node.id);
@@ -12,7 +12,7 @@ export function FoldButton({ node, folded, setFolded }: CodebookNodeRowProps) {
     <Button
       size="icon"
       variant="ghost"
-      className="h-8 w-8"
+      className="h-9 w-9 flex-none"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -26,7 +26,7 @@ export function FoldButton({ node, folded, setFolded }: CodebookNodeRowProps) {
       {isFolded ? (
         <div className="relative">
           <ChevronRightIcon size={18} className="opacity-70" />
-          <div className="absolute -top-2 left-3 text-xs text-primary">{node.children.length}</div>
+          <div className="absolute -top-2 left-3 text-xs text-foreground/80">{node.children.length}</div>
         </div>
       ) : (
         <ChevronDownIcon size={18} className="opacity-70" />

@@ -13,6 +13,7 @@ import {
   Status,
   UnitDataResponse,
   CodebookVariable,
+  Phase,
 } from "@/app/types";
 import { MiddlecatUser } from "middlecat-react";
 
@@ -97,7 +98,7 @@ class JobServerDesign implements JobServer {
       .filter((b) => b.parentId === null)
       .map((phase) => {
         const label = phase.name.replaceAll("_", " "); // TODO: Add label that can overwrite the default
-        if (phase.data.type.includes("survey")) {
+        if (phase.data.type === "Survey phase") {
           return {
             type: "survey",
             label,
@@ -234,7 +235,7 @@ function fakeUnit(i: number): UnitDataResponse {
 function preparePhaseCodebooks(phase: number, nodes: CodebookNode[]) {
   const phaseNodes: CodebookNode[] = [];
   let phaseStarted = false;
-  let type: CodebookNodeType | null = null;
+  let type: Phase | null = null;
 
   let phaseNr = 0;
   for (let node of nodes) {
@@ -243,7 +244,7 @@ function preparePhaseCodebooks(phase: number, nodes: CodebookNode[]) {
       if (phaseStarted) break;
       if (phaseNr++ === phase) {
         phaseStarted = true;
-        type = node.data.type;
+        type = node.phase;
       }
     }
 
