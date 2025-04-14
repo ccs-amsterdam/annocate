@@ -12,22 +12,20 @@ export const GeneralTypeAnnotationSchema = z.object({
   created: z.string(),
 });
 
+export const QuestionTypeAnnotationSchema = GeneralTypeAnnotationSchema.extend({
+  type: z.literal("question"),
+  context: z.object({
+    fields: z.array(z.string()).optional(),
+    annotationIds: z.array(z.string()).optional(),
+  }),
+});
+
 export const SpanTypeAnnotationSchema = GeneralTypeAnnotationSchema.extend({
   type: z.literal("span"),
   field: z.string(),
   offset: z.number(),
   length: z.number(),
-});
-
-export const FieldTypeAnnotationSchema = GeneralTypeAnnotationSchema.extend({
-  type: z.literal("field"),
-  field: z.string(),
-  id: z.string(),
-});
-
-export const UnitTypeAnnotationSchema = GeneralTypeAnnotationSchema.extend({
-  type: z.literal("unit"),
-  id: z.string(),
+  span: z.array(z.number()),
 });
 
 export const RelationTypeAnnotationSchema = GeneralTypeAnnotationSchema.extend({
@@ -38,8 +36,7 @@ export const RelationTypeAnnotationSchema = GeneralTypeAnnotationSchema.extend({
 });
 
 export const AnnotationSchema = z.discriminatedUnion("type", [
+  QuestionTypeAnnotationSchema,
   SpanTypeAnnotationSchema,
-  FieldTypeAnnotationSchema,
-  UnitTypeAnnotationSchema,
   RelationTypeAnnotationSchema,
 ]);

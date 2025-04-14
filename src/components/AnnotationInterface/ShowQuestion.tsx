@@ -1,4 +1,4 @@
-import { Annotation, AnnotationLibrary, ExtendedCodebook, Unit } from "@/app/types";
+import { Annotation, AnnotationLibrary, ExtendedCodebookPhase, Unit } from "@/app/types";
 import React, { ReactElement, useMemo, useState } from "react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import useWatchChange from "@/hooks/useWatchChange";
@@ -8,7 +8,7 @@ import Markdown from "../Common/Markdown";
 interface ShowQuestionProps {
   unit: Unit;
   annotationLib: AnnotationLibrary;
-  codebook: ExtendedCodebook;
+  codebook: ExtendedCodebookPhase;
 }
 
 const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {

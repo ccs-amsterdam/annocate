@@ -3,12 +3,11 @@ import {
   AnnotationDictionary,
   AnnotationID,
   AnnotationLibrary,
-  AnnotationMap,
   AnnotationRelation,
   Code,
   CodeHistory,
   CodeMap,
-  ExtendedCodebook,
+  ExtendedCodebookPhase,
   ExtendedVariable,
   JobServer,
   SetState,
@@ -21,6 +20,10 @@ import {
   VariableStatus,
   VariableValueMap,
   Unit,
+  QuestionAnnotationContext,
+  SpanAnnotation,
+  RelationAnnotation,
+  QuestionAnnotation,
 } from "@/app/types";
 import { UnitBundle } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { getColor } from "@/functions/tokenDesign";
@@ -37,7 +40,6 @@ export default class AnnotationManager {
   constructor() {
     this.annotationLib = {
       sessionId: "initializing",
-      type: "annotation",
       status: "IN_PROGRESS",
       annotations: {},
       byToken: {},
@@ -60,7 +62,7 @@ export default class AnnotationManager {
   }: {
     jobServer: JobServer;
     unit: Unit;
-    codebook: ExtendedCodebook;
+    codebook: ExtendedCodebookPhase;
     setUnitBundle: SetState<UnitBundle | null>;
     variableIndex?: number;
   }) {
@@ -140,7 +142,7 @@ export default class AnnotationManager {
   }
 
   addAnnotation(annotation: Annotation) {
-    annotation.positions = getTokenPositions(this.annotationLib.annotations, annotation);
+    annotation.client.positions = getTokenPositions(this.annotationLib.annotations, annotation);
 
     let annotations = { ...this.annotationLib.annotations };
     annotations[annotation.id] = annotation;
@@ -193,20 +195,23 @@ export default class AnnotationManager {
   //   this.addAnnotation(annotation);
   // }
 
-  processAnswer(variable: string, code: Code, multiple: boolean = false, fields?: string[]) {
-    let annotation: Annotation = {
+  createQuestionAnnotation(
+    variable: string,
+    code: Code,
+    multiple: boolean = false,
+    context: QuestionAnnotationContext,
+  ) {
+    let annotation: QuestionAnnotation = {
       id: cuid(),
       created: new Date().toISOString(),
-      type: "unit",
+      type: "question",
       status: "pending",
       variable: variable,
       code: code.code,
       value: code.value,
-      color: code.color,
+      client: { color: code.color },
+      context,
     };
-    if (fields) {
-      annotation = { ...annotation, field: fields.join("|"), type: "field" };
-    }
 
     let addAnnotation = true;
 
@@ -214,8 +219,8 @@ export default class AnnotationManager {
     const newAnnotations: Record<string, Annotation> = { ...this.annotationLib.annotations };
     for (const a of currentAnnotations) {
       if (a.variable !== annotation.variable) continue;
-      if (a.type !== annotation.type) continue;
-      if (annotation.type === "field" && a.type === "field" && a.field !== annotation.field) continue;
+      if (a.type !== "question") continue;
+      if (!contextIsIdential(a.context, annotation.context)) continue;
 
       if (a.code === annotation.code) {
         addAnnotation = false;
@@ -236,7 +241,7 @@ export default class AnnotationManager {
   }
 
   createSpanAnnotation(variable: string, code: Code, from: number, to: number, tokens: Token[]) {
-    const annotation: Annotation = {
+    const annotation: SpanAnnotation = {
       id: cuid(),
       created: new Date().toISOString(),
       type: "span",
@@ -244,19 +249,21 @@ export default class AnnotationManager {
       variable: variable,
       code: code.code,
       value: code.value,
-      color: code.color,
-      span: [from, to],
       offset: tokens[from].offset,
       length: tokens[to].length + tokens[to].offset - tokens[from].offset,
       field: tokens[from].field,
-      text: getSpanText([from, to], tokens),
+      span: [from, to],
+      client: {
+        color: code.color,
+        text: getSpanText([from, to], tokens),
+      },
     };
     this.addAnnotation(annotation);
   }
 
   createRelationAnnotation(variable: string, code: Code, from: Annotation, to: Annotation) {
     if (!from.id || !to.id) throw new Error("Cannot create relation annotation without ids");
-    const annotation: Annotation = {
+    const annotation: RelationAnnotation = {
       id: cuid(),
       created: new Date().toISOString(),
       type: "relation",
@@ -264,9 +271,11 @@ export default class AnnotationManager {
       variable: variable,
       code: code.code,
       value: code.value,
-      color: code.color,
       fromId: from.id,
       toId: to.id,
+      client: {
+        color: code.color,
+      },
     };
     this.addAnnotation(annotation);
   }
@@ -275,7 +284,7 @@ export default class AnnotationManager {
 export function createAnnotationLibrary(
   jobServer: JobServer,
   unit: Unit,
-  codebook: ExtendedCodebook,
+  codebook: ExtendedCodebookPhase,
   annotations: Annotation[],
   focusVariableIndex?: number,
 ): AnnotationLibrary {
@@ -285,8 +294,6 @@ export function createAnnotationLibrary(
   annotationArray = annotationArray.map((a) => ({ ...a }));
 
   annotationArray = repairAnnotations(annotationArray, variableMap);
-
-  // HERE apply layout to unit (extended unit)
 
   // annotationArray = addTokenIndices(annotationArray, unit.content.tokens || []);
 
@@ -305,7 +312,6 @@ export function createAnnotationLibrary(
 
   return {
     sessionId: "maybe we can drop this?", // jobServer.sessionId
-    type: unit.type,
     status: unit.status,
     annotations: annotationDict,
     byToken: newTokenDictionary(annotationDict),
@@ -326,8 +332,8 @@ function newTokenDictionary(annotations: AnnotationDictionary) {
 }
 
 function addToTokenDictionary(byToken: TokenAnnotations, annotation: Annotation) {
-  if (!annotation.positions) return;
-  annotation.positions.forEach((i) => {
+  if (!annotation.client.positions) return;
+  annotation.client.positions.forEach((i) => {
     if (!byToken[i]) byToken[i] = [];
     byToken[i].push(annotation.id);
   });
@@ -394,7 +400,7 @@ function computeVariableStatuses(variables: ExtendedVariable[], annotations: Ann
  * Uses the annotation offset and length to find the token indices for span annotations
  */
 export const addTokenIndices = (annotations: Annotation[], tokens: Token[]) => {
-  const annMap: AnnotationMap = {};
+  const annMap: Record<string, Annotation> = {};
 
   // first add the span token indices, and simultaneously create an annotation map
   for (let a of annotations || []) {
@@ -403,7 +409,7 @@ export const addTokenIndices = (annotations: Annotation[], tokens: Token[]) => {
       const to = getIndexFromOffset(tokens, a.field, a.offset + a.length - 1);
       if (from !== null && to !== null) {
         a.span = [from, to];
-        if (!a.text) a.text = getSpanText(a.span, tokens);
+        if (!a.client.text) a.client.text = getSpanText(a.span, tokens);
       }
     }
     annMap[a.id] = a;
@@ -484,12 +490,12 @@ function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap)
     if (variableMap && variableMap[varName]) {
       const codeMap = variableMap[varName].codeMap;
       if (a.code != null && codeMap[a.code]) {
-        a.color = getColor(a.code, codeMap);
+        a.client.color = getColor(a.code, codeMap);
       }
     }
 
-    if (!a.color) {
-      if (!a.color) a.color = randomColor({ seed: a.code, luminosity: "light" });
+    if (!a.client.color) {
+      if (!a.client.color) a.client.color = randomColor({ seed: a.code, luminosity: "light" });
     }
   }
 
@@ -549,7 +555,7 @@ function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) 
 }
 
 function createVariableMap(variables: ExtendedVariable[]) {
-  const vm: any = {};
+  const vm: VariableMap = {};
   for (let variable of variables) {
     let cm = variable.codeMap;
     cm = Object.keys(cm).reduce((obj: any, key) => {
@@ -574,7 +580,7 @@ function createVariableMap(variables: ExtendedVariable[]) {
  * valid from/to annotations
  */
 function getValidRelationCodes(relations: AnnotationRelation[], codeMap: CodeMap) {
-  if (!relations) return [null, null];
+  if (!relations) return [undefined, undefined];
   const validFrom: ValidRelation = {};
   const validTo: ValidRelation = {};
 
@@ -615,4 +621,27 @@ function getValidRelationCodes(relations: AnnotationRelation[], codeMap: CodeMap
   }
 
   return [validFrom, validTo];
+}
+
+function contextIsIdential(context1?: QuestionAnnotationContext, context2?: QuestionAnnotationContext) {
+  if (context1 === context2) return true;
+  if (!context1 && !context2) return true;
+  if (!context1 || !context2) return false;
+
+  function identialArray(arr1?: string[], arr2?: string[]) {
+    if (!arr1 && !arr2) return true;
+    if (!arr1 || !arr2) return false;
+    if (arr1.length !== arr2.length) return false;
+    const sortedArr1 = arr1.slice().sort();
+    const sortedArr2 = arr2.slice().sort();
+    for (let i = 0; i < sortedArr1.length; i++) {
+      if (sortedArr1[i] !== sortedArr2[i]) return false;
+    }
+    return true;
+  }
+
+  if (!identialArray(context1.fields, context2.fields)) return false;
+  if (!identialArray(context1.annotationIds, context2.annotationIds)) return false;
+
+  return true;
 }

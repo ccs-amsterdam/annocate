@@ -1,8 +1,6 @@
 import {
   AnnotationDictionary,
-  CodebookNodeType,
   CodebookPhase,
-  GetCodebook,
   JobState,
   GetUnit,
   CodebookNode,
@@ -12,7 +10,6 @@ import {
   SetState,
   Status,
   UnitDataResponse,
-  CodebookVariable,
   Phase,
 } from "@/app/types";
 import { MiddlecatUser } from "middlecat-react";
@@ -52,7 +49,7 @@ class JobServerDesign implements JobServer {
   previewMode: boolean;
 
   unitCache: Record<number | string, Omit<GetUnit, "progress">>;
-  codebookCache: Record<string, GetCodebook>;
+  codebookCache: Record<string, CodebookPhase>;
 
   constructor({
     jobId,
@@ -154,7 +151,7 @@ class JobServerDesign implements JobServer {
     }
   }
 
-  async getCodebook(phaseNumber: number): Promise<GetCodebook> {
+  async getCodebookPhase(phaseNumber: number): Promise<CodebookPhase> {
     // We can either get the codebook from the server per phase, or get the full codebook
     // and then on client filter it per phase. We'll focus on client filtering first, because
     // this is faster, less server load, and easiest to implement. We can always change this later.

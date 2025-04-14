@@ -14,10 +14,6 @@ extendZodWithOpenApi(z);
 
 export const UnitFieldValueSchema = z.string();
 
-export const UnitVariableSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]));
-
-export const UnitTypeSchema = z.enum(["annotation", "survey"]);
-
 export const AnnotateUnitStatusSchema = z.enum(["IN_PROGRESS", "DONE"]);
 
 export const AnnotateToken = z.string().openapi({
@@ -27,8 +23,7 @@ export const AnnotateToken = z.string().openapi({
 });
 
 export const AnnotateUnitSchema = z.object({
-  token: z.string(),
-  type: UnitTypeSchema,
+  token: AnnotateToken,
   status: AnnotateUnitStatusSchema,
   data: UnitDataSchema.optional(),
   annotations: z.array(AnnotationSchema),

@@ -5,7 +5,7 @@ import {
   ProcessedImageField,
   PreparedGrid,
   FieldGridInput,
-  ExtendedCodebook,
+  ExtendedCodebookPhase,
   Unit,
   SetState,
   JobServer,
@@ -16,7 +16,7 @@ import {
   JobState,
 } from "@/app/types";
 import { UnitBundle } from "./AnnotatorProvider";
-import AnnotationManager from "@/functions/AnnotationManager";
+import AnnotationManager from "@/classes/AnnotationManager";
 
 export function createUnitBundle({
   jobServer,
@@ -27,16 +27,15 @@ export function createUnitBundle({
 }: {
   jobServer: JobServer;
   getUnit: GetUnit;
-  codebook: ExtendedCodebook;
+  codebook: ExtendedCodebookPhase;
   setUnitBundle: SetState<UnitBundle | null>;
   variableIndex?: number;
 }): UnitBundle {
-  const unit = {
+  const unit: Unit = {
     token: getUnit.token,
-    type: getUnit.progress.phases[getUnit.progress.phase].type,
     status: getUnit.status,
-    data: getUnit.data,
-    annotations: getUnit.annotations,
+    data: getUnit.data || {},
+    annotations: getUnit.annotations.map((a) => ({ ...a, client: {} })),
   };
 
   const annotationManager = new AnnotationManager();

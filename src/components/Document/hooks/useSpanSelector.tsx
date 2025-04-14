@@ -16,7 +16,7 @@ import {
   ExtendedVariable,
 } from "@/app/types";
 import useWatchChange from "@/hooks/useWatchChange";
-import AnnotationManager from "@/functions/AnnotationManager";
+import AnnotationManager from "@/classes/AnnotationManager";
 import standardizeColor from "@/functions/standardizeColor";
 
 /**
@@ -218,11 +218,12 @@ const NewCodePage = ({
     if (existing && existing.length > 0) {
       for (let o of existing) {
         //if (!codeMap[o.value]) continue;
+        if (o.type !== "span") continue;
 
         options.push({
           tag: o.code,
-          label: o.span ? '"' + getTextSnippet(tokens, o.span) + '"' : "",
-          color: standardizeColor(o.color),
+          label: o.client.text ?? getTextSnippet(tokens, o.span),
+          color: standardizeColor(o.client.color),
           value: { id: o.id, delete: true },
           textColor: "var(--red)",
         });
@@ -253,6 +254,8 @@ const getAnnotationOptions = (
   const annotationIds = annotationLib.byToken[index] || [];
   for (let id of annotationIds) {
     const annotation = annotationLib.annotations[id];
+    if (annotation.type !== "span") continue;
+
     const codeMap = variable?.codeMap;
     if (!codeMap) continue;
 

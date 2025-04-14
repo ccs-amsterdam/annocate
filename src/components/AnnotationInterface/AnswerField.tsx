@@ -1,5 +1,5 @@
 import { AnnotationLibrary, AnswerItem, Code } from "@/app/types";
-import AnnotationManager from "@/functions/AnnotationManager";
+import AnnotationManager from "@/classes/AnnotationManager";
 import React, { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import SelectCode from "./AnswerFieldSelectCode";
 import Scale from "./AnswerFieldScale";
@@ -102,7 +102,8 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
     let varname = variable.name;
     if (item) varname += `.${item}`;
-    annotationManager.processAnswer(varname, code, !!multiple, variable.fields);
+    const context = { fields: variable.fields };
+    annotationManager.createQuestionAnnotation(varname, code, !!multiple, context);
     if (finish) onFinish();
   };
 

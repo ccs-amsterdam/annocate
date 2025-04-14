@@ -7,7 +7,13 @@ import {
   GetUnitResponseSchema,
   JobStateAnnotationsSchema,
 } from "./api/annotate/[jobId]/schemas";
-import { AnnotationSchema, VariableStatusSchema } from "./api/projects/[projectId]/annotations/schemas";
+import {
+  AnnotationSchema,
+  RelationTypeAnnotationSchema,
+  SpanTypeAnnotationSchema,
+  QuestionTypeAnnotationSchema,
+  VariableStatusSchema,
+} from "./api/projects/[projectId]/annotations/schemas";
 import {
   CodebookCodeSchema,
   CodebookAnnotationRelationSchema,
@@ -119,11 +125,8 @@ export interface CodebookPhase {
   variables: CodebookVariable[];
 }
 
-export type Unit = z.infer<typeof AnnotateUnitSchema>;
-
 // TODO: We can probably remove all extended unit stuff now that we're making the content dynamic inside Document
 
-export type GetCodebook = CodebookPhase;
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
 export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
 export type JobState = GetJobState & {
@@ -137,23 +140,30 @@ export type ExtendedVariable = CodebookVariable & {
   validTo?: ValidRelation;
 };
 
-export type ExtendedCodebook = Omit<CodebookPhase, "variables"> & {
+export type ExtendedCodebookPhase = Omit<CodebookPhase, "variables"> & {
   variables: ExtendedVariable[];
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;
 
-export type Annotation = z.infer<typeof AnnotationSchema> & {
-  color?: string;
-  comment?: string;
-  time_question?: string;
-  time_answer?: string;
-  index?: number;
-  text?: string;
-  positions?: Set<number>;
-  span?: Span;
-  select?: () => void;
+type AnnotationClientProps = {
+  client: {
+    color?: string;
+    comment?: string;
+    time_question?: string;
+    time_answer?: string;
+    index?: number;
+    text?: string;
+    positions?: Set<number>;
+    select?: () => void;
+  };
 };
+export type Annotation = z.infer<typeof AnnotationSchema> & AnnotationClientProps;
+export type QuestionAnnotation = z.infer<typeof QuestionTypeAnnotationSchema> & AnnotationClientProps;
+export type SpanAnnotation = z.infer<typeof SpanTypeAnnotationSchema> & AnnotationClientProps;
+export type RelationAnnotation = z.infer<typeof RelationTypeAnnotationSchema> & AnnotationClientProps;
+
+export type QuestionAnnotationContext = z.infer<typeof QuestionTypeAnnotationSchema>["context"];
 
 /**
  * A class providing everthing needed to run the Annotator component.
@@ -167,7 +177,7 @@ export interface JobServer {
 
   init: (setJobState: SetState<JobState>) => Promise<void>;
   getUnit: (phaseNumber?: number, unitIndex?: number) => Promise<GetUnit | null>;
-  getCodebook: (phaseNumber: number) => Promise<GetCodebook>;
+  getCodebookPhase: (phaseNumber: number) => Promise<CodebookPhase>;
   postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
 
@@ -175,6 +185,16 @@ export interface JobServer {
 }
 
 export type JobStateAnnotations = z.infer<typeof JobStateAnnotationsSchema>;
+
+//
+export type Status = "DONE" | "IN_PROGRESS";
+
+export type Unit = {
+  token: z.infer<typeof AnnotateUnitSchema>["token"];
+  status: Status;
+  data: UnitData;
+  annotations: Annotation[];
+};
 
 ///////////
 ///////////
@@ -190,11 +210,10 @@ export type SetState<Type> = Dispatch<SetStateAction<Type>>;
 export type FullScreenNode = MutableRefObject<HTMLDivElement | null>;
 
 ///// ANNOTATIONS
-export type Span = [number, number];
+export type Span = z.infer<typeof SpanTypeAnnotationSchema>["span"];
 export type Edge = [number, number];
 
 export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED" | "STOLEN";
-export type Status = "DONE" | "IN_PROGRESS";
 
 // need to do this at some point but damn
 
@@ -298,7 +317,6 @@ export type VariableStatus = z.infer<typeof VariableStatusSchema>;
 
 export interface AnnotationLibrary {
   sessionId: string;
-  type: UnitType;
   status: UnitStatus;
   annotations: AnnotationDictionary;
   variables: ExtendedVariable[];
@@ -349,23 +367,6 @@ export interface Session {
   name: string;
   restricted_job: number;
   restricted_job_label: string;
-}
-
-/** Annotations, but quickly accessible by their (unique) variable + '.' + value
- */
-export interface AnnotationMap {
-  [key: string]: Annotation;
-}
-
-/** All tokenAnnotations quickly accessible by token index
- */
-export interface SpanAnnotations {
-  [index: number | string]: AnnotationMap;
-}
-
-/** Annotations that only have a field (or empty field for entire document) */
-export interface FieldAnnotations {
-  [field: string]: AnnotationMap;
 }
 
 // export interface RelationAnnotations {

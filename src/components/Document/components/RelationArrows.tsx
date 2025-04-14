@@ -41,9 +41,9 @@ const RelationArrows = ({ tokens, annotationLib, triggerSelector }: Props) => {
         fromId: r.fromId,
         toId: r.toId,
         relation: String(r.code),
-        edgeColor: standardizeColor(r.color, "90"),
-        fromColor: standardizeColor(fromAnnotation.color, "90"),
-        toColor: standardizeColor(toAnnotation.color, "90"),
+        edgeColor: standardizeColor(r.client.color, "90"),
+        fromColor: standardizeColor(fromAnnotation.client.color, "90"),
+        toColor: standardizeColor(toAnnotation.client.color, "90"),
       });
     }
 
@@ -81,7 +81,9 @@ function getAnnotationSpan(annDict: AnnotationDictionary, id: AnnotationID): Spa
     if (!fromSpan || !toSpan) return undefined;
     return [fromSpan?.[0], toSpan?.[1]];
   }
-  return ann.span;
+  if (ann.type === "span") {
+    return ann.span;
+  }
 }
 
 export default RelationArrows;

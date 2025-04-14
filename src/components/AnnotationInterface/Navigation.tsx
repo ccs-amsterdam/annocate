@@ -17,7 +17,7 @@ import {
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { AnnotationLibrary, VariableStatus } from "@/app/types";
-import AnnotationManager from "@/functions/AnnotationManager";
+import AnnotationManager from "@/classes/AnnotationManager";
 
 interface NavigationProps {}
 

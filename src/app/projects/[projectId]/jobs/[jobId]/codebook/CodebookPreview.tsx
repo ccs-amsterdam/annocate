@@ -1,7 +1,7 @@
 import { useCodebookNodes } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
 import { GetUnit, CodebookNode, JobState, Progress, CodebookNodeResponse } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
-import JobServerDesign from "@/components/JobServers/JobServerDesign";
+import JobServerDesign from "@/classes/JobServerDesign";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";

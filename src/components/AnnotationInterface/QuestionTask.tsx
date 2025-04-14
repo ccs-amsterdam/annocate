@@ -27,7 +27,8 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   function onSwipe(transition: Transition) {
     if (!transition.code) return;
-    annotationManager.processAnswer(variable.name, transition.code, false, variable.fields);
+    const context = { fields: variable.fields };
+    annotationManager.createQuestionAnnotation(variable.name, transition.code, false, context);
     annotationManager.postVariable(true).then((res) => {
       if (res.status === "DONE") {
         finishUnit();

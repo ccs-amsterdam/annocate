@@ -1,5 +1,5 @@
-import { AnnotationLibrary, CodebookPhase, ExtendedCodebook, Unit } from "@/app/types";
-import AnnotationManager from "@/functions/AnnotationManager";
+import { AnnotationLibrary, CodebookPhase, ExtendedCodebookPhase, Unit } from "@/app/types";
+import AnnotationManager from "@/classes/AnnotationManager";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
 import AnswerField from "./AnswerField";
@@ -10,7 +10,7 @@ import QuestionIndexStep from "./QuestionIndexStep";
 
 interface QuestionFormProps {
   unit: Unit;
-  codebook: ExtendedCodebook;
+  codebook: ExtendedCodebookPhase;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   blockEvents: boolean;
@@ -32,7 +32,7 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
 
   if (!unit || !variable) return null;
 
-  const maxHeightPercent = unit.type === "survey" ? 100 : 60;
+  const maxHeightPercent = !variable.layout ? 100 : 60;
 
   let animate = "";
   if (annotationLib.previousIndex < annotationLib.variableIndex) animate = "animate-slide-in-right ease-out";

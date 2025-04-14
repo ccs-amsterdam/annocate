@@ -1,8 +1,8 @@
-import { CodebookPhase, CodebookVariable, ExtendedCodebook, ExtendedVariable } from "@/app/types";
+import { CodebookPhase, CodebookVariable, ExtendedCodebookPhase, ExtendedVariable } from "@/app/types";
 import randomColor from "randomcolor";
 import standardizeColor from "./standardizeColor";
 
-export function importCodebook(codebook: CodebookPhase): ExtendedCodebook {
+export function importCodebook(codebook: CodebookPhase): ExtendedCodebookPhase {
   return {
     ...codebook,
     variables: importVariables(codebook.variables),

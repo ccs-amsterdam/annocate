@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { CodebookNodeForm } from "./CodebookNodeForm";
 import { CodebookList } from "./CodebookList";
-import { AlertDialog } from "@/components/ui/alert-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Props {
@@ -93,18 +92,17 @@ export function CodebookNodes({ projectId, jobId }: Props) {
             preview {showJobPreview ? <EyeOff size={20} /> : <Eye size={20} />}
           </Button>
         </div>
-        {showJobPreview ? jobPreview : <LeftWindow {...windowProps} />}
+        {showJobPreview ? jobPreview : <Codebook {...windowProps} />}
       </div>
       <div className="hidden lg:block">
-        <LeftWindow {...windowProps} />
+        <Codebook {...windowProps} />
       </div>
-      {showJobPreview}
       <div className="hidden lg:block">{jobPreview}</div>
     </div>
   );
 }
 
-function LeftWindow(props: WindowProps) {
+function Codebook(props: WindowProps) {
   if (props.isLoading || props.isPending) return <Loading />;
   if (!props.codebookNodes) return <div>Codebook not found</div>;
 
@@ -145,10 +143,7 @@ function CodebookNodeFormDrawer(props: WindowProps) {
   return (
     <>
       <Drawer direction="right" open={!!props.codebookNodeForm} onOpenChange={onOpenChange}>
-        <DrawerContent
-          className="right-0 top-0 max-w-[500px] p-0"
-          overlayClassName="bg-black/60 h-[2000px] overflow-auto"
-        >
+        <DrawerContent className="right-0 top-0 w-full max-w-[500px] p-0" overlayClassName="bg-black/40">
           <DrawerHeader className="flex items-center justify-between p-3 pb-0">
             <Button
               className="flex items-center gap-3 pl-0 text-foreground/60"
@@ -186,10 +181,10 @@ function NodePreviewPopover(props: WindowProps) {
   return (
     <Dialog key="preview" modal={false} open={props.showPreview} onOpenChange={props.setShowPreview}>
       <DialogContent
-        className="fixed left-0 top-0 max-h-screen translate-x-1 translate-y-12 gap-0 border-none bg-transparent p-0 pt-4 text-white shadow-none lg:translate-x-8 lg:translate-y-8"
+        className="fixed left-0 top-0 max-h-screen translate-x-0 translate-y-16 gap-0 border-none bg-transparent p-1 text-white shadow-none lg:translate-x-8 lg:translate-y-8 lg:pt-4"
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="m-0 flex flex-row items-center justify-between px-3 pb-3">
+        <DialogHeader className="sr-only lg:not-sr-only lg:mb-4 lg:flex lg:flex-row lg:items-center lg:justify-between lg:px-3">
           <DialogTitle>Preview</DialogTitle>
           <DialogDescription className="sr-only">
             This dialog shows a preview of the current Codebook item

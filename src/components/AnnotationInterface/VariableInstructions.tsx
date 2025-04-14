@@ -1,4 +1,4 @@
-import { Annotation, AnnotationLibrary, ExtendedCodebook, Unit } from "@/app/types";
+import { Annotation, AnnotationLibrary, ExtendedCodebookPhase, Unit } from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 import useSessionStorage from "@/hooks/useSessionStorage";
 import { ChevronDown, ChevronRight, ChevronUp, Eye, EyeOff, Info, InfoIcon, X } from "lucide-react";
@@ -12,7 +12,7 @@ interface VariableInstructionsProps {
   children?: ReactElement<any>;
   unit: Unit;
   annotationLib: AnnotationLibrary;
-  codebook: ExtendedCodebook;
+  codebook: ExtendedCodebookPhase;
 }
 
 ///////// TODO

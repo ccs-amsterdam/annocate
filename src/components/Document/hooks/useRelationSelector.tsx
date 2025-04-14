@@ -16,7 +16,7 @@ import {
 } from "@/app/types";
 import AnnotationPortal from "@/components/Document/components/AnnotationPortal";
 import PopupSelection from "@/components/Document/components/PopupSelection";
-import AnnotationManager from "@/functions/AnnotationManager";
+import AnnotationManager from "@/classes/AnnotationManager";
 
 const useRelationSelector = (
   doc: Doc,
@@ -55,7 +55,7 @@ const useRelationSelector = (
         fromAnn = [annotationLib.annotations[selection.fromId]];
         toAnn = [annotationLib.annotations[selection.toId]];
 
-        const positions = fromAnn[0].positions ? [...fromAnn[0].positions] : [];
+        const positions = fromAnn[0].client.positions ? [...fromAnn[0].client.positions] : [];
         const position = Math.min.apply(this, [...positions]);
         positionRef.current = tokens?.[position]?.ref.current;
       }

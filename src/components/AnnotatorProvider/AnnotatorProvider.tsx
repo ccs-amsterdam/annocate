@@ -1,6 +1,14 @@
 "use client";
-import { AnnotationLibrary, CodebookPhase, ExtendedCodebook, JobServer, JobState, Progress, Unit } from "@/app/types";
-import AnnotationManager from "@/functions/AnnotationManager";
+import {
+  AnnotationLibrary,
+  CodebookPhase,
+  ExtendedCodebookPhase,
+  JobServer,
+  JobState,
+  Progress,
+  Unit,
+} from "@/app/types";
+import AnnotationManager from "@/classes/AnnotationManager";
 import { importCodebook } from "@/functions/codebook";
 import { useQuery } from "@tanstack/react-query";
 import { useQueryState } from "nuqs";
@@ -11,7 +19,7 @@ import { createUnitBundle } from "./unitProcessing";
 interface UnitContextProps {
   jobState: JobState;
   unit: Unit;
-  codebook: ExtendedCodebook;
+  codebook: ExtendedCodebookPhase;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   progress: Progress;
@@ -45,7 +53,7 @@ interface Props {
 
 export interface UnitBundle {
   unit: Unit;
-  codebook: ExtendedCodebook;
+  codebook: ExtendedCodebookPhase;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   progress: Progress;
@@ -70,11 +78,32 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
         setFinished(false);
       }
 
-      const rawCodebook = await jobServer.getCodebook(getUnit.progress.phase);
+      const rawCodebook = await jobServer.getCodebookPhase(getUnit.progress.phase);
       const codebook = importCodebook(rawCodebook);
       setUnitBundle(createUnitBundle({ jobServer, getUnit, codebook, setUnitBundle, variableIndex }));
     },
-    [jobServer, setFinished, setJobState],
+    [jobServer],
+  );
+
+  // THIS IS ONE OPTION
+  // Feels hacky, but this way we keep the phases design while still allowing
+  // navigation across the entire codebook.
+  // TODO: some way to get the full codebook for progress to show the variables.
+  // Or alternatively, show phases in nav dropdown, and when click on phase, it computes
+  // the variables that you can see in the submenu. This way also works for units.
+  const annotationManager = unitBundle?.annotationManager;
+  const navigate = useCallback(
+    async ({ phase, unit, variable }: { phase?: number; unit?: number; variable?: number }) => {
+      if (!selectUnit) return;
+      if (!annotationManager) return;
+
+      if (phase === undefined && unit === undefined) {
+        if (variable) annotationManager.setVariableIndex(variable);
+      } else {
+        selectUnit(phase, unit, variable);
+      }
+    },
+    [selectUnit, annotationManager],
   );
 
   const finishUnit = useCallback(() => {
@@ -169,7 +198,6 @@ function initCodebook(): CodebookPhase {
 function initUnit(): Unit {
   return {
     token: "",
-    type: "annotation",
     status: "IN_PROGRESS",
     data: {},
     annotations: [],
@@ -179,7 +207,6 @@ function initUnit(): Unit {
 function initAnnotationLib(): AnnotationLibrary {
   return {
     sessionId: "initializing",
-    type: "annotation",
     status: "IN_PROGRESS",
     annotations: {},
     byToken: {},
