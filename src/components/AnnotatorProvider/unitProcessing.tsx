@@ -13,49 +13,16 @@ import {
   Doc,
   Layout,
   GetJobState,
-  JobState,
+  JobUnitState,
 } from "@/app/types";
-import { UnitBundle } from "./AnnotatorProvider";
+import { PhaseState } from "./AnnotatorProvider";
 import AnnotationManager from "@/classes/AnnotationManager";
-
-export function createUnitBundle({
-  jobServer,
-  getUnit,
-  codebook,
-  setUnitBundle,
-  variableIndex,
-}: {
-  jobServer: JobServer;
-  getUnit: GetUnit;
-  codebook: ExtendedCodebookPhase;
-  setUnitBundle: SetState<UnitBundle | null>;
-  variableIndex?: number;
-}): UnitBundle {
-  const unit: Unit = {
-    token: getUnit.token,
-    status: getUnit.status,
-    data: getUnit.data || {},
-    annotations: getUnit.annotations.map((a) => ({ ...a, client: {} })),
-  };
-
-  const annotationManager = new AnnotationManager();
-  annotationManager.initialize({ jobServer, unit, codebook, setUnitBundle, variableIndex });
-
-  return {
-    unit,
-    codebook: codebook,
-    annotationManager,
-    annotationLib: annotationManager.annotationLib,
-    progress: getUnit.progress,
-    error: undefined,
-  };
-}
 
 interface ProcessUnitContentParams {
   unit: Unit;
   layout: Layout;
-  evalStringWithJobState: (str: string, jobState: JobState) => Promise<string>;
-  jobState: JobState;
+  evalStringWithJobState: (str: string, jobState: JobUnitState) => Promise<string>;
+  jobState: JobUnitState;
 }
 
 export async function processUnitContent({

@@ -16,7 +16,8 @@ export const UnitDataDeleteBodySchema = z.object({
 });
 
 export const UnitDataResponseSchema = z.object({
-  id: z.string(),
+  id: z.number(),
+  externalId: z.string(),
   data: UnitDataSchema,
 });
 

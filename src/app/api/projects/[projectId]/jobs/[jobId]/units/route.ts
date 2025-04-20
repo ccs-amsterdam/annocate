@@ -15,7 +15,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ projectId
       return (
         db
           .select({
-            id: units.externalId,
+            id: units.id,
+            externalId: units.externalId,
             data: units.data,
           })
           .from(units)

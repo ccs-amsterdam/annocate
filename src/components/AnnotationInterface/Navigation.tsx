@@ -1,22 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import useWatchChange from "@/hooks/useWatchChange";
 import { Button } from "../ui/button";
-import {
-  Check,
-  CheckCircle2,
-  CheckSquare,
-  ChevronDown,
-  List,
-  ListCheck,
-  Menu,
-  Play,
-  Square,
-  StepBack,
-  StepForward,
-} from "lucide-react";
+import { Check, List, StepBack, StepForward } from "lucide-react";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { AnnotationLibrary, VariableStatus } from "@/app/types";
+import { AnnotationLibrary } from "@/app/types";
 import AnnotationManager from "@/classes/AnnotationManager";
 
 interface NavigationProps {}
@@ -86,8 +74,8 @@ const NavigationButtons = ({ global }: { global?: boolean }) => {
 
   const setQuestionIndex = (index: number) => annotationManager.setVariableIndex(index);
 
-  const canGoBack = progress.seekBackwards && (!hasPrevPhase || !hasPrevUnit);
-  const canGoForward = progress.seekForwards && (!hasNextPhase || !hasNextUnit);
+  const canGoBack = progress.settings.canGoBack && (!hasPrevPhase || !hasPrevUnit);
+  const canGoForward = progress.settings.canSkip && (!hasNextPhase || !hasNextUnit);
 
   const previous = () => {
     if (!canGoBack) return;
@@ -115,7 +103,7 @@ const NavigationButtons = ({ global }: { global?: boolean }) => {
 
   return (
     <div className="flex items-center">
-      {progress.seekBackwards || progress.seekForwards ? (
+      {progress.settings.canGoBack || progress.settings.canSkip ? (
         <Button
           size="icon"
           variant="ghost"
@@ -126,7 +114,7 @@ const NavigationButtons = ({ global }: { global?: boolean }) => {
           <StepBack className="" />
         </Button>
       ) : null}
-      {progress.seekForwards || progress.seekBackwards ? (
+      {progress.settings.canSkip || progress.settings.canGoBack ? (
         <Button
           variant="ghost"
           size="icon"
@@ -211,7 +199,7 @@ const UnitSlider = ({ navigation }: { navigation?: boolean }) => {
     // the onMouseUp event then process the change
     let newpage: number | null = null;
     if (Number(e.target.value) > sliderPage) {
-      if (progress.seekForwards) {
+      if (progress.settings.canSkip) {
         newpage = Number(e.target.value);
       } else {
         newpage = Math.min(uProgress.nCoded + 1, Number(e.target.value));

@@ -23,8 +23,7 @@ export const parseTokens = (text_fields: ProcessedTextField[]): Token[] => {
   let text = null;
 
   let has_unit_start = false;
-  for (let textField of text_fields)
-    if (textField.unit_start != null || textField.context_before != null) has_unit_start = true;
+  for (let textField of text_fields) if (textField.context_before != null) has_unit_start = true;
   let unit_started = !has_unit_start; // if unit start not specified, start from beginning
   let unit_ended = false;
 

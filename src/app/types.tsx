@@ -6,13 +6,14 @@ import {
   GetJobStateResponseSchema,
   GetUnitResponseSchema,
   JobStateAnnotationsSchema,
+  PhaseTypeSchema,
+  ProgressStatusSchema,
 } from "./api/annotate/[jobId]/schemas";
 import {
   AnnotationSchema,
-  RelationTypeAnnotationSchema,
-  SpanTypeAnnotationSchema,
-  QuestionTypeAnnotationSchema,
-  VariableStatusSchema,
+  RelationAnnotationSchema,
+  SpanAnnotationSchema,
+  QuestionAnnotationSchema,
 } from "./api/projects/[projectId]/annotations/schemas";
 import {
   CodebookCodeSchema,
@@ -76,7 +77,7 @@ export const codebookNodeType = [
 ] as const;
 export type CodebookNodeType = (typeof codebookNodeType)[number];
 
-export type Phase = "annotation" | "survey";
+export type Phase = z.infer<typeof PhaseTypeSchema>;
 export type TreeType = "root" | "phase" | "group" | "leaf";
 export interface TypeDetails {
   phases: Phase[];
@@ -118,8 +119,6 @@ export type CodebookVariable = VariableSchema & {
   layout?: Layout;
 };
 
-export type Progress = z.infer<typeof AnnotateProgressSchema>;
-
 export interface CodebookPhase {
   type: Phase;
   variables: CodebookVariable[];
@@ -128,58 +127,78 @@ export interface CodebookPhase {
 // TODO: We can probably remove all extended unit stuff now that we're making the content dynamic inside Document
 
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
+export type Unit = GetUnit["unit"];
+export type PhaseProgress = GetUnit["phaseProgress"];
+
+export type GetUnitCache = Omit<GetUnit, "nTotal" | "nCoded" | "currentUnit">;
 export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
-export type JobState = GetJobState & {
-  unitData: UnitData;
+export type Progress = z.infer<typeof AnnotateProgressSchema>;
+
+// We compute the annotateProgress (i.e. the progress of units in annotation phase)
+// server side, because we don't want to send all the unit data to the client.
+// The other progress (i.e. the progress of survey phases) is computed client side,
+// (because it has all the needed data and keeps being updated anyway)
+export type JobState = Omit<GetJobState, "annotateProgress"> & {
+  progress: Progress;
 };
 
+// !!!!!!!!!!!!!!!!!!!!!!!!! TODO: after refactor rename extendedcodebookphase to codebookphase,
+// and extendedvariable to codebookphasevariable
+
 export type ExtendedVariable = CodebookVariable & {
-  // intermediate values (not stored in backend)
+  // Adds some client side properties that are not stored in the backend
+  name: string;
+  layout?: Layout;
   codeMap: Record<string, Code>;
   validFrom?: ValidRelation;
   validTo?: ValidRelation;
 };
 
-export type ExtendedCodebookPhase = Omit<CodebookPhase, "variables"> & {
+export type ExtendedCodebookPhase = {
+  id: number;
+  label: string;
+  type: Phase;
   variables: ExtendedVariable[];
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;
 
-type AnnotationClientProps = {
-  client: {
-    color?: string;
-    comment?: string;
-    time_question?: string;
-    time_answer?: string;
-    index?: number;
-    text?: string;
-    positions?: Set<number>;
-    select?: () => void;
-  };
+export type QuestionAnnotation = z.infer<typeof QuestionAnnotationSchema>;
+export type SpanAnnotation = z.infer<typeof SpanAnnotationSchema>;
+export type RelationAnnotation = z.infer<typeof RelationAnnotationSchema>;
+export type Annotation = z.infer<typeof AnnotationSchema>;
+
+export type QuestionAnnotationContext = z.infer<typeof QuestionAnnotationSchema>["context"];
+
+export type JobserverCache = {
+  unit: Record<number, { data: GetUnit["data"]; status: GetUnit["status"] }>;
+  annotations: Record<number | "global", Annotation[]>;
 };
-export type Annotation = z.infer<typeof AnnotationSchema> & AnnotationClientProps;
-export type QuestionAnnotation = z.infer<typeof QuestionTypeAnnotationSchema> & AnnotationClientProps;
-export type SpanAnnotation = z.infer<typeof SpanTypeAnnotationSchema> & AnnotationClientProps;
-export type RelationAnnotation = z.infer<typeof RelationTypeAnnotationSchema> & AnnotationClientProps;
 
-export type QuestionAnnotationContext = z.infer<typeof QuestionTypeAnnotationSchema>["context"];
-
-/**
- * A class providing everthing needed to run the Annotator component.
- * In particular, it needs to have a codebook and progress
- */
 export interface JobServer {
   jobId: number;
   userId: string;
-  setJobState: ((jobState: JobState) => void) | null;
   initialized: boolean;
+  jobToken: string; // this token encodes the jobId and userId, and is included in postAnnotations to validate the request
 
-  init: (setJobState: SetState<JobState>) => Promise<void>;
-  getUnit: (phaseNumber?: number, unitIndex?: number) => Promise<GetUnit | null>;
-  getCodebookPhase: (phaseNumber: number) => Promise<CodebookPhase>;
-  postAnnotations: (token: string, add: AnnotationDictionary, rmIds: string[], status: Status) => Promise<Status>;
+  // We need to cache units by their phase and unit index, but cache annotations separately by the unit id.
+  // otherwise, when updating the annotations for a unit in one phase, it wont affect the other
+  // cache: JobserverCache;
+
+  init: () => Promise<{ codebook: CodebookNode[]; jobState: GetJobState }>;
+  getUnit: (phaseId: number, unitIndex?: number) => Promise<GetUnit | null>;
+  postAnnotations: (
+    unitToken: string | null, // for annotating units, include additional token (next to jobToken) for validating unit id
+    add: AnnotationDictionary,
+    rmIds: string[],
+    status: Status,
+  ) => Promise<Status>;
   getDebriefing?: () => Promise<Debriefing>;
+
+  // These are the only parts inheriting classes need to implement
+  getCodebook: () => Promise<CodebookNode[]>;
+  getJobState: () => Promise<GetJobState>;
+  // actual GetUnit and postAnnotations implementation
 
   previewMode?: boolean;
 }
@@ -188,13 +207,6 @@ export type JobStateAnnotations = z.infer<typeof JobStateAnnotationsSchema>;
 
 //
 export type Status = "DONE" | "IN_PROGRESS";
-
-export type Unit = {
-  token: z.infer<typeof AnnotateUnitSchema>["token"];
-  status: Status;
-  data: UnitData;
-  annotations: Annotation[];
-};
 
 ///////////
 ///////////
@@ -210,7 +222,7 @@ export type SetState<Type> = Dispatch<SetStateAction<Type>>;
 export type FullScreenNode = MutableRefObject<HTMLDivElement | null>;
 
 ///// ANNOTATIONS
-export type Span = z.infer<typeof SpanTypeAnnotationSchema>["span"];
+export type Span = z.infer<typeof SpanAnnotationSchema>["span"];
 export type Edge = [number, number];
 
 export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED" | "STOLEN";
@@ -313,15 +325,13 @@ export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED" | "STOLEN
 //   select?: () => void;
 // }
 
-export type VariableStatus = z.infer<typeof VariableStatusSchema>;
+export type ProgressStatus = z.infer<typeof ProgressStatusSchema>;
 
 export interface AnnotationLibrary {
-  sessionId: string;
-  status: UnitStatus;
   annotations: AnnotationDictionary;
   variables: ExtendedVariable[];
   variableIndex: number;
-  variableStatuses: VariableStatus[];
+  variableStatuses: ProgressStatus[];
   byToken: TokenAnnotations;
   codeHistory: CodeHistory;
   previousIndex: number;
@@ -694,8 +704,6 @@ export interface RawUnitContent {
   variables?: UnitVariables;
   grid?: FieldGridInput;
 }
-
-export type UnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED";
 
 export interface FieldGridInput {
   areas: string[][];

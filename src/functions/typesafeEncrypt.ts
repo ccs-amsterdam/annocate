@@ -2,6 +2,13 @@ import crypto from "crypto";
 import { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import { z } from "zod";
 
+/*
+  A class that initializes with a Zod schema, and then allows you to create
+  an encrypted token from data that matches the schema. This makes sure the
+  serialization and deserialization of the data is typesafe. And as a small
+  bonus, we don't need to include the keys in the token for more efficient
+  serialization.
+*/
 export class typesafeCookieSession<T extends z.ZodRawShape> {
   schema: z.ZodObject<T>;
   algorithm: string;
@@ -13,11 +20,11 @@ export class typesafeCookieSession<T extends z.ZodRawShape> {
     this.keys = Object.keys(schema.shape);
   }
 
-  toArray(data: z.infer<typeof this.schema>) {
+  serialize(data: z.infer<typeof this.schema>) {
     return this.keys.map((key) => data[key]);
   }
 
-  fromArray(data: any) {
+  deSerialize(data: any) {
     const obj: any = {};
     this.keys.map((key, i) => (obj[key] = data[i]));
     return this.schema.parse(obj);
@@ -40,7 +47,7 @@ export class typesafeCookieSession<T extends z.ZodRawShape> {
     const expires = maxAge ? Date.now() + maxAge * 1000 : 0;
 
     const saltshaker = crypto.randomBytes(16).toString("base64");
-    let encrypted = cipher.update(JSON.stringify([this.toArray(data), expires || 0]), "utf8", "base64");
+    let encrypted = cipher.update(JSON.stringify([this.serialize(data), expires || 0]), "utf8", "base64");
     encrypted += cipher.final("base64");
 
     const hexIv = iv.toString("base64");
@@ -66,7 +73,7 @@ export class typesafeCookieSession<T extends z.ZodRawShape> {
     const [decryptedData, expires] = JSON.parse(decrypted);
 
     if (expires && expires < Date.now()) throw new Error("Token expired");
-    return this.fromArray(decryptedData);
+    return this.deSerialize(decryptedData);
   }
 
   /**

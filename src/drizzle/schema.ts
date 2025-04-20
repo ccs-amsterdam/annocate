@@ -35,6 +35,7 @@ import {
   Access,
   CodebookNodeType,
   CodebookNodeData,
+  ProgressStatus,
 } from "@/app/types";
 import { z } from "zod";
 
@@ -154,6 +155,8 @@ export const jobSetUnits = pgTable(
   }),
 );
 
+// maybe separate phase and group tables?
+
 // The codebook is a DAG, where nodes have different types. The types are inside
 // the data field (for validation purposes). The types correspond to valid positions
 // in the DAG, as specified in treeFunctions.ts (see codebookNodeTypeDetails).
@@ -165,6 +168,8 @@ export const codebookNodes = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
+    treeType: text("tree_type", { enum: ["phase", "group", "leaf"] }),
+    phaseId: integer("phase_id").references((): AnyPgColumn => codebookNodes.id),
     parentId: integer("parent_id").references((): AnyPgColumn => codebookNodes.id),
     position: doublePrecision("position").notNull(),
 
@@ -203,8 +208,10 @@ export const annotator = pgTable(
     jobId: integer("job_id")
       .notNull()
       .references(() => jobs.id),
-    // userId can be email:{email}, user:{from url params} or device:{random device id}
-    userId: varchar("user_id", { length: 256 }).notNull(),
+
+    email: varchar("email", { length: 256 }).notNull(),
+    invitationId: varchar("invitation_id", { length: 256 }),
+    randomId: varchar("random_id", { length: 256 }).notNull(),
 
     // if created through an invitation, include any url parameters. These can be used for links (completion, screening, etc)
     urlParams: jsonb("url_params").notNull().$type<Record<string, string | number>>().default({}),
@@ -220,37 +227,29 @@ export const annotator = pgTable(
 export const annotations = pgTable(
   "annotations",
   {
-    codebookItemId: integer("codebook_item_id").notNull(),
+    codebookNodeId: integer("codebook_item_id")
+      .notNull()
+      .references(() => codebookNodes.id),
     annotatorId: integer("annotator_id")
       .notNull()
       .references(() => annotator.id, { onDelete: "cascade" }),
-    unitId: integer("unit_id"), // can be null for job level annotations (e.g., survey questions)
-    // here add reference to codebookNode. We'll store annotations per variable.
-    // Also make sure to keep an updated id, and when writing annotations include a timestamp.
-    // this way if a coder closes a device before saving, we can still submit the annotations later.
-    // By storing per variable, we also keep it simple by always writing all annotations for the
-    // variable instead of keeping an added/rm list. (we might do this later if needed)
+    unitId: integer("unit_id"),
+    done: boolean("done").notNull().default(false),
+    skip: boolean("skip").notNull().default(false),
+    annotations: jsonb("annotation").notNull().$type<AnnotationDictionary>(),
 
-    annotation: jsonb("annotation").notNull().$type<AnnotationDictionary>(),
-    history: jsonb("history").notNull().$type<AnnotationHistory[]>(),
-    status: text("status", { enum: ["DONE", "IN_PROGRESS", "PREALLOCATED", "STOLEN"] })
-      .$type<ServerUnitStatus>()
-      .default("PREALLOCATED"),
+    // If the annotation is made by an unauthenticated user (i.e. no email address),
+    // we add a device ID. The annotation can the only be seen if the device ID is
+    // provided. This way, even if someone (accidentally) gets someone elses invitation,
+    // they cannot see the annotations (for sake of privacy), but the user can still continue
+    // annotating on another device (just not see these annotations)
+    noAuthDeviceId: varchar("device_id", { length: 64 }),
 
-    // We register the device id and email for cases where we want extra privacy security.
-    // We store a random device ID in an httponly cookie.
-    // If both the email and deviceId don't exist or match, then
-    // all annotations that were made will be invisible and
-    // immutable. This way, if a user changes devices, they can still continue with the job,
-    // but if their login links somehow leaks, it doesn't expose their annotations
-    deviceId: varchar("device_id", { length: 64 }),
-    email: varchar("email", { length: 256 }),
-
-    isOverlap: boolean("is_overlap").notNull().default(false),
-    isSurvey: boolean("is_survey").notNull().default(false),
+    // isOverlap: boolean("is_overlap").notNull().default(false),
+    // isSurvey: boolean("is_survey").notNull().default(false),
     // isGold: boolean("is_gold").notNull().default(false),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.codebookItemId, table.annotatorId, table.unitId] }),
+    pk: primaryKey({ columns: [table.codebookNodeId, table.annotatorId, table.unitId] }),
   }),
 );

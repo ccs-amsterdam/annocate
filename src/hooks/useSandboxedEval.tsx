@@ -1,6 +1,6 @@
 "use cient";
 
-import { GetJobState, JobState } from "@/app/types";
+import { GetJobState, JobUnitState } from "@/app/types";
 import { createContext, ReactElement, ReactNode, useContext } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
@@ -13,7 +13,7 @@ interface IFrameObj {
 
 interface SandboxContextProps {
   evalStringTemplate: (str: string, data: Record<string, any>) => Promise<string>;
-  evalStringWithJobState: (str: string, jobState: JobState) => Promise<string>;
+  evalStringWithJobState: (str: string, jobState: JobUnitState) => Promise<string>;
   ready: boolean;
 }
 
@@ -102,7 +102,7 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
   );
 
   const evalStringWithJobState = useCallback(
-    async (str: string, jobState: JobState): Promise<string> => {
+    async (str: string, jobState: JobUnitState): Promise<string> => {
       return evalStringTemplate(str, jobState);
     },
     [evalStringTemplate],
