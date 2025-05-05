@@ -1,21 +1,14 @@
 "use client";
-import {
-  AnnotationLibrary,
-  CodebookNode,
-  ExtendedCodebookPhase,
-  JobServer,
-  JobUnitState,
-  Progress,
-  Unit,
-} from "@/app/types";
+import { AnnotationLibrary, CodebookNode, CodebookPhase, JobServer, JobUnitState, Progress, Unit } from "@/app/types";
 import AnnotationManager from "@/classes/AnnotationManager";
+import { prepareCodebook } from "@/functions/treeFunctions";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface ContextProps {
   jobState?: JobUnitState;
   unit?: Unit | null;
-  codebook?: ExtendedCodebookPhase;
+  codebook?: CodebookPhase;
   annotationLib?: AnnotationLibrary;
   annotationManager?: AnnotationManager;
   progress?: Progress;
@@ -27,7 +20,7 @@ interface ContextProps {
 interface InitializedContextProps extends ContextProps {
   jobState: JobUnitState;
   unit: Unit | null;
-  codebook: ExtendedCodebookPhase;
+  codebook: CodebookPhase;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   progress: Progress;
@@ -58,7 +51,7 @@ interface Props {
 }
 
 export interface PhaseState {
-  codebook: ExtendedCodebookPhase;
+  codebook: CodebookPhase;
   unit: Unit | null;
   annotationLib: AnnotationLibrary;
   progress: Progress;
@@ -71,11 +64,12 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   const [annotationManager, setAnnotationManager] = useState<AnnotationManager | undefined>(undefined);
 
   useEffect(() => {
-    jobServer.init().then(({ codebook, progress, globalAnnotations }) => {
+    jobServer.getJobState().then(({ sessionToken, codebook, progress, globalAnnotations }) => {
       const annotationManager = new AnnotationManager({
         jobServer,
         setUnitBundle,
-        codebook,
+        sessionToken,
+        codebook: prepareCodebook(codebook),
         progress,
         globalAnnotations,
       });

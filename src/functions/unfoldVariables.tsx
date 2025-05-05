@@ -1,4 +1,4 @@
-import { Unit, ExtendedCodebookPhase } from "@/app/types";
+import { Unit, CodebookPhase } from "@/app/types";
 
 // TODO:
 // TO get this back to work, we need a different approach.

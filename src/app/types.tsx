@@ -2,11 +2,12 @@ import { CSSProperties, Dispatch, MutableRefObject, ReactElement, RefObject, Set
 import { z } from "zod";
 import {
   AnnotateProgressSchema,
-  AnnotateUnitSchema,
   GetJobStateResponseSchema,
   GetUnitResponseSchema,
   JobStateAnnotationsSchema,
   PhaseTypeSchema,
+  PostAnnotationUpdateSchema,
+  PostAnnotationResponseSchema,
   ProgressStatusSchema,
 } from "./api/annotate/[jobId]/schemas";
 import {
@@ -14,6 +15,9 @@ import {
   RelationAnnotationSchema,
   SpanAnnotationSchema,
   QuestionAnnotationSchema,
+  VariableStatusSchema,
+  SubmitAnnotationSchema,
+  GeneralAnnotationSchema,
 } from "./api/projects/[projectId]/annotations/schemas";
 import {
   CodebookCodeSchema,
@@ -98,8 +102,9 @@ export type CodebookNodeResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type CodebookNode = CodebookNodeResponse & {
   parentPath: CodebookNodeResponse[];
   children: number[];
+  phaseId: number;
   treeType: TreeType;
-  phase: Phase;
+  phaseType: Phase;
 };
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
@@ -114,19 +119,11 @@ export type Rules = z.infer<typeof JobRulesSchema>;
 export type QuestionVariable = z.infer<typeof CodebookQuestionVariableSchema>;
 export type AnnotationVariable = z.infer<typeof CodebookAnnotationVariableSchema>;
 export type VariableSchema = QuestionVariable | AnnotationVariable;
-export type CodebookVariable = VariableSchema & {
-  name: string;
-  layout?: Layout;
-};
-
-export interface CodebookPhase {
-  type: Phase;
-  variables: CodebookVariable[];
-}
-
 // TODO: We can probably remove all extended unit stuff now that we're making the content dynamic inside Document
 
 export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
+export type PostAnnotationsResponse = z.infer<typeof PostAnnotationResponseSchema>;
+export type PostAnnotation = z.infer<typeof PostAnnotationUpdateSchema>;
 export type Unit = GetUnit["unit"];
 export type PhaseProgress = GetUnit["phaseProgress"];
 
@@ -145,8 +142,9 @@ export type JobState = Omit<GetJobState, "annotateProgress"> & {
 // !!!!!!!!!!!!!!!!!!!!!!!!! TODO: after refactor rename extendedcodebookphase to codebookphase,
 // and extendedvariable to codebookphasevariable
 
-export type ExtendedVariable = CodebookVariable & {
+export type CodebookVariable = VariableSchema & {
   // Adds some client side properties that are not stored in the backend
+  id: number;
   name: string;
   layout?: Layout;
   codeMap: Record<string, Code>;
@@ -154,11 +152,11 @@ export type ExtendedVariable = CodebookVariable & {
   validTo?: ValidRelation;
 };
 
-export type ExtendedCodebookPhase = {
+export type CodebookPhase = {
   id: number;
   label: string;
   type: Phase;
-  variables: ExtendedVariable[];
+  variables: CodebookVariable[];
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;
@@ -166,47 +164,28 @@ export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema
 export type QuestionAnnotation = z.infer<typeof QuestionAnnotationSchema>;
 export type SpanAnnotation = z.infer<typeof SpanAnnotationSchema>;
 export type RelationAnnotation = z.infer<typeof RelationAnnotationSchema>;
+export type SubmitAnnotation = z.infer<typeof SubmitAnnotationSchema>;
 export type Annotation = z.infer<typeof AnnotationSchema>;
 
-export type QuestionAnnotationContext = z.infer<typeof QuestionAnnotationSchema>["context"];
-
-export type JobserverCache = {
-  unit: Record<number, { data: GetUnit["data"]; status: GetUnit["status"] }>;
-  annotations: Record<number | "global", Annotation[]>;
-};
+export type AnnotationContext = z.infer<typeof GeneralAnnotationSchema>["context"];
 
 export interface JobServer {
   jobId: number;
   userId: string;
-  initialized: boolean;
-  jobToken: string; // this token encodes the jobId and userId, and is included in postAnnotations to validate the request
 
-  // We need to cache units by their phase and unit index, but cache annotations separately by the unit id.
-  // otherwise, when updating the annotations for a unit in one phase, it wont affect the other
-  // cache: JobserverCache;
-
-  init: () => Promise<{ codebook: CodebookNode[]; jobState: GetJobState }>;
-  getUnit: (phaseId: number, unitIndex?: number) => Promise<GetUnit | null>;
-  postAnnotations: (
-    unitToken: string | null, // for annotating units, include additional token (next to jobToken) for validating unit id
-    add: AnnotationDictionary,
-    rmIds: string[],
-    status: Status,
-  ) => Promise<Status>;
+  // This is probably deprecated
   getDebriefing?: () => Promise<Debriefing>;
 
   // These are the only parts inheriting classes need to implement
-  getCodebook: () => Promise<CodebookNode[]>;
   getJobState: () => Promise<GetJobState>;
+  getUnit: (phaseId: number, unitIndex?: number) => Promise<GetUnit | null>;
+  postAnnotations: (postAnnotation: PostAnnotation) => Promise<PostAnnotationsResponse>;
   // actual GetUnit and postAnnotations implementation
-
+  //
   previewMode?: boolean;
 }
 
 export type JobStateAnnotations = z.infer<typeof JobStateAnnotationsSchema>;
-
-//
-export type Status = "DONE" | "IN_PROGRESS";
 
 ///////////
 ///////////
@@ -325,20 +304,22 @@ export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED" | "STOLEN
 //   select?: () => void;
 // }
 
-export type ProgressStatus = z.infer<typeof ProgressStatusSchema>;
+export type VariableStatus = z.infer<typeof VariableStatusSchema>;
+
+export type AnnotationID = string;
+export type AnnotationDictionary = Record<AnnotationID, Annotation>;
+export type TokenAnnotations = Record<number, AnnotationID[]>;
 
 export interface AnnotationLibrary {
+  phaseToken: string;
   annotations: AnnotationDictionary;
-  variables: ExtendedVariable[];
+  variables: CodebookVariable[];
   variableIndex: number;
-  variableStatuses: ProgressStatus[];
+  variableStatuses: VariableStatus[];
   byToken: TokenAnnotations;
   codeHistory: CodeHistory;
   previousIndex: number;
 }
-export type AnnotationDictionary = Record<AnnotationID, Annotation>;
-export type TokenAnnotations = Record<number, AnnotationID[]>;
-export type AnnotationID = string;
 
 export interface AnnotationHistory {
   datetime: string;
@@ -663,48 +644,6 @@ export interface OauthClients {
 
 export type UnitType = "annotation" | "survey";
 
-/**
- * This function gets a unit from the server.
- * Use index -1 to tell the backend to decide what unit comes next  */
-export type SetUnitIndex = (index: number) => void;
-
-/** Units can have an object of variables, where keys are the variable names and values are pieces of text.
- *  These can be used in questions like: "is this text about [variable]"?.
- */
-export interface UnitVariables {
-  [key: string]: string | number | boolean;
-}
-
-/** A unit as it can be served by the backend.
- * Note that some parts (conditionals, damage) will normally not be visible to the frontend, but are included
- * here for jobserverdemo
- */
-export interface RawUnit {
-  status: UnitStatus;
-  id: string; // this is the backend id, not the external id
-  external_id?: string;
-  unit: RawUnitContent;
-  type: UnitType;
-  conditionals?: Conditional[];
-  damage?: number;
-  report?: ConditionReport;
-  annotations?: Annotation[];
-  annotation?: Annotation[]; // deprecated in favor of plural 'annotations'
-}
-
-export interface RawUnitContent {
-  text_fields?: ProcessedTextField[];
-  tokens?: RawToken[] | RawTokenColumn;
-  image_fields?: ProcessedImageField[];
-  markdown_fields?: ProcessedMarkdownField[];
-  meta_fields?: MetaField[];
-  annotations?: Annotation[];
-  codebook?: CodebookPhase;
-  codebookId?: string;
-  variables?: UnitVariables;
-  grid?: FieldGridInput;
-}
-
 export interface FieldGridInput {
   areas: string[][];
   rows?: number[];
@@ -887,11 +826,11 @@ export interface VariableValueMap {
 
 export interface CodeHistory {
   /** Keys are variable names, values are arrays of values that the variable has recently been coded with */
-  [key: string]: (string | number)[];
+  [key: number]: (string | number)[];
 }
 
 export interface VariableMap {
-  [key: string]: ExtendedVariable;
+  [key: string]: CodebookVariable;
 }
 
 export interface TriggerSelectorParams {
@@ -932,15 +871,6 @@ export interface ButtonComponentProps {
 export interface JobSettings {
   archived?: boolean;
   restricted?: boolean;
-}
-
-export interface JobAnnotation {
-  jobset: string;
-  unit_id: string;
-  coder_id: number;
-  coder: string;
-  annotation: Annotation[];
-  status: Status;
 }
 
 ///// OTHER

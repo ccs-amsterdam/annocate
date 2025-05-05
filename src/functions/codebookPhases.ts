@@ -1,12 +1,4 @@
-import {
-  CodebookNode,
-  CodebookPhase,
-  ExtendedCodebookPhase,
-  ExtendedVariable,
-  Layout,
-  Phase,
-  VariableSchema,
-} from "@/app/types";
+import { CodebookNode, CodebookPhase, CodebookVariable, Layout, Phase, VariableSchema } from "@/app/types";
 import standardizeColor from "./standardizeColor";
 import randomColor from "randomcolor";
 
@@ -14,8 +6,8 @@ import randomColor from "randomcolor";
   Here we break the codebook nodes into phases, and handle any inheritable
   properties (layout)
 */
-export function getCodebookPhases(nodes: CodebookNode[]): ExtendedCodebookPhase[] {
-  const phases: ExtendedCodebookPhase[] = [];
+export function getCodebookPhases(nodes: CodebookNode[]): CodebookPhase[] {
+  const phases: CodebookPhase[] = [];
 
   // inheritables
   let layout: Layout | undefined = undefined;
@@ -28,7 +20,7 @@ export function getCodebookPhases(nodes: CodebookNode[]): ExtendedCodebookPhase[
       phases[phase] = {
         id: node.id,
         label: node.name.replaceAll("_", " "),
-        type: node.phase,
+        type: node.phaseType,
         variables: [],
       };
 
@@ -47,10 +39,10 @@ export function getCodebookPhases(nodes: CodebookNode[]): ExtendedCodebookPhase[
   return phases;
 }
 
-function prepareVariable(name: string, variable: VariableSchema, layout?: Layout): ExtendedVariable {
+function prepareVariable(name: string, variable: VariableSchema, layout?: Layout): CodebookVariable {
   const fillMissingColor = variable.type === "annotinder";
 
-  const eVariable: ExtendedVariable = {
+  const eVariable: CodebookVariable = {
     ...variable,
     name,
     layout,

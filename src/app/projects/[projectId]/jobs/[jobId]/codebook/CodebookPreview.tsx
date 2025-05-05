@@ -1,13 +1,14 @@
 import { useCodebookNodes } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
 import { GetUnit, CodebookNode, JobState, GetUnitCache, UnitData, Progress } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
-import JobServerDesign, { MockServer } from "@/classes/JobServerDesign";
+import JobServerDesign from "@/classes/JobServerDesign";
 import { Button } from "@/components/ui/button";
 import { SquareCheckIcon, SquareIcon } from "lucide-react";
 import { useMiddlecat } from "middlecat-react";
 import { useMemo } from "react";
 import { useState } from "react";
 import { ZodError } from "zod";
+import { MockServer, ServerAnnotations } from "@/classes/MockServer";
 
 interface Props {
   projectId: number;
@@ -20,28 +21,26 @@ type UnitCache = Record<number | string, Omit<GetUnitCache, "progress">>;
 export function CodebookPreview({ projectId, jobId, preview }: Props) {
   const { user } = useMiddlecat();
   const { data: codebookNodes, isLoading: codebookLoading } = useCodebookNodes(projectId, jobId);
+  const [annotations, setAnnotations] = useState<ServerAnnotations>({ global: {} });
 
-  const [mockServer, setMockServer] = useState<MockServer>({
-    units: mockUnits(10),
-    annotations: { global: [] },
-    progress: initProgress(),
-  });
+  const reset = () => setAnnotations({ global: {} });
 
   const jobServer = useMemo(() => {
     if (!codebookNodes || codebookNodes.length === 0 || !user) return null;
 
-    const codebookPhase = createPreviewPhase(codebookNodes, preview);
-    if (!codebookPhase) return null;
+    const codebook = createPreviewPhase(codebookNodes, preview);
+    if (!codebook) return null;
+
+    const mockServer = new MockServer({ codebook, annotations });
 
     return new JobServerDesign({
       projectId,
       jobId,
       user,
       mockServer,
-      codebookNodes: codebookPhase,
       previewMode: !!preview,
     });
-  }, [codebookNodes, user, mockServer, preview]);
+  }, [codebookNodes, user, annotations, preview]);
 
   if (preview instanceof ZodError) {
     return (
@@ -57,17 +56,7 @@ export function CodebookPreview({ projectId, jobId, preview }: Props) {
 
   return (
     <div>
-      <PreviewWindow
-        mode={mode}
-        jobServer={jobServer}
-        reset={() => {
-          setMockServer({
-            ...mockServer,
-            annotations: { global: [] },
-            progress: initProgress(),
-          });
-        }}
-      />
+      <PreviewWindow mode={mode} jobServer={jobServer} reset={reset} />
     </div>
   );
 }
@@ -75,7 +64,7 @@ export function CodebookPreview({ projectId, jobId, preview }: Props) {
 function initProgress(): Progress {
   return {
     phase: 0,
-    phases: [{ type: "survey", label: "", status: "pending", variables: [] }],
+    phases: [{ type: "survey", label: "", status: "pending" }],
     settings: {
       canSkip: true,
       canGoBack: true,
@@ -148,7 +137,8 @@ function createPreviewPhase(
       parentPath: [],
       children: [],
       treeType: "leaf",
-      phase: "annotation",
+      phaseId: 0,
+      phaseType: "annotation",
       parentId: codebookNode.id,
       position: 0,
       data: {
@@ -172,14 +162,4 @@ function addParentNodes(codebookNodes: CodebookNode[], codebookNode: CodebookNod
   if (parentIndex === -1) return [codebookNode];
   const parent = { ...codebookNodes[parentIndex], position: 0 };
   return [...addParentNodes(codebookNodes, parent), codebookNode];
-}
-
-function mockUnits(n: number): MockServer["units"] {
-  Array.from({ length: n }).map((_, i) => {
-    return {
-      id: "unit" + i,
-      data: { text: `This is unit ${i}` },
-      status: "pending",
-    };
-  });
 }

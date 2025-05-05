@@ -30,7 +30,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
     const context = { fields: variable.fields };
     annotationManager.createQuestionAnnotation(variable.name, transition.code, false, context);
     annotationManager.postVariable(true).then((res) => {
-      if (res.status === "DONE") {
+      if (res.done === "DONE") {
         finishUnit();
         // nextUnitTransition(refs, transition);
         // setTimeout(() => {

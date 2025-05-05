@@ -6,7 +6,7 @@ import useRelationSelector from "./hooks/useRelationSelector";
 import SelectVariable from "./components/SelectVariable";
 
 import useVariableMap from "./components/useVariableMap";
-import { VariableMap, Annotation, SetState, TriggerSelector, ExtendedVariable, Doc, Unit } from "@/app/types";
+import { VariableMap, Annotation, SetState, TriggerSelector, CodebookVariable, Doc, Unit } from "@/app/types";
 import { useCallback } from "react";
 import styled from "styled-components";
 import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
@@ -27,7 +27,7 @@ const DocumentContainer = styled.div`
 
 interface DocumentProps {
   /** An array of variables */
-  variables?: ExtendedVariable[];
+  variables?: CodebookVariable[];
   /** If true, always show all annotations. This makes sense if the annotations property
    * is already the selection you need. But when coding multiple variables, it can be
    * better to set to false, so coders only see annotations of the variable they're working on

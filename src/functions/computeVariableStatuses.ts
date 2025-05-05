@@ -1,7 +1,7 @@
-import { Annotation, ExtendedVariable, ProgressStatus } from "@/app/types";
+import { Annotation, CodebookVariable, VariableStatus } from "@/app/types";
 
-export function computeVariableStatuses(variables: ExtendedVariable[], annotations: Annotation[]) {
-  const variableStatuses: ProgressStatus[] = Array(variables.length).fill("pending");
+export function computeVariableStatuses(variables: CodebookVariable[], annotations: Annotation[]) {
+  const variableStatuses: VariableStatus[] = Array(variables.length).fill({ done: false, skip: false });
 
   for (let i = 0; i < variables.length; i++) {
     const variable = variables[i];
@@ -24,7 +24,7 @@ export function computeVariableStatuses(variables: ExtendedVariable[], annotatio
     break;
   }
 
-  return { variableStatuses, variableIndex };
+  return { variableStatuses: variableStatuses, variableIndex };
 }
 
 export function topVarName(variable: string) {

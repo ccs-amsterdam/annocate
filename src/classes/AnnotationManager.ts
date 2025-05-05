@@ -8,20 +8,18 @@ import {
   Code,
   CodeHistory,
   CodeMap,
-  ExtendedCodebookPhase,
-  ExtendedVariable,
+  CodebookPhase,
+  CodebookVariable,
   JobServer,
   SetState,
   Span,
-  Status,
   Token,
   TokenAnnotations,
   ValidRelation,
   VariableMap,
-  ProgressStatus,
   VariableValueMap,
   Unit,
-  QuestionAnnotationContext,
+  AnnotationContext,
   SpanAnnotation,
   RelationAnnotation,
   QuestionAnnotation,
@@ -29,6 +27,8 @@ import {
   GetJobState,
   Progress,
   JobState,
+  SubmitAnnotation,
+  PostAnnotation,
 } from "@/app/types";
 import { PhaseState } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { getCodebookPhases } from "@/functions/codebookPhases";
@@ -43,21 +43,25 @@ export default class AnnotationManager {
   jobServer: JobServer;
   annotationLib: AnnotationLibrary;
   setUnitBundle: SetState<PhaseState | null>;
-  lastAnnotationIds: string[];
+  lastServerUpdate: Date | null;
   unit: Unit | null;
-  codebookPhases: ExtendedCodebookPhase[];
+  codebookPhases: CodebookPhase[];
   globalAnnotations: Annotation[];
   progress: Progress;
+  sessionToken: string;
+  postAnnotationsQueue: PostAnnotation["phaseAnnotations"];
 
   constructor({
     jobServer,
     setUnitBundle,
+    sessionToken,
     codebook,
     progress,
     globalAnnotations,
   }: {
     jobServer: JobServer;
     setUnitBundle: SetState<PhaseState | null>;
+    sessionToken: string;
     codebook: CodebookNode[];
     progress: Progress;
     globalAnnotations: Annotation[];
@@ -68,6 +72,7 @@ export default class AnnotationManager {
     this.globalAnnotations = globalAnnotations;
     this.progress = progress;
     this.annotationLib = {
+      phaseToken: "",
       annotations: {},
       byToken: {},
       codeHistory: {},
@@ -76,8 +81,12 @@ export default class AnnotationManager {
       variableStatuses: [],
       previousIndex: 0,
     };
-    this.lastAnnotationIds = [];
+    this.lastServerUpdate = null;
     this.unit = null;
+    this.sessionToken = sessionToken;
+
+    // TODO: add permanence: const postAnnotationsQueue = JSON.parse(localStorage.getItem("postAnnotationsQueue") || "");
+    this.postAnnotationsQueue = {};
   }
 
   // async initialize({
@@ -126,23 +135,19 @@ export default class AnnotationManager {
     });
   }
 
-  navigateNext() {
-    const progress = this.jobState.progress;
-    const phase = progress.phases[progress.phase];
-  }
-
   async getUnit(phaseIndex: number, unitIndex?: number): Promise<Unit | null> {
-    const phase = this.progress.phases[phaseIndex];
-    if (phase.type !== "annotation") return null;
+    if (this.progress.phases[phaseIndex].type !== "annotation") return null;
 
-    const unit = await this.jobServer.getUnit(phaseIndex, unitIndex);
-    if (!unit) throw new Error("No unit found");
+    const getUnit = await this.jobServer.getUnit(phaseIndex, unitIndex);
+    if (!getUnit) throw new Error("No unit found");
 
     // update phase unit progress
-    phase.nCoded = unit.nCoded;
-    phase.nTotal = unit.nTotal;
+    this.progress.phases[phaseIndex] = {
+      ...this.progress.phases[phaseIndex],
+      ...getUnit.phaseProgress,
+    };
 
-    return unit;
+    return getUnit.unit;
   }
 
   finishPhase() {
@@ -150,7 +155,7 @@ export default class AnnotationManager {
       return toast.success("Jeej");
     }
 
-    const progress = this.jobState.progress;
+    const progress = this.progress;
     const phase = progress.phases[progress.phase];
 
     // If we are in a survey phase, we just move to the next phase
@@ -170,23 +175,19 @@ export default class AnnotationManager {
     }
   }
 
-  async postAnnotations(status: Status): Promise<Status> {
+  async postAnnotations(): Promise<boolean> {
     try {
-      const add: AnnotationDictionary = { ...this.annotationLib.annotations };
-      const rmIds: string[] = [];
-      for (let id of this.lastAnnotationIds) {
-        if (!add[id]) rmIds.push(id);
-        delete add[id];
-      }
-
-      const token = this.unit ? this.unit.token : "TODO: implement phase token?";
-      const resStatus = await this.jobServer.postAnnotations(token, add, rmIds, status);
-      this.lastAnnotationIds = Object.keys(this.annotationLib.annotations);
-      return resStatus;
+      const res = await this.jobServer.postAnnotations({
+        sessionToken: this.sessionToken,
+        phaseAnnotations: this.postAnnotationsQueue,
+      });
+      if (res.sessionToken) this.sessionToken = res.sessionToken;
+      this.postAnnotationsQueue = {};
+      return true;
     } catch (e) {
       console.error("Error posting annotations", e);
       toast.error("Error posting annotations");
-      return "IN_PROGRESS";
+      return false;
     }
   }
 
@@ -204,34 +205,32 @@ export default class AnnotationManager {
 
     if (!finished) {
       // this is for intermediate saving of results, so only post
-      const status = await this.postAnnotations("IN_PROGRESS");
-      return { status, conditionReport: null };
+      const done = await this.postAnnotations();
+      return { done, conditionReport: null };
     }
 
-    // if variable finished, also set done status to each annotation of current variable
-    for (let a of Object.values(this.annotationLib.annotations)) {
-      if (topVarName(a.variable) === varName) {
-        if (finished) a.status = "done";
-      }
-    }
+    // THIS IS REPLACED BY HAVING SUBMIT TYPE ANNOTATIONS
+    // for (let a of Object.values(this.annotationLib.annotations)) {
+    //   if (topVarName(a.variable) === varName) {
+    //     if (finished) a.status = "done";
+    //   }
+    // }
 
-    const anyLeft = this.annotationLib.variableStatuses.some(
-      (s, i) => s !== "skip" && i > this.annotationLib.variableIndex,
-    );
+    const anyLeft = this.annotationLib.variableStatuses.some((s, i) => !s.skip && i > this.annotationLib.variableIndex);
 
     if (!anyLeft) {
       // if no more variables left, submit the annotations and go to next unit
-      const status = await this.postAnnotations("DONE");
-      return { status, conditionReport: null };
+      const done = await this.postAnnotations();
+      return { done, conditionReport: null };
     }
 
     // submit the current variable and go to next variableIndex
-    const status = await this.postAnnotations("IN_PROGRESS");
-    this.annotationLib.variableStatuses[this.annotationLib.variableIndex] = "done";
+    const done = await this.postAnnotations();
+    this.annotationLib.variableStatuses[this.annotationLib.variableIndex].done = true;
     this.annotationLib.variableStatuses = [...this.annotationLib.variableStatuses];
     this.updateAnnotationLibrary(this.annotationLib);
     this.setVariableIndex(this.annotationLib.variableIndex + 1);
-    return { status, conditionReport: null };
+    return { status: done, conditionReport: null };
   }
 
   setVariableIndex(index: number) {
@@ -242,72 +241,80 @@ export default class AnnotationManager {
     });
   }
 
-  addAnnotation(annotation: Annotation) {
-    annotation.client.positions = getTokenPositions(this.annotationLib.annotations, annotation);
+  addAnnotations(annotations: Annotation[]) {
+    // Gentle reminder that all annotations MUST go via this function, because this update
+    // both the local annotation library state and the postAnnotationsQueue
+    let current = { ...this.annotationLib.annotations };
 
-    let annotations = { ...this.annotationLib.annotations };
-    annotations[annotation.id] = annotation;
-    annotations = rmEmptySpan(annotations, annotation);
+    const phaseToken = this.annotationLib.phaseToken;
+    for (let annotation of annotations) {
+      current[annotation.id] = annotation;
+      this.postAnnotationsQueue[phaseToken].push(annotation);
+    }
 
     this.updateAnnotationLibrary({
       ...this.annotationLib,
-      annotations,
-      codeHistory: updateCodeHistory(this.annotationLib.codeHistory, annotation),
-      byToken: newTokenDictionary(annotations),
+      annotations: current,
+      codeHistory: {},
+      byToken: newTokenDictionary(current),
     });
   }
 
-  rmAnnotation(id: AnnotationID, keep_empty: boolean = false) {
-    let annotations = { ...this.annotationLib.annotations };
+  rmAnnotations(ids: AnnotationID[], keep_empty: boolean = false) {
+    let current = { ...this.annotationLib.annotations };
 
-    if (!annotations?.[id]) return;
-    if (keep_empty) annotations = addEmptySpan(annotations, id);
-    delete annotations[id];
+    const addAnnotations: Annotation[] = [];
 
-    annotations = rmBrokenRelations(annotations);
+    for (let id of ids) {
+      if (!current?.[id]) continue;
+      addAnnotations.push({ ...current[id], deleted: new Date() });
+      delete current[id];
+    }
 
-    this.updateAnnotationLibrary({ ...this.annotationLib, annotations, byToken: newTokenDictionary(annotations) });
+    addAnnotations.push(...rmBrokenRelations(current));
+    this.addAnnotations(addAnnotations);
   }
 
-  // createUnitAnnotation(variable: string, code: Code) {
-  //   const annotation: Annotation = {
-  //     id: cuid(),
-  //     created: new Date().toISOString(),
-  //     type: "unit",
-  //     variable: variable,
-  //     code: code.code,
-  //     value: code.value,
-  //     color: code.color,
-  //   };
-  //   this.addAnnotation(annotation);
-  // }
+  submitVariable(variableId: number, context: AnnotationContext, finishLoop: boolean = true) {
+    let annotation: SubmitAnnotation = {
+      id: cuid(),
+      created: new Date(),
+      type: "submit",
+      variableId: variableId,
+      finishVariable: true,
+      finishLoop,
+      context,
+      client: {},
+    };
 
-  // createFieldAnnotation(variable: string, code: Code, field: string) {
-  //   const annotation: Annotation = {
-  //     id: cuid(),
-  //     created: new Date().toISOString(),
-  //     type: "field",
-  //     variable: variable,
-  //     code: code.code,
-  //     value: code.value,
-  //     color: code.color,
-  //     field: field,
-  //   };
-  //   this.addAnnotation(annotation);
-  // }
+    const currentAnnotations = Object.values(this.annotationLib.annotations);
+    const add: Annotation[] = [annotation];
+    for (const a of currentAnnotations) {
+      if (a.deleted) continue;
+      if (a.variableId !== annotation.variableId) continue;
+      if (a.type !== "submit") continue;
+      if (!contextIsIdential(a.context, annotation.context)) continue;
+
+      add.push({ ...a, deleted: new Date() });
+    }
+
+    this.addAnnotations(add);
+  }
 
   createQuestionAnnotation(
-    variable: string,
+    variableId: number,
     code: Code,
     multiple: boolean = false,
-    context: QuestionAnnotationContext,
+    context: AnnotationContext,
+    finishLoop: boolean = true,
   ) {
     let annotation: QuestionAnnotation = {
       id: cuid(),
-      created: new Date().toISOString(),
+      created: new Date(),
       type: "question",
-      status: "pending",
-      variable: variable,
+      variableId: variableId,
+      finishVariable: !multiple,
+      finishLoop: finishLoop,
       code: code.code,
       value: code.value,
       client: { color: code.color },
@@ -315,39 +322,42 @@ export default class AnnotationManager {
     };
 
     let addAnnotation = true;
+    const add: Annotation[] = [];
 
     const currentAnnotations = Object.values(this.annotationLib.annotations);
-    const newAnnotations: Record<string, Annotation> = { ...this.annotationLib.annotations };
     for (const a of currentAnnotations) {
-      if (a.variable !== annotation.variable) continue;
+      if (a.deleted) continue;
+      if (a.variableId !== annotation.variableId) continue;
       if (a.type !== "question") continue;
       if (!contextIsIdential(a.context, annotation.context)) continue;
 
       if (a.code === annotation.code) {
         addAnnotation = false;
-        if (multiple) delete newAnnotations[a.id];
+        if (multiple) add.push({ ...a, deleted: new Date() });
       } else {
-        if (!multiple) delete newAnnotations[a.id];
+        if (!multiple) add.push({ ...a, deleted: new Date() });
       }
     }
 
-    if (addAnnotation) newAnnotations[annotation.id] = annotation;
-
-    this.updateAnnotationLibrary({
-      ...this.annotationLib,
-      annotations: newAnnotations,
-      byToken: newTokenDictionary(this.annotationLib.annotations),
-      codeHistory: updateCodeHistory(this.annotationLib.codeHistory, annotation),
-    });
+    if (addAnnotation) add.push(annotation);
+    this.addAnnotations(add);
   }
 
-  createSpanAnnotation(variable: string, code: Code, from: number, to: number, tokens: Token[]) {
+  createSpanAnnotation(
+    variableId: number,
+    code: Code,
+    from: number,
+    to: number,
+    tokens: Token[],
+    finishLoop: boolean = true,
+  ) {
     const annotation: SpanAnnotation = {
       id: cuid(),
-      created: new Date().toISOString(),
+      created: new Date(),
+      finishVariable: false,
+      finishLoop,
       type: "span",
-      status: "pending",
-      variable: variable,
+      variableId: variableId,
       code: code.code,
       value: code.value,
       offset: tokens[from].offset,
@@ -359,16 +369,25 @@ export default class AnnotationManager {
         text: getSpanText([from, to], tokens),
       },
     };
-    this.addAnnotation(annotation);
+    annotation.client.positions = getTokenPositions(this.annotationLib.annotations, annotation);
+    this.addAnnotations([annotation]);
   }
 
-  createRelationAnnotation(variable: string, code: Code, from: Annotation, to: Annotation) {
+  createRelationAnnotation(
+    variableId: number,
+    code: Code,
+    from: Annotation,
+    to: Annotation,
+    finishLoop: boolean = true,
+  ) {
     if (!from.id || !to.id) throw new Error("Cannot create relation annotation without ids");
     const annotation: RelationAnnotation = {
       id: cuid(),
-      created: new Date().toISOString(),
+      created: new Date(),
+      finishVariable: false,
+      finishLoop,
       type: "relation",
-      variable: variable,
+      variableId: variableId,
       code: code.code,
       value: code.value,
       fromId: from.id,
@@ -377,13 +396,14 @@ export default class AnnotationManager {
         color: code.color,
       },
     };
-    this.addAnnotation(annotation);
+    annotation.client.positions = getTokenPositions(this.annotationLib.annotations, annotation);
+    this.addAnnotations([annotation]);
   }
 }
 
 export function createAnnotationLibrary(
   unit: Unit | null,
-  codebook: ExtendedCodebookPhase,
+  codebook: CodebookPhase,
   globalAnnotations: Annotation[] | undefined,
   focusVariableIndex?: number,
 ): AnnotationLibrary {
@@ -416,9 +436,10 @@ export function createAnnotationLibrary(
   const { variableStatuses, variableIndex } = computeVariableStatuses(codebook.variables, annotationArray);
 
   return {
+    phaseToken: unit?.token || "global",
     annotations: annotationDict,
     byToken: newTokenDictionary(annotationDict),
-    codeHistory: initializeCodeHistory(annotationArray),
+    codeHistory: {},
     variables: codebook.variables,
     variableIndex: focusVariableIndex ?? variableIndex,
     variableStatuses,
@@ -442,36 +463,26 @@ function addToTokenDictionary(byToken: TokenAnnotations, annotation: Annotation)
   });
 }
 
-function updateCodeHistory(codeHistory: CodeHistory, annotation: Annotation) {
-  const { variable, code: value } = annotation;
-  if (!codeHistory?.[variable]) codeHistory[variable] = [];
-
-  let values: (string | number)[] = [];
-  if (value) {
-    values = [value, ...codeHistory[variable].filter((v: string | number) => v !== value)];
-  } else {
-    values = codeHistory[variable];
-  }
-
-  return {
-    ...codeHistory,
-    [variable]: values,
-  };
-}
-
-function rmBrokenRelations(annDict: AnnotationDictionary) {
+function rmBrokenRelations(annDict: AnnotationDictionary): Annotation[] {
   const nBefore = Object.keys(annDict).length;
+  const deleteAnnotations: Annotation[] = [];
   for (let a of Object.values(annDict)) {
     if (a.type !== "relation") continue;
     if (!("fromId" in a && "toId" in a)) continue;
-    if (!annDict[a.fromId] || !annDict[a.toId]) delete annDict[a.id];
+    if (!annDict[a.fromId] || !annDict[a.toId]) {
+      deleteAnnotations.push({ ...a, deleted: new Date() });
+      delete annDict[a.id];
+    }
   }
 
   // if relations were removed, we need to repeat the procedure to see
   // if other relations refered to the now missing ones
-  if (Object.keys(annDict).length < nBefore) return rmBrokenRelations(annDict);
+  if (Object.keys(annDict).length < nBefore) {
+    deleteAnnotations.push(...rmBrokenRelations(annDict));
+    return [...rmBrokenRelations(annDict)];
+  }
 
-  return annDict;
+  return deleteAnnotations;
 }
 
 /**
@@ -502,26 +513,6 @@ function getIndexFromOffset(tokens: Token[], field: string, offset: number) {
     if (token.offset + token.length > offset) return token.index;
   }
   return null;
-}
-
-function initializeCodeHistory(annotations: Annotation[]): CodeHistory {
-  const vvh: VariableValueMap = {};
-
-  for (let annotation of annotations) {
-    if (!annotation.code) continue;
-    if (!vvh[annotation.variable]) {
-      vvh[annotation.variable] = { [annotation.code]: true };
-    } else {
-      vvh[annotation.variable][annotation.code] = true;
-    }
-  }
-
-  const codeHistory: CodeHistory = {};
-  for (let variable of Object.keys(vvh)) {
-    codeHistory[variable] = Object.keys(vvh[variable]);
-  }
-
-  return codeHistory;
 }
 
 function getSpanText(span: Span, tokens: Token[]) {
@@ -564,9 +555,8 @@ function getTokenPositions(
 
 function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap) {
   for (let a of Object.values(annotations)) {
-    const varName = topVarName(a.variable);
-    if (variableMap && variableMap[varName]) {
-      const codeMap = variableMap[varName].codeMap;
+    if (variableMap && variableMap[a.variableId]) {
+      const codeMap = variableMap[a.variableId].codeMap;
       if (a.code != null && codeMap[a.code]) {
         a.client.color = getColor(a.code, codeMap);
       }
@@ -592,7 +582,7 @@ function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
 
     if (
       a.field === annotation.field &&
-      a.variable === annotation.variable &&
+      a.variableId === annotation.variableId &&
       a.span[0] === annotation.span[0] &&
       a.span[1] === annotation.span[1]
     )
@@ -617,7 +607,7 @@ function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) 
     if (a.code !== "EMPTY") continue;
     if (
       a.field === annotation.field &&
-      a.variable === annotation.variable &&
+      a.variableId === annotation.variableId &&
       a.span[0] === annotation.span[0] &&
       a.span[1] === annotation.span[1]
     ) {
@@ -628,7 +618,7 @@ function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) 
   return annotations;
 }
 
-function createVariableMap(variables: ExtendedVariable[]) {
+function createVariableMap(variables: CodebookVariable[]) {
   const vm: VariableMap = {};
   for (let variable of variables) {
     let cm = variable.codeMap;
@@ -637,12 +627,12 @@ function createVariableMap(variables: ExtendedVariable[]) {
       return obj;
     }, {});
 
-    vm[variable.name] = { ...variable, codeMap: cm };
+    vm[variable.id] = { ...variable, codeMap: cm };
 
     if (variable.type === "relation") {
       const [validFrom, validTo] = getValidRelationCodes(variable.relations, variable.codeMap);
-      vm[variable.name].validFrom = validFrom;
-      vm[variable.name].validTo = validTo;
+      vm[variable.id].validFrom = validFrom;
+      vm[variable.id].validTo = validTo;
     }
   }
 
@@ -697,12 +687,13 @@ function getValidRelationCodes(relations: AnnotationRelation[], codeMap: CodeMap
   return [validFrom, validTo];
 }
 
-function contextIsIdential(context1?: QuestionAnnotationContext, context2?: QuestionAnnotationContext) {
+function contextIsIdential(context1?: AnnotationContext, context2?: AnnotationContext) {
   if (context1 === context2) return true;
   if (!context1 && !context2) return true;
   if (!context1 || !context2) return false;
+  if (context1.field !== context2.field) return false;
 
-  function identialArray(arr1?: string[], arr2?: string[]) {
+  function identialArray<T>(arr1?: T[], arr2?: T[]) {
     if (!arr1 && !arr2) return true;
     if (!arr1 || !arr2) return false;
     if (arr1.length !== arr2.length) return false;
@@ -714,8 +705,7 @@ function contextIsIdential(context1?: QuestionAnnotationContext, context2?: Ques
     return true;
   }
 
-  if (!identialArray(context1.fields, context2.fields)) return false;
-  if (!identialArray(context1.annotationIds, context2.annotationIds)) return false;
+  if (!identialArray(context1.span, context2.span)) return false;
 
   return true;
 }

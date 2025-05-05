@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import {
   VariableValueMap,
-  ExtendedVariable,
+  CodebookVariable,
   CodeRelation,
   VariableType,
   VariableMap,
@@ -12,9 +12,9 @@ import {
 } from "@/app/types";
 
 export default function useVariableMap(
-  variables?: ExtendedVariable[],
+  variables?: CodebookVariable[],
   selectedVariable?: string,
-): [ExtendedVariable | null, VariableMap, VariableMap | null, VariableMap | null, VariableType | null] {
+): [CodebookVariable | null, VariableMap, VariableMap | null, VariableMap | null, VariableType | null] {
   const fullVariableMap: VariableMap = useMemo(() => {
     // creates fullVariableMap
     if (!variables || variables.length === 0) return null;

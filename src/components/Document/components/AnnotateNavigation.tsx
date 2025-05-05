@@ -8,7 +8,7 @@ import { ReactElement, useEffect, useMemo, useRef } from "react";
 import {
   Annotation,
   AnnotationLibrary,
-  ExtendedVariable,
+  CodebookVariable,
   Token,
   TokenSelection,
   TriggerSelector,
@@ -22,7 +22,7 @@ import DrawArrows from "./DrawArrows";
 interface AnnotateNavigationProps {
   tokens: Token[];
   annotationLib: AnnotationLibrary;
-  variable: ExtendedVariable | null;
+  variable: CodebookVariable | null;
   variableType: VariableType | null;
   showValues: VariableMap | null;
   disableAnnotations: boolean;

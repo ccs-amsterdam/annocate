@@ -1,9 +1,7 @@
 import { config } from "dotenv";
-import { type InferSelectModel, type InferInsertModel, max } from "drizzle-orm";
 import {
   boolean,
   primaryKey,
-  foreignKey,
   integer,
   jsonb,
   pgTable,
@@ -14,30 +12,23 @@ import {
   unique,
   index,
   uuid,
-  customType,
   uniqueIndex,
-  numeric,
   doublePrecision,
   AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 import {
-  Annotation,
-  AnnotationHistory,
-  Rules,
   UserRole,
-  ServerUnitStatus,
   ProjectRole,
   AnnotationDictionary,
   ProjectConfig,
   JobsetAnnotatorStatistics,
   access,
   Access,
-  CodebookNodeType,
   CodebookNodeData,
-  ProgressStatus,
 } from "@/app/types";
-import { z } from "zod";
+import { Key } from "lucide-react";
+import { wrap } from "module";
 
 config({ path: ".env.local" });
 
@@ -169,7 +160,6 @@ export const codebookNodes = pgTable(
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
     treeType: text("tree_type", { enum: ["phase", "group", "leaf"] }),
-    phaseId: integer("phase_id").references((): AnyPgColumn => codebookNodes.id),
     parentId: integer("parent_id").references((): AnyPgColumn => codebookNodes.id),
     position: doublePrecision("position").notNull(),
 
@@ -201,8 +191,8 @@ export const invitations = pgTable(
   }),
 );
 
-export const annotator = pgTable(
-  "annotator",
+export const annotatorSession = pgTable(
+  "annotator_session",
   {
     id: serial("id").primaryKey(),
     jobId: integer("job_id")
@@ -224,16 +214,33 @@ export const annotator = pgTable(
   }),
 );
 
+export const annotatorUnits = pgTable(
+  "annotator_units",
+  {
+    annotatorSessionId: integer("annotator_session_id")
+      .notNull()
+      .references(() => annotatorSession.id),
+    phaseId: integer("unit_id")
+      .notNull()
+      .references(() => codebookNodes.id),
+    unitIndex: integer("unit_index").notNull(),
+    unitId: integer("unit_id"),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.annotatorSessionId, table.unitId] }),
+  }),
+);
+
 export const annotations = pgTable(
   "annotations",
   {
+    annotatorSessionId: integer("annotator_session_id")
+      .notNull()
+      .references(() => annotatorSession.id),
+    unitId: integer("unit_id"),
     codebookNodeId: integer("codebook_item_id")
       .notNull()
       .references(() => codebookNodes.id),
-    annotatorId: integer("annotator_id")
-      .notNull()
-      .references(() => annotator.id, { onDelete: "cascade" }),
-    unitId: integer("unit_id"),
     done: boolean("done").notNull().default(false),
     skip: boolean("skip").notNull().default(false),
     annotations: jsonb("annotation").notNull().$type<AnnotationDictionary>(),

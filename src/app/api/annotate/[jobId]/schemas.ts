@@ -6,9 +6,15 @@ import {
   UnitTextLayoutSchema,
 } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/layoutSchemas";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-import { AnnotationSchema, QuestionAnnotationSchema } from "@/app/api/projects/[projectId]/annotations/schemas";
+import {
+  AnnotationSchema,
+  QuestionAnnotationSchema,
+  VariableStatusSchema,
+} from "@/app/api/projects/[projectId]/annotations/schemas";
 import { error } from "console";
 import { UnitDataSchema } from "../../projects/[projectId]/jobs/[jobId]/units/schemas";
+import { CodebookNodes } from "@/app/projects/[projectId]/jobs/[jobId]/codebook/CodebookNodes";
+import { CodebookNodeResponseSchema } from "../../projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 
 extendZodWithOpenApi(z);
 
@@ -77,6 +83,8 @@ export const GetJobStateParamsSchema = z
   .catchall(z.union([z.string(), z.number()]));
 
 export const GetJobStateResponseSchema = z.object({
+  sessionToken: z.string(),
+  codebook: z.array(CodebookNodeResponseSchema),
   progress: AnnotateProgressSchema,
   globalAnnotations: z.array(AnnotationSchema),
 });
@@ -86,7 +94,7 @@ export const GetUnitResponseSchema = z.object({
     token: z.string(),
     data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
     annotations: z.array(AnnotationSchema),
-    status: ProgressStatusSchema,
+    done: z.boolean(),
   }),
   phaseProgress: z.object({
     nCoded: z.number(),
@@ -100,18 +108,14 @@ export const GetUnitParamsSchema = z.object({
   unitId: z.string().optional(),
 });
 
-// POSTANNOTATIONS
+const PhaseToken = z.string();
+
+// POSTANNOTATIONS (allow passing an array of this)
 export const PostAnnotationUpdateSchema = z.object({
-  unitToken: z
-    .string()
-    .openapi({
-      title: "Token",
-      description: "If this is a unit annotation, a token is required to identify the right unit",
-    })
-    .optional(),
-  // validationToken: z.string().openapi({
-  //   title: "Token",
-  //   description: "A token that is needed to validate the annotation",
-  // }),
-  annotation: AnnotationSchema,
+  sessionToken: z.string(),
+  phaseAnnotations: z.record(PhaseToken, z.array(AnnotationSchema)),
+});
+
+export const PostAnnotationResponseSchema = z.object({
+  sessionToken: z.string().optional(),
 });

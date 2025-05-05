@@ -95,7 +95,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
 
   const onFinish = () => {
     annotationManager.postVariable(true).then((res) => {
-      if (res.status === "DONE") finishUnit();
+      if (res.done) finishUnit();
     });
   };
 
@@ -103,7 +103,7 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     let varname = variable.name;
     if (item) varname += `.${item}`;
     const context = { fields: variable.fields };
-    annotationManager.createQuestionAnnotation(varname, code, !!multiple, context);
+    annotationManager.createQuestionAnnotation(variable.id, code, !!multiple, context);
     if (finish) onFinish();
   };
 

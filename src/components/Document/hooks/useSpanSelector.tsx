@@ -13,7 +13,7 @@ import {
   Annotation,
   CodeSelectorOption,
   CodeSelectorValue,
-  ExtendedVariable,
+  CodebookVariable,
 } from "@/app/types";
 import useWatchChange from "@/hooks/useWatchChange";
 import AnnotationManager from "@/classes/AnnotationManager";
@@ -42,7 +42,7 @@ const useSpanSelector = (
   doc: Doc,
   annotationLib: AnnotationLibrary,
   annotationManager: AnnotationManager,
-  variable: ExtendedVariable | null,
+  variable: CodebookVariable | null,
 ): [ReactNode, TriggerSelector | null, boolean] => {
   const [open, setOpen] = useState(false);
   const positionRef = useRef<HTMLSpanElement | null>(null);
@@ -134,7 +134,7 @@ const SelectAnnotationPage = ({ options, setSpan, setOpen }: SelectAnnotationPag
 
 interface NewCodepageProps {
   tokens: Token[];
-  variable: ExtendedVariable;
+  variable: CodebookVariable;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   editMode: boolean;
@@ -246,7 +246,7 @@ const NewCodePage = ({
 const getAnnotationOptions = (
   annotationLib: AnnotationLibrary,
   index: number,
-  variable: ExtendedVariable,
+  variable: CodebookVariable,
   tokens: Token[],
 ): CodeSelectorOption[] => {
   const variableSpans: any = {};

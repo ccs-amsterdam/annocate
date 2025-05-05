@@ -1,4 +1,4 @@
-import { annotations, annotator, codebookNodes, jobs, projects } from "@/drizzle/schema";
+import { annotations, annotatorSession, codebookNodes, jobs, projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ jobId: st
       let deviceId = getDeviceId(cookieStore, params.jobId);
       const userId = getUserId(email, urlParams.userId, deviceId);
 
-      const { jobState, isNew } = await getOrCreateJobState(jobId, userId, urlParams);
+      // const { jobState, isNew } = await getOrCreateJobState(jobId, userId, urlParams);
 
       // if (isNew) {
       //   const { currentUnit, nTotal, nCoded } = await allocateJobUnits(jobState.jobId, jobState.userId);
@@ -45,46 +45,30 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
   return "device:" + deviceId;
 }
 
-async function getOverlapUnits(codebookItemId: number, n: number) {
-  const alreadyAssigned = await db
-    .selectDistinct({ unitId: annotations.unitId })
-    .from(annotations)
-    .where(
-      and(
-        eq(annotations.codebookItemId, codebookItemId),
-        eq(annotations.isOverlap, true),
-        isNotNull(annotations.unitId),
-      ),
-    )
-    .limit(n);
+// async function getOrCreateJobState(
+//   jobId: number,
+//   userId: string,
+//   urlParams: Record<string, string | number> | undefined,
+// ) {
+//   const [ann] = await db
+//     .select()
+//     .from(annotatorSession)
+//     .where(and(eq(annotatorSession.jobId, jobId), eq(annotatorSession.userId, userId)))
+//     .limit(1);
 
-  return alreadyAssigned.map((row) => row.unitId);
-}
+//   if (ann) {
+//     // TODO: verify jobaccess
+//     // compute jobstate
+//     return { jobState: ann, isNew: false };
+//   }
 
-async function getOrCreateJobState(
-  jobId: number,
-  userId: string,
-  urlParams: Record<string, string | number> | undefined,
-) {
-  const [ann] = await db
-    .select()
-    .from(annotator)
-    .where(and(eq(annotator.jobId, jobId), eq(annotator.userId, userId)))
-    .limit(1);
+//   const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
 
-  if (ann) {
-    // TODO: verify jobaccess
-    // compute jobstate
-    return { jobState: ann, isNew: false };
-  }
-
-  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
-
-  const [newAnn] = await db.insert(annotator).values({ jobId, userId, urlParams }).returning();
-  // TODO: verify jobaccess
-  // allocate units and return jobstate
-  return { jobState: newAnn, isNew: true };
-}
+//   const [newAnn] = await db.insert(annotatorSession).values({ jobId, userId, urlParams }).returning();
+//   // TODO: verify jobaccess
+//   // allocate units and return jobstate
+//   return { jobState: newAnn, isNew: true };
+// }
 
 // async function computeJobState(annotatorId: number) {
 //   // jobstate has the nr of units done, and current index (lowest not done index)

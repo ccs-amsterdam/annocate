@@ -5,7 +5,7 @@ import {
   ProcessedImageField,
   PreparedGrid,
   FieldGridInput,
-  ExtendedCodebookPhase,
+  CodebookPhase,
   Unit,
   SetState,
   JobServer,

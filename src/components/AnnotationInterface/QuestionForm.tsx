@@ -1,4 +1,4 @@
-import { AnnotationLibrary, CodebookPhase, ExtendedCodebookPhase, Unit } from "@/app/types";
+import { AnnotationLibrary, CodebookPhase, Unit } from "@/app/types";
 import AnnotationManager from "@/classes/AnnotationManager";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
@@ -10,7 +10,7 @@ import QuestionIndexStep from "./QuestionIndexStep";
 
 interface QuestionFormProps {
   unit: Unit;
-  codebook: ExtendedCodebookPhase;
+  codebook: CodebookPhase;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
   blockEvents: boolean;

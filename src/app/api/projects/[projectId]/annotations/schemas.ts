@@ -1,16 +1,20 @@
 import { SafeNameSchema } from "@/app/api/schemaHelpers";
 import { z } from "zod";
 
+export const VariableIdSchema = z.number().int().positive();
+
 export const GeneralAnnotationSchema = z.object({
   id: z.string(),
-  variable: SafeNameSchema,
-  variableId: z.number(),
-  code: z.string().optional(),
-  value: z.number().optional(),
+  variableId: VariableIdSchema,
 
   created: z.coerce.date(),
   deleted: z.coerce.date().optional(),
-  finishVariable: z.boolean().optional(), // marks whether this annotation finishes the variable
+
+  finishVariable: z.boolean(),
+  finishLoop: z.boolean(),
+
+  code: z.string().optional(),
+  value: z.number().optional(),
 
   // TODO: let server return a hash of each possible annotation (e.g. type+code+value),
   // and include this in the annotation. Server can then quickly validate whether
@@ -19,18 +23,23 @@ export const GeneralAnnotationSchema = z.object({
   // that excludes it (though we won't validate all branch combinations)
   hash: z.string().optional(),
 
+  context: z
+    .object({
+      field: z.string(),
+      span: z.array(z.number()).optional(),
+    })
+    .optional(),
+
   client: z.object({
     color: z.string().optional(),
+    positions: z.set(z.number()).optional(),
+    text: z.string().optional(),
   }),
 });
 
 export const QuestionAnnotationSchema = GeneralAnnotationSchema.extend({
   type: z.literal("question"),
-  item: z.string(),
-  context: z.object({
-    fields: z.array(z.string()).optional(),
-    annotationIds: z.array(z.string()).optional(),
-  }),
+  item: z.string().optional(),
 });
 
 export const SpanAnnotationSchema = GeneralAnnotationSchema.extend({
@@ -40,8 +49,6 @@ export const SpanAnnotationSchema = GeneralAnnotationSchema.extend({
   length: z.number(),
   span: z.array(z.number()), // this could be optional since its automatically omputed from offset and length. Ideally eventualy just one is required, but dont fix this until offset/length has been changed to allow gaps
 
-  positions: z.array(z.number()).optional(),
-  text: z.array(z.number()).optional(),
   // We should make two position properties: char_span and token_span. Both look like: 2-3, 6-9
 });
 
@@ -59,7 +66,6 @@ export const SubmitAnnotationSchema = GeneralAnnotationSchema.extend({
 });
 export const SkipAnnotationSchema = GeneralAnnotationSchema.extend({
   type: z.literal("skip"),
-  skip: z.boolean(),
 });
 
 export const AnnotationSchema = z.discriminatedUnion("type", [
@@ -69,3 +75,9 @@ export const AnnotationSchema = z.discriminatedUnion("type", [
   SubmitAnnotationSchema,
   SkipAnnotationSchema,
 ]);
+
+export const VariableStatusSchema = z.object({
+  variableId: VariableIdSchema,
+  done: z.boolean(),
+  skip: z.boolean(),
+});

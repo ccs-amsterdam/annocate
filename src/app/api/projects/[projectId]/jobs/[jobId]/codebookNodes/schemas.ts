@@ -14,10 +14,6 @@ export const CodebookNodeSchemaBase = z.object({
       "The name of the node. Needs to be unique within the codebook, and only contain alphanumeric characters and underscores.",
     example: "unique_name",
   }),
-  phaseId: z.number().nullable().openapi({
-    title: "Phase ID",
-    description: "The ID of the phase this node belongs to. Null if it is a root node.",
-  }),
   parentId: z.number().nullable().openapi({
     title: "The id of another codebook node that is the parent of this node",
     description: "The ID of the parent of this node, or null if it is a root node",

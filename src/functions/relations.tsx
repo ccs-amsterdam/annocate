@@ -1,6 +1,6 @@
 import {
   AnnotationLibrary,
-  ExtendedVariable,
+  CodebookVariable,
   TokenSelection,
   ValidTokenDestinations,
   ValidTokenRelations,
@@ -8,7 +8,7 @@ import {
 
 export const getValidTokenRelations = (
   annotationLib: AnnotationLibrary,
-  variable: ExtendedVariable,
+  variable: CodebookVariable,
 ): ValidTokenRelations | null => {
   if (variable.type !== "relation") return null;
 

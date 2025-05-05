@@ -106,7 +106,7 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
   function recursiveProcess(
     parents: CodebookNodeResponse[],
     parentPath: CodebookNode["parentPath"],
-    insidePhase?: Phase,
+    insidePhase?: { phaseType: Phase; phaseId: number },
   ): CodebookNode[] {
     let codebook: CodebookNode[] = [];
     const sortedParents = parents.sort((a, b) => a.position - b.position);
@@ -115,7 +115,10 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
     for (let i = 0; i < n; i++) {
       const parent = sortedParents[i];
       const typeDetails = codebookNodeTypeDetails(parent.data.type);
-      const phase = insidePhase ?? typeDetails.phases[0]; // if not insidePhase, the current node is a phase
+      const phase = insidePhase ?? {
+        phaseType: typeDetails.phases[0],
+        phaseId: parent.id,
+      };
 
       if (used.has(parent.id)) throw new Error("Cycle detected in codebook");
       used.add(parent.id);
@@ -132,7 +135,7 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
         parentPath,
         children: allChildren.map((child) => child.id),
         treeType: typeDetails.treeType,
-        phase,
+        ...phase,
       };
       codebook.push(nodeParent);
       codebook.push(...allChildren);

@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, ReactElement, useMemo, useEffect } from 
 import standardizeColor from "@/functions/standardizeColor";
 import useWatchChange from "@/hooks/useWatchChange";
 import {
-  ExtendedVariable,
+  CodebookVariable,
   Code,
   RelationOption,
   Annotation,
@@ -22,7 +22,7 @@ const useRelationSelector = (
   doc: Doc,
   annotationLib: AnnotationLibrary,
   annotationManager: AnnotationManager,
-  variable: ExtendedVariable | null,
+  variable: CodebookVariable | null,
 ): [ReactElement<any> | null, TriggerSelector, boolean] => {
   const [open, setOpen] = useState(false);
   const positionRef = useRef<HTMLSpanElement | null>(null);
@@ -114,7 +114,7 @@ const SelectEdgePage = ({ edgeOptions, setEdge, setOpen }: SelectEdgePageProps) 
 };
 
 interface SelectRelationPageProps {
-  variable: ExtendedVariable;
+  variable: CodebookVariable;
   edge: RelationOption;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
@@ -172,7 +172,7 @@ const SelectRelationPage = ({ variable, edge, annotationLib, annotationManager, 
   return <PopupSelection header={`${edge.from.code} → ${edge.to.code}`} options={options} onSelect={onSelect} />;
 };
 
-function getOptions(from: Annotation[], to: Annotation[], variable: ExtendedVariable) {
+function getOptions(from: Annotation[], to: Annotation[], variable: CodebookVariable) {
   const edgeRelations: Record<string, CodeSelectorValue> = {};
   const validFrom = variable.validFrom;
   const validTo = variable.validTo;
