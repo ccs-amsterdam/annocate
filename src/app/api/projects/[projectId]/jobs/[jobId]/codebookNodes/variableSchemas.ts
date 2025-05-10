@@ -122,7 +122,7 @@ export const CodebookVariableBaseSchema = z.object({
   instruction: CodebookInstruction,
   instructionStyle: CodebookInstructionStyle,
   instructionAuto: CodebookInstructionAuto,
-  fields: z.array(z.string()).optional(),
+  field: z.string().optional(),
 });
 
 //
@@ -143,17 +143,17 @@ export const CodebookQuestionVariableBaseSchema = CodebookVariableBaseSchema.ext
     description:
       "The answer type determines how the user can submit their answer. For instance, by clicking a button or swiping.",
   }),
-  perField: z
-    .array(z.string())
-    .optional()
-    .openapi({
-      title: "Per Field",
-      description:
-        "Optionally, you can ask this question for a specific field, or ask it multiple times for multiple fields. If a field is numbered (e.g., comment.1, comment.1) it will be asked for each item",
-      example: ["title", "lead"],
-    }),
-  perAnnotation: z.array(z.string()).optional(),
-  focusAnnotations: z.boolean().optional(),
+  // perField: z
+  //   .array(z.string())
+  //   .optional()
+  //   .openapi({
+  //     title: "Per Field",
+  //     description:
+  //       "Optionally, you can ask this question for a specific field, or ask it multiple times for multiple fields. If a field is numbered (e.g., comment.1, comment.1) it will be asked for each item",
+  //     example: ["title", "lead"],
+  //   }),
+  // perAnnotation: z.array(z.string()).optional(),
+  // focusAnnotations: z.boolean().optional(),
 });
 
 export const CodebookVariableItemSchema = z.object({

@@ -157,9 +157,9 @@ const NewCodePage = ({
         setOpen(false);
       } else if (value.delete) {
         const keepEmpty = editMode;
-        if (value.id) annotationManager.rmAnnotation(value.id, keepEmpty);
+        if (value.id) annotationManager.rmAnnotations([value.id], keepEmpty);
       } else {
-        if (value.code) annotationManager.createSpanAnnotation(variable.name, value.code, span[0], span[1], tokens);
+        if (value.code) annotationManager.createSpanAnnotation(variable.id, value.code, span[0], span[1], tokens);
       }
       if (!ctrlKey) {
         setOpen(false);
@@ -182,7 +182,7 @@ const NewCodePage = ({
         if (doneId[id]) continue;
         doneId[id] = true;
         const a = { ...annotationLib.annotations[id] };
-        if (a.variable !== variable.name) continue;
+        if (a.variableId !== variable.id) continue;
         if (a.code === "EMPTY") continue;
         //if (!codeMap[a.value]) continue;
         existing.push(a);
@@ -260,16 +260,16 @@ const getAnnotationOptions = (
     if (!codeMap) continue;
 
     const span = annotation.span;
-    const key = annotation.variable + ":" + span?.[0] + "-" + span?.[1];
+    const key = annotation.variableId + ":" + span?.[0] + "-" + span?.[1];
     const label = span ? '"' + getTextSnippet(tokens, span) + '"' : "";
     const color = getColor(annotation.code ?? "", codeMap);
     if (!variableSpans[key]) {
       variableSpans[key] = {
-        tag: annotation.variable,
+        tag: annotation.variableId,
         label,
         colors: [color],
         value: {
-          variable: annotation.variable,
+          variable: annotation.variableId,
           span: annotation.span,
         },
       };

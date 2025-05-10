@@ -151,7 +151,7 @@ const allowedAnnotations = (
     const a = annotationLib.annotations[id];
 
     if (!showAll) {
-      if (!showValues?.[a.variable]) continue;
+      if (!showValues?.[a.variableId]) continue;
       //const codeMap = showValues[a.variable].codeMap;
       //const code = a.value;
       //if (!codeMap[a.value] && code !== "EMPTY") continue;
@@ -321,9 +321,9 @@ const AnnotationPopup = ({ tokens, tokenIndex, annotationLib, showValues }: Anno
     const tokenAnnotations = annotationIds.map((id) => annotationLib.annotations[id]);
     const ids = Object.keys(tokenAnnotations);
     const list = ids.reduce((arr: ReactElement<any>[], id, i) => {
-      const variable = tokenAnnotations[i].variable;
+      const variableId = tokenAnnotations[i].variableId;
       const value = tokenAnnotations[i].code;
-      if (!showValues?.[variable]) return arr;
+      if (!showValues?.[variableId]) return arr;
 
       const color = standardizeColor(tokenAnnotations[i].client.color);
 

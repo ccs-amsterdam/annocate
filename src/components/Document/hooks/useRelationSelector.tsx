@@ -127,9 +127,9 @@ const SelectRelationPage = ({ variable, edge, annotationLib, annotationManager, 
       if (value.cancel) {
         setOpen(false);
       } else if (value.delete) {
-        if (value.id) annotationManager.rmAnnotation(value.id);
+        if (value.id) annotationManager.rmAnnotations([value.id]);
       } else {
-        if (value.code) annotationManager.createRelationAnnotation(variable.name, value.code, edge.from, edge.to);
+        if (value.code) annotationManager.createRelationAnnotation(variable.id, value.code, edge.from, edge.to);
       }
 
       if (!ctrlKey) setOpen(false);
@@ -145,7 +145,7 @@ const SelectRelationPage = ({ variable, edge, annotationLib, annotationManager, 
       if (!annotation.id || annotation.type !== "relation") continue;
       if (annotation.fromId !== edge.from.id) continue;
       if (annotation.toId !== edge.to.id) continue;
-      existing[annotation.variable + "|" + annotation.code] = annotation.id;
+      existing[annotation.variableId + "|" + annotation.code] = annotation.id;
     }
 
     const options = edge.relations.map((code) => {
@@ -178,14 +178,14 @@ function getOptions(from: Annotation[], to: Annotation[], variable: CodebookVari
   const validTo = variable.validTo;
 
   for (let f of from) {
-    if (!f.variable || !f.code) continue;
-    const fromRelations = validFrom?.[f.variable]?.["*"] || validFrom?.[f.variable]?.[f.code] || null;
+    if (!f.variableId || !f.code) continue;
+    const fromRelations = validFrom?.[f.variableId]?.["*"] || validFrom?.[f.variableId]?.[f.code] || null;
     if (!fromRelations) continue;
 
     for (let t of to) {
       if (f.id === t.id) continue;
-      if (!t.variable || !t.code) continue;
-      const toRelations = validTo?.[t.variable]?.["*"] || validTo?.[t.variable]?.[t.code] || null;
+      if (!t.variableId || !t.code) continue;
+      const toRelations = validTo?.[t.variableId]?.["*"] || validTo?.[t.variableId]?.[t.code] || null;
       if (!toRelations) continue;
 
       const relations: Code[] = [];
@@ -196,7 +196,7 @@ function getOptions(from: Annotation[], to: Annotation[], variable: CodebookVari
       }
       if (relations.length === 0) continue;
 
-      const key = `${f.variable}:${f.code}:${t.variable}:${t.code}`;
+      const key = `${f.variableId}:${f.code}:${t.variableId}:${t.code}`;
 
       if (!edgeRelations[key]?.relationOption) {
         edgeRelations[key] = {

@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, RefObject, useMemo } from "react";
-import { AnswerOption, AnswerItem, QuestionItem, Code, VariableItem, Annotation } from "@/app/types";
+import {
+  AnswerOption,
+  AnswerItem,
+  QuestionItem,
+  Code,
+  VariableItem,
+  Annotation,
+  QuestionAnnotation,
+} from "@/app/types";
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
 import styled from "styled-components";
 import { Button } from "@/components/ui/button";
@@ -9,9 +17,8 @@ import { OnSelectParams } from "./AnswerField";
 const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 
 interface ScaleProps {
-  variable: string;
   items: VariableItem[];
-  annotations: Annotation[];
+  annotations: QuestionAnnotation[];
   options: Code[];
   onSelect: (params: OnSelectParams) => void;
   onFinish: () => void;
@@ -19,16 +26,7 @@ interface ScaleProps {
   questionIndex: number;
 }
 
-const Scale = ({
-  items,
-  variable,
-  annotations,
-  options,
-  onSelect,
-  onFinish,
-  blockEvents,
-  questionIndex,
-}: ScaleProps) => {
+const Scale = ({ items, annotations, options, onSelect, onFinish, blockEvents, questionIndex }: ScaleProps) => {
   // render buttons for options (an array of objects with keys 'label' and 'color')
   // On selection perform onSelect function with the button label as input
   // if canDelete is TRUE, also contains a delete button, which passes null to onSelect
@@ -37,12 +35,10 @@ const Scale = ({
   const continueButtonRef = useRef<HTMLButtonElement>(null);
 
   function countAnswered() {
-    if (items.length > 0) {
-      return items.filter((item) => {
-        return annotations.some((a) => a.variable === `${variable}.${item.name}`);
-      }).length;
-    }
-    return annotations.some((a) => a.variable === variable) ? 1 : 0;
+    if (items.length === 1) return annotations.length ? 1 : 0;
+    return items.filter((item) => {
+      return annotations.some((a) => a.item === item.name);
+    }).length;
   }
   const nAnswered = countAnswered();
   const done = items.length === 0 ? nAnswered > 0 : nAnswered >= items.length;
@@ -90,7 +86,7 @@ const Scale = ({
       }
 
       // space or enter
-      if (event.keyCode === 32 || event.keyCode === 13) {
+      if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
         event.stopPropagation();
         if (selectedItem === -1) {
@@ -135,7 +131,6 @@ const Scale = ({
       </div>
 
       <Items
-        variable={variable}
         annotations={annotations}
         selectedItem={selectedItem}
         items={items}
@@ -161,8 +156,7 @@ const Scale = ({
 };
 
 interface ItemsProps {
-  variable: string;
-  annotations: Annotation[];
+  annotations: QuestionAnnotation[];
   selectedItem: number;
   items: VariableItem[];
   itemRefs: RefObject<HTMLDivElement | null>[];
@@ -173,7 +167,6 @@ interface ItemsProps {
 }
 
 const Items = ({
-  variable,
   annotations,
   selectedItem,
   items,
@@ -197,7 +190,6 @@ const Items = ({
             key={itemIndex}
             itemObj={itemObj}
             itemRef={itemRefs[itemIndex]}
-            variable={variable}
             annotations={annotations}
             selectedItem={selectedItem}
             itemIndex={itemIndex}
@@ -214,8 +206,7 @@ const Items = ({
 interface ItemProps {
   itemObj: QuestionItem | undefined;
   itemRef: RefObject<HTMLDivElement | null>;
-  variable: string;
-  annotations: Annotation[];
+  annotations: QuestionAnnotation[];
   selectedItem: number;
   itemIndex: number;
   options: Code[];
@@ -226,7 +217,6 @@ interface ItemProps {
 const Item = ({
   itemObj,
   itemRef,
-  variable,
   annotations,
   selectedItem,
   itemIndex,
@@ -248,8 +238,8 @@ const Item = ({
       </div>
       <div className="m-auto flex max-w-[min(500px,100%)] scroll-m-24 gap-2 p-1 pb-1" ref={itemRef}>
         {options.map((option, buttonIndex: number) => {
-          const varname = itemObj ? `${variable}.${itemObj.name}` : variable;
-          const isCurrent = annotations.find((a) => a.variable === varname)?.code === option.code;
+          const current = itemObj ? annotations.find((a) => a.item === itemObj.name) : annotations[0];
+          const isCurrent = current ? current.code === option.code : false;
           const isSelected = buttonIndex === selectedButton && itemIndex === selectedItem;
 
           // if option doesn't have color, we use primary color as background and
@@ -289,15 +279,5 @@ const Item = ({
     </div>
   );
 };
-
-// Pretty cool idea, but need to consider first whether makes more sense to include 'short' label in code
-// function getShortLabel(option: Code) {
-//   if (option.code.includes("=")) return option.code.split("=")[0];
-//   return null;
-// }
-// function getLongLabel(option: Code) {
-//   if (option.code.includes("=")) return option.code.split("=")[1];
-//   return option.code;
-// }
 
 export default React.memo(Scale);

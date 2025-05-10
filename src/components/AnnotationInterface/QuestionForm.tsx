@@ -7,19 +7,20 @@ import ShowQuestion from "./ShowQuestion";
 import Markdown from "../Common/Markdown";
 import VariableInstructions from "./VariableInstructions";
 import QuestionIndexStep from "./QuestionIndexStep";
+import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 
 interface QuestionFormProps {
-  unit: Unit;
-  codebook: CodebookPhase;
-  annotationLib: AnnotationLibrary;
-  annotationManager: AnnotationManager;
   blockEvents: boolean;
   height: number;
 }
 
-const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockEvents, height }: QuestionFormProps) => {
-  const variable = annotationLib.variables[annotationLib.variableIndex];
+const QuestionForm = ({ blockEvents, height }: QuestionFormProps) => {
+  const { unit, progress, codebook, annotationLib, annotationManager } = useJobContext();
   const questionRef = useRef<HTMLDivElement>(null);
+
+  const phase = progress.phases[progress.currentPhase];
+  const codebookPhase = codebook.phases[phase.currentVariable];
+  const variable = codebookPhase.variables[phase.currentVariable];
 
   useEffect(() => {
     const container = questionRef.current;
@@ -28,34 +29,34 @@ const QuestionForm = ({ unit, codebook, annotationLib, annotationManager, blockE
     const handleScroll = (e: Event) => overflowBordersEvent(container, true, false);
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [annotationLib.variableIndex]);
+  }, [phase.currentVariable]);
 
   if (!unit || !variable) return null;
 
   const maxHeightPercent = !variable.layout ? 100 : 60;
 
   let animate = "";
-  if (annotationLib.previousIndex < annotationLib.variableIndex) animate = "animate-slide-in-right ease-out";
-  if (annotationLib.previousIndex > annotationLib.variableIndex) animate = "animate-slide-in-left ease-out";
+  if (phase.previousVariable < phase.currentVariable) animate = "animate-slide-in-right ease-out";
+  if (phase.previousVariable > phase.currentVariable) animate = "animate-slide-in-left ease-out";
 
   return (
     <div
       ref={questionRef}
       style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
-      className={`${getCodebookStyling(codebook).container} relative z-30 flex flex-col overflow-hidden text-[length:inherit] transition-[border]`}
+      className={`${getCodebookStyling(codebookPhase).container} relative z-30 flex flex-col overflow-hidden text-[length:inherit] transition-[border]`}
     >
-      <div className={`${getCodebookStyling(codebook).text} relative z-40 flex w-full flex-col px-3 pt-1`}>
-        {/* <VariableInstructions unit={unit} annotationLib={annotationLib} codebook={codebook} /> */}
-        <div className={`${getCodebookStyling(codebook).question} ${animate}`}>
-          <ShowQuestion unit={unit} annotationLib={annotationLib} codebook={codebook} />
+      <div className={`${getCodebookStyling(codebookPhase).text} relative z-40 flex w-full flex-col px-3 pt-1`}>
+        {/* <VariableInstructions variable={variable} /> */}
+        <div className={`${getCodebookStyling(codebookPhase).question} ${animate}`}>
+          <ShowQuestion variable={variable} />
         </div>
       </div>
 
       <div
-        key={annotationLib.variableIndex}
+        key={phase.currentVariable}
         className={`${animate} relative flex h-full w-full flex-auto text-[length:inherit] text-foreground will-change-transform`}
       >
-        <AnswerField annotationLib={annotationLib} annotationManager={annotationManager} blockEvents={blockEvents} />
+        <AnswerField blockEvents={blockEvents} />
       </div>
     </div>
   );

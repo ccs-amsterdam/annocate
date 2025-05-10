@@ -43,49 +43,20 @@ export const AnnotateUnitSchema = z.object({
 export const PhaseTypeSchema = z.enum(["survey", "annotation"]);
 
 const PhaseProgressSchema = z.object({
-  type: PhaseTypeSchema,
-  label: z.string(),
-  status: ProgressStatusSchema,
-  // variables: z.array(VariableProgressSchema),
+  phaseId: z.number(),
+  unitsDone: z.array(z.boolean()),
 });
 
-export const SurveyPhaseProgressSchema = PhaseProgressSchema.extend({
-  type: z.literal("survey"),
-});
-export const AnnotatePhaseProgressSchema = PhaseProgressSchema.extend({
-  type: z.literal("annotation"),
-  currentUnit: z.number(),
-  nTotal: z.number(),
-  nCoded: z.number(),
-});
-
-export const AnnotateProgressSchema = z.object({
-  phase: z.number(),
-  phases: z.array(z.discriminatedUnion("type", [SurveyPhaseProgressSchema, AnnotatePhaseProgressSchema])),
-  settings: z.object({
-    canSkip: z.boolean().default(false),
-    canGoBack: z.boolean().default(true),
-  }),
-});
-
-const JobStateAnnotationCode = z.union([z.array(z.string()), z.string()]);
-const JobStateAnnotationValue = z.union([z.array(z.number()), z.number()]);
-export const JobStateAnnotationSchema = z.object({
-  code: JobStateAnnotationCode.optional(),
-  value: JobStateAnnotationValue.optional(),
-});
-export const JobStateAnnotationsSchema = z.record(z.string(), JobStateAnnotationSchema);
-
-export const GetJobStateParamsSchema = z
+export const GetSessionParamsSchema = z
   .object({
     userId: z.string().optional(),
   })
   .catchall(z.union([z.string(), z.number()]));
 
-export const GetJobStateResponseSchema = z.object({
+export const GetSessionResponseSchema = z.object({
   sessionToken: z.string(),
   codebook: z.array(CodebookNodeResponseSchema),
-  progress: AnnotateProgressSchema,
+  phaseProgress: z.array(PhaseProgressSchema),
   globalAnnotations: z.array(AnnotationSchema),
 });
 
@@ -95,11 +66,6 @@ export const GetUnitResponseSchema = z.object({
     data: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
     annotations: z.array(AnnotationSchema),
     done: z.boolean(),
-  }),
-  phaseProgress: z.object({
-    nCoded: z.number(),
-    nTotal: z.number(),
-    currentUnit: z.number(),
   }),
 });
 

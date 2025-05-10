@@ -18,15 +18,15 @@ export const getValidTokenRelations = (
     const i = parseInt(key);
     for (let id of annotationLib.byToken[i]) {
       const a = annotationLib.annotations[id];
-      if (!a.variable || !a.code) continue;
+      if (!a.variableId || !a.code) continue;
 
-      const wildcard = variable?.validFrom?.[a.variable]?.["*"];
-      const relationIds = wildcard || variable?.validFrom?.[a.variable]?.[a.code] || null;
+      const wildcard = variable?.validFrom?.[a.variableId]?.["*"];
+      const relationIds = wildcard || variable?.validFrom?.[a.variableId]?.[a.code] || null;
 
       if (!relationIds) continue;
       if (!valid[i]) valid[i] = {};
 
-      const fromKey = a.variable + "|" + a.code;
+      const fromKey = a.variableId + "|" + a.code;
       if (!valid[i][fromKey]) valid[i][fromKey] = {};
 
       for (let relationIdKey of Object.keys(relationIds)) {
@@ -60,7 +60,7 @@ export const getValidTokenDestinations = (
   const startAnnotations = startAnnotationIds.map((id) => annotationLib.annotations[id]);
 
   for (let sa of startAnnotations) {
-    const fromKey = sa.variable + "|" + sa.code;
+    const fromKey = sa.variableId + "|" + sa.code;
     if (!validIds[fromKey]) continue; // skip if there are no destinations at all
 
     for (let key of Object.keys(annotationLib.byToken)) {
@@ -68,10 +68,10 @@ export const getValidTokenDestinations = (
       const destinationAnnotationIds = annotationLib.byToken[i];
       for (let destinationId of destinationAnnotationIds) {
         const da = annotationLib.annotations[destinationId];
-        const toKey = da.variable + "|" + da.code;
-        const toKeyWildcard = da.variable + "|*";
+        const toKey = da.variableId + "|" + da.code;
+        const toKeyWildcard = da.variableId + "|*";
         if (!validIds[fromKey][toKey] && !validIds[fromKey][toKeyWildcard]) continue; // skip if there are no destinations for this variable/value
-        if (da.variable === sa.variable && da.code === sa.code) {
+        if (da.variableId === sa.variableId && da.code === sa.code) {
           if (da.type === "span" && sa.type === "span") {
             if (da.offset === sa.offset && da.length === sa.length) continue;
           } else {

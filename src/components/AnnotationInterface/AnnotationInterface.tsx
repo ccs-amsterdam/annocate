@@ -1,5 +1,5 @@
 import { JobServer } from "@/app/types";
-import AnnotatorProvider, { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import AnnotatorProvider, { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 import QuestionTask from "./QuestionTask";
 import { ReactNode, useEffect, useRef } from "react";
 import ResponsiveButtonGroup from "../ui/ResponsiveButtonGroup";
@@ -45,7 +45,7 @@ function AnnotationMenu() {
 }
 
 function AnnotationUnit({ blockEvents, jobServer }: { blockEvents?: boolean; jobServer: JobServer }) {
-  const { error, progress, finished } = useUnit();
+  const { error, progress, finished } = useJobContext();
   if (error)
     return (
       <div className="flex justify-center">

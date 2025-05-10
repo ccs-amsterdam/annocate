@@ -1,11 +1,11 @@
-import { Progress, SwipeRefs, Transition } from "@/app/types";
+import { ProgressState, SwipeRefs, Transition } from "@/app/types";
 import Document from "@/components/Document/Document";
 import swipeControl from "@/functions/swipeControl";
 import React, { RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSwipeable } from "react-swipeable";
 import QuestionForm from "./QuestionForm";
 // import FeedbackPortal from "./FeedbackPortal";
-import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 import QuestionIndexStep from "./QuestionIndexStep";
 
 interface QuestionTaskProps {
@@ -13,37 +13,13 @@ interface QuestionTaskProps {
 }
 
 const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
-  const { unit, height, codebook, annotationLib, finishUnit, annotationManager, progress, selectUnit } = useUnit();
-  const divref = useRef<HTMLDivElement>(null);
-  const textref = useRef<HTMLDivElement>(null);
-  const boxref = useRef<HTMLDivElement>(null);
-  const coderef = useRef<HTMLDivElement>(null);
+  const { unit, height, codebook, annotationLib, annotationManager, progress } = useJobContext();
   const { animateUnit } = useProgressTransition({ progress });
-  const refs = useMemo(() => {
-    return { text: textref, box: boxref, code: coderef };
-  }, []);
+  const { refs, menuSwipe, textSwipe } = useSwipe();
+  const divref = useRef<HTMLDivElement>(null);
 
-  const variable = annotationLib.variables?.[annotationLib.variableIndex];
-
-  function onSwipe(transition: Transition) {
-    if (!transition.code) return;
-    const context = { fields: variable.fields };
-    annotationManager.createQuestionAnnotation(variable.name, transition.code, false, context);
-    annotationManager.postVariable(true).then((res) => {
-      if (res.done === "DONE") {
-        finishUnit();
-        // nextUnitTransition(refs, transition);
-        // setTimeout(() => {
-        //   // showUnit(refs.text, refs.box, refs.code);
-        // }, 100);
-      } else {
-        // nextQuestionTransition(refs, transition);
-      }
-    });
-  }
-
-  const textSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, false));
-  const menuSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, true));
+  const phase = progress.phases[progress.currentPhase];
+  const variable = codebook.phases[phase.currentVariable].variables[phase.currentVariable];
 
   if (!unit || !variable) return null;
 
@@ -51,30 +27,19 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 
   return (
     <div
-      key={progress.phase + unit.token}
+      key={progress.currentPhase + "." + unit.token}
       className={`${animateUnit} relative flex h-full w-full flex-col overflow-hidden bg-background will-change-transform`}
       ref={divref}
     >
-      {/* <FeedbackPortal
-        variable={variable.name}
-        conditionReport={conditionReport}
-        setConditionReport={setConditionReport}
-      /> */}
-
-      {/* <div className="absolute w-full">
-        <QuestionIndexStep />
-      </div> */}
-
       {hasContent ? (
-        <div {...textSwipe} className={`relative z-10 h-full min-h-0 flex-auto overflow-hidden`}>
-          <div ref={refs.box} className="relative z-20 h-full overflow-hidden will-change-auto">
-            {/* This div moves around behind the div containing the document to show the swipe code  */}
-            <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
-            <div ref={refs.text} className={`relative top-0 h-full`}>
-              <Document centered showAll={true} focus={variable?.fields} blockEvents={blockEvents} />
-            </div>
-          </div>
-        </div>
+        <SwipeableDocument refs={refs} textSwipe={textSwipe}>
+          <Document
+            centered
+            showAll={true}
+            focus={variable?.field ? [variable.field] : undefined}
+            blockEvents={blockEvents}
+          />
+        </SwipeableDocument>
       ) : null}
 
       <div
@@ -82,18 +47,58 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         // key={unit.token + annotationLib.variableIndex} // Seems not needed for animate, but keeping it here just in case
         className={`${!hasContent ? "h-full overflow-auto" : null} relative flex-auto`}
       >
-        <QuestionForm
-          unit={unit}
-          codebook={codebook}
-          annotationLib={annotationLib}
-          annotationManager={annotationManager}
-          blockEvents={blockEvents}
-          height={height}
-        />
+        <QuestionForm blockEvents={blockEvents} height={height} />
       </div>
     </div>
   );
 };
+
+function SwipeableDocument({
+  children,
+  refs,
+  textSwipe,
+}: {
+  children: React.ReactNode;
+  refs: SwipeRefs;
+  textSwipe: any;
+}) {
+  return (
+    <div {...textSwipe} className={`relative z-10 h-full min-h-0 flex-auto overflow-hidden`}>
+      <div ref={refs.box} className="relative z-20 h-full overflow-hidden will-change-auto">
+        {/* This div moves around behind the div containing the document to show the swipe code  */}
+        <div ref={refs.code} className="absolute w-full px-1 py-2 text-lg" />
+        <div ref={refs.text} className={`relative top-0 h-full`}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function useSwipe() {
+  const { codebook, progress, annotationManager } = useJobContext();
+  const textref = useRef<HTMLDivElement>(null);
+  const boxref = useRef<HTMLDivElement>(null);
+  const coderef = useRef<HTMLDivElement>(null);
+  const refs = useMemo(() => {
+    return { text: textref, box: boxref, code: coderef };
+  }, []);
+
+  const phase = progress.phases[progress.currentPhase];
+  const variable = codebook.phases[progress.currentPhase].variables[phase.currentVariable];
+
+  function onSwipe(transition: Transition) {
+    if (!transition.code) return;
+    const context = variable.field ? { field: variable.field } : undefined;
+    annotationManager.createQuestionAnnotation(variable.id, transition.code, undefined, false, context);
+    annotationManager.finishVariable();
+  }
+
+  const textSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, false));
+  const menuSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, true));
+
+  return { refs, textSwipe, menuSwipe };
+}
 
 // const nextUnitTransition = (r: SwipeRefs, trans: Transition | undefined) => {
 //   const direction = trans?.direction;
@@ -117,22 +122,23 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
 //   // }
 // };
 
-function useProgressTransition({ progress }: { progress: Progress }) {
+function useProgressTransition({ progress }: { progress: ProgressState }) {
   const prevUnit = useRef({ phase: -1, unit: 0 });
 
   const animateUnit = useMemo(() => {
     // dont animate on first render (phase -1)
     let animateUnit = prevUnit.current.phase === -1 ? "" : "animate-slide-in-bottom ease-out";
 
-    const phase = progress.phases[progress.phase];
-    const currentUnit = phase.type === "annotation" ? phase.currentUnit : 0;
+    const phase = progress.phases[progress.currentPhase];
+    const currentUnit = phase.currentUnit;
+
     if (
-      (progress.phase === prevUnit.current.phase && currentUnit < prevUnit.current.unit) ||
-      progress.phase < prevUnit.current.phase
+      (progress.currentPhase === prevUnit.current.phase && currentUnit < prevUnit.current.unit) ||
+      progress.currentPhase < prevUnit.current.phase
     )
       animateUnit = "animate-slide-in-top  ease-out";
 
-    prevUnit.current = { phase: progress.phase, unit: currentUnit };
+    prevUnit.current = { phase: progress.currentPhase, unit: currentUnit };
 
     return animateUnit;
   }, [progress]);

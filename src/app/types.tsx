@@ -1,10 +1,8 @@
 import { CSSProperties, Dispatch, MutableRefObject, ReactElement, RefObject, SetStateAction } from "react";
 import { z } from "zod";
 import {
-  AnnotateProgressSchema,
-  GetJobStateResponseSchema,
+  GetSessionResponseSchema,
   GetUnitResponseSchema,
-  JobStateAnnotationsSchema,
   PhaseTypeSchema,
   PostAnnotationUpdateSchema,
   PostAnnotationResponseSchema,
@@ -97,6 +95,7 @@ export interface Authorization {
 }
 
 export type CodebookNodeData = z.infer<typeof CodebookNodeDataSchema>;
+export type CodebookNodeLeaf = Extract<CodebookNodeData, { type: "Question" | "Annotation task" }>;
 export type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 export type CodebookNodeResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type CodebookNode = CodebookNodeResponse & {
@@ -125,22 +124,9 @@ export type GetUnit = z.infer<typeof GetUnitResponseSchema>;
 export type PostAnnotationsResponse = z.infer<typeof PostAnnotationResponseSchema>;
 export type PostAnnotation = z.infer<typeof PostAnnotationUpdateSchema>;
 export type Unit = GetUnit["unit"];
-export type PhaseProgress = GetUnit["phaseProgress"];
 
 export type GetUnitCache = Omit<GetUnit, "nTotal" | "nCoded" | "currentUnit">;
-export type GetJobState = z.infer<typeof GetJobStateResponseSchema>;
-export type Progress = z.infer<typeof AnnotateProgressSchema>;
-
-// We compute the annotateProgress (i.e. the progress of units in annotation phase)
-// server side, because we don't want to send all the unit data to the client.
-// The other progress (i.e. the progress of survey phases) is computed client side,
-// (because it has all the needed data and keeps being updated anyway)
-export type JobState = Omit<GetJobState, "annotateProgress"> & {
-  progress: Progress;
-};
-
-// !!!!!!!!!!!!!!!!!!!!!!!!! TODO: after refactor rename extendedcodebookphase to codebookphase,
-// and extendedvariable to codebookphasevariable
+export type GetSession = z.infer<typeof GetSessionResponseSchema>;
 
 export type CodebookVariable = VariableSchema & {
   // Adds some client side properties that are not stored in the backend
@@ -152,11 +138,44 @@ export type CodebookVariable = VariableSchema & {
   validTo?: ValidRelation;
 };
 
+export type BranchNodeId = number;
+export type Branch = {
+  dependencies: number[]; // ids of variables that are used in the if condition
+  condition: string; // the js code to be evaluated
+  skips: number[]; // ids of variables that are skipped if the condition is true
+};
+export type Branching = Record<BranchNodeId, Branch>;
+
+export type ProgressState = {
+  currentPhase: number;
+  phases: {
+    currentVariable: number;
+    previousVariable: number;
+    variables: {
+      id: number;
+      label: string;
+      done: boolean;
+      skip: boolean;
+    }[];
+    currentUnit: number;
+    unitsDone: boolean[];
+    done: boolean;
+  }[];
+  settings: {
+    canGoBack: boolean;
+    canSkip: boolean;
+  };
+};
+
 export type CodebookPhase = {
   id: number;
   label: string;
   type: Phase;
   variables: CodebookVariable[];
+};
+export type CodebookState = {
+  branching: Branching;
+  phases: CodebookPhase[];
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;
@@ -177,15 +196,13 @@ export interface JobServer {
   getDebriefing?: () => Promise<Debriefing>;
 
   // These are the only parts inheriting classes need to implement
-  getJobState: () => Promise<GetJobState>;
+  getSession: () => Promise<GetSession>;
   getUnit: (phaseId: number, unitIndex?: number) => Promise<GetUnit | null>;
   postAnnotations: (postAnnotation: PostAnnotation) => Promise<PostAnnotationsResponse>;
   // actual GetUnit and postAnnotations implementation
   //
   previewMode?: boolean;
 }
-
-export type JobStateAnnotations = z.infer<typeof JobStateAnnotationsSchema>;
 
 ///////////
 ///////////
@@ -311,14 +328,15 @@ export type AnnotationDictionary = Record<AnnotationID, Annotation>;
 export type TokenAnnotations = Record<number, AnnotationID[]>;
 
 export interface AnnotationLibrary {
+  sessionId: string;
   phaseToken: string;
   annotations: AnnotationDictionary;
-  variables: CodebookVariable[];
-  variableIndex: number;
-  variableStatuses: VariableStatus[];
+  // variables: CodebookVariable[];
+  // variableIndex: number;
+  // variableStatuses: VariableStatus[];
   byToken: TokenAnnotations;
   codeHistory: CodeHistory;
-  previousIndex: number;
+  // previousIndex: number;
 }
 
 export interface AnnotationHistory {
@@ -432,9 +450,9 @@ export interface SwipeOptions {
 
 /** the refs to html elements used in swipeControl */
 export interface SwipeRefs {
-  text: RefObject<HTMLElement | null>;
-  box: RefObject<HTMLElement | null>;
-  code: RefObject<HTMLElement | null>;
+  text: RefObject<HTMLDivElement | null>;
+  box: RefObject<HTMLDivElement | null>;
+  code: RefObject<HTMLDivElement | null>;
 }
 
 /** Used in AnswerField to manage answers given in the sub components */

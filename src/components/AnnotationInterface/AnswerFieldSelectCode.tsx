@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { moveUp, moveDown } from "@/functions/refNavigation";
-import { Annotation, AnswerOption, Code } from "@/app/types";
+import { Annotation, AnswerOption, Code, QuestionAnnotation } from "@/app/types";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { Button } from "@/components/ui/button";
 import { OnSelectParams } from "./AnswerField";
@@ -11,7 +11,7 @@ const arrowKeys = ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"];
 interface SelectCodeProps {
   /** The options the user can choose from */
   options: Code[];
-  annotations: Annotation[];
+  annotations: QuestionAnnotation[];
   /** If true, multiple options can be chosen */
   multiple: boolean;
   /** If true, all buttons are put in a single column */
@@ -141,9 +141,7 @@ const SelectCode = ({
       const isSelected = selected === i;
       return (
         <Button
-          className={`relative z-0 max-h-20 max-w-full flex-[0.3_0_auto] rounded-md p-3 text-foreground transition-transform duration-150 ease-in-out hover:scale-[1.02] 
-          ${isCurrent ? " ring-2 ring-secondary ring-offset-0" : ""} 
-          ${isSelected ? "scale-[1.02] bg-foreground text-background" : ""}`}
+          className={`relative z-0 max-h-20 max-w-full flex-[0.3_0_auto] rounded-md p-3 text-foreground transition-transform duration-150 ease-in-out hover:scale-[1.02] ${isCurrent ? "ring-2 ring-secondary ring-offset-0" : ""} ${isSelected ? "scale-[1.02] bg-foreground text-background" : ""}`}
           style={{ minWidth }}
           ref={buttonRefs[i].ref}
           variant={"outline"}
@@ -160,7 +158,7 @@ const SelectCode = ({
         >
           <div className="break-word pointer-events-none relative z-20 max-h-20 whitespace-normal">{option.code}</div>
           <div
-            className={`${isCurrent ? "" : ""} placeholder absolute left-0 top-0 z-10 h-full w-full rounded-md `}
+            className={`${isCurrent ? "" : ""} placeholder absolute left-0 top-0 z-10 h-full w-full rounded-md`}
             style={{ background: option.color || "hsla(var(--primary),0.6)" }}
           ></div>
         </Button>
@@ -171,16 +169,13 @@ const SelectCode = ({
   const active = selected === options.length;
   return (
     <div className="flex h-full w-full flex-col px-3 py-1">
-      <div
-        ref={container}
-        className={` flex  h-full flex-auto  flex-wrap justify-center  ${vertical ? "gap-1" : "gap-2"}`}
-      >
+      <div ref={container} className={`flex h-full flex-auto flex-wrap justify-center ${vertical ? "gap-1" : "gap-2"}`}>
         {mapButtons()}
       </div>
       {multiple ? (
         <div>
           <Button
-            className={`mt-4 h-8 w-full  ${active ? "scale-[1.02] bg-secondary/80" : ""}`}
+            className={`mt-4 h-8 w-full ${active ? "scale-[1.02] bg-secondary/80" : ""}`}
             variant="secondary"
             ref={finishbutton}
             onClick={() => {

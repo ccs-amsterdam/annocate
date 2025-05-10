@@ -9,7 +9,7 @@ import useVariableMap from "./components/useVariableMap";
 import { VariableMap, Annotation, SetState, TriggerSelector, CodebookVariable, Doc, Unit } from "@/app/types";
 import { useCallback } from "react";
 import styled from "styled-components";
-import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 import { useQuery } from "@tanstack/react-query";
 import { useContent } from "./hooks/useContent";
 
@@ -65,10 +65,10 @@ interface DocumentReadyProps extends DocumentProps {
 }
 
 const Document = (props: DocumentProps) => {
-  const { unit, annotationLib, annotationManager } = useUnit();
+  const { unit, annotationLib, annotationManager } = useJobContext();
   const { loading, content } = useContent();
 
-  if (!content) return null;
+  if (!unit || !content) return null;
 
   return (
     <DocumentReady

@@ -1,4 +1,4 @@
-import { Annotation, AnnotationLibrary, CodebookPhase, Unit } from "@/app/types";
+import { Annotation, AnnotationLibrary, CodebookPhase, CodebookVariable, Unit } from "@/app/types";
 import Markdown from "@/components/Common/Markdown";
 import useSessionStorage from "@/hooks/useSessionStorage";
 import { ChevronDown, ChevronRight, ChevronUp, Eye, EyeOff, Info, InfoIcon, X } from "lucide-react";
@@ -10,19 +10,16 @@ import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface VariableInstructionsProps {
   children?: ReactElement<any>;
-  unit: Unit;
-  annotationLib: AnnotationLibrary;
-  codebook: CodebookPhase;
+  variable: CodebookVariable;
 }
 
 ///////// TODO
 /// integrate questionindex step here. Gives more flexibility
 
-const VariableInstructions = ({ children, unit, annotationLib, codebook }: VariableInstructionsProps) => {
-  const variable = annotationLib.variables?.[annotationLib.variableIndex];
+const VariableInstructions = ({ children, variable }: VariableInstructionsProps) => {
   const instruction = variable?.instruction;
 
-  const sessionVariableKey = annotationLib.sessionId + "." + variable.name;
+  const sessionVariableKey = variable.name;
   const showOnMount = variable.instructionAuto;
   const [show, setShow] = useSessionStorage(sessionVariableKey, showOnMount);
 

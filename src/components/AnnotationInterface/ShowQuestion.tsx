@@ -1,26 +1,23 @@
-import { Annotation, AnnotationLibrary, CodebookPhase, Unit } from "@/app/types";
+import { Annotation, AnnotationLibrary, CodebookPhase, CodebookVariable, Unit } from "@/app/types";
 import React, { ReactElement, useMemo, useState } from "react";
-import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 import useWatchChange from "@/hooks/useWatchChange";
 import { useSandbox } from "@/hooks/useSandboxedEval";
 import Markdown from "../Common/Markdown";
 
 interface ShowQuestionProps {
-  unit: Unit;
-  annotationLib: AnnotationLibrary;
-  codebook: CodebookPhase;
+  variable: CodebookVariable;
 }
 
-const ShowQuestion = ({ unit, annotationLib, codebook }: ShowQuestionProps) => {
-  const { evalStringWithJobState, ready } = useSandbox();
-  const { jobState } = useUnit();
+const ShowQuestion = ({ variable }: ShowQuestionProps) => {
+  const { evalStringWithJobContext: evalStringWithJobState, ready } = useSandbox();
+  const jobContext = useJobContext();
   const [questionText, setQuestionText] = useState("");
-  const variable = annotationLib.variables?.[annotationLib.variableIndex];
 
-  if (useWatchChange([variable.question, jobState, evalStringWithJobState, ready])) {
+  if (useWatchChange([variable.question, jobContext, evalStringWithJobState, ready])) {
     setQuestionText("");
     if (ready) {
-      evalStringWithJobState(variable.question, jobState).then(setQuestionText);
+      evalStringWithJobState(variable.question, jobContext).then(setQuestionText);
     }
   }
 

@@ -1,47 +1,45 @@
 "use client";
-import { AnnotationLibrary, CodebookNode, CodebookPhase, JobServer, JobUnitState, Progress, Unit } from "@/app/types";
-import AnnotationManager from "@/classes/AnnotationManager";
+import { AnnotationLibrary, CodebookState, GetSession, JobServer, ProgressState, Unit } from "@/app/types";
+import AnnotationManager, { createAnnotationManager } from "@/classes/AnnotationManager";
 import { prepareCodebook } from "@/functions/treeFunctions";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface ContextProps {
-  jobState?: JobUnitState;
   unit?: Unit | null;
-  codebook?: CodebookPhase;
+  codebook?: CodebookState;
   annotationLib?: AnnotationLibrary;
   annotationManager?: AnnotationManager;
-  progress?: Progress;
+  progress?: ProgressState;
   error: string | undefined;
   height: number;
   finished?: boolean;
 }
 
-interface InitializedContextProps extends ContextProps {
-  jobState: JobUnitState;
+export interface JobContext extends ContextProps {
   unit: Unit | null;
-  codebook: CodebookPhase;
+  codebook: CodebookState;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
-  progress: Progress;
+  progress: ProgressState;
 }
 
-const UnitContext = createContext<ContextProps>({
+const JobContext = createContext<ContextProps>({
   error: undefined,
   height: 0,
   finished: false,
 });
 
 function isInitialized(props: ContextProps): boolean {
-  return !!props.jobState && !!props.unit && !!props.codebook && !!props.annotationLib && !!props.annotationManager;
+  return !!props.codebook && !!props.annotationLib && !!props.annotationManager;
 }
 
-export function useUnit(): InitializedContextProps {
-  const context = useContext(UnitContext);
+export function useJobContext(): JobContext {
+  const context = useContext(JobContext);
   // Here we need to tell ts that we are sure that the context is initialized.
   // (this is the only way to avoid having to non-null assert every time we use the context)
   if (!isInitialized(context)) throw new Error("useUnit must be used within an initialized AnnotatorProvider");
-  return context as InitializedContextProps;
+  return context as JobContext;
 }
 
 interface Props {
@@ -51,10 +49,10 @@ interface Props {
 }
 
 export interface PhaseState {
-  codebook: CodebookPhase;
+  codebook: CodebookState;
   unit: Unit | null;
   annotationLib: AnnotationLibrary;
-  progress: Progress;
+  progress: ProgressState;
   error: string | undefined;
 }
 
@@ -64,15 +62,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
   const [annotationManager, setAnnotationManager] = useState<AnnotationManager | undefined>(undefined);
 
   useEffect(() => {
-    jobServer.getJobState().then(({ sessionToken, codebook, progress, globalAnnotations }) => {
-      const annotationManager = new AnnotationManager({
-        jobServer,
-        setUnitBundle,
-        sessionToken,
-        codebook: prepareCodebook(codebook),
-        progress,
-        globalAnnotations,
-      });
+    createAnnotationManager(jobServer, setUnitBundle).then((annotationManager) => {
       setAnnotationManager(annotationManager);
       annotationManager.navigate();
     });
@@ -88,7 +78,9 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     height,
     finished,
   };
+  console.log(context);
+
   if (!isInitialized(context)) return null;
 
-  return <UnitContext.Provider value={context}>{children}</UnitContext.Provider>;
+  return <JobContext.Provider value={context}>{children}</JobContext.Provider>;
 }

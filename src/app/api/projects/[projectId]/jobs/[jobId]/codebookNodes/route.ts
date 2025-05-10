@@ -7,7 +7,7 @@ import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import { CodebookNodeCreateSchema, CodebookNodeCreateResponseSchema, CodebookNodeResponseSchema } from "./schemas";
 import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
-import { prepareCodebook } from "@/functions/treeFunctions";
+import { codebookNodeTypeDetails, prepareCodebook } from "@/functions/treeFunctions";
 import { z } from "zod";
 import { reIndexCodebookTree } from "./helpers";
 import { isValidParent } from "@/functions/treeFunctions";
@@ -36,8 +36,11 @@ export async function POST(req: Request, props: { params: Promise<{ projectId: s
     updateFunction: (email, body) => {
       return db.transaction(async (tx) => {
         body.position = body.position - 0.5;
-        const values = { jobId: params.jobId, ...body };
 
+        const { treeType } = codebookNodeTypeDetails(body.data.type);
+        if (treeType === "root") throw new Error("This is impossible, but TS doesn't know that");
+
+        const values = { jobId: params.jobId, ...body, treeType };
         const [newCodebookNode] = await tx.insert(codebookNodes).values(values).returning();
 
         let treeData = await reIndexCodebookTree(tx, params.jobId);

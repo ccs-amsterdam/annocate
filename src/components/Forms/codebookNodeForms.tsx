@@ -196,6 +196,7 @@ function useUpdatePreview({
         const preview: CodebookNode = {
           id: -1,
           ...codebookNode,
+          phaseId: 0,
           parentId,
           position,
           parentPath: [],

@@ -23,21 +23,38 @@ import {
   SpanAnnotation,
   RelationAnnotation,
   QuestionAnnotation,
-  CodebookNode,
-  GetJobState,
-  Progress,
-  JobState,
   SubmitAnnotation,
   PostAnnotation,
+  CodebookState,
+  ProgressState,
 } from "@/app/types";
 import { PhaseState } from "@/components/AnnotatorProvider/AnnotatorProvider";
-import { getCodebookPhases } from "@/functions/codebookPhases";
-import { computeVariableStatuses, topVarName } from "@/functions/computeVariableStatuses";
+import { prepareCodebookState } from "@/functions/codebookPhases";
+import { computeProgress } from "@/functions/computeProgress";
 import { getColor } from "@/functions/tokenDesign";
+import { prepareCodebook } from "@/functions/treeFunctions";
 import cuid from "cuid";
 import randomColor from "randomcolor";
 import { toast } from "sonner";
 import { z } from "zod";
+
+export async function createAnnotationManager(jobServer: JobServer, setUnitBundle: SetState<PhaseState | null>) {
+  const { sessionToken, codebook, phaseProgress: unitProgress, globalAnnotations } = await jobServer.getSession();
+
+  const codebookState = prepareCodebookState(prepareCodebook(codebook), globalAnnotations);
+  const progress = await computeProgress(codebookState, globalAnnotations, unitProgress);
+
+  const annotationManager = new AnnotationManager({
+    jobServer,
+    setUnitBundle,
+    sessionToken,
+    codebook: codebookState,
+    progress,
+    globalAnnotations,
+  });
+
+  return annotationManager;
+}
 
 export default class AnnotationManager {
   jobServer: JobServer;
@@ -45,9 +62,9 @@ export default class AnnotationManager {
   setUnitBundle: SetState<PhaseState | null>;
   lastServerUpdate: Date | null;
   unit: Unit | null;
-  codebookPhases: CodebookPhase[];
+  codebook: CodebookState;
+  progress: ProgressState;
   globalAnnotations: Annotation[];
-  progress: Progress;
   sessionToken: string;
   postAnnotationsQueue: PostAnnotation["phaseAnnotations"];
 
@@ -62,25 +79,16 @@ export default class AnnotationManager {
     jobServer: JobServer;
     setUnitBundle: SetState<PhaseState | null>;
     sessionToken: string;
-    codebook: CodebookNode[];
-    progress: Progress;
+    codebook: CodebookState;
+    progress: ProgressState;
     globalAnnotations: Annotation[];
   }) {
     this.jobServer = jobServer;
     this.setUnitBundle = setUnitBundle;
-    this.codebookPhases = getCodebookPhases(codebook);
-    this.globalAnnotations = globalAnnotations;
+    this.codebook = codebook;
     this.progress = progress;
-    this.annotationLib = {
-      phaseToken: "",
-      annotations: {},
-      byToken: {},
-      codeHistory: {},
-      variables: [],
-      variableIndex: 0,
-      variableStatuses: [],
-      previousIndex: 0,
-    };
+    this.globalAnnotations = globalAnnotations;
+    this.annotationLib = emptyAnnotationLib();
     this.lastServerUpdate = null;
     this.unit = null;
     this.sessionToken = sessionToken;
@@ -89,30 +97,8 @@ export default class AnnotationManager {
     this.postAnnotationsQueue = {};
   }
 
-  // async initialize({
-  //   jobServer,
-  //   setUnitBundle,
-  // }: {
-  //   jobServer: JobServer;
-  //   setUnitBundle?: SetState<PhaseState | null>;
-  // }) {
-  //   this.setUnitBundle = setUnitBundle;
-
-  //   const codebook = await jobServer.getCodebook();
-  //   this.codebookPhases = getCodebookPhases(codebook);
-
-  //   const { annotations, progress } = await jobServer.getJobState();
-  //   this.jobState = { annotations, progress, unitData: {} };
-
-  //   const phaseIndex = progress.phasesCoded;
-  //   const currentPhase = progress.phases[phaseIndex];
-  //   const unitIndex = currentPhase.type === "annotation" ? currentPhase.currentUnit : undefined;
-
-  //   this.navigate(phaseIndex, unitIndex);
-  // }
-
   async navigate(phaseIndex?: number, unitIndex?: number, variableIndex?: number) {
-    if (phaseIndex === undefined) phaseIndex = this.progress.phases.findIndex((p) => p.status === "pending");
+    if (phaseIndex === undefined) phaseIndex = this.progress.phases.findIndex((phase) => !phase.done);
 
     if (phaseIndex < 0 || phaseIndex > this.progress.phases.length - 1) {
       // This marks that we are done with the job
@@ -120,15 +106,18 @@ export default class AnnotationManager {
       return;
     }
 
-    const codebookPhase = this.codebookPhases[phaseIndex];
+    const codebookPhase = this.codebook.phases[phaseIndex];
 
     const unit = await this.getUnit(phaseIndex, unitIndex);
 
     this.annotationLib = createAnnotationLibrary(unit, codebookPhase, this.globalAnnotations, variableIndex);
 
+    // TODO: On navigate, perform a check of all branching rules.
+    // performBranchingRules() //uses this.annotationLib
+
     this.setUnitBundle({
       unit,
-      codebook: codebookPhase,
+      codebook: this.codebook,
       annotationLib: this.annotationLib,
       progress: this.progress,
       error: undefined,
@@ -136,47 +125,20 @@ export default class AnnotationManager {
   }
 
   async getUnit(phaseIndex: number, unitIndex?: number): Promise<Unit | null> {
-    if (this.progress.phases[phaseIndex].type !== "annotation") return null;
+    if (this.codebook.phases[phaseIndex].type !== "annotation") return null;
 
     const getUnit = await this.jobServer.getUnit(phaseIndex, unitIndex);
     if (!getUnit) throw new Error("No unit found");
 
-    // update phase unit progress
-    this.progress.phases[phaseIndex] = {
-      ...this.progress.phases[phaseIndex],
-      ...getUnit.phaseProgress,
-    };
-
     return getUnit.unit;
-  }
-
-  finishPhase() {
-    if (this.jobServer.previewMode) {
-      return toast.success("Jeej");
-    }
-
-    const progress = this.progress;
-    const phase = progress.phases[progress.phase];
-
-    // If we are in a survey phase, we just move to the next phase
-    if (phase.type === "survey") {
-      this.navigate(progress.phase + 1);
-      return;
-    }
-
-    // If we are in an annotation phase, we move to the next unit,
-    // or the next phase if we are at the last unit
-    if (phase.type === "annotation") {
-      if (phase.currentUnit + 1 >= phase.nTotal) {
-        this.navigate(progress.phase + 1);
-      } else {
-        this.navigate(progress.phase, phase.currentUnit + 1);
-      }
-    }
   }
 
   async postAnnotations(): Promise<boolean> {
     try {
+      if (Object.keys(this.postAnnotationsQueue).length === 0) {
+        console.log("No annotations on queue");
+        return true;
+      }
       const res = await this.jobServer.postAnnotations({
         sessionToken: this.sessionToken,
         phaseAnnotations: this.postAnnotationsQueue,
@@ -200,45 +162,52 @@ export default class AnnotationManager {
     this.setUnitBundle?.((unitBundle) => (unitBundle ? { ...unitBundle, annotationLib: { ...annotationLib } } : null));
   }
 
-  async postVariable(finished: boolean) {
-    const varName = topVarName(this.annotationLib.variables[this.annotationLib.variableIndex].name);
+  updateProgress(progress: ProgressState) {
+    this.progress = progress;
+    this.setUnitBundle?.((unitBundle) => (unitBundle ? { ...unitBundle, progress: { ...progress } } : null));
+  }
 
-    if (!finished) {
-      // this is for intermediate saving of results, so only post
-      const done = await this.postAnnotations();
-      return { done, conditionReport: null };
+  async finishVariable() {
+    // TODO: consider optimistic updating
+    const success = await this.postAnnotations();
+    if (!success) return;
+
+    const phase = this.progress.phases[this.progress.currentPhase];
+    const phaseFinished = phase.variables.some((s, i) => !s.skip && i > phase.currentVariable);
+
+    if (phaseFinished) {
+      this.finishPhase();
+    } else {
+      phase.previousVariable = phase.currentVariable;
+      phase.currentVariable = phase.currentVariable + 1;
+      phase.variables[phase.currentVariable].done = true;
+      this.progress.phases[this.progress.currentPhase] = phase;
+      this.updateProgress(this.progress);
+    }
+  }
+
+  finishPhase() {
+    if (this.jobServer.previewMode) {
+      return toast.success("Jeej");
     }
 
-    // THIS IS REPLACED BY HAVING SUBMIT TYPE ANNOTATIONS
-    // for (let a of Object.values(this.annotationLib.annotations)) {
-    //   if (topVarName(a.variable) === varName) {
-    //     if (finished) a.status = "done";
-    //   }
-    // }
+    const progress = this.progress;
+    const phase = progress.phases[progress.currentPhase];
 
-    const anyLeft = this.annotationLib.variableStatuses.some((s, i) => !s.skip && i > this.annotationLib.variableIndex);
-
-    if (!anyLeft) {
-      // if no more variables left, submit the annotations and go to next unit
-      const done = await this.postAnnotations();
-      return { done, conditionReport: null };
+    if (phase.currentUnit + 1 >= phase.unitsDone.length) {
+      this.navigate(progress.currentPhase + 1);
+    } else {
+      this.navigate(progress.currentPhase, phase.currentUnit + 1);
     }
-
-    // submit the current variable and go to next variableIndex
-    const done = await this.postAnnotations();
-    this.annotationLib.variableStatuses[this.annotationLib.variableIndex].done = true;
-    this.annotationLib.variableStatuses = [...this.annotationLib.variableStatuses];
-    this.updateAnnotationLibrary(this.annotationLib);
-    this.setVariableIndex(this.annotationLib.variableIndex + 1);
-    return { status: done, conditionReport: null };
   }
 
   setVariableIndex(index: number) {
-    this.updateAnnotationLibrary({
-      ...this.annotationLib,
-      previousIndex: this.annotationLib.variableIndex,
-      variableIndex: index,
-    });
+    const phase = this.progress.phases[this.progress.currentPhase];
+    phase.previousVariable = phase.currentVariable;
+    phase.currentVariable = index;
+    this.progress.phases[this.progress.currentPhase] = phase;
+
+    this.updateProgress(this.progress);
   }
 
   addAnnotations(annotations: Annotation[]) {
@@ -304,6 +273,7 @@ export default class AnnotationManager {
   createQuestionAnnotation(
     variableId: number,
     code: Code,
+    item: string | undefined,
     multiple: boolean = false,
     context: AnnotationContext,
     finishLoop: boolean = true,
@@ -433,17 +403,13 @@ export function createAnnotationLibrary(
   //   a.client.positions = getTokenPositions(annotationDict, a);
   // }
 
-  const { variableStatuses, variableIndex } = computeVariableStatuses(codebook.variables, annotationArray);
-
   return {
+    sessionId: cuid(),
     phaseToken: unit?.token || "global",
     annotations: annotationDict,
     byToken: newTokenDictionary(annotationDict),
     codeHistory: {},
-    variables: codebook.variables,
-    variableIndex: focusVariableIndex ?? variableIndex,
-    variableStatuses,
-    previousIndex: 0,
+    // previousIndex: 0,
   };
 }
 
@@ -570,53 +536,53 @@ function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap)
   return annotations;
 }
 
-function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
-  // check if this is the last annotation at this span. If not, don't add empty span
-  const annotation = annotations[id];
-  if (!annotation) return annotations;
+// function addEmptySpan(annotations: AnnotationDictionary, id: AnnotationID) {
+//   // check if this is the last annotation at this span. If not, don't add empty span
+//   const annotation = annotations[id];
+//   if (!annotation) return annotations;
 
-  for (let a of Object.values(annotations)) {
-    if (a.type !== "span" || annotation.type !== "span") continue;
-    if (!a.span || !annotation.span) continue;
-    if (a.id === annotation.id) continue;
+//   for (let a of Object.values(annotations)) {
+//     if (a.type !== "span" || annotation.type !== "span") continue;
+//     if (!a.span || !annotation.span) continue;
+//     if (a.id === annotation.id) continue;
 
-    if (
-      a.field === annotation.field &&
-      a.variableId === annotation.variableId &&
-      a.span[0] === annotation.span[0] &&
-      a.span[1] === annotation.span[1]
-    )
-      return annotations;
-  }
+//     if (
+//       a.field === annotation.field &&
+//       a.variableId === annotation.variableId &&
+//       a.span[0] === annotation.span[0] &&
+//       a.span[1] === annotation.span[1]
+//     )
+//       return annotations;
+//   }
 
-  const emptyAnnotation = {
-    ...annotations[id],
-    id: cuid(),
-    code: "EMPTY",
-    color: "grey",
-  };
-  annotations[emptyAnnotation.id] = emptyAnnotation;
-  return annotations;
-}
+//   const emptyAnnotation = {
+//     ...annotations[id],
+//     id: cuid(),
+//     code: "EMPTY",
+//     color: "grey",
+//   };
+//   annotations[emptyAnnotation.id] = emptyAnnotation;
+//   return annotations;
+// }
 
-function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) {
-  // check if this has the same position as an empty span. If so, remove the empty span
-  for (let a of Object.values(annotations)) {
-    if (a.type !== "span" || annotation.type !== "span") continue;
-    if (!a.span || !annotation.span) continue;
-    if (a.code !== "EMPTY") continue;
-    if (
-      a.field === annotation.field &&
-      a.variableId === annotation.variableId &&
-      a.span[0] === annotation.span[0] &&
-      a.span[1] === annotation.span[1]
-    ) {
-      delete annotations[a.id];
-    }
-  }
+// function rmEmptySpan(annotations: AnnotationDictionary, annotation: Annotation) {
+//   // check if this has the same position as an empty span. If so, remove the empty span
+//   for (let a of Object.values(annotations)) {
+//     if (a.type !== "span" || annotation.type !== "span") continue;
+//     if (!a.span || !annotation.span) continue;
+//     if (a.code !== "EMPTY") continue;
+//     if (
+//       a.field === annotation.field &&
+//       a.variableId === annotation.variableId &&
+//       a.span[0] === annotation.span[0] &&
+//       a.span[1] === annotation.span[1]
+//     ) {
+//       delete annotations[a.id];
+//     }
+//   }
 
-  return annotations;
-}
+//   return annotations;
+// }
 
 function createVariableMap(variables: CodebookVariable[]) {
   const vm: VariableMap = {};
@@ -708,4 +674,19 @@ function contextIsIdential(context1?: AnnotationContext, context2?: AnnotationCo
   if (!identialArray(context1.span, context2.span)) return false;
 
   return true;
+}
+
+function emptyAnnotationLib() {
+  return {
+    sessionId: "",
+
+    phaseToken: "",
+    annotations: {},
+    byToken: {},
+    codeHistory: {},
+    variables: [],
+    variableIndex: 0,
+    variableStatuses: [],
+    previousIndex: 0,
+  };
 }

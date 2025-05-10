@@ -36,8 +36,8 @@ class JobServerDesign implements JobServer {
     this.previewMode = !!previewMode;
   }
 
-  async getJobState() {
-    return this.mockServer.getJobState();
+  async getSession() {
+    return this.mockServer.getSession();
   }
 
   // TODO: create a general jobserver class, that implements getUnit and such.

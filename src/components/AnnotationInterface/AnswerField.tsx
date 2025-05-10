@@ -1,20 +1,13 @@
-import { AnnotationLibrary, AnswerItem, Code } from "@/app/types";
-import AnnotationManager from "@/classes/AnnotationManager";
 import React, { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import SelectCode from "./AnswerFieldSelectCode";
 import Scale from "./AnswerFieldScale";
 import Annotinder from "./AnswerFieldAnnotinder";
 import useSpeedBump from "@/hooks/useSpeedBump";
-import { useUnit } from "../AnnotatorProvider/AnnotatorProvider";
+import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
+import { AnnotationLibrary, Code, QuestionAnnotation } from "@/app/types";
+import AnnotationManager from "@/classes/AnnotationManager";
 
 interface AnswerFieldProps {
-  annotationLib: AnnotationLibrary;
-  annotationManager: AnnotationManager;
-  // answers: Answer[];
-  // questions: Variable[];
-  // questionIndex: number;
-  // onAnswer: (items: AnswerItem[], onlySave: boolean, transition?: Transition) => void;
-  // swipe: Swipes | null;
   blockEvents?: boolean;
 }
 
@@ -25,31 +18,18 @@ export interface OnSelectParams {
   item?: string;
 }
 
-const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: AnswerFieldProps) => {
-  const { finishUnit } = useUnit();
+const AnswerField = ({ blockEvents = false }: AnswerFieldProps) => {
+  const { codebook, progress, annotationLib, annotationManager } = useJobContext();
+
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
 
-  const variables = annotationLib.variables;
-  const variableIndex = annotationLib.variableIndex;
-  const variable = variables?.[variableIndex];
+  const variables = codebook.phases[progress.currentPhase].variables;
+  const phaseProgress = progress.phases[progress.currentPhase];
+  const variable = variables?.[phaseProgress.currentVariable];
 
   // TODO remove speedbumps (jeej)
   const speedbump = false;
-
-  useEffect(() => {
-    // if answer changed but has not been saved, warn users when they try to close the app
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      const msg = "If you leave now, any changes made in the current unit will not be saved."; // most browsers actually show default message
-      return msg;
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [variables, variableIndex]);
 
   // WE USED TO ANIMATE HEIGHT CHANGES OF ANSWERFIELD, BUT NOW WE SLIDE IN FROM RIGHT
   // SO THIS IS NO LONGER NEEDED (AND IT'S A BIT OF A HACK)
@@ -79,32 +59,30 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
   //   };
   // }, [answerRef]);
 
-  const annotations = useMemo(() => {
-    let fullVariableNames: Record<string, boolean> = {};
-    const items = "items" in variable ? variable.items || [] : [];
-    if (items.length > 0) {
-      items.forEach((item) => {
-        fullVariableNames[`${variable.name}.${item.name}`] = true;
-      });
-    } else {
-      fullVariableNames[variable.name] = true;
-    }
+  const annotations: QuestionAnnotation[] = useMemo(() => {
+    // filter annotations to only current variable, and let TS know
+    // these are of the 'question' type
+    const questionAnnotations: QuestionAnnotation[] = [];
 
-    return Object.values(annotationLib.annotations).filter((a) => fullVariableNames[a.variable]);
+    for (let a of Object.values(annotationLib.annotations)) {
+      if (a.type !== "question") continue;
+      if (a.variableId !== variable.id) continue;
+      questionAnnotations.push(a);
+    }
+    return questionAnnotations;
   }, [variable, annotationLib]);
 
-  const onFinish = () => {
-    annotationManager.postVariable(true).then((res) => {
-      if (res.done) finishUnit();
-    });
+  const context = variable.field ? { field: variable.field } : undefined;
+  const finishLoop = true;
+
+  const onSubmit = () => {
+    annotationManager.submitVariable(variable.id, context, finishLoop);
+    annotationManager.finishVariable();
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
-    let varname = variable.name;
-    if (item) varname += `.${item}`;
-    const context = { fields: variable.fields };
-    annotationManager.createQuestionAnnotation(variable.id, code, !!multiple, context);
-    if (finish) onFinish();
+    annotationManager.createQuestionAnnotation(variable.id, code, item, !!multiple, context, finishLoop);
+    if (finish) annotationManager.finishVariable();
   };
 
   let answerfield = null;
@@ -113,13 +91,13 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     answerfield = (
       <SelectCode
         options={variable.codes || []}
-        annotations={annotations} // ts not smart enough
+        annotations={annotations}
         multiple={!!variable.multiple}
         vertical={!!variable.vertical}
         onSelect={onSelect}
-        onFinish={onFinish}
+        onFinish={onSubmit}
         blockEvents={blockEvents} // for disabling key/click events
-        questionIndex={variableIndex} // for use in useEffect for resetting values on question change
+        questionIndex={phaseProgress.currentVariable} // for use in useEffect for resetting values on question change
         speedbump={speedbump}
       />
     );
@@ -141,20 +119,19 @@ const AnswerField = ({ annotationLib, annotationManager, blockEvents = false }: 
     answerfield = (
       <Scale
         annotations={annotations}
-        variable={variable.name}
         items={variable.items || []}
         options={variable.codes || []}
         onSelect={onSelect}
-        onFinish={onFinish}
+        onFinish={onSubmit}
         blockEvents={blockEvents}
-        questionIndex={variableIndex}
+        questionIndex={phaseProgress.currentVariable}
       />
     );
 
   if (variable?.type === "annotinder")
     answerfield = (
       <Annotinder
-        value={annotations.find((a) => a.variable === variable.name)?.code}
+        value={annotations[0]?.code}
         codes={variable.codes || []}
         onSelect={onSelect}
         blockEvents={blockEvents}

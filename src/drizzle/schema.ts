@@ -146,8 +146,6 @@ export const jobSetUnits = pgTable(
   }),
 );
 
-// maybe separate phase and group tables?
-
 // The codebook is a DAG, where nodes have different types. The types are inside
 // the data field (for validation purposes). The types correspond to valid positions
 // in the DAG, as specified in treeFunctions.ts (see codebookNodeTypeDetails).
@@ -159,7 +157,7 @@ export const codebookNodes = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
-    treeType: text("tree_type", { enum: ["phase", "group", "leaf"] }),
+    treeType: text("tree_type", { enum: ["phase", "group", "leaf"] }).notNull(),
     parentId: integer("parent_id").references((): AnyPgColumn => codebookNodes.id),
     position: doublePrecision("position").notNull(),
 
@@ -199,8 +197,8 @@ export const annotatorSession = pgTable(
       .notNull()
       .references(() => jobs.id),
 
-    email: varchar("email", { length: 256 }).notNull(),
-    invitationId: varchar("invitation_id", { length: 256 }),
+    invitationId: varchar("invitation_id", { length: 256 }).notNull(),
+    email: varchar("email", { length: 256 }),
     randomId: varchar("random_id", { length: 256 }).notNull(),
 
     // if created through an invitation, include any url parameters. These can be used for links (completion, screening, etc)
@@ -209,8 +207,6 @@ export const annotatorSession = pgTable(
   },
   (table) => ({
     jobIdx: index("annotator_project_idx").on(table.jobId),
-    userIdx: index("annotator_user_idx").on(table.userId),
-    uniqueUser: unique("unique_user").on(table.jobId, table.userId),
   }),
 );
 
@@ -257,6 +253,6 @@ export const annotations = pgTable(
     // isGold: boolean("is_gold").notNull().default(false),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.codebookNodeId, table.annotatorId, table.unitId] }),
+    pk: primaryKey({ columns: [table.annotatorSessionId, table.unitId, table.codebookNodeId] }),
   }),
 );

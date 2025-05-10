@@ -1,6 +1,7 @@
 "use cient";
 
-import { GetJobState, JobUnitState } from "@/app/types";
+import { Annotation, GetSession, Unit } from "@/app/types";
+import { JobContext } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { createContext, ReactElement, ReactNode, useContext } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
@@ -13,7 +14,7 @@ interface IFrameObj {
 
 interface SandboxContextProps {
   evalStringTemplate: (str: string, data: Record<string, any>) => Promise<string>;
-  evalStringWithJobState: (str: string, jobState: JobUnitState) => Promise<string>;
+  evalStringWithJobContext: (str: string, context: JobContext) => Promise<string>;
   ready: boolean;
 }
 
@@ -21,7 +22,7 @@ const SandboxContext = createContext<SandboxContextProps>({
   evalStringTemplate: async () => {
     throw new Error("Sandbox not ready");
   },
-  evalStringWithJobState: async () => {
+  evalStringWithJobContext: async () => {
     throw new Error("Sandbox not ready");
   },
   ready: false,
@@ -101,9 +102,32 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
     [evalInSandbox],
   );
 
-  const evalStringWithJobState = useCallback(
-    async (str: string, jobState: JobUnitState): Promise<string> => {
-      return evalStringTemplate(str, jobState);
+  const evalStringWithJobContext = useCallback(
+    async (str: string, jobContext: JobContext): Promise<string> => {
+      const variableNameMap: Record<string, number> = {};
+      for (let phase of jobContext.codebook.phases) {
+        for (let variable of phase.variables) {
+          variableNameMap[variable.name] = variable.id;
+        }
+      }
+
+      const annotations: Record<string, any> = {};
+      for (let [id, annotation] of Object.entries(jobContext.annotationLib.annotations)) {
+        if (annotation.deleted) continue;
+        annotations[id] = {
+          code: annotation.code,
+          value: annotation.value,
+        };
+      }
+
+      const unitData: Record<string, any> = {};
+      if (jobContext.unit) {
+        for (let [id, value] of Object.entries(jobContext.unit.data || {})) {
+          unitData[id] = value;
+        }
+      }
+
+      return evalStringTemplate(str, { variableNameMap, annotations, unitData });
     },
     [evalStringTemplate],
   );
@@ -112,7 +136,7 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
     <SandboxContext.Provider
       value={{
         evalStringTemplate,
-        evalStringWithJobState,
+        evalStringWithJobContext,
         ready: !!iframeObj,
       }}
     >

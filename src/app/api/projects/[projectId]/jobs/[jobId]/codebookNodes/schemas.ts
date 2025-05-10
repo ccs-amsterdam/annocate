@@ -33,30 +33,37 @@ export const CodebookNodeDataTypeSchema = z.object({
 
 export const CodebookNodeQuestionVariableSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Question"),
+  // treeType: z.literal("leaf").default("leaf"),
   variable: CodebookQuestionVariableSchema,
 });
 
 export const CodebookNodeAnnotationVariableSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation task"),
+  // treeType: z.literal("leaf").default("leaf"),
   variable: CodebookAnnotationVariableSchema,
 });
 
 export const CodebookNodeAnnotationPhaseSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation phase"),
+  // treeType: z.literal("phase").default("phase"),
   layout: UnitLayoutSchema,
 });
 
 export const CodebookNodeSurveyPhaseSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Survey phase"),
+  // treeType: z.literal("phase").default("phase"),
 });
 
 export const CodebookNodeAnnotationGroupSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation group"),
+  // treeType: z.literal("group").default("group"),
   layout: UnitLayoutSchema,
+  condition: z.string().optional(),
 });
 
 export const CodebookNodeSurveyGroupSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Survey group"),
+  // treeType: z.literal("group").default("group"),
 });
 
 export const CodebookNodeDataSchema = z.discriminatedUnion("type", [

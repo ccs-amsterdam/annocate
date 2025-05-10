@@ -5,16 +5,16 @@ import {
   GetUnit,
   CodebookNode,
   JobServer,
-  Progress,
   UnitDataResponse,
   Annotation,
   UnitData,
   Unit,
-  GetJobState,
+  GetSession,
   VariableStatus,
   PostAnnotationsResponse,
+  ProgressState,
 } from "@/app/types";
-import { getCodebookPhases } from "@/functions/codebookPhases";
+import { prepareCodebookState } from "@/functions/codebookPhases";
 import { MiddlecatUser } from "middlecat-react";
 import { z } from "zod";
 
@@ -71,11 +71,7 @@ export class MockServer {
     }
   }
 
-  async getJobState(): Promise<GetJobState> {
-    // RENAME THIS TO getSession
-    // rename jobstate to session
-    // (jobToken then becomes sessionToken)
-    // includes a token that encrypts the jobId, coderId, and progress
+  async getSession(): Promise<GetSession> {
     //
     // !!!! at the start of the session create a random secret (keep in jobAnnotator)
     // this secret is included in the jobToken, which is added as a http-only cookie
@@ -90,7 +86,7 @@ export class MockServer {
 
     return {
       sessionToken: encryptSessionToken({ jobId: 0, coderId: 0, secret: "secret" }),
-      progress: computeProgress(this.phaseUnits, this.codebook, this.annotations),
+      phaseProgress: computePhaseProgress(this.phaseUnits, this.codebook, this.annotations),
       codebook: this.codebook,
       globalAnnotations,
     };
@@ -119,11 +115,6 @@ export class MockServer {
         done: unit.done,
         annotations,
         token: encryptUnitToken({ unitId: unit.id }),
-      },
-      phaseProgress: {
-        nCoded: units.filter((unit) => unit.done).length,
-        nTotal: units.length,
-        currentUnit: unit.index,
       },
     };
   }
@@ -190,17 +181,20 @@ function mockUnits(n: number) {
   });
 }
 
-function computeProgress(phaseUnits: PhaseUnits, codebook: CodebookNode[], annotations: ServerAnnotations): Progress {
+function computePhaseProgress(
+  phaseUnits: PhaseUnits,
+  codebook: CodebookNode[],
+  annotations: ServerAnnotations,
+): GetSession["phaseProgress"] {
   // on real server we can do this much more efficiently with SQL
 
   const phases = codebook.filter((node) => node.treeType === "phase");
-  const progress: Progress = { phase: 0, phases: [], settings: { canSkip: false, canGoBack: true } };
+  const progress: GetSession["phaseProgress"] = [];
 
   function variableIsDoneOrSkipped(annotations: Annotation[]): boolean {
     return annotations.some((a) => {
       if (a.deleted) return false;
-      if (a.finishVariable) return true;
-      if (a.type === "skip") return true;
+      if (a.finishVariable && a.finishLoop) return true;
       return false;
     });
   }
@@ -208,6 +202,7 @@ function computeProgress(phaseUnits: PhaseUnits, codebook: CodebookNode[], annot
   function phaseIsDone(phaseVariables: CodebookNode[], unitId: UnitId): boolean {
     for (let variable of phaseVariables) {
       const annotationDict = annotations[unitId]?.[variable.id];
+      if (!annotationDict) return false;
       return variableIsDoneOrSkipped(Object.values(annotationDict));
     }
     return true;
@@ -219,24 +214,22 @@ function computeProgress(phaseUnits: PhaseUnits, codebook: CodebookNode[], annot
     const label = phase.name.replaceAll("_", " ");
 
     // get the variables for this phase
-    const phaseVariables = codebook.filter((node) => node.phaseId === phase.id);
+    const phaseVariables = codebook.filter((node) => node.phaseId === phase.id && node.treeType === "leaf");
 
     if (type === "survey") {
-      progress.phases[i] = {
-        type,
-        label,
-        status: phaseIsDone(phaseVariables, "global") ? "done" : "pending",
-      };
+      progress.push({
+        phaseId: phase.id,
+        unitsDone: [phaseIsDone(phaseVariables, "global")],
+      });
     }
 
     if (type === "annotation") {
       const unitIds = phaseUnits[i].map((u) => u.id);
-      const unitDone = unitIds.map((unitId) => phaseIsDone(phaseVariables, unitId));
-      const nCoded = unitDone.filter((done) => done).length;
-      const nTotal = unitIds.length;
-      const currentUnit = unitIds.findIndex((unitId) => !unitDone[unitId]);
-      const status = nCoded === nTotal ? "done" : "pending";
-      progress.phases[i] = { type, label, status, nCoded, nTotal, currentUnit };
+      const unitsDone = unitIds.map((unitId) => phaseIsDone(phaseVariables, unitId));
+      progress.push({
+        phaseId: phase.id,
+        unitsDone,
+      });
     }
   }
 

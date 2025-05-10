@@ -1,35 +1,29 @@
-import { importTokens, parseTokens } from "../../functions/tokens";
+import { parseTokens } from "../../functions/tokens";
 import {
   ProcessedTextField,
   ProcessedMarkdownField,
   ProcessedImageField,
   PreparedGrid,
   FieldGridInput,
-  CodebookPhase,
   Unit,
-  SetState,
-  JobServer,
-  GetUnit,
   Doc,
   Layout,
-  GetJobState,
-  JobUnitState,
+  GetSession,
 } from "@/app/types";
-import { PhaseState } from "./AnnotatorProvider";
-import AnnotationManager from "@/classes/AnnotationManager";
+import { JobContext } from "./AnnotatorProvider";
 
 interface ProcessUnitContentParams {
   unit: Unit;
   layout: Layout;
-  evalStringWithJobState: (str: string, jobState: JobUnitState) => Promise<string>;
-  jobState: JobUnitState;
+  evalStringWithJobContext: (str: string, jobContext: JobContext) => Promise<string>;
+  jobContext: JobContext;
 }
 
 export async function processUnitContent({
   unit,
   layout,
-  evalStringWithJobState,
-  jobState,
+  evalStringWithJobContext,
+  jobContext,
 }: ProcessUnitContentParams): Promise<Doc> {
   const content: Doc = {
     tokens: [],
@@ -62,7 +56,7 @@ export async function processUnitContent({
     } else if (field.type === "markdown") {
       content.markdownFields.push({
         ...base,
-        value: await evalStringWithJobState(field.template, jobState),
+        value: await evalStringWithJobContext(field.template, jobContext),
       });
     }
   }

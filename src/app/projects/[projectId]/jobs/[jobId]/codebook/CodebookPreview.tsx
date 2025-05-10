@@ -1,5 +1,5 @@
 import { useCodebookNodes } from "@/app/api/projects/[projectId]/jobs/[jobId]/codebookNodes/query";
-import { GetUnit, CodebookNode, JobState, GetUnitCache, UnitData, Progress } from "@/app/types";
+import { CodebookNode, GetUnitCache } from "@/app/types";
 import { AnnotationInterface } from "@/components/AnnotationInterface/AnnotationInterface";
 import JobServerDesign from "@/classes/JobServerDesign";
 import { Button } from "@/components/ui/button";
@@ -59,17 +59,6 @@ export function CodebookPreview({ projectId, jobId, preview }: Props) {
       <PreviewWindow mode={mode} jobServer={jobServer} reset={reset} />
     </div>
   );
-}
-
-function initProgress(): Progress {
-  return {
-    phase: 0,
-    phases: [{ type: "survey", label: "", status: "pending" }],
-    settings: {
-      canSkip: true,
-      canGoBack: true,
-    },
-  };
 }
 
 export function PreviewWindow({

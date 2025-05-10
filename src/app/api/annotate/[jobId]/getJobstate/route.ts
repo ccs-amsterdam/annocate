@@ -4,7 +4,7 @@ import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";
 import { safeParams } from "@/functions/utils";
 import { NextRequest } from "next/server";
-import { GetJobStateParamsSchema, GetJobStateResponseSchema, GetUnitParamsSchema } from "../schemas";
+import { GetSessionParamsSchema, GetSessionResponseSchema, GetUnitParamsSchema } from "../schemas";
 import { cookies } from "next/headers";
 import { getDeviceId } from "@/functions/getDeviceId";
 import { JobsetAnnotatorStatistics, Rules } from "@/app/types";
@@ -20,17 +20,17 @@ export async function GET(req: NextRequest, props: { params: Promise<{ jobId: st
       let deviceId = getDeviceId(cookieStore, params.jobId);
       const userId = getUserId(email, urlParams.userId, deviceId);
 
-      // const { jobState, isNew } = await getOrCreateJobState(jobId, userId, urlParams);
+      // const { session, isNew } = await getOrCreateSession(jobId, userId, urlParams);
 
       // if (isNew) {
-      //   const { currentUnit, nTotal, nCoded } = await allocateJobUnits(jobState.jobId, jobState.userId);
+      //   const { currentUnit, nTotal, nCoded } = await allocateJobUnits(session.jobId, session.userId);
       // }
 
       return { test: "this" };
     },
     req,
-    paramsSchema: GetJobStateParamsSchema,
-    // responseSchema: GetJobStateResponseSchema,
+    paramsSchema: GetSessionParamsSchema,
+    // responseSchema: GetSessionResponseSchema,
     projectId: null,
     authorizeFunction: async (auth, params) => {
       return undefined;
@@ -45,7 +45,7 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
   return "device:" + deviceId;
 }
 
-// async function getOrCreateJobState(
+// async function getOrCreateSession(
 //   jobId: number,
 //   userId: string,
 //   urlParams: Record<string, string | number> | undefined,
@@ -58,20 +58,20 @@ function getUserId(email: string, userId: string | undefined, deviceId: string) 
 
 //   if (ann) {
 //     // TODO: verify jobaccess
-//     // compute jobstate
-//     return { jobState: ann, isNew: false };
+//     // compute session
+//     return { session: ann, isNew: false };
 //   }
 
 //   const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
 
 //   const [newAnn] = await db.insert(annotatorSession).values({ jobId, userId, urlParams }).returning();
 //   // TODO: verify jobaccess
-//   // allocate units and return jobstate
-//   return { jobState: newAnn, isNew: true };
+//   // allocate units and return session
+//   return { session: newAnn, isNew: true };
 // }
 
-// async function computeJobState(annotatorId: number) {
-//   // jobstate has the nr of units done, and current index (lowest not done index)
+// async function computeSession(annotatorId: number) {
+//   // session has the nr of units done, and current index (lowest not done index)
 
 //   const n = await db.$count(annotations, eq(annotations.annotatorId, annotatorId));
 
