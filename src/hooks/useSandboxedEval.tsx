@@ -185,9 +185,9 @@ export function extractDataIndictors(str: string): DataIndicator[] {
     for (let match of matches) {
       const name = match[2] as string;
       if (accessor === "unit") {
-        dataIndicators.push({ type: "unit", accessor, name });
+        dataIndicators.push({ type: "unit", accessor, field: name });
       } else {
-        dataIndicators.push({ type: "annotation", accessor, name });
+        dataIndicators.push({ type: "annotation", accessor, variableName: name });
       }
     }
   }
@@ -198,33 +198,37 @@ export function extractDataIndictors(str: string): DataIndicator[] {
 function prepareScriptData(dataIndicators: DataIndicator[], jobContext: JobContext): ScriptData {
   const scriptData: ScriptData = { unit: {}, code: {}, value: {}, codes: {}, values: {} };
   for (let dataIndicator of dataIndicators) {
-    const { type, accessor, name } = dataIndicator;
+    const { type, accessor } = dataIndicator;
 
     if (type === "unit") {
+      const field = dataIndicator.field;
       if (accessor === "unit") {
-        const value = jobContext.unit?.data?.[name];
-        if (value !== undefined) scriptData.unit[name] = value;
+        const value = jobContext.unit?.data?.[field];
+        if (value !== undefined) scriptData.unit[field] = value;
         continue;
       }
     }
 
-    // For annotation type accessors we need to find the annotations for the variables
-    const variable = Object.values(jobContext.variableMap).find((v) => v.name === name);
-    const annotations =
-      Object.values(jobContext.annotationLib.annotations).filter((a) => a.variableId === variable?.id) || [];
-    if (annotations.length === 0) continue;
+    if (type === "annotation") {
+      // For annotation type accessors we need to find the annotations for the variables
+      const variableName = dataIndicator.variableName;
+      const variable = Object.values(jobContext.variableMap).find((v) => v.name === variableName);
+      const annotations =
+        Object.values(jobContext.annotationLib.annotations).filter((a) => a.variableId === variable?.id) || [];
+      if (annotations.length === 0) continue;
 
-    if (accessor === "code") {
-      scriptData.code[name] = uniqueArray(annotations.map((a) => a.code || null)).join(", ");
-    }
-    if (accessor === "value") {
-      scriptData.value[name] = avgArray(annotations.map((a) => a.value || null).filter((a) => a !== null));
-    }
-    if (accessor === "codes") {
-      scriptData.codes[name] = annotations.map((a) => a.code || null);
-    }
-    if (accessor === "values") {
-      scriptData.values[name] = annotations.map((a) => a.value || null);
+      if (accessor === "code") {
+        scriptData.code[variableName] = uniqueArray(annotations.map((a) => a.code || null)).join(", ");
+      }
+      if (accessor === "value") {
+        scriptData.value[variableName] = avgArray(annotations.map((a) => a.value || null).filter((a) => a !== null));
+      }
+      if (accessor === "codes") {
+        scriptData.codes[variableName] = annotations.map((a) => a.code || null);
+      }
+      if (accessor === "values") {
+        scriptData.values[variableName] = annotations.map((a) => a.value || null);
+      }
     }
   }
 

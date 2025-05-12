@@ -145,16 +145,10 @@ export type Branching = Record<number, Branch>; // number is codebook node id th
 
 // Branch, CodebookVariable and Layout can depend on variables. This keeps track of which, so that it
 // can update them when the variable changes
-export type UpdateTrigger = {
-  variableNameMap: Record<string, number>; // maps variable names to variable ids (needed for scripts)
-  dependencies: Record<
-    number, // number is the variable id (codebook node id).
-    {
-      branches: Set<number>; // branches to update if dependency changes
-      variables: Set<number>; // variables to update if dependency changes
-      layouts: Set<number>; // layouts to update if dependency changes
-    }
-  >;
+export type UpdateOnAnnotate = {
+  triggerId: number; // id of the variable change that triggers the update
+  updateId: number; // id of the node to update
+  updateProperty: "condition" | "variable" | "layout"; // property to update
 };
 
 export type ScriptData = {
@@ -165,14 +159,13 @@ export type ScriptData = {
   values: Record<string, (number | null)[]>;
 };
 export type DataIndicator =
-  | { type: "unit"; accessor: "unit"; name: string }
-  | { type: "annotation"; accessor: "code" | "value" | "codes" | "values"; name: string };
+  | { type: "unit"; accessor: "unit"; field: string }
+  | { type: "annotation"; accessor: "code" | "value" | "codes" | "values"; variableName: string };
 
 export type Dependencies = {
-  variable?: DataIndicator[];
-  layout?: DataIndicator[];
-  condition?: DataIndicator[];
-};
+  property: "variable" | "layout" | "condition";
+  dataIndicators: DataIndicator[];
+}[];
 
 // export type Script = {
 //   str: string;
@@ -228,6 +221,7 @@ export type CodebookState = {
   branching: Branching;
   variableMap: VariableMap;
   layouts: Layouts;
+  updateOnAnnotate: UpdateOnAnnotate[];
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;

@@ -130,7 +130,7 @@ function createPreviewPhase(
       phaseType: "annotation",
       parentId: codebookNode.id,
       position: 0,
-      dependencies: {},
+      dependencies: [],
       data: {
         type: "Question",
         variable: {

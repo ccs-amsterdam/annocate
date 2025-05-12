@@ -5,12 +5,12 @@ import {
   CodebookPhase,
   CodebookState,
   CodebookVariable,
+  DataIndicator,
+  Dependencies,
   GetSession,
   Layout,
   Layouts,
-  Phase,
-  ProgressState,
-  UpdateTrigger,
+  UpdateOnAnnotate,
   VariableAnnotationsMap,
   VariableMap,
   VariableSchema,
@@ -24,10 +24,6 @@ export async function prepareCodebookState(
   unitProgress: GetSession["phaseProgress"],
 ): Promise<CodebookState> {
   const phases: CodebookPhase[] = [];
-  const updateTrigger: UpdateTrigger = {
-    variableNameMap: {},
-    dependencies: {},
-  };
   const branching: Branching = {};
   const variableMap: VariableMap = {};
   const layouts: Layouts = {};
@@ -55,7 +51,7 @@ export async function prepareCodebookState(
     if ("layout" in node.data) {
       const layoutId = node.id;
       layouts[layoutId] = await prepareLayout(node.data.layout);
-      inheritable[node.id].layoutId = layoutId;
+      inheritable[layoutId].layoutId = layoutId;
     }
 
     if ("condition" in node.data && node.data.condition) {
@@ -71,7 +67,6 @@ export async function prepareCodebookState(
     }
 
     if (node.treeType === "leaf") {
-      updateTrigger.variableNameMap[node.name] = node.id;
       const variable = await prepareVariable(node, inheritable[node.id].layoutId);
       variableMap[variable.id] = variable;
 
@@ -85,22 +80,38 @@ export async function prepareCodebookState(
     }
   }
 
-  // for (let phase of phases) {
-  //   phase.done = phase.variables.every((v) => v.done && v.skip);
-  //   phase.currentVariable = phase.variables.findIndex((v) => !v.done && !v.skip);
-  // }
-  // const currentPhase = phases.findIndex((phase) => !phase.done);
-  //
-  //
-  for (let variable of Object.values(variableMap)) {
-  }
-
   return {
     progress: await computeProgress(phases, globalAnnotations, unitProgress),
     branching,
     layouts,
     variableMap,
+    updateOnAnnotate: prepareUpdateOnAnnotate(nodes),
   };
+}
+
+function prepareUpdateOnAnnotate(nodes: CodebookNode[]) {
+  const nameToId: Record<string, number> = {};
+  for (const node of nodes) {
+    nameToId[node.name] = node.id;
+  }
+
+  const updateTriggers: UpdateOnAnnotate[] = [];
+
+  for (const node of nodes) {
+    for (let { property, dataIndicators } of node.dependencies) {
+      for (let dataIndicator of dataIndicators) {
+        if (dataIndicator.type !== "annotation") continue;
+
+        updateTriggers.push({
+          triggerId: nameToId[dataIndicator.variableName],
+          updateProperty: property,
+          updateId: node.id,
+        });
+      }
+    }
+  }
+
+  return updateTriggers;
 }
 
 async function prepareLayout(layout: Layout): Promise<Layout> {

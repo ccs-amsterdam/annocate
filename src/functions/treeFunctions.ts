@@ -159,10 +159,21 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
 }
 
 function getDependencies(data: CodebookNodeData): Dependencies {
-  const dependencies: Dependencies = {};
-  if ("variable" in data) dependencies.variable = extractDataIndictors(JSON.stringify(data.variable));
-  if ("layout" in data) dependencies.layout = extractDataIndictors(JSON.stringify(data.layout));
-  if ("condition" in data) dependencies.condition = extractDataIndictors(JSON.stringify(data.condition));
+  // Add dependencies for any properties of the node that depend on data.
+  // In other words, when they contain scripts that use data indicators.
+  const dependencies: Dependencies = [];
+  if ("variable" in data) {
+    const dataIndicators = extractDataIndictors(JSON.stringify(data.variable));
+    dependencies.push({ property: "variable", dataIndicators });
+  }
+  if ("layout" in data) {
+    const dataIndicators = extractDataIndictors(JSON.stringify(data.layout));
+    dependencies.push({ property: "layout", dataIndicators });
+  }
+  if ("condition" in data) {
+    const dataIndicators = extractDataIndictors(JSON.stringify(data.condition));
+    dependencies.push({ property: "condition", dataIndicators });
+  }
   return dependencies;
 }
 
