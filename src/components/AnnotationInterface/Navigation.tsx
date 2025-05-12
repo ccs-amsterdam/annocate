@@ -21,7 +21,6 @@ const Navigation = ({}: NavigationProps) => {
 
 const NavigationDropdown = () => {
   const { annotationManager, progress } = useJobContext();
-  const phase = progress.phases[progress.currentPhase];
 
   return (
     <DropdownMenu>
@@ -42,7 +41,7 @@ const NavigationDropdown = () => {
               <DropdownMenuItem
                 key={phaseIndex + "." + variableIndex}
                 onClick={() => {
-                  annotationManager.navigate(phaseIndex, phase.currentUnit, variableIndex);
+                  annotationManager.navigate(phaseIndex, progress.current.unit, variableIndex);
                 }}
               >
                 {variable.label}
@@ -57,13 +56,13 @@ const NavigationDropdown = () => {
 
 const NavigationButtons = () => {
   const { progress, finished, annotationLib, annotationManager } = useJobContext();
-  const phase = progress.phases[progress.currentPhase];
-  let hasPrevPhase = progress.currentPhase === 0;
-  let hasNextPhase = progress.currentPhase === progress.phases.length - 1;
+  const nUnits = progress.phases[progress.current.phase].unitsDone.length;
+  let hasPrevPhase = progress.current.phase === 0;
+  let hasNextPhase = progress.current.phase === progress.phases.length - 1;
 
   // unit navigation
-  const noPrevUnit = phase.currentUnit === 0;
-  const noNextUnit = phase.currentUnit === phase.unitsDone.length - 1;
+  const noPrevUnit = progress.current.unit === 0;
+  const noNextUnit = progress.current.unit === nUnits - 1;
 
   // variable navigation
   const { setPrevVariable, setNextVariable } = variableNavigation(progress, annotationManager);
@@ -78,9 +77,9 @@ const NavigationButtons = () => {
     } else if (setPrevVariable !== null) {
       setPrevVariable();
     } else if (noPrevUnit) {
-      annotationManager.navigate(progress.currentPhase - 1);
+      annotationManager.navigate(progress.current.phase - 1);
     } else {
-      annotationManager.navigate(progress.currentPhase, phase.currentUnit - 1);
+      annotationManager.navigate(progress.current.phase, progress.current.unit - 1);
     }
   };
 
@@ -89,9 +88,9 @@ const NavigationButtons = () => {
     if (setNextVariable !== null) {
       setNextVariable();
     } else if (noNextUnit) {
-      annotationManager.navigate(progress.currentPhase + 1);
+      annotationManager.navigate(progress.current.phase + 1);
     } else {
-      annotationManager.navigate(progress.currentPhase, phase.currentUnit + 1);
+      annotationManager.navigate(progress.current.phase, progress.current.unit + 1);
     }
   };
 
@@ -124,9 +123,8 @@ const NavigationButtons = () => {
 };
 
 function variableNavigation(progress: ProgressState, annotationManager: AnnotationManager) {
-  const phase = progress.phases[progress.currentPhase];
-  const variableIndex = phase.currentVariable;
-  const variableStatuses = phase.variables;
+  const variableIndex = progress.current.variable;
+  const variableStatuses = progress.phases[progress.current.phase].variables;
 
   let prevVariable: number | null = null;
   let nextVariable: number | null = null;
@@ -138,8 +136,8 @@ function variableNavigation(progress: ProgressState, annotationManager: Annotati
     if (nextVariable !== null) break;
   }
 
-  const setPrevVariable = prevVariable !== null ? () => annotationManager.setVariableIndex(prevVariable || 0) : null;
-  const setNextVariable = nextVariable !== null ? () => annotationManager.setVariableIndex(nextVariable || 0) : null;
+  const setPrevVariable = prevVariable !== null ? () => annotationManager.setVariableIndex(prevVariable) : null;
+  const setNextVariable = nextVariable !== null ? () => annotationManager.setVariableIndex(nextVariable) : null;
   return { setPrevVariable, setNextVariable };
 }
 
@@ -151,10 +149,10 @@ const UnitSlider = () => {
   const slider = useRef(0);
   const sliderInput = useRef<HTMLInputElement>(null);
 
-  const uProgress = progress.phases[progress.currentPhase];
-  const currentUnit = uProgress.currentUnit;
-  const n = uProgress.unitsDone.length;
-  const maxUnit = uProgress.unitsDone.findIndex((u) => !u) || n + 1;
+  const currentUnit = progress.current.unit;
+  const unitsDone = progress.phases[progress.current.phase].unitsDone;
+  const n = unitsDone.length;
+  const maxUnit = unitsDone.findIndex((u) => !u) || n + 1;
 
   useEffect(() => {
     const slider = sliderInput.current;
@@ -173,15 +171,14 @@ const UnitSlider = () => {
   }
 
   if (useWatchChange([currentUnit, n])) {
-    if (uProgress.currentUnit === null || uProgress.currentUnit < 0) return;
-    const page = uProgress.currentUnit === null ? n + 1 : Math.min(uProgress.currentUnit + 1, n + 1);
+    const page = Math.min(progress.current.unit + 1, n + 1);
     setActivePage(page);
     setSliderPage(page);
   }
 
   const updatePage = (page: number) => {
     if (page !== activePage) {
-      annotationManager.navigate(progress.currentPhase, page - 1);
+      annotationManager.navigate(progress.current.phase, page - 1);
       setActivePage(page);
       setSliderPage(page);
     }

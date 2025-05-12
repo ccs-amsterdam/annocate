@@ -13,21 +13,21 @@ interface QuestionTaskProps {
 }
 
 const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
-  const { unit, height, codebook, annotationLib, annotationManager, progress } = useJobContext();
+  const { unit, height, variableMap, progress } = useJobContext();
   const { animateUnit } = useProgressTransition({ progress });
   const { refs, menuSwipe, textSwipe } = useSwipe();
   const divref = useRef<HTMLDivElement>(null);
 
-  const phase = progress.phases[progress.currentPhase];
-  const variable = codebook.phases[phase.currentVariable].variables[phase.currentVariable];
+  const variableId = progress.phases[progress.current.phase].variables[progress.current.variable].id;
+  const variable = variableMap[variableId];
 
   if (!unit || !variable) return null;
 
-  const hasContent = !!variable.layout;
+  const hasContent = variable.layoutId !== undefined;
 
   return (
     <div
-      key={progress.currentPhase + "." + unit.token}
+      key={progress.current.phase + "." + unit.token}
       className={`${animateUnit} relative flex h-full w-full flex-col overflow-hidden bg-background will-change-transform`}
       ref={divref}
     >
@@ -47,7 +47,7 @@ const QuestionTask = ({ blockEvents = false }: QuestionTaskProps) => {
         // key={unit.token + annotationLib.variableIndex} // Seems not needed for animate, but keeping it here just in case
         className={`${!hasContent ? "h-full overflow-auto" : null} relative flex-auto`}
       >
-        <QuestionForm blockEvents={blockEvents} height={height} />
+        <QuestionForm blockEvents={blockEvents} height={height} hasContent={hasContent} />
       </div>
     </div>
   );
@@ -76,7 +76,7 @@ function SwipeableDocument({
 }
 
 function useSwipe() {
-  const { codebook, progress, annotationManager } = useJobContext();
+  const { variableMap, progress, annotationManager } = useJobContext();
   const textref = useRef<HTMLDivElement>(null);
   const boxref = useRef<HTMLDivElement>(null);
   const coderef = useRef<HTMLDivElement>(null);
@@ -84,8 +84,8 @@ function useSwipe() {
     return { text: textref, box: boxref, code: coderef };
   }, []);
 
-  const phase = progress.phases[progress.currentPhase];
-  const variable = codebook.phases[progress.currentPhase].variables[phase.currentVariable];
+  const variableId = progress.phases[progress.current.phase].variables[progress.current.variable].id;
+  const variable = variableMap[variableId];
 
   function onSwipe(transition: Transition) {
     if (!transition.code) return;
@@ -129,16 +129,13 @@ function useProgressTransition({ progress }: { progress: ProgressState }) {
     // dont animate on first render (phase -1)
     let animateUnit = prevUnit.current.phase === -1 ? "" : "animate-slide-in-bottom ease-out";
 
-    const phase = progress.phases[progress.currentPhase];
-    const currentUnit = phase.currentUnit;
-
     if (
-      (progress.currentPhase === prevUnit.current.phase && currentUnit < prevUnit.current.unit) ||
-      progress.currentPhase < prevUnit.current.phase
+      (progress.current.phase === prevUnit.current.phase && progress.current.unit < prevUnit.current.unit) ||
+      progress.current.unit < prevUnit.current.phase
     )
       animateUnit = "animate-slide-in-top  ease-out";
 
-    prevUnit.current = { phase: progress.currentPhase, unit: currentUnit };
+    prevUnit.current = { phase: progress.current.phase, unit: progress.current.unit };
 
     return animateUnit;
   }, [progress]);

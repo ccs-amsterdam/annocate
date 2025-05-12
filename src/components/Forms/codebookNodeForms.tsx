@@ -203,6 +203,7 @@ function useUpdatePreview({
           children: [],
           treeType: "leaf",
           phaseType: "survey",
+          dependencies: {},
         };
         setPreview(preview);
         triggerRef.current = true;

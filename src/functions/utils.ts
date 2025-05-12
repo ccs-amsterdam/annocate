@@ -22,3 +22,12 @@ export function safeParams<T extends object>(params: T): Pick<SafeParams, Extrac
   const parsed = SafeParamsSchema.partial().parse(params);
   return parsed as Pick<SafeParams, Extract<keyof T, keyof SafeParams>>;
 }
+
+export function uniqueArray<T>(array: T[]): T[] {
+  return Array.from(new Set(array));
+}
+
+export function avgArray(array: number[]): number {
+  if (array.length === 0) return 0;
+  return array.reduce((acc, val) => acc + val, 0) / array.length;
+}

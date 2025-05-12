@@ -1,7 +1,8 @@
 "use cient";
 
-import { Annotation, GetSession, Unit } from "@/app/types";
+import { Annotation, DataIndicator, GetSession, ScriptData, Unit, UnitData } from "@/app/types";
 import { JobContext } from "@/components/AnnotatorProvider/AnnotatorProvider";
+import { avgArray, uniqueArray } from "@/functions/utils";
 import { createContext, ReactElement, ReactNode, useContext } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
@@ -13,10 +14,12 @@ interface IFrameObj {
 }
 
 interface SandboxContextProps {
-  evalStringTemplate: (str: string, data: Record<string, any>) => Promise<string>;
+  evalStringTemplate: (str: string, data: ScriptData) => Promise<string>;
   evalStringWithJobContext: (str: string, context: JobContext) => Promise<string>;
   ready: boolean;
 }
+
+const accessors = ["unit", "code", "value", "codes", "values"] as const;
 
 const SandboxContext = createContext<SandboxContextProps>({
   evalStringTemplate: async () => {
@@ -82,8 +85,8 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
   );
 
   const evalStringTemplate = useCallback(
-    async (str: string, data: Record<string, any>): Promise<string> => {
-      const { textParts, scriptParts } = parseScriptFromString(str);
+    async (str: string, data: ScriptData): Promise<string> => {
+      const { textParts, scriptParts } = parseScriptFromString(str, data);
 
       let result = "";
       for (let i = 0; i < textParts.length; i++) {
@@ -102,32 +105,18 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
     [evalInSandbox],
   );
 
+  const evalBoolean = useCallback(
+    async (str: string, data: ScriptData): Promise<boolean> => {
+      return await evalInSandbox(str, data, z.coerce.boolean());
+    },
+    [evalInSandbox],
+  );
+
   const evalStringWithJobContext = useCallback(
     async (str: string, jobContext: JobContext): Promise<string> => {
-      const variableNameMap: Record<string, number> = {};
-      for (let phase of jobContext.codebook.phases) {
-        for (let variable of phase.variables) {
-          variableNameMap[variable.name] = variable.id;
-        }
-      }
-
-      const annotations: Record<string, any> = {};
-      for (let [id, annotation] of Object.entries(jobContext.annotationLib.annotations)) {
-        if (annotation.deleted) continue;
-        annotations[id] = {
-          code: annotation.code,
-          value: annotation.value,
-        };
-      }
-
-      const unitData: Record<string, any> = {};
-      if (jobContext.unit) {
-        for (let [id, value] of Object.entries(jobContext.unit.data || {})) {
-          unitData[id] = value;
-        }
-      }
-
-      return evalStringTemplate(str, { variableNameMap, annotations, unitData });
+      const dataIndicators = extractDataIndictors(str);
+      const scriptData = prepareScriptData(dataIndicators, jobContext);
+      return evalStringTemplate(str, scriptData);
     },
     [evalStringTemplate],
   );
@@ -162,9 +151,7 @@ function createSandboxedIframe(origin: string, senderId: string, receiverId: str
                     let { id, script, data} = event.data;
 
                     // Accessor functions
-                    const unit = (str) => data?.unitData?.[str]
-                    const code = (str) => data?.annotations?.[str]?.code
-                    const value = (str) => data?.annotations?.[str]?.value
+                    const ___get_data___ = (accessor, name) => data?.[accessor]?.[name]
 
                     try {
                         if (event.source !== window.parent) throw new Error("Invalid source");
@@ -189,21 +176,86 @@ function createSandboxedIframe(origin: string, senderId: string, receiverId: str
   return iframe;
 }
 
-function replaceShorthand(str: string, accessor: string): string {
-  const regex = new RegExp(`\\b${accessor}\\$(\\w+)`, "g");
-  return str.replace(regex, `{{${accessor}('$1')}}`);
-}
+export function extractDataIndictors(str: string): DataIndicator[] {
+  const dataIndicators: DataIndicator[] = [];
 
-function parseScriptFromString(str: string) {
-  for (let accessor of ["unit", "code", "value"]) {
-    str = replaceShorthand(str, accessor);
+  for (let accessor of accessors) {
+    const regex = new RegExp(`\\b@${accessor}\.(\\w+)`, "g");
+    const matches = str.matchAll(regex);
+    for (let match of matches) {
+      const name = match[2] as string;
+      if (accessor === "unit") {
+        dataIndicators.push({ type: "unit", accessor, name });
+      } else {
+        dataIndicators.push({ type: "annotation", accessor, name });
+      }
+    }
   }
 
+  return dataIndicators;
+}
+
+function prepareScriptData(dataIndicators: DataIndicator[], jobContext: JobContext): ScriptData {
+  const scriptData: ScriptData = { unit: {}, code: {}, value: {}, codes: {}, values: {} };
+  for (let dataIndicator of dataIndicators) {
+    const { type, accessor, name } = dataIndicator;
+
+    if (type === "unit") {
+      if (accessor === "unit") {
+        const value = jobContext.unit?.data?.[name];
+        if (value !== undefined) scriptData.unit[name] = value;
+        continue;
+      }
+    }
+
+    // For annotation type accessors we need to find the annotations for the variables
+    const variable = Object.values(jobContext.variableMap).find((v) => v.name === name);
+    const annotations =
+      Object.values(jobContext.annotationLib.annotations).filter((a) => a.variableId === variable?.id) || [];
+    if (annotations.length === 0) continue;
+
+    if (accessor === "code") {
+      scriptData.code[name] = uniqueArray(annotations.map((a) => a.code || null)).join(", ");
+    }
+    if (accessor === "value") {
+      scriptData.value[name] = avgArray(annotations.map((a) => a.value || null).filter((a) => a !== null));
+    }
+    if (accessor === "codes") {
+      scriptData.codes[name] = annotations.map((a) => a.code || null);
+    }
+    if (accessor === "values") {
+      scriptData.values[name] = annotations.map((a) => a.value || null);
+    }
+  }
+
+  return scriptData;
+}
+
+function replaceDataIndicatorWithAccessor(str: string, accessor: keyof ScriptData): string {
+  const regex = new RegExp(`\\b@${accessor}\.(\\w+)`, "g");
+  return str.replaceAll(regex, `___get_data___('${accessor}','$1')`);
+}
+
+function replaceDataIndicatorWithText(str: string, accessor: keyof ScriptData, scriptData: ScriptData): string {
+  const regex = new RegExp(`\\b@${accessor}\.(\\w+)`, "g");
+  return str.replaceAll(regex, (match, acc, key) => {
+    return String(scriptData[accessor][key]);
+  });
+}
+
+function parseScriptFromString(str: string, scriptData: ScriptData) {
   const regex = new RegExp(/{{(.*?)}}/); // Match text inside two square brackets
   const parts = str.split(regex);
 
   const textParts = parts.filter((p, i) => i % 2 === 0);
   const scriptParts = parts.filter((p, i) => i % 2 === 1);
+
+  for (let i = 0; i < parts.length; i++) {
+    for (let accessor of accessors) {
+      textParts[i] = replaceDataIndicatorWithText(scriptParts[i], accessor, scriptData);
+      scriptParts[i] = replaceDataIndicatorWithAccessor(scriptParts[i], accessor);
+    }
+  }
 
   return { textParts, scriptParts };
 }

@@ -13,9 +13,8 @@ import {
   RelationAnnotationSchema,
   SpanAnnotationSchema,
   QuestionAnnotationSchema,
-  VariableStatusSchema,
-  SubmitAnnotationSchema,
   GeneralAnnotationSchema,
+  VariableAnnotationsSchema,
 } from "./api/projects/[projectId]/annotations/schemas";
 import {
   CodebookCodeSchema,
@@ -104,13 +103,13 @@ export type CodebookNode = CodebookNodeResponse & {
   phaseId: number;
   treeType: TreeType;
   phaseType: Phase;
+  dependencies: Dependencies;
 };
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
 export type Code = z.infer<typeof CodebookCodeSchema>;
 export type VariableItem = z.infer<typeof CodebookVariableItemSchema>;
 export type JobResponse = z.infer<typeof JobResponseSchema>;
-export type Layout = z.infer<typeof UnitLayoutSchema>;
 export type UnitData = z.infer<typeof UnitDataSchema>;
 export type UnitDataResponse = z.infer<typeof UnitDataResponseSchema>;
 export type Rules = z.infer<typeof JobRulesSchema>;
@@ -132,34 +131,85 @@ export type CodebookVariable = VariableSchema & {
   // Adds some client side properties that are not stored in the backend
   id: number;
   name: string;
-  layout?: Layout;
+  layoutId?: number;
   codeMap: Record<string, Code>;
   validFrom?: ValidRelation;
   validTo?: ValidRelation;
 };
 
-export type BranchNodeId = number;
 export type Branch = {
-  dependencies: number[]; // ids of variables that are used in the if condition
   condition: string; // the js code to be evaluated
   skips: number[]; // ids of variables that are skipped if the condition is true
 };
-export type Branching = Record<BranchNodeId, Branch>;
+export type Branching = Record<number, Branch>; // number is codebook node id that sets the branching condition
+
+// Branch, CodebookVariable and Layout can depend on variables. This keeps track of which, so that it
+// can update them when the variable changes
+export type UpdateTrigger = {
+  variableNameMap: Record<string, number>; // maps variable names to variable ids (needed for scripts)
+  dependencies: Record<
+    number, // number is the variable id (codebook node id).
+    {
+      branches: Set<number>; // branches to update if dependency changes
+      variables: Set<number>; // variables to update if dependency changes
+      layouts: Set<number>; // layouts to update if dependency changes
+    }
+  >;
+};
+
+export type ScriptData = {
+  unit: Record<string, number | string | boolean>;
+  code: Record<string, string | null>;
+  value: Record<string, number | null>;
+  codes: Record<string, (string | null)[]>;
+  values: Record<string, (number | null)[]>;
+};
+export type DataIndicator =
+  | { type: "unit"; accessor: "unit"; name: string }
+  | { type: "annotation"; accessor: "code" | "value" | "codes" | "values"; name: string };
+
+export type Dependencies = {
+  variable?: DataIndicator[];
+  layout?: DataIndicator[];
+  condition?: DataIndicator[];
+};
+
+// export type Script = {
+//   str: string;
+//   dependencies: {
+//     variables: { id: number; name: string }[];
+//     unitFields: string[];
+//   };
+//   action:
+//     | { type: "branching"; skipVariableIds: number[] }
+//     | { type: "updateLayout"; layoutId: number; field: string }
+//     | { type: "updateVariable"; variableId: number; path: string[] };
+// };
+
+export type Layout = z.infer<typeof UnitLayoutSchema>;
+export type Layouts = Record<number, Layout>; // number is layout node ide
 
 export type ProgressState = {
-  currentPhase: number;
+  current: {
+    phase: number;
+    unit: number;
+    variable: number;
+  };
+  previous: {
+    phase: number;
+    unit: number;
+    variable: number;
+  };
   phases: {
-    currentVariable: number;
-    previousVariable: number;
     variables: {
       id: number;
       label: string;
       done: boolean;
       skip: boolean;
     }[];
-    currentUnit: number;
     unitsDone: boolean[];
     done: boolean;
+    type: Phase;
   }[];
   settings: {
     canGoBack: boolean;
@@ -174,8 +224,10 @@ export type CodebookPhase = {
   variables: CodebookVariable[];
 };
 export type CodebookState = {
+  progress: ProgressState;
   branching: Branching;
-  phases: CodebookPhase[];
+  variableMap: VariableMap;
+  layouts: Layouts;
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;
@@ -183,8 +235,9 @@ export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema
 export type QuestionAnnotation = z.infer<typeof QuestionAnnotationSchema>;
 export type SpanAnnotation = z.infer<typeof SpanAnnotationSchema>;
 export type RelationAnnotation = z.infer<typeof RelationAnnotationSchema>;
-export type SubmitAnnotation = z.infer<typeof SubmitAnnotationSchema>;
 export type Annotation = z.infer<typeof AnnotationSchema>;
+export type VariableAnnotations = z.infer<typeof VariableAnnotationsSchema>;
+export type VariableAnnotationsMap = Record<number, VariableAnnotations>;
 
 export type AnnotationContext = z.infer<typeof GeneralAnnotationSchema>["context"];
 
@@ -321,22 +374,16 @@ export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED" | "STOLEN
 //   select?: () => void;
 // }
 
-export type VariableStatus = z.infer<typeof VariableStatusSchema>;
-
 export type AnnotationID = string;
 export type AnnotationDictionary = Record<AnnotationID, Annotation>;
-export type TokenAnnotations = Record<number, AnnotationID[]>;
+export type AnnotationsByToken = Record<number, AnnotationID[]>;
 
 export interface AnnotationLibrary {
   sessionId: string;
   phaseToken: string;
   annotations: AnnotationDictionary;
-  // variables: CodebookVariable[];
-  // variableIndex: number;
-  // variableStatuses: VariableStatus[];
-  byToken: TokenAnnotations;
+  byToken: AnnotationsByToken;
   codeHistory: CodeHistory;
-  // previousIndex: number;
 }
 
 export interface AnnotationHistory {

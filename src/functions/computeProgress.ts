@@ -1,12 +1,29 @@
-import { Annotation, CodebookPhase, CodebookState, CodebookVariable, GetSession, ProgressState } from "@/app/types";
+import {
+  Annotation,
+  CodebookPhase,
+  CodebookState,
+  CodebookVariable,
+  GetSession,
+  ProgressState,
+  VariableAnnotationsMap,
+} from "@/app/types";
 
 export async function computeProgress(
-  codebookState: CodebookState,
-  globalAnnotations: Annotation[],
+  phases: CodebookPhase[],
+  globalAnnotations: VariableAnnotationsMap,
   unitProgress: GetSession["phaseProgress"],
 ) {
   const progress: ProgressState = {
-    currentPhase: 0,
+    current: {
+      phase: 0,
+      unit: 0,
+      variable: 0,
+    },
+    previous: {
+      phase: 0,
+      unit: 0,
+      variable: 0,
+    },
     phases: [],
     settings: {
       canGoBack: true,
@@ -14,49 +31,32 @@ export async function computeProgress(
     },
   };
 
-  for (let i = 0; i < codebookState.phases.length; i++) {
-    const phase = codebookState.phases[i];
+  for (let i = 0; i < phases.length; i++) {
+    const phase = phases[i];
     const variables = computeVariableStatuses(globalAnnotations, phase);
-
     const unitsDone = computeUnitsDone(unitProgress, phase);
-    const currentUnit = unitsDone.findIndex((u) => u);
-    const currentVariable = variables.findIndex((v) => !v.done && !v.skip);
+
     progress.phases[i] = {
-      currentUnit: currentUnit > -1 ? currentUnit : unitsDone.length - 1,
       unitsDone,
-      currentVariable: currentVariable > -1 ? currentVariable : variables.length - 1,
-      previousVariable: 0,
       variables,
       done: unitsDone.every((u) => u),
+      type: phase.type,
     };
   }
 
-  progress.currentPhase = progress.phases.findIndex((phase) => !phase.done);
+  progress.current.phase = progress.phases.findIndex((phase) => !phase.done);
+  progress.current.unit = progress.phases[progress.current.phase].unitsDone.findIndex((u) => u);
+  progress.current.variable = progress.phases[progress.current.phase].variables.findIndex((v) => !v.done && !v.skip);
   return progress;
 }
 
-function computeVariableStatuses(annotations: Annotation[], phase: CodebookPhase) {
-  const variables = phase.variables;
-  return phase.variables.map((variable) => computeVariableStatus(annotations, variable));
-}
-
-function computeVariableStatus(annotations: Annotation[], variable: CodebookVariable) {
-  let done = false;
-  let skip = false;
-  for (let a of annotations) {
-    if (a.deleted) continue;
-    if (a.variableId !== variable.id) continue;
-    if (!a.finishVariable || !a.finishLoop) continue;
-    if (a.type === "skip") skip = true;
-    done = true;
-    break;
-  }
-  return {
+function computeVariableStatuses(variableAnnotationsMap: VariableAnnotationsMap, phase: CodebookPhase) {
+  return phase.variables.map((variable) => ({
     id: variable.id,
     label: variable.name,
-    done,
-    skip,
-  };
+    done: variableAnnotationsMap[variable.id]?.done || false,
+    skip: variableAnnotationsMap[variable.id]?.skip || false,
+  }));
 }
 
 function computeUnitsDone(unitProgress: GetSession["phaseProgress"], phase: CodebookPhase) {

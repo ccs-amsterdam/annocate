@@ -19,14 +19,12 @@ export interface OnSelectParams {
 }
 
 const AnswerField = ({ blockEvents = false }: AnswerFieldProps) => {
-  const { codebook, progress, annotationLib, annotationManager } = useJobContext();
+  const { variableMap, progress, annotationLib, annotationManager } = useJobContext();
 
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
-
-  const variables = codebook.phases[progress.currentPhase].variables;
-  const phaseProgress = progress.phases[progress.currentPhase];
-  const variable = variables?.[phaseProgress.currentVariable];
+  const variableId = progress.phases[progress.current.phase].variables[progress.current.variable].id;
+  const variable = variableMap[variableId];
 
   // TODO remove speedbumps (jeej)
   const speedbump = false;
@@ -97,7 +95,7 @@ const AnswerField = ({ blockEvents = false }: AnswerFieldProps) => {
         onSelect={onSelect}
         onFinish={onSubmit}
         blockEvents={blockEvents} // for disabling key/click events
-        questionIndex={phaseProgress.currentVariable} // for use in useEffect for resetting values on question change
+        questionIndex={progress.current.variable} // for use in useEffect for resetting values on question change
         speedbump={speedbump}
       />
     );
@@ -124,7 +122,7 @@ const AnswerField = ({ blockEvents = false }: AnswerFieldProps) => {
         onSelect={onSelect}
         onFinish={onSubmit}
         blockEvents={blockEvents}
-        questionIndex={phaseProgress.currentVariable}
+        questionIndex={progress.current.variable}
       />
     );
 

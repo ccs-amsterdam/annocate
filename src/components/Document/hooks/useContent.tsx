@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 export function useContent() {
   const jobContext = useJobContext();
-  const { unit, codebook, progress } = jobContext;
+  const { unit, variableMap, layouts, progress } = jobContext;
   const { evalStringWithJobContext } = useSandbox();
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState<Doc | null>(null);
@@ -14,16 +14,18 @@ export function useContent() {
   useEffect(() => {
     if (!unit) return;
 
-    const phaseProgress = progress.phases[progress.currentPhase];
-    const variable = codebook.phases[progress.currentPhase].variables[phaseProgress.currentVariable];
+    const variableId = progress.phases[progress.current.phase].variables[progress.current.variable].id;
+    const variable = variableMap[variableId];
 
-    if (variable.layout === undefined) {
+    if (variable.layoutId === undefined) {
       setContent(null);
       return;
     }
 
+    const layout = layouts[variable.layoutId];
+
     // setLoading(true)
-    processUnitContent({ unit, layout: variable.layout, evalStringWithJobContext, jobContext })
+    processUnitContent({ unit, layout, evalStringWithJobContext, jobContext })
       .then((content: Doc) => {
         setContent(content);
       })
@@ -34,7 +36,7 @@ export function useContent() {
       .finally(() => {
         setLoading(false);
       });
-  }, [unit, codebook, progress]);
+  }, [unit, layouts, progress]);
 
   return { loading, content };
 }

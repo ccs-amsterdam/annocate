@@ -26,6 +26,7 @@ import {
   access,
   Access,
   CodebookNodeData,
+  Annotation,
 } from "@/app/types";
 import { Key } from "lucide-react";
 import { wrap } from "module";
@@ -227,19 +228,19 @@ export const annotatorUnits = pgTable(
   }),
 );
 
-export const annotations = pgTable(
-  "annotations",
+export const variableAnnotations = pgTable(
+  "variable_annotations",
   {
     annotatorSessionId: integer("annotator_session_id")
       .notNull()
       .references(() => annotatorSession.id),
     unitId: integer("unit_id"),
-    codebookNodeId: integer("codebook_item_id")
+    variableId: integer("variable_id")
       .notNull()
       .references(() => codebookNodes.id),
     done: boolean("done").notNull().default(false),
     skip: boolean("skip").notNull().default(false),
-    annotations: jsonb("annotation").notNull().$type<AnnotationDictionary>(),
+    annotations: jsonb("annotation").notNull().$type<Annotation[]>().default([]),
 
     // If the annotation is made by an unauthenticated user (i.e. no email address),
     // we add a device ID. The annotation can the only be seen if the device ID is
@@ -248,11 +249,13 @@ export const annotations = pgTable(
     // annotating on another device (just not see these annotations)
     noAuthDeviceId: varchar("device_id", { length: 64 }),
 
+    created: timestamp("created").notNull().defaultNow(),
+
     // isOverlap: boolean("is_overlap").notNull().default(false),
     // isSurvey: boolean("is_survey").notNull().default(false),
     // isGold: boolean("is_gold").notNull().default(false),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.annotatorSessionId, table.unitId, table.codebookNodeId] }),
+    pk: primaryKey({ columns: [table.annotatorSessionId, table.unitId, table.variableId] }),
   }),
 );

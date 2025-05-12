@@ -1,4 +1,4 @@
-import { annotations, annotatorSession, codebookNodes, jobs, projects } from "@/drizzle/schema";
+import { variableAnnotations, annotatorSession, codebookNodes, jobs, projects } from "@/drizzle/schema";
 import db from "@/drizzle/drizzle";
 import { eq, or, and, sql, isNotNull } from "drizzle-orm";
 import { hasMinProjectRole } from "@/app/api/authorization";

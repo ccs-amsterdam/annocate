@@ -127,7 +127,7 @@ const SelectRelationPage = ({ variable, edge, annotationLib, annotationManager, 
       if (value.cancel) {
         setOpen(false);
       } else if (value.delete) {
-        if (value.id) annotationManager.rmAnnotations([value.id]);
+        if (value.id) annotationManager.rmAnnotation(value.id);
       } else {
         if (value.code) annotationManager.createRelationAnnotation(variable.id, value.code, edge.from, edge.to);
       }

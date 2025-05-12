@@ -1,4 +1,15 @@
-import { CodebookNode, CodebookNodeResponse, CodebookNodeType, Phase, TreeType, TypeDetails } from "@/app/types";
+import {
+  CodebookNode,
+  CodebookNodeData,
+  CodebookNodeResponse,
+  CodebookNodeType,
+  DataIndicator,
+  Dependencies,
+  Phase,
+  TreeType,
+  TypeDetails,
+} from "@/app/types";
+import { extractDataIndictors } from "@/hooks/useSandboxedEval";
 
 export const codebookNodeType = [
   "Survey phase",
@@ -135,6 +146,7 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
         parentPath,
         children: allChildren.map((child) => child.id),
         treeType: typeDetails.treeType,
+        dependencies: getDependencies(parent.data),
         ...phase,
       };
       codebook.push(nodeParent);
@@ -144,6 +156,14 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
   }
 
   return recursiveProcess(phases, []);
+}
+
+function getDependencies(data: CodebookNodeData): Dependencies {
+  const dependencies: Dependencies = {};
+  if ("variable" in data) dependencies.variable = extractDataIndictors(JSON.stringify(data.variable));
+  if ("layout" in data) dependencies.layout = extractDataIndictors(JSON.stringify(data.layout));
+  if ("condition" in data) dependencies.condition = extractDataIndictors(JSON.stringify(data.condition));
+  return dependencies;
 }
 
 interface Edges {

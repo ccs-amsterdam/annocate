@@ -10,9 +10,8 @@ import {
   UnitData,
   Unit,
   GetSession,
-  VariableStatus,
   PostAnnotationsResponse,
-  ProgressState,
+  VariableAnnotations,
 } from "@/app/types";
 import { prepareCodebookState } from "@/functions/codebookPhases";
 import { MiddlecatUser } from "middlecat-react";
@@ -43,7 +42,7 @@ type PhaseUnits = Record<number, ServerUnit[]>;
 type UnitId = number | "global";
 
 type VariableId = number;
-export type ServerAnnotations = Record<UnitId, Record<VariableId, AnnotationDictionary>>;
+export type ServerAnnotations = Record<UnitId, Record<VariableId, VariableAnnotations>>;
 
 export class MockServer {
   annotations: ServerAnnotations;
@@ -82,13 +81,11 @@ export class MockServer {
     // The phase can also have a token that encrypts:
     // - required variables
 
-    const globalAnnotations = Object.values(this.annotations["global"]).flatMap((variable) => variable.annotations);
-
     return {
       sessionToken: encryptSessionToken({ jobId: 0, coderId: 0, secret: "secret" }),
       phaseProgress: computePhaseProgress(this.phaseUnits, this.codebook, this.annotations),
       codebook: this.codebook,
-      globalAnnotations,
+      globalAnnotations: this.annotations["global"],
     };
   }
 
@@ -100,20 +97,13 @@ export class MockServer {
     const unit = unitIndex ? units[unitIndex] : units.find((unit) => !unit.done);
     if (!unit) throw new Error("Invalid unit index (client problem)");
 
-    const annotations: Annotation[] = [];
     const variableAnnotations = Object.values(this.annotations[unit.id] || {});
-    for (let va of variableAnnotations) {
-      const activeAnnotations = Object.values(va)
-        .filter((a) => !a.deleted)
-        .sort((a, b) => a.created.getTime() - b.created.getTime());
-      annotations.push(...activeAnnotations);
-    }
 
     return {
       unit: {
         data: unit.data,
         done: unit.done,
-        annotations,
+        variableAnnotations,
         token: encryptUnitToken({ unitId: unit.id }),
       },
     };
@@ -125,22 +115,14 @@ export class MockServer {
   }: z.infer<typeof PostAnnotationUpdateSchema>): Promise<PostAnnotationsResponse> {
     const session = decryptSessionToken(sessionToken);
 
-    // assume that annotations are sorted by when modified time (deleted || created)
-    for (let [phaseToken, annotations] of Object.entries(phaseAnnotations)) {
-      const sortedAnnotations = annotations.sort((a, b) => {
-        const updatedA = a.deleted ?? a.created;
-        const updatedB = b.deleted ?? b.created;
-        return updatedA.getTime() - updatedB.getTime();
-      });
+    for (let [phaseToken, variables] of Object.entries(phaseAnnotations)) {
+      const unitId = phaseToken ? decryptUnitToken(phaseToken).unitId : "global";
 
-      for (let annotation of sortedAnnotations) {
-        const unitId = phaseToken ? decryptUnitToken(phaseToken).unitId : "global";
-        const variableId = annotation.variableId;
-        this.annotations[unitId][variableId] = this.annotations[unitId][variableId] || {
-          status: "pending",
-          annotations: {},
-        };
-        this.annotations[unitId][variableId][annotation.id] = annotation;
+      for (let [variableId, variableAnnotations] of Object.entries(variables)) {
+        const tableRow = this.annotations[unitId][parseInt(variableId)];
+        if (variableAnnotations.done !== undefined) tableRow.done = variableAnnotations.done;
+        if (variableAnnotations.skip !== undefined) tableRow.skip = variableAnnotations.skip;
+        if (variableAnnotations.annotations) tableRow.annotations = variableAnnotations.annotations;
       }
     }
 
@@ -191,19 +173,10 @@ function computePhaseProgress(
   const phases = codebook.filter((node) => node.treeType === "phase");
   const progress: GetSession["phaseProgress"] = [];
 
-  function variableIsDoneOrSkipped(annotations: Annotation[]): boolean {
-    return annotations.some((a) => {
-      if (a.deleted) return false;
-      if (a.finishVariable && a.finishLoop) return true;
-      return false;
-    });
-  }
-
   function phaseIsDone(phaseVariables: CodebookNode[], unitId: UnitId): boolean {
     for (let variable of phaseVariables) {
-      const annotationDict = annotations[unitId]?.[variable.id];
-      if (!annotationDict) return false;
-      return variableIsDoneOrSkipped(Object.values(annotationDict));
+      const variableAnnotations = annotations[unitId]?.[variable.id];
+      return variableAnnotations.done || variableAnnotations.skip;
     }
     return true;
   }

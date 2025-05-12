@@ -4,6 +4,7 @@ import { z } from "zod";
 import { CodebookQuestionVariableSchema, CodebookAnnotationVariableSchema } from "./variableSchemas";
 import { UnitLayoutSchema } from "./layoutSchemas";
 import { codebookNodeType } from "@/app/types";
+import { extractDataIndictors } from "@/hooks/useSandboxedEval";
 
 extendZodWithOpenApi(z);
 

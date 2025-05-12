@@ -8,9 +8,10 @@ import { useSandbox } from "@/hooks/useSandboxedEval";
 import { useState } from "react";
 import { ZodError, z } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { ScriptData } from "../types";
 
 export default function Sandbox() {
-  const [data, setData] = useState(defaultData);
+  const [data, setData] = useState<ScriptData>(defaultData);
   const { evalStringTemplate, ready } = useSandbox();
   const [input, setInput] = useState<string>("test this example `{{unit.topic}}` now");
   const [output, setOutput] = useState<string>("");
@@ -48,11 +49,4 @@ export default function Sandbox() {
   );
 }
 
-const defaultData = {
-  unit: {
-    topic: "economy",
-  },
-  survey: {
-    age: 21,
-  },
-};
+const defaultData: ScriptData = { unit: {}, code: {}, value: {}, codes: {}, values: {} };

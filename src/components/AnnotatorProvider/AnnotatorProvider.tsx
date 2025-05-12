@@ -1,5 +1,14 @@
 "use client";
-import { AnnotationLibrary, CodebookState, GetSession, JobServer, ProgressState, Unit } from "@/app/types";
+import {
+  AnnotationLibrary,
+  CodebookState,
+  GetSession,
+  JobServer,
+  Layouts,
+  ProgressState,
+  Unit,
+  VariableMap,
+} from "@/app/types";
 import AnnotationManager, { createAnnotationManager } from "@/classes/AnnotationManager";
 import { prepareCodebook } from "@/functions/treeFunctions";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
@@ -7,10 +16,11 @@ import { toast } from "sonner";
 
 interface ContextProps {
   unit?: Unit | null;
-  codebook?: CodebookState;
+  variableMap?: VariableMap;
   annotationLib?: AnnotationLibrary;
   annotationManager?: AnnotationManager;
   progress?: ProgressState;
+  layouts?: Layouts;
   error: string | undefined;
   height: number;
   finished?: boolean;
@@ -18,10 +28,11 @@ interface ContextProps {
 
 export interface JobContext extends ContextProps {
   unit: Unit | null;
-  codebook: CodebookState;
+  progress: ProgressState;
+  variableMap: VariableMap;
+  layouts: Layouts;
   annotationLib: AnnotationLibrary;
   annotationManager: AnnotationManager;
-  progress: ProgressState;
 }
 
 const JobContext = createContext<ContextProps>({
@@ -31,7 +42,7 @@ const JobContext = createContext<ContextProps>({
 });
 
 function isInitialized(props: ContextProps): boolean {
-  return !!props.codebook && !!props.annotationLib && !!props.annotationManager;
+  return !!props.progress && !!props.variableMap && !!props.annotationLib && !!props.annotationManager;
 }
 
 export function useJobContext(): JobContext {
@@ -49,10 +60,11 @@ interface Props {
 }
 
 export interface PhaseState {
-  codebook: CodebookState;
+  variableMap: VariableMap;
   unit: Unit | null;
   annotationLib: AnnotationLibrary;
   progress: ProgressState;
+  layouts: Layouts;
   error: string | undefined;
 }
 
@@ -70,7 +82,7 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
 
   const context: ContextProps = {
     unit: unitBundle?.unit,
-    codebook: unitBundle?.codebook,
+    variableMap: unitBundle?.variableMap,
     annotationLib: unitBundle?.annotationLib,
     annotationManager,
     progress: unitBundle?.progress,
@@ -78,7 +90,6 @@ export default function AnnotatorProvider({ jobServer, height, children }: Props
     height,
     finished,
   };
-  console.log(context);
 
   if (!isInitialized(context)) return null;
 

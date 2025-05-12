@@ -10,9 +10,6 @@ export const GeneralAnnotationSchema = z.object({
   created: z.coerce.date(),
   deleted: z.coerce.date().optional(),
 
-  finishVariable: z.boolean(),
-  finishLoop: z.boolean(),
-
   code: z.string().optional(),
   value: z.number().optional(),
 
@@ -59,25 +56,14 @@ export const RelationAnnotationSchema = GeneralAnnotationSchema.extend({
   toId: z.string(),
 });
 
-// at some point move some properties like code and value so  that they are not
-// included in the followign special types. This just requires adding some typeguards
-export const SubmitAnnotationSchema = GeneralAnnotationSchema.extend({
-  type: z.literal("submit"),
-});
-export const SkipAnnotationSchema = GeneralAnnotationSchema.extend({
-  type: z.literal("skip"),
-});
-
 export const AnnotationSchema = z.discriminatedUnion("type", [
   QuestionAnnotationSchema,
   SpanAnnotationSchema,
   RelationAnnotationSchema,
-  SubmitAnnotationSchema,
-  SkipAnnotationSchema,
 ]);
 
-export const VariableStatusSchema = z.object({
-  variableId: VariableIdSchema,
+export const VariableAnnotationsSchema = z.object({
+  annotations: z.array(AnnotationSchema),
   done: z.boolean(),
   skip: z.boolean(),
 });

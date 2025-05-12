@@ -22,7 +22,7 @@ interface QuestionIndexStepProps {
 
 export default function QuestionIndexStep({ children }: QuestionIndexStepProps) {
   const { progress, annotationManager } = useJobContext();
-  const phaseProgress = progress.phases[progress.currentPhase];
+  const phaseProgress = progress.phases[progress.current.phase];
 
   const setQuestionIndex = (index: number) => annotationManager.setVariableIndex(index);
 
@@ -31,7 +31,7 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
-      const activeButton = container.children[phaseProgress.currentVariable] as HTMLElement;
+      const activeButton = container.children[progress.current.variable] as HTMLElement;
 
       if (activeButton) {
         const containerWidth = container.offsetWidth;
@@ -43,7 +43,7 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
         container.style.transform = `translateX(${transformValue}px)`;
       }
     }
-  }, [phaseProgress.currentVariable]);
+  }, [progress.current.variable]);
 
   const canSelect: boolean[] = useMemo(() => {
     const cs = Array(phaseProgress.variables.length).fill(false);
@@ -58,7 +58,7 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
   let endReached = false;
   let showAll = true;
 
-  const noneDone = phaseProgress.variables.every((variable) => !variable.done) && phaseProgress.currentVariable === 0;
+  const noneDone = phaseProgress.variables.every((variable) => !variable.done) && progress.current.variable === 0;
   if (!showAll && noneDone) return null;
   if (phaseProgress.variables.length === 1) return null;
 
@@ -71,12 +71,12 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
           validVariable++;
 
           if (!showAll && endReached) return null;
-          if (i >= phaseProgress.currentVariable && !variableProgress.done && !variableProgress.skip) endReached = true;
+          if (i >= progress.current.variable && !variableProgress.done && !variableProgress.skip) endReached = true;
 
           let dotStyle = canSelect[i] ? "bg-primary" : "bg-primary/50";
-          if (phaseProgress.currentVariable === i) dotStyle = "bg-primary-dark";
+          if (progress.current.variable === i) dotStyle = "bg-primary-dark";
 
-          let distance = Math.max(0, Math.abs(phaseProgress.currentVariable - i) - 2);
+          let distance = Math.max(0, Math.abs(progress.current.variable - i) - 2);
           const size = Math.max(35 * Math.exp(-0.3 * distance), 1);
 
           return (
@@ -84,11 +84,11 @@ export default function QuestionIndexStep({ children }: QuestionIndexStepProps) 
               key={i}
               variant="ghost"
               size="icon"
-              disabled={phaseProgress.currentVariable === i || !canSelect[i]}
+              disabled={progress.current.variable === i || !canSelect[i]}
               className={`z-50 flex h-10 items-center rounded-none hover:bg-transparent disabled:opacity-100`}
               style={{ width: size + "px" }}
               onClick={() => {
-                if (phaseProgress.currentVariable === i) return;
+                if (progress.current.variable === i) return;
                 setQuestionIndex(i);
               }}
             >

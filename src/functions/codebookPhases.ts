@@ -7,21 +7,35 @@ import {
   CodebookVariable,
   GetSession,
   Layout,
+  Layouts,
   Phase,
   ProgressState,
+  UpdateTrigger,
+  VariableAnnotationsMap,
+  VariableMap,
   VariableSchema,
 } from "@/app/types";
 import standardizeColor from "./standardizeColor";
-import randomColor from "randomcolor";
+import { computeProgress } from "./computeProgress";
 
-export function prepareCodebookState(nodes: CodebookNode[], annotations: Annotation[]): CodebookState {
+export async function prepareCodebookState(
+  nodes: CodebookNode[],
+  globalAnnotations: VariableAnnotationsMap,
+  unitProgress: GetSession["phaseProgress"],
+): Promise<CodebookState> {
   const phases: CodebookPhase[] = [];
+  const updateTrigger: UpdateTrigger = {
+    variableNameMap: {},
+    dependencies: {},
+  };
   const branching: Branching = {};
+  const variableMap: VariableMap = {};
+  const layouts: Layouts = {};
 
   // inheritables
   // - A node inherits the layout of its parent, unless it specifies a new layout
   // - If a node is skipped, all its children are skipped
-  let inheritable: Record<number, { layout?: Layout; branchNodeIds: number[] }> = {};
+  let inheritable: Record<number, { layoutId?: number; branchNodeIds: number[] }> = {};
 
   let phase = -1;
   for (let node of nodes) {
@@ -38,21 +52,28 @@ export function prepareCodebookState(nodes: CodebookNode[], annotations: Annotat
 
     // inheritables
     inheritable[node.id] = node.parentId ? inheritable[node.parentId] : { branchNodeIds: [] };
-    if ("layout" in node.data) inheritable[node.id].layout = node.data.layout;
+    if ("layout" in node.data) {
+      const layoutId = node.id;
+      layouts[layoutId] = await prepareLayout(node.data.layout);
+      inheritable[node.id].layoutId = layoutId;
+    }
+
     if ("condition" in node.data && node.data.condition) {
       // if a node has a condition, we add a branching rule. The condition is a js script that evaluates to a boolean.
       // the dependencies are the variables used in the condition, and the skips array indices which variables to skip if the condition is true
       branching[node.id] = {
         condition: node.data.condition,
-        dependencies: extractConditionDependencies(node.data.condition),
         skips: [],
       };
+
       // In the inheritables we keep track of all branching nodes, so that we can add all children to the skips array
       inheritable[node.id].branchNodeIds.push(node.id);
     }
 
     if (node.treeType === "leaf") {
-      const variable = prepareVariable(node, annotations, inheritable[node.id].layout);
+      updateTrigger.variableNameMap[node.name] = node.id;
+      const variable = await prepareVariable(node, inheritable[node.id].layoutId);
+      variableMap[variable.id] = variable;
 
       for (let branchNodeId of inheritable[node.id].branchNodeIds) {
         if (branching[branchNodeId]) {
@@ -69,20 +90,24 @@ export function prepareCodebookState(nodes: CodebookNode[], annotations: Annotat
   //   phase.currentVariable = phase.variables.findIndex((v) => !v.done && !v.skip);
   // }
   // const currentPhase = phases.findIndex((phase) => !phase.done);
+  //
+  //
+  for (let variable of Object.values(variableMap)) {
+  }
 
   return {
-    phases,
+    progress: await computeProgress(phases, globalAnnotations, unitProgress),
     branching,
+    layouts,
+    variableMap,
   };
 }
 
-function extractConditionDependencies(evalString: string) {
-  // TODO: we need to standardize how variables are referred to in js scripts in the codebook,
-  // so that we can extract the dependencies
-  return [];
+async function prepareLayout(layout: Layout): Promise<Layout> {
+  return layout;
 }
 
-function prepareVariable(node: CodebookNode, annotations: Annotation[], layout?: Layout): CodebookVariable {
+async function prepareVariable(node: CodebookNode, layoutId?: number): Promise<CodebookVariable> {
   if (!("variable" in node.data))
     throw new Error("Leaf nodes must specify a variable. (refactor this, because it should be implicit");
 
@@ -93,15 +118,8 @@ function prepareVariable(node: CodebookNode, annotations: Annotation[], layout?:
     name: node.name,
     id: node.id,
     codeMap: {},
+    layoutId,
   };
-
-  // Infer from annotations whether the variable is done and/or skipped
-  // for (let a of annotations) {
-  //   if (a.variableId !== node.id) continue;
-  //   if (a.deleted) continue;
-  //   if (a.finishVariable && a.finishLoop) v.done = true;
-  //   if (a.type === "skip") v.skip = true;
-  // }
 
   if ("codes" in v) {
     for (let i = 0; i < v.codes.length; i++) {

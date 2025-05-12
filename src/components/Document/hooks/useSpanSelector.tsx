@@ -157,7 +157,7 @@ const NewCodePage = ({
         setOpen(false);
       } else if (value.delete) {
         const keepEmpty = editMode;
-        if (value.id) annotationManager.rmAnnotations([value.id], keepEmpty);
+        if (value.id) annotationManager.rmAnnotation(value.id, keepEmpty);
       } else {
         if (value.code) annotationManager.createSpanAnnotation(variable.id, value.code, span[0], span[1], tokens);
       }

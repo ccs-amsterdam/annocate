@@ -12,15 +12,15 @@ import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 interface QuestionFormProps {
   blockEvents: boolean;
   height: number;
+  hasContent: boolean;
 }
 
-const QuestionForm = ({ blockEvents, height }: QuestionFormProps) => {
-  const { unit, progress, codebook, annotationLib, annotationManager } = useJobContext();
+const QuestionForm = ({ blockEvents, height, hasContent }: QuestionFormProps) => {
+  const { unit, progress, variableMap } = useJobContext();
   const questionRef = useRef<HTMLDivElement>(null);
 
-  const phase = progress.phases[progress.currentPhase];
-  const codebookPhase = codebook.phases[phase.currentVariable];
-  const variable = codebookPhase.variables[phase.currentVariable];
+  const variableId = progress.phases[progress.current.phase].variables[progress.current.variable].id;
+  const variable = variableMap[variableId];
 
   useEffect(() => {
     const container = questionRef.current;
@@ -29,31 +29,31 @@ const QuestionForm = ({ blockEvents, height }: QuestionFormProps) => {
     const handleScroll = (e: Event) => overflowBordersEvent(container, true, false);
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [phase.currentVariable]);
+  }, [progress.current.variable]);
 
   if (!unit || !variable) return null;
 
-  const maxHeightPercent = !variable.layout ? 100 : 60;
+  const maxHeightPercent = variable.layoutId === undefined ? 100 : 60;
 
   let animate = "";
-  if (phase.previousVariable < phase.currentVariable) animate = "animate-slide-in-right ease-out";
-  if (phase.previousVariable > phase.currentVariable) animate = "animate-slide-in-left ease-out";
+  if (progress.previous.variable < progress.current.variable) animate = "animate-slide-in-right ease-out";
+  if (progress.previous.variable > progress.current.variable) animate = "animate-slide-in-left ease-out";
 
   return (
     <div
       ref={questionRef}
       style={{ maxHeight: `${Math.round((maxHeightPercent * height) / 100)}px` }}
-      className={`${getCodebookStyling(codebookPhase).container} relative z-30 flex flex-col overflow-hidden text-[length:inherit] transition-[border]`}
+      className={`${getCodebookStyling(hasContent).container} relative z-30 flex flex-col overflow-hidden text-[length:inherit] transition-[border]`}
     >
-      <div className={`${getCodebookStyling(codebookPhase).text} relative z-40 flex w-full flex-col px-3 pt-1`}>
+      <div className={`${getCodebookStyling(hasContent).text} relative z-40 flex w-full flex-col px-3 pt-1`}>
         {/* <VariableInstructions variable={variable} /> */}
-        <div className={`${getCodebookStyling(codebookPhase).question} ${animate}`}>
+        <div className={`${getCodebookStyling(hasContent).question} ${animate}`}>
           <ShowQuestion variable={variable} />
         </div>
       </div>
 
       <div
-        key={phase.currentVariable}
+        key={progress.current.variable}
         className={`${animate} relative flex h-full w-full flex-auto text-[length:inherit] text-foreground will-change-transform`}
       >
         <AnswerField blockEvents={blockEvents} />
@@ -62,8 +62,8 @@ const QuestionForm = ({ blockEvents, height }: QuestionFormProps) => {
   );
 };
 
-function getCodebookStyling(codebook: CodebookPhase) {
-  if (codebook.type === "survey") {
+function getCodebookStyling(hasContent: boolean) {
+  if (!hasContent) {
     return {
       container: "text-foreground bg-background min-h-full pt-6  ",
       text: "mt-6 w-full h-full flex-auto text-start",

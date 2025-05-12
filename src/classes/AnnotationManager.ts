@@ -14,19 +14,19 @@ import {
   SetState,
   Span,
   Token,
-  TokenAnnotations,
+  AnnotationsByToken,
   ValidRelation,
   VariableMap,
-  VariableValueMap,
   Unit,
   AnnotationContext,
   SpanAnnotation,
   RelationAnnotation,
   QuestionAnnotation,
-  SubmitAnnotation,
   PostAnnotation,
   CodebookState,
   ProgressState,
+  VariableAnnotationsMap,
+  Layouts,
 } from "@/app/types";
 import { PhaseState } from "@/components/AnnotatorProvider/AnnotatorProvider";
 import { prepareCodebookState } from "@/functions/codebookPhases";
@@ -34,22 +34,19 @@ import { computeProgress } from "@/functions/computeProgress";
 import { getColor } from "@/functions/tokenDesign";
 import { prepareCodebook } from "@/functions/treeFunctions";
 import cuid from "cuid";
-import randomColor from "randomcolor";
 import { toast } from "sonner";
 import { z } from "zod";
 
 export async function createAnnotationManager(jobServer: JobServer, setUnitBundle: SetState<PhaseState | null>) {
   const { sessionToken, codebook, phaseProgress: unitProgress, globalAnnotations } = await jobServer.getSession();
 
-  const codebookState = prepareCodebookState(prepareCodebook(codebook), globalAnnotations);
-  const progress = await computeProgress(codebookState, globalAnnotations, unitProgress);
+  const codebookState = await prepareCodebookState(prepareCodebook(codebook), globalAnnotations, unitProgress);
 
   const annotationManager = new AnnotationManager({
     jobServer,
     setUnitBundle,
     sessionToken,
-    codebook: codebookState,
-    progress,
+    codebookState,
     globalAnnotations,
   });
 
@@ -62,9 +59,10 @@ export default class AnnotationManager {
   setUnitBundle: SetState<PhaseState | null>;
   lastServerUpdate: Date | null;
   unit: Unit | null;
-  codebook: CodebookState;
   progress: ProgressState;
-  globalAnnotations: Annotation[];
+  variableMap: VariableMap;
+  layouts: Layouts;
+  globalAnnotations: VariableAnnotationsMap;
   sessionToken: string;
   postAnnotationsQueue: PostAnnotation["phaseAnnotations"];
 
@@ -72,21 +70,20 @@ export default class AnnotationManager {
     jobServer,
     setUnitBundle,
     sessionToken,
-    codebook,
-    progress,
+    codebookState,
     globalAnnotations,
   }: {
     jobServer: JobServer;
     setUnitBundle: SetState<PhaseState | null>;
     sessionToken: string;
-    codebook: CodebookState;
-    progress: ProgressState;
-    globalAnnotations: Annotation[];
+    codebookState: CodebookState;
+    globalAnnotations: VariableAnnotationsMap;
   }) {
     this.jobServer = jobServer;
     this.setUnitBundle = setUnitBundle;
-    this.codebook = codebook;
-    this.progress = progress;
+    this.progress = codebookState.progress;
+    this.variableMap = codebookState.variableMap;
+    this.layouts = codebookState.layouts;
     this.globalAnnotations = globalAnnotations;
     this.annotationLib = emptyAnnotationLib();
     this.lastServerUpdate = null;
@@ -100,32 +97,41 @@ export default class AnnotationManager {
   async navigate(phaseIndex?: number, unitIndex?: number, variableIndex?: number) {
     if (phaseIndex === undefined) phaseIndex = this.progress.phases.findIndex((phase) => !phase.done);
 
+    if (
+      phaseIndex === this.progress.current.phase &&
+      unitIndex === this.progress.current.unit &&
+      variableIndex !== undefined
+    ) {
+      // if only the variable index is changed, we don't need to change phase/unit, and can use the faster setVariableIndex
+      this.setVariableIndex(variableIndex);
+      return;
+    }
+
     if (phaseIndex < 0 || phaseIndex > this.progress.phases.length - 1) {
       // This marks that we are done with the job
       alert("Implement finished logic");
       return;
     }
 
-    const codebookPhase = this.codebook.phases[phaseIndex];
-
     const unit = await this.getUnit(phaseIndex, unitIndex);
 
-    this.annotationLib = createAnnotationLibrary(unit, codebookPhase, this.globalAnnotations, variableIndex);
+    this.annotationLib = createAnnotationLibrary(unit, this.variableMap, this.globalAnnotations, variableIndex);
 
     // TODO: On navigate, perform a check of all branching rules.
     // performBranchingRules() //uses this.annotationLib
 
     this.setUnitBundle({
       unit,
-      codebook: this.codebook,
+      variableMap: this.variableMap,
       annotationLib: this.annotationLib,
       progress: this.progress,
+      layouts: this.layouts,
       error: undefined,
     });
   }
 
   async getUnit(phaseIndex: number, unitIndex?: number): Promise<Unit | null> {
-    if (this.codebook.phases[phaseIndex].type !== "annotation") return null;
+    if (this.progress.phases[phaseIndex].type !== "annotation") return null;
 
     const getUnit = await this.jobServer.getUnit(phaseIndex, unitIndex);
     if (!getUnit) throw new Error("No unit found");
@@ -154,11 +160,8 @@ export default class AnnotationManager {
   }
 
   updateAnnotationLibrary(annotationLib: AnnotationLibrary) {
-    // TODO: Here (or somehwere like this) we should add the branching effects. Since we'll use the skip
-    // annotation to mark when a variable is not in the path, we want to make sure that the answers that
-    // cause the skip and the skip updates are in sync
-
     this.annotationLib = annotationLib;
+
     this.setUnitBundle?.((unitBundle) => (unitBundle ? { ...unitBundle, annotationLib: { ...annotationLib } } : null));
   }
 
@@ -172,16 +175,16 @@ export default class AnnotationManager {
     const success = await this.postAnnotations();
     if (!success) return;
 
-    const phase = this.progress.phases[this.progress.currentPhase];
-    const phaseFinished = phase.variables.some((s, i) => !s.skip && i > phase.currentVariable);
+    const current = this.progress.current;
+
+    const phaseFinished = this.progress.phases[current.phase].variables.every((v) => v.done);
 
     if (phaseFinished) {
       this.finishPhase();
     } else {
-      phase.previousVariable = phase.currentVariable;
-      phase.currentVariable = phase.currentVariable + 1;
-      phase.variables[phase.currentVariable].done = true;
-      this.progress.phases[this.progress.currentPhase] = phase;
+      this.progress.phases[current.phase].variables[current.variable].done = true;
+      this.progress.previous = { ...this.progress.current };
+      this.progress.current.variable = current.variable + 1;
       this.updateProgress(this.progress);
     }
   }
@@ -191,35 +194,29 @@ export default class AnnotationManager {
       return toast.success("Jeej");
     }
 
-    const progress = this.progress;
-    const phase = progress.phases[progress.currentPhase];
+    const current = this.progress.current;
+    const nUnits = this.progress.phases[current.phase].unitsDone.length;
 
-    if (phase.currentUnit + 1 >= phase.unitsDone.length) {
-      this.navigate(progress.currentPhase + 1);
+    if (current.unit + 1 >= nUnits) {
+      this.navigate(current.phase + 1);
     } else {
-      this.navigate(progress.currentPhase, phase.currentUnit + 1);
+      this.navigate(current.phase, current.unit + 1);
     }
   }
 
   setVariableIndex(index: number) {
-    const phase = this.progress.phases[this.progress.currentPhase];
-    phase.previousVariable = phase.currentVariable;
-    phase.currentVariable = index;
-    this.progress.phases[this.progress.currentPhase] = phase;
-
+    this.progress.previous = { ...this.progress.current };
+    this.progress.current.variable = index;
     this.updateProgress(this.progress);
   }
 
-  addAnnotations(annotations: Annotation[]) {
-    // Gentle reminder that all annotations MUST go via this function, because this update
+  addAnnotation(annotation: Annotation) {
+    // Gentle reminder that all annotations MUST go via the addAnnotation and rmAnnotation functions, because these update
     // both the local annotation library state and the postAnnotationsQueue
     let current = { ...this.annotationLib.annotations };
 
-    const phaseToken = this.annotationLib.phaseToken;
-    for (let annotation of annotations) {
-      current[annotation.id] = annotation;
-      this.postAnnotationsQueue[phaseToken].push(annotation);
-    }
+    current[annotation.id] = annotation;
+    this.addAnnotationToPostQueue(annotation, current);
 
     this.updateAnnotationLibrary({
       ...this.annotationLib,
@@ -229,45 +226,59 @@ export default class AnnotationManager {
     });
   }
 
-  rmAnnotations(ids: AnnotationID[], keep_empty: boolean = false) {
+  rmAnnotation(id: AnnotationID, keep_empty: boolean = false) {
     let current = { ...this.annotationLib.annotations };
 
-    const addAnnotations: Annotation[] = [];
+    const annotation = current[id];
+    if (!annotation) throw new Error("Annotation not found");
 
-    for (let id of ids) {
-      if (!current?.[id]) continue;
-      addAnnotations.push({ ...current[id], deleted: new Date() });
-      delete current[id];
-    }
+    this.rmAnnotationFromPostQueue(annotation);
+    delete current[id];
 
-    addAnnotations.push(...rmBrokenRelations(current));
-    this.addAnnotations(addAnnotations);
+    this.updateAnnotationLibrary({
+      ...this.annotationLib,
+      annotations: current,
+      codeHistory: {},
+      byToken: newTokenDictionary(current),
+    });
   }
 
-  submitVariable(variableId: number, context: AnnotationContext, finishLoop: boolean = true) {
-    let annotation: SubmitAnnotation = {
-      id: cuid(),
-      created: new Date(),
-      type: "submit",
-      variableId: variableId,
-      finishVariable: true,
-      finishLoop,
-      context,
-      client: {},
-    };
+  addAnnotationToPostQueue(annotation: Annotation, annotationDict: AnnotationDictionary) {
+    // Add an annotation to the post queue. we first check if there already is a postQueue for the
+    // current variable. If not, we create one, and fill it with all annotations for this variable.
+    const phaseToken = this.annotationLib.phaseToken;
 
-    const currentAnnotations = Object.values(this.annotationLib.annotations);
-    const add: Annotation[] = [annotation];
-    for (const a of currentAnnotations) {
-      if (a.deleted) continue;
-      if (a.variableId !== annotation.variableId) continue;
-      if (a.type !== "submit") continue;
-      if (!contextIsIdential(a.context, annotation.context)) continue;
+    if (!this.postAnnotationsQueue[phaseToken]?.[annotation.variableId])
+      this.postAnnotationsQueue[phaseToken][annotation.variableId] = {};
 
-      add.push({ ...a, deleted: new Date() });
+    const variableAnnotationsQueue = this.postAnnotationsQueue[phaseToken][annotation.variableId];
+    if (!variableAnnotationsQueue.annotations) {
+      variableAnnotationsQueue.annotations = Object.values(annotationDict).filter(
+        (a) => a.variableId === annotation.variableId,
+      );
+    } else {
+      variableAnnotationsQueue.annotations.push(annotation);
     }
+  }
 
-    this.addAnnotations(add);
+  rmAnnotationFromPostQueue(annotation: Annotation) {
+    const phaseToken = this.annotationLib.phaseToken;
+
+    const annotations = this.postAnnotationsQueue?.[phaseToken]?.[annotation.variableId]?.annotations;
+    if (!annotations) return;
+
+    this.postAnnotationsQueue[phaseToken][annotation.variableId].annotations = annotations.filter(
+      (a) => a.id !== annotation.id,
+    );
+  }
+
+  async submitVariable(variableId: number, context: AnnotationContext, finishLoop: boolean = true) {
+    if (!this.postAnnotationsQueue[this.annotationLib.phaseToken]?.[variableId]) {
+      this.postAnnotationsQueue[this.annotationLib.phaseToken][variableId] = { done: true };
+    } else {
+      this.postAnnotationsQueue[this.annotationLib.phaseToken][variableId].done = true;
+    }
+    return this.postAnnotations();
   }
 
   createQuestionAnnotation(
@@ -283,8 +294,6 @@ export default class AnnotationManager {
       created: new Date(),
       type: "question",
       variableId: variableId,
-      finishVariable: !multiple,
-      finishLoop: finishLoop,
       code: code.code,
       value: code.value,
       client: { color: code.color },
@@ -292,7 +301,6 @@ export default class AnnotationManager {
     };
 
     let addAnnotation = true;
-    const add: Annotation[] = [];
 
     const currentAnnotations = Object.values(this.annotationLib.annotations);
     for (const a of currentAnnotations) {
@@ -303,14 +311,13 @@ export default class AnnotationManager {
 
       if (a.code === annotation.code) {
         addAnnotation = false;
-        if (multiple) add.push({ ...a, deleted: new Date() });
+        if (multiple) this.rmAnnotation(a.id);
       } else {
-        if (!multiple) add.push({ ...a, deleted: new Date() });
+        if (!multiple) this.rmAnnotation(a.id);
       }
     }
 
-    if (addAnnotation) add.push(annotation);
-    this.addAnnotations(add);
+    if (addAnnotation) this.addAnnotation(annotation);
   }
 
   createSpanAnnotation(
@@ -324,8 +331,6 @@ export default class AnnotationManager {
     const annotation: SpanAnnotation = {
       id: cuid(),
       created: new Date(),
-      finishVariable: false,
-      finishLoop,
       type: "span",
       variableId: variableId,
       code: code.code,
@@ -340,7 +345,7 @@ export default class AnnotationManager {
       },
     };
     annotation.client.positions = getTokenPositions(this.annotationLib.annotations, annotation);
-    this.addAnnotations([annotation]);
+    this.addAnnotation(annotation);
   }
 
   createRelationAnnotation(
@@ -354,8 +359,6 @@ export default class AnnotationManager {
     const annotation: RelationAnnotation = {
       id: cuid(),
       created: new Date(),
-      finishVariable: false,
-      finishLoop,
       type: "relation",
       variableId: variableId,
       code: code.code,
@@ -367,19 +370,23 @@ export default class AnnotationManager {
       },
     };
     annotation.client.positions = getTokenPositions(this.annotationLib.annotations, annotation);
-    this.addAnnotations([annotation]);
+    this.addAnnotation(annotation);
   }
 }
 
 export function createAnnotationLibrary(
   unit: Unit | null,
-  codebook: CodebookPhase,
-  globalAnnotations: Annotation[] | undefined,
+  variableMap: VariableMap,
+  globalAnnotations: VariableAnnotationsMap | undefined,
   focusVariableIndex?: number,
 ): AnnotationLibrary {
-  const variableMap = createVariableMap(codebook.variables || []);
-
-  const annotations = [...(unit?.annotations || []), ...(globalAnnotations || [])];
+  const annotations: Annotation[] = [];
+  if (unit?.variableAnnotations) {
+    Object.values(unit.variableAnnotations).map((variable) => annotations.push(...variable.annotations));
+  }
+  if (globalAnnotations) {
+    Object.values(globalAnnotations).map((variable) => annotations.push(...variable.annotations));
+  }
 
   let annotationArray = annotations || [];
   annotationArray = annotationArray.map((a) => ({ ...a }));
@@ -413,15 +420,24 @@ export function createAnnotationLibrary(
   };
 }
 
+function variableAnnotations(annotations: AnnotationDictionary) {
+  const byVariable: Record<number, AnnotationID[]> = {};
+  for (let a of Object.values(annotations)) {
+    if (!byVariable[a.variableId]) byVariable[a.variableId] = [];
+    byVariable[a.variableId].push(a.id);
+  }
+  return byVariable;
+}
+
 function newTokenDictionary(annotations: AnnotationDictionary) {
-  const byToken: TokenAnnotations = {};
+  const byToken: AnnotationsByToken = {};
   for (let annotation of Object.values(annotations)) {
     addToTokenDictionary(byToken, annotation);
   }
   return byToken;
 }
 
-function addToTokenDictionary(byToken: TokenAnnotations, annotation: Annotation) {
+function addToTokenDictionary(byToken: AnnotationsByToken, annotation: Annotation) {
   if (!annotation.client.positions) return;
   annotation.client.positions.forEach((i) => {
     if (!byToken[i]) byToken[i] = [];
@@ -526,10 +542,6 @@ function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap)
       if (a.code != null && codeMap[a.code]) {
         a.client.color = getColor(a.code, codeMap);
       }
-    }
-
-    if (!a.client.color) {
-      if (!a.client.color) a.client.color = randomColor({ seed: a.code, luminosity: "light" });
     }
   }
 
@@ -676,17 +688,12 @@ function contextIsIdential(context1?: AnnotationContext, context2?: AnnotationCo
   return true;
 }
 
-function emptyAnnotationLib() {
+function emptyAnnotationLib(): AnnotationLibrary {
   return {
     sessionId: "",
-
     phaseToken: "",
     annotations: {},
     byToken: {},
     codeHistory: {},
-    variables: [],
-    variableIndex: 0,
-    variableStatuses: [],
-    previousIndex: 0,
   };
 }
