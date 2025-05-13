@@ -28,9 +28,9 @@ const typeMap: Record<CodebookNodeType | "root", TypeDetails> = {
   // groups
   "Survey group": { phases: ["survey"], treeType: "group" },
   "Annotation group": { phases: ["annotation"], treeType: "group" },
-  // leafs
-  Question: { phases: [], treeType: "leaf" },
-  "Annotation task": { phases: ["annotation"], treeType: "leaf" },
+  // variables
+  Question: { phases: [], treeType: "variable" },
+  "Annotation task": { phases: ["annotation"], treeType: "variable" },
 };
 
 /**
@@ -58,7 +58,7 @@ export function isValidParent(type: CodebookNodeType, parentType: CodebookNodeTy
   if (parentDetails.treeType === "root" && typeDetails.treeType !== "phase") return false;
   if (typeDetails.treeType === "phase" && parentDetails.treeType !== "root") return false;
 
-  if (parentDetails.treeType === "leaf") return false;
+  if (parentDetails.treeType === "variable") return false;
 
   // The child can not have any phases that the parent does not have
   for (const phase of typeDetails.phases) {
@@ -70,11 +70,11 @@ export function isValidParent(type: CodebookNodeType, parentType: CodebookNodeTy
 
 export function getValidChildren(
   type: CodebookNodeType | null,
-): Record<"phase" | "group" | "leaf", CodebookNodeType[]> {
-  const children = { phase: [], group: [], leaf: [] } as Record<"phase" | "group" | "leaf", CodebookNodeType[]>;
+): Record<"phase" | "group" | "variable", CodebookNodeType[]> {
+  const children = { phase: [], group: [], variable: [] } as Record<"phase" | "group" | "variable", CodebookNodeType[]>;
 
   const typeDetails = codebookNodeTypeDetails(type);
-  if (typeDetails.treeType === "leaf") return children;
+  if (typeDetails.treeType === "variable") return children;
 
   for (const option of codebookNodeType) {
     if (!isValidParent(option, type)) continue;
@@ -117,6 +117,8 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
   function recursiveProcess(
     parents: CodebookNodeResponse[],
     parentPath: CodebookNode["parentPath"],
+    globalPosition: number = 0,
+    inheritables: { layoutId?: number },
     insidePhase?: { phaseType: Phase; phaseId: number },
   ): CodebookNode[] {
     let codebook: CodebookNode[] = [];
@@ -124,12 +126,19 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
 
     const n = sortedParents.length;
     for (let i = 0; i < n; i++) {
+      globalPosition += 1;
       const parent = sortedParents[i];
       const typeDetails = codebookNodeTypeDetails(parent.data.type);
       const phase = insidePhase ?? {
         phaseType: typeDetails.phases[0],
         phaseId: parent.id,
       };
+
+      // Inheritables are properties that are passed down from the parent to the children.
+      const inherit = { ...inheritables };
+      if ("layout" in parent.data) {
+        inherit.layoutId = parent.id;
+      }
 
       if (used.has(parent.id)) throw new Error("Cycle detected in codebook");
       used.add(parent.id);
@@ -138,7 +147,8 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
 
       parent.position = i;
 
-      const allChildren = children.length > 0 ? recursiveProcess(children, [...parentPath, parent], phase) : [];
+      const allChildren =
+        children.length > 0 ? recursiveProcess(children, [...parentPath, parent], globalPosition, inherit, phase) : [];
 
       const nodeParent = {
         ...parent,
@@ -147,6 +157,8 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
         children: allChildren.map((child) => child.id),
         treeType: typeDetails.treeType,
         dependencies: getDependencies(parent.data),
+        globalPosition,
+        layoutId: inherit.layoutId ?? null,
         ...phase,
       };
       codebook.push(nodeParent);
@@ -155,24 +167,19 @@ export function prepareCodebook(nodes: CodebookNodeResponse[]): CodebookNode[] {
     return codebook;
   }
 
-  return recursiveProcess(phases, []);
+  return recursiveProcess(phases, [], -1, {});
 }
 
 function getDependencies(data: CodebookNodeData): Dependencies {
   // Add dependencies for any properties of the node that depend on data.
   // In other words, when they contain scripts that use data indicators.
   const dependencies: Dependencies = [];
-  if ("variable" in data) {
-    const dataIndicators = extractDataIndictors(JSON.stringify(data.variable));
+  for (let property of ["variable", "content", "progress"] as const) {
+    if (!(property in data)) continue;
+    // we need this type assertion because ts does not understand that we verified this already
+    const propertyObject = data[property as keyof typeof data];
+    const dataIndicators = extractDataIndictors(JSON.stringify(propertyObject));
     dependencies.push({ property: "variable", dataIndicators });
-  }
-  if ("layout" in data) {
-    const dataIndicators = extractDataIndictors(JSON.stringify(data.layout));
-    dependencies.push({ property: "layout", dataIndicators });
-  }
-  if ("condition" in data) {
-    const dataIndicators = extractDataIndictors(JSON.stringify(data.condition));
-    dependencies.push({ property: "condition", dataIndicators });
   }
   return dependencies;
 }

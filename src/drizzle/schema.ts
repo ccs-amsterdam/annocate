@@ -158,7 +158,7 @@ export const codebookNodes = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 128 }).notNull(),
-    treeType: text("tree_type", { enum: ["phase", "group", "leaf"] }).notNull(),
+    treeType: text("tree_type", { enum: ["phase", "group", "variable"] }).notNull(),
     parentId: integer("parent_id").references((): AnyPgColumn => codebookNodes.id),
     position: doublePrecision("position").notNull(),
 

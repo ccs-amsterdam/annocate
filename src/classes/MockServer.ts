@@ -13,7 +13,6 @@ import {
   PostAnnotationsResponse,
   VariableAnnotations,
 } from "@/app/types";
-import { prepareCodebookState } from "@/functions/codebookPhases";
 import { MiddlecatUser } from "middlecat-react";
 import { z } from "zod";
 
@@ -187,7 +186,7 @@ function computePhaseProgress(
     const label = phase.name.replaceAll("_", " ");
 
     // get the variables for this phase
-    const phaseVariables = codebook.filter((node) => node.phaseId === phase.id && node.treeType === "leaf");
+    const phaseVariables = codebook.filter((node) => node.phaseId === phase.id && node.treeType === "variable");
 
     if (type === "survey") {
       progress.push({

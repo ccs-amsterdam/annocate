@@ -21,10 +21,10 @@ interface QuestionIndexStepProps {
 }
 
 export default function QuestionIndexStep({ children }: QuestionIndexStepProps) {
-  const { progress, annotationManager } = useJobContext();
+  const { progress, jobManager } = useJobContext();
   const phaseProgress = progress.phases[progress.current.phase];
 
-  const setQuestionIndex = (index: number) => annotationManager.setVariableIndex(index);
+  const setQuestionIndex = (index: number) => jobManager.setVariableIndex(index);
 
   const containerRef = useRef<HTMLDivElement>(null);
 

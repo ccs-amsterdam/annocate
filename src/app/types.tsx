@@ -42,6 +42,7 @@ import {
   CodebookNodeResponseSchema,
 } from "./api/projects/[projectId]/jobs/[jobId]/codebookNodes/schemas";
 import { ProjectResponseSchema, ProjectsResponseSchema } from "./api/projects/schemas";
+import JobManager from "@/classes/JobManager";
 
 //////////  NEW
 ///////////
@@ -79,7 +80,7 @@ export const codebookNodeType = [
 export type CodebookNodeType = (typeof codebookNodeType)[number];
 
 export type Phase = z.infer<typeof PhaseTypeSchema>;
-export type TreeType = "root" | "phase" | "group" | "leaf";
+export type TreeType = "root" | "phase" | "group" | "variable";
 export interface TypeDetails {
   phases: Phase[];
   treeType: TreeType;
@@ -94,16 +95,18 @@ export interface Authorization {
 }
 
 export type CodebookNodeData = z.infer<typeof CodebookNodeDataSchema>;
-export type CodebookNodeLeaf = Extract<CodebookNodeData, { type: "Question" | "Annotation task" }>;
+export type CodebookNodeVariabe = Extract<CodebookNodeData, { type: "Question" | "Annotation task" }>;
 export type CodebookNodeCreate = z.infer<typeof CodebookNodeCreateSchema>;
 export type CodebookNodeResponse = z.infer<typeof CodebookNodeResponseSchema>;
 export type CodebookNode = CodebookNodeResponse & {
   parentPath: CodebookNodeResponse[];
   children: number[];
   phaseId: number;
+  layoutId: number | null;
   treeType: TreeType;
   phaseType: Phase;
   dependencies: Dependencies;
+  globalPosition: number;
 };
 
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
@@ -127,6 +130,26 @@ export type Unit = GetUnit["unit"];
 export type GetUnitCache = Omit<GetUnit, "nTotal" | "nCoded" | "currentUnit">;
 export type GetSession = z.infer<typeof GetSessionResponseSchema>;
 
+// Contexts
+export interface SandboxContext {
+  evalStringTemplate: (str: string, data: ScriptData) => Promise<string>;
+  evalStringWithJobContext: (str: string, context: JobContext) => Promise<string>;
+  ready: boolean;
+}
+
+export interface JobContext {
+  unit: Unit | null;
+  progress: ProgressState;
+  variableMap: VariableMap;
+  annotationLib: AnnotationLibrary;
+  jobManager: JobManager;
+  contents: Contents;
+  error: string | null;
+  height: number;
+  finished?: boolean;
+}
+///
+
 export type CodebookVariable = VariableSchema & {
   // Adds some client side properties that are not stored in the backend
   id: number;
@@ -145,10 +168,27 @@ export type Branching = Record<number, Branch>; // number is codebook node id th
 
 // Branch, CodebookVariable and Layout can depend on variables. This keeps track of which, so that it
 // can update them when the variable changes
-export type UpdateOnAnnotate = {
-  triggerId: number; // id of the variable change that triggers the update
-  updateId: number; // id of the node to update
-  updateProperty: "condition" | "variable" | "layout"; // property to update
+
+// Some codebook properties can depend on variables or phases, which can be dynamic.
+// For variables, this means the values of annotations (but at some time could also add things like random variables)
+// For phases, this means the values of units, which changes when we navigate
+// If a property depends on a variable or phase, it needs to be updated when the variable or phase changes.
+export type UpdateTrigger = {
+  triggerType: "variable" | "phase";
+  triggerId: number; // codebook node id of the variable or phase
+  updateId: number; // id of the node to update (i.e. update node is dependent on the trigger node)
+  updateProperty: "progress" | "variable" | "content"; // property to update
+
+  // position of the trigger and update nodes. Trigger should occur before the update.
+  // But we keep the invalid rows so we can provide validation feedback on codebooks
+  triggerPosition: number;
+  updatePosition: number;
+};
+
+export type UpdateData = {
+  triggers: UpdateTrigger[];
+  nodeMap: Record<number, CodebookNode>;
+  branching: Branching;
 };
 
 export type ScriptData = {
@@ -159,11 +199,11 @@ export type ScriptData = {
   values: Record<string, (number | null)[]>;
 };
 export type DataIndicator =
-  | { type: "unit"; accessor: "unit"; field: string }
-  | { type: "annotation"; accessor: "code" | "value" | "codes" | "values"; variableName: string };
+  | { type: "phase"; accessor: "unit"; dataKey: string }
+  | { type: "variable"; accessor: "code" | "value" | "codes" | "values"; variableName: string };
 
 export type Dependencies = {
-  property: "variable" | "layout" | "condition";
+  property: "variable" | "content" | "progress";
   dataIndicators: DataIndicator[];
 }[];
 
@@ -216,12 +256,15 @@ export type CodebookPhase = {
   type: Phase;
   variables: CodebookVariable[];
 };
-export type CodebookState = {
+export type JobManagerState = {
+  unit: Unit | null;
   progress: ProgressState;
-  branching: Branching;
   variableMap: VariableMap;
-  layouts: Layouts;
-  updateOnAnnotate: UpdateOnAnnotate[];
+  contents: Contents;
+  updateData: UpdateData;
+  annotationLib: AnnotationLibrary;
+  error: string | null;
+  sandbox: SandboxContext;
 };
 
 export type AnnotationRelation = z.infer<typeof CodebookAnnotationRelationSchema>;
@@ -371,12 +414,14 @@ export type ServerUnitStatus = "DONE" | "IN_PROGRESS" | "PREALLOCATED" | "STOLEN
 export type AnnotationID = string;
 export type AnnotationDictionary = Record<AnnotationID, Annotation>;
 export type AnnotationsByToken = Record<number, AnnotationID[]>;
+export type AnnotationsByVariable = Record<number, AnnotationID[]>;
 
 export interface AnnotationLibrary {
   sessionId: string;
   phaseToken: string;
   annotations: AnnotationDictionary;
   byToken: AnnotationsByToken;
+  byVariable: AnnotationsByVariable;
   codeHistory: CodeHistory;
 }
 
@@ -857,7 +902,7 @@ export interface RawTokenColumn {
 
 ////// DOCUMENT
 
-export interface Doc {
+export interface Content {
   /** A processed version of a Unit, for use in the Document component */
   tokens: Token[];
   textFields: ProcessedTextField[];
@@ -865,6 +910,7 @@ export interface Doc {
   markdownFields: ProcessedMarkdownField[];
   grid: PreparedGrid;
 }
+export type Contents = Record<number, Content | null>; // number is node id that defined the layout
 
 export interface DocumentSettings {
   editMode: boolean;

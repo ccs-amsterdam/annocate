@@ -6,11 +6,11 @@ import {
   PreparedGrid,
   FieldGridInput,
   Unit,
-  Doc,
+  Content,
   Layout,
   GetSession,
+  JobContext,
 } from "@/app/types";
-import { JobContext } from "./AnnotatorProvider";
 
 interface ProcessUnitContentParams {
   unit: Unit;
@@ -24,8 +24,8 @@ export async function processUnitContent({
   layout,
   evalStringWithJobContext,
   jobContext,
-}: ProcessUnitContentParams): Promise<Doc> {
-  const content: Doc = {
+}: ProcessUnitContentParams): Promise<Content> {
+  const content: Content = {
     tokens: [],
     textFields: [],
     imageFields: [],
@@ -70,7 +70,7 @@ export async function processUnitContent({
   return content;
 }
 
-function prepareGrid(grid: FieldGridInput | undefined, content: Doc): PreparedGrid {
+function prepareGrid(grid: FieldGridInput | undefined, content: Content): PreparedGrid {
   // areas should be an array of arrays of the same length, where all values are strings.
   // there is some leeway (inner array can be a single string, and if inner arrays do not have same length, last value is repeated).
   // this is then used to create the grid-template-areas

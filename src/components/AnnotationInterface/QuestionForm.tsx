@@ -1,5 +1,5 @@
 import { AnnotationLibrary, CodebookPhase, Unit } from "@/app/types";
-import AnnotationManager from "@/classes/AnnotationManager";
+import JobManager from "@/classes/JobManager";
 import overflowBordersEvent from "@/functions/overflowBordersEvent";
 import React, { ReactElement, useEffect, useMemo, useRef } from "react";
 import AnswerField from "./AnswerField";

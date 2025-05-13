@@ -114,7 +114,7 @@ function CodebookNodeRow(props: CodebookNodeRowProps) {
     if (move.moveNode && !canMoveHere && !canMoveInside && !isMove) {
       cname += " opacity-10";
     } else {
-      if (node.treeType === "leaf") cname += " font-light";
+      if (node.treeType === "variable") cname += " font-light";
     }
 
     return <span className={cname}>{node.name.replaceAll("_", " ")}</span>;
@@ -181,7 +181,7 @@ function CodebookNodeRow(props: CodebookNodeRowProps) {
       >
         <div className={"flex w-full items-center gap-3 transition-transform"}>
           <NodeIcon
-            type={node.name === ".movePlaceholder" || node.treeType === "leaf" ? null : node.data.type}
+            type={node.name === ".movePlaceholder" || node.treeType === "variable" ? null : node.data.type}
             className="opacity-60"
             tailwindSize={isPhase ? 5 : 4}
           />
@@ -222,7 +222,7 @@ function CodebookNodeRowButtons(props: CodebookNodeRowProps) {
   function moveNodeInside() {
     if (!props.move.moveNode) return null;
     if (props.node.id === props.move.moveNode.id) return null;
-    // if (props.node.typeDetails.treeType === "leaf") return null;
+    // if (props.node.typeDetails.treeType === "variable") return null;
     return <MoveNodeInsideButton {...props} />;
   }
 

@@ -5,7 +5,7 @@ import { Check, List, StepBack, StepForward } from "lucide-react";
 import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { AnnotationLibrary, ProgressState } from "@/app/types";
-import AnnotationManager from "@/classes/AnnotationManager";
+import JobManager from "@/classes/JobManager";
 
 interface NavigationProps {}
 
@@ -20,7 +20,7 @@ const Navigation = ({}: NavigationProps) => {
 };
 
 const NavigationDropdown = () => {
-  const { annotationManager, progress } = useJobContext();
+  const { jobManager, progress } = useJobContext();
 
   return (
     <DropdownMenu>
@@ -41,7 +41,7 @@ const NavigationDropdown = () => {
               <DropdownMenuItem
                 key={phaseIndex + "." + variableIndex}
                 onClick={() => {
-                  annotationManager.navigate(phaseIndex, progress.current.unit, variableIndex);
+                  jobManager.navigate(phaseIndex, progress.current.unit, variableIndex);
                 }}
               >
                 {variable.label}
@@ -55,7 +55,7 @@ const NavigationDropdown = () => {
 };
 
 const NavigationButtons = () => {
-  const { progress, finished, annotationLib, annotationManager } = useJobContext();
+  const { progress, finished, annotationLib, jobManager: jobManager } = useJobContext();
   const nUnits = progress.phases[progress.current.phase].unitsDone.length;
   let hasPrevPhase = progress.current.phase === 0;
   let hasNextPhase = progress.current.phase === progress.phases.length - 1;
@@ -65,7 +65,7 @@ const NavigationButtons = () => {
   const noNextUnit = progress.current.unit === nUnits - 1;
 
   // variable navigation
-  const { setPrevVariable, setNextVariable } = variableNavigation(progress, annotationManager);
+  const { setPrevVariable, setNextVariable } = variableNavigation(progress, jobManager);
 
   const canGoBack = progress.settings.canGoBack && (!hasPrevPhase || !noPrevUnit);
   const canGoForward = progress.settings.canSkip && (!hasNextPhase || !noNextUnit);
@@ -73,13 +73,13 @@ const NavigationButtons = () => {
   const previous = () => {
     if (!canGoBack) return;
     if (finished) {
-      annotationManager.navigate(progress.phases.length - 1);
+      jobManager.navigate(progress.phases.length - 1);
     } else if (setPrevVariable !== null) {
       setPrevVariable();
     } else if (noPrevUnit) {
-      annotationManager.navigate(progress.current.phase - 1);
+      jobManager.navigate(progress.current.phase - 1);
     } else {
-      annotationManager.navigate(progress.current.phase, progress.current.unit - 1);
+      jobManager.navigate(progress.current.phase, progress.current.unit - 1);
     }
   };
 
@@ -88,9 +88,9 @@ const NavigationButtons = () => {
     if (setNextVariable !== null) {
       setNextVariable();
     } else if (noNextUnit) {
-      annotationManager.navigate(progress.current.phase + 1);
+      jobManager.navigate(progress.current.phase + 1);
     } else {
-      annotationManager.navigate(progress.current.phase, progress.current.unit + 1);
+      jobManager.navigate(progress.current.phase, progress.current.unit + 1);
     }
   };
 
@@ -122,7 +122,7 @@ const NavigationButtons = () => {
   );
 };
 
-function variableNavigation(progress: ProgressState, annotationManager: AnnotationManager) {
+function variableNavigation(progress: ProgressState, jobManager: JobManager) {
   const variableIndex = progress.current.variable;
   const variableStatuses = progress.phases[progress.current.phase].variables;
 
@@ -136,13 +136,13 @@ function variableNavigation(progress: ProgressState, annotationManager: Annotati
     if (nextVariable !== null) break;
   }
 
-  const setPrevVariable = prevVariable !== null ? () => annotationManager.setVariableIndex(prevVariable) : null;
-  const setNextVariable = nextVariable !== null ? () => annotationManager.setVariableIndex(nextVariable) : null;
+  const setPrevVariable = prevVariable !== null ? () => jobManager.setVariableIndex(prevVariable) : null;
+  const setNextVariable = nextVariable !== null ? () => jobManager.setVariableIndex(nextVariable) : null;
   return { setPrevVariable, setNextVariable };
 }
 
 const UnitSlider = () => {
-  const { progress, finished, annotationManager } = useJobContext();
+  const { progress, finished, jobManager } = useJobContext();
   const [activePage, setActivePage] = useState(0);
   const [sliderPage, setSliderPage] = useState(0);
   // also keep track of slider as a ref, because touchevents suck (see onTouchEnd below for explanation)
@@ -178,7 +178,7 @@ const UnitSlider = () => {
 
   const updatePage = (page: number) => {
     if (page !== activePage) {
-      annotationManager.navigate(progress.current.phase, page - 1);
+      jobManager.navigate(progress.current.phase, page - 1);
       setActivePage(page);
       setSliderPage(page);
     }

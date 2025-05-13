@@ -1,11 +1,13 @@
 import {
   Annotation,
   CodebookPhase,
-  CodebookState,
+  JobManagerState,
   CodebookVariable,
   GetSession,
   ProgressState,
   VariableAnnotationsMap,
+  Branching,
+  UpdateTrigger,
 } from "@/app/types";
 
 export async function computeProgress(
@@ -63,4 +65,9 @@ function computeUnitsDone(unitProgress: GetSession["phaseProgress"], phase: Code
   const unitsDone = unitProgress.find((up) => up.phaseId === phase.id)?.unitsDone;
   if (!unitsDone) throw new Error("invalid GetSession: missing unitsDone for phase " + phase.id);
   return unitsDone;
+}
+
+function updateProgress(state: JobManagerState): { progress: ProgressState; updateTriggers: UpdateTrigger[] } {
+  const progress = state.progress;
+  return { progress, updateTriggers: [] };
 }

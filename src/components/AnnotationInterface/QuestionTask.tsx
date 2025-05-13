@@ -76,7 +76,7 @@ function SwipeableDocument({
 }
 
 function useSwipe() {
-  const { variableMap, progress, annotationManager } = useJobContext();
+  const { variableMap, progress, jobManager } = useJobContext();
   const textref = useRef<HTMLDivElement>(null);
   const boxref = useRef<HTMLDivElement>(null);
   const coderef = useRef<HTMLDivElement>(null);
@@ -90,8 +90,8 @@ function useSwipe() {
   function onSwipe(transition: Transition) {
     if (!transition.code) return;
     const context = variable.field ? { field: variable.field } : undefined;
-    annotationManager.createQuestionAnnotation(variable.id, transition.code, undefined, false, context);
-    annotationManager.finishVariable();
+    jobManager.createQuestionAnnotation(variable.id, transition.code, undefined, false, context);
+    jobManager.finishVariable();
   }
 
   const textSwipe = useSwipeable(swipeControl(variable, refs, onSwipe, false));

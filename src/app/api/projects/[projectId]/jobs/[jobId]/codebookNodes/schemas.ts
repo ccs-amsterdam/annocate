@@ -34,13 +34,13 @@ export const CodebookNodeDataTypeSchema = z.object({
 
 export const CodebookNodeQuestionVariableSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Question"),
-  // treeType: z.literal("leaf").default("leaf"),
+  // treeType: z.literal("variable").default("variable"),
   variable: CodebookQuestionVariableSchema,
 });
 
 export const CodebookNodeAnnotationVariableSchema = CodebookNodeDataTypeSchema.extend({
   type: z.literal("Annotation task"),
-  // treeType: z.literal("leaf").default("leaf"),
+  // treeType: z.literal("variable").default("variable"),
   variable: CodebookAnnotationVariableSchema,
 });
 

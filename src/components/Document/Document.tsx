@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties, useMemo } from "react";
+import React, { useState, useEffect, CSSProperties } from "react";
 import AnnotateNavigation from "./components/AnnotateNavigation";
 import Body from "./components/Body";
 import useSpanSelector from "./hooks/useSpanSelector";
@@ -6,12 +6,10 @@ import useRelationSelector from "./hooks/useRelationSelector";
 import SelectVariable from "./components/SelectVariable";
 
 import useVariableMap from "./components/useVariableMap";
-import { VariableMap, Annotation, SetState, TriggerSelector, CodebookVariable, Doc, Unit } from "@/app/types";
+import { VariableMap, Annotation, SetState, TriggerSelector, CodebookVariable, Content, Unit } from "@/app/types";
 import { useCallback } from "react";
 import styled from "styled-components";
 import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
-import { useQuery } from "@tanstack/react-query";
-import { useContent } from "./hooks/useContent";
 
 const DocumentContainer = styled.div`
   display: flex;
@@ -57,28 +55,23 @@ interface DocumentProps {
 }
 
 interface DocumentReadyProps extends DocumentProps {
-  content: Doc;
-  contentLoading: boolean;
+  content: Content;
   unit: Unit;
   annotationLib: any;
-  annotationManager: any;
+  jobManager: any;
 }
 
 const Document = (props: DocumentProps) => {
-  const { unit, annotationLib, annotationManager } = useJobContext();
-  const { loading, content } = useContent();
+  const { unit, progress, annotationLib, jobManager, variableMap, contents } = useJobContext();
+
+  const variableId = progress.phases[progress.current.phase].variables[progress.current.variable].id;
+  const variable = variableMap[variableId];
+  const content = variable.layoutId ? contents[variable.layoutId] : null;
 
   if (!unit || !content) return null;
 
   return (
-    <DocumentReady
-      {...props}
-      content={content}
-      contentLoading={loading}
-      unit={unit}
-      annotationLib={annotationLib}
-      annotationManager={annotationManager}
-    />
+    <DocumentReady {...props} content={content} unit={unit} annotationLib={annotationLib} jobManager={jobManager} />
   );
 };
 
@@ -88,10 +81,9 @@ const Document = (props: DocumentProps) => {
  */
 const DocumentReady = ({
   content,
-  contentLoading,
   unit,
   annotationLib,
-  annotationManager,
+  jobManager,
   variables,
   showAll,
   onChangeAnnotations,
@@ -110,18 +102,18 @@ const DocumentReady = ({
   );
 
   // keep track of current tokens object, to prevent rendering annotations on the wrong text
-  const [currentUnit, setCurrentUnit] = useState<Doc>(() => content);
+  const [currentUnit, setCurrentUnit] = useState<Content>(() => content);
 
   const [spanSelectorPopup, spanSelector, spanSelectorOpen] = useSpanSelector(
     content,
     annotationLib,
-    annotationManager,
+    jobManager,
     variable,
   );
   const [relationSelectorPopup, relationSelector, relationSelectorOpen] = useRelationSelector(
     content,
     annotationLib,
-    annotationManager,
+    jobManager,
     variable,
   );
 
@@ -181,7 +173,7 @@ const DocumentReady = ({
         disableAnnotations={!onChangeAnnotations || !variableMap}
         editMode={editMode}
         triggerSelector={triggerSelector}
-        eventsBlocked={!!(selectorOpen || blockEvents || contentLoading)}
+        eventsBlocked={!!(selectorOpen || blockEvents)}
         showAll={!!showAll}
         currentUnitReady={currentUnitReady}
       />

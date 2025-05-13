@@ -9,14 +9,14 @@ import {
   TriggerSelector,
   TriggerSelectorParams,
   AnnotationLibrary,
-  Doc,
+  Content,
   Annotation,
   CodeSelectorOption,
   CodeSelectorValue,
   CodebookVariable,
 } from "@/app/types";
 import useWatchChange from "@/hooks/useWatchChange";
-import AnnotationManager from "@/classes/AnnotationManager";
+import JobManager from "@/classes/JobManager";
 import standardizeColor from "@/functions/standardizeColor";
 
 /**
@@ -39,16 +39,16 @@ import standardizeColor from "@/functions/standardizeColor";
  * @returns
  */
 const useSpanSelector = (
-  doc: Doc,
+  content: Content,
   annotationLib: AnnotationLibrary,
-  annotationManager: AnnotationManager,
+  jobManager: JobManager,
   variable: CodebookVariable | null,
 ): [ReactNode, TriggerSelector | null, boolean] => {
   const [open, setOpen] = useState(false);
   const positionRef = useRef<HTMLSpanElement | null>(null);
   const [span, setSpan] = useState<Span | null>(null);
   const [annotationOptions, setAnnotationOptions] = useState<CodeSelectorOption[]>([]);
-  const tokens = doc.tokens;
+  const tokens = content.tokens;
 
   const triggerFunction = React.useCallback(
     // this function can be called to open the code selector.
@@ -91,7 +91,7 @@ const useSpanSelector = (
           tokens={tokens}
           variable={variable}
           annotationLib={annotationLib}
-          annotationManager={annotationManager}
+          jobManager={jobManager}
           span={span}
           editMode={!!variable.editMode}
           setOpen={setOpen}
@@ -136,36 +136,28 @@ interface NewCodepageProps {
   tokens: Token[];
   variable: CodebookVariable;
   annotationLib: AnnotationLibrary;
-  annotationManager: AnnotationManager;
+  jobManager: JobManager;
   editMode: boolean;
   span: Span;
   setOpen: SetState<boolean>;
 }
 
-const NewCodePage = ({
-  tokens,
-  variable,
-  annotationLib,
-  annotationManager,
-  editMode,
-  span,
-  setOpen,
-}: NewCodepageProps) => {
+const NewCodePage = ({ tokens, variable, annotationLib, jobManager, editMode, span, setOpen }: NewCodepageProps) => {
   const onSelect = useCallback(
     (value: CodeSelectorValue, ctrlKey = false) => {
       if (value.cancel) {
         setOpen(false);
       } else if (value.delete) {
         const keepEmpty = editMode;
-        if (value.id) annotationManager.rmAnnotation(value.id, keepEmpty);
+        if (value.id) jobManager.rmAnnotation(value.id, keepEmpty);
       } else {
-        if (value.code) annotationManager.createSpanAnnotation(variable.id, value.code, span[0], span[1], tokens);
+        if (value.code) jobManager.createSpanAnnotation(variable.id, value.code, span[0], span[1], tokens);
       }
       if (!ctrlKey) {
         setOpen(false);
       }
     },
-    [annotationManager, setOpen, tokens, span, variable, editMode],
+    [jobManager, setOpen, tokens, span, variable, editMode],
   );
 
   const options = useMemo(() => {

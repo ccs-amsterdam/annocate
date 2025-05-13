@@ -1,7 +1,6 @@
 "use cient";
 
-import { Annotation, DataIndicator, GetSession, ScriptData, Unit, UnitData } from "@/app/types";
-import { JobContext } from "@/components/AnnotatorProvider/AnnotatorProvider";
+import { JobContext, Annotation, DataIndicator, GetSession, ScriptData, Unit, SandboxContext } from "@/app/types";
 import { avgArray, uniqueArray } from "@/functions/utils";
 import { createContext, ReactElement, ReactNode, useContext } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -13,15 +12,9 @@ interface IFrameObj {
   iframe: HTMLIFrameElement;
 }
 
-interface SandboxContextProps {
-  evalStringTemplate: (str: string, data: ScriptData) => Promise<string>;
-  evalStringWithJobContext: (str: string, context: JobContext) => Promise<string>;
-  ready: boolean;
-}
-
 const accessors = ["unit", "code", "value", "codes", "values"] as const;
 
-const SandboxContext = createContext<SandboxContextProps>({
+const Context = createContext<SandboxContext>({
   evalStringTemplate: async () => {
     throw new Error("Sandbox not ready");
   },
@@ -32,7 +25,7 @@ const SandboxContext = createContext<SandboxContextProps>({
 });
 
 export const useSandbox = () => {
-  return useContext(SandboxContext);
+  return useContext(Context);
 };
 
 export function SandboxedProvider({ children }: { children: ReactNode }) {
@@ -122,7 +115,7 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <SandboxContext.Provider
+    <Context.Provider
       value={{
         evalStringTemplate,
         evalStringWithJobContext,
@@ -130,7 +123,7 @@ export function SandboxedProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </SandboxContext.Provider>
+    </Context.Provider>
   );
 }
 
@@ -185,9 +178,9 @@ export function extractDataIndictors(str: string): DataIndicator[] {
     for (let match of matches) {
       const name = match[2] as string;
       if (accessor === "unit") {
-        dataIndicators.push({ type: "unit", accessor, field: name });
+        dataIndicators.push({ type: "phase", accessor, dataKey: name });
       } else {
-        dataIndicators.push({ type: "annotation", accessor, variableName: name });
+        dataIndicators.push({ type: "variable", accessor, variableName: name });
       }
     }
   }
@@ -200,8 +193,8 @@ function prepareScriptData(dataIndicators: DataIndicator[], jobContext: JobConte
   for (let dataIndicator of dataIndicators) {
     const { type, accessor } = dataIndicator;
 
-    if (type === "unit") {
-      const field = dataIndicator.field;
+    if (type === "phase") {
+      const field = dataIndicator.dataKey;
       if (accessor === "unit") {
         const value = jobContext.unit?.data?.[field];
         if (value !== undefined) scriptData.unit[field] = value;
@@ -209,12 +202,15 @@ function prepareScriptData(dataIndicators: DataIndicator[], jobContext: JobConte
       }
     }
 
-    if (type === "annotation") {
+    if (type === "variable") {
       // For annotation type accessors we need to find the annotations for the variables
       const variableName = dataIndicator.variableName;
       const variable = Object.values(jobContext.variableMap).find((v) => v.name === variableName);
-      const annotations =
-        Object.values(jobContext.annotationLib.annotations).filter((a) => a.variableId === variable?.id) || [];
+      if (!variable) continue;
+      const annotations = jobContext.annotationLib.byVariable[variable.id].map(
+        (annId) => jobContext.annotationLib.annotations[annId],
+      );
+
       if (annotations.length === 0) continue;
 
       if (accessor === "code") {

@@ -1,56 +1,57 @@
 "use client";
 import {
   AnnotationLibrary,
-  CodebookState,
+  JobManagerState,
   GetSession,
   JobServer,
   Layouts,
   ProgressState,
   Unit,
   VariableMap,
+  JobContext,
 } from "@/app/types";
-import AnnotationManager, { createAnnotationManager } from "@/classes/AnnotationManager";
+import JobManager, { createJobManager } from "@/classes/JobManager";
 import { prepareCodebook } from "@/functions/treeFunctions";
+import { useSandbox } from "@/hooks/useSandboxedEval";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-interface ContextProps {
-  unit?: Unit | null;
-  variableMap?: VariableMap;
-  annotationLib?: AnnotationLibrary;
-  annotationManager?: AnnotationManager;
-  progress?: ProgressState;
-  layouts?: Layouts;
-  error: string | undefined;
+type ContextProps = {
+  jobManager: JobManager | null;
+  jobManagerState: JobManagerState | null;
+  error: string | null;
   height: number;
-  finished?: boolean;
-}
+  finished: boolean;
+};
 
-export interface JobContext extends ContextProps {
-  unit: Unit | null;
-  progress: ProgressState;
-  variableMap: VariableMap;
-  layouts: Layouts;
-  annotationLib: AnnotationLibrary;
-  annotationManager: AnnotationManager;
-}
-
-const JobContext = createContext<ContextProps>({
-  error: undefined,
+const Context = createContext<ContextProps>({
+  jobManager: null,
+  jobManagerState: null,
+  error: null,
   height: 0,
   finished: false,
 });
 
-function isInitialized(props: ContextProps): boolean {
-  return !!props.progress && !!props.variableMap && !!props.annotationLib && !!props.annotationManager;
+function asJobContext(props: ContextProps): JobContext | null {
+  if (!props.jobManager || !props.jobManagerState) return null;
+  return {
+    unit: props.jobManagerState.unit,
+    progress: props.jobManagerState.progress,
+    variableMap: props.jobManagerState.variableMap,
+    annotationLib: props.jobManagerState.annotationLib,
+    jobManager: props.jobManager,
+    contents: props.jobManagerState.contents,
+    error: props.error,
+    height: props.height,
+    finished: props.finished,
+  };
 }
 
 export function useJobContext(): JobContext {
-  const context = useContext(JobContext);
-  // Here we need to tell ts that we are sure that the context is initialized.
-  // (this is the only way to avoid having to non-null assert every time we use the context)
-  if (!isInitialized(context)) throw new Error("useUnit must be used within an initialized AnnotatorProvider");
-  return context as JobContext;
+  const context = useContext(Context);
+  const jobContext = asJobContext(context);
+  if (!jobContext) throw new Error("useJobContext must be used within an initialized JobContextProvider");
+  return jobContext;
 }
 
 interface Props {
@@ -70,28 +71,29 @@ export interface PhaseState {
 
 export default function AnnotatorProvider({ jobServer, height, children }: Props) {
   const [finished, setFinished] = useState(false);
-  const [unitBundle, setUnitBundle] = useState<PhaseState | null>(null);
-  const [annotationManager, setAnnotationManager] = useState<AnnotationManager | undefined>(undefined);
+  const [jobManagerState, setJobManagerState] = useState<JobManagerState | null>(null);
+  const [jobManager, setJobManager] = useState<JobManager | null>(null);
+  const sandbox = useSandbox();
 
   useEffect(() => {
-    createAnnotationManager(jobServer, setUnitBundle).then((annotationManager) => {
-      setAnnotationManager(annotationManager);
-      annotationManager.navigate();
+    createJobManager(jobServer, setJobManagerState, sandbox).then((jobManager) => {
+      setJobManager(jobManager);
+      jobManager.navigate();
     });
-  }, [jobServer]);
+  }, [jobServer, sandbox]);
 
   const context: ContextProps = {
-    unit: unitBundle?.unit,
-    variableMap: unitBundle?.variableMap,
-    annotationLib: unitBundle?.annotationLib,
-    annotationManager,
-    progress: unitBundle?.progress,
-    error: unitBundle?.error,
+    jobManager: jobManager,
+    jobManagerState,
+    error: jobManagerState?.error ?? null,
     height,
     finished,
   };
 
-  if (!isInitialized(context)) return null;
+  // this prevents rendering the components that use useJobContext before it's initialied (which would throw an error)
+  // this seems the only way to prevent having to typeguard everywhere
+  const jobContext = asJobContext(context);
+  if (!jobContext) return null;
 
-  return <JobContext.Provider value={context}>{children}</JobContext.Provider>;
+  return <Context.Provider value={context}>{children}</Context.Provider>;
 }

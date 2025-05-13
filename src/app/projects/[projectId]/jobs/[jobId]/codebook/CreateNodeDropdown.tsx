@@ -44,12 +44,12 @@ export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebook
   }, [nodes, id]);
 
   const codebookNode = nodes.find((node) => node.id === id);
-  if (codebookNode?.treeType === "leaf") return <Button size="icon" className="invisible h-8 w-8" />;
+  if (codebookNode?.treeType === "variable") return <Button size="icon" className="invisible h-8 w-8" />;
 
   const options = getValidChildren(codebookNode?.data.type || null);
   const positions = nodes.filter((node) => node.parentId === id);
 
-  function dropdownItems(treeType: "phase" | "group" | "leaf") {
+  function dropdownItems(treeType: "phase" | "group" | "variable") {
     return options[treeType].map((option) => {
       let icon = <FolderIcon size={16} />;
       // if (treeType === "group") icon = <FolderIcon size={16} />;
@@ -128,7 +128,7 @@ export function CreateNodeDropdown({ id, nodes, setCodebookNodeForm: setCodebook
           {/* <DropdownMenuLabel>Create</DropdownMenuLabel> */}
           {dropdownItems("phase")}
           {dropdownItems("group")}
-          {dropdownItems("leaf")}
+          {dropdownItems("variable")}
         </DropdownMenuGroup>
         {positionSelector()}
       </DropdownMenuContent>

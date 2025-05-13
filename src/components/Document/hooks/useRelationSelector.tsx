@@ -10,25 +10,25 @@ import {
   CodeSelectorValue,
   TriggerSelector,
   TriggerSelectorParams,
-  Doc,
+  Content,
   AnnotationLibrary,
   AnnotationID,
 } from "@/app/types";
 import AnnotationPortal from "@/components/Document/components/AnnotationPortal";
 import PopupSelection from "@/components/Document/components/PopupSelection";
-import AnnotationManager from "@/classes/AnnotationManager";
+import JobManager from "@/classes/JobManager";
 
 const useRelationSelector = (
-  doc: Doc,
+  content: Content,
   annotationLib: AnnotationLibrary,
-  annotationManager: AnnotationManager,
+  jobManager: JobManager,
   variable: CodebookVariable | null,
 ): [ReactElement<any> | null, TriggerSelector, boolean] => {
   const [open, setOpen] = useState(false);
   const positionRef = useRef<HTMLSpanElement | null>(null);
   const [edge, setEdge] = useState<RelationOption | null>(null);
   const [edgeOptions, setEdgeOptions] = useState<CodeSelectorOption[]>([]);
-  const tokens = doc.tokens;
+  const tokens = content.tokens;
 
   const triggerFunction = useCallback(
     (selection: TriggerSelectorParams) => {
@@ -85,7 +85,7 @@ const useRelationSelector = (
           variable={variable}
           edge={edge}
           annotationLib={annotationLib}
-          annotationManager={annotationManager}
+          jobManager={jobManager}
           setOpen={setOpen}
         />
       )}
@@ -117,24 +117,24 @@ interface SelectRelationPageProps {
   variable: CodebookVariable;
   edge: RelationOption;
   annotationLib: AnnotationLibrary;
-  annotationManager: AnnotationManager;
+  jobManager: JobManager;
   setOpen: (open: boolean) => void;
 }
 
-const SelectRelationPage = ({ variable, edge, annotationLib, annotationManager, setOpen }: SelectRelationPageProps) => {
+const SelectRelationPage = ({ variable, edge, annotationLib, jobManager, setOpen }: SelectRelationPageProps) => {
   const onSelect = useCallback(
     (value: CodeSelectorValue, ctrlKey: boolean) => {
       if (value.cancel) {
         setOpen(false);
       } else if (value.delete) {
-        if (value.id) annotationManager.rmAnnotation(value.id);
+        if (value.id) jobManager.rmAnnotation(value.id);
       } else {
-        if (value.code) annotationManager.createRelationAnnotation(variable.id, value.code, edge.from, edge.to);
+        if (value.code) jobManager.createRelationAnnotation(variable.id, value.code, edge.from, edge.to);
       }
 
       if (!ctrlKey) setOpen(false);
     },
-    [setOpen, edge, annotationManager, variable],
+    [setOpen, edge, jobManager, variable],
   );
 
   const options: CodeSelectorOption[] | null = useMemo(() => {

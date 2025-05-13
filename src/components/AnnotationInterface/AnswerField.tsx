@@ -5,7 +5,7 @@ import Annotinder from "./AnswerFieldAnnotinder";
 import useSpeedBump from "@/hooks/useSpeedBump";
 import { useJobContext } from "../AnnotatorProvider/AnnotatorProvider";
 import { AnnotationLibrary, Code, QuestionAnnotation } from "@/app/types";
-import AnnotationManager from "@/classes/AnnotationManager";
+import JobManager from "@/classes/JobManager";
 
 interface AnswerFieldProps {
   blockEvents?: boolean;
@@ -19,7 +19,7 @@ export interface OnSelectParams {
 }
 
 const AnswerField = ({ blockEvents = false }: AnswerFieldProps) => {
-  const { variableMap, progress, annotationLib, annotationManager } = useJobContext();
+  const { variableMap, progress, annotationLib, jobManager } = useJobContext();
 
   const questionDate = useRef<Date>(new Date());
   const answerRef = useRef<HTMLDivElement>(null);
@@ -74,13 +74,13 @@ const AnswerField = ({ blockEvents = false }: AnswerFieldProps) => {
   const finishLoop = true;
 
   const onSubmit = () => {
-    annotationManager.submitVariable(variable.id, context, finishLoop);
-    annotationManager.finishVariable();
+    jobManager.submitVariable(variable.id, context, finishLoop);
+    jobManager.finishVariable();
   };
 
   const onSelect = ({ code, multiple, item, finish }: OnSelectParams) => {
-    annotationManager.createQuestionAnnotation(variable.id, code, item, !!multiple, context, finishLoop);
-    if (finish) annotationManager.finishVariable();
+    jobManager.createQuestionAnnotation(variable.id, code, item, !!multiple, context, finishLoop);
+    if (finish) jobManager.finishVariable();
   };
 
   let answerfield = null;
