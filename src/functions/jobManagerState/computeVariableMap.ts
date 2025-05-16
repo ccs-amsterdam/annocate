@@ -11,24 +11,13 @@ import {
 } from "@/app/types";
 import standardizeColor from "../standardizeColor";
 
-export function createVariableMap(variables: CodebookVariable[]) {
+export async function createVariableMap(nodes: CodebookNode[]) {
   const vm: VariableMap = {};
-  for (let variable of variables) {
-    let cm = variable.codeMap;
-    cm = Object.keys(cm).reduce((obj: any, key) => {
-      obj[key] = cm[key];
-      return obj;
-    }, {});
-
-    vm[variable.id] = { ...variable, codeMap: cm };
-
-    if (variable.type === "relation") {
-      const [validFrom, validTo] = getValidRelationCodes(variable.relations, variable.codeMap);
-      vm[variable.id].validFrom = validFrom;
-      vm[variable.id].validTo = validTo;
-    }
+  for (let node of nodes) {
+    if (node.treeType !== "variable") continue;
+    const variable = await createVariable(node);
+    vm[variable.id] = { ...variable };
   }
-
   return vm;
 }
 
@@ -83,10 +72,8 @@ function getValidRelationCodes(relations: AnnotationRelation[], codeMap: CodeMap
 export async function createVariable(node: CodebookNode, layoutId?: number): Promise<CodebookVariable> {
   if (!("variable" in node.data)) throw new Error("CodebookNode does not contain variable data");
 
-  const variable = node.data.variable;
-
   const v: CodebookVariable = {
-    ...variable,
+    ...node.data.variable,
     name: node.name,
     id: node.id,
     codeMap: {},
@@ -96,9 +83,14 @@ export async function createVariable(node: CodebookNode, layoutId?: number): Pro
   if ("codes" in v) {
     for (let i = 0; i < v.codes.length; i++) {
       if (v.codes[i].color) v.codes[i].color = standardizeColor(v.codes[i].color);
-
       v.codeMap[v.codes[i].code] = v.codes[i];
     }
+  }
+
+  if (v.type === "relation") {
+    const [validFrom, validTo] = getValidRelationCodes(v.relations, v.codeMap);
+    v.validFrom = validFrom;
+    v.validTo = validTo;
   }
 
   return v;

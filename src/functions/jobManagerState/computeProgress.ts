@@ -6,37 +6,18 @@ import {
   GetSession,
   ProgressState,
   VariableAnnotationsMap,
-  Branching,
   UpdateTrigger,
+  CodebookNode,
 } from "@/app/types";
 
-export async function computeProgress(
-  phases: CodebookPhase[],
-  globalAnnotations: VariableAnnotationsMap,
-  unitProgress: GetSession["phaseProgress"],
-) {
-  const progress: ProgressState = {
-    current: {
-      phase: 0,
-      unit: 0,
-      variable: 0,
-    },
-    previous: {
-      phase: 0,
-      unit: 0,
-      variable: 0,
-    },
-    phases: [],
-    settings: {
-      canGoBack: true,
-      canSkip: false,
-    },
-  };
+export async function createProgress(nodes: CodebookNode[], session: GetSession) {
+  const progress: ProgressState = initProgress();
+  const phases = groupVariablesByPhase(nodes);
 
   for (let i = 0; i < phases.length; i++) {
     const phase = phases[i];
-    const variables = computeVariableStatuses(globalAnnotations, phase);
-    const unitsDone = computeUnitsDone(unitProgress, phase);
+    const variables = computeVariableStatuses(session.globalAnnotations, phase);
+    const unitsDone = computeUnitsDone(session.phaseProgress, phase);
 
     progress.phases[i] = {
       unitsDone,
@@ -50,6 +31,30 @@ export async function computeProgress(
   progress.current.unit = progress.phases[progress.current.phase].unitsDone.findIndex((u) => u);
   progress.current.variable = progress.phases[progress.current.phase].variables.findIndex((v) => !v.done && !v.skip);
   return progress;
+}
+
+function groupVariablesByPhase(nodes: CodebookNode[]) {
+  const phases: CodebookPhase[] = [];
+
+  let phase = -1;
+  for (let node of nodes) {
+    if (node.parentId === null) {
+      // if start of new phase, append phase array
+      phase++;
+      phases[phase] = {
+        id: node.id,
+        label: node.name.replaceAll("_", " "),
+        type: node.phaseType,
+        variables: [],
+      };
+    }
+
+    if (node.treeType === "variable") {
+      phases[phase].variables.push(node);
+    }
+  }
+
+  return phases;
 }
 
 function computeVariableStatuses(variableAnnotationsMap: VariableAnnotationsMap, phase: CodebookPhase) {
@@ -70,4 +75,24 @@ function computeUnitsDone(unitProgress: GetSession["phaseProgress"], phase: Code
 function updateProgress(state: JobManagerState): { progress: ProgressState; updateTriggers: UpdateTrigger[] } {
   const progress = state.progress;
   return { progress, updateTriggers: [] };
+}
+
+function initProgress() {
+  return {
+    current: {
+      phase: 0,
+      unit: 0,
+      variable: 0,
+    },
+    previous: {
+      phase: 0,
+      unit: 0,
+      variable: 0,
+    },
+    phases: [],
+    settings: {
+      canGoBack: true,
+      canSkip: false,
+    },
+  };
 }

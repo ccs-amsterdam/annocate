@@ -5,6 +5,7 @@ import {
   AnnotationLibrary,
   AnnotationsByToken,
   Unit,
+  VariableAnnotations,
   VariableAnnotationsMap,
   VariableMap,
 } from "@/app/types";
@@ -14,15 +15,15 @@ import { getColor } from "../tokenDesign";
 export function createAnnotationLibrary(
   unit: Unit | null,
   variableMap: VariableMap,
-  globalAnnotations: VariableAnnotationsMap | undefined,
+  globalAnnotations: VariableAnnotationsMap,
   focusVariableIndex?: number,
 ): AnnotationLibrary {
   const annotations: Annotation[] = [];
-  if (unit?.variableAnnotations) {
+
+  if (unit) {
     Object.values(unit.variableAnnotations).map((variable) => annotations.push(...variable.annotations));
-  }
-  if (globalAnnotations) {
-    Object.values(globalAnnotations).map((variable) => annotations.push(...variable.annotations));
+  } else {
+    Object.values(globalAnnotations ?? {}).map((variable) => annotations.push(...variable.annotations));
   }
 
   let annotationArray = annotations || [];
@@ -51,6 +52,7 @@ export function createAnnotationLibrary(
     sessionId: cuid(),
     phaseToken: unit?.token || "global",
     annotations: annotationDict,
+    globalAnnotations: globalAnnotations,
     byToken: newTokenDictionary(annotationDict),
     byVariable: variableAnnotations(annotationDict),
     codeHistory: {},
@@ -74,6 +76,16 @@ export function variableAnnotations(annotations: AnnotationDictionary) {
   }
   return byVariable;
 }
+
+// export function variableAnnotationsToDictionary(variableAnnotations: VariableAnnotationsMap) {
+//   const annotationDict: AnnotationDictionary = {};
+//   for (let variable of Object.values(variableAnnotations)) {
+//     for (let annotation of variable.annotations) {
+//       annotationDict[annotation.id] = annotation;
+//     }
+//   }
+//   return annotationDict;
+// }
 
 function repairAnnotations(annotations: Annotation[], variableMap?: VariableMap) {
   for (let a of Object.values(annotations)) {

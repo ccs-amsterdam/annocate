@@ -1,51 +1,31 @@
 import {
-  Annotation,
-  Branching,
-  CodebookNode,
-  CodebookPhase,
   JobManagerState,
-  CodebookVariable,
-  DataIndicator,
-  Dependencies,
   GetSession,
   Layout,
-  Layouts,
   UpdateTrigger,
-  VariableAnnotationsMap,
-  VariableMap,
-  VariableSchema,
   Unit,
   Content,
   Contents,
-  AnnotationLibrary,
-  UpdateData,
-  CodebookNodeResponse,
   SandboxContext,
 } from "@/app/types";
-import standardizeColor from "../standardizeColor";
-import { computeProgress } from "./computeProgress";
+import { createProgress } from "./computeProgress";
 import { createAnnotationLibrary } from "./computeAnnotationLibrary";
-import { createVariableMap, createVariable } from "./computeVariableMap";
-import { computeUpdateData } from "./computeUpdateData";
-import { uniqueArray } from "../utils";
-import { M_PLUS_1 } from "next/font/google";
+import { createVariableMap } from "./computeVariableMap";
+import { computeUpdateData as createUpdateData } from "./computeUpdateData";
 import { prepareCodebook } from "../treeFunctions";
 
 export async function initializeJobManagerState(
-  codebook: CodebookNodeResponse[],
-  globalAnnotations: VariableAnnotationsMap,
-  unitProgress: GetSession["phaseProgress"],
+  session: GetSession,
   sandbox: SandboxContext,
   // sandboxedEval
 ): Promise<JobManagerState> {
   const unit = null;
   const error = null;
-  const nodes = prepareCodebook(codebook);
-  const phases = await computeCodebookPhases(nodes);
-  const variableMap = createVariableMap(phases.flatMap((phase) => phase.variables));
-  const progress = await computeProgress(phases, globalAnnotations, unitProgress);
-  const annotationLib = createAnnotationLibrary(null, variableMap, globalAnnotations);
-  const updateData = computeUpdateData(nodes);
+  const nodes = prepareCodebook(session.codebook);
+  const variableMap = await createVariableMap(nodes);
+  const progress = await createProgress(nodes, session);
+  const annotationLib = createAnnotationLibrary(null, variableMap, session.globalAnnotations);
+  const updateData = createUpdateData(nodes);
   const contents: Contents = {};
 
   // evaluate branching rules to update globalAnnotations
@@ -61,48 +41,6 @@ export async function initializeJobManagerState(
     error,
     sandbox,
   };
-}
-
-async function computeCodebookPhases(nodes: CodebookNode[]) {
-  const phases: CodebookPhase[] = [];
-
-  // inheritables
-  // - A node inherits the layout of its parent, unless it specifies a new layout
-  // - If a node is skipped, all its children are skipped
-  let inheritable: Record<number, { layoutId?: number; branchNodeIds: number[] }> = {};
-
-  let phase = -1;
-  for (let node of nodes) {
-    if (node.parentId === null) {
-      // if start of new phase, append phase array
-      phase++;
-      phases[phase] = {
-        id: node.id,
-        label: node.name.replaceAll("_", " "),
-        type: node.phaseType,
-        variables: [],
-      };
-    }
-
-    // inheritables
-    inheritable[node.id] = node.parentId ? inheritable[node.parentId] : { branchNodeIds: [] };
-
-    if ("layout" in node.data) {
-      inheritable[node.id].layoutId = node.id;
-    }
-
-    if ("condition" in node.data && node.data.condition) {
-      // In the inheritables we keep track of all branching nodes, so that we can add all children to the skips array
-      inheritable[node.id].branchNodeIds.push(node.id);
-    }
-
-    if (node.treeType === "variable") {
-      const variable = await createVariable(node, inheritable[node.id].layoutId);
-      phases[phase].variables.push(variable);
-    }
-  }
-
-  return phases;
 }
 
 async function updateJobManagerState(jobManagerState: JobManagerState, triggerIds: number[]) {

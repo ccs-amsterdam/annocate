@@ -254,7 +254,7 @@ export type CodebookPhase = {
   id: number;
   label: string;
   type: Phase;
-  variables: CodebookVariable[];
+  variables: CodebookNode[];
 };
 export type JobManagerState = {
   unit: Unit | null;
@@ -420,6 +420,7 @@ export interface AnnotationLibrary {
   sessionId: string;
   phaseToken: string;
   annotations: AnnotationDictionary;
+  globalAnnotations: VariableAnnotationsMap;
   byToken: AnnotationsByToken;
   byVariable: AnnotationsByVariable;
   codeHistory: CodeHistory;

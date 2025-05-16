@@ -34,14 +34,13 @@ export async function createJobManager(
   setJobManagerState: SetState<JobManagerState | null>,
   sandbox: SandboxContext,
 ) {
-  const { sessionToken, codebook, phaseProgress, globalAnnotations } = await jobServer.getSession();
+  const session = await jobServer.getSession();
 
   const jobManager = new JobManager({
     jobServer,
     setJobManagerState,
-    sessionToken,
-    globalAnnotations,
-    state: await initializeJobManagerState(codebook, globalAnnotations, phaseProgress, sandbox),
+    sessionToken: session.sessionToken,
+    state: await initializeJobManagerState(session, sandbox),
   });
 
   return jobManager;
@@ -52,7 +51,6 @@ export default class JobManager {
   setJobManagerState: SetState<JobManagerState | null>;
   lastServerUpdate: Date | null;
   state: JobManagerState;
-  globalAnnotations: VariableAnnotationsMap;
   sessionToken: string;
   postAnnotationsQueue: PostAnnotation["phaseAnnotations"];
 
@@ -61,18 +59,15 @@ export default class JobManager {
     setJobManagerState,
     sessionToken,
     state,
-    globalAnnotations,
   }: {
     jobServer: JobServer;
     setJobManagerState: SetState<JobManagerState | null>;
     sessionToken: string;
     state: JobManagerState;
-    globalAnnotations: VariableAnnotationsMap;
   }) {
     this.jobServer = jobServer;
     this.setJobManagerState = setJobManagerState;
     this.state = state;
-    this.globalAnnotations = globalAnnotations;
     this.lastServerUpdate = null;
     this.sessionToken = sessionToken;
 
@@ -104,7 +99,7 @@ export default class JobManager {
     this.state.annotationLib = createAnnotationLibrary(
       this.state.unit,
       this.state.variableMap,
-      this.globalAnnotations,
+      this.state.annotationLib.globalAnnotations,
       variableIndex,
     );
 
@@ -509,6 +504,7 @@ function emptyAnnotationLib(): AnnotationLibrary {
     sessionId: "",
     phaseToken: "",
     annotations: {},
+    globalAnnotations: {},
     byToken: {},
     byVariable: {},
     codeHistory: {},
