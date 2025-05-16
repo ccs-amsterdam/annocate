@@ -20,6 +20,10 @@ export const GeneralAnnotationSchema = z.object({
   // that excludes it (though we won't validate all branch combinations)
   hash: z.string().optional(),
 
+  // TODO: standardize this so that SpanAnnotation also uses this. There should be no difference between
+  // a question and span annotation in this regard. Questions should also be able to make annotations with a span (question about annotation or text match).
+  // Questions should even be able to make relations (e.g. question about two annotations)
+
   context: z
     .object({
       field: z.string(),

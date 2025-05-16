@@ -212,6 +212,9 @@ export default class JobManager {
   }
 
   rmAnnotation(id: AnnotationID, keep_empty: boolean = false) {
+    // TODO: change this so that it only sets the deleted property.
+    // We can always decide to omit deleted annotations when posting / getting annotations
+    // if this significantly impacts memory and bandwidth.
     let current = { ...this.state.annotationLib.annotations };
 
     const annotation = current[id];
