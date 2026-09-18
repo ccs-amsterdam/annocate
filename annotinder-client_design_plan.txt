@@ -1,4 +1,25 @@
 Annotinder Client Design Plan
 ==============================
 
-(To be filled in.)
+Annocate is an annotation tool. It is designed for researcher, primarily to easily create highly customizable annotation tasks, for content analysis and crowd coding. It also integrates survey support, to integrate annotation with surveys or experiments, or even conduct standalone survey and experiments.
+
+The previous design was a NextJS fullstack application. The new design, called Annotinder, will have a separate frontend and backend.
+
+In this repo, annotinder-client, we'll create the client. This will be a react client using Vite.
+
+The client will be used with different server backends, in different languages (R, Python, Node). So annotinder-client will be more frontend heavy. The server should do much less work than it was currently designed to do. I have some ideas for how to cleverly do this (hmac signing for validation, etc), but we'll discuss those later.
+
+Annotinder-client will be purely frondend, client-side. But it will include documentation for the API contracts (using JSON schema and zed-to-json-schema). For development, and as an example of how the server should implement the API endpoints, we'll include a mock server. Probably the easiest design would be a small node server. We could either make this repo a monorepo with separately the client and mock server, but we could also include the mock server in this repo. I'll leave this up to you. In any case, the annotinder-client would eventually need to be installable without node dependencies and such, and ideally made an npm package.
+
+For now, we'll focus on the first steps:
+- We'll create the client in the root of this repository, using pnpm
+- Use the "old" directory to see what the current version looks like, and focus on copying this and making changes where needed
+- The base stack stays the same: React, Typescript, Zod, ReactQuery, ShadCN, tailwind. We do need to update versions. I'll follow your lead here: either immediately install the latest versions, and update the code while copying the files from old to the new version, or first use the current versions and update later
+- We drop anything having to do with databases and server side stuff. Annotinder-client should only specify API contracts. The mock server will just keep simple in memory objects to hold the data it needs
+- We'll greatly simplify the API endpoints:
+   - We no longer support partial, efficient updates of the codebook. There will just be a /codebook endpoint that supports GET, POST, PUT and DELETE. Every update requires submitting the entire codebook, so that the server can easily perform all the validation steps. For the client this means that we'll more clearly indicate when the user is in "edit" mode, and when changes have been made, they shouldn't be able to navigate away without getting prompted to either ignore changes, save them, or cancel navigation.
+   - Currently there are projects and inside projects there are jobs. and projects have users, and units that can be used by jobs in jobsets. This is all way to complicated, and based on the previous idea that we don't want to dupliate units if used in multiple jobs. But we want to simplify this, and also move to a new filosophy: when a job is every deployed, the units and codebook that are used should be stored in an immutable state. The point is that the user experience when createing the annotations should be completely reproducible given the codebook, units and annotations (later we'll talk about how annotations store codebook and unit hashes, and how codebooks and units will be immutable and undeletable once used; just keep this in mind for now). What this means is that annotinder won't have projects. We'll just have jobs. Every job has users, units, and codebooks (we'll allow multiple codebooks, to keep old codebooks).
+   - Annotations will also be stored much less compliated. And we'll rename them from annotations to just variables. We'll have two types of variables: coder and unit. coder variables will be any variables not tied to a unit, that are unique for every coder in a job (currently they are referred to as global or survey questions/variables). Unit variables occur multiple time per coder, for every unit they see.
+     - In the new version, we'll have coders tied to a job. In this table we'll store all coder information, and also store a json field with the coder variables
+     - The unit variables will be stored in the units tied to a job. Every unit will have a json field that stores the unit variables NESTED IN CODER IDS.
+- The mock server should include a simple database, mainly to test and to show how the server can be implemented. Maybe just an sqlite db that can easily be reset
