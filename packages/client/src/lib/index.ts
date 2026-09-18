@@ -2,10 +2,17 @@
 //
 // This is what a host application imports when using annotinder-client as a
 // component library (design plan §7), e.g.:
-//   import { AnnotinderVersion } from "@annotinder/client";
+//   import { JobRunner } from "@annotinder/client";
 //   import "@annotinder/client/style.css";
 //
-// Phases 3-5 will populate this with the real exports: JobManager, the
-// JobServer/HttpJobServer transport, the annotation interface components,
-// and the codebook/job management UI.
-export const ANNOTINDER_CLIENT_VERSION = "0.0.0";
+// Phases 4-5 will add the full ported annotation UI, codebook editor, and
+// job management screens on top of the core plumbing exported here.
+export const ANNOTINDER_CLIENT_VERSION = "0.1.0";
+
+export * from "./api/httpJobServer";
+export * from "./codebook/tree";
+export * from "./codebook/conditions";
+export * from "./jobManager/JobManager";
+export * from "./jobManager/useJobManager";
+export * from "./components/JobRunner";
+export * from "./components/Question";
