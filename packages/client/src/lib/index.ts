@@ -16,3 +16,4 @@ export * from "./jobManager/JobManager";
 export * from "./jobManager/useJobManager";
 export * from "./components/JobRunner";
 export * from "./components/Question";
+export * from "./components/answerFields";

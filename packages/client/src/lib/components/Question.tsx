@@ -1,62 +1,75 @@
+import type { CSSProperties, ReactNode } from "react";
 import type { CodebookItem, VariableValue } from "@annotinder/contracts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AnnotinderAnswerField,
+  ConfirmAnswerField,
+  ScaleAnswerField,
+  SearchCodeAnswerField,
+  SelectCodeAnswerField,
+  UnsupportedAnswerField,
+} from "./answerFields";
+
+type QuestionItem = Extract<CodebookItem, { type: "user_variable" | "unit_variable" }>;
 
 interface QuestionProps {
-  item: Extract<CodebookItem, { type: "user_variable" | "unit_variable" }>;
+  item: QuestionItem;
   onAnswer: (value: VariableValue, conditionValue?: unknown) => void;
 }
 
-/**
- * Minimal MVP question renderer, covering just enough variable types to
- * exercise the end-to-end flow (design plan Phase 3.4: session -> unit ->
- * answer -> post -> next unit -> finished). Phase 4 replaces this with the
- * full ported annotation UI (span/relation/scale/etc, see design plan §5).
- */
+function renderQuestionText(variable: QuestionItem["variable"]) {
+  if (!("question" in variable)) return null;
+
+  return (
+    <CardTitle className="whitespace-pre-wrap text-2xl leading-tight" style={variable.questionStyle as CSSProperties | undefined}>
+      {variable.question}
+    </CardTitle>
+  );
+}
+
+function renderInstruction(variable: QuestionItem["variable"]) {
+  if (!("instruction" in variable) || !variable.instruction) return null;
+
+  return (
+    <CardDescription className="whitespace-pre-wrap text-sm leading-6" style={variable.instructionStyle as CSSProperties | undefined}>
+      {variable.instruction}
+    </CardDescription>
+  );
+}
+
 export function Question({ item, onAnswer }: QuestionProps) {
   const { variable } = item;
 
-  if (variable.type === "confirm") {
-    return (
-      <div className="flex flex-col gap-4">
-        <p className="text-lg">{variable.question}</p>
-        <button
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          onClick={() => onAnswer({ done: true, skip: false }, true)}
-        >
-          Confirm
-        </button>
-      </div>
-    );
-  }
-
-  if (variable.type === "select_code" || variable.type === "annotinder") {
-    return (
-      <div className="flex flex-col gap-4">
-        <p className="text-lg">{variable.question}</p>
-        <div className="flex flex-wrap gap-2">
-          {variable.codes.map((code) => (
-            <button
-              key={code.code}
-              className="rounded border border-gray-300 px-4 py-2 hover:bg-gray-50"
-              style={code.color ? { borderColor: code.color, color: code.color } : undefined}
-              onClick={() => onAnswer({ done: true, skip: false, codes: [{ code: code.code }] }, code.code)}
-            >
-              {code.code}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
+  let answerField: ReactNode;
+  switch (variable.type) {
+    case "confirm":
+      answerField = <ConfirmAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
+    case "select_code":
+      answerField = <SelectCodeAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
+    case "scale":
+      answerField = <ScaleAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
+    case "annotinder":
+      answerField = <AnnotinderAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
+    case "search_code":
+      answerField = <SearchCodeAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
+    default:
+      answerField = <UnsupportedAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {"question" in variable && <p className="text-lg">{variable.question}</p>}
-      <p className="text-sm text-gray-500">
-        Variable type &quot;{variable.type}&quot; isn&apos;t supported by this minimal renderer yet.
-      </p>
-      <button className="rounded border border-gray-300 px-4 py-2" onClick={() => onAnswer({ done: true, skip: true })}>
-        Skip
-      </button>
-    </div>
+    <Card className="border bg-card/95 shadow-sm">
+      <CardHeader className="gap-3">
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{item.type.replace("_", " ")}</div>
+        {renderQuestionText(variable)}
+        {renderInstruction(variable)}
+      </CardHeader>
+      <CardContent>{answerField}</CardContent>
+    </Card>
   );
 }

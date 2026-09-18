@@ -16,6 +16,11 @@ export default defineConfig({
       include: ["src/lib"],
     }),
   ],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "src"),
+    },
+  },
   build: {
     outDir: "dist/lib",
     emptyOutDir: true,
