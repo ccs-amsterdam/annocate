@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CodebookCode } from "@annotinder/contracts";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,8 @@ export function SearchCodeAnswerField({ variable, onAnswer }: AnswerFieldProps<S
   const [selectedCodes, setSelectedCodes] = useState<CodebookCode[]>([]);
   const selectedCodeNames = useMemo(() => new Set(selectedCodes.map((code) => code.code)), [selectedCodes]);
 
-  useEffect(() => {
-    setOpen(false);
-    setSelectedCodes([]);
-  }, [variable]);
+  // See SelectCodeAnswerField's equivalent comment: no reset-on-`variable`-
+  // change effect needed since JobRunner keys `Question` by item.name.
 
   function handleSelect(code: CodebookCode) {
     if (!multiple) {

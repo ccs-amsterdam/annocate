@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CodebookItem, CodebookResponse } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
 import { useCreateCodebookMutation, useUpdateCodebookMutation, useUnitsetsQuery } from "../../admin/queries";
@@ -37,11 +37,11 @@ export function CodebookEditor({
   const [items, setItems] = useState<CodebookItem[]>(codebook?.items ?? []);
   const [selected, setSelected] = useState<string | null>(null);
 
-  useEffect(() => {
-    setName(codebook?.name ?? "New codebook");
-    setItems(codebook?.items ?? []);
-    setSelected(null);
-  }, [codebook]);
+  // No resync-on-`codebook`-change effect needed: `CodebookManager` keys
+  // this component by the codebook's identity (id, or "new"/"duplicate"),
+  // so a fresh instance -- with fresh `useState` initial values above --
+  // mounts whenever a different codebook is opened for editing (design
+  // plan §6.5, avoids the react-hooks/set-state-in-effect anti-pattern).
 
   const dirty = name !== (codebook?.name ?? "New codebook") || items !== (codebook?.items ?? []);
   const immutable = codebook?.immutable ?? false;
@@ -102,7 +102,11 @@ export function CodebookEditor({
 
   async function handleSave() {
     const body = { name, items };
-    if (codebook) {
+    // `codebook.id === -1` is the "duplicate as new" sentinel (see
+    // CodebookManager's "Duplicate" action): the draft is pre-filled from
+    // an existing codebook's content, but must still be CREATED as a
+    // brand-new codebook, not updated in place.
+    if (codebook && codebook.id !== -1) {
       const saved = await updateCodebook.mutateAsync({ id: codebook.id, body });
       onSaved(saved);
     } else {

@@ -30,9 +30,11 @@ export function SelectCodeAnswerField({ variable, onAnswer }: AnswerFieldProps<S
   const [selectedCodes, setSelectedCodes] = useState<CodebookCode[]>([]);
   const selectedCodeNames = useMemo(() => new Set(selectedCodes.map((code) => code.code)), [selectedCodes]);
 
-  useEffect(() => {
-    setSelectedCodes([]);
-  }, [variable]);
+  // No reset-on-`variable`-change effect needed: JobRunner keys `Question`
+  // by item.name, so this component remounts fresh (via React's own
+  // "reset state with a key" pattern) whenever the coder moves to a
+  // different question, rather than this component needing to notice the
+  // prop changed and clear its own state.
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

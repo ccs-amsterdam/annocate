@@ -33,8 +33,14 @@ export function CodebookManager({ client }: { client: AdminClient }) {
     }
     return (
       <CodebookEditor
+        // Keyed by the codebook's identity so a fresh CodebookEditor
+        // instance (with fresh internal `name`/`items` draft state) mounts
+        // whenever a different codebook is opened for editing, rather than
+        // CodebookEditor needing a `useEffect` to notice the `codebook` prop
+        // changed and resync its draft (design plan §6.5).
+        key={editing === "new" ? "new" : editing === "duplicate" ? "duplicate" : editing}
         client={client}
-        codebook={editing === "new" || editing === "duplicate" ? null : codebook}
+        codebook={editing === "new" ? null : codebook}
         onCancel={() => setEditing(null)}
         onSaved={() => setEditing(null)}
       />

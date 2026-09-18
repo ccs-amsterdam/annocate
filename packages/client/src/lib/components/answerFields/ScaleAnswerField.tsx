@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CodebookCode } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -40,9 +40,8 @@ export function ScaleAnswerField({ variable, onAnswer }: AnswerFieldProps<ScaleV
   const scaleItems = useMemo(() => getScaleItems(variable), [variable]);
   const [selectedCodes, setSelectedCodes] = useState<Record<string, CodebookCode>>({});
 
-  useEffect(() => {
-    setSelectedCodes({});
-  }, [variable]);
+  // See SelectCodeAnswerField's equivalent comment: no reset-on-`variable`-
+  // change effect needed since JobRunner keys `Question` by item.name.
 
   const hasItems = Boolean(variable.items?.length);
   const isComplete = scaleItems.every((item) => selectedCodes[item.item]);

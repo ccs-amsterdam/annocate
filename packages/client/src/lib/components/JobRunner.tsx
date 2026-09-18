@@ -54,6 +54,16 @@ export function JobRunner({ baseUrl, coderKey, inviteSecret }: JobRunnerProps) {
         <UnitFields layout={snapshot.currentUnitLayout} data={snapshot.currentUnit.data} />
       )}
       <Question
+        // Keyed by item.name so the whole answer field remounts fresh
+        // whenever the coder moves to a different question -- this is what
+        // lets each answer field's own local UI state (selected codes,
+        // open/closed dropdowns, etc.) reset for free via React's own
+        // "reset state with a key" pattern, instead of each field needing
+        // its own `useEffect(() => reset(), [variable])` (design plan §6.5,
+        // removed after eslint-plugin-react-hooks's new
+        // react-hooks/set-state-in-effect rule flagged those as an
+        // anti-pattern).
+        key={item.name}
         item={item}
         onAnswer={(value, conditionValue) => manager.answer(value, conditionValue)}
         unitVariables={snapshot.currentUnitVariables ?? undefined}

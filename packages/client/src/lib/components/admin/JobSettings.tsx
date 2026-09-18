@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import type { JobResponse } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
 import { useCreateJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
@@ -12,41 +13,47 @@ import { Input } from "@/components/ui/input";
 export function JobSettings({ client }: { client: AdminClient }) {
   const jobQuery = useJobQuery(client);
   const createJob = useCreateJobMutation(client);
-  const updateJob = useUpdateJobMutation(client);
-
-  const [name, setName] = useState("");
-  const [archived, setArchived] = useState(false);
-
-  useEffect(() => {
-    if (jobQuery.data) {
-      setName(jobQuery.data.name);
-      setArchived(jobQuery.data.archived);
-    }
-  }, [jobQuery.data]);
 
   if (jobQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading job...</p>;
 
   if (!jobQuery.data) {
-    return (
-      <form
-        className="flex max-w-sm flex-col gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          createJob.mutate({ name, archived: false });
-        }}
-      >
-        <h2 className="text-lg font-medium">Create job</h2>
-        <p className="text-sm text-muted-foreground">This server doesn't have a job yet -- create one to get started.</p>
-        <Input placeholder="Job name" value={name} onChange={(e) => setName(e.target.value)} required />
-        <Button type="submit" disabled={createJob.isPending}>
-          {createJob.isPending ? "Creating..." : "Create job"}
-        </Button>
-        {createJob.isError && <p className="text-sm text-destructive">{createJob.error.message}</p>}
-      </form>
-    );
+    return <CreateJobForm createJob={createJob} />;
   }
 
-  const job = jobQuery.data;
+  // Keyed by job.id so the form's local draft state (below) is initialized
+  // fresh from `job` exactly once per distinct job identity via lazy
+  // `useState` initializers, rather than needing a
+  // `useEffect(() => setName(job.name), [job])` to sync it in -- design
+  // plan §6.5, avoids the react-hooks/set-state-in-effect anti-pattern.
+  return <JobEditForm key={jobQuery.data.id} job={jobQuery.data} client={client} />;
+}
+
+function CreateJobForm({ createJob }: { createJob: ReturnType<typeof useCreateJobMutation> }) {
+  const [name, setName] = useState("");
+
+  return (
+    <form
+      className="flex max-w-sm flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        createJob.mutate({ name, archived: false });
+      }}
+    >
+      <h2 className="text-lg font-medium">Create job</h2>
+      <p className="text-sm text-muted-foreground">This server doesn't have a job yet -- create one to get started.</p>
+      <Input placeholder="Job name" value={name} onChange={(e) => setName(e.target.value)} required />
+      <Button type="submit" disabled={createJob.isPending}>
+        {createJob.isPending ? "Creating..." : "Create job"}
+      </Button>
+      {createJob.isError && <p className="text-sm text-destructive">{createJob.error.message}</p>}
+    </form>
+  );
+}
+
+function JobEditForm({ job, client }: { job: JobResponse; client: AdminClient }) {
+  const updateJob = useUpdateJobMutation(client);
+  const [name, setName] = useState(job.name);
+  const [archived, setArchived] = useState(job.archived);
   const dirty = name !== job.name || archived !== job.archived;
 
   return (
