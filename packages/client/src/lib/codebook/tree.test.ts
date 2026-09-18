@@ -27,11 +27,11 @@ function unitVar(position: string, name: string): CodebookItem {
 describe("tree utilities", () => {
   const items: CodebookItem[] = [
     confirm("1", "consent"),
-    condition("2", "gate", "consent === true"),
+    condition("2", "gate", "consent == true"),
     confirm("2.1", "gated_question"),
     unitLoop("3", "main_loop"),
     unitVar("3.1", "sentiment"),
-    condition("3.2", "inner_gate", "sentiment === 'A'"),
+    condition("3.2", "inner_gate", "sentiment == 'A'"),
     unitVar("3.2.1", "followup"),
   ];
 

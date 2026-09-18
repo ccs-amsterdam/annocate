@@ -31,6 +31,7 @@ export const ImageFieldSchema = BaseFieldSchema.extend({
 });
 
 export const UnitFieldSchema = z.discriminatedUnion("type", [TextFieldSchema, MarkdownFieldSchema, ImageFieldSchema]);
+export type UnitField = z.infer<typeof UnitFieldSchema>;
 
 export const UnitFieldsSchema = z
   .array(UnitFieldSchema)

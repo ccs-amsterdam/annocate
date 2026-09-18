@@ -9,16 +9,15 @@ describe("evaluateCondition", () => {
   });
 
   it("supports referencing multiple variables", () => {
-    expect(evaluateCondition("consent === true && country === 'NL'", { consent: true, country: "NL" })).toBe(true);
-    expect(evaluateCondition("consent === true && country === 'NL'", { consent: true, country: "BE" })).toBe(false);
+    expect(evaluateCondition("consent == true && country == 'NL'", { consent: true, country: "NL" })).toBe(true);
+    expect(evaluateCondition("consent == true && country == 'NL'", { consent: true, country: "BE" })).toBe(false);
   });
 
-  it("ignores values whose names aren't valid identifiers", () => {
-    // "123abc" can't be a function parameter name; it's silently excluded from scope.
+  it("ignores extra values not referenced by the expression", () => {
     expect(evaluateCondition("true", { "123abc": "x" })).toBe(true);
   });
 
   it("returns false and does not throw on invalid expressions", () => {
-    expect(evaluateCondition("this is not valid js (((", {})).toBe(false);
+    expect(evaluateCondition("this is not valid cel (((", {})).toBe(false);
   });
 });

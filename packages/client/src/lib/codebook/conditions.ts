@@ -1,22 +1,25 @@
+import { evaluate } from "@marcbachmann/cel-js";
+
 /**
  * Evaluates a codebook `condition` item's expression (design plan §2) against
  * a map of currently-known variable values (name -> the value the coder
- * picked, e.g. a code string). Item names are validated (see
- * `@annotinder/contracts` SafeNameSchema) to be alphanumeric/underscore, so
- * they're safe to use directly as function parameter names here.
+ * picked, e.g. a code string).
  *
- * NOTE: this is intentionally simple (a `new Function` eval, not a real
- * sandboxed interpreter as the old codebase had a `SandboxContext` for) --
- * codebook expressions come from the job's own admins, the same trust level
- * as the rest of the codebook document, so this is not treated as untrusted
- * user input. Revisit if that trust assumption changes (see design plan §6
- * notes on hardening).
+ * Uses Google's Common Expression Language (CEL) via `@marcbachmann/cel-js`
+ * rather than a JS `new Function`/eval. This replaces an earlier
+ * unsandboxed-`new Function` version of this file after a hardening review
+ * (see `hardening_eval.txt` at the repo root) identified real risk in
+ * treating codebook expressions as fully trusted: a job admin authoring a
+ * malicious expression could still affect *other* people's sessions (e.g. a
+ * coder who is also an admin/owner elsewhere), and a future server-side
+ * evaluator (for validation) would otherwise need JS eval + sandboxing on
+ * every server runtime (Node/Python/R). CEL is non-Turing-complete, has no
+ * ambient authority/side effects, and has evaluator implementations across
+ * languages, which sidesteps both concerns entirely instead of sandboxing.
  */
 export function evaluateCondition(expression: string, values: Record<string, unknown>): boolean {
-  const names = Object.keys(values).filter((name) => /^[A-Za-z_]\w*$/.test(name));
   try {
-    const fn = new Function(...names, `"use strict"; return Boolean(${expression});`);
-    return Boolean(fn(...names.map((name) => values[name])));
+    return Boolean(evaluate(expression, values));
   } catch (err) {
     console.error(`Failed to evaluate condition '${expression}':`, err);
     return false;

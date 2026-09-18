@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { HttpJobServer } from "../api/httpJobServer";
 import { useJobManager } from "../jobManager/useJobManager";
 import { Question } from "./Question";
+import { UnitFields } from "./UnitFields";
 
 export interface JobRunnerProps {
   baseUrl: string;
@@ -32,8 +33,8 @@ export function JobRunner({ baseUrl, coderKey, inviteSecret }: JobRunnerProps) {
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 p-8">
-      {snapshot.currentUnit && (
-        <pre className="rounded bg-gray-100 p-4 text-sm">{JSON.stringify(snapshot.currentUnit.data, null, 2)}</pre>
+      {snapshot.currentUnit && snapshot.currentUnitLayout && (
+        <UnitFields layout={snapshot.currentUnitLayout} data={snapshot.currentUnit.data} />
       )}
       <Question item={snapshot.currentItem} onAnswer={(value, conditionValue) => manager.answer(value, conditionValue)} />
     </div>

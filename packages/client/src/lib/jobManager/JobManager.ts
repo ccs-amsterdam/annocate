@@ -10,6 +10,8 @@ export interface JobManagerSnapshot {
   currentItem: CodebookItem | null;
   /** Set only while `phase === "unit_variable"`: the unit the current item belongs to. */
   currentUnit: CoderUnitResponse | null;
+  /** Set only while `phase === "unit_variable"`: the active unit_loop's layout, for rendering the unit's fields. */
+  currentUnitLayout: Extract<CodebookItem, { type: "unit_loop" }>["layout"] | null;
   error: string | null;
 }
 
@@ -41,7 +43,13 @@ export class JobManager {
   private loopIndex = -1;
 
   private listeners = new Set<() => void>();
-  private snapshot: JobManagerSnapshot = { phase: "loading", currentItem: null, currentUnit: null, error: null };
+  private snapshot: JobManagerSnapshot = {
+    phase: "loading",
+    currentItem: null,
+    currentUnit: null,
+    currentUnitLayout: null,
+    error: null,
+  };
 
   constructor(private jobServer: JobServer) {}
 
@@ -97,7 +105,7 @@ export class JobManager {
     const next = this.topSteps[this.topIndex];
 
     if (!next) {
-      this.publish({ phase: "finished", currentItem: null, currentUnit: null });
+      this.publish({ phase: "finished", currentItem: null, currentUnit: null, currentUnitLayout: null });
       return;
     }
 
@@ -109,7 +117,7 @@ export class JobManager {
       return;
     }
 
-    this.publish({ phase: "user_variable", currentItem: next, currentUnit: null });
+    this.publish({ phase: "user_variable", currentItem: next, currentUnit: null, currentUnitLayout: null });
   }
 
   private async advanceUnit(): Promise<void> {
@@ -120,7 +128,12 @@ export class JobManager {
       this.loopIndex += 1;
       const next = this.loopSteps[this.loopIndex];
       if (next) {
-        this.publish({ phase: "unit_variable", currentItem: next, currentUnit: this.currentUnit });
+        this.publish({
+          phase: "unit_variable",
+          currentItem: next,
+          currentUnit: this.currentUnit,
+          currentUnitLayout: this.activeLoop.layout,
+        });
         return;
       }
 
