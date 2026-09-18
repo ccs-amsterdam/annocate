@@ -18,7 +18,7 @@ export const IdSchema = z.number().int().positive();
 /** Coder-supplied client-side id (e.g. for span/relation annotations). cuid-like opaque string. */
 export const ClientIdSchema = z.string().min(1);
 
-export const RoleSchema = z.enum(["ADMIN", "WRITE", "READ"]);
+export const RoleSchema = z.enum(["ADMIN", "WRITE", "READ"] as const);
 export type Role = z.infer<typeof RoleSchema>;
 
 /** An inline CSS properties object, e.g. `{ fontSize: "1.3em" }`. */

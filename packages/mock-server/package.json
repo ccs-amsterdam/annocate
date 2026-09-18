@@ -17,7 +17,7 @@
     "@annotinder/contracts": "workspace:*",
     "@hono/node-server": "^2.1.1",
     "hono": "^4.6.14",
-    "zod": "^3.24.1"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

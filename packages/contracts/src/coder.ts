@@ -25,7 +25,7 @@ export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 
 export const CoderInviteWriteSchema = z.object({
   label: z.string().min(1).max(128),
-  access: z.enum(["only_authenticated", "only_anonymous", "user_decides"]),
+  access: z.enum(["only_authenticated", "only_anonymous", "user_decides"] as const),
 });
 export type CoderInviteWrite = z.infer<typeof CoderInviteWriteSchema>;
 

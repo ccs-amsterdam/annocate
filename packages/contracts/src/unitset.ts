@@ -6,7 +6,7 @@ import { IdSchema } from "./common.js";
  * by a codebook's `unit_loop` items by name. Replaces the old
  * jobSets/jobSetUnits tables.
  */
-export const UnitsetOrderSchema = z.enum(["fixed", "random"]);
+export const UnitsetOrderSchema = z.enum(["fixed", "random"] as const);
 
 export const UnitsetWriteSchema = z.object({
   name: z.string().min(1).max(128),
