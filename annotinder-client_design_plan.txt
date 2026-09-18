@@ -531,12 +531,36 @@ Phase 7 — Packaging                                          [SCOPE CLARIFIED]
       mode (Vite `build --lib`) exporting components/hooks/types, in addition
       to (or instead of) a standalone app entry point used for local dev.
       Node is NOT a runtime requirement for consumers — it's only needed for
-      the mock-server and local dev tooling.
+      the mock-server and local dev tooling.                    [VERIFIED
+      DONE 2026-09-18] The library-mode build itself (`vite.lib.config.ts`,
+      `dts` type generation, externalized react/react-dom peer deps) was
+      already in place from earlier phases. Found and fixed one real gap
+      while verifying end-to-end: `src/lib/index.ts` documented
+      `import "@annotinder/client/style.css"` for consumers but never
+      itself imported `../index.css`, so the lib build emitted no CSS file
+      at all despite `package.json`'s `exports` map advertising one --
+      fixed by importing it from the lib entry point (Vite then extracts
+      it into the bundle's CSS output), and corrected the `exports` map's
+      filename to match Vite's actual default lib-mode CSS output name
+      (`dist/lib/style.css`, not `annotinder-client.css`). Verified for
+      real (not just by inspecting build output) via a scratch external
+      consumer project outside the workspace (`npm install
+      file:.../packages/client`, real `react`/`react-dom`/`@types/react*`,
+      a fresh `vite.config.ts` + `tsconfig.json`) that imports `JobRunner`,
+      `AdminApp`, and `HttpAdminClient` plus `@annotinder/client/style.css`
+      and runs both `tsc --noEmit` (typechecks clean against the shipped
+      `.d.ts` files) and `vite build` (bundles clean, CSS resolves,
+      peer-dep react/react-dom are NOT duplicated into the consumer's
+      bundle) -- confirming the library is genuinely consumable by a host
+      app, not just internally self-consistent.
   7.2 DO NOT publish packages/contracts or packages/client to npm yet — defer
       until we actually need it consumed externally. Revisit naming/publish
-      workflow at that point.
+      workflow at that point.                                    [DEFERRED
+      per user instruction 2026-09-18 — not being worked on]
   7.3 Decide fate of `old/` (delete once parity is reached and no longer
-      needed as reference).
+      needed as reference).                    [DEFERRED per user instruction
+      2026-09-18 — `old/` is being kept for now, possibly for later
+      reference; do not delete]
 
 
 9. TRACEABILITY NOTES (old -> new, for reference during porting)

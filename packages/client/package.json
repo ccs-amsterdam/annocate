@@ -10,7 +10,7 @@
       "types": "./dist/lib/index.d.ts",
       "import": "./dist/lib/annotinder-client.js"
     },
-    "./style.css": "./dist/lib/annotinder-client.css"
+    "./style.css": "./dist/lib/style.css"
   },
   "scripts": {
     "dev": "vite",
