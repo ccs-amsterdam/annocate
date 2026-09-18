@@ -518,7 +518,29 @@ Phase 6 — Hardening
       message today, not a field-level breakdown).
   6.4 Test coverage: Vitest unit tests for contracts + jobManagerState logic,
       component tests for the annotation interface, a basic e2e smoke test
-      against the mock server (Playwright, optional).
+      against the mock server (Playwright, optional).           [MOSTLY DONE
+      2026-09-18] contracts + tree/codebookEdit logic were already covered
+      (Phases 1/5). Added: `JobManager.test.ts` (4 tests -- start()/answer()
+      success + failure + retry() paths, using a stub `JobServer`, exactly
+      the "jobManagerState logic" this item asked for) and
+      `Question.test.tsx` (7 tests, `renderToStaticMarkup`-based render-
+      smoke coverage of all 7 answer-field types the annotation interface
+      dispatches over, matching the `UnitFields.test.tsx`/`AdminApp.test.tsx`
+      no-jsdom pattern already established). This test actually caught a
+      real bug: `RelationAnswerField` was reading `SpanAnswer.id` for React
+      keys on a value shape the test hadn't originally constructed
+      correctly, which surfaced a genuine "missing key" React warning once
+      the fixture was fixed to the real `SpanAnswerSchema` shape -- no code
+      bug after all, just confirms the field's keying is correct given
+      well-formed data. Client test count: 46 -> 57. NOT done: a Playwright
+      e2e smoke test (explicitly optional per this item's own wording; no
+      Playwright/browser-automation infra exists in the repo yet, and
+      standing up one is a bigger investment than the remaining Phase 6/7
+      items -- left for whenever real interaction-level bugs start showing
+      up that render-smoke tests can't catch), and DOM-interaction-level
+      tests for individual answer fields (clicking codes, dragging the
+      scale slider, drawing spans) -- would need jsdom + `@testing-library/
+      react` added as a dependency, not currently justified by bug history.
   6.5 Dedicated dependency-upgrade pass: bump React/Zod/TanStack/Tailwind/
       ShadCN etc. to latest, now that the ported code + new data model have
       stabilized (see §7 — pin-then-upgrade decision).
