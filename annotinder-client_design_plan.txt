@@ -45,6 +45,7 @@ own without touching import paths.
 
 [OPEN QUESTION] Package names / npm scope to publish under (e.g. `@annotinder/*` vs
 something under the `ccs-amsterdam` org name)?
+    [ANSWER] @annotinder/*
 
 
 2. DATA MODEL (replacing projects/jobsets/jobs)
@@ -98,6 +99,16 @@ be kept as a lightweight concept inside a single job? The old notes.txt mentions
 this is an important use case (experiments). Suggest: keep as a *codebook-level*
 concept (branching/condition already exists in CodebookNode) rather than a
 separate DB table, but flag explicitly since it's a feature regression risk.
+    [ANSWER] The idea of jobsets / experimental-conditions will be quite difference. What I'm thinking is the following:
+             - codebooks can have "auto" variables, that support random values, or values from url params. So we could just have a experimental_group variable. Also, researchers could then just assign specific coders by setting this variable. (we'll think later about that option)
+             - The codebook structure in general will be updated, so maybe you could already take this into account.
+               - We might remove the full DAG approach for a simpler design. It will just be an array of items. Each item has a position, which can be 2, 4.1, etc. 4.1 then means that its a child of 4. So the entire parent-child structure will just be based on these positions. This makes it a bit less flexible, but much easier to structure.
+               - There will be (thinking aloud here) the following type of items:
+                  - user variable: any kind of question, information block, screen-out question, auto-variable, etc. User variables always result in a value that will be stored (and possible side-effects, like screen-out). These items cannot have children.
+                  - unit loop: Kind of like a for loop (for unit in unitset). Here we specify what units we use. So we'll need some sort of unitset table that can have different selections of units (unitsets?) in different orders. This could then be used to e.g. assign differnet sets to different conditions, randomize sets across coders, or assign specific coder sets. unit loop items CAN have children (and are useless without them). So e.g. we'll have a unit loop with position 4, and the unit variables will be 4.1, 4.2, etc. Unit loop items will also specify the unit layout, and can set variables like whether units are randomized across users.
+                  - condition: Kind of like an if statement (if age < 18: ). It determines whether the children will be presented to the user.
+                  - unit variable: essentially the same as a user variable, but there might be some differences in terms of things we'll only allow in unit variables (like span annotations in units). Though perhaps we could just make this a variable, and have what is allowed be purely determined by whether the variable is inside a unit loop. One thing to also consider here is whether we allow moving variables in and out of unit loops (switching from unit var to coder var). This is probably not usefull, and creates issues with how moving then invalidates settings.
+                  - So we do still have a DAG like structure with nesting rules: variables cannot have children (leaf nodes). user variables cannot be in unit loops. unit variables have to be in a unit loop. conditions can be everywhere I guess. unit loops cannot be inside of unit loops.
 
 
 3. API CONTRACT (packages/contracts)
@@ -132,6 +143,18 @@ or route by jobId — the client should not assume which):
 
   GET    /coders                (manager-only) list coders + progress in a job
   POST   /coders/invite          create an invitation/access link
+
+[NOTE]: we do off course need to be able to create, update and delete a job, set the job users (with different permissions: ADMIN, WRITE, READ).
+        The unit flow will also be a bit more complicated. Jobs can have multiple unit loops, related to unitsets (see one of the answers above).
+        So it will be something like /unitset/[setname or _ for all]/next
+        Also, we need to think about what happens when a code later logs in again to resume a job. We'll want to support going back, so they'll need
+        to be able to get a unit by index. My current thoughts are that we should probably just include the full list of done unit_ids per unitset in /session response to have clear progress. (or all done annotations, but that could be quite a payload. It would then be able to have client fully compute progress itself). The server can then
+        sort this list on a created_date included in the coder's annotations on the unit, so it matches the order the user saw the units.
+        Instead of the user having to request what units to do next, we could also have session include the full user queue of units. And we could then even let the client randomize it if desired.
+        The main complications here are: at what point will this become a problem if there are too many units? (maybe there should be a limit, or we shoudl work in batches).
+        Also, we will at some point want to implement crowd coding, where users get units assigned based on a global queue of which units have already been coded by others.
+        So in that case we cannot send all units at the start.
+        SO yeah... there are some things to figure out here. Just pointing them out now so you can onsider what to prioritize, and what to reserve for later
 
 No more granular `codebookNodes/:id` CRUD (that was the "partial, efficient
 update" model we are explicitly dropping per the brief). The client is
@@ -175,6 +198,11 @@ annotation flow)? Recommendation: get a trivial/unsigned mock-server session
 first (Phase 3 below), then harden with HMAC once the shapes are stable
 (Phase 6), to avoid over-designing before we've validated the simplified data
 model in practice.
+    [ANSWER]: Yet, let's wait with the HMAC signing for now. To give an idea of what I have in mind (that you could maybe document somwhere:
+    - the server will have a global salt, used for signing
+    - when a codebook is created or updated, the server will sign various elements:
+      - the allowed values for a variable (e.g. gender: male / female / other) will be signed individually like HMAC(codebook_id, variable, validation_rule, value, position). So the server can confirm these are valid answers without having to fetch the codebook.
+      - The validation rule specifies what parts to hash. "v" could mean validate the exact value, which requires including the value. i3:6 could mean integer with range 3 to 6. In this case value is just NULL, and the validation_rule is included in the value that the user submits. For example: female.v.hash, or (female,v,hash).
 
 
 5. CLIENT ARCHITECTURE
@@ -248,6 +276,7 @@ Vite. Keep React Testing Library.
 [OPEN QUESTION] Node version / SQLite driver choice — ok to require a fairly
 recent Node (>=22) to use the built-in `node:sqlite`, or should we depend on
 `better-sqlite3` for broader compatibility?
+   [ANSWER]
 
 
 7. DEPENDENCY / VERSION STRATEGY
