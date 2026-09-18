@@ -1,25 +1,393 @@
-Annotinder Client Design Plan
-==============================
+ANNOTINDER-CLIENT DESIGN PLAN
+=============================
+Status: draft v2 (structured). Supersedes the original free-form notes below each
+have been folded into the relevant sections. Items needing a decision from Kasper
+are marked [OPEN QUESTION].
 
-Annocate is an annotation tool. It is designed for researcher, primarily to easily create highly customizable annotation tasks, for content analysis and crowd coding. It also integrates survey support, to integrate annotation with surveys or experiments, or even conduct standalone survey and experiments.
 
-The previous design was a NextJS fullstack application. The new design, called Annotinder, will have a separate frontend and backend.
+0. VISION (recap)
+-----------------
+Annocate/Annotinder is an annotation + survey tool for researchers. The previous
+NextJS fullstack app ("old/") is being split into:
+  - annotinder-client: a framework-agnostic, purely client-side React app (this repo)
+  - one or more server backends (R, Python, Node, ...), which only need to satisfy a
+    documented API contract. We are not building "the" production server here.
 
-In this repo, annotinder-client, we'll create the client. This will be a react client using Vite.
+Guiding principle for every decision below: the client should be able to run against
+ANY backend that implements the contract, so nothing may leak into the client that
+assumes a specific server implementation (no DB types, no NextJS API-route helpers,
+no server-side auth libraries baked in).
 
-The client will be used with different server backends, in different languages (R, Python, Node). So annotinder-client will be more frontend heavy. The server should do much less work than it was currently designed to do. I have some ideas for how to cleverly do this (hmac signing for validation, etc), but we'll discuss those later.
 
-Annotinder-client will be purely frondend, client-side. But it will include documentation for the API contracts (using JSON schema and zed-to-json-schema). For development, and as an example of how the server should implement the API endpoints, we'll include a mock server. Probably the easiest design would be a small node server. We could either make this repo a monorepo with separately the client and mock server, but we could also include the mock server in this repo. I'll leave this up to you. In any case, the annotinder-client would eventually need to be installable without node dependencies and such, and ideally made an npm package.
+1. REPOSITORY / PACKAGE STRUCTURE
+----------------------------------
+Decision: use a pnpm workspace monorepo, in the root of this repo (not a separate
+repo per package). Rationale: contracts must be shared, type-safe, and versioned
+together with the client and the mock server during active development; splitting
+repos now would slow iteration and can be done later if/when we publish separately.
 
-For now, we'll focus on the first steps:
-- We'll create the client in the root of this repository, using pnpm
-- Use the "old" directory to see what the current version looks like, and focus on copying this and making changes where needed
-- The base stack stays the same: React, Typescript, Zod, ReactQuery, ShadCN, tailwind. We do need to update versions. I'll follow your lead here: either immediately install the latest versions, and update the code while copying the files from old to the new version, or first use the current versions and update later
-- We drop anything having to do with databases and server side stuff. Annotinder-client should only specify API contracts. The mock server will just keep simple in memory objects to hold the data it needs
-- We'll greatly simplify the API endpoints:
-   - We no longer support partial, efficient updates of the codebook. There will just be a /codebook endpoint that supports GET, POST, PUT and DELETE. Every update requires submitting the entire codebook, so that the server can easily perform all the validation steps. For the client this means that we'll more clearly indicate when the user is in "edit" mode, and when changes have been made, they shouldn't be able to navigate away without getting prompted to either ignore changes, save them, or cancel navigation.
-   - Currently there are projects and inside projects there are jobs. and projects have users, and units that can be used by jobs in jobsets. This is all way to complicated, and based on the previous idea that we don't want to dupliate units if used in multiple jobs. But we want to simplify this, and also move to a new filosophy: when a job is every deployed, the units and codebook that are used should be stored in an immutable state. The point is that the user experience when createing the annotations should be completely reproducible given the codebook, units and annotations (later we'll talk about how annotations store codebook and unit hashes, and how codebooks and units will be immutable and undeletable once used; just keep this in mind for now). What this means is that annotinder won't have projects. We'll just have jobs. Every job has users, units, and codebooks (we'll allow multiple codebooks, to keep old codebooks).
-   - Annotations will also be stored much less compliated. And we'll rename them from annotations to just variables. We'll have two types of variables: coder and unit. coder variables will be any variables not tied to a unit, that are unique for every coder in a job (currently they are referred to as global or survey questions/variables). Unit variables occur multiple time per coder, for every unit they see.
-     - In the new version, we'll have coders tied to a job. In this table we'll store all coder information, and also store a json field with the coder variables
-     - The unit variables will be stored in the units tied to a job. Every unit will have a json field that stores the unit variables NESTED IN CODER IDS.
-- The mock server should include a simple database, mainly to test and to show how the server can be implemented. Maybe just an sqlite db that can easily be reset
+  /package.json              workspace root (pnpm-workspace.yaml), shared tooling config
+  /packages/contracts/       zod schemas = single source of truth for the API.
+                              - exports TS types + zod schemas (for client & mock-server)
+                              - build script exports JSON Schema (zod-to-json-schema)
+                                and/or OpenAPI (zod-to-openapi) for non-JS server authors
+                              - zero React/Node-specific dependencies
+  /packages/client/          the Vite + React app (what most users will eventually
+                              install/embed). Depends on @annotinder/contracts.
+  /packages/mock-server/     small Node server (reference implementation + local dev).
+                              SQLite-backed, trivially resettable. Depends on contracts.
+  /old/                      legacy NextJS app, kept only as reference during porting.
+                              Will be deleted once migration is complete.
+
+Packages are namespaced e.g. `@annotinder/client`, `@annotinder/contracts`,
+`@annotinder/mock-server`, so `client` can later be extracted/published to npm on its
+own without touching import paths.
+
+[OPEN QUESTION] Package names / npm scope to publish under (e.g. `@annotinder/*` vs
+something under the `ccs-amsterdam` org name)?
+
+
+2. DATA MODEL (replacing projects/jobsets/jobs)
+------------------------------------------------
+Drop "projects" entirely. The only top-level entity is a "job".
+
+  job
+    - id, name, created, archived/deployed flag
+    - users (coders) with roles (owner/manager/coder — auth model detailed in §5)
+    - units[]            (immutable once used by any coder — see below)
+    - codebooks[]         (multiple allowed; immutable once used — see below)
+
+  codebook
+    - belongs to a job
+    - full document (tree of phase/group/variable nodes, same DAG structure as
+      the old `codebookNodes` table) stored as ONE json blob, not normalized rows.
+      This matches the "no partial updates" decision in §3.
+    - once referenced by any coder progress/annotation, a codebook becomes
+      immutable and undeletable; editing creates a new codebook record instead.
+      (client must therefore support "duplicate as new codebook" workflows)
+
+  unit
+    - belongs to a job, has externalId + data (unchanged from old design)
+    - has a `variables` json field, keyed by coder id, holding that coder's
+      unit-level annotations for this unit:
+        unit.variables = { [coderId]: { [variableName]: AnnotationValue } }
+    - once a unit has recorded variables for ANY coder, or is referenced by a
+      deployed codebook run, the unit content itself becomes immutable (data
+      can no longer change) — new units must be created instead.
+
+  coder
+    - belongs to a job (no more global "users" shared across projects — a coder
+      identity is scoped to the job it was invited to, consistent with dropping
+      projects)
+    - has a `variables` json field for coder-level (global/survey) variables:
+        coder.variables = { [variableName]: AnnotationValue }
+    - has session/progress bookkeeping (current phase/unit index, done flags)
+
+Rename throughout the codebase: "annotation(s)" -> "variable(s)" wherever we mean
+the recorded coder input. Keep "codebook variable" naming for the *definition*
+(already named this way in `CodebookNodeData`/tree type "variable").
+
+This removes: `projects`, `managers`, `jobSets`, `jobSetUnits`, `invitations` (as a
+separate table — invitations become simple job-scoped access links, see §5),
+`annotatorSession`/`annotatorUnits`/`variableAnnotations` as normalized tables
+(replaced by the two json fields above).
+
+[OPEN QUESTION] Confirm we're fully OK dropping jobSets/experimental-condition
+assignment for now, or should "coder groups" (for randomized condition assignment)
+be kept as a lightweight concept inside a single job? The old notes.txt mentions
+this is an important use case (experiments). Suggest: keep as a *codebook-level*
+concept (branching/condition already exists in CodebookNode) rather than a
+separate DB table, but flag explicitly since it's a feature regression risk.
+
+
+3. API CONTRACT (packages/contracts)
+--------------------------------------
+Design goals: minimal endpoints, coarse-grained (whole-resource) reads/writes,
+stateless-friendly (so a server can be implemented in ~an afternoon in any
+language), and reproducibility guarantees baked into the shapes.
+
+Endpoints (all scoped under a job; a server may expose one job per deployment,
+or route by jobId — the client should not assume which):
+
+  GET    /codebook           list codebook (metadata only: id, name, created, immutable)
+  GET    /codebook/:id        full codebook document
+  POST   /codebook            create a new codebook (full document)
+  PUT    /codebook/:id        replace a codebook IN FULL (fails if immutable)
+  DELETE /codebook/:id        delete a codebook (fails if immutable/in use)
+
+  GET    /units               list unit metadata (id, externalId, hash) — for sync
+  GET    /units/:id            full unit (fails/redacts if not permitted)
+  POST   /units               bulk create units
+  DELETE /units/:id            delete a unit (fails if immutable/in use)
+
+  GET    /session              resolve the current coder's session (auth token in,
+                                coder id/progress/codebook reference out)
+  GET    /unit/next            get the next unit + this coder's existing variables
+                                for it (replaces old getUnit)
+  POST   /variables/unit       upsert this coder's variables for a given unit
+                                (id = jobId+coderId+unitId+variableName, full
+                                replace of that unit's variable object — no partial
+                                merge logic needed server-side)
+  POST   /variables/coder      upsert this coder's job-level (non-unit) variables
+
+  GET    /coders                (manager-only) list coders + progress in a job
+  POST   /coders/invite          create an invitation/access link
+
+No more granular `codebookNodes/:id` CRUD (that was the "partial, efficient
+update" model we are explicitly dropping per the brief). The client is
+responsible for building/validating the *entire* codebook tree locally (zod
+schema + tree-shape validation, ported from `functions/treeFunctions.ts`) before
+ever calling PUT/POST — the server only needs structural + auth validation.
+
+Contracts package exports, for every endpoint: a zod request schema, a zod
+response schema, and a small typed helper (path + method) — so both the mock
+server and any typed client wrapper can import the same definitions. Also
+exports a generated JSON Schema bundle (via zod-to-json-schema) so non-TS
+server implementers (R/Python) have a language-agnostic spec to code against,
+and (optionally) an OpenAPI document via zod-to-openapi for interactive docs
+(old app/api/page.tsx already used swagger-ui-react for this — can reuse the
+idea by serving the generated OpenAPI JSON from the mock-server's docs route).
+
+
+4. AUTH / SESSION MODEL
+--------------------------
+The client must not hard-depend on Middlecat (that was a NextAuth-adjacent,
+server-side-session-oriented model). Instead:
+
+  - The client only needs an opaque bearer token per job (however obtained —
+    invitation link, Middlecat, a magic link, HTTP basic, whatever). It is
+    passed to every request via a pluggable `JobServer`-like transport
+    (interface already exists in old code as `JobServer`; port + simplify it).
+  - For the "coder session" itself (no login required, anonymous/invite-link
+    based annotation, as used heavily today), the plan is to have the server
+    issue a **signed (HMAC), self-contained session token** after job creation,
+    so the server does not need to keep session state in a DB at all — it can
+    validate + read coder id/progress directly off the token signature. This
+    was flagged by Kasper as "discuss later"; for now the mock-server can do
+    this simply (sign a JSON payload with a server secret), and the contract
+    package should model the token as an opaque string so alternate server
+    implementations can choose their own session strategy as long as they
+    return/accept the same opaque token shape.
+
+[OPEN QUESTION] Do we want the HMAC session-token design finalized before or
+after the first working end-to-end port (client + mock-server + one full
+annotation flow)? Recommendation: get a trivial/unsigned mock-server session
+first (Phase 3 below), then harden with HMAC once the shapes are stable
+(Phase 6), to avoid over-designing before we've validated the simplified data
+model in practice.
+
+
+5. CLIENT ARCHITECTURE
+--------------------------
+Keep the current conceptual pieces, ported and simplified:
+
+  - `JobManager` (classes/JobManager.ts) — the central client-side state
+    machine driving navigation/progress/annotation-library. Port largely as-is;
+    update call sites to the new contract endpoints/shapes (rename
+    annotations -> variables throughout; drop phase-token/session-token
+    plumbing that existed only to support the old normalized DB tables).
+  - `functions/jobManagerState/*` — progress/annotation-library computation.
+    Port with the variable renaming; should get simpler since unit variables
+    are now a flat per-coder json blob instead of normalized rows.
+  - `functions/treeFunctions.ts` — codebook DAG validation/shape logic. This
+    becomes MORE important, since the client now owns full codebook
+    validation before submission (server does only structural/auth checks).
+  - `components/AnnotationInterface/*`, `components/Document/*` — the actual
+    annotation UI (span/relation/select/scale/etc question types). Port with
+    minimal changes; these are the most reusable, backend-agnostic pieces.
+  - Codebook builder UI (`app/projects/[projectId]/jobs/[jobId]/codebook/*`)
+    — port, adapted to the job-scoped routes (no projectId) and to the new
+    "edit mode" requirement described next.
+  - NEW: explicit edit-mode + dirty-state guard for the codebook editor. Since
+    there is no more incremental save, the editor must:
+      1. Load the codebook into local editable state on "Edit" click.
+      2. Track a dirty flag on any change.
+      3. Block route navigation / tab close while dirty (confirm dialog:
+         discard / save / cancel), using a router-level guard + a
+         `beforeunload` handler.
+      4. On Save, PUT the entire document; on success, exit edit mode.
+    This is a reusable hook, e.g. `useEditableResource<T>()`, since the same
+    pattern will likely apply to units and other whole-resource forms.
+
+State/data libraries: keep React Query (server cache + mutations fit the new
+coarse REST endpoints very well), Zod (validation + type inference, and now
+also doubles as the API contract format), React Hook Form, ShadCN + Tailwind
+for UI. Drop anything NextJS-specific (app router, server actions, next/image,
+next-themes can stay or be replaced by a plain theme approach since we no
+longer have SSR).
+
+Styled-components is used in ~18 files, mostly for dynamic per-token/span
+color styling in the Document renderer. Recommend KEEPING it for that narrow
+use case (computed inline styles based on annotation color don't map cleanly
+to static Tailwind classes) but auditing during migration whether any of the
+18 usages can be trivially converted to Tailwind + CSS variables to reduce the
+dependency footprint. Not a blocker for v1.
+
+Testing: switch from Jest (NextJS/babel-oriented) to Vitest, since we're on
+Vite. Keep React Testing Library.
+
+
+6. MOCK SERVER (packages/mock-server)
+----------------------------------------
+  - Minimal Node server (recommend a lightweight framework — e.g. Hono or
+    plain `node:http`/Express — pick whichever keeps deps minimal; Hono is a
+    good fit given it's fetch-standard and works well with zod validation
+    middleware).
+  - SQLite (via `better-sqlite3` or `node:sqlite` if Node version allows) as
+    the storage, mirroring the simplified schema in §2 (jobs, codebooks,
+    units, coders — each with the json blob columns described above).
+  - Fully resettable: a single script/endpoint to drop + recreate + optionally
+    seed the DB, so it can be reset between test runs or demo sessions.
+  - Implements every endpoint in §3 using the same zod schemas from
+    `@annotinder/contracts` for request validation and response shaping —
+    this makes it double as executable documentation of the contract.
+  - Serves the generated OpenAPI/JSON Schema docs at a `/docs` route for
+    convenience (reusing the swagger-ui-react idea from the old app, or a
+    lighter alternative like Scalar).
+
+[OPEN QUESTION] Node version / SQLite driver choice — ok to require a fairly
+recent Node (>=22) to use the built-in `node:sqlite`, or should we depend on
+`better-sqlite3` for broader compatibility?
+
+
+7. DEPENDENCY / VERSION STRATEGY
+------------------------------------
+Recommendation: install latest versions up front (React 19, Zod 4 if stable
+enough, latest TanStack Query/Table, latest Tailwind v4, latest ShadCN CLI
+output) and adapt code while porting, rather than copying old code unchanged
+and upgrading later. Rationale: we are already rewriting/moving every file by
+hand for the data-model changes, so doing the version bump in the same pass
+avoids a second full-repo touch later. The main risk is Tailwind v3->v4 and
+zod v3->v4 breaking changes; budget explicit time for this in Phase 1.
+
+[OPEN QUESTION] Confirm: latest-versions-now approach, or would you rather
+pin to the old versions first to reduce unknowns while the data model is
+still in flux, and upgrade in a dedicated later phase?
+
+
+8. STEPWISE EXECUTION PLAN
+------------------------------
+Phase 0 — Workspace scaffolding
+  0.1 Set up pnpm workspace (pnpm-workspace.yaml, root package.json, shared
+      tsconfig base, shared eslint/prettier config).
+  0.2 Scaffold packages/client with Vite + React + TS template.
+  0.3 Scaffold packages/contracts as a plain TS package (no bundler needed
+      beyond `tsc`, or `tsup` if we want dual ESM/CJS output for the mock
+      server + future non-Vite consumers).
+  0.4 Scaffold packages/mock-server as a plain Node/TS package.
+  0.5 Wire up root scripts: `dev` (run client + mock-server concurrently),
+      `build`, `test`, `lint`.
+
+Phase 1 — Contracts first
+  1.1 Port zod schemas for codebook nodes, units, variables/annotations from
+      old/src/app/api/**/schemas.ts, adapted to the simplified endpoint list
+      in §3 (drop project/jobset-specific schemas).
+  1.2 Define the simplified DB-shaped types (job, codebook, unit, coder) as
+      zod schemas — these ARE the wire format now, no separate DB layer.
+  1.3 Add JSON Schema (+ optionally OpenAPI) generation script/output.
+  1.4 Write a short CONTRACTS.md documenting each endpoint (method, path,
+      request/response schema reference, auth requirement, idempotency /
+      immutability notes).
+
+Phase 2 — Mock server MVP
+  2.1 SQLite schema matching §2 (jobs, codebooks, units, coders tables with
+      json columns).
+  2.2 Implement all §3 endpoints using contracts package schemas for
+      validation.
+  2.3 Seed script + reset script; a couple of example jobs/codebooks/units
+      for local dev and for the client's own dev fixtures.
+  2.4 Minimal unsigned/dev-mode session handling (defer HMAC signing to
+      Phase 6).
+
+Phase 3 — Client core plumbing
+  3.1 Port `JobServer` interface + a `HttpJobServer` implementation that talks
+      to the mock server via the new endpoints (replacing `JobServerDesign`/
+      `MockServer.ts` class-based mocking with a real HTTP mock-server; keep
+      the "design/offline" JobServer variant if useful for Storybook-like
+      isolated component development).
+  3.2 Port `JobManager` + `functions/jobManagerState/*`, renaming
+      annotations -> variables, and simplifying around the new flat
+      per-coder-per-unit variable storage (no more phase/session tokens).
+  3.3 Port `functions/treeFunctions.ts` (codebook DAG logic) — this is now the
+      client's sole source of truth for codebook validity.
+  3.4 Get one full annotation flow working end-to-end against the mock
+      server: session -> get unit -> answer a question -> post variables ->
+      next unit -> finished screen.
+
+Phase 4 — Annotation UI port
+  4.1 Port `components/AnnotationInterface/*` (question forms, answer fields:
+      annotinder/confirm/scale/searchCode/selectCode).
+  4.2 Port `components/Document/*` (span/relation annotation rendering,
+      token/text/image/markdown rendering).
+  4.3 Port supporting `functions/*` (tokens, relations, rendering, swipe
+      control, etc.) as needed by the above.
+  4.4 Visual/UX parity pass against the old app for the core annotation
+      experience.
+
+Phase 5 — Codebook + job management UI port
+  5.1 Job list / job creation (replacing project+job nesting with a flat job
+      list).
+  5.2 Codebook editor: port `CodebookNodes`/`CodebookNodeForm`/
+      `CodebookPreview`/tree-manipulation UI, wired to whole-document
+      GET/PUT/POST/DELETE, with the new edit-mode + dirty-guard (§5).
+  5.3 Multi-codebook support in the UI (list of codebooks per job, "duplicate
+      as new" flow instead of edit-in-place once immutable).
+  5.4 Units management UI (upload/list/delete units), respecting immutability
+      once used.
+  5.5 Coders/progress overview + invitation link creation.
+
+Phase 6 — Hardening
+  6.1 Design + implement the HMAC-signed session-token scheme (client-side
+      support is likely a no-op since tokens stay opaque; mainly a
+      mock-server concern, but document it clearly in CONTRACTS.md so other
+      server authors can implement equivalent stateless validation).
+  6.2 Immutability enforcement end-to-end (client hides/disables destructive
+      actions once a codebook/unit is in use; mock server rejects such
+      mutations).
+  6.3 Error/edge-case handling pass (network failures, stale dirty-state
+      conflicts, invalid codebooks).
+  6.4 Test coverage: Vitest unit tests for contracts + jobManagerState logic,
+      component tests for the annotation interface, a basic e2e smoke test
+      against the mock server (Playwright, optional).
+
+Phase 7 — Packaging
+  7.1 Ensure packages/client builds to a distributable bundle usable without
+      the rest of the monorepo (evaluate whether it needs to be "installable
+      without node dependencies" as a static bundle / web component / iframe-
+      embeddable widget — clarify requirement).
+  7.2 Publish packages/contracts (and later packages/client) to npm under the
+      chosen scope.
+  7.3 Decide fate of `old/` (delete once parity is reached and no longer
+      needed as reference).
+
+[OPEN QUESTION] For 7.1: what does "installable without node dependencies"
+mean precisely — a prebuilt static bundle (JS+CSS) that any server can serve
+as-is, a Web Component, or something else? This affects build tooling choices
+in Phase 0.
+
+
+9. TRACEABILITY NOTES (old -> new, for reference during porting)
+--------------------------------------------------------------------
+  old/src/classes/JobManager.ts              -> packages/client JobManager (ported)
+  old/src/classes/JobServerDesign.tsx         -> packages/client HttpJobServer (rewritten)
+  old/src/classes/MockServer.ts               -> packages/mock-server (rewritten, real HTTP+SQLite)
+  old/src/functions/jobManagerState/*         -> packages/client, ported + renamed
+  old/src/functions/treeFunctions.ts          -> packages/client, ported
+  old/src/components/AnnotationInterface/*    -> packages/client, ported
+  old/src/components/Document/*               -> packages/client, ported
+  old/src/app/api/**/schemas.ts               -> packages/contracts, ported + simplified
+  old/src/drizzle/schema.ts                   -> reference only for §2 data model; not ported (no ORM/DB in client)
+  old/src/app/projects/**                     -> packages/client job/codebook/units UI, ported + flattened (no projectId segment)
+  old/src/components/ui/*                     -> packages/client, ported (ShadCN components, re-generate via CLI against new Tailwind version instead of copying, to pick up any breaking-version fixes)
+
+
+10. SUMMARY OF OPEN QUESTIONS
+---------------------------------
+  a. npm scope / package naming.
+  b. Keep or drop "coder groups" / experimental condition assignment as a
+     first-class concept vs. codebook-level branching only.
+  c. Timing of HMAC session-token design (recommend: after Phase 3 MVP).
+  d. Node/SQLite driver choice for the mock server.
+  e. Latest-dependency-versions-now vs. pin-old-versions-then-upgrade-later.
+  f. Exact meaning of "installable without node dependencies" for the client
+     package (static bundle vs web component vs other).
