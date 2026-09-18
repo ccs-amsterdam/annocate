@@ -688,6 +688,97 @@ as a starting point for a fresh design pass (not yet implemented/decided).
       any UI yet (no re-editing of a previously-submitted span answer).
     - Per-field inline styling directive attributes (11c.2, see above).
 
+11f. RESOLVED + IMPLEMENTED (2026-09-18): layout constants, QuickJS-powered
+  templating, `::tokenize` vs `::field`, and span answers including text
+
+  Follow-up discussion after 11e, refining three things before moving on to
+  relation UI:
+
+  1. `::field[column]` was decoupled into two directives with distinct
+     contracts: `::field[name]` (plain injection, optionally
+     `{markdown=true}` for nested-markdown interpretation) vs.
+     `::tokenize[name]` (annotatable rendering for span variables). Both
+     directives resolve `name` against ONE shared namespace: unit data
+     columns UNION the layout's new `constants` map (below) -- never a
+     composed/rendered blob. `markdown=true` and `::tokenize` are NOT
+     combinable on the same reference (rendered/stripped markdown text no
+     longer lines up 1:1 with the raw string's character offsets) -- this
+     is documented but not yet schema-enforced (still a manual-authoring
+     footgun, tracked as a follow-up).
+
+  2. `UnitLayoutSchema` gained `constants?: Record<string, string>`: named
+     string constants versioned alongside the layout/codebook (not per-unit
+     data), for two purposes: (a) literal/free text that needs to be
+     `::tokenize`d without being tied to a real unit-data column -- keeping
+     the "annotation offsets always resolve against ONE stable, versioned
+     string" guarantee intact (a composed/rendered blob's contents could
+     shift under a future template edit, which would silently corrupt
+     stored offsets); (b) conditional layout content, e.g. showing
+     different intro text to an experimental vs. control group.
+
+  3. `{{...}}` template interpolation was upgraded from Phase 4.2's naive
+     `{{column}}` regex substitution to full expression evaluation: each
+     `{{ expression }}` block is now a real JS expression, evaluated in the
+     SAME QuickJS sandbox as `condition` items (11d), against a merged
+     context of unit data columns + this layout's `constants` + known
+     variable values (highest precedence) -- enabling e.g.
+     `{{is_experiment ? experiment_intro : control_intro}}`. Implementation:
+     extracted a shared `evaluateExpression(expression, values)` helper
+     (`codebook/expression.ts`, non-boolean-coercing) out of the old
+     `conditions.ts`, which `evaluateCondition` now calls and
+     `Boolean(...)`-coerces, and which the rewritten (now async)
+     `renderTemplate.ts` also calls per `{{...}}` block, `String(...)`-
+     coercing each result (`undefined`/errors render as empty string, same
+     graceful-degradation behavior as before).
+       Async-rendering architecture: since QuickJS evaluation is async but
+     React rendering wants a synchronous string, template resolution moved
+     OUT of `UnitFields` (a render-time component) and INTO
+     `JobManager.resolveUnitLayout` -- called once per unit inside the
+     already-async `advanceUnit` step-computation, alongside where
+     `currentUnitLayout` was already being set. `UnitFields` therefore only
+     ever receives an already-resolved, synchronous `layout.template` and
+     stays a simple synchronous component; `::field`/`::tokenize`
+     directives are deliberately NOT touched by `renderTemplate` (they
+     still resolve directly against the raw data/constants lookup in
+     `UnitFields`), preserving exact raw-string character offsets for spans.
+
+  4. `SpanAnswerSchema` gained a `text: string` field: the exact substring
+     of the target column/constant at `[offset, offset+length)`, captured
+     by the client when the span is created (`SelectableText` slices the
+     raw text; `SpanAnnotationContext.addSpan` now takes `(offset, length,
+     code, text)`) and included in the submitted answer. Redundant with
+     `field`+`offset`+`length` by construction, but saves downstream
+     analysis from needing to re-fetch/re-slice the raw unit data just to
+     know what text was actually annotated -- a small, deliberate bit of
+     data duplication for convenience.
+
+  Files touched: `contracts/codebook/layout.ts` (`constants`),
+  `contracts/variableValue.ts` (`SpanAnswer.text`),
+  `contracts/codebook/variableTypes.ts` (`SpanType.column`'s doc comment),
+  `client/codebook/expression.ts` (new, shared sandbox),
+  `client/codebook/conditions.ts` (now a thin wrapper),
+  `client/codebook/renderTemplate.ts` (now async, QuickJS-based),
+  `client/codebook/unitFieldDirective.ts` (`field`+`tokenize` directive
+  names, `mode`/`markdown` hProperties), `client/components/UnitFields.tsx`
+  (mode-based dispatch, constants+data merged lookup, no longer calls
+  `renderTemplate` itself), `client/context/SpanAnnotationContext.tsx` +
+  `client/components/SelectableText.tsx` (`addSpan` text param),
+  `client/jobManager/JobManager.ts` (`resolveUnitLayout`),
+  `mock-server/db/seed.ts` (demo layout now uses `constants` + `{{...}}` +
+  `::tokenize`). Verified via full workspace typecheck/lint/build/test plus
+  a live smoke test against a running mock-server instance confirming
+  constants substitution, `{{expression}}` evaluation, `::tokenize`
+  rendering, and span-with-text submission all work end-to-end.
+
+  STILL OPEN:
+    - `markdown=true` + `::tokenize` mutual exclusivity is documented, not
+      schema/validation-enforced.
+    - `renderTemplate` is re-run on every step within a unit_loop (once per
+      `advanceUnit` call), not memoized -- acceptable for now, but exactly
+      the kind of repeated recomputation §12's caching proposal is meant to
+      eventually address once §11's scripting design (this section) has
+      landed, which it now has.
+
 11d. RESOLVED: scripting/condition-expression sandbox choice (CEL vs JS)
   Context: `condition` items' `expression` field (§2) and any future
   codebook/layout scripting need a safe way to evaluate a small boolean/

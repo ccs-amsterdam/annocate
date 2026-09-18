@@ -11,6 +11,7 @@ export const ANNOTINDER_CLIENT_VERSION = "0.1.0";
 
 export * from "./api/httpJobServer";
 export * from "./codebook/tree";
+export * from "./codebook/expression";
 export * from "./codebook/conditions";
 export * from "./codebook/renderTemplate";
 export * from "./jobManager/JobManager";

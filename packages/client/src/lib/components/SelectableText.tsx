@@ -83,7 +83,12 @@ export function SelectableText({ text }: { text: string }) {
               className="rounded border px-2 py-0.5 hover:bg-muted"
               style={{ backgroundColor: c.color }}
               onClick={() => {
-                annotation.addSpan(pending.offset, pending.length, c.code);
+                annotation.addSpan(
+                  pending.offset,
+                  pending.length,
+                  c.code,
+                  text.slice(pending.offset, pending.offset + pending.length),
+                );
                 setPending(null);
               }}
             >

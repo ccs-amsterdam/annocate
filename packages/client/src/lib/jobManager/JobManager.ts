@@ -1,5 +1,6 @@
-import type { CodebookItem, CoderUnitResponse, SessionResponse, VariableValue } from "@annotinder/contracts";
+import type { CodebookItem, CoderUnitResponse, SessionResponse, UnitLayout, VariableValue } from "@annotinder/contracts";
 import type { JobServer } from "../api/httpJobServer";
+import { renderTemplate } from "../codebook/renderTemplate";
 import { computeLoopSteps, computeTopLevelSteps } from "../codebook/tree";
 
 export type JobManagerPhase = "loading" | "user_variable" | "unit_variable" | "finished" | "error";
@@ -132,7 +133,7 @@ export class JobManager {
           phase: "unit_variable",
           currentItem: next,
           currentUnit: this.currentUnit,
-          currentUnitLayout: this.activeLoop.layout,
+          currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit),
         });
         return;
       }
@@ -157,5 +158,21 @@ export class JobManager {
     this.unitVariableValues = { ...unit.variables };
     this.loopIndex = -1;
     await this.advanceUnit();
+  }
+
+  /**
+   * Resolves a unit_loop layout's `{{ expression }}` interpolation (design
+   * plan §11f) against this unit's data columns, the layout's own
+   * `constants`, and known variable values (conditionValues -- highest
+   * precedence, since they're the "live" facts a template conditional like
+   * `{{is_experiment ? experiment_intro : control_intro}}` branches on).
+   * `renderTemplate` is async (real QuickJS evaluation), so this is done
+   * once per unit here -- in the already-async step-computation flow --
+   * rather than at React-render time, keeping `UnitFields` synchronous.
+   */
+  private async resolveUnitLayout(layout: UnitLayout, unit: CoderUnitResponse): Promise<UnitLayout> {
+    const values: Record<string, unknown> = { ...unit.data, ...layout.constants, ...this.conditionValues };
+    const template = await renderTemplate(layout.template, values);
+    return { ...layout, template };
   }
 }

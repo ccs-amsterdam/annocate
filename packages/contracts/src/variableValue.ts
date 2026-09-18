@@ -26,6 +26,15 @@ export const SpanAnswerSchema = z.object({
   offset: z.number().int(),
   length: z.number().int(),
   code: z.string(),
+  /**
+   * The selected text itself, i.e. the exact substring `field`'s raw string
+   * value at `[offset, offset + length)` -- included so downstream analysis
+   * doesn't need to re-fetch/re-slice the unit data to know what was
+   * annotated (design plan §11f/2026-09-18). Redundant with
+   * `field`+`offset`+`length` by construction (always kept in sync by the
+   * client when the span is created), but small and convenient.
+   */
+  text: z.string(),
 });
 export type SpanAnswer = z.infer<typeof SpanAnswerSchema>;
 

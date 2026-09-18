@@ -19,7 +19,11 @@ export interface SpanAnnotationState {
   column: string;
   codes: CodebookCode[];
   spans: SpanAnswer[];
-  addSpan: (offset: number, length: number, code: string) => void;
+  /** `text` is the exact substring of the column's raw value at
+   * `[offset, offset + length)`, included in the stored `SpanAnswer` so
+   * downstream analysis doesn't need to re-slice the unit data (design plan
+   * §11f). */
+  addSpan: (offset: number, length: number, code: string, text: string) => void;
   removeSpan: (id: string) => void;
 }
 
@@ -45,10 +49,10 @@ export function SpanAnnotationProvider({
       column,
       codes,
       spans,
-      addSpan: (offset, length, code) =>
+      addSpan: (offset, length, code, text) =>
         setSpans((prev) => [
           ...prev,
-          { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, field: column, offset, length, code },
+          { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, field: column, offset, length, code, text },
         ]),
       removeSpan: (id) => setSpans((prev) => prev.filter((s) => s.id !== id)),
     }),

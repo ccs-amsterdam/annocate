@@ -80,7 +80,8 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
   column: z
     .string()
     .describe(
-      "The unit data column to select spans in (must be rendered via a `::field[column]` directive in the unit_loop's layout template, design plan §11c)",
+      "The unit data column (or layout `constants` entry) to select spans in -- must be rendered via a " +
+        "`::tokenize[name]` directive in the unit_loop's layout template (design plan §11f)",
     ),
   codes: CodebookCodesSchema,
   editMode: z.boolean().optional(),
