@@ -7,6 +7,7 @@ import {
   ScaleAnswerField,
   SearchCodeAnswerField,
   SelectCodeAnswerField,
+  SpanAnswerField,
   UnsupportedAnswerField,
 } from "./answerFields";
 
@@ -56,6 +57,9 @@ export function Question({ item, onAnswer }: QuestionProps) {
       break;
     case "search_code":
       answerField = <SearchCodeAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
+    case "span":
+      answerField = <SpanAnswerField variable={variable} onAnswer={onAnswer} />;
       break;
     default:
       answerField = <UnsupportedAnswerField variable={variable} onAnswer={onAnswer} />;

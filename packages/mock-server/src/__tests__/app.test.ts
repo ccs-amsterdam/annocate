@@ -55,7 +55,7 @@ describe("codebook routes", () => {
     await createJob();
 
     const validItems = [
-      { type: "unit_loop", position: "1", name: "loop", unitset: "main", layout: { fields: [] } },
+      { type: "unit_loop", position: "1", name: "loop", unitset: "main", layout: { template: "" } },
       {
         type: "unit_variable",
         position: "1.1",
@@ -108,7 +108,7 @@ describe("coder session flow", () => {
       body: JSON.stringify({
         name: "cb",
         items: [
-          { type: "unit_loop", position: "1", name: "loop", unitset: "main", layout: { fields: [] } },
+          { type: "unit_loop", position: "1", name: "loop", unitset: "main", layout: { template: "" } },
           {
             type: "unit_variable",
             position: "1.1",

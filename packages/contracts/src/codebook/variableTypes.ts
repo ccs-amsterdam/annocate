@@ -77,9 +77,15 @@ export const AutoTypeSchema = z.object({
 
 export const SpanTypeSchema = VariableBaseSchema.extend({
   type: z.literal("span"),
+  column: z
+    .string()
+    .describe(
+      "The unit data column to select spans in (must be rendered via a `::field[column]` directive in the unit_loop's layout template, design plan §11c)",
+    ),
   codes: CodebookCodesSchema,
   editMode: z.boolean().optional(),
 });
+export type SpanType = z.infer<typeof SpanTypeSchema>;
 
 export const RelationOptionsSchema = z.object({
   variable: z.string(),

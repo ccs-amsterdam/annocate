@@ -43,7 +43,7 @@ export function seed(db: DatabaseSync): void {
       position: "2",
       name: "main_loop",
       unitset: "main",
-      layout: { fields: [{ name: "headline", type: "text", column: "headline" }] },
+      layout: { template: "# {{headline}}\n\n::field[text]" },
     },
     {
       type: "unit_variable",
@@ -57,6 +57,17 @@ export function seed(db: DatabaseSync): void {
           { code: "neutral", color: "#9e9e9e" },
           { code: "negative", color: "#f44336" },
         ],
+      },
+    },
+    {
+      type: "unit_variable",
+      position: "2.2",
+      name: "actors",
+      variable: {
+        type: "span",
+        question: "Select any actors mentioned in the text.",
+        column: "text",
+        codes: [{ code: "actor", color: "#2196f3" }],
       },
     },
   ]);

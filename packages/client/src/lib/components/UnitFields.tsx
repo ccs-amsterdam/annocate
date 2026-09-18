@@ -1,84 +1,48 @@
-import type { UnitData, UnitField, UnitLayout } from "@annotinder/contracts";
 import type { CSSProperties } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkDirective from "remark-directive";
+import remarkGfm from "remark-gfm";
+import type { UnitData, UnitLayout } from "@annotinder/contracts";
 import { renderTemplate } from "../codebook/renderTemplate";
-import { SimpleMarkdown } from "./SimpleMarkdown";
+import { remarkUnitField } from "../codebook/unitFieldDirective";
+import { useSpanAnnotation } from "../context/SpanAnnotationContext";
+import { SelectableText } from "./SelectableText";
 
 /**
- * Renders a unit's `text`/`markdown`/`image` fields per its unit_loop's
- * layout (design plan §2's `UnitLayoutSchema`, Phase 4.2). This is the
- * "Document" renderer for the field types the current contracts data model
- * actually supports.
+ * Renders a unit's layout (design plan §11c, resolved): a single markdown
+ * template, rendered with `react-markdown` (no raw-HTML support -- safe by
+ * construction, no `dangerouslySetInnerHTML` -- see design plan §11c) plus
+ * `remark-directive` for the `::field[column]` directive that hooks in
+ * "special" per-column rendering (images, and annotatable text for the
+ * currently-active `span` variable, design plan §11b).
  *
- * NOT YET SUPPORTED: span/relation annotation rendering (the old
- * `components/Document/*` token/selection/arrow code, ~2700 lines). The
- * current `@annotinder/contracts` codebook/layout schemas have no span or
- * relation field/variable types defined at all -- this is a real open
- * design gap (the design plan only notes span annotations as a future
- * possibility in §2, without specifying a schema), not something this
- * component works around. Flagged for the user rather than inventing a
- * schema unilaterally; `unit_variable`/`user_variable` types outside of
- * confirm/select_code/scale/annotinder/search_code already fall back to
- * `UnsupportedAnswerField` for the same reason.
+ * Relation annotation UI is still unimplemented (design plan §11a/§12);
+ * only span selection is wired up so far.
  */
 export function UnitFields({ layout, data }: { layout: UnitLayout; data: UnitData }) {
-  if (!layout.grid) {
-    return (
-      <div className="flex flex-col gap-4">
-        {layout.fields.map((field) => (
-          <UnitField key={field.name} field={field} data={data} />
-        ))}
-      </div>
-    );
-  }
+  const annotation = useSpanAnnotation();
+  const markdown = renderTemplate(layout.template, data);
 
-  const { areas, rows, columns } = layout.grid;
-  const style: CSSProperties = {
-    display: "grid",
-    gridTemplateAreas: areas.map((row) => `"${row.join(" ")}"`).join(" "),
-    gridTemplateRows: rows?.map((r) => `${r}fr`).join(" "),
-    gridTemplateColumns: columns?.map((c) => `${c}fr`).join(" "),
-    gap: "1rem",
+  const components: Components = {
+    // Custom element name produced by `remarkUnitField`'s hName; react-markdown
+    // passes the directive's hProperties straight through as props.
+    // @ts-expect-error "unit-field" isn't a standard HTML tag name.
+    "unit-field": ({ column, as }: { column?: string; as?: string }) => {
+      if (!column) return null;
+      const value = data[column];
+      const text = value === undefined ? "" : String(value);
+
+      if (as === "image") return <img src={text} alt={column} className="max-w-full" />;
+      if (annotation && annotation.column === column) return <SelectableText text={text} />;
+      return <span className="whitespace-pre-wrap">{text}</span>;
+    },
   };
 
   return (
-    <div style={style}>
-      {layout.fields.map((field) => (
-        <div key={field.name} style={{ gridArea: field.name }}>
-          <UnitField field={field} data={data} />
-        </div>
-      ))}
+    <div style={layout.style as CSSProperties | undefined} className="flex flex-col gap-4">
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkDirective, remarkUnitField]} components={components}>
+        {markdown}
+      </ReactMarkdown>
     </div>
-  );
-}
-
-function UnitField({ field, data }: { field: UnitField; data: UnitData }) {
-  const fieldStyle = field.style as CSSProperties | undefined;
-
-  if (field.type === "text") {
-    const value = data[field.column];
-    return (
-      <p style={fieldStyle} className="whitespace-pre-wrap">
-        {field.context_before}
-        {value !== undefined ? String(value) : ""}
-        {field.context_after}
-      </p>
-    );
-  }
-
-  if (field.type === "markdown") {
-    return (
-      <div style={fieldStyle}>
-        <SimpleMarkdown text={renderTemplate(field.template, data)} />
-      </div>
-    );
-  }
-
-  // field.type === "image"
-  const src = data[field.column];
-  return (
-    <figure style={fieldStyle}>
-      {src !== undefined && <img src={String(src)} alt={field.alt ?? ""} className="max-w-full" />}
-      {field.caption && <figcaption className="text-sm text-gray-500">{field.caption}</figcaption>}
-    </figure>
   );
 }

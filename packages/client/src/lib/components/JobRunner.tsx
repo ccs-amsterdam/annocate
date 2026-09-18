@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { HttpJobServer } from "../api/httpJobServer";
 import { useJobManager } from "../jobManager/useJobManager";
+import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 import { Question } from "./Question";
 import { UnitFields } from "./UnitFields";
 
@@ -31,12 +32,30 @@ export function JobRunner({ baseUrl, coderKey, inviteSecret }: JobRunnerProps) {
     return <p>Unexpected state.</p>;
   }
 
-  return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 p-8">
+  const item = snapshot.currentItem;
+  const spanVariable = item.type === "unit_variable" && item.variable.type === "span" ? item.variable : null;
+
+  const body = (
+    <>
       {snapshot.currentUnit && snapshot.currentUnitLayout && (
         <UnitFields layout={snapshot.currentUnitLayout} data={snapshot.currentUnit.data} />
       )}
-      <Question item={snapshot.currentItem} onAnswer={(value, conditionValue) => manager.answer(value, conditionValue)} />
+      <Question item={item} onAnswer={(value, conditionValue) => manager.answer(value, conditionValue)} />
+    </>
+  );
+
+  return (
+    <div className="mx-auto flex max-w-xl flex-col gap-6 p-8">
+      {spanVariable ? (
+        // Keyed by item.name so span state resets whenever the coder moves
+        // to a different span question (design plan §11b).
+        <SpanAnnotationProvider key={item.name} column={spanVariable.column} codes={spanVariable.codes}>
+          {body}
+        </SpanAnnotationProvider>
+      ) : (
+        body
+      )}
     </div>
   );
 }
+

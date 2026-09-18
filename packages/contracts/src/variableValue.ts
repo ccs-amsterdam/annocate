@@ -27,6 +27,7 @@ export const SpanAnswerSchema = z.object({
   length: z.number().int(),
   code: z.string(),
 });
+export type SpanAnswer = z.infer<typeof SpanAnswerSchema>;
 
 /** Answer entry for `relation` variable types -- links two span answers by their client id. */
 export const RelationAnswerSchema = z.object({

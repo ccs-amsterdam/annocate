@@ -3,5 +3,6 @@ export * from "./ConfirmAnswerField";
 export * from "./ScaleAnswerField";
 export * from "./SearchCodeAnswerField";
 export * from "./SelectCodeAnswerField";
+export * from "./SpanAnswerField";
 export * from "./UnsupportedAnswerField";
 export * from "./types";

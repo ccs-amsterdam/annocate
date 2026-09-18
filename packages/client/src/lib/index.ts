@@ -18,5 +18,6 @@ export * from "./jobManager/useJobManager";
 export * from "./components/JobRunner";
 export * from "./components/Question";
 export * from "./components/UnitFields";
-export * from "./components/SimpleMarkdown";
+export * from "./components/SelectableText";
+export * from "./context/SpanAnnotationContext";
 export * from "./components/answerFields";

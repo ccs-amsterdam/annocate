@@ -540,7 +540,8 @@ done-unit-id list per unitset in `/session`); revisit if/when scale or
 crowd-coding becomes a near-term priority.
 
 
-11. UNIT LAYOUT + ANNOTATION MODE REDESIGN (span/relation)   [OPEN — NEEDS DESIGN]
+11. UNIT LAYOUT + ANNOTATION MODE REDESIGN (span/relation)
+    [11a/11c RESOLVED + span IMPLEMENTED (2026-09-18); relations still open]
 -------------------------------------------------------------------------------
 Raised after Phase 4.1/4.2: `@annotinder/contracts`' codebook/layout schemas
 currently have NO span or relation field/variable type at all, so
@@ -621,6 +622,71 @@ as a starting point for a fresh design pass (not yet implemented/decided).
   grid, see UnitFields.tsx) and Phase 4.3+ (span/relation UI, still
   unstarted). Do not implement further on this until the design questions
   above are resolved.
+
+11e. RESOLVED + IMPLEMENTED (2026-09-18): markdown renderer + span answering
+  Library choice: `react-markdown` (v10, no `dangerouslySetInnerHTML`,
+  safe-by-construction -- raw HTML is simply not supported unless the
+  `rehype-raw` plugin is explicitly added, which we don't) + `remark-gfm`
+  (tables/strikethrough/etc) + `remark-directive` (generic markdown
+  directive syntax, `::name[label]{attrs}`) + a small first-party remark
+  plugin (`unitFieldDirective.ts`) that maps a `::field[column]` leaf
+  directive onto a custom `<unit-field>` element via mdast's `hName`/
+  `hProperties` mechanism, which `react-markdown`'s `components` prop then
+  renders with a real React component. All three questions from 11c.1-3
+  are answered:
+    1. Images: yes -- both plain `![alt](url)` markdown and
+       `::field[column]{as="image"}` (for a unit-data column holding an
+       image URL) work.
+    2. Styling: PARTIALLY resolved. `UnitLayoutSchema.style` covers
+       root-container styling (kept from the old design, still an
+       injection-safe React style object). Per-element/per-field inline
+       styling via directive attributes (e.g. `::field[col]{style=...}`)
+       was NOT implemented in this pass -- ordinary markdown/CSS classes
+       cover most needs; revisit only if a concrete need for per-field
+       inline style surfaces.
+    3. Annotatable regions: yes, for SPANS. `remarkUnitField` + a shared
+       `SpanAnnotationContext` (`packages/client/src/lib/context/`) let
+       `UnitFields`' `::field[column]` renderer switch that column's text
+       to an interactive `SelectableText` component whenever the coder is
+       currently answering a `span` unit_variable targeting that same
+       column -- this is the "integrated with the question flow" outcome
+       11b asked for (no separate "annotation mode"; `JobRunner` just
+       mounts one `SpanAnnotationProvider`, keyed by the current item, when
+       the current step is a span variable). Image-region annotation
+       (annotating parts of an image, not just text) is NOT implemented --
+       correctly deferred per 11b's "eventually for images as well".
+
+  Schema changes: `UnitLayoutSchema` collapsed to `{ template: string,
+  style?, meta? }` (dropped `TextFieldSchema`/`MarkdownFieldSchema`/
+  `ImageFieldSchema`/`UnitFieldSchema`/grid entirely). `SpanTypeSchema`
+  gained a `column` field (which unit-data column the span variable
+  targets -- must match a `::field[column]` directive in the layout
+  template). Span answers already had a character-offset shape
+  (`SpanAnswerSchema { id, field, offset, length, code }`, no token
+  indexing) from Phase 1 contracts work, matching 11b's requirement
+  directly -- no schema change needed there.
+
+  New files: `codebook/unitFieldDirective.ts` (the remark plugin),
+  `context/SpanAnnotationContext.tsx`, `components/SelectableText.tsx`
+  (character-offset mouse selection via a `TreeWalker`-based DOM-position
+  -> absolute-offset calculation, existing-span highlighting, inline code
+  picker), `components/answerFields/SpanAnswerField.tsx` (lists/removes
+  collected spans, Done/Skip). `UnitFields.tsx` rewritten around
+  `react-markdown`; `SimpleMarkdown.tsx` deleted (superseded).
+
+  STILL OPEN / NOT IMPLEMENTED (do not consider Phase 4.3 done):
+    - Relation answering (schema already exists --
+      `RelationTypeSchema`/`RelationAnswerSchema`, `from`/`to` referencing
+      sibling span-variable names -- but no UI/answer-field component
+      yet). This needs a way to look up a sibling span variable's
+      already-submitted spans (not currently threaded through
+      Question/JobRunner) to let the coder pick two spans and a code.
+    - Overlapping spans are not handled by `SelectableText` (spans are
+      rendered as non-overlapping segments sorted by offset; selecting
+      over an existing span's text is not explicitly guarded against).
+    - `SpanTypeSchema.editMode` exists in the schema but isn't consumed by
+      any UI yet (no re-editing of a previously-submitted span answer).
+    - Per-field inline styling directive attributes (11c.2, see above).
 
 11d. RESOLVED: scripting/condition-expression sandbox choice (CEL vs JS)
   Context: `condition` items' `expression` field (§2) and any future

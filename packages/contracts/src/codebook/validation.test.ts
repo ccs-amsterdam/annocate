@@ -11,7 +11,7 @@ function unitVar(position: string, name: string): CodebookItem {
   return { type: "unit_variable", position, name, variable: confirmVariable };
 }
 function unitLoop(position: string, name: string, unitset = "main"): CodebookItem {
-  return { type: "unit_loop", position, name, unitset, layout: { fields: [] } };
+  return { type: "unit_loop", position, name, unitset, layout: { template: "" } };
 }
 function condition(position: string, name: string, expression = "true"): CodebookItem {
   return { type: "condition", position, name, expression };

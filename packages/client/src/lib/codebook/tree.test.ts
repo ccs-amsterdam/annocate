@@ -12,7 +12,7 @@ function condition(position: string, name: string, expression: string): Codebook
 }
 
 function unitLoop(position: string, name: string, unitset = "main"): CodebookItem {
-  return { position, name, type: "unit_loop", unitset, layout: { fields: [] } };
+  return { position, name, type: "unit_loop", unitset, layout: { template: "" } };
 }
 
 function unitVar(position: string, name: string): CodebookItem {
