@@ -24,3 +24,16 @@ export * from "./components/UnitFields";
 export * from "./components/SelectableText";
 export * from "./context/SpanAnnotationContext";
 export * from "./components/answerFields";
+
+// Phase 5: job/codebook management UI (design plan §5).
+export * from "./api/httpAdminClient";
+export * from "./admin/queries";
+export * from "./codebook/codebookEdit";
+export * from "./admin/csv";
+export * from "./components/admin/AdminApp";
+export * from "./components/admin/JobSettings";
+export * from "./components/admin/CodebookManager";
+export * from "./components/admin/CodebookEditor";
+export * from "./components/admin/UnitsManager";
+export * from "./components/admin/UnitsetsManager";
+export * from "./components/admin/CodersPanel";

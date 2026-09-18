@@ -440,29 +440,40 @@ Phase 3 — Client core plumbing
       server: session -> get unit -> answer a question -> post variables ->
       next unit -> finished screen.
 
-Phase 4 — Annotation UI port
+Phase 4 — Annotation UI port                                   [DONE]
   4.1 Port `components/AnnotationInterface/*` (question forms, answer fields:
       annotinder/confirm/scale/searchCode/selectCode). [DONE]
   4.2 Port `components/Document/*` (span/relation annotation rendering,
-      token/text/image/markdown rendering). [PARTIALLY DONE: text/markdown/
-      image field rendering shipped; span/relation rendering BLOCKED on a
-      design pass -- see §11]
+      token/text/image/markdown rendering). [DONE — see §11a-h: markdown-
+      based unit layout with layout constants, QuickJS-powered `{{...}}`
+      templating, `::field`/`::tokenize` directives, span annotation with
+      overlap-guard + click-to-remove + captured span text, relation
+      answer field]
   4.3 Port supporting `functions/*` (tokens, relations, rendering, swipe
-      control, etc.) as needed by the above. [BLOCKED on §11]
+      control, etc.) as needed by the above. [DONE — tokenization
+      simplified to plain character-offset spans (no compromise/NLP lib),
+      reactive recompute caching for conditions/templates (§12)]
   4.4 Visual/UX parity pass against the old app for the core annotation
-      experience.
+      experience. [DEFERRED — functional parity achieved; a dedicated
+      visual/UX polish pass has not been done]
 
-Phase 5 — Codebook + job management UI port
+Phase 5 — Codebook + job management UI port          [DONE 2026-09-18, see §13]
   5.1 Job list / job creation (replacing project+job nesting with a flat job
-      list).
+      list). [DONE -- server is single-job-per-deployment (§3), so this
+      became "create/edit the one job" (`JobSettings.tsx`), not a list]
   5.2 Codebook editor: port `CodebookNodes`/`CodebookNodeForm`/
       `CodebookPreview`/tree-manipulation UI, wired to whole-document
-      GET/PUT/POST/DELETE, with the new edit-mode + dirty-guard (§5).
+      GET/PUT/POST/DELETE, with the new edit-mode + dirty-guard (§5). [DONE
+      -- see §13 for what changed vs. the old app's per-node-mutation model;
+      `CodebookPreview`'s live-runtime preview NOT ported, see §13 OPEN]
   5.3 Multi-codebook support in the UI (list of codebooks per job, "duplicate
-      as new" flow instead of edit-in-place once immutable).
+      as new" flow instead of edit-in-place once immutable). [DONE --
+      `CodebookManager.tsx`]
   5.4 Units management UI (upload/list/delete units), respecting immutability
-      once used.
-  5.5 Coders/progress overview + invitation link creation.
+      once used. [DONE -- CSV upload (`UnitsManager.tsx`) + unitsets
+      (`UnitsetsManager.tsx`); no JSON upload option yet, see §13 OPEN]
+  5.5 Coders/progress overview + invitation link creation. [DONE --
+      `CodersPanel.tsx`; old app had ~no equivalent UI to port, built fresh]
 
 Phase 6 — Hardening
   6.1 Design + implement the HMAC-signed session-token scheme (client-side
@@ -1034,3 +1045,173 @@ as a starting point for a fresh design pass (not yet implemented/decided).
   relations) confirming correctness is unaffected by the cache being
   active (i.e. this is a pure performance optimization, not a behavior
   change).
+
+13. JOB/CODEBOOK MANAGEMENT UI (design plan §5 Phase 5)   [DONE 2026-09-18]
+
+  Implements Phase 5 in full: job settings, a whole-document codebook tree
+  editor, multi-codebook management, units/unitsets management, and a
+  coders/progress + invite-link panel. Preceded by a research pass over the
+  old app's equivalent screens (`old/src/app/projects/[projectId]/jobs/
+  [jobId]/codebook/*`, `old/src/components/Forms/*`) to decide what to
+  preserve vs. simplify given the new flat positional data model (§2):
+
+  a) Job list -> "the one job". The mock server enforces single-job-per-
+     deployment (§3): `POST /job` 409s if a job already exists. So Phase
+     5.1 is NOT a list/picker UI -- `JobSettings.tsx` just creates the job
+     if `GET /job/1` 404s, else shows a name/archived edit form. (The old
+     app's job list/`DBTable`/search-sort-paginate pattern doesn't apply
+     here; if a future server variant supports multiple jobs per
+     deployment, that'll need a genuine list UI added at that point.)
+
+  b) Codebook editor: whole-document draft + dirty-guard, NOT per-node
+     mutation. The old app (`CodebookNodes.tsx`) held no client-side draft
+     document at all -- every add/edit/delete/move was its own mutation
+     against a normalized DAG of `codebookNodes` rows, with the query cache
+     manually patched after each one. The new flat, positional item model
+     (§2, `position: "4.2.1"`-style strings) makes a genuinely different
+     approach both possible and much simpler: `CodebookEditor.tsx` holds
+     ONE in-memory draft (`name` + `CodebookItem[]`), edited purely via new
+     pure, dependency-free position-rewriting functions in
+     `codebook/codebookEdit.ts` (`insertItem`/`deleteItem`/`moveItem`/
+     `nextChildPosition`), and saved in a single `POST`/`PUT /codebook`
+     call. Dirty-guard is a simple reference/value comparison against the
+     loaded document; "discard changes" replaces the old app's per-field
+     dirty-tracking + close-confirmation modal.
+
+     `moveItem` is the trickiest piece: moving a subtree to a new parent
+     requires renumbering three things in the right order (the old sibling
+     group closing its gap, the target sibling group making room at the
+     insert index, then the moved subtree's own prefix rewrite) without
+     transient position collisions. Implementation notes (see
+     `codebookEdit.ts` inline comments + `codebookEdit.test.ts`, 14 tests):
+       - Renumbering a sibling group must iterate HIGHEST-index-first when
+         shifting positions up, so a just-shifted item's new position never
+         collides with an as-yet-unshifted sibling still occupying it.
+       - The caller-supplied "move to this parent" position string refers
+         to the PRE-move tree; if that parent is itself a sibling of the
+         moved item's old location, renumbering the old sibling group can
+         shift the target parent's own position out from under it. Fixed
+         by resolving the target parent by its (codebook-unique) `name`
+         after the old-side renumbering, not by the position string the
+         caller originally passed in.
+       - A moved subtree is given a temporary out-of-band position prefix
+         (`__moving__.<original>`) for the duration of the operation so it
+         never collides with real sibling positions while both sibling
+         groups are being renumbered around it.
+
+     Old app's "move" UX (click grip, then click a destination, with
+     server-side reindexing via a sentinel `position: 99999`) was NOT
+     ported -- replaced with simpler, keyboard-accessible move-up/move-
+     down/indent/outdent buttons per row (`CodebookTreeView.tsx`), which
+     map directly onto the same `moveItem` primitive (indent = become last
+     child of previous sibling; outdent = become next sibling of parent).
+     No drag-and-drop library was introduced (kept dependency-light, per
+     §7's "minimal new deps" stance).
+
+  c) Item/variable-type forms: `ItemForm.tsx` dispatches on
+     `item.type` (`user_variable`/`unit_variable`/`unit_loop`/`condition`);
+     `VariableTypeForm.tsx` further dispatches on `variable.type` (all 8
+     variants: annotinder/scale/select_code/search_code/confirm/auto/span/
+     relation), sharing a `QuestionFields` (question/instruction/
+     instructionAuto) and `CodesEditor` (repeatable code/color/value/
+     screenOut rows) across the variants that need them. NOT ported: the
+     old `react-hook-form` + `zodResolver` combo -- plain controlled React
+     state was used instead, since the draft is already validated
+     server-side on save (`CodebookItemsSchema`'s `superRefine`) and each
+     sub-form's shape is simple enough not to need a form library. STILL
+     OPEN / not exposed in these forms yet: `questionStyle`/
+     `instructionStyle` (arbitrary inline-CSS records), `scale`'s `items`
+     sub-list, `layout.style`/`layout.meta`, and `relation`'s `values`
+     filter arrays -- all present in the schema and preserved untouched if
+     already set, just not editable via a dedicated widget yet.
+
+     TS gotcha hit and fixed: `VariableTypeForm`'s `switch (variable.type)`
+     narrows `variable` correctly for direct use, but object-spread
+     expressions like `{ ...variable, ...patch }` inside a nested arrow
+     function closure re-widened back to a large cross-product union
+     (TypeScript doesn't always preserve switch-case narrowing through
+     spread of a narrowed union member + a broadly-typed patch object).
+     Fixed by (1) binding `const v = variable;` at the top of each case
+     block (a plain local binding narrows more reliably than closures over
+     the switched expression -- the same class of issue noted for
+     `SelectableText.tsx` in §11h), and (2) giving `QuestionFields`'s
+     `onChange` a plain, non-union-derived patch type (`Partial<{
+     question; instruction?; instructionAuto? }>`) instead of
+     `Partial<Extract<AnyVariableType, {question:string}>>` -- the latter
+     distributes over the whole 10-member union and reintroduces every
+     variant's fields into the patch type, which is what caused the
+     cross-product widening in the first place.
+
+  d) Multi-codebook UI (`CodebookManager.tsx`): list + create + "duplicate"
+     (fetches the full document, clones it client-side with `id: -1`/
+     `immutable: false`, feeds it into `CodebookEditor` as if new, saves as
+     a brand-new codebook via `POST`) + delete (only offered when not
+     `immutable`). The old app had NO equivalent screen to port (its
+     `CodebookList.tsx` was actually the tree/node editor, not a
+     multi-codebook picker, despite the name) -- built fresh against the
+     new `listCodebooks`/`getCodebook`/`createCodebook`/`deleteCodebook`
+     endpoints.
+
+  e) Units (`UnitsManager.tsx`) + unitsets (`UnitsetsManager.tsx`). CSV
+     upload ported conceptually from the old app's `react-papaparse`-based
+     wizard (parse -> preview -> pick id column -> upload), but
+     reimplemented with a small dependency-free parser
+     (`admin/csv.ts::parseCsv`, handles quoted/escaped fields; 4 unit
+     tests) rather than adding `react-papaparse` back (§7: keep new deps
+     minimal). Overwrite is an explicit opt-in checkbox (default off, given
+     units are immutable-once-used per §2); delete is offered per-row and
+     simply surfaces the server's 409 (immutable) as an inline error rather
+     than hiding the button pre-emptively (keeps the client dumb; the
+     server is the single source of truth for immutability). STILL OPEN:
+     no JSON-array upload path (CSV only), no bulk multi-select delete.
+     Unitsets got their own minimal manager (name, fixed/random order
+     toggle, unit multi-select checklist, delete blocked server-side while
+     referenced by a `unit_loop`).
+
+  f) Coders/progress (`CodersPanel.tsx`): invite-link creation (label +
+     access-mode picker -> `POST /coders/invite`, rendering
+     `{baseUrl}/invite/{secret}`) + a polling (`refetchInterval: 10s`)
+     progress table (`GET /coders`, coder email-or-id x per-unitset units-
+     done counts). The old app had essentially no equivalent admin UI to
+     port (only a coder-facing QR/finished-screen component) -- built
+     fresh, intentionally minimal (no CSV export, no per-coder drill-down
+     yet).
+
+  g) Not ported / explicitly deferred: `CodebookPreview.tsx`'s live-runtime
+     preview (rendering the actual annotation interface against an in-
+     progress draft via a design-mode `JobServer`) -- valuable but
+     nontrivial (needs an in-memory/"design mode" `JobServer` variant that
+     doesn't exist yet, see Phase 3.1's parenthetical about a possible
+     "design/offline JobServer variant"); worth revisiting once that
+     variant exists. Job users/roles UI (`PUT /job/:id/users`) has
+     contracts + mock-server support but no UI yet -- deferred, since
+     dev-mode auth (§4/§6) makes it low-priority until HMAC session
+     hardening (Phase 6.1) is designed.
+
+  h) Architecture: `AdminApp.tsx` is a tabbed shell (Job/Codebooks/Units/
+     Unitsets/Coders) taking an `AdminClient` instance as a prop and
+     supplying its OWN `QueryClientProvider` by default (host apps that
+     already use TanStack Query can pass their own `queryClient` prop
+     instead) -- deliberately NOT URL-routed (no router dependency added),
+     consistent with `JobRunner`'s existing "just a component, drop it
+     anywhere" design (§7 packaging goal: usable as a plain library import
+     in a host app's own React tree, e.g. Kasper's separate "database
+     tool"). `HttpAdminClient` (api/httpAdminClient.ts) mirrors
+     `HttpJobServer`'s shape/conventions but authenticates via the
+     mock-server's dev-mode `x-dev-role`/`x-dev-email` headers (§4/§6.1
+     will replace this with real HMAC-signed sessions).
+
+  Verified via: `codebookEdit.test.ts` (14 tests, covering insert/delete/
+  every move scenario including cross-parent moves and the two narrowing/
+  renumbering bugs described in (b) above, both caught by these tests
+  during implementation), `csv.test.ts` (4 tests), a render-smoke test
+  (`AdminApp.test.tsx`, `renderToStaticMarkup`-based, matching the existing
+  `UnitFields.test.tsx` pattern -- no jsdom/interaction-testing infra exists
+  in this package yet), full workspace typecheck/lint/build/test (client
+  test count 46, up from 27), and a live end-to-end smoke test (`tsx`
+  script driving `HttpAdminClient` against a running mock-server instance:
+  read the seeded job, rename it, create a codebook with condition/
+  unit_loop/span/scale items, add a relation item via update, list/delete
+  codebooks, bulk-create/list/delete units, create/list a unitset, create a
+  coder invite, list coders) confirming the whole admin API surface behaves
+  as contracted end-to-end.

@@ -25,12 +25,14 @@ export const UnitCreateSchema = z.object({
   externalId: z.string().min(1),
   data: UnitDataSchema,
 });
+export type UnitCreate = z.infer<typeof UnitCreateSchema>;
 
 /** Body for `POST /units` -- bulk create. */
 export const UnitsCreateBodySchema = z.object({
   overwrite: z.boolean().optional(),
   units: z.array(UnitCreateSchema).max(200),
 });
+export type UnitsCreateBody = z.infer<typeof UnitsCreateBodySchema>;
 
 /**
  * A unit as delivered to a coder mid-annotation: includes this coder's
