@@ -836,6 +836,42 @@ as a starting point for a fresh design pass (not yet implemented/decided).
       `RelationTypeSchema.editMode` (re-editing a previously-submitted
       answer), per-field inline styling.
 
+11h. PARTIALLY RESOLVED (2026-09-18): span annotation edge-case polish
+  (`phase4.3-span-polish`)
+
+  Addressed two of the three items tracked under this todo:
+
+  1. Overlapping spans: rather than teaching `SelectableText` to render
+     overlapping highlighted regions (a real rendering-complexity increase
+     for a niche case), a new selection that would overlap an
+     already-collected span is now rejected up front --
+     `SpanAnnotationContext` gained `overlapsExisting(offset, length)`
+     (simple interval-intersection check over `spans`), and
+     `SelectableText.handleMouseUp` shows an inline warning instead of the
+     code picker when it does. Clicking an existing highlighted span now
+     also removes it directly (`<mark onClick={() => removeSpan(id)}>`) --
+     a lightweight, low-effort way to let a coder "undo" a wrong span
+     without needing full `editMode` re-editing support.
+  2. Resuming a partially-answered unit: `SpanAnnotationProvider` now
+     accepts an `initialSpans` prop, seeded by `JobRunner` from
+     `snapshot.currentUnitVariables?.[item.name]?.spans` -- i.e. whatever
+     spans (if any) the server already had stored for this exact variable
+     when the unit was fetched (this was a latent gap, not explicitly
+     called out before: previously `SpanAnnotationProvider` always started
+     from an empty array, silently discarding any not-yet-`done` spans
+     already on the unit).
+
+  STILL OPEN (unchanged, deferred as lower priority / needs more design):
+    - `SpanTypeSchema.editMode` / `RelationTypeSchema.editMode`: no
+      dedicated re-editing of an ALREADY-`done`-submitted answer (only
+      applies once real navigation, e.g. a "back" step or a coder-facing
+      review screen, exists to revisit a finished unit -- out of scope
+      until that lands).
+    - Per-field inline styling directive attributes (11c.2/11e).
+    - No visual "click a span in the text to select it as a relation
+      endpoint" interaction for `RelationAnswerField` (still plain
+      dropdowns, see 11g).
+
 11d. RESOLVED: scripting/condition-expression sandbox choice (CEL vs JS)
   Context: `condition` items' `expression` field (§2) and any future
   codebook/layout scripting need a safe way to evaluate a small boolean/
@@ -893,7 +929,7 @@ as a starting point for a fresh design pass (not yet implemented/decided).
   (`===`, not CEL's `==`).
 
 12. REACTIVE RECOMPUTATION OF CODEBOOK/LAYOUT STATE (variable-dependent
-    scripts + values)                          [OPEN — DEFERRED, DESIGN CAPTURED]
+    scripts + values)                    [RESOLVED + IMPLEMENTED 2026-09-18]
 
   Problem: codebook items and unit layout content can both reference or
   embed QuickJS expressions/scripts that read *variable values* (e.g. a
@@ -953,11 +989,48 @@ as a starting point for a fresh design pass (not yet implemented/decided).
   trivially-sized demo codebook, but worth revisiting once condition
   counts and/or layout-embedded scripts grow.
 
-  Status: intentionally NOT implemented yet. The exact set of "computed
-  slots" this needs to cover depends on the still-unresolved unit-layout/
-  markdown-scripting design (§11c) -- building the generic memoization
-  utility before that's settled risks having to redesign it anyway. When
-  §11 is resolved, build this as one shared utility (dependency-extraction
-  + per-slot memoized recompute) used by BOTH condition evaluation and
-  whatever layout/question-text scripting mechanism §11c lands on, rather
-  than reimplementing similar caching logic per feature.
+  Status: IMPLEMENTED (2026-09-18), once §11 (unit-layout/markdown
+  scripting design) landed, as one shared utility used by BOTH condition
+  evaluation and unit-layout template interpolation, per the plan above:
+
+    - `codebook/dependencies.ts`: `extractDependencies(script, knownNames)`
+      -- the whole-word regex over known variable/value names described in
+      (b) above, done fresh per call (cheap enough not to need its own
+      separate caching layer).
+    - `codebook/expressionCache.ts`: `ExpressionCache` -- the per-slot
+      memoization described in (a)/(c): `evaluate(key, expression, values)`
+      extracts `expression`'s dependencies against `Object.keys(values)`,
+      shallow-`Object.is`-compares them to the last-cached snapshot for
+      that `key`, and reuses the cached result on a match instead of
+      re-invoking `evaluateExpression`/QuickJS.
+    - `codebook/tree.ts`: `computeTopLevelSteps`/`computeLoopSteps` gained
+      an optional trailing `cache?: ExpressionCache` parameter; each
+      `condition` item is evaluated via `cache.evaluate("condition:" +
+      position, ...)` when a cache is supplied, falling back to the
+      original uncached `evaluateCondition` otherwise (so existing callers/
+      tests that don't pass a cache are unaffected).
+    - `codebook/renderTemplate.ts`: gained optional trailing `cache?`/
+      `keyPrefix?` parameters; each `{{...}}` block is its own slot, keyed
+      by `${keyPrefix}:${blockIndexInTemplate}` -- safe to key purely by
+      index since a given layout's `template` string (and therefore its
+      block order) never changes between calls, only the surrounding
+      `values` do (which is exactly what should invalidate a slot).
+    - `JobManager`: owns exactly ONE `ExpressionCache` instance per coder
+      session (a private field), passed to every `computeTopLevelSteps`/
+      `computeLoopSteps`/`resolveUnitLayout`->`renderTemplate` call.
+      Notably required NO manual "clear on unit change" bookkeeping: since
+      cache entries are invalidated purely by comparing declared
+      dependency VALUES (not by unit/step identity), a template block
+      referencing e.g. a per-unit `headline` column simply misses the
+      cache once that unit changes -- the mechanism designed in (c) above
+      handles this "for free".
+
+  Verified via 3 new test files (`dependencies.test.ts`,
+  `expressionCache.test.ts` -- using `vi.spyOn` on `evaluateExpression` to
+  assert call counts under repeated/changed dependency values --, plus a
+  cache-aware case added to `renderTemplate.test.ts`), full workspace
+  typecheck/lint/build/test, and a live smoke test against a running
+  mock-server instance (2 units, both with conditions/templates/spans/
+  relations) confirming correctness is unaffected by the cache being
+  active (i.e. this is a pure performance optimization, not a behavior
+  change).

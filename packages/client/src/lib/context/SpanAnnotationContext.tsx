@@ -25,6 +25,12 @@ export interface SpanAnnotationState {
    * §11f). */
   addSpan: (offset: number, length: number, code: string, text: string) => void;
   removeSpan: (id: string) => void;
+  /** True if `[offset, offset+length)` overlaps any already-collected span
+   * (design plan §4.3 span-polish -- overlapping spans aren't rendered by
+   * `SelectableText`, which assumes non-overlapping, sorted segments, so new
+   * selections that would overlap are rejected rather than silently
+   * producing broken/undefined rendering). */
+  overlapsExisting: (offset: number, length: number) => boolean;
 }
 
 const SpanAnnotationContext = createContext<SpanAnnotationState | null>(null);
@@ -36,13 +42,18 @@ export function useSpanAnnotation(): SpanAnnotationState | null {
 export function SpanAnnotationProvider({
   column,
   codes,
+  initialSpans,
   children,
 }: {
   column: string;
   codes: CodebookCode[];
+  /** Seeds already-collected spans, e.g. when resuming a unit that already
+   * has a (not-yet-`done`) answer stored for this variable (design plan §4.3
+   * span-polish). */
+  initialSpans?: SpanAnswer[];
   children: ReactNode;
 }) {
-  const [spans, setSpans] = useState<SpanAnswer[]>([]);
+  const [spans, setSpans] = useState<SpanAnswer[]>(initialSpans ?? []);
 
   const value = useMemo<SpanAnnotationState>(
     () => ({
@@ -55,6 +66,8 @@ export function SpanAnnotationProvider({
           { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, field: column, offset, length, code, text },
         ]),
       removeSpan: (id) => setSpans((prev) => prev.filter((s) => s.id !== id)),
+      overlapsExisting: (offset, length) =>
+        spans.some((s) => offset < s.offset + s.length && s.offset < offset + length),
     }),
     [column, codes, spans],
   );

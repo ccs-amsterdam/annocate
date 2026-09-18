@@ -24,26 +24,36 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
  * span by dragging over the text (design plan §11b: character-offset spans,
  * no tokenizer). A small inline code picker appears below the text once a
  * selection is made; picking a code commits the span via `addSpan`.
+ *
+ * Overlapping spans (design plan §4.3 span-polish): `SelectableText` renders
+ * spans as non-overlapping segments sorted by offset, so a new selection
+ * that would overlap an already-collected span is rejected up front (via
+ * `SpanAnnotationContext.overlapsExisting`) with an inline warning, rather
+ * than silently producing an incorrect/undefined rendering. Clicking an
+ * existing highlighted span removes it (a lightweight stand-in for full
+ * re-editing/`SpanTypeSchema.editMode` support, which is still open).
  */
 export function SelectableText({ text }: { text: string }) {
   const annotation = useSpanAnnotation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<{ offset: number; length: number } | null>(null);
+  const [overlapWarning, setOverlapWarning] = useState(false);
 
   if (!annotation) return <span className="whitespace-pre-wrap">{text}</span>;
 
   const spans = [...annotation.spans].sort((a, b) => a.offset - b.offset);
 
-  const segments: { start: number; end: number; code?: string }[] = [];
+  const segments: { start: number; end: number; id?: string; code?: string }[] = [];
   let cursor = 0;
   for (const span of spans) {
     if (span.offset > cursor) segments.push({ start: cursor, end: span.offset });
-    segments.push({ start: span.offset, end: span.offset + span.length, code: span.code });
+    segments.push({ start: span.offset, end: span.offset + span.length, id: span.id, code: span.code });
     cursor = span.offset + span.length;
   }
   if (cursor < text.length) segments.push({ start: cursor, end: text.length });
 
   function handleMouseUp() {
+    if (!annotation) return;
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !containerRef.current) return;
     const range = selection.getRangeAt(0);
@@ -53,7 +63,15 @@ export function SelectableText({ text }: { text: string }) {
     const b = getAbsoluteOffset(containerRef.current, range.endContainer, range.endOffset);
     const [offset, end] = a <= b ? [a, b] : [b, a];
     selection.removeAllRanges();
-    if (end > offset) setPending({ offset, length: end - offset });
+    if (end <= offset) return;
+
+    if (annotation.overlapsExisting(offset, end - offset)) {
+      setOverlapWarning(true);
+      setPending(null);
+      return;
+    }
+    setOverlapWarning(false);
+    setPending({ offset, length: end - offset });
   }
 
   function colorFor(code: string): string {
@@ -65,7 +83,12 @@ export function SelectableText({ text }: { text: string }) {
       <div ref={containerRef} onMouseUp={handleMouseUp} className="whitespace-pre-wrap select-text">
         {segments.map((seg, i) =>
           seg.code ? (
-            <mark key={i} style={{ backgroundColor: colorFor(seg.code) }} title={seg.code}>
+            <mark
+              key={i}
+              style={{ backgroundColor: colorFor(seg.code), cursor: "pointer" }}
+              title={`${seg.code} (click to remove)`}
+              onClick={() => seg.id && annotation.removeSpan(seg.id)}
+            >
               {text.slice(seg.start, seg.end)}
             </mark>
           ) : (
@@ -73,6 +96,12 @@ export function SelectableText({ text }: { text: string }) {
           ),
         )}
       </div>
+      {overlapWarning && !pending && (
+        <p className="text-sm text-destructive">
+          That selection overlaps an existing span. Remove the existing span first (click it) or select
+          non-overlapping text.
+        </p>
+      )}
       {pending && (
         <div className="flex flex-wrap items-center gap-2 rounded border bg-muted/50 p-2 text-sm">
           <span className="text-muted-foreground">Assign code to selection:</span>

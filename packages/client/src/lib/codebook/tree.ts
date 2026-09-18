@@ -1,5 +1,6 @@
 import { comparePositions, parentPosition, type CodebookItem } from "@annotinder/contracts";
 import { evaluateCondition } from "./conditions";
+import type { ExpressionCache } from "./expressionCache";
 
 /**
  * Position-based tree utilities over a flat, positional codebook item array
@@ -41,18 +42,34 @@ export function getAncestors(items: CodebookItem[], position: string): CodebookI
   return ancestors;
 }
 
+/**
+ * Evaluates a `condition` item's expression, using the (optional) shared
+ * `ExpressionCache` (design plan §12) when supplied -- memoizing per
+ * condition item (keyed by its stable `position`) -- and falling back to a
+ * fresh, uncached `evaluateCondition` call otherwise (e.g. in tests that
+ * don't care about memoization).
+ */
+async function evaluateConditionCached(
+  node: Extract<CodebookItem, { type: "condition" }>,
+  values: Record<string, unknown>,
+  cache?: ExpressionCache,
+): Promise<boolean> {
+  if (!cache) return evaluateCondition(node.expression, values);
+  return Boolean(await cache.evaluate(`condition:${node.position}`, node.expression, values));
+}
+
 /** Item internally treated as a "step" is either a leaf variable or an unentered unit_loop. */
 
 async function collectSteps(
   items: CodebookItem[],
   nodes: CodebookItem[],
   values: Record<string, unknown>,
-  opts: { descendIntoLoops: boolean },
+  opts: { descendIntoLoops: boolean; cache?: ExpressionCache },
 ): Promise<CodebookItem[]> {
   const steps: CodebookItem[] = [];
   for (const node of sortByPosition(nodes)) {
     if (node.type === "condition") {
-      if (await evaluateCondition(node.expression, values)) {
+      if (await evaluateConditionCached(node, values, opts.cache)) {
         steps.push(...(await collectSteps(items, getChildren(items, node.position), values, opts)));
       }
       continue;
@@ -74,9 +91,18 @@ async function collectSteps(
  * unit_loop items (in gated/condition-evaluated order), NOT descending into
  * a unit_loop's own children -- those are handled per-unit via
  * `computeLoopSteps` while that loop is active (design plan §5's JobManager).
+ *
+ * `cache` (design plan §12, optional): when supplied, memoizes each
+ * `condition` item's evaluation per-position, reusing the cached result
+ * whenever the condition expression's actually-referenced values haven't
+ * changed since the last call, instead of always re-running QuickJS.
  */
-export function computeTopLevelSteps(items: CodebookItem[], values: Record<string, unknown>): Promise<CodebookItem[]> {
-  return collectSteps(items, getRootItems(items), values, { descendIntoLoops: false });
+export function computeTopLevelSteps(
+  items: CodebookItem[],
+  values: Record<string, unknown>,
+  cache?: ExpressionCache,
+): Promise<CodebookItem[]> {
+  return collectSteps(items, getRootItems(items), values, { descendIntoLoops: false, cache });
 }
 
 /** The gated sequence of unit_variable leaves within one active unit_loop, for the current unit's values. */
@@ -84,6 +110,7 @@ export function computeLoopSteps(
   items: CodebookItem[],
   loopPosition: string,
   values: Record<string, unknown>,
+  cache?: ExpressionCache,
 ): Promise<CodebookItem[]> {
-  return collectSteps(items, getChildren(items, loopPosition), values, { descendIntoLoops: true });
+  return collectSteps(items, getChildren(items, loopPosition), values, { descendIntoLoops: true, cache });
 }

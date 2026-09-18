@@ -52,8 +52,16 @@ export function JobRunner({ baseUrl, coderKey, inviteSecret }: JobRunnerProps) {
     <div className="mx-auto flex max-w-xl flex-col gap-6 p-8">
       {spanVariable ? (
         // Keyed by item.name so span state resets whenever the coder moves
-        // to a different span question (design plan §11b).
-        <SpanAnnotationProvider key={item.name} column={spanVariable.column} codes={spanVariable.codes}>
+        // to a different span question (design plan §11b). Seeds
+        // `initialSpans` from any already-stored (not-yet-`done`) answer for
+        // this variable, so resuming a partially-answered unit doesn't lose
+        // previously-drawn spans (design plan §4.3 span-polish).
+        <SpanAnnotationProvider
+          key={item.name}
+          column={spanVariable.column}
+          codes={spanVariable.codes}
+          initialSpans={snapshot.currentUnitVariables?.[item.name]?.spans}
+        >
           {body}
         </SpanAnnotationProvider>
       ) : (

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { ExpressionCache } from "./expressionCache";
 import { renderTemplate } from "./renderTemplate";
 
 describe("renderTemplate", () => {
@@ -29,5 +30,14 @@ describe("renderTemplate", () => {
     expect(await renderTemplate("# {{headline}}\n\n::tokenize[body]", { headline: "Hi" })).toBe(
       "# Hi\n\n::tokenize[body]",
     );
+  });
+
+  it("supports an optional ExpressionCache (design plan §12), still returning correct results", async () => {
+    const cache = new ExpressionCache();
+    expect(await renderTemplate("{{a}} and {{b}}", { a: 1, b: 2 }, cache)).toBe("1 and 2");
+    // Same values -> cached slots reused, still correct.
+    expect(await renderTemplate("{{a}} and {{b}}", { a: 1, b: 2 }, cache)).toBe("1 and 2");
+    // A changed value -> that slot recomputed, still correct.
+    expect(await renderTemplate("{{a}} and {{b}}", { a: 5, b: 2 }, cache)).toBe("5 and 2");
   });
 });

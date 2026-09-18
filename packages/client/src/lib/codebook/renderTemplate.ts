@@ -1,3 +1,4 @@
+import type { ExpressionCache } from "./expressionCache";
 import { evaluateExpression } from "./expression";
 
 /**
@@ -16,12 +17,31 @@ import { evaluateExpression } from "./expression";
  * those are handled separately by `UnitFields.tsx`/`unitFieldDirective.ts`
  * so that directive-referenced text stays exactly equal to its raw source
  * (a data column or layout constant), never passing through this function.
+ *
+ * `cache` + `keyPrefix` (design plan §12, optional): when supplied, each
+ * `{{...}}` block is treated as its own memoized "slot" (keyed by
+ * `${keyPrefix}:${blockIndex}`) via the shared `ExpressionCache` -- reusing
+ * the last result whenever that block's actually-referenced values haven't
+ * changed, instead of always re-running QuickJS. Safe to key purely by
+ * block index because a given unit_loop's `template` string (and therefore
+ * its `{{...}}` block order) never changes between calls; only `values`
+ * does, which is exactly what invalidates the cache when it should.
  */
-export async function renderTemplate(template: string, values: Record<string, unknown>): Promise<string> {
+export async function renderTemplate(
+  template: string,
+  values: Record<string, unknown>,
+  cache?: ExpressionCache,
+  keyPrefix = "template",
+): Promise<string> {
   const matches = [...template.matchAll(/\{\{([\s\S]+?)\}\}/g)];
   if (matches.length === 0) return template;
 
-  const results = await Promise.all(matches.map((m) => evaluateExpression(m[1].trim(), values)));
+  const results = await Promise.all(
+    matches.map((m, i) => {
+      const expression = m[1].trim();
+      return cache ? cache.evaluate(`${keyPrefix}:${i}`, expression, values) : evaluateExpression(expression, values);
+    }),
+  );
 
   let result = "";
   let cursor = 0;

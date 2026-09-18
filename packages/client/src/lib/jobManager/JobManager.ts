@@ -1,5 +1,6 @@
 import type { CodebookItem, CoderUnitResponse, SessionResponse, UnitLayout, VariableValue } from "@annotinder/contracts";
 import type { JobServer } from "../api/httpJobServer";
+import { ExpressionCache } from "../codebook/expressionCache";
 import { renderTemplate } from "../codebook/renderTemplate";
 import { computeLoopSteps, computeTopLevelSteps } from "../codebook/tree";
 
@@ -50,6 +51,15 @@ export class JobManager {
   private currentUnit: CoderUnitResponse | null = null;
   private loopSteps: CodebookItem[] = [];
   private loopIndex = -1;
+  /**
+   * Per-session, per-slot memoized QuickJS evaluation (design plan §12),
+   * shared by both condition evaluation (`computeTopLevelSteps`/
+   * `computeLoopSteps`) and unit-layout template resolution
+   * (`resolveUnitLayout`) -- avoids re-running an expression/`{{...}}`
+   * block's QuickJS evaluation when none of the values it actually
+   * references have changed since the last time it ran.
+   */
+  private expressionCache = new ExpressionCache();
 
   private listeners = new Set<() => void>();
   private snapshot: JobManagerSnapshot = {
@@ -110,7 +120,7 @@ export class JobManager {
   }
 
   private async advanceTop(): Promise<void> {
-    this.topSteps = await computeTopLevelSteps(this.items, this.conditionValues);
+    this.topSteps = await computeTopLevelSteps(this.items, this.conditionValues, this.expressionCache);
     this.topIndex += 1;
     const next = this.topSteps[this.topIndex];
 
@@ -134,7 +144,7 @@ export class JobManager {
     if (!this.activeLoop) return;
 
     if (this.currentUnit) {
-      this.loopSteps = await computeLoopSteps(this.items, this.activeLoop.position, this.conditionValues);
+      this.loopSteps = await computeLoopSteps(this.items, this.activeLoop.position, this.conditionValues, this.expressionCache);
       this.loopIndex += 1;
       const next = this.loopSteps[this.loopIndex];
       if (next) {
@@ -182,7 +192,12 @@ export class JobManager {
    */
   private async resolveUnitLayout(layout: UnitLayout, unit: CoderUnitResponse): Promise<UnitLayout> {
     const values: Record<string, unknown> = { ...unit.data, ...layout.constants, ...this.conditionValues };
-    const template = await renderTemplate(layout.template, values);
+    const template = await renderTemplate(
+      layout.template,
+      values,
+      this.expressionCache,
+      `template:${this.activeLoop?.position ?? "unknown"}`,
+    );
     return { ...layout, template };
   }
 }

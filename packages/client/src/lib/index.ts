@@ -13,6 +13,8 @@ export * from "./api/httpJobServer";
 export * from "./codebook/tree";
 export * from "./codebook/expression";
 export * from "./codebook/conditions";
+export * from "./codebook/dependencies";
+export * from "./codebook/expressionCache";
 export * from "./codebook/renderTemplate";
 export * from "./jobManager/JobManager";
 export * from "./jobManager/useJobManager";
