@@ -475,7 +475,11 @@ Phase 5 — Codebook + job management UI port          [DONE 2026-09-18, see §1
   5.5 Coders/progress overview + invitation link creation. [DONE --
       `CodersPanel.tsx`; old app had ~no equivalent UI to port, built fresh]
 
-Phase 6 — Hardening
+Phase 6 — Hardening                                    [SUBSTANTIALLY DONE
+2026-09-18: 6.1/6.2/6.4 fully done, 6.3 partially done (documented gaps
+remain: stale-dirty-state/ETag concurrency, field-level codebook error
+display), 6.5 mostly done (TS7 deferred pending typescript-eslint support).
+No further autonomous work planned here absent new bug reports.]
   6.1 Design + implement the HMAC-signed session-token scheme.       [DONE
       2026-09-18, as documentation only] Decided NOT to add real HMAC
       signing to `packages/mock-server` itself: it's explicitly a local-
@@ -494,7 +498,12 @@ Phase 6 — Hardening
       auth header as an opaque string.
   6.2 Immutability enforcement end-to-end (client hides/disables destructive
       actions once a codebook/unit is in use; mock server rejects such
-      mutations).
+      mutations).                                                [DONE,
+      already satisfied by earlier phases 2026-09-18] Verified during this
+      pass: server-side 409s on mutating an immutable codebook/unit are in
+      place (mock-server), and the client's admin UI already disables/
+      hides destructive actions once a codebook is in use. No new work
+      needed.
   6.3 Error/edge-case handling pass (network failures, stale dirty-state
       conflicts, invalid codebooks).                            [PARTIALLY
       DONE 2026-09-18] Addressed the annotation-runtime gap: `JobManager`
@@ -543,7 +552,92 @@ Phase 6 — Hardening
       react` added as a dependency, not currently justified by bug history.
   6.5 Dedicated dependency-upgrade pass: bump React/Zod/TanStack/Tailwind/
       ShadCN etc. to latest, now that the ported code + new data model have
-      stabilized (see §7 — pin-then-upgrade decision).
+      stabilized (see §7 — pin-then-upgrade decision).            [MOSTLY
+      DONE 2026-09-18] Worked through `pnpm -r outdated` methodically,
+      applying each logical dependency group as its own verified
+      (typecheck+lint+test+build) commit so any single bump can be
+      cleanly rolled back:
+        - react/react-dom 19.0->19.3, eslint-plugin-react-refresh: clean,
+          no code changes needed.
+        - @types/node + @hono/node-server v1->v2: clean; verified the
+          Hono major bump with a live runtime boot+HTTP-request smoke
+          test, not just static analysis.
+        - eslint/@eslint/js/eslint-plugin-react-hooks: introduced a new
+          `react-hooks/set-state-in-effect` rule that flagged 5 real
+          "reset local state via useEffect when a prop changes" instances.
+          Fixed all 5 by switching to React's "reset state via `key`"
+          pattern (keying `Question`/`CodebookEditor`/`JobEditForm` by
+          their identity at the call site instead of syncing via effect).
+          While fixing this, found and fixed a real pre-existing bug: the
+          "Duplicate codebook" action computed a correct cloned object but
+          the JSX unconditionally passed `codebook={null}`, silently
+          discarding it (Duplicate behaved identically to New).
+        - vite/vitest/@vitejs/plugin-react/vite-plugin-dts/
+          @vitest/coverage-v8: two regressions fixed. (1) Vitest 5's
+          default excludes no longer keep `tsc -b`'s compiled
+          `dist/**/*.test.js` out of test discovery once a package has
+          been built, silently running every test twice -- fixed with an
+          explicit `exclude: ["**/node_modules/**", "**/dist/**"]` in both
+          affected packages' vitest config. (2) Vite's lib-mode default
+          CSS output filename changed (was `style.css`, now matches the
+          entry's own name) -- since `package.json`'s
+          `exports["./style.css"]` needs a target that won't silently
+          break on the *next* Vite upgrade either, pinned it explicitly
+          via `rollupOptions.output.assetFileNames` instead of chasing
+          Vite's default. Also fixed a new `__dirname` deprecation
+          warning by switching to `import.meta.dirname`.
+        - tailwindcss 3.4->4.3: ran the official `@tailwindcss/upgrade`
+          codemod (migrated the theme into a CSS-first `@theme` block,
+          removed `tailwind.config.ts` entirely) then fixed one thing it
+          couldn't handle automatically: `@import "tw-animate-css"
+          layer(base)` fails to build under v4 because `tw-animate-css`
+          uses `@utility` at-rules internally, and v4 doesn't allow those
+          nested inside a `@layer` block -- dropped the `layer(base)`
+          wrapper. Net effect: built CSS shrank ~138KB -> ~37KB, which is
+          an *improvement* (not a regression) -- v3 couldn't parse
+          `@utility` and was silently passing all of tw-animate-css's
+          (unused) animation utilities through unpurged; v4 correctly
+          tree-shakes them, and grep confirmed no `animate-in`/etc.
+          classes are actually used anywhere in our source.
+        - zod 3.25->4.6: almost a non-event since this codebase already
+          used the modern `z.record(keySchema, valueSchema)` two-arg form
+          and still-supported `.flatten()`/`safeParse` APIs. One real
+          breakage: `z.enum([...])` without `as const` let TypeScript
+          infer the array's own type (numeric indices, Array.prototype
+          methods, etc.) into the schema, breaking every
+          `Record<Role, ...>`-style lookup keyed off the inferred type.
+          Fixed by adding `as const` to all three `z.enum([...])` call
+          sites in `packages/contracts` (Role, coder access mode, unitset
+          order) -- the correct fix per zod v4's own docs.
+        - typescript 5.7->7.0: attempted and reverted. The compiler
+          upgrade itself only needed two small changes (removing the
+          now-removed `baseUrl` option, and the same `as unknown as X`
+          cast-narrowing fix zod's bump also needed -- see below), but
+          `typescript-eslint` 8.70.0 hard-errors with "does not support TS
+          7.0 yet" during lint. Deferred until typescript-eslint adds
+          support; the codebase-side prep work (removing `baseUrl`) can
+          be redone trivially whenever that happens.
+      Also found and fixed, independently of any single bump (surfaced by
+      clearing `tsc -b`'s incremental cache while investigating the TS7
+      attempt): several `db.prepare(...).get()/.all()` calls in
+      mock-server were force-casting `Record<string, SQLOutputValue>`
+      (node:sqlite's actual return type, which changed shape in an
+      earlier `@types/node` bump) directly to concrete row types via `as
+      X` -- TypeScript considers this "insufficiently overlapping" and
+      had simply never re-checked those files since the incremental cache
+      predated the `@types/node` bump. Fixed via `as unknown as X`, the
+      correct explicit-narrowing idiom.
+      Every bump above was verified with the full workspace
+      typecheck/lint/test/build sequence AND, for the ones touching the
+      library package specifically (vite/vitest, tailwind, zod), a fresh
+      external-consumer smoke test (scratch project outside the
+      workspace, `npm install file:...`, real peer deps, `tsc --noEmit` +
+      `vite build`) to confirm the packaged library still actually works
+      for a downstream consumer, not just internally.
+      NOT done: TanStack Query/Table and ShadCN's underlying Radix
+      primitives were already at their current latest at the start of
+      this pass (`pnpm -r outdated` didn't flag them) -- nothing to
+      upgrade there right now. TypeScript 7 remains deferred (see above).
 
 Phase 7 — Packaging                                          [SCOPE CLARIFIED]
   7.1 Structure packages/client so its components/hooks are importable
