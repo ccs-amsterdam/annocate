@@ -677,3 +677,73 @@ as a starting point for a fresh design pass (not yet implemented/decided).
   `advanceTop`/`advanceUnit`, so no further public API changes were
   needed). `condition` items' `expression` field is plain JS
   (`===`, not CEL's `==`).
+
+12. REACTIVE RECOMPUTATION OF CODEBOOK/LAYOUT STATE (variable-dependent
+    scripts + values)                          [OPEN — DEFERRED, DESIGN CAPTURED]
+
+  Problem: codebook items and unit layout content can both reference or
+  embed QuickJS expressions/scripts that read *variable values* (e.g. a
+  `condition` item's `expression`, later probably also question-text
+  interpolation and unit-layout markdown content per §11c/§11's "inject
+  fields via templating, possibly with scripts" history). Whenever a coder
+  answers a variable, everything downstream that depends on that variable
+  needs to be recomputed -- but nothing else should be needlessly
+  recomputed. The old app tried to solve this with an explicit "trigger"
+  system: a maintained graph of "changing variable X should re-run
+  computations Y, Z". This is exactly the kind of bookkeeping that drifts
+  out of sync with the actual script content over time (a script's real
+  dependencies change, but nobody updates the trigger list) and was
+  flagged (2026-09-18) as unnecessarily complicated for what we need.
+
+  Proposed alternative: a single, well-defined "recompute pass" plus
+  per-slot memoization, rather than a hand-maintained trigger graph:
+
+  a. One function (name TBD, NOT `prepare_everything_and_run_quickjs`) is
+     the sole entry point, e.g. `recomputeCodebookState(codebook, unit,
+     values)`. It is called every time relevant state changes (i.e. after
+     any variable is answered/changed -- job-level "user variable" values
+     or per-unit "unit variable" values). It walks every "computed slot"
+     in the current codebook/unit context (condition visibility today;
+     eventually also layout/question-text script-interpolated content
+     once §11c is resolved) and returns the up-to-date derived state
+     (current steps, rendered layout, etc) that JobManager/UI consume.
+
+  b. Dependency extraction, done once per script (e.g. at codebook-load
+     time, not on every recompute): statically scan each embedded script/
+     expression's source text for variable-name references, and record
+     that as the slot's declared dependency set. This can be done cheaply
+     and conservatively via a whole-word regex match of each *known*
+     variable name against the script source (over-approximation is fine
+     and safe here -- a false-positive dependency just causes an
+     occasional unnecessary recompute, never a missed one; a real
+     AST/identifier parse would be more precise but is not needed for
+     correctness, only for slightly better cache-hit rates).
+
+  c. Per-slot cache: for each computed slot (keyed by something stable,
+     e.g. the item's `position` + expression/template source, or a
+     content hash of the same), store (1) the last-seen values for just
+     that slot's declared dependencies, and (2) the last computed result.
+     On each recompute pass, for each slot: compare the current values of
+     its declared dependencies to the cached snapshot (shallow per-key
+     compare is enough, since variable values are small, wholesale-
+     replaced objects, not mutated in place -- see VariableValueSchema);
+     if unchanged, reuse the cached result without re-invoking QuickJS; if
+     changed (or slot not yet cached), re-run the script/expression and
+     update the cache.
+
+  This keeps the mental model simple (one recompute pass, no manually-
+  maintained trigger graph) while still avoiding needless repeated QuickJS
+  evaluation. It generalizes the pattern `evaluateCondition`/
+  `computeTopLevelSteps`/`computeLoopSteps` (§4/§11d) already use in a
+  naive, fully-recompute-every-time form today -- fine for the current,
+  trivially-sized demo codebook, but worth revisiting once condition
+  counts and/or layout-embedded scripts grow.
+
+  Status: intentionally NOT implemented yet. The exact set of "computed
+  slots" this needs to cover depends on the still-unresolved unit-layout/
+  markdown-scripting design (§11c) -- building the generic memoization
+  utility before that's settled risks having to redesign it anyway. When
+  §11 is resolved, build this as one shared utility (dependency-extraction
+  + per-slot memoized recompute) used by BOTH condition evaluation and
+  whatever layout/question-text scripting mechanism §11c lands on, rather
+  than reimplementing similar caching logic per feature.
