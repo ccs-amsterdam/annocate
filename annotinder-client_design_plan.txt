@@ -1,0 +1,4 @@
+Annotinder Client Design Plan
+==============================
+
+(To be filled in.)
