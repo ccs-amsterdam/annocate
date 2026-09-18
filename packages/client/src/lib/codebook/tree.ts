@@ -43,24 +43,24 @@ export function getAncestors(items: CodebookItem[], position: string): CodebookI
 
 /** Item internally treated as a "step" is either a leaf variable or an unentered unit_loop. */
 
-function collectSteps(
+async function collectSteps(
   items: CodebookItem[],
   nodes: CodebookItem[],
   values: Record<string, unknown>,
   opts: { descendIntoLoops: boolean },
-): CodebookItem[] {
+): Promise<CodebookItem[]> {
   const steps: CodebookItem[] = [];
   for (const node of sortByPosition(nodes)) {
     if (node.type === "condition") {
-      if (evaluateCondition(node.expression, values)) {
-        steps.push(...collectSteps(items, getChildren(items, node.position), values, opts));
+      if (await evaluateCondition(node.expression, values)) {
+        steps.push(...(await collectSteps(items, getChildren(items, node.position), values, opts)));
       }
       continue;
     }
     if (node.type === "unit_loop") {
       steps.push(node);
       if (opts.descendIntoLoops) {
-        steps.push(...collectSteps(items, getChildren(items, node.position), values, opts));
+        steps.push(...(await collectSteps(items, getChildren(items, node.position), values, opts)));
       }
       continue;
     }
@@ -75,7 +75,7 @@ function collectSteps(
  * a unit_loop's own children -- those are handled per-unit via
  * `computeLoopSteps` while that loop is active (design plan §5's JobManager).
  */
-export function computeTopLevelSteps(items: CodebookItem[], values: Record<string, unknown>): CodebookItem[] {
+export function computeTopLevelSteps(items: CodebookItem[], values: Record<string, unknown>): Promise<CodebookItem[]> {
   return collectSteps(items, getRootItems(items), values, { descendIntoLoops: false });
 }
 
@@ -84,6 +84,6 @@ export function computeLoopSteps(
   items: CodebookItem[],
   loopPosition: string,
   values: Record<string, unknown>,
-): CodebookItem[] {
+): Promise<CodebookItem[]> {
   return collectSteps(items, getChildren(items, loopPosition), values, { descendIntoLoops: true });
 }

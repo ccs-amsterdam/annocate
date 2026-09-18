@@ -588,8 +588,9 @@ as a starting point for a fresh design pass (not yet implemented/decided).
   became an array of typed fields (text/image/etc) -> gained a complex grid-
   based arrangement system -> gained markdown fields (XSS-safe rendering,
   with other fields "injected" into the markdown via templating, and
-  formerly small JS scripts for logic -- which this redesign already
-  replaces with CEL, see §6/hardening note resolved in Phase 4.2).
+  formerly small JS scripts for logic -- which this redesign now replaces
+  with sandboxed JS (QuickJS), see 11d below for how this scripting/
+  condition-expression choice evolved and was finalized.
 
   User's proposal to investigate: collapse the unit layout down to
   supporting JUST ONE markdown field (dropping the separate text/image
@@ -620,3 +621,59 @@ as a starting point for a fresh design pass (not yet implemented/decided).
   grid, see UnitFields.tsx) and Phase 4.3+ (span/relation UI, still
   unstarted). Do not implement further on this until the design questions
   above are resolved.
+
+11d. RESOLVED: scripting/condition-expression sandbox choice (CEL vs JS)
+  Context: `condition` items' `expression` field (§2) and any future
+  codebook/layout scripting need a safe way to evaluate a small boolean/
+  logic expression against known variable values, without giving codebook
+  authors (who may not be trusted the same as job admins) unsandboxed
+  access to the host JS environment. Phase 3 originally used a plain
+  `new Function(...)` -- flagged as a real risk once written down
+  explicitly (a hostile/broken expression could read host globals or, if
+  ever evaluated server-side, affect other coders' sessions).
+
+  Two real alternatives were evaluated (Phase 4.2, 2026-09-18ish):
+    - CEL (Common Expression Language): briefly adopted via
+      `@marcbachmann/cel-js` -- safe by construction (no loops/mutation/
+      I/O by design), and the CEL *spec* itself is healthy (cel-go, now
+      under the cel-expr org, 3.1k+ stars, active). BUT: cross-language
+      support turned out much weaker than hoped for this project's
+      multi-server-language ambitions (Python/R server backends,
+      design plan §3/§6) -- `cel-js` bindings are small/niche (and a
+      competing `ChromeGG/cel-js` package is already archived, confirming
+      the worry that betting on CEL bindings outside Go is risky);
+      cel-python is tiny; there is no CEL-R binding at all, and building
+      one from scratch (e.g. via cel-cpp + Rcpp) was the only path.
+    - QuickJS: real JavaScript, run inside a small, genuinely sandboxed
+      WASM interpreter (separate heap, zero ambient host access unless
+      explicitly bound in). JS is far more widely known than CEL by
+      codebook authors. Cross-language story turned out to be *better*
+      than CEL's, not worse: R already has a mature, actively-maintained
+      CRAN package (`jeroen/V8`, real embedded Google V8, maintained by a
+      trusted rOpenSci-affiliated author) for running real JS -- so no
+      from-scratch language binding is needed for any target runtime.
+
+  DECISION: switched to QuickJS (`quickjs-emscripten-core` +
+  `@jitl/quickjs-wasmfile-release-sync`, a single lightweight release
+  variant -- NOT the "batteries included" `quickjs-emscripten` package,
+  which bundles four WASM variants and meaningfully bloats the client
+  bundle). Rationale, in the user's own words: JS is more flexible and
+  widely known; the R ecosystem story is trustworthy (Jeroen's package);
+  and even if QuickJS itself ever loses relevance, QuickJS-authored
+  scripts are still just plain JS and would run unmodified in any other
+  JS engine (or a sandboxed sidecar) -- existing codebooks would not need
+  to change. This also aligns with the project's general philosophy of
+  provenance/reproducibility: JS is in no danger of disappearing.
+
+  Implementation: `packages/client/src/lib/codebook/conditions.ts`
+  (`evaluateCondition`, now async) loads a cached QuickJS WASM module once,
+  JSON-embeds the (identifier-safe-filtered) variable-value context as
+  `let` bindings in a generated code string, and evaluates
+  `Boolean(<expression>)` via `QuickJS.evalCode(...)` with a 500ms
+  interrupt deadline and a 1MB memory limit as belt-and-braces guards
+  against runaway/hostile expressions. `codebook/tree.ts`'s
+  `collectSteps`/`computeTopLevelSteps`/`computeLoopSteps` became async as
+  a consequence (awaited from `JobManager`'s already-async
+  `advanceTop`/`advanceUnit`, so no further public API changes were
+  needed). `condition` items' `expression` field is plain JS
+  (`===`, not CEL's `==`).

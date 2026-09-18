@@ -27,11 +27,11 @@ function unitVar(position: string, name: string): CodebookItem {
 describe("tree utilities", () => {
   const items: CodebookItem[] = [
     confirm("1", "consent"),
-    condition("2", "gate", "consent == true"),
+    condition("2", "gate", "consent === true"),
     confirm("2.1", "gated_question"),
     unitLoop("3", "main_loop"),
     unitVar("3.1", "sentiment"),
-    condition("3.2", "inner_gate", "sentiment == 'A'"),
+    condition("3.2", "inner_gate", "sentiment === 'A'"),
     unitVar("3.2.1", "followup"),
   ];
 
@@ -53,21 +53,24 @@ describe("tree utilities", () => {
   });
 
   describe("computeTopLevelSteps", () => {
-    it("excludes a condition's children when the condition is false, does not descend into unit_loop", () => {
-      const steps = computeTopLevelSteps(items, { consent: false });
+    it("excludes a condition's children when the condition is false, does not descend into unit_loop", async () => {
+      const steps = await computeTopLevelSteps(items, { consent: false });
       expect(steps.map((i) => i.name)).toEqual(["consent", "main_loop"]);
     });
 
-    it("includes a condition's children when true", () => {
-      const steps = computeTopLevelSteps(items, { consent: true });
+    it("includes a condition's children when true", async () => {
+      const steps = await computeTopLevelSteps(items, { consent: true });
       expect(steps.map((i) => i.name)).toEqual(["consent", "gated_question", "main_loop"]);
     });
   });
 
   describe("computeLoopSteps", () => {
-    it("gates nested conditions within the loop using per-unit values", () => {
-      expect(computeLoopSteps(items, "3", { sentiment: "A" }).map((i) => i.name)).toEqual(["sentiment", "followup"]);
-      expect(computeLoopSteps(items, "3", { sentiment: "B" }).map((i) => i.name)).toEqual(["sentiment"]);
+    it("gates nested conditions within the loop using per-unit values", async () => {
+      expect((await computeLoopSteps(items, "3", { sentiment: "A" })).map((i) => i.name)).toEqual([
+        "sentiment",
+        "followup",
+      ]);
+      expect((await computeLoopSteps(items, "3", { sentiment: "B" })).map((i) => i.name)).toEqual(["sentiment"]);
     });
   });
 });

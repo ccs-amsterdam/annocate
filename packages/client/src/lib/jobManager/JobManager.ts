@@ -100,7 +100,7 @@ export class JobManager {
   }
 
   private async advanceTop(): Promise<void> {
-    this.topSteps = computeTopLevelSteps(this.items, this.conditionValues);
+    this.topSteps = await computeTopLevelSteps(this.items, this.conditionValues);
     this.topIndex += 1;
     const next = this.topSteps[this.topIndex];
 
@@ -124,7 +124,7 @@ export class JobManager {
     if (!this.activeLoop) return;
 
     if (this.currentUnit) {
-      this.loopSteps = computeLoopSteps(this.items, this.activeLoop.position, this.conditionValues);
+      this.loopSteps = await computeLoopSteps(this.items, this.activeLoop.position, this.conditionValues);
       this.loopIndex += 1;
       const next = this.loopSteps[this.loopIndex];
       if (next) {

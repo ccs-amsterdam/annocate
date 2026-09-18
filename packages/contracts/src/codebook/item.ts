@@ -54,7 +54,9 @@ export const UnitLoopItemSchema = ItemBaseSchema.extend({
  */
 export const ConditionItemSchema = ItemBaseSchema.extend({
   type: z.literal("condition"),
-  expression: z.string().describe("A CEL (Common Expression Language) boolean expression, evaluated against prior variable values"),
+  expression: z
+    .string()
+    .describe("A JS boolean expression (evaluated in a sandboxed QuickJS interpreter), evaluated against prior variable values"),
 });
 
 export const CodebookItemSchema = z.discriminatedUnion("type", [
