@@ -442,11 +442,13 @@ Phase 3 — Client core plumbing
 
 Phase 4 — Annotation UI port
   4.1 Port `components/AnnotationInterface/*` (question forms, answer fields:
-      annotinder/confirm/scale/searchCode/selectCode).
+      annotinder/confirm/scale/searchCode/selectCode). [DONE]
   4.2 Port `components/Document/*` (span/relation annotation rendering,
-      token/text/image/markdown rendering).
+      token/text/image/markdown rendering). [PARTIALLY DONE: text/markdown/
+      image field rendering shipped; span/relation rendering BLOCKED on a
+      design pass -- see §11]
   4.3 Port supporting `functions/*` (tokens, relations, rendering, swipe
-      control, etc.) as needed by the above.
+      control, etc.) as needed by the above. [BLOCKED on §11]
   4.4 Visual/UX parity pass against the old app for the core annotation
       experience.
 
@@ -536,3 +538,85 @@ early phases): §3a — exact shape of resumable progress / unit delivery for
 large unit counts and future crowd-coding. MVP decision documented (option A:
 done-unit-id list per unitset in `/session`); revisit if/when scale or
 crowd-coding becomes a near-term priority.
+
+
+11. UNIT LAYOUT + ANNOTATION MODE REDESIGN (span/relation)   [OPEN — NEEDS DESIGN]
+-------------------------------------------------------------------------------
+Raised after Phase 4.1/4.2: `@annotinder/contracts`' codebook/layout schemas
+currently have NO span or relation field/variable type at all, so
+`old/src/components/Document/*` (~2700 lines: token rendering, span
+selection, relation arrows) cannot be ported as-is. This section records the
+user's own summary of what that old feature did and how it should change,
+as a starting point for a fresh design pass (not yet implemented/decided).
+
+11a. What span/relation annotation actually did (old app)
+  - Tokenizing: unit text was tokenized (word-level, via the `compromise`
+    NLP library) so the coder could select spans of one or more whole words
+    and annotate the selected span with a label from a codebook-defined set
+    of codes.
+  - Relations: two existing spans could be linked together with a relation
+    label. Primary use case: identifying "actor" and "issue" spans in a
+    text, then drawing a relation between them (e.g. a "position"/stance
+    relation) to encode "this actor feels X about this issue."
+  - Old app kept a hard separation between "question mode" (the
+    AnnotationInterface / QuestionForm flow — user_variable / unit_variable
+    style Q&A) and "annotation mode" (the Document/span-relation UI) — two
+    distinct interaction modes bolted together, not one integrated flow.
+
+11b. What should change (per user's 2026-09-18 direction)
+  - Integration: annotation mode (span/relation) should eventually be
+    brought back, but INTEGRATED with the question-form interface rather
+    than kept as a wholly separate mode — i.e. a unit_variable of type
+    "span"/"relation" should fit into the same JobManager-driven step flow
+    as confirm/select_code/scale/etc, not a parallel system.
+  - Simplify span mechanics substantially:
+      - Drop the tokenization library dependency (no `compromise` or
+        equivalent word-tokenizer). No token-index-based offsets.
+      - Spans are stored simply as CHARACTER-INDEX offsets into the
+        underlying text (e.g. `{start, end}` character positions), not the
+        old token-based indexing scheme. The coder-facing selection
+        interaction can still be word-oriented (e.g. snapping selection
+        to word boundaries) but the *stored/contract* representation
+        should be plain character offsets — much simpler than the old
+        pipeline.
+      - Relations: still "a link between two existing spans with a label",
+        mechanism/schema TBD but should follow from the simplified span
+        representation.
+
+11c. The other, related open problem: unit layout simplification
+  History of the old app's unit layout: started as a single text field ->
+  became an array of typed fields (text/image/etc) -> gained a complex grid-
+  based arrangement system -> gained markdown fields (XSS-safe rendering,
+  with other fields "injected" into the markdown via templating, and
+  formerly small JS scripts for logic -- which this redesign already
+  replaces with CEL, see §6/hardening note resolved in Phase 4.2).
+
+  User's proposal to investigate: collapse the unit layout down to
+  supporting JUST ONE markdown field (dropping the separate text/image
+  field-array + grid-arrangement system entirely), IF it can be confirmed to
+  cover all current needs:
+    1. Images: need to confirm markdown rendering can embed images
+       adequately (this is normally supported by markdown, likely fine).
+    2. Styling control: current approach lets users set arbitrary inline
+       CSS per field (React inline-style objects are injection-safe by
+       construction). Need to confirm an XSS-safe markdown renderer can
+       offer equivalent (or better) per-element styling control -- not
+       yet verified whether typical markdown-renderer setups (e.g.
+       react-markdown + remark/rehype plugins) support this cleanly.
+    3. Annotatable regions: the hardest requirement. Some portion(s) of the
+       rendered content need to render as SPECIAL interactive components
+       (to support span selection now, and image-region annotation later)
+       rather than plain static markdown output. This requires the chosen
+       markdown interpreter to support custom component rendering for
+       specific injected content (e.g. a custom remark/rehype node type or
+       component-override mechanism) -- not yet verified as feasible with
+       any specific library.
+
+  This is explicitly flagged as a chunk of work needing its own focused
+  design pass (candidate markdown/renderer library evaluation, a concrete
+  span/relation contract schema proposal, and an annotatable-region
+  rendering mechanism) before implementation resumes on Phase 4.2 (unit
+  layout) beyond what's already done (text/markdown/image field array +
+  grid, see UnitFields.tsx) and Phase 4.3+ (span/relation UI, still
+  unstarted). Do not implement further on this until the design questions
+  above are resolved.
