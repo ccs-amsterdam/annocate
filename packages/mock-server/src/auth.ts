@@ -94,7 +94,7 @@ export function requireCoder(db: DatabaseSync) {
         jobId,
         coderKey,
       );
-      coder = db.prepare("SELECT * FROM coders WHERE jobId = ? AND devKey = ?").get(jobId, coderKey) as CoderRow;
+      coder = db.prepare("SELECT * FROM coders WHERE jobId = ? AND devKey = ?").get(jobId, coderKey) as unknown as CoderRow;
     }
 
     c.set("coder", coder);

@@ -35,8 +35,7 @@ export function unitsetRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
   app.get("/unitsets", requireJobUser(db, "READ"), (c) => {
-    const rows = db.prepare("SELECT * FROM unitsets WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as
-      UnitsetRow[];
+    const rows = db.prepare("SELECT * FROM unitsets WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as unknown as UnitsetRow[];
     return c.json(rows.map(toResponse));
   });
 
@@ -51,8 +50,7 @@ export function unitsetRoutes(db: DatabaseSync) {
       JSON.stringify(parsed.data.unitIds),
       parsed.data.order,
     );
-    const row = db.prepare("SELECT * FROM unitsets WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as
-      UnitsetRow;
+    const row = db.prepare("SELECT * FROM unitsets WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as unknown as UnitsetRow;
     return c.json(toResponse(row), 201);
   });
 
@@ -74,7 +72,7 @@ export function unitsetRoutes(db: DatabaseSync) {
       jobId,
       id,
     );
-    const row = db.prepare("SELECT * FROM unitsets WHERE jobId = ? AND id = ?").get(jobId, id) as UnitsetRow;
+    const row = db.prepare("SELECT * FROM unitsets WHERE jobId = ? AND id = ?").get(jobId, id) as unknown as UnitsetRow;
     return c.json(toResponse(row));
   });
 

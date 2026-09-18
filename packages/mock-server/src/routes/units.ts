@@ -26,14 +26,14 @@ export function unitRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
   app.get("/units", requireJobUser(db, "READ"), (c) => {
-    const rows = db.prepare("SELECT * FROM units WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as UnitRow[];
+    const rows = db.prepare("SELECT * FROM units WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as unknown as UnitRow[];
     return c.json(rows.map(toMeta));
   });
 
   app.get("/units/:id", requireJobUser(db, "READ"), (c) => {
     const row = db
       .prepare("SELECT * FROM units WHERE jobId = ? AND id = ?")
-      .get(c.get("jobId"), Number(c.req.param("id"))) as UnitRow | undefined;
+      .get(c.get("jobId"), Number(c.req.param("id"))) as unknown as UnitRow | undefined;
     if (!row) return c.json({ error: "Unit not found" }, 404);
     return c.json(toResponse(row));
   });
@@ -49,7 +49,7 @@ export function unitRoutes(db: DatabaseSync) {
     const update = db.prepare("UPDATE units SET data = ? WHERE jobId = ? AND id = ?");
 
     for (const unit of parsed.data.units) {
-      const existing = findExisting.get(jobId, unit.externalId) as UnitRow | undefined;
+      const existing = findExisting.get(jobId, unit.externalId) as unknown as UnitRow | undefined;
       if (existing) {
         if (existing.immutable) {
           return c.json({ error: `Unit '${unit.externalId}' is immutable and cannot be overwritten` }, 409);
@@ -61,7 +61,7 @@ export function unitRoutes(db: DatabaseSync) {
         created.push(toResponse({ ...existing, data: JSON.stringify(unit.data) }));
       } else {
         insert.run(jobId, unit.externalId, JSON.stringify(unit.data));
-        const row = db.prepare("SELECT * FROM units WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as UnitRow;
+        const row = db.prepare("SELECT * FROM units WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as unknown as UnitRow;
         created.push(toResponse(row));
       }
     }

@@ -17,7 +17,7 @@ export function coderRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
   app.get("/coders", requireJobUser(db, "WRITE"), (c) => {
-    const rows = db.prepare("SELECT * FROM coders WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as CoderRow[];
+    const rows = db.prepare("SELECT * FROM coders WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as unknown as CoderRow[];
     return c.json(rows.map(toProgress));
   });
 

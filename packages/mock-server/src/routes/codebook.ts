@@ -31,15 +31,14 @@ export function codebookRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
   app.get("/codebook", requireJobUser(db, "READ"), (c) => {
-    const rows = db.prepare("SELECT * FROM codebooks WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as
-      CodebookRow[];
+    const rows = db.prepare("SELECT * FROM codebooks WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as unknown as CodebookRow[];
     return c.json(rows.map(toMeta));
   });
 
   app.get("/codebook/:id", requireJobUser(db, "READ"), (c) => {
     const row = db
       .prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?")
-      .get(c.get("jobId"), Number(c.req.param("id"))) as CodebookRow | undefined;
+      .get(c.get("jobId"), Number(c.req.param("id"))) as unknown as CodebookRow | undefined;
     if (!row) return c.json({ error: "Codebook not found" }, 404);
     return c.json(toResponse(row));
   });
@@ -56,8 +55,7 @@ export function codebookRoutes(db: DatabaseSync) {
       JSON.stringify(parsed.data.items),
       created,
     );
-    const row = db.prepare("SELECT * FROM codebooks WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as
-      CodebookRow;
+    const row = db.prepare("SELECT * FROM codebooks WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as unknown as CodebookRow;
     return c.json(toResponse(row), 201);
   });
 
@@ -79,7 +77,7 @@ export function codebookRoutes(db: DatabaseSync) {
       jobId,
       id,
     );
-    const row = db.prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, id) as CodebookRow;
+    const row = db.prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, id) as unknown as CodebookRow;
     return c.json(toResponse(row));
   });
 

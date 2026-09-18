@@ -34,12 +34,12 @@ export function jobRoutes(db: DatabaseSync) {
       parsed.data.archived ? 1 : 0,
       created,
     );
-    const row = db.prepare("SELECT * FROM jobs ORDER BY id DESC LIMIT 1").get() as JobRow;
+    const row = db.prepare("SELECT * FROM jobs ORDER BY id DESC LIMIT 1").get() as unknown as JobRow;
     return c.json(toJobResponse(row), 201);
   });
 
   app.get("/job/:id", requireJobUser(db, "READ"), (c) => {
-    const row = db.prepare("SELECT * FROM jobs WHERE id = ?").get(c.get("jobId")) as JobRow;
+    const row = db.prepare("SELECT * FROM jobs WHERE id = ?").get(c.get("jobId")) as unknown as JobRow;
     return c.json(toJobResponse(row));
   });
 
@@ -52,7 +52,7 @@ export function jobRoutes(db: DatabaseSync) {
       parsed.data.archived ? 1 : 0,
       c.get("jobId"),
     );
-    const row = db.prepare("SELECT * FROM jobs WHERE id = ?").get(c.get("jobId")) as JobRow;
+    const row = db.prepare("SELECT * FROM jobs WHERE id = ?").get(c.get("jobId")) as unknown as JobRow;
     return c.json(toJobResponse(row));
   });
 

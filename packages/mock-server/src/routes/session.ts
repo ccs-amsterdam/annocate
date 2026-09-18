@@ -134,7 +134,7 @@ export function sessionRoutes(db: DatabaseSync) {
     const allDone = Object.values(variables).every((v) => v.done);
     if (allDone) {
       const doneUnitIds = JSON.parse(coder.doneUnitIds) as Record<string, number[]>;
-      const unitsets = db.prepare("SELECT * FROM unitsets WHERE jobId = ?").all(jobId) as UnitsetRow[];
+      const unitsets = db.prepare("SELECT * FROM unitsets WHERE jobId = ?").all(jobId) as unknown as UnitsetRow[];
       for (const unitset of unitsets) {
         const ids: number[] = JSON.parse(unitset.unitIds);
         if (!ids.includes(unitId)) continue;
