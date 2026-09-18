@@ -1,8 +1,9 @@
 ANNOTINDER-CLIENT DESIGN PLAN
 =============================
-Status: draft v2 (structured). Supersedes the original free-form notes below each
-have been folded into the relevant sections. Items needing a decision from Kasper
-are marked [OPEN QUESTION].
+Status: draft v3 (all v2 open questions resolved by Kasper; codebook data
+model revised accordingly). Answers are recorded inline as [ANSWER]/[NOTE]
+blocks for history; resolutions are also folded into the main text and
+summarized in §10.
 
 
 0. VISION (recap)
@@ -48,67 +49,103 @@ something under the `ccs-amsterdam` org name)?
     [ANSWER] @annotinder/*
 
 
-2. DATA MODEL (replacing projects/jobsets/jobs)
+2. DATA MODEL (replacing projects/jobsets/jobs)          [REVISED per answers]
 ------------------------------------------------
 Drop "projects" entirely. The only top-level entity is a "job".
 
   job
     - id, name, created, archived/deployed flag
-    - users (coders) with roles (owner/manager/coder — auth model detailed in §5)
-    - units[]            (immutable once used by any coder — see below)
+    - job users: people who manage the job (NOT the same thing as coders — see
+      below), each with a role: ADMIN | WRITE | READ. Managed as a full-replace
+      list (`PUT /job/:id/users`), consistent with the whole-resource philosophy.
+    - unitsets[]          named, ordered selections of units (see `unitset`
+      below) — replaces the old jobSets/jobSetUnits concept, but scoped to
+      "which units, in what order" rather than "which coders see what" (coder
+      assignment now happens via codebook branching/auto-variables instead,
+      see `codebook` below).
     - codebooks[]         (multiple allowed; immutable once used — see below)
 
-  codebook
-    - belongs to a job
-    - full document (tree of phase/group/variable nodes, same DAG structure as
-      the old `codebookNodes` table) stored as ONE json blob, not normalized rows.
-      This matches the "no partial updates" decision in §3.
-    - once referenced by any coder progress/annotation, a codebook becomes
-      immutable and undeletable; editing creates a new codebook record instead.
-      (client must therefore support "duplicate as new codebook" workflows)
+  unitset
+    - belongs to a job; { id, name, unit ids in order (or a rule such as
+      "random order") }
+    - referenced by a codebook's "unit loop" item (see below) to determine
+      which units that loop iterates over, and in what order. A job can have
+      multiple unitsets (e.g. to assign different unit sequences to different
+      experimental conditions, or a practice set vs. a main set).
+    - units themselves stay a flat, job-scoped, immutable-once-used list, same
+      as before; a unitset just orders/selects from that list rather than
+      duplicating unit content.
+
+  codebook                                                [REDESIGNED]
+    - belongs to a job; stored as ONE json blob (full document, no partial
+      updates — matches §3).
+    - NOT a DAG of nodes anymore. It is a FLAT ARRAY of items, each with a
+      dotted-decimal `position` (e.g. "2", "4", "4.1", "4.2", "4.2.1") that
+      encodes parent/child nesting purely through the position value (item
+      "4.1" is a child of item "4"). Simpler to store/diff/validate than a
+      normalized tree, at the cost of some flexibility (e.g. reordering means
+      recomputing positions — see Phase 5 note on editor implementation).
+    - Item types:
+        - user variable: any question/info-block/screen-out/"auto" variable
+          (auto variables can take a random value, or a value from a URL
+          param — this is now how "experimental condition assignment"
+          works, e.g. an auto variable `experimental_group`; researchers can
+          later also assign a specific coder's value for such a variable
+          explicitly). Leaf node — cannot have children.
+        - unit loop: like a `for unit in unitset`. References one of the
+          job's `unitsets`, and carries loop-level settings (layout to use,
+          whether unit order is randomized per-coder, etc). MUST have
+          children (meaningless without them). E.g. a unit loop at position
+          "4" has its unit variables at "4.1", "4.2", ...
+        - condition: like `if <expression>:` — determines whether its
+          children are shown to the coder. Can appear anywhere in the tree.
+        - unit variable: like a user variable, but only valid/meaningful
+          inside a unit loop (may allow additional annotation types, e.g.
+          span annotations, that don't make sense outside a unit context).
+    - Nesting rules (validated client-side, ported/rewritten from
+      `treeFunctions.ts` for the new positional model): variables (user or
+      unit) are always leaves; user variables cannot appear inside a unit
+      loop; unit variables MUST appear inside a unit loop; conditions may
+      appear anywhere; unit loops cannot be nested inside another unit loop.
+      Moving a variable across the user/unit boundary (i.e. in/out of a unit
+      loop) is intentionally NOT supported — treated as delete + recreate,
+      since the two variable kinds may carry different, non-transferable
+      settings.
+    - Once referenced by any coder progress/variable, a codebook becomes
+      immutable and undeletable; editing creates a new codebook record
+      instead (client must support a "duplicate as new codebook" workflow).
 
   unit
-    - belongs to a job, has externalId + data (unchanged from old design)
+    - belongs to a job, has externalId + data (unchanged from old design).
     - has a `variables` json field, keyed by coder id, holding that coder's
-      unit-level annotations for this unit:
-        unit.variables = { [coderId]: { [variableName]: AnnotationValue } }
+      unit-level variables for this unit:
+        unit.variables = { [coderId]: { [variableName]: VariableValue } }
     - once a unit has recorded variables for ANY coder, or is referenced by a
       deployed codebook run, the unit content itself becomes immutable (data
       can no longer change) — new units must be created instead.
 
   coder
-    - belongs to a job (no more global "users" shared across projects — a coder
-      identity is scoped to the job it was invited to, consistent with dropping
-      projects)
+    - belongs to a job (job-scoped identity, distinct from "job users" above —
+      a coder is someone doing the annotation task via an invite/access link,
+      not someone managing the job).
     - has a `variables` json field for coder-level (global/survey) variables:
-        coder.variables = { [variableName]: AnnotationValue }
-    - has session/progress bookkeeping (current phase/unit index, done flags)
+        coder.variables = { [variableName]: VariableValue }
+    - has session/progress bookkeeping (current unit-loop/unit index, done
+      flags per unitset — see §3 for the still-open questions on exactly what
+      shape this takes).
 
 Rename throughout the codebase: "annotation(s)" -> "variable(s)" wherever we mean
-the recorded coder input. Keep "codebook variable" naming for the *definition*
-(already named this way in `CodebookNodeData`/tree type "variable").
+the recorded coder input. Keep "codebook variable" naming for the *definition*.
 
-This removes: `projects`, `managers`, `jobSets`, `jobSetUnits`, `invitations` (as a
-separate table — invitations become simple job-scoped access links, see §5),
+This removes: `projects`, `managers`, `jobSets`/`jobSetUnits` as coder-facing
+concepts (replaced by `unitsets` as a pure unit-ordering concept, with coder
+assignment moved into codebook auto-variables/conditions), `invitations` as a
+separate table (invitations become simple job-scoped access links, see §5),
 `annotatorSession`/`annotatorUnits`/`variableAnnotations` as normalized tables
-(replaced by the two json fields above).
+(replaced by the json fields above), and `codebookNodes` as a normalized DAG
+table (replaced by the flat positional array inside the codebook json blob).
 
-[OPEN QUESTION] Confirm we're fully OK dropping jobSets/experimental-condition
-assignment for now, or should "coder groups" (for randomized condition assignment)
-be kept as a lightweight concept inside a single job? The old notes.txt mentions
-this is an important use case (experiments). Suggest: keep as a *codebook-level*
-concept (branching/condition already exists in CodebookNode) rather than a
-separate DB table, but flag explicitly since it's a feature regression risk.
-    [ANSWER] The idea of jobsets / experimental-conditions will be quite difference. What I'm thinking is the following:
-             - codebooks can have "auto" variables, that support random values, or values from url params. So we could just have a experimental_group variable. Also, researchers could then just assign specific coders by setting this variable. (we'll think later about that option)
-             - The codebook structure in general will be updated, so maybe you could already take this into account.
-               - We might remove the full DAG approach for a simpler design. It will just be an array of items. Each item has a position, which can be 2, 4.1, etc. 4.1 then means that its a child of 4. So the entire parent-child structure will just be based on these positions. This makes it a bit less flexible, but much easier to structure.
-               - There will be (thinking aloud here) the following type of items:
-                  - user variable: any kind of question, information block, screen-out question, auto-variable, etc. User variables always result in a value that will be stored (and possible side-effects, like screen-out). These items cannot have children.
-                  - unit loop: Kind of like a for loop (for unit in unitset). Here we specify what units we use. So we'll need some sort of unitset table that can have different selections of units (unitsets?) in different orders. This could then be used to e.g. assign differnet sets to different conditions, randomize sets across coders, or assign specific coder sets. unit loop items CAN have children (and are useless without them). So e.g. we'll have a unit loop with position 4, and the unit variables will be 4.1, 4.2, etc. Unit loop items will also specify the unit layout, and can set variables like whether units are randomized across users.
-                  - condition: Kind of like an if statement (if age < 18: ). It determines whether the children will be presented to the user.
-                  - unit variable: essentially the same as a user variable, but there might be some differences in terms of things we'll only allow in unit variables (like span annotations in units). Though perhaps we could just make this a variable, and have what is allowed be purely determined by whether the variable is inside a unit loop. One thing to also consider here is whether we allow moving variables in and out of unit loops (switching from unit var to coder var). This is probably not usefull, and creates issues with how moving then invalidates settings.
-                  - So we do still have a DAG like structure with nesting rules: variables cannot have children (leaf nodes). user variables cannot be in unit loops. unit variables have to be in a unit loop. conditions can be everywhere I guess. unit loops cannot be inside of unit loops.
+RESOLVED: package scope confirmed as `@annotinder/*` (was open question in §1).
 
 
 3. API CONTRACT (packages/contracts)
@@ -120,6 +157,15 @@ language), and reproducibility guarantees baked into the shapes.
 Endpoints (all scoped under a job; a server may expose one job per deployment,
 or route by jobId — the client should not assume which):
 
+  POST   /job                  create a job
+  GET    /job/:id               job metadata
+  PUT    /job/:id                update job metadata (full replace)
+  DELETE /job/:id                delete a job
+  GET    /job/:id/users          list job users (manager-only)
+  PUT    /job/:id/users          replace the full list of job users + roles
+                                 (ADMIN | WRITE | READ) — whole-resource, like
+                                 the codebook endpoints.
+
   GET    /codebook           list codebook (metadata only: id, name, created, immutable)
   GET    /codebook/:id        full codebook document
   POST   /codebook            create a new codebook (full document)
@@ -130,11 +176,19 @@ or route by jobId — the client should not assume which):
   GET    /units/:id            full unit (fails/redacts if not permitted)
   POST   /units               bulk create units
   DELETE /units/:id            delete a unit (fails if immutable/in use)
+  GET    /unitsets              list unitsets (id, name, unit ordering/rule)
+  POST   /unitsets              create a unitset
+  PUT    /unitsets/:id           replace a unitset in full
+  DELETE /unitsets/:id           delete a unitset (fails if referenced by a
+                                 unit loop in an in-use codebook)
 
   GET    /session              resolve the current coder's session (auth token in,
                                 coder id/progress/codebook reference out)
-  GET    /unit/next            get the next unit + this coder's existing variables
-                                for it (replaces old getUnit)
+  GET    /unitset/:setname/next  get the next unit within a given unitset (or
+                                `_` for "the job's only/default unitset") +
+                                this coder's existing variables for it
+                                (replaces old getUnit; setname-scoped because a
+                                codebook can now have multiple unit loops)
   POST   /variables/unit       upsert this coder's variables for a given unit
                                 (id = jobId+coderId+unitId+variableName, full
                                 replace of that unit's variable object — no partial
@@ -144,17 +198,35 @@ or route by jobId — the client should not assume which):
   GET    /coders                (manager-only) list coders + progress in a job
   POST   /coders/invite          create an invitation/access link
 
-[NOTE]: we do off course need to be able to create, update and delete a job, set the job users (with different permissions: ADMIN, WRITE, READ).
-        The unit flow will also be a bit more complicated. Jobs can have multiple unit loops, related to unitsets (see one of the answers above).
-        So it will be something like /unitset/[setname or _ for all]/next
-        Also, we need to think about what happens when a code later logs in again to resume a job. We'll want to support going back, so they'll need
-        to be able to get a unit by index. My current thoughts are that we should probably just include the full list of done unit_ids per unitset in /session response to have clear progress. (or all done annotations, but that could be quite a payload. It would then be able to have client fully compute progress itself). The server can then
-        sort this list on a created_date included in the coder's annotations on the unit, so it matches the order the user saw the units.
-        Instead of the user having to request what units to do next, we could also have session include the full user queue of units. And we could then even let the client randomize it if desired.
-        The main complications here are: at what point will this become a problem if there are too many units? (maybe there should be a limit, or we shoudl work in batches).
-        Also, we will at some point want to implement crowd coding, where users get units assigned based on a global queue of which units have already been coded by others.
-        So in that case we cannot send all units at the start.
-        SO yeah... there are some things to figure out here. Just pointing them out now so you can onsider what to prioritize, and what to reserve for later
+3a. OPEN DESIGN POINT — unit delivery & resumable progress (not yet resolved)
+Raised in Kasper's note; needs a decision before/while implementing Phase 2,
+but not before Phase 1 contract scaffolding since it mainly affects `/session`
+and `/unitset/:setname/next` response shapes, not the rest of the contract.
+
+Problem: a coder must be able to log back in and resume (incl. going back to
+previous units), which requires the server to convey progress/order somehow.
+Three options considered, each with tradeoffs:
+  (A) `/session` returns, per unitset, the list of done unit ids (ordered by
+      the coder's own annotation `created` timestamps) — client derives "next"
+      itself and can go back by index. Cheap for small/medium unit counts,
+      does NOT support crowd-coding (global assignment queue) later.
+  (B) `/session` returns full annotation history — same idea, larger payload,
+      redundant with data already needed elsewhere.
+  (C) `/session` (or a dedicated endpoint) returns the FULL unit queue for the
+      coder up front (optionally client-randomized) — simplest for the
+      client, but doesn't scale to very large unit counts and is fundamentally
+      incompatible with crowd-coding (where assignment depends on a live,
+      shared, cross-coder queue and can't be precomputed at session start).
+
+Decision for MVP (Phases 2-4): implement option (A) — done-unit-id list per
+unitset in `/session`, plus `/unitset/:setname/next` for forward progress and
+plain by-index lookups for "going back". This is the simplest option that
+still keeps the door open for crowd-coding later (which would instead require
+`/unitset/:setname/next` to consult a server-side global queue rather than a
+per-coder precomputed list — a server-implementation concern, not a contract
+shape change). Revisit batching/pagination if/when unit counts get large
+enough for (A)'s payload to matter (flag as a Phase 6+ concern, not a v1
+blocker).
 
 No more granular `codebookNodes/:id` CRUD (that was the "partial, efficient
 update" model we are explicitly dropping per the brief). The client is
@@ -192,17 +264,35 @@ server-side-session-oriented model). Instead:
     implementations can choose their own session strategy as long as they
     return/accept the same opaque token shape.
 
-[OPEN QUESTION] Do we want the HMAC session-token design finalized before or
-after the first working end-to-end port (client + mock-server + one full
-annotation flow)? Recommendation: get a trivial/unsigned mock-server session
-first (Phase 3 below), then harden with HMAC once the shapes are stable
-(Phase 6), to avoid over-designing before we've validated the simplified data
-model in practice.
-    [ANSWER]: Yet, let's wait with the HMAC signing for now. To give an idea of what I have in mind (that you could maybe document somwhere:
-    - the server will have a global salt, used for signing
-    - when a codebook is created or updated, the server will sign various elements:
-      - the allowed values for a variable (e.g. gender: male / female / other) will be signed individually like HMAC(codebook_id, variable, validation_rule, value, position). So the server can confirm these are valid answers without having to fetch the codebook.
-      - The validation rule specifies what parts to hash. "v" could mean validate the exact value, which requires including the value. i3:6 could mean integer with range 3 to 6. In this case value is just NULL, and the validation_rule is included in the value that the user submits. For example: female.v.hash, or (female,v,hash).
+[RESOLVED — deferred to Phase 6, design documented now] Kasper: let's wait
+with implementing HMAC signing for now, but here's the intended design so it
+can be accounted for in the contract/data-model shapes in the meantime:
+  - The server holds one global salt used for signing.
+  - When a codebook is created/updated, the server signs the allowed-value
+    "tokens" for each variable individually, e.g. for a `gender` variable with
+    values male/female/other, each value gets its own signature:
+        HMAC(codebook_id, variable, validation_rule, value, position)
+    so the server can later validate a submitted answer against this
+    signature WITHOUT needing to fetch/parse the codebook at all.
+  - `validation_rule` controls which parts feed the hash / what the coder
+    actually submits:
+      - `v` = "validate exact value": the value itself is part of the hash,
+        and the coder submits the plain value + the precomputed signature,
+        e.g. submitting `female.v.<hash>`.
+      - `i3:6` = "integer in range 3..6": value is NOT part of the hash (it's
+        NULL/omitted since any integer in range is valid); the validation
+        rule string itself is embedded in what the coder submits, e.g.
+        `(female,v,hash)`-style tuples, or `i3:6.<hash>` for a numeric answer.
+  - Net effect: the mock-server (and any real server) can stay fully
+    stateless about codebook contents at answer-submission time — it only
+    needs the global salt to re-derive and compare the HMAC, rather than
+    re-fetching/re-validating the whole codebook document per submission.
+  - Implication for the contract: variable value payloads posted via
+    `POST /variables/unit` / `POST /variables/coder` need a field to carry
+    this signature/validation-rule alongside the value (exact shape to be
+    finalized in Phase 6, but contracts should reserve room for it now,
+    e.g. an optional `proof` string on the variable-value schema, so we don't
+    need a breaking contract change later).
 
 
 5. CLIENT ARCHITECTURE
@@ -217,9 +307,14 @@ Keep the current conceptual pieces, ported and simplified:
   - `functions/jobManagerState/*` — progress/annotation-library computation.
     Port with the variable renaming; should get simpler since unit variables
     are now a flat per-coder json blob instead of normalized rows.
-  - `functions/treeFunctions.ts` — codebook DAG validation/shape logic. This
-    becomes MORE important, since the client now owns full codebook
-    validation before submission (server does only structural/auth checks).
+  - `functions/treeFunctions.ts` — codebook shape/nesting validation logic.
+    Needs a substantial rewrite (not a straight port) for the new flat/
+    positional codebook model (§2): position-string parsing/ordering,
+    parent/child derivation from position values, and the new item-type
+    nesting rules (user variable / unit loop / condition / unit variable).
+    This becomes MORE important than before, since the client now owns full
+    codebook validation before submission (server does only structural/auth
+    checks).
   - `components/AnnotationInterface/*`, `components/Document/*` — the actual
     annotation UI (span/relation/select/scale/etc question types). Port with
     minimal changes; these are the most reusable, backend-agnostic pieces.
@@ -261,9 +356,10 @@ Vite. Keep React Testing Library.
     plain `node:http`/Express — pick whichever keeps deps minimal; Hono is a
     good fit given it's fetch-standard and works well with zod validation
     middleware).
-  - SQLite (via `better-sqlite3` or `node:sqlite` if Node version allows) as
-    the storage, mirroring the simplified schema in §2 (jobs, codebooks,
-    units, coders — each with the json blob columns described above).
+  - SQLite via the built-in `node:sqlite` (Node >= 22, see resolved decision
+    below) as the storage, mirroring the simplified schema in §2 (jobs,
+    codebooks, units, coders — each with the json blob columns described
+    above).
   - Fully resettable: a single script/endpoint to drop + recreate + optionally
     seed the DB, so it can be reset between test runs or demo sessions.
   - Implements every endpoint in §3 using the same zod schemas from
@@ -273,25 +369,20 @@ Vite. Keep React Testing Library.
     convenience (reusing the swagger-ui-react idea from the old app, or a
     lighter alternative like Scalar).
 
-[OPEN QUESTION] Node version / SQLite driver choice — ok to require a fairly
-recent Node (>=22) to use the built-in `node:sqlite`, or should we depend on
-`better-sqlite3` for broader compatibility?
-   [ANSWER]
+[RESOLVED] Node >= 22, using the built-in `node:sqlite` (no `better-sqlite3`
+dependency needed).
 
 
-7. DEPENDENCY / VERSION STRATEGY
+7. DEPENDENCY / VERSION STRATEGY                              [RESOLVED]
 ------------------------------------
-Recommendation: install latest versions up front (React 19, Zod 4 if stable
-enough, latest TanStack Query/Table, latest Tailwind v4, latest ShadCN CLI
-output) and adapt code while porting, rather than copying old code unchanged
-and upgrading later. Rationale: we are already rewriting/moving every file by
-hand for the data-model changes, so doing the version bump in the same pass
-avoids a second full-repo touch later. The main risk is Tailwind v3->v4 and
-zod v3->v4 breaking changes; budget explicit time for this in Phase 1.
-
-[OPEN QUESTION] Confirm: latest-versions-now approach, or would you rather
-pin to the old versions first to reduce unknowns while the data model is
-still in flux, and upgrade in a dedicated later phase?
+Decision: pin to the same major versions as `old/` while porting (React 19,
+Zod 3, Tailwind 3, current TanStack Query/Table, etc.), then do a dedicated
+version-upgrade pass in a later phase once the new data model/contracts have
+stabilized. This matches Kasper's stated preference, and also reduces the
+number of simultaneously-changing variables while ported code is being
+adapted to the new data model — easier to tell whether a bug came from the
+data-model change or from a library upgrade. Add a dedicated step for this
+(see Phase 6.5 below) rather than folding it into Phase 1.
 
 
 8. STEPWISE EXECUTION PLAN
@@ -299,7 +390,12 @@ still in flux, and upgrade in a dedicated later phase?
 Phase 0 — Workspace scaffolding
   0.1 Set up pnpm workspace (pnpm-workspace.yaml, root package.json, shared
       tsconfig base, shared eslint/prettier config).
-  0.2 Scaffold packages/client with Vite + React + TS template.
+  0.2 Scaffold packages/client with Vite + React + TS template. Set up the
+      Vite config with both a standalone-app entry (for local dev against the
+      mock-server) and a library-mode build target (components/hooks exported
+      for consumption inside another host React app — see Phase 7), so the
+      "importable as a plugin" requirement doesn't require reworking the
+      build later.
   0.3 Scaffold packages/contracts as a plain TS package (no bundler needed
       beyond `tsc`, or `tsup` if we want dual ESM/CJS output for the mock
       server + future non-Vite consumers).
@@ -337,8 +433,9 @@ Phase 3 — Client core plumbing
   3.2 Port `JobManager` + `functions/jobManagerState/*`, renaming
       annotations -> variables, and simplifying around the new flat
       per-coder-per-unit variable storage (no more phase/session tokens).
-  3.3 Port `functions/treeFunctions.ts` (codebook DAG logic) — this is now the
-      client's sole source of truth for codebook validity.
+  3.3 Rewrite `functions/treeFunctions.ts` for the new positional codebook
+      model (§2) — this is now the client's sole source of truth for
+      codebook validity.
   3.4 Get one full annotation flow working end-to-end against the mock
       server: session -> get unit -> answer a question -> post variables ->
       next unit -> finished screen.
@@ -378,21 +475,24 @@ Phase 6 — Hardening
   6.4 Test coverage: Vitest unit tests for contracts + jobManagerState logic,
       component tests for the annotation interface, a basic e2e smoke test
       against the mock server (Playwright, optional).
+  6.5 Dedicated dependency-upgrade pass: bump React/Zod/TanStack/Tailwind/
+      ShadCN etc. to latest, now that the ported code + new data model have
+      stabilized (see §7 — pin-then-upgrade decision).
 
-Phase 7 — Packaging
-  7.1 Ensure packages/client builds to a distributable bundle usable without
-      the rest of the monorepo (evaluate whether it needs to be "installable
-      without node dependencies" as a static bundle / web component / iframe-
-      embeddable widget — clarify requirement).
-  7.2 Publish packages/contracts (and later packages/client) to npm under the
-      chosen scope.
+Phase 7 — Packaging                                          [SCOPE CLARIFIED]
+  7.1 Structure packages/client so its components/hooks are importable
+      directly into a host app's own React tree (e.g. Kasper's separate
+      "database tool" wants to use annotinder-client as a plugin/component
+      library, not just run it as a standalone site) — i.e. build in library
+      mode (Vite `build --lib`) exporting components/hooks/types, in addition
+      to (or instead of) a standalone app entry point used for local dev.
+      Node is NOT a runtime requirement for consumers — it's only needed for
+      the mock-server and local dev tooling.
+  7.2 DO NOT publish packages/contracts or packages/client to npm yet — defer
+      until we actually need it consumed externally. Revisit naming/publish
+      workflow at that point.
   7.3 Decide fate of `old/` (delete once parity is reached and no longer
       needed as reference).
-
-[OPEN QUESTION] For 7.1: what does "installable without node dependencies"
-mean precisely — a prebuilt static bundle (JS+CSS) that any server can serve
-as-is, a Web Component, or something else? This affects build tooling choices
-in Phase 0.
 
 
 9. TRACEABILITY NOTES (old -> new, for reference during porting)
@@ -401,7 +501,7 @@ in Phase 0.
   old/src/classes/JobServerDesign.tsx         -> packages/client HttpJobServer (rewritten)
   old/src/classes/MockServer.ts               -> packages/mock-server (rewritten, real HTTP+SQLite)
   old/src/functions/jobManagerState/*         -> packages/client, ported + renamed
-  old/src/functions/treeFunctions.ts          -> packages/client, ported
+  old/src/functions/treeFunctions.ts          -> packages/client, REWRITTEN for positional codebook model (§2)
   old/src/components/AnnotationInterface/*    -> packages/client, ported
   old/src/components/Document/*               -> packages/client, ported
   old/src/app/api/**/schemas.ts               -> packages/contracts, ported + simplified
@@ -410,13 +510,29 @@ in Phase 0.
   old/src/components/ui/*                     -> packages/client, ported (ShadCN components, re-generate via CLI against new Tailwind version instead of copying, to pick up any breaking-version fixes)
 
 
-10. SUMMARY OF OPEN QUESTIONS
+10. SUMMARY OF OPEN QUESTIONS                                  [ALL RESOLVED]
 ---------------------------------
-  a. npm scope / package naming.
-  b. Keep or drop "coder groups" / experimental condition assignment as a
-     first-class concept vs. codebook-level branching only.
-  c. Timing of HMAC session-token design (recommend: after Phase 3 MVP).
-  d. Node/SQLite driver choice for the mock server.
-  e. Latest-dependency-versions-now vs. pin-old-versions-then-upgrade-later.
-  f. Exact meaning of "installable without node dependencies" for the client
-     package (static bundle vs web component vs other).
+  a. npm scope: `@annotinder/*`. Confirmed.
+  b. "Coder groups"/experimental conditions: replaced by codebook auto-
+     variables (random / URL-param driven) + explicit coder-value assignment,
+     combined with the redesigned flat/positional codebook (user variable /
+     unit loop / condition / unit variable item types) and job-level
+     `unitsets`. See §2.
+  c. HMAC session/answer-signing: implementation deferred to Phase 6; design
+     documented in §4 now (global salt, per-value HMAC signatures keyed by
+     codebook_id/variable/validation_rule/value/position, "proof" field
+     reserved on variable-value contract shapes).
+  d. Mock-server storage: Node >= 22 + built-in `node:sqlite`. Confirmed.
+  e. Dependency versions: pin to old/'s versions while porting; dedicated
+     upgrade pass later (Phase 6.5).
+  f. "Installable without node": clarified as "usable as an importable
+     component/hook library inside another host React app" (e.g. an internal
+     database tool), not a specific bundle format requirement. Node is only a
+     dev/mock-server dependency. Publishing to npm is explicitly deferred —
+     not needed yet.
+
+NEW OPEN ITEM raised during this pass (not yet answered, non-blocking for
+early phases): §3a — exact shape of resumable progress / unit delivery for
+large unit counts and future crowd-coding. MVP decision documented (option A:
+done-unit-id list per unitset in `/session`); revisit if/when scale or
+crowd-coding becomes a near-term priority.
