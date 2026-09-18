@@ -18,20 +18,29 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
+      "@": resolve(import.meta.dirname, "src"),
     },
   },
   build: {
     outDir: "dist/lib",
     emptyOutDir: true,
     lib: {
-      entry: resolve(__dirname, "src/lib/index.ts"),
+      entry: resolve(import.meta.dirname, "src/lib/index.ts"),
       name: "AnnotinderClient",
       fileName: "annotinder-client",
       formats: ["es"],
     },
     rollupOptions: {
       external: ["react", "react-dom", "react/jsx-runtime"],
+      output: {
+        // Pin the extracted CSS's output filename explicitly -- Vite's
+        // default for lib-mode CSS has changed between major versions
+        // (was `style.css`, became the entry's own name in a later
+        // version), and `package.json`'s `exports["./style.css"]` needs a
+        // stable target that doesn't silently break on the next Vite
+        // upgrade (design plan §6.5/§7.1).
+        assetFileNames: "style.[ext]",
+      },
     },
   },
   // This is a component library, not a site -- don't copy public/ (favicons
