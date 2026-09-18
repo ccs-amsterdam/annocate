@@ -73,6 +73,18 @@ export function seed(db: DatabaseSync): void {
         codes: [{ code: "actor", color: "#2196f3" }],
       },
     },
+    {
+      type: "unit_variable",
+      position: "2.3",
+      name: "actor_relations",
+      variable: {
+        type: "relation",
+        question: "Relate any actors to each other, if relevant.",
+        codes: [{ code: "mentions", color: "#ff9800" }],
+        from: { variable: "actors" },
+        to: { variable: "actors" },
+      },
+    },
   ]);
 
   db.prepare("INSERT INTO codebooks (jobId, name, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(

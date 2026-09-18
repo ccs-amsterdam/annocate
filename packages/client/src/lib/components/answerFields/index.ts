@@ -1,5 +1,6 @@
 export * from "./AnnotinderAnswerField";
 export * from "./ConfirmAnswerField";
+export * from "./RelationAnswerField";
 export * from "./ScaleAnswerField";
 export * from "./SearchCodeAnswerField";
 export * from "./SelectCodeAnswerField";

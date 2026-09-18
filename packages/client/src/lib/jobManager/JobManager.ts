@@ -13,6 +13,14 @@ export interface JobManagerSnapshot {
   currentUnit: CoderUnitResponse | null;
   /** Set only while `phase === "unit_variable"`: the active unit_loop's layout, for rendering the unit's fields. */
   currentUnitLayout: Extract<CodebookItem, { type: "unit_loop" }>["layout"] | null;
+  /**
+   * Set only while `phase === "unit_variable"`: this unit's variable
+   * answers submitted so far (including the current step's item, once
+   * answered) -- lets a `relation` variable's answer field look up a
+   * sibling `span` variable's already-collected spans to relate (design
+   * plan §11a/§4.3 relation UI).
+   */
+  currentUnitVariables: Record<string, VariableValue> | null;
   error: string | null;
 }
 
@@ -49,6 +57,7 @@ export class JobManager {
     currentItem: null,
     currentUnit: null,
     currentUnitLayout: null,
+    currentUnitVariables: null,
     error: null,
   };
 
@@ -106,7 +115,7 @@ export class JobManager {
     const next = this.topSteps[this.topIndex];
 
     if (!next) {
-      this.publish({ phase: "finished", currentItem: null, currentUnit: null, currentUnitLayout: null });
+      this.publish({ phase: "finished", currentItem: null, currentUnit: null, currentUnitLayout: null, currentUnitVariables: null });
       return;
     }
 
@@ -118,7 +127,7 @@ export class JobManager {
       return;
     }
 
-    this.publish({ phase: "user_variable", currentItem: next, currentUnit: null, currentUnitLayout: null });
+    this.publish({ phase: "user_variable", currentItem: next, currentUnit: null, currentUnitLayout: null, currentUnitVariables: null });
   }
 
   private async advanceUnit(): Promise<void> {
@@ -134,6 +143,7 @@ export class JobManager {
           currentItem: next,
           currentUnit: this.currentUnit,
           currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit),
+          currentUnitVariables: { ...this.unitVariableValues },
         });
         return;
       }

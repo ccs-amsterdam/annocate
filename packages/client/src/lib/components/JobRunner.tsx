@@ -40,7 +40,11 @@ export function JobRunner({ baseUrl, coderKey, inviteSecret }: JobRunnerProps) {
       {snapshot.currentUnit && snapshot.currentUnitLayout && (
         <UnitFields layout={snapshot.currentUnitLayout} data={snapshot.currentUnit.data} />
       )}
-      <Question item={item} onAnswer={(value, conditionValue) => manager.answer(value, conditionValue)} />
+      <Question
+        item={item}
+        onAnswer={(value, conditionValue) => manager.answer(value, conditionValue)}
+        unitVariables={snapshot.currentUnitVariables ?? undefined}
+      />
     </>
   );
 

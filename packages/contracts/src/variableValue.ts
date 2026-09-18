@@ -45,6 +45,7 @@ export const RelationAnswerSchema = z.object({
   toId: ClientIdSchema,
   code: z.string(),
 });
+export type RelationAnswer = z.infer<typeof RelationAnswerSchema>;
 
 export const VariableValueSchema = z.object({
   done: z.boolean().default(false),

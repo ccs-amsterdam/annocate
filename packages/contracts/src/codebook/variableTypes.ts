@@ -92,6 +92,7 @@ export const RelationOptionsSchema = z.object({
   variable: z.string(),
   values: z.array(z.string()).optional(),
 });
+export type RelationOptions = z.infer<typeof RelationOptionsSchema>;
 export const RelationTypeSchema = VariableBaseSchema.extend({
   type: z.literal("relation"),
   codes: CodebookCodesSchema,
@@ -99,6 +100,7 @@ export const RelationTypeSchema = VariableBaseSchema.extend({
   to: RelationOptionsSchema,
   editMode: z.boolean().optional(),
 });
+export type RelationType = z.infer<typeof RelationTypeSchema>;
 
 /** The answer types allowed on a `user_variable` item (see codebook/item.ts). */
 export const UserVariableTypeSchema = z.discriminatedUnion("type", [

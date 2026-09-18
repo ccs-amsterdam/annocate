@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   AnnotinderAnswerField,
   ConfirmAnswerField,
+  RelationAnswerField,
   ScaleAnswerField,
   SearchCodeAnswerField,
   SelectCodeAnswerField,
@@ -16,6 +17,8 @@ type QuestionItem = Extract<CodebookItem, { type: "user_variable" | "unit_variab
 interface QuestionProps {
   item: QuestionItem;
   onAnswer: (value: VariableValue, conditionValue?: unknown) => void;
+  /** This unit's variable answers submitted so far -- see `AnswerFieldProps.unitVariables`. */
+  unitVariables?: Record<string, VariableValue>;
 }
 
 function renderQuestionText(variable: QuestionItem["variable"]) {
@@ -38,7 +41,7 @@ function renderInstruction(variable: QuestionItem["variable"]) {
   );
 }
 
-export function Question({ item, onAnswer }: QuestionProps) {
+export function Question({ item, onAnswer, unitVariables }: QuestionProps) {
   const { variable } = item;
 
   let answerField: ReactNode;
@@ -60,6 +63,9 @@ export function Question({ item, onAnswer }: QuestionProps) {
       break;
     case "span":
       answerField = <SpanAnswerField variable={variable} onAnswer={onAnswer} />;
+      break;
+    case "relation":
+      answerField = <RelationAnswerField variable={variable} unitVariables={unitVariables} onAnswer={onAnswer} />;
       break;
     default:
       answerField = <UnsupportedAnswerField variable={variable} onAnswer={onAnswer} />;

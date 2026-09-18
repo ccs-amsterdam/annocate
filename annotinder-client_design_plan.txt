@@ -779,6 +779,63 @@ as a starting point for a fresh design pass (not yet implemented/decided).
       eventually address once §11's scripting design (this section) has
       landed, which it now has.
 
+11g. RESOLVED + IMPLEMENTED (2026-09-18): relation answer field UI
+  (`phase4.3-relation-ui`)
+
+  `relation` unit_variables link two already-submitted `span` answers
+  (`variable.from`/`variable.to`, each a `{variable, values?}` naming a
+  sibling `span` unit_variable and optionally restricting to certain codes)
+  with a relation code, e.g. an actor span related to an issue span via a
+  "position" code (design plan §11a's original motivating use case).
+
+  Unlike spans, relations don't need a new interactive drawing surface in
+  `UnitFields` -- both endpoints already exist as previously-submitted
+  spans, so `RelationAnswerField` (`components/answerFields/`) just offers
+  two `<select>` dropdowns (populated from the candidate spans, labeled
+  with the span's own `text`, §11f) and a code picker, an "Add" button to
+  collect a relation, and a list of collected relations with remove
+  buttons -- then Done/Skip like the other answer fields.
+
+  This needed one new piece of plumbing: a `relation` variable's answer
+  field must see this unit's OTHER already-submitted variable answers (to
+  find its sibling span variable's spans), which nothing exposed before.
+  `JobManager` gained `currentUnitVariables: Record<string, VariableValue>
+  | null` on its snapshot -- a copy of the current unit's answers-so-far
+  (`this.unitVariableValues`, already tracked internally, just not
+  published), set alongside `currentUnitLayout`/`currentUnit` whenever
+  publishing a `unit_variable` phase. Threaded down through
+  `JobRunner` -> `Question` (`unitVariables` prop) -> `RelationAnswerField`
+  (via the now-optional `AnswerFieldProps.unitVariables`, unused by every
+  other answer field).
+
+  Also added a couple of small missing contracts type exports needed by
+  the new component: `RelationOptions` and `RelationAnswer` (schemas
+  already existed from Phase 1; only `z.infer` type aliases were missing).
+
+  Files touched: `contracts/codebook/variableTypes.ts` (`RelationType`/
+  `RelationOptions` type exports), `contracts/variableValue.ts`
+  (`RelationAnswer` type export), `client/jobManager/JobManager.ts`
+  (`currentUnitVariables`), `client/components/answerFields/types.ts`
+  (`AnswerFieldProps.unitVariables`), `client/components/answerFields/
+  RelationAnswerField.tsx` (new), `client/components/Question.tsx` +
+  `JobRunner.tsx` (wiring), `mock-server/db/seed.ts` (demo
+  `actor_relations` relation variable, `from`/`to` both referencing the
+  demo `actors` span variable). Verified via full workspace typecheck/
+  lint/build/test plus a live smoke test against a running mock-server
+  instance confirming `currentUnitVariables` correctly exposes a sibling
+  span variable's just-submitted spans and a relation answer submits and
+  advances correctly.
+
+  STILL OPEN (unchanged from 11e, not addressed by this pass):
+    - No way to visually highlight/preview a candidate span in the
+      rendered text while picking it in a dropdown (a "click a span to
+      relate it" interaction, closer to the old app's UX, would be a nicer
+      follow-up than plain `<select>` dropdowns -- tracked under
+      `phase4.3-span-polish`).
+    - Overlapping spans, `SpanTypeSchema.editMode` /
+      `RelationTypeSchema.editMode` (re-editing a previously-submitted
+      answer), per-field inline styling.
+
 11d. RESOLVED: scripting/condition-expression sandbox choice (CEL vs JS)
   Context: `condition` items' `expression` field (§2) and any future
   codebook/layout scripting need a safe way to evaluate a small boolean/
