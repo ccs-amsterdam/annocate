@@ -1,0 +1,31 @@
+{
+  "name": "@annotinder/mock-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "db:reset": "tsx src/db/reset.ts"
+  },
+  "dependencies": {
+    "@annotinder/contracts": "workspace:*",
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.6.14",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "22.10.2",
+    "eslint": "9.17.0",
+    "typescript": "5.7.2",
+    "typescript-eslint": "^8.19.0",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  }
+}

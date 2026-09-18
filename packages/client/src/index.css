@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Phase 4/5 will port the ShadCN CSS variable theme (colors, radii, etc.)
+   from old/src/app/globals.css once components/ui is ported. */
