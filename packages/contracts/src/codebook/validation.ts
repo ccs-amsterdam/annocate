@@ -1,5 +1,5 @@
-import type { CodebookItem } from "./item";
-import { parentPosition } from "./position";
+import type { CodebookItem } from "./item.js";
+import { parentPosition } from "./position.js";
 
 export interface CodebookValidationIssue {
   path: (string | number)[];

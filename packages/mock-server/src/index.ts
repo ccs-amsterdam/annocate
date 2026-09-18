@@ -1,13 +1,16 @@
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import { CONTRACTS_VERSION } from "@annotinder/contracts";
+import { createDb } from "./db/schema.js";
+import { seed } from "./db/seed.js";
+import { createApp } from "./app.js";
 
-// Phase 2 will flesh this out into the full mock server (SQLite-backed,
-// implementing every endpoint from the contracts package). For now this is a
-// scaffolding placeholder so the workspace runs end-to-end.
-const app = new Hono();
+const dbPath = process.env.DB_PATH ?? "./mock-server.sqlite";
+const db = createDb(dbPath);
 
-app.get("/", (c) => c.json({ ok: true, contractsVersion: CONTRACTS_VERSION }));
+// Convenience for local dev: if the db has no job yet, seed a demo one.
+const hasJob = db.prepare("SELECT 1 FROM jobs LIMIT 1").get();
+if (!hasJob) seed(db);
+
+const app = createApp(db);
 
 const port = Number(process.env.PORT ?? 8787);
 

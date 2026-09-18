@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ClientIdSchema } from "./common";
+import { ClientIdSchema } from "./common.js";
 
 // The coder-submitted "answer" for a single codebook variable (design plan
 // §2's "variable(s)" -- replacing the old, more granular `Annotation` /

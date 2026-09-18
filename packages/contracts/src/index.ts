@@ -5,23 +5,23 @@
 // here is zod schemas + inferred types + pure helper functions -- no server
 // or client runtime dependencies.
 
-export * from "./common";
+export * from "./common.js";
 
-export * from "./codebook/position";
-export * from "./codebook/codes";
-export * from "./codebook/variableTypes";
-export * from "./codebook/layout";
-export * from "./codebook/item";
-export * from "./codebook/validation";
-export * from "./codebook/codebook";
+export * from "./codebook/position.js";
+export * from "./codebook/codes.js";
+export * from "./codebook/variableTypes.js";
+export * from "./codebook/layout.js";
+export * from "./codebook/item.js";
+export * from "./codebook/validation.js";
+export * from "./codebook/codebook.js";
 
-export * from "./unit";
-export * from "./unitset";
-export * from "./job";
-export * from "./coder";
-export * from "./variableValue";
-export * from "./session";
+export * from "./unit.js";
+export * from "./unitset.js";
+export * from "./job.js";
+export * from "./coder.js";
+export * from "./variableValue.js";
+export * from "./session.js";
 
-export * from "./endpoints";
+export * from "./endpoints/index.js";
 
 export const CONTRACTS_VERSION = "0.1.0";

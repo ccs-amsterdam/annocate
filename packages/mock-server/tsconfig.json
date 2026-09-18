@@ -8,6 +8,5 @@
     "moduleResolution": "NodeNext",
     "types": ["node"]
   },
-  "include": ["src"],
-  "references": [{ "path": "../contracts" }]
+  "include": ["src"]
 }

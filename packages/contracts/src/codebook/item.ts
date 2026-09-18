@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { SafeNameSchema } from "../common";
-import { PositionSchema } from "./position";
-import { UnitLayoutSchema } from "./layout";
-import { UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes";
+import { SafeNameSchema } from "../common.js";
+import { PositionSchema } from "./position.js";
+import { UnitLayoutSchema } from "./layout.js";
+import { UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 
 // The flat, positional codebook item model (design plan §2, replacing the
 // old normalized DAG of `codebookNodes`). Every item type shares `position`

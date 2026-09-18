@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema } from "./common";
+import { IdSchema } from "./common.js";
 
 /**
  * A named, ordered selection of a job's units (design plan §2), referenced

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { IdSchema, UnitDataSchema } from "./common";
-import { VariableValueSchema } from "./variableValue";
+import { IdSchema, UnitDataSchema } from "./common.js";
+import { VariableValueSchema } from "./variableValue.js";
 
 /** Full unit as returned by the server. */
 export const UnitResponseSchema = z.object({

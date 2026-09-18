@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { SafeNameSchema } from "../common";
-import { CodebookCodesSchema, CodebookSwipeCodesSchema } from "./codes";
+import { SafeNameSchema } from "../common.js";
+import { CodebookCodesSchema, CodebookSwipeCodesSchema } from "./codes.js";
 
 // Shared question/instruction presentation fields, ported from
 // CodebookVariableBaseSchema in old/src/.../variableSchemas.ts.

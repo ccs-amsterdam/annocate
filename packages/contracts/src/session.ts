@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { IdSchema } from "./common";
-import { CodebookResponseSchema } from "./codebook/codebook";
+import { IdSchema } from "./common.js";
+import { CodebookResponseSchema } from "./codebook/codebook.js";
 
 /**
  * Per-unitset progress: the list of unit ids this coder has already done, in

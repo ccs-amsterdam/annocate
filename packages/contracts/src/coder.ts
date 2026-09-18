@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { IdSchema } from "./common";
-import { VariableValueSchema } from "./variableValue";
+import { IdSchema } from "./common.js";
+import { VariableValueSchema } from "./variableValue.js";
 
 /**
  * A coder: someone annotating a job via an invite/access link. Distinct from
@@ -21,14 +21,18 @@ export const CoderProgressSchema = z.object({
   email: z.string().email().optional(),
   unitsDone: z.record(z.string(), z.number().int().nonnegative()), // unitset name -> count done
 });
+export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 
 export const CoderInviteWriteSchema = z.object({
   label: z.string().min(1).max(128),
   access: z.enum(["only_authenticated", "only_anonymous", "user_decides"]),
 });
+export type CoderInviteWrite = z.infer<typeof CoderInviteWriteSchema>;
+
 export const CoderInviteResponseSchema = CoderInviteWriteSchema.extend({
   id: IdSchema,
   jobId: IdSchema,
   /** Opaque secret used to build the invite URL; not the same as a coder session token. */
   secret: z.string(),
 });
+export type CoderInviteResponse = z.infer<typeof CoderInviteResponseSchema>;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SafeNameSchema } from "../common";
+import { SafeNameSchema } from "../common.js";
 
 // Ported from old/src/app/api/.../codebookNodes/layoutSchemas.ts. Describes
 // how a unit's fields (columns in the unit data) are rendered on screen.

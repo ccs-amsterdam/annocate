@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { IdSchema } from "../common";
-import { CodebookItemSchema } from "./item";
-import { validateCodebookItems } from "./validation";
+import { IdSchema } from "../common.js";
+import { CodebookItemSchema } from "./item.js";
+import { validateCodebookItems } from "./validation.js";
 
 export const CodebookItemsSchema = z
   .array(CodebookItemSchema)

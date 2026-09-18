@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comparePositions, isDirectChild, parentPosition, parsePosition, positionDepth } from "./position";
+import { comparePositions, isDirectChild, parentPosition, parsePosition, positionDepth } from "./position.js";
 
 describe("parsePosition", () => {
   it("parses dot-separated segments into numbers", () => {

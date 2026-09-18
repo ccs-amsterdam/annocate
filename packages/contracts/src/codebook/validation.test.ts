@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CodebookItem } from "./item";
-import { validateCodebookItems } from "./validation";
+import type { CodebookItem } from "./item.js";
+import { validateCodebookItems } from "./validation.js";
 
 const confirmVariable = { type: "confirm" as const, question: "Confirm?" };
 

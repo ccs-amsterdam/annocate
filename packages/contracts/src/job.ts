@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, RoleSchema } from "./common";
+import { IdSchema, RoleSchema } from "./common.js";
 
 /** A "job", the sole top-level entity in the new data model (design plan §2). */
 export const JobWriteSchema = z.object({

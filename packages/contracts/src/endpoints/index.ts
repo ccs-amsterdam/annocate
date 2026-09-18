@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema } from "../job";
-import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook";
-import { UnitsCreateBodySchema, UnitMetaSchema, UnitResponseSchema, CoderUnitResponseSchema } from "../unit";
-import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset";
-import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue";
-import { SessionResponseSchema } from "../session";
-import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder";
+import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema } from "../job.js";
+import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
+import { UnitsCreateBodySchema, UnitMetaSchema, UnitResponseSchema, CoderUnitResponseSchema } from "../unit.js";
+import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
+import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue.js";
+import { SessionResponseSchema } from "../session.js";
+import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
 
 /**
  * The full API contract (design plan §3), as a registry of
