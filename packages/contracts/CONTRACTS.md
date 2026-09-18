@@ -95,8 +95,42 @@ plan §3).
 
 ## Auth
 
-Not yet implemented in this package (deferred to a later phase, see design
-plan §4). Job users (ADMIN/WRITE/READ) and coders are distinct identity
-types; a server backend is expected to authenticate/authorize both and this
-contract assumes that layer exists, but doesn't currently model tokens or
-sessions beyond `SessionResponseSchema`'s data shape.
+Not modeled as types/schemas in this package -- job users (ADMIN/WRITE/READ)
+and coders are distinct identity types, and a server backend is expected to
+authenticate/authorize both, but every backend is free to choose its own
+mechanism (session cookies, OAuth/SSO in front of it, bearer tokens, ...).
+This contract only assumes that layer exists; it never sees credentials.
+
+`packages/mock-server` is a local-dev/testing reference implementation, not
+a production template -- it intentionally uses a trivial, undocumented-as-
+secure scheme (`x-dev-role`/`x-dev-email` plaintext headers for job users,
+a client-generated `x-coder-key` bearer string + one-time `x-invite-secret`
+for coders; see `mock-server/src/auth.ts`'s own doc comment). Real server
+implementations should NOT copy this as-is. Recommended production scheme
+for authors who want a stateless, horizontally-scalable session mechanism
+(design plan §6.1) rather than DB-backed sessions:
+
+- **Job users**: front the admin API with whatever identity provider the
+  deployment already has (SSO/OAuth/institutional login are typical for
+  research-tool deployments); once a user is authenticated, issue an
+  opaque bearer token that is an HMAC-signed claim of `{ jobId, email,
+  role, issuedAt }` (e.g. `base64url(payload) + "." +
+  base64url(HMAC-SHA256(serverSecret, payload))`). Verification is then a
+  pure signature+expiry check with no DB round trip; role/email changes
+  made via `PUT /job/:id/users` only take effect for tokens issued AFTER
+  the change (short expiries, e.g. 1-24h, keep this window small -- don't
+  design for instant revocation of already-issued tokens unless you also
+  maintain a revocation list).
+- **Coders**: an invite link's `secret` is consumed exactly once to mint a
+  coder identity; from then on the coder should hold an HMAC-signed
+  bearer token of `{ jobId, coderId, issuedAt }` (long-lived, since coders
+  may return to a job over weeks) rather than a raw client-generated
+  string trusted forever by DB lookup. This avoids ever storing a
+  long-lived secret server-side (only the server's HMAC key, shared
+  across all sessions, needs protecting) and makes token verification a
+  pure function, independent of DB availability/latency.
+- Either way, the token stays fully opaque to `packages/client` -- it's
+  just a string passed through as a header/cookie by whatever
+  `JobServer`/`AdminClient` implementation a given deployment configures;
+  no client-side code needs to know it's HMAC-signed, versioned, or
+  anything else about its internal structure.

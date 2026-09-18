@@ -70,6 +70,16 @@ export class JobManager {
     currentUnitVariables: null,
     error: null,
   };
+  /**
+   * Whatever async operation most recently failed (design plan §6.3:
+   * network failures shouldn't strand a coder mid-unit with no way
+   * forward). Re-running the exact same closure is safe because both
+   * `start()` and `answer()` only mutate local state AFTER their network
+   * call(s) succeed -- a failed attempt leaves `conditionValues`/
+   * `userVariableValues`/`unitVariableValues` exactly as they were before
+   * the attempt, so retrying is just "try that same call again".
+   */
+  private lastFailedOperation: (() => Promise<void>) | null = null;
 
   constructor(private jobServer: JobServer) {}
 
@@ -88,14 +98,23 @@ export class JobManager {
   }
 
   async start(): Promise<void> {
+    this.lastFailedOperation = () => this.start();
     try {
       const session: SessionResponse = await this.jobServer.getSession();
       this.items = session.codebook.items;
       this.topIndex = -1;
       await this.advanceTop();
+      this.lastFailedOperation = null;
     } catch (err) {
       this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err) });
     }
+  }
+
+  /** Re-attempts whatever operation last failed (design plan §6.3). No-op if nothing failed. */
+  async retry(): Promise<void> {
+    const op = this.lastFailedOperation;
+    if (!op) return;
+    await op();
   }
 
   /** Records the coder's answer for the currently-presented item, then advances. */
@@ -103,17 +122,22 @@ export class JobManager {
     const item = this.snapshot.currentItem;
     if (!item || (item.type !== "user_variable" && item.type !== "unit_variable")) return;
 
+    this.lastFailedOperation = () => this.answer(value, conditionValue);
     this.conditionValues[item.name] = conditionValue;
 
     try {
-      if (this.snapshot.phase === "user_variable") {
+      // Branch on the item's own type, not `snapshot.phase`: after a failed
+      // attempt the phase is temporarily "error", but `retry()` re-invokes
+      // this exact closure and still needs to take the right path.
+      if (item.type === "user_variable") {
         this.userVariableValues[item.name] = value;
         await this.jobServer.postCoderVariables(this.userVariableValues);
         await this.advanceTop();
-      } else if (this.snapshot.phase === "unit_variable") {
+      } else {
         this.unitVariableValues[item.name] = value;
         await this.advanceUnit();
       }
+      this.lastFailedOperation = null;
     } catch (err) {
       this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err) });
     }

@@ -476,15 +476,46 @@ Phase 5 — Codebook + job management UI port          [DONE 2026-09-18, see §1
       `CodersPanel.tsx`; old app had ~no equivalent UI to port, built fresh]
 
 Phase 6 — Hardening
-  6.1 Design + implement the HMAC-signed session-token scheme (client-side
-      support is likely a no-op since tokens stay opaque; mainly a
-      mock-server concern, but document it clearly in CONTRACTS.md so other
-      server authors can implement equivalent stateless validation).
+  6.1 Design + implement the HMAC-signed session-token scheme.       [DONE
+      2026-09-18, as documentation only] Decided NOT to add real HMAC
+      signing to `packages/mock-server` itself: it's explicitly a local-
+      dev/testing reference server (its own `auth.ts` already documents
+      this), and its plaintext `x-dev-role`/client-generated `x-coder-key`
+      scheme is adequate for that purpose -- adding real crypto there would
+      be effort spent hardening a throwaway component rather than the
+      thing that matters, which is that OTHER server authors (Python/R
+      backends, per §7) know the recommended production scheme. Documented
+      a concrete stateless HMAC-signed-bearer-token design (job users:
+      `{jobId,email,role,issuedAt}`; coders: `{jobId,coderId,issuedAt}`,
+      both signed with a server-held HMAC key, no DB-backed session lookup
+      needed) in `packages/contracts/CONTRACTS.md`'s Auth section.
+      Client-side impact is genuinely zero, confirming the original
+      prediction: `HttpJobServer`/`HttpAdminClient` already treat every
+      auth header as an opaque string.
   6.2 Immutability enforcement end-to-end (client hides/disables destructive
       actions once a codebook/unit is in use; mock server rejects such
       mutations).
   6.3 Error/edge-case handling pass (network failures, stale dirty-state
-      conflicts, invalid codebooks).
+      conflicts, invalid codebooks).                            [PARTIALLY
+      DONE 2026-09-18] Addressed the annotation-runtime gap: `JobManager`
+      now tracks whatever operation last failed (`start()`/`answer()`) and
+      exposes a public `retry()` that re-invokes the exact same closure;
+      `JobRunner`'s error view gained a Retry button. This is safe/
+      idempotent because both operations only mutate local state (and
+      call network methods that are themselves full-replace, not
+      incremental) BEFORE their try/catch resolves, so re-running the
+      same closure after a transient failure (e.g. one dropped request)
+      just repeats the same effect rather than duplicating it. Covered by
+      4 new tests (`JobManager.test.ts`) for: initial-load failure+retry,
+      answer-post failure+retry (asserting the identical payload is
+      re-sent), retry-as-no-op-when-nothing-failed, and a mid-unit-loop
+      failure+retry that still advances correctly afterwards. NOT yet
+      done: stale dirty-state conflicts in the ADMIN UI (e.g. two people
+      editing the same codebook -- currently last-write-wins, no
+      optimistic-concurrency/ETag check), and a systematic invalid-
+      codebook-shape error-surfacing pass beyond what Zod's `superRefine`
+      already rejects server-side (client just shows the raw error
+      message today, not a field-level breakdown).
   6.4 Test coverage: Vitest unit tests for contracts + jobManagerState logic,
       component tests for the annotation interface, a basic e2e smoke test
       against the mock server (Playwright, optional).

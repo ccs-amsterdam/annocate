@@ -25,7 +25,20 @@ export function JobRunner({ baseUrl, coderKey, inviteSecret }: JobRunnerProps) {
   const { manager, snapshot } = useJobManager(jobServer);
 
   if (snapshot.phase === "loading") return <p>Loading...</p>;
-  if (snapshot.phase === "error") return <p className="text-red-600">Error: {snapshot.error}</p>;
+  if (snapshot.phase === "error") {
+    return (
+      <div className="mx-auto flex max-w-xl flex-col gap-3 p-8">
+        <p className="text-red-600">Something went wrong: {snapshot.error}</p>
+        <button
+          type="button"
+          className="w-fit rounded border px-3 py-1 hover:bg-muted"
+          onClick={() => manager.retry()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
   if (snapshot.phase === "finished") return <p>You&apos;re done. Thanks for annotating!</p>;
 
   if (!snapshot.currentItem || (snapshot.currentItem.type !== "user_variable" && snapshot.currentItem.type !== "unit_variable")) {
