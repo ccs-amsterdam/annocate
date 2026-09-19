@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import type { DatabaseSync } from "node:sqlite";
 import { CONTRACTS_VERSION } from "@annotinder/contracts";
 import type { HonoEnv } from "./honoEnv.js";
@@ -14,14 +15,16 @@ import { coderRoutes } from "./routes/coders.js";
 export function createApp(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
+  app.use("*", cors());
+
   app.get("/", (c) => c.json({ ok: true, contractsVersion: CONTRACTS_VERSION }));
 
   app.route("/", jobRoutes(db));
-  app.route("/", codebookRoutes(db));
-  app.route("/", unitRoutes(db));
-  app.route("/", unitsetRoutes(db));
+  app.route("/job/:jobId", codebookRoutes(db));
+  app.route("/job/:jobId", unitRoutes(db));
+  app.route("/job/:jobId", unitsetRoutes(db));
   app.route("/", sessionRoutes(db));
-  app.route("/", coderRoutes(db));
+  app.route("/job/:jobId", coderRoutes(db));
 
   return app;
 }

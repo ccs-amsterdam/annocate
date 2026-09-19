@@ -1,26 +1,36 @@
 import type { CodebookItem } from "@annotinder/contracts";
 import { parentPosition } from "@annotinder/contracts";
 import { getChildren, getRootItems } from "../../codebook/tree";
+import {
+  Repeat,
+  GitBranch,
+  CheckSquare,
+  HelpCircle,
+  Plus,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  ArrowRight,
+  ArrowLeft,
+} from "lucide-react";
 
-const TYPE_LABELS: Record<CodebookItem["type"], string> = {
-  user_variable: "User variable",
-  unit_variable: "Unit variable",
-  unit_loop: "Unit loop",
-  condition: "Condition",
-};
-
-function itemSummary(item: CodebookItem): string {
-  if (item.type === "user_variable" || item.type === "unit_variable") return item.variable.type;
-  if (item.type === "unit_loop") return `unitset: ${item.unitset || "(none)"}`;
-  return item.expression || "(empty)";
+function ItemIcon({ type }: { type: CodebookItem["type"] }) {
+  switch (type) {
+    case "unit_loop":
+      return <Repeat className="h-4 w-4 text-primary shrink-0" />;
+    case "condition":
+      return <GitBranch className="h-4 w-4 text-amber-500 shrink-0" />;
+    case "unit_variable":
+      return <CheckSquare className="h-4 w-4 text-teal-600 shrink-0" />;
+    case "user_variable":
+      return <HelpCircle className="h-4 w-4 text-blue-500 shrink-0" />;
+  }
 }
 
 /**
- * Renders the codebook's flat positional item array as an indented tree
- * (design plan §5.2), with keyboard/button-driven reordering (move up/down,
- * indent/outdent) instead of drag-and-drop or the old app's click-to-move
- * interaction -- simpler to implement correctly on top of the new flat
- * position-string model (§2) and more keyboard-accessible.
+ * Renders the codebook items as a clean, hierarchical tree view.
+ * Positions (2, 2.1) and verbose type labels are omitted for a simplified,
+ * readable item list.
  */
 export function CodebookTreeView({
   items,
@@ -48,47 +58,74 @@ export function CodebookTreeView({
     return siblings.map((item, index) => (
       <div key={item.position}>
         <div
-          className={`flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted ${
-            selected === item.position ? "bg-muted" : ""
+          className={`group flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-muted/70 ${
+            selected === item.position ? "bg-muted font-medium text-foreground shadow-sm" : "text-muted-foreground"
           }`}
-          style={{ marginLeft: depth * 20 }}
+          style={{ marginLeft: depth * 18 }}
         >
-          <button type="button" className="flex-1 text-left" onClick={() => onSelect(item.position)}>
-            <span className="text-muted-foreground">{item.position}</span> <strong>{item.name}</strong>{" "}
-            <span className="text-muted-foreground">
-              [{TYPE_LABELS[item.type]}] {itemSummary(item)}
-            </span>
+          <button
+            type="button"
+            className="flex flex-1 items-center gap-2 text-left cursor-pointer overflow-hidden"
+            onClick={() => onSelect(item.position)}
+          >
+            <ItemIcon type={item.type} />
+            <span className="truncate text-foreground font-medium">{item.name}</span>
           </button>
-          <div className="flex items-center gap-0.5 text-xs text-muted-foreground">
-            <button type="button" title="Move up" disabled={index === 0} onClick={() => onMoveUp(item.position)}>
-              ↑
+
+          <div className="flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              title="Move up"
+              disabled={index === 0}
+              onClick={() => onMoveUp(item.position)}
+              className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               title="Move down"
               disabled={index === siblings.length - 1}
               onClick={() => onMoveDown(item.position)}
+              className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent"
             >
-              ↓
+              <ChevronDown className="h-3.5 w-3.5" />
             </button>
-            <button type="button" title="Indent (make child of previous sibling)" disabled={index === 0} onClick={() => onIndent(item.position)}>
-              →
+            <button
+              type="button"
+              title="Indent (make child of previous sibling)"
+              disabled={index === 0}
+              onClick={() => onIndent(item.position)}
+              className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               title="Outdent"
               disabled={parentPosition(item.position) === null}
               onClick={() => onOutdent(item.position)}
+              className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:hover:bg-transparent"
             >
-              ←
+              <ArrowLeft className="h-3.5 w-3.5" />
             </button>
             {(item.type === "unit_loop" || item.type === "condition") && (
-              <button type="button" title="Add child item" onClick={() => onAddChild(item.position)}>
-                +
+              <button
+                type="button"
+                title="Add child item"
+                onClick={() => onAddChild(item.position)}
+                className="p-1 rounded hover:bg-background text-primary hover:text-primary/80"
+              >
+                <Plus className="h-3.5 w-3.5" />
               </button>
             )}
-            <button type="button" title="Delete" className="hover:text-destructive" onClick={() => onDelete(item.position)}>
-              ✕
+            <button
+              type="button"
+              title="Delete item"
+              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              onClick={() => onDelete(item.position)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -97,5 +134,5 @@ export function CodebookTreeView({
     ));
   }
 
-  return <div className="flex flex-col gap-0.5">{renderLevel(null, 0)}</div>;
+  return <div className="flex flex-col gap-1">{renderLevel(null, 0)}</div>;
 }

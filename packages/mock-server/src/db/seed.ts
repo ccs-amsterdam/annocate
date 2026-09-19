@@ -44,7 +44,7 @@ export function seed(db: DatabaseSync): void {
       name: "main_loop",
       unitset: "main",
       layout: {
-        template: "# {{headline}}\n\n{{disclaimer}}\n\n::tokenize[text]",
+        template: "# {{$unit.headline}}\n\n{{disclaimer}}\n\n::tokenize[$unit.text]",
         constants: { disclaimer: "_Demo unit -- select any actors mentioned below._" },
       },
     },

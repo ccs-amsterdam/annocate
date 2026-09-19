@@ -47,11 +47,22 @@ export function authenticateJobUser(c: Context, db: DatabaseSync, jobId: number)
   return { email, role: row.role };
 }
 
-/** Hono middleware factory: requires an authenticated job user with at least `minRole`. */
+/**
+ * Hono middleware factory: requires an authenticated job user with at least
+ * `minRole`, for the job identified by the `:jobId` or `:id` path param
+ * (design plan §2: a server hosts any number of jobs, so -- unlike the old
+ * single-job-per-deployment bootstrap -- jobId always comes from the URL,
+ * never "the only job on this server").
+ */
 export function requireJobUser(db: DatabaseSync, minRole: Role) {
   return async (c: Context, next: Next) => {
-    const jobId = getPrimaryJobId(db);
-    if (jobId === null) return c.json({ error: "No job exists on this server yet" }, 404);
+    const raw = c.req.param("jobId") ?? c.req.param("id");
+    const jobId = raw ? Number(raw) : NaN;
+    if (!Number.isInteger(jobId)) return c.json({ error: "Invalid job id" }, 400);
+
+    const job = db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(jobId);
+    if (!job) return c.json({ error: "Job not found" }, 404);
+
     const auth = authenticateJobUser(c, db, jobId);
     if (!auth || ROLE_RANK[auth.role] < ROLE_RANK[minRole]) {
       return c.json({ error: "Unauthorized" }, 401);
@@ -71,39 +82,38 @@ export interface CoderRow {
   doneUnitIds: string;
 }
 
-/** Hono middleware: resolves (creating if necessary, via an invite secret) the requesting coder. */
+/**
+ * Hono middleware: resolves (creating if necessary, via an invite secret)
+ * the requesting coder. Coder-facing routes are unscoped in the URL (no
+ * `/job/:jobId` prefix) -- a coder's job is implied by their existing coder
+ * row (looked up by devKey alone) or, for a brand-new coder, by the job that
+ * owns the invite secret they present (invite secrets are unique across the
+ * whole deployment).
+ */
 export function requireCoder(db: DatabaseSync) {
   return async (c: Context, next: Next) => {
-    const jobId = getPrimaryJobId(db);
-    if (jobId === null) return c.json({ error: "No job exists on this server yet" }, 404);
-
     const coderKey = c.req.header("x-coder-key");
     if (!coderKey) return c.json({ error: "Missing x-coder-key header" }, 401);
 
-    let coder = db.prepare("SELECT * FROM coders WHERE jobId = ? AND devKey = ?").get(jobId, coderKey) as
-      | CoderRow
-      | undefined;
+    let coder = db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as CoderRow | undefined;
 
     if (!coder) {
       const secret = c.req.header("x-invite-secret");
       if (!secret) return c.json({ error: "Unknown coder; provide x-invite-secret to create one" }, 401);
-      const invite = db.prepare("SELECT * FROM invites WHERE jobId = ? AND secret = ?").get(jobId, secret);
+      const invite = db.prepare("SELECT * FROM invites WHERE secret = ?").get(secret) as
+        | { jobId: number }
+        | undefined;
       if (!invite) return c.json({ error: "Invalid invite secret" }, 401);
 
       db.prepare("INSERT INTO coders (jobId, devKey, variables, doneUnitIds) VALUES (?, ?, '{}', '{}')").run(
-        jobId,
+        invite.jobId,
         coderKey,
       );
-      coder = db.prepare("SELECT * FROM coders WHERE jobId = ? AND devKey = ?").get(jobId, coderKey) as unknown as CoderRow;
+      coder = db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as unknown as CoderRow;
     }
 
     c.set("coder", coder);
-    c.set("jobId", jobId);
+    c.set("jobId", coder.jobId);
     await next();
   };
-}
-
-export function getPrimaryJobId(db: DatabaseSync): number | null {
-  const job = db.prepare("SELECT id FROM jobs ORDER BY id LIMIT 1").get() as { id: number } | undefined;
-  return job ? job.id : null;
 }

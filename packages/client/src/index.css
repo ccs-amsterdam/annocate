@@ -3,32 +3,32 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
 
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground, 0 0% 100%));
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground, hsl(0 0% 100%));
 
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
 
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
 
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
 
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -66,42 +66,47 @@
     --font-sans: 'Geist Variable', sans-serif
   }
   :root {
+    /* Ported from old/src/app/globals.css -- Annotinder's teal brand theme,
+       instead of the unbranded shadcn scaffold default. */
+    --background: hsl(240 10% 99%);
 
-    --background: oklch(1 0 0);
+    --foreground: hsl(222.2 84% 10%);
 
-    --foreground: oklch(0.145 0 0);
+    --card: hsl(0 0% 100%);
 
-    --card: oklch(1 0 0);
+    --card-foreground: hsl(222.2 84% 4.9%);
 
-    --card-foreground: oklch(0.145 0 0);
+    --popover: hsl(0 0% 100%);
 
-    --popover: oklch(1 0 0);
+    --popover-foreground: hsl(222.2 84% 10%);
 
-    --popover-foreground: oklch(0.145 0 0);
+    --primary: hsl(174 50% 45%);
 
-    --primary: oklch(0.205 0 0);
+    --primary-foreground: hsl(222.2 47.4% 0%);
 
-    --primary-foreground: oklch(0.985 0 0);
+    --primary-light: hsl(174 50% 35%);
 
-    --secondary: oklch(0.97 0 0);
+    --primary-dark: hsl(174 30% 20%);
 
-    --secondary-foreground: oklch(0.205 0 0);
+    --secondary: hsl(39 100% 80%);
 
-    --muted: oklch(0.97 0 0);
+    --secondary-foreground: hsl(222.2 47.4% 10%);
 
-    --muted-foreground: oklch(0.556 0 0);
+    --muted: hsl(0 0% 50%);
 
-    --accent: oklch(0.97 0 0);
+    --muted-foreground: hsl(0.4 16.3% 46.9%);
 
-    --accent-foreground: oklch(0.205 0 0);
+    --accent: hsl(174 40% 96.1%);
 
-    --destructive: oklch(0.577 0.245 27.325);
+    --accent-foreground: hsl(174 47.4% 11.2%);
 
-    --border: oklch(0.922 0 0);
+    --destructive: hsl(0 84.2% 60.2%);
 
-    --input: oklch(0.922 0 0);
+    --border: hsl(214.3 31.8% 80.4%);
 
-    --ring: oklch(0.708 0 0);
+    --input: hsl(214.3 31.8% 80.4%);
+
+    --ring: hsl(174 80% 30%);
 
     --chart-1: oklch(0.87 0 0);
 
@@ -132,42 +137,42 @@
     --sidebar-ring: oklch(0.708 0 0)
   }
   .dark {
+    /* Ported from old/src/app/globals.css [data-dark="on"] block. */
+    --background: hsl(0 0% 14%);
 
-    --background: oklch(0.145 0 0);
+    --foreground: hsl(222.2 84% 100%);
 
-    --foreground: oklch(0.985 0 0);
+    --card: hsl(0 0% 20%);
 
-    --card: oklch(0.205 0 0);
+    --card-foreground: hsl(222.2 84% 90%);
 
-    --card-foreground: oklch(0.985 0 0);
+    --popover: hsl(0 0% 14%);
 
-    --popover: oklch(0.205 0 0);
+    --popover-foreground: hsl(222.2 84% 90%);
 
-    --popover-foreground: oklch(0.985 0 0);
+    --primary: hsl(174 50% 45%);
 
-    --primary: oklch(0.922 0 0);
+    --primary-foreground: hsl(222.2 47.4% 0%);
 
-    --primary-foreground: oklch(0.205 0 0);
+    --secondary: hsl(0 0% 11.1%);
 
-    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: hsl(0 0% 90.2%);
 
-    --secondary-foreground: oklch(0.985 0 0);
+    --muted: hsl(0 0% 50%);
 
-    --muted: oklch(0.269 0 0);
+    --muted-foreground: hsl(0.4 16.3% 46.9%);
 
-    --muted-foreground: oklch(0.708 0 0);
+    --accent: hsl(0 0% 11.1%);
 
-    --accent: oklch(0.269 0 0);
+    --accent-foreground: hsl(0 0% 90.2%);
 
-    --accent-foreground: oklch(0.985 0 0);
+    --destructive: hsl(0 84.2% 60.2%);
 
-    --destructive: oklch(0.704 0.191 22.216);
+    --border: hsl(214.3 31.8% 91.4%);
 
-    --border: oklch(1 0 0 / 10%);
+    --input: hsl(214.3 31.8% 91.4%);
 
-    --input: oklch(1 0 0 / 15%);
-
-    --ring: oklch(0.556 0 0);
+    --ring: hsl(222.2 84% 4.9%);
 
     --chart-1: oklch(0.87 0 0);
 

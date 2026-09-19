@@ -18,12 +18,22 @@ function toJobResponse(row: JobRow): JobResponse {
 export function jobRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
-  // Single-job-per-deployment (design plan §3): creating a second job is
-  // rejected. Anyone may create the first job (there's nothing to protect
-  // yet); every subsequent job endpoint requires job-user auth.
+  // Multi-job deployment (design plan §2): a server can host any number of
+  // jobs. Listing/creating jobs themselves has no natural "job owner" to
+  // gate against yet (job-user roles are per-job, granted via
+  // `PUT /job/:id/users` once a job exists) -- any request with a
+  // recognized `x-dev-role` header may list/create, mirroring the
+  // bootstrap-auth convenience used for a fresh job's first user.
+  app.get("/job", (c) => {
+    const role = c.req.header("x-dev-role");
+    if (!role) return c.json({ error: "Unauthorized" }, 401);
+    const rows = db.prepare("SELECT * FROM jobs ORDER BY id").all() as unknown as JobRow[];
+    return c.json(rows.map(toJobResponse));
+  });
+
   app.post("/job", async (c) => {
-    const existing = db.prepare("SELECT 1 FROM jobs LIMIT 1").get();
-    if (existing) return c.json({ error: "A job already exists on this server" }, 409);
+    const role = c.req.header("x-dev-role");
+    if (!role) return c.json({ error: "Unauthorized" }, 401);
 
     const parsed = JobWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);

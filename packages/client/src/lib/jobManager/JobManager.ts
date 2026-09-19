@@ -210,12 +210,15 @@ export class JobManager {
    * `constants`, and known variable values (conditionValues -- highest
    * precedence, since they're the "live" facts a template conditional like
    * `{{is_experiment ? experiment_intro : control_intro}}` branches on).
-   * `renderTemplate` is async (real QuickJS evaluation), so this is done
-   * once per unit here -- in the already-async step-computation flow --
-   * rather than at React-render time, keeping `UnitFields` synchronous.
+   * Scope includes `$unit` pointing to unit data.
    */
   private async resolveUnitLayout(layout: UnitLayout, unit: CoderUnitResponse): Promise<UnitLayout> {
-    const values: Record<string, unknown> = { ...unit.data, ...layout.constants, ...this.conditionValues };
+    const values: Record<string, unknown> = {
+      $unit: unit.data,
+      ...unit.data,
+      ...layout.constants,
+      ...this.conditionValues,
+    };
     const template = await renderTemplate(
       layout.template,
       values,

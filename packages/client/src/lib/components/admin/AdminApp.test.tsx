@@ -1,21 +1,16 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import { AdminApp } from "./AdminApp";
 import type { AdminClient } from "../../api/httpAdminClient";
 
-/**
- * Smoke-checks that `AdminApp` (design plan §5) renders without throwing,
- * using a stub `AdminClient` whose queries never resolve during a
- * synchronous `renderToStaticMarkup` pass (matching the pattern used for
- * `UnitFields.test.tsx` -- no jsdom/interaction testing infra exists yet in
- * this package, so this only guards against render-time crashes/import
- * errors, not interactive behavior).
- */
 const stubClient: AdminClient = {
-  getJob: () => new Promise(() => {}),
+  jobId: 1,
+  forJob: () => stubClient,
+  listJobs: () => new Promise(() => {}),
   createJob: () => new Promise(() => {}),
-  updateJob: () => new Promise(() => {}),
   deleteJob: () => new Promise(() => {}),
+  getJob: () => new Promise(() => {}),
+  updateJob: () => new Promise(() => {}),
   getJobUsers: () => new Promise(() => {}),
   putJobUsers: () => new Promise(() => {}),
   listCodebooks: () => new Promise(() => {}),
@@ -36,8 +31,15 @@ const stubClient: AdminClient = {
 };
 
 describe("AdminApp", () => {
-  it("renders the Job tab without throwing while the job query is pending", () => {
+  it("renders the JobList view without throwing while jobs query is pending", () => {
     const html = renderToStaticMarkup(<AdminApp client={stubClient} baseUrl="http://localhost:8787" />);
-    expect(html).toContain("Loading job");
+    expect(html).toContain("Loading jobs");
+  });
+
+  it("renders a selected job view without throwing", () => {
+    const html = renderToStaticMarkup(
+      <AdminApp client={stubClient} initialJobId={1} baseUrl="http://localhost:8787" />,
+    );
+    expect(html).toContain("Codebook");
   });
 });

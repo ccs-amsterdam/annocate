@@ -16,6 +16,22 @@ describe("renderTemplate", () => {
     expect(await renderTemplate("Hello {{missing}}!", {})).toBe("Hello !");
   });
 
+  it("supports $unit.field in {{ expression }} syntax", async () => {
+    expect(
+      await renderTemplate("# {{$unit.headline}}\n\nAuthor: {{$unit.author}}", {
+        $unit: { headline: "Breaking News", author: "Jane Doe" },
+      }),
+    ).toBe("# Breaking News\n\nAuthor: Jane Doe");
+  });
+
+  it("supports standalone $unit.field in template text", async () => {
+    expect(
+      await renderTemplate("# $unit.headline\n\n$unit.text", {
+        $unit: { headline: "Direct Field", text: "Some content here" },
+      }),
+    ).toBe("# Direct Field\n\nSome content here");
+  });
+
   it("evaluates real JS expressions, e.g. a conditional referencing layout constants", async () => {
     const values = { is_experiment: true, experiment_intro: "Experiment intro", control_intro: "Control intro" };
     expect(await renderTemplate("{{is_experiment ? experiment_intro : control_intro}}", values)).toBe(
@@ -26,10 +42,12 @@ describe("renderTemplate", () => {
     ).toBe("Control intro");
   });
 
-  it("leaves ::field/::tokenize directive syntax untouched", async () => {
-    expect(await renderTemplate("# {{headline}}\n\n::tokenize[body]", { headline: "Hi" })).toBe(
-      "# Hi\n\n::tokenize[body]",
-    );
+  it("leaves ::field/::tokenize directive syntax untouched, even with $unit. prefix", async () => {
+    expect(
+      await renderTemplate("# {{$unit.headline}}\n\n::tokenize[$unit.body]", {
+        $unit: { headline: "Hi", body: "Tokens" },
+      }),
+    ).toBe("# Hi\n\n::tokenize[$unit.body]");
   });
 
   it("supports an optional ExpressionCache (design plan §12), still returning correct results", async () => {

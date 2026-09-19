@@ -1,0 +1,11 @@
+
+
+
+
+## Codebook
+
+
+
+## Bugs
+
+When you're editing the codebook and click "discard changes", you see the popup you'd get when navigating away. Moreover, when you then click discard changes, it doesn't do anything. We could just remove this button.

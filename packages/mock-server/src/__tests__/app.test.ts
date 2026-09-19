@@ -33,14 +33,13 @@ describe("job routes", () => {
     expect(body.name).toBe("My job");
   });
 
-  it("rejects creating a second job", async () => {
-    await createJob();
-    const res = await app.request("/job", {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({ name: "Second" }),
-    });
-    expect(res.status).toBe(409);
+  it("allows creating multiple jobs and lists them", async () => {
+    const job1 = await createJob("First");
+    const job2 = await createJob("Second");
+    const res = await app.request("/job", { headers: adminHeaders });
+    expect(res.status).toBe(200);
+    const jobs = (await json(res)) as { id: number; name: string }[];
+    expect(jobs.map((j) => j.id).sort()).toEqual([job1.id, job2.id].sort());
   });
 
   it("rejects job access without a role header", async () => {
@@ -52,7 +51,7 @@ describe("job routes", () => {
 
 describe("codebook routes", () => {
   it("rejects invalid nesting and accepts a valid codebook", async () => {
-    await createJob();
+    const job = await createJob();
 
     const validItems = [
       { type: "unit_loop", position: "1", name: "loop", unitset: "main", layout: { template: "" } },
@@ -64,7 +63,7 @@ describe("codebook routes", () => {
       },
     ];
 
-    const badRes = await app.request("/codebook", {
+    const badRes = await app.request(`/job/${job.id}/codebook`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
@@ -74,7 +73,7 @@ describe("codebook routes", () => {
     });
     expect(badRes.status).toBe(400);
 
-    const goodRes = await app.request("/codebook", {
+    const goodRes = await app.request(`/job/${job.id}/codebook`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ name: "Good", items: validItems }),
@@ -87,22 +86,22 @@ describe("codebook routes", () => {
 
 describe("coder session flow", () => {
   async function setupJobWithCodebookAndUnits() {
-    await createJob();
-    await app.request("/units", {
+    const job = await createJob();
+    await app.request(`/job/${job.id}/units`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ units: [{ externalId: "u1", data: { text: "hello" } }] }),
     });
-    const unitsRes = await app.request("/units", { headers: adminHeaders });
+    const unitsRes = await app.request(`/job/${job.id}/units`, { headers: adminHeaders });
     const units = (await unitsRes.json()) as { id: number }[];
 
-    await app.request("/unitsets", {
+    await app.request(`/job/${job.id}/unitsets`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ name: "main", unitIds: [units[0].id], order: "fixed" }),
     });
 
-    await app.request("/codebook", {
+    await app.request(`/job/${job.id}/codebook`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
@@ -119,7 +118,7 @@ describe("coder session flow", () => {
       }),
     });
 
-    const inviteRes = await app.request("/coders/invite", {
+    const inviteRes = await app.request(`/job/${job.id}/coders/invite`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ label: "invite", access: "user_decides" }),
