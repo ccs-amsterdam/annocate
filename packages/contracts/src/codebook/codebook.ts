@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
-import { CodebookItemSchema } from "./item.js";
+import { TopLevelItemSchema } from "./item.js";
 import { validateCodebookItems } from "./validation.js";
 
 export const CodebookItemsSchema = z
-  .array(CodebookItemSchema)
+  .array(TopLevelItemSchema)
   .min(1, "A codebook needs at least one item")
   .superRefine((items, ctx) => {
     for (const issue of validateCodebookItems(items)) {

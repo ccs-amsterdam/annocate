@@ -6,6 +6,8 @@ import {
   type SessionResponse,
   type CoderUnitResponse,
   type CodebookResponse,
+  type CodebookItem,
+  type UnitLoopItem,
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireCoder } from "../auth.js";
@@ -23,7 +25,6 @@ interface UnitsetRow {
   jobId: number;
   name: string;
   unitIds: string;
-  order: string;
 }
 interface UnitRow {
   id: number;
@@ -52,6 +53,43 @@ function getActiveCodebook(db: DatabaseSync, jobId: number): CodebookRow | undef
     | undefined;
 }
 
+/** Finds the unit_loop matching a unitset name, or matching all units if no unitset is specified */
+function findLoopForUnitset(items: CodebookItem[], setname: string, isAllUnits: boolean): UnitLoopItem | undefined {
+  for (const item of items) {
+    if (item.type === "unit_loop") {
+      if (isAllUnits && (!item.unitset || item.unitset === "" || item.unitset === "__all__")) {
+        return item as UnitLoopItem;
+      }
+      if (!isAllUnits && item.unitset === setname) {
+        return item as UnitLoopItem;
+      }
+    }
+    if ("children" in item && Array.isArray(item.children)) {
+      const found = findLoopForUnitset(item.children as CodebookItem[], setname, isAllUnits);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/** Deterministically shuffles an array with a numeric seed using Mulberry32 PRNG */
+function shuffleWithSeed<T>(array: T[], seed: number): T[] {
+  const result = [...array];
+  let s = seed;
+  const random = () => {
+    s |= 0;
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export function sessionRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
@@ -62,11 +100,19 @@ export function sessionRoutes(db: DatabaseSync) {
     if (!codebookRow) return c.json({ error: "No codebook has been created for this job yet" }, 404);
 
     const doneUnitIds = JSON.parse(coder.doneUnitIds) as Record<string, number[]>;
+    const hasNamedUnitsets = Object.keys(doneUnitIds).some((k) => k !== "__all__" && k !== "");
+
     const response: SessionResponse = {
       coderId: coder.id,
       jobId,
       codebook: toCodebookResponse(codebookRow),
-      progress: Object.entries(doneUnitIds).map(([unitset, ids]) => ({ unitset, doneUnitIds: ids })),
+      progress: Object.entries(doneUnitIds)
+        .filter(([unitset]) => {
+          if (unitset === "") return false;
+          if (unitset === "__all__" && hasNamedUnitsets) return false;
+          return true;
+        })
+        .map(([unitset, ids]) => ({ unitset, doneUnitIds: ids })),
     };
     return c.json(response);
   });
@@ -80,14 +126,37 @@ export function sessionRoutes(db: DatabaseSync) {
     const coder = c.get("coder")!;
     const setname = c.req.param("setname")!;
 
-    const unitset = db.prepare("SELECT * FROM unitsets WHERE jobId = ? AND name = ?").get(jobId, setname) as
-      | UnitsetRow
-      | undefined;
-    if (!unitset) return c.json({ error: `Unitset '${setname}' not found` }, 404);
+    let unitIds: number[];
+    const isAllUnits = !setname || setname === "__all__" || setname === "default";
 
-    const unitIds: number[] = JSON.parse(unitset.unitIds);
+    if (isAllUnits) {
+      const rows = db.prepare("SELECT id FROM units WHERE jobId = ? ORDER BY id").all(jobId) as unknown as { id: number }[];
+      unitIds = rows.map((r) => r.id);
+    } else {
+      const unitset = db.prepare("SELECT * FROM unitsets WHERE jobId = ? AND name = ?").get(jobId, setname) as
+        | UnitsetRow
+        | undefined;
+      if (!unitset) return c.json({ error: `Unitset '${setname}' not found` }, 404);
+      unitIds = JSON.parse(unitset.unitIds);
+    }
+
+    // Check codebook to see if unit_loop has randomizeUnits enabled for this loop
+    const codebookRow = getActiveCodebook(db, jobId);
+    if (codebookRow) {
+      try {
+        const items = JSON.parse(codebookRow.items) as CodebookItem[];
+        const loop = findLoopForUnitset(items, setname, isAllUnits);
+        if (loop?.randomizeUnits) {
+          unitIds = shuffleWithSeed(unitIds, coder.id + jobId * 1000);
+        }
+      } catch {
+        // Fallback to unrandomized order
+      }
+    }
+
     const doneUnitIds = JSON.parse(coder.doneUnitIds) as Record<string, number[]>;
-    const done = new Set(doneUnitIds[setname] ?? []);
+    const doneKey = isAllUnits ? "__all__" : setname;
+    const done = new Set([...(doneUnitIds[doneKey] ?? []), ...(doneUnitIds[""] ?? [])]);
     const nextUnitId = unitIds.find((id) => !done.has(id));
     if (nextUnitId === undefined) return c.json(null);
 
@@ -128,12 +197,15 @@ export function sessionRoutes(db: DatabaseSync) {
     );
 
     // Mark this unit done, for this coder, in every unitset that contains it
-    // (simplification: the contract doesn't currently carry which unitset a
-    // submission belongs to; see CONTRACTS.md/design plan §3a for the
-    // follow-up design work this MVP choice defers).
+    // and in the global all-units progress list.
     const allDone = Object.values(variables).every((v) => v.done);
     if (allDone) {
       const doneUnitIds = JSON.parse(coder.doneUnitIds) as Record<string, number[]>;
+      const doneAll = doneUnitIds["__all__"] ?? [];
+      if (!doneAll.includes(unitId)) {
+        doneUnitIds["__all__"] = [...doneAll, unitId];
+      }
+
       const unitsets = db.prepare("SELECT * FROM unitsets WHERE jobId = ?").all(jobId) as unknown as UnitsetRow[];
       for (const unitset of unitsets) {
         const ids: number[] = JSON.parse(unitset.unitIds);

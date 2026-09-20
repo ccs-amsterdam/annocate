@@ -1,116 +1,138 @@
-import { comparePositions, parentPosition, type CodebookItem } from "@annotinder/contracts";
+import type {
+  CodebookItem,
+  TopLevelItem,
+  InLoopItem,
+  UnitLoopItem,
+  ConditionItem,
+} from "@annotinder/contracts";
 import { evaluateCondition } from "./conditions";
 import type { ExpressionCache } from "./expressionCache";
 
 /**
- * Position-based tree utilities over a flat, positional codebook item array
- * (design plan §2/§5). This -- together with `@annotinder/contracts`'
- * `validateCodebookItems` -- is the client's sole source of truth for
- * codebook shape; there is no server-side tree logic to keep in sync with.
+ * Tree utilities over hierarchical, nested codebook items.
  */
 
-export function sortByPosition<T extends CodebookItem>(items: T[]): T[] {
-  return [...items].sort((a, b) => comparePositions(a.position, b.position));
-}
-
-/** Root-level items (depth 1), in position order. */
-export function getRootItems(items: CodebookItem[]): CodebookItem[] {
-  return sortByPosition(items.filter((item) => parentPosition(item.position) === null));
-}
-
-/** Direct children of `position`, in position order. */
-export function getChildren(items: CodebookItem[], position: string): CodebookItem[] {
-  return sortByPosition(items.filter((item) => parentPosition(item.position) === position));
-}
-
-/** All descendants (direct and transitive) of `position`, in position order. */
-export function getDescendants(items: CodebookItem[], position: string): CodebookItem[] {
-  const prefix = `${position}.`;
-  return sortByPosition(items.filter((item) => item.position.startsWith(prefix)));
-}
-
-/** Ancestors of `position`, ordered root-first (nearest ancestor last). Does not include the item itself. */
-export function getAncestors(items: CodebookItem[], position: string): CodebookItem[] {
-  const byPosition = new Map(items.map((item) => [item.position, item]));
-  const ancestors: CodebookItem[] = [];
-  let current = parentPosition(position);
-  while (current !== null) {
-    const item = byPosition.get(current);
-    if (item) ancestors.unshift(item);
-    current = parentPosition(current);
+/** Flattens all items in the tree into a single array in document order. */
+export function flattenTree(items: (TopLevelItem | InLoopItem)[]): CodebookItem[] {
+  const result: CodebookItem[] = [];
+  for (const item of items) {
+    result.push(item);
+    if ("children" in item && Array.isArray(item.children)) {
+      result.push(...flattenTree(item.children));
+    }
   }
-  return ancestors;
+  return result;
+}
+
+/** Finds an item anywhere in the tree by its unique name or _key. */
+export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: string): CodebookItem | null {
+  for (const item of items) {
+    if ((item as any)._key === identifier || item.name === identifier) return item;
+    if ("children" in item && Array.isArray(item.children)) {
+      const found = findItem(item.children, identifier);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** Finds the parent of an item by name or _key, or null if it is at the root level. */
+export function findParent(
+  items: (TopLevelItem | InLoopItem)[],
+  identifier: string,
+): (UnitLoopItem | ConditionItem) | null {
+  for (const item of items) {
+    if ("children" in item && Array.isArray(item.children)) {
+      if (item.children.some((child) => (child as any)._key === identifier || child.name === identifier)) {
+        return item as UnitLoopItem | ConditionItem;
+      }
+      const found = findParent(item.children, identifier);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**
- * Evaluates a `condition` item's expression, using the (optional) shared
- * `ExpressionCache` (design plan §12) when supplied -- memoizing per
- * condition item (keyed by its stable `position`) -- and falling back to a
- * fresh, uncached `evaluateCondition` call otherwise (e.g. in tests that
- * don't care about memoization).
+ * Returns true if an item with `name` or `_key` is inside a unit_loop (either directly
+ * or through one or more nested conditions).
  */
-async function evaluateConditionCached(
-  node: Extract<CodebookItem, { type: "condition" }>,
-  values: Record<string, unknown>,
-  cache?: ExpressionCache,
-): Promise<boolean> {
-  if (!cache) return evaluateCondition(node.expression, values);
-  return Boolean(await cache.evaluate(`condition:${node.position}`, node.expression, values));
+export function isInsideUnitLoop(items: TopLevelItem[], identifier: string): boolean {
+  let parent = findParent(items, identifier);
+  while (parent) {
+    if (parent.type === "unit_loop") return true;
+    parent = findParent(items, (parent as any)._key || parent.name);
+  }
+  return false;
 }
 
-/** Item internally treated as a "step" is either a leaf variable or an unentered unit_loop. */
+/**
+ * Evaluates whether `item` should be shown in the current run, based on its
+ * enclosing `condition` ancestors.
+ *
+ * An item is shown iff EVERY enclosing `condition` evaluates to true.
+ * If the item has no condition ancestors, it is always shown.
+ */
+export async function isItemActive(
+  items: TopLevelItem[],
+  itemName: string,
+  scope: Record<string, unknown>,
+  _cache?: ExpressionCache,
+): Promise<boolean> {
+  const current = findItem(items, itemName);
+  if (!current) return false;
 
-async function collectSteps(
-  items: CodebookItem[],
-  nodes: CodebookItem[],
+  let parent = findParent(items, itemName);
+  while (parent) {
+    if (parent.type === "condition") {
+      const active = await evaluateCondition(parent.expression, scope);
+      if (!active) return false;
+    }
+    parent = findParent(items, parent.name);
+  }
+  return true;
+}
+
+export async function computeTopLevelSteps(
+  items: TopLevelItem[],
   values: Record<string, unknown>,
-  opts: { descendIntoLoops: boolean; cache?: ExpressionCache },
+  _cache?: ExpressionCache,
 ): Promise<CodebookItem[]> {
   const steps: CodebookItem[] = [];
-  for (const node of sortByPosition(nodes)) {
-    if (node.type === "condition") {
-      if (await evaluateConditionCached(node, values, opts.cache)) {
-        steps.push(...(await collectSteps(items, getChildren(items, node.position), values, opts)));
+  async function collect(nodes: TopLevelItem[]) {
+    for (const node of nodes) {
+      if (node.type === "condition") {
+        const active = await evaluateCondition(node.expression, values);
+        if (active && node.children) {
+          await collect(node.children as TopLevelItem[]);
+        }
+      } else {
+        steps.push(node);
       }
-      continue;
     }
-    if (node.type === "unit_loop") {
-      steps.push(node);
-      if (opts.descendIntoLoops) {
-        steps.push(...(await collectSteps(items, getChildren(items, node.position), values, opts)));
-      }
-      continue;
-    }
-    steps.push(node);
   }
+  await collect(items);
   return steps;
 }
 
-/**
- * The document-order sequence of "top-level steps": user_variable leaves and
- * unit_loop items (in gated/condition-evaluated order), NOT descending into
- * a unit_loop's own children -- those are handled per-unit via
- * `computeLoopSteps` while that loop is active (design plan §5's JobManager).
- *
- * `cache` (design plan §12, optional): when supplied, memoizes each
- * `condition` item's evaluation per-position, reusing the cached result
- * whenever the condition expression's actually-referenced values haven't
- * changed since the last call, instead of always re-running QuickJS.
- */
-export function computeTopLevelSteps(
-  items: CodebookItem[],
+export async function computeLoopSteps(
+  loop: UnitLoopItem,
   values: Record<string, unknown>,
-  cache?: ExpressionCache,
+  _cache?: ExpressionCache,
 ): Promise<CodebookItem[]> {
-  return collectSteps(items, getRootItems(items), values, { descendIntoLoops: false, cache });
-}
-
-/** The gated sequence of unit_variable leaves within one active unit_loop, for the current unit's values. */
-export function computeLoopSteps(
-  items: CodebookItem[],
-  loopPosition: string,
-  values: Record<string, unknown>,
-  cache?: ExpressionCache,
-): Promise<CodebookItem[]> {
-  return collectSteps(items, getChildren(items, loopPosition), values, { descendIntoLoops: true, cache });
+  const steps: CodebookItem[] = [];
+  async function collect(nodes: InLoopItem[]) {
+    for (const node of nodes) {
+      if (node.type === "condition") {
+        const active = await evaluateCondition(node.expression, values);
+        if (active && node.children) {
+          await collect(node.children);
+        }
+      } else {
+        steps.push(node);
+      }
+    }
+  }
+  await collect(loop.children);
+  return steps;
 }

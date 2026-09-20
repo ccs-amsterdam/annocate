@@ -1,52 +1,48 @@
-import { useState, useEffect } from "react";
-import type { CodebookResponse } from "@annotinder/contracts";
+import { useState } from "react";
+import type { CodebookMeta, CodebookResponse } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
-import { useCodebookQuery, useCodebooksQuery } from "../../admin/queries";
+import { useCodebooksQuery, useCodebookQuery } from "../../admin/queries";
 import { CodebookEditor } from "./CodebookEditor";
+import { CodebookVersionsDialog } from "./CodebookVersionsDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
-import { GitBranch, Plus, History, Lock, CheckCircle, Loader2 } from "lucide-react";
+import { Plus, Loader2, GitBranch } from "lucide-react";
+
+interface CodebookManagerProps {
+  client: AdminClient;
+  /** Callback to notify parent (AdminApp) if there are unsaved changes */
+  onDirtyChange?: (isDirty: boolean) => void;
+}
 
 /**
- * Codebook manager: a job has one active codebook.
- * By default, immediately shows the active codebook editor/viewer.
- * Allows viewing different historical versions and creating a new version
- * (forking an existing/immutable codebook).
+ * Single-tab codebook manager with version history modal dialog.
+ * Shows the active codebook version in full height by default, with a "Versions"
+ * button in the editor action bar providing a complete overview of versions,
+ * timestamps, active status, immutability, and provenance settings.
  */
-export function CodebookManager({
-  client,
-  onDirtyChange,
-}: {
-  client: AdminClient;
-  onDirtyChange?: (dirty: boolean) => void;
-}) {
+export function CodebookManager({ client, onDirtyChange }: CodebookManagerProps) {
   const codebooksQuery = useCodebooksQuery(client);
-
-  // Selected codebook id: number for existing, "new" for brand new, "duplicate" for forked version
-  const [selectedVersionId, setSelectedVersionId] = useState<number | "new" | "duplicate" | null>(null);
-  const [duplicateSource, setDuplicateSource] = useState<CodebookResponse | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-
   const codebooks = codebooksQuery.data ?? [];
 
-  // When codebooks load, default to the latest/active codebook if not set
-  useEffect(() => {
-    if (codebooks.length > 0 && selectedVersionId === null) {
-      // Pick the latest codebook by ID
-      const latest = codebooks[codebooks.length - 1];
-      setSelectedVersionId(latest.id);
-    }
-  }, [codebooks, selectedVersionId]);
+  // Currently selected codebook ID for inspection/editing, or "new" / "duplicate", or null (default to latest)
+  const [selectedVersionId, setSelectedVersionId] = useState<number | "new" | "duplicate" | null>(null);
 
-  // Forward dirty state to parent
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+  // When duplicating an existing codebook to make a new draft
+  const [duplicateSource, setDuplicateSource] = useState<CodebookResponse | null>(null);
 
-  const activeId = typeof selectedVersionId === "number" ? selectedVersionId : null;
-  const activeCodebookQuery = useCodebookQuery(client, activeId);
+  // Versions overview modal state
+  const [versionsDialogOpen, setVersionsDialogOpen] = useState(false);
 
+  // Unsaved changes tracking
+  const [isDirty, setIsDirtyInternal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  function setIsDirty(dirty: boolean) {
+    setIsDirtyInternal(dirty);
+    onDirtyChange?.(dirty);
+  }
+
+  // Intercept version changes if unsaved edits exist
   function requestNavigation(action: () => void) {
     if (isDirty) {
       setPendingAction(() => action);
@@ -55,21 +51,30 @@ export function CodebookManager({
     }
   }
 
-  async function handleCreateNewVersion() {
-    requestNavigation(async () => {
-      let source: CodebookResponse | null = null;
-      if (typeof selectedVersionId === "number") {
-        source = await client.getCodebook(selectedVersionId);
-      } else if (codebooks.length > 0) {
-        source = await client.getCodebook(codebooks[codebooks.length - 1].id);
-      }
+  // The latest codebook is the active version
+  const latestCodebookId = codebooks.length > 0 ? codebooks[codebooks.length - 1].id : null;
 
-      if (source) {
+  // The active version: if user hasn't explicitly chosen a version, default to the latest codebook
+  const currentVersion: number | "new" | "duplicate" =
+    selectedVersionId !== null
+      ? selectedVersionId
+      : latestCodebookId !== null
+        ? latestCodebookId
+        : "new";
+
+  // Active codebook ID to fetch
+  const activeId = typeof currentVersion === "number" ? currentVersion : null;
+  const activeCodebookQuery = useCodebookQuery(client, activeId);
+
+  function handleCreateNewVersion() {
+    requestNavigation(() => {
+      // If we have an active codebook, clone it as initial draft for the new version
+      if (activeCodebook) {
         setDuplicateSource({
-          ...source,
+          ...activeCodebook,
           id: -1,
+          name: `${activeCodebook.name} (v${codebooks.length + 1})`,
           immutable: false,
-          name: `${source.name.replace(/\s*\(v\d+\)$/, "")} (v${codebooks.length + 1})`,
         });
         setSelectedVersionId("duplicate");
       } else {
@@ -78,17 +83,41 @@ export function CodebookManager({
     });
   }
 
+  function handleSelectVersion(targetId: number) {
+    requestNavigation(() => {
+      setSelectedVersionId(targetId);
+      setDuplicateSource(null);
+    });
+  }
+
+  async function handleDuplicateVersion(meta: CodebookMeta) {
+    requestNavigation(async () => {
+      try {
+        const full = await client.getCodebook(meta.id);
+        setDuplicateSource({
+          ...full,
+          id: -1,
+          name: `${full.name} (v${codebooks.length + 1})`,
+          immutable: false,
+        });
+        setSelectedVersionId("duplicate");
+      } catch (e) {
+        console.error("Failed to duplicate codebook version", e);
+      }
+    });
+  }
+
   if (codebooksQuery.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground text-sm">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        Loading codebook...
+        Loading codebooks...
       </div>
     );
   }
 
   // If no codebooks exist yet for this job
-  if (codebooks.length === 0 && selectedVersionId !== "new") {
+  if (codebooks.length === 0 && currentVersion !== "new") {
     return (
       <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border p-12 text-center">
         <div className="rounded-full bg-primary/10 p-4 text-primary">
@@ -109,13 +138,13 @@ export function CodebookManager({
   }
 
   const activeCodebook: CodebookResponse | null =
-    selectedVersionId === "new"
+    currentVersion === "new"
       ? null
-      : selectedVersionId === "duplicate"
+      : currentVersion === "duplicate"
         ? duplicateSource
         : (activeCodebookQuery.data ?? null);
 
-  if (selectedVersionId !== "new" && selectedVersionId !== "duplicate" && !activeCodebook) {
+  if (currentVersion !== "new" && currentVersion !== "duplicate" && !activeCodebook) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground text-sm">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -124,81 +153,16 @@ export function CodebookManager({
     );
   }
 
-  const currentCodebookMeta = codebooks.find((c) => c.id === activeId);
-
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Codebook Version Navigation Header */}
-      <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <History className="h-4 w-4 text-primary" />
-            <span>Version:</span>
-          </div>
-
-          {/* Version Dropdown Selector */}
-          <select
-            className="h-8 rounded-lg border border-input bg-background px-3 text-xs font-semibold text-foreground cursor-pointer"
-            value={typeof selectedVersionId === "number" ? selectedVersionId : ""}
-            onChange={(e) => {
-              const targetId = Number(e.target.value);
-              requestNavigation(() => {
-                setSelectedVersionId(targetId);
-                setDuplicateSource(null);
-              });
-            }}
-          >
-            {codebooks.map((cb, idx) => (
-              <option key={cb.id} value={cb.id}>
-                {cb.name} {cb.immutable ? "(Immutable)" : idx === codebooks.length - 1 ? "(Active)" : ""}
-              </option>
-            ))}
-            {selectedVersionId === "duplicate" && <option value="">Draft (New Version)</option>}
-            {selectedVersionId === "new" && <option value="">New Codebook</option>}
-          </select>
-
-          {currentCodebookMeta?.immutable && (
-            <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              <Lock className="h-3 w-3" />
-              Locked (in use)
-            </span>
-          )}
-
-          {!currentCodebookMeta?.immutable && selectedVersionId !== "duplicate" && selectedVersionId !== "new" && (
-            <span className="flex items-center gap-1 rounded-md bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-600 dark:text-teal-400">
-              <CheckCircle className="h-3 w-3" />
-              Active Version
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCreateNewVersion}
-            className="flex items-center gap-1.5 text-xs font-semibold"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Create new version
-          </Button>
-        </div>
-      </div>
-
-      {/* Embedded Codebook Editor */}
+      {/* Full-height embedded Codebook Editor with non-intrusive Versions button */}
       <div className="flex-1 overflow-hidden">
         <CodebookEditor
-          key={selectedVersionId === "new" ? "new" : selectedVersionId === "duplicate" ? "duplicate" : selectedVersionId}
+          key={currentVersion === "new" ? "new" : currentVersion === "duplicate" ? "duplicate" : currentVersion}
           client={client}
-          codebook={selectedVersionId === "new" ? null : activeCodebook}
+          codebook={currentVersion === "new" ? null : activeCodebook}
           onDirtyChange={setIsDirty}
-          onCancel={() => {
-            setIsDirty(false);
-            if (codebooks.length > 0) {
-              setSelectedVersionId(codebooks[codebooks.length - 1].id);
-            }
-          }}
+          onOpenVersions={() => setVersionsDialogOpen(true)}
           onSaved={(saved) => {
             setIsDirty(false);
             setSelectedVersionId(saved.id);
@@ -207,7 +171,19 @@ export function CodebookManager({
         />
       </div>
 
-      {/* Unsaved Changes Confirmation Modal for version navigation */}
+      {/* Overview Modal Dialog for Codebook Versions & Provenance */}
+      <CodebookVersionsDialog
+        open={versionsDialogOpen}
+        onClose={() => setVersionsDialogOpen(false)}
+        codebooks={codebooks}
+        currentVersion={currentVersion}
+        latestCodebookId={latestCodebookId}
+        onSelectVersion={handleSelectVersion}
+        onCreateNewVersion={handleCreateNewVersion}
+        onDuplicateVersion={handleDuplicateVersion}
+      />
+
+      {/* Unsaved changes confirmation dialog */}
       <UnsavedChangesDialog
         open={pendingAction !== null}
         onCancel={() => setPendingAction(null)}

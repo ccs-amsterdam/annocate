@@ -14,7 +14,7 @@ import {
  */
 export interface JobServer {
   getSession(): Promise<SessionResponse>;
-  getNextUnit(unitset: string): Promise<CoderUnitResponse | null>;
+  getNextUnit(unitset?: string): Promise<CoderUnitResponse | null>;
   postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void>;
   postCoderVariables(variables: Record<string, VariableValue>): Promise<void>;
 }
@@ -55,8 +55,9 @@ export class HttpJobServer implements JobServer {
     return this.request(endpoints.getSession.path);
   }
 
-  async getNextUnit(unitset: string): Promise<CoderUnitResponse | null> {
-    return this.request(endpoints.getNextUnit.path.replace(":setname", encodeURIComponent(unitset)));
+  async getNextUnit(unitset?: string): Promise<CoderUnitResponse | null> {
+    const key = unitset && unitset.trim() !== "" ? encodeURIComponent(unitset) : "__all__";
+    return this.request(endpoints.getNextUnit.path.replace(":setname", key));
   }
 
   async postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void> {

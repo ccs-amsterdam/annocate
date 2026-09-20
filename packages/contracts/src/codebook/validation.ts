@@ -1,5 +1,4 @@
-import type { CodebookItem } from "./item.js";
-import { parentPosition } from "./position.js";
+import type { CodebookItem, TopLevelItem } from "./item.js";
 
 export interface CodebookValidationIssue {
   path: (string | number)[];
@@ -7,115 +6,122 @@ export interface CodebookValidationIssue {
 }
 
 /**
- * Validates the structural/nesting rules of a flat, positional codebook item
- * array (design plan §2):
- *  - positions and names must be unique
- *  - a non-root item's parent position must exist as an item in the array
- *  - user_variable / unit_variable items are leaves (nothing may be
- *    positioned beneath them)
- *  - user_variable items may not have a unit_loop ancestor
- *  - unit_variable items MUST have a unit_loop ancestor
- *  - unit_loop items may not have a unit_loop ancestor (no nested loops)
+ * Validates tree-level semantics of a codebook document:
+ *  - item names cannot be empty
+ *  - item names must follow valid character set (letters, numbers, _, -, .)
+ *  - item names must be unique across the entire codebook
  *  - unit_loop items must have at least one child
- *  - condition items may appear anywhere and may be nested
- *
- * Returns a list of issues; empty means the item array is structurally
- * valid. Kept as a plain function (rather than baked into a zod
- * `.superRefine`) so it can also be used standalone by the codebook editor
- * UI for inline validation feedback (see design plan §5).
+ *  - condition items must have at least one child
+ *  - relation variables must refer to valid span variables that precede them
  */
-export function validateCodebookItems(items: CodebookItem[]): CodebookValidationIssue[] {
+export function validateCodebookItems(items: TopLevelItem[]): CodebookValidationIssue[] {
   const issues: CodebookValidationIssue[] = [];
-  const byPosition = new Map<string, CodebookItem>();
-  const byIndex = new Map<string, number>();
+  const seenNames = new Map<string, (string | number)[]>();
+  const spanVariables = new Set<string>();
 
-  items.forEach((item, index) => {
-    if (byPosition.has(item.position)) {
-      issues.push({ path: [index, "position"], message: `Duplicate position '${item.position}'` });
-    } else {
-      byPosition.set(item.position, item);
-      byIndex.set(item.position, index);
-    }
-  });
+  function walk(
+    nodes: CodebookItem[],
+    currentPath: (string | number)[],
+    insideUnitLoop: boolean,
+  ) {
+    nodes.forEach((item, index) => {
+      const itemPath = [...currentPath, index];
 
-  const names = items.map((i) => i.name);
-  const seenNames = new Set<string>();
-  items.forEach((item, index) => {
-    if (seenNames.has(item.name)) {
-      issues.push({ path: [index, "name"], message: `Duplicate name '${item.name}'` });
-    }
-    seenNames.add(item.name);
-  });
-  void names;
+      // Check name validity and uniqueness
+      if (!item.name || item.name.trim() === "") {
+        issues.push({
+          path: [...itemPath, "name"],
+          message: "Item name cannot be empty",
+        });
+      } else {
+        if (!/^[a-zA-Z0-9_.-]+$/.test(item.name)) {
+          issues.push({
+            path: [...itemPath, "name"],
+            message: `Name '${item.name}' contains invalid characters (letters, numbers, _, -, . only)`,
+          });
+        }
+        if (seenNames.has(item.name)) {
+          issues.push({
+            path: [...itemPath, "name"],
+            message: `Duplicate name '${item.name}'`,
+          });
+        } else {
+          seenNames.set(item.name, itemPath);
+        }
+      }
 
-  const childCount = new Map<string, number>();
+      // Check relation variable references
+      if (
+        (item.type === "unit_variable" || item.type === "user_variable") &&
+        item.variable?.type === "relation"
+      ) {
+        const fromVar = (item.variable as { from?: { variable?: string } }).from?.variable;
+        const toVar = (item.variable as { to?: { variable?: string } }).to?.variable;
+        if (fromVar && !spanVariables.has(fromVar)) {
+          issues.push({
+            path: [...itemPath, "variable", "from", "variable"],
+            message: `Relation 'from' refers to '${fromVar}' which is not a preceding span variable`,
+          });
+        }
+        if (toVar && !spanVariables.has(toVar)) {
+          issues.push({
+            path: [...itemPath, "variable", "to", "variable"],
+            message: `Relation 'to' refers to '${toVar}' which is not a preceding span variable`,
+          });
+        }
+      }
 
-  for (const item of items) {
-    const parent = parentPosition(item.position);
-    if (parent === null) continue; // root-level item, no parent to validate
+      // Record span variables for downstream relation checking
+      if (
+        (item.type === "unit_variable" || item.type === "user_variable") &&
+        item.variable?.type === "span"
+      ) {
+        spanVariables.add(item.name);
+      }
 
-    const parentItem = byPosition.get(parent);
-    const index = byIndex.get(item.position)!;
-    if (!parentItem) {
-      issues.push({ path: [index, "position"], message: `Parent position '${parent}' does not exist` });
-      continue;
-    }
-
-    childCount.set(parent, (childCount.get(parent) ?? 0) + 1);
-
-    if (parentItem.type === "user_variable" || parentItem.type === "unit_variable") {
-      issues.push({
-        path: [index, "position"],
-        message: `Item '${item.name}' cannot be nested under variable '${parentItem.name}' (variables are leaves)`,
-      });
-    }
+      // Check structural rules
+      if (item.type === "unit_loop") {
+        if (insideUnitLoop) {
+          issues.push({
+            path: [...itemPath, "type"],
+            message: `unit_loop '${item.name}' cannot be nested inside another unit_loop`,
+          });
+        }
+        if (!item.children || item.children.length === 0) {
+          issues.push({
+            path: [...itemPath, "children"],
+            message: `unit_loop '${item.name}' must have at least one child item`,
+          });
+        } else {
+          walk(item.children, [...itemPath, "children"], true);
+        }
+      } else if (item.type === "condition") {
+        if (!item.children || item.children.length === 0) {
+          issues.push({
+            path: [...itemPath, "children"],
+            message: `condition '${item.name}' must have at least one child item`,
+          });
+        } else {
+          walk(item.children, [...itemPath, "children"], insideUnitLoop);
+        }
+      } else if (item.type === "user_variable") {
+        if (insideUnitLoop) {
+          issues.push({
+            path: [...itemPath, "type"],
+            message: `user_variable '${item.name}' cannot be nested inside a unit_loop (use unit_variable instead)`,
+          });
+        }
+      } else if (item.type === "unit_variable") {
+        if (!insideUnitLoop) {
+          issues.push({
+            path: [...itemPath, "type"],
+            message: `unit_variable '${item.name}' must be nested inside a unit_loop`,
+          });
+        }
+      }
+    });
   }
 
-  // Determine, for each item, whether it has a unit_loop ancestor (walking up
-  // through parent positions, skipping over condition items which don't
-  // change loop-membership).
-  function hasUnitLoopAncestor(position: string): boolean {
-    let current = parentPosition(position);
-    while (current !== null) {
-      const parentItem = byPosition.get(current);
-      if (!parentItem) return false; // already reported as a missing-parent issue above
-      if (parentItem.type === "unit_loop") return true;
-      current = parentPosition(current);
-    }
-    return false;
-  }
-
-  for (const item of items) {
-    const index = byIndex.get(item.position)!;
-    const insideUnitLoop = hasUnitLoopAncestor(item.position);
-
-    if (item.type === "user_variable" && insideUnitLoop) {
-      issues.push({
-        path: [index, "type"],
-        message: `user_variable '${item.name}' cannot be nested inside a unit_loop (use unit_variable instead)`,
-      });
-    }
-    if (item.type === "unit_variable" && !insideUnitLoop) {
-      issues.push({
-        path: [index, "type"],
-        message: `unit_variable '${item.name}' must be nested inside a unit_loop`,
-      });
-    }
-    if (item.type === "unit_loop" && insideUnitLoop) {
-      issues.push({
-        path: [index, "type"],
-        message: `unit_loop '${item.name}' cannot be nested inside another unit_loop`,
-      });
-    }
-  }
-
-  for (const item of items) {
-    if (item.type !== "unit_loop") continue;
-    const index = byIndex.get(item.position)!;
-    if (!childCount.get(item.position)) {
-      issues.push({ path: [index, "position"], message: `unit_loop '${item.name}' must have at least one child` });
-    }
-  }
-
+  walk(items, [], false);
   return issues;
 }

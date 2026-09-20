@@ -1,59 +1,82 @@
-import type { CodebookItem } from "@annotinder/contracts";
+import type { TopLevelItem, InLoopItem, UserVariableItem, UnitVariableItem, UnitLoopItem } from "@annotinder/contracts";
 import { describe, expect, it } from "vitest";
+import {
+  computeLoopSteps,
+  computeTopLevelSteps,
+  findItem,
+  findParent,
+  flattenTree,
+  isInsideUnitLoop,
+} from "./tree";
 
-import { computeLoopSteps, computeTopLevelSteps, getAncestors, getChildren, getDescendants, getRootItems } from "./tree";
-
-function confirm(position: string, name: string): CodebookItem {
-  return { position, name, type: "user_variable", variable: { type: "confirm", question: "?" } };
+function confirm(name: string): UserVariableItem {
+  return { name, type: "user_variable", variable: { type: "confirm", question: "?" } };
 }
 
-function condition(position: string, name: string, expression: string): CodebookItem {
-  return { position, name, type: "condition", expression };
+function topCondition(name: string, expression: string, children: TopLevelItem[]): TopLevelItem {
+  return { name, type: "condition", expression, children };
 }
 
-function unitLoop(position: string, name: string, unitset = "main"): CodebookItem {
-  return { position, name, type: "unit_loop", unitset, layout: { template: "" } };
+function inLoopCondition(name: string, expression: string, children: InLoopItem[]): InLoopItem {
+  return { name, type: "condition", expression, children };
 }
 
-function unitVar(position: string, name: string): CodebookItem {
+function unitVar(name: string): UnitVariableItem {
   return {
-    position,
     name,
     type: "unit_variable",
     variable: { type: "select_code", question: "?", codes: [{ code: "A" }, { code: "B" }] },
   };
 }
 
+function unitLoop(name: string, children: InLoopItem[], unitset = "main"): UnitLoopItem {
+  return { name, type: "unit_loop", unitset, layout: { template: "" }, children };
+}
+
 describe("tree utilities", () => {
-  const items: CodebookItem[] = [
-    confirm("1", "consent"),
-    condition("2", "gate", "consent === true"),
-    confirm("2.1", "gated_question"),
-    unitLoop("3", "main_loop"),
-    unitVar("3.1", "sentiment"),
-    condition("3.2", "inner_gate", "sentiment === 'A'"),
-    unitVar("3.2.1", "followup"),
+  const loopNode = unitLoop("main_loop", [
+    unitVar("sentiment"),
+    inLoopCondition("inner_gate", "sentiment === 'A'", [unitVar("followup")]),
+  ]);
+
+  const items: TopLevelItem[] = [
+    confirm("consent"),
+    topCondition("gate", "consent === true", [confirm("gated_question")]),
+    loopNode,
   ];
 
-  it("getRootItems returns only depth-1 items, in order", () => {
-    expect(getRootItems(items).map((i) => i.name)).toEqual(["consent", "gate", "main_loop"]);
+  it("flattenTree returns all items in document order", () => {
+    expect(flattenTree(items).map((i) => i.name)).toEqual([
+      "consent",
+      "gate",
+      "gated_question",
+      "main_loop",
+      "sentiment",
+      "inner_gate",
+      "followup",
+    ]);
   });
 
-  it("getChildren returns direct children only", () => {
-    expect(getChildren(items, "3").map((i) => i.name)).toEqual(["sentiment", "inner_gate"]);
+  it("findItem finds items by unique name", () => {
+    expect(findItem(items, "sentiment")?.type).toBe("unit_variable");
+    expect(findItem(items, "unknown")).toBeNull();
   });
 
-  it("getDescendants returns all nested descendants", () => {
-    expect(getDescendants(items, "3").map((i) => i.name)).toEqual(["sentiment", "inner_gate", "followup"]);
+  it("findParent finds the parent item", () => {
+    expect(findParent(items, "gated_question")?.name).toBe("gate");
+    expect(findParent(items, "followup")?.name).toBe("inner_gate");
+    expect(findParent(items, "consent")).toBeNull();
   });
 
-  it("getAncestors returns ancestors root-first, excluding self", () => {
-    expect(getAncestors(items, "3.2.1").map((i) => i.name)).toEqual(["main_loop", "inner_gate"]);
-    expect(getAncestors(items, "1")).toEqual([]);
+  it("isInsideUnitLoop identifies loop membership", () => {
+    expect(isInsideUnitLoop(items, "sentiment")).toBe(true);
+    expect(isInsideUnitLoop(items, "followup")).toBe(true);
+    expect(isInsideUnitLoop(items, "consent")).toBe(false);
+    expect(isInsideUnitLoop(items, "gated_question")).toBe(false);
   });
 
   describe("computeTopLevelSteps", () => {
-    it("excludes a condition's children when the condition is false, does not descend into unit_loop", async () => {
+    it("excludes a condition's children when false, does not descend into unit_loop", async () => {
       const steps = await computeTopLevelSteps(items, { consent: false });
       expect(steps.map((i) => i.name)).toEqual(["consent", "main_loop"]);
     });
@@ -66,11 +89,11 @@ describe("tree utilities", () => {
 
   describe("computeLoopSteps", () => {
     it("gates nested conditions within the loop using per-unit values", async () => {
-      expect((await computeLoopSteps(items, "3", { sentiment: "A" })).map((i) => i.name)).toEqual([
+      expect((await computeLoopSteps(loopNode, { sentiment: "A" })).map((i) => i.name)).toEqual([
         "sentiment",
         "followup",
       ]);
-      expect((await computeLoopSteps(items, "3", { sentiment: "B" })).map((i) => i.name)).toEqual(["sentiment"]);
+      expect((await computeLoopSteps(loopNode, { sentiment: "B" })).map((i) => i.name)).toEqual(["sentiment"]);
     });
   });
 });

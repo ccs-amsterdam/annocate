@@ -1,55 +1,115 @@
-import { useState, useEffect } from "react";
-import type { CodebookItem, CodebookResponse } from "@annotinder/contracts";
+import { useState, useEffect, useMemo } from "react";
+import {
+  validateCodebookItems,
+  type CodebookItem,
+  type CodebookResponse,
+  type TopLevelItem,
+  type UnitLoopItem,
+} from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
 import { useCreateCodebookMutation, useUpdateCodebookMutation, useUnitsetsQuery } from "../../admin/queries";
-import { deleteItem, insertItem, moveItem, type NewCodebookItem } from "../../codebook/codebookEdit";
-import { parentPosition } from "@annotinder/contracts";
-import { getChildren, getRootItems } from "../../codebook/tree";
+import {
+  deleteItem,
+  ensureKeys,
+  generateKey,
+  getUniqueItemName,
+  insertItem,
+  moveItemTo,
+  stripKeys,
+  type MoveTargetPosition,
+  updateItem,
+} from "../../codebook/codebookEdit";
+import { findItem, findParent, flattenTree, isInsideUnitLoop } from "../../codebook/tree";
 import { CodebookTreeView } from "./CodebookTreeView";
 import { ItemForm, ITEM_TYPE_OPTIONS_IN_LOOP, ITEM_TYPE_OPTIONS_TOP, defaultItemForType } from "./ItemForm";
 import { CodebookYamlEditor } from "./CodebookYamlEditor";
 import { CodebookPreviewVariable } from "./CodebookPreviewVariable";
-import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sliders, Code2, Eye, Edit3 } from "lucide-react";
+import { Sliders, Code2, Eye, Edit3, AlertCircle, History, Lock } from "lucide-react";
+
+function getItemAtPath(tree: unknown[], path: (string | number)[]): CodebookItem | null {
+  let current: any = tree;
+  for (const segment of path) {
+    if (segment === "name" || segment === "type" || segment === "children" || segment === "variable") {
+      continue;
+    }
+    if (typeof segment === "number") {
+      if (Array.isArray(current)) {
+        current = current[segment];
+      } else if (current && Array.isArray(current.children)) {
+        current = current.children[segment];
+      }
+    }
+  }
+  return current ?? null;
+}
 
 /**
  * Whole-document codebook editor (design plan §5.2): holds one in-memory
- * draft (`name` + flat `items` array), edited purely client-side via
- * `codebookEdit.ts`'s pure position-rewriting functions, and saved in one
- * `PUT`/`POST /codebook` call.
+ * draft (`name` + nested `items` array), edited purely client-side via
+ * `codebookEdit.ts`, and saved in one `PUT`/`POST /codebook` call.
  */
 export function CodebookEditor({
   client,
   codebook,
   onSaved,
-  onCancel,
   onDirtyChange,
+  onOpenVersions,
 }: {
   client: AdminClient;
   /** Existing codebook to edit, or null to create a new one. */
   codebook: CodebookResponse | null;
   onSaved: (codebook: CodebookResponse) => void;
-  onCancel: () => void;
   onDirtyChange?: (dirty: boolean) => void;
+  onOpenVersions?: () => void;
 }) {
   const unitsetsQuery = useUnitsetsQuery(client);
   const createCodebook = useCreateCodebookMutation(client);
   const updateCodebook = useUpdateCodebookMutation(client);
 
   const [name, setName] = useState(codebook?.name ?? "New codebook");
-  const [items, setItems] = useState<CodebookItem[]>(codebook?.items ?? []);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [items, setItems] = useState<TopLevelItem[]>(() =>
+    ensureKeys((codebook?.items as TopLevelItem[]) ?? []),
+  );
+  const [selected, setSelected] = useState<string | null>(() => {
+    const first = items[0];
+    return first ? ((first as any)._key || first.name) : null;
+  });
 
   const [viewMode, setViewMode] = useState<"visual" | "yaml">("visual");
   const [itemPane, setItemPane] = useState<"edit" | "preview">("edit");
-  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
-  const dirty = name !== (codebook?.name ?? "New codebook") || JSON.stringify(items) !== JSON.stringify(codebook?.items ?? []);
+  const cleanItems = useMemo(() => stripKeys(items), [items]);
+
+  const dirty =
+    name !== (codebook?.name ?? "New codebook") ||
+    JSON.stringify(cleanItems) !== JSON.stringify(codebook?.items ?? []);
   const immutable = codebook?.immutable ?? false;
-  const selectedItem = items.find((i) => i.position === selected) ?? null;
-  const unitVariableNames = items.filter((i) => i.type === "unit_variable").map((i) => i.name);
+
+  const selectedItem = selected ? findItem(items, selected) : null;
+  const allItems = flattenTree(items);
+  const unitVariableNames = allItems.filter((i) => i.type === "unit_variable").map((i) => i.name);
+
+  // Real-time validation on every edit
+  const validationIssues = useMemo(() => {
+    return validateCodebookItems(cleanItems);
+  }, [cleanItems]);
+
+  const selectedItemValidationIssues = useMemo(() => {
+    if (!selectedItem) return [];
+    const selectedKey = (selectedItem as any)._key;
+    return validationIssues.filter((issue) => {
+      const node = getItemAtPath(items, issue.path);
+      if (node && ((node as any)._key === selectedKey || (selectedItem.name && node.name === selectedItem.name))) {
+        return true;
+      }
+      if (selectedItem.name && issue.message.includes(`'${selectedItem.name}'`)) {
+        return true;
+      }
+      return false;
+    });
+  }, [validationIssues, selectedItem, items]);
 
   // Notify parent of dirty state
   useEffect(() => {
@@ -67,67 +127,59 @@ export function CodebookEditor({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [dirty]);
 
-  // Find parent unit_loop if selected item is within a loop
-  const parentLoop = selectedItem
-    ? (items.find(
-        (i) => i.type === "unit_loop" && selectedItem.position.startsWith(i.position + "."),
-      ) as Extract<CodebookItem, { type: "unit_loop" }> | undefined)
-    : undefined;
+  // Find enclosing unit_loop if selected item is within a loop
+  let parentLoop: UnitLoopItem | undefined = undefined;
+  if (selectedItem) {
+    let p = findParent(items, (selectedItem as any)._key || selectedItem.name);
+    while (p) {
+      if (p.type === "unit_loop") {
+        parentLoop = p as UnitLoopItem;
+        break;
+      }
+      p = findParent(items, (p as any)._key || p.name);
+    }
+  }
 
-  function addItem(parent: string | null) {
-    const inLoop = parent !== null && isOrInsideUnitLoop(items, parent);
+  function addItem(parentIdentifier: string | null) {
+    const parent = parentIdentifier ? findItem(items, parentIdentifier) : null;
+    const inLoop =
+      parent !== null &&
+      (parent.type === "unit_loop" || isInsideUnitLoop(items, (parent as any)._key || parent.name));
     const type = (inLoop ? ITEM_TYPE_OPTIONS_IN_LOOP[0] : ITEM_TYPE_OPTIONS_TOP[0]) as CodebookItem["type"];
-    const name = `item_${items.length + 1}`;
-    const next = insertItem(items, defaultItemForType(type, name) as NewCodebookItem, parent);
-    setItems(next);
-    setSelected(next[next.length - 1].position);
+    const newName = getUniqueItemName(items, inLoop ? "unit_var" : "item");
+    const childName = getUniqueItemName(items, `${newName}_q`);
+    const nextItem = {
+      ...defaultItemForType(type, newName, inLoop, childName),
+      _key: generateKey(),
+    };
+    const next = insertItem(items, parentIdentifier, nextItem);
+    setItems(ensureKeys(next));
+    setSelected(nextItem._key);
   }
 
-  function changeItemType(position: string, type: CodebookItem["type"]) {
-    const item = items.find((i) => i.position === position);
+  function changeItemType(identifier: string, type: CodebookItem["type"]) {
+    const item = findItem(items, identifier);
     if (!item) return;
-    const withType = { ...defaultItemForType(type, item.name), position } as CodebookItem;
-    setItems(items.map((i) => (i.position === position ? withType : i)));
+    const inLoop = isInsideUnitLoop(items, identifier);
+    const updated = {
+      ...defaultItemForType(type, item.name, inLoop),
+      _key: (item as any)._key || identifier,
+    };
+    setItems(updateItem(items, identifier, updated));
   }
 
-  function handleDelete(position: string) {
+  function handleDelete(identifier: string) {
     if (!confirm("Delete this item and all of its children?")) return;
-    setItems(deleteItem(items, position));
-    if (selected === position) setSelected(null);
+    setItems(deleteItem(items, identifier));
+    if (selected === identifier) setSelected(null);
   }
 
-  function siblingIndex(position: string): { parent: string | null; index: number; count: number } {
-    const parent = parentPosition(position);
-    const siblings = parent === null ? getRootItems(items) : getChildren(items, parent);
-    return { parent, index: siblings.findIndex((s) => s.position === position), count: siblings.length };
-  }
-
-  function handleMoveUp(position: string) {
-    const { parent, index } = siblingIndex(position);
-    setItems(moveItem(items, position, parent, index - 1));
-  }
-  function handleMoveDown(position: string) {
-    const { parent, index } = siblingIndex(position);
-    setItems(moveItem(items, position, parent, index + 1));
-  }
-  function handleIndent(position: string) {
-    const { parent, index } = siblingIndex(position);
-    const siblings = parent === null ? getRootItems(items) : getChildren(items, parent);
-    const previous = siblings[index - 1];
-    if (!previous) return;
-    const newSiblingCount = getChildren(items, previous.position).length;
-    setItems(moveItem(items, position, previous.position, newSiblingCount));
-  }
-  function handleOutdent(position: string) {
-    const parent = parentPosition(position);
-    if (parent === null) return;
-    const grandparent = parentPosition(parent);
-    const { index: parentIndex } = siblingIndex(parent);
-    setItems(moveItem(items, position, grandparent, parentIndex + 1));
+  function handleMoveItem(source: string, target: string, position: MoveTargetPosition) {
+    setItems(moveItemTo(items, source, target, position));
   }
 
   async function handleSave(): Promise<CodebookResponse> {
-    const body = { name, items };
+    const body = { name, items: cleanItems };
     if (codebook && codebook.id !== -1) {
       const saved = await updateCodebook.mutateAsync({ id: codebook.id, body });
       onSaved(saved);
@@ -136,14 +188,6 @@ export function CodebookEditor({
       const saved = await createCodebook.mutateAsync(body);
       onSaved(saved);
       return saved;
-    }
-  }
-
-  function handleCloseRequest() {
-    if (dirty) {
-      setShowUnsavedModal(true);
-    } else {
-      onCancel();
     }
   }
 
@@ -163,8 +207,20 @@ export function CodebookEditor({
             placeholder="Codebook name"
           />
           {immutable && (
-            <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              <Lock className="h-3 w-3" />
               Immutable (in use) -- read only
+            </span>
+          )}
+
+          {/* Validation issues counter */}
+          {validationIssues.length > 0 && (
+            <span
+              className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
+              title={validationIssues.map((i) => i.message).join("\n")}
+            >
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {validationIssues.length} issue{validationIssues.length === 1 ? "" : "s"}
             </span>
           )}
 
@@ -198,15 +254,31 @@ export function CodebookEditor({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={handleCloseRequest}>
-            {dirty ? "Discard changes" : "Close"}
-          </Button>
+          {onOpenVersions && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onOpenVersions}
+              className="flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+            >
+              <History className="h-3.5 w-3.5 text-primary" />
+              <span>Versions</span>
+            </Button>
+          )}
           {!immutable && (
             <Button
               type="button"
               size="sm"
               onClick={handleSave}
-              disabled={!dirty || saving || items.length === 0}
+              disabled={!dirty || saving || items.length === 0 || validationIssues.length > 0}
+              title={
+                validationIssues.length > 0
+                  ? "Fix validation issues before saving"
+                  : !dirty
+                    ? "No changes to save"
+                    : undefined
+              }
             >
               {saving ? "Saving..." : "Save"}
             </Button>
@@ -219,7 +291,11 @@ export function CodebookEditor({
       {/* Main Content Area */}
       {viewMode === "yaml" ? (
         <div className="flex-1 overflow-hidden">
-          <CodebookYamlEditor items={items} onChange={setItems} disabled={immutable} />
+          <CodebookYamlEditor
+            items={cleanItems}
+            onChange={(next) => setItems(ensureKeys(next))}
+            disabled={immutable}
+          />
         </div>
       ) : (
         <div className="grid flex-1 grid-cols-2 gap-4 overflow-hidden">
@@ -227,14 +303,14 @@ export function CodebookEditor({
           <div className="flex flex-col gap-2 overflow-auto rounded-xl border border-border bg-card p-3 shadow-xs">
             <div className="flex items-center justify-between border-b border-border/60 pb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Codebook Items ({items.length})
+                Codebook Items ({allItems.length})
               </span>
               {!immutable && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs"
+                  className="h-7 text-xs cursor-pointer"
                   onClick={() => addItem(null)}
                 >
                   + Add root item
@@ -255,10 +331,8 @@ export function CodebookEditor({
                 onSelect={setSelected}
                 onAddChild={addItem}
                 onDelete={handleDelete}
-                onMoveUp={handleMoveUp}
-                onMoveDown={handleMoveDown}
-                onIndent={handleIndent}
-                onOutdent={handleOutdent}
+                onMoveItem={handleMoveItem}
+                validationIssues={validationIssues}
               />
             </div>
           </div>
@@ -279,10 +353,13 @@ export function CodebookEditor({
                         value={selectedItem.type}
                         disabled={immutable}
                         onChange={(e) =>
-                          changeItemType(selectedItem.position, e.target.value as CodebookItem["type"])
+                          changeItemType(
+                            (selectedItem as any)._key || selectedItem.name,
+                            e.target.value as CodebookItem["type"],
+                          )
                         }
                       >
-                        {(hasUnitLoopAncestor(items, selectedItem.position)
+                        {(isInsideUnitLoop(items, (selectedItem as any)._key || selectedItem.name)
                           ? ITEM_TYPE_OPTIONS_IN_LOOP
                           : ITEM_TYPE_OPTIONS_TOP
                         ).map((t) => (
@@ -333,9 +410,11 @@ export function CodebookEditor({
                         item={selectedItem}
                         unitsets={unitsetsQuery.data ?? []}
                         unitVariableNames={unitVariableNames}
-                        onChange={(next) =>
-                          setItems(items.map((i) => (i.position === next.position ? next : i)))
-                        }
+                        validationIssues={selectedItemValidationIssues}
+                        onChange={(next) => {
+                          const key = (selectedItem as any)._key || selected;
+                          setItems(updateItem(items, key, { ...next, _key: key } as any as CodebookItem));
+                        }}
                       />
                     </fieldset>
                   )}
@@ -349,44 +428,6 @@ export function CodebookEditor({
           </div>
         </div>
       )}
-
-      {/* Unsaved Changes Confirmation Dialog */}
-      <UnsavedChangesDialog
-        open={showUnsavedModal}
-        isSaving={saving}
-        onCancel={() => setShowUnsavedModal(false)}
-        onDiscard={() => {
-          setShowUnsavedModal(false);
-          onCancel();
-        }}
-        onSave={async () => {
-          await handleSave();
-          setShowUnsavedModal(false);
-          onCancel();
-        }}
-      />
     </div>
   );
-}
-
-/** True if `position` has an ancestor (parent, grandparent, etc.) that is a `unit_loop`. */
-function hasUnitLoopAncestor(items: CodebookItem[], position: string): boolean {
-  let current: string | null = parentPosition(position);
-  while (current !== null) {
-    const item = items.find((i) => i.position === current);
-    if (item?.type === "unit_loop") return true;
-    current = parentPosition(current);
-  }
-  return false;
-}
-
-/** True if `position` itself is a `unit_loop` or has a `unit_loop` ancestor. */
-function isOrInsideUnitLoop(items: CodebookItem[], position: string): boolean {
-  let current: string | null = position;
-  while (current !== null) {
-    const item = items.find((i) => i.position === current);
-    if (item?.type === "unit_loop") return true;
-    current = parentPosition(current);
-  }
-  return false;
 }

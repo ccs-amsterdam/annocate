@@ -1,89 +1,148 @@
 import { describe, expect, it } from "vitest";
-import type { CodebookItem } from "./item.js";
+import type { TopLevelItem, InLoopItem, UserVariableItem, UnitVariableItem } from "./item.js";
 import { validateCodebookItems } from "./validation.js";
+import { CodebookItemsSchema } from "./codebook.js";
 
 const confirmVariable = { type: "confirm" as const, question: "Confirm?" };
 
-function userVar(position: string, name: string): CodebookItem {
-  return { type: "user_variable", position, name, variable: confirmVariable };
+function userVar(name: string): UserVariableItem {
+  return { type: "user_variable", name, variable: confirmVariable };
 }
-function unitVar(position: string, name: string): CodebookItem {
-  return { type: "unit_variable", position, name, variable: confirmVariable };
+function unitVar(name: string): UnitVariableItem {
+  return { type: "unit_variable", name, variable: confirmVariable };
 }
-function unitLoop(position: string, name: string, unitset = "main"): CodebookItem {
-  return { type: "unit_loop", position, name, unitset, layout: { template: "" } };
+function unitLoop(name: string, children: InLoopItem[], unitset?: string): TopLevelItem {
+  return { type: "unit_loop", name, unitset, layout: { template: "" }, children };
 }
-function condition(position: string, name: string, expression = "true"): CodebookItem {
-  return { type: "condition", position, name, expression };
+function topCondition(name: string, children: TopLevelItem[], expression = "true"): TopLevelItem {
+  return { type: "condition", name, expression, children };
+}
+function inLoopCondition(name: string, children: InLoopItem[], expression = "true"): InLoopItem {
+  return { type: "condition", name, expression, children };
 }
 
 describe("validateCodebookItems", () => {
-  it("accepts a minimal valid codebook", () => {
-    const items = [unitLoop("1", "loop"), unitVar("1.1", "q1")];
+  it("accepts a minimal valid tree codebook", () => {
+    const items: TopLevelItem[] = [unitLoop("loop", [unitVar("q1")])];
     expect(validateCodebookItems(items)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+  });
+
+  it("allows unit_loop with unitset omitted, empty, or with randomizeUnits", () => {
+    const itemsWithoutUnitset: TopLevelItem[] = [
+      {
+        type: "unit_loop",
+        name: "all_units_loop",
+        layout: { template: "" },
+        randomizeUnits: true,
+        children: [unitVar("q1")],
+      },
+    ];
+    expect(validateCodebookItems(itemsWithoutUnitset)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(itemsWithoutUnitset)).not.toThrow();
+
+    const itemsWithEmptyUnitset: TopLevelItem[] = [
+      {
+        type: "unit_loop",
+        name: "empty_unitset_loop",
+        unitset: "",
+        layout: { template: "" },
+        children: [unitVar("q1")],
+      },
+    ];
+    expect(validateCodebookItems(itemsWithEmptyUnitset)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(itemsWithEmptyUnitset)).not.toThrow();
   });
 
   it("allows user_variable and condition items outside a unit_loop", () => {
-    const items = [
-      userVar("1", "consent"),
-      condition("2", "gate"),
-      userVar("2.1", "followup"),
-      unitLoop("3", "loop"),
-      unitVar("3.1", "q1"),
+    const items: TopLevelItem[] = [
+      userVar("consent"),
+      topCondition("gate", [userVar("followup")]),
+      unitLoop("loop", [unitVar("q1")]),
     ];
     expect(validateCodebookItems(items)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
   });
 
   it("allows condition items nested inside a unit_loop, wrapping unit_variable", () => {
-    const items = [unitLoop("1", "loop"), condition("1.1", "gate"), unitVar("1.1.1", "q1")];
+    const items: TopLevelItem[] = [
+      unitLoop("loop", [inLoopCondition("gate", [unitVar("q1")])]),
+    ];
     expect(validateCodebookItems(items)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
   });
 
-  it("rejects duplicate positions", () => {
-    const items = [userVar("1", "a"), userVar("1", "b")];
+  it("rejects duplicate names across the entire tree", () => {
+    const items: TopLevelItem[] = [
+      userVar("dup_name"),
+      unitLoop("loop", [unitVar("dup_name")]),
+    ];
     const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("Duplicate position"))).toBe(true);
+    expect(issues.some((i) => i.message.includes("Duplicate name 'dup_name'"))).toBe(true);
+    expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
 
-  it("rejects duplicate names", () => {
-    const items = [userVar("1", "a"), userVar("2", "a")];
-    const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("Duplicate name"))).toBe(true);
+  it("rejects a unit_loop with no children via schema", () => {
+    const items = [
+      {
+        type: "unit_loop",
+        name: "empty_loop",
+        unitset: "main",
+        layout: { template: "" },
+        children: [],
+      },
+    ];
+    expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
 
-  it("rejects an item whose parent position does not exist", () => {
-    const items = [userVar("1.1", "orphan")];
-    const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("does not exist"))).toBe(true);
+  it("rejects user_variable nested inside a unit_loop via schema", () => {
+    const items = [
+      {
+        type: "unit_loop",
+        name: "loop",
+        unitset: "main",
+        layout: { template: "" },
+        children: [{ type: "user_variable", name: "bad", variable: confirmVariable }],
+      },
+    ];
+    expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
 
-  it("rejects nesting under a variable (variables are leaves)", () => {
-    const items = [userVar("1", "a"), userVar("1.1", "b")];
-    const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("are leaves"))).toBe(true);
+  it("rejects unit_variable outside a unit_loop via schema", () => {
+    const items = [
+      { type: "unit_variable", name: "bad", variable: confirmVariable },
+    ];
+    expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
 
-  it("rejects user_variable nested inside a unit_loop", () => {
-    const items = [unitLoop("1", "loop"), userVar("1.1", "bad")];
-    const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("cannot be nested inside a unit_loop"))).toBe(true);
+  it("rejects nested unit_loops via schema", () => {
+    const items = [
+      {
+        type: "unit_loop",
+        name: "outer",
+        unitset: "main",
+        layout: { template: "" },
+        children: [
+          {
+            type: "unit_loop",
+            name: "inner",
+            unitset: "main",
+            layout: { template: "" },
+            children: [unitVar("q1")],
+          },
+        ],
+      },
+    ];
+    expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
 
-  it("rejects unit_variable outside a unit_loop", () => {
-    const items = [unitVar("1", "bad")];
-    const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("must be nested inside a unit_loop"))).toBe(true);
-  });
+  it("detects empty and invalid names via validateCodebookItems", () => {
+    const emptyNameItems: TopLevelItem[] = [userVar("")];
+    const emptyIssues = validateCodebookItems(emptyNameItems);
+    expect(emptyIssues.some((i) => i.message.includes("cannot be empty"))).toBe(true);
 
-  it("rejects a unit_loop nested inside another unit_loop", () => {
-    const items = [unitLoop("1", "outer"), unitLoop("1.1", "inner")];
-    const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("cannot be nested inside another unit_loop"))).toBe(true);
-  });
-
-  it("rejects a unit_loop with no children", () => {
-    const items = [unitLoop("1", "loop"), userVar("2", "unrelated")];
-    const issues = validateCodebookItems(items);
-    expect(issues.some((i) => i.message.includes("must have at least one child"))).toBe(true);
+    const invalidNameItems: TopLevelItem[] = [userVar("invalid name with spaces!")];
+    const invalidIssues = validateCodebookItems(invalidNameItems);
+    expect(invalidIssues.some((i) => i.message.includes("contains invalid characters"))).toBe(true);
   });
 });

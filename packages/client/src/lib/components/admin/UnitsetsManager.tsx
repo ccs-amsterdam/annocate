@@ -5,25 +5,23 @@ import {
   useDeleteUnitsetMutation,
   useUnitsetsQuery,
   useUnitsQuery,
-  useUpdateUnitsetMutation,
 } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /**
- * Unitsets management (design plan §5.4/§2): a named, ordered selection of
- * a job's units, referenced by a codebook's `unit_loop` items by name.
+ * Unitsets management (design plan §5.4/§2): a named selection of
+ * a job's units, referenced optionally by a codebook's `unit_loop` items by name.
+ * Order and randomization are configured directly in the codebook's `unit_loop`.
  */
 export function UnitsetsManager({ client }: { client: AdminClient }) {
   const unitsetsQuery = useUnitsetsQuery(client);
   const unitsQuery = useUnitsQuery(client);
   const createUnitset = useCreateUnitsetMutation(client);
-  const updateUnitset = useUpdateUnitsetMutation(client);
   const deleteUnitset = useDeleteUnitsetMutation(client);
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [order, setOrder] = useState<"fixed" | "random">("fixed");
   const [selectedUnitIds, setSelectedUnitIds] = useState<Set<number>>(new Set());
 
   function toggleUnit(id: number) {
@@ -36,7 +34,7 @@ export function UnitsetsManager({ client }: { client: AdminClient }) {
   }
 
   async function handleCreate() {
-    await createUnitset.mutateAsync({ name, unitIds: [...selectedUnitIds], order });
+    await createUnitset.mutateAsync({ name, unitIds: [...selectedUnitIds] });
     setCreating(false);
     setName("");
     setSelectedUnitIds(new Set());
@@ -52,17 +50,6 @@ export function UnitsetsManager({ client }: { client: AdminClient }) {
       {creating && (
         <div className="flex flex-col gap-2 rounded border p-3">
           <Input placeholder="Unitset name" value={name} onChange={(e) => setName(e.target.value)} />
-          <label className="flex items-center gap-2 text-sm">
-            Order:
-            <select
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              value={order}
-              onChange={(e) => setOrder(e.target.value as "fixed" | "random")}
-            >
-              <option value="fixed">Fixed</option>
-              <option value="random">Random per coder</option>
-            </select>
-          </label>
           <p className="text-sm font-medium">Units ({selectedUnitIds.size} selected)</p>
           <div className="max-h-48 overflow-auto rounded border">
             {(unitsQuery.data ?? []).map((unit) => (
@@ -91,20 +78,8 @@ export function UnitsetsManager({ client }: { client: AdminClient }) {
         {(unitsetsQuery.data ?? []).map((set) => (
           <div key={set.id} className="flex items-center gap-3 rounded border px-3 py-2 text-sm">
             <span className="flex-1">
-              <strong>{set.name}</strong> -- {set.unitIds.length} unit(s), {set.order} order
+              <strong>{set.name}</strong> -- {set.unitIds.length} unit(s)
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                updateUnitset.mutate({
-                  id: set.id,
-                  body: { name: set.name, unitIds: set.unitIds, order: set.order === "fixed" ? "random" : "fixed" },
-                })
-              }
-            >
-              Toggle order
-            </Button>
             <Button
               variant="destructive"
               size="sm"

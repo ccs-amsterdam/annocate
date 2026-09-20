@@ -1,139 +1,462 @@
-import { parentPosition, type CodebookItem } from "@annotinder/contracts";
-import { getChildren, getDescendants, getRootItems, sortByPosition } from "./tree";
+import type {
+  CodebookItem,
+  TopLevelItem,
+  InLoopItem,
+  UnitLoopItem,
+  ConditionItem,
+} from "@annotinder/contracts";
+import { findItem, findParent, flattenTree, isInsideUnitLoop } from "./tree";
 
-/**
- * Pure, position-string-rewriting edit operations over a flat codebook item
- * array (design plan §2/§5.2), used by the codebook editor UI to build/edit
- * an in-memory draft before saving the whole document via `PUT /codebook/:id`.
- * These deliberately do NOT talk to a server or hold any state themselves --
- * every function takes the current `items` array and returns a new one.
- */
+export type MoveTargetPosition = "before" | "after" | "inside";
 
-/** `Omit<T, "position">`, distributed member-wise over a union so a discriminated union stays intact. */
-type OmitPosition<T> = T extends { position: string } ? Omit<T, "position"> : never;
-export type NewCodebookItem = OmitPosition<CodebookItem>;
-
-
-/** The position a new LAST child of `parent` (or a new last root item, if `parent` is null) should get. */
-export function nextChildPosition(items: CodebookItem[], parent: string | null): string {
-  const siblings = parent === null ? getRootItems(items) : getChildren(items, parent);
-  const nextIndex = siblings.length + 1;
-  return parent === null ? String(nextIndex) : `${parent}.${nextIndex}`;
+let keySeed = 0;
+export function generateKey(): string {
+  keySeed += 1;
+  return `k_${Date.now().toString(36)}_${keySeed}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Rewrites `position` (and everything below it) to start with `newPrefix` instead of `oldPrefix`. */
-function rewritePosition(position: string, oldPrefix: string, newPrefix: string): string {
-  if (position === oldPrefix) return newPrefix;
-  return newPrefix + position.slice(oldPrefix.length);
+export function ensureKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
+  return items.map((node) => {
+    const copy: any = {
+      ...node,
+      _key: (node as any)._key || generateKey(),
+    };
+    if ("children" in copy && Array.isArray(copy.children)) {
+      copy.children = ensureKeys(copy.children);
+    }
+    return copy;
+  }) as T;
+}
+
+export function stripKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
+  return items.map((node) => {
+    const { _key, ...rest }: any = node;
+    if ("children" in rest && Array.isArray(rest.children)) {
+      rest.children = stripKeys(rest.children);
+    }
+    return rest;
+  }) as T;
+}
+
+export function getUniqueItemName(
+  items: (TopLevelItem | InLoopItem)[],
+  prefix = "item",
+): string {
+  const existingNames = new Set(flattenTree(items).map((i) => i.name));
+  let counter = 1;
+  while (existingNames.has(`${prefix}_${counter}`)) {
+    counter += 1;
+  }
+  return `${prefix}_${counter}`;
 }
 
 /**
- * Renumbers the direct children of `parent` (their descendants' positions
- * are rewritten accordingly too) to be contiguous 1..n, in their current
- * relative order -- used after an insert/delete/move leaves gaps or
- * duplicate sibling indices.
+ * Pure tree manipulation edit operations over hierarchical codebook items.
  */
-function renumberChildren(items: CodebookItem[], parent: string | null): CodebookItem[] {
-  const siblings = parent === null ? getRootItems(items) : getChildren(items, parent);
-  let next = items;
-  siblings.forEach((sibling, index) => {
-    const desiredPosition = parent === null ? String(index + 1) : `${parent}.${index + 1}`;
-    if (sibling.position === desiredPosition) return;
-    const oldPrefix = sibling.position;
-    next = next.map((item) => {
-      if (item.position === oldPrefix || item.position.startsWith(`${oldPrefix}.`)) {
-        return { ...item, position: rewritePosition(item.position, oldPrefix, desiredPosition) } as CodebookItem;
+
+export function insertItem(
+  items: TopLevelItem[],
+  parentIdentifier: string | null,
+  newItem: CodebookItem,
+): TopLevelItem[] {
+  if (parentIdentifier === null) {
+    return [...items, newItem as TopLevelItem];
+  }
+
+  function insertInNodes(nodes: any[]): any[] {
+    return nodes.map((node) => {
+      if (
+        (node._key === parentIdentifier || node.name === parentIdentifier) &&
+        "children" in node &&
+        Array.isArray(node.children)
+      ) {
+        return {
+          ...node,
+          children: [...node.children, newItem],
+        };
       }
-      return item;
+      if ("children" in node && Array.isArray(node.children)) {
+        return {
+          ...node,
+          children: insertInNodes(node.children),
+        };
+      }
+      return node;
     });
-  });
-  return next;
+  }
+
+  return insertInNodes(items) as TopLevelItem[];
 }
 
-/** Appends `item` as the new last child of `parent` (or a new last root item), assigning its position. */
-export function insertItem(items: CodebookItem[], item: NewCodebookItem, parent: string | null): CodebookItem[] {
-  const position = nextChildPosition(items, parent);
-  return [...items, { ...item, position } as CodebookItem];
-}
+export function deleteItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
+  function deleteFromNodes(nodes: any[]): any[] {
+    return nodes
+      .filter((node) => node._key !== identifier && node.name !== identifier)
+      .map((node) => {
+        if ("children" in node && Array.isArray(node.children)) {
+          return {
+            ...node,
+            children: deleteFromNodes(node.children),
+          };
+        }
+        return node;
+      });
+  }
 
-/** Removes `position` and all of its descendants, then closes the resulting gap among its former siblings. */
-export function deleteItem(items: CodebookItem[], position: string): CodebookItem[] {
-  const parent = parentPosition(position);
-  const toRemove = new Set([position, ...getDescendants(items, position).map((d) => d.position)]);
-  const remaining = items.filter((item) => !toRemove.has(item.position));
-  return renumberChildren(remaining, parent);
+  return deleteFromNodes(items) as TopLevelItem[];
 }
 
 /**
- * Moves `position` (and its descendants) to become a child of `newParent`
- * (or a new root item, if null), inserted at `index` (0-based) among its new
- * siblings. Renumbers both the old and new sibling groups.
+ * Validates whether moving sourceItem relative to target with position is schema-valid.
  */
-export function moveItem(
-  items: CodebookItem[],
-  position: string,
-  newParent: string | null,
-  index: number,
-): CodebookItem[] {
-  const oldParent = parentPosition(position);
-  const descendants = getDescendants(items, position);
-  const subtreePositions = new Set([position, ...descendants.map((d) => d.position)]);
+export function canMoveItemTo(
+  items: TopLevelItem[],
+  sourceIdentifier: string,
+  targetIdentifier: string,
+  position: MoveTargetPosition,
+): boolean {
+  if (sourceIdentifier === targetIdentifier) return false;
 
-  // Guard against moving a node into its own subtree.
-  if (newParent !== null && (newParent === position || newParent.startsWith(`${position}.`))) {
-    return items;
+  const sourceItem = findItem(items, sourceIdentifier);
+  const targetItem = findItem(items, targetIdentifier);
+  if (!sourceItem || !targetItem) return false;
+
+  const sourceKey = (sourceItem as any)._key;
+  const targetKey = (targetItem as any)._key;
+  if (sourceKey && targetKey && sourceKey === targetKey) return false;
+
+  // Cannot move into own descendants
+  if ("children" in sourceItem && Array.isArray((sourceItem as any).children)) {
+    const descendants = flattenTree((sourceItem as any).children);
+    if (
+      descendants.some(
+        (d) =>
+          d.name === targetItem.name ||
+          (targetKey && (d as any)._key === targetKey),
+      )
+    ) {
+      return false;
+    }
   }
 
-  const newSiblings = newParent === null ? getRootItems(items) : getChildren(items, newParent);
-  const siblingsWithoutSelf = newSiblings.filter((s) => s.position !== position);
-  const clampedIndex = Math.max(0, Math.min(index, siblingsWithoutSelf.length));
+  // Determine target container (parent)
+  let targetParent: (UnitLoopItem | ConditionItem) | null = null;
+  if (position === "inside") {
+    // Target must be a container with children
+    if (targetItem.type !== "unit_loop" && targetItem.type !== "condition") {
+      return false;
+    }
+    targetParent = targetItem as UnitLoopItem | ConditionItem;
+  } else {
+    // Destination parent is target's parent
+    targetParent = findParent(items, targetKey || targetItem.name);
+  }
 
-  // `newParent` (as supplied by the caller) refers to the pre-move tree. If it's an ancestor/
-  // sibling of `position`'s old location, renumbering the old sibling group below can shift its
-  // position out from under it -- so track it by its (codebook-unique) `name` instead, and
-  // re-resolve its actual position after that renumbering happens.
-  const newParentName = newParent === null ? null : items.find((item) => item.position === newParent)?.name ?? null;
+  const isTargetInLoop =
+    targetParent !== null &&
+    (targetParent.type === "unit_loop" ||
+      isInsideUnitLoop(items, (targetParent as any)._key || targetParent.name));
 
-  // Temporarily rewrite the moved subtree's positions to a placeholder namespace so it doesn't
-  // collide with existing sibling positions while we renumber the old/new sibling groups.
-  const placeholderPrefix = `__moving__.${position}`;
-  let next = items.map((item) =>
-    subtreePositions.has(item.position)
-      ? ({ ...item, position: rewritePosition(item.position, position, placeholderPrefix) } as CodebookItem)
-      : item,
-  );
-
-
-  next = renumberChildren(next, oldParent);
-
-  // Re-resolve the effective new-parent position (may have shifted during the renumbering above).
-  const effectiveNewParent = newParentName === null ? null : next.find((item) => item.name === newParentName)?.position ?? null;
-
-  // Insert the moved subtree at its final position among the (already-renumbered) new siblings,
-  // shifting anything at/after `clampedIndex` up by one first.
-  const targetSiblings = (effectiveNewParent === null ? getRootItems(next) : getChildren(next, effectiveNewParent)).filter(
-    (s) => !s.position.startsWith("__moving__"),
-  );
-  // Iterate highest-index-first so a shifted item's new position never
-  // collides with an as-yet-unshifted sibling still occupying it.
-  for (let i = targetSiblings.length - 1; i >= clampedIndex; i--) {
-    const sibling = targetSiblings[i];
-    const shiftedPosition = effectiveNewParent === null ? String(i + 2) : `${effectiveNewParent}.${i + 2}`;
-    next = next.map((item) =>
-      item.position === sibling.position || item.position.startsWith(`${sibling.position}.`)
-        ? ({ ...item, position: rewritePosition(item.position, sibling.position, shiftedPosition) } as CodebookItem)
-        : item,
+  // Check item type constraints:
+  if (sourceItem.type === "user_variable") {
+    // User variables cannot be inside loops
+    if (isTargetInLoop) return false;
+  } else if (sourceItem.type === "unit_variable") {
+    // Unit variables must be inside a loop
+    if (!isTargetInLoop) return false;
+  } else if (sourceItem.type === "unit_loop") {
+    // Loops cannot be inside another loop
+    if (isTargetInLoop) return false;
+    if (position === "inside" && targetItem.type === "unit_loop") return false;
+  } else if (sourceItem.type === "condition") {
+    const sourceDescendants = flattenTree(
+      "children" in sourceItem ? (sourceItem as any).children : [],
     );
+    const hasUnitVars = sourceDescendants.some((d) => d.type === "unit_variable");
+    const hasUserVarsOrLoops = sourceDescendants.some(
+      (d) => d.type === "user_variable" || d.type === "unit_loop",
+    );
+
+    if (isTargetInLoop && hasUserVarsOrLoops) return false;
+    if (!isTargetInLoop && hasUnitVars) return false;
   }
 
-  const newPosition =
-    effectiveNewParent === null ? String(clampedIndex + 1) : `${effectiveNewParent}.${clampedIndex + 1}`;
-  next = next.map((item) =>
-    item.position.startsWith(placeholderPrefix)
-      ? ({ ...item, position: rewritePosition(item.position, placeholderPrefix, newPosition) } as CodebookItem)
-      : item,
-  );
-
-  return sortByPosition(next);
+  return true;
 }
 
+/**
+ * Moves an item from its current position to a new location relative to target:
+ * "before": insert as sibling directly before target
+ * "after": insert as sibling directly after target
+ * "inside": insert as child at the end of target's children
+ */
+export function moveItemTo(
+  items: TopLevelItem[],
+  sourceIdentifier: string,
+  targetIdentifier: string,
+  position: MoveTargetPosition,
+): TopLevelItem[] {
+  if (sourceIdentifier === targetIdentifier) return items;
+
+  const sourceItem = findItem(items, sourceIdentifier);
+  const targetItem = findItem(items, targetIdentifier);
+  if (!sourceItem || !targetItem) return items;
+
+  const sourceKey = (sourceItem as any)._key;
+  const targetKey = (targetItem as any)._key;
+  if (sourceKey && targetKey && sourceKey === targetKey) return items;
+
+  // Cannot move into own descendants
+  if ("children" in sourceItem && Array.isArray((sourceItem as any).children)) {
+    const descendants = flattenTree((sourceItem as any).children);
+    if (
+      descendants.some(
+        (d) =>
+          d.name === targetItem.name ||
+          (targetKey && (d as any)._key === targetKey),
+      )
+    ) {
+      return items;
+    }
+  }
+
+  // Step 1: Remove source item from tree
+  const withoutSource = deleteItem(items, sourceKey || sourceIdentifier);
+
+  // Step 2: Insert source item into new position relative to target
+  if (position === "inside") {
+    function insertInside(nodes: any[]): any[] {
+      return nodes.map((node) => {
+        if (
+          (node._key === targetIdentifier ||
+            node.name === targetIdentifier ||
+            (targetKey && node._key === targetKey)) &&
+          "children" in node &&
+          Array.isArray(node.children)
+        ) {
+          return {
+            ...node,
+            children: [...node.children, sourceItem],
+          };
+        }
+        if ("children" in node && Array.isArray(node.children)) {
+          return {
+            ...node,
+            children: insertInside(node.children),
+          };
+        }
+        return node;
+      });
+    }
+    return insertInside(withoutSource) as TopLevelItem[];
+  }
+
+  // Step 3: Insert before or after target in its containing array
+  function insertSibling(nodes: any[]): { list: any[]; inserted: boolean } {
+    const idx = nodes.findIndex(
+      (n) =>
+        n._key === targetIdentifier ||
+        n.name === targetIdentifier ||
+        (targetKey && n._key === targetKey),
+    );
+    if (idx !== -1) {
+      const copy = [...nodes];
+      const insertIdx = position === "before" ? idx : idx + 1;
+      copy.splice(insertIdx, 0, sourceItem);
+      return { list: copy, inserted: true };
+    }
+
+    let didInsert = false;
+    const nextList = nodes.map((node) => {
+      if (didInsert) return node;
+      if ("children" in node && Array.isArray(node.children)) {
+        const res = insertSibling(node.children);
+        if (res.inserted) {
+          didInsert = true;
+          return { ...node, children: res.list };
+        }
+      }
+      return node;
+    });
+
+    return { list: nextList, inserted: didInsert };
+  }
+
+  return insertSibling(withoutSource).list as TopLevelItem[];
+}
+
+export function moveItem(
+  items: TopLevelItem[],
+  identifier: string,
+  direction: "up" | "down",
+): TopLevelItem[] {
+  function moveInList(list: any[]): { list: any[]; moved: boolean } {
+    const idx = list.findIndex((i) => i._key === identifier || i.name === identifier);
+    if (idx !== -1) {
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (targetIdx >= 0 && targetIdx < list.length) {
+        const copy = [...list];
+        const temp = copy[idx];
+        copy[idx] = copy[targetIdx];
+        copy[targetIdx] = temp;
+        return { list: copy, moved: true };
+      }
+      return { list, moved: true }; // found but cannot move past boundary
+    }
+
+    // Recurse into children
+    let didMove = false;
+    const nextList = list.map((node) => {
+      if (didMove) return node;
+      if ("children" in node && Array.isArray(node.children)) {
+        const res = moveInList(node.children);
+        if (res.moved) {
+          didMove = true;
+          return { ...node, children: res.list };
+        }
+      }
+      return node;
+    });
+
+    return { list: nextList, moved: didMove };
+  }
+
+  return moveInList(items).list as TopLevelItem[];
+}
+
+export function indentItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
+  function indentInList(list: any[]): {
+    list: any[];
+    handled: boolean;
+  } {
+    const idx = list.findIndex((i) => i._key === identifier || i.name === identifier);
+    if (idx > 0) {
+      const prevSibling = list[idx - 1];
+      if (
+        (prevSibling.type === "unit_loop" || prevSibling.type === "condition") &&
+        "children" in prevSibling
+      ) {
+        const itemToIndent = list[idx];
+        const remaining = list.filter((_, i) => i !== idx);
+        const updatedPrev = {
+          ...prevSibling,
+          children: [...prevSibling.children, itemToIndent],
+        };
+        remaining[idx - 1] = updatedPrev;
+        return { list: remaining, handled: true };
+      }
+    }
+
+    let didHandle = false;
+    const nextList = list.map((node) => {
+      if (didHandle) return node;
+      if ("children" in node && Array.isArray(node.children)) {
+        const res = indentInList(node.children);
+        if (res.handled) {
+          didHandle = true;
+          return { ...node, children: res.list };
+        }
+      }
+      return node;
+    });
+
+    return { list: nextList, handled: didHandle };
+  }
+
+  return indentInList(items).list as TopLevelItem[];
+}
+
+export function outdentItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
+  const parent = findParent(items, identifier);
+  if (!parent) return items; // Already at root level
+
+  let extractedItem: any = null;
+  const safeParent = parent;
+  const parentName = safeParent.name;
+  const parentKey = (safeParent as any)._key;
+
+  // Step 1: remove item from parent's children
+  function removeChild(nodes: any[]): any[] {
+    return nodes.map((node) => {
+      if (
+        (node._key === parentKey || node.name === parentName) &&
+        "children" in node &&
+        Array.isArray(node.children)
+      ) {
+        const found = node.children.find((c: any) => c._key === identifier || c.name === identifier);
+        if (found) extractedItem = found;
+        return {
+          ...node,
+          children: node.children.filter((c: any) => c._key !== identifier && c.name !== identifier),
+        };
+      }
+      if ("children" in node && Array.isArray(node.children)) {
+        return {
+          ...node,
+          children: removeChild(node.children),
+        };
+      }
+      return node;
+    });
+  }
+
+  const itemsWithoutChild = removeChild(items);
+  if (!extractedItem) return items;
+
+  // Step 2: insert extractedItem immediately after parent among parent's siblings
+  function insertAfterParent(nodes: any[]): any[] {
+    const parentIdx = nodes.findIndex((n) => n._key === parentKey || n.name === parentName);
+    if (parentIdx !== -1) {
+      const copy = [...nodes];
+      copy.splice(parentIdx + 1, 0, extractedItem);
+      return copy;
+    }
+
+    return nodes.map((node) => {
+      if ("children" in node && Array.isArray(node.children)) {
+        return {
+          ...node,
+          children: insertAfterParent(node.children),
+        };
+      }
+      return node;
+    });
+  }
+
+  return insertAfterParent(itemsWithoutChild) as TopLevelItem[];
+}
+
+export function updateItem(
+  items: TopLevelItem[],
+  identifier: string,
+  updated: CodebookItem,
+): TopLevelItem[] {
+  function updateInNodes(nodes: any[]): any[] {
+    return nodes.map((node) => {
+      if (node._key === identifier || node.name === identifier) {
+        // Keep existing children if updated object didn't supply them
+        const children =
+          "children" in updated
+            ? updated.children
+            : "children" in node
+              ? (node as UnitLoopItem | ConditionItem).children
+              : undefined;
+
+        return {
+          ...node,
+          ...updated,
+          ...(children !== undefined ? { children } : {}),
+        };
+      }
+      if ("children" in node && Array.isArray(node.children)) {
+        return {
+          ...node,
+          children: updateInNodes(node.children),
+        };
+      }
+      return node;
+    });
+  }
+
+  return updateInNodes(items) as TopLevelItem[];
+}

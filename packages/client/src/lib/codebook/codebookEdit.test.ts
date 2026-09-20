@@ -1,123 +1,164 @@
 import { describe, it, expect } from "vitest";
-import type { CodebookItem } from "@annotinder/contracts";
-import { deleteItem, insertItem, moveItem, nextChildPosition } from "./codebookEdit";
-import { sortByPosition } from "./tree";
+import type { TopLevelItem, CodebookItem } from "@annotinder/contracts";
+import {
+  canMoveItemTo,
+  deleteItem,
+  indentItem,
+  insertItem,
+  moveItem,
+  moveItemTo,
+  outdentItem,
+  updateItem,
+} from "./codebookEdit";
+import { flattenTree } from "./tree";
 
-function cond(position: string, name: string): CodebookItem {
-  return { type: "condition", position, name, expression: "true" };
+function cond(name: string, children: CodebookItem[] = []): TopLevelItem {
+  return { type: "condition", name, expression: "true", children: children as TopLevelItem[] };
 }
 
-function positions(items: CodebookItem[]): string[] {
-  return sortByPosition(items).map((i) => i.position);
-}
+describe("codebookEdit", () => {
+  describe("insertItem", () => {
+    it("appends a new root item when parent is null", () => {
+      const items: TopLevelItem[] = [cond("a")];
+      const next = insertItem(items, null, cond("b"));
+      expect(next.map((i) => i.name)).toEqual(["a", "b"]);
+    });
 
-describe("nextChildPosition", () => {
-  it("returns the next root position when parent is null", () => {
-    const items = [cond("1", "a"), cond("2", "b")];
-    expect(nextChildPosition(items, null)).toBe("3");
+    it("appends a child under an existing parent", () => {
+      const items: TopLevelItem[] = [cond("a")];
+      const next = insertItem(items, "a", cond("child"));
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["a", "child"]);
+    });
   });
 
-  it("returns the next child position under a parent", () => {
-    const items = [cond("1", "a"), cond("1.1", "b")];
-    expect(nextChildPosition(items, "1")).toBe("1.2");
+  describe("deleteItem", () => {
+    it("removes a root item", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
+      const next = deleteItem(items, "b");
+      expect(next.map((i) => i.name)).toEqual(["a", "c"]);
+    });
+
+    it("removes a nested item and all its descendants", () => {
+      const items: TopLevelItem[] = [
+        cond("a", [cond("a1", [cond("a1_nested")]), cond("a2")]),
+        cond("b"),
+      ];
+      const next = deleteItem(items, "a1");
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["a", "a2", "b"]);
+    });
   });
 
-  it("returns '1'/'parent.1' for a childless parent", () => {
-    expect(nextChildPosition([], null)).toBe("1");
-    expect(nextChildPosition([cond("1", "a")], "1")).toBe("1.1");
-  });
-});
+  describe("moveItemTo", () => {
+    it("moves an item before another item", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
+      const next = moveItemTo(items, "c", "a", "before");
+      expect(next.map((i) => i.name)).toEqual(["c", "a", "b"]);
+    });
 
-describe("insertItem", () => {
-  it("appends a new last root item", () => {
-    const items = [cond("1", "a")];
-    const next = insertItem(items, { type: "condition", name: "b", expression: "true" }, null);
-    expect(positions(next)).toEqual(["1", "2"]);
-  });
+    it("moves an item after another item", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
+      const next = moveItemTo(items, "a", "b", "after");
+      expect(next.map((i) => i.name)).toEqual(["b", "a", "c"]);
+    });
 
-  it("appends a new last child", () => {
-    const items = [cond("1", "a"), cond("1.1", "b")];
-    const next = insertItem(items, { type: "condition", name: "c", expression: "true" }, "1");
-    expect(positions(next)).toEqual(["1", "1.1", "1.2"]);
-  });
-});
+    it("moves an item inside a container item", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("container", [cond("existing")])];
+      const next = moveItemTo(items, "a", "container", "inside");
+      expect(next.map((i) => i.name)).toEqual(["container"]);
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["container", "existing", "a"]);
+    });
 
-describe("deleteItem", () => {
-  it("removes an item and closes the gap among siblings", () => {
-    const items = [cond("1", "a"), cond("2", "b"), cond("3", "c")];
-    const next = deleteItem(items, "2");
-    expect(positions(next)).toEqual(["1", "2"]);
-    expect(sortByPosition(next).map((i) => i.name)).toEqual(["a", "c"]);
-  });
-
-  it("removes all descendants along with the item", () => {
-    const items = [cond("1", "a"), cond("1.1", "b"), cond("1.1.1", "c"), cond("2", "d")];
-    const next = deleteItem(items, "1");
-    expect(positions(next)).toEqual(["1"]);
-    expect(sortByPosition(next).map((i) => i.name)).toEqual(["d"]);
+    it("does not allow moving an item into its own descendant", () => {
+      const items: TopLevelItem[] = [cond("parent", [cond("child")])];
+      const next = moveItemTo(items, "parent", "child", "inside");
+      expect(next).toEqual(items);
+    });
   });
 
-  it("renumbers deeper descendants correctly after a mid-tree delete", () => {
-    const items = [cond("1", "a"), cond("1.1", "b"), cond("1.2", "c"), cond("1.2.1", "d")];
-    const next = deleteItem(items, "1.1");
-    expect(positions(next)).toEqual(["1", "1.1", "1.1.1"]);
-    const byName = Object.fromEntries(next.map((i) => [i.name, i.position]));
-    expect(byName).toEqual({ a: "1", c: "1.1", d: "1.1.1" });
-  });
-});
+  describe("canMoveItemTo", () => {
+    it("validates valid and invalid moves", () => {
+      const items: TopLevelItem[] = [
+        {
+          type: "user_variable",
+          name: "user_v",
+          variable: { type: "confirm", question: "Agree?" },
+        },
+        {
+          type: "unit_loop",
+          name: "loop",
+          unitset: "main",
+          layout: { template: "text" },
+          children: [
+            {
+              type: "unit_variable",
+              name: "unit_v1",
+              variable: { type: "confirm", question: "Notes" },
+            },
+            {
+              type: "unit_variable",
+              name: "unit_v2",
+              variable: { type: "confirm", question: "More notes" },
+            },
+          ],
+        },
+      ];
 
-describe("moveItem", () => {
-  it("reorders within the same sibling group (move later)", () => {
-    const items = [cond("1", "a"), cond("2", "b"), cond("3", "c")];
-    const next = moveItem(items, "1", null, 2);
-    const byName = Object.fromEntries(next.map((i) => [i.name, i.position]));
-    expect(byName).toEqual({ b: "1", c: "2", a: "3" });
-  });
+      // unit_v2 can move before unit_v1
+      expect(canMoveItemTo(items, "unit_v2", "unit_v1", "before")).toBe(true);
 
-  it("reorders within the same sibling group (move earlier)", () => {
-    const items = [cond("1", "a"), cond("2", "b"), cond("3", "c")];
-    const next = moveItem(items, "3", null, 0);
-    const byName = Object.fromEntries(next.map((i) => [i.name, i.position]));
-    expect(byName).toEqual({ c: "1", a: "2", b: "3" });
-  });
+      // unit_v2 cannot move to top level (before user_v)
+      expect(canMoveItemTo(items, "unit_v2", "user_v", "before")).toBe(false);
 
-  it("moves an item (with descendants) to a new parent", () => {
-    const items = [cond("1", "a"), cond("1.1", "a-child"), cond("2", "b"), cond("2.1", "b-child")];
-    const next = moveItem(items, "1", "2", 0);
-    const byName = Object.fromEntries(next.map((i) => [i.name, i.position]));
-    // "a" and its child move under "2" (now renumbered to "1" since "a" is removed from root)
-    expect(byName.a.startsWith(`${byName.b}.`)).toBe(true);
-    expect(byName["a-child"].startsWith(`${byName.a}.`)).toBe(true);
-    expect(byName["b-child"]).not.toBe(byName.a);
-  });
+      // user_v cannot move inside unit loop
+      expect(canMoveItemTo(items, "user_v", "loop", "inside")).toBe(false);
 
-  it("moves an item to root level", () => {
-    const items = [cond("1", "a"), cond("1.1", "b"), cond("1.2", "c")];
-    const next = moveItem(items, "1.1", null, 1);
-    const byName = Object.fromEntries(next.map((i) => [i.name, i.position]));
-    expect(byName).toEqual({ a: "1", c: "1.1", b: "2" });
-  });
-
-  it("refuses to move an item into its own subtree", () => {
-    const items = [cond("1", "a"), cond("1.1", "b")];
-    const next = moveItem(items, "1", "1.1", 0);
-    expect(positions(next)).toEqual(positions(items));
+      // item cannot move relative to itself
+      expect(canMoveItemTo(items, "user_v", "user_v", "before")).toBe(false);
+    });
   });
 
-  it("preserves all items (no duplicates/losses) across a move", () => {
-    const items = [
-      cond("1", "a"),
-      cond("1.1", "a1"),
-      cond("1.2", "a2"),
-      cond("2", "b"),
-      cond("3", "c"),
-      cond("3.1", "c1"),
-    ];
-    const next = moveItem(items, "2", "3", 1);
-    expect(next).toHaveLength(items.length);
-    const names = next.map((i) => i.name).sort();
-    expect(names).toEqual(["a", "a1", "a2", "b", "c", "c1"].sort());
-    // All positions must be unique.
-    expect(new Set(next.map((i) => i.position)).size).toBe(items.length);
+  describe("moveItem", () => {
+    it("moves an item up and down among siblings", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
+      const up = moveItem(items, "b", "up");
+      expect(up.map((i) => i.name)).toEqual(["b", "a", "c"]);
+
+      const down = moveItem(items, "b", "down");
+      expect(down.map((i) => i.name)).toEqual(["a", "c", "b"]);
+    });
+
+    it("moves nested siblings within a parent", () => {
+      const items: TopLevelItem[] = [cond("root", [cond("c1"), cond("c2"), cond("c3")])];
+      const next = moveItem(items, "c2", "up");
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["root", "c2", "c1", "c3"]);
+    });
+  });
+
+  describe("indentItem and outdentItem", () => {
+    it("indents an item into its previous sibling", () => {
+      const items: TopLevelItem[] = [cond("p1"), cond("p2")];
+      const next = indentItem(items, "p2");
+      expect(next).toHaveLength(1);
+      expect(next[0].name).toBe("p1");
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["p1", "p2"]);
+    });
+
+    it("outdents a nested item to become sibling after its parent", () => {
+      const items: TopLevelItem[] = [cond("p1", [cond("child")]), cond("other")];
+      const next = outdentItem(items, "child");
+      expect(next.map((i) => i.name)).toEqual(["p1", "child", "other"]);
+    });
+  });
+
+  describe("updateItem", () => {
+    it("updates item properties while preserving children", () => {
+      const items: TopLevelItem[] = [cond("p1", [cond("child")])];
+      const next = updateItem(items, "p1", {
+        type: "condition",
+        name: "p1_renamed",
+        expression: "x > 1",
+      } as TopLevelItem);
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["p1_renamed", "child"]);
+    });
   });
 });

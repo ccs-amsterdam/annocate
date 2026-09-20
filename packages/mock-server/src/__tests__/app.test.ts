@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
 import { createDb } from "../db/schema.js";
 import { createApp } from "../app.js";
+import type { CodebookItem } from "@annotinder/contracts";
 
 let db: DatabaseSync;
 let app: ReturnType<typeof createApp>;
 
 const adminHeaders = { "content-type": "application/json", "x-dev-role": "ADMIN" };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function json(res: Response): Promise<any> {
   return res.json();
 }
@@ -21,7 +21,7 @@ beforeEach(() => {
 async function createJob(name = "Test job") {
   const res = await app.request("/job", { method: "POST", headers: adminHeaders, body: JSON.stringify({ name }) });
   expect(res.status).toBe(201);
-  return res.json() as Promise<{ id: number }>;
+  return res.json() as Promise<{ id: number; name: string }>;
 }
 
 describe("job routes", () => {
@@ -53,13 +53,19 @@ describe("codebook routes", () => {
   it("rejects invalid nesting and accepts a valid codebook", async () => {
     const job = await createJob();
 
-    const validItems = [
-      { type: "unit_loop", position: "1", name: "loop", unitset: "main", layout: { template: "" } },
+    const validItems: CodebookItem[] = [
       {
-        type: "unit_variable",
-        position: "1.1",
-        name: "q1",
-        variable: { type: "confirm", question: "Confirm?" },
+        type: "unit_loop",
+        name: "loop",
+        unitset: "main",
+        layout: { template: "" },
+        children: [
+          {
+            type: "unit_variable",
+            name: "q1",
+            variable: { type: "confirm", question: "Confirm?" },
+          },
+        ],
       },
     ];
 
@@ -68,7 +74,7 @@ describe("codebook routes", () => {
       headers: adminHeaders,
       body: JSON.stringify({
         name: "Bad",
-        items: [{ type: "unit_variable", position: "1", name: "q1", variable: { type: "confirm", question: "?" } }],
+        items: [{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "?" } }],
       }),
     });
     expect(badRes.status).toBe(400);
@@ -98,7 +104,7 @@ describe("coder session flow", () => {
     await app.request(`/job/${job.id}/unitsets`, {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ name: "main", unitIds: [units[0].id], order: "fixed" }),
+      body: JSON.stringify({ name: "main", unitIds: [units[0].id] }),
     });
 
     await app.request(`/job/${job.id}/codebook`, {
@@ -107,12 +113,18 @@ describe("coder session flow", () => {
       body: JSON.stringify({
         name: "cb",
         items: [
-          { type: "unit_loop", position: "1", name: "loop", unitset: "main", layout: { template: "" } },
           {
-            type: "unit_variable",
-            position: "1.1",
-            name: "q1",
-            variable: { type: "confirm", question: "Confirm?" },
+            type: "unit_loop",
+            name: "loop",
+            unitset: "main",
+            layout: { template: "" },
+            children: [
+              {
+                type: "unit_variable",
+                name: "q1",
+                variable: { type: "confirm", question: "Confirm?" },
+              },
+            ],
           },
         ],
       }),
@@ -124,7 +136,7 @@ describe("coder session flow", () => {
       body: JSON.stringify({ label: "invite", access: "user_decides" }),
     });
     const invite = (await inviteRes.json()) as { secret: string };
-    return { unitId: units[0].id, secret: invite.secret };
+    return { unitId: units[0].id, secret: invite.secret, jobId: job.id };
   }
 
   it("lets a coder start a session, fetch the next unit, submit variables, and see progress", async () => {
@@ -154,6 +166,69 @@ describe("coder session flow", () => {
 
     const sessionAfter = await json(await app.request("/session", { headers: coderHeaders }));
     expect(sessionAfter.progress).toEqual([{ unitset: "main", doneUnitIds: [unitId] }]);
+  });
+
+  it("supports unit_loop without unitset defaulting to iterating all units", async () => {
+    const job = await createJob();
+    await app.request(`/job/${job.id}/units`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({
+        units: [
+          { externalId: "u1", data: { text: "hello" } },
+          { externalId: "u2", data: { text: "world" } },
+        ],
+      }),
+    });
+
+    // Codebook with unit_loop with no unitset specified!
+    await app.request(`/job/${job.id}/codebook`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: "all_units_cb",
+        items: [
+          {
+            type: "unit_loop",
+            name: "loop",
+            layout: { template: "" },
+            children: [
+              {
+                type: "unit_variable",
+                name: "q1",
+                variable: { type: "confirm", question: "Confirm?" },
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const inviteRes = await app.request(`/job/${job.id}/coders/invite`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ label: "invite", access: "user_decides" }),
+    });
+    const invite = (await inviteRes.json()) as { secret: string };
+    const coderHeaders = { "content-type": "application/json", "x-coder-key": "coder-xyz", "x-invite-secret": invite.secret };
+
+    // Fetch next unit using __all__
+    const nextRes1 = await app.request("/unitset/__all__/next", { headers: coderHeaders });
+    expect(nextRes1.status).toBe(200);
+    const unit1 = await json(nextRes1);
+    expect(unit1.externalId).toBe("u1");
+
+    await app.request("/variables/unit", {
+      method: "POST",
+      headers: coderHeaders,
+      body: JSON.stringify({ unitId: unit1.id, variables: { q1: { done: true, skip: false } } }),
+    });
+
+    // Fetch second unit
+    const nextRes2 = await app.request("/unitset/__all__/next", { headers: coderHeaders });
+    expect(nextRes2.status).toBe(200);
+    const unit2 = await json(nextRes2);
+    expect(unit2.externalId).toBe("u2");
   });
 
   it("rejects an unknown coder key without an invite secret", async () => {

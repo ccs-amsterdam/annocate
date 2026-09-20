@@ -1,0 +1,11 @@
+The navigation thing doesn't work that great. Perhaps rather use a dropdown menu with a submenu
+
+Can then show the different blocks
+
+age
+gender
+----
+unit 1 / 400 -> (submenu to scroll trough units)
+sentiment
+----
+some other question

@@ -13,4 +13,9 @@ export interface AnswerFieldProps<TVariable extends QuestionVariable = QuestionV
    * variable's already-collected spans.
    */
   unitVariables?: Record<string, VariableValue>;
+  /**
+   * Any previously-submitted answer for this variable, allowing the coder
+   * to review or update their previous answer when navigating backwards.
+   */
+  initialValue?: VariableValue;
 }

@@ -6,17 +6,7 @@ import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 
 type QuestionItem = Extract<CodebookItem, { type: "user_variable" | "unit_variable" }>;
 
-/**
- * Render-smoke coverage (design plan §6.4) for `Question`'s dispatch over
- * every variable type -- catches "forgot to wire up a new answer field" /
- * import-cycle / prop-shape regressions without needing interaction-testing
- * infra (no jsdom event simulation here, matching `UnitFields.test.tsx`'s
- * `renderToStaticMarkup` approach). Does NOT test answer-field interaction
- * logic itself (clicking codes, dragging sliders, etc.) -- that's each
- * field's own concern and would need real DOM event simulation (not set up
- * in this package yet, see design plan §6.4 remaining gaps).
- */
-describe("Question (render-smoke over every variable type)", () => {
+describe("Question dispatcher", () => {
   const onAnswer = vi.fn();
 
   function renders(item: QuestionItem) {
@@ -24,14 +14,13 @@ describe("Question (render-smoke over every variable type)", () => {
   }
 
   it("renders confirm", () => {
-    const item: QuestionItem = { position: "1", name: "consent", type: "user_variable", variable: { type: "confirm", question: "Consent?" } };
+    const item: QuestionItem = { name: "consent", type: "user_variable", variable: { type: "confirm", question: "Consent?" } };
     expect(renders(item)).not.toThrow();
     expect(renders(item)()).toContain("Consent?");
   });
 
   it("renders select_code", () => {
     const item: QuestionItem = {
-      position: "1",
       name: "sentiment",
       type: "unit_variable",
       variable: { type: "select_code", question: "Sentiment?", codes: [{ code: "pos" }, { code: "neg" }] },
@@ -43,7 +32,6 @@ describe("Question (render-smoke over every variable type)", () => {
 
   it("renders scale", () => {
     const item: QuestionItem = {
-      position: "1",
       name: "scale_q",
       type: "unit_variable",
       variable: { type: "scale", question: "Rate it", codes: [{ code: "1" }, { code: "2" }, { code: "3" }] },
@@ -53,7 +41,6 @@ describe("Question (render-smoke over every variable type)", () => {
 
   it("renders annotinder (swipe)", () => {
     const item: QuestionItem = {
-      position: "1",
       name: "swipe_q",
       type: "unit_variable",
       variable: { type: "annotinder", question: "Like it?", codes: [{ code: "like" }, { code: "dislike" }] },
@@ -63,7 +50,6 @@ describe("Question (render-smoke over every variable type)", () => {
 
   it("renders search_code", () => {
     const item: QuestionItem = {
-      position: "1",
       name: "search_q",
       type: "unit_variable",
       variable: { type: "search_code", question: "Find code", codes: [{ code: "a" }, { code: "b" }] },
@@ -73,7 +59,6 @@ describe("Question (render-smoke over every variable type)", () => {
 
   it("renders span (wrapped in SpanAnnotationProvider, as JobRunner does)", () => {
     const item: QuestionItem = {
-      position: "1",
       name: "span_q",
       type: "unit_variable",
       variable: { type: "span", question: "Select spans", column: "text", codes: [{ code: "actor" }] },
@@ -88,7 +73,6 @@ describe("Question (render-smoke over every variable type)", () => {
 
   it("renders relation, given prior span answers via unitVariables", () => {
     const item: QuestionItem = {
-      position: "1",
       name: "relation_q",
       type: "unit_variable",
       variable: { type: "relation", question: "How related?", codes: [{ code: "positive" }], from: { variable: "span_q" }, to: { variable: "span_q" } },

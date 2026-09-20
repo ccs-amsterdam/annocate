@@ -2,16 +2,13 @@ import { z } from "zod";
 import { IdSchema } from "./common.js";
 
 /**
- * A named, ordered selection of a job's units (design plan §2), referenced
- * by a codebook's `unit_loop` items by name. Replaces the old
- * jobSets/jobSetUnits tables.
+ * A named selection of a job's units (design plan §2), referenced
+ * by a codebook's `unit_loop` items by name. Unit order/randomization
+ * is configured directly in the codebook's `unit_loop` item.
  */
-export const UnitsetOrderSchema = z.enum(["fixed", "random"] as const);
-
 export const UnitsetWriteSchema = z.object({
   name: z.string().min(1).max(128),
   unitIds: z.array(IdSchema),
-  order: UnitsetOrderSchema.default("fixed"),
 });
 export type UnitsetWrite = z.infer<typeof UnitsetWriteSchema>;
 

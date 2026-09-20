@@ -1,10 +1,10 @@
-import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { CodebookCode } from "@annotinder/contracts";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildCodeValue } from "./answerValue";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
+import { getCodeButtonStyle } from "../../utils/color";
 
 type SelectCodeVariable = Extract<QuestionVariable, { type: "select_code" }>;
 
@@ -17,24 +17,19 @@ function getShortcutLabel(index: number): string | null {
   return index < 9 ? String(index + 1) : null;
 }
 
-function getButtonStyle(code: CodebookCode, selected: boolean): CSSProperties | undefined {
-  if (!code.color) return undefined;
-
-  return selected
-    ? { backgroundColor: code.color, borderColor: code.color, color: "#111827" }
-    : { borderColor: code.color, color: code.color };
-}
-
-export function SelectCodeAnswerField({ variable, onAnswer }: AnswerFieldProps<SelectCodeVariable>) {
+export function SelectCodeAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<SelectCodeVariable>) {
   const multiple = Boolean(variable.multiple);
-  const [selectedCodes, setSelectedCodes] = useState<CodebookCode[]>([]);
-  const selectedCodeNames = useMemo(() => new Set(selectedCodes.map((code) => code.code)), [selectedCodes]);
 
-  // No reset-on-`variable`-change effect needed: JobRunner keys `Question`
-  // by item.name, so this component remounts fresh (via React's own
-  // "reset state with a key" pattern) whenever the coder moves to a
-  // different question, rather than this component needing to notice the
-  // prop changed and clear its own state.
+  const initialCodes = useMemo(() => {
+    if (!initialValue || !("codes" in initialValue) || !Array.isArray(initialValue.codes)) return [];
+    const codeMap = new Map(variable.codes.map((c) => [c.code, c]));
+    return (initialValue.codes as { code: string }[])
+      .map((c) => codeMap.get(c.code))
+      .filter((c): c is CodebookCode => c !== undefined);
+  }, [initialValue, variable.codes]);
+
+  const [selectedCodes, setSelectedCodes] = useState<CodebookCode[]>(initialCodes);
+  const selectedCodeNames = useMemo(() => new Set(selectedCodes.map((code) => code.code)), [selectedCodes]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -83,28 +78,35 @@ export function SelectCodeAnswerField({ variable, onAnswer }: AnswerFieldProps<S
   }
 
   return (
-    <div className="space-y-4">
-      <div className={`grid gap-3 ${variable.vertical ? "grid-cols-1" : "sm:grid-cols-2"}`}>
+    <div className="space-y-2.5 sm:space-y-3">
+      <div className={`grid gap-2 sm:gap-2.5 ${variable.vertical ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
         {variable.codes.map((code, index) => {
           const selected = selectedCodeNames.has(code.code);
           const shortcut = getShortcutLabel(index);
+          const customStyle = getCodeButtonStyle(code.color, selected);
 
           return (
             <Button
               key={code.code}
               type="button"
               variant={selected ? "default" : "outline"}
-              className="h-auto min-h-16 justify-between gap-4 whitespace-normal px-4 py-3 text-left"
-              style={getButtonStyle(code, selected)}
+              className={`h-auto min-h-11 sm:min-h-12 justify-between gap-3 whitespace-normal px-3.5 py-2 sm:px-4 sm:py-2.5 text-left transition-all ${
+                customStyle ? "" : selected ? "border-primary" : "border-border hover:bg-muted/50"
+              }`}
+              style={customStyle}
               onClick={() => handleCodeClick(code)}
             >
-              <span className="flex flex-col items-start gap-1">
-                <span className="font-medium">{code.code}</span>
-                {code.value != null && <span className="text-xs opacity-70">Value {code.value}</span>}
+              <span className="flex flex-col items-start gap-0.5 min-w-0">
+                <span className="font-medium text-sm leading-snug truncate w-full">{code.code}</span>
+                {code.value != null && <span className="text-[11px] opacity-70">Value {code.value}</span>}
               </span>
-              <span className="flex items-center gap-2 text-xs opacity-80">
-                {selected && <Check className="size-4" />}
-                {shortcut && <span>{shortcut}</span>}
+              <span className="flex items-center gap-1.5 text-xs opacity-80 shrink-0">
+                {selected && <Check className="size-3.5" />}
+                {shortcut && (
+                  <span className="rounded border border-current/30 px-1 py-0.2 text-[10px] font-mono">
+                    {shortcut}
+                  </span>
+                )}
               </span>
             </Button>
           );
@@ -112,11 +114,11 @@ export function SelectCodeAnswerField({ variable, onAnswer }: AnswerFieldProps<S
       </div>
 
       {multiple && (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {selectedCodes.length ? `${selectedCodes.length} code${selectedCodes.length === 1 ? "" : "s"} selected` : "Select one or more codes."}
           </p>
-          <Button type="button" size="lg" disabled={!selectedCodes.length} onClick={handleSubmitSelection}>
+          <Button type="button" size="sm" disabled={!selectedCodes.length} onClick={handleSubmitSelection}>
             Continue
           </Button>
         </div>

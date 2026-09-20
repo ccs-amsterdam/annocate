@@ -24,66 +24,62 @@ export function seed(db: DatabaseSync): void {
     id: number;
   }).id;
 
-  db.prepare('INSERT INTO unitsets (jobId, name, unitIds, "order") VALUES (?, ?, ?, ?)').run(
+  db.prepare("INSERT INTO unitsets (jobId, name, unitIds) VALUES (?, ?, ?)").run(
     jobId,
     "main",
     JSON.stringify([unit1, unit2]),
-    "fixed",
   );
 
   const items = CodebookItemsSchema.parse([
     {
       type: "user_variable",
-      position: "1",
       name: "consent",
       variable: { type: "confirm", question: "Do you consent to participate?" },
     },
     {
       type: "unit_loop",
-      position: "2",
       name: "main_loop",
       unitset: "main",
       layout: {
         template: "# {{$unit.headline}}\n\n{{disclaimer}}\n\n::tokenize[$unit.text]",
         constants: { disclaimer: "_Demo unit -- select any actors mentioned below._" },
       },
-    },
-    {
-      type: "unit_variable",
-      position: "2.1",
-      name: "sentiment",
-      variable: {
-        type: "select_code",
-        question: "What is the sentiment of this headline?",
-        codes: [
-          { code: "positive", color: "#4caf50" },
-          { code: "neutral", color: "#9e9e9e" },
-          { code: "negative", color: "#f44336" },
-        ],
-      },
-    },
-    {
-      type: "unit_variable",
-      position: "2.2",
-      name: "actors",
-      variable: {
-        type: "span",
-        question: "Select any actors mentioned in the text.",
-        column: "text",
-        codes: [{ code: "actor", color: "#2196f3" }],
-      },
-    },
-    {
-      type: "unit_variable",
-      position: "2.3",
-      name: "actor_relations",
-      variable: {
-        type: "relation",
-        question: "Relate any actors to each other, if relevant.",
-        codes: [{ code: "mentions", color: "#ff9800" }],
-        from: { variable: "actors" },
-        to: { variable: "actors" },
-      },
+      children: [
+        {
+          type: "unit_variable",
+          name: "sentiment",
+          variable: {
+            type: "select_code",
+            question: "What is the sentiment of this headline?",
+            codes: [
+              { code: "positive", color: "#4caf50" },
+              { code: "neutral", color: "#9e9e9e" },
+              { code: "negative", color: "#f44336" },
+            ],
+          },
+        },
+        {
+          type: "unit_variable",
+          name: "actors",
+          variable: {
+            type: "span",
+            question: "Select any actors mentioned in the text.",
+            column: "text",
+            codes: [{ code: "actor", color: "#2196f3" }],
+          },
+        },
+        {
+          type: "unit_variable",
+          name: "actor_relations",
+          variable: {
+            type: "relation",
+            question: "Relate any actors to each other, if relevant.",
+            codes: [{ code: "mentions", color: "#ff9800" }],
+            from: { variable: "actors" },
+            to: { variable: "actors" },
+          },
+        },
+      ],
     },
   ]);
 

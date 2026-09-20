@@ -9,7 +9,6 @@ interface UnitsetRow {
   jobId: number;
   name: string;
   unitIds: string;
-  order: string;
 }
 
 function toResponse(row: UnitsetRow): UnitsetResponse {
@@ -18,7 +17,6 @@ function toResponse(row: UnitsetRow): UnitsetResponse {
     jobId: row.jobId,
     name: row.name,
     unitIds: JSON.parse(row.unitIds),
-    order: row.order as UnitsetResponse["order"],
   };
 }
 
@@ -44,11 +42,10 @@ export function unitsetRoutes(db: DatabaseSync) {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const jobId = c.get("jobId");
-    db.prepare('INSERT INTO unitsets (jobId, name, unitIds, "order") VALUES (?, ?, ?, ?)').run(
+    db.prepare("INSERT INTO unitsets (jobId, name, unitIds) VALUES (?, ?, ?)").run(
       jobId,
       parsed.data.name,
       JSON.stringify(parsed.data.unitIds),
-      parsed.data.order,
     );
     const row = db.prepare("SELECT * FROM unitsets WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as unknown as UnitsetRow;
     return c.json(toResponse(row), 201);
@@ -65,10 +62,9 @@ export function unitsetRoutes(db: DatabaseSync) {
     const parsed = UnitsetWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    db.prepare('UPDATE unitsets SET name = ?, unitIds = ?, "order" = ? WHERE jobId = ? AND id = ?').run(
+    db.prepare("UPDATE unitsets SET name = ?, unitIds = ? WHERE jobId = ? AND id = ?").run(
       parsed.data.name,
       JSON.stringify(parsed.data.unitIds),
-      parsed.data.order,
       jobId,
       id,
     );

@@ -17,6 +17,8 @@ const { DatabaseSync: DatabaseSyncImpl } = createRequire(import.meta.url)("node:
 // scoped to it via jobId.
 export function createDb(path = ":memory:"): DatabaseSync {
   const db = new DatabaseSyncImpl(path);
+  db.exec("PRAGMA foreign_keys = ON;");
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS jobs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,8 +47,7 @@ export function createDb(path = ":memory:"): DatabaseSync {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       jobId INTEGER NOT NULL,
       name TEXT NOT NULL,
-      unitIds TEXT NOT NULL,
-      "order" TEXT NOT NULL DEFAULT 'fixed'
+      unitIds TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS units (
@@ -63,8 +64,8 @@ export function createDb(path = ":memory:"): DatabaseSync {
       jobId INTEGER NOT NULL,
       email TEXT,
       devKey TEXT UNIQUE NOT NULL,
-      variables TEXT NOT NULL DEFAULT '{}',
-      doneUnitIds TEXT NOT NULL DEFAULT '{}'
+      doneUnitIds TEXT NOT NULL DEFAULT '{}',
+      variables TEXT NOT NULL DEFAULT '{}'
     );
 
     CREATE TABLE IF NOT EXISTS invites (

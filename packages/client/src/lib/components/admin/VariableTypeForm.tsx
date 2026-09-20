@@ -204,6 +204,17 @@ export function VariableTypeForm({
               placeholder="Must match a ::tokenize[name] in the unit_loop layout"
             />
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium">Default Selection Mode</label>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={v.selectionMode ?? "word"}
+              onChange={(e) => onChange({ ...v, selectionMode: e.target.value as "word" | "character" })}
+            >
+              <option value="word">Word level (snap selections to whole words)</option>
+              <option value="character">Character level (select exact characters)</option>
+            </select>
+          </div>
           <CodesEditor codes={v.codes} onChange={(codes) => onChange({ ...v, codes })} />
           <label className="flex items-center gap-2 text-sm">
             <input

@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { RelationAnswer, RelationOptions, SpanAnswer, VariableValue } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
+import { getCodeBadgeStyle } from "../../utils/color";
+import { X, ArrowRight } from "lucide-react";
 
 type RelationVariable = Extract<QuestionVariable, { type: "relation" }>;
 
@@ -22,17 +24,7 @@ function spanLabel(span: SpanAnswer | undefined): string {
 /**
  * Answer field for `relation` unit_variables (design plan §11a/§4.3):
  * links two already-created spans (from sibling `span` unit_variables named
- * in `variable.from`/`variable.to`) with a relation code, e.g. an actor
- * span related to an issue span via a "position" code.
- *
- * Unlike spans, relations don't need a dedicated interactive text-selection
- * component -- both endpoints already exist as spans, so the coder just
- * picks two from dropdowns (labeled with the span's own selected text, via
- * `SpanAnswer.text`, §11f) and a relation code, then adds the pair to a
- * list. Requires `unitVariables` (this unit's previously-submitted answers,
- * threaded down from `JobManager.currentUnitVariables` via
- * `Question`/`JobRunner`) to find the candidate spans -- `variable.from`/
- * `variable.to` name the sibling `span` variable(s) to pick endpoints from.
+ * in `variable.from`/`variable.to`) with a relation code.
  */
 export function RelationAnswerField({ variable, unitVariables, onAnswer }: AnswerFieldProps<RelationVariable>) {
   const fromSpans = endpointSpans(unitVariables, variable.from);
@@ -59,17 +51,25 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
 
   const canAddMore = fromSpans.length > 0 && toSpans.length > 0;
 
+  function colorFor(codeName: string): string | undefined {
+    return variable.codes.find((c) => c.code === codeName)?.color;
+  }
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {!canAddMore && (
-        <p className="text-sm italic text-muted-foreground">
+        <p className="text-xs italic text-muted-foreground">
           No spans available yet to relate -- answer the relevant span question(s) first.
         </p>
       )}
 
       {canAddMore && (
-        <div className="flex flex-wrap items-center gap-2 rounded border bg-muted/50 p-2 text-sm">
-          <select className="rounded border bg-background px-2 py-1" value={fromId} onChange={(e) => setFromId(e.target.value)}>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/70 bg-muted/40 p-2 text-xs">
+          <select
+            className="rounded border border-input bg-background px-2 py-1 text-xs max-w-[130px] truncate"
+            value={fromId}
+            onChange={(e) => setFromId(e.target.value)}
+          >
             <option value="">-- from --</option>
             {fromSpans.map((s) => (
               <option key={s.id} value={s.id}>
@@ -77,8 +77,12 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
               </option>
             ))}
           </select>
-          <span className="text-muted-foreground">→</span>
-          <select className="rounded border bg-background px-2 py-1" value={toId} onChange={(e) => setToId(e.target.value)}>
+          <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+          <select
+            className="rounded border border-input bg-background px-2 py-1 text-xs max-w-[130px] truncate"
+            value={toId}
+            onChange={(e) => setToId(e.target.value)}
+          >
             <option value="">-- to --</option>
             {toSpans.map((s) => (
               <option key={s.id} value={s.id}>
@@ -86,47 +90,71 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
               </option>
             ))}
           </select>
-          <select className="rounded border bg-background px-2 py-1" value={code} onChange={(e) => setCode(e.target.value)}>
+          <select
+            className="rounded border border-input bg-background px-2 py-1 text-xs"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          >
             {variable.codes.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.code}
               </option>
             ))}
           </select>
-          <button
+          <Button
             type="button"
-            className="rounded border px-2 py-0.5 hover:bg-muted disabled:opacity-50"
+            size="sm"
+            className="h-7 px-2.5 text-xs"
             disabled={!fromId || !toId}
             onClick={addRelation}
           >
             Add
-          </button>
+          </Button>
         </div>
       )}
 
-      <ul className="flex flex-col gap-1">
-        {relations.length === 0 && <li className="text-sm italic text-muted-foreground">No relations yet</li>}
-        {relations.map((r) => (
-          <li key={r.id} className="flex items-center gap-2 text-sm">
-            <span>{spanLabel(fromSpans.find((s) => s.id === r.fromId))}</span>
-            <span className="text-muted-foreground">--[{r.code}]→</span>
-            <span>{spanLabel(toSpans.find((s) => s.id === r.toId))}</span>
-            <button
-              type="button"
-              className="text-muted-foreground underline hover:text-destructive"
-              onClick={() => removeRelation(r.id)}
-            >
-              remove
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="max-h-28 overflow-y-auto rounded-md border border-border/60 bg-muted/20 p-2">
+        {relations.length === 0 ? (
+          <p className="text-xs italic text-muted-foreground text-center py-1">No relations added yet</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {relations.map((r) => {
+              const fromSpan = fromSpans.find((s) => s.id === r.fromId);
+              const toSpan = toSpans.find((s) => s.id === r.toId);
+              const badgeStyle = getCodeBadgeStyle(colorFor(r.code));
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={() => onAnswer({ done: true, skip: true })}>
+              return (
+                <li key={r.id} className="flex items-center justify-between gap-2 text-xs rounded border bg-card p-1.5">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-medium truncate">&ldquo;{fromSpan?.text ?? r.fromId}&rdquo;</span>
+                    <span className="rounded border px-1.5 py-0.2 font-semibold" style={badgeStyle}>
+                      {r.code}
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="font-medium truncate">&ldquo;{toSpan?.text ?? r.toId}&rdquo;</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-destructive shrink-0 p-0.5"
+                    title="Remove relation"
+                    onClick={() => removeRelation(r.id)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-2 pt-1">
+        <Button variant="outline" size="sm" onClick={() => onAnswer({ done: true, skip: true })}>
           Skip
         </Button>
-        <Button onClick={() => onAnswer({ done: true, skip: false, relations })}>Done</Button>
+        <Button size="sm" onClick={() => onAnswer({ done: true, skip: false, relations })}>
+          Done
+        </Button>
       </div>
     </div>
   );

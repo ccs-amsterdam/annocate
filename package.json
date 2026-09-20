@@ -10,6 +10,7 @@
     "dev": "pnpm --parallel --filter @annotinder/mock-server --filter @annotinder/client run dev",
     "dev:client": "pnpm --filter @annotinder/client run dev",
     "dev:mock-server": "pnpm --filter @annotinder/mock-server run dev",
+    "reset-mock": "pnpm --filter @annotinder/mock-server run db:reset",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
