@@ -41,7 +41,7 @@ const NAMED_COLORS: Record<string, string> = {
  */
 function rgbaToHex(rgba: string): string {
   const parts = rgba
-    .replace(/^rgba?\(|\s+|\)$/g, "")
+    .replace(/^rgba?\(-|\s+|\)$/g, "")
     .split(",")
     .map((s) => parseFloat(s));
   if (parts.length >= 3) {
@@ -51,6 +51,14 @@ function rgbaToHex(rgba: string): string {
     return `#${r}${g}${b}`;
   }
   return rgba;
+}
+
+/**
+ * Checks whether the environment currently has dark mode active via Tailwind's `dark` class.
+ */
+export function isDarkMode(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
 }
 
 /**
@@ -133,16 +141,22 @@ export function getContrastTextColor(hexColor?: string): string {
 
 /**
  * Generates styling for selectable code buttons:
- * - Unselected: vivid background tint with alpha, vivid border, crisp black/dark text.
+ * - Unselected: vivid background tint with alpha, vivid border, high-contrast text
+ *   (white in dark mode, crisp dark in light mode).
  * - Selected: vivid solid background with high-contrast text.
  */
-export function getCodeButtonStyle(color?: string, selected = false): CSSProperties | undefined {
+export function getCodeButtonStyle(
+  color?: string,
+  selected = false,
+  isDark?: boolean,
+): CSSProperties | undefined {
   if (!color) return undefined;
+  const dark = isDark ?? isDarkMode();
   const baseHex = standardizeColor(color);
   if (!baseHex || !baseHex.startsWith("#")) {
     return selected
       ? { backgroundColor: color, borderColor: color, color: "#ffffff" }
-      : { backgroundColor: "transparent", borderColor: color, color: "#111827" };
+      : { backgroundColor: "transparent", borderColor: color, color: dark ? "#ffffff" : "#111827" };
   }
 
   if (selected) {
@@ -155,70 +169,140 @@ export function getCodeButtonStyle(color?: string, selected = false): CSSPropert
   }
 
   return {
-    backgroundColor: `${baseHex}28`, // ~16% opacity vivid tint
-    borderColor: `${baseHex}88`, // ~53% opacity border
-    color: "#111827", // Always crisp dark text for high legibility
+    backgroundColor: dark ? `${baseHex}38` : `${baseHex}28`, // ~22% in dark, ~16% in light
+    borderColor: dark ? `${baseHex}aa` : `${baseHex}88`,
+    color: dark ? "#ffffff" : "#111827", // White in dark mode for maximum legibility
   };
+}
+
+export interface SpanSegmentStyleOptions {
+  color?: string;
+  isStart?: boolean;
+  isEnd?: boolean;
 }
 
 /**
  * Generates styling for highlighted text spans (`<mark>`):
  * Uses a gentle ~22% alpha background so text remains 100% crisp and readable,
- * with a subtle bottom border for extra distinction.
+ * with solid top and bottom boundary borders (crisp upper ceiling and bottom ribbon),
+ * plus solid boundary endcaps (thick left/right border and rounded corners at start/end).
  */
-export function getSpanHighlightStyle(color?: string): CSSProperties {
+export function getSpanHighlightStyle(options?: SpanSegmentStyleOptions | string): CSSProperties {
+  const opts = typeof options === "string" ? { color: options } : (options ?? {});
   const fallback = "#fde68a"; // warm yellow
-  const baseHex = standardizeColor(color ?? fallback) ?? fallback;
+  const baseHex = standardizeColor(opts.color ?? fallback) ?? fallback;
+
   return {
     backgroundColor: `${baseHex}38`, // ~22% opacity highlight
-    borderBottom: `2px solid ${baseHex}`,
+    borderTop: `2px solid ${baseHex}`,
+    borderBottom: `2.5px solid ${baseHex}`,
+    borderLeft: opts.isStart ? `3px solid ${baseHex}` : "none",
+    borderRight: opts.isEnd ? `3px solid ${baseHex}` : "none",
+    borderTopLeftRadius: opts.isStart ? "4px" : "0px",
+    borderBottomLeftRadius: opts.isStart ? "4px" : "0px",
+    borderTopRightRadius: opts.isEnd ? "4px" : "0px",
+    borderBottomRightRadius: opts.isEnd ? "4px" : "0px",
+    paddingLeft: opts.isStart ? "3px" : "1px",
+    paddingRight: opts.isEnd ? "3px" : "1px",
+    paddingTop: "1px",
+    paddingBottom: "1px",
+    marginLeft: opts.isStart ? "1.5px" : "0px",
+    marginRight: opts.isEnd ? "1.5px" : "0px",
     color: "inherit",
     cursor: "pointer",
-    borderRadius: "2px",
-    padding: "0 1px",
+    borderRadius: opts.isStart && opts.isEnd ? "4px" : undefined,
+    display: "inline",
+    boxDecorationBreak: "clone",
+    WebkitBoxDecorationBreak: "clone",
+  };
+}
+
+export interface StackedSegmentSpan {
+  color?: string;
+  isStart?: boolean;
+  isEnd?: boolean;
+}
+
+/**
+ * Generates styling for an overlapping segment covered by 2 or more spans.
+ * Produces multi-colored gradient ribbons along top and bottom borders,
+ * preserving clean line height without overlapping adjacent text lines.
+ */
+export function getStackedUnderlineStyle(spans: StackedSegmentSpan[]): CSSProperties {
+  const valid = spans.map((s) => ({
+    color: standardizeColor(s.color ?? "#fde68a") ?? "#fde68a",
+    isStart: s.isStart,
+    isEnd: s.isEnd,
+  }));
+
+  if (valid.length === 0) return getSpanHighlightStyle();
+  if (valid.length === 1) {
+    return getSpanHighlightStyle({
+      color: valid[0].color,
+      isStart: valid[0].isStart,
+      isEnd: valid[0].isEnd,
+    });
+  }
+
+  const n = valid.length;
+  // Multi-color horizontal segments for top and bottom border ribbons
+  const borderStops = valid
+    .map((s, idx) => `${s.color} ${((idx / n) * 100).toFixed(1)}%, ${s.color} ${(((idx + 1) / n) * 100).toFixed(1)}%`)
+    .join(", ");
+
+  // Multi-color subtle horizontal bands for background tint
+  const bgStops = valid
+    .map((s, idx) => `${s.color}38 ${((idx / n) * 100).toFixed(1)}%, ${s.color}38 ${(((idx + 1) / n) * 100).toFixed(1)}%`)
+    .join(", ");
+
+  const anyStart = valid.some((s) => s.isStart);
+  const anyEnd = valid.some((s) => s.isEnd);
+
+  // Left and right boundary colors (from the starting / ending span)
+  const startSpans = valid.filter((s) => s.isStart);
+  const startColor = startSpans.length > 0 ? startSpans[0].color : valid[0].color;
+  const endSpans = valid.filter((s) => s.isEnd);
+  const endColor = endSpans.length > 0 ? endSpans[endSpans.length - 1].color : valid[valid.length - 1].color;
+
+  return {
+    background: `linear-gradient(to right, ${borderStops}) top / 100% 2px no-repeat, linear-gradient(to right, ${borderStops}) bottom / 100% 2.5px no-repeat, linear-gradient(to bottom, ${bgStops})`,
+    borderLeft: anyStart ? `3px solid ${startColor}` : "none",
+    borderRight: anyEnd ? `3px solid ${endColor}` : "none",
+    borderTopLeftRadius: anyStart ? "4px" : "0px",
+    borderBottomLeftRadius: anyStart ? "4px" : "0px",
+    borderTopRightRadius: anyEnd ? "4px" : "0px",
+    borderBottomRightRadius: anyEnd ? "4px" : "0px",
+    paddingLeft: anyStart ? "3px" : "1px",
+    paddingRight: anyEnd ? "3px" : "1px",
+    paddingTop: "1px",
+    paddingBottom: "1px",
+    marginLeft: anyStart ? "1.5px" : "0px",
+    marginRight: anyEnd ? "1.5px" : "0px",
+    color: "inherit",
+    cursor: "pointer",
+    display: "inline",
+    boxDecorationBreak: "clone",
+    WebkitBoxDecorationBreak: "clone",
   };
 }
 
 /**
- * Generates styling for overlapping highlighted text spans:
- * When multiple spans cover the same segment, renders a multi-color gradient background
- * and multi-color bottom border.
+ * Backwards-compatible helper for multi-span styles.
  */
 export function getMultiSpanHighlightStyle(colors: (string | undefined)[]): CSSProperties {
-  const validColors = colors
-    .map((c) => standardizeColor(c ?? "#3b82f6") ?? "#3b82f6")
-    .filter((c) => c.startsWith("#"));
-
-  if (validColors.length === 0) return getSpanHighlightStyle();
-  if (validColors.length === 1) return getSpanHighlightStyle(validColors[0]);
-
-  const pct = Math.floor(100 / validColors.length);
-  const bgStops = validColors
-    .map((col, idx) => `${col}38 ${idx * pct}%, ${col}38 ${(idx + 1) * pct}%`)
-    .join(", ");
-  const borderStops = validColors
-    .map((col, idx) => `${col} ${idx * pct}%, ${col} ${(idx + 1) * pct}%`)
-    .join(", ");
-
-  return {
-    background: `linear-gradient(to bottom, ${bgStops})`,
-    borderBottom: `2px solid`,
-    borderImage: `linear-gradient(to right, ${borderStops}) 1`,
-    color: "inherit",
-    cursor: "pointer",
-    borderRadius: "2px",
-    padding: "0 1px",
-  };
+  return getStackedUnderlineStyle(colors.map((c) => ({ color: c })));
 }
 
 /**
  * Generates styling for a compact tag / badge representing a code.
+ * White text in dark mode for maximum legibility.
  */
-export function getCodeBadgeStyle(color?: string): CSSProperties {
+export function getCodeBadgeStyle(color?: string, isDark?: boolean): CSSProperties {
+  const dark = isDark ?? isDarkMode();
   const baseHex = standardizeColor(color ?? "#6b7280") ?? "#6b7280";
   return {
-    backgroundColor: `${baseHex}28`,
-    borderColor: `${baseHex}88`,
-    color: "#111827",
+    backgroundColor: dark ? `${baseHex}38` : `${baseHex}28`,
+    borderColor: dark ? `${baseHex}aa` : `${baseHex}88`,
+    color: dark ? "#ffffff" : "#111827",
   };
 }

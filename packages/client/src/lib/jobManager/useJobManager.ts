@@ -9,6 +9,7 @@ export function useJobManager(jobServer: JobServer): { manager: JobManager; snap
   const snapshot = useSyncExternalStore(
     (onStoreChange) => manager.subscribe(onStoreChange),
     () => manager.getSnapshot(),
+    () => manager.getSnapshot(),
   );
 
   useEffect(() => {

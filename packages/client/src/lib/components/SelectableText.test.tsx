@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { snapToWord, SelectableText } from "./SelectableText";
+import { snapToWord, getWordAtPosition, truncateSpanText, SelectableText } from "./SelectableText";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SpanAnswer } from "@annotinder/contracts";
@@ -36,6 +36,42 @@ describe("snapToWord", () => {
   });
 });
 
+describe("getWordAtPosition", () => {
+  const text = "Prime Minister Mark Rutte";
+
+  it("finds whole word when clicking inside a word", () => {
+    const range = getWordAtPosition(text, 8); // inside "Minister" (starts at 6, ends at 14)
+    expect(range).toEqual([6, 14]);
+    expect(text.slice(range![0], range![1])).toBe("Minister");
+  });
+
+  it("snaps to adjacent word when clicking boundary", () => {
+    const range = getWordAtPosition(text, 0); // "P"
+    expect(range).toEqual([0, 5]);
+    expect(text.slice(range![0], range![1])).toBe("Prime");
+  });
+
+  it("returns null for out-of-bounds positions", () => {
+    expect(getWordAtPosition(text, -1)).toBeNull();
+    expect(getWordAtPosition(text, 999)).toBeNull();
+  });
+});
+
+describe("truncateSpanText", () => {
+  it("keeps short text untruncated", () => {
+    expect(truncateSpanText("Mark Rutte", 20)).toBe("Mark Rutte");
+  });
+
+  it("truncates long text with an ellipsis in the middle", () => {
+    const text = "European Central Bank President Christine Lagarde";
+    const truncated = truncateSpanText(text, 25);
+    expect(truncated).toContain("…");
+    expect(truncated.startsWith("European Ce")).toBe(true);
+    expect(truncated.endsWith("tine Lagarde")).toBe(true);
+    expect(truncated.length).toBeLessThanOrEqual(25);
+  });
+});
+
 describe("SelectableText and SpanAnnotationProvider", () => {
   it("renders non-overlapping text when no spans exist", () => {
     const html = renderToStaticMarkup(
@@ -69,9 +105,8 @@ describe("SelectableText and SpanAnnotationProvider", () => {
       </SpanAnnotationProvider>,
     );
 
-    // Both single mark and multi-span overlapping mark are rendered
+    // Marks for spans are rendered
     expect(html).toContain("<mark");
-    expect(html).toContain("actor");
-    expect(html).toContain("color");
+    expect(html).toContain("quick brown fox");
   });
 });

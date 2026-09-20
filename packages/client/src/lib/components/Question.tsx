@@ -10,6 +10,7 @@ import {
   SpanAnswerField,
   UnsupportedAnswerField,
 } from "./answerFields";
+import { useSpanAnnotation } from "../context/SpanAnnotationContext";
 
 type QuestionItem = Extract<CodebookItem, { type: "user_variable" | "unit_variable" }>;
 
@@ -50,6 +51,10 @@ function renderInstruction(variable: QuestionItem["variable"]) {
 
 export function Question({ item, onAnswer, unitVariables, initialValue }: QuestionProps) {
   const { variable } = item;
+  const spanAnnotation = useSpanAnnotation();
+
+  // Keep docked card compact: hide question header when inspecting/assigning a selected span
+  const hideHeader = variable.type === "span" && Boolean(spanAnnotation?.pendingSpan);
 
   let answerField: ReactNode;
   switch (variable.type) {
@@ -81,11 +86,13 @@ export function Question({ item, onAnswer, unitVariables, initialValue }: Questi
 
   return (
     <div className="flex flex-col gap-2 w-full">
-      <div className="flex flex-col gap-0.5">
-        {renderQuestionText(variable)}
-        {renderInstruction(variable)}
-      </div>
-      <div className="pt-0.5">{answerField}</div>
+      {!hideHeader && (
+        <div className="flex flex-col gap-0.5">
+          {renderQuestionText(variable)}
+          {renderInstruction(variable)}
+        </div>
+      )}
+      <div className={hideHeader ? "" : "pt-0.5"}>{answerField}</div>
     </div>
   );
 }

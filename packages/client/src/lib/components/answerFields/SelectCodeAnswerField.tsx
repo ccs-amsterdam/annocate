@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { buildCodeValue } from "./answerValue";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { getCodeButtonStyle } from "../../utils/color";
+import { useCoderSettings } from "../../context/CoderSettingsContext";
+import { ShortcutBadge } from "../ShortcutBadge";
 
 type SelectCodeVariable = Extract<QuestionVariable, { type: "select_code" }>;
 
@@ -18,6 +20,8 @@ function getShortcutLabel(index: number): string | null {
 }
 
 export function SelectCodeAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<SelectCodeVariable>) {
+  const { theme } = useCoderSettings();
+  const isDark = theme === "dark";
   const multiple = Boolean(variable.multiple);
 
   const initialCodes = useMemo(() => {
@@ -83,30 +87,26 @@ export function SelectCodeAnswerField({ variable, onAnswer, initialValue }: Answ
         {variable.codes.map((code, index) => {
           const selected = selectedCodeNames.has(code.code);
           const shortcut = getShortcutLabel(index);
-          const customStyle = getCodeButtonStyle(code.color, selected);
+          const customStyle = getCodeButtonStyle(code.color, selected, isDark);
 
           return (
             <Button
               key={code.code}
               type="button"
               variant={selected ? "default" : "outline"}
-              className={`h-auto min-h-11 sm:min-h-12 justify-between gap-3 whitespace-normal px-3.5 py-2 sm:px-4 sm:py-2.5 text-left transition-all ${
+              className={`relative h-auto min-h-11 sm:min-h-12 justify-between gap-3 whitespace-normal px-3.5 py-2 sm:px-4 sm:py-2.5 text-left transition-all ${
                 customStyle ? "" : selected ? "border-primary" : "border-border hover:bg-muted/50"
               }`}
               style={customStyle}
               onClick={() => handleCodeClick(code)}
             >
+              {shortcut && <ShortcutBadge shortcut={shortcut} />}
               <span className="flex flex-col items-start gap-0.5 min-w-0">
                 <span className="font-medium text-sm leading-snug truncate w-full">{code.code}</span>
                 {code.value != null && <span className="text-[11px] opacity-70">Value {code.value}</span>}
               </span>
               <span className="flex items-center gap-1.5 text-xs opacity-80 shrink-0">
                 {selected && <Check className="size-3.5" />}
-                {shortcut && (
-                  <span className="rounded border border-current/30 px-1 py-0.2 text-[10px] font-mono">
-                    {shortcut}
-                  </span>
-                )}
               </span>
             </Button>
           );
@@ -114,12 +114,9 @@ export function SelectCodeAnswerField({ variable, onAnswer, initialValue }: Answ
       </div>
 
       {multiple && (
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            {selectedCodes.length ? `${selectedCodes.length} code${selectedCodes.length === 1 ? "" : "s"} selected` : "Select one or more codes."}
-          </p>
-          <Button type="button" size="sm" disabled={!selectedCodes.length} onClick={handleSubmitSelection}>
-            Continue
+        <div className="flex justify-end pt-1">
+          <Button type="button" onClick={handleSubmitSelection} disabled={!selectedCodes.length}>
+            Submit ({selectedCodes.length})
           </Button>
         </div>
       )}

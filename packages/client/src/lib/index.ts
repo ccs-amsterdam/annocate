@@ -34,7 +34,9 @@ export * from "./components/JobRunner";
 export * from "./components/Question";
 export * from "./components/UnitFields";
 export * from "./components/SelectableText";
+export * from "./components/ShortcutBadge";
 export * from "./context/SpanAnnotationContext";
+export * from "./context/CoderSettingsContext";
 export * from "./components/answerFields";
 
 // Phase 5: job/codebook management UI (design plan §5).

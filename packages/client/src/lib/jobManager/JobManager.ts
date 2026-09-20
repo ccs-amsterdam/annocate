@@ -2,16 +2,16 @@ import type {
   CodebookItem,
   TopLevelItem,
   InLoopItem,
-  SessionResponse,
-  CoderUnitResponse,
+  UnitLoopItem,
   UnitLayout,
   VariableValue,
-  UnitLoopItem,
+  CoderUnitResponse,
+  SessionResponse,
 } from "@annotinder/contracts";
 import type { JobServer } from "../api/httpJobServer";
+import { ExpressionCache } from "../codebook/expressionCache";
 import { computeLoopSteps, computeTopLevelSteps } from "../codebook/tree";
 import { renderTemplate } from "../codebook/renderTemplate";
-import { ExpressionCache } from "../codebook/expressionCache";
 
 export type JobManagerPhase =
   | "loading"
@@ -23,7 +23,7 @@ export type JobManagerPhase =
 export interface NavigationUnitItem {
   index: number;
   id: number;
-  externalId?: string;
+  externalId: string;
   isCurrent: boolean;
 }
 
@@ -55,6 +55,7 @@ export interface JobManagerNavigation {
   currentPhaseIndex: number;
   currentUnitIndex?: number;
   totalUnitsInHistory: number;
+  maxReachedTopIndex: number;
 }
 
 export interface JobManagerSnapshot {
@@ -119,6 +120,7 @@ export class JobManager {
 
   private topSteps: CodebookItem[] = [];
   private topIndex = -1;
+  private maxReachedTopIndex = 0;
   private activeLoop: UnitLoopItem | null = null;
   private currentUnit: CoderUnitResponse | null = null;
   private loopSteps: CodebookItem[] = [];
@@ -143,6 +145,7 @@ export class JobManager {
       phases: [],
       currentPhaseIndex: 0,
       totalUnitsInHistory: 0,
+      maxReachedTopIndex: 0,
     },
   };
 
@@ -165,6 +168,7 @@ export class JobManager {
       const session: SessionResponse = await this.jobServer.getSession();
       this.items = session.codebook.items as TopLevelItem[];
       this.topIndex = -1;
+      this.maxReachedTopIndex = 0;
       this.unitHistory = [];
       this.unitHistoryIndex = -1;
       await this.advanceTop();
@@ -190,8 +194,14 @@ export class JobManager {
     return false;
   }
 
-  canGoForward(): boolean {
+  canGoForward(allowFree = false): boolean {
     if (this.snapshot.phase === "loading" || this.snapshot.phase === "error" || this.snapshot.phase === "finished") {
+      return false;
+    }
+    if (allowFree) {
+      if (this.loopIndex < this.loopSteps.length - 1) return true;
+      if (this.unitHistoryIndex < this.unitHistory.length - 1) return true;
+      if (this.topIndex < this.topSteps.length - 1) return true;
       return false;
     }
     if (this.loopIndex < this.loopSteps.length - 1) {
@@ -199,7 +209,7 @@ export class JobManager {
       if (currentItem && this.unitVariableValues[currentItem.name] !== undefined) return true;
     }
     if (this.unitHistoryIndex < this.unitHistory.length - 1) return true;
-    if (this.topIndex < this.topSteps.length - 1) return true;
+    if (this.topIndex < this.maxReachedTopIndex) return true;
     return false;
   }
 
@@ -279,8 +289,8 @@ export class JobManager {
     }
   }
 
-  async goForward(): Promise<void> {
-    if (!this.canGoForward()) return;
+  async goForward(allowFree = false): Promise<void> {
+    if (!this.canGoForward(allowFree)) return;
 
     this.syncCurrentUnitAnswers();
 
@@ -316,7 +326,11 @@ export class JobManager {
     }
 
     // 3. Forward to next top-level item
-    if (this.topIndex < this.topSteps.length - 1) {
+    const canAdvanceTop = allowFree
+      ? this.topIndex < this.topSteps.length - 1
+      : this.topIndex < this.maxReachedTopIndex;
+
+    if (canAdvanceTop) {
       this.topIndex += 1;
       const nextTop = this.topSteps[this.topIndex];
       if (nextTop.type === "unit_loop") {
@@ -338,10 +352,20 @@ export class JobManager {
     }
   }
 
-  async jumpToUnit(unitIndex: number): Promise<void> {
-    if (this.unitHistory.length === 0 || !this.activeLoop) return;
-    const target = Math.max(0, Math.min(unitIndex, this.unitHistory.length - 1));
+  async jumpToUnit(unitIndex: number, allowFetchAhead = false): Promise<void> {
+    if (!this.activeLoop) return;
     this.syncCurrentUnitAnswers();
+
+    // In preview mode with allowFetchAhead: fetch units ahead up to target unitIndex
+    while (allowFetchAhead && this.unitHistory.length <= unitIndex) {
+      const nextUnit = await this.jobServer.getNextUnit(this.activeLoop.unitset);
+      if (!nextUnit) break;
+      const initialAnswers = { ...(nextUnit.variables ?? {}) };
+      this.unitHistory.push({ unit: nextUnit, answers: initialAnswers });
+    }
+
+    if (this.unitHistory.length === 0) return;
+    const target = Math.max(0, Math.min(unitIndex, this.unitHistory.length - 1));
 
     this.unitHistoryIndex = target;
     const entry = this.unitHistory[target];
@@ -358,8 +382,14 @@ export class JobManager {
     });
   }
 
-  async jumpToLoopStep(stepIndex: number): Promise<void> {
+  async jumpToLoopStep(stepIndex: number, allowAhead = false): Promise<void> {
     if (!this.activeLoop || !this.currentUnit || stepIndex < 0 || stepIndex >= this.loopSteps.length) return;
+    if (!allowAhead) {
+      const hasUnansweredEarlier = this.loopSteps
+        .slice(0, stepIndex)
+        .some((q) => this.unitVariableValues[q.name] === undefined);
+      if (hasUnansweredEarlier && stepIndex > this.loopIndex) return;
+    }
     this.syncCurrentUnitAnswers();
     this.loopIndex = stepIndex;
     const step = this.loopSteps[this.loopIndex];
@@ -372,26 +402,19 @@ export class JobManager {
     });
   }
 
-  async jumpToUnitQuestion(phaseIndex: number, stepIndex: number): Promise<void> {
+  async jumpToUnitQuestion(phaseIndex: number, stepIndex: number, allowAhead = false): Promise<void> {
     if (phaseIndex < 0 || phaseIndex >= this.topSteps.length) return;
     if (this.topIndex !== phaseIndex) {
-      await this.jumpToPhase(phaseIndex);
+      await this.jumpToPhase(phaseIndex, allowAhead);
     }
     if (this.activeLoop && this.currentUnit && stepIndex >= 0 && stepIndex < this.loopSteps.length) {
-      this.loopIndex = stepIndex;
-      const step = this.loopSteps[this.loopIndex];
-      this.publish({
-        phase: "unit_variable",
-        currentItem: step,
-        currentUnit: this.currentUnit,
-        currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit),
-        currentUnitVariables: { ...this.unitVariableValues },
-      });
+      await this.jumpToLoopStep(stepIndex, allowAhead);
     }
   }
 
-  async jumpToPhase(phaseIndex: number): Promise<void> {
+  async jumpToPhase(phaseIndex: number, allowAhead = false): Promise<void> {
     if (phaseIndex < 0 || phaseIndex >= this.topSteps.length) return;
+    if (!allowAhead && phaseIndex > this.maxReachedTopIndex) return;
     if (phaseIndex === this.topIndex && this.activeLoop) return;
 
     this.syncCurrentUnitAnswers();
@@ -501,6 +524,7 @@ export class JobManager {
   private async advanceTop(): Promise<void> {
     this.topSteps = await computeTopLevelSteps(this.items, this.conditionValues, this.expressionCache);
     this.topIndex += 1;
+    this.maxReachedTopIndex = Math.max(this.maxReachedTopIndex, this.topIndex);
     const next = this.topSteps[this.topIndex];
 
     if (!next) {
@@ -663,6 +687,7 @@ export class JobManager {
       currentPhaseIndex: this.topIndex,
       currentUnitIndex: this.activeLoop ? this.unitHistoryIndex : undefined,
       totalUnitsInHistory: this.unitHistory.length,
+      maxReachedTopIndex: this.maxReachedTopIndex,
     };
   }
 

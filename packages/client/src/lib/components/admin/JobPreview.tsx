@@ -268,6 +268,7 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
                 baseUrl={baseUrl}
                 coderKey={previewKey}
                 inviteSecret={inviteSecret}
+                preview={true}
               />
             </div>
           ) : deviceMode === "mobile" ? (
@@ -286,6 +287,7 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
                   baseUrl={baseUrl}
                   coderKey={previewKey}
                   inviteSecret={inviteSecret}
+                  preview={true}
                 />
               </div>
               {/* Bottom Home Indicator */}
@@ -314,6 +316,7 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
                   baseUrl={baseUrl}
                   coderKey={previewKey}
                   inviteSecret={inviteSecret}
+                  preview={true}
                 />
               </div>
             </div>

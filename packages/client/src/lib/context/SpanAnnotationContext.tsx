@@ -1,6 +1,20 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import type { CodebookCode, SpanAnswer } from "@annotinder/contracts";
 
+export interface PendingSpan {
+  offset: number;
+  length: number;
+  text: string;
+  /**
+   * "create": User selected text to assign a new label.
+   * "manage": User clicked an existing label (or annotation item) to view & delete labels.
+   */
+  mode?: "create" | "manage";
+  existingSpanIds?: string[];
+  isEditingExisting?: boolean;
+  targetSpanId?: string;
+}
+
 /**
  * Bridges the currently-answered `span` variable (rendered inside
  * `Question`/`SpanAnswerField`) and the interactive text selection that has
@@ -18,6 +32,8 @@ export interface SpanAnnotationState {
   spans: SpanAnswer[];
   selectionMode: "word" | "character";
   setSelectionMode: (mode: "word" | "character") => void;
+  pendingSpan: PendingSpan | null;
+  setPendingSpan: (pending: PendingSpan | null) => void;
   /** `text` is the exact substring of the column's raw value at
    * `[offset, offset + length)`, included in the stored `SpanAnswer` so
    * downstream analysis doesn't need to re-slice the unit data. */
@@ -40,6 +56,7 @@ export function SpanAnnotationProvider({
   codes,
   defaultSelectionMode = "word",
   initialSpans,
+  initialPendingSpan,
   children,
 }: {
   column: string;
@@ -48,10 +65,12 @@ export function SpanAnnotationProvider({
   /** Seeds already-collected spans, e.g. when resuming a unit that already
    * has an answer stored for this variable. */
   initialSpans?: SpanAnswer[];
+  initialPendingSpan?: PendingSpan;
   children: ReactNode;
 }) {
   const [spans, setSpans] = useState<SpanAnswer[]>(initialSpans ?? []);
   const [selectionMode, setSelectionMode] = useState<"word" | "character">(defaultSelectionMode);
+  const [pendingSpan, setPendingSpan] = useState<PendingSpan | null>(initialPendingSpan ?? null);
 
   const value = useMemo<SpanAnnotationState>(
     () => ({
@@ -60,6 +79,8 @@ export function SpanAnnotationProvider({
       spans,
       selectionMode,
       setSelectionMode,
+      pendingSpan,
+      setPendingSpan,
       addSpan: (offset, length, code, text) =>
         setSpans((prev) => {
           // Ignore exact duplicate of same code on same range
@@ -77,7 +98,7 @@ export function SpanAnnotationProvider({
       hasExactSpan: (offset, length, code) =>
         spans.some((s) => s.offset === offset && s.length === length && s.code === code),
     }),
-    [column, codes, spans, selectionMode],
+    [column, codes, spans, selectionMode, pendingSpan],
   );
 
   return <SpanAnnotationContext.Provider value={value}>{children}</SpanAnnotationContext.Provider>;

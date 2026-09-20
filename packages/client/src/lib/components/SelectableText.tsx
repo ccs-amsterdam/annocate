@@ -1,43 +1,73 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useCallback, useEffect } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { useSpanAnnotation } from "../context/SpanAnnotationContext";
-import {
-  getSpanHighlightStyle,
-  getMultiSpanHighlightStyle,
-  getCodeButtonStyle,
-  getCodeBadgeStyle,
-} from "../utils/color";
-import { X, Layers } from "lucide-react";
+import { getSpanHighlightStyle, getStackedUnderlineStyle } from "../utils/color";
 
 /**
- * Snaps raw character offsets to word boundaries when in "word" selection mode.
- * Expands start backwards to the beginning of the word and end forwards to the
- * end of the word, trimming leading/trailing whitespace.
+ * Truncates span text with an ellipsis in the middle if it exceeds maxLength.
+ * Useful for keeping badge titles and summary chips compact and legible.
  */
-export function snapToWord(text: string, rawStart: number, rawEnd: number): [number, number] {
-  if (rawStart >= rawEnd || text.length === 0) return [rawStart, rawEnd];
-  const isWordChar = (ch: string) => /[\p{L}\p{N}_]/u.test(ch);
+export function truncateSpanText(text: string, maxLength = 30): string {
+  if (text.length <= maxLength) return text;
+  const charsToShow = maxLength - 1; // 1 for '…'
+  const frontChars = Math.ceil(charsToShow / 2);
+  const backChars = Math.floor(charsToShow / 2);
+  return `${text.slice(0, frontChars).trimEnd()}…${text.slice(-backChars).trimStart()}`;
+}
 
-  let start = Math.max(0, Math.min(rawStart, text.length));
-  let end = Math.max(0, Math.min(rawEnd, text.length));
+/**
+ * Snaps arbitrary character start/end offsets to word boundaries,
+ * following the standard natural text selection expectation.
+ */
+export function snapToWord(text: string, start: number, end: number): [number, number] {
+  if (start >= end) return [start, end];
 
-  // Expand start backwards to word beginning
-  while (start > 0 && isWordChar(text[start - 1])) {
+  // Expand start backwards to word boundary (non-whitespace)
+  while (start > 0 && !/\s/.test(text[start - 1])) {
     start--;
   }
 
-  // Expand end forwards to word ending
-  while (end < text.length && isWordChar(text[end])) {
+  // Expand end forwards to word boundary (non-whitespace)
+  while (end < text.length && !/\s/.test(text[end])) {
     end++;
   }
 
-  // Trim leading whitespace
+  // Trim leading/trailing whitespace if any crept in
   while (start < end && /\s/.test(text[start])) {
     start++;
   }
-  // Trim trailing whitespace
   while (end > start && /\s/.test(text[end - 1])) {
     end--;
+  }
+
+  return [start, end];
+}
+
+/**
+ * Finds the word boundaries at a given character offset in `text`.
+ */
+export function getWordAtPosition(text: string, offset: number): [number, number] | null {
+  if (offset < 0 || offset >= text.length) return null;
+
+  // If clicked directly on whitespace, look right or left for nearest word
+  if (/\s/.test(text[offset])) {
+    if (offset + 1 < text.length && !/\s/.test(text[offset + 1])) {
+      offset = offset + 1;
+    } else if (offset > 0 && !/\s/.test(text[offset - 1])) {
+      offset = offset - 1;
+    } else {
+      return null;
+    }
+  }
+
+  let start = offset;
+  let end = offset;
+
+  while (start > 0 && !/\s/.test(text[start - 1])) {
+    start--;
+  }
+  while (end < text.length && !/\s/.test(text[end])) {
+    end++;
   }
 
   return [start, end];
@@ -62,152 +92,188 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
 
 /**
  * Renders `text` as plain content, with any already-created spans (from
- * `SpanAnnotationContext`) highlighted, and lets the coder select spans
- * by dragging over the text or using keyboard navigation.
+ * `SpanAnnotationContext`) highlighted, and lets the coder select or click spans.
  *
- * Features:
- * - Word vs Character selection mode (snaps to words or allows exact chars)
- * - Multiple overlapping spans on the same piece of text (rendered with multi-color gradient)
- * - Keyboard navigation (hotkeys 1-9 for codes, w for mode toggle, Esc, Backspace/Delete)
+ * Interaction rules:
+ * - When in span create mode: clicking another word extends the span to encompass it.
+ * - When idle:
+ *   - Clicking an empty word starts a span selection for that word.
+ *   - Clicking an existing label opens the manage menu for that word (showing current labels + "Create new label").
+ *   - Dragging across text creates a range selection.
  */
 export function SelectableText({ text }: { text: string }) {
   const annotation = useSpanAnnotation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [pending, setPending] = useState<{ offset: number; length: number } | null>(null);
-  const [activeSegmentSpans, setActiveSegmentSpans] = useState<SpanAnswer[] | null>(null);
+
+  const pending = annotation?.pendingSpan ?? null;
 
   const processSelection = useCallback(() => {
     if (!annotation) return;
     const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !containerRef.current) return;
+    if (!selection || selection.rangeCount === 0 || !containerRef.current) return;
     const range = selection.getRangeAt(0);
     if (!containerRef.current.contains(range.commonAncestorContainer)) return;
 
     const a = getAbsoluteOffset(containerRef.current, range.startContainer, range.startOffset);
     const b = getAbsoluteOffset(containerRef.current, range.endContainer, range.endOffset);
     let [offset, end] = a <= b ? [a, b] : [b, a];
+    const isClick = selection.isCollapsed || a === b;
     selection.removeAllRanges();
-    if (end <= offset) return;
 
-    if (annotation.selectionMode === "word") {
-      [offset, end] = snapToWord(text, offset, end);
+    if (isClick) {
+      const caret = offset;
+      const wordRange = getWordAtPosition(text, caret);
+
+      // Case 1: If a span is ALREADY pending in create mode, clicking another word extends the span!
+      if (pending && pending.mode === "create" && wordRange) {
+        const [wStart, wEnd] = wordRange;
+        const newStart = Math.min(pending.offset, wStart);
+        const newEnd = Math.max(pending.offset + pending.length, wEnd);
+        annotation.setPendingSpan({
+          offset: newStart,
+          length: newEnd - newStart,
+          text: text.slice(newStart, newEnd),
+          mode: "create",
+        });
+        return;
+      }
+
+      // Case 2: Clicked on an existing labeled span -> Always open the menu first!
+      const covering = annotation.spans.filter((s) => s.offset <= caret && s.offset + s.length > caret);
+      if (covering.length > 0) {
+        const firstSpan = covering[0];
+        annotation.setPendingSpan({
+          offset: firstSpan.offset,
+          length: firstSpan.length,
+          text: firstSpan.text,
+          existingSpanIds: covering.map((s) => s.id),
+          targetSpanId: undefined, // Never bypass the menu!
+          mode: "manage",
+        });
+        return;
+      }
+
+      // Case 3: Clicked on an empty word: start a new span selection for that word!
+      if (wordRange) {
+        const [wStart, wEnd] = wordRange;
+        annotation.setPendingSpan({
+          offset: wStart,
+          length: wEnd - wStart,
+          text: text.slice(wStart, wEnd),
+          mode: "create",
+        });
+        return;
+      }
+
+      // Clicked on empty space with no word: dismiss any open form
+      annotation.setPendingSpan(null);
+      return;
+    } else {
+      // Dragged range selection: creating a new label!
+      if (annotation.selectionMode === "word") {
+        [offset, end] = snapToWord(text, offset, end);
+      }
     }
 
     if (end <= offset) return;
 
-    setActiveSegmentSpans(null);
-    setPending({ offset, length: end - offset });
-  }, [annotation, text]);
+    annotation.setPendingSpan({
+      offset,
+      length: end - offset,
+      text: text.slice(offset, end),
+      mode: "create",
+    });
+  }, [annotation, pending, text]);
 
   function handleMouseUp() {
     processSelection();
   }
 
   function handleKeyUp(e: React.KeyboardEvent) {
-    // If Shift + Arrow selection completed via keyboard
     if (e.shiftKey || e.key.startsWith("Arrow")) {
       processSelection();
     }
   }
 
-  const assignCode = useCallback(
-    (code: string) => {
-      if (!annotation || !pending) return;
-      annotation.addSpan(
-        pending.offset,
-        pending.length,
-        code,
-        text.slice(pending.offset, pending.offset + pending.length),
-      );
-      setPending(null);
-    },
-    [annotation, pending, text],
-  );
-
-  // Global hotkeys when pending selection is active (1-9 to pick code, Esc to cancel)
+  // Backspace / Delete: remove last added span if nothing pending
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (!annotation) return;
 
-      // When code picker is open:
-      if (pending) {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setPending(null);
-          return;
-        }
-        if (e.key === "Enter" && annotation.codes.length > 0) {
-          e.preventDefault();
-          assignCode(annotation.codes[0].code);
-          return;
-        }
-        // Number hotkeys 1-9
-        const num = parseInt(e.key, 10);
-        if (!isNaN(num) && num >= 1 && num <= annotation.codes.length) {
-          e.preventDefault();
-          assignCode(annotation.codes[num - 1].code);
-          return;
-        }
-      }
-
-      // If typing inside an input/textarea, ignore general shortcuts
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea") return;
 
-      // Hotkey 'w': toggle word / character selection mode
-      if (e.key === "w" || e.key === "W") {
-        e.preventDefault();
-        annotation.setSelectionMode(annotation.selectionMode === "word" ? "character" : "word");
-        return;
-      }
-
-      // Backspace / Delete: remove last added span if nothing pending
-      if ((e.key === "Backspace" || e.key === "Delete") && !pending && annotation.spans.length > 0) {
-        // If container has focus or body has focus
+      if ((e.key === "Backspace" || e.key === "Delete") && !annotation.pendingSpan && annotation.spans.length > 0) {
         if (
-          containerRef.current?.contains(document.activeElement) ||
-          document.activeElement === document.body
+          containerRef.current &&
+          (containerRef.current === document.activeElement ||
+            containerRef.current.contains(document.activeElement))
         ) {
-          const lastSpan = annotation.spans[annotation.spans.length - 1];
-          annotation.removeSpan(lastSpan.id);
+          e.preventDefault();
+          const last = annotation.spans[annotation.spans.length - 1];
+          annotation.removeSpan(last.id);
         }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [annotation, pending, assignCode]);
+  }, [annotation]);
 
-  if (!annotation) return <span className="whitespace-pre-wrap">{text}</span>;
-
-  // Build sorted, non-overlapping segments covering all overlapping spans
-  const cutPoints = new Set<number>([0, text.length]);
-  for (const span of annotation.spans) {
-    cutPoints.add(Math.max(0, Math.min(span.offset, text.length)));
-    cutPoints.add(Math.max(0, Math.min(span.offset + span.length, text.length)));
+  // Compute text segments (unannotated, single-span, or overlapping multi-span)
+  const cuts = new Set<number>([0, text.length]);
+  if (pending) {
+    cuts.add(Math.max(0, Math.min(text.length, pending.offset)));
+    cuts.add(Math.max(0, Math.min(text.length, pending.offset + pending.length)));
   }
-  const sortedPoints = Array.from(cutPoints).sort((a, b) => a - b);
+  for (const s of annotation?.spans ?? []) {
+    cuts.add(Math.max(0, Math.min(text.length, s.offset)));
+    cuts.add(Math.max(0, Math.min(text.length, s.offset + s.length)));
+  }
+  const sortedCuts = Array.from(cuts).sort((x, y) => x - y);
 
-  const segments: { start: number; end: number; spans: SpanAnswer[] }[] = [];
-  for (let i = 0; i < sortedPoints.length - 1; i++) {
-    const start = sortedPoints[i];
-    const end = sortedPoints[i + 1];
+  const segments: Array<{
+    start: number;
+    end: number;
+    spans: SpanAnswer[];
+    isPending: boolean;
+  }> = [];
+
+  for (let i = 0; i < sortedCuts.length - 1; i++) {
+    const start = sortedCuts[i];
+    const end = sortedCuts[i + 1];
     if (start >= end) continue;
-    const coveringSpans = annotation.spans.filter((s) => s.offset <= start && s.offset + s.length >= end);
-    segments.push({ start, end, spans: coveringSpans });
+
+    const covering = (annotation?.spans ?? []).filter(
+      (s) => s.offset <= start && s.offset + s.length >= end,
+    );
+    const isPending = Boolean(
+      pending && pending.offset <= start && pending.offset + pending.length >= end,
+    );
+    segments.push({ start, end, spans: covering, isPending });
   }
 
   function colorFor(code: string): string | undefined {
     return annotation?.codes.find((c) => c.code === code)?.color;
   }
 
-  function handleSegmentClick(spans: SpanAnswer[]) {
-    if (spans.length === 1) {
-      annotation?.removeSpan(spans[0].id);
-      setActiveSegmentSpans(null);
-    } else if (spans.length > 1) {
-      setActiveSegmentSpans(spans);
+  function handleSegmentClick(e: React.MouseEvent, spans: SpanAnswer[]) {
+    // If currently creating a span, clicking on a labeled segment extends the span!
+    if (annotation?.pendingSpan && annotation.pendingSpan.mode === "create") {
+      return; // Let mouseup/processSelection handle extending the span
     }
+
+    e.stopPropagation();
+    if (!annotation || spans.length === 0) return;
+    const firstSpan = spans[0];
+    annotation.setPendingSpan({
+      offset: firstSpan.offset,
+      length: firstSpan.length,
+      text: firstSpan.text,
+      existingSpanIds: spans.map((s) => s.id),
+      targetSpanId: undefined, // Always show the menu first!
+      mode: "manage",
+    });
   }
 
   return (
@@ -218,22 +284,36 @@ export function SelectableText({ text }: { text: string }) {
         tabIndex={0}
         onMouseUp={handleMouseUp}
         onKeyUp={handleKeyUp}
-        className="whitespace-pre-wrap select-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded p-1 transition-all"
+        className="whitespace-pre-wrap select-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded p-1 transition-all leading-[1.8]"
       >
         {segments.map((seg, i) => {
           if (seg.spans.length === 0) {
+            if (seg.isPending) {
+              return (
+                <mark
+                  key={i}
+                  className="bg-primary/25 text-primary font-medium rounded-xs px-0.5 ring-2 ring-primary/60 animate-pulse"
+                >
+                  {text.slice(seg.start, seg.end)}
+                </mark>
+              );
+            }
             return <span key={i}>{text.slice(seg.start, seg.end)}</span>;
           }
 
           if (seg.spans.length === 1) {
             const span = seg.spans[0];
+            const isStart = seg.start === span.offset;
+            const isEnd = seg.end === span.offset + span.length;
             return (
               <mark
                 key={i}
-                style={getSpanHighlightStyle(colorFor(span.code))}
-                title={`${span.code} (click to remove)`}
-                onClick={() => handleSegmentClick(seg.spans)}
-                className="cursor-pointer transition-opacity hover:opacity-80"
+                style={getSpanHighlightStyle({ color: colorFor(span.code), isStart, isEnd })}
+                title={`${span.code}: \"${span.text}\" (click to view labels)`}
+                onClick={(e) => handleSegmentClick(e, seg.spans)}
+                className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
+                  seg.isPending ? "ring-2 ring-primary/80 ring-offset-1" : ""
+                }`}
               >
                 {text.slice(seg.start, seg.end)}
               </mark>
@@ -241,91 +321,29 @@ export function SelectableText({ text }: { text: string }) {
           }
 
           // Multiple overlapping spans on this segment
-          const colors = seg.spans.map((s) => colorFor(s.code));
-          const titles = seg.spans.map((s) => s.code).join(", ");
+          const spansInfo = seg.spans.map((s) => ({
+            color: colorFor(s.code),
+            isStart: seg.start === s.offset,
+            isEnd: seg.end === s.offset + s.length,
+          }));
+          const stackedStyle = getStackedUnderlineStyle(spansInfo);
+          const title = seg.spans.map((s) => `${s.code}: \"${s.text}\"`).join(", ");
+
           return (
             <mark
               key={i}
-              style={getMultiSpanHighlightStyle(colors)}
-              title={`Overlapping spans: [${titles}] (click to manage)`}
-              onClick={() => handleSegmentClick(seg.spans)}
-              className="cursor-pointer font-medium transition-opacity hover:opacity-80"
+              style={stackedStyle}
+              title={`${title} (click to view labels)`}
+              onClick={(e) => handleSegmentClick(e, seg.spans)}
+              className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
+                seg.isPending ? "ring-2 ring-primary/80 ring-offset-1" : ""
+              }`}
             >
               {text.slice(seg.start, seg.end)}
             </mark>
           );
         })}
       </div>
-
-      {/* Overlapping Spans Management Popover / Bar */}
-      {activeSegmentSpans && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-xs shadow-xs animate-in fade-in">
-          <span className="flex items-center gap-1 font-semibold text-foreground">
-            <Layers className="h-3.5 w-3.5 text-primary" />
-            Overlapping spans:
-          </span>
-          {activeSegmentSpans.map((s) => {
-            const badgeStyle = getCodeBadgeStyle(colorFor(s.code));
-            return (
-              <span
-                key={s.id}
-                style={badgeStyle}
-                className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium"
-              >
-                <strong>{s.code}</strong>
-                <button
-                  type="button"
-                  onClick={() => {
-                    annotation.removeSpan(s.id);
-                    setActiveSegmentSpans((prev) => (prev ? prev.filter((item) => item.id !== s.id) : null));
-                  }}
-                  className="rounded p-0.5 hover:bg-black/10 transition-colors cursor-pointer"
-                  title="Remove this span"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            );
-          })}
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground underline ml-auto cursor-pointer"
-            onClick={() => setActiveSegmentSpans(null)}
-          >
-            close
-          </button>
-        </div>
-      )}
-
-      {/* Pending Selection Code Assignment Bar with Hotkey Badges */}
-      {pending && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-2 text-sm shadow-md animate-in fade-in">
-          <span className="text-xs font-semibold text-muted-foreground">Assign code:</span>
-          {annotation.codes.map((c, idx) => (
-            <button
-              key={c.code}
-              type="button"
-              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer"
-              style={getCodeButtonStyle(c.color, false)}
-              onClick={() => assignCode(c.code)}
-            >
-              {idx < 9 && (
-                <kbd className="rounded bg-black/10 px-1 py-0.2 text-[10px] font-mono text-muted-foreground">
-                  {idx + 1}
-                </kbd>
-              )}
-              <span>{c.code}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            className="text-xs text-muted-foreground underline hover:text-foreground ml-auto cursor-pointer"
-            onClick={() => setPending(null)}
-          >
-            cancel (Esc)
-          </button>
-        </div>
-      )}
     </div>
   );
 }
