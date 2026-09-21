@@ -1,6 +1,6 @@
 import type { CodebookItem, VariableValue } from "@annotinder/contracts";
 
-export type QuestionItem = Extract<CodebookItem, { type: "user_variable" | "unit_variable" }>;
+export type QuestionItem = Extract<CodebookItem, { type: "question" | "user_variable" | "unit_variable" }>;
 export type QuestionVariable = QuestionItem["variable"];
 
 export interface AnswerFieldProps<TVariable extends QuestionVariable = QuestionVariable> {

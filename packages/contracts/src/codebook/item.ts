@@ -13,33 +13,60 @@ const ItemBaseSchema = z.object({
 });
 
 /**
- * A leaf item that always results in a stored coder-level (non-unit)
- * variable value. Appears only at the top level of a codebook (cannot
- * appear inside a unit_loop).
+ * A question item appearing at the top level of a codebook.
+ * Results in a stored coder-level (non-unit) variable value.
  */
-export const UserVariableItemSchema = ItemBaseSchema.extend({
+export const TopLevelQuestionItemSchema = ItemBaseSchema.extend({
+  type: z.literal("question"),
+  variable: UserVariableTypeSchema,
+});
+export type TopLevelQuestionItem = z.infer<typeof TopLevelQuestionItemSchema>;
+
+export const LegacyUserVariableItemSchema = ItemBaseSchema.extend({
   type: z.literal("user_variable"),
   variable: UserVariableTypeSchema,
 });
-export type UserVariableItem = z.infer<typeof UserVariableItemSchema>;
+export type LegacyUserVariableItem = z.infer<typeof LegacyUserVariableItemSchema>;
 
 /**
- * A leaf item that results in a stored per-unit, per-coder variable value.
- * Appears only inside a unit_loop.
+ * A question item appearing inside a unit_loop.
+ * Results in a stored per-unit, per-coder variable value.
  */
-export const UnitVariableItemSchema = ItemBaseSchema.extend({
+export const InLoopQuestionItemSchema = ItemBaseSchema.extend({
+  type: z.literal("question"),
+  variable: UnitVariableTypeSchema,
+});
+export type InLoopQuestionItem = z.infer<typeof InLoopQuestionItemSchema>;
+
+export const LegacyUnitVariableItemSchema = ItemBaseSchema.extend({
   type: z.literal("unit_variable"),
   variable: UnitVariableTypeSchema,
 });
-export type UnitVariableItem = z.infer<typeof UnitVariableItemSchema>;
+export type LegacyUnitVariableItem = z.infer<typeof LegacyUnitVariableItemSchema>;
+
+/**
+ * General Question item schema anywhere in the tree.
+ */
+export const QuestionItemSchema = ItemBaseSchema.extend({
+  type: z.union([z.literal("question"), z.literal("user_variable"), z.literal("unit_variable")]),
+  variable: UnitVariableTypeSchema,
+});
+export type QuestionItem = z.infer<typeof QuestionItemSchema>;
+
+// Backwards-compatible aliases
+export const UserVariableItemSchema = TopLevelQuestionItemSchema;
+export type UserVariableItem = TopLevelQuestionItem | LegacyUserVariableItem;
+export const UnitVariableItemSchema = InLoopQuestionItemSchema;
+export type UnitVariableItem = InLoopQuestionItem | LegacyUnitVariableItem;
 
 /**
  * Items that can appear inside a unit_loop:
- * - Unit variables
+ * - Question items (can include span, relation, select_code, etc.)
  * - Condition items (whose children can only be in-loop items)
  */
 export type InLoopItem =
-  | UnitVariableItem
+  | InLoopQuestionItem
+  | LegacyUnitVariableItem
   | {
       type: "condition";
       name: string;
@@ -58,14 +85,14 @@ export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "c
 );
 
 export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
-  z.union([UnitVariableItemSchema, InLoopConditionItemSchema])
+  z.union([InLoopQuestionItemSchema, LegacyUnitVariableItemSchema, InLoopConditionItemSchema])
 );
 
 /**
  * A `for unit in unitset` loop.
  * If `unitset` is omitted or empty, the loop iterates over all units in the job.
- * Children can ONLY be in-loop items (unit_variable or in-loop condition).
- * Nested unit loops and user variables are strictly disallowed.
+ * Children can ONLY be in-loop items (question or in-loop condition).
+ * Nested unit loops are strictly disallowed.
  */
 export const UnitLoopItemSchema = ItemBaseSchema.extend({
   type: z.literal("unit_loop"),
@@ -81,12 +108,13 @@ export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
 
 /**
  * Items that can appear at the top level:
- * - User variables
+ * - Question items (coder-level)
  * - Unit loops
  * - Top-level condition items (whose children can be any top-level items)
  */
 export type TopLevelItem =
-  | UserVariableItem
+  | TopLevelQuestionItem
+  | LegacyUserVariableItem
   | UnitLoopItem
   | {
       type: "condition";
@@ -106,7 +134,12 @@ export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type
 );
 
 export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
-  z.union([UserVariableItemSchema, UnitLoopItemSchema, TopLevelConditionItemSchema])
+  z.union([
+    TopLevelQuestionItemSchema,
+    LegacyUserVariableItemSchema,
+    UnitLoopItemSchema,
+    TopLevelConditionItemSchema,
+  ])
 );
 
 /**

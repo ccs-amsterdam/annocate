@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type {
   CodebookItem,
   TopLevelItem,
@@ -8,16 +8,20 @@ import type {
 import {
   Repeat,
   GitBranch,
-  CheckSquare,
   HelpCircle,
   Plus,
   Trash2,
   Move,
   X,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react";
-import { canMoveItemTo, type MoveTargetPosition } from "../../codebook/codebookEdit";
-import { findItem } from "../../codebook/tree";
+import {
+  canMoveItemTo,
+  canMoveToRootEnd,
+  type MoveTargetPosition,
+} from "../../codebook/codebookEdit";
+import { isInsideUnitLoop, flattenTree } from "../../codebook/tree";
 
 function ItemIcon({ type }: { type: CodebookItem["type"] }) {
   switch (type) {
@@ -25,260 +29,522 @@ function ItemIcon({ type }: { type: CodebookItem["type"] }) {
       return <Repeat className="h-4 w-4 text-primary shrink-0" />;
     case "condition":
       return <GitBranch className="h-4 w-4 text-amber-500 shrink-0" />;
+    case "question":
     case "unit_variable":
-      return <CheckSquare className="h-4 w-4 text-teal-600 shrink-0" />;
     case "user_variable":
       return <HelpCircle className="h-4 w-4 text-blue-500 shrink-0" />;
   }
+}
+
+interface TypeSelectDropdownProps {
+  allowedTypes: CodebookItem["type"][];
+  onSelect: (type: CodebookItem["type"]) => void;
+  onClose: () => void;
+  triggerId?: string;
+  align?: "left" | "right";
+}
+
+function TypeSelectDropdown({
+  allowedTypes,
+  onSelect,
+  onClose,
+  triggerId,
+  align = "right",
+}: TypeSelectDropdownProps) {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handlePointerDown(e: PointerEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        if (triggerId) {
+          const target = e.target as HTMLElement;
+          if (target.closest(`[data-slot-trigger="${triggerId}"]`)) {
+            return;
+          }
+        }
+        onClose();
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose, triggerId]);
+
+  const typeLabels: Record<string, { label: string; desc: string; icon: any }> = {
+    question: {
+      label: "Question",
+      desc: "Prompt coder for an answer",
+      icon: HelpCircle,
+    },
+    unit_loop: {
+      label: "Unit Loop",
+      desc: "Loop over units in a unitset",
+      icon: Repeat,
+    },
+    condition: {
+      label: "Condition",
+      desc: "Branch based on JS expression",
+      icon: GitBranch,
+    },
+  };
+
+  return (
+    <div
+      ref={dropdownRef}
+      className={`absolute ${align === "left" ? "left-0" : "right-0"} top-full mt-1 z-50 min-w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95`}
+    >
+      <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        Select Item Type
+      </div>
+      {allowedTypes.map((type) => {
+        const info = typeLabels[type];
+        if (!info) return null;
+        const Icon = info.icon;
+        return (
+          <button
+            key={type}
+            type="button"
+            onClick={() => onSelect(type)}
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-xs font-medium hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+          >
+            <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+            <div>
+              <div className="font-semibold text-foreground">{info.label}</div>
+              <div className="text-[10px] text-muted-foreground font-normal">{info.desc}</div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function InsertionArrowIndicator({ depth }: { depth: number }) {
+  return (
+    <div
+      className="absolute -top-0.5 flex items-center pointer-events-none z-20 animate-in fade-in-0 duration-150"
+      style={{ left: depth * 20 + 2 }}
+    >
+      <ArrowRight className="h-3.5 w-3.5 text-primary stroke-[2.5]" />
+    </div>
+  );
+}
+
+function getLastDescendantKey(node: TopLevelItem | InLoopItem): string {
+  if ("children" in node && Array.isArray((node as any).children) && (node as any).children.length > 0) {
+    const children = (node as any).children;
+    return getLastDescendantKey(children[children.length - 1]);
+  }
+  return (node as any)._key || node.name;
 }
 
 interface CodebookTreeViewProps {
   items: TopLevelItem[];
   selected: string | null;
   onSelect: (identifier: string) => void;
-  onAddChild: (parentIdentifier: string) => void;
+  onInsertBefore: (targetIdentifier: string, type: CodebookItem["type"]) => void;
+  onInsertAtEnd: (parentIdentifier: string | null, type: CodebookItem["type"]) => void;
   onDelete: (identifier: string) => void;
   onMoveItem: (source: string, target: string, position: MoveTargetPosition) => void;
+  onMoveToRootEnd: (source: string) => void;
   validationIssues?: CodebookValidationIssue[];
 }
 
 /**
- * Renders the codebook items as a clean, hierarchical tree view.
- *
- * Moving items:
- * - Clicking "Move" highlights the item without shifting the layout (no top banner).
- * - Click directly on an item's name/row to take its position (insert before it).
- * - Container items show an [inside] button if moving inside is valid.
- * - The last item in a section shows an [after] button to place at the end.
+ * Renders the codebook items as a sleek, compact hierarchical tree view:
+ * - Extremely compact item heights (h-[30px]) with zero gap between items.
+ * - On hovering the insert button or move target, all item names and subsequent add buttons downward slide down in unison.
+ * - Lowered insertion right arrow indicator (→) pointing directly into the opened gap.
+ * - In move mode, no green background/border on moving item; clicking current or invalid target cancels move.
+ * - Selected item is visually indicated via a compact title chip over the item name.
+ * - End-of-list target shows stationary "Move here" button.
  */
 export function CodebookTreeView({
   items,
   selected,
   onSelect,
-  onAddChild,
+  onInsertBefore,
+  onInsertAtEnd,
   onDelete,
   onMoveItem,
+  onMoveToRootEnd,
   validationIssues = [],
 }: CodebookTreeViewProps) {
   const [movingItem, setMovingItem] = useState<string | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [hoveredAddKey, setHoveredAddKey] = useState<string | null>(null);
+  const [hoveredMoveTarget, setHoveredMoveTarget] = useState<string | null>(null);
 
-  const movingNode = movingItem ? findItem(items, movingItem) : null;
-  const movingItemName = movingNode?.name || movingItem || "";
+  const isMoveMode = movingItem !== null;
+
+  const flatItems = useMemo(() => flattenTree(items), [items]);
+  const flatKeys = useMemo(
+    () => flatItems.map((item) => (item as any)._key || item.name),
+    [flatItems],
+  );
+
+  const activeHoverKey = !isMoveMode ? hoveredAddKey : hoveredMoveTarget;
+  const activeHoverIndex = activeHoverKey ? flatKeys.indexOf(activeHoverKey) : -1;
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && movingItem) {
+        setMovingItem(null);
+        setHoveredMoveTarget(null);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [movingItem]);
 
   function handleExecuteMove(targetIdentifier: string, position: MoveTargetPosition) {
     if (!movingItem) return;
     onMoveItem(movingItem, targetIdentifier, position);
     setMovingItem(null);
+    setHoveredMoveTarget(null);
   }
 
-  // Find if an item has validation issues
+  function handleExecuteMoveToRootEnd() {
+    if (!movingItem) return;
+    onMoveToRootEnd(movingItem);
+    setMovingItem(null);
+    setHoveredMoveTarget(null);
+  }
+
   function getItemIssue(item: CodebookItem): string | null {
     const issue = validationIssues.find((i) => {
-      // Check if path or message references this item's name
       if (item.name && i.message.includes(`'${item.name}'`)) return true;
       return false;
     });
     return issue ? issue.message : null;
   }
 
-  function renderLevel(nodes: (TopLevelItem | InLoopItem)[], depth: number) {
-    return nodes.map((item, index) => {
-      const itemKey = (item as any)._key || item.name;
-      const hasChildren = "children" in item && Array.isArray(item.children);
-      const isMoving = movingItem === itemKey || movingItem === item.name;
-      const isMoveMode = movingItem !== null;
-      const isLastSibling = index === nodes.length - 1;
+  function renderList(
+    nodes: (TopLevelItem | InLoopItem)[],
+    depth: number,
+    parentContainer: (TopLevelItem | InLoopItem) | null,
+  ) {
+    const isRoot = parentContainer === null;
+    const parentKey = parentContainer ? (parentContainer as any)._key || parentContainer.name : null;
+    const listId = isRoot ? "root" : parentKey;
+    const isParentInLoop =
+      parentContainer !== null &&
+      (parentContainer.type === "unit_loop" || isInsideUnitLoop(items, parentKey));
+    const allowedTypesForList: CodebookItem["type"][] = isParentInLoop
+      ? ["question", "condition"]
+      : ["question", "unit_loop", "condition"];
 
-      const issueMessage = getItemIssue(item);
+    const canMoveToEnd = isMoveMode
+      ? isRoot
+        ? canMoveToRootEnd(items, movingItem!)
+        : canMoveItemTo(items, movingItem!, parentKey!, "inside")
+      : false;
 
-      // In move mode: can we take this item's place (insert before)?
-      const canTakePosition =
-        isMoveMode &&
-        !isMoving &&
-        canMoveItemTo(items, movingItem, itemKey, "before");
+    const lastItemIndex =
+      nodes.length > 0
+        ? flatKeys.indexOf(getLastDescendantKey(nodes[nodes.length - 1]))
+        : parentKey
+          ? flatKeys.indexOf(parentKey)
+          : -1;
 
-      // Can we move inside this container?
-      const canInside =
-        isMoveMode &&
-        !isMoving &&
-        (item.type === "unit_loop" || item.type === "condition") &&
-        canMoveItemTo(items, movingItem, itemKey, "inside");
+    const shouldShiftEndSlot =
+      activeHoverIndex !== -1 && lastItemIndex !== -1 && activeHoverIndex <= lastItemIndex;
 
-      // Can we append after this item (only relevant for the last item in a group)?
-      const canAfter =
-        isMoveMode &&
-        !isMoving &&
-        isLastSibling &&
-        canMoveItemTo(items, movingItem, itemKey, "after");
+    return (
+      <div className="flex flex-col">
+        {nodes.map((item) => {
+          const itemKey = (item as any)._key || item.name;
+          const hasChildren = "children" in item && Array.isArray((item as any).children);
+          const isMoving = movingItem === itemKey || movingItem === item.name;
+          const isSelected = selected === itemKey || selected === item.name;
+          const issueMessage = getItemIssue(item);
+          const itemInLoop = isInsideUnitLoop(items, itemKey);
+          const allowedTypesBefore: CodebookItem["type"][] = itemInLoop
+            ? ["question", "condition"]
+            : ["question", "unit_loop", "condition"];
 
-      const isTargetable = canTakePosition || canInside || canAfter;
+          const canMoveBefore =
+            isMoveMode &&
+            !isMoving &&
+            canMoveItemTo(items, movingItem, itemKey, "before");
 
-      return (
-        <div key={itemKey}>
-          <div
-            className={`group flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-all ${
-              isMoving
-                ? "border border-dashed border-primary bg-primary/10 font-medium text-foreground shadow-xs"
-                : selected === itemKey || selected === item.name
-                  ? "bg-muted font-medium text-foreground shadow-xs"
-                  : isMoveMode
-                    ? isTargetable
-                      ? "text-foreground hover:bg-muted/80"
-                      : "opacity-35 pointer-events-none text-muted-foreground"
-                    : "text-muted-foreground hover:bg-muted/70"
-            }`}
-            style={{ marginLeft: depth * 18 }}
-          >
-            {/* When in move mode & item can take position: clicking the name takes position */}
-            {isMoveMode && !isMoving && canTakePosition ? (
-              <button
-                type="button"
-                title={`Click to place ${movingItemName} before ${item.name}`}
-                onClick={() => handleExecuteMove(itemKey, "before")}
-                className="flex flex-1 items-center gap-2 text-left cursor-pointer overflow-hidden rounded py-0.5 px-1 hover:bg-primary/15 hover:text-primary transition-colors"
-              >
-                <ItemIcon type={item.type} />
-                <span className="truncate font-medium text-foreground hover:text-primary">
-                  {item.name || <em>(unnamed)</em>}
-                </span>
-                <span className="ml-auto text-[10px] font-semibold text-primary uppercase tracking-wider opacity-80">
-                  Take place
-                </span>
-              </button>
-            ) : (
-              /* Normal mode click to select */
-              <button
-                type="button"
-                disabled={isMoveMode}
-                className={`flex flex-1 items-center gap-2 text-left overflow-hidden ${
-                  !isMoveMode ? "cursor-pointer" : ""
-                }`}
-                onClick={() => {
-                  if (!isMoveMode) {
-                    onSelect(itemKey);
+          const itemIndex = flatKeys.indexOf(itemKey);
+          const shouldShiftDown = activeHoverIndex !== -1 && itemIndex >= activeHoverIndex;
+
+          const isHoveredMoveTarget =
+            isMoveMode && canMoveBefore && hoveredMoveTarget === itemKey;
+          const showAddIndicator = !isMoveMode && hoveredAddKey === itemKey;
+
+          const showIndicator = showAddIndicator || isHoveredMoveTarget;
+
+          return (
+            <div key={itemKey} className="relative flex flex-col">
+              {/* Arrow insertion indicator at the exact target item */}
+              {showIndicator && <InsertionArrowIndicator depth={depth} />}
+
+              {/* Item Card Row */}
+              <div
+                onMouseEnter={() => {
+                  if (isMoveMode && canMoveBefore) {
+                    setHoveredMoveTarget(itemKey);
                   }
                 }}
+                onMouseLeave={() => {
+                  if (isMoveMode) {
+                    setHoveredMoveTarget((k) => (k === itemKey ? null : k));
+                  }
+                }}
+                onClick={(e) => {
+                  if (isMoveMode) {
+                    e.stopPropagation();
+                    if (canMoveBefore) {
+                      handleExecuteMove(itemKey, "before");
+                    } else {
+                      // Clicking the moving item or an invalid position cancels move mode
+                      setMovingItem(null);
+                      setHoveredMoveTarget(null);
+                    }
+                  }
+                }}
+                className={`group flex h-[30px] items-center justify-between rounded px-2 text-sm border border-transparent transition-colors ${
+                  isMoving
+                    ? "font-medium text-foreground cursor-pointer opacity-100"
+                    : isMoveMode
+                      ? canMoveBefore
+                        ? "text-foreground cursor-pointer opacity-100"
+                        : "text-muted-foreground opacity-30 cursor-pointer select-none"
+                      : "text-muted-foreground hover:text-foreground"
+                }`}
+                style={{ marginLeft: depth * 20 }}
               >
-                <ItemIcon type={item.type} />
-                <span className="truncate text-foreground font-medium">
-                  {item.name || <em className="text-muted-foreground font-normal">(unnamed)</em>}
-                </span>
-                {item.type === "condition" && (
-                  <span className="text-xs text-muted-foreground/80 font-mono truncate">
-                    if {item.expression}:
+                {/* Select button / info (all items from the hovered slot downward shift down in unison) */}
+                <button
+                  type="button"
+                  disabled={isMoveMode}
+                  onClick={() => {
+                    if (!isMoveMode) {
+                      onSelect(itemKey);
+                    }
+                  }}
+                  className={`flex flex-1 items-center gap-1.5 text-left overflow-hidden transition-transform duration-150 ${
+                    shouldShiftDown ? "translate-y-2" : ""
+                  } ${!isMoveMode ? "cursor-pointer" : "pointer-events-none"}`}
+                >
+                  <ItemIcon type={item.type} />
+                  <span
+                    className={`truncate rounded px-1.5 py-0.5 transition-colors ${
+                      isSelected && !isMoveMode
+                        ? "font-semibold text-foreground bg-muted/40"
+                        : "font-medium text-foreground"
+                    }`}
+                  >
+                    {item.name || <em className="text-muted-foreground font-normal">(unnamed)</em>}
                   </span>
+                  {item.type === "condition" && (
+                    <span className="text-xs text-muted-foreground/80 font-mono truncate">
+                      if {(item as any).expression}:
+                    </span>
+                  )}
+                  {issueMessage && (
+                    <span title={issueMessage} className="text-destructive shrink-0">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </button>
+
+                {/* Normal mode actions (+ Add before, Move, Delete) */}
+                {!isMoveMode && (
+                  <div
+                    className={`flex h-6 items-center gap-0.5 transition-opacity ${
+                      activeMenuId === `before_${itemKey}`
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100"
+                    }`}
+                  >
+                    <div className="relative">
+                      <button
+                        type="button"
+                        data-slot-trigger={`before_${itemKey}`}
+                        title={`Add item before ${item.name || "item"}`}
+                        onMouseEnter={() => setHoveredAddKey(itemKey)}
+                        onMouseLeave={() => setHoveredAddKey(null)}
+                        onClick={() => {
+                          setActiveMenuId(
+                            activeMenuId === `before_${itemKey}` ? null : `before_${itemKey}`,
+                          );
+                          setHoveredAddKey(null);
+                        }}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                      {activeMenuId === `before_${itemKey}` && (
+                        <TypeSelectDropdown
+                          triggerId={`before_${itemKey}`}
+                          allowedTypes={allowedTypesBefore}
+                          align="right"
+                          onSelect={(type) => {
+                            onInsertBefore(itemKey, type);
+                            setActiveMenuId(null);
+                            setHoveredAddKey(null);
+                          }}
+                          onClose={() => {
+                            setActiveMenuId(null);
+                            setHoveredAddKey(null);
+                          }}
+                        />
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      title="Move item"
+                      onClick={() => {
+                        setMovingItem(itemKey);
+                        setHoveredAddKey(null);
+                        setActiveMenuId(null);
+                      }}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <Move className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Delete item"
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer"
+                      onClick={() => onDelete(itemKey)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
-                {issueMessage && (
-                  <span title={issueMessage} className="text-destructive shrink-0">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                  </span>
+
+                {/* Move mode active indicator on moving item */}
+                {isMoving && (
+                  <div className="flex h-6 items-center gap-1.5">
+                    <span className="rounded bg-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      Moving...
+                    </span>
+                    <button
+                      type="button"
+                      title="Cancel move"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMovingItem(null);
+                        setHoveredMoveTarget(null);
+                      }}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
+
+                {/* Move mode placeholder on non-moving items to keep geometry 100% constant */}
+                {isMoveMode && !isMoving && (
+                  <div className="flex h-6 items-center gap-0.5 invisible pointer-events-none" aria-hidden="true" />
+                )}
+              </div>
+
+              {/* Children recursive list */}
+              {hasChildren && (
+                <div>
+                  {renderList(
+                    (item as { children: InLoopItem[] }).children,
+                    depth + 1,
+                    item,
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* End of list */}
+        {isMoveMode ? (
+          canMoveToEnd ? (
+            <div className="py-0.5" style={{ paddingLeft: depth * 20 }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isRoot) handleExecuteMoveToRootEnd();
+                  else handleExecuteMove(parentKey!, "inside");
+                }}
+                className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 transition-transform duration-150 cursor-pointer ${
+                  shouldShiftEndSlot ? "translate-y-2" : ""
+                }`}
+              >
+                <ArrowRight className="h-3 w-3" />
+                <span>Move here</span>
               </button>
-            )}
-
-            {/* Normal mode action buttons (hover) */}
-            {!isMoveMode && (
-              <div className="flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  title="Move item"
-                  onClick={() => setMovingItem(itemKey)}
-                  className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <Move className="h-3.5 w-3.5" />
-                </button>
-                {(item.type === "unit_loop" || item.type === "condition") && (
-                  <button
-                    type="button"
-                    title="Add child item"
-                    onClick={() => onAddChild(itemKey)}
-                    className="p-1 rounded hover:bg-background text-primary hover:text-primary/80 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  title="Delete item"
-                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer"
-                  onClick={() => onDelete(itemKey)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+            </div>
+          ) : (
+            <div className="py-0.5 invisible pointer-events-none" style={{ paddingLeft: depth * 20 }} aria-hidden="true">
+              <div className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs">
+                <div className="h-3 w-3" />
+                <span>Move here</span>
               </div>
-            )}
-
-            {/* Currently moving item cancel indicator */}
-            {isMoving && (
-              <div className="flex items-center gap-1.5">
-                <span className="rounded bg-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                  Moving...
-                </span>
-                <button
-                  type="button"
-                  title="Cancel move"
-                  onClick={() => setMovingItem(null)}
-                  className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-
-            {/* Move mode: Target action buttons shown only where needed */}
-            {isMoveMode && !isMoving && (canInside || canAfter) && (
-              <div className="flex items-center gap-1 shrink-0">
-                {canInside && (
-                  <button
-                    type="button"
-                    title={`Move inside ${item.name}`}
-                    onClick={() => handleExecuteMove(itemKey, "inside")}
-                    className="rounded border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600 hover:bg-amber-500 hover:text-white transition-colors cursor-pointer"
-                  >
-                    [inside]
-                  </button>
-                )}
-                {canAfter && (
-                  <button
-                    type="button"
-                    title={`Move after ${item.name} (end of list)`}
-                    onClick={() => handleExecuteMove(itemKey, "after")}
-                    className="rounded border border-primary/50 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
-                  >
-                    [after]
-                  </button>
-                )}
-              </div>
-            )}
+            </div>
+          )
+        ) : (
+          <div className="py-0.5" style={{ paddingLeft: depth * 20 }}>
+            <div
+              className={`relative inline-block transition-transform duration-150 ${
+                shouldShiftEndSlot ? "translate-y-2" : ""
+              }`}
+            >
+              <button
+                type="button"
+                data-slot-trigger={`end_${listId}`}
+                title={`Add item to ${isRoot ? "codebook" : parentContainer?.name || "container"}`}
+                onClick={() =>
+                  setActiveMenuId(activeMenuId === `end_${listId}` ? null : `end_${listId}`)
+                }
+                className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Add item</span>
+              </button>
+              {activeMenuId === `end_${listId}` && (
+                <TypeSelectDropdown
+                  triggerId={`end_${listId}`}
+                  allowedTypes={allowedTypesForList}
+                  align="left"
+                  onSelect={(type) => {
+                    onInsertAtEnd(parentKey, type);
+                    setActiveMenuId(null);
+                  }}
+                  onClose={() => setActiveMenuId(null)}
+                />
+              )}
+            </div>
           </div>
-          {hasChildren && renderLevel((item as { children: InLoopItem[] }).children, depth + 1)}
-        </div>
-      );
-    });
+        )}
+      </div>
+    );
   }
 
   return (
-    <div className="relative flex flex-col gap-1">
-      {renderLevel(items, 0)}
-
-      {/* Sticky footer banner during move mode: does NOT push items down */}
-      {movingItem && (
-        <div className="sticky bottom-0 mt-3 flex items-center justify-between rounded-lg border border-primary/30 bg-card/95 px-3 py-2 text-xs shadow-md backdrop-blur">
-          <div className="flex items-center gap-2 truncate">
-            <Move className="h-3.5 w-3.5 text-primary animate-pulse shrink-0" />
-            <span className="truncate text-foreground">
-              Moving <strong className="font-semibold text-primary">{movingItemName}</strong> — click an item to take its position
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setMovingItem(null)}
-            className="ml-2 font-semibold text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
+    <div
+      onClick={() => {
+        if (isMoveMode) {
+          setMovingItem(null);
+          setHoveredMoveTarget(null);
+        }
+      }}
+      className="flex flex-col p-1 pb-3"
+    >
+      {renderList(items, 0, null)}
     </div>
   );
 }

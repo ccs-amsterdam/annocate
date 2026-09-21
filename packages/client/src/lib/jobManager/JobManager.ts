@@ -38,7 +38,7 @@ export interface NavigationUnitQuestion {
 export interface NavigationPhase {
   index: number;
   name: string;
-  type: "user_variable" | "unit_loop" | "condition";
+  type: "user_variable" | "unit_loop" | "condition" | "question";
   label: string;
   isCurrent: boolean;
   isCompleted: boolean;
@@ -63,12 +63,13 @@ export interface JobManagerSnapshot {
   currentItem: CodebookItem | null;
   currentUnit: CoderUnitResponse | null;
   currentUnitLayout: UnitLayout | null;
-  currentUnitVariables: Record<string, VariableValue> | null;
   userVariableValues: Record<string, VariableValue>;
+  currentUnitVariables: Record<string, VariableValue> | null;
   error: string | null;
-  hasRetry?: boolean;
   navigation: JobManagerNavigation;
 }
+
+export type JobManagerListener = () => void;
 
 interface UnitHistoryEntry {
   unit: CoderUnitResponse;
@@ -89,7 +90,7 @@ function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
   const result: NavigationUnitQuestion[] = [];
   function walk(subItems: InLoopItem[]) {
     for (const sub of subItems) {
-      if (sub.type === "unit_variable") {
+      if (sub.type === "unit_variable" || sub.type === "question") {
         result.push({
           index: result.length,
           name: sub.name,
@@ -113,10 +114,9 @@ function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
  */
 export class JobManager {
   private items: TopLevelItem[] = [];
-  /** name -> the "plain" value used for condition evaluation (e.g. a picked code string). */
-  private conditionValues: Record<string, unknown> = {};
-  private userVariableValues: Record<string, VariableValue> = {};
-  private unitVariableValues: Record<string, VariableValue> = {};
+  private jobServer: JobServer;
+  private listeners: Set<JobManagerListener> = new Set();
+  private expressionCache = new ExpressionCache();
 
   private topSteps: CodebookItem[] = [];
   private topIndex = -1;
@@ -125,19 +125,22 @@ export class JobManager {
   private currentUnit: CoderUnitResponse | null = null;
   private loopSteps: CodebookItem[] = [];
   private loopIndex = -1;
-  private expressionCache = new ExpressionCache();
 
+  private userVariableValues: Record<string, VariableValue> = {};
+  private unitVariableValues: Record<string, VariableValue> = {};
   private unitHistory: UnitHistoryEntry[] = [];
   private unitHistoryIndex = -1;
+  private conditionValues: Record<string, unknown> = {};
 
-  private listeners = new Set<() => void>();
+  private lastFailedOperation: (() => Promise<void>) | null = null;
+
   private snapshot: JobManagerSnapshot = {
     phase: "loading",
     currentItem: null,
     currentUnit: null,
     currentUnitLayout: null,
-    currentUnitVariables: null,
     userVariableValues: {},
+    currentUnitVariables: null,
     error: null,
     navigation: {
       canGoBack: false,
@@ -149,22 +152,22 @@ export class JobManager {
     },
   };
 
-  private lastFailedOperation: (() => Promise<void>) | null = null;
-
-  constructor(private jobServer: JobServer) {}
-
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+  constructor(jobServer: JobServer) {
+    this.jobServer = jobServer;
   }
 
   getSnapshot(): JobManagerSnapshot {
     return this.snapshot;
   }
 
+  subscribe(listener: JobManagerListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
   async start(): Promise<void> {
-    this.lastFailedOperation = () => this.start();
     try {
+      this.publish({ phase: "loading", error: null });
       const session: SessionResponse = await this.jobServer.getSession();
       this.items = session.codebook.items as TopLevelItem[];
       this.topIndex = -1;
@@ -172,7 +175,6 @@ export class JobManager {
       this.unitHistory = [];
       this.unitHistoryIndex = -1;
       await this.advanceTop();
-      this.lastFailedOperation = null;
     } catch (err) {
       this.publish({
         phase: "error",
@@ -181,13 +183,10 @@ export class JobManager {
     }
   }
 
-  async init(): Promise<void> {
-    return this.start();
-  }
-
   canGoBack(): boolean {
-    if (this.snapshot.phase === "loading" || this.snapshot.phase === "error") return false;
-    if (this.snapshot.phase === "finished") return this.unitHistory.length > 0 || this.topIndex > 0;
+    if (this.snapshot.phase === "loading" || this.snapshot.phase === "error" || this.snapshot.phase === "finished") {
+      return false;
+    }
     if (this.loopIndex > 0) return true;
     if (this.unitHistoryIndex > 0) return true;
     if (this.topIndex > 0) return true;
@@ -216,10 +215,9 @@ export class JobManager {
   async goBack(): Promise<void> {
     if (!this.canGoBack()) return;
 
-    // Persist in-progress answers before navigating
     this.syncCurrentUnitAnswers();
 
-    // 1. Within questions of the current unit
+    // 1. Step backward within current unit's questions
     if (this.loopIndex > 0) {
       this.loopIndex -= 1;
       const step = this.loopSteps[this.loopIndex];
@@ -227,12 +225,13 @@ export class JobManager {
         phase: "unit_variable",
         currentItem: step,
         currentUnit: this.currentUnit,
+        currentUnitLayout: this.activeLoop ? await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!) : null,
         currentUnitVariables: { ...this.unitVariableValues },
       });
       return;
     }
 
-    // 2. Previous unit in the unit loop
+    // 2. Step backward to previous unit in history
     if (this.unitHistoryIndex > 0 && this.activeLoop) {
       this.unitHistoryIndex -= 1;
       const entry = this.unitHistory[this.unitHistoryIndex];
@@ -251,10 +250,11 @@ export class JobManager {
       return;
     }
 
-    // 3. Previous top-level phase
+    // 3. Step backward to previous top-level item
     if (this.topIndex > 0) {
       this.topIndex -= 1;
       const prevTop = this.topSteps[this.topIndex];
+
       if (prevTop.type === "unit_loop") {
         this.activeLoop = prevTop as UnitLoopItem;
         if (this.unitHistory.length > 0) {
@@ -264,28 +264,27 @@ export class JobManager {
           this.unitVariableValues = { ...entry.answers };
           this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
           this.loopIndex = Math.max(0, this.loopSteps.length - 1);
+          const step = this.loopSteps[this.loopIndex];
           this.publish({
             phase: "unit_variable",
-            currentItem: this.loopSteps[this.loopIndex],
+            currentItem: step,
             currentUnit: this.currentUnit,
             currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit),
             currentUnitVariables: { ...this.unitVariableValues },
           });
-        } else {
-          this.currentUnit = null;
-          await this.advanceUnit();
+          return;
         }
-      } else {
-        this.activeLoop = null;
-        this.currentUnit = null;
-        this.publish({
-          phase: "user_variable",
-          currentItem: prevTop,
-          currentUnit: null,
-          currentUnitLayout: null,
-          currentUnitVariables: null,
-        });
       }
+
+      this.activeLoop = null;
+      this.currentUnit = null;
+      this.publish({
+        phase: "user_variable",
+        currentItem: prevTop,
+        currentUnit: null,
+        currentUnitLayout: null,
+        currentUnitVariables: null,
+      });
     }
   }
 
@@ -294,7 +293,7 @@ export class JobManager {
 
     this.syncCurrentUnitAnswers();
 
-    // 1. Within questions of current unit
+    // 1. Forward within questions of current unit
     if (this.loopIndex < this.loopSteps.length - 1) {
       this.loopIndex += 1;
       const step = this.loopSteps[this.loopIndex];
@@ -302,12 +301,13 @@ export class JobManager {
         phase: "unit_variable",
         currentItem: step,
         currentUnit: this.currentUnit,
+        currentUnitLayout: this.activeLoop ? await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!) : null,
         currentUnitVariables: { ...this.unitVariableValues },
       });
       return;
     }
 
-    // 2. Forward to next unit already in history
+    // 2. Forward to next unit in history
     if (this.unitHistoryIndex < this.unitHistory.length - 1 && this.activeLoop) {
       this.unitHistoryIndex += 1;
       const entry = this.unitHistory[this.unitHistoryIndex];
@@ -315,9 +315,10 @@ export class JobManager {
       this.unitVariableValues = { ...entry.answers };
       this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
       this.loopIndex = 0;
+      const step = this.loopSteps[0];
       this.publish({
         phase: "unit_variable",
-        currentItem: this.loopSteps[0],
+        currentItem: step,
         currentUnit: this.currentUnit,
         currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit),
         currentUnitVariables: { ...this.unitVariableValues },
@@ -457,7 +458,7 @@ export class JobManager {
 
   async answer(value: VariableValue, conditionValue?: unknown): Promise<void> {
     const item = this.snapshot.currentItem;
-    if (!item || (item.type !== "user_variable" && item.type !== "unit_variable")) return;
+    if (!item || (item.type !== "user_variable" && item.type !== "unit_variable" && item.type !== "question")) return;
 
     this.lastFailedOperation = () => this.answer(value, conditionValue);
     if (conditionValue !== undefined) {
@@ -467,7 +468,8 @@ export class JobManager {
     }
 
     try {
-      if (item.type === "user_variable") {
+      const isUnit = item.type === "unit_variable" || (item.type === "question" && this.activeLoop !== null);
+      if (!isUnit) {
         this.userVariableValues[item.name] = value;
         await this.jobServer.postCoderVariables(this.userVariableValues);
         await this.advanceTop();
@@ -558,6 +560,7 @@ export class JobManager {
   private async advanceUnit(): Promise<void> {
     if (!this.activeLoop) return;
 
+    // Advance loop question step within the current unit
     if (this.currentUnit) {
       this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
       this.loopIndex += 1;
@@ -643,41 +646,48 @@ export class JobManager {
     const phases: NavigationPhase[] = this.topSteps.map((step, idx) => {
       const isCurrent = idx === this.topIndex;
       const isCompleted = idx < this.topIndex;
-      const label = getQuestionLabel(step);
 
-      const phase: NavigationPhase = {
-        index: idx,
-        name: step.name,
-        type: step.type as NavigationPhase["type"],
-        label,
-        isCurrent,
-        isCompleted,
-      };
+      let questions: NavigationUnitQuestion[] | undefined;
+      let unitCount: number | undefined;
+      let units: NavigationUnitItem[] | undefined;
+      let currentUnitIndex: number | undefined;
 
       if (step.type === "unit_loop") {
-        phase.unitCount = this.unitHistory.length;
-        phase.currentUnitIndex = isCurrent ? this.unitHistoryIndex : undefined;
-        phase.units = this.unitHistory.map((entry, uIdx) => ({
-          index: uIdx,
-          id: entry.unit.id,
-          externalId: entry.unit.externalId,
-          isCurrent: isCurrent && uIdx === this.unitHistoryIndex,
-        }));
-
+        unitCount = this.unitHistory.length;
         if (isCurrent && this.activeLoop) {
-          phase.questions = this.loopSteps.map((q, qIdx) => ({
-            index: qIdx,
-            name: q.name,
-            label: getQuestionLabel(q),
-            isCurrent: isCurrent && qIdx === this.loopIndex,
-            isCompleted: Boolean(this.unitVariableValues[q.name] !== undefined),
+          currentUnitIndex = this.unitHistoryIndex >= 0 ? this.unitHistoryIndex : 0;
+          units = this.unitHistory.map((h, hIdx) => ({
+            index: hIdx,
+            id: h.unit.id,
+            externalId: h.unit.externalId,
+            isCurrent: hIdx === this.unitHistoryIndex,
           }));
-        } else {
-          phase.questions = extractUnitQuestions(step.children || []);
+
+          const extracted = extractUnitQuestions(step.children);
+          questions = extracted.map((q) => {
+            const isQCurrent = q.index === this.loopIndex;
+            const isQCompleted = q.index < this.loopIndex;
+            return {
+              ...q,
+              isCurrent: isQCurrent,
+              isCompleted: isQCompleted,
+            };
+          });
         }
       }
 
-      return phase;
+      return {
+        index: idx,
+        name: step.name,
+        type: step.type as NavigationPhase["type"],
+        label: getQuestionLabel(step),
+        isCurrent,
+        isCompleted,
+        unitCount,
+        currentUnitIndex,
+        units,
+        questions,
+      };
     });
 
     return {

@@ -88,6 +88,40 @@ export function insertItem(
   return insertInNodes(items) as TopLevelItem[];
 }
 
+export function insertItemBefore(
+  items: TopLevelItem[],
+  targetIdentifier: string,
+  newItem: CodebookItem,
+): TopLevelItem[] {
+  function insertInNodes(nodes: any[]): { list: any[]; inserted: boolean } {
+    const idx = nodes.findIndex(
+      (n) => n._key === targetIdentifier || n.name === targetIdentifier,
+    );
+    if (idx !== -1) {
+      const copy = [...nodes];
+      copy.splice(idx, 0, newItem);
+      return { list: copy, inserted: true };
+    }
+
+    let didInsert = false;
+    const nextList = nodes.map((node) => {
+      if (didInsert) return node;
+      if ("children" in node && Array.isArray(node.children)) {
+        const res = insertInNodes(node.children);
+        if (res.inserted) {
+          didInsert = true;
+          return { ...node, children: res.list };
+        }
+      }
+      return node;
+    });
+
+    return { list: nextList, inserted: didInsert };
+  }
+
+  return insertInNodes(items).list as TopLevelItem[];
+}
+
 export function deleteItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
   function deleteFromNodes(nodes: any[]): any[] {
     return nodes
@@ -164,6 +198,12 @@ export function canMoveItemTo(
   } else if (sourceItem.type === "unit_variable") {
     // Unit variables must be inside a loop
     if (!isTargetInLoop) return false;
+  } else if (sourceItem.type === "question") {
+    if (isTargetInLoop) {
+      if (sourceItem.variable?.type === "auto") return false;
+    } else {
+      if (sourceItem.variable?.type === "span" || sourceItem.variable?.type === "relation") return false;
+    }
   } else if (sourceItem.type === "unit_loop") {
     // Loops cannot be inside another loop
     if (isTargetInLoop) return false;
@@ -172,16 +212,62 @@ export function canMoveItemTo(
     const sourceDescendants = flattenTree(
       "children" in sourceItem ? (sourceItem as any).children : [],
     );
-    const hasUnitVars = sourceDescendants.some((d) => d.type === "unit_variable");
-    const hasUserVarsOrLoops = sourceDescendants.some(
-      (d) => d.type === "user_variable" || d.type === "unit_loop",
+    const hasInLoopOnly = sourceDescendants.some(
+      (d) =>
+        d.type === "unit_variable" ||
+        (d.type === "question" &&
+          (d.variable?.type === "span" || d.variable?.type === "relation")),
+    );
+    const hasTopOnly = sourceDescendants.some(
+      (d) =>
+        d.type === "user_variable" ||
+        d.type === "unit_loop" ||
+        (d.type === "question" && d.variable?.type === "auto"),
     );
 
-    if (isTargetInLoop && hasUserVarsOrLoops) return false;
-    if (!isTargetInLoop && hasUnitVars) return false;
+    if (isTargetInLoop && hasTopOnly) return false;
+    if (!isTargetInLoop && hasInLoopOnly) return false;
   }
 
   return true;
+}
+
+export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string): boolean {
+  const sourceItem = findItem(items, sourceIdentifier);
+  if (!sourceItem) return false;
+  const sourceKey = (sourceItem as any)._key || sourceItem.name;
+  const lastRoot = items[items.length - 1];
+  if (lastRoot && ((lastRoot as any)._key === sourceKey || lastRoot.name === sourceKey)) {
+    return false;
+  }
+  if (sourceItem.type === "unit_variable") return false;
+  if (
+    sourceItem.type === "question" &&
+    (sourceItem.variable?.type === "span" || sourceItem.variable?.type === "relation")
+  ) {
+    return false;
+  }
+  if (sourceItem.type === "condition") {
+    const descendants = flattenTree("children" in sourceItem ? (sourceItem as any).children : []);
+    if (
+      descendants.some(
+        (d) =>
+          d.type === "unit_variable" ||
+          (d.type === "question" &&
+            (d.variable?.type === "span" || d.variable?.type === "relation")),
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function moveToRootEnd(items: TopLevelItem[], sourceIdentifier: string): TopLevelItem[] {
+  const sourceItem = findItem(items, sourceIdentifier);
+  if (!sourceItem) return items;
+  const without = deleteItem(items, sourceIdentifier);
+  return [...without, sourceItem as TopLevelItem];
 }
 
 /**
@@ -367,63 +453,18 @@ export function indentItem(items: TopLevelItem[], identifier: string): TopLevelI
 }
 
 export function outdentItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
+  const item = findItem(items, identifier);
+  if (!item) return items;
+
   const parent = findParent(items, identifier);
-  if (!parent) return items; // Already at root level
+  if (!parent) return items;
 
-  let extractedItem: any = null;
-  const safeParent = parent;
-  const parentName = safeParent.name;
-  const parentKey = (safeParent as any)._key;
-
-  // Step 1: remove item from parent's children
-  function removeChild(nodes: any[]): any[] {
-    return nodes.map((node) => {
-      if (
-        (node._key === parentKey || node.name === parentName) &&
-        "children" in node &&
-        Array.isArray(node.children)
-      ) {
-        const found = node.children.find((c: any) => c._key === identifier || c.name === identifier);
-        if (found) extractedItem = found;
-        return {
-          ...node,
-          children: node.children.filter((c: any) => c._key !== identifier && c.name !== identifier),
-        };
-      }
-      if ("children" in node && Array.isArray(node.children)) {
-        return {
-          ...node,
-          children: removeChild(node.children),
-        };
-      }
-      return node;
-    });
-  }
-
-  const itemsWithoutChild = removeChild(items);
-  if (!extractedItem) return items;
-
-  // Step 2: insert extractedItem immediately after parent among parent's siblings
-  function insertAfterParent(nodes: any[]): any[] {
-    const parentIdx = nodes.findIndex((n) => n._key === parentKey || n.name === parentName);
-    if (parentIdx !== -1) {
-      const copy = [...nodes];
-      copy.splice(parentIdx + 1, 0, extractedItem);
-      return copy;
-    }
-
-    return nodes.map((node) => {
-      if ("children" in node && Array.isArray(node.children)) {
-        return {
-          ...node,
-          children: insertAfterParent(node.children),
-        };
-      }
-      return node;
-    });
-  }
-
-  return insertAfterParent(itemsWithoutChild) as TopLevelItem[];
+  return moveItemTo(
+    items,
+    (item as any)._key || item.name,
+    (parent as any)._key || parent.name,
+    "after",
+  );
 }
 
 export function updateItem(
@@ -434,7 +475,6 @@ export function updateItem(
   function updateInNodes(nodes: any[]): any[] {
     return nodes.map((node) => {
       if (node._key === identifier || node.name === identifier) {
-        // Keep existing children if updated object didn't supply them
         const children =
           "children" in updated
             ? updated.children

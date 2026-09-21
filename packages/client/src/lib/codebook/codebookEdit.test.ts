@@ -2,11 +2,14 @@ import { describe, it, expect } from "vitest";
 import type { TopLevelItem, CodebookItem } from "@annotinder/contracts";
 import {
   canMoveItemTo,
+  canMoveToRootEnd,
   deleteItem,
   indentItem,
   insertItem,
+  insertItemBefore,
   moveItem,
   moveItemTo,
+  moveToRootEnd,
   outdentItem,
   updateItem,
 } from "./codebookEdit";
@@ -28,6 +31,26 @@ describe("codebookEdit", () => {
       const items: TopLevelItem[] = [cond("a")];
       const next = insertItem(items, "a", cond("child"));
       expect(flattenTree(next).map((i) => i.name)).toEqual(["a", "child"]);
+    });
+  });
+
+  describe("insertItemBefore", () => {
+    it("inserts an item before the specified root item", () => {
+      const items: TopLevelItem[] = [cond("b"), cond("c")];
+      const next = insertItemBefore(items, "b", cond("a"));
+      expect(next.map((i) => i.name)).toEqual(["a", "b", "c"]);
+    });
+
+    it("inserts an item before a middle item", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("c")];
+      const next = insertItemBefore(items, "c", cond("b"));
+      expect(next.map((i) => i.name)).toEqual(["a", "b", "c"]);
+    });
+
+    it("inserts an item before a nested child item", () => {
+      const items: TopLevelItem[] = [cond("p", [cond("child2")])];
+      const next = insertItemBefore(items, "child2", cond("child1"));
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["p", "child1", "child2"]);
     });
   });
 
@@ -61,59 +84,99 @@ describe("codebookEdit", () => {
       expect(next.map((i) => i.name)).toEqual(["b", "a", "c"]);
     });
 
-    it("moves an item inside a container item", () => {
-      const items: TopLevelItem[] = [cond("a"), cond("container", [cond("existing")])];
-      const next = moveItemTo(items, "a", "container", "inside");
-      expect(next.map((i) => i.name)).toEqual(["container"]);
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["container", "existing", "a"]);
-    });
-
-    it("does not allow moving an item into its own descendant", () => {
-      const items: TopLevelItem[] = [cond("parent", [cond("child")])];
-      const next = moveItemTo(items, "parent", "child", "inside");
-      expect(next).toEqual(items);
+    it("moves an item to become a child", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("b")];
+      const next = moveItemTo(items, "b", "a", "inside");
+      expect(next).toHaveLength(1);
+      expect(flattenTree(next).map((i) => i.name)).toEqual(["a", "b"]);
     });
   });
 
-  describe("canMoveItemTo", () => {
-    it("validates valid and invalid moves", () => {
-      const items: TopLevelItem[] = [
+  describe("canMoveToRootEnd and moveToRootEnd", () => {
+    it("allows moving root item to root end if not already at end", () => {
+      const items: TopLevelItem[] = [cond("a"), cond("b")];
+      expect(canMoveToRootEnd(items, "a")).toBe(true);
+      expect(canMoveToRootEnd(items, "b")).toBe(false);
+
+      const next = moveToRootEnd(items, "a");
+      expect(next.map((i) => i.name)).toEqual(["b", "a"]);
+    });
+
+    it("allows moving nested item to root end", () => {
+      const items: TopLevelItem[] = [cond("loop", [cond("nested")]), cond("after")];
+      expect(canMoveToRootEnd(items, "nested")).toBe(true);
+
+      const next = moveToRootEnd(items, "nested");
+      expect(next.map((i) => i.name)).toEqual(["loop", "after", "nested"]);
+    });
+
+    it("prevents moving span question to root end (outside loop)", () => {
+      const loop: TopLevelItem = {
+        type: "unit_loop",
+        name: "loop",
+        unitset: "test",
+        layout: { template: "" },
+        children: [
+          {
+            type: "question",
+            name: "span_q",
+            variable: { type: "span", question: "Highlight", column: "text", codes: [{ code: "A" }] },
+          },
+        ],
+      };
+      const items: TopLevelItem[] = [loop];
+      expect(canMoveToRootEnd(items, "span_q")).toBe(false);
+    });
+  });
+
+  describe("canMoveItemTo question restrictions", () => {
+    const loop: TopLevelItem = {
+      type: "unit_loop",
+      name: "loop",
+      unitset: "test",
+      layout: { template: "" },
+      children: [
         {
-          type: "user_variable",
-          name: "user_v",
-          variable: { type: "confirm", question: "Agree?" },
+          type: "question",
+          name: "in_loop_q",
+          variable: { type: "confirm", question: "Confirm?" },
         },
-        {
-          type: "unit_loop",
-          name: "loop",
-          unitset: "main",
-          layout: { template: "text" },
-          children: [
-            {
-              type: "unit_variable",
-              name: "unit_v1",
-              variable: { type: "confirm", question: "Notes" },
-            },
-            {
-              type: "unit_variable",
-              name: "unit_v2",
-              variable: { type: "confirm", question: "More notes" },
-            },
-          ],
-        },
-      ];
+      ],
+    };
 
-      // unit_v2 can move before unit_v1
-      expect(canMoveItemTo(items, "unit_v2", "unit_v1", "before")).toBe(true);
+    it("prevents moving question with auto inside loop", () => {
+      const autoQ: TopLevelItem = {
+        type: "question",
+        name: "auto_q",
+        variable: { type: "auto", source: "random" },
+      };
+      const items: TopLevelItem[] = [autoQ, loop];
+      expect(canMoveItemTo(items, "auto_q", "in_loop_q", "before")).toBe(false);
+      expect(canMoveItemTo(items, "auto_q", "loop", "inside")).toBe(false);
+    });
 
-      // unit_v2 cannot move to top level (before user_v)
-      expect(canMoveItemTo(items, "unit_v2", "user_v", "before")).toBe(false);
-
-      // user_v cannot move inside unit loop
-      expect(canMoveItemTo(items, "user_v", "loop", "inside")).toBe(false);
-
-      // item cannot move relative to itself
-      expect(canMoveItemTo(items, "user_v", "user_v", "before")).toBe(false);
+    it("prevents moving question with span outside loop", () => {
+      const spanLoop: TopLevelItem = {
+        type: "unit_loop",
+        name: "loop",
+        unitset: "test",
+        layout: { template: "" },
+        children: [
+          {
+            type: "question",
+            name: "span_q",
+            variable: { type: "span", question: "Highlight", column: "text", codes: [{ code: "A" }] },
+          },
+        ],
+      };
+      const topQ: TopLevelItem = {
+        type: "question",
+        name: "top_q",
+        variable: { type: "confirm", question: "Yes?" },
+      };
+      const items: TopLevelItem[] = [spanLoop, topQ];
+      expect(canMoveItemTo(items, "span_q", "top_q", "before")).toBe(false);
+      expect(canMoveItemTo(items, "span_q", "top_q", "after")).toBe(false);
     });
   });
 

@@ -1,4 +1,5 @@
-import type { CodebookItem, TopLevelItem } from "./item.js";
+import { z } from "zod";
+import { TopLevelItemSchema, type CodebookItem } from "./item.js";
 
 export interface CodebookValidationIssue {
   path: (string | number)[];
@@ -6,25 +7,42 @@ export interface CodebookValidationIssue {
 }
 
 /**
- * Validates tree-level semantics of a codebook document:
- *  - item names cannot be empty
- *  - item names must follow valid character set (letters, numbers, _, -, .)
- *  - item names must be unique across the entire codebook
- *  - unit_loop items must have at least one child
- *  - condition items must have at least one child
- *  - relation variables must refer to valid span variables that precede them
+ * Validates a codebook's items array:
+ * 1. Validates each top-level item against the TopLevelItemSchema
+ * 2. Enforces unique names across all items in the tree
+ * 3. Enforces that span variable references in relations exist in preceding items
+ * 4. Enforces structural rules (unit_loop cannot be nested, etc.)
  */
-export function validateCodebookItems(items: TopLevelItem[]): CodebookValidationIssue[] {
+export function validateCodebookItems(items: unknown[]): CodebookValidationIssue[] {
   const issues: CodebookValidationIssue[] = [];
+
+  // 1. Zod schema validation
+  for (let i = 0; i < items.length; i++) {
+    const result = TopLevelItemSchema.safeParse(items[i]);
+    if (!result.success) {
+      for (const err of result.error.issues) {
+        issues.push({
+          path: [i, ...err.path.filter((p): p is string | number => typeof p !== "symbol")],
+          message: err.message,
+        });
+      }
+    }
+  }
+
+  // 2. Tree-walking semantic validation
   const seenNames = new Map<string, (string | number)[]>();
   const spanVariables = new Set<string>();
 
   function walk(
-    nodes: CodebookItem[],
+    itemList: unknown[],
     currentPath: (string | number)[],
     insideUnitLoop: boolean,
   ) {
-    nodes.forEach((item, index) => {
+    if (!Array.isArray(itemList)) return;
+
+    itemList.forEach((rawItem, index) => {
+      if (!rawItem || typeof rawItem !== "object") return;
+      const item = rawItem as Partial<CodebookItem>;
       const itemPath = [...currentPath, index];
 
       // Check name validity and uniqueness
@@ -52,7 +70,7 @@ export function validateCodebookItems(items: TopLevelItem[]): CodebookValidation
 
       // Check relation variable references
       if (
-        (item.type === "unit_variable" || item.type === "user_variable") &&
+        (item.type === "question" || item.type === "unit_variable" || item.type === "user_variable") &&
         item.variable?.type === "relation"
       ) {
         const fromVar = (item.variable as { from?: { variable?: string } }).from?.variable;
@@ -73,10 +91,10 @@ export function validateCodebookItems(items: TopLevelItem[]): CodebookValidation
 
       // Record span variables for downstream relation checking
       if (
-        (item.type === "unit_variable" || item.type === "user_variable") &&
+        (item.type === "question" || item.type === "unit_variable" || item.type === "user_variable") &&
         item.variable?.type === "span"
       ) {
-        spanVariables.add(item.name);
+        if (item.name) spanVariables.add(item.name);
       }
 
       // Check structural rules
@@ -103,6 +121,18 @@ export function validateCodebookItems(items: TopLevelItem[]): CodebookValidation
           });
         } else {
           walk(item.children, [...itemPath, "children"], insideUnitLoop);
+        }
+      } else if (item.type === "question") {
+        if (!insideUnitLoop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
+          issues.push({
+            path: [...itemPath, "variable", "type"],
+            message: `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`,
+          });
+        } else if (insideUnitLoop && item.variable?.type === "auto") {
+          issues.push({
+            path: [...itemPath, "variable", "type"],
+            message: `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`,
+          });
         }
       } else if (item.type === "user_variable") {
         if (insideUnitLoop) {

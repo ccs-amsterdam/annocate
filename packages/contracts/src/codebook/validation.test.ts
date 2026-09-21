@@ -11,6 +11,9 @@ function userVar(name: string): UserVariableItem {
 function unitVar(name: string): UnitVariableItem {
   return { type: "unit_variable", name, variable: confirmVariable };
 }
+function questionVar(name: string, variable: any = confirmVariable): any {
+  return { type: "question", name, variable };
+}
 function unitLoop(name: string, children: InLoopItem[], unitset?: string): TopLevelItem {
   return { type: "unit_loop", name, unitset, layout: { template: "" }, children };
 }
@@ -62,6 +65,38 @@ describe("validateCodebookItems", () => {
     ];
     expect(validateCodebookItems(items)).toEqual([]);
     expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+  });
+
+  it("allows unified 'question' items both inside and outside a unit_loop", () => {
+    const items: TopLevelItem[] = [
+      questionVar("consent", confirmVariable),
+      unitLoop("loop", [
+        questionVar("sentiment", confirmVariable),
+        questionVar("spans", {
+          type: "span",
+          question: "Highlight spans",
+          column: "text",
+          codes: [{ code: "tag" }],
+        }),
+      ]),
+    ];
+    expect(validateCodebookItems(items)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+  });
+
+  it("rejects span question outside a unit_loop", () => {
+    const items: TopLevelItem[] = [
+      questionVar("bad_span", {
+        type: "span",
+        question: "Bad",
+        column: "text",
+        codes: [{ code: "tag" }],
+      }),
+      unitLoop("loop", [questionVar("q1")]),
+    ];
+    const issues = validateCodebookItems(items);
+    expect(issues.some((i) => i.message.includes("can only be used inside a unit_loop"))).toBe(true);
+    expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
 
   it("allows condition items nested inside a unit_loop, wrapping unit_variable", () => {

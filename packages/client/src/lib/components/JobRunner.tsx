@@ -333,7 +333,7 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
     );
   }
 
-  if (!snapshot.currentItem || (snapshot.currentItem.type !== "user_variable" && snapshot.currentItem.type !== "unit_variable")) {
+  if (!snapshot.currentItem || (snapshot.currentItem.type !== "user_variable" && snapshot.currentItem.type !== "unit_variable" && snapshot.currentItem.type !== "question")) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <p className="text-sm text-muted-foreground">Unexpected session state.</p>
@@ -342,7 +342,7 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
   }
 
   const item = snapshot.currentItem;
-  const isUnitVar = item.type === "unit_variable";
+  const isUnitVar = item.type === "unit_variable" || (item.type === "question" && snapshot.phase === "unit_variable");
   const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout);
   const spanVariable = isUnitVar && item.variable.type === "span" ? item.variable : null;
 
@@ -353,10 +353,10 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
 
   const questionElement = (
     <Question
-      item={item}
+      item={item as any}
       onAnswer={handleAnswer}
       initialValue={
-        item.type === "user_variable"
+        !isUnitVar
           ? snapshot.userVariableValues[item.name]
           : snapshot.currentUnitVariables?.[item.name]
       }
@@ -461,11 +461,7 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
                                     key={q.name}
                                     type="button"
                                     onClick={() => {
-                                      if (phase.isCurrent) {
-                                        manager.jumpToLoopStep(q.index);
-                                      } else {
-                                        manager.jumpToUnitQuestion(phase.index, q.index);
-                                      }
+                                      manager.jumpToPhase(phase.index);
                                       setMenuOpen(false);
                                     }}
                                     className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer text-left ${

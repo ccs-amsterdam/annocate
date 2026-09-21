@@ -27,18 +27,22 @@ describe("CodebookTreeView", () => {
 
   it("renders tree items with Move button and icons without throwing", () => {
     const onSelect = vi.fn();
-    const onAddChild = vi.fn();
+    const onInsertBefore = vi.fn();
+    const onInsertAtEnd = vi.fn();
     const onDelete = vi.fn();
     const onMoveItem = vi.fn();
+    const onMoveToRootEnd = vi.fn();
 
     const html = renderToStaticMarkup(
       <CodebookTreeView
         items={dummyItems}
         selected="consent"
         onSelect={onSelect}
-        onAddChild={onAddChild}
+        onInsertBefore={onInsertBefore}
+        onInsertAtEnd={onInsertAtEnd}
         onDelete={onDelete}
         onMoveItem={onMoveItem}
+        onMoveToRootEnd={onMoveToRootEnd}
       />,
     );
 
@@ -46,5 +50,6 @@ describe("CodebookTreeView", () => {
     expect(html).toContain("main_loop");
     expect(html).toContain("sentiment");
     expect(html).toContain("Move item");
+    expect(html).toContain("Add item");
   });
 });

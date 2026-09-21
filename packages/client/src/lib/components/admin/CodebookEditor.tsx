@@ -14,14 +14,16 @@ import {
   generateKey,
   getUniqueItemName,
   insertItem,
+  insertItemBefore,
   moveItemTo,
+  moveToRootEnd,
   stripKeys,
   type MoveTargetPosition,
   updateItem,
 } from "../../codebook/codebookEdit";
 import { findItem, findParent, flattenTree, isInsideUnitLoop } from "../../codebook/tree";
 import { CodebookTreeView } from "./CodebookTreeView";
-import { ItemForm, ITEM_TYPE_OPTIONS_IN_LOOP, ITEM_TYPE_OPTIONS_TOP, defaultItemForType } from "./ItemForm";
+import { ItemForm, defaultItemForType } from "./ItemForm";
 import { CodebookYamlEditor } from "./CodebookYamlEditor";
 import { CodebookPreviewVariable } from "./CodebookPreviewVariable";
 import { Button } from "@/components/ui/button";
@@ -58,65 +60,81 @@ export function CodebookEditor({
   onOpenVersions,
 }: {
   client: AdminClient;
-  /** Existing codebook to edit, or null to create a new one. */
-  codebook: CodebookResponse | null;
+  codebook?: CodebookResponse | null;
   onSaved: (codebook: CodebookResponse) => void;
-  onDirtyChange?: (dirty: boolean) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
   onOpenVersions?: () => void;
 }) {
-  const unitsetsQuery = useUnitsetsQuery(client);
+  const [name, setName] = useState(codebook?.name ?? "Untitled Codebook");
+  const [items, setItems] = useState<TopLevelItem[]>(() =>
+    codebook?.items ? ensureKeys(codebook.items as TopLevelItem[]) : [],
+  );
+  const [selected, setSelected] = useState<string | null>(null);
+  const [itemPane, setItemPane] = useState<"edit" | "preview">("edit");
+  const [viewMode, setViewMode] = useState<"tree" | "yaml">("tree");
+
+  // Track pristine baseline for dirty checking
+  const [pristineBaseline, setPristineBaseline] = useState<string>(() =>
+    JSON.stringify({
+      name: codebook?.name ?? "Untitled Codebook",
+      items: codebook?.items ? stripKeys(codebook.items as TopLevelItem[]) : [],
+    }),
+  );
+
+  const immutable = codebook?.immutable ?? false;
+
   const createCodebook = useCreateCodebookMutation(client);
   const updateCodebook = useUpdateCodebookMutation(client);
-
-  const [name, setName] = useState(codebook?.name ?? "New codebook");
-  const [items, setItems] = useState<TopLevelItem[]>(() =>
-    ensureKeys((codebook?.items as TopLevelItem[]) ?? []),
-  );
-  const [selected, setSelected] = useState<string | null>(() => {
-    const first = items[0];
-    return first ? ((first as any)._key || first.name) : null;
-  });
-
-  const [viewMode, setViewMode] = useState<"visual" | "yaml">("visual");
-  const [itemPane, setItemPane] = useState<"edit" | "preview">("edit");
-
-  const cleanItems = useMemo(() => stripKeys(items), [items]);
-
-  const dirty =
-    name !== (codebook?.name ?? "New codebook") ||
-    JSON.stringify(cleanItems) !== JSON.stringify(codebook?.items ?? []);
-  const immutable = codebook?.immutable ?? false;
+  const unitsetsQuery = useUnitsetsQuery(client);
 
   const selectedItem = selected ? findItem(items, selected) : null;
   const allItems = flattenTree(items);
-  const unitVariableNames = allItems.filter((i) => i.type === "unit_variable").map((i) => i.name);
+  const unitVariableNames = allItems
+    .filter((i) => i.type === "unit_variable" || (i.type === "question" && isInsideUnitLoop(items, (i as any)._key || i.name)))
+    .map((i) => i.name);
 
-  // Real-time validation on every edit
+  // Derive cleaned items (strip client _key for validation and serialization)
+  const cleanItems = useMemo(() => stripKeys(items), [items]);
+
+  // Client-side schema validation via contracts' validateCodebookItems
   const validationIssues = useMemo(() => {
     return validateCodebookItems(cleanItems);
   }, [cleanItems]);
 
   const selectedItemValidationIssues = useMemo(() => {
     if (!selectedItem) return [];
-    const selectedKey = (selectedItem as any)._key;
-    return validationIssues.filter((issue) => {
-      const node = getItemAtPath(items, issue.path);
-      if (node && ((node as any)._key === selectedKey || (selectedItem.name && node.name === selectedItem.name))) {
-        return true;
-      }
-      if (selectedItem.name && issue.message.includes(`'${selectedItem.name}'`)) {
-        return true;
-      }
-      return false;
+    return validationIssues.filter((i) => {
+      if (selectedItem.name && i.message.includes(`'${selectedItem.name}'`)) return true;
+      const targetInTree = getItemAtPath(cleanItems, i.path);
+      return targetInTree && targetInTree.name === selectedItem.name;
     });
-  }, [validationIssues, selectedItem, items]);
+  }, [selectedItem, validationIssues, cleanItems]);
 
-  // Notify parent of dirty state
+  // Dirty tracking comparing current state against pristine baseline
+  const currentSerialized = useMemo(() => {
+    return JSON.stringify({ name, items: cleanItems });
+  }, [name, cleanItems]);
+
+  const dirty = currentSerialized !== pristineBaseline;
+
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
 
-  // Warn on browser tab navigation or reload if dirty
+  // When saved or codebook prop changes, update pristine baseline
+  useEffect(() => {
+    if (codebook) {
+      setName(codebook.name);
+      setItems(ensureKeys((codebook.items ?? []) as TopLevelItem[]));
+      const baseline = JSON.stringify({
+        name: codebook.name,
+        items: stripKeys((codebook.items ?? []) as TopLevelItem[]),
+      });
+      setPristineBaseline(baseline);
+    }
+  }, [codebook?.id, codebook?.created]);
+
+  // Warn on browser tab close / refresh if unsaved
   useEffect(() => {
     if (!dirty) return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -140,32 +158,37 @@ export function CodebookEditor({
     }
   }
 
-  function addItem(parentIdentifier: string | null) {
+  function createNewItem(type: CodebookItem["type"], inLoop: boolean) {
+    const basePrefix = type === "question" ? "question" : type;
+    const newName = getUniqueItemName(items, basePrefix);
+    const childName = getUniqueItemName(items, `${newName}_q`);
+    return {
+      ...defaultItemForType(type, newName, inLoop, childName),
+      _key: generateKey(),
+    };
+  }
+
+  function handleInsertBefore(targetIdentifier: string, type: CodebookItem["type"]) {
+    const inLoop = isInsideUnitLoop(items, targetIdentifier);
+    const nextItem = createNewItem(type, inLoop);
+    const next = insertItemBefore(items, targetIdentifier, nextItem);
+    setItems(ensureKeys(next));
+    setSelected(nextItem._key);
+  }
+
+  function handleInsertAtEnd(parentIdentifier: string | null, type: CodebookItem["type"]) {
     const parent = parentIdentifier ? findItem(items, parentIdentifier) : null;
     const inLoop =
       parent !== null &&
       (parent.type === "unit_loop" || isInsideUnitLoop(items, (parent as any)._key || parent.name));
-    const type = (inLoop ? ITEM_TYPE_OPTIONS_IN_LOOP[0] : ITEM_TYPE_OPTIONS_TOP[0]) as CodebookItem["type"];
-    const newName = getUniqueItemName(items, inLoop ? "unit_var" : "item");
-    const childName = getUniqueItemName(items, `${newName}_q`);
-    const nextItem = {
-      ...defaultItemForType(type, newName, inLoop, childName),
-      _key: generateKey(),
-    };
+    const nextItem = createNewItem(type, inLoop);
     const next = insertItem(items, parentIdentifier, nextItem);
     setItems(ensureKeys(next));
     setSelected(nextItem._key);
   }
 
-  function changeItemType(identifier: string, type: CodebookItem["type"]) {
-    const item = findItem(items, identifier);
-    if (!item) return;
-    const inLoop = isInsideUnitLoop(items, identifier);
-    const updated = {
-      ...defaultItemForType(type, item.name, inLoop),
-      _key: (item as any)._key || identifier,
-    };
-    setItems(updateItem(items, identifier, updated));
+  function handleMoveToRootEnd(source: string) {
+    setItems(moveToRootEnd(items, source));
   }
 
   function handleDelete(identifier: string) {
@@ -228,9 +251,9 @@ export function CodebookEditor({
           <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
             <button
               type="button"
-              onClick={() => setViewMode("visual")}
+              onClick={() => setViewMode("tree")}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                viewMode === "visual"
+                viewMode === "tree"
                   ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
@@ -260,12 +283,13 @@ export function CodebookEditor({
               variant="outline"
               size="sm"
               onClick={onOpenVersions}
-              className="flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+              className="flex items-center gap-1.5"
             >
-              <History className="h-3.5 w-3.5 text-primary" />
-              <span>Versions</span>
+              <History className="h-3.5 w-3.5" />
+              Versions
             </Button>
           )}
+
           {!immutable && (
             <Button
               type="button"
@@ -305,22 +329,11 @@ export function CodebookEditor({
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Codebook Items ({allItems.length})
               </span>
-              {!immutable && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs cursor-pointer"
-                  onClick={() => addItem(null)}
-                >
-                  + Add root item
-                </Button>
-              )}
             </div>
 
             {items.length === 0 && (
               <p className="p-4 text-center text-sm text-muted-foreground">
-                No items yet. Add a root item to get started.
+                No items yet. Add an item below to get started.
               </p>
             )}
 
@@ -329,9 +342,11 @@ export function CodebookEditor({
                 items={items}
                 selected={selected}
                 onSelect={setSelected}
-                onAddChild={addItem}
+                onInsertBefore={handleInsertBefore}
+                onInsertAtEnd={handleInsertAtEnd}
                 onDelete={handleDelete}
                 onMoveItem={handleMoveItem}
+                onMoveToRootEnd={handleMoveToRootEnd}
                 validationIssues={validationIssues}
               />
             </div>
@@ -348,26 +363,9 @@ export function CodebookEditor({
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Item Type
                       </span>
-                      <select
-                        className="mt-0.5 h-8 rounded-md border border-input bg-background px-2.5 text-xs font-semibold"
-                        value={selectedItem.type}
-                        disabled={immutable}
-                        onChange={(e) =>
-                          changeItemType(
-                            (selectedItem as any)._key || selectedItem.name,
-                            e.target.value as CodebookItem["type"],
-                          )
-                        }
-                      >
-                        {(isInsideUnitLoop(items, (selectedItem as any)._key || selectedItem.name)
-                          ? ITEM_TYPE_OPTIONS_IN_LOOP
-                          : ITEM_TYPE_OPTIONS_TOP
-                        ).map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
+                      <span className="mt-0.5 inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold capitalize text-foreground shadow-2xs">
+                        {selectedItem.type.replace("_", " ")}
+                      </span>
                     </div>
                   </div>
 
@@ -411,6 +409,7 @@ export function CodebookEditor({
                         unitsets={unitsetsQuery.data ?? []}
                         unitVariableNames={unitVariableNames}
                         validationIssues={selectedItemValidationIssues}
+                        isInsideLoop={isInsideUnitLoop(items, (selectedItem as any)._key || selectedItem.name)}
                         onChange={(next) => {
                           const key = (selectedItem as any)._key || selected;
                           setItems(updateItem(items, key, { ...next, _key: key } as any as CodebookItem));
