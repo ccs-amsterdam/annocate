@@ -81,6 +81,9 @@ describe("color standardization", () => {
     expect(multiStyle.background).toContain("#4caf50");
     expect(multiStyle.borderLeft).toContain("#2196f3");
     expect(multiStyle.borderRight).toContain("#4caf50");
+    // Ensure vertical height matches single span highlights (1px padding + 2px top, 1px padding + 2.5px bottom)
+    expect(multiStyle.paddingTop).toBe("3px");
+    expect(multiStyle.paddingBottom).toBe("3.5px");
   });
 
   it("calculates contrast text color correctly", () => {

@@ -226,7 +226,8 @@ export interface StackedSegmentSpan {
 /**
  * Generates styling for an overlapping segment covered by 2 or more spans.
  * Produces multi-colored gradient ribbons along top and bottom borders,
- * preserving clean line height without overlapping adjacent text lines.
+ * matching the exact vertical height and alignment of single spans (3px top, 3.5px bottom)
+ * without overlapping adjacent text lines.
  */
 export function getStackedUnderlineStyle(spans: StackedSegmentSpan[]): CSSProperties {
   const valid = spans.map((s) => ({
@@ -274,12 +275,13 @@ export function getStackedUnderlineStyle(spans: StackedSegmentSpan[]): CSSProper
     borderBottomRightRadius: anyEnd ? "4px" : "0px",
     paddingLeft: anyStart ? "3px" : "1px",
     paddingRight: anyEnd ? "3px" : "1px",
-    paddingTop: "1px",
-    paddingBottom: "1px",
+    paddingTop: "3px", // 1px padding + 2px top ribbon to match single span height
+    paddingBottom: "3.5px", // 1px padding + 2.5px bottom ribbon to match single span height
     marginLeft: anyStart ? "1.5px" : "0px",
     marginRight: anyEnd ? "1.5px" : "0px",
     color: "inherit",
     cursor: "pointer",
+    borderRadius: anyStart && anyEnd ? "4px" : undefined,
     display: "inline",
     boxDecorationBreak: "clone",
     WebkitBoxDecorationBreak: "clone",

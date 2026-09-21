@@ -7,9 +7,11 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "concurrently -k --kill-signal SIGTERM -p \"[{name}]\" -n \"mock,client\" -c \"blue,green\" \"pnpm --filter @annotinder/mock-server dev\" \"pnpm --filter @annotinder/client dev\"",
-    "dev:client": "pnpm --filter @annotinder/client run dev",
-    "dev:mock-server": "pnpm --filter @annotinder/mock-server run dev",
+    "predev": "pnpm --filter @annotinder/contracts build",
+    "dev": "concurrently -k --kill-signal SIGTERM -p \"[{name}]\" -n \"contracts,mock,client\" -c \"magenta,blue,green\" \"pnpm --filter @annotinder/contracts dev\" \"pnpm --filter @annotinder/mock-server dev\" \"pnpm --filter @annotinder/client dev\"",
+    "dev:contracts": "pnpm --filter @annotinder/contracts run dev",
+    "dev:client": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/client run dev",
+    "dev:mock-server": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/mock-server run dev",
     "reset-mock": "pnpm --filter @annotinder/mock-server run db:reset",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
