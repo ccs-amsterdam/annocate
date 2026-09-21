@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { snapToWord, getWordAtPosition, truncateSpanText, SelectableText } from "./SelectableText";
+import { snapToWord, getWordAtPosition, truncateSpanText, SelectableText, mergeSpanSlices, toggleSliceRange } from "./SelectableText";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SpanAnswer } from "@annotinder/contracts";
@@ -72,6 +72,70 @@ describe("truncateSpanText", () => {
   });
 });
 
+
+describe("mergeSpanSlices", () => {
+  const text = "The quick brown fox jumps over";
+
+  it("merges overlapping and adjacent slices", () => {
+    const merged = mergeSpanSlices(text, [
+      { offset: 4, length: 5 },
+      { offset: 10, length: 5 },
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toEqual({ offset: 4, length: 11, text: "quick brown" });
+  });
+
+  it("preserves gaps between disjoint slices", () => {
+    const merged = mergeSpanSlices(text, [
+      { offset: 4, length: 5 },
+      { offset: 16, length: 3 },
+    ]);
+    expect(merged).toHaveLength(2);
+    expect(merged[0]).toEqual({ offset: 4, length: 5, text: "quick" });
+    expect(merged[1]).toEqual({ offset: 16, length: 3, text: "fox" });
+  });
+});
+
+describe("toggleSliceRange", () => {
+  const text = "The quick brown fox jumps over the lazy dog";
+
+  it("toggles on a new disjoint word slice", () => {
+    const initial = [{ offset: 4, length: 5, text: "quick" }];
+    const next = toggleSliceRange(text, initial, { offset: 16, length: 3 });
+    expect(next).toHaveLength(2);
+    expect(next[0]).toEqual({ offset: 4, length: 5, text: "quick" });
+    expect(next[1]).toEqual({ offset: 16, length: 3, text: "fox" });
+  });
+
+  it("toggles off an existing word slice", () => {
+    const initial = [
+      { offset: 4, length: 5, text: "quick" },
+      { offset: 16, length: 3, text: "fox" },
+    ];
+    const next = toggleSliceRange(text, initial, { offset: 16, length: 3 });
+    expect(next).toHaveLength(1);
+    expect(next[0]).toEqual({ offset: 4, length: 5, text: "quick" });
+  });
+
+  it("splits a continuous slice into two slices when toggling off a middle word", () => {
+    const initial = [{ offset: 4, length: 15, text: "quick brown fox" }];
+    const next = toggleSliceRange(text, initial, { offset: 10, length: 5 });
+    expect(next).toHaveLength(2);
+    expect(next[0]).toEqual({ offset: 4, length: 5, text: "quick" });
+    expect(next[1]).toEqual({ offset: 16, length: 3, text: "fox" });
+  });
+
+  it("merges two discontinuous slices when bridging the gap between them", () => {
+    const initial = [
+      { offset: 4, length: 5, text: "quick" },
+      { offset: 16, length: 3, text: "fox" },
+    ];
+    const next = toggleSliceRange(text, initial, { offset: 10, length: 5 });
+    expect(next).toHaveLength(1);
+    expect(next[0]).toEqual({ offset: 4, length: 15, text: "quick brown fox" });
+  });
+});
+
 describe("SelectableText and SpanAnnotationProvider", () => {
   it("renders non-overlapping text when no spans exist", () => {
     const html = renderToStaticMarkup(
@@ -88,8 +152,8 @@ describe("SelectableText and SpanAnnotationProvider", () => {
 
   it("renders multiple overlapping spans on the same piece of text", () => {
     const initialSpans: SpanAnswer[] = [
-      { id: "1", field: "text", offset: 4, length: 15, code: "actor", text: "quick brown fox" },
-      { id: "2", field: "text", offset: 10, length: 9, code: "color", text: "brown fox" },
+      { id: "1", field: "text", code: "actor", slices: [{ offset: 4, length: 15, text: "quick brown fox" }] },
+      { id: "2", field: "text", code: "color", slices: [{ offset: 10, length: 9, text: "brown fox" }] },
     ];
 
     const html = renderToStaticMarkup(

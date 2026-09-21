@@ -1,4 +1,0 @@
-In the navigation in the top right corner of the annotation view:
-- the line indicating the unit (unit x / n) shouldnt be highlighted when we're inside a unit variable. this is already clear from the unit varible being the current variable
-- Instead of 'change' opening another line, just make it a dropdown menu where you can scroll unit indices. ANd isntead of a change button, just add a dropdown icon and open the dropown when users click on the row
-- Normally, users shouldn't be able to navigate ahead. They need to finish the previous variables + units first. In the preview mode, this should be optional. So you can both test the real experience and quickly check the job

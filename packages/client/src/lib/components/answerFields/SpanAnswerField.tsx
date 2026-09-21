@@ -1,32 +1,28 @@
 import { useState, useEffect } from "react";
-import type { AnswerFieldProps, QuestionVariable } from "./types";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
+import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { useSpanAnnotation } from "../../context/SpanAnnotationContext";
 import { useCoderSettings } from "../../context/CoderSettingsContext";
 import { getCodeBadgeStyle, getCodeButtonStyle } from "../../utils/color";
 import { truncateSpanText } from "../SelectableText";
 import { ShortcutBadge } from "../ShortcutBadge";
-import { Sparkles, X, ArrowLeft, ChevronRight, ListFilter } from "lucide-react";
 import { SpanManageLabels } from "./SpanManageLabels";
 import { SpanEditLabel } from "./SpanEditLabel";
+import { X, ArrowLeft, ChevronRight, List } from "lucide-react";
 
 type SpanVariable = Extract<QuestionVariable, { type: "span" }>;
 
 /**
- * Answer field for `span` unit_variables (design plan §11a/§11b).
+ * Answer field for `span` unit_variables (design plan §11b):
+ * Coordinates the ambient span annotation state with the question flow.
  *
- * Clearly separates:
- * 1. Label Creation (triggered when coder selects text in document):
- *    Shows quoted text and 1-9 code buttons flexing across rows;
- *    picking a code immediately assigns the span and closes.
- * 2. Label Inspection & Modification (triggered by clicking an existing label in document):
- *    Shows menu of current labels on this text and "Create new label" button.
- *    Clicking a label navigates to `SpanEditLabel` to change or delete it.
- * 3. Normal Idle Overview:
- *    Compact answer form with helper prompt, button to view the list of all labels,
- *    and Done completion button.
- * 4. Full Labels List (opened on demand via button):
+ * Requirements implemented:
+ * 1. Default view: Clean, compact summary + "View labeled spans" button + "Done" button.
+ * 2. Compact height: Scrollable overflow container preventing layout inflation.
+ * 3. Dedicated Manage Mode: Clicking an existing label in text opens `SpanManageLabels`.
+ * 4. Inline Creation Bar: Making a new text selection opens direct code assignment buttons (1-9).
+ * 5. Full Label List View (when clicking "View labeled spans"):
  *    Replaces the answer form to review, change, or delete any labeled span in the unit.
  */
 export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
@@ -35,8 +31,21 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
   const isDark = theme === "dark";
 
   // State to show the full list of all labels in place of the normal answer form
-  const [viewingAllLabels, setViewingAllLabels] = useState(false);
+  const viewingAllLabels = annotation?.isViewingAllLabels ?? false;
+  const setViewingAllLabels = (viewing: boolean) => {
+    annotation?.setIsViewingAllLabels(viewing);
+    if (!viewing) {
+      setEditingSpanFromList(null);
+      annotation?.setFocusedSpanId(null);
+    }
+  };
+
   const [editingSpanFromList, setEditingSpanFromList] = useState<SpanAnswer | null>(null);
+
+  const handleSelectSpanFromList = (span: SpanAnswer) => {
+    setEditingSpanFromList(span);
+    annotation?.setFocusedSpanId(span.id);
+  };
 
   function colorFor(code: string): string | undefined {
     return annotation?.codes.find((c) => c.code === code)?.color;
@@ -51,7 +60,9 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
           (s) =>
             pending.existingSpanIds?.includes(s.id) ||
             (pending.targetSpanId && s.id === pending.targetSpanId) ||
-            (s.offset === pending.offset && s.length === pending.length),
+            s.slices.some((sl) =>
+              pending.slices.some((ps) => ps.offset === sl.offset && ps.length === sl.length),
+            ),
         )
       : [];
 
@@ -62,6 +73,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
     if (pending) {
       setViewingAllLabels(false);
       setEditingSpanFromList(null);
+      annotation?.setFocusedSpanId(null);
     }
   }, [pending]);
 
@@ -83,12 +95,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
       if (!isNaN(num) && num >= 1 && num <= annotation.codes.length) {
         e.preventDefault();
         const code = annotation.codes[num - 1].code;
-        annotation.addSpan(
-          annotation.pendingSpan.offset,
-          annotation.pendingSpan.length,
-          code,
-          annotation.pendingSpan.text,
-        );
+        annotation.addSpan(annotation.pendingSpan.slices, code);
         annotation.setPendingSpan(null);
       }
     }
@@ -96,6 +103,8 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [annotation, isManageMode]);
+
+  const pendingTextSummary = pending?.slices.map((s) => s.text).join(" ... ") ?? "";
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -106,34 +115,39 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
             annotation={annotation}
             spans={manageSpans}
             initialTargetSpanId={pending.targetSpanId}
-            wordRange={
-              pending.text
-                ? { offset: pending.offset, length: pending.length, text: pending.text }
-                : undefined
-            }
+            fallbackSlices={pending.slices}
           />
         ) : (
-          /* Separate Dedicated Form: Create new label for selected text */
+          /* Inline Creation Mode: Assign code to new text selection */
           <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-1">
-            {/* Header: selected text directly with quote and cancel icon button */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="text-xs font-semibold text-foreground shrink-0">Label as:</span>
                 <span
-                  className="text-xs sm:text-sm font-serif font-medium italic text-foreground truncate max-w-sm sm:max-w-lg"
-                  title={pending.text}
+                  className="text-xs sm:text-sm font-serif italic text-muted-foreground truncate max-w-sm sm:max-w-md"
+                  title={pendingTextSummary}
                 >
-                  &ldquo;{truncateSpanText(pending.text, 60)}&rdquo;
+                  &ldquo;{truncateSpanText(pendingTextSummary, 55)}&rdquo;
                 </span>
+                {pending.slices.length > 1 && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                    {pending.slices.length} frags
+                  </span>
+                )}
+                {annotation?.allowGaps && (
+                  <span className="text-[10px] text-muted-foreground italic shrink-0 hidden sm:inline">
+                    (tap words to toggle gaps)
+                  </span>
+                )}
               </div>
 
-              {/* Clear cancel icon button */}
+              {/* Clear pending selection */}
               <button
                 type="button"
                 onClick={() => annotation?.setPendingSpan(null)}
                 className="relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
-                title="Cancel (Esc)"
-                aria-label="Cancel"
+                title="Cancel selection (Esc)"
+                aria-label="Cancel selection"
               >
                 <X className="h-4 w-4" />
                 <ShortcutBadge shortcut="Esc" />
@@ -149,7 +163,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                   className="relative flex flex-1 min-w-[95px] max-w-[180px] items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
                   style={getCodeButtonStyle(c.color, false, isDark)}
                   onClick={() => {
-                    annotation.addSpan(pending.offset, pending.length, c.code, pending.text);
+                    annotation.addSpan(pending.slices, c.code);
                     annotation.setPendingSpan(null);
                   }}
                 >
@@ -167,7 +181,23 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
             <SpanEditLabel
               annotation={annotation}
               span={editingSpanFromList}
-              onBack={() => setEditingSpanFromList(null)}
+              onBack={() => {
+                setEditingSpanFromList(null);
+                annotation.setFocusedSpanId(null);
+              }}
+              onCancel={() => {
+                setEditingSpanFromList(null);
+                setViewingAllLabels(false);
+                annotation.setFocusedSpanId(null);
+              }}
+              onCodeChanged={() => {
+                setEditingSpanFromList(null);
+                annotation.setFocusedSpanId(null);
+              }}
+              onDelete={() => {
+                setEditingSpanFromList(null);
+                annotation.setFocusedSpanId(null);
+              }}
             />
           ) : (
             <>
@@ -181,6 +211,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                     onClick={() => {
                       setViewingAllLabels(false);
                       setEditingSpanFromList(null);
+                      annotation.setFocusedSpanId(null);
                     }}
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
@@ -196,6 +227,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                   onClick={() => {
                     setViewingAllLabels(false);
                     setEditingSpanFromList(null);
+                    annotation.setFocusedSpanId(null);
                   }}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
                   title="Close list"
@@ -208,11 +240,12 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
               <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[140px] pr-0.5">
                 {annotation.spans.map((span) => {
                   const badgeStyle = getCodeBadgeStyle(colorFor(span.code), isDark);
+                  const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
                   return (
                     <button
                       key={span.id}
                       type="button"
-                      onClick={() => setEditingSpanFromList(span)}
+                      onClick={() => handleSelectSpanFromList(span)}
                       className="flex w-full items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/80 px-3 py-1.5 text-left hover:bg-muted/60 hover:border-primary/40 transition-all cursor-pointer shadow-2xs group"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -224,10 +257,15 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                         </span>
                         <span
                           className="text-xs font-serif italic text-foreground/90 truncate"
-                          title={span.text}
+                          title={spanSummary}
                         >
-                          &ldquo;{truncateSpanText(span.text, 55)}&rdquo;
+                          &ldquo;{truncateSpanText(spanSummary, 55)}&rdquo;
                         </span>
+                        {span.slices.length > 1 && (
+                          <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
+                            {span.slices.length} frags
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-primary transition-colors shrink-0">
                         <span>Edit</span>
@@ -252,7 +290,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
             </span>
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50 flex-wrap">
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/50">
             <Button
               type="button"
               variant="outline"
@@ -261,20 +299,24 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
               disabled={!annotation || annotation.spans.length === 0}
               onClick={() => setViewingAllLabels(true)}
               title={
-                !annotation || annotation.spans.length === 0
-                  ? "No spans labeled yet"
-                  : "View and edit all labeled spans"
+                annotation && annotation.spans.length > 0
+                  ? "View and edit all labeled spans"
+                  : "No spans labeled yet"
               }
             >
-              <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
+              <List className="h-3.5 w-3.5" />
               <span>View labeled spans ({annotation?.spans.length ?? 0})</span>
             </Button>
 
-            {/* Bottom Completion Action */}
             <Button
               size="sm"
+              className="h-8 px-4 text-xs font-medium cursor-pointer"
               onClick={() =>
-                onAnswer({ done: true, skip: false, spans: annotation?.spans ?? [] })
+                onAnswer({
+                  done: true,
+                  skip: false,
+                  spans: annotation?.spans ?? [],
+                })
               }
             >
               Done ({annotation?.spans.length ?? 0})

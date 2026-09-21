@@ -17,6 +17,16 @@ const app = createApp(db);
 
 const port = Number(process.env.PORT ?? 8787);
 
-serve({ fetch: app.fetch, port }, (info) => {
+const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`@annotinder/mock-server listening on http://localhost:${info.port}`);
 });
+
+const shutdown = () => {
+  server.close(() => {
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 1000).unref();
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

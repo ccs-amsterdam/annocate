@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { CodebookItem, VariableValue } from "@annotinder/contracts";
+import type { VariableValue } from "@annotinder/contracts";
 import {
   AnnotinderAnswerField,
   ConfirmAnswerField,
@@ -12,7 +12,7 @@ import {
 } from "./answerFields";
 import { useSpanAnnotation } from "../context/SpanAnnotationContext";
 
-type QuestionItem = Extract<CodebookItem, { type: "user_variable" | "unit_variable" }>;
+import type { QuestionItem } from "./answerFields/types";
 
 interface QuestionProps {
   item: QuestionItem;
@@ -54,7 +54,10 @@ export function Question({ item, onAnswer, unitVariables, initialValue }: Questi
   const spanAnnotation = useSpanAnnotation();
 
   // Keep docked card compact: hide question header when inspecting/assigning a selected span
-  const hideHeader = variable.type === "span" && Boolean(spanAnnotation?.pendingSpan);
+  // or when viewing the full list of labeled spans
+  const hideHeader =
+    variable.type === "span" &&
+    (Boolean(spanAnnotation?.pendingSpan) || Boolean(spanAnnotation?.isViewingAllLabels));
 
   let answerField: ReactNode;
   switch (variable.type) {

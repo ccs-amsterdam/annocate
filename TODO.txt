@@ -1,85 +1,35 @@
-================================================================================
-ANNOCATE - SPAN & ANNOTATION ROADMAP & TODO
-================================================================================
-
-[X] 1. FIX: Span selection & labeling not registering in answer form
-    - Cause: In JobRunner.tsx, SpanAnnotationProvider was only wrapping UnitFields
-      (the text display), while the bottom docked answer form (questionElement)
-      was rendered outside it. SpanAnswerField called useSpanAnnotation() which
-      returned null, causing "No spans selected yet" and submitting empty spans.
-    - Solution: Wrapped both UnitFields and questionElement inside SpanAnnotationProvider.
-      Spans now immediately appear in SpanAnswerField with live counts, badges,
-      remove buttons, and proper submission to JobServer on Done/Next.
-
-[X] 2. Word vs. Character Level Selection Mode
-    - Implemented snapToWord algorithm: snaps selection start backwards to the
-      beginning of the word and end forwards to the end of the word, trimming
-      trailing/leading whitespace.
-    - Added selectionMode ("word" | "character") to SpanTypeSchema in contracts.
-    - Added "Default Selection Mode" dropdown to the Visual Codebook Editor in VariableTypeForm.tsx.
-    - Added coder toggle in the UI (both in the docked answer bar and hotkey 'w')
-      allowing annotators to toggle between whole-word and character-level selection.
-
-[X] 3. Keyboard Navigation Support
-    - Number hotkeys (1-9): When a text selection is made, pressing 1 through 9
-      immediately assigns that code without needing to click.
-    - Enter key: Assigns the first code.
-    - Esc key: Cancels the pending selection or closes the popover.
-    - 'w' key: Toggles between Word-level and Character-level selection mode.
-    - Backspace / Delete: Removes the most recently added span (or focused span).
-    - Shift + Arrow keys: Native keyboard text selection triggers code picker.
-
-[X] 4. Multiple Overlapping Spans on Same Text
-    - Removed previous overlap rejection.
-    - Implemented boundary cut-point segmentation in SelectableText:
-      Text is partitioned by all unique span starts and ends.
-    - Overlapping segments are styled with a multi-color vertical gradient
-      and multi-color bottom border (derived from each overlapping span's code color).
-    - Hover title displays all overlapping codes (e.g., "[actor, positive]").
-
-[X] 5. Overlapping Span Management Popover
-    - When clicking a segment covered by multiple spans, an interactive
-      popover/bar opens displaying each individual span badge with a remove [x] button.
-    - Single-span segments still allow direct 1-click removal.
 
 
-================================================================================
-ANALYSIS OF OLD IMPLEMENTATION (/old) & COMPARISON WITH MODERN ANNOCATE
-================================================================================
+General layout of annotator
+- There should be some nice visual feedback when users interact with the answer form. Make it feel nice and alive, and also help coders see if the made a mistake. When they finish a varaible, and we move to the next variable, there could be a brief popover pop out above the answer form (which can be over a unit, so add bit of opacity) that shows the answer they gave (the color & the code/value) if relevant.
+- When we move to the next/previous unit or variable, the unit and variable divs should be animated to slide in from the right (next) or left (previous). This should be quick, but give the feel of moving forward and backward.
 
-1. Token-Based vs. Character-Offset Architecture:
-   - In /old: Every single word/punctuation was pre-tokenized into a discrete DOM
-     <span ref={...} data-token-id={i}> element.
-     * Pros: Trivial word boundary detection (just integer token ranges [from, to]).
-     * Cons: Massive DOM overhead on long texts (1,000+ words meant 1,000+ DOM nodes
-       and refs), fragile rendering with markdown/formatting, rigid token boundaries
-       preventing sub-word or arbitrary character annotations (e.g. compound words,
-       URLs, morphology, CJK languages).
-   - In modern Annocate: Clean character-offset model ([offset, length, text]) with
-     DOM TreeWalker range extraction and snapToWord boundary logic.
-     * Benefits: Zero DOM bloat, high performance on long texts, flexible word or
-       character precision, clean JSON export.
 
-2. Code Assignment UI (Floating Portal vs. Docked/Inline):
-   - In /old: Used AnnotationPortal.tsx with a setInterval loop trying to measure
-     DOM elements and keep a floating box on-screen above the token.
-     * Quirks: Glitchy on mobile/touchscreens, screen overflow clipping, jumping.
-   - In modern Annocate: Responsive inline assignment bar with 1-9 hotkeys directly
-     under the selection, paired with the persistent thumb-friendly bottom dock.
+In the navigation in the top right corner of the annotation view:
+- the line indicating the unit (unit x / n) shouldnt be highlighted when we're inside a unit variable. this is already clear from the unit varible being the current variable
+- The line for the unit loop shouldn't show the loop name (e.g. main_loop) but just: [n] units
+- The dropdown for selecting a units shouldn't have a border. And the dropdown should just show the number.
+- Instead of 'change' opening another line, just make it a dropdown menu where you can scroll unit indices. ANd isntead of a change button, just add a dropdown icon and open the dropown when users click on the row
+- Normally, users shouldn't be able to navigate ahead. They need to finish the previous variables + units first. In the preview mode, this should be optional. So you can both test the real experience and quickly check the job
 
-3. Features from /old to Consider for Future Tasks:
-   - Feature A: Code Search Filter in Code Picker (Search-as-you-type)
-     * In /old: ButtonSelection.tsx had a search input if there are many codes.
-     * Modern Plan: If a span variable defines > 8 codes, display a search input
-       in the code assignment popup (or cmdk-style palette).
-   - Feature B: Span Re-editing (Edit Mode)
-     * In /old: Clicking a span opened a menu: [Change Code], [Expand/Shrink Range], [Delete].
-     * Modern Plan: In the overlapping popover or single span click, allow picking
-       a different code to reassign it without having to re-select the text.
-   - Feature C: Relation Annotations (Visual Connecting Arrows)
-     * In /old: RelationArrows.tsx used SVG bezier curves over the text between
-       two tokens with arrowheads and relation labels.
-     * Discussion needed: Drawing SVG curves between dynamic text ranges across
-       responsive mobile screen resizes is complex. We should discuss whether
-       relations are primarily drawn visually or via sequential selection
-       (e.g., select source span -> select target span -> assign relation).
+Adding labels
+- Variables should have optional labels. If given, this is what is shown to the coder in the navigation dropdown (if not given, we show the question)
+- Codes should have labels. If not given, we use the code value. This is primarily usefull when performin analyses in different languages, keeping the code constant but only changing the label (we can think about multilingual support later)
+
+Numeric variables and scales:
+
+- We currently have one "answer type" that combines a code and an optional value. But we also want to support answer values that do not have codes, and where values are not optional. And it might be nice to link this to common terminology of nominal, ordinal, interval and ratio. We should make answer types for each of these. This will replace select_code and search_code.
+  - nominal variables have codes without values. This has the "allow multiple selections". Instead of the "vertical layout" boolean, the layout options are grid, wrap, vertical, and search. (search then replaces the search_code representation).
+  - ordinal variables have codes with implied values based on their order. Users can only decide the starting point of the value (e.g. -3), NOT the step size. Answers can have multiple values. This has the layout options: "horizontal", "vertical", "auto". Where horizontal has no wrap, and auto has wrap so that if it doesn't fit on one row, it makes it vertical.
+  - interval / ratio variables can both be under a "numeric" type. User sets the starting point AND stepsize.  UI options could be slider, stepper or buttons. There are no codes, but we can have labels with values that represent cutting poitns: {1: never", 2: rarely, etc}
+- the annotinder type can specify whether it adds values or not. Also, in the codebook editor, it should just always show the three codes (not the add button) and specify which is for swiping left, right and up.
+- The old "scale" type was not converted properly. The idea of this type is basically "likert scale" type questions, so we should also name it "likert scale". Its essentially multiple numeric types with the same offset and interval So we want to specify:
+  - Question (just like other types)
+  - Items:  list of specific items the question is about. Can be just words (e.g. question is "how much trust do you have in the following institutions") or things like statements (e.g. question is "to what extent do you agree with the follogin")
+  - scale: The number of items on the scale, and labels to go with it. e.g. a 7 point likert scale from -3 to 3, with labels "not at all", "a little", etc.
+    - A scale item should also be able to say if it's reversed or not.
+- The question here is also how we want to store scale item responses. Probably good to create a separate scale type of value. Then this can have a value that is the average of the answered values. And then there is a nested array of specific answer values for each item.
+- The main factor in considering the differences between code, numeric and scale type values, is how the researcher can use this in quickjs scipts. I would like to support
+
+!! IMPORTANT:
+- For reproducibility, we need to make sure that all options in a codebook are explicit when exporting the codebook. Otherwise, when we later add a new option that is a default, the old codebook is no longer valid. Maybe there are better ways to do this? Let's think about this.

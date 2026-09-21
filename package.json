@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "concurrently -k -p \"[{name}]\" -n \"mock,client\" -c \"blue,green\" \"pnpm dev:mock-server\" \"pnpm dev:client\"",
+    "dev": "concurrently -k --kill-signal SIGTERM -p \"[{name}]\" -n \"mock,client\" -c \"blue,green\" \"pnpm --filter @annotinder/mock-server dev\" \"pnpm --filter @annotinder/client dev\"",
     "dev:client": "pnpm --filter @annotinder/client run dev",
     "dev:mock-server": "pnpm --filter @annotinder/mock-server run dev",
     "reset-mock": "pnpm --filter @annotinder/mock-server run db:reset",

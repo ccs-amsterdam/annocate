@@ -1,6 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
+import type { VariableValue } from "@annotinder/contracts";
 import { HttpJobServer } from "../api/httpJobServer";
 import { useJobManager } from "../jobManager/useJobManager";
+import type { JobManagerNavigation } from "../jobManager/JobManager";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 import { CoderSettingsProvider, useCoderSettings } from "../context/CoderSettingsContext";
 import { Question } from "./Question";
@@ -36,7 +38,11 @@ export interface JobRunnerProps {
  * so that question transitions never shift the unit document above.
  * Includes a top draggable handle to let coders resize the panel to their device preference.
  */
-function DockedAnswerPane({ children }: { children: React.ReactNode }) {
+function DockedAnswerPane({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [height, setHeight] = useState<number>(() => {
     if (typeof window === "undefined") return 220;
     const saved = localStorage.getItem("annocate_docked_pane_height");
@@ -197,6 +203,19 @@ function CoderSettingsMenu() {
   );
 }
 
+/** Computed scalar position for monotonic forward/backward detection */
+function computeGlobalPosition(nav: JobManagerNavigation): number {
+  const phaseIdx = nav.currentPhaseIndex;
+  const phase = nav.phases[phaseIdx];
+  if (!phase) return 0;
+  if (phase.type === "unit_loop") {
+    const unitIdx = nav.currentUnitIndex ?? 0;
+    const qIdx = phase.questions?.findIndex((q) => q.isCurrent) ?? 0;
+    return phaseIdx * 1_000_000 + unitIdx * 100 + (qIdx >= 0 ? qIdx : 0);
+  }
+  return phaseIdx * 1_000_000;
+}
+
 /**
  * Top-level component that boots a coder session against a job server and
  * renders the current step (design plan §5's JobManager, Phase 3.4's
@@ -213,6 +232,35 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
   );
   const { manager, snapshot } = useJobManager(jobServer);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
+
+  // Track global position to keep navDirection in sync with any navigation change
+  const currentPos = useMemo(() => computeGlobalPosition(snapshot.navigation), [snapshot.navigation]);
+  const prevPositionRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prevPositionRef.current !== null && prevPositionRef.current !== currentPos) {
+      if (currentPos < prevPositionRef.current) {
+        setNavDirection("previous");
+      } else if (currentPos > prevPositionRef.current) {
+        setNavDirection("next");
+      }
+    }
+    prevPositionRef.current = currentPos;
+  }, [currentPos]);
+
+  const currentUnitId = snapshot.currentUnit?.id ?? snapshot.navigation.currentUnitIndex ?? "none";
+  const prevUnitIdRef = useRef<number | string | null>(currentUnitId);
+  const [unitAnimationKey, setUnitAnimationKey] = useState<string>(() => `unit-${currentUnitId}`);
+  const [unitSlideClass, setUnitSlideClass] = useState<string>("");
+
+  useEffect(() => {
+    if (prevUnitIdRef.current !== currentUnitId) {
+      prevUnitIdRef.current = currentUnitId;
+      setUnitAnimationKey(`unit-${currentUnitId}-${Date.now()}`);
+      setUnitSlideClass(navDirection === "next" ? "animate-slide-in-right" : "animate-slide-in-left");
+    }
+  }, [currentUnitId, navDirection]);
 
   // Global position counter label (e.g., "1", "2" for coder variables; "4.1", "4.2" for unit variables)
   const currentPositionLabel = useMemo(() => {
@@ -298,10 +346,15 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
   const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout);
   const spanVariable = isUnitVar && item.variable.type === "span" ? item.variable : null;
 
+  const handleAnswer = (val: VariableValue) => {
+    setNavDirection("next");
+    manager.answer(val);
+  };
+
   const questionElement = (
     <Question
       item={item}
-      onAnswer={(val) => manager.answer(val)}
+      onAnswer={handleAnswer}
       initialValue={
         item.type === "user_variable"
           ? snapshot.userVariableValues[item.name]
@@ -310,6 +363,9 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
       unitVariables={snapshot.currentUnitVariables ?? undefined}
     />
   );
+
+  const variableKey = `var-${item.name}-${snapshot.currentUnit?.id ?? snapshot.navigation.currentUnitIndex ?? "global"}-${currentPositionLabel}`;
+  const slideClass = navDirection === "next" ? "animate-slide-in-right" : "animate-slide-in-left";
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background">
@@ -496,7 +552,10 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
               size="icon"
               className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/15 disabled:opacity-30 cursor-pointer"
               disabled={!snapshot.navigation.canGoBack}
-              onClick={() => manager.goBack()}
+              onClick={() => {
+                setNavDirection("previous");
+                manager.goBack();
+              }}
               title="Go back"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -507,7 +566,10 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
               size="icon"
               className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/15 disabled:opacity-30 cursor-pointer"
               disabled={!snapshot.navigation.canGoForward}
-              onClick={() => manager.goForward()}
+              onClick={() => {
+                setNavDirection("next");
+                manager.goForward();
+              }}
               title="Go forward"
             >
               <ChevronRight className="h-4 w-4" />
@@ -523,47 +585,42 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
 
       {/* Main Content Area: Responsive Split View */}
       {hasUnitLayout ? (
-        spanVariable ? (
-          <SpanAnnotationProvider
-            key={`${item.name}-${snapshot.currentUnit!.id}`}
-            column={spanVariable.column}
-            codes={spanVariable.codes}
-            defaultSelectionMode={spanVariable.selectionMode ?? "word"}
-            initialSpans={snapshot.currentUnitVariables?.[item.name]?.spans}
-          >
-            <div className="flex flex-1 flex-col overflow-hidden">
-              {/* Scrollable Unit Content (Document) */}
-              <div className="flex-1 min-h-[100px] overflow-y-auto p-3 sm:p-5">
-                <div className="mx-auto max-w-2xl">
-                  <UnitFields layout={snapshot.currentUnitLayout!} data={snapshot.currentUnit!.data} />
-                </div>
-              </div>
-
-              {/* Compact, Thumb-Friendly Docked Bottom Answer Form */}
-              <DockedAnswerPane>
-                {questionElement}
-              </DockedAnswerPane>
-            </div>
-          </SpanAnnotationProvider>
-        ) : (
-          <div className="flex flex-1 flex-col overflow-hidden">
+        <SpanAnnotationProvider
+          key={`unit-${snapshot.currentUnit!.id}`}
+          column={spanVariable?.column ?? ""}
+          codes={spanVariable?.codes ?? []}
+          defaultSelectionMode={spanVariable?.selectionMode ?? "word"}
+          allowGaps={spanVariable?.gaps ?? false}
+          initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
+          variableName={item.name}
+        >
+          <div className="flex flex-1 flex-col overflow-hidden relative">
             {/* Scrollable Unit Content (Document) */}
             <div className="flex-1 min-h-[100px] overflow-y-auto p-3 sm:p-5">
-              <div className="mx-auto max-w-2xl">
+              <div
+                key={unitAnimationKey}
+                className={`mx-auto max-w-2xl ${unitSlideClass}`}
+                onAnimationEnd={() => setUnitSlideClass("")}
+              >
                 <UnitFields layout={snapshot.currentUnitLayout!} data={snapshot.currentUnit!.data} />
               </div>
             </div>
 
             {/* Compact, Thumb-Friendly Docked Bottom Answer Form */}
             <DockedAnswerPane>
-              {questionElement}
+              <div key={variableKey} className={slideClass}>
+                {questionElement}
+              </div>
             </DockedAnswerPane>
           </div>
-        )
+        </SpanAnnotationProvider>
       ) : (
         /* Standalone Question (intro, survey, user variable without document) */
         <div className="flex flex-1 items-center justify-center overflow-y-auto p-4 sm:p-8">
-          <div className="mx-auto w-full max-w-xl rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-sm">
+          <div
+            key={variableKey}
+            className={`mx-auto w-full max-w-xl rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-sm ${slideClass}`}
+          >
             {questionElement}
           </div>
         </div>

@@ -99,6 +99,31 @@ describe("Question dispatcher", () => {
     expect(html).toContain("Done (0)");
   });
 
+  it("hides question text when viewing all labeled spans", () => {
+    const item: QuestionItem = {
+      name: "span_q",
+      type: "unit_variable",
+      variable: { type: "span", question: "Select spans", column: "text", codes: [{ code: "actor" }] },
+    };
+    const initialSpans = [
+      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
+    ];
+    const html = renderToStaticMarkup(
+      <SpanAnnotationProvider
+        column="text"
+        codes={[{ code: "actor" }]}
+        initialSpans={initialSpans}
+        initialIsViewingAllLabels={true}
+      >
+        <Question item={item} onAnswer={onAnswer} />
+      </SpanAnnotationProvider>,
+    );
+    // Question text should be hidden to keep docked card compact
+    expect(html).not.toContain("Select spans");
+    // Labeled spans list is shown
+    expect(html).toContain("All labeled spans (1):");
+  });
+
   it("renders normal span answer form with a button to view labeled spans instead of full list by default", () => {
     const item: QuestionItem = {
       name: "span_q",
@@ -106,7 +131,7 @@ describe("Question dispatcher", () => {
       variable: { type: "span", question: "Select spans", column: "text", codes: [{ code: "actor" }] },
     };
     const initialSpans = [
-      { id: "s1", field: "text", offset: 0, length: 5, code: "actor", text: "hello" },
+      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider column="text" codes={[{ code: "actor" }]} initialSpans={initialSpans}>
@@ -132,12 +157,10 @@ describe("Question dispatcher", () => {
       },
     };
     const initialSpans = [
-      { id: "s1", field: "text", offset: 0, length: 5, code: "actor", text: "hello" },
+      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const initialPendingSpan = {
-      offset: 0,
-      length: 5,
-      text: "hello",
+      slices: [{ offset: 0, length: 5, text: "hello" }],
       existingSpanIds: ["s1"],
       mode: "manage" as const,
     };
@@ -170,12 +193,10 @@ describe("Question dispatcher", () => {
       },
     };
     const initialSpans = [
-      { id: "s1", field: "text", offset: 0, length: 5, code: "actor", text: "hello" },
+      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const initialPendingSpan = {
-      offset: 0,
-      length: 5,
-      text: "hello",
+      slices: [{ offset: 0, length: 5, text: "hello" }],
       existingSpanIds: ["s1"],
       targetSpanId: "s1",
       mode: "manage" as const,
@@ -211,13 +232,11 @@ describe("Question dispatcher", () => {
       },
     };
     const initialSpans = [
-      { id: "s1", field: "text", offset: 0, length: 5, code: "actor", text: "hello" },
-      { id: "s2", field: "text", offset: 0, length: 5, code: "issue", text: "hello" },
+      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
+      { id: "s2", field: "text", code: "issue", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const initialPendingSpan = {
-      offset: 0,
-      length: 5,
-      text: "hello",
+      slices: [{ offset: 0, length: 5, text: "hello" }],
       existingSpanIds: ["s1", "s2"],
       mode: "manage" as const,
     };
@@ -253,7 +272,7 @@ describe("Question dispatcher", () => {
       <SpanAnnotationProvider
         column="text"
         codes={[{ code: "actor" }, { code: "issue" }]}
-        initialPendingSpan={{ offset: 0, length: 5, text: "hello", mode: "create" }}
+        initialPendingSpan={{ slices: [{ offset: 0, length: 5, text: "hello" }], mode: "create" }}
       >
         <Question item={item} onAnswer={onAnswer} />
       </SpanAnnotationProvider>,
@@ -280,8 +299,8 @@ describe("Question dispatcher", () => {
         done: true,
         skip: false,
         spans: [
-          { id: "s1", field: "text", offset: 0, length: 4, code: "actor", text: "John" },
-          { id: "s2", field: "text", offset: 10, length: 7, code: "issue", text: "Climate" },
+          { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 4, text: "John" }] },
+          { id: "s2", field: "text", code: "issue", slices: [{ offset: 10, length: 7, text: "Climate" }] },
         ],
       },
     };

@@ -1,22 +1,21 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import type { CodebookCode, SpanAnswer } from "@annotinder/contracts";
+import { createContext, useContext, useState, useMemo, useEffect, type ReactNode } from "react";
+import type { CodebookCode, SpanAnswer, SpanSlice } from "@annotinder/contracts";
 
 export interface PendingSpan {
-  offset: number;
-  length: number;
-  text: string;
-  /**
-   * "create": User selected text to assign a new label.
-   * "manage": User clicked an existing label (or annotation item) to view & delete labels.
-   */
-  mode?: "create" | "manage";
+  slices: SpanSlice[];
+  anchorOffset?: number;
+  /** When clicking an existing span, contains all overlapping span IDs on that token/word */
   existingSpanIds?: string[];
-  isEditingExisting?: boolean;
+  /** When editing/deleting an existing span, points to its specific ID */
   targetSpanId?: string;
+  isEditingExisting?: boolean;
+  /** UI mode: "create" (assign code to new selection) or "manage" (menu of existing labels on this word) */
+  mode?: "create" | "manage";
 }
 
 /**
- * Bridges the currently-answered `span` variable (rendered inside
+ * Ambient state for the current unit's span annotations. Bridges the answer
+ * form (which receives the coder's code choice and renders via
  * `Question`/`SpanAnswerField`) and the interactive text selection that has
  * to happen inside `UnitFields`' rendered layout, for the SAME unit-data
  * column (design plan §11b: annotation should be integrated with the
@@ -32,17 +31,22 @@ export interface SpanAnnotationState {
   spans: SpanAnswer[];
   selectionMode: "word" | "character";
   setSelectionMode: (mode: "word" | "character") => void;
+  allowGaps: boolean;
   pendingSpan: PendingSpan | null;
   setPendingSpan: (pending: PendingSpan | null) => void;
-  /** `text` is the exact substring of the column's raw value at
-   * `[offset, offset + length)`, included in the stored `SpanAnswer` so
-   * downstream analysis doesn't need to re-slice the unit data. */
-  addSpan: (offset: number, length: number, code: string, text: string) => void;
+  addSpan: (slices: SpanSlice[], code: string) => void;
+  updateSpan: (id: string, newCode: string) => void;
   removeSpan: (id: string) => void;
-  /** True if `[offset, offset+length)` overlaps any already-collected span. */
-  overlapsExisting: (offset: number, length: number) => boolean;
-  /** True if an identical span (same code and same span offset/length) exists. */
-  hasExactSpan: (offset: number, length: number, code: string) => boolean;
+  /** True if any candidate slice overlaps any already-collected span. */
+  overlapsExisting: (slices: SpanSlice[]) => boolean;
+  /** True if an identical span (same code and exact same slices) exists. */
+  hasExactSpan: (slices: SpanSlice[], code: string) => boolean;
+  /** True when the list of all labeled spans is open in place of the answer form */
+  isViewingAllLabels: boolean;
+  setIsViewingAllLabels: (viewing: boolean) => void;
+  /** The ID of a span focused for inspection/editing (e.g. from the all labels list) */
+  focusedSpanId: string | null;
+  setFocusedSpanId: (id: string | null) => void;
 }
 
 const SpanAnnotationContext = createContext<SpanAnnotationState | null>(null);
@@ -55,22 +59,47 @@ export function SpanAnnotationProvider({
   column,
   codes,
   defaultSelectionMode = "word",
+  allowGaps = false,
   initialSpans,
   initialPendingSpan,
+  initialIsViewingAllLabels,
+  variableName,
   children,
 }: {
   column: string;
   codes: CodebookCode[];
   defaultSelectionMode?: "word" | "character";
+  allowGaps?: boolean;
   /** Seeds already-collected spans, e.g. when resuming a unit that already
    * has an answer stored for this variable. */
   initialSpans?: SpanAnswer[];
   initialPendingSpan?: PendingSpan;
+  initialIsViewingAllLabels?: boolean;
+  /** When variableName changes within the same unit, synchronize internal span state */
+  variableName?: string;
   children: ReactNode;
 }) {
   const [spans, setSpans] = useState<SpanAnswer[]>(initialSpans ?? []);
   const [selectionMode, setSelectionMode] = useState<"word" | "character">(defaultSelectionMode);
-  const [pendingSpan, setPendingSpan] = useState<PendingSpan | null>(initialPendingSpan ?? null);
+  const [pendingSpan, setPendingSpanState] = useState<PendingSpan | null>(initialPendingSpan ?? null);
+  const [isViewingAllLabels, setIsViewingAllLabels] = useState(initialIsViewingAllLabels ?? false);
+  const [focusedSpanId, setFocusedSpanId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSpans(initialSpans ?? []);
+    setPendingSpanState(initialPendingSpan ?? null);
+    setIsViewingAllLabels(initialIsViewingAllLabels ?? false);
+    setFocusedSpanId(null);
+    setSelectionMode(defaultSelectionMode);
+  }, [variableName, initialSpans, initialPendingSpan, initialIsViewingAllLabels, defaultSelectionMode]);
+
+  const setPendingSpan = (pending: PendingSpan | null) => {
+    setPendingSpanState(pending);
+    if (pending) {
+      setIsViewingAllLabels(false);
+      setFocusedSpanId(null);
+    }
+  };
 
   const value = useMemo<SpanAnnotationState>(
     () => ({
@@ -79,26 +108,53 @@ export function SpanAnnotationProvider({
       spans,
       selectionMode,
       setSelectionMode,
+      allowGaps,
       pendingSpan,
       setPendingSpan,
-      addSpan: (offset, length, code, text) =>
+      addSpan: (slices, code) =>
         setSpans((prev) => {
-          // Ignore exact duplicate of same code on same range
-          if (prev.some((s) => s.offset === offset && s.length === length && s.code === code)) {
-            return prev;
-          }
+          // Ignore exact duplicate of same code on same slices
+          const isDuplicate = prev.some(
+            (s) =>
+              s.code === code &&
+              s.slices.length === slices.length &&
+              s.slices.every((sl, idx) => sl.offset === slices[idx].offset && sl.length === slices[idx].length),
+          );
+          if (isDuplicate) return prev;
           return [
             ...prev,
-            { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, field: column, offset, length, code, text },
+            {
+              id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              field: column,
+              code,
+              slices,
+            },
           ];
         }),
+      updateSpan: (id, newCode) =>
+        setSpans((prev) => prev.map((s) => (s.id === id ? { ...s, code: newCode } : s))),
       removeSpan: (id) => setSpans((prev) => prev.filter((s) => s.id !== id)),
-      overlapsExisting: (offset, length) =>
-        spans.some((s) => offset < s.offset + s.length && s.offset < offset + length),
-      hasExactSpan: (offset, length, code) =>
-        spans.some((s) => s.offset === offset && s.length === length && s.code === code),
+      overlapsExisting: (slices) =>
+        spans.some((s) =>
+          s.slices.some((sSlice) =>
+            slices.some(
+              (cand) => cand.offset < sSlice.offset + sSlice.length && sSlice.offset < cand.offset + cand.length,
+            ),
+          ),
+        ),
+      hasExactSpan: (slices, code) =>
+        spans.some(
+          (s) =>
+            s.code === code &&
+            s.slices.length === slices.length &&
+            s.slices.every((sl, idx) => sl.offset === slices[idx].offset && sl.length === slices[idx].length),
+        ),
+      isViewingAllLabels,
+      setIsViewingAllLabels,
+      focusedSpanId,
+      setFocusedSpanId,
     }),
-    [column, codes, spans, selectionMode, pendingSpan],
+    [column, codes, spans, selectionMode, allowGaps, pendingSpan, isViewingAllLabels, focusedSpanId],
   );
 
   return <SpanAnnotationContext.Provider value={value}>{children}</SpanAnnotationContext.Provider>;

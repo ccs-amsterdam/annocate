@@ -12,6 +12,9 @@ export interface SpanEditLabelProps {
   annotation: SpanAnnotationState;
   span: SpanAnswer;
   onBack?: () => void;
+  onCancel?: () => void;
+  onCodeChanged?: (newCode: string) => void;
+  onDelete?: () => void;
 }
 
 /**
@@ -22,13 +25,52 @@ export interface SpanEditLabelProps {
  * 2. Code buttons to change the label (with absolute shortcut badges 1-9).
  * 3. Direct Delete button (with absolute Del shortcut badge).
  */
-export function SpanEditLabel({ annotation, span, onBack }: SpanEditLabelProps) {
+export function SpanEditLabel({
+  annotation,
+  span,
+  onBack,
+  onCancel,
+  onCodeChanged,
+  onDelete,
+}: SpanEditLabelProps) {
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
 
   function colorFor(code: string): string | undefined {
     return annotation.codes.find((c) => c.code === code)?.color;
   }
+
+  const spanSummary = span.slices.map((s) => s.text).join(" ... ");
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      annotation.setPendingSpan(null);
+      annotation.setFocusedSpanId(null);
+    }
+  };
+
+  const handleCodeChange = (newCode: string) => {
+    if (newCode === span.code) return;
+    annotation.updateSpan(span.id, newCode);
+    if (onCodeChanged) {
+      onCodeChanged(newCode);
+    } else {
+      annotation.setPendingSpan(null);
+      annotation.setFocusedSpanId(null);
+    }
+  };
+
+  const handleDelete = () => {
+    annotation.removeSpan(span.id);
+    if (onDelete) {
+      onDelete();
+    } else {
+      annotation.setPendingSpan(null);
+      annotation.setFocusedSpanId(null);
+    }
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -38,14 +80,13 @@ export function SpanEditLabel({ annotation, span, onBack }: SpanEditLabelProps) 
 
       if (e.key === "Escape") {
         e.preventDefault();
-        annotation.setPendingSpan(null);
+        handleCancel();
         return;
       }
 
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
-        annotation.removeSpan(span.id);
-        annotation.setPendingSpan(null);
+        handleDelete();
         return;
       }
 
@@ -53,17 +94,13 @@ export function SpanEditLabel({ annotation, span, onBack }: SpanEditLabelProps) 
       if (!isNaN(num) && num >= 1 && num <= annotation.codes.length) {
         e.preventDefault();
         const newCode = annotation.codes[num - 1].code;
-        if (newCode !== span.code) {
-          annotation.removeSpan(span.id);
-          annotation.addSpan(span.offset, span.length, newCode, span.text);
-        }
-        annotation.setPendingSpan(null);
+        handleCodeChange(newCode);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [annotation, span]);
+  }, [annotation, span, onCancel, onCodeChanged, onDelete]);
 
   const badgeStyle = getCodeBadgeStyle(colorFor(span.code), isDark);
 
@@ -91,16 +128,21 @@ export function SpanEditLabel({ annotation, span, onBack }: SpanEditLabelProps) 
           </span>
           <span
             className="text-xs sm:text-sm font-serif italic text-foreground truncate max-w-sm sm:max-w-md"
-            title={span.text}
+            title={spanSummary}
           >
-            &ldquo;{truncateSpanText(span.text, 55)}&rdquo;
+            &ldquo;{truncateSpanText(spanSummary, 55)}&rdquo;
           </span>
+          {span.slices.length > 1 && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+              {span.slices.length} frags
+            </span>
+          )}
         </div>
 
         {/* Clear cancel icon button */}
         <button
           type="button"
-          onClick={() => annotation.setPendingSpan(null)}
+          onClick={handleCancel}
           className="relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer shrink-0"
           title="Cancel (Esc)"
           aria-label="Cancel"
@@ -125,12 +167,7 @@ export function SpanEditLabel({ annotation, span, onBack }: SpanEditLabelProps) 
                   : "hover:scale-105 active:scale-95"
               }`}
               style={getCodeButtonStyle(c.color, isCurrent, isDark)}
-              onClick={() => {
-                if (isCurrent) return;
-                annotation.removeSpan(span.id);
-                annotation.addSpan(span.offset, span.length, c.code, span.text);
-                annotation.setPendingSpan(null);
-              }}
+              onClick={() => handleCodeChange(c.code)}
               title={isCurrent ? `Currently assigned: ${c.code}` : `Change to ${c.code}`}
             >
               {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
@@ -140,20 +177,17 @@ export function SpanEditLabel({ annotation, span, onBack }: SpanEditLabelProps) 
           );
         })}
 
-        {/* Delete button */}
+        {/* Delete label button */}
         <Button
           type="button"
           variant="destructive"
           size="sm"
-          className="relative flex flex-1 min-w-[85px] max-w-[120px] items-center justify-center h-8 px-2 text-xs cursor-pointer gap-1.5 shadow-xs"
-          onClick={() => {
-            annotation.removeSpan(span.id);
-            annotation.setPendingSpan(null);
-          }}
-          title="Delete this label (Delete / Backspace)"
+          className="relative h-8 px-3 text-xs gap-1.5 cursor-pointer ml-auto shrink-0 shadow-xs"
+          onClick={handleDelete}
+          title="Delete this label (Del / Backspace)"
         >
           <ShortcutBadge shortcut="Del" />
-          <Trash2 className="h-3.5 w-3.5 shrink-0" />
+          <Trash2 className="h-3.5 w-3.5" />
           <span>Delete</span>
         </Button>
       </div>

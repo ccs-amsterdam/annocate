@@ -219,6 +219,14 @@ export function VariableTypeForm({
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
+              checked={!!v.gaps}
+              onChange={(e) => onChange({ ...v, gaps: e.target.checked || undefined })}
+            />
+            Allow gaps (discontinuous spans with multiple fragments)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
               checked={!!v.editMode}
               onChange={(e) => onChange({ ...v, editMode: e.target.checked || undefined })}
             />

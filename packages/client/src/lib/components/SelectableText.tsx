@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect } from "react";
-import type { SpanAnswer } from "@annotinder/contracts";
+import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import { useSpanAnnotation } from "../context/SpanAnnotationContext";
 import { getSpanHighlightStyle, getStackedUnderlineStyle } from "../utils/color";
 
@@ -41,6 +41,115 @@ export function snapToWord(text: string, start: number, end: number): [number, n
   }
 
   return [start, end];
+}
+
+/**
+ * Trims leading and trailing whitespace from a character range.
+ */
+export function trimRangeWhitespace(
+  text: string,
+  offset: number,
+  length: number,
+): { offset: number; length: number } {
+  let start = offset;
+  let end = offset + length;
+  while (start < end && /\s/.test(text[start])) {
+    start++;
+  }
+  while (end > start && /\s/.test(text[end - 1])) {
+    end--;
+  }
+  return { offset: start, length: Math.max(0, end - start) };
+}
+
+/**
+ * Merges overlapping or directly adjacent slices and extracts their text from `text`.
+ */
+export function mergeSpanSlices(
+  text: string,
+  slices: Array<{ offset: number; length: number }>,
+): SpanSlice[] {
+  if (slices.length === 0) return [];
+  const sorted = [...slices].sort((a, b) => a.offset - b.offset);
+  const merged: Array<{ offset: number; length: number }> = [];
+
+  for (const raw of sorted) {
+    const trimmed = trimRangeWhitespace(text, raw.offset, raw.length);
+    if (trimmed.length === 0) continue;
+
+    if (merged.length === 0) {
+      merged.push({ ...trimmed });
+      continue;
+    }
+    const last = merged[merged.length - 1];
+    // If overlapping, touching, or separated only by whitespace, merge them
+    const between = text.slice(last.offset + last.length, trimmed.offset);
+    const isWhitespaceOnly = /^\s*$/.test(between);
+    if (trimmed.offset <= last.offset + last.length || isWhitespaceOnly) {
+      const newEnd = Math.max(last.offset + last.length, trimmed.offset + trimmed.length);
+      last.length = newEnd - last.offset;
+    } else {
+      merged.push({ ...trimmed });
+    }
+  }
+
+  return merged.map((m) => ({
+    offset: m.offset,
+    length: m.length,
+    text: text.slice(m.offset, m.offset + m.length),
+  }));
+}
+
+/**
+ * Toggles a range on or off within a set of slices.
+ * If range overlaps any current slice, it removes that range (splitting or shortening slices).
+ * If range does not overlap, it adds that range and merges any touching slices.
+ */
+export function toggleSliceRange(
+  text: string,
+  currentSlices: SpanSlice[],
+  range: { offset: number; length: number },
+): SpanSlice[] {
+  const trimmed = trimRangeWhitespace(text, range.offset, range.length);
+  if (trimmed.length === 0) return currentSlices;
+  const rStart = trimmed.offset;
+  const rEnd = trimmed.offset + trimmed.length;
+
+  const overlaps = currentSlices.some(
+    (s) => rStart < s.offset + s.length && s.offset < rEnd,
+  );
+
+  if (overlaps) {
+    // Toggle OFF: subtract range from slices
+    const newRanges: Array<{ offset: number; length: number }> = [];
+    for (const s of currentSlices) {
+      const sStart = s.offset;
+      const sEnd = s.offset + s.length;
+      if (rEnd <= sStart || rStart >= sEnd) {
+        // No overlap
+        newRanges.push({ offset: sStart, length: s.length });
+      } else {
+        // Overlap: keep parts before and after
+        if (sStart < rStart) {
+          newRanges.push({ offset: sStart, length: rStart - sStart });
+        }
+        if (sEnd > rEnd) {
+          newRanges.push({ offset: rEnd, length: sEnd - rEnd });
+        }
+      }
+    }
+    return newRanges
+      .map((r) => trimRangeWhitespace(text, r.offset, r.length))
+      .filter((r) => r.length > 0)
+      .map((r) => ({
+        offset: r.offset,
+        length: r.length,
+        text: text.slice(r.offset, r.offset + r.length),
+      }));
+  } else {
+    // Toggle ON: add and merge
+    return mergeSpanSlices(text, [...currentSlices, trimmed]);
+  }
 }
 
 /**
@@ -95,7 +204,10 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
  * `SpanAnnotationContext`) highlighted, and lets the coder select or click spans.
  *
  * Interaction rules:
- * - When in span create mode: clicking another word extends the span to encompass it.
+ * - When in span create mode:
+ *   - If gaps are allowed (`allowGaps: true`): Tapping or selecting words becomes an on/off switch.
+ *   - If gaps are not allowed (`allowGaps: false`): The start word is a fixed anchor. Subsequent taps
+ *     change the end boundary, enabling shrinking/unselecting. Taps before anchor are ignored.
  * - When idle:
  *   - Clicking an empty word starts a span selection for that word.
  *   - Clicking an existing label opens the manage menu for that word (showing current labels + "Create new label").
@@ -124,28 +236,59 @@ export function SelectableText({ text }: { text: string }) {
       const caret = offset;
       const wordRange = getWordAtPosition(text, caret);
 
-      // Case 1: If a span is ALREADY pending in create mode, clicking another word extends the span!
-      if (pending && pending.mode === "create" && wordRange) {
+      // Case 1: If a span is ALREADY pending in create mode:
+      if (pending && pending.mode === "create") {
+        if (!wordRange) return;
         const [wStart, wEnd] = wordRange;
-        const newStart = Math.min(pending.offset, wStart);
-        const newEnd = Math.max(pending.offset + pending.length, wEnd);
-        annotation.setPendingSpan({
-          offset: newStart,
-          length: newEnd - newStart,
-          text: text.slice(newStart, newEnd),
-          mode: "create",
-        });
+
+        if (annotation.allowGaps) {
+          // Gaps ARE allowed: tapping words is an on/off switch!
+          const newSlices = toggleSliceRange(text, pending.slices, {
+            offset: wStart,
+            length: wEnd - wStart,
+          });
+          if (newSlices.length === 0) {
+            annotation.setPendingSpan(null);
+          } else {
+            annotation.setPendingSpan({
+              ...pending,
+              slices: newSlices,
+            });
+          }
+        } else {
+          // Gaps NOT allowed:
+          // Keep anchorOffset fixed. When another word is clicked:
+          // - Selecting points BEFORE the anchor is ignored
+          // - Selecting points AFTER the anchor changes the end point to that point
+          const anchor = pending.anchorOffset ?? pending.slices[0]?.offset ?? wStart;
+          if (wEnd <= anchor) {
+            // Clicked before anchor: ignored as requested
+            return;
+          }
+          const newLength = wEnd - anchor;
+          annotation.setPendingSpan({
+            ...pending,
+            anchorOffset: anchor,
+            slices: [
+              {
+                offset: anchor,
+                length: newLength,
+                text: text.slice(anchor, wEnd),
+              },
+            ],
+          });
+        }
         return;
       }
 
       // Case 2: Clicked on an existing labeled span -> Always open the menu first!
-      const covering = annotation.spans.filter((s) => s.offset <= caret && s.offset + s.length > caret);
+      const covering = annotation.spans.filter((s) =>
+        s.slices.some((sl) => sl.offset <= caret && sl.offset + sl.length > caret),
+      );
       if (covering.length > 0) {
         const firstSpan = covering[0];
         annotation.setPendingSpan({
-          offset: firstSpan.offset,
-          length: firstSpan.length,
-          text: firstSpan.text,
+          slices: firstSpan.slices,
           existingSpanIds: covering.map((s) => s.id),
           targetSpanId: undefined, // Never bypass the menu!
           mode: "manage",
@@ -157,9 +300,14 @@ export function SelectableText({ text }: { text: string }) {
       if (wordRange) {
         const [wStart, wEnd] = wordRange;
         annotation.setPendingSpan({
-          offset: wStart,
-          length: wEnd - wStart,
-          text: text.slice(wStart, wEnd),
+          slices: [
+            {
+              offset: wStart,
+              length: wEnd - wStart,
+              text: text.slice(wStart, wEnd),
+            },
+          ],
+          anchorOffset: wStart,
           mode: "create",
         });
         return;
@@ -169,20 +317,56 @@ export function SelectableText({ text }: { text: string }) {
       annotation.setPendingSpan(null);
       return;
     } else {
-      // Dragged range selection: creating a new label!
+      // Dragged range selection
+      let [rangeStart, rangeEnd] = [offset, end];
       if (annotation.selectionMode === "word") {
-        [offset, end] = snapToWord(text, offset, end);
+        [rangeStart, rangeEnd] = snapToWord(text, rangeStart, rangeEnd);
+      }
+      if (rangeEnd <= rangeStart) return;
+
+      if (pending && pending.mode === "create") {
+        if (annotation.allowGaps) {
+          const newSlices = toggleSliceRange(text, pending.slices, {
+            offset: rangeStart,
+            length: rangeEnd - rangeStart,
+          });
+          if (newSlices.length === 0) {
+            annotation.setPendingSpan(null);
+          } else {
+            annotation.setPendingSpan({
+              ...pending,
+              slices: newSlices,
+            });
+          }
+        } else {
+          const anchor = pending.anchorOffset ?? pending.slices[0]?.offset ?? rangeStart;
+          const newEnd = Math.max(anchor, rangeEnd);
+          annotation.setPendingSpan({
+            ...pending,
+            anchorOffset: anchor,
+            slices: [
+              {
+                offset: anchor,
+                length: newEnd - anchor,
+                text: text.slice(anchor, newEnd),
+              },
+            ],
+          });
+        }
+      } else {
+        annotation.setPendingSpan({
+          slices: [
+            {
+              offset: rangeStart,
+              length: rangeEnd - rangeStart,
+              text: text.slice(rangeStart, rangeEnd),
+            },
+          ],
+          anchorOffset: rangeStart,
+          mode: "create",
+        });
       }
     }
-
-    if (end <= offset) return;
-
-    annotation.setPendingSpan({
-      offset,
-      length: end - offset,
-      text: text.slice(offset, end),
-      mode: "create",
-    });
   }, [annotation, pending, text]);
 
   function handleMouseUp() {
@@ -194,6 +378,18 @@ export function SelectableText({ text }: { text: string }) {
       processSelection();
     }
   }
+
+
+  // Scroll focused span into view when inspected from the labels list
+  useEffect(() => {
+    if (!annotation?.focusedSpanId || !containerRef.current) return;
+    const el = containerRef.current.querySelector(
+      `[data-span-id~="${annotation.focusedSpanId}"]`,
+    );
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [annotation?.focusedSpanId]);
 
   // Backspace / Delete: remove last added span if nothing pending
   useEffect(() => {
@@ -223,12 +419,16 @@ export function SelectableText({ text }: { text: string }) {
   // Compute text segments (unannotated, single-span, or overlapping multi-span)
   const cuts = new Set<number>([0, text.length]);
   if (pending) {
-    cuts.add(Math.max(0, Math.min(text.length, pending.offset)));
-    cuts.add(Math.max(0, Math.min(text.length, pending.offset + pending.length)));
+    for (const slice of pending.slices) {
+      cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
+      cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
+    }
   }
   for (const s of annotation?.spans ?? []) {
-    cuts.add(Math.max(0, Math.min(text.length, s.offset)));
-    cuts.add(Math.max(0, Math.min(text.length, s.offset + s.length)));
+    for (const slice of s.slices) {
+      cuts.add(Math.max(0, Math.min(text.length, slice.offset)));
+      cuts.add(Math.max(0, Math.min(text.length, slice.offset + slice.length)));
+    }
   }
   const sortedCuts = Array.from(cuts).sort((x, y) => x - y);
 
@@ -244,11 +444,12 @@ export function SelectableText({ text }: { text: string }) {
     const end = sortedCuts[i + 1];
     if (start >= end) continue;
 
-    const covering = (annotation?.spans ?? []).filter(
-      (s) => s.offset <= start && s.offset + s.length >= end,
+    const covering = (annotation?.spans ?? []).filter((s) =>
+      s.slices.some((slice) => slice.offset <= start && slice.offset + slice.length >= end),
     );
     const isPending = Boolean(
-      pending && pending.offset <= start && pending.offset + pending.length >= end,
+      pending &&
+        pending.slices.some((slice) => slice.offset <= start && slice.offset + slice.length >= end),
     );
     segments.push({ start, end, spans: covering, isPending });
   }
@@ -258,18 +459,16 @@ export function SelectableText({ text }: { text: string }) {
   }
 
   function handleSegmentClick(e: React.MouseEvent, spans: SpanAnswer[]) {
-    // If currently creating a span, clicking on a labeled segment extends the span!
+    // If currently creating a span, clicking on a labeled segment extends/toggles the span
     if (annotation?.pendingSpan && annotation.pendingSpan.mode === "create") {
-      return; // Let mouseup/processSelection handle extending the span
+      return; // Let mouseup/processSelection handle creating/toggling
     }
 
     e.stopPropagation();
     if (!annotation || spans.length === 0) return;
     const firstSpan = spans[0];
     annotation.setPendingSpan({
-      offset: firstSpan.offset,
-      length: firstSpan.length,
-      text: firstSpan.text,
+      slices: firstSpan.slices,
       existingSpanIds: spans.map((s) => s.id),
       targetSpanId: undefined, // Always show the menu first!
       mode: "manage",
@@ -303,13 +502,14 @@ export function SelectableText({ text }: { text: string }) {
 
           if (seg.spans.length === 1) {
             const span = seg.spans[0];
-            const isStart = seg.start === span.offset;
-            const isEnd = seg.end === span.offset + span.length;
+            const isStart = span.slices.some((sl) => sl.offset === seg.start);
+            const isEnd = span.slices.some((sl) => sl.offset + sl.length === seg.end);
+            const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
             return (
               <mark
                 key={i}
                 style={getSpanHighlightStyle({ color: colorFor(span.code), isStart, isEnd })}
-                title={`${span.code}: \"${span.text}\" (click to view labels)`}
+                title={`${span.code}: "${spanSummary}" (click to view labels)`}
                 onClick={(e) => handleSegmentClick(e, seg.spans)}
                 className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
                   seg.isPending ? "ring-2 ring-primary/80 ring-offset-1" : ""
@@ -323,21 +523,27 @@ export function SelectableText({ text }: { text: string }) {
           // Multiple overlapping spans on this segment
           const spansInfo = seg.spans.map((s) => ({
             color: colorFor(s.code),
-            isStart: seg.start === s.offset,
-            isEnd: seg.end === s.offset + s.length,
+            isStart: s.slices.some((sl) => sl.offset === seg.start),
+            isEnd: s.slices.some((sl) => sl.offset + sl.length === seg.end),
           }));
           const stackedStyle = getStackedUnderlineStyle(spansInfo);
-          const title = seg.spans.map((s) => `${s.code}: \"${s.text}\"`).join(", ");
+          const title = seg.spans
+            .map((s) => `${s.code}: "${s.slices.map((sl) => sl.text).join(" ... ")}"`)
+            .join(", ");
 
+          const isFocused = Boolean(
+            annotation?.focusedSpanId && seg.spans.some((s) => s.id === annotation.focusedSpanId),
+          );
           return (
             <mark
               key={i}
+              data-span-id={seg.spans.map((s) => s.id).join(" ")}
               style={stackedStyle}
               title={`${title} (click to view labels)`}
               onClick={(e) => handleSegmentClick(e, seg.spans)}
               className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
                 seg.isPending ? "ring-2 ring-primary/80 ring-offset-1" : ""
-              }`}
+              } ${isFocused ? "ring-2 ring-foreground/90 ring-offset-2 animate-pulse" : ""}`}
             >
               {text.slice(seg.start, seg.end)}
             </mark>

@@ -19,22 +19,27 @@ export const CodeAnswerSchema = z.object({
   value: z.number().optional(),
 });
 
-/** Answer entry for `span` variable types. */
+/** A single contiguous text fragment within a span answer. */
+export const SpanSliceSchema = z.object({
+  offset: z.number().int().nonnegative(),
+  length: z.number().int().positive(),
+  /**
+   * The exact substring of `field` at `[offset, offset + length)`.
+   * Stored in each slice so downstream analysis has direct access to the annotated text.
+   */
+  text: z.string(),
+});
+export type SpanSlice = z.infer<typeof SpanSliceSchema>;
+
+/**
+ * Answer entry for `span` variable types.
+ * Supports both continuous spans (single slice) and discontinuous spans with gaps (multiple slices).
+ */
 export const SpanAnswerSchema = z.object({
   id: ClientIdSchema,
   field: z.string(),
-  offset: z.number().int(),
-  length: z.number().int(),
   code: z.string(),
-  /**
-   * The selected text itself, i.e. the exact substring `field`'s raw string
-   * value at `[offset, offset + length)` -- included so downstream analysis
-   * doesn't need to re-fetch/re-slice the unit data to know what was
-   * annotated (design plan §11f/2026-09-18). Redundant with
-   * `field`+`offset`+`length` by construction (always kept in sync by the
-   * client when the span is created), but small and convenient.
-   */
-  text: z.string(),
+  slices: z.array(SpanSliceSchema).min(1),
 });
 export type SpanAnswer = z.infer<typeof SpanAnswerSchema>;
 

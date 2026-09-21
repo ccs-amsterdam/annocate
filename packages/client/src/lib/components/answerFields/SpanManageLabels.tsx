@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { SpanAnswer } from "@annotinder/contracts";
+import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/SpanAnnotationContext";
 import { useCoderSettings } from "../../context/CoderSettingsContext";
 import { getCodeBadgeStyle } from "../../utils/color";
@@ -13,7 +13,7 @@ export interface SpanManageLabelsProps {
   annotation: SpanAnnotationState;
   spans: SpanAnswer[];
   initialTargetSpanId?: string;
-  wordRange?: { offset: number; length: number; text: string };
+  fallbackSlices?: SpanSlice[];
 }
 
 /**
@@ -29,7 +29,7 @@ export function SpanManageLabels({
   annotation,
   spans,
   initialTargetSpanId,
-  wordRange,
+  fallbackSlices,
 }: SpanManageLabelsProps) {
   const { theme } = useCoderSettings();
   const isDark = theme === "dark";
@@ -76,11 +76,14 @@ export function SpanManageLabels({
         annotation={annotation}
         span={activeSpan}
         onBack={() => setSelectedSpanId(null)}
+        onCancel={() => annotation.setPendingSpan(null)}
+        onCodeChanged={() => annotation.setPendingSpan(null)}
+        onDelete={() => annotation.setPendingSpan(null)}
       />
     );
   }
 
-  const fallbackText = wordRange ?? (spans.length > 0 ? spans[0] : null);
+  const candidateSlices = fallbackSlices ?? (spans.length > 0 ? spans[0].slices : null);
 
   // Label inspection menu
   return (
@@ -108,6 +111,7 @@ export function SpanManageLabels({
       <div className="flex flex-col gap-1.5 pt-0.5">
         {spans.map((s, idx) => {
           const badgeStyle = getCodeBadgeStyle(colorFor(s.code), isDark);
+          const spanSummary = s.slices.map((sl) => sl.text).join(" ... ");
           return (
             <button
               key={s.id}
@@ -125,10 +129,15 @@ export function SpanManageLabels({
                 </span>
                 <span
                   className="text-xs font-serif italic text-foreground/90 truncate"
-                  title={s.text}
+                  title={spanSummary}
                 >
-                  &ldquo;{truncateSpanText(s.text, 50)}&rdquo;
+                  &ldquo;{truncateSpanText(spanSummary, 50)}&rdquo;
                 </span>
+                {s.slices.length > 1 && (
+                  <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
+                    {s.slices.length} frags
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground group-hover:text-primary transition-colors shrink-0">
@@ -141,7 +150,7 @@ export function SpanManageLabels({
       </div>
 
       {/* Button to create a new label on this text */}
-      {fallbackText && (
+      {candidateSlices && candidateSlices.length > 0 && (
         <div className="pt-1 flex justify-end">
           <Button
             type="button"
@@ -150,9 +159,8 @@ export function SpanManageLabels({
             className="h-7 text-xs gap-1 cursor-pointer"
             onClick={() => {
               annotation.setPendingSpan({
-                offset: fallbackText.offset,
-                length: fallbackText.length,
-                text: fallbackText.text,
+                slices: candidateSlices,
+                anchorOffset: candidateSlices[0]?.offset,
                 mode: "create",
               });
             }}

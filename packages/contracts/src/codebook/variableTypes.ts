@@ -86,6 +86,7 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
   codes: CodebookCodesSchema,
   editMode: z.boolean().optional(),
   selectionMode: z.enum(["word", "character"]).optional(),
+  gaps: z.boolean().optional(),
 });
 export type SpanType = z.infer<typeof SpanTypeSchema>;
 
