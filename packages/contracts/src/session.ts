@@ -29,3 +29,30 @@ export const SessionResponseSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema).default({}),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+
+/**
+ * Machine-readable `code` in error responses (`{ error, code }`) that the
+ * client handles specially (docs/coder-identity.md).
+ */
+export const CoderErrorCodeSchema = z.enum([
+  /** Participant id already has a session; retry with `x-new-session: 1` to start another. */
+  "participant_has_session",
+  /** The invite requires login. */
+  "auth_required",
+  /** Transfer token unknown, used or expired. */
+  "transfer_invalid",
+]);
+export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
+
+/** Response for `POST /transfer`: a one-time token to continue this session on another device. */
+export const TransferResponseSchema = z.object({
+  token: z.string(),
+  expiresAt: z.coerce.date(),
+});
+export type TransferResponse = z.infer<typeof TransferResponseSchema>;
+
+/** Body for `POST /transfer/redeem` (no coder auth needed). */
+export const RedeemTransferSchema = z.object({ token: z.string().min(1) });
+
+/** Response for `POST /transfer/redeem`: the coder key to store on the new device. */
+export const RedeemTransferResponseSchema = z.object({ coderKey: z.string() });

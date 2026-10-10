@@ -107,6 +107,14 @@ registry because the client is written against them.
 | GET | `/loop/:loop/next` | – | `CoderUnitResponseSchema \| null` | Coder-authenticated; the job server picks the unit per the loop's branches/sources; `null` means the coder is done with the loop |
 | POST | `/variables/unit` | `PostUnitVariablesSchema` | – | Coder-authenticated; full replace of one unit's variables |
 | POST | `/variables/coder` | `PostCoderVariablesSchema` | – | Coder-authenticated; full replace of job-level variables |
+| POST | `/transfer` | – | `TransferResponseSchema` | Coder-authenticated; one-time token to continue the session on another device |
+| POST | `/transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` | No coder key needed; returns the session's coder key (once) |
+
+Coder headers: `x-coder-key` (always), `x-invite-secret` (first use),
+`x-participant-id` (invites with `participantFromUrl`), `x-new-session: 1`
+(start another session for a participant that already has one). Errors are
+`{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
+`docs/coder-identity.md`.
 
 ### Backend API (db server, called by the job server)
 

@@ -53,7 +53,7 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
       try {
         const invite = await client.inviteCoder({
           label: "preview-session",
-          access: "user_decides",
+          auth: "none",
         });
         if (!cancelled) {
           setInviteSecret(invite.secret);

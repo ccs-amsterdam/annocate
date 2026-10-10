@@ -7,7 +7,9 @@ import {
   type DeploymentSpec,
   type DeploymentStatus,
   type DynamicSource,
+  type ResolveCoderRequest,
   type SessionResponse,
+  type TransferResponse,
   type TopLevelItem,
   type VariableValue,
 } from "@annotinder/contracts";
@@ -31,6 +33,8 @@ export interface RuntimeOptions {
   unitTtlMs: number;
   /** Units fetched ahead of the one a coder asked for. */
   prefetch: number;
+  /** How long a "continue on another device" link stays valid. */
+  transferTtlMs: number;
   now: () => number;
   random: () => number;
 }
@@ -39,6 +43,7 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
   specTtlMs: 60_000,
   unitTtlMs: 30 * 60_000,
   prefetch: 3,
+  transferTtlMs: 15 * 60_000,
   now: () => Date.now(),
   random: Math.random,
 };
@@ -71,6 +76,8 @@ export class DeploymentRuntime {
   private coders = new Map<number, Coder>();
   private coderKeys = new Map<string, number>();
   private units = new Map<number, { unit: BackendUnit; fetchedAt: number }>();
+  /** One-time transfer tokens -> coder key. Memory only: losing them just means making a new link. */
+  private transfers = new Map<string, { coderKey: string; expires: number }>();
   private specCheckedAt = 0;
   private loadedAt = 0;
   private refreshing: Promise<void> | null = null;
@@ -135,10 +142,16 @@ export class DeploymentRuntime {
 
   // --- coders -----------------------------------------------------------------
 
-  async resolveCoder(coderKey: string, inviteSecret?: string): Promise<Coder> {
-    const known = this.coderKeys.get(coderKey);
+  /**
+   * The coder for a coder key; the db server creates it on first use (from
+   * the invite, with participant id / new-session confirmation, see
+   * docs/coder-identity.md).
+   */
+  async resolveCoder(request: ResolveCoderRequest): Promise<Coder> {
+    const known = this.coderKeys.get(request.coderKey);
     if (known !== undefined) return this.coders.get(known)!;
-    const coder = await this.backend.resolveCoder(coderKey, inviteSecret);
+    const coder = await this.backend.resolveCoder(request);
+    const coderKey = request.coderKey;
     this.coders.set(coder.coderId, coder);
     this.coderKeys.set(coderKey, coder.coderId);
     await this.assignAutoVariables(coder);
@@ -185,6 +198,27 @@ export class DeploymentRuntime {
 
   private async saveCoder(coder: Coder): Promise<void> {
     await this.backend.putCoder(coder.coderId, { variables: coder.variables, assignments: coder.assignments });
+  }
+
+  /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
+  createTransfer(coderKey: string): TransferResponse {
+    const now = this.options.now();
+    for (const [token, t] of this.transfers) if (t.expires <= now) this.transfers.delete(token);
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const expires = now + this.options.transferTtlMs;
+    this.transfers.set(token, { coderKey, expires });
+    return { token, expiresAt: new Date(expires) };
+  }
+
+  /** Exchanges a transfer token (once) for the coder key. */
+  redeemTransfer(token: string): string {
+    const transfer = this.transfers.get(token);
+    this.transfers.delete(token);
+    if (!transfer || transfer.expires <= this.options.now()) {
+      throw new HttpError(404, "This link has expired or was already used", "transfer_invalid");
+    }
+    return transfer.coderKey;
   }
 
   session(coder: Coder): SessionResponse {

@@ -19,13 +19,29 @@ export type CoderResponse = z.infer<typeof CoderResponseSchema>;
 export const CoderProgressSchema = z.object({
   id: IdSchema,
   email: z.string().email().optional(),
+  /** External label (e.g. a panel company's participant id); see docs/coder-identity.md. */
+  participantId: z.string().optional(),
   unitsDone: z.record(z.string(), z.number().int().nonnegative()), // unitset name -> count done
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 
+/**
+ * An invitation link (docs/coder-identity.md §3). Two independent settings:
+ * whether coders must log in (`auth`), and whether coders get a participant
+ * id (fixed on the invite, or from the `participant` URL param).
+ */
 export const CoderInviteWriteSchema = z.object({
   label: z.string().min(1).max(128),
-  access: z.enum(["only_authenticated", "only_anonymous", "user_decides"] as const),
+  /**
+   * `none`: no login; work stays on the device unless transferred.
+   * `optional`: coders may log in to resume elsewhere. `required`: login first.
+   * (Login is not implemented yet; `required` invites are refused for now.)
+   */
+  auth: z.enum(["none", "optional", "required"]).default("none"),
+  /** A participant id fixed on this invite (e.g. a personal link). A label, never a credential. */
+  participantId: z.string().min(1).max(256).optional(),
+  /** Take the participant id from the `participant` URL param (e.g. survey/panel companies). */
+  participantFromUrl: z.boolean().optional(),
   /**
    * Restrict the invite to these (authenticated) email addresses. Stored on
    * the db server only; never part of the codebook. Not enforced by the dev

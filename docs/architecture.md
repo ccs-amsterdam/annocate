@@ -262,7 +262,8 @@ The job server refuses to let the client overwrite assigned variables.
   `fallback`.
 - **Enforcement today.** `maxUses` is enforced. Email restrictions are
   stored, but they need real coder authentication before they can be
-  enforced (§10).
+  enforced. Participant ids and login are covered in
+  `docs/coder-identity.md`.
 
 ## 8. Job updates (not implemented yet; designed for)
 
@@ -323,10 +324,10 @@ Roughly in order:
    one `DeploymentRuntime`. The runtime is already async and storage-free, so
    this is an adapter, not a port. Use a jurisdiction-restricted (EU) DO
    namespace where needed, and check the current Cloudflare terms first.
-3. **Auth.** Replace the shared bearer secret with HMAC-signed requests (or
-   short-lived tokens) in both directions. Coder auth is still the dev-mode
-   `x-coder-key` + invite secret. Design plan §6.1's signed coder session
-   tokens fit here: issued by the job server after `resolve`.
+3. **Auth.** Replace the shared bearer secret between the servers with
+   HMAC-signed requests (or short-lived tokens) in both directions. Coder
+   identity, sessions across devices and coder login are designed in
+   `docs/coder-identity.md`.
 4. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the job
    server returns short-lived signed URLs; the bytes come from a separate

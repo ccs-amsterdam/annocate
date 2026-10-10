@@ -133,7 +133,7 @@ describe("coder session flow", () => {
     const inviteRes = await app.request(`/job/${job.id}/coders/invite`, {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ label: "invite", access: "user_decides" }),
+      body: JSON.stringify({ label: "invite", auth: "none" }),
     });
     const invite = (await inviteRes.json()) as { secret: string };
     return { unitId: units[0].id, secret: invite.secret, jobId: job.id };
@@ -207,7 +207,7 @@ describe("coder session flow", () => {
     const inviteRes = await app.request(`/job/${job.id}/coders/invite`, {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ label: "invite", access: "user_decides" }),
+      body: JSON.stringify({ label: "invite", auth: "none" }),
     });
     const invite = (await inviteRes.json()) as { secret: string };
     const coderHeaders = { "content-type": "application/json", "x-coder-key": "coder-xyz", "x-invite-secret": invite.secret };
@@ -236,7 +236,7 @@ describe("coder session flow", () => {
     const inviteRes = await app.request(`/job/${jobId}/coders/invite`, {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ label: "alice", access: "user_decides", maxUses: 1, variables: { slot: "2" } }),
+      body: JSON.stringify({ label: "alice", auth: "none", maxUses: 1, variables: { slot: "2" } }),
     });
     const invite = await json(inviteRes);
     expect(invite).toMatchObject({ uses: 0, maxUses: 1, variables: { slot: "2" } });

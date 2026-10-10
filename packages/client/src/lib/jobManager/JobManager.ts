@@ -66,6 +66,8 @@ export interface JobManagerSnapshot {
   userVariableValues: Record<string, VariableValue>;
   currentUnitVariables: Record<string, VariableValue> | null;
   error: string | null;
+  /** Machine-readable error code from the job server (e.g. `participant_has_session`), if any. */
+  errorCode: string | null;
   navigation: JobManagerNavigation;
 }
 
@@ -74,6 +76,11 @@ export type JobManagerListener = () => void;
 interface UnitHistoryEntry {
   unit: CoderUnitResponse;
   answers: Record<string, VariableValue>;
+}
+
+function errorCodeOf(err: unknown): string | null {
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === "string" ? code : null;
 }
 
 function getQuestionLabel(item: CodebookItem): string {
@@ -142,6 +149,7 @@ export class JobManager {
     userVariableValues: {},
     currentUnitVariables: null,
     error: null,
+    errorCode: null,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -167,7 +175,7 @@ export class JobManager {
 
   async start(): Promise<void> {
     try {
-      this.publish({ phase: "loading", error: null });
+      this.publish({ phase: "loading", error: null, errorCode: null });
       const session: SessionResponse = await this.jobServer.getSession();
       this.items = session.codebook.items as TopLevelItem[];
       // Coder-level variables so far, including server-assigned `auto`
@@ -185,6 +193,7 @@ export class JobManager {
       this.publish({
         phase: "error",
         error: err instanceof Error ? err.message : String(err),
+        errorCode: errorCodeOf(err),
       });
     }
   }
@@ -485,7 +494,7 @@ export class JobManager {
       }
       this.lastFailedOperation = null;
     } catch (err) {
-      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err) });
+      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
     }
   }
 
@@ -524,7 +533,7 @@ export class JobManager {
       const rendered = await renderTemplate(layout.template, scope, this.expressionCache);
       return { ...layout, template: rendered };
     } catch (err) {
-      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err) });
+      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
       return layout;
     }
   }

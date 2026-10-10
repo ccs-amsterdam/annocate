@@ -1,6 +1,11 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
-import { CONTRACTS_VERSION, PostCoderVariablesSchema, PostUnitVariablesSchema } from "@annotinder/contracts";
+import {
+  CONTRACTS_VERSION,
+  PostCoderVariablesSchema,
+  PostUnitVariablesSchema,
+  RedeemTransferSchema,
+} from "@annotinder/contracts";
 import { HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRegistry } from "./registry.js";
 import { DEFAULT_RUNTIME_OPTIONS, type Coder, type DeploymentRuntime, type RuntimeOptions } from "./runtime.js";
@@ -13,7 +18,7 @@ export interface JobServerOptions {
 }
 
 interface Env {
-  Variables: { runtime: DeploymentRuntime; coder: Coder };
+  Variables: { runtime: DeploymentRuntime; coder: Coder; coderKey: string };
 }
 
 /**
@@ -34,7 +39,7 @@ export function createJobServer(options: JobServerOptions) {
 
   app.use("*", cors());
   app.onError((err, c) => {
-    if (err instanceof HttpError) return c.json({ error: err.message }, err.status);
+    if (err instanceof HttpError) return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
     console.error(err);
     return c.json({ error: "Internal error" }, 500);
   });
@@ -43,6 +48,13 @@ export function createJobServer(options: JobServerOptions) {
 
   // --- coder API ----------------------------------------------------------
 
+  // Redeeming a transfer link happens before the new device has a coder key.
+  app.post("/d/:deploymentId/transfer/redeem", async (c) => {
+    const body = await parseBody(c, RedeemTransferSchema);
+    const runtime = await registry.get(c.req.param("deploymentId"));
+    return c.json({ coderKey: runtime.redeemTransfer(body.token) });
+  });
+
   const coders = new Hono<Env>();
   coders.use("*", async (c, next) => {
     const coderKey = c.req.header("x-coder-key");
@@ -50,9 +62,18 @@ export function createJobServer(options: JobServerOptions) {
     const runtime = await registry.get(c.req.param("deploymentId")!);
     await runtime.refresh();
     c.set("runtime", runtime);
-    c.set("coder", await runtime.resolveCoder(coderKey, c.req.header("x-invite-secret")));
+    c.set("coderKey", coderKey);
+    const coder = await runtime.resolveCoder({
+      coderKey,
+      inviteSecret: c.req.header("x-invite-secret"),
+      participantId: c.req.header("x-participant-id"),
+      newSession: c.req.header("x-new-session") === "1",
+    });
+    c.set("coder", coder);
     await next();
   });
+
+  coders.post("/transfer", (c) => c.json(c.get("runtime").createTransfer(c.get("coderKey"))));
 
   coders.get("/session", (c) => c.json(c.get("runtime").session(c.get("coder"))));
 

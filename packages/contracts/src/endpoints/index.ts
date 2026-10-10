@@ -4,7 +4,12 @@ import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from 
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitResponseSchema, CoderUnitResponseSchema } from "../unit.js";
 import { UnitsetWriteSchema, UnitsetResponseSchema, GenerateUnitsetsSchema } from "../unitset.js";
 import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue.js";
-import { SessionResponseSchema } from "../session.js";
+import {
+  SessionResponseSchema,
+  TransferResponseSchema,
+  RedeemTransferSchema,
+  RedeemTransferResponseSchema,
+} from "../session.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
 import { DeploymentWriteSchema, DeploymentResponseSchema, DeploymentStatusSchema } from "../deployment.js";
 
@@ -108,6 +113,13 @@ export const endpoints = {
     path: "/variables/coder",
     request: PostCoderVariablesSchema,
     response: z.void(),
+  },
+  createTransfer: { method: "POST", path: "/transfer", request: z.void(), response: TransferResponseSchema },
+  redeemTransfer: {
+    method: "POST",
+    path: "/transfer/redeem",
+    request: RedeemTransferSchema,
+    response: RedeemTransferResponseSchema,
   },
 
   listCoders: { method: "GET", path: "/job/:jobId/coders", request: z.void(), response: z.array(CoderProgressSchema) },

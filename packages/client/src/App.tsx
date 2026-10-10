@@ -1,28 +1,18 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { JobRunner } from "./lib/components/JobRunner";
 import { AdminApp } from "./lib/components/admin/AdminApp";
 import { HttpAdminClient } from "./lib/api/httpAdminClient";
 import { LayoutDashboard, PenTool } from "lucide-react";
 
 // Standalone dev-app shell: runs the annotinder-client against a local
-// mock-server (see packages/mock-server), using a per-browser persisted
-// coder key + the seed demo job's invite secret. Real deployments should
+// mock db server + job server, using a device-stored coder key per invite
+// (the seed demo job's invite secret by default). Real deployments should
 // import { JobRunner } / { AdminApp } (or their building blocks) into a host
 // app instead -- see design plan §7.
 const MOCK_SERVER_URL = import.meta.env.VITE_MOCK_SERVER_URL ?? "http://localhost:8787";
 // Coders talk to the job server, not the db server (docs/architecture.md).
 // The seed demo job is deployed as `mock.1`.
 const JOB_SERVER_URL = import.meta.env.VITE_JOB_SERVER_URL ?? "http://localhost:8788";
-
-function getOrCreateCoderKey(): string {
-  const storageKey = "annotinder-client:dev-coder-key";
-  let key = localStorage.getItem(storageKey);
-  if (!key) {
-    key = crypto.randomUUID();
-    localStorage.setItem(storageKey, key);
-  }
-  return key;
-}
 
 const adminClient = new HttpAdminClient({
   baseUrl: MOCK_SERVER_URL,
@@ -32,12 +22,27 @@ const adminClient = new HttpAdminClient({
 
 type View = "admin" | "annotate";
 
+/** Invite links for this dev shell: the mock db server is the job server's `mock` backend. */
+function devInviteUrl(invite: { jobId: number; secret: string }): string {
+  return `${window.location.origin}${window.location.pathname}?deployment=mock.${invite.jobId}&invite=${invite.secret}`;
+}
+
 function App() {
-  const coderKey = getOrCreateCoderKey();
-  const params = new URLSearchParams(window.location.search);
+  // Coder links (docs/coder-identity.md): ?deployment=mock.1&invite=...&participant=...
+  // or ?deployment=mock.1&transfer=... from "Continue on another device".
+  const [params, setParams] = useState(() => new URLSearchParams(window.location.search));
   const inviteSecret = params.get("invite") ?? "demo-secret";
   const deploymentId = params.get("deployment") ?? "mock.1";
-  const [view, setView] = useState<View>("admin");
+  const participantId = params.get("participant") ?? undefined;
+  const transferToken = params.get("transfer") ?? undefined;
+  const clearTransfer = useCallback(() => {
+    const next = new URLSearchParams(window.location.search);
+    next.delete("transfer");
+    const query = next.toString();
+    window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : ""));
+    setParams(next);
+  }, []);
+  const [view, setView] = useState<View>(params.has("invite") || params.has("transfer") ? "annotate" : "admin");
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
@@ -88,9 +93,15 @@ function App() {
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
         {view === "admin" ? (
-          <AdminApp client={adminClient} baseUrl={MOCK_SERVER_URL} />
+          <AdminApp client={adminClient} baseUrl={MOCK_SERVER_URL} inviteUrl={devInviteUrl} />
         ) : (
-          <JobRunner baseUrl={`${JOB_SERVER_URL}/d/${deploymentId}`} coderKey={coderKey} inviteSecret={inviteSecret} />
+          <JobRunner
+            baseUrl={`${JOB_SERVER_URL}/d/${deploymentId}`}
+            inviteSecret={inviteSecret}
+            participantId={participantId}
+            transferToken={transferToken}
+            onTransferRedeemed={clearTransfer}
+          />
         )}
       </div>
     </div>

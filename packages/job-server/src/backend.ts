@@ -10,14 +10,17 @@ import {
   type BackendCoderWrite,
   type BackendUnit,
   type DeploymentSpec,
+  type ResolveCoderRequest,
   type VariableValue,
 } from "@annotinder/contracts";
 
-/** An error that maps directly onto an HTTP response for the coder. */
+/** An error that maps directly onto an HTTP response for the coder: `{ error, code? }`. */
 export class HttpError extends Error {
   constructor(
     readonly status: 400 | 401 | 403 | 404 | 409 | 502 | 503,
     message: string,
+    /** Machine-readable code the client handles specially (contracts `CoderErrorCode`). */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -62,9 +65,14 @@ export class BackendClient {
 
     if (!res.ok) {
       const text = await res.text();
-      // 401/404 are meaningful to the coder (bad invite, unit removed); anything else is a db server failure.
-      const status = res.status === 401 || res.status === 404 ? res.status : 502;
-      throw new HttpError(status, `Db server ${init.method ?? "GET"} ${path} failed (${res.status}): ${text}`);
+      // 401/404/409 are meaningful to the coder (bad invite, unit removed, participant
+      // already has a session): pass on the db server's message and code. Anything
+      // else is a db server failure.
+      if (res.status === 401 || res.status === 404 || res.status === 409) {
+        const body = parseErrorBody(text);
+        throw new HttpError(res.status, body?.error ?? text, body?.code);
+      }
+      throw new HttpError(502, `Db server ${init.method ?? "GET"} ${path} failed (${res.status}): ${text}`);
     }
     if (!schema) return undefined as z.infer<S>;
     const parsed = schema.safeParse(await res.json());
@@ -85,11 +93,8 @@ export class BackendClient {
     return this.request(backendEndpoints.listCoders.path, BackendCoderSchema.array());
   }
 
-  resolveCoder(coderKey: string, inviteSecret?: string): Promise<BackendCoder> {
-    return this.request(backendEndpoints.resolveCoder.path, BackendCoderSchema, {
-      method: "POST",
-      body: { coderKey, inviteSecret },
-    });
+  resolveCoder(request: ResolveCoderRequest): Promise<BackendCoder> {
+    return this.request(backendEndpoints.resolveCoder.path, BackendCoderSchema, { method: "POST", body: request });
   }
 
   async putCoder(coderId: number, body: BackendCoderWrite): Promise<void> {
@@ -106,5 +111,17 @@ export class BackendClient {
       body: { variables },
       params: { unitId, coderId },
     });
+  }
+}
+
+function parseErrorBody(text: string): { error?: string; code?: string } | null {
+  try {
+    const body = JSON.parse(text) as { error?: unknown; code?: unknown };
+    return {
+      error: typeof body.error === "string" ? body.error : undefined,
+      code: typeof body.code === "string" ? body.code : undefined,
+    };
+  } catch {
+    return null;
   }
 }

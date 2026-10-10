@@ -175,11 +175,11 @@ async function createUnitset(name: string, externalIds: string[]) {
   return ids;
 }
 
-async function invite(variables?: Record<string, string>) {
+async function invite(variables?: Record<string, string>, extra: object = {}) {
   const res = await dbApp.request("/job/1/coders/invite", {
     method: "POST",
     headers: adminHeaders,
-    body: JSON.stringify({ label: "x", access: "user_decides", variables }),
+    body: JSON.stringify({ label: "x", variables, ...extra }),
   });
   return ((await res.json()) as { secret: string }).secret;
 }
@@ -290,5 +290,63 @@ describe("routing coders to unitsets", () => {
 
     const other = coder("other");
     expect((await other.next())!.externalId).toBe("unit-1"); // default branch: main
+  });
+});
+
+describe("sessions across devices", () => {
+  const raw = (headers: Record<string, string>, path: string, init: RequestInit = {}) =>
+    jobServer.request(`/d/mock.1${path}`, { ...init, headers: { "content-type": "application/json", ...headers } });
+
+  it("moves a session to another device with a one-time transfer link", async () => {
+    const phone = coder("phone-key");
+    const unit = await phone.next();
+    await phone.submit(unit!.id, sentiment("neutral"));
+
+    const transfer = (await (await phone.call("/transfer", { method: "POST" })).json()) as { token: string };
+    const redeem = () => raw({}, "/transfer/redeem", { method: "POST", body: JSON.stringify({ token: transfer.token }) });
+    const redeemed = await redeem();
+    expect(redeemed.status).toBe(200);
+    const { coderKey } = (await redeemed.json()) as { coderKey: string };
+    expect(coderKey).toBe("phone-key");
+
+    const laptop = coder(coderKey, null);
+    expect((await laptop.session()).progress[0].doneUnitIds).toEqual([unit!.id]);
+
+    const again = await redeem();
+    expect(again.status).toBe(404);
+    expect(await again.json()).toMatchObject({ code: "transfer_invalid" });
+  });
+
+  it("never resumes a participant's session from a link alone", async () => {
+    const secret = await invite(undefined, { participantFromUrl: true });
+    const headers = (key: string, extra: Record<string, string> = {}) => ({
+      "x-coder-key": key,
+      "x-invite-secret": secret,
+      "x-participant-id": "P123",
+      ...extra,
+    });
+
+    const first = await raw(headers("device-1"), "/session");
+    expect(first.status).toBe(200);
+    const firstCoder = ((await first.json()) as SessionResponse).coderId;
+
+    // Same participant link on a new device: explained refusal, not a resumed session.
+    const second = await raw(headers("device-2"), "/session");
+    expect(second.status).toBe(409);
+    expect(await second.json()).toMatchObject({ code: "participant_has_session" });
+
+    // Confirmed: a new, separate session with the same participant id.
+    const confirmed = await raw(headers("device-2", { "x-new-session": "1" }), "/session");
+    expect(confirmed.status).toBe(200);
+    expect(((await confirmed.json()) as SessionResponse).coderId).not.toBe(firstCoder);
+    const rows = db.prepare("SELECT participantId FROM coders WHERE participantId = 'P123'").all();
+    expect(rows).toHaveLength(2);
+  });
+
+  it("refuses invites that require login (not supported yet)", async () => {
+    const secret = await invite(undefined, { auth: "required" });
+    const res = await raw({ "x-coder-key": "k", "x-invite-secret": secret }, "/session");
+    expect(res.status).toBe(401);
+    expect(await res.json()).toMatchObject({ code: "auth_required" });
   });
 });

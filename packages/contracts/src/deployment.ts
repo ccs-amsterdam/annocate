@@ -82,6 +82,14 @@ export const ResolveCoderRequestSchema = z.object({
    * new coder's variables.
    */
   inviteSecret: z.string().optional(),
+  /** Participant id from the URL, for invites with `participantFromUrl` (ignored otherwise). */
+  participantId: z.string().min(1).max(256).optional(),
+  /**
+   * The coder confirmed starting a new session although their participant id
+   * already has one (on another device). Without it, the db server answers
+   * 409 `participant_has_session` instead of creating a second coder.
+   */
+  newSession: z.boolean().optional(),
 });
 export type ResolveCoderRequest = z.infer<typeof ResolveCoderRequestSchema>;
 

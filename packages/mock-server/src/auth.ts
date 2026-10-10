@@ -81,32 +81,73 @@ export interface CoderRow {
   variables: string;
   doneUnitIds: string;
   assignments: string;
+  participantId: string | null;
+}
+
+export interface ResolveError {
+  error: string;
+  status: 401 | 409;
+  code?: "participant_has_session" | "auth_required";
+}
+
+interface InviteRow {
+  id: number;
+  jobId: number;
+  access: string;
+  maxUses: number | null;
+  uses: number;
+  variables: string;
+  participantId: string | null;
+  participantFromUrl: number;
 }
 
 /**
  * Looks up the coder for a coder key, creating it from an invite secret on
- * first use. Returns an error message instead if that isn't possible. With
- * `jobId` set (backend API: the job server already knows the job), the
- * coder and invite must belong to that job.
+ * first use (docs/coder-identity.md §4). With `jobId` set (backend API: the
+ * job server already knows the job), the coder and invite must belong to it.
+ *
+ * A participant id is only a label: a new coder key for a participant that
+ * already has a session is refused (409 `participant_has_session`) unless
+ * the coder confirmed starting a new session.
  */
 export function resolveCoder(
   db: DatabaseSync,
   coderKey: string,
   inviteSecret: string | undefined,
   jobId?: number,
-): CoderRow | { error: string } {
+  options: { participantId?: string; newSession?: boolean } = {},
+): CoderRow | ResolveError {
   const coder = db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as CoderRow | undefined;
   if (coder) {
-    if (jobId !== undefined && coder.jobId !== jobId) return { error: "Coder key belongs to a different job" };
+    if (jobId !== undefined && coder.jobId !== jobId) return { error: "Coder key belongs to a different job", status: 401 };
     return coder;
   }
 
-  if (!inviteSecret) return { error: "Unknown coder; provide x-invite-secret to create one" };
-  const invite = db.prepare("SELECT * FROM invites WHERE secret = ?").get(inviteSecret) as
-    | { id: number; jobId: number; maxUses: number | null; uses: number; variables: string }
-    | undefined;
-  if (!invite || (jobId !== undefined && invite.jobId !== jobId)) return { error: "Invalid invite secret" };
-  if (invite.maxUses !== null && invite.uses >= invite.maxUses) return { error: "This invite has been used up" };
+  if (!inviteSecret) return { error: "Unknown coder; provide x-invite-secret to create one", status: 401 };
+  const invite = db.prepare("SELECT * FROM invites WHERE secret = ?").get(inviteSecret) as InviteRow | undefined;
+  if (!invite || (jobId !== undefined && invite.jobId !== jobId)) return { error: "Invalid invite secret", status: 401 };
+  if (invite.access === "required" || invite.access === "only_authenticated") {
+    return { error: "This invite requires login, which is not supported yet", status: 401, code: "auth_required" };
+  }
+
+  const participantId = invite.participantId ?? (invite.participantFromUrl ? options.participantId : undefined) ?? null;
+  const knownParticipant =
+    participantId !== null &&
+    !!db.prepare("SELECT 1 FROM coders WHERE jobId = ? AND participantId = ?").get(invite.jobId, participantId);
+  if (knownParticipant && !options.newSession) {
+    return {
+      error: "This participant already has a session on another device",
+      status: 409,
+      code: "participant_has_session",
+    };
+  }
+  // A new session of a known participant is the same person: it doesn't use up the invite.
+  if (!knownParticipant) {
+    if (invite.maxUses !== null && invite.uses >= invite.maxUses) {
+      return { error: "This invite has been used up", status: 401 };
+    }
+    db.prepare("UPDATE invites SET uses = uses + 1 WHERE id = ?").run(invite.id);
+  }
 
   // The invite's preset variables (e.g. `{ slot: "2" }`) become the coder's
   // values for the codebook's `auto` variables with `source: "invite"`.
@@ -114,12 +155,9 @@ export function resolveCoder(
   const variables = Object.fromEntries(
     Object.entries(presets).map(([name, code]) => [name, { done: true, skip: false, codes: [{ code }] }]),
   );
-  db.prepare("INSERT INTO coders (jobId, devKey, variables, doneUnitIds) VALUES (?, ?, ?, '{}')").run(
-    invite.jobId,
-    coderKey,
-    JSON.stringify(variables),
-  );
-  db.prepare("UPDATE invites SET uses = uses + 1 WHERE id = ?").run(invite.id);
+  db.prepare(
+    "INSERT INTO coders (jobId, devKey, participantId, variables, doneUnitIds) VALUES (?, ?, ?, ?, '{}')",
+  ).run(invite.jobId, coderKey, participantId, JSON.stringify(variables));
   return db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as unknown as CoderRow;
 }
 
@@ -136,8 +174,11 @@ export function requireCoder(db: DatabaseSync) {
     const coderKey = c.req.header("x-coder-key");
     if (!coderKey) return c.json({ error: "Missing x-coder-key header" }, 401);
 
-    const coder = resolveCoder(db, coderKey, c.req.header("x-invite-secret"));
-    if ("error" in coder) return c.json({ error: coder.error }, 401);
+    const coder = resolveCoder(db, coderKey, c.req.header("x-invite-secret"), undefined, {
+      participantId: c.req.header("x-participant-id"),
+      newSession: c.req.header("x-new-session") === "1",
+    });
+    if ("error" in coder) return c.json({ error: coder.error, code: coder.code }, coder.status);
 
     c.set("coder", coder);
     c.set("jobId", coder.jobId);

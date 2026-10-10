@@ -53,8 +53,9 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     const parsed = ResolveCoderRequestSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const coder = resolveCoder(db, parsed.data.coderKey, parsed.data.inviteSecret, c.get("jobId"));
-    if ("error" in coder) return c.json({ error: coder.error }, 401);
+    const { coderKey, inviteSecret, participantId, newSession } = parsed.data;
+    const coder = resolveCoder(db, coderKey, inviteSecret, c.get("jobId"), { participantId, newSession });
+    if ("error" in coder) return c.json({ error: coder.error, code: coder.code }, coder.status);
     return c.json(toBackendCoder(coder));
   });
 

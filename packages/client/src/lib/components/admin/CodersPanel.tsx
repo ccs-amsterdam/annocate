@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { CoderInviteResponse, CoderInviteWrite } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
 import { useCodersQuery, useInviteCoderMutation } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,23 @@ import { Input } from "@/components/ui/input";
  * old app had little equivalent UI to port (see the phase-5 research
  * summary in the design plan) -- this is a fresh, minimal implementation.
  */
-export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl: string }) {
+export function CodersPanel({
+  client,
+  baseUrl,
+  inviteUrl,
+}: {
+  client: AdminClient;
+  baseUrl: string;
+  /** Builds the link coders open for an invite (host-app specific). */
+  inviteUrl?: (invite: CoderInviteResponse) => string;
+}) {
   const codersQuery = useCodersQuery(client);
   const inviteCoder = useInviteCoderMutation(client);
 
   const [label, setLabel] = useState("");
-  const [access, setAccess] = useState<"only_authenticated" | "only_anonymous" | "user_decides">("user_decides");
+  const [auth, setAuth] = useState<CoderInviteWrite["auth"]>("none");
+  const [participant, setParticipant] = useState<"none" | "fixed" | "url">("none");
+  const [participantId, setParticipantId] = useState("");
   const [presets, setPresets] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
@@ -22,11 +34,14 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
   async function handleInvite() {
     const invite = await inviteCoder.mutateAsync({
       label,
-      access,
+      auth,
+      participantId: participant === "fixed" && participantId ? participantId : undefined,
+      participantFromUrl: participant === "url" || undefined,
       variables: parsePresets(presets),
       maxUses: maxUses === "" ? undefined : Number(maxUses),
     });
-    setLastInviteUrl(`${baseUrl}/invite/${invite.secret}`);
+    const url = inviteUrl ? inviteUrl(invite) : `${baseUrl}/invite/${invite.secret}`;
+    setLastInviteUrl(participant === "url" ? `${url}&participant=<id>` : url);
     setLabel("");
     setPresets("");
     setMaxUses("");
@@ -42,16 +57,30 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
           <Input placeholder="Label (e.g. 'Prolific batch 1')" value={label} onChange={(e) => setLabel(e.target.value)} />
           <select
             className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={access}
-            onChange={(e) => setAccess(e.target.value as typeof access)}
+            value={auth}
+            onChange={(e) => setAuth(e.target.value as typeof auth)}
           >
-            <option value="user_decides">Anonymous or authenticated</option>
-            <option value="only_authenticated">Authenticated only</option>
-            <option value="only_anonymous">Anonymous only</option>
+            <option value="none">No login</option>
+            <option value="optional">Login optional (not supported yet)</option>
+            <option value="required">Login required (not supported yet)</option>
           </select>
           <Button onClick={handleInvite} disabled={!label || inviteCoder.isPending}>
             {inviteCoder.isPending ? "Creating..." : "Create"}
           </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            value={participant}
+            onChange={(e) => setParticipant(e.target.value as typeof participant)}
+          >
+            <option value="none">No participant id</option>
+            <option value="fixed">Fixed participant id</option>
+            <option value="url">Participant id from URL</option>
+          </select>
+          {participant === "fixed" && (
+            <Input placeholder="Participant id" value={participantId} onChange={(e) => setParticipantId(e.target.value)} />
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Input
@@ -70,7 +99,9 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
         </div>
         <p className="text-[11px] text-muted-foreground">
           Presets set the codebook&apos;s auto variables with source &quot;Set by invitation&quot; for everyone using
-          this link. Use one link per coder (max uses 1) to give specific coders specific unitsets.
+          this link. Use one link per coder (e.g. with a fixed participant id) to give specific coders specific
+          unitsets. Without login, work stays on the device it was started on; coders can move it with
+          &quot;Continue on another device&quot;. A participant id is a label, never a way back into a session.
         </p>
         {lastInviteUrl && (
           <p className="break-all text-sm">
@@ -86,6 +117,7 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
           <thead>
             <tr className="border-b bg-muted/50 text-left">
               <th className="p-2">Coder</th>
+              <th className="p-2">Participant</th>
               <th className="p-2">Units done (per unitset)</th>
             </tr>
           </thead>
@@ -93,6 +125,7 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
             {(codersQuery.data ?? []).map((coder) => (
               <tr key={coder.id} className="border-b last:border-0">
                 <td className="p-2">{coder.email ?? `#${coder.id} (anonymous)`}</td>
+                <td className="p-2">{coder.participantId ?? "-"}</td>
                 <td className="p-2">
                   {Object.entries(coder.unitsDone)
                     .map(([set, n]) => `${set}: ${n}`)

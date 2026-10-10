@@ -10,32 +10,43 @@ function toProgress(row: CoderRow): CoderProgress {
   const doneUnitIds = JSON.parse(row.doneUnitIds) as Record<string, number[]>;
   const unitsDone: Record<string, number> = {};
   for (const [unitset, ids] of Object.entries(doneUnitIds)) unitsDone[unitset] = ids.length;
-  return { id: row.id, email: row.email ?? undefined, unitsDone };
+  return { id: row.id, email: row.email ?? undefined, participantId: row.participantId ?? undefined, unitsDone };
 }
 
 interface InviteRow {
   id: number;
   jobId: number;
   label: string;
-  access: CoderInviteResponse["access"];
+  access: string;
   secret: string;
   emails: string | null;
   maxUses: number | null;
   uses: number;
   variables: string;
+  participantId: string | null;
+  participantFromUrl: number;
 }
+
+/** Invites created before `access` was renamed to `auth`. */
+const LEGACY_ACCESS: Record<string, CoderInviteResponse["auth"]> = {
+  only_anonymous: "none",
+  user_decides: "optional",
+  only_authenticated: "required",
+};
 
 function toInviteResponse(row: InviteRow): CoderInviteResponse {
   return {
     id: row.id,
     jobId: row.jobId,
     label: row.label,
-    access: row.access,
+    auth: LEGACY_ACCESS[row.access] ?? (row.access as CoderInviteResponse["auth"]),
     secret: row.secret,
     uses: row.uses,
     ...(row.emails ? { emails: JSON.parse(row.emails) } : {}),
     ...(row.maxUses !== null ? { maxUses: row.maxUses } : {}),
     variables: JSON.parse(row.variables),
+    ...(row.participantId !== null ? { participantId: row.participantId } : {}),
+    ...(row.participantFromUrl ? { participantFromUrl: true } : {}),
   };
 }
 
@@ -53,10 +64,21 @@ export function coderRoutes(db: DatabaseSync) {
 
     const jobId = c.get("jobId");
     const secret = randomBytes(16).toString("hex");
-    const { label, access, emails, maxUses, variables } = parsed.data;
+    const { label, auth, emails, maxUses, variables, participantId, participantFromUrl } = parsed.data;
     db.prepare(
-      "INSERT INTO invites (jobId, label, access, secret, emails, maxUses, variables) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    ).run(jobId, label, access, secret, emails ? JSON.stringify(emails) : null, maxUses ?? null, JSON.stringify(variables ?? {}));
+      `INSERT INTO invites (jobId, label, access, secret, emails, maxUses, variables, participantId, participantFromUrl)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      jobId,
+      label,
+      auth,
+      secret,
+      emails ? JSON.stringify(emails) : null,
+      maxUses ?? null,
+      JSON.stringify(variables ?? {}),
+      participantId ?? null,
+      participantFromUrl ? 1 : 0,
+    );
     const row = db.prepare("SELECT * FROM invites WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as unknown as InviteRow;
     return c.json(toInviteResponse(row), 201);
   });

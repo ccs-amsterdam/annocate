@@ -124,7 +124,7 @@ export function seed(db: DatabaseSync): void {
   db.prepare("INSERT INTO invites (jobId, label, access, secret) VALUES (?, ?, ?, ?)").run(
     jobId,
     "Demo invite",
-    "user_decides",
+    "none",
     "demo-secret",
   );
 }
