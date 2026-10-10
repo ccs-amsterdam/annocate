@@ -6,6 +6,7 @@ import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
 import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue.js";
 import { SessionResponseSchema } from "../session.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
+import { DeploymentWriteSchema, DeploymentResponseSchema, DeploymentStatusSchema } from "../deployment.js";
 
 /**
  * The full API contract (design plan §3), as a registry of
@@ -109,6 +110,28 @@ export const endpoints = {
     path: "/job/:jobId/coders/invite",
     request: CoderInviteWriteSchema,
     response: CoderInviteResponseSchema,
+  },
+
+  // Deploying a job to a job server (docs/architecture.md). The db server
+  // stores the deployment and notifies the job server; status is proxied
+  // from the job server.
+  getDeployment: {
+    method: "GET",
+    path: "/job/:jobId/deployment",
+    request: z.void(),
+    response: DeploymentResponseSchema.nullable(),
+  },
+  putDeployment: {
+    method: "PUT",
+    path: "/job/:jobId/deployment",
+    request: DeploymentWriteSchema,
+    response: DeploymentResponseSchema,
+  },
+  getDeploymentStatus: {
+    method: "GET",
+    path: "/job/:jobId/deployment/status",
+    request: z.void(),
+    response: DeploymentStatusSchema,
   },
 } as const;
 

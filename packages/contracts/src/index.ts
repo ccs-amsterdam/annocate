@@ -21,6 +21,7 @@ export * from "./job.js";
 export * from "./coder.js";
 export * from "./variableValue.js";
 export * from "./session.js";
+export * from "./deployment.js";
 
 export * from "./endpoints/index.js";
 

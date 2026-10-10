@@ -55,8 +55,25 @@ export function createDb(path = ":memory:"): DatabaseSync {
       jobId INTEGER NOT NULL,
       externalId TEXT NOT NULL,
       data TEXT NOT NULL,
-      immutable INTEGER NOT NULL DEFAULT 0,
-      variables TEXT NOT NULL DEFAULT '{}'
+      immutable INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS annotations (
+      jobId INTEGER NOT NULL,
+      unitId INTEGER NOT NULL,
+      coderId INTEGER NOT NULL,
+      variables TEXT NOT NULL,
+      updated TEXT NOT NULL,
+      PRIMARY KEY (unitId, coderId)
+    );
+
+    CREATE TABLE IF NOT EXISTS deployments (
+      jobId INTEGER PRIMARY KEY,
+      codebookId INTEGER NOT NULL,
+      distribution TEXT NOT NULL DEFAULT '{}',
+      active INTEGER NOT NULL DEFAULT 1,
+      version INTEGER NOT NULL,
+      updated TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS coders (

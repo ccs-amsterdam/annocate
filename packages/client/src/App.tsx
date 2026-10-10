@@ -10,6 +10,9 @@ import { LayoutDashboard, PenTool } from "lucide-react";
 // import { JobRunner } / { AdminApp } (or their building blocks) into a host
 // app instead -- see design plan §7.
 const MOCK_SERVER_URL = import.meta.env.VITE_MOCK_SERVER_URL ?? "http://localhost:8787";
+// Coders talk to the job server, not the db server (docs/architecture.md).
+// The seed demo job is deployed as `mock.1`.
+const JOB_SERVER_URL = import.meta.env.VITE_JOB_SERVER_URL ?? "http://localhost:8788";
 
 function getOrCreateCoderKey(): string {
   const storageKey = "annotinder-client:dev-coder-key";
@@ -31,7 +34,9 @@ type View = "admin" | "annotate";
 
 function App() {
   const coderKey = getOrCreateCoderKey();
-  const inviteSecret = new URLSearchParams(window.location.search).get("invite") ?? "demo-secret";
+  const params = new URLSearchParams(window.location.search);
+  const inviteSecret = params.get("invite") ?? "demo-secret";
+  const deploymentId = params.get("deployment") ?? "mock.1";
   const [view, setView] = useState<View>("admin");
 
   return (
@@ -85,7 +90,7 @@ function App() {
         {view === "admin" ? (
           <AdminApp client={adminClient} baseUrl={MOCK_SERVER_URL} />
         ) : (
-          <JobRunner baseUrl={MOCK_SERVER_URL} coderKey={coderKey} inviteSecret={inviteSecret} />
+          <JobRunner baseUrl={`${JOB_SERVER_URL}/d/${deploymentId}`} coderKey={coderKey} inviteSecret={inviteSecret} />
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { CodebookItemsSchema } from "@annotinder/contracts";
+import { putDeployment } from "./deployments.js";
 
 /** Seeds a freshly-created (schema-migrated, empty) db with one demo job. */
 export function seed(db: DatabaseSync): void {
@@ -116,6 +117,9 @@ export function seed(db: DatabaseSync): void {
     JSON.stringify(items),
     created,
   );
+
+  const codebookId = (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+  putDeployment(db, jobId, { codebookId, distribution: { main: { mode: "per_coder" } }, active: true });
 
   db.prepare("INSERT INTO invites (jobId, label, access, secret) VALUES (?, ?, ?, ?)").run(
     jobId,

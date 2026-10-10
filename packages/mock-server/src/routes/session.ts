@@ -11,6 +11,7 @@ import {
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireCoder } from "../auth.js";
+import { getAnnotation, putAnnotation } from "../db/annotations.js";
 
 interface CodebookRow {
   id: number;
@@ -32,7 +33,6 @@ interface UnitRow {
   externalId: string;
   data: string;
   immutable: number;
-  variables: string;
 }
 
 function toCodebookResponse(row: CodebookRow): CodebookResponse {
@@ -165,12 +165,11 @@ export function sessionRoutes(db: DatabaseSync) {
       | undefined;
     if (!unitRow) return c.json({ error: `Unit ${nextUnitId} referenced by unitset not found` }, 500);
 
-    const variablesByCoder = JSON.parse(unitRow.variables) as Record<string, unknown>;
     const response: CoderUnitResponse = {
       id: unitRow.id,
       externalId: unitRow.externalId,
       data: JSON.parse(unitRow.data),
-      variables: (variablesByCoder[coder.id] as CoderUnitResponse["variables"]) ?? {},
+      variables: getAnnotation(db, unitRow.id, coder.id) ?? {},
     };
     return c.json(response);
   });
@@ -188,34 +187,7 @@ export function sessionRoutes(db: DatabaseSync) {
       | undefined;
     if (!unitRow) return c.json({ error: "Unit not found" }, 404);
 
-    const variablesByCoder = JSON.parse(unitRow.variables) as Record<string, unknown>;
-    variablesByCoder[coder.id] = variables;
-    db.prepare("UPDATE units SET variables = ?, immutable = 1 WHERE jobId = ? AND id = ?").run(
-      JSON.stringify(variablesByCoder),
-      jobId,
-      unitId,
-    );
-
-    // Mark this unit done, for this coder, in every unitset that contains it
-    // and in the global all-units progress list.
-    const allDone = Object.values(variables).every((v) => v.done);
-    if (allDone) {
-      const doneUnitIds = JSON.parse(coder.doneUnitIds) as Record<string, number[]>;
-      const doneAll = doneUnitIds["__all__"] ?? [];
-      if (!doneAll.includes(unitId)) {
-        doneUnitIds["__all__"] = [...doneAll, unitId];
-      }
-
-      const unitsets = db.prepare("SELECT * FROM unitsets WHERE jobId = ?").all(jobId) as unknown as UnitsetRow[];
-      for (const unitset of unitsets) {
-        const ids: number[] = JSON.parse(unitset.unitIds);
-        if (!ids.includes(unitId)) continue;
-        const done = doneUnitIds[unitset.name] ?? [];
-        if (!done.includes(unitId)) doneUnitIds[unitset.name] = [...done, unitId];
-      }
-      db.prepare("UPDATE coders SET doneUnitIds = ? WHERE id = ?").run(JSON.stringify(doneUnitIds), coder.id);
-    }
-
+    putAnnotation(db, jobId, unitId, coder.id, variables);
     return c.body(null, 204);
   });
 

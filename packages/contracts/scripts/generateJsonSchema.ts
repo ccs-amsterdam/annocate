@@ -5,25 +5,39 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import { endpoints } from "../src/endpoints/index.js";
+import { backendEndpoints } from "../src/deployment.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "../dist/json-schema");
 
 mkdirSync(outDir, { recursive: true });
 
-const combined: Record<string, unknown> = {};
-
-for (const [name, def] of Object.entries(endpoints)) {
-  combined[name] = {
-    method: def.method,
-    path: def.path,
-    request: zodToJsonSchema(def.request, `${name}Request`),
-    response: zodToJsonSchema(def.response, `${name}Response`),
-  };
+// zod v4's native converter (zod-to-json-schema only understands zod v3 and
+// silently emitted empty schemas). Things JSON Schema can't express (dates,
+// custom refinements like codebook nesting rules) degrade to a permissive
+// schema; servers that need them should port the corresponding check.
+function toJsonSchema(schema: z.ZodType, io: "input" | "output") {
+  if (schema instanceof z.ZodVoid) return null;
+  return z.toJSONSchema(schema, { io, unrepresentable: "any" });
 }
 
-const outFile = join(outDir, "endpoints.json");
-writeFileSync(outFile, JSON.stringify(combined, null, 2));
-console.log(`Wrote JSON Schema for ${Object.keys(endpoints).length} endpoints to ${outFile}`);
+// `endpoints.json`: the researcher-facing API every db server implements.
+// `backend-endpoints.json`: the API a db server exposes to the job server.
+const registries = { endpoints, "backend-endpoints": backendEndpoints };
+
+for (const [file, registry] of Object.entries(registries)) {
+  const combined: Record<string, unknown> = {};
+  for (const [name, def] of Object.entries(registry)) {
+    combined[name] = {
+      method: def.method,
+      path: def.path,
+      request: toJsonSchema(def.request, "input"),
+      response: toJsonSchema(def.response, "output"),
+    };
+  }
+  const outFile = join(outDir, `${file}.json`);
+  writeFileSync(outFile, JSON.stringify(combined, null, 2));
+  console.log(`Wrote JSON Schema for ${Object.keys(registry).length} endpoints to ${outFile}`);
+}

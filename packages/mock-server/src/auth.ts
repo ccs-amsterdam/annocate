@@ -83,6 +83,37 @@ export interface CoderRow {
 }
 
 /**
+ * Looks up the coder for a coder key, creating it from an invite secret on
+ * first use. Returns an error message instead if that isn't possible. With
+ * `jobId` set (backend API: the job server already knows the job), the
+ * coder and invite must belong to that job.
+ */
+export function resolveCoder(
+  db: DatabaseSync,
+  coderKey: string,
+  inviteSecret: string | undefined,
+  jobId?: number,
+): CoderRow | { error: string } {
+  const coder = db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as CoderRow | undefined;
+  if (coder) {
+    if (jobId !== undefined && coder.jobId !== jobId) return { error: "Coder key belongs to a different job" };
+    return coder;
+  }
+
+  if (!inviteSecret) return { error: "Unknown coder; provide x-invite-secret to create one" };
+  const invite = db.prepare("SELECT * FROM invites WHERE secret = ?").get(inviteSecret) as
+    | { jobId: number }
+    | undefined;
+  if (!invite || (jobId !== undefined && invite.jobId !== jobId)) return { error: "Invalid invite secret" };
+
+  db.prepare("INSERT INTO coders (jobId, devKey, variables, doneUnitIds) VALUES (?, ?, '{}', '{}')").run(
+    invite.jobId,
+    coderKey,
+  );
+  return db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as unknown as CoderRow;
+}
+
+/**
  * Hono middleware: resolves (creating if necessary, via an invite secret)
  * the requesting coder. Coder-facing routes are unscoped in the URL (no
  * `/job/:jobId` prefix) -- a coder's job is implied by their existing coder
@@ -95,25 +126,30 @@ export function requireCoder(db: DatabaseSync) {
     const coderKey = c.req.header("x-coder-key");
     if (!coderKey) return c.json({ error: "Missing x-coder-key header" }, 401);
 
-    let coder = db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as CoderRow | undefined;
-
-    if (!coder) {
-      const secret = c.req.header("x-invite-secret");
-      if (!secret) return c.json({ error: "Unknown coder; provide x-invite-secret to create one" }, 401);
-      const invite = db.prepare("SELECT * FROM invites WHERE secret = ?").get(secret) as
-        | { jobId: number }
-        | undefined;
-      if (!invite) return c.json({ error: "Invalid invite secret" }, 401);
-
-      db.prepare("INSERT INTO coders (jobId, devKey, variables, doneUnitIds) VALUES (?, ?, '{}', '{}')").run(
-        invite.jobId,
-        coderKey,
-      );
-      coder = db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as unknown as CoderRow;
-    }
+    const coder = resolveCoder(db, coderKey, c.req.header("x-invite-secret"));
+    if ("error" in coder) return c.json({ error: coder.error }, 401);
 
     c.set("coder", coder);
     c.set("jobId", coder.jobId);
+    await next();
+  };
+}
+
+/**
+ * Hono middleware for the backend API (routes/backend.ts): only the job
+ * server may call it, authenticated with the shared secret as a bearer
+ * token. Dev-grade (constant secret, no request signing) like the rest of
+ * this file.
+ */
+export function requireJobServer(db: DatabaseSync, secret: string) {
+  return async (c: Context, next: Next) => {
+    if (c.req.header("authorization") !== `Bearer ${secret}`) return c.json({ error: "Unauthorized" }, 401);
+
+    const jobId = Number(c.req.param("jobId"));
+    if (!Number.isInteger(jobId)) return c.json({ error: "Invalid job id" }, 400);
+    const job = db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(jobId);
+    if (!job) return c.json({ error: "Job not found" }, 404);
+    c.set("jobId", jobId);
     await next();
   };
 }
