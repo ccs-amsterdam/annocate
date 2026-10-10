@@ -57,21 +57,34 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
 });
 
 /**
- * NEW variable type (did not exist in old design, see design plan §2/§10.b):
- * an "auto" variable whose value is assigned automatically rather than asked
- * of the coder -- either a random draw (e.g. for experimental condition
- * assignment) or read from a URL parameter at session start.
+ * An "auto" variable: assigned rather than asked. Used for experimental
+ * conditions and for routing coders to unitsets (unit_loop `when` and
+ * `{placeholders}`, see unitLoop.ts). Assigned once, on the server, when the
+ * coder starts, and never changed by the coder afterwards.
+ *
+ * - `random`:    a (weighted) random draw from `options`
+ * - `balanced`:  the option fewest coders have so far (e.g. spread coders over parts)
+ * - `invite`:    the value preset on the coder's invitation; if the invitation
+ *                doesn't set it, `fallback` decides (default: no value)
+ * - `url_param`: read from a URL query param at session start (client side)
  */
-export const AutoTypeSchema = z.object({
-  type: z.literal("auto"),
-  source: z.enum(["random", "url_param"]),
-  /** Required when source = "url_param": the URL query param to read the value from. */
-  urlParam: z.string().optional(),
-  /** Required when source = "random": the possible values to draw from (optionally weighted). */
-  options: z
-    .array(z.object({ code: z.string(), weight: z.number().positive().optional() }))
-    .optional(),
-});
+export const AutoTypeSchema = z
+  .object({
+    type: z.literal("auto"),
+    source: z.enum(["random", "balanced", "invite", "url_param"]),
+    /** Required when source = "url_param": the URL query param to read the value from. */
+    urlParam: z.string().optional(),
+    /** The possible values. Required for random/balanced/invite. */
+    options: z
+      .array(z.object({ code: z.string().min(1), weight: z.number().positive().optional() }))
+      .optional(),
+    /** For source = "invite": how to assign a value when the invitation doesn't set one. */
+    fallback: z.enum(["random", "balanced"]).optional(),
+  })
+  .refine((v) => v.source === "url_param" || (v.options?.length ?? 0) > 0, {
+    message: "options are required for random, balanced and invite sources",
+    path: ["options"],
+  });
 
 // ---- annotation-in-unit answer types (only valid on unit_variable items) ----
 

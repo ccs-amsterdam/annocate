@@ -1,8 +1,11 @@
-import type {
-  CodebookItem,
-  UnitsetResponse,
-  CodebookValidationIssue,
+import {
+  ALL_UNITS_UNITSET,
+  type CodebookItem,
+  type UnitLoopItem,
+  type UnitsetResponse,
+  type CodebookValidationIssue,
 } from "@annotinder/contracts";
+import { UnitLoopForm } from "./UnitLoopForm";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -45,6 +48,7 @@ export function defaultItemForType(
       return {
         type: "unit_loop",
         name,
+        units: [{ sources: [{ unitset: ALL_UNITS_UNITSET }] }],
         layout: { template: "" },
         children: [
           {
@@ -68,6 +72,7 @@ export function ItemForm({
   item,
   unitsets,
   unitVariableNames = [],
+  coderVariableNames = [],
   validationIssues = [],
   isInsideLoop = false,
   onChange,
@@ -75,6 +80,8 @@ export function ItemForm({
   item: CodebookItem;
   unitsets: UnitsetResponse[];
   unitVariableNames?: string[];
+  /** Coder-level variables defined before this item (for unit_loop branch conditions). */
+  coderVariableNames?: string[];
   validationIssues?: CodebookValidationIssue[];
   isInsideLoop?: boolean;
   onChange: (updated: CodebookItem) => void;
@@ -85,7 +92,6 @@ export function ItemForm({
   };
 
   const nameError = getFieldError("name");
-  const unitsetError = getFieldError("unitset");
   const templateError = getFieldError("template");
   const expressionError = getFieldError("expression");
 
@@ -142,30 +148,13 @@ export function ItemForm({
 
       {item.type === "unit_loop" && (
         <div className="flex flex-col gap-4 border-t border-border/60 pt-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">Unitset</label>
-            <select
-              className={`h-9 rounded-md border bg-background px-3 text-sm ${
-                unitsetError ? "border-destructive" : "border-input"
-              }`}
-              value={(item as any).unitset}
-              onChange={(e) => onChange({ ...item, unitset: e.target.value } as CodebookItem)}
-            >
-              <option value="">Select a unitset...</option>
-              {unitsets.map((u) => (
-                <option key={u.name} value={u.name}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {unitsetError ? (
-              <p className="text-xs text-destructive">{unitsetError}</p>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">
-                The unitset this loop iterates over.
-              </p>
-            )}
-          </div>
+          <UnitLoopForm
+            loop={item as UnitLoopItem}
+            unitsets={unitsets}
+            coderVariableNames={coderVariableNames}
+            validationIssues={validationIssues}
+            onChange={(loop) => onChange(loop)}
+          />
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-foreground">Template</label>

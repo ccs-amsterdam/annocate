@@ -2,20 +2,24 @@ import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import {
   BackendAnnotationWriteSchema,
-  BackendCoderVariablesWriteSchema,
+  BackendCoderWriteSchema,
   ResolveCoderRequestSchema,
   type BackendAnnotation,
+  type BackendCoder,
   type BackendUnit,
-  type ResolveCoderResponse,
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
-import { requireJobServer, resolveCoder } from "../auth.js";
+import { requireJobServer, resolveCoder, type CoderRow } from "../auth.js";
 import { listAnnotations, putAnnotation } from "../db/annotations.js";
 import { getDeploymentSpec } from "../db/deployments.js";
 
 // The backend API (contracts `backendEndpoints`): what a db server exposes to
 // the job server. The job server holds no state of its own that it can't
 // rebuild from these endpoints (docs/architecture.md).
+
+function toBackendCoder(row: CoderRow): BackendCoder {
+  return { coderId: row.id, variables: JSON.parse(row.variables), assignments: JSON.parse(row.assignments) };
+}
 
 export function backendRoutes(db: DatabaseSync, secret: string) {
   const app = new Hono<HonoEnv>();
@@ -40,23 +44,32 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     return c.json(units);
   });
 
+  app.get("/coders", (c) => {
+    const rows = db.prepare("SELECT * FROM coders WHERE jobId = ? ORDER BY id").all(c.get("jobId")) as unknown as CoderRow[];
+    return c.json(rows.map(toBackendCoder));
+  });
+
   app.post("/coders/resolve", async (c) => {
     const parsed = ResolveCoderRequestSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const coder = resolveCoder(db, parsed.data.coderKey, parsed.data.inviteSecret, c.get("jobId"));
     if ("error" in coder) return c.json({ error: coder.error }, 401);
-    const response: ResolveCoderResponse = { coderId: coder.id, variables: JSON.parse(coder.variables) };
-    return c.json(response);
+    return c.json(toBackendCoder(coder));
   });
 
-  app.put("/coders/:coderId/variables", async (c) => {
-    const parsed = BackendCoderVariablesWriteSchema.safeParse(await c.req.json());
+  app.put("/coders/:coderId", async (c) => {
+    const parsed = BackendCoderWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const result = db
-      .prepare("UPDATE coders SET variables = ? WHERE jobId = ? AND id = ?")
-      .run(JSON.stringify(parsed.data.variables), c.get("jobId"), Number(c.req.param("coderId")));
+      .prepare("UPDATE coders SET variables = ?, assignments = ? WHERE jobId = ? AND id = ?")
+      .run(
+        JSON.stringify(parsed.data.variables),
+        JSON.stringify(parsed.data.assignments),
+        c.get("jobId"),
+        Number(c.req.param("coderId")),
+      );
     if (result.changes === 0) return c.json({ error: "Coder not found" }, 404);
     return c.body(null, 204);
   });

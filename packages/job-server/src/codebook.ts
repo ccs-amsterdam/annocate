@@ -1,5 +1,4 @@
 import {
-  ALL_UNITS_UNITSET,
   type CodebookItem,
   type TopLevelItem,
   type UnitLoopItem,
@@ -16,13 +15,7 @@ export type VariableType = UnitVariableType | UserVariableType;
 
 export interface LoopInfo {
   loop: UnitLoopItem;
-  unitset: string;
   variables: Map<string, VariableType>;
-}
-
-/** Maps a unit_loop's (or client-supplied) unitset name to the spec's unitset name. */
-export function normalizeUnitset(name: string | undefined): string {
-  return !name || name === "default" ? ALL_UNITS_UNITSET : name;
 }
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
@@ -32,7 +25,7 @@ export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
       if (item.type === "unit_loop") {
         const variables = new Map<string, VariableType>();
         collectQuestions(item.children as CodebookItem[], variables);
-        loops.push({ loop: item, unitset: normalizeUnitset(item.unitset), variables });
+        loops.push({ loop: item, variables });
       } else if (item.type === "condition") {
         walk(item.children);
       }
@@ -106,6 +99,22 @@ function allowedCodes(variable: VariableType): Set<string> | null {
   if (variable.type === "auto") return variable.options ? new Set(variable.options.map((o) => o.code)) : null;
   if ("codes" in variable) return new Set(variable.codes.map((c) => c.code));
   return null;
+}
+
+/** The code of a single-valued answer (what `when` conditions and `{placeholders}` compare against). */
+export function codeOf(value: VariableValue | undefined): string | undefined {
+  if (!value || value.skip) return undefined;
+  return value.codes?.[0]?.code;
+}
+
+/** variable name -> code, for all single-coded coder variables. */
+export function variableCodes(variables: Record<string, VariableValue>): Record<string, string | undefined> {
+  return Object.fromEntries(Object.entries(variables).map(([name, value]) => [name, codeOf(value)]));
+}
+
+/** A coder variable value holding one code, as stored for assigned `auto` variables. */
+export function codeValue(code: string): VariableValue {
+  return { done: true, skip: false, codes: [{ code }] };
 }
 
 /** A canonical string of a variable's answer, used to test agreement between coders. */

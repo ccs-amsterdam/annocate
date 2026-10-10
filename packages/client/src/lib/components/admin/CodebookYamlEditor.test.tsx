@@ -91,7 +91,7 @@ describe("CodebookYamlEditor", () => {
         {
           name: "main",
           type: "unit_loop",
-          unitset: "main",
+          units: [{ sources: [{ unitset: "main" }] }],
           layout: { template: "# {{ $unit.text }}" },
           children: [
             {

@@ -1,22 +1,25 @@
 import {
-  DistributionRuleSchema,
+  branchMatches,
+  resolveUnitsetName,
+  type BackendCoder,
   type BackendUnit,
   type CoderUnitResponse,
   type DeploymentSpec,
   type DeploymentStatus,
+  type DynamicSource,
   type SessionResponse,
   type TopLevelItem,
   type VariableValue,
 } from "@annotinder/contracts";
 import { BackendClient, HttpError } from "./backend.js";
-import { UnitsetQueue } from "./distribution.js";
+import { Codings, UnitPool, pickNext } from "./distribution.js";
 import {
-  agreementKey,
+  codeValue,
   collectCoderVariables,
   collectLoops,
   isDone,
-  normalizeUnitset,
   validateVariables,
+  variableCodes,
   type LoopInfo,
   type VariableType,
 } from "./codebook.js";
@@ -26,9 +29,10 @@ export interface RuntimeOptions {
   specTtlMs: number;
   /** How long unit content stays cached. Units are immutable once deployed, so this only bounds retention. */
   unitTtlMs: number;
-  /** Units fetched ahead of the one a coder asked for (per_coder mode). */
+  /** Units fetched ahead of the one a coder asked for. */
   prefetch: number;
   now: () => number;
+  random: () => number;
 }
 
 export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
@@ -36,28 +40,36 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
   unitTtlMs: 30 * 60_000,
   prefetch: 3,
   now: () => Date.now(),
+  random: Math.random,
 };
 
-export interface Coder {
-  coderId: number;
-  variables: Record<string, VariableValue>;
-}
+/** A coder as held by the runtime: what the db server stores for them. */
+export type Coder = BackendCoder;
+
+type AutoVariable = Extract<VariableType, { type: "auto" }>;
 
 /**
  * Everything the job server knows about one deployed job. All of it is a
- * cache of the db server (`load` rebuilds it from scratch) except crowd
+ * cache of the db server (`load` rebuilds it from scratch) except dynamic
  * leases, which are disposable. This is the unit that would live in one
  * Cloudflare Durable Object per deployment; on Node it is one object in
  * memory (see registry.ts).
  */
 export class DeploymentRuntime {
   private spec!: DeploymentSpec;
-  private loops: LoopInfo[] = [];
-  private queues = new Map<string, UnitsetQueue>();
+  private loops = new Map<string, LoopInfo>();
   private coderVariableTypes = new Map<string, VariableType>();
-  /** coderId -> unitId -> variables. The coder's own annotations, to return with a unit. */
+  private autoVariables: [string, AutoVariable][] = [];
+  private unitsets = new Map<string, number[]>();
+  /** Units the db server no longer has. */
+  private removedUnits = new Set<number>();
+  private codings = new Codings();
+  /** `<loop>/<unitset>/<dynamic rule>` -> pool, created when the first coder is routed to it. */
+  private pools = new Map<string, UnitPool>();
+  /** coderId -> unitId -> variables: the coder's own (also unfinished) annotations, returned with a unit. */
   private annotations = new Map<number, Map<number, Record<string, VariableValue>>>();
-  private coders = new Map<string, Coder>();
+  private coders = new Map<number, Coder>();
+  private coderKeys = new Map<string, number>();
   private units = new Map<number, { unit: BackendUnit; fetchedAt: number }>();
   private specCheckedAt = 0;
   private loadedAt = 0;
@@ -69,12 +81,20 @@ export class DeploymentRuntime {
     private options: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
   ) {}
 
+  // --- state ------------------------------------------------------------------
+
   /** (Re)builds all state from the db server. */
   async load(): Promise<void> {
-    const [spec, annotations] = await Promise.all([this.backend.getDeployment(), this.backend.listAnnotations()]);
+    const [spec, annotations, coders] = await Promise.all([
+      this.backend.getDeployment(),
+      this.backend.listAnnotations(),
+      this.backend.listCoders(),
+    ]);
     this.applySpec(spec);
+    this.codings = new Codings();
     this.annotations.clear();
     for (const a of annotations) this.applyAnnotation(a.coderId, a.unitId, a.variables);
+    this.coders = new Map(coders.map((c) => [c.coderId, c]));
     this.loadedAt = this.options.now();
   }
 
@@ -98,38 +118,73 @@ export class DeploymentRuntime {
     this.spec = spec;
     this.specCheckedAt = this.options.now();
     const items = spec.codebook.items as TopLevelItem[];
-    this.loops = collectLoops(items);
+    this.loops = new Map(collectLoops(items).map((l) => [l.loop.name, l]));
     this.coderVariableTypes = collectCoderVariables(items);
-    this.queues.clear();
-    for (const { loop, unitset } of this.loops) {
-      if (this.queues.has(unitset)) continue;
-      const unitIds = spec.unitsets.find((u) => u.name === unitset)?.unitIds ?? [];
-      const rule = spec.distribution[unitset] ?? DistributionRuleSchema.parse({ mode: "per_coder" });
-      this.queues.set(
-        unitset,
-        new UnitsetQueue(unitset, unitIds, rule, { randomize: !!loop.randomizeUnits, seed: spec.jobId * 1000 }),
-      );
-    }
+    this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
+    this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
+    this.pools.clear();
+    this.removedUnits.clear();
   }
 
   private applyAnnotation(coderId: number, unitId: number, variables: Record<string, VariableValue>): void {
     let own = this.annotations.get(coderId);
     if (!own) this.annotations.set(coderId, (own = new Map()));
     own.set(unitId, variables);
-    if (!isDone(variables)) return;
-    for (const queue of this.queues.values()) {
-      const rule = queue.rule;
-      const key = rule.mode === "crowd" && rule.agreement ? agreementKey(variables, rule.agreement.variable) : null;
-      queue.recordCoding(coderId, unitId, key);
-    }
+    if (isDone(variables)) this.codings.record(coderId, unitId, variables);
   }
 
+  // --- coders -----------------------------------------------------------------
+
   async resolveCoder(coderKey: string, inviteSecret?: string): Promise<Coder> {
-    const cached = this.coders.get(coderKey);
-    if (cached) return cached;
+    const known = this.coderKeys.get(coderKey);
+    if (known !== undefined) return this.coders.get(known)!;
     const coder = await this.backend.resolveCoder(coderKey, inviteSecret);
-    this.coders.set(coderKey, coder);
+    this.coders.set(coder.coderId, coder);
+    this.coderKeys.set(coderKey, coder.coderId);
+    await this.assignAutoVariables(coder);
     return coder;
+  }
+
+  /**
+   * Assigns server-side `auto` variables (random / balanced / invite
+   * fallback) the coder doesn't have yet. Once assigned they never change.
+   */
+  private async assignAutoVariables(coder: Coder): Promise<void> {
+    let changed = false;
+    for (const [name, variable] of this.autoVariables) {
+      if (variableCodes(coder.variables)[name] !== undefined) continue;
+      const method = variable.source === "invite" ? variable.fallback : variable.source;
+      if (method !== "random" && method !== "balanced") continue;
+      const options = variable.options ?? [];
+      if (options.length === 0) continue;
+      const code = method === "random" ? this.drawWeighted(options) : this.leastUsed(name, options);
+      coder.variables = { ...coder.variables, [name]: codeValue(code) };
+      changed = true;
+    }
+    if (changed) await this.saveCoder(coder);
+  }
+
+  private drawWeighted(options: { code: string; weight?: number }[]): string {
+    const total = options.reduce((n, o) => n + (o.weight ?? 1), 0);
+    let r = this.options.random() * total;
+    for (const o of options) {
+      r -= o.weight ?? 1;
+      if (r < 0) return o.code;
+    }
+    return options[options.length - 1].code;
+  }
+
+  private leastUsed(name: string, options: { code: string }[]): string {
+    const counts = new Map(options.map((o) => [o.code, 0]));
+    for (const c of this.coders.values()) {
+      const code = variableCodes(c.variables)[name];
+      if (code !== undefined && counts.has(code)) counts.set(code, counts.get(code)! + 1);
+    }
+    return options.reduce((best, o) => (counts.get(o.code)! < counts.get(best.code)! ? o : best)).code;
+  }
+
+  private async saveCoder(coder: Coder): Promise<void> {
+    await this.backend.putCoder(coder.coderId, { variables: coder.variables, assignments: coder.assignments });
   }
 
   session(coder: Coder): SessionResponse {
@@ -137,27 +192,112 @@ export class DeploymentRuntime {
       coderId: coder.coderId,
       jobId: this.spec.jobId,
       codebook: this.spec.codebook,
-      progress: [...this.queues.values()].map((q) => ({ unitset: q.name, doneUnitIds: q.doneBy(coder.coderId) })),
+      progress: [...this.loops.keys()].map((loop) => ({
+        unitset: loop,
+        doneUnitIds: this.codings.doneBy(coder.coderId).filter((id) => this.assignedPools(coder, loop).some((p) => p.has(id))),
+      })),
+      variables: coder.variables,
     };
   }
 
-  async nextUnit(coder: Coder, unitset: string | undefined): Promise<CoderUnitResponse | null> {
-    if (!this.spec.active) throw new HttpError(409, "This job is not active");
-    const queue = this.queues.get(normalizeUnitset(unitset));
-    if (!queue) throw new HttpError(404, `No unit loop for unitset '${unitset}'`);
+  /** Coder-level answers. Server-assigned auto variables can't be overwritten by the client. */
+  async submitCoderVariables(coder: Coder, variables: Record<string, VariableValue>): Promise<void> {
+    const errors = validateVariables(this.coderVariableTypes, variables);
+    if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
-    // A unit the db server no longer has is dropped and we try the next one.
-    const skip = new Set<number>();
+    const merged = { ...variables };
+    for (const [name, variable] of this.autoVariables) {
+      if (variable.source === "url_param") continue;
+      if (coder.variables[name]) merged[name] = coder.variables[name];
+      else delete merged[name];
+    }
+    const updated = { ...coder, variables: merged };
+    await this.saveCoder(updated);
+    coder.variables = merged;
+  }
+
+  // --- routing ----------------------------------------------------------------
+
+  private pool(loop: string, unitset: string, dynamic: DynamicSource | undefined): UnitPool {
+    const key = `${loop}/${unitset}/${JSON.stringify(dynamic ?? null)}`;
+    let pool = this.pools.get(key);
+    if (!pool) {
+      const unitIds = (this.unitsets.get(unitset) ?? []).filter((id) => !this.removedUnits.has(id));
+      this.pools.set(key, (pool = new UnitPool(unitset, unitIds, dynamic, this.codings)));
+    }
+    return pool;
+  }
+
+  /** The branch whose resolved unitset names equal `names`, if the codebook still has one. */
+  private poolsFor(info: LoopInfo, names: string[], values: Record<string, string | undefined>): UnitPool[] | null {
+    for (const branch of info.loop.units) {
+      const resolved = branch.sources.map((s) => resolveUnitsetName(s.unitset, values));
+      if (resolved.length !== names.length || resolved.some((n, i) => n !== names[i])) continue;
+      return branch.sources.map((s, i) => this.pool(info.loop.name, names[i], s.dynamic));
+    }
+    return null;
+  }
+
+  /** Pools the coder is already routed to for a loop (no new routing). */
+  private assignedPools(coder: Coder, loop: string): UnitPool[] {
+    const info = this.loops.get(loop);
+    const names = coder.assignments[loop];
+    if (!info || !names) return [];
+    return this.poolsFor(info, names, variableCodes(coder.variables)) ?? [];
+  }
+
+  /**
+   * Routes a coder in a loop: the first branch whose `when` matches. Sticky:
+   * stored on the db server, and reused as long as the codebook still has a
+   * branch with the same unitsets (so a codebook update that keeps it doesn't
+   * move coders around).
+   */
+  private async route(coder: Coder, info: LoopInfo): Promise<UnitPool[]> {
+    const values = variableCodes(coder.variables);
+    const stored = coder.assignments[info.loop.name];
+    const existing = stored && this.poolsFor(info, stored, values);
+    if (existing) return existing;
+
+    const branch = info.loop.units.find((b) => branchMatches(b.when, values));
+    if (!branch) return [];
+    const names = branch.sources.map((s) => resolveUnitsetName(s.unitset, values));
+    const missing = branch.sources.find((s, i) => names[i] === null || !this.unitsets.has(names[i]!));
+    if (missing) {
+      throw new HttpError(409, `Unit loop '${info.loop.name}': unitset '${missing.unitset}' does not exist for this coder`);
+    }
+
+    coder.assignments = { ...coder.assignments, [info.loop.name]: names as string[] };
+    await this.saveCoder(coder);
+    return branch.sources.map((s, i) => this.pool(info.loop.name, names[i]!, s.dynamic));
+  }
+
+  // --- units ------------------------------------------------------------------
+
+  async nextUnit(coder: Coder, loopName: string): Promise<CoderUnitResponse | null> {
+    if (!this.spec.active) throw new HttpError(409, "This job is not active");
+    const info = this.loops.get(loopName);
+    if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
+    const pools = await this.route(coder, info);
+
     for (;;) {
-      const next = queue.next(coder.coderId, this.options.now(), skip);
+      const next = pickNext(pools, coder.coderId, this.codings, {
+        order: info.loop.order ?? "sequential",
+        maxUnits: info.loop.maxUnits,
+        seed: this.spec.jobId * 1000,
+        now: this.options.now(),
+      });
       if (!next) return null;
-      const units = await this.getUnits([next.unitId, ...queue.upcoming(coder.coderId, next.unitId, this.options.prefetch)]);
+
+      const upcoming = pools.flatMap((p) => p.candidates(coder.coderId, this.options.now(), null)).slice(0, this.options.prefetch);
+      const units = await this.getUnits([next.unitId, ...upcoming.filter((id) => id !== next.unitId)]);
       const unit = units.get(next.unitId);
       if (!unit) {
-        for (const q of this.queues.values()) q.removeUnit(next.unitId);
-        skip.add(next.unitId);
+        // The db server no longer has it: drop it everywhere and try the next one.
+        this.removedUnits.add(next.unitId);
+        for (const pool of this.pools.values()) pool.removeUnit(next.unitId);
         continue;
       }
+      next.pool.take(coder.coderId, next.unitId, this.options.now());
       return {
         id: unit.id,
         externalId: unit.externalId,
@@ -168,13 +308,12 @@ export class DeploymentRuntime {
   }
 
   async submitUnit(coder: Coder, unitId: number, variables: Record<string, VariableValue>): Promise<void> {
-    const queues = [...this.queues.values()].filter((q) => q.has(unitId));
-    if (queues.length === 0) throw new HttpError(404, "Unit is not part of this job");
-    if (!queues.some((q) => q.canSubmit(coder.coderId, unitId))) {
-      throw new HttpError(409, "Unit is not assigned to this coder");
-    }
+    const loops = [...this.loops.values()].filter((info) =>
+      this.assignedPools(coder, info.loop.name).some((p) => p.canSubmit(coder.coderId, unitId)),
+    );
+    if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
 
-    const allowed = new Map(this.loops.filter((l) => queues.some((q) => q.name === l.unitset)).flatMap((l) => [...l.variables]));
+    const allowed = new Map(loops.flatMap((l) => [...l.variables]));
     const errors = validateVariables(allowed, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
@@ -183,23 +322,27 @@ export class DeploymentRuntime {
     this.applyAnnotation(coder.coderId, unitId, variables);
   }
 
-  async submitCoderVariables(coder: Coder, variables: Record<string, VariableValue>): Promise<void> {
-    const errors = validateVariables(this.coderVariableTypes, variables);
-    if (errors.length > 0) throw new HttpError(400, errors.join("; "));
-    await this.backend.putCoderVariables(coder.coderId, variables);
-    coder.variables = variables;
-  }
-
   status(): DeploymentStatus {
     const now = this.options.now();
-    const coders = new Set<number>();
-    for (const [coderId, own] of this.annotations) if (own.size > 0) coders.add(coderId);
+    const sources: DeploymentStatus["sources"] = [];
+    for (const [loop] of this.loops) {
+      const routed = [...this.coders.values()].filter((c) => c.assignments[loop]);
+      const seen = new Set<UnitPool>();
+      for (const coder of routed) {
+        for (const pool of this.assignedPools(coder, loop)) {
+          if (seen.has(pool)) continue;
+          seen.add(pool);
+          const coders = routed.filter((c) => c.assignments[loop].includes(pool.unitset)).map((c) => c.coderId);
+          sources.push({ loop, unitset: pool.unitset, ...pool.status(now, coders), coders: coders.length });
+        }
+      }
+    }
     return {
       deploymentId: this.id,
       version: this.spec.version,
       active: this.spec.active,
-      coders: coders.size,
-      unitsets: [...this.queues.values()].map((q) => q.status(now)),
+      coders: this.coders.size,
+      sources,
       loadedAt: new Date(this.loadedAt),
     };
   }

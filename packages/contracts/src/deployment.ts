@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, SafeNameSchema, UnitDataSchema } from "./common.js";
+import { IdSchema, UnitDataSchema } from "./common.js";
 import { CodebookResponseSchema } from "./codebook/codebook.js";
 import { VariableValueSchema } from "./variableValue.js";
 
@@ -9,66 +9,14 @@ import { VariableValueSchema } from "./variableValue.js";
 //                annotations. Any language. Implements the "backend API"
 //                below, which only the job server calls.
 //  - job server: the annotinder runtime (packages/job-server). Coders talk
-//                only to the job server; it distributes units, validates
-//                annotations and writes them through to the db server. Holds
-//                no state that cannot be rebuilt from the backend API.
-
-/** Unitset name used for unit loops without an explicit unitset (= all units in the job). */
-export const ALL_UNITS_UNITSET = "__all__";
-
-/**
- * How units of one unitset are distributed over coders.
- *
- * - `per_coder`: every coder codes every unit (optionally capped), in the
- *   unitset order (or a per-coder shuffle if the unit_loop has
- *   `randomizeUnits`). No coordination between coders needed.
- * - `crowd`: units come from a shared queue. A unit is complete once at
- *   least `codersPerUnit` coders finished it and, if `agreement` is set,
- *   `agreement.minAgree` of them gave the same value for
- *   `agreement.variable` -- or, regardless, once `agreement.maxCoders`
- *   coders finished it. Units are leased to a coder for `leaseSeconds`, so
- *   abandoned units return to the queue.
- */
-export const PerCoderDistributionSchema = z.object({
-  mode: z.literal("per_coder"),
-  maxUnitsPerCoder: z.number().int().positive().optional(),
-});
-
-export const AgreementRuleSchema = z
-  .object({
-    /** A unit_variable in this unitset's unit_loop; its value is compared across coders. */
-    variable: SafeNameSchema,
-    minAgree: z.number().int().min(1),
-    /** Stop handing out the unit once this many coders finished it, even without agreement. */
-    maxCoders: z.number().int().min(1),
-  })
-  .refine((a) => a.maxCoders >= a.minAgree, { message: "maxCoders must be >= minAgree" });
-export type AgreementRule = z.infer<typeof AgreementRuleSchema>;
-
-export const CrowdDistributionSchema = z.object({
-  mode: z.literal("crowd"),
-  codersPerUnit: z.number().int().min(1).default(1),
-  agreement: AgreementRuleSchema.optional(),
-  maxUnitsPerCoder: z.number().int().positive().optional(),
-  leaseSeconds: z.number().int().positive().default(900),
-  /**
-   * `fill`: prefer units that are closest to completion (finished units fast).
-   * `spread`: prefer units with the fewest codings (even coverage first).
-   */
-  strategy: z.enum(["fill", "spread"]).default("fill"),
-});
-
-export const DistributionRuleSchema = z.discriminatedUnion("mode", [
-  PerCoderDistributionSchema,
-  CrowdDistributionSchema,
-]);
-export type DistributionRule = z.infer<typeof DistributionRuleSchema>;
+//                only to the job server; it distributes units (as described
+//                by the codebook's unit_loops), validates annotations and
+//                writes them through to the db server. Holds no state that
+//                cannot be rebuilt from the backend API.
 
 /** Researcher-facing: `PUT /job/:jobId/deployment` on the db server. */
 export const DeploymentWriteSchema = z.object({
   codebookId: IdSchema,
-  /** unitset name -> rule. Unitsets without a rule default to `{ mode: "per_coder" }`. */
-  distribution: z.record(z.string(), DistributionRuleSchema).default({}),
   /** Set to false to stop the job server from handing out units (coders get a 409). */
   active: z.boolean().default(true),
 });
@@ -95,7 +43,6 @@ export const DeploymentSpecSchema = z.object({
   codebook: CodebookResponseSchema,
   /** All unitsets of the job, plus `__all__` (every unit id in the job). */
   unitsets: z.array(z.object({ name: z.string(), unitIds: z.array(IdSchema) })),
-  distribution: z.record(z.string(), DistributionRuleSchema),
 });
 export type DeploymentSpec = z.infer<typeof DeploymentSpecSchema>;
 
@@ -107,20 +54,43 @@ export const BackendUnitSchema = z.object({
 });
 export type BackendUnit = z.infer<typeof BackendUnitSchema>;
 
+/**
+ * unit_loop name -> the unitset names (placeholders resolved) this coder was
+ * routed to, in source order. Stored so routing is sticky: a coder keeps
+ * their units even if later answers or a codebook update would route them
+ * differently.
+ */
+export const CoderAssignmentsSchema = z.record(z.string(), z.array(z.string()));
+export type CoderAssignments = z.infer<typeof CoderAssignmentsSchema>;
+
+/** A coder as the job server sees it. No email or other identifying data. */
+export const BackendCoderSchema = z.object({
+  coderId: IdSchema,
+  /** Coder-level variables, including values preset by their invitation. */
+  variables: z.record(z.string(), VariableValueSchema),
+  assignments: CoderAssignmentsSchema.default({}),
+});
+export type BackendCoder = z.infer<typeof BackendCoderSchema>;
+
 /** `POST /backend/job/:jobId/coders/resolve` */
 export const ResolveCoderRequestSchema = z.object({
   /** Client-generated, persisted coder key (dev-mode coder auth; see mock-server auth.ts). */
   coderKey: z.string().min(1),
-  /** Required the first time a coderKey is seen, to create the coder from an invite. */
+  /**
+   * Required the first time a coderKey is seen, to create the coder from an
+   * invite. The db server copies the invite's preset `variables` into the
+   * new coder's variables.
+   */
   inviteSecret: z.string().optional(),
 });
 export type ResolveCoderRequest = z.infer<typeof ResolveCoderRequestSchema>;
 
-export const ResolveCoderResponseSchema = z.object({
-  coderId: IdSchema,
+/** `PUT /backend/job/:jobId/coders/:coderId` -- full replace of the job-server-managed coder state. */
+export const BackendCoderWriteSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
+  assignments: CoderAssignmentsSchema,
 });
-export type ResolveCoderResponse = z.infer<typeof ResolveCoderResponseSchema>;
+export type BackendCoderWrite = z.infer<typeof BackendCoderWriteSchema>;
 
 /** One coder's variables for one unit, as stored by the db server. */
 export const BackendAnnotationSchema = z.object({
@@ -132,16 +102,8 @@ export const BackendAnnotationSchema = z.object({
 });
 export type BackendAnnotation = z.infer<typeof BackendAnnotationSchema>;
 
-/** `GET /backend/job/:jobId/annotations` -- used to rebuild job-server state. */
-export const BackendAnnotationsResponseSchema = z.array(BackendAnnotationSchema);
-
 /** `PUT /backend/job/:jobId/annotations/:unitId/:coderId` -- write-through from the job server. */
 export const BackendAnnotationWriteSchema = z.object({
-  variables: z.record(z.string(), VariableValueSchema),
-});
-
-/** `PUT /backend/job/:jobId/coders/:coderId/variables` -- coder-level (non-unit) variables. */
-export const BackendCoderVariablesWriteSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
 });
 
@@ -158,28 +120,34 @@ export const backendEndpoints = {
     request: z.void(),
     response: z.array(BackendUnitSchema),
   },
+  listCoders: {
+    method: "GET",
+    path: "/backend/job/:jobId/coders",
+    request: z.void(),
+    response: z.array(BackendCoderSchema),
+  },
   resolveCoder: {
     method: "POST",
     path: "/backend/job/:jobId/coders/resolve",
     request: ResolveCoderRequestSchema,
-    response: ResolveCoderResponseSchema,
+    response: BackendCoderSchema,
+  },
+  putCoder: {
+    method: "PUT",
+    path: "/backend/job/:jobId/coders/:coderId",
+    request: BackendCoderWriteSchema,
+    response: z.void(),
   },
   listAnnotations: {
     method: "GET",
     path: "/backend/job/:jobId/annotations",
     request: z.void(),
-    response: BackendAnnotationsResponseSchema,
+    response: z.array(BackendAnnotationSchema),
   },
   putAnnotation: {
     method: "PUT",
     path: "/backend/job/:jobId/annotations/:unitId/:coderId",
     request: BackendAnnotationWriteSchema,
-    response: z.void(),
-  },
-  putCoderVariables: {
-    method: "PUT",
-    path: "/backend/job/:jobId/coders/:coderId/variables",
-    request: BackendCoderVariablesWriteSchema,
     response: z.void(),
   },
 } as const;
@@ -190,17 +158,21 @@ export const backendEndpoints = {
 // the job server's config refers to that db server.
 // ---------------------------------------------------------------------------
 
-export const UnitsetStatusSchema = z.object({
+/** Progress of one source (unitset) of one unit_loop. */
+export const SourceStatusSchema = z.object({
+  loop: z.string(),
   unitset: z.string(),
-  mode: z.enum(["per_coder", "crowd"]),
+  mode: z.enum(["fixed", "dynamic"]),
   totalUnits: z.number().int().nonnegative(),
-  /** Crowd mode: units that met their completion rule. Per-coder mode: units every active coder finished. */
+  /** Dynamic: units that met their saturation rule. Fixed: units every routed coder finished. */
   completeUnits: z.number().int().nonnegative(),
   /** Units with at least one coding. */
   startedUnits: z.number().int().nonnegative(),
-  /** Crowd mode: currently leased (being coded) units. */
+  /** Dynamic: units currently reserved for a coder. */
   leasedUnits: z.number().int().nonnegative(),
   codings: z.number().int().nonnegative(),
+  /** Coders routed to this source. */
+  coders: z.number().int().nonnegative(),
 });
 
 export const DeploymentStatusSchema = z.object({
@@ -208,7 +180,7 @@ export const DeploymentStatusSchema = z.object({
   version: z.number().int().positive(),
   active: z.boolean(),
   coders: z.number().int().nonnegative(),
-  unitsets: z.array(UnitsetStatusSchema),
+  sources: z.array(SourceStatusSchema),
   loadedAt: z.coerce.date(),
 });
 export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;

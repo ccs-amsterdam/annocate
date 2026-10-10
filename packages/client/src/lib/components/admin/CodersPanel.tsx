@@ -15,12 +15,21 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
 
   const [label, setLabel] = useState("");
   const [access, setAccess] = useState<"only_authenticated" | "only_anonymous" | "user_decides">("user_decides");
+  const [presets, setPresets] = useState("");
+  const [maxUses, setMaxUses] = useState("");
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
 
   async function handleInvite() {
-    const invite = await inviteCoder.mutateAsync({ label, access });
+    const invite = await inviteCoder.mutateAsync({
+      label,
+      access,
+      variables: parsePresets(presets),
+      maxUses: maxUses === "" ? undefined : Number(maxUses),
+    });
     setLastInviteUrl(`${baseUrl}/invite/${invite.secret}`);
     setLabel("");
+    setPresets("");
+    setMaxUses("");
   }
 
   return (
@@ -44,6 +53,25 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
             {inviteCoder.isPending ? "Creating..." : "Create"}
           </Button>
         </div>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Preset variables, e.g. slot=2, group=treatment"
+            value={presets}
+            onChange={(e) => setPresets(e.target.value)}
+          />
+          <Input
+            type="number"
+            min={1}
+            className="w-32"
+            placeholder="Max uses"
+            value={maxUses}
+            onChange={(e) => setMaxUses(e.target.value)}
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Presets set the codebook&apos;s auto variables with source &quot;Set by invitation&quot; for everyone using
+          this link. Use one link per coder (max uses 1) to give specific coders specific unitsets.
+        </p>
         {lastInviteUrl && (
           <p className="break-all text-sm">
             Invite link: <code className="rounded bg-muted px-1">{lastInviteUrl}</code>
@@ -77,4 +105,13 @@ export function CodersPanel({ client, baseUrl }: { client: AdminClient; baseUrl:
       </div>
     </div>
   );
+}
+
+/** "slot=2, group=treatment" -> { slot: "2", group: "treatment" } */
+function parsePresets(text: string): Record<string, string> | undefined {
+  const entries = text
+    .split(",")
+    .map((pair) => pair.split("=").map((s) => s.trim()))
+    .filter(([name, value]) => name && value !== undefined && value !== "");
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }

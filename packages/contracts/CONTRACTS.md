@@ -87,9 +87,10 @@ plan §3).
 | GET | `/unitsets` | – | `UnitsetResponseSchema[]` | |
 | POST | `/unitsets` | `UnitsetWriteSchema` | `UnitsetResponseSchema` | |
 | PUT | `/unitsets/:id` | `UnitsetWriteSchema` | `UnitsetResponseSchema` | |
-| DELETE | `/unitsets/:id` | – | – | |
+| DELETE | `/unitsets/:id` | – | – | Rejected while a codebook's unit_loop refers to it |
+| POST | `/unitsets/generate` | `GenerateUnitsetsSchema` | `UnitsetResponseSchema[]` | Split units into `<prefix>_1..n` (+ `<prefix>_overlap`) |
 | GET | `/coders` | – | `CoderProgressSchema[]` | Manager-facing progress listing; requires ADMIN/WRITE role |
-| POST | `/coders/invite` | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` | Requires ADMIN/WRITE role |
+| POST | `/coders/invite` | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` | Requires ADMIN/WRITE role; `variables` presets the codebook's `auto` variables with `source: "invite"` |
 | GET | `/deployment` | – | `DeploymentResponseSchema \| null` | |
 | PUT | `/deployment` | `DeploymentWriteSchema` | `DeploymentResponseSchema` | Requires ADMIN; bumps `version`, freezes the codebook, notifies the job server |
 | GET | `/deployment/status` | – | `DeploymentStatusSchema` | Proxied from the job server |
@@ -102,8 +103,8 @@ registry because the client is written against them.
 
 | Method | Path | Request | Response | Notes |
 | --- | --- | --- | --- | --- |
-| GET | `/session` | – | `SessionResponseSchema` | Coder-authenticated; returns codebook + per-unitset progress |
-| GET | `/unitset/:setname/next` | – | `CoderUnitResponseSchema \| null` | Coder-authenticated; `null` means the unitset is exhausted |
+| GET | `/session` | – | `SessionResponseSchema` | Coder-authenticated; returns codebook, per-loop progress and the coder's variables (incl. assigned `auto` variables) |
+| GET | `/loop/:loop/next` | – | `CoderUnitResponseSchema \| null` | Coder-authenticated; the job server picks the unit per the loop's branches/sources; `null` means the coder is done with the loop |
 | POST | `/variables/unit` | `PostUnitVariablesSchema` | – | Coder-authenticated; full replace of one unit's variables |
 | POST | `/variables/coder` | `PostCoderVariablesSchema` | – | Coder-authenticated; full replace of job-level variables |
 
@@ -116,10 +117,11 @@ registry because the client is written against them.
 | --- | --- | --- | --- | --- |
 | GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed |
 | GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out |
-| POST | `/backend/job/:jobId/coders/resolve` | `ResolveCoderRequestSchema` | `ResolveCoderResponseSchema` | 401 for an unknown coder without a valid invite |
+| GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails) |
+| POST | `/backend/job/:jobId/coders/resolve` | `ResolveCoderRequestSchema` | `BackendCoderSchema` | Creates the coder from an invite (copying its preset `variables`); 401 for an unknown coder without a valid invite |
+| PUT | `/backend/job/:jobId/coders/:coderId` | `BackendCoderWriteSchema` | – | Full replace of `variables` + `assignments` |
 | GET | `/backend/job/:jobId/annotations` | – | `BackendAnnotationSchema[]` | Everything, ordered by `updated`; used to rebuild job-server state |
 | PUT | `/backend/job/:jobId/annotations/:unitId/:coderId` | `BackendAnnotationWriteSchema` | – | Write-through; already validated by the job server |
-| PUT | `/backend/job/:jobId/coders/:coderId/variables` | `BackendCoderVariablesWriteSchema` | – | |
 
 ## Auth
 

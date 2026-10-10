@@ -106,6 +106,9 @@ export async function computeTopLevelSteps(
         if (active && node.children) {
           await collect(node.children as TopLevelItem[]);
         }
+      } else if (node.type !== "unit_loop" && node.variable.type === "auto") {
+        // Assigned (by the job server or from the URL), never asked.
+        continue;
       } else {
         steps.push(node);
       }

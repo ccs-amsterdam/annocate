@@ -1,17 +1,15 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
 import { CodebookResponseSchema } from "./codebook/codebook.js";
+import { VariableValueSchema } from "./variableValue.js";
 
 /**
- * Per-unitset progress: the list of unit ids this coder has already done, in
- * the order they were coded (design plan §3a, MVP option A). The client
- * derives "next unit" and "go back to unit N" from this list itself.
- *
- * NOTE: intentionally does not scale to very large unit counts or support
- * crowd-coding's server-side global assignment queue -- see design plan §3a
- * for the deferred follow-up design work.
+ * Per-unit_loop progress: the unit ids this coder has finished in that loop,
+ * in the order they were coded. Which unit comes next is decided by the job
+ * server (`GET /loop/:loop/next`).
  */
 export const UnitsetProgressSchema = z.object({
+  /** The unit_loop name. */
   unitset: z.string(),
   doneUnitIds: z.array(IdSchema),
 });
@@ -23,5 +21,11 @@ export const SessionResponseSchema = z.object({
   /** The codebook this session was started with (immutable for the lifetime of the session, see design plan §2). */
   codebook: CodebookResponseSchema,
   progress: z.array(UnitsetProgressSchema),
+  /**
+   * The coder's coder-level variables so far, including server-assigned
+   * `auto` variables (experimental condition, slot, ...), so conditions in
+   * the client can use them.
+   */
+  variables: z.record(z.string(), VariableValueSchema).default({}),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;

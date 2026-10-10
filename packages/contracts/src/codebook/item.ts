@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { UnitLayoutSchema } from "./layout.js";
+import { UnitLoopDistributionShape, migrateLegacyUnitLoop } from "./unitLoop.js";
 import {
   UserVariableTypeSchema,
   UnitVariableTypeSchema,
@@ -89,21 +90,20 @@ export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
 );
 
 /**
- * A `for unit in unitset` loop.
- * If `unitset` is omitted or empty, the loop iterates over all units in the job.
- * Children can ONLY be in-loop items (question or in-loop condition).
- * Nested unit loops are strictly disallowed.
+ * A `for unit in ...` loop. Which units a coder gets is described by `units`
+ * (branches of fixed/dynamic unitset sources, see unitLoop.ts), `order` and
+ * `maxUnits`. Children can ONLY be in-loop items (question or in-loop
+ * condition). Nested unit loops are strictly disallowed.
+ *
+ * The legacy `unitset` + `randomizeUnits` shape is migrated on parse.
  */
-export const UnitLoopItemSchema = ItemBaseSchema.extend({
+const UnitLoopObjectSchema = ItemBaseSchema.extend({
   type: z.literal("unit_loop"),
-  unitset: z
-    .string()
-    .optional()
-    .describe("The name of the job's unitset this loop iterates over, or omitted/empty to iterate over all units"),
+  ...UnitLoopDistributionShape,
   layout: UnitLayoutSchema,
-  randomizeUnits: z.boolean().optional().describe("If true, randomize unit order per coder"),
   children: z.array(InLoopItemSchema).min(1, "A unit_loop must have at least one child item"),
 });
+export const UnitLoopItemSchema = z.preprocess(migrateLegacyUnitLoop, UnitLoopObjectSchema);
 export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
 
 /**

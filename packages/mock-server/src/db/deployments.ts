@@ -9,7 +9,6 @@ import {
 interface DeploymentRow {
   jobId: number;
   codebookId: number;
-  distribution: string;
   active: number;
   version: number;
   updated: string;
@@ -30,7 +29,6 @@ export function getDeployment(db: DatabaseSync, jobId: number): DeploymentRespon
   return {
     jobId: row.jobId,
     codebookId: row.codebookId,
-    distribution: JSON.parse(row.distribution),
     active: !!row.active,
     version: row.version,
     updated: new Date(row.updated),
@@ -42,10 +40,10 @@ export function putDeployment(db: DatabaseSync, jobId: number, body: DeploymentW
   const previous = getDeployment(db, jobId);
   const version = (previous?.version ?? 0) + 1;
   db.prepare(
-    `INSERT INTO deployments (jobId, codebookId, distribution, active, version, updated) VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT (jobId) DO UPDATE SET codebookId = excluded.codebookId, distribution = excluded.distribution,
-       active = excluded.active, version = excluded.version, updated = excluded.updated`,
-  ).run(jobId, body.codebookId, JSON.stringify(body.distribution), body.active ? 1 : 0, version, new Date().toISOString());
+    `INSERT INTO deployments (jobId, codebookId, active, version, updated) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (jobId) DO UPDATE SET codebookId = excluded.codebookId, active = excluded.active,
+       version = excluded.version, updated = excluded.updated`,
+  ).run(jobId, body.codebookId, body.active ? 1 : 0, version, new Date().toISOString());
   db.prepare("UPDATE codebooks SET immutable = 1 WHERE jobId = ? AND id = ?").run(jobId, body.codebookId);
   return getDeployment(db, jobId)!;
 }
@@ -83,6 +81,5 @@ export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSp
       immutable: !!codebook.immutable,
     },
     unitsets: [{ name: ALL_UNITS_UNITSET, unitIds: allUnitIds }, ...unitsets],
-    distribution: deployment.distribution,
   };
 }

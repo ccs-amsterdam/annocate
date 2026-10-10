@@ -11,6 +11,7 @@ export * from "./codebook/position.js";
 export * from "./codebook/codes.js";
 export * from "./codebook/variableTypes.js";
 export * from "./codebook/layout.js";
+export * from "./codebook/unitLoop.js";
 export * from "./codebook/item.js";
 export * from "./codebook/validation.js";
 export * from "./codebook/codebook.js";

@@ -56,8 +56,8 @@ export function createJobServer(options: JobServerOptions) {
 
   coders.get("/session", (c) => c.json(c.get("runtime").session(c.get("coder"))));
 
-  coders.get("/unitset/:setname/next", async (c) =>
-    c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("setname"))),
+  coders.get("/loop/:loop/next", async (c) =>
+    c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("loop"))),
   );
 
   coders.post("/variables/unit", async (c) => {

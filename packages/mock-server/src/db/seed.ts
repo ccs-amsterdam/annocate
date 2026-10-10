@@ -58,7 +58,7 @@ export function seed(db: DatabaseSync): void {
     {
       type: "unit_loop",
       name: "main_loop",
-      unitset: "main",
+      units: [{ sources: [{ unitset: "main" }] }],
       layout: {
         template: "# {{$unit.headline}}\n\n{{disclaimer}}\n\n::tokenize[$unit.text]",
         constants: { disclaimer: "_Demo unit -- label actors and issues mentioned in the text._" },
@@ -119,7 +119,7 @@ export function seed(db: DatabaseSync): void {
   );
 
   const codebookId = (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
-  putDeployment(db, jobId, { codebookId, distribution: { main: { mode: "per_coder" } }, active: true });
+  putDeployment(db, jobId, { codebookId, active: true });
 
   db.prepare("INSERT INTO invites (jobId, label, access, secret) VALUES (?, ?, ?, ?)").run(
     jobId,

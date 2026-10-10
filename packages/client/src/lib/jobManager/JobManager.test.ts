@@ -17,8 +17,8 @@ function confirm(name: string): UserVariableItem {
   return { name, type: "user_variable", variable: { type: "confirm", question: "?" } };
 }
 
-function unitLoop(name: string, children: InLoopItem[], unitset?: string): UnitLoopItem {
-  return { name, type: "unit_loop", unitset, layout: { template: "" }, children };
+function unitLoop(name: string, children: InLoopItem[], unitset = "__all__"): UnitLoopItem {
+  return { name, type: "unit_loop", units: [{ sources: [{ unitset }] }], layout: { template: "" }, children };
 }
 
 function unitVar(name: string): UnitVariableItem {
@@ -125,22 +125,39 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     expect(manager.getSnapshot().phase).toBe("finished");
   });
 
-  it("handles a unit_loop without a unitset by passing undefined to getNextUnit", async () => {
+  it("skips auto variables and uses their server-assigned values in conditions", async () => {
+    const items = [
+      { type: "question", name: "group", variable: { type: "auto", source: "balanced", options: [{ code: "a" }, { code: "b" }] } },
+      { type: "condition", name: "only_a", expression: "group.codes[0].code === 'a'", children: [confirm("shown_to_a")] },
+      confirm("everyone"),
+    ] as TopLevelItem[];
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => ({
+        ...session(items),
+        variables: { group: { done: true, skip: false, codes: [{ code: "a" }] } },
+      })),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    expect(manager.getSnapshot().currentItem?.name).toBe("shown_to_a");
+  });
+
+  it("asks the job server for the next unit by loop name", async () => {
     let unitsServed = 0;
-    const getNextUnit = vi.fn(async (unitset?: string) => {
-      expect(unitset).toBeUndefined();
+    const getNextUnit = vi.fn(async (loop: string) => {
+      expect(loop).toBe("loop_all_units");
       unitsServed += 1;
       return unitsServed === 1 ? unit(10) : null;
     });
     const postUnitVariables = vi.fn(async () => {});
     const server = makeFlakyServer({
-      getSession: vi.fn(async () => session([unitLoop("loop_no_unitset", [unitVar("q1")], undefined)])),
+      getSession: vi.fn(async () => session([unitLoop("loop_all_units", [unitVar("q1")])])),
       getNextUnit,
       postUnitVariables,
     });
     const manager = new JobManager(server);
     await manager.start();
-    expect(getNextUnit).toHaveBeenCalledWith(undefined);
+    expect(getNextUnit).toHaveBeenCalledWith("loop_all_units");
     expect(manager.getSnapshot().phase).toBe("unit_variable");
     expect(manager.getSnapshot().currentUnit?.id).toBe(10);
   });

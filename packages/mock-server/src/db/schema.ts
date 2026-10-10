@@ -70,7 +70,6 @@ export function createDb(path = ":memory:"): DatabaseSync {
     CREATE TABLE IF NOT EXISTS deployments (
       jobId INTEGER PRIMARY KEY,
       codebookId INTEGER NOT NULL,
-      distribution TEXT NOT NULL DEFAULT '{}',
       active INTEGER NOT NULL DEFAULT 1,
       version INTEGER NOT NULL,
       updated TEXT NOT NULL
@@ -82,7 +81,8 @@ export function createDb(path = ":memory:"): DatabaseSync {
       email TEXT,
       devKey TEXT UNIQUE NOT NULL,
       doneUnitIds TEXT NOT NULL DEFAULT '{}',
-      variables TEXT NOT NULL DEFAULT '{}'
+      variables TEXT NOT NULL DEFAULT '{}',
+      assignments TEXT NOT NULL DEFAULT '{}'
     );
 
     CREATE TABLE IF NOT EXISTS invites (
@@ -90,8 +90,25 @@ export function createDb(path = ":memory:"): DatabaseSync {
       jobId INTEGER NOT NULL,
       label TEXT NOT NULL,
       access TEXT NOT NULL,
-      secret TEXT NOT NULL UNIQUE
+      secret TEXT NOT NULL UNIQUE,
+      emails TEXT,
+      maxUses INTEGER,
+      uses INTEGER NOT NULL DEFAULT 0,
+      variables TEXT NOT NULL DEFAULT '{}'
     );
   `);
+
+  // Columns added after the first release of a table: add them to existing
+  // local dev databases too (CREATE TABLE IF NOT EXISTS leaves those alone).
+  addColumnIfMissing(db, "coders", "assignments", "TEXT NOT NULL DEFAULT '{}'");
+  addColumnIfMissing(db, "invites", "emails", "TEXT");
+  addColumnIfMissing(db, "invites", "maxUses", "INTEGER");
+  addColumnIfMissing(db, "invites", "uses", "INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "invites", "variables", "TEXT NOT NULL DEFAULT '{}'");
   return db;
+}
+
+function addColumnIfMissing(db: DatabaseSync, table: string, column: string, definition: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }

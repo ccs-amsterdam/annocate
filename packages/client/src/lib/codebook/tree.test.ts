@@ -30,7 +30,7 @@ function unitVar(name: string): UnitVariableItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[], unitset = "main"): UnitLoopItem {
-  return { name, type: "unit_loop", unitset, layout: { template: "" }, children };
+  return { name, type: "unit_loop", units: [{ sources: [{ unitset }] }], layout: { template: "" }, children };
 }
 
 describe("tree utilities", () => {

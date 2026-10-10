@@ -129,19 +129,41 @@ export function VariableTypeForm({
             <select
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               value={v.source}
-              onChange={(e) => onChange({ ...v, source: e.target.value as "random" | "url_param" })}
+              onChange={(e) => onChange({ ...v, source: e.target.value as typeof v.source })}
             >
               <option value="random">Random draw</option>
+              <option value="balanced">Balanced (option with fewest coders)</option>
+              <option value="invite">Set by invitation</option>
               <option value="url_param">URL parameter</option>
             </select>
+            <p className="text-[11px] text-muted-foreground">
+              Assigned once when a coder starts, never asked. Use it in conditions, or to route coders to
+              unitsets in a unit loop.
+            </p>
           </div>
+          {v.source === "invite" && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">If the invitation doesn&apos;t set it</label>
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                value={v.fallback ?? ""}
+                onChange={(e) =>
+                  onChange({ ...v, fallback: e.target.value === "" ? undefined : (e.target.value as "random" | "balanced") })
+                }
+              >
+                <option value="">Leave empty</option>
+                <option value="random">Random draw</option>
+                <option value="balanced">Balanced</option>
+              </select>
+            </div>
+          )}
           {v.source === "url_param" && (
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium">URL parameter name</label>
               <Input value={v.urlParam ?? ""} onChange={(e) => onChange({ ...v, urlParam: e.target.value })} />
             </div>
           )}
-          {v.source === "random" && (
+          {v.source !== "url_param" && (
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">Options (code, optional weight)</label>
               {(v.options ?? []).map((opt, i) => (

@@ -13,6 +13,32 @@ function toProgress(row: CoderRow): CoderProgress {
   return { id: row.id, email: row.email ?? undefined, unitsDone };
 }
 
+interface InviteRow {
+  id: number;
+  jobId: number;
+  label: string;
+  access: CoderInviteResponse["access"];
+  secret: string;
+  emails: string | null;
+  maxUses: number | null;
+  uses: number;
+  variables: string;
+}
+
+function toInviteResponse(row: InviteRow): CoderInviteResponse {
+  return {
+    id: row.id,
+    jobId: row.jobId,
+    label: row.label,
+    access: row.access,
+    secret: row.secret,
+    uses: row.uses,
+    ...(row.emails ? { emails: JSON.parse(row.emails) } : {}),
+    ...(row.maxUses !== null ? { maxUses: row.maxUses } : {}),
+    variables: JSON.parse(row.variables),
+  };
+}
+
 export function coderRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
@@ -27,27 +53,12 @@ export function coderRoutes(db: DatabaseSync) {
 
     const jobId = c.get("jobId");
     const secret = randomBytes(16).toString("hex");
-    db.prepare("INSERT INTO invites (jobId, label, access, secret) VALUES (?, ?, ?, ?)").run(
-      jobId,
-      parsed.data.label,
-      parsed.data.access,
-      secret,
-    );
-    const row = db.prepare("SELECT * FROM invites WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as {
-      id: number;
-      jobId: number;
-      label: string;
-      access: CoderInviteResponse["access"];
-      secret: string;
-    };
-    const response: CoderInviteResponse = {
-      id: row.id,
-      jobId: row.jobId,
-      label: row.label,
-      access: row.access,
-      secret: row.secret,
-    };
-    return c.json(response, 201);
+    const { label, access, emails, maxUses, variables } = parsed.data;
+    db.prepare(
+      "INSERT INTO invites (jobId, label, access, secret, emails, maxUses, variables) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(jobId, label, access, secret, emails ? JSON.stringify(emails) : null, maxUses ?? null, JSON.stringify(variables ?? {}));
+    const row = db.prepare("SELECT * FROM invites WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as unknown as InviteRow;
+    return c.json(toInviteResponse(row), 201);
   });
 
   return app;

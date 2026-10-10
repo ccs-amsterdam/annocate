@@ -1,6 +1,7 @@
 # Annotinder server architecture: db server + job server
 
-Status: draft v1 (2026-10-10). First implementation in `packages/job-server`
+Status: draft v2 (2026-10-10; v2 moves distribution into the codebook and
+adds routing and invitations). First implementation in `packages/job-server`
 and `packages/mock-server`. Supersedes design plan §3a (unit delivery and
 resumable progress) and the "heavy client, thin server" approach in §0.
 
@@ -54,7 +55,7 @@ implementation, and the same code is meant to run on Node and on Cloudflare.
 Coders talk only to the job server. It:
 
 - resolves coders (via the db server) and serves the session and codebook;
-- decides which unit a coder gets next (per-coder order or a shared crowd
+- decides which unit a coder gets next, following the codebook's unit loops (fixed sets or a shared
   queue with leases, stopping rules and caps);
 - validates annotations against the codebook;
 - writes them through to the db server;
@@ -75,7 +76,7 @@ worker:
    does.
 2. **Rebuildable.** Everything the job server holds is a cache of the
    backend API. `DeploymentRuntime.load()` rebuilds it from
-   `GET /deployment` + `GET /annotations`. The one exception is crowd
+   `GET /deployment` + `GET /coders` + `GET /annotations`. The one exception is dynamic-source
    **leases**, which are deliberately disposable: losing them only returns an
    abandoned unit to the queue early. So the job server needs no database
    and no backups.
@@ -100,12 +101,12 @@ The mitigation is choice of deployment target, not cryptography:
 
 A db server is configured with the job server it deploys to. A job server is
 configured with the db servers (backends) it accepts deployments from. Both
-directions currently use a shared bearer secret (see §8).
+directions currently use a shared bearer secret (see §10).
 
 ## 5. Lifecycle
 
 **Deploy.** A researcher calls `PUT /job/:jobId/deployment` on the db server
-with `{ codebookId, distribution, active }`. The db server:
+with `{ codebookId, active }`. The db server:
 
 - bumps the deployment `version`;
 - freezes the codebook;
@@ -123,11 +124,16 @@ secret.
 **Coder session.**
 
 1. **First request.** The job server calls `POST /backend/.../coders/resolve`
-   with the coder key and invite secret, then caches the resulting `coderId`.
-2. **`GET /session`.** Served from the cache: the codebook plus per-unitset
-   progress.
-3. **`GET /unitset/:name/next`.** The job server picks a unit and, in crowd
-   mode, leases it. It then serves the unit content from its cache. On a
+   with the coder key and invite secret. The db server creates the coder if
+   needed, copying the invite's preset variables. The job server then
+   assigns any missing server-side `auto` variables (§7) and caches the
+   coder.
+2. **`GET /session`.** Served from the cache: the codebook, per-loop
+   progress, and the coder's variables (so client-side conditions can use
+   assigned variables).
+3. **`GET /loop/:loop/next`.** On the first call for a loop, the job server
+   routes the coder to a branch (§6) and stores that. It then picks a unit
+   and, for a dynamic source, leases it. It then serves the unit content from its cache. On a
    cache miss it fetches the unit plus the next few prefetch candidates from
    the db server in one request. If the db server no longer has the unit, it
    is dropped from the queue and the next one is tried.
@@ -139,58 +145,171 @@ secret.
 proxies `GET /admin/deployments/:id/status`: units complete / started /
 leased, codings, coders.
 
-## 6. Distribution rules
+## 6. Distribution: the codebook describes the process
 
-These are configured per unitset in the deployment (`DistributionRuleSchema`).
+**Principle.** The codebook can name parameters, but never bind them. The
+codebook is meant to be shared and reproduced. So it describes *how* units
+are distributed, but it never contains unit ids or who the coders are.
+There are three layers:
 
-**`per_coder`** (default). Every coder codes every unit of the unitset, in
-unitset order, or in a deterministic per-coder shuffle if the `unit_loop` has
-`randomizeUnits`. An optional `maxUnitsPerCoder` caps it.
+| Layer | Contains | Shared/reproducible? |
+| --- | --- | --- |
+| Codebook | questions, conditions, `unit_loop` distribution; refers to unitsets by name and to coders only via coder-level variables | yes |
+| Unitsets | name -> ordered list of unit ids (e.g. `part_1`..`part_5`, `part_overlap`) | data, not process |
+| Invitations | links with access rules and preset values for codebook variables | no (private to the db server) |
 
-**`crowd`.** Units come from a shared queue.
+### 6.1 Unit loops
 
-- A unit is **complete** when:
-  - at least `codersPerUnit` coders finished it, **and**
-  - if `agreement` is set, `minAgree` of them gave the same answer for
-    `agreement.variable`.
+Defined in `contracts/src/codebook/unitLoop.ts`:
 
-  It is also complete, regardless of agreement, once `agreement.maxCoders`
-  coders finished it.
-- Each unit has **open slots**: the number of codings still needed, capped
-  by `maxCoders`, minus active leases. That prevents over-assignment while
-  coders are working.
-- **Leases** last `leaseSeconds`. An expired lease frees its slot. Asking
-  for "next" while holding a lease resumes the same unit (reload-safe).
-- **`strategy`:**
-  - `fill` prefers units closest to completion, so finished units arrive
-    quickly;
-  - `spread` prefers the least-coded units, for even coverage first.
-- **`maxUnitsPerCoder`** caps each coder.
-
-The example "1000 units, until 5 coders agree, max 100 per coder" becomes:
-
-```json
-{ "mode": "crowd", "agreement": { "variable": "sentiment", "minAgree": 5, "maxCoders": 10 }, "maxUnitsPerCoder": 100 }
+```yaml
+type: unit_loop
+name: main
+order: random            # sequential (default) | random: per-coder shuffle, sources interleaved
+maxUnits: 100            # per coder, across all sources of the branch
+units:                   # first matching branch wins; no match = no units
+  - when: { group: treatment }             # coder variable codes; [a, b] = any of; keys are ANDed
+    sources:
+      - { unitset: "part_{slot}" }         # fixed: coder gets every unit of their part
+      - { unitset: part_overlap }          # fixed: everyone also gets the overlap units
+  - sources:
+      - unitset: pool
+        dynamic: { maxCoders: 1 }          # one coder per unit, coders unknown in advance
+      - unitset: reliability
+        dynamic: { minCoders: 3, maxCoders: 5, agreement: { variable: sentiment, minAgree: 3 }, priority: saturate }
 ```
 
-## 7. Code map
+**Sources.** A unitset is just an ordered list of ids. Whether its units
+are handed out *fixed* or *dynamic* is a property of the source, so the same
+unitset can be used both ways.
+
+- **Fixed.** The coder gets every unit of the set.
+- **Dynamic.** A queue shared by all coders routed to it:
+  - A unit is **complete** once `minCoders` (default 1) coders finished it
+    and, with `agreement`, `minAgree` of them gave the same answer. It is
+    also complete, regardless, once `maxCoders` coders finished it.
+    `maxCoders` is required with an agreement rule, so a unit nobody agrees
+    on isn't coded forever.
+  - **Open slots** are codings still needed, capped by `maxCoders`, minus
+    active leases. This prevents over-assignment while coders are working.
+  - **Leases** last `leaseSeconds` (default 900). An expired lease frees the
+    slot. A coder asking for "next" while holding a lease gets the same unit
+    again, so a reload is safe.
+  - **`priority`:**
+    - `cover` (default) prefers least-coded units;
+    - `saturate` prefers units closest to completion.
+
+**`when`.** This is declarative (equality / any-of on coder-level variables)
+rather than QuickJS. The job server evaluates it, any researcher can read
+it, and it can be reproduced without a JS engine. Codebook validation checks
+that `when` keys and `{placeholders}` refer to coder-level variables defined
+*before* the loop, and that `when` values are among their codes.
+
+**Routing is sticky.** The resolved unitset names are stored on the db
+server per coder and loop (`assignments`, e.g. `{ main: ["part_2",
+"part_overlap"] }`). A coder who later changes an answer used in `when`
+keeps their units.
+
+The example "1000 units, until 5 coders agree, max 100 per coder" is:
+
+```yaml
+order: random
+maxUnits: 100
+units:
+  - sources: [ { unitset: __all__, dynamic: { maxCoders: 10, agreement: { variable: sentiment, minAgree: 5 } } } ]
+```
+
+### 6.2 Unitsets are explicit
+
+Unitsets are stored lists, not recipes. That way adding units to a job never
+changes an existing distribution. `POST /job/:jobId/unitsets/generate`
+(and the "Split into parts…" UI) makes them easy to create:
+
+- shuffle the units with a seed;
+- set aside an overlap (`overlapUnits` or `overlapFraction`) as
+  `<prefix>_overlap`;
+- split the rest into `<prefix>_1..n`.
+
+The splitting logic is a pure function, `splitUnits` in contracts.
+
+## 7. Coder variables and invitations
+
+**`auto` variables** are assigned, never asked, and never changed afterwards.
+The client skips them as steps.
+
+- `random`: weighted draw from `options` (job server).
+- `balanced`: the option fewest coders have so far (job server). This
+  spreads unknown coders evenly over `part_{slot}`.
+- `invite`: the value preset on the coder's invitation. If the invitation
+  doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
+  stays empty.
+- `url_param`: read from the URL by the client. Not implemented in the
+  client yet.
+
+The job server refuses to let the client overwrite assigned variables.
+`POST /variables/coder` keeps the stored values.
+
+**Invitations** (db server only, never in the codebook):
+
+```json
+{ "label": "Alice", "access": "only_authenticated", "emails": ["alice@uni.nl"], "maxUses": 1, "variables": { "slot": "2" } }
+```
+
+- **Routing a specific coder.** A per-coder invite with
+  `variables: { slot: "2" }` routes them to `part_2`, and the codebook never
+  learns who they are.
+- **General links.** A link with no preset relies on the variable's
+  `fallback`.
+- **Enforcement today.** `maxUses` is enforced. Email restrictions are
+  stored, but they need real coder authentication before they can be
+  enforced (§10).
+
+## 8. Job updates (not implemented yet; designed for)
+
+Researchers will want to update a deployed job without coders redoing
+unchanged work. Choices made so far keep that possible:
+
+- **Annotations are keyed by variable name.** A new codebook version that
+  keeps a question's name and meaning keeps its answers. A future "what
+  changed" diff between codebook versions can mark only changed or new
+  variables as needing an answer, and the job server would then serve
+  partially done units again.
+- **Routing survives updates.** Assignments store *resolved unitset names*,
+  not branch indices. On a new version, a coder keeps their routing as long
+  as some branch still produces the same unitsets. Otherwise they are
+  re-routed on their next request.
+- **Completion is derived, not stored.** Dynamic-source completeness is
+  computed from annotations. Raising `minCoders` or changing an agreement
+  rule simply reopens units.
+- **Unitsets are explicit.** Adding units means adding them to a unitset (or
+  a new one) on purpose. Existing assignments don't shift.
+
+Open: annotations are not tagged with the loop or codebook version they were
+made under, and a unit is stored once per coder. A unit used in two loops
+for the same coder shares one annotation. Tagging annotations with the
+codebook version is probably the first step towards real update support.
+
+## 9. Code map
 
 | Where | What |
 | --- | --- |
-| `contracts/src/deployment.ts` | Distribution rules, deployment schemas, `backendEndpoints`, `jobServerAdminEndpoints`, status |
+| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, placeholders, legacy migration |
+| `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
+| `contracts/src/deployment.ts` | Deployment schemas, `backendEndpoints`, `jobServerAdminEndpoints`, status |
 | `job-server/src/app.ts` | Hono app: coder API under `/d/:deploymentId`, admin API |
 | `job-server/src/registry.ts` | Lazily loads one runtime per deployment; failures aren't cached |
-| `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, write-through, status |
-| `job-server/src/distribution.ts` | `UnitsetQueue`: pure per-coder / crowd assignment logic |
+| `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, write-through, status |
+| `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
 | `job-server/src/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `job-server/src/backend.ts` | Typed backend API client; validates db server responses |
 | `mock-server/src/routes/backend.ts` | Reference backend API implementation |
 | `mock-server/src/routes/deployment.ts` | Researcher deployment endpoints, job server notification |
+| `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches and sources |
 
 `job-server/src/__tests__/integration.test.ts` runs the real mock server and
 job server against each other, through in-process `fetch`.
 
-## 8. Open questions and next steps
+## 10. Open questions and next steps
 
 Roughly in order:
 
@@ -220,14 +339,16 @@ Roughly in order:
    (QuickJS) server-side, to reject answers to questions the coder should
    never have seen, is the natural next step. It belongs here, not in db
    servers.
-6. **Distribution config location.** Rules currently live in the deployment
-   (per unitset), while `randomizeUnits` lives on the codebook's `unit_loop`.
-   Decide whether distribution belongs in the codebook too. It is immutable
-   and reproducible, which argues for it. The deployment allows changing
-   caps mid-job, which argues against.
+6. **`url_param` auto variables** are documented as client-side but not
+   implemented in `JobManager` yet. Email-restricted invites need real coder
+   authentication (item 3).
 7. **Scale.** `GET /backend/.../annotations` is a full dump on cold start.
    Add `?after=<cursor>` pagination. Per-unit state is O(units) in memory,
-   which is fine into the 100k range per deployment.
+   which is fine into the 100k range per deployment. Status computation is
+   O(coders x units) and should be cached or made incremental for large
+   jobs.
 8. **Deactivation semantics.** `active: false` stops new units (409), but
    coders can still submit units they were already working on. Decide
    whether that's what researchers expect.
+9. **Job updates** (§8): codebook-version tagging of annotations and a
+   variable-level diff between versions.

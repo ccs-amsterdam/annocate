@@ -57,7 +57,7 @@ describe("codebook routes", () => {
       {
         type: "unit_loop",
         name: "loop",
-        unitset: "main",
+        units: [{ sources: [{ unitset: "main" }] }],
         layout: { template: "" },
         children: [
           {
@@ -147,9 +147,9 @@ describe("coder session flow", () => {
     expect(sessionRes.status).toBe(200);
     const session = await json(sessionRes);
     expect(session.codebook.name).toBe("cb");
-    expect(session.progress).toEqual([]);
+    expect(session.progress).toEqual([{ unitset: "loop", doneUnitIds: [] }]);
 
-    const nextRes = await app.request("/unitset/main/next", { headers: coderHeaders });
+    const nextRes = await app.request("/loop/loop/next", { headers: coderHeaders });
     expect(nextRes.status).toBe(200);
     const nextUnit = await json(nextRes);
     expect(nextUnit.id).toBe(unitId);
@@ -161,11 +161,11 @@ describe("coder session flow", () => {
     });
     expect(submitRes.status).toBe(204);
 
-    const afterRes = await app.request("/unitset/main/next", { headers: coderHeaders });
+    const afterRes = await app.request("/loop/loop/next", { headers: coderHeaders });
     expect(await afterRes.json()).toBeNull();
 
     const sessionAfter = await json(await app.request("/session", { headers: coderHeaders }));
-    expect(sessionAfter.progress).toEqual([{ unitset: "main", doneUnitIds: [unitId] }]);
+    expect(sessionAfter.progress).toEqual([{ unitset: "loop", doneUnitIds: [unitId] }]);
   });
 
   it("supports unit_loop without unitset defaulting to iterating all units", async () => {
@@ -213,7 +213,7 @@ describe("coder session flow", () => {
     const coderHeaders = { "content-type": "application/json", "x-coder-key": "coder-xyz", "x-invite-secret": invite.secret };
 
     // Fetch next unit using __all__
-    const nextRes1 = await app.request("/unitset/__all__/next", { headers: coderHeaders });
+    const nextRes1 = await app.request("/loop/loop/next", { headers: coderHeaders });
     expect(nextRes1.status).toBe(200);
     const unit1 = await json(nextRes1);
     expect(unit1.externalId).toBe("u1");
@@ -225,15 +225,58 @@ describe("coder session flow", () => {
     });
 
     // Fetch second unit
-    const nextRes2 = await app.request("/unitset/__all__/next", { headers: coderHeaders });
+    const nextRes2 = await app.request("/loop/loop/next", { headers: coderHeaders });
     expect(nextRes2.status).toBe(200);
     const unit2 = await json(nextRes2);
     expect(unit2.externalId).toBe("u2");
+  });
+
+  it("copies an invite's preset variables to new coders and enforces maxUses", async () => {
+    const { jobId } = await setupJobWithCodebookAndUnits();
+    const inviteRes = await app.request(`/job/${jobId}/coders/invite`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ label: "alice", access: "user_decides", maxUses: 1, variables: { slot: "2" } }),
+    });
+    const invite = await json(inviteRes);
+    expect(invite).toMatchObject({ uses: 0, maxUses: 1, variables: { slot: "2" } });
+
+    const headers = (key: string) => ({ "x-coder-key": key, "x-invite-secret": invite.secret });
+    const session = await json(await app.request("/session", { headers: headers("alice") }));
+    expect(session.variables.slot.codes).toEqual([{ code: "2" }]);
+    expect((await app.request("/session", { headers: headers("bob") })).status).toBe(401);
   });
 
   it("rejects an unknown coder key without an invite secret", async () => {
     await setupJobWithCodebookAndUnits();
     const res = await app.request("/session", { headers: { "x-coder-key": "unknown" } });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("unitset generation", () => {
+  it("splits units into parts plus an overlap set", async () => {
+    const job = await createJob();
+    await app.request(`/job/${job.id}/units`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ units: Array.from({ length: 10 }, (_, i) => ({ externalId: `u${i}`, data: { i } })) }),
+    });
+    const generate = (body: object) =>
+      app.request(`/job/${job.id}/unitsets/generate`, { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
+
+    const res = await generate({ prefix: "part", parts: 4, overlapUnits: 2 });
+    expect(res.status).toBe(201);
+    const sets = (await json(res)) as { name: string; unitIds: number[] }[];
+    expect(sets.map((s) => [s.name, s.unitIds.length])).toEqual([
+      ["part_1", 2],
+      ["part_2", 2],
+      ["part_3", 2],
+      ["part_4", 2],
+      ["part_overlap", 2],
+    ]);
+    expect(new Set(sets.flatMap((s) => s.unitIds)).size).toBe(10);
+
+    expect((await generate({ prefix: "part", parts: 2 })).status).toBe(409);
   });
 });

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema } from "../job.js";
 import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitResponseSchema, CoderUnitResponseSchema } from "../unit.js";
-import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
+import { UnitsetWriteSchema, UnitsetResponseSchema, GenerateUnitsetsSchema } from "../unitset.js";
 import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue.js";
 import { SessionResponseSchema } from "../session.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
@@ -88,11 +88,17 @@ export const endpoints = {
     response: UnitsetResponseSchema,
   },
   deleteUnitset: { method: "DELETE", path: "/job/:jobId/unitsets/:id", request: z.void(), response: z.void() },
+  generateUnitsets: {
+    method: "POST",
+    path: "/job/:jobId/unitsets/generate",
+    request: GenerateUnitsetsSchema,
+    response: z.array(UnitsetResponseSchema),
+  },
 
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
   getNextUnit: {
     method: "GET",
-    path: "/unitset/:setname/next",
+    path: "/loop/:loop/next",
     request: z.void(),
     response: CoderUnitResponseSchema.nullable(),
   },

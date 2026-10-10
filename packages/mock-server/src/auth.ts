@@ -80,6 +80,7 @@ export interface CoderRow {
   devKey: string;
   variables: string;
   doneUnitIds: string;
+  assignments: string;
 }
 
 /**
@@ -102,14 +103,23 @@ export function resolveCoder(
 
   if (!inviteSecret) return { error: "Unknown coder; provide x-invite-secret to create one" };
   const invite = db.prepare("SELECT * FROM invites WHERE secret = ?").get(inviteSecret) as
-    | { jobId: number }
+    | { id: number; jobId: number; maxUses: number | null; uses: number; variables: string }
     | undefined;
   if (!invite || (jobId !== undefined && invite.jobId !== jobId)) return { error: "Invalid invite secret" };
+  if (invite.maxUses !== null && invite.uses >= invite.maxUses) return { error: "This invite has been used up" };
 
-  db.prepare("INSERT INTO coders (jobId, devKey, variables, doneUnitIds) VALUES (?, ?, '{}', '{}')").run(
+  // The invite's preset variables (e.g. `{ slot: "2" }`) become the coder's
+  // values for the codebook's `auto` variables with `source: "invite"`.
+  const presets = JSON.parse(invite.variables) as Record<string, string>;
+  const variables = Object.fromEntries(
+    Object.entries(presets).map(([name, code]) => [name, { done: true, skip: false, codes: [{ code }] }]),
+  );
+  db.prepare("INSERT INTO coders (jobId, devKey, variables, doneUnitIds) VALUES (?, ?, ?, '{}')").run(
     invite.jobId,
     coderKey,
+    JSON.stringify(variables),
   );
+  db.prepare("UPDATE invites SET uses = uses + 1 WHERE id = ?").run(invite.id);
   return db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as unknown as CoderRow;
 }
 

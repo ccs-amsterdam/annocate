@@ -1,14 +1,15 @@
 import type { z } from "zod";
 import {
   backendEndpoints,
-  BackendAnnotationsResponseSchema,
+  BackendAnnotationSchema,
+  BackendCoderSchema,
   BackendUnitSchema,
   DeploymentSpecSchema,
-  ResolveCoderResponseSchema,
   type BackendAnnotation,
+  type BackendCoder,
+  type BackendCoderWrite,
   type BackendUnit,
   type DeploymentSpec,
-  type ResolveCoderResponse,
   type VariableValue,
 } from "@annotinder/contracts";
 
@@ -80,15 +81,23 @@ export class BackendClient {
     return this.request(`${backendEndpoints.getUnits.path}?ids=${ids.join(",")}`, BackendUnitSchema.array());
   }
 
-  resolveCoder(coderKey: string, inviteSecret?: string): Promise<ResolveCoderResponse> {
-    return this.request(backendEndpoints.resolveCoder.path, ResolveCoderResponseSchema, {
+  listCoders(): Promise<BackendCoder[]> {
+    return this.request(backendEndpoints.listCoders.path, BackendCoderSchema.array());
+  }
+
+  resolveCoder(coderKey: string, inviteSecret?: string): Promise<BackendCoder> {
+    return this.request(backendEndpoints.resolveCoder.path, BackendCoderSchema, {
       method: "POST",
       body: { coderKey, inviteSecret },
     });
   }
 
+  async putCoder(coderId: number, body: BackendCoderWrite): Promise<void> {
+    await this.request(backendEndpoints.putCoder.path, null, { method: "PUT", body, params: { coderId } });
+  }
+
   listAnnotations(): Promise<BackendAnnotation[]> {
-    return this.request(backendEndpoints.listAnnotations.path, BackendAnnotationsResponseSchema);
+    return this.request(backendEndpoints.listAnnotations.path, BackendAnnotationSchema.array());
   }
 
   async putAnnotation(unitId: number, coderId: number, variables: Record<string, VariableValue>): Promise<void> {
@@ -96,14 +105,6 @@ export class BackendClient {
       method: "PUT",
       body: { variables },
       params: { unitId, coderId },
-    });
-  }
-
-  async putCoderVariables(coderId: number, variables: Record<string, VariableValue>): Promise<void> {
-    await this.request(backendEndpoints.putCoderVariables.path, null, {
-      method: "PUT",
-      body: { variables },
-      params: { coderId },
     });
   }
 }

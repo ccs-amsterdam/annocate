@@ -14,7 +14,8 @@ import {
  */
 export interface JobServer {
   getSession(): Promise<SessionResponse>;
-  getNextUnit(unitset?: string): Promise<CoderUnitResponse | null>;
+  /** Next unit for a unit_loop; which unit is decided by the job server. `null` = the coder is done with the loop. */
+  getNextUnit(loop: string): Promise<CoderUnitResponse | null>;
   postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void>;
   postCoderVariables(variables: Record<string, VariableValue>): Promise<void>;
 }
@@ -55,9 +56,8 @@ export class HttpJobServer implements JobServer {
     return this.request(endpoints.getSession.path);
   }
 
-  async getNextUnit(unitset?: string): Promise<CoderUnitResponse | null> {
-    const key = unitset && unitset.trim() !== "" ? encodeURIComponent(unitset) : "__all__";
-    return this.request(endpoints.getNextUnit.path.replace(":setname", key));
+  async getNextUnit(loop: string): Promise<CoderUnitResponse | null> {
+    return this.request(endpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop)));
   }
 
   async postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void> {

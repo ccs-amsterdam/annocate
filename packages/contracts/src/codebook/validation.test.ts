@@ -14,8 +14,8 @@ function unitVar(name: string): UnitVariableItem {
 function questionVar(name: string, variable: any = confirmVariable): any {
   return { type: "question", name, variable };
 }
-function unitLoop(name: string, children: InLoopItem[], unitset?: string): TopLevelItem {
-  return { type: "unit_loop", name, unitset, layout: { template: "" }, children };
+function unitLoop(name: string, children: InLoopItem[], unitset = "__all__"): TopLevelItem {
+  return { type: "unit_loop", name, units: [{ sources: [{ unitset }] }], layout: { template: "" }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], expression = "true"): TopLevelItem {
   return { type: "condition", name, expression, children };
@@ -31,30 +31,67 @@ describe("validateCodebookItems", () => {
     expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
   });
 
-  it("allows unit_loop with unitset omitted, empty, or with randomizeUnits", () => {
-    const itemsWithoutUnitset: TopLevelItem[] = [
-      {
-        type: "unit_loop",
-        name: "all_units_loop",
-        layout: { template: "" },
-        randomizeUnits: true,
-        children: [unitVar("q1")],
-      },
+  it("migrates the legacy unitset/randomizeUnits loop shape", () => {
+    const legacy = (extra: object) => [
+      { type: "unit_loop", name: "loop", layout: { template: "" }, children: [unitVar("q1")], ...extra },
     ];
-    expect(validateCodebookItems(itemsWithoutUnitset)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(itemsWithoutUnitset)).not.toThrow();
+    expect(validateCodebookItems(legacy({ randomizeUnits: true }))).toEqual([]);
+    expect(CodebookItemsSchema.parse(legacy({ randomizeUnits: true }))[0]).toMatchObject({
+      units: [{ sources: [{ unitset: "__all__" }] }],
+      order: "random",
+    });
+    expect(CodebookItemsSchema.parse(legacy({ unitset: "" }))[0]).toMatchObject({
+      units: [{ sources: [{ unitset: "__all__" }] }],
+    });
+    const parsed = CodebookItemsSchema.parse(legacy({ unitset: "main" }))[0];
+    expect(parsed).toMatchObject({ units: [{ sources: [{ unitset: "main" }] }] });
+    expect(parsed).not.toHaveProperty("unitset");
+  });
 
-    const itemsWithEmptyUnitset: TopLevelItem[] = [
+  it("checks that loop branches refer to preceding coder variables", () => {
+    const slot = questionVar("slot", { type: "auto", source: "invite", options: [{ code: "1" }, { code: "2" }] });
+    const loop = (units: unknown): TopLevelItem =>
+      ({ type: "unit_loop", name: "loop", units, layout: { template: "" }, children: [questionVar("q1")] }) as TopLevelItem;
+
+    const valid: TopLevelItem[] = [
+      slot,
+      loop([
+        { when: { slot: ["1", "2"] }, sources: [{ unitset: "part_{slot}" }, { unitset: "overlap" }] },
+        {
+          sources: [
+            { unitset: "pool", dynamic: { minCoders: 2, maxCoders: 4, agreement: { variable: "q1", minAgree: 2 } } },
+          ],
+        },
+      ]),
+    ];
+    expect(validateCodebookItems(valid)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(valid)).not.toThrow();
+
+    const messages = (items: TopLevelItem[]) => validateCodebookItems(items).map((i) => i.message);
+    // variable defined after the loop
+    expect(messages([loop([{ when: { slot: "1" }, sources: [{ unitset: "a" }] }]), slot])).toEqual([
+      "'slot' is not a coder-level variable defined before this loop",
+    ]);
+    expect(messages([slot, loop([{ when: { slot: "3" }, sources: [{ unitset: "a" }] }])])).toEqual([
+      "'3' is not a code of 'slot'",
+    ]);
+    expect(messages([slot, loop([{ sources: [{ unitset: "part_{group}" }] }])])[0]).toContain("'{group}'");
+    expect(
+      messages([slot, loop([{ sources: [{ unitset: "a", dynamic: { maxCoders: 3, agreement: { variable: "nope", minAgree: 2 } } }] }])]),
+    ).toEqual(["Agreement variable 'nope' is not a question in this loop"]);
+  });
+
+  it("requires maxCoders with an agreement rule", () => {
+    const items = [
       {
         type: "unit_loop",
-        name: "empty_unitset_loop",
-        unitset: "",
+        name: "loop",
+        units: [{ sources: [{ unitset: "a", dynamic: { agreement: { variable: "q1", minAgree: 2 } } }] }],
         layout: { template: "" },
         children: [unitVar("q1")],
       },
     ];
-    expect(validateCodebookItems(itemsWithEmptyUnitset)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(itemsWithEmptyUnitset)).not.toThrow();
+    expect(() => CodebookItemsSchema.parse(items)).toThrow(/maxCoders/);
   });
 
   it("allows user_variable and condition items outside a unit_loop", () => {

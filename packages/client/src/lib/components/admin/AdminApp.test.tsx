@@ -26,6 +26,7 @@ const stubClient: AdminClient = {
   createUnitset: () => new Promise(() => {}),
   updateUnitset: () => new Promise(() => {}),
   deleteUnitset: () => new Promise(() => {}),
+  generateUnitsets: () => new Promise(() => {}),
   listCoders: () => new Promise(() => {}),
   inviteCoder: () => new Promise(() => {}),
 };

@@ -11,6 +11,7 @@ import {
   type UnitsCreateBody,
   type UnitsetResponse,
   type UnitsetWrite,
+  type GenerateUnitsets,
   type CoderProgress,
   type CoderInviteWrite,
   type CoderInviteResponse,
@@ -52,6 +53,7 @@ export interface AdminClient {
   createUnitset(body: UnitsetWrite): Promise<UnitsetResponse>;
   updateUnitset(id: number, body: UnitsetWrite): Promise<UnitsetResponse>;
   deleteUnitset(id: number): Promise<void>;
+  generateUnitsets(body: GenerateUnitsets): Promise<UnitsetResponse[]>;
 
   listCoders(): Promise<CoderProgress[]>;
   inviteCoder(body: CoderInviteWrite): Promise<CoderInviteResponse>;
@@ -243,6 +245,14 @@ export class HttpAdminClient implements AdminClient {
       endpoints.deleteUnitset.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
       { method: "DELETE" },
     );
+  }
+
+  async generateUnitsets(body: GenerateUnitsets): Promise<UnitsetResponse[]> {
+    const jobId = this.requireJobId();
+    return this.request(endpoints.generateUnitsets.path.replace(":jobId", String(jobId)), {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
 
   async listCoders(): Promise<CoderProgress[]> {

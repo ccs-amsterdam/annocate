@@ -170,6 +170,12 @@ export class JobManager {
       this.publish({ phase: "loading", error: null });
       const session: SessionResponse = await this.jobServer.getSession();
       this.items = session.codebook.items as TopLevelItem[];
+      // Coder-level variables so far, including server-assigned `auto`
+      // variables (condition, slot, ...), so conditions can use them.
+      for (const [name, value] of Object.entries(session.variables ?? {})) {
+        this.userVariableValues[name] = value;
+        this.recordConditionValue(name, value);
+      }
       this.topIndex = -1;
       this.maxReachedTopIndex = 0;
       this.unitHistory = [];
@@ -359,7 +365,7 @@ export class JobManager {
 
     // In preview mode with allowFetchAhead: fetch units ahead up to target unitIndex
     while (allowFetchAhead && this.unitHistory.length <= unitIndex) {
-      const nextUnit = await this.jobServer.getNextUnit(this.activeLoop.unitset);
+      const nextUnit = await this.jobServer.getNextUnit(this.activeLoop.name);
       if (!nextUnit) break;
       const initialAnswers = { ...(nextUnit.variables ?? {}) };
       this.unitHistory.push({ unit: nextUnit, answers: initialAnswers });
@@ -609,8 +615,8 @@ export class JobManager {
       this.currentUnit = null;
     }
 
-    // At frontier: Fetch the next unit from the unitset.
-    const nextUnit = await this.jobServer.getNextUnit(this.activeLoop.unitset);
+    // At frontier: ask the job server for the next unit of this loop.
+    const nextUnit = await this.jobServer.getNextUnit(this.activeLoop.name);
     if (!nextUnit) {
       // Loop finished: advance to the next top-level item.
       this.activeLoop = null;

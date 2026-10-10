@@ -51,8 +51,8 @@ function coder(key: string, invite: string | null = "demo-secret", server = () =
   const call = (path: string, init?: RequestInit) => server().request(`/d/mock.1${path}`, { ...init, headers });
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
-    next: async (unitset = "main") => {
-      const res = await call(`/unitset/${unitset}/next`);
+    next: async (loop = "main_loop") => {
+      const res = await call(`/loop/${loop}/next`);
       expect(res.status).toBe(200);
       return res.json() as Promise<CoderUnitResponse | null>;
     },
@@ -88,7 +88,7 @@ describe("coder flow through the job server", () => {
     expect(JSON.parse(dbAnnotations()[0].variables).sentiment.codes[0].code).toBe("positive");
 
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect((await c.session()).progress).toEqual([{ unitset: "main", doneUnitIds: [first!.id] }]);
+    expect((await c.session()).progress).toEqual([{ unitset: "main_loop", doneUnitIds: [first!.id] }]);
   });
 
   it("rejects invalid annotations without writing them", async () => {
@@ -134,19 +134,62 @@ describe("coder flow through the job server", () => {
   });
 });
 
-describe("crowd deployments", () => {
-  async function deployCrowd(rule: object) {
-    const res = await dbApp.request("/job/1/deployment", {
-      method: "PUT",
-      headers: adminHeaders,
-      body: JSON.stringify({ codebookId: 1, distribution: { main: { mode: "crowd", ...rule } } }),
-    });
-    expect(res.status).toBe(200);
-  }
+/** Creates a codebook with the given unit_loop settings and deploys it as a new version. */
+async function redeploy(loop: object, extraItems: object[] = []) {
+  const res = await dbApp.request("/job/1/codebook", {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({
+      name: "v2",
+      items: [
+        ...extraItems,
+        {
+          type: "unit_loop",
+          name: "main_loop",
+          layout: { template: "" },
+          children: [
+            {
+              type: "question",
+              name: "sentiment",
+              variable: { type: "select_code", question: "?", codes: [{ code: "positive" }, { code: "negative" }, { code: "neutral" }] },
+            },
+          ],
+          ...loop,
+        },
+      ],
+    }),
+  });
+  expect(res.status).toBe(201);
+  const codebook = (await res.json()) as { id: number };
+  const deploy = await dbApp.request("/job/1/deployment", {
+    method: "PUT",
+    headers: adminHeaders,
+    body: JSON.stringify({ codebookId: codebook.id }),
+  });
+  expect(deploy.status).toBe(200);
+}
 
-  it("picks up a redeploy and codes each unit until coders agree", async () => {
-    await coder("warmup").session(); // job server has the old (per_coder) version loaded
-    await deployCrowd({ agreement: { variable: "sentiment", minAgree: 2, maxCoders: 3 } });
+async function createUnitset(name: string, externalIds: string[]) {
+  const ids = externalIds.map((e) => (db.prepare("SELECT id FROM units WHERE externalId = ?").get(e) as { id: number }).id);
+  await dbApp.request("/job/1/unitsets", { method: "POST", headers: adminHeaders, body: JSON.stringify({ name, unitIds: ids }) });
+  return ids;
+}
+
+async function invite(variables?: Record<string, string>) {
+  const res = await dbApp.request("/job/1/coders/invite", {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({ label: "x", access: "user_decides", variables }),
+  });
+  return ((await res.json()) as { secret: string }).secret;
+}
+
+describe("dynamic sources", () => {
+  it("pick up a redeploy and code each unit until coders agree", async () => {
+    await coder("warmup").session(); // job server has the old version loaded
+    await redeploy({
+      units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 3, agreement: { variable: "sentiment", minAgree: 2 }, priority: "saturate" } }] }],
+    });
 
     const answers: Record<string, string> = { a: "positive", b: "negative", c: "positive" };
     const firstUnits: number[] = [];
@@ -156,7 +199,7 @@ describe("crowd deployments", () => {
       firstUnits.push(unit!.id);
       expect((await c.submit(unit!.id, sentiment(answers[key]))).status).toBe(204);
     }
-    // "fill": everyone gets unit 1 until it reaches agreement (a and c agree on the 3rd coding)
+    // saturate: everyone gets the same unit until it reaches agreement (a and c agree on the 3rd coding)
     expect(new Set(firstUnits).size).toBe(1);
 
     const d = coder("d");
@@ -165,15 +208,87 @@ describe("crowd deployments", () => {
 
     const status = (await (await dbApp.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
     expect(status.version).toBe(2);
-    expect(status.unitsets[0]).toMatchObject({ mode: "crowd", completeUnits: 1, leasedUnits: 1, codings: 3 });
+    expect(status.sources).toEqual([
+      expect.objectContaining({ loop: "main_loop", unitset: "main", mode: "dynamic", completeUnits: 1, leasedUnits: 1, codings: 3, coders: 4 }),
+    ]);
   });
 
-  it("refuses annotations for units that were not assigned to the coder", async () => {
-    await deployCrowd({ codersPerUnit: 1 });
+  it("refuse annotations for units that were not handed to the coder", async () => {
+    await redeploy({ units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 1 } }] }] });
     const a = coder("a");
     const b = coder("b");
     const unitA = await a.next();
     await b.next();
     expect((await b.submit(unitA!.id, sentiment("neutral"))).status).toBe(409);
+  });
+});
+
+describe("routing coders to unitsets", () => {
+  const slot = { type: "question", name: "slot", variable: { type: "auto", source: "invite", options: [{ code: "1" }, { code: "2" }], fallback: "balanced" } };
+  const routedLoop = { units: [{ sources: [{ unitset: "part_{slot}" }, { unitset: "overlap" }] }] };
+
+  it("route invited coders by their preset slot, and balance the rest", async () => {
+    const [u1, u2, u3] = await createUnitset("part_1", ["unit-1"]).then(async (p1) => [
+      ...p1,
+      ...(await createUnitset("part_2", ["unit-2"])),
+      ...(await createUnitset("overlap", ["unit-3"])),
+    ]);
+    await redeploy(routedLoop, [slot]);
+
+    const alice = coder("alice", await invite({ slot: "2" }));
+    expect((await alice.session()).variables.slot.codes).toEqual([{ code: "2" }]);
+    expect((await alice.next())!.id).toBe(u2);
+
+    // no preset: balanced fallback -> slot 1 (slot 2 already has alice)
+    const general = await invite();
+    const bob = coder("bob", general);
+    expect((await bob.session()).variables.slot.codes).toEqual([{ code: "1" }]);
+    const bobUnit = await bob.next();
+    expect(bobUnit!.id).toBe(u1);
+    await bob.submit(bobUnit!.id, sentiment("neutral"));
+    expect((await bob.next())!.id).toBe(u3); // then the overlap set
+  });
+
+  it("keep routing sticky and don't let the client overwrite assigned variables", async () => {
+    await createUnitset("part_1", ["unit-1"]);
+    await createUnitset("part_2", ["unit-2"]);
+    await createUnitset("overlap", ["unit-3"]);
+    await redeploy(routedLoop, [slot]);
+
+    const carol = coder("carol", await invite({ slot: "1" }));
+    const first = await carol.next();
+    const tamper = await carol.call("/variables/coder", {
+      method: "POST",
+      body: JSON.stringify({ variables: { slot: { done: true, codes: [{ code: "2" }] } } }),
+    });
+    expect(tamper.status).toBe(204);
+    expect((await carol.session()).variables.slot.codes).toEqual([{ code: "1" }]);
+
+    // even after a restart, carol keeps her routing
+    jobServer = newJobServer();
+    const again = coder("carol", null);
+    expect((await again.next())!.id).toBe(first!.id);
+    const stored = db.prepare("SELECT assignments FROM coders WHERE devKey = 'carol'").get() as { assignments: string };
+    expect(JSON.parse(stored.assignments)).toEqual({ main_loop: ["part_1", "overlap"] });
+  });
+
+  it("route by a coder's answer with `when`, first matching branch wins", async () => {
+    const leaning = { type: "question", name: "leaning", variable: { type: "select_code", question: "?", codes: [{ code: "left" }, { code: "right" }] } };
+    await createUnitset("left_units", ["unit-1"]);
+    await redeploy(
+      { units: [{ when: { leaning: "left" }, sources: [{ unitset: "left_units" }] }, { sources: [{ unitset: "main" }] }] },
+      [leaning],
+    );
+    const lefty = coder("lefty");
+    await lefty.call("/variables/coder", {
+      method: "POST",
+      body: JSON.stringify({ variables: { leaning: { done: true, codes: [{ code: "left" }] } } }),
+    });
+    const unit = await lefty.next();
+    await lefty.submit(unit!.id, sentiment("neutral"));
+    expect(await lefty.next()).toBeNull(); // only the one unit in left_units
+
+    const other = coder("other");
+    expect((await other.next())!.externalId).toBe("unit-1"); // default branch: main
   });
 });

@@ -11,6 +11,7 @@ import type {
   UnitsCreateBody,
   UnitsetResponse,
   UnitsetWrite,
+  GenerateUnitsets,
 } from "@annotinder/contracts";
 import type { AdminClient } from "../api/httpAdminClient";
 
@@ -171,6 +172,16 @@ export function useDeleteUnitsetMutation(client: AdminClient): UseMutationResult
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteUnitset(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.unitsets(client.jobId) }),
+  });
+}
+
+export function useGenerateUnitsetsMutation(
+  client: AdminClient,
+): UseMutationResult<UnitsetResponse[], Error, GenerateUnitsets> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: GenerateUnitsets) => client.generateUnitsets(body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.unitsets(client.jobId) }),
   });
 }

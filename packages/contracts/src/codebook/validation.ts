@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TopLevelItemSchema, type CodebookItem } from "./item.js";
+import { unitsetPlaceholders, type UnitBranch } from "./unitLoop.js";
 
 export interface CodebookValidationIssue {
   path: (string | number)[];
@@ -12,6 +13,8 @@ export interface CodebookValidationIssue {
  * 2. Enforces unique names across all items in the tree
  * 3. Enforces that span variable references in relations exist in preceding items
  * 4. Enforces structural rules (unit_loop cannot be nested, etc.)
+ * 5. Enforces that unit_loop branches only refer to coder-level variables
+ *    defined before the loop, and agreement rules to questions inside it
  */
 export function validateCodebookItems(items: unknown[]): CodebookValidationIssue[] {
   const issues: CodebookValidationIssue[] = [];
@@ -32,6 +35,61 @@ export function validateCodebookItems(items: unknown[]): CodebookValidationIssue
   // 2. Tree-walking semantic validation
   const seenNames = new Map<string, (string | number)[]>();
   const spanVariables = new Set<string>();
+  /** Coder-level (outside any loop) variables seen so far -> their codes, if known. */
+  const coderVariables = new Map<string, string[] | null>();
+
+  function codesOf(variable: unknown): string[] | null {
+    const v = variable as { type?: string; codes?: { code: string }[]; options?: { code: string }[] };
+    if (v?.type === "auto") return v.options?.map((o) => o.code) ?? null;
+    return v?.codes?.map((c) => c.code) ?? null;
+  }
+
+  function questionNames(list: unknown, into = new Set<string>()): Set<string> {
+    if (!Array.isArray(list)) return into;
+    for (const raw of list) {
+      const child = raw as Partial<CodebookItem>;
+      if (child?.type === "condition") questionNames((child as { children?: unknown }).children, into);
+      else if (child?.name) into.add(child.name);
+    }
+    return into;
+  }
+
+  function checkLoopBranches(item: Partial<CodebookItem>, itemPath: (string | number)[]) {
+    const branches = (item as { units?: UnitBranch[] }).units;
+    if (!Array.isArray(branches)) return;
+    const loopQuestions = questionNames((item as { children?: unknown }).children);
+    branches.forEach((branch, b) => {
+      for (const [variable, expected] of Object.entries(branch?.when ?? {})) {
+        const path = [...itemPath, "units", b, "when", variable];
+        if (!coderVariables.has(variable)) {
+          issues.push({ path, message: `'${variable}' is not a coder-level variable defined before this loop` });
+          continue;
+        }
+        const codes = coderVariables.get(variable);
+        for (const value of Array.isArray(expected) ? expected : [expected]) {
+          if (codes && !codes.includes(value)) issues.push({ path, message: `'${value}' is not a code of '${variable}'` });
+        }
+      }
+      (branch?.sources ?? []).forEach((source, i) => {
+        const path = [...itemPath, "units", b, "sources", i];
+        for (const variable of unitsetPlaceholders(source?.unitset ?? "")) {
+          if (!coderVariables.has(variable)) {
+            issues.push({
+              path: [...path, "unitset"],
+              message: `Placeholder '{${variable}}' is not a coder-level variable defined before this loop`,
+            });
+          }
+        }
+        const agreement = source?.dynamic?.agreement?.variable;
+        if (agreement && !loopQuestions.has(agreement)) {
+          issues.push({
+            path: [...path, "dynamic", "agreement", "variable"],
+            message: `Agreement variable '${agreement}' is not a question in this loop`,
+          });
+        }
+      });
+    });
+  }
 
   function walk(
     itemList: unknown[],
@@ -97,8 +155,14 @@ export function validateCodebookItems(items: unknown[]): CodebookValidationIssue
         if (item.name) spanVariables.add(item.name);
       }
 
+      // Record coder-level variables for downstream unit_loop branch checking
+      if (!insideUnitLoop && (item.type === "question" || item.type === "user_variable") && item.name) {
+        coderVariables.set(item.name, codesOf(item.variable));
+      }
+
       // Check structural rules
       if (item.type === "unit_loop") {
+        checkLoopBranches(item, itemPath);
         if (insideUnitLoop) {
           issues.push({
             path: [...itemPath, "type"],
