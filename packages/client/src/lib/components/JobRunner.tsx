@@ -458,7 +458,7 @@ function JobRunnerContent({
 
                     if (phase.type === "unit_loop") {
                       const currentNum = (phase.currentUnitIndex ?? snapshot.navigation.currentUnitIndex ?? 0) + 1;
-                      const totalNum = Math.max(1, phase.unitCount ?? snapshot.navigation.totalUnitsInHistory);
+                      const totalNum = Math.max(1, phase.totalUnits ?? phase.unitCount ?? snapshot.navigation.totalUnitsInHistory);
 
                       return (
                         <div key={phase.name} className="flex flex-col gap-0.5">

@@ -107,6 +107,13 @@ export const endpoints = {
     request: z.void(),
     response: CoderUnitResponseSchema.nullable(),
   },
+  /** A unit the coder already has in this loop (finished or in progress), e.g. to go back to it after resuming. */
+  getLoopUnit: {
+    method: "GET",
+    path: "/loop/:loop/units/:unitId",
+    request: z.void(),
+    response: CoderUnitResponseSchema,
+  },
   postUnitVariables: { method: "POST", path: "/variables/unit", request: PostUnitVariablesSchema, response: z.void() },
   postCoderVariables: {
     method: "POST",

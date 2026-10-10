@@ -64,6 +64,7 @@ export function createDb(path = ":memory:"): DatabaseSync {
       coderId INTEGER NOT NULL,
       variables TEXT NOT NULL,
       updated TEXT NOT NULL,
+      codebookId INTEGER,
       PRIMARY KEY (unitId, coderId)
     );
 
@@ -111,6 +112,7 @@ export function createDb(path = ":memory:"): DatabaseSync {
   addColumnIfMissing(db, "invites", "participantId", "TEXT");
   addColumnIfMissing(db, "invites", "participantFromUrl", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "coders", "participantId", "TEXT");
+  addColumnIfMissing(db, "annotations", "codebookId", "INTEGER");
   return db;
 }
 

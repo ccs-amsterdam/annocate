@@ -147,7 +147,7 @@ describe("coder session flow", () => {
     expect(sessionRes.status).toBe(200);
     const session = await json(sessionRes);
     expect(session.codebook.name).toBe("cb");
-    expect(session.progress).toEqual([{ unitset: "loop", doneUnitIds: [] }]);
+    expect(session.progress).toEqual([{ unitset: "loop", doneUnitIds: [], totalUnits: 1 }]);
 
     const nextRes = await app.request("/loop/loop/next", { headers: coderHeaders });
     expect(nextRes.status).toBe(200);
@@ -165,7 +165,7 @@ describe("coder session flow", () => {
     expect(await afterRes.json()).toBeNull();
 
     const sessionAfter = await json(await app.request("/session", { headers: coderHeaders }));
-    expect(sessionAfter.progress).toEqual([{ unitset: "loop", doneUnitIds: [unitId] }]);
+    expect(sessionAfter.progress).toEqual([{ unitset: "loop", doneUnitIds: [unitId], totalUnits: 1 }]);
   });
 
   it("supports unit_loop without unitset defaulting to iterating all units", async () => {

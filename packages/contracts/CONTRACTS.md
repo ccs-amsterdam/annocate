@@ -105,6 +105,7 @@ registry because the client is written against them.
 | --- | --- | --- | --- | --- |
 | GET | `/session` | – | `SessionResponseSchema` | Coder-authenticated; returns codebook, per-loop progress and the coder's variables (incl. assigned `auto` variables) |
 | GET | `/loop/:loop/next` | – | `CoderUnitResponseSchema \| null` | Coder-authenticated; the job server picks the unit per the loop's branches/sources; `null` means the coder is done with the loop |
+| GET | `/loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` | Coder-authenticated; a unit the coder already has answers for (or holds), with their answers, e.g. to go back after resuming |
 | POST | `/variables/unit` | `PostUnitVariablesSchema` | – | Coder-authenticated; full replace of one unit's variables |
 | POST | `/variables/coder` | `PostCoderVariablesSchema` | – | Coder-authenticated; full replace of job-level variables |
 | POST | `/transfer` | – | `TransferResponseSchema` | Coder-authenticated; one-time token to continue the session on another device |

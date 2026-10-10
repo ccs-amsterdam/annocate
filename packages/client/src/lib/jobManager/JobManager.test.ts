@@ -52,6 +52,7 @@ function makeFlakyServer(overrides: Partial<JobServer> = {}): JobServer & { call
       calls.getNextUnit = (calls.getNextUnit ?? 0) + 1;
       return null;
     }),
+    getLoopUnit: vi.fn(async (_loop: string, id: number) => unit(id)),
     postUnitVariables: vi.fn(async () => {
       calls.postUnitVariables = (calls.postUnitVariables ?? 0) + 1;
     }),
@@ -293,5 +294,72 @@ describe("JobManager navigation, backwards navigation, and answer re-editing", (
     await manager.jumpToPhase(1);
     expect(manager.getSnapshot().phase).toBe("unit_variable");
     expect(manager.getSnapshot().currentUnit?.id).toBe(1);
+  });
+});
+
+describe("resuming a session", () => {
+  const code = (c: string) => ({ done: true, skip: false, codes: [{ code: c }] });
+  const select = (name: string, codes: string[]) =>
+    ({ type: "question", name, variable: { type: "select_code", question: name, codes: codes.map((c) => ({ code: c })) } }) as InLoopItem;
+  const unitWith = (id: number, variables: Record<string, unknown>) =>
+    ({ id, externalId: `u${id}`, data: {}, variables }) as unknown as CoderUnitResponse;
+
+  function resumedServer(opts: { variables?: Record<string, unknown>; nextUnit?: CoderUnitResponse | null; items?: TopLevelItem[] }) {
+    const getLoopUnit = vi.fn(async (_loop: string, id: number) => unitWith(id, { q1: code("a"), q2: code("x") }));
+    let served = false;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => ({
+        ...session(opts.items ?? [confirm("consent"), unitLoop("main", [select("q1", ["a", "b"]), select("q2", ["x", "y"])])]),
+        variables: opts.variables ?? { consent: { done: true, skip: false } },
+        progress: [{ unitset: "main", doneUnitIds: [10, 11], totalUnits: 5 }],
+      }) as SessionResponse),
+      getNextUnit: vi.fn(async () => {
+        if (served) return null;
+        served = true;
+        return opts.nextUnit === undefined ? unitWith(12, {}) : opts.nextUnit;
+      }),
+      getLoopUnit,
+    });
+    return { server, getLoopUnit };
+  }
+
+  it("skips answered questions and finished units, and can go back to them", async () => {
+    const { server, getLoopUnit } = resumedServer({});
+    const manager = new JobManager(server);
+    await manager.start();
+
+    const snap = manager.getSnapshot();
+    expect(snap.currentUnit?.id).toBe(12);
+    expect(snap.currentItem?.name).toBe("q1");
+    const loopPhase = snap.navigation.phases.find((p) => p.type === "unit_loop")!;
+    expect(loopPhase).toMatchObject({ unitCount: 3, totalUnits: 5, currentUnitIndex: 2 });
+    expect(getLoopUnit).not.toHaveBeenCalled();
+    expect(snap.navigation.canGoBack).toBe(true);
+
+    await manager.goBack(); // to the last question of unit 11, loaded on demand
+    expect(getLoopUnit).toHaveBeenCalledWith("main", 11);
+    expect(manager.getSnapshot().currentUnit?.id).toBe(11);
+    expect(manager.getSnapshot().currentItem?.name).toBe("q2");
+  });
+
+  it("asks again when a stored answer no longer fits the codebook", async () => {
+    const items = [select("group", ["a", "b"]) as unknown as TopLevelItem, unitLoop("main", [select("q1", ["a"])])];
+    const { server } = resumedServer({ items, variables: { group: code("removed_code") } });
+    const manager = new JobManager(server);
+    await manager.start();
+    expect(manager.getSnapshot().currentItem?.name).toBe("group");
+  });
+
+  it("starts a partly answered unit at its first open question, dropping invalid answers", async () => {
+    const partly = resumedServer({ nextUnit: unitWith(12, { q1: code("a") }) });
+    const m1 = new JobManager(partly.server);
+    await m1.start();
+    expect(m1.getSnapshot().currentItem?.name).toBe("q2");
+
+    const changed = resumedServer({ nextUnit: unitWith(12, { q1: code("gone"), q2: code("x") }) });
+    const m2 = new JobManager(changed.server);
+    await m2.start();
+    expect(m2.getSnapshot().currentItem?.name).toBe("q1");
+    expect(m2.getSnapshot().currentUnitVariables).not.toHaveProperty("q1");
   });
 });

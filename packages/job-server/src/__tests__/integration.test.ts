@@ -88,7 +88,7 @@ describe("coder flow through the job server", () => {
     expect(JSON.parse(dbAnnotations()[0].variables).sentiment.codes[0].code).toBe("positive");
 
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect((await c.session()).progress).toEqual([{ unitset: "main_loop", doneUnitIds: [first!.id] }]);
+    expect((await c.session()).progress).toEqual([{ unitset: "main_loop", doneUnitIds: [first!.id], totalUnits: 3 }]);
   });
 
   it("rejects invalid annotations without writing them", async () => {
@@ -348,5 +348,38 @@ describe("sessions across devices", () => {
     const res = await raw({ "x-coder-key": "k", "x-invite-secret": secret }, "/session");
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "auth_required" });
+  });
+});
+
+describe("resuming and codebook updates", () => {
+  it("serves units the coder already finished, but not other units", async () => {
+    const c = coder("res");
+    const first = await c.next();
+    await c.submit(first!.id, sentiment("positive"));
+    const again = await c.call(`/loop/main_loop/units/${first!.id}`);
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as CoderUnitResponse).variables.sentiment.codes).toEqual([{ code: "positive" }]);
+
+    const unit3 = (db.prepare("SELECT id FROM units WHERE externalId = 'unit-3'").get() as { id: number }).id;
+    expect((await c.call(`/loop/main_loop/units/${unit3}`)).status).toBe(404);
+  });
+
+  it("keeps answers to questions a codebook update removed, and tags the codebook version", async () => {
+    // demo codebook: sentiment + actors_and_issues + actor_relations
+    const c = coder("upd");
+    const unit = await c.next();
+    await c.submit(unit!.id, { ...sentiment("neutral"), actors_and_issues: { done: true, spans: [] } });
+
+    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
+    expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(204);
+
+    const row = db.prepare("SELECT variables, codebookId FROM annotations WHERE unitId = ?").get(unit!.id) as {
+      variables: string;
+      codebookId: number;
+    };
+    const stored = JSON.parse(row.variables);
+    expect(stored.sentiment.codes).toEqual([{ code: "positive" }]);
+    expect(stored).toHaveProperty("actors_and_issues"); // kept, though v2 no longer asks it
+    expect(row.codebookId).toBe(2);
   });
 });

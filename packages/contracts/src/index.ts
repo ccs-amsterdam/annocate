@@ -14,6 +14,7 @@ export * from "./codebook/layout.js";
 export * from "./codebook/unitLoop.js";
 export * from "./codebook/item.js";
 export * from "./codebook/validation.js";
+export * from "./codebook/answers.js";
 export * from "./codebook/codebook.js";
 
 export * from "./unit.js";

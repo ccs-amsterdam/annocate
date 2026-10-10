@@ -107,12 +107,16 @@ export const BackendAnnotationSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
   /** Server timestamp of the last write; the job server uses it to order a coder's progress. */
   updated: z.coerce.date(),
+  /** The codebook the annotation was last written under (absent for old annotations). */
+  codebookId: IdSchema.nullish(),
 });
 export type BackendAnnotation = z.infer<typeof BackendAnnotationSchema>;
 
 /** `PUT /backend/job/:jobId/annotations/:unitId/:coderId` -- write-through from the job server. */
 export const BackendAnnotationWriteSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
+  /** The deployed codebook the coder answered under, so researchers can tell versions apart. */
+  codebookId: IdSchema.optional(),
 });
 
 export const backendEndpoints = {

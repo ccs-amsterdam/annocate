@@ -39,6 +39,8 @@ export interface JobServer {
   getSession(): Promise<SessionResponse>;
   /** Next unit for a unit_loop; which unit is decided by the job server. `null` = the coder is done with the loop. */
   getNextUnit(loop: string): Promise<CoderUnitResponse | null>;
+  /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
+  getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
   postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void>;
   postCoderVariables(variables: Record<string, VariableValue>): Promise<void>;
   /** A one-time token to continue this session on another device (docs/coder-identity.md). */
@@ -98,6 +100,12 @@ export class HttpJobServer implements JobServer {
 
   async getNextUnit(loop: string): Promise<CoderUnitResponse | null> {
     return this.request(endpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop)));
+  }
+
+  async getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse> {
+    return this.request(
+      endpoints.getLoopUnit.path.replace(":loop", encodeURIComponent(loop)).replace(":unitId", String(unitId)),
+    );
   }
 
   async postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void> {

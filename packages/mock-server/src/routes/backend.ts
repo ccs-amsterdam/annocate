@@ -83,6 +83,7 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
       coderId: row.coderId,
       variables: JSON.parse(row.variables),
       updated: new Date(row.updated),
+      codebookId: row.codebookId,
     }));
     return c.json(annotations);
   });
@@ -102,7 +103,7 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     if (!db.prepare("SELECT 1 FROM coders WHERE jobId = ? AND id = ?").get(jobId, coderId)) {
       return c.json({ error: "Coder not found" }, 404);
     }
-    putAnnotation(db, jobId, unitId, coderId, parsed.data.variables);
+    putAnnotation(db, jobId, unitId, coderId, parsed.data.variables, parsed.data.codebookId);
     return c.body(null, 204);
   });
 

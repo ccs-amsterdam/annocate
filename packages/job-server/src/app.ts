@@ -81,6 +81,10 @@ export function createJobServer(options: JobServerOptions) {
     c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("loop"))),
   );
 
+  coders.get("/loop/:loop/units/:unitId", async (c) =>
+    c.json(await c.get("runtime").loopUnit(c.get("coder"), c.req.param("loop"), Number(c.req.param("unitId")))),
+  );
+
   coders.post("/variables/unit", async (c) => {
     const body = await parseBody(c, PostUnitVariablesSchema);
     await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables);

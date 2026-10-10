@@ -11,6 +11,7 @@ export interface AnnotationRow {
   coderId: number;
   variables: string;
   updated: string;
+  codebookId: number | null;
 }
 
 interface UnitsetRow {
@@ -46,11 +47,13 @@ export function putAnnotation(
   unitId: number,
   coderId: number,
   variables: Record<string, VariableValue>,
+  codebookId?: number,
 ): void {
   db.prepare(
-    `INSERT INTO annotations (jobId, unitId, coderId, variables, updated) VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT (unitId, coderId) DO UPDATE SET variables = excluded.variables, updated = excluded.updated`,
-  ).run(jobId, unitId, coderId, JSON.stringify(variables), new Date().toISOString());
+    `INSERT INTO annotations (jobId, unitId, coderId, variables, updated, codebookId) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT (unitId, coderId) DO UPDATE SET variables = excluded.variables, updated = excluded.updated,
+       codebookId = excluded.codebookId`,
+  ).run(jobId, unitId, coderId, JSON.stringify(variables), new Date().toISOString(), codebookId ?? null);
   db.prepare("UPDATE units SET immutable = 1 WHERE jobId = ? AND id = ?").run(jobId, unitId);
 
   const allDone = Object.values(variables).every((v) => v.done);

@@ -105,10 +105,15 @@ export class BackendClient {
     return this.request(backendEndpoints.listAnnotations.path, BackendAnnotationSchema.array());
   }
 
-  async putAnnotation(unitId: number, coderId: number, variables: Record<string, VariableValue>): Promise<void> {
+  async putAnnotation(
+    unitId: number,
+    coderId: number,
+    variables: Record<string, VariableValue>,
+    codebookId?: number,
+  ): Promise<void> {
     await this.request(backendEndpoints.putAnnotation.path, null, {
       method: "PUT",
-      body: { variables },
+      body: { variables, codebookId },
       params: { unitId, coderId },
     });
   }

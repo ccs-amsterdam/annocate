@@ -65,6 +65,10 @@ export class UnitPool {
     return this.units.length;
   }
 
+  get unitIds(): readonly number[] {
+    return this.units;
+  }
+
   has(unitId: number): boolean {
     return this.unitSet.has(unitId);
   }

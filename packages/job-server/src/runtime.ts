@@ -226,10 +226,14 @@ export class DeploymentRuntime {
       coderId: coder.coderId,
       jobId: this.spec.jobId,
       codebook: this.spec.codebook,
-      progress: [...this.loops.keys()].map((loop) => ({
-        unitset: loop,
-        doneUnitIds: this.codings.doneBy(coder.coderId).filter((id) => this.assignedPools(coder, loop).some((p) => p.has(id))),
-      })),
+      progress: [...this.loops.values()].map((info) => {
+        const pools = this.assignedPools(coder, info.loop.name);
+        return {
+          unitset: info.loop.name,
+          doneUnitIds: this.codings.doneBy(coder.coderId).filter((id) => pools.some((p) => p.has(id))),
+          totalUnits: this.expectedUnits(info, pools),
+        };
+      }),
       variables: coder.variables,
     };
   }
@@ -248,6 +252,16 @@ export class DeploymentRuntime {
     const updated = { ...coder, variables: merged };
     await this.saveCoder(updated);
     coder.variables = merged;
+  }
+
+  /** How many units the coder will get in a loop, if that doesn't depend on other coders. */
+  private expectedUnits(info: LoopInfo, pools: UnitPool[]): number | null {
+    if (pools.length === 0) return null;
+    const max = info.loop.maxUnits ?? Infinity;
+    if (pools.some((p) => p.mode === "dynamic")) return Number.isFinite(max) ? max : null;
+    const units = new Set<number>();
+    for (const pool of pools) for (const id of pool.unitIds) units.add(id);
+    return Math.min(units.size, max);
   }
 
   // --- routing ----------------------------------------------------------------
@@ -341,6 +355,23 @@ export class DeploymentRuntime {
     }
   }
 
+  /**
+   * A unit the coder already worked on in a loop (has answers for, or holds
+   * a lease on), so a resumed session can navigate back to it.
+   */
+  async loopUnit(coder: Coder, loopName: string, unitId: number): Promise<CoderUnitResponse> {
+    if (!this.loops.has(loopName)) throw new HttpError(404, `No unit loop '${loopName}'`);
+    const own = this.annotations.get(coder.coderId)?.get(unitId);
+    const pools = this.assignedPools(coder, loopName);
+    // Only units the coder has worked on (or holds right now): no peeking ahead.
+    if (!pools.some((p) => p.has(unitId) && (own !== undefined || p.heldLease(coder.coderId) === unitId))) {
+      throw new HttpError(404, "This unit is not part of your session");
+    }
+    const unit = (await this.getUnits([unitId])).get(unitId);
+    if (!unit) throw new HttpError(404, "Unit not found");
+    return { id: unit.id, externalId: unit.externalId, data: unit.data, variables: own ?? {} };
+  }
+
   async submitUnit(coder: Coder, unitId: number, variables: Record<string, VariableValue>): Promise<void> {
     const loops = [...this.loops.values()].filter((info) =>
       this.assignedPools(coder, info.loop.name).some((p) => p.canSubmit(coder.coderId, unitId)),
@@ -351,9 +382,15 @@ export class DeploymentRuntime {
     const errors = validateVariables(allowed, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
+    // Answers to questions the current codebook no longer has (an update
+    // removed or renamed them) are kept, not overwritten: they are still data.
+    const previous = this.annotations.get(coder.coderId)?.get(unitId) ?? {};
+    const kept = Object.fromEntries(Object.entries(previous).filter(([name]) => !allowed.has(name)));
+    const merged = { ...kept, ...variables };
+
     // Write-through: only once the db server has it does it count.
-    await this.backend.putAnnotation(unitId, coder.coderId, variables);
-    this.applyAnnotation(coder.coderId, unitId, variables);
+    await this.backend.putAnnotation(unitId, coder.coderId, merged, this.spec.codebook.id);
+    this.applyAnnotation(coder.coderId, unitId, merged);
   }
 
   status(): DeploymentStatus {

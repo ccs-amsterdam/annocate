@@ -125,7 +125,8 @@ export function sessionRoutes(db: DatabaseSync) {
       codebook,
       progress: loops.map((loop) => {
         const ids = new Set(loopUnitIds(db, jobId, loop, coder));
-        return { unitset: loop.name, doneUnitIds: done.filter((id) => ids.has(id)) };
+        const totalUnits = Math.min(ids.size, loop.maxUnits ?? Infinity);
+        return { unitset: loop.name, doneUnitIds: done.filter((id) => ids.has(id)), totalUnits };
       }),
       variables: JSON.parse(coder.variables),
     };
@@ -153,6 +154,23 @@ export function sessionRoutes(db: DatabaseSync) {
       | undefined;
     if (!unitRow) return c.json({ error: `Unit ${nextUnitId} referenced by unitset not found` }, 500);
 
+    const response: CoderUnitResponse = {
+      id: unitRow.id,
+      externalId: unitRow.externalId,
+      data: JSON.parse(unitRow.data),
+      variables: getAnnotation(db, unitRow.id, coder.id) ?? {},
+    };
+    return c.json(response);
+  });
+
+  app.get("/loop/:loop/units/:unitId", requireCoder(db), (c) => {
+    const jobId = c.get("jobId");
+    const coder = c.get("coder")!;
+    const unitId = Number(c.req.param("unitId"));
+    const unitRow = db.prepare("SELECT * FROM units WHERE jobId = ? AND id = ?").get(jobId, unitId) as
+      | { id: number; externalId: string; data: string }
+      | undefined;
+    if (!unitRow) return c.json({ error: "Unit not found" }, 404);
     const response: CoderUnitResponse = {
       id: unitRow.id,
       externalId: unitRow.externalId,

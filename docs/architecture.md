@@ -265,30 +265,88 @@ The job server refuses to let the client overwrite assigned variables.
   enforced. Participant ids and login are covered in
   `docs/coder-identity.md`.
 
-## 8. Job updates (not implemented yet; designed for)
+## 8. Resuming, and codebook updates
 
-Researchers will want to update a deployed job without coders redoing
-unchanged work. Choices made so far keep that possible:
+### 8.1 Resuming a session (implemented)
 
-- **Annotations are keyed by variable name.** A new codebook version that
-  keeps a question's name and meaning keeps its answers. A future "what
-  changed" diff between codebook versions can mark only changed or new
-  variables as needing an answer, and the job server would then serve
-  partially done units again.
-- **Routing survives updates.** Assignments store *resolved unitset names*,
-  not branch indices. On a new version, a coder keeps their routing as long
-  as some branch still produces the same unitsets. Otherwise they are
-  re-routed on their next request.
-- **Completion is derived, not stored.** Dynamic-source completeness is
-  computed from annotations. Raising `minCoders` or changing an agreement
-  rule simply reopens units.
-- **Unitsets are explicit.** Adding units means adding them to a unitset (or
-  a new one) on purpose. Existing assignments don't shift.
+When a coder reopens a session (reload, transfer, next day), the client
+continues where they left off:
 
-Open: annotations are not tagged with the loop or codebook version they were
-made under, and a unit is stored once per coder. A unit used in two loops
-for the same coder shares one annotation. Tagging annotations with the
-codebook version is probably the first step towards real update support.
+- **Top-level questions** that already have an answer that fits the current
+  codebook are skipped. They stay reachable by navigating back.
+- **Unit loops.** `GET /session` returns, per loop, the finished unit ids
+  in order and `totalUnits` (known for fixed sources; `null` when it depends
+  on other coders). The client rebuilds the loop's history from those ids,
+  so the coder sees e.g. "unit 31 of 100" and can go back. Units are loaded
+  only when the coder navigates to them, via
+  `GET /loop/:loop/units/:unitId`. That endpoint only serves units the coder
+  has answers for or currently holds, so nobody can peek ahead. New units
+  still come from `GET /loop/:loop/next`, which keeps the job server in
+  charge of distribution.
+- **Within the unit at the frontier,** the client starts at the first
+  question without a valid answer. That unit can be partly answered after a
+  reload mid-unit, or after a codebook update added a question.
+
+Finished units are identified by id, not by position: positions shift
+between visits when distribution is dynamic.
+
+### 8.2 What happens when the codebook changes
+
+A researcher deploys a new codebook version for a running job. Answers are
+keyed by question name, and the job server and client always check them
+against the **current** codebook (`validateAnswer`, shared via contracts):
+
+| Change | Units the coder already finished | Unit in progress / new units |
+| --- | --- | --- |
+| Question added | stay finished (not reopened) | the new question is asked |
+| Question removed | old answers kept in the database, no longer shown | not asked |
+| Codes changed (an answer's code removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
+| Question renamed | = removed + added | = removed + added |
+| Conditions / order changed | stay finished | follow the new codebook |
+| Distribution changed | routing kept if the coder's unitsets still exist in a branch, else re-routed (§6.1) | new rules apply |
+
+The rules that make this safe:
+
+- **The job server never deletes answers it doesn't understand.** When a
+  coder resubmits a unit, answers to questions the current codebook doesn't
+  have are merged back in. Data from earlier versions stays available for
+  analysis.
+- **Every annotation records the codebook it was written under**
+  (`annotations.codebookId`), so researchers can tell versions apart. It
+  changes when a unit is resubmitted under a newer version.
+- **"Finished" is decided when a coder submits a unit**, and is not
+  recomputed when the codebook changes. Otherwise a small edit could
+  silently reopen hundreds of units and change dynamic-source counts.
+
+### 8.3 Open: reopening finished units
+
+Sometimes a researcher *does* want finished units revisited, e.g. after
+adding an important question or fixing a broken code. Options, roughly in
+order of preference:
+
+1. **Explicit reopen on deploy.** The deployment lists variables that must be
+   answered on finished units: `reopen: ["new_question"]`. The job server
+   treats a finished unit as open again if any listed variable lacks a valid
+   answer. `next` then serves those units first, and the client starts them
+   at the first open question. This is explicit, auditable, and per
+   question.
+2. **Automatic diff.** Compare codebook versions and reopen units whose
+   *required* questions are new or whose answers became invalid. More
+   magic, and hard to get right with conditions, because a question can
+   apply to only some units.
+3. **Re-code as a new job.** Copy the units into a new loop or job. This is
+   the cleanest for analysis, and the heaviest for coders.
+
+The job server can't evaluate QuickJS conditions today, so "required" can
+only be judged without them. That is another reason for option 1, where the
+researcher decides.
+
+Other open points:
+
+- A unit used in two loops for the same coder shares one annotation (one
+  row per unit and coder).
+- `totalUnits` is unknown for dynamic sources without `maxUnits`; the client
+  then counts the units seen so far.
 
 ## 9. Code map
 
@@ -351,5 +409,4 @@ Roughly in order:
 8. **Deactivation semantics.** `active: false` stops new units (409), but
    coders can still submit units they were already working on. Decide
    whether that's what researchers expect.
-9. **Job updates** (§8): codebook-version tagging of annotations and a
-   variable-level diff between versions.
+9. **Reopening finished units after a codebook update** (§8.3).
