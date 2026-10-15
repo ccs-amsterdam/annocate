@@ -1,19 +1,23 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
 import { CodebookResponseSchema } from "./codebook/codebook.js";
+import { VariableValueSchema } from "./variableValue.js";
 
 /**
- * Per-unitset progress: the list of unit ids this coder has already done, in
- * the order they were coded (design plan §3a, MVP option A). The client
- * derives "next unit" and "go back to unit N" from this list itself.
- *
- * NOTE: intentionally does not scale to very large unit counts or support
- * crowd-coding's server-side global assignment queue -- see design plan §3a
- * for the deferred follow-up design work.
+ * Per-unit_loop progress: the unit ids this coder has finished in that loop,
+ * in the order they were coded. Which unit comes next is decided by the job
+ * server (`GET /loop/:loop/next`).
  */
 export const UnitsetProgressSchema = z.object({
+  /** The unit_loop name. */
   unitset: z.string(),
   doneUnitIds: z.array(IdSchema),
+  /**
+   * How many units this coder will get in the loop, if known: fixed sources
+   * (capped by `maxUnits`). Null when it depends on other coders (dynamic
+   * sources without `maxUnits`) or the coder isn't routed yet.
+   */
+  totalUnits: z.number().int().nonnegative().nullable().optional(),
 });
 
 /** Response for `GET /session`. */
@@ -23,5 +27,38 @@ export const SessionResponseSchema = z.object({
   /** The codebook this session was started with (immutable for the lifetime of the session, see design plan §2). */
   codebook: CodebookResponseSchema,
   progress: z.array(UnitsetProgressSchema),
+  /**
+   * The coder's coder-level variables so far, including server-assigned
+   * `auto` variables (experimental condition, slot, ...), so conditions in
+   * the client can use them.
+   */
+  variables: z.record(z.string(), VariableValueSchema).default({}),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+
+/**
+ * Machine-readable `code` in error responses (`{ error, code }`) that the
+ * client handles specially (docs/coder-identity.md).
+ */
+export const CoderErrorCodeSchema = z.enum([
+  /** Participant id already has a session; retry with `x-new-session: 1` to start another. */
+  "participant_has_session",
+  /** The invite requires login. */
+  "auth_required",
+  /** Transfer token unknown, used or expired. */
+  "transfer_invalid",
+]);
+export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
+
+/** Response for `POST /transfer`: a one-time token to continue this session on another device. */
+export const TransferResponseSchema = z.object({
+  token: z.string(),
+  expiresAt: z.coerce.date(),
+});
+export type TransferResponse = z.infer<typeof TransferResponseSchema>;
+
+/** Body for `POST /transfer/redeem` (no coder auth needed). */
+export const RedeemTransferSchema = z.object({ token: z.string().min(1) });
+
+/** Response for `POST /transfer/redeem`: the coder key to store on the new device. */
+export const RedeemTransferResponseSchema = z.object({ coderKey: z.string() });

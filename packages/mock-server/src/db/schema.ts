@@ -55,8 +55,25 @@ export function createDb(path = ":memory:"): DatabaseSync {
       jobId INTEGER NOT NULL,
       externalId TEXT NOT NULL,
       data TEXT NOT NULL,
-      immutable INTEGER NOT NULL DEFAULT 0,
-      variables TEXT NOT NULL DEFAULT '{}'
+      immutable INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS annotations (
+      jobId INTEGER NOT NULL,
+      unitId INTEGER NOT NULL,
+      coderId INTEGER NOT NULL,
+      variables TEXT NOT NULL,
+      updated TEXT NOT NULL,
+      codebookId INTEGER,
+      PRIMARY KEY (unitId, coderId)
+    );
+
+    CREATE TABLE IF NOT EXISTS deployments (
+      jobId INTEGER PRIMARY KEY,
+      codebookId INTEGER NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      version INTEGER NOT NULL,
+      updated TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS coders (
@@ -65,16 +82,41 @@ export function createDb(path = ":memory:"): DatabaseSync {
       email TEXT,
       devKey TEXT UNIQUE NOT NULL,
       doneUnitIds TEXT NOT NULL DEFAULT '{}',
-      variables TEXT NOT NULL DEFAULT '{}'
+      variables TEXT NOT NULL DEFAULT '{}',
+      assignments TEXT NOT NULL DEFAULT '{}',
+      participantId TEXT
     );
 
     CREATE TABLE IF NOT EXISTS invites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       jobId INTEGER NOT NULL,
       label TEXT NOT NULL,
-      access TEXT NOT NULL,
-      secret TEXT NOT NULL UNIQUE
+      access TEXT NOT NULL, -- CoderInviteWrite.auth (column name predates the rename)
+      secret TEXT NOT NULL UNIQUE,
+      emails TEXT,
+      maxUses INTEGER,
+      uses INTEGER NOT NULL DEFAULT 0,
+      variables TEXT NOT NULL DEFAULT '{}',
+      participantId TEXT,
+      participantFromUrl INTEGER NOT NULL DEFAULT 0
     );
   `);
+
+  // Columns added after the first release of a table: add them to existing
+  // local dev databases too (CREATE TABLE IF NOT EXISTS leaves those alone).
+  addColumnIfMissing(db, "coders", "assignments", "TEXT NOT NULL DEFAULT '{}'");
+  addColumnIfMissing(db, "invites", "emails", "TEXT");
+  addColumnIfMissing(db, "invites", "maxUses", "INTEGER");
+  addColumnIfMissing(db, "invites", "uses", "INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "invites", "variables", "TEXT NOT NULL DEFAULT '{}'");
+  addColumnIfMissing(db, "invites", "participantId", "TEXT");
+  addColumnIfMissing(db, "invites", "participantFromUrl", "INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "coders", "participantId", "TEXT");
+  addColumnIfMissing(db, "annotations", "codebookId", "INTEGER");
   return db;
+}
+
+function addColumnIfMissing(db: DatabaseSync, table: string, column: string, definition: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }

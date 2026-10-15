@@ -93,6 +93,13 @@ export function CodebookEditor({
     .filter((i) => i.type === "unit_variable" || (i.type === "question" && isInsideUnitLoop(items, (i as any)._key || i.name)))
     .map((i) => i.name);
 
+  const coderVariableNames = allItems
+    .filter(
+      (i) =>
+        (i.type === "question" || i.type === "user_variable") && !isInsideUnitLoop(items, (i as any)._key || i.name),
+    )
+    .map((i) => i.name);
+
   // Derive cleaned items (strip client _key for validation and serialization)
   const cleanItems = useMemo(() => stripKeys(items), [items]);
 
@@ -408,6 +415,7 @@ export function CodebookEditor({
                         item={selectedItem}
                         unitsets={unitsetsQuery.data ?? []}
                         unitVariableNames={unitVariableNames}
+                        coderVariableNames={coderVariableNames}
                         validationIssues={selectedItemValidationIssues}
                         isInsideLoop={isInsideUnitLoop(items, (selectedItem as any)._key || selectedItem.name)}
                         onChange={(next) => {

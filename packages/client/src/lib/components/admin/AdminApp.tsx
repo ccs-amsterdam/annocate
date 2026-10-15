@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { CoderInviteResponse } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
 import { useJobQuery, useJobsQuery } from "../../admin/queries";
 import { JobList } from "./JobList";
@@ -31,16 +32,19 @@ export function AdminApp({
   baseUrl,
   initialJobId,
   queryClient,
+  inviteUrl,
 }: {
   client: AdminClient;
   /** The job server's base URL, used to build invite links in Coders & Preview. */
   baseUrl: string;
   initialJobId?: number;
   queryClient?: QueryClient;
+  /** Builds the link coders open for an invite (host-app specific). */
+  inviteUrl?: (invite: CoderInviteResponse) => string;
 }) {
   return (
     <QueryClientProvider client={queryClient ?? defaultQueryClient}>
-      <AdminAppInner client={client} baseUrl={baseUrl} initialJobId={initialJobId} />
+      <AdminAppInner client={client} baseUrl={baseUrl} initialJobId={initialJobId} inviteUrl={inviteUrl} />
     </QueryClientProvider>
   );
 }
@@ -49,10 +53,12 @@ function AdminAppInner({
   client,
   baseUrl,
   initialJobId,
+  inviteUrl,
 }: {
   client: AdminClient;
   baseUrl: string;
   initialJobId?: number;
+  inviteUrl?: (invite: CoderInviteResponse) => string;
 }) {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? null);
   const [tab, setTab] = useState<TabId>("Codebook");
@@ -76,6 +82,7 @@ function AdminAppInner({
       client={jobClient}
       rootClient={client}
       baseUrl={baseUrl}
+      inviteUrl={inviteUrl}
       tab={tab}
       onTabChange={setTab}
       onBackToJobs={() => setSelectedJobId(null)}
@@ -88,6 +95,7 @@ function JobAdminView({
   client,
   rootClient,
   baseUrl,
+  inviteUrl,
   tab,
   onTabChange,
   onBackToJobs,
@@ -96,6 +104,7 @@ function JobAdminView({
   client: AdminClient;
   rootClient: AdminClient;
   baseUrl: string;
+  inviteUrl?: (invite: CoderInviteResponse) => string;
   tab: TabId;
   onTabChange: (tab: TabId) => void;
   onBackToJobs: () => void;
@@ -201,7 +210,7 @@ function JobAdminView({
         {tab === "Codebook" && <CodebookManager client={client} onDirtyChange={setIsCodebookDirty} />}
         {tab === "Units" && <UnitsManager client={client} />}
         {tab === "Unitsets" && <UnitsetsManager client={client} />}
-        {tab === "Coders" && <CodersPanel client={client} baseUrl={baseUrl} />}
+        {tab === "Coders" && <CodersPanel client={client} baseUrl={baseUrl} inviteUrl={inviteUrl} />}
         {tab === "Preview" && <JobPreview client={client} baseUrl={baseUrl} />}
       </main>
 

@@ -54,9 +54,11 @@ listed below and validate against these schemas.
 pnpm --filter @annotinder/contracts generate:json-schema
 ```
 
-Writes `dist/json-schema/endpoints.json`: for every entry in the endpoint
-registry (`src/endpoints/index.ts`), the HTTP method, path, and a JSON Schema
-for both the request and response body. This output is not checked into git
+Writes `dist/json-schema/endpoints.json` (the researcher-facing API, from
+`src/endpoints/index.ts`) and `dist/json-schema/backend-endpoints.json` (the
+API a db server exposes to the job server, from `src/deployment.ts`): for
+every endpoint, the HTTP method, path, and a JSON Schema for both the request
+and response body. This output is not checked into git
 (see `.gitignore`); regenerate it whenever the contract changes.
 
 ## Endpoints
@@ -85,13 +87,50 @@ plan §3).
 | GET | `/unitsets` | – | `UnitsetResponseSchema[]` | |
 | POST | `/unitsets` | `UnitsetWriteSchema` | `UnitsetResponseSchema` | |
 | PUT | `/unitsets/:id` | `UnitsetWriteSchema` | `UnitsetResponseSchema` | |
-| DELETE | `/unitsets/:id` | – | – | |
-| GET | `/session` | – | `SessionResponseSchema` | Coder-authenticated; returns codebook + per-unitset progress |
-| GET | `/unitset/:setname/next` | – | `CoderUnitResponseSchema \| null` | Coder-authenticated; `null` means the unitset is exhausted |
+| DELETE | `/unitsets/:id` | – | – | Rejected while a codebook's unit_loop refers to it |
+| POST | `/unitsets/generate` | `GenerateUnitsetsSchema` | `UnitsetResponseSchema[]` | Split units into `<prefix>_1..n` (+ `<prefix>_overlap`) |
+| GET | `/coders` | – | `CoderProgressSchema[]` | Manager-facing progress listing; requires ADMIN/WRITE role |
+| POST | `/coders/invite` | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` | Requires ADMIN/WRITE role; `variables` presets the codebook's `auto` variables with `source: "invite"` |
+| GET | `/deployment` | – | `DeploymentResponseSchema \| null` | |
+| PUT | `/deployment` | `DeploymentWriteSchema` | `DeploymentResponseSchema` | Requires ADMIN; bumps `version`, freezes the codebook, notifies the job server |
+| GET | `/deployment/status` | – | `DeploymentStatusSchema` | Proxied from the job server |
+
+### Coder API (served by the job server)
+
+Coders never talk to the db server; these are served by `packages/job-server`
+under `/d/<deploymentId>` (see `docs/architecture.md`). They are part of this
+registry because the client is written against them.
+
+| Method | Path | Request | Response | Notes |
+| --- | --- | --- | --- | --- |
+| GET | `/session` | – | `SessionResponseSchema` | Coder-authenticated; returns codebook, per-loop progress and the coder's variables (incl. assigned `auto` variables) |
+| GET | `/loop/:loop/next` | – | `CoderUnitResponseSchema \| null` | Coder-authenticated; the job server picks the unit per the loop's branches/sources; `null` means the coder is done with the loop |
+| GET | `/loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` | Coder-authenticated; a unit the coder already has answers for (or holds), with their answers, e.g. to go back after resuming |
 | POST | `/variables/unit` | `PostUnitVariablesSchema` | – | Coder-authenticated; full replace of one unit's variables |
 | POST | `/variables/coder` | `PostCoderVariablesSchema` | – | Coder-authenticated; full replace of job-level variables |
-| GET | `/coders` | – | `CoderProgressSchema[]` | Manager-facing progress listing; requires ADMIN/WRITE role |
-| POST | `/coders/invite` | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` | Requires ADMIN/WRITE role |
+| POST | `/transfer` | – | `TransferResponseSchema` | Coder-authenticated; one-time token to continue the session on another device |
+| POST | `/transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` | No coder key needed; returns the session's coder key (once) |
+
+Coder headers: `x-coder-key` (always), `x-invite-secret` (first use),
+`x-participant-id` (invites with `participantFromUrl`), `x-new-session: 1`
+(start another session for a participant that already has one). Errors are
+`{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
+`docs/coder-identity.md`.
+
+### Backend API (db server, called by the job server)
+
+`backendEndpoints` in `src/deployment.ts`. Authenticated with
+`authorization: Bearer <secret shared with the job server>`.
+
+| Method | Path | Request | Response | Notes |
+| --- | --- | --- | --- | --- |
+| GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed |
+| GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out |
+| GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails) |
+| POST | `/backend/job/:jobId/coders/resolve` | `ResolveCoderRequestSchema` | `BackendCoderSchema` | Creates the coder from an invite (copying its preset `variables`); 401 for an unknown coder without a valid invite |
+| PUT | `/backend/job/:jobId/coders/:coderId` | `BackendCoderWriteSchema` | – | Full replace of `variables` + `assignments` |
+| GET | `/backend/job/:jobId/annotations` | – | `BackendAnnotationSchema[]` | Everything, ordered by `updated`; used to rebuild job-server state |
+| PUT | `/backend/job/:jobId/annotations/:unitId/:coderId` | `BackendAnnotationWriteSchema` | – | Write-through; already validated by the job server |
 
 ## Auth
 

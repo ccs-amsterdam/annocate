@@ -199,6 +199,10 @@ or route by jobId — the client should not assume which):
   POST   /coders/invite          create an invitation/access link
 
 3a. OPEN DESIGN POINT — unit delivery & resumable progress (not yet resolved)
+    [SUPERSEDED 2026-10-10] Coders now talk to a separate job server that
+    owns unit distribution (incl. crowd coding), validation and caching,
+    writing annotations through to the db server. See docs/architecture.md.
+    The text below is kept for history.
 Raised in Kasper's note; needs a decision before/while implementing Phase 2,
 but not before Phase 1 contract scaffolding since it mainly affects `/session`
 and `/unitset/:setname/next` response shapes, not the rest of the contract.

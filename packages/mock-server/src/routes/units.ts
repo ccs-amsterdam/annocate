@@ -11,7 +11,6 @@ interface UnitRow {
   externalId: string;
   data: string;
   immutable: number;
-  variables: string;
 }
 
 function toResponse(row: UnitRow): UnitResponse {

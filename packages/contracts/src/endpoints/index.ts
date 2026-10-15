@@ -2,10 +2,16 @@ import { z } from "zod";
 import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema } from "../job.js";
 import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitResponseSchema, CoderUnitResponseSchema } from "../unit.js";
-import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
+import { UnitsetWriteSchema, UnitsetResponseSchema, GenerateUnitsetsSchema } from "../unitset.js";
 import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue.js";
-import { SessionResponseSchema } from "../session.js";
+import {
+  SessionResponseSchema,
+  TransferResponseSchema,
+  RedeemTransferSchema,
+  RedeemTransferResponseSchema,
+} from "../session.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
+import { DeploymentWriteSchema, DeploymentResponseSchema, DeploymentStatusSchema } from "../deployment.js";
 
 /**
  * The full API contract (design plan §3), as a registry of
@@ -87,13 +93,26 @@ export const endpoints = {
     response: UnitsetResponseSchema,
   },
   deleteUnitset: { method: "DELETE", path: "/job/:jobId/unitsets/:id", request: z.void(), response: z.void() },
+  generateUnitsets: {
+    method: "POST",
+    path: "/job/:jobId/unitsets/generate",
+    request: GenerateUnitsetsSchema,
+    response: z.array(UnitsetResponseSchema),
+  },
 
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
   getNextUnit: {
     method: "GET",
-    path: "/unitset/:setname/next",
+    path: "/loop/:loop/next",
     request: z.void(),
     response: CoderUnitResponseSchema.nullable(),
+  },
+  /** A unit the coder already has in this loop (finished or in progress), e.g. to go back to it after resuming. */
+  getLoopUnit: {
+    method: "GET",
+    path: "/loop/:loop/units/:unitId",
+    request: z.void(),
+    response: CoderUnitResponseSchema,
   },
   postUnitVariables: { method: "POST", path: "/variables/unit", request: PostUnitVariablesSchema, response: z.void() },
   postCoderVariables: {
@@ -102,6 +121,13 @@ export const endpoints = {
     request: PostCoderVariablesSchema,
     response: z.void(),
   },
+  createTransfer: { method: "POST", path: "/transfer", request: z.void(), response: TransferResponseSchema },
+  redeemTransfer: {
+    method: "POST",
+    path: "/transfer/redeem",
+    request: RedeemTransferSchema,
+    response: RedeemTransferResponseSchema,
+  },
 
   listCoders: { method: "GET", path: "/job/:jobId/coders", request: z.void(), response: z.array(CoderProgressSchema) },
   inviteCoder: {
@@ -109,6 +135,28 @@ export const endpoints = {
     path: "/job/:jobId/coders/invite",
     request: CoderInviteWriteSchema,
     response: CoderInviteResponseSchema,
+  },
+
+  // Deploying a job to a job server (docs/architecture.md). The db server
+  // stores the deployment and notifies the job server; status is proxied
+  // from the job server.
+  getDeployment: {
+    method: "GET",
+    path: "/job/:jobId/deployment",
+    request: z.void(),
+    response: DeploymentResponseSchema.nullable(),
+  },
+  putDeployment: {
+    method: "PUT",
+    path: "/job/:jobId/deployment",
+    request: DeploymentWriteSchema,
+    response: DeploymentResponseSchema,
+  },
+  getDeploymentStatus: {
+    method: "GET",
+    path: "/job/:jobId/deployment/status",
+    request: z.void(),
+    response: DeploymentStatusSchema,
   },
 } as const;
 

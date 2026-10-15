@@ -1,6 +1,15 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import type { VariableValue } from "@annotinder/contracts";
-import { HttpJobServer } from "../api/httpJobServer";
+import { renderSVG } from "uqr";
+import { HttpJobServer, type JobServer } from "../api/httpJobServer";
+import {
+  defaultTransferUrl,
+  getOrCreateCoderKey,
+  newCoderKey,
+  redeemTransfer,
+  storeCoderKey,
+  type CoderSessionScope,
+} from "../session/coderSession";
 import { useJobManager } from "../jobManager/useJobManager";
 import type { JobManagerNavigation } from "../jobManager/JobManager";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
@@ -23,14 +32,35 @@ import {
   Settings,
   Sun,
   Moon,
+  MonitorSmartphone,
+  Copy,
 } from "lucide-react";
 
 export interface JobRunnerProps {
+  /** Job server URL including the deployment, e.g. `https://jobs.example/d/mock.1`. */
   baseUrl: string;
-  coderKey: string;
+  /**
+   * Explicit coder key (e.g. for admin previews). Without it, a key is kept
+   * on this device per baseUrl/invite/participant (docs/coder-identity.md).
+   */
+  coderKey?: string;
   inviteSecret?: string;
+  /** Participant id from the URL, for invites that take it from there. */
+  participantId?: string;
+  /** Token from a "Continue on another device" link: redeemed for the session's coder key. */
+  transferToken?: string;
+  /** Called once a transfer token was redeemed, e.g. to remove it from the URL. */
+  onTransferRedeemed?: () => void;
+  /** Builds the link shown for "Continue on another device". Defaults to this page with `?transfer=<token>`. */
+  transferUrl?: (token: string) => string;
   onFinished?: () => void;
   preview?: boolean;
+}
+
+interface ContentProps extends JobRunnerProps {
+  coderKey: string;
+  newSession: boolean;
+  onStartNewSession: () => void;
 }
 
 /**
@@ -225,10 +255,20 @@ function computeGlobalPosition(nav: JobManagerNavigation): number {
  * - Top pane: scrollable unit content/document
  * - Bottom pane: docked, thumb-friendly question & answer options
  */
-function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRunnerProps) {
+function JobRunnerContent({
+  baseUrl,
+  coderKey,
+  inviteSecret,
+  participantId,
+  newSession,
+  onStartNewSession,
+  transferUrl,
+  preview,
+  onFinished,
+}: ContentProps) {
   const jobServer = useMemo(
-    () => new HttpJobServer({ baseUrl, coderKey, inviteSecret }),
-    [baseUrl, coderKey, inviteSecret],
+    () => new HttpJobServer({ baseUrl, coderKey, inviteSecret, participantId, newSession }),
+    [baseUrl, coderKey, inviteSecret, participantId, newSession],
   );
   const { manager, snapshot } = useJobManager(jobServer);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -288,6 +328,22 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm font-medium text-muted-foreground">Loading session...</p>
       </div>
+    );
+  }
+
+  if (snapshot.phase === "error" && snapshot.errorCode === "participant_has_session") {
+    return (
+      <SessionNotice title="You already started on another device">
+        <p>
+          Your answers are kept on the device where you started. To continue there, open this link on that device. To
+          continue <em>here</em>, open &quot;Continue on another device&quot; (top right) on the original device and
+          scan or open the link it shows.
+        </p>
+        <p>You can also start a new session here. It won&apos;t include your earlier answers.</p>
+        <Button type="button" variant="outline" className="mt-2" onClick={onStartNewSession}>
+          Start a new session
+        </Button>
+      </SessionNotice>
     );
   }
 
@@ -402,7 +458,7 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
 
                     if (phase.type === "unit_loop") {
                       const currentNum = (phase.currentUnitIndex ?? snapshot.navigation.currentUnitIndex ?? 0) + 1;
-                      const totalNum = Math.max(1, phase.unitCount ?? snapshot.navigation.totalUnitsInHistory);
+                      const totalNum = Math.max(1, phase.totalUnits ?? phase.unitCount ?? snapshot.navigation.totalUnitsInHistory);
 
                       return (
                         <div key={phase.name} className="flex flex-col gap-0.5">
@@ -575,6 +631,7 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
 
         {/* Right Section: Coder Settings Menu */}
         <div className="flex items-center gap-1 shrink-0">
+          {!preview && <TransferMenu jobServer={jobServer} transferUrl={transferUrl ?? defaultTransferUrl} />}
           <CoderSettingsMenu />
         </div>
       </header>
@@ -628,7 +685,158 @@ function JobRunnerContent({ baseUrl, coderKey, inviteSecret, onFinished }: JobRu
 export function JobRunner(props: JobRunnerProps) {
   return (
     <CoderSettingsProvider>
-      <JobRunnerContent {...props} />
+      <CoderSessionGate {...props} />
     </CoderSettingsProvider>
+  );
+}
+
+/**
+ * Decides which coder key this device uses: an explicit one, one redeemed
+ * from a transfer link, or the one stored for this invite/participant
+ * (created on first visit). See docs/coder-identity.md §4.
+ */
+function CoderSessionGate(props: JobRunnerProps) {
+  const { baseUrl, inviteSecret, participantId, transferToken, onTransferRedeemed } = props;
+  const scope = useMemo<CoderSessionScope>(
+    () => ({ baseUrl, inviteSecret, participantId }),
+    [baseUrl, inviteSecret, participantId],
+  );
+  const [session, setSession] = useState<{ coderKey: string | null; newSession: boolean; error: string | null }>(
+    () => ({
+      coderKey: props.coderKey ?? (transferToken ? null : getOrCreateCoderKey(scope)),
+      newSession: false,
+      error: null,
+    }),
+  );
+
+  useEffect(() => {
+    if (props.coderKey || !transferToken) return;
+    let cancelled = false;
+    redeemTransfer(scope, transferToken)
+      .then((coderKey) => {
+        if (cancelled) return;
+        setSession({ coderKey, newSession: false, error: null });
+        onTransferRedeemed?.();
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setSession((s) => ({ ...s, error: err instanceof Error ? err.message : String(err) }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [props.coderKey, transferToken, scope, onTransferRedeemed]);
+
+  if (session.error) {
+    return (
+      <SessionNotice title="This link can't be used">
+        <p>{session.error}</p>
+        <p>Links to continue on another device work once and expire after 15 minutes. Make a new one on the device you started on.</p>
+      </SessionNotice>
+    );
+  }
+  if (!session.coderKey) {
+    return (
+      <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-8 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm font-medium text-muted-foreground">Loading session...</p>
+      </div>
+    );
+  }
+
+  const startNewSession = () => {
+    const coderKey = newCoderKey();
+    storeCoderKey(scope, coderKey);
+    setSession({ coderKey, newSession: true, error: null });
+  };
+
+  return (
+    <JobRunnerContent
+      key={session.coderKey}
+      {...props}
+      coderKey={session.coderKey}
+      newSession={session.newSession}
+      onStartNewSession={startNewSession}
+    />
+  );
+}
+
+function SessionNotice({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex h-full min-h-[300px] items-center justify-center p-6">
+      <div className="mx-auto flex max-w-md flex-col items-center gap-2 rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-lg">
+        <div className="rounded-full bg-primary/10 p-3 text-primary">
+          <MonitorSmartphone className="h-6 w-6" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** "Continue on another device": a one-time link + QR code for this session. */
+function TransferMenu({ jobServer, transferUrl }: { jobServer: JobServer; transferUrl: (token: string) => string }) {
+  const [link, setLink] = useState<{ url: string; expiresAt: Date } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function open(isOpen: boolean) {
+    if (!isOpen || !jobServer.createTransfer) return;
+    setError(null);
+    setCopied(false);
+    try {
+      const transfer = await jobServer.createTransfer();
+      setLink({ url: transferUrl(transfer.token), expiresAt: new Date(transfer.expiresAt) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <Popover onOpenChange={open}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-primary-foreground hover:bg-primary-foreground/15 transition-colors cursor-pointer"
+          title="Continue on another device"
+          aria-label="Continue on another device"
+        >
+          <MonitorSmartphone className="h-4 w-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 space-y-3 p-3 shadow-lg">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Continue on another device</h4>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        {!error && !link && <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />}
+        {link && (
+          <>
+            <div
+              className="mx-auto w-44 rounded bg-white p-1"
+              // uqr renders an SVG of rects from the URL; no user markup is involved.
+              dangerouslySetInnerHTML={{ __html: renderSVG(link.url) }}
+            />
+            <div className="flex items-center gap-1">
+              <input readOnly value={link.url} className="h-8 min-w-0 flex-1 rounded border border-input bg-background px-2 text-xs" />
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                title="Copy link"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(link.url).then(() => setCopied(true));
+                }}
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Scan or open this on your other device. It works once, until{" "}
+              {link.expiresAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Anyone with the link can
+              continue your session, so don&apos;t share it.
+            </p>
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

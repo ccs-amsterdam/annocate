@@ -2,8 +2,31 @@ import {
   endpoints,
   type SessionResponse,
   type CoderUnitResponse,
+  type TransferResponse,
   type VariableValue,
 } from "@annotinder/contracts";
+
+/** A failed job server request, with the server's machine-readable `code` if any (contracts `CoderErrorCode`). */
+export class JobServerError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
+async function toError(res: Response, path: string): Promise<JobServerError> {
+  const text = await res.text();
+  try {
+    const body = JSON.parse(text) as { error?: unknown; code?: unknown };
+    const message = typeof body.error === "string" ? body.error : text;
+    return new JobServerError(message, res.status, typeof body.code === "string" ? body.code : undefined);
+  } catch {
+    return new JobServerError(`Request to ${path} failed (${res.status}): ${text}`, res.status);
+  }
+}
 
 /**
  * Client-side abstraction over "however we talk to a job's backend" (design
@@ -14,9 +37,14 @@ import {
  */
 export interface JobServer {
   getSession(): Promise<SessionResponse>;
-  getNextUnit(unitset?: string): Promise<CoderUnitResponse | null>;
+  /** Next unit for a unit_loop; which unit is decided by the job server. `null` = the coder is done with the loop. */
+  getNextUnit(loop: string): Promise<CoderUnitResponse | null>;
+  /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
+  getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
   postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void>;
   postCoderVariables(variables: Record<string, VariableValue>): Promise<void>;
+  /** A one-time token to continue this session on another device (docs/coder-identity.md). */
+  createTransfer?(): Promise<TransferResponse>;
 }
 
 export interface HttpJobServerConfig {
@@ -26,6 +54,10 @@ export interface HttpJobServerConfig {
   coderKey: string;
   /** Only needed the first time this coderKey is used, to establish the coder via an invite link. */
   inviteSecret?: string;
+  /** Participant id from the URL, for invites that take it from there (only used when the coder is created). */
+  participantId?: string;
+  /** Confirms starting a new session although this participant already has one elsewhere. */
+  newSession?: boolean;
 }
 
 /** Talks to a real server implementing the `@annotinder/contracts` endpoint registry over HTTP. */
@@ -38,15 +70,26 @@ export class HttpJobServer implements JobServer {
       "x-coder-key": this.config.coderKey,
     };
     if (this.config.inviteSecret) headers["x-invite-secret"] = this.config.inviteSecret;
+    if (this.config.participantId) headers["x-participant-id"] = this.config.participantId;
+    if (this.config.newSession) headers["x-new-session"] = "1";
     return headers;
+  }
+
+  /** Exchanges a transfer token for the coder key it stands for. No coder key needed. */
+  static async redeemTransfer(baseUrl: string, token: string): Promise<string> {
+    const path = endpoints.redeemTransfer.path;
+    const res = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) throw await toError(res, path);
+    return ((await res.json()) as { coderKey: string }).coderKey;
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers: this.headers() });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Request to ${path} failed (${res.status}): ${body}`);
-    }
+    if (!res.ok) throw await toError(res, path);
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
   }
@@ -55,9 +98,14 @@ export class HttpJobServer implements JobServer {
     return this.request(endpoints.getSession.path);
   }
 
-  async getNextUnit(unitset?: string): Promise<CoderUnitResponse | null> {
-    const key = unitset && unitset.trim() !== "" ? encodeURIComponent(unitset) : "__all__";
-    return this.request(endpoints.getNextUnit.path.replace(":setname", key));
+  async getNextUnit(loop: string): Promise<CoderUnitResponse | null> {
+    return this.request(endpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop)));
+  }
+
+  async getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse> {
+    return this.request(
+      endpoints.getLoopUnit.path.replace(":loop", encodeURIComponent(loop)).replace(":unitId", String(unitId)),
+    );
   }
 
   async postUnitVariables(unitId: number, variables: Record<string, VariableValue>): Promise<void> {
@@ -65,6 +113,10 @@ export class HttpJobServer implements JobServer {
       method: "POST",
       body: JSON.stringify({ unitId, variables }),
     });
+  }
+
+  async createTransfer(): Promise<TransferResponse> {
+    return this.request(endpoints.createTransfer.path, { method: "POST" });
   }
 
   async postCoderVariables(variables: Record<string, VariableValue>): Promise<void> {
