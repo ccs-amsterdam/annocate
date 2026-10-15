@@ -6,9 +6,13 @@ schemas, their inferred TypeScript types, and small pure helper functions
 (position parsing, codebook nesting validation) — no server or client
 runtime code, no HTTP client, no React.
 
-Any server backend (the reference mock server in `packages/mock-server`, or a
-real backend written in any language) is expected to implement the endpoints
-listed below and validate against these schemas.
+Any server backend (the dev server in `packages/mock-server`, or a real
+backend written in any language) is expected to implement the endpoints
+listed below and validate against these schemas. For the backend API, the
+smallest complete implementation is `packages/reference-db-server`, and
+`packages/conformance` checks a db server against it over HTTP: load
+`ConformanceFixtureSchema` data (`packages/conformance/fixture.json`) as a
+job, then run `DB_SERVER_URL=... pnpm conformance`.
 
 ## Design notes
 

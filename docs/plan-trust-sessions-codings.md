@@ -251,12 +251,16 @@ for the client's admin side, the backend API, legacy coder routes
 (`routes/session.ts`, used by the admin preview) plus dev auth. It no
 longer reads as "what a db server must implement". Plan:
 
-- **Reference db server**: only the backend API, from a fixture file or a
-  few tables. Small enough to read as the spec.
-- **Conformance test suite**, runnable against any db server URL. Worth more
-  to a real implementer (AmCAT) than example code.
-- **Dev server** for the client's admin side, separate (in practice maybe
-  whatever the real db server is).
+- ~~**Reference db server**~~ Done: `packages/reference-db-server`, only the
+  backend API, in memory, from the conformance fixture (~230 lines).
+- ~~**Conformance test suite**~~ Done: `packages/conformance`. Fixture
+  (`ConformanceFixtureSchema`, plain JSON) plus a vitest suite over HTTP;
+  `pnpm conformance` runs it against `DB_SERVER_URL`. Covers auth,
+  deployment, units, coder resolve (invites, maxUses, participants,
+  `auth_required`), annotation upserts and `/finished` counting. Both the
+  reference and the mock server run it in their tests.
+- ~~**Dev server**~~ Kept as `packages/mock-server`: the researcher API plus
+  its own backend API, so `pnpm dev` works; no longer the reference.
 - Remove the legacy coder routes and the `doneUnitIds` column once the admin
   preview goes through the job server (architecture.md §10.1).
 
@@ -294,8 +298,8 @@ longer reads as "what a db server must implement". Plan:
 
 1. **Cleanup** (§6). Independent, low risk, makes the rest easier to read.
 2. ~~**Codings model** (§4)~~ Done, per §9.3/§9.4.
-3. **Mock server split + conformance suite** (§5). Right after (2), since
-   (2) changes the backend API anyway.
+3. ~~**Mock server split + conformance suite** (§5)~~ Done, except removing
+   the legacy coder routes (waits on the admin preview).
 4. **Sessions in httpOnly cookies** (§2), client and job server on one
    origin; signed coder session; db server stops storing coder keys.
 5. **Trust handshake** (§1): invite token, registration, signed handshake,

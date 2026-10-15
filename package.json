@@ -13,6 +13,8 @@
     "dev:client": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/client run dev",
     "dev:mock-server": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/mock-server run dev",
     "dev:job-server": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/job-server run dev",
+    "dev:reference": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/reference-db-server run dev",
+    "conformance": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/conformance run test:remote",
     "reset-mock": "pnpm --filter @annotinder/mock-server run db:reset",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",

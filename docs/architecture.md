@@ -373,12 +373,16 @@ Other open points:
 | `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
 | `job-server/src/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `job-server/src/backend.ts` | Typed backend API client; validates db server responses |
-| `mock-server/src/routes/backend.ts` | Reference backend API implementation |
+| `reference-db-server/src/server.ts` | Reference backend API: the whole db server side, in memory |
+| `conformance/src/index.ts` | Backend API conformance suite, runnable against any db server |
+| `mock-server/src/routes/backend.ts` | The dev server's backend API (sqlite) |
 | `mock-server/src/routes/deployment.ts` | Researcher deployment endpoints, job server notification |
 | `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches and sources |
 
 `job-server/src/__tests__/integration.test.ts` runs the real mock server and
-job server against each other, through in-process `fetch`.
+job server against each other, through in-process `fetch`;
+`reference-db-server/src/__tests__/jobServer.test.ts` does the same with the
+reference db server. Both db servers run the conformance suite in their tests.
 
 ## 10. Open questions and next steps
 
