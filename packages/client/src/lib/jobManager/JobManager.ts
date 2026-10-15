@@ -162,7 +162,7 @@ function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
 
 /**
  * Client-side runtime manager driving a single coder's interactive session
- * (design plan §5/3.2), supporting full forwards/backwards navigation,
+ * (docs/client.md §2), supporting full forwards/backwards navigation,
  * phase jumping, and editing previously submitted answers.
  */
 export class JobManager {

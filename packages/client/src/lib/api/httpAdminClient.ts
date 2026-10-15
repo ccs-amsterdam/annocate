@@ -19,7 +19,7 @@ import {
 
 /**
  * Client-side abstraction over the job-management ("admin") side of the API
- * (design plan §5 Phase 5) -- distinct from `JobServer` (api/httpJobServer.ts),
+ * (docs/client.md §7) -- distinct from `JobServer` (api/httpJobServer.ts),
  * which is the coder-facing, annotation-time interface.
  *
  * Supports listing, creating, and selecting jobs. Per-job resources (codebooks,
@@ -62,7 +62,7 @@ export interface AdminClient {
 export interface HttpAdminClientConfig {
   /** Base URL of the server, e.g. "http://localhost:8787". */
   baseUrl: string;
-  /** Dev-mode auth (design plan §6/2.4 -- replaced by HMAC-signed sessions in a real deployment). */
+  /** Dev-mode auth (docs/coder-identity.md -- replaced by HMAC-signed sessions in a real deployment). */
   devRole: "ADMIN" | "WRITE" | "READ";
   devEmail?: string;
   /** Optional job ID to scope per-job requests (codebooks, units, etc.). */

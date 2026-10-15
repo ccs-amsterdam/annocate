@@ -14,11 +14,11 @@ import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema 
 import { DeploymentWriteSchema, DeploymentResponseSchema, DeploymentStatusSchema } from "../deployment.js";
 
 /**
- * The full API contract (design plan §3), as a registry of
+ * The full API contract (CONTRACTS.md), as a registry of
  * { method, path, request schema, response schema } entries.
  *
  * Path params are written as `:param`. A server hosts any number of jobs
- * (design plan §2/§3); all per-job resources (codebooks, units, unitsets,
+ * (CONTRACTS.md); all per-job resources (codebooks, units, unitsets,
  * coders) are routed under `/job/:jobId/...`. Only the coder-facing,
  * annotation-time endpoints (session/unit-fetch/variable-submit) are
  * unscoped in the URL -- a coder is already tied to exactly one job via

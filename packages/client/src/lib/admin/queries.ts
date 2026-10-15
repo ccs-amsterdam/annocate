@@ -16,7 +16,7 @@ import type {
 import type { AdminClient } from "../api/httpAdminClient";
 
 /**
- * TanStack Query hooks wrapping `AdminClient` (design plan §5 Phase 5), used
+ * TanStack Query hooks wrapping `AdminClient` (docs/client.md §7), used
  * by the management UI components under `components/admin/*`. Each hook
  * takes the `AdminClient` instance explicitly rather than via context, so the
  * management UI stays usable as a plain library export without imposing a

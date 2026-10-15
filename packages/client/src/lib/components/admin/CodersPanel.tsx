@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /**
- * Coders/progress overview + invite link creation (design plan §5.5). The
- * old app had little equivalent UI to port (see the phase-5 research
- * summary in the design plan) -- this is a fresh, minimal implementation.
+ * Coders/progress overview + invite link creation (docs/client.md §7). The
+ * old app had little equivalent UI to port; this is a fresh, minimal
+ * implementation.
  */
 export function CodersPanel({
   client,

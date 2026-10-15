@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
 
 /**
- * Job settings panel (design plan §5.1): edit job name, toggle archived status,
+ * Job settings panel (docs/client.md §7): edit job name, toggle archived status,
  * or delete the job.
  */
 export function JobSettings({

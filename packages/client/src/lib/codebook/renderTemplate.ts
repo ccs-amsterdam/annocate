@@ -2,8 +2,8 @@ import type { ExpressionCache } from "./expressionCache";
 import { evaluateExpression } from "./expression";
 
 /**
- * Resolves a unit_loop layout's `{{ expression }}` interpolation (design
- * plan §11f) and `$unit.field` references:
+ * Resolves a unit_loop layout's `{{ expression }}` interpolation
+ * (docs/client.md §3) and `$unit.field` references:
  * - Inside `{{ ... }}`: evaluated in QuickJS sandbox against `values`
  *   (which includes `$unit` pointing to unit data columns, constants, etc.).
  * - Standalone `$unit.fieldName` in template text (outside directives) is

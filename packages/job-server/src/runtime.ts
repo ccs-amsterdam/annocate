@@ -124,7 +124,7 @@ export class DeploymentRuntime {
 
   /**
    * Re-fetches the spec, and applies it if its version changed. Annotations
-   * don't change with the codebook, and neither does "done" (§8.2), so the
+   * don't change with the codebook, and neither does "done" (docs/architecture.md §8.2), so the
    * codings are kept -- unless a dynamic source now compares on a variable
    * they have no agreement keys for. Single-flight.
    */

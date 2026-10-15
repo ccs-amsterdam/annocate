@@ -8,7 +8,7 @@ import { useSpanAnnotation } from "../context/SpanAnnotationContext";
 import { SelectableText } from "./SelectableText";
 
 /**
- * Renders a unit's layout (design plan §11c/§11f): a single markdown
+ * Renders a unit's layout (docs/client.md §3): a single markdown
  * template, rendered with `react-markdown` plus `remark-directive` for
  * the `::field[name]` / `::tokenize[name]` directives (also supporting
  * `$unit.fieldname` syntax).

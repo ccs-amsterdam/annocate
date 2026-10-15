@@ -24,7 +24,7 @@ export const UnitsetProgressSchema = z.object({
 export const SessionResponseSchema = z.object({
   coderId: IdSchema,
   jobId: IdSchema,
-  /** The codebook this session was started with (immutable for the lifetime of the session, see design plan §2). */
+  /** The codebook this session was started with (immutable for the lifetime of the session, see CONTRACTS.md). */
   codebook: CodebookResponseSchema,
   progress: z.array(UnitsetProgressSchema),
   /**

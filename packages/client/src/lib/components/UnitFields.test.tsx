@@ -5,7 +5,7 @@ import { UnitFields } from "./UnitFields";
 
 /**
  * Verifies the react-markdown + remark-directive + remarkUnitField pipeline
- * (design plan §11c/§11f) end-to-end: plain markdown and the
+ * (docs/client.md §3) end-to-end: plain markdown and the
  * `::field[name]` / `::tokenize[name]` directives' image/text/markdown
  * rendering, resolving against both unit data columns and layout
  * `constants`. `{{ expression }}` interpolation is NOT exercised here --

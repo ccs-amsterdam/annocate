@@ -50,7 +50,7 @@ describe("renderTemplate", () => {
     ).toBe("# Hi\n\n::tokenize[$unit.body]");
   });
 
-  it("supports an optional ExpressionCache (design plan §12), still returning correct results", async () => {
+  it("supports an optional ExpressionCache (docs/client.md §6), still returning correct results", async () => {
     const cache = new ExpressionCache();
     expect(await renderTemplate("{{a}} and {{b}}", { a: 1, b: 2 }, cache)).toBe("1 and 2");
     // Same values -> cached slots reused, still correct.

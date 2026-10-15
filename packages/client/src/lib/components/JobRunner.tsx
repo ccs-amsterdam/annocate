@@ -248,8 +248,7 @@ function computeGlobalPosition(nav: JobManagerNavigation): number {
 
 /**
  * Top-level component that boots a coder session against a job server and
- * renders the current step (design plan §5's JobManager, Phase 3.4's
- * end-to-end flow).
+ * renders the current step, driven by JobManager (docs/client.md §2).
  *
  * Implements a mobile-first responsive 2-pane layout:
  * - Top pane: scrollable unit content/document

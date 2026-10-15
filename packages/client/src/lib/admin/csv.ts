@@ -1,9 +1,9 @@
 /**
- * Minimal dependency-free CSV parser (design plan §5.4), used for the units
+ * Minimal dependency-free CSV parser (docs/client.md §7), used for the units
  * upload UI. Deliberately simple -- handles double-quote-escaped fields
  * (including embedded commas/newlines/`""`), but no exotic dialects. Ported
  * conceptually from the old app's `react-papaparse` usage, without adding
- * that dependency (design plan §7 keeps new dependencies minimal).
+ * that dependency (docs/client.md §8: keep dependencies minimal).
  */
 export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
   const rows: string[][] = [];

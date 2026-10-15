@@ -1,5 +1,5 @@
-// Generates a JSON Schema document for every schema in the endpoint registry
-// (design plan Phase 1.4), so a server backend written in a non-TS language
+// Generates a JSON Schema document for every schema in the endpoint registries,
+// so a server backend written in a non-TS language
 // can validate requests/responses against this contract without depending on
 // zod. Run via `pnpm --filter @annotinder/contracts generate:json-schema`.
 import { writeFileSync, mkdirSync } from "node:fs";

@@ -2,9 +2,8 @@ import type { Context, Next } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import type { Role } from "@annotinder/contracts";
 
-// Deliberately minimal, dev-only authentication (design plan §6/2.4: "minimal
-// unsigned/dev-mode session handling; defer HMAC signing to Phase 6"). None
-// of this is meant to be secure -- it exists so the mock server can exercise
+// Deliberately minimal, dev-only authentication. None of this is meant to
+// be secure (real coder identity: docs/coder-identity.md) -- it exists so the mock server can exercise
 // role-gated and coder-scoped endpoints during development/testing.
 //
 // Job users authenticate via plain headers (no password/token exchange):
@@ -50,7 +49,7 @@ export function authenticateJobUser(c: Context, db: DatabaseSync, jobId: number)
 /**
  * Hono middleware factory: requires an authenticated job user with at least
  * `minRole`, for the job identified by the `:jobId` or `:id` path param
- * (design plan §2: a server hosts any number of jobs, so -- unlike the old
+ * (a server hosts any number of jobs, so -- unlike the old
  * single-job-per-deployment bootstrap -- jobId always comes from the URL,
  * never "the only job on this server").
  */

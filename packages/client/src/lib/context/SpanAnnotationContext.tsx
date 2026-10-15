@@ -18,7 +18,7 @@ export interface PendingSpan {
  * form (which receives the coder's code choice and renders via
  * `Question`/`SpanAnswerField`) and the interactive text selection that has
  * to happen inside `UnitFields`' rendered layout, for the SAME unit-data
- * column (design plan §11b: annotation should be integrated with the
+ * column (docs/client.md §4: annotation should be integrated with the
  * question flow, not a separate "annotation mode").
  *
  * `JobRunner` mounts one `SpanAnnotationProvider` wrapping both `UnitFields`

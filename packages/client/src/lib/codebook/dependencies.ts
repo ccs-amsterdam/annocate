@@ -7,7 +7,7 @@ function escapeRegExp(s: string): string {
 /**
  * Statically (conservatively) extracts which of `knownNames` a script's
  * source text actually references, via a whole-word regex match per name
- * (design plan §12).
+ * (docs/client.md §6).
  */
 export function extractDependencies(script: string, knownNames: Iterable<string>): string[] {
   const found: string[] = [];

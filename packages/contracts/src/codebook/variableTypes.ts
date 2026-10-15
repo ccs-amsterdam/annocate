@@ -2,8 +2,7 @@ import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { CodebookCodesSchema, CodebookSwipeCodesSchema } from "./codes.js";
 
-// Shared question/instruction presentation fields, ported from
-// CodebookVariableBaseSchema in old/src/.../variableSchemas.ts.
+// Shared question/instruction presentation fields.
 export const VariableBaseSchema = z.object({
   question: z.string().describe("The question shown to the annotator. Supports markdown and scripts."),
   questionStyle: z.record(z.string(), z.string()).optional(),
@@ -94,7 +93,7 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
     .string()
     .describe(
       "The unit data column (or layout `constants` entry) to select spans in -- must be rendered via a " +
-        "`::tokenize[name]` directive in the unit_loop's layout template (design plan §11f)",
+        "`::tokenize[name]` directive in the unit_loop's layout template (docs/client.md §3)",
     ),
   codes: CodebookCodesSchema,
   editMode: z.boolean().optional(),
@@ -131,7 +130,7 @@ export type UserVariableType = z.infer<typeof UserVariableTypeSchema>;
 /**
  * The answer types allowed on a `unit_variable` item: everything a
  * user_variable supports, plus span/relation annotation types that only make
- * sense in the context of a unit (see design plan §2).
+ * sense in the context of a unit (see CONTRACTS.md).
  */
 export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
   AnnotinderTypeSchema,

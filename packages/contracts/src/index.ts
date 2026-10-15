@@ -1,13 +1,12 @@
 // @annotinder/contracts
 //
 // The shared, framework-agnostic API contract between an annotinder-client
-// frontend and any compliant server backend (design plan §1/§3). Everything
+// frontend and any compliant server backend (CONTRACTS.md). Everything
 // here is zod schemas + inferred types + pure helper functions -- no server
 // or client runtime dependencies.
 
 export * from "./common.js";
 
-export * from "./codebook/position.js";
 export * from "./codebook/codes.js";
 export * from "./codebook/variableTypes.js";
 export * from "./codebook/layout.js";

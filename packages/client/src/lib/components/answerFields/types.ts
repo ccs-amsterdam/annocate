@@ -7,7 +7,7 @@ export interface AnswerFieldProps<TVariable extends QuestionVariable = QuestionV
   variable: TVariable;
   onAnswer: (value: VariableValue, conditionValue?: unknown) => void;
   /**
-   * This unit's variable answers submitted so far (design plan §4.3
+   * This unit's variable answers submitted so far (docs/client.md §4
    * relation UI) -- only populated for `unit_variable` items, and only
    * actually used by `RelationAnswerField` to look up a sibling `span`
    * variable's already-collected spans.

@@ -76,7 +76,7 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
           </Button>
         ))}
       </div>
-      {/* Future Phase 4.x work can replace this directional-button fallback with the legacy swipe-card gesture UI. */}
+      {/* TODO: replace this directional-button fallback with a swipe-card gesture UI (as in the old app). */}
     </div>
   );
 }

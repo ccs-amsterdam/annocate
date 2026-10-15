@@ -1,9 +1,0 @@
-{
-  "type": "questions",
-  "questions": [
-    {
-      "name": "confirm",
-      "type": "confirm"
-    }
-  ]
-}

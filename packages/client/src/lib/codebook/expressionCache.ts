@@ -14,7 +14,7 @@ function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): b
 }
 
 /**
- * Per-slot memoized QuickJS expression evaluation (design plan §12): a
+ * Per-slot memoized QuickJS expression evaluation (docs/client.md §6): a
  * generic "recompute pass + per-slot memoization" utility, replacing the old
  * app's hand-maintained "variable X changing should re-run computation Y, Z"
  * trigger graph (flagged 2026-09-18 as bookkeeping that drifts out of sync

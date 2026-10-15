@@ -29,9 +29,8 @@ async function toError(res: Response, path: string): Promise<JobServerError> {
 }
 
 /**
- * Client-side abstraction over "however we talk to a job's backend" (design
- * plan §5/3.1). `HttpJobServer` is the only implementation for now (talking
- * to a real HTTP server, e.g. packages/mock-server); a future
+ * Client-side abstraction over "however we talk to a job's backend" (docs/client.md §2). `HttpJobServer` is the only implementation for now
+ * (talking to a job server, packages/job-server); a future
  * design/offline variant (for Storybook-like isolated component dev) can
  * implement the same interface without a network round-trip.
  */

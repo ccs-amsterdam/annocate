@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ALL_UNITS_UNITSET, splitUnits } from "@annotinder/contracts";
 
 /**
- * Unitsets management (design plan §5.4/§2): a named selection of
+ * Unitsets management (docs/client.md §7): a named selection of
  * a job's units, referenced optionally by a codebook's `unit_loop` items by name.
  * Order and randomization are configured directly in the codebook's `unit_loop`.
  */

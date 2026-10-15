@@ -48,7 +48,7 @@ function getItemAtPath(tree: unknown[], path: (string | number)[]): CodebookItem
 }
 
 /**
- * Whole-document codebook editor (design plan §5.2): holds one in-memory
+ * Whole-document codebook editor (docs/client.md §7): holds one in-memory
  * draft (`name` + nested `items` array), edited purely client-side via
  * `codebookEdit.ts`, and saved in one `PUT`/`POST /codebook` call.
  */

@@ -2,7 +2,6 @@ import { z } from "zod";
 
 /**
  * A single selectable code/answer option shown to the coder.
- * Ported from old/src/app/api/.../codebookNodes/variableSchemas.ts.
  */
 export const CodebookCodeSchema = z.object({
   code: z.string().min(1).trim().describe("The code value shown to the annotator. Must be unique within the variable."),
@@ -11,7 +10,7 @@ export const CodebookCodeSchema = z.object({
   /**
    * NEW vs. old design: selecting a code with `screenOut: true` ends the
    * coder's session for this job (a lightweight replacement for a dedicated
-   * "screen-out question" item type -- see design plan §2/§6 notes).
+   * "screen-out question" item type).
    */
   screenOut: z.boolean().optional().describe("If true, selecting this code ends the coder's session (screens them out of the job)."),
 });

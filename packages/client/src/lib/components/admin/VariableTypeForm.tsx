@@ -53,11 +53,11 @@ function QuestionFields({
 }
 
 /**
- * Dispatches on `variable.type` to render the right sub-form (design plan
- * §5.2). Covers every `UserVariableType`/`UnitVariableType` variant
+ * Dispatches on `variable.type` to render the right sub-form
+ * (docs/client.md §7). Covers every `UserVariableType`/`UnitVariableType` variant
  * (variableTypes.ts). Less-common nested fields (`questionStyle`,
  * `instructionStyle`, `items` on `scale`) are intentionally not exposed here
- * yet -- see design plan §5 STILL OPEN notes.
+ * yet.
  */
 export function VariableTypeForm({
   variable,

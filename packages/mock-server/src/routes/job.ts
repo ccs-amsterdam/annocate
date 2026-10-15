@@ -18,7 +18,7 @@ function toJobResponse(row: JobRow): JobResponse {
 export function jobRoutes(db: DatabaseSync) {
   const app = new Hono<HonoEnv>();
 
-  // Multi-job deployment (design plan §2): a server can host any number of
+  // Multi-job deployment: a server can host any number of
   // jobs. Listing/creating jobs themselves has no natural "job owner" to
   // gate against yet (job-user roles are per-job, granted via
   // `PUT /job/:id/users` once a job exists) -- any request with a

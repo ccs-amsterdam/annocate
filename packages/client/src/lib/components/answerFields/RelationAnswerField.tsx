@@ -23,7 +23,7 @@ function spanLabel(span: SpanAnswer | undefined): string {
 }
 
 /**
- * Answer field for `relation` unit_variables (design plan §11a/§4.3):
+ * Answer field for `relation` unit_variables (docs/client.md §4):
  * links two already-created spans (from sibling `span` unit_variables named
  * in `variable.from`/`variable.to`) with a relation code.
  */

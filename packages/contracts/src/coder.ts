@@ -4,7 +4,7 @@ import { VariableValueSchema } from "./variableValue.js";
 
 /**
  * A coder: someone annotating a job via an invite/access link. Distinct from
- * a "job user" (see job.ts). Job-scoped identity (design plan §2).
+ * a "job user" (see job.ts). Job-scoped identity (CONTRACTS.md).
  */
 export const CoderResponseSchema = z.object({
   id: IdSchema,

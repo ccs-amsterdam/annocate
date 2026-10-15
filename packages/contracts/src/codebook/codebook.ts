@@ -24,7 +24,7 @@ export const CodebookResponseSchema = CodebookWriteSchema.extend({
   id: IdSchema,
   jobId: IdSchema,
   created: z.coerce.date(),
-  /** Once true, the codebook can no longer be edited/deleted (design plan §2). */
+  /** Once true, the codebook can no longer be edited/deleted (CONTRACTS.md). */
   immutable: z.boolean(),
 });
 export type CodebookResponse = z.infer<typeof CodebookResponseSchema>;

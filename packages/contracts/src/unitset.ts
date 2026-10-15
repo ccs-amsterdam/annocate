@@ -2,7 +2,7 @@ import { z } from "zod";
 import { IdSchema } from "./common.js";
 
 /**
- * A named selection of a job's units (design plan §2), referenced
+ * A named selection of a job's units (CONTRACTS.md), referenced
  * by a codebook's `unit_loop` items by name. Unit order/randomization
  * is configured directly in the codebook's `unit_loop` item.
  */

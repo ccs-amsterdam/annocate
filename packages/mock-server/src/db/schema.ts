@@ -7,14 +7,13 @@ import type { DatabaseSync } from "node:sqlite";
 // Vite/Vitest's import resolution (used to transform test files). A
 // require() call is just an opaque string argument to bundlers/transformers,
 // so it passes through untouched and resolves natively at runtime. See
-// design plan §6/§7.
+// docs/client.md §8.
 const { DatabaseSync: DatabaseSyncImpl } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
 
-// Minimal typed wrapper around node:sqlite's DatabaseSync (Node >= 22, see
-// design plan §6/§7 -- no better-sqlite3 dependency needed). Tables mirror
-// the simplified data model in design plan §2: a single job per mock-server
-// deployment (see routes/job.ts) with codebooks/units/unitsets/coders/invites
-// scoped to it via jobId.
+// Minimal typed wrapper around node:sqlite's DatabaseSync (Node >= 22, no
+// better-sqlite3 dependency needed). Hosts any number of jobs; codebooks,
+// units, unitsets, coders, invites, annotations and deployments are scoped to
+// a job via jobId.
 export function createDb(path = ":memory:"): DatabaseSync {
   const db = new DatabaseSyncImpl(path);
   db.exec("PRAGMA foreign_keys = ON;");

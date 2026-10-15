@@ -7,8 +7,8 @@ import variant from "@jitl/quickjs-wasmfile-release-sync";
 
 /**
  * Shared QuickJS sandbox for evaluating codebook-authored JS expressions
- * (design plan §11 -- `condition` items' `expression`, and unit_loop layout
- * templates' `{{ expression }}` interpolation, §11f). Both `conditions.ts`
+ * (docs/client.md §5 -- `condition` items' `expression`, and unit_loop layout
+ * templates' `{{ expression }}` interpolation, docs/client.md §3). Both `conditions.ts`
  * and `renderTemplate.ts` build on `evaluateExpression` rather than each
  * loading/configuring their own QuickJS instance.
  */

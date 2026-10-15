@@ -1,15 +1,15 @@
 import { z } from "zod";
 import { ClientIdSchema } from "./common.js";
 
-// The coder-submitted "answer" for a single codebook variable (design plan
-// §2's "variable(s)" -- replacing the old, more granular `Annotation` /
-// `VariableAnnotations` DB rows with a single JSON-serializable value).
+// The coder-submitted "answer" for a single codebook variable: one
+// JSON-serializable value (replacing the old app's `Annotation` /
+// `VariableAnnotations` rows).
 //
-// TODO(phase 3): tighten this to a discriminated union keyed by the
-// variable's `type` (see codebook/variableTypes.ts) once JobManager is
-// ported and the exact per-type shape needs are confirmed by real usage. For
-// now all three answer shapes are optional siblings, since a given
-// variable's `type` only ever populates one of them.
+// TODO: tighten this to a discriminated union keyed by the variable's
+// `type` (see codebook/variableTypes.ts), e.g. together with the planned
+// nominal/ordinal/numeric answer types (TODO.txt). For now all three answer
+// shapes are optional siblings, since a given variable's `type` only ever
+// populates one of them.
 
 /** Answer for "code"-style variable types: select_code/search_code/scale/annotinder/confirm/auto. */
 export const CodeAnswerSchema = z.object({
@@ -56,10 +56,9 @@ export const VariableValueSchema = z.object({
   done: z.boolean().default(false),
   skip: z.boolean().default(false),
   /**
-   * Reserved for the HMAC-signed answer-validation scheme (design plan §4).
-   * Not implemented/enforced yet (deferred to hardening phase); kept as an
-   * optional field now so the contract shape doesn't need a breaking change
-   * later.
+   * Reserved for a signed answer-validation scheme. Not used: validation
+   * now happens on the job server (docs/architecture.md). Kept optional so
+   * removing it later isn't urgent.
    */
   proof: z.string().optional(),
   codes: z.array(CodeAnswerSchema).optional(),

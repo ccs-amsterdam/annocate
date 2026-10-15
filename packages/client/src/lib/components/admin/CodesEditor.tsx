@@ -2,7 +2,7 @@ import type { CodebookCode } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-/** Shared repeatable-row editor for a variable's `codes` array (design plan §5.2). */
+/** Shared repeatable-row editor for a variable's `codes` array (docs/client.md §7). */
 export function CodesEditor({
   codes,
   onChange,

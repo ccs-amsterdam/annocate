@@ -20,7 +20,7 @@ interface CodebookPreviewVariableProps {
 }
 
 /**
- * Live interactive preview of a codebook item (design plan & user TODO).
+ * Live interactive preview of a codebook item (see TODO.txt).
  * Displays real-time updates as the author edits the item's question prompt,
  * options, scale items, codes, colors, or unit layout.
  */

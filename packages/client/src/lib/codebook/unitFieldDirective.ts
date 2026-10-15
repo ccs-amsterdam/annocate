@@ -4,13 +4,13 @@ import { visit } from "unist-util-visit";
 const DIRECTIVE_NAMES = new Set(["field", "tokenize"]);
 
 /**
- * A remark plugin (design plan §11c/§11f) that converts the `::field[name]`
+ * A remark plugin (docs/client.md §3) that converts the `::field[name]`
  * and `::tokenize[name]` leaf directives (parsed by `remark-directive`) into
  * a node react-markdown can map to a custom component via its `components`
  * prop.
  *
  * `name` resolves against ONE namespace: the current unit's data columns
- * union the layout's `constants` (§11f) -- never a composed/rendered blob --
+ * union the layout's `constants` (docs/client.md §3) -- never a composed/rendered blob --
  * so that a `::tokenize[name]` span's stored character offsets always mean
  * "an offset into this one stable, versioned string", regardless of where
  * in the layout it's referenced.

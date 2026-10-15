@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
 // Library-mode build: produces the importable component/hook package
-// (see design plan §7 -- "installable without node" == usable as a
+// (see docs/client.md §1 -- "installable without node" == usable as a
 // component library inside another host React app, e.g. via
 // `import { ... } from "@annotinder/client"`).
 export default defineConfig({
@@ -38,7 +38,7 @@ export default defineConfig({
         // (was `style.css`, became the entry's own name in a later
         // version), and `package.json`'s `exports["./style.css"]` needs a
         // stable target that doesn't silently break on the next Vite
-        // upgrade (design plan §6.5/§7.1).
+        // upgrade (docs/client.md §1).
         assetFileNames: "style.[ext]",
       },
     },

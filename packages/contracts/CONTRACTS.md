@@ -20,20 +20,19 @@ listed below and validate against these schemas.
   `pnpm generate:json-schema`, which walks the endpoint registry and emits a
   plain JSON Schema document per endpoint (see below) — enough to validate
   request/response shapes without needing an OpenAPI toolchain.
-- **Positional codebook model.** Unlike the old normalized DAG of
-  `codebookNodes` rows (`parentId` + `treeType` enum), a codebook here is a
-  flat array of items, each carrying a dotted-decimal `position` string (e.g.
-  `"4.2.1"`) that implicitly encodes its place in the tree. See
-  `src/codebook/position.ts` for the parsing helpers and
-  `src/codebook/validation.ts` for the nesting rules this enables:
+- **Codebook as a tree.** A codebook is one JSON document: a list of
+  top-level items, where `unit_loop` and `condition` items nest their
+  `children`. `src/codebook/validation.ts` enforces the nesting rules:
   - `user_variable` / `unit_loop` items may not be nested inside a
     `unit_loop`.
   - `unit_variable` items must be nested inside a `unit_loop` (through any
     number of `condition` ancestors).
   - `unit_loop` items may not be nested inside another `unit_loop`.
   - `condition` items may appear (and be nested) anywhere.
-  - `user_variable`/`unit_variable` items are always leaves.
-  - All positions and item names must be unique within a codebook.
+  - `question`/`user_variable`/`unit_variable` items are always leaves.
+  - Item names must be unique within a codebook.
+  - `unit_loop` branches may only refer to coder-level variables defined
+    before the loop (see `src/codebook/unitLoop.ts`).
 
   These rules are exposed both as a standalone function
   (`validateCodebookItems`, for reuse by a codebook editor UI) and wired into
@@ -147,7 +146,7 @@ a client-generated `x-coder-key` bearer string + one-time `x-invite-secret`
 for coders; see `mock-server/src/auth.ts`'s own doc comment). Real server
 implementations should NOT copy this as-is. Recommended production scheme
 for authors who want a stateless, horizontally-scalable session mechanism
-(design plan §6.1) rather than DB-backed sessions:
+rather than DB-backed sessions (coder sessions: see `docs/coder-identity.md`):
 
 - **Job users**: front the admin API with whatever identity provider the
   deployment already has (SSO/OAuth/institutional login are typical for

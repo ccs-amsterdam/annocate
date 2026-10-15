@@ -8,7 +8,7 @@ import { LayoutDashboard, PenTool } from "lucide-react";
 // mock db server + job server, using a device-stored coder key per invite
 // (the seed demo job's invite secret by default). Real deployments should
 // import { JobRunner } / { AdminApp } (or their building blocks) into a host
-// app instead -- see design plan §7.
+// app instead -- see docs/client.md §1
 const MOCK_SERVER_URL = import.meta.env.VITE_MOCK_SERVER_URL ?? "http://localhost:8787";
 // Coders talk to the job server, not the db server (docs/architecture.md).
 // The seed demo job is deployed as `mock.1`.

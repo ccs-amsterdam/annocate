@@ -5,7 +5,7 @@ import { parseCsv, csvRowsToUnits } from "../../admin/csv";
 import { Button } from "@/components/ui/button";
 
 /**
- * Units upload/management panel (design plan §5.4). Simplified vs. the old
+ * Units upload/management panel (docs/client.md §7). Simplified vs. the old
  * app's CSV-only wizard: units are immutable once used, so there's no
  * "overwrite existing" as a default choice -- it's an explicit opt-in, and
  * deletion is only ever offered for units the server confirms are still

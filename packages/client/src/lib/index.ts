@@ -1,7 +1,7 @@
 // @annotinder/client library entry point.
 //
 // This is what a host application imports when using annotinder-client as a
-// component library (design plan §7), e.g.:
+// component library (docs/client.md §1), e.g.:
 //   import { JobRunner } from "@annotinder/client";
 //   import "@annotinder/client/style.css";
 //
@@ -13,7 +13,7 @@
 // alongside the JS bundle. It was NOT previously imported from this file
 // (only from the standalone app's src/main.tsx), so consumers following the
 // `import "@annotinder/client/style.css"` instructions above the JS import
-// would have silently gotten a missing/empty file (design plan §7.1 gap,
+// would have silently gotten a missing/empty file (docs/client.md §1 gap,
 // fixed 2026-09-18).
 import "../index.css";
 
@@ -39,7 +39,7 @@ export * from "./context/SpanAnnotationContext";
 export * from "./context/CoderSettingsContext";
 export * from "./components/answerFields";
 
-// Phase 5: job/codebook management UI (design plan §5).
+// Phase 5: job/codebook management UI (docs/client.md §7).
 export * from "./api/httpAdminClient";
 export * from "./admin/queries";
 export * from "./codebook/codebookEdit";

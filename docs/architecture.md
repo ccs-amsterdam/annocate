@@ -2,7 +2,7 @@
 
 Status: draft v2 (2026-10-10; v2 moves distribution into the codebook and
 adds routing and invitations). First implementation in `packages/job-server`
-and `packages/mock-server`. Supersedes design plan §3a (unit delivery and
+and `packages/mock-server`. Supersedes the former design plan's §3a (unit delivery and
 resumable progress) and the "heavy client, thin server" approach in §0.
 
 ## 1. Why

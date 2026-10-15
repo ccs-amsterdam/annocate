@@ -1,7 +1,13 @@
 # Annotinder
 
-Monorepo for the Annotinder client rewrite. See `annotinder-client_design_plan.txt`
-for the full design plan.
+Monorepo for Annotinder: an annotation and survey tool for researchers. Design
+docs live in `docs/`:
+
+- `docs/architecture.md`: db server + job server split, unit distribution,
+  resuming and codebook updates.
+- `docs/coder-identity.md`: coder sessions, invitations, (planned) login.
+- `docs/client.md`: client design decisions (layout, spans, scripting, admin UI).
+- `packages/contracts/CONTRACTS.md`: the API contract.
 
 ## Packages
 
@@ -19,8 +25,6 @@ for the full design plan.
   Node, designed to also run as a Cloudflare Worker). Distributes units over
   coders, validates annotations and writes them through to a db server. See
   `docs/architecture.md`.
-- `old/` -- the previous NextJS fullstack implementation, kept temporarily as a
-  porting reference. Will be deleted once migration is complete.
 
 ## Development
 
