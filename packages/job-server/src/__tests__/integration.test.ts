@@ -27,8 +27,17 @@ function routeTo(base: string, app: { request: (path: string, init?: RequestInit
   }) as typeof fetch;
 }
 
+/** Backend API calls made by the job server (method + path, no query). */
+let backendCalls: string[] = [];
+
 function newJobServer() {
-  return createJobServer({ backends: { mock: { url: DB_URL, secret: SECRET } }, fetch: routeTo(DB_URL, dbApp) });
+  const toDb = routeTo(DB_URL, dbApp);
+  const fetch = ((input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+    backendCalls.push(`${init?.method ?? "GET"} ${url.pathname}`);
+    return toDb(input, init);
+  }) as typeof globalThis.fetch;
+  return createJobServer({ backends: { mock: { url: DB_URL, secret: SECRET } }, fetch });
 }
 
 beforeEach(() => {
@@ -44,6 +53,7 @@ beforeEach(() => {
     },
   });
   jobServer = newJobServer();
+  backendCalls = [];
 });
 
 function coder(key: string, invite: string | null = "demo-secret", server = () => jobServer) {
@@ -381,5 +391,89 @@ describe("resuming and codebook updates", () => {
     expect(stored.sentiment.codes).toEqual([{ code: "positive" }]);
     expect(stored).toHaveProperty("actors_and_issues"); // kept, though v2 no longer asks it
     expect(row.codebookId).toBe(2);
+  });
+});
+
+describe("rebuilding from the db server", () => {
+  const agreeing = {
+    units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 3, agreement: { variable: "sentiment", minAgree: 2 } } }] }],
+  };
+  const status = async () =>
+    (await (await dbApp.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
+
+  it("keeps saturation the same across a restart with an agreement rule", async () => {
+    await redeploy({
+      units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 3, agreement: { variable: "sentiment", minAgree: 2 }, priority: "saturate" } }] }],
+    });
+    // two codings that disagree: the unit still needs a third coder
+    const a = coder("a");
+    const b = coder("b");
+    const unit = await a.next();
+    expect((await b.next())!.id).toBe(unit!.id);
+    await a.submit(unit!.id, sentiment("positive"));
+    await b.submit(unit!.id, sentiment("negative"));
+
+    const before = (await status()).sources[0];
+    jobServer = newJobServer();
+    expect((await status()).sources[0]).toEqual({ ...before, leasedUnits: 0 });
+
+    // still open after the restart; agreeing with a completes it
+    const c = coder("c");
+    expect((await c.next())!.id).toBe(unit!.id);
+    await c.submit(unit!.id, sentiment("positive"));
+    expect((await status()).sources[0]).toMatchObject({ completeUnits: 1, codings: 3 });
+    jobServer = newJobServer();
+    expect((await status()).sources[0]).toMatchObject({ completeUnits: 1, codings: 3 });
+    expect((await coder("d").next())!.id).not.toBe(unit!.id);
+
+    // the codings endpoint returned only the agreement variable
+    const codings = await dbApp.request("/backend/job/1/codings?variables=sentiment", {
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+    const rows = (await codings.json()) as { values: Record<string, unknown> }[];
+    expect(rows).toHaveLength(3);
+    expect(rows.every((r) => Object.keys(r.values).join() === "sentiment")).toBe(true);
+  });
+
+  it("keeps answers to removed questions when resubmitting after a restart", async () => {
+    const c = coder("upd");
+    const unit = await c.next();
+    await c.submit(unit!.id, { ...sentiment("neutral"), actors_and_issues: { done: true, spans: [] } });
+    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
+
+    jobServer = newJobServer();
+    const again = coder("upd", null);
+    expect((await again.submit(unit!.id, sentiment("positive"))).status).toBe(204);
+    const row = db.prepare("SELECT variables FROM annotations WHERE unitId = ?").get(unit!.id) as { variables: string };
+    expect(JSON.parse(row.variables)).toHaveProperty("actors_and_issues");
+  });
+
+  it("does not re-download codings or annotations on a codebook redeploy", async () => {
+    const c = coder("re");
+    await c.submit((await c.next())!.id, sentiment("neutral"));
+    backendCalls = [];
+
+    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
+    expect((await c.next())?.externalId).toBe("unit-2");
+    expect(backendCalls.filter((call) => /\/(codings|annotations|coders)$/.test(call) && call.startsWith("GET"))).toEqual([]);
+
+    // a new agreement variable does need the codings again
+    await redeploy(agreeing);
+    await c.session();
+    expect(backendCalls).toContain("GET /backend/job/1/codings");
+    expect(backendCalls).not.toContain("GET /backend/job/1/annotations");
+  });
+
+  it("keeps the order of finished units when an old unit is edited", async () => {
+    const c = coder("order");
+    const first = await c.next();
+    await c.submit(first!.id, sentiment("neutral"));
+    const second = await c.next();
+    await c.submit(second!.id, sentiment("neutral"));
+    await new Promise((r) => setTimeout(r, 5)); // a later timestamp for the edit
+    expect((await c.submit(first!.id, sentiment("positive"))).status).toBe(204);
+
+    jobServer = newJobServer();
+    expect((await coder("order", null).session()).progress[0].doneUnitIds).toEqual([first!.id, second!.id]);
   });
 });

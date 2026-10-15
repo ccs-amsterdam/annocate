@@ -191,7 +191,7 @@ export function sessionRoutes(db: DatabaseSync) {
     if (!db.prepare("SELECT 1 FROM units WHERE jobId = ? AND id = ?").get(jobId, unitId)) {
       return c.json({ error: "Unit not found" }, 404);
     }
-    putAnnotation(db, jobId, unitId, coder.id, variables);
+    putAnnotation(db, jobId, unitId, coder.id, variables, Object.values(variables).every((v) => v.done));
     return c.body(null, 204);
   });
 

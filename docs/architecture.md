@@ -45,7 +45,7 @@ in any language. It implements:
   admin side: jobs, codebooks, units, unitsets, invites, deployments;
 - the **backend API** (`backendEndpoints` in contracts), used only by the job
   server. This is plain CRUD: deployment spec, unit content, coder
-  resolution, annotation dump and write-through.
+  resolution, finished codings, a coder's own annotations, and write-through.
 
 It never runs codebook logic. It validates only the shape of annotations
 (JSON Schema is generated from the contracts) and referential integrity.
@@ -75,11 +75,26 @@ worker:
    db server has accepted it. The coder's request fails if the db server
    does.
 2. **Rebuildable.** Everything the job server holds is a cache of the
-   backend API. `DeploymentRuntime.load()` rebuilds it from
-   `GET /deployment` + `GET /coders` + `GET /annotations`. The one exception is dynamic-source
-   **leases**, which are deliberately disposable: losing them only returns an
-   abandoned unit to the queue early. So the job server needs no database
-   and no backups.
+   backend API. The one exception is dynamic-source **leases**, which are
+   deliberately disposable: losing them only returns an abandoned unit to
+   the queue early. So the job server needs no database and no backups.
+   The cache has two parts, so a rebuild doesn't need every annotation in
+   memory (that matters on the edge target, with idle evictions and a
+   memory limit per Durable Object):
+   - **Distribution state**, for the whole job, loaded eagerly by
+     `DeploymentRuntime.load()`: `GET /deployment` + `GET /coders` +
+     `GET /codings?variables=...`. Codings are the finished annotations
+     only, ordered by `doneAt`, with just the values of the agreement
+     variables of dynamic sources (often none). That is a plain key
+     projection, so the db server still runs no codebook logic.
+   - **Coder workspaces**: a coder's own annotations, also unfinished ones,
+     via `GET /annotations?coderId=X`. Loaded when the coder first shows up
+     (and before any submit, which merges into the previous annotation, see
+     §8.2); evicted after `workspaceTtlMs` idle.
+
+   A codebook redeploy only re-applies the spec. Codings are kept, unless a
+   dynamic source now compares on a variable they hold no agreement keys
+   for; then only the codings are fetched again.
 3. **Bounded retention.** Unit content is cached with a TTL. Dropping a
    deployment (`DELETE /admin/deployments/:id`) forgets everything held for
    it. That keeps GDPR retention simple: the job server is a processor with a
@@ -316,7 +331,10 @@ The rules that make this safe:
   changes when a unit is resubmitted under a newer version.
 - **"Finished" is decided when a coder submits a unit**, and is not
   recomputed when the codebook changes. Otherwise a small edit could
-  silently reopen hundreds of units and change dynamic-source counts.
+  silently reopen hundreds of units and change dynamic-source counts. The
+  job server sends it as `done` with every write; the db server stores it
+  and sets `doneAt` the first time it is true. `doneAt` never changes after
+  that, so editing a finished unit doesn't move it in the coder's progress.
 
 ### 8.3 Open: reopening finished units
 
@@ -401,8 +419,9 @@ Roughly in order:
 6. **`url_param` auto variables** are documented as client-side but not
    implemented in `JobManager` yet. Email-restricted invites need real coder
    authentication (item 3).
-7. **Scale.** `GET /backend/.../annotations` is a full dump on cold start.
-   Add `?after=<cursor>` pagination. Per-unit state is O(units) in memory,
+7. **Scale.** `GET /backend/.../codings` is still a dump of every finished
+   coding on cold start, though a compact one (§3). Add `?after=<cursor>`
+   pagination. Per-unit state is O(units) in memory,
    which is fine into the 100k range per deployment. Status computation is
    O(coders x units) and should be cached or made incremental for large
    jobs.

@@ -100,24 +100,53 @@ export const BackendCoderWriteSchema = z.object({
 });
 export type BackendCoderWrite = z.infer<typeof BackendCoderWriteSchema>;
 
-/** One coder's variables for one unit, as stored by the db server. */
+/**
+ * `GET /backend/job/:jobId/annotations?coderId=X` -- one coder's variables for
+ * one unit, as stored by the db server. Includes unfinished annotations.
+ */
 export const BackendAnnotationSchema = z.object({
   unitId: IdSchema,
   coderId: IdSchema,
   variables: z.record(z.string(), VariableValueSchema),
-  /** Server timestamp of the last write; the job server uses it to order a coder's progress. */
+  /** As last written by the job server (see `BackendAnnotationWriteSchema.done`). */
+  done: z.boolean(),
+  /** Server timestamp of the last write. */
   updated: z.coerce.date(),
   /** The codebook the annotation was last written under (absent for old annotations). */
   codebookId: IdSchema.nullish(),
 });
 export type BackendAnnotation = z.infer<typeof BackendAnnotationSchema>;
 
+/**
+ * `GET /backend/job/:jobId/codings?variables=a,b` -- the finished annotations
+ * (`done`) of all coders, ordered by `doneAt`. This is what the job server
+ * needs for distribution, so it can be loaded for a whole job cheaply:
+ * `values` holds only the requested variables (a plain key projection of
+ * `variables`; the job server asks for the agreement variables of dynamic
+ * sources, often none).
+ */
+export const BackendCodingSchema = z.object({
+  unitId: IdSchema,
+  coderId: IdSchema,
+  /** When the annotation was first written as done. Set once; resubmitting doesn't change it. */
+  doneAt: z.coerce.date(),
+  values: z.record(z.string(), VariableValueSchema).optional(),
+});
+export type BackendCoding = z.infer<typeof BackendCodingSchema>;
+
 /** `PUT /backend/job/:jobId/annotations/:unitId/:coderId` -- write-through from the job server. */
 export const BackendAnnotationWriteSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
+  /**
+   * Whether the coder finished the unit, decided by the job server at submit
+   * time (docs/architecture.md §8.2). The db server stores it as is, and sets
+   * `doneAt` the first time it is true.
+   */
+  done: z.boolean(),
   /** The deployed codebook the coder answered under, so researchers can tell versions apart. */
   codebookId: IdSchema.optional(),
 });
+export type BackendAnnotationWrite = z.infer<typeof BackendAnnotationWriteSchema>;
 
 export const backendEndpoints = {
   getDeployment: {
@@ -149,6 +178,12 @@ export const backendEndpoints = {
     path: "/backend/job/:jobId/coders/:coderId",
     request: BackendCoderWriteSchema,
     response: z.void(),
+  },
+  listCodings: {
+    method: "GET",
+    path: "/backend/job/:jobId/codings",
+    request: z.void(),
+    response: z.array(BackendCodingSchema),
   },
   listAnnotations: {
     method: "GET",

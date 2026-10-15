@@ -36,6 +36,20 @@ export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   return loops;
 }
 
+/** The agreement variables of all dynamic sources: what distribution needs to know of finished codings. */
+export function collectAgreementVariables(loops: Iterable<LoopInfo>): Set<string> {
+  const variables = new Set<string>();
+  for (const { loop } of loops) {
+    for (const branch of loop.units) {
+      for (const source of branch.sources) {
+        const variable = source.dynamic?.agreement?.variable;
+        if (variable) variables.add(variable);
+      }
+    }
+  }
+  return variables;
+}
+
 /** Coder-level (non-unit) variables: questions outside any unit_loop. */
 export function collectCoderVariables(items: TopLevelItem[]): Map<string, VariableType> {
   const variables = new Map<string, VariableType>();

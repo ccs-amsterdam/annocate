@@ -12,6 +12,8 @@ export interface AnnotationRow {
   variables: string;
   updated: string;
   codebookId: number | null;
+  done: number;
+  doneAt: string | null;
 }
 
 interface UnitsetRow {
@@ -30,16 +32,26 @@ export function getAnnotation(
   return row ? JSON.parse(row.variables) : undefined;
 }
 
-export function listAnnotations(db: DatabaseSync, jobId: number): AnnotationRow[] {
+/** One coder's annotations (finished or not), for the job server's per-coder cache. */
+export function listCoderAnnotations(db: DatabaseSync, jobId: number, coderId: number): AnnotationRow[] {
   return db
-    .prepare("SELECT * FROM annotations WHERE jobId = ? ORDER BY updated, rowid")
+    .prepare("SELECT * FROM annotations WHERE jobId = ? AND coderId = ? ORDER BY rowid")
+    .all(jobId, coderId) as unknown as AnnotationRow[];
+}
+
+/** All finished annotations of a job, in the order they were first finished. */
+export function listDoneAnnotations(db: DatabaseSync, jobId: number): AnnotationRow[] {
+  return db
+    .prepare("SELECT * FROM annotations WHERE jobId = ? AND done = 1 ORDER BY doneAt, rowid")
     .all(jobId) as unknown as AnnotationRow[];
 }
 
 /**
- * Upserts an annotation, marks the unit immutable, and -- if every variable
- * is done -- records the unit as done for this coder in the per-unitset
- * progress lists (used by `GET /session` and `GET /coders`).
+ * Upserts an annotation, marks the unit immutable, and -- if it is done --
+ * records the unit as done for this coder in the per-unitset progress lists
+ * (used by the legacy `GET /session` and `GET /coders`). `done` is decided by
+ * the caller; `doneAt` is set the first time it is true and then kept, so
+ * editing a finished unit doesn't change its place in the coder's progress.
  */
 export function putAnnotation(
   db: DatabaseSync,
@@ -47,17 +59,19 @@ export function putAnnotation(
   unitId: number,
   coderId: number,
   variables: Record<string, VariableValue>,
+  done: boolean,
   codebookId?: number,
 ): void {
+  const now = new Date().toISOString();
   db.prepare(
-    `INSERT INTO annotations (jobId, unitId, coderId, variables, updated, codebookId) VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO annotations (jobId, unitId, coderId, variables, updated, codebookId, done, doneAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (unitId, coderId) DO UPDATE SET variables = excluded.variables, updated = excluded.updated,
-       codebookId = excluded.codebookId`,
-  ).run(jobId, unitId, coderId, JSON.stringify(variables), new Date().toISOString(), codebookId ?? null);
+       codebookId = excluded.codebookId, done = excluded.done, doneAt = COALESCE(annotations.doneAt, excluded.doneAt)`,
+  ).run(jobId, unitId, coderId, JSON.stringify(variables), now, codebookId ?? null, done ? 1 : 0, done ? now : null);
   db.prepare("UPDATE units SET immutable = 1 WHERE jobId = ? AND id = ?").run(jobId, unitId);
 
-  const allDone = Object.values(variables).every((v) => v.done);
-  if (!allDone) return;
+  if (!done) return;
 
   const coder = db.prepare("SELECT doneUnitIds FROM coders WHERE id = ?").get(coderId) as
     | { doneUnitIds: string }

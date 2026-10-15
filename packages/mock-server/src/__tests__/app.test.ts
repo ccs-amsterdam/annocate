@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { createDb } from "../db/schema.js";
 import { createApp } from "../app.js";
@@ -278,5 +281,23 @@ describe("unitset generation", () => {
     expect(new Set(sets.flatMap((s) => s.unitIds)).size).toBe(10);
 
     expect((await generate({ prefix: "part", parts: 2 })).status).toBe(409);
+  });
+});
+
+describe("schema migrations", () => {
+  it("backfills `done` for annotations written before it was stored", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "annotinder-")), "db.sqlite");
+    const old = createDb(path);
+    old.exec("DROP INDEX annotations_done; ALTER TABLE annotations DROP COLUMN done");
+    const insert = old.prepare("INSERT INTO annotations (jobId, unitId, coderId, variables, updated) VALUES (1, ?, 1, ?, ?)");
+    insert.run(1, JSON.stringify({ a: { done: true }, b: { done: true } }), "2026-01-01T00:00:00.000Z");
+    insert.run(2, JSON.stringify({ a: { done: true }, b: { done: false } }), "2026-01-02T00:00:00.000Z");
+    old.close();
+
+    const rows = createDb(path).prepare("SELECT unitId, done, doneAt FROM annotations ORDER BY unitId").all();
+    expect(rows).toEqual([
+      { unitId: 1, done: 1, doneAt: "2026-01-01T00:00:00.000Z" },
+      { unitId: 2, done: 0, doneAt: null },
+    ]);
   });
 });

@@ -3,11 +3,13 @@ import {
   backendEndpoints,
   BackendAnnotationSchema,
   BackendCoderSchema,
+  BackendCodingSchema,
   BackendUnitSchema,
   DeploymentSpecSchema,
   type BackendAnnotation,
   type BackendCoder,
   type BackendCoderWrite,
+  type BackendCoding,
   type BackendUnit,
   type DeploymentSpec,
   type ResolveCoderRequest,
@@ -101,19 +103,27 @@ export class BackendClient {
     await this.request(backendEndpoints.putCoder.path, null, { method: "PUT", body, params: { coderId } });
   }
 
-  listAnnotations(): Promise<BackendAnnotation[]> {
-    return this.request(backendEndpoints.listAnnotations.path, BackendAnnotationSchema.array());
+  /** Finished codings of all coders, with only the given variables' values. */
+  listCodings(variables: string[]): Promise<BackendCoding[]> {
+    const query = variables.length > 0 ? `?variables=${variables.map(encodeURIComponent).join(",")}` : "";
+    return this.request(backendEndpoints.listCodings.path + query, BackendCodingSchema.array());
+  }
+
+  /** One coder's annotations, finished or not. */
+  listAnnotations(coderId: number): Promise<BackendAnnotation[]> {
+    return this.request(`${backendEndpoints.listAnnotations.path}?coderId=${coderId}`, BackendAnnotationSchema.array());
   }
 
   async putAnnotation(
     unitId: number,
     coderId: number,
     variables: Record<string, VariableValue>,
+    done: boolean,
     codebookId?: number,
   ): Promise<void> {
     await this.request(backendEndpoints.putAnnotation.path, null, {
       method: "PUT",
-      body: { variables, codebookId },
+      body: { variables, done, codebookId },
       params: { unitId, coderId },
     });
   }

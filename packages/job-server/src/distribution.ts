@@ -1,24 +1,30 @@
-import { dynamicSourceDefaults, seededShuffle, type DynamicSource, type VariableValue } from "@annotinder/contracts";
-import { agreementKey } from "./codebook.js";
+import { dynamicSourceDefaults, seededShuffle, type DynamicSource } from "@annotinder/contracts";
 
 // Pure, in-memory unit distribution. All state is derived from the db
 // server's annotations (`Codings`) except dynamic-source leases, which are
 // deliberately ephemeral: losing them on a restart only means an abandoned
 // unit returns to the queue early.
 
-/** Finished codings: unitId -> coderId -> variables, plus each coder's finish order. Shared by all pools. */
+/**
+ * A finished coding as far as distribution cares: agreement variable ->
+ * `agreementKey` of the coder's answer. Only the agreement variables of
+ * dynamic sources are kept (often none), not the full answers.
+ */
+export type AgreementKeys = Record<string, string | null>;
+
+/** Finished codings: unitId -> coderId -> agreement keys, plus each coder's finish order. Shared by all pools. */
 export class Codings {
-  private byUnit = new Map<number, Map<number, Record<string, VariableValue>>>();
+  private byUnit = new Map<number, Map<number, AgreementKeys>>();
   private byCoder = new Map<number, number[]>();
 
-  record(coderId: number, unitId: number, variables: Record<string, VariableValue>): void {
+  record(coderId: number, unitId: number, keys: AgreementKeys): void {
     let unit = this.byUnit.get(unitId);
     if (!unit) this.byUnit.set(unitId, (unit = new Map()));
     if (!unit.has(coderId)) this.byCoder.set(coderId, [...this.doneBy(coderId), unitId]);
-    unit.set(coderId, variables);
+    unit.set(coderId, keys);
   }
 
-  forUnit(unitId: number): Map<number, Record<string, VariableValue>> {
+  forUnit(unitId: number): Map<number, AgreementKeys> {
     return this.byUnit.get(unitId) ?? new Map();
   }
 
@@ -172,9 +178,9 @@ export class UnitPool {
     if (!variable) return 0;
     const counts = new Map<string, number>();
     let top = 0;
-    for (const variables of this.codings.forUnit(unitId).values()) {
-      const key = agreementKey(variables, variable);
-      if (key === null) continue;
+    for (const keys of this.codings.forUnit(unitId).values()) {
+      const key = keys[variable];
+      if (key === null || key === undefined) continue;
       const n = (counts.get(key) ?? 0) + 1;
       counts.set(key, n);
       top = Math.max(top, n);

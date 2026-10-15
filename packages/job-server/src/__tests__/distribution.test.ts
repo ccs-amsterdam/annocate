@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DynamicSource } from "@annotinder/contracts";
 import { Codings, UnitPool, pickNext } from "../distribution.js";
 
-const answer = (code: string) => ({ v: { done: true, skip: false, codes: [{ code }] } });
+const answer = (code: string) => ({ v: code });
 
 function setup() {
   const codings = new Codings();

@@ -65,6 +65,8 @@ export function createDb(path = ":memory:"): DatabaseSync {
       variables TEXT NOT NULL,
       updated TEXT NOT NULL,
       codebookId INTEGER,
+      done INTEGER NOT NULL DEFAULT 0,
+      doneAt TEXT,
       PRIMARY KEY (unitId, coderId)
     );
 
@@ -113,10 +115,33 @@ export function createDb(path = ":memory:"): DatabaseSync {
   addColumnIfMissing(db, "invites", "participantFromUrl", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "coders", "participantId", "TEXT");
   addColumnIfMissing(db, "annotations", "codebookId", "INTEGER");
+  addColumnIfMissing(db, "annotations", "doneAt", "TEXT");
+  if (addColumnIfMissing(db, "annotations", "done", "INTEGER NOT NULL DEFAULT 0")) backfillDone(db);
+  db.exec("CREATE INDEX IF NOT EXISTS annotations_done ON annotations (jobId, done, doneAt)");
   return db;
 }
 
-function addColumnIfMissing(db: DatabaseSync, table: string, column: string, definition: string): void {
+function addColumnIfMissing(db: DatabaseSync, table: string, column: string, definition: string): boolean {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
-  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  if (columns.some((c) => c.name === column)) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  return true;
+}
+
+/**
+ * One-off for annotations written before `done` was stored: done if every
+ * variable is (the job server's rule at the time), finished at their last
+ * write -- the best guess left.
+ */
+function backfillDone(db: DatabaseSync): void {
+  const rows = db.prepare("SELECT rowid, variables, updated FROM annotations").all() as {
+    rowid: number;
+    variables: string;
+    updated: string;
+  }[];
+  const update = db.prepare("UPDATE annotations SET done = 1, doneAt = ? WHERE rowid = ?");
+  for (const row of rows) {
+    const values = Object.values(JSON.parse(row.variables) as Record<string, { done?: boolean }>);
+    if (values.length > 0 && values.every((v) => v.done)) update.run(row.updated, row.rowid);
+  }
 }

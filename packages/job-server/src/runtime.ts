@@ -14,9 +14,11 @@ import {
   type VariableValue,
 } from "@annotinder/contracts";
 import { BackendClient, HttpError } from "./backend.js";
-import { Codings, UnitPool, pickNext } from "./distribution.js";
+import { Codings, UnitPool, pickNext, type AgreementKeys } from "./distribution.js";
 import {
+  agreementKey,
   codeValue,
+  collectAgreementVariables,
   collectCoderVariables,
   collectLoops,
   isDone,
@@ -35,6 +37,8 @@ export interface RuntimeOptions {
   prefetch: number;
   /** How long a "continue on another device" link stays valid. */
   transferTtlMs: number;
+  /** How long an idle coder's own annotations stay cached. They are re-fetched when the coder returns. */
+  workspaceTtlMs: number;
   now: () => number;
   random: () => number;
 }
@@ -44,6 +48,7 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
   unitTtlMs: 30 * 60_000,
   prefetch: 3,
   transferTtlMs: 15 * 60_000,
+  workspaceTtlMs: 30 * 60_000,
   now: () => Date.now(),
   random: Math.random,
 };
@@ -53,12 +58,22 @@ export type Coder = BackendCoder;
 
 type AutoVariable = Extract<VariableType, { type: "auto" }>;
 
+/** A coder's own annotations (also unfinished ones): unitId -> variables. */
+type Workspace = Map<number, Record<string, VariableValue>>;
+
 /**
  * Everything the job server knows about one deployed job. All of it is a
- * cache of the db server (`load` rebuilds it from scratch) except dynamic
- * leases, which are disposable. This is the unit that would live in one
- * Cloudflare Durable Object per deployment; on Node it is one object in
- * memory (see registry.ts).
+ * cache of the db server except dynamic leases, which are disposable. The
+ * cache has two parts (docs/architecture.md §3):
+ *
+ *  - distribution state, for the whole job, loaded eagerly by `load`: the
+ *    spec, the coders, and finished codings -- only which coder finished
+ *    which unit, plus agreement keys for dynamic sources;
+ *  - coder workspaces, the coder's own full annotations, loaded when the
+ *    coder shows up and evicted when they go idle.
+ *
+ * This is the unit that would live in one Cloudflare Durable Object per
+ * deployment; on Node it is one object in memory (see registry.ts).
  */
 export class DeploymentRuntime {
   private spec!: DeploymentSpec;
@@ -69,10 +84,17 @@ export class DeploymentRuntime {
   /** Units the db server no longer has. */
   private removedUnits = new Set<number>();
   private codings = new Codings();
+  /** Agreement variables the current spec's dynamic sources compare on. */
+  private agreementVariables = new Set<string>();
+  /** Agreement variables `codings` holds keys for (those of the spec they were loaded under). */
+  private codingVariables = new Set<string>();
+  /** Codings submitted while `loadCodings` is fetching, replayed onto its result. */
+  private pendingCodings: [coderId: number, unitId: number, variables: Record<string, VariableValue>][] | null = null;
   /** `<loop>/<unitset>/<dynamic rule>` -> pool, created when the first coder is routed to it. */
   private pools = new Map<string, UnitPool>();
-  /** coderId -> unitId -> variables: the coder's own (also unfinished) annotations, returned with a unit. */
-  private annotations = new Map<number, Map<number, Record<string, VariableValue>>>();
+  /** coderId -> the coder's own annotations, returned with a unit and merged into on resubmit. */
+  private workspaces = new Map<number, { units: Workspace; usedAt: number }>();
+  private workspaceLoads = new Map<number, Promise<Workspace>>();
   private coders = new Map<number, Coder>();
   private coderKeys = new Map<string, number>();
   private units = new Map<number, { unit: BackendUnit; fetchedAt: number }>();
@@ -90,30 +112,34 @@ export class DeploymentRuntime {
 
   // --- state ------------------------------------------------------------------
 
-  /** (Re)builds all state from the db server. */
+  /** (Re)builds the distribution state from the db server. Coder workspaces are loaded on demand. */
   async load(): Promise<void> {
-    const [spec, annotations, coders] = await Promise.all([
-      this.backend.getDeployment(),
-      this.backend.listAnnotations(),
-      this.backend.listCoders(),
-    ]);
+    const [spec, coders] = await Promise.all([this.backend.getDeployment(), this.backend.listCoders()]);
     this.applySpec(spec);
-    this.codings = new Codings();
-    this.annotations.clear();
-    for (const a of annotations) this.applyAnnotation(a.coderId, a.unitId, a.variables);
     this.coders = new Map(coders.map((c) => [c.coderId, c]));
+    this.workspaces.clear();
+    await this.loadCodings();
     this.loadedAt = this.options.now();
   }
 
-  /** Re-fetches the spec; rebuilds if its version changed. Single-flight. */
+  /**
+   * Re-fetches the spec, and applies it if its version changed. Annotations
+   * don't change with the codebook, and neither does "done" (§8.2), so the
+   * codings are kept -- unless a dynamic source now compares on a variable
+   * they have no agreement keys for. Single-flight.
+   */
   async refresh(force = false): Promise<void> {
     if (!force && this.options.now() - this.specCheckedAt < this.options.specTtlMs) return;
     this.refreshing ??= (async () => {
       try {
-        this.evictExpiredUnits();
+        this.evictExpired();
         const spec = await this.backend.getDeployment();
-        if (spec.version !== this.spec.version) await this.load();
-        else this.specCheckedAt = this.options.now();
+        if (spec.version === this.spec.version) {
+          this.specCheckedAt = this.options.now();
+          return;
+        }
+        this.applySpec(spec);
+        if ([...this.agreementVariables].some((v) => !this.codingVariables.has(v))) await this.loadCodings();
       } finally {
         this.refreshing = null;
       }
@@ -129,15 +155,56 @@ export class DeploymentRuntime {
     this.coderVariableTypes = collectCoderVariables(items);
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
+    this.agreementVariables = collectAgreementVariables(this.loops.values());
     this.pools.clear();
     this.removedUnits.clear();
   }
 
-  private applyAnnotation(coderId: number, unitId: number, variables: Record<string, VariableValue>): void {
-    let own = this.annotations.get(coderId);
-    if (!own) this.annotations.set(coderId, (own = new Map()));
-    own.set(unitId, variables);
-    if (isDone(variables)) this.codings.record(coderId, unitId, variables);
+  /** Replaces `codings` with the db server's finished codings, keyed on the current agreement variables. */
+  private async loadCodings(): Promise<void> {
+    const variables = new Set(this.agreementVariables);
+    const pending: NonNullable<typeof this.pendingCodings> = [];
+    this.pendingCodings = pending;
+    try {
+      const rows = await this.backend.listCodings([...variables]);
+      const codings = new Codings();
+      for (const row of rows) codings.record(row.coderId, row.unitId, agreementKeys(row.values ?? {}, variables));
+      for (const [coderId, unitId, values] of pending) codings.record(coderId, unitId, agreementKeys(values, variables));
+      this.codings = codings;
+      this.codingVariables = variables;
+      this.pools.clear(); // pools hold the Codings they were created with
+    } finally {
+      this.pendingCodings = null;
+    }
+  }
+
+  private recordCoding(coderId: number, unitId: number, variables: Record<string, VariableValue>): void {
+    this.codings.record(coderId, unitId, agreementKeys(variables, this.codingVariables));
+    this.pendingCodings?.push([coderId, unitId, variables]);
+  }
+
+  /** The coder's own annotations, fetched from the db server if they aren't cached. */
+  private workspace(coderId: number): Promise<Workspace> {
+    const cached = this.workspaces.get(coderId);
+    if (cached) {
+      cached.usedAt = this.options.now();
+      return Promise.resolve(cached.units);
+    }
+    let loading = this.workspaceLoads.get(coderId);
+    if (!loading) {
+      loading = (async () => {
+        try {
+          const annotations = await this.backend.listAnnotations(coderId);
+          const units: Workspace = new Map(annotations.map((a) => [a.unitId, a.variables]));
+          this.workspaces.set(coderId, { units, usedAt: this.options.now() });
+          return units;
+        } finally {
+          this.workspaceLoads.delete(coderId);
+        }
+      })();
+      this.workspaceLoads.set(coderId, loading);
+    }
+    return loading;
   }
 
   // --- coders -----------------------------------------------------------------
@@ -154,7 +221,7 @@ export class DeploymentRuntime {
     const coderKey = request.coderKey;
     this.coders.set(coder.coderId, coder);
     this.coderKeys.set(coderKey, coder.coderId);
-    await this.assignAutoVariables(coder);
+    await Promise.all([this.assignAutoVariables(coder), this.workspace(coder.coderId)]);
     return coder;
   }
 
@@ -325,7 +392,7 @@ export class DeploymentRuntime {
     if (!this.spec.active) throw new HttpError(409, "This job is not active");
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
-    const pools = await this.route(coder, info);
+    const [pools, own] = await Promise.all([this.route(coder, info), this.workspace(coder.coderId)]);
 
     for (;;) {
       const next = pickNext(pools, coder.coderId, this.codings, {
@@ -350,7 +417,7 @@ export class DeploymentRuntime {
         id: unit.id,
         externalId: unit.externalId,
         data: unit.data,
-        variables: this.annotations.get(coder.coderId)?.get(unit.id) ?? {},
+        variables: own.get(unit.id) ?? {},
       };
     }
   }
@@ -361,7 +428,7 @@ export class DeploymentRuntime {
    */
   async loopUnit(coder: Coder, loopName: string, unitId: number): Promise<CoderUnitResponse> {
     if (!this.loops.has(loopName)) throw new HttpError(404, `No unit loop '${loopName}'`);
-    const own = this.annotations.get(coder.coderId)?.get(unitId);
+    const own = (await this.workspace(coder.coderId)).get(unitId);
     const pools = this.assignedPools(coder, loopName);
     // Only units the coder has worked on (or holds right now): no peeking ahead.
     if (!pools.some((p) => p.has(unitId) && (own !== undefined || p.heldLease(coder.coderId) === unitId))) {
@@ -384,13 +451,17 @@ export class DeploymentRuntime {
 
     // Answers to questions the current codebook no longer has (an update
     // removed or renamed them) are kept, not overwritten: they are still data.
-    const previous = this.annotations.get(coder.coderId)?.get(unitId) ?? {};
+    // That needs the previous annotation, so the workspace must be loaded.
+    const own = await this.workspace(coder.coderId);
+    const previous = own.get(unitId) ?? {};
     const kept = Object.fromEntries(Object.entries(previous).filter(([name]) => !allowed.has(name)));
     const merged = { ...kept, ...variables };
+    const done = isDone(merged);
 
     // Write-through: only once the db server has it does it count.
-    await this.backend.putAnnotation(unitId, coder.coderId, merged, this.spec.codebook.id);
-    this.applyAnnotation(coder.coderId, unitId, merged);
+    await this.backend.putAnnotation(unitId, coder.coderId, merged, done, this.spec.codebook.id);
+    own.set(unitId, merged);
+    if (done) this.recordCoding(coder.coderId, unitId, merged);
   }
 
   status(): DeploymentStatus {
@@ -418,9 +489,10 @@ export class DeploymentRuntime {
     };
   }
 
-  private evictExpiredUnits(): void {
+  private evictExpired(): void {
     const now = this.options.now();
     for (const [id, { fetchedAt }] of this.units) if (now - fetchedAt >= this.options.unitTtlMs) this.units.delete(id);
+    for (const [id, { usedAt }] of this.workspaces) if (now - usedAt >= this.options.workspaceTtlMs) this.workspaces.delete(id);
   }
 
   private async getUnits(ids: number[]): Promise<Map<number, BackendUnit>> {
@@ -442,4 +514,8 @@ export class DeploymentRuntime {
     }
     return result;
   }
+}
+
+function agreementKeys(variables: Record<string, VariableValue>, agreementVariables: Set<string>): AgreementKeys {
+  return Object.fromEntries([...agreementVariables].map((v) => [v, agreementKey(variables, v)]));
 }
