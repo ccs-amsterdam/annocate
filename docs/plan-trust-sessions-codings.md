@@ -305,7 +305,8 @@ longer reads as "what a db server must implement". Plan:
 
 - ~~Uncommitted changes: commit as WIP, or discard (§0).~~ Committed.
 - Per-job keys vs. a derived device id (§9.2).
-- Which variables define "finished" after a codebook update (§9.3).
+- ~~Which variables define "finished" after a codebook update (§9.3).~~
+  First version: all current ones, with a warning on deploy.
 - Reopening anonymous invites on the same device (§2).
 - Delegated access, i.e. whether to keep provider refresh tokens (§3).
 - Returning coders after the job server forgot the job: deployment id
@@ -372,6 +373,24 @@ Naming: since the key is per job and not per device, "coder key" (or
 
 ### 9.3 Finished = computed from the current codebook's variables
 
+**Decided (2026-10-15):**
+
+- No `done` flag and no `loop` field on annotations.
+- A unit is finished for a coder when **all** of the loop's variables in the
+  current codebook have a live value. Questions a condition skipped get
+  `skip: true`.
+- The job server sends the variable list per loop, and the db server
+  counts.
+- Resetting = retiring rows (§9.4), not clearing a field.
+- First version: count all current variables of the loop. When a deploy
+  adds questions to a loop that has finished units, warn the researcher
+  that those units will reopen.
+
+Why not `loop: [id]` instead of `done`: it makes the loop name an identity
+(renaming orphans finished units); it isn't needed to tell loops apart,
+because variable names are unique in a codebook; and resetting by clearing
+it creates duplicate `loop: null` rows.
+
 **Proposal (Kasper):** when loading a coder's finished units, the job server
 sends the db server the variable names per loop, from the current codebook
 only. The db server counts, per unit and coder, how many of them are coded:
@@ -414,6 +433,9 @@ variables of that loop are coded, which is also good for efficiency.
   dynamic loops.
 
 ### 9.4 Resetting units without losing data
+
+**Decided (2026-10-15):** `retiredAt` on rows, a unique index on live rows
+only, and reset = retire. Details below.
 
 **Idea (Kasper):** a `done`/`loop` field per annotation row, with several
 rows per variable when it is used in different loops. Removing the loop
