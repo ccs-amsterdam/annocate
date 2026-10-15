@@ -104,7 +104,6 @@ export class BackendClient {
     await this.request(backendEndpoints.putCoder.path, null, { method: "PUT", body, params: { coderId } });
   }
 
-  /** Finished codings of all coders, with only the given variables' values. */
   /** Units coders finished per loop (every given variable has a live value). */
   listFinished(request: FinishedRequest): Promise<BackendFinished[]> {
     if (request.loops.length === 0) return Promise.resolve([]);

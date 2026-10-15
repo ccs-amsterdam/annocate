@@ -433,6 +433,18 @@ variables of that loop are coded, which is also good for efficiency.
   `coderId` it is the workspace load; without it, it is the global load for
   dynamic loops.
 
+**Follow-up (2026-10-16): `POST /finished` as a statistics endpoint.**
+Built as: named variable groups in (the job server sends one per loop), and
+per group the (unit, coder) pairs where every variable is live, with
+`created` and optional values. It is used for dynamic loops (global
+saturation state) and researcher status. A coder's own progress comes from
+their annotations, which the job server loads in full when they show up;
+that also makes redoing loops cheap. The optional `coderId` filter stays.
+When building a researcher progress view, extend it to also return
+partially coded units, with `coded` and `total` per (unit, coder), so
+status can show "started, not finished". Not planned: a default without
+groups (it can't tell finished from partial).
+
 ### 9.4 Resetting units without losing data
 
 **Decided (2026-10-15):** `retiredAt` on rows, a unique index on live rows
