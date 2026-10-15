@@ -509,8 +509,8 @@ can never succeed); coder records through the same outbox (latest per
 coder); flush before every read from the db server; limits 10,000 pending
 or 24 h, then `503 storage_unavailable`; outbox status in the deployment
 status; `SqliteOutboxStore` on Node (`ANNOTINDER_OUTBOX`), resumed on
-start. Not built: the Cloudflare store/alarms (with the Cloudflare target),
-and the optional warm cache.
+start. Cloudflare: `DurableObjectOutboxStore` and alarms (`worker.ts`),
+tested in workerd. Not built: the optional warm cache.
 
 **Problem.** Every unit submit waits for `PUT /annotations/...` on the db
 server. A slow or unavailable db server stops coding.

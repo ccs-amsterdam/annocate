@@ -45,7 +45,8 @@ interface Env {
 export function createJobServer(options: JobServerOptions) {
   const registry = new DeploymentRegistry(
     options.backends,
-    options.fetch ?? fetch,
+    // Wrapped: Workers refuse `fetch` called as a method of another object.
+    options.fetch ?? ((input, init) => fetch(input, init)),
     { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime },
     options.outbox,
   );
@@ -175,8 +176,8 @@ export function createJobServer(options: JobServerOptions) {
 
   app.route("/admin/deployments/:deploymentId", admin);
 
-  // Node entry: send what a previous run left behind (index.ts).
-  return Object.assign(app, { resumePending: () => registry.resumePending() });
+  // Hosts call this to send what a previous run left behind (index.ts, worker.ts).
+  return Object.assign(app, { flushPending: () => registry.flushPending() });
 }
 
 async function parseBody<T>(c: Context, schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } }) {

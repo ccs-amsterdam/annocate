@@ -27,10 +27,11 @@ docs live in `docs/`:
 - `packages/conformance` -- a test suite for the backend API, runnable
   against any db server URL (`DB_SERVER_URL=... pnpm conformance`), plus the
   fixture a db server loads for it. Both servers above pass it.
-- `packages/job-server` -- the annotinder runtime coders talk to (Hono; runs on
-  Node, designed to also run as a Cloudflare Worker). Distributes units over
-  coders, validates annotations and writes them through to a db server. See
-  `docs/architecture.md`.
+- `packages/job-server` -- the annotinder runtime coders talk to (Hono). Runs
+  on Node (`src/index.ts`) or as a Cloudflare Worker with a Durable Object
+  per deployment (`src/worker.ts`, `wrangler.toml`). Distributes units over
+  coders, validates annotations and sends them to a db server in batches
+  (a durable outbox). See `docs/architecture.md`.
 
 ## Development
 

@@ -138,7 +138,13 @@ validation, real-valued stopping rules and caching in one place.
 The mitigation is choice of deployment target, not cryptography:
 
 - **Public edge** (Cloudflare Workers + Durable Objects). Fastest, and fine
-  for non-sensitive material such as most crowd-coding jobs.
+  for non-sensitive material such as most crowd-coding jobs. `worker.ts`
+  routes `/d/<id>` and `/admin/deployments/<id>` to one Durable Object per
+  deployment, which runs the same app as Node for that deployment: memory
+  is a cache the platform drops when idle, the outbox lives in the object's
+  SQLite storage (`outboxDurable.ts`) and is flushed by alarms.
+  `wrangler.toml` keeps objects in the EU jurisdiction (check Cloudflare's
+  current terms). Tested in workerd via Miniflare (`worker.test.ts`).
 - **Self-hosted Node** (e.g. an EU university server next to the db server).
   For sensitive data. Coders of sensitive projects are usually near that
   server anyway, so losing the edge costs little.
@@ -417,6 +423,7 @@ Other open points:
 | `job-server/src/outbox.ts` | Durable pending writes, batched flushes with backoff (`outboxSqlite.ts`: the Node store) |
 | `job-server/src/session.ts` | Coder session cookies, CSRF header |
 | `job-server/src/preview.ts` | Researcher previews: preview tokens, in-memory coders and answers |
+| `job-server/src/worker.ts` | Cloudflare entry: Worker routing + a Durable Object per deployment (`outboxDurable.ts`, `wrangler.toml`) |
 | `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
 | `job-server/src/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `job-server/src/backend.ts` | Typed backend API client; validates db server responses |
@@ -435,37 +442,32 @@ reference db server. Both db servers run the conformance suite in their tests.
 
 Roughly in order:
 
-1. **Cloudflare target.** A Worker entry that routes `/d/:id/*` and
-   `/admin/deployments/:id/*` to a Durable Object per deployment, which holds
-   one `DeploymentRuntime`. The runtime is already async and storage-free, so
-   this is an adapter, not a port. Use a jurisdiction-restricted (EU) DO
-   namespace where needed, and check the current Cloudflare terms first.
-2. **Auth.** Replace the shared bearer secret between the servers with
+1. **Auth.** Replace the shared bearer secret between the servers with
    HMAC-signed requests (or short-lived tokens) in both directions. Coder
    identity, sessions across devices and coder login are designed in
    `docs/coder-identity.md`.
-3. **Multimedia.** Images, audio and video in units should probably **not**
+2. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the job
    server returns short-lived signed URLs; the bytes come from a separate
    blob gateway. That could be R2 with signed URLs for the edge target, or
    the db server's own file endpoint for self-hosted. This keeps the job
    server's memory and cache JSON-only. The blob gateway follows the same
    trust choice as the job server it pairs with.
-4. **Semantic validation.** The current validation checks variable names,
+3. **Semantic validation.** The current validation checks variable names,
    codes, items and span/relation codes. Running codebook conditions
    (QuickJS) server-side, to reject answers to questions the coder should
    never have seen, is the natural next step. It belongs here, not in db
    servers.
-5. **`url_param` auto variables** are documented as client-side but not
+4. **`url_param` auto variables** are documented as client-side but not
    implemented in `JobManager` yet. Email-restricted invites need real coder
-   authentication (item 2).
-6. **Scale.** On cold start the job server loads finished codings for
+   authentication (item 1).
+5. **Scale.** On cold start the job server loads finished codings for
    dynamic loops only (bounded by units x `maxCoders`), and coder workspaces
    lazily (§3). Add `?after=<cursor>` pagination to `finished` and
    `annotations`. Researcher status queries every loop's finished units on
    demand: fine for occasional use, worth an aggregate endpoint if it gets
    polled.
-7. **Deactivation semantics.** `active: false` stops new units (409), but
+6. **Deactivation semantics.** `active: false` stops new units (409), but
    coders can still submit units they were already working on. Decide
    whether that's what researchers expect.
-8. **Reopening finished units after a codebook update** (§8.3).
+7. **Reopening finished units after a codebook update** (§8.3).

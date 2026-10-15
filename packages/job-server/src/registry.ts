@@ -28,19 +28,25 @@ export class DeploymentRegistry {
 
   constructor(
     private backends: Record<string, BackendConfig>,
-    private fetchImpl: typeof fetch = fetch,
+    private fetchImpl: typeof fetch = (input, init) => fetch(input, init),
     private runtimeOptions: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
     /** Pending writes of all deployments; durable outside tests (outboxSqlite.ts). */
     private outboxStore: OutboxStore = new MemoryOutboxStore(),
   ) {}
 
   /**
-   * Loads every deployment that still has pending writes (e.g. after a
-   * restart while the db server was down): loading sends them first, and a
-   * failed load is retried by the next request or `resumePending` call.
+   * Sends the pending writes of every deployment that has any (e.g. after a
+   * restart while the db server was down, or when an alarm fires). Loading a
+   * deployment sends them first; a failure leaves them for the outbox's
+   * retry, the next request, or the next call.
    */
-  async resumePending(): Promise<void> {
-    await Promise.all(this.outboxStore.deployments().map((id) => this.get(id).catch(() => undefined)));
+  async flushPending(): Promise<void> {
+    await Promise.all(
+      this.outboxStore.deployments().map(async (id) => {
+        const runtime = await this.get(id).catch(() => null);
+        await runtime?.outbox.flush().catch(() => undefined);
+      }),
+    );
   }
 
   backendFor(deploymentId: string): BackendConfig & { jobId: number; preview: boolean } {

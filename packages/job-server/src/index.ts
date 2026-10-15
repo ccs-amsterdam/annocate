@@ -19,7 +19,7 @@ const backends = BackendsSchema.parse(
 // Pending writes to db servers survive restarts in this file.
 const outboxPath = process.env.ANNOTINDER_OUTBOX ?? "job-server-outbox.sqlite";
 const app = createJobServer({ backends, outbox: new SqliteOutboxStore(outboxPath) });
-void app.resumePending();
+void app.flushPending();
 const port = Number(process.env.PORT ?? 8788);
 
 const server = serve({ fetch: app.fetch, port }, (info) => {

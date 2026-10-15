@@ -59,7 +59,8 @@ export class BackendClient {
   constructor(
     private config: BackendConfig,
     private jobId: number,
-    private fetchImpl: typeof fetch = fetch,
+    // Wrapped: Workers refuse `fetch` called as a method of another object.
+    private fetchImpl: typeof fetch = (input, init) => fetch(input, init),
     /** Ask for the preview spec (the latest codebook) instead of the deployed one. */
     private preview = false,
   ) {}
