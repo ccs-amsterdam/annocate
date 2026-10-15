@@ -45,7 +45,8 @@ in any language. It implements:
   admin side: jobs, codebooks, units, unitsets, invites, deployments;
 - the **backend API** (`backendEndpoints` in contracts), used only by the job
   server. This is plain CRUD: deployment spec, unit content, coder
-  resolution, finished codings, a coder's own annotations, and write-through.
+  resolution, finished codings, a coder's own annotations, and batched
+  writes.
 
 It never runs codebook logic. It validates only the shape of annotations
 (JSON Schema is generated from the contracts) and referential integrity.
@@ -71,11 +72,22 @@ before.
 These are what make the job server safe to run anywhere, including an edge
 worker:
 
-1. **Write-through, never write-behind.** An annotation counts only once the
-   db server has accepted it. The coder's request fails if the db server
-   does.
-2. **Rebuildable.** Everything the job server holds is a cache of the
-   backend API. The one exception is dynamic-source **leases**, which are
+1. **Durable before acknowledged, sent within a minute.** An answer is
+   stored in the job server's **outbox** (a SQLite file on Node, Durable
+   Object storage on Cloudflare) before the coder is told it was saved, and
+   sent to the db server in a batch (`POST /backend/.../annotations`) about
+   once a minute, with backoff (1, 2, 5, then every 15 minutes) while the
+   db server is unreachable. Coders with a session and cached units keep
+   working through an outage; past a limit (10,000 pending writes or 24 h)
+   new answers are refused (`503 storage_unavailable`) rather than buffered
+   forever. The researcher status shows what is pending. Before the job
+   server *reads* from the db server (loading, reloading, a returning
+   coder, status), it sends its pending writes, so it never reads state
+   older than its own writes. `flushIntervalMs: 0` makes it write-through.
+   See `outbox.ts`.
+2. **Rebuildable, once the outbox is sent.** Everything else the job server
+   holds is a cache of the backend API; a restart sends what the outbox
+   holds before loading anything. The one exception is dynamic-source **leases**, which are
    deliberately disposable: losing them only returns an abandoned unit to
    the queue early. So the job server needs no database and no backups.
    The cache has two parts, so a rebuild doesn't need every annotation in
@@ -131,6 +143,10 @@ The mitigation is choice of deployment target, not cryptography:
   For sensitive data. Coders of sensitive projects are usually near that
   server anyway, so losing the edge costs little.
 
+Either way, answers rest on the job server until the next outbox flush
+(normally under a minute, at most the outbox limits): its storage must be
+as trusted as its memory.
+
 A db server is configured with the job server it deploys to. A job server is
 configured with the db servers (backends) it accepts deployments from. Both
 directions currently use a shared bearer secret (see §10).
@@ -171,8 +187,9 @@ secret.
    the db server in one request. If the db server no longer has the unit, it
    is dropped from the queue and the next one is tried.
 4. **`POST /variables/unit`.** The job server checks that the unit was
-   assigned to this coder, validates the variables, and writes them through
-   to the db server. Only then does it update the queue.
+   assigned to this coder, validates the variables, stores them in its
+   outbox (sent to the db server with the next batch), and updates the
+   queue.
 
 **Researcher status.** `GET /job/:jobId/deployment/status` on the db server
 proxies `GET /admin/deployments/:id/status`: units complete / started /
@@ -387,7 +404,9 @@ Other open points:
 | `contracts/src/deployment.ts` | Deployment schemas, `backendEndpoints`, `jobServerAdminEndpoints`, status |
 | `job-server/src/app.ts` | Hono app: coder API under `/d/:deploymentId`, admin API |
 | `job-server/src/registry.ts` | Lazily loads one runtime per deployment; failures aren't cached |
-| `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, write-through, status |
+| `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
+| `job-server/src/outbox.ts` | Durable pending writes, batched flushes with backoff (`outboxSqlite.ts`: the Node store) |
+| `job-server/src/session.ts` | Coder session cookies, CSRF header |
 | `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
 | `job-server/src/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `job-server/src/backend.ts` | Typed backend API client; validates db server responses |
@@ -416,36 +435,32 @@ Roughly in order:
    one `DeploymentRuntime`. The runtime is already async and storage-free, so
    this is an adapter, not a port. Use a jurisdiction-restricted (EU) DO
    namespace where needed, and check the current Cloudflare terms first.
-3. **Db server outages.** A timed, durable outbox for writes, so coding
-   doesn't wait on the db server; on Cloudflare in Durable Object storage.
-   And loading coder-level values per coder instead of all coders on start.
-   See `docs/plan-trust-sessions-codings.md` §10 and §11.
-4. **Auth.** Replace the shared bearer secret between the servers with
+3. **Auth.** Replace the shared bearer secret between the servers with
    HMAC-signed requests (or short-lived tokens) in both directions. Coder
    identity, sessions across devices and coder login are designed in
    `docs/coder-identity.md`.
-5. **Multimedia.** Images, audio and video in units should probably **not**
+4. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the job
    server returns short-lived signed URLs; the bytes come from a separate
    blob gateway. That could be R2 with signed URLs for the edge target, or
    the db server's own file endpoint for self-hosted. This keeps the job
    server's memory and cache JSON-only. The blob gateway follows the same
    trust choice as the job server it pairs with.
-6. **Semantic validation.** The current validation checks variable names,
+5. **Semantic validation.** The current validation checks variable names,
    codes, items and span/relation codes. Running codebook conditions
    (QuickJS) server-side, to reject answers to questions the coder should
    never have seen, is the natural next step. It belongs here, not in db
    servers.
-7. **`url_param` auto variables** are documented as client-side but not
+6. **`url_param` auto variables** are documented as client-side but not
    implemented in `JobManager` yet. Email-restricted invites need real coder
-   authentication (item 4).
-8. **Scale.** On cold start the job server loads finished codings for
+   authentication (item 3).
+7. **Scale.** On cold start the job server loads finished codings for
    dynamic loops only (bounded by units x `maxCoders`), and coder workspaces
    lazily (§3). Add `?after=<cursor>` pagination to `finished` and
    `annotations`. Researcher status queries every loop's finished units on
    demand: fine for occasional use, worth an aggregate endpoint if it gets
    polled.
-9. **Deactivation semantics.** `active: false` stops new units (409), but
+8. **Deactivation semantics.** `active: false` stops new units (409), but
    coders can still submit units they were already working on. Decide
    whether that's what researchers expect.
-10. **Reopening finished units after a codebook update** (§8.3).
+9. **Reopening finished units after a codebook update** (§8.3).

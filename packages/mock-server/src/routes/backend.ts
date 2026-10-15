@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import {
-  BackendAnnotationWriteSchema,
+  BackendAnnotationBatchSchema,
   BackendCoderWriteSchema,
   FinishedRequestSchema,
   ResolveCoderRequestSchema,
@@ -95,23 +95,30 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     return c.json(listCoderAnnotations(db, c.get("jobId"), coderId));
   });
 
-  app.put("/annotations/:unitId/:coderId", async (c) => {
-    const parsed = BackendAnnotationWriteSchema.safeParse(await c.req.json());
+  // The job server's buffered writes, applied in order (one transaction).
+  app.post("/annotations", async (c) => {
+    const parsed = BackendAnnotationBatchSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const jobId = c.get("jobId");
-    const unitId = Number(c.req.param("unitId"));
-    const coderId = Number(c.req.param("coderId"));
-    // The job server validated the annotation against the codebook; the db
-    // server only checks the shape (above) and referential integrity.
-    if (!db.prepare("SELECT 1 FROM units WHERE jobId = ? AND id = ?").get(jobId, unitId)) {
-      return c.json({ error: "Unit not found" }, 404);
+    const unitExists = db.prepare("SELECT 1 FROM units WHERE jobId = ? AND id = ?");
+    const coderExists = db.prepare("SELECT 1 FROM coders WHERE jobId = ? AND id = ?");
+    const rejected: { index: number; error: string }[] = [];
+    db.exec("BEGIN");
+    try {
+      parsed.data.annotations.forEach((a, index) => {
+        // The job server validated the annotation against the codebook; the db
+        // server only checks the shape (above) and referential integrity.
+        if (!unitExists.get(jobId, a.unitId)) return rejected.push({ index, error: "Unit not found" });
+        if (!coderExists.get(jobId, a.coderId)) return rejected.push({ index, error: "Coder not found" });
+        putAnnotation(db, jobId, a.unitId, a.coderId, a.variables, a.codebookId, a.unitHash);
+      });
+      db.exec("COMMIT");
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
     }
-    if (!db.prepare("SELECT 1 FROM coders WHERE jobId = ? AND id = ?").get(jobId, coderId)) {
-      return c.json({ error: "Coder not found" }, 404);
-    }
-    putAnnotation(db, jobId, unitId, coderId, parsed.data.variables, parsed.data.codebookId, parsed.data.unitHash);
-    return c.body(null, 204);
+    return c.json({ rejected });
   });
 
   return app;

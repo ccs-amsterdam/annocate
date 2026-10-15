@@ -311,8 +311,8 @@ longer reads as "what a db server must implement". Plan:
 4. ~~**Sessions in httpOnly cookies** (§2)~~ Done; the db server keeps
    storing (hashed) coder keys, per §9.2.
 5. ~~**Coder-level annotations loaded lazily** (§11)~~ Done.
-6. **Timed outbox to the db server** (§10), with Durable Object storage on
-   Cloudflare. After (4), which touches the same request paths.
+6. ~~**Timed outbox to the db server** (§10)~~ Done on Node; the Durable
+   Object store comes with the Cloudflare target.
 7. **Trust handshake** (§1): invite token, registration, signed handshake,
    job tokens, outbound fetch hygiene, quotas.
 8. **Authentication** (§3).
@@ -499,7 +499,14 @@ moving the blob to a history table.
 
 ## 10. Decoupling db server writes: a timed outbox
 
-Discussed 2026-10-15. Not built.
+Discussed 2026-10-15. **Built** (same day) as described below, with:
+`POST /backend/.../annotations` (ordered batch, `rejected` for writes that
+can never succeed); coder records through the same outbox (latest per
+coder); flush before every read from the db server; limits 10,000 pending
+or 24 h, then `503 storage_unavailable`; outbox status in the deployment
+status; `SqliteOutboxStore` on Node (`ANNOTINDER_OUTBOX`), resumed on
+start. Not built: the Cloudflare store/alarms (with the Cloudflare target),
+and the optional warm cache.
 
 **Problem.** Every unit submit waits for `PUT /annotations/...` on the db
 server. A slow or unavailable db server stops coding.

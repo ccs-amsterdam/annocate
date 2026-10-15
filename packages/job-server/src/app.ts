@@ -9,6 +9,7 @@ import {
 } from "@annotinder/contracts";
 import { HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRegistry } from "./registry.js";
+import type { OutboxStore } from "./outbox.js";
 import {
   backendCoderKey,
   newSessionKey,
@@ -24,6 +25,8 @@ export interface JobServerOptions {
   backends: Record<string, BackendConfig>;
   fetch?: typeof fetch;
   runtime?: Partial<RuntimeOptions>;
+  /** Where pending writes to db servers are kept; memory if not given (fine for tests, not for production). */
+  outbox?: OutboxStore;
 }
 
 interface Env {
@@ -40,10 +43,12 @@ interface Env {
  * - `/admin/deployments/:deploymentId/...`: called by the db server.
  */
 export function createJobServer(options: JobServerOptions) {
-  const registry = new DeploymentRegistry(options.backends, options.fetch ?? fetch, {
-    ...DEFAULT_RUNTIME_OPTIONS,
-    ...options.runtime,
-  });
+  const registry = new DeploymentRegistry(
+    options.backends,
+    options.fetch ?? fetch,
+    { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime },
+    options.outbox,
+  );
   const app = new Hono<Env>();
 
   app.onError((err, c) => {
@@ -170,7 +175,8 @@ export function createJobServer(options: JobServerOptions) {
 
   app.route("/admin/deployments/:deploymentId", admin);
 
-  return app;
+  // Node entry: send what a previous run left behind (index.ts).
+  return Object.assign(app, { resumePending: () => registry.resumePending() });
 }
 
 async function parseBody<T>(c: Context, schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } }) {

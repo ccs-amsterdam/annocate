@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import {
   ALL_UNITS_UNITSET,
   BackendAnnotationSchema,
+  BackendAnnotationBatchResultSchema,
   BackendCoderSchema,
   BackendFinishedSchema,
   BackendUnitSchema,
@@ -66,7 +67,10 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   const newCoder = (name: string) => resolve(key(name), { inviteSecret: "conf-open" });
   const answer = (code: string) => ({ done: true, skip: false, codes: [{ code }] });
   const put = (unitId: number, coderId: number, variables: Record<string, unknown>) =>
-    call(`/annotations/${unitId}/${coderId}`, { method: "PUT", body: { variables } });
+    writeBatch([{ unitId, coderId, variables }]);
+  /** The batch write endpoint, with its result validated. */
+  const writeBatch = (annotations: unknown[]) => call("/annotations", { method: "POST", body: { annotations } });
+  const batchResult = async (res: Promise<Response>) => BackendAnnotationBatchResultSchema.parse(await ok(await res));
   const finished = async (body: unknown) => BackendFinishedSchema.array().parse(await ok(await call("/finished", { method: "POST", body })));
 
   let spec: DeploymentSpec;
@@ -191,9 +195,9 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       const coder = await newCoder("hash");
       const [unit] = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${id("u1")}`)));
       const write = (unitHash: string) =>
-        call(`/annotations/${unit.id}/${coder.coderId}`, { method: "PUT", body: { variables: { q1: answer("yes") }, unitHash } });
-      expect((await write(unit.hash)).status).toBe(204);
-      expect((await write("not-the-current-hash")).status).toBe(204); // recorded, never refused
+        batchResult(writeBatch([{ unitId: unit.id, coderId: coder.coderId, variables: { q1: answer("yes") }, unitHash }]));
+      expect(await write(unit.hash)).toEqual({ rejected: [] });
+      expect(await write("not-the-current-hash")).toEqual({ rejected: [] }); // recorded, never refused
     });
 
     it("upserts values per variable and leaves other variables alone", async () => {
@@ -229,11 +233,36 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       expect((await call("/annotations")).status).toBe(400);
     });
 
-    it("refuses writes for unknown units or coders, and malformed bodies", async () => {
+    it("applies a batch in order: a later write for the same unit wins", async () => {
+      const coder = await newCoder("batch");
+      const write = (unitId: number, code: string) => ({ unitId, coderId: coder.coderId, variables: { q1: answer(code) } });
+      expect(await batchResult(writeBatch([write(id("u1"), "yes"), write(id("u2"), "yes"), write(id("u1"), "no")]))).toEqual({
+        rejected: [],
+      });
+      const annotations = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      expect(annotations.map((a) => [a.unitId, a.variables.q1.codes])).toEqual([
+        [id("u1"), [{ code: "no" }]],
+        [id("u2"), [{ code: "yes" }]],
+      ]);
+    });
+
+    it("skips and reports writes for unknown units or coders, and stores the rest", async () => {
       const coder = await newCoder("bad");
-      expect((await put(999999999, coder.coderId, { q1: answer("yes") })).status).toBe(404);
-      expect((await put(id("u1"), 999999999, { q1: answer("yes") })).status).toBe(404);
-      expect((await call(`/annotations/${id("u1")}/${coder.coderId}`, { method: "PUT", body: { nope: 1 } })).status).toBe(400);
+      const result = await batchResult(
+        writeBatch([
+          { unitId: 999999999, coderId: coder.coderId, variables: { q1: answer("yes") } },
+          { unitId: id("u1"), coderId: coder.coderId, variables: { q1: answer("yes") } },
+          { unitId: id("u1"), coderId: 999999999, variables: { q1: answer("yes") } },
+        ]),
+      );
+      expect(result.rejected.map((r) => r.index)).toEqual([0, 2]);
+      const stored = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      expect(stored.map((a) => a.unitId)).toEqual([id("u1")]);
+    });
+
+    it("refuses malformed batches", async () => {
+      expect((await call("/annotations", { method: "POST", body: { nope: 1 } })).status).toBe(400);
+      expect((await writeBatch([])).status).toBe(400);
     });
   });
 

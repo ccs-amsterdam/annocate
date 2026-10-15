@@ -15,6 +15,7 @@ import {
 } from "@annotinder/contracts";
 import { BackendClient, HttpError } from "./backend.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys } from "./distribution.js";
+import { DEFAULT_OUTBOX_OPTIONS, MemoryOutboxStore, Outbox, type OutboxOptions } from "./outbox.js";
 import {
   agreementKey,
   codeValue,
@@ -30,7 +31,8 @@ import {
   type VariableType,
 } from "./codebook.js";
 
-export interface RuntimeOptions {
+/** Includes the outbox settings (outbox.ts): how writes to the db server are buffered. */
+export interface RuntimeOptions extends Omit<OutboxOptions, "now"> {
   /** Re-fetch the deployment spec at most this often, in case a refresh notification was missed. */
   specTtlMs: number;
   /**
@@ -70,6 +72,7 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
   workspaceCacheBytes: 32 * 2 ** 20,
   maxIdleMs: 24 * 60 * 60_000,
   deploymentIdleMs: 6 * 60 * 60_000,
+  ...DEFAULT_OUTBOX_OPTIONS,
   now: () => Date.now(),
   random: Math.random,
 };
@@ -156,16 +159,24 @@ export class DeploymentRuntime {
   private loadedAt = 0;
   private refreshing: Promise<void> | null = null;
 
+  /** Writes to the db server wait here (durably) until they are sent in a batch. */
+  readonly outbox: Outbox;
+
   constructor(
     readonly id: string,
     private backend: BackendClient,
     private options: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
-  ) {}
+    outbox?: Outbox,
+  ) {
+    this.outbox = outbox ?? new Outbox(id, new MemoryOutboxStore(), backend, options);
+  }
 
   // --- state ------------------------------------------------------------------
 
   /** (Re)builds the distribution state from the db server. Coder workspaces are loaded on demand. */
   async load(): Promise<void> {
+    // Writes a previous run left behind go first, so what is loaded includes them.
+    await this.outbox.flush();
     this.applySpec(await this.backend.getDeployment());
     await Promise.all([this.loadCodings(), this.loadBalanced()]);
     this.loadedAt = this.options.now();
@@ -190,6 +201,8 @@ export class DeploymentRuntime {
         }
         const epochChanged = spec.annotationEpoch !== this.spec.annotationEpoch;
         const balancedBefore = this.balancedVariables().join();
+        // Reloads below must include our own pending writes.
+        await this.outbox.flush();
         this.applySpec(spec);
         await Promise.all([
           epochChanged || codingsSignature(this.loops.values()) !== this.codingsBasis ? this.loadCodings() : null,
@@ -313,6 +326,7 @@ export class DeploymentRuntime {
     if (!loading) {
       loading = (async () => {
         try {
+          await this.outbox.flush(); // the coder's pending writes, before reading them back
           const annotations = await this.backend.listAnnotations(coderId);
           annotations.sort((a, b) => a.created.getTime() - b.created.getTime());
           const units: Workspace = new Map(annotations.map((a) => [a.unitId, a.variables]));
@@ -349,7 +363,8 @@ export class DeploymentRuntime {
       return cached;
     }
     // Not active (new, evicted, or the job server restarted): the db server
-    // has the record, including the coder-level values.
+    // has the record, including the coder-level values (after our pending writes).
+    await this.outbox.flush();
     const coder = await this.backend.resolveCoder(request);
     this.coders.set(coder.coderId, coder);
     this.coderKeys.set(request.coderKey, coder.coderId);
@@ -399,7 +414,11 @@ export class DeploymentRuntime {
   }
 
   private async saveCoder(coder: Coder): Promise<void> {
-    await this.backend.putCoder(coder.coderId, { variables: coder.variables, assignments: coder.assignments });
+    await this.outbox.add({
+      kind: "coder",
+      coderId: coder.coderId,
+      write: { variables: coder.variables, assignments: coder.assignments },
+    });
   }
 
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
@@ -605,13 +624,16 @@ export class DeploymentRuntime {
     const errors = validateVariables(info.variables, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
-    // Write-through: only once the db server has it does it count. The db
+    // Stored durably in the outbox, then sent with the next batch. The db
     // server leaves values of other variables (e.g. questions an update
     // removed) alone, so they stay as data.
     // What the coder saw: normally the unit's current hash, unless it changed
     // after it was served. Recorded by the db server, not refused.
     const unitHash = this.workspaces.get(coder.coderId)?.served.get(unitId) ?? this.units.get(unitId)?.unit.hash;
-    await this.backend.putAnnotation(unitId, coder.coderId, variables, this.spec.codebook.id, unitHash);
+    await this.outbox.add({
+      kind: "annotation",
+      write: { unitId, coderId: coder.coderId, variables, codebookId: this.spec.codebook.id, unitHash },
+    });
     const own = await this.workspace(coder.coderId);
     const previous = own.get(unitId);
     const merged = { ...previous, ...variables };
@@ -638,6 +660,7 @@ export class DeploymentRuntime {
    */
   async status(): Promise<DeploymentStatus> {
     const now = this.options.now();
+    await this.outbox.flush().catch(() => {}); // best effort: status reports the outbox either way
     const [rows, allCoders] = await Promise.all([
       this.backend.listFinished({
         loops: [...this.loops.values()].map((info) => ({
@@ -683,6 +706,7 @@ export class DeploymentRuntime {
       coders: allCoders.length,
       sources,
       loadedAt: new Date(this.loadedAt),
+      outbox: this.outbox.status(),
       memory: {
         units: this.units.size,
         unitBytes: this.unitBytes,

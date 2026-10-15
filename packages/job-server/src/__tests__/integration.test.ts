@@ -13,6 +13,7 @@ import { seed } from "../../../mock-server/src/db/seed.js";
 import { createApp } from "../../../mock-server/src/app.js";
 import { createJobServer } from "../app.js";
 import type { RuntimeOptions } from "../runtime.js";
+import { MemoryOutboxStore } from "../outbox.js";
 
 // End-to-end: client -> job server -> mock db server, wired together with
 // in-process fetch functions instead of real sockets.
@@ -37,14 +38,26 @@ function routeTo(base: string, app: { request: (path: string, init?: RequestInit
 /** Backend API calls made by the job server (method + path, no query). */
 let backendCalls: string[] = [];
 
+/** While false, every call to the db server fails as if it were down. */
+let dbUp = true;
+/** The job server's durable outbox: survives the restarts `newJobServer` simulates. */
+let outboxStore: MemoryOutboxStore;
+
+/** A (re)started job server. Writes go through right away unless `runtime` says otherwise. */
 function newJobServer(runtime: Partial<RuntimeOptions> = {}) {
   const toDb = routeTo(DB_URL, dbApp);
-  const fetch = ((input: string | URL | Request, init?: RequestInit) => {
+  const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
     backendCalls.push(`${init?.method ?? "GET"} ${url.pathname}`);
+    if (!dbUp) throw new TypeError("fetch failed");
     return toDb(input, init);
   }) as typeof globalThis.fetch;
-  return createJobServer({ backends: { mock: { url: DB_URL, secret: SECRET } }, fetch, runtime });
+  return createJobServer({
+    backends: { mock: { url: DB_URL, secret: SECRET } },
+    fetch,
+    runtime: { flushIntervalMs: 0, ...runtime },
+    outbox: outboxStore,
+  });
 }
 
 beforeEach(() => {
@@ -59,6 +72,8 @@ beforeEach(() => {
       fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }),
     },
   });
+  dbUp = true;
+  outboxStore = new MemoryOutboxStore();
   jobServer = newJobServer();
   backendCalls = [];
   devices = new Map();
@@ -774,5 +789,111 @@ describe("unit hashes", () => {
     const { createHash } = await import("node:crypto");
     const shown = createHash("sha256").update(before.externalId).update(before.data).digest("hex").slice(0, 16);
     expect(shownHashes().find((r) => r.unitId === second.id)?.unitHash).toBe(shown);
+  });
+});
+
+describe("outbox", () => {
+  /** A manual clock for the outbox: scheduled flushes run when the test says so. */
+  function manualTimers() {
+    const timers: { fn: () => void; ms: number; cancelled: boolean }[] = [];
+    return {
+      schedule: (fn: () => void, ms: number) => {
+        const t = { fn, ms, cancelled: false };
+        timers.push(t);
+        return () => (t.cancelled = true);
+      },
+      pending: () => timers.filter((t) => !t.cancelled).map((t) => t.ms),
+      runAll: async () => {
+        for (const t of timers.splice(0)) if (!t.cancelled) t.fn();
+        await new Promise((r) => setTimeout(r, 20));
+      },
+    };
+  }
+  const status = async () =>
+    (await (await dbApp.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
+
+  it("answers the coder right away and sends writes in a batch later", async () => {
+    const timers = manualTimers();
+    jobServer = newJobServer({ flushIntervalMs: 60_000, schedule: timers.schedule });
+    const c = coder("batched");
+    const unit = (await c.next())!;
+    expect((await c.submit(unit.id, demo("neutral"))).status).toBe(204);
+    expect(dbAnnotations()).toEqual([]);
+    expect(timers.pending()).toContain(60_000);
+    // the job server already counts it
+    expect((await c.session()).progress[0].doneUnitIds).toEqual([unit.id]);
+
+    await timers.runAll();
+    expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
+    expect(backendCalls.filter((call) => call === "POST /backend/job/1/annotations")).toHaveLength(1);
+  });
+
+  it("keeps coding while the db server is down, and catches up with backoff", async () => {
+    const timers = manualTimers();
+    jobServer = newJobServer({ flushIntervalMs: 60_000, schedule: timers.schedule });
+    const c = coder("outage");
+    const first = (await c.next())!; // session, units cached
+
+    dbUp = false;
+    expect((await c.submit(first.id, demo("neutral"))).status).toBe(204);
+    const second = (await c.next())!;
+    expect(second.id).not.toBe(first.id);
+    expect((await c.submit(second.id, demo("positive"))).status).toBe(204);
+    await timers.runAll(); // fails: retried later
+    expect(timers.pending()).toEqual([60_000]);
+    await timers.runAll();
+    expect(timers.pending()).toEqual([120_000]); // backing off
+
+    dbUp = true;
+    const during = await status(); // status flushes first
+    expect(during.outbox).toMatchObject({ pending: 0, failures: 0 });
+    expect(dbAnnotations().map((a) => a.unitId)).toEqual([first.id, second.id].sort((a, b) => a - b));
+  });
+
+  it("sends what was left behind before loading again after a restart", async () => {
+    const timers = manualTimers();
+    jobServer = newJobServer({ flushIntervalMs: 60_000, schedule: timers.schedule });
+    const c = coder("restart");
+    const unit = (await c.next())!;
+    await c.submit(unit.id, demo("neutral"));
+    expect(dbAnnotations()).toEqual([]);
+
+    jobServer = newJobServer({ flushIntervalMs: 60_000, schedule: manualTimers().schedule }); // crash: timers lost
+    expect((await coder("restart", null).session()).progress[0].doneUnitIds).toEqual([unit.id]);
+    expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
+  });
+
+  it("refuses new answers once too much is waiting", async () => {
+    const timers = manualTimers();
+    jobServer = newJobServer({ flushIntervalMs: 60_000, schedule: timers.schedule, maxPending: 3 });
+    const c = coder("full");
+    const first = (await c.next())!;
+    dbUp = false;
+    expect(outboxStore.stats("mock.1").pending).toBe(1); // the coder's routing
+    expect((await c.submit(first.id, demo("neutral"))).status).toBe(204);
+    const next = (await c.next())!;
+    expect((await c.submit(next.id, demo("neutral"))).status).toBe(204); // 3 pending: full
+    const second = (await c.next())!;
+    const refused = await c.submit(second.id, demo("neutral"));
+    expect(refused.status).toBe(503);
+    expect(await refused.json()).toMatchObject({ code: "storage_unavailable" });
+  });
+
+  it("drops writes the db server can never store, without blocking the rest", async () => {
+    const timers = manualTimers();
+    jobServer = newJobServer({ flushIntervalMs: 60_000, schedule: timers.schedule });
+    const a = coder("gone-a");
+    const b = coder("gone-b");
+    const unitA = (await a.next())!;
+    const unitB = (await b.next())!;
+    await a.submit(unitA.id, demo("neutral"));
+    await b.submit(unitB.id, demo("neutral"));
+    const coderA = (await a.session()).coderId;
+    db.prepare("DELETE FROM coders WHERE id = ?").run(coderA); // e.g. removed by the researcher
+
+    await timers.runAll();
+    expect(dbAnnotations().map((r) => r.coderId)).not.toContain(coderA);
+    expect(dbAnnotations()).toHaveLength(1);
+    expect((await status()).outbox?.pending).toBe(0);
   });
 });

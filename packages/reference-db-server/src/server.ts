@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { Hono, type Context } from "hono";
 import {
   ALL_UNITS_UNITSET,
-  BackendAnnotationWriteSchema,
+  BackendAnnotationBatchSchema,
   BackendCoderWriteSchema,
   FinishedRequestSchema,
   ResolveCoderRequestSchema,
@@ -205,19 +205,21 @@ export function createServer(store: Store, secret: string) {
     return c.json([...byUnit.values()]);
   });
 
-  // Upsert a live value per given variable; other variables are left alone.
-  api.put("/annotations/:unitId/:coderId", async (c) => {
-    const body = await parse(c, BackendAnnotationWriteSchema);
+  // The job server's buffered writes, in order: upsert a live value per
+  // given variable, leave other variables alone. Writes for unknown units or
+  // coders are skipped and reported, so they don't block the rest.
+  api.post("/annotations", async (c) => {
+    const body = await parse(c, BackendAnnotationBatchSchema);
     if (!body) return c.json({ error: "Invalid body" }, 400);
-    const unitId = Number(c.req.param("unitId"));
-    const coderId = Number(c.req.param("coderId"));
-    if (!store.units.has(unitId)) return c.json({ error: "Unit not found" }, 404);
-    if (!store.coders.some((x) => x.id === coderId)) return c.json({ error: "Coder not found" }, 404);
-
-    // Stored as given, never refused: a mismatch with the unit's current
-    // hash means the coder saw older content.
-    upsert(unitId, coderId, body.variables, { codebookId: body.codebookId, unitHash: body.unitHash });
-    return c.body(null, 204);
+    const rejected: { index: number; error: string }[] = [];
+    body.annotations.forEach((a, index) => {
+      if (!store.units.has(a.unitId)) return rejected.push({ index, error: "Unit not found" });
+      if (!store.coders.some((x) => x.id === a.coderId)) return rejected.push({ index, error: "Coder not found" });
+      // Stored as given, never refused: a `unitHash` other than the unit's
+      // current hash means the coder saw older content.
+      upsert(a.unitId, a.coderId, a.variables, { codebookId: a.codebookId, unitHash: a.unitHash });
+    });
+    return c.json({ rejected });
   });
 
   // Per group of variables: the (unit, coder) pairs -- or, for coder-level

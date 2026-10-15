@@ -329,10 +329,10 @@ describe("annotations: finished counts and resets", () => {
       }),
     );
     const put = (unitId: number, variables: object) =>
-      app.request(`/backend/job/${job.id}/annotations/${unitId}/${coder.coderId}`, {
-        method: "PUT",
+      app.request(`/backend/job/${job.id}/annotations`, {
+        method: "POST",
         headers: backend,
-        body: JSON.stringify({ variables }),
+        body: JSON.stringify({ annotations: [{ unitId, coderId: coder.coderId, variables }] }),
       });
     const finished = async (variables: string[], values?: string[]) =>
       (await json(

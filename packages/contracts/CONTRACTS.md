@@ -138,7 +138,7 @@ start another session for a participant that already has one). Errors are
 | PUT | `/backend/job/:jobId/coders/:coderId` | `BackendCoderWriteSchema` | – | Full replace of `variables` + `assignments` |
 | POST | `/backend/job/:jobId/finished` | `FinishedRequestSchema` | `BackendFinishedSchema[]` | The bulk query. Per group of variables, the rows where every variable has a live value (the db server only filters), plus the values of `values` variables. `level: "unit"` (default): per (unit, coder), e.g. a loop's finished units. `level: "coder"`: per coder over coder-level values, `unitId: null`, e.g. `balanced` counts. Coder-level values may be stored on the coder record or as annotation rows with a null unit |
 | GET | `/backend/job/:jobId/annotations?coderId=X` | – | `BackendAnnotationSchema[]` | One coder's live values per unit, ordered by first write |
-| PUT | `/backend/job/:jobId/annotations/:unitId/:coderId` | `BackendAnnotationWriteSchema` | – | Upserts a live value per given variable; others are left alone. Only complete units are written. `unitHash` is the hash of the content the coder was shown: store it (or only when it differs from the unit's current hash), never refuse the write for it |
+| POST | `/backend/job/:jobId/annotations` | `BackendAnnotationBatchSchema` | `BackendAnnotationBatchResultSchema` | The job server's buffered writes (about once a minute), applied **in order**; each upserts a live value per given variable, others are left alone. Writes for unknown units/coders are skipped and listed in `rejected`; the call fails only if nothing could be stored. Retrying is harmless. `unitHash`: the hash of the content the coder was shown; store it, never refuse for it |
 
 ## Auth
 

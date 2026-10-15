@@ -47,6 +47,8 @@ export const CoderErrorCodeSchema = z.enum([
   "auth_required",
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
+  /** The job server can't store more answers until the db server is reachable again. */
+  "storage_unavailable",
 ]);
 export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
 

@@ -4,6 +4,7 @@ import type { CoderUnitResponse, SessionResponse } from "@annotinder/contracts";
 import { createServer, loadFixture } from "../server.js";
 // Only test code reaches into the job server package.
 import { createJobServer } from "../../../job-server/src/app.js";
+import { MemoryOutboxStore } from "../../../job-server/src/outbox.js";
 
 // The reference db server is enough to run a job: a coder works through the
 // fixture's loop via the real job server.
@@ -14,7 +15,9 @@ describe("job server on the reference db server", () => {
       const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
       return db.request(url.pathname + url.search, init);
     }) as typeof fetch;
-    const jobServer = () => createJobServer({ backends: { ref: { url: "http://ref.test", secret: "s" } }, fetch: toDb });
+    // The job server's durable outbox survives its restart (a file on Node).
+    const outbox = new MemoryOutboxStore();
+    const jobServer = () => createJobServer({ backends: { ref: { url: "http://ref.test", secret: "s" } }, fetch: toDb, outbox });
     let server = jobServer();
     let cookie = ""; // the browser's session cookie
     const call = async (path: string, init?: RequestInit) => {

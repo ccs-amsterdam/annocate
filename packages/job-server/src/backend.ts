@@ -2,11 +2,14 @@ import type { z } from "zod";
 import {
   backendEndpoints,
   BackendAnnotationSchema,
+  BackendAnnotationBatchResultSchema,
   BackendCoderSchema,
   BackendFinishedSchema,
   BackendUnitSchema,
   DeploymentSpecSchema,
   type BackendAnnotation,
+  type BackendAnnotationBatchResult,
+  type BackendAnnotationWrite,
   type BackendCoder,
   type BackendCoderWrite,
   type BackendFinished,
@@ -14,7 +17,6 @@ import {
   type BackendUnit,
   type DeploymentSpec,
   type ResolveCoderRequest,
-  type VariableValue,
 } from "@annotinder/contracts";
 
 /** An error that maps directly onto an HTTP response for the coder: `{ error, code? }`. */
@@ -118,17 +120,11 @@ export class BackendClient {
     return this.request(`${backendEndpoints.listAnnotations.path}?coderId=${coderId}`, BackendAnnotationSchema.array());
   }
 
-  async putAnnotation(
-    unitId: number,
-    coderId: number,
-    variables: Record<string, VariableValue>,
-    codebookId?: number,
-    unitHash?: string,
-  ): Promise<void> {
-    await this.request(backendEndpoints.putAnnotation.path, null, {
-      method: "PUT",
-      body: { variables, codebookId, unitHash },
-      params: { unitId, coderId },
+  /** Applies writes in order; returns the ones the db server can never store. */
+  putAnnotations(annotations: BackendAnnotationWrite[]): Promise<BackendAnnotationBatchResult> {
+    return this.request(backendEndpoints.putAnnotations.path, BackendAnnotationBatchResultSchema, {
+      method: "POST",
+      body: { annotations },
     });
   }
 }

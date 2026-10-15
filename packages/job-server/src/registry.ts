@@ -1,5 +1,6 @@
 import { BackendClient, HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
+import { MemoryOutboxStore, Outbox, type OutboxStore } from "./outbox.js";
 
 /** Splits a deployment id `<backend>.<jobId>` into its parts. */
 export function parseDeploymentId(id: string): { backend: string; jobId: number } | null {
@@ -17,12 +18,29 @@ export function parseDeploymentId(id: string): { backend: string; jobId: number 
  */
 export class DeploymentRegistry {
   private runtimes = new Map<string, { runtime: Promise<DeploymentRuntime>; usedAt: number }>();
+  /**
+   * One outbox per deployment, kept across runtime reloads: two outboxes
+   * sending the same pending writes could deliver an old write after a newer
+   * one.
+   */
+  private outboxes = new Map<string, Outbox>();
 
   constructor(
     private backends: Record<string, BackendConfig>,
     private fetchImpl: typeof fetch = fetch,
     private runtimeOptions: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
+    /** Pending writes of all deployments; durable outside tests (outboxSqlite.ts). */
+    private outboxStore: OutboxStore = new MemoryOutboxStore(),
   ) {}
+
+  /**
+   * Loads every deployment that still has pending writes (e.g. after a
+   * restart while the db server was down): loading sends them first, and a
+   * failed load is retried by the next request or `resumePending` call.
+   */
+  async resumePending(): Promise<void> {
+    await Promise.all(this.outboxStore.deployments().map((id) => this.get(id).catch(() => undefined)));
+  }
 
   backendFor(deploymentId: string): BackendConfig & { jobId: number } {
     const parsed = parseDeploymentId(deploymentId);
@@ -35,18 +53,19 @@ export class DeploymentRegistry {
     const now = this.runtimeOptions.now();
     // Idle deployments are forgotten; that includes this one, which then loads afresh.
     for (const [id, entry] of this.runtimes) {
-      if (now - entry.usedAt >= this.runtimeOptions.deploymentIdleMs) this.runtimes.delete(id);
+      if (now - entry.usedAt < this.runtimeOptions.deploymentIdleMs) continue;
+      this.runtimes.delete(id);
+      if (this.outboxes.get(id)?.status().pending === 0) this.outboxes.delete(id);
     }
     const cached = this.runtimes.get(deploymentId);
     if (cached) cached.usedAt = now;
     let runtime = cached?.runtime;
     if (!runtime) {
       const { jobId, ...config } = this.backendFor(deploymentId);
-      const created = new DeploymentRuntime(
-        deploymentId,
-        new BackendClient(config, jobId, this.fetchImpl),
-        this.runtimeOptions,
-      );
+      const backend = new BackendClient(config, jobId, this.fetchImpl);
+      let outbox = this.outboxes.get(deploymentId);
+      if (!outbox) this.outboxes.set(deploymentId, (outbox = new Outbox(deploymentId, this.outboxStore, backend, this.runtimeOptions)));
+      const created = new DeploymentRuntime(deploymentId, backend, this.runtimeOptions, outbox);
       const loading = created.load().then(() => created);
       runtime = loading;
       this.runtimes.set(deploymentId, { runtime, usedAt: now });

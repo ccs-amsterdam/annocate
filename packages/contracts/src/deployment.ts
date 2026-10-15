@@ -190,12 +190,14 @@ export const BackendFinishedSchema = z.object({
 export type BackendFinished = z.infer<typeof BackendFinishedSchema>;
 
 /**
- * `PUT /backend/job/:jobId/annotations/:unitId/:coderId` -- write-through
- * from the job server: upserts a live value per given variable. Variables
- * not given are left as they are. The job server only writes complete units
- * (every variable of the loop, `skip` for unasked questions).
+ * One unit's answers from one coder: upserts a live value per given
+ * variable. Variables not given are left as they are. The job server only
+ * writes complete units (every variable of the loop, `skip` for unasked
+ * questions).
  */
 export const BackendAnnotationWriteSchema = z.object({
+  unitId: IdSchema,
+  coderId: IdSchema,
   variables: z.record(z.string(), VariableValueSchema),
   /** The deployed codebook the coder answered under, so researchers can tell versions apart. */
   codebookId: IdSchema.optional(),
@@ -208,6 +210,26 @@ export const BackendAnnotationWriteSchema = z.object({
   unitHash: z.string().min(1).optional(),
 });
 export type BackendAnnotationWrite = z.infer<typeof BackendAnnotationWriteSchema>;
+
+/**
+ * `POST /backend/job/:jobId/annotations` -- the job server's buffered
+ * writes (its outbox, flushed about once a minute), applied **in order**:
+ * a later write for the same unit and coder wins. Writes that can never
+ * succeed (unknown unit or coder) are skipped and reported in `rejected`,
+ * so one bad write doesn't block the rest; the call itself fails only if
+ * nothing could be stored (e.g. the db server is down). Retrying a batch is
+ * harmless: writes are upserts.
+ */
+export const BackendAnnotationBatchSchema = z.object({
+  annotations: z.array(BackendAnnotationWriteSchema).min(1).max(1000),
+});
+export type BackendAnnotationBatch = z.infer<typeof BackendAnnotationBatchSchema>;
+
+export const BackendAnnotationBatchResultSchema = z.object({
+  /** Index into `annotations`, and why. */
+  rejected: z.array(z.object({ index: z.number().int().nonnegative(), error: z.string() })),
+});
+export type BackendAnnotationBatchResult = z.infer<typeof BackendAnnotationBatchResultSchema>;
 
 export const backendEndpoints = {
   getDeployment: {
@@ -252,11 +274,11 @@ export const backendEndpoints = {
     request: z.void(),
     response: z.array(BackendAnnotationSchema),
   },
-  putAnnotation: {
-    method: "PUT",
-    path: "/backend/job/:jobId/annotations/:unitId/:coderId",
-    request: BackendAnnotationWriteSchema,
-    response: z.void(),
+  putAnnotations: {
+    method: "POST",
+    path: "/backend/job/:jobId/annotations",
+    request: BackendAnnotationBatchSchema,
+    response: BackendAnnotationBatchResultSchema,
   },
 } as const;
 
@@ -290,6 +312,16 @@ export const DeploymentStatusSchema = z.object({
   coders: z.number().int().nonnegative(),
   sources: z.array(SourceStatusSchema),
   loadedAt: z.coerce.date(),
+  /** Writes waiting to be sent to the db server (normally sent within a minute). */
+  outbox: z
+    .object({
+      pending: z.number().int().nonnegative(),
+      oldestAt: z.coerce.date().nullable(),
+      /** Consecutive failed sends; > 0 means the db server isn't taking writes. */
+      failures: z.number().int().nonnegative(),
+      lastError: z.string().optional(),
+    })
+    .optional(),
   /** What the job server holds in memory for this deployment (sizes estimated from JSON). */
   memory: z
     .object({
