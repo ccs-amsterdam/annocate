@@ -67,9 +67,14 @@ export const VariableValueSchema = z.object({
 });
 export type VariableValue = z.infer<typeof VariableValueSchema>;
 
-/** Body for `POST /variables/unit` -- full replace of one coder's variables for one unit. */
+/**
+ * Body for `POST /variables/unit`: a finished unit, i.e. a value for every
+ * question of the loop (`skip` for questions a condition hid).
+ */
 export const PostUnitVariablesSchema = z.object({
   unitId: z.number().int().positive(),
+  /** The unit_loop the unit was coded in (needed when a unit is in more than one loop). */
+  loop: z.string().optional(),
   variables: z.record(z.string(), VariableValueSchema),
 });
 

@@ -180,8 +180,11 @@ Mostly as in `docs/coder-identity.md` §5, with these refinements:
 
 ## 4. Finished codings: what the job server loads
 
-> Revised by §9.3/§9.4: no loop in the annotation key; "finished" is
-> computed from the current codebook's variables.
+> **Built (2026-10-16)**, as revised by §9.3/§9.4: per-variable rows with
+> `retiredAt`, "finished" = all of the loop's current questions live, codings
+> per loop, global load for dynamic loops only, lazy workspaces, status on
+> demand, reset endpoint, deploy warning. Now described in
+> `architecture.md` §3 and §8.2; the text below is history.
 
 ### The problem with the current plan
 
@@ -290,9 +293,7 @@ longer reads as "what a db server must implement". Plan:
 ## 7. Order of work
 
 1. **Cleanup** (§6). Independent, low risk, makes the rest easier to read.
-2. **Codings model** (§4): loop in the annotation key, row exists =
-   finished, `created` ordering, global load only for dynamic loops, lazy
-   workspaces. Rework or replace the uncommitted changes (§0).
+2. ~~**Codings model** (§4)~~ Done, per §9.3/§9.4.
 3. **Mock server split + conformance suite** (§5). Right after (2), since
    (2) changes the backend API anyway.
 4. **Sessions in httpOnly cookies** (§2), client and job server on one

@@ -363,3 +363,25 @@ describe("resuming a session", () => {
     expect(m2.getSnapshot().currentUnitVariables).not.toHaveProperty("q1");
   });
 });
+
+describe("submitting a finished unit", () => {
+  it("posts every question of the loop, with skip for those a condition hid", async () => {
+    const hidden = { type: "condition", name: "never", expression: "false", children: [unitVar("q2")] } as InLoopItem;
+    const postUnitVariables = vi.fn(async () => {});
+    let served = false;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("main", [unitVar("q1"), hidden])])),
+      getNextUnit: vi.fn(async () => (served ? null : ((served = true), unit(5)))),
+      postUnitVariables,
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    await manager.answer({ done: true, skip: false });
+
+    expect(postUnitVariables).toHaveBeenCalledWith(
+      5,
+      { q1: { done: true, skip: false }, q2: { done: true, skip: true } },
+      "main",
+    );
+  });
+});

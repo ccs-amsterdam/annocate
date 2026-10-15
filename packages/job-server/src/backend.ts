@@ -3,13 +3,14 @@ import {
   backendEndpoints,
   BackendAnnotationSchema,
   BackendCoderSchema,
-  BackendCodingSchema,
+  BackendFinishedSchema,
   BackendUnitSchema,
   DeploymentSpecSchema,
   type BackendAnnotation,
   type BackendCoder,
   type BackendCoderWrite,
-  type BackendCoding,
+  type BackendFinished,
+  type FinishedRequest,
   type BackendUnit,
   type DeploymentSpec,
   type ResolveCoderRequest,
@@ -104,12 +105,16 @@ export class BackendClient {
   }
 
   /** Finished codings of all coders, with only the given variables' values. */
-  listCodings(variables: string[]): Promise<BackendCoding[]> {
-    const query = variables.length > 0 ? `?variables=${variables.map(encodeURIComponent).join(",")}` : "";
-    return this.request(backendEndpoints.listCodings.path + query, BackendCodingSchema.array());
+  /** Units coders finished per loop (every given variable has a live value). */
+  listFinished(request: FinishedRequest): Promise<BackendFinished[]> {
+    if (request.loops.length === 0) return Promise.resolve([]);
+    return this.request(backendEndpoints.listFinished.path, BackendFinishedSchema.array(), {
+      method: "POST",
+      body: request,
+    });
   }
 
-  /** One coder's annotations, finished or not. */
+  /** One coder's live annotations, per unit. */
   listAnnotations(coderId: number): Promise<BackendAnnotation[]> {
     return this.request(`${backendEndpoints.listAnnotations.path}?coderId=${coderId}`, BackendAnnotationSchema.array());
   }
@@ -118,12 +123,11 @@ export class BackendClient {
     unitId: number,
     coderId: number,
     variables: Record<string, VariableValue>,
-    done: boolean,
     codebookId?: number,
   ): Promise<void> {
     await this.request(backendEndpoints.putAnnotation.path, null, {
       method: "PUT",
-      body: { variables, done, codebookId },
+      body: { variables, codebookId },
       params: { unitId, coderId },
     });
   }

@@ -55,7 +55,7 @@ export class UnitPool {
   constructor(
     readonly unitset: string,
     unitIds: number[],
-    dynamic: DynamicSource | undefined,
+    readonly dynamic: DynamicSource | undefined,
     private codings: Codings,
   ) {
     this.units = unitIds;

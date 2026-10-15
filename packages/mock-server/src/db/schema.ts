@@ -57,22 +57,30 @@ export function createDb(path = ":memory:"): DatabaseSync {
       immutable INTEGER NOT NULL DEFAULT 0
     );
 
-    CREATE TABLE IF NOT EXISTS annotations (
+    -- One row per (unit, coder, variable). Rows are retired (retiredAt), not
+    -- deleted; only live rows count, and only those must be unique.
+    CREATE TABLE IF NOT EXISTS annotation_values (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       jobId INTEGER NOT NULL,
       unitId INTEGER NOT NULL,
       coderId INTEGER NOT NULL,
-      variables TEXT NOT NULL,
-      updated TEXT NOT NULL,
+      variable TEXT NOT NULL,
+      value TEXT NOT NULL,
       codebookId INTEGER,
-      done INTEGER NOT NULL DEFAULT 0,
-      doneAt TEXT,
-      PRIMARY KEY (unitId, coderId)
+      created TEXT NOT NULL,
+      updated TEXT NOT NULL,
+      retiredAt TEXT
     );
+    CREATE UNIQUE INDEX IF NOT EXISTS annotation_values_live
+      ON annotation_values (unitId, coderId, variable) WHERE retiredAt IS NULL;
+    CREATE INDEX IF NOT EXISTS annotation_values_coder ON annotation_values (jobId, coderId, unitId);
+    CREATE INDEX IF NOT EXISTS annotation_values_variable ON annotation_values (jobId, variable);
 
     CREATE TABLE IF NOT EXISTS deployments (
       jobId INTEGER PRIMARY KEY,
       codebookId INTEGER NOT NULL,
       active INTEGER NOT NULL DEFAULT 1,
+      annotationEpoch INTEGER NOT NULL DEFAULT 0,
       version INTEGER NOT NULL,
       updated TEXT NOT NULL
     );
@@ -113,10 +121,8 @@ export function createDb(path = ":memory:"): DatabaseSync {
   addColumnIfMissing(db, "invites", "participantId", "TEXT");
   addColumnIfMissing(db, "invites", "participantFromUrl", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "coders", "participantId", "TEXT");
-  addColumnIfMissing(db, "annotations", "codebookId", "INTEGER");
-  addColumnIfMissing(db, "annotations", "doneAt", "TEXT");
-  if (addColumnIfMissing(db, "annotations", "done", "INTEGER NOT NULL DEFAULT 0")) backfillDone(db);
-  db.exec("CREATE INDEX IF NOT EXISTS annotations_done ON annotations (jobId, done, doneAt)");
+  addColumnIfMissing(db, "deployments", "annotationEpoch", "INTEGER NOT NULL DEFAULT 0");
+  migrateAnnotationsTable(db);
   return db;
 }
 
@@ -128,19 +134,31 @@ function addColumnIfMissing(db: DatabaseSync, table: string, column: string, def
 }
 
 /**
- * One-off for annotations written before `done` was stored: done if every
- * variable is (the job server's rule at the time), finished at their last
- * write -- the best guess left.
+ * One-off: databases from before per-variable rows had one `annotations` row
+ * per (unit, coder) with a JSON blob. Split them into `annotation_values`
+ * and drop the old table.
  */
-function backfillDone(db: DatabaseSync): void {
-  const rows = db.prepare("SELECT rowid, variables, updated FROM annotations").all() as {
-    rowid: number;
+function migrateAnnotationsTable(db: DatabaseSync): void {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'annotations'").get()) return;
+  const columns = (db.prepare("PRAGMA table_info(annotations)").all() as { name: string }[]).map((c) => c.name);
+  const rows = db.prepare("SELECT * FROM annotations").all() as unknown as {
+    jobId: number;
+    unitId: number;
+    coderId: number;
     variables: string;
     updated: string;
+    codebookId?: number | null;
+    doneAt?: string | null;
   }[];
-  const update = db.prepare("UPDATE annotations SET done = 1, doneAt = ? WHERE rowid = ?");
+  const insert = db.prepare(
+    `INSERT INTO annotation_values (jobId, unitId, coderId, variable, value, codebookId, created, updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
   for (const row of rows) {
-    const values = Object.values(JSON.parse(row.variables) as Record<string, { done?: boolean }>);
-    if (values.length > 0 && values.every((v) => v.done)) update.run(row.updated, row.rowid);
+    const created = (columns.includes("doneAt") && row.doneAt) || row.updated;
+    for (const [variable, value] of Object.entries(JSON.parse(row.variables) as Record<string, unknown>)) {
+      insert.run(row.jobId, row.unitId, row.coderId, variable, JSON.stringify(value), row.codebookId ?? null, created, row.updated);
+    }
   }
+  db.exec("DROP TABLE annotations");
 }

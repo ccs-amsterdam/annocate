@@ -11,7 +11,12 @@ import {
   RedeemTransferResponseSchema,
 } from "../session.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
-import { DeploymentWriteSchema, DeploymentResponseSchema, DeploymentStatusSchema } from "../deployment.js";
+import {
+  DeploymentWriteSchema,
+  DeploymentResponseSchema,
+  DeploymentStatusSchema,
+  ResetAnnotationsSchema,
+} from "../deployment.js";
 
 /**
  * The full API contract (CONTRACTS.md), as a registry of
@@ -157,6 +162,12 @@ export const endpoints = {
     path: "/job/:jobId/deployment/status",
     request: z.void(),
     response: DeploymentStatusSchema,
+  },
+  resetAnnotations: {
+    method: "POST",
+    path: "/job/:jobId/annotations/reset",
+    request: ResetAnnotationsSchema,
+    response: z.object({ retired: z.number().int().nonnegative() }),
   },
 } as const;
 

@@ -93,6 +93,7 @@ plan §3).
 | GET | `/deployment` | – | `DeploymentResponseSchema \| null` | |
 | PUT | `/deployment` | `DeploymentWriteSchema` | `DeploymentResponseSchema` | Requires ADMIN; bumps `version`, freezes the codebook, notifies the job server |
 | GET | `/deployment/status` | – | `DeploymentStatusSchema` | Proxied from the job server |
+| POST | `/annotations/reset` | `ResetAnnotationsSchema` | `{ retired }` | Requires ADMIN; retires live values (kept for analysis), so the units are coded again |
 
 ### Coder API (served by the job server)
 
@@ -128,8 +129,9 @@ Coder headers: `x-coder-key` (always), `x-invite-secret` (first use),
 | GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails) |
 | POST | `/backend/job/:jobId/coders/resolve` | `ResolveCoderRequestSchema` | `BackendCoderSchema` | Creates the coder from an invite (copying its preset `variables`); 401 for an unknown coder without a valid invite |
 | PUT | `/backend/job/:jobId/coders/:coderId` | `BackendCoderWriteSchema` | – | Full replace of `variables` + `assignments` |
-| GET | `/backend/job/:jobId/annotations` | – | `BackendAnnotationSchema[]` | Everything, ordered by `updated`; used to rebuild job-server state |
-| PUT | `/backend/job/:jobId/annotations/:unitId/:coderId` | `BackendAnnotationWriteSchema` | – | Write-through; already validated by the job server |
+| POST | `/backend/job/:jobId/finished` | `FinishedRequestSchema` | `BackendFinishedSchema[]` | Per loop: units where every given variable has a live value (the db server only counts), plus the values of `values` variables. Loaded for dynamic loops on start, and for researcher status |
+| GET | `/backend/job/:jobId/annotations?coderId=X` | – | `BackendAnnotationSchema[]` | One coder's live values per unit, ordered by first write |
+| PUT | `/backend/job/:jobId/annotations/:unitId/:coderId` | `BackendAnnotationWriteSchema` | – | Upserts a live value per given variable; others are left alone. Only complete units are written |
 
 ## Auth
 

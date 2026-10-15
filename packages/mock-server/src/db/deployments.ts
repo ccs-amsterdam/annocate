@@ -1,6 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
+import { listFinished } from "./annotations.js";
 import {
   ALL_UNITS_UNITSET,
+  CodebookItemsSchema,
+  type CodebookItem,
   type DeploymentResponse,
   type DeploymentSpec,
   type DeploymentWrite,
@@ -35,9 +38,15 @@ export function getDeployment(db: DatabaseSync, jobId: number): DeploymentRespon
   };
 }
 
-/** Creates or replaces a job's deployment, bumping its version and freezing the codebook. */
+/**
+ * Creates or replaces a job's deployment, bumping its version and freezing
+ * the codebook. Warns when a loop gains questions while coders already
+ * finished units in it: those units count as unfinished again
+ * (docs/architecture.md §8.2).
+ */
 export function putDeployment(db: DatabaseSync, jobId: number, body: DeploymentWrite): DeploymentResponse {
   const previous = getDeployment(db, jobId);
+  const warnings = previous ? reopenWarnings(db, jobId, previous.codebookId, body.codebookId) : [];
   const version = (previous?.version ?? 0) + 1;
   db.prepare(
     `INSERT INTO deployments (jobId, codebookId, active, version, updated) VALUES (?, ?, ?, ?, ?)
@@ -45,7 +54,53 @@ export function putDeployment(db: DatabaseSync, jobId: number, body: DeploymentW
        version = excluded.version, updated = excluded.updated`,
   ).run(jobId, body.codebookId, body.active ? 1 : 0, version, new Date().toISOString());
   db.prepare("UPDATE codebooks SET immutable = 1 WHERE jobId = ? AND id = ?").run(jobId, body.codebookId);
-  return getDeployment(db, jobId)!;
+  return { ...getDeployment(db, jobId)!, ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/** Loop name -> names of its questions (through conditions), from a stored codebook. */
+function loopVariables(db: DatabaseSync, jobId: number, codebookId: number): Map<string, string[]> {
+  const row = db.prepare("SELECT items FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, codebookId) as
+    | { items: string }
+    | undefined;
+  const loops = new Map<string, string[]>();
+  const parsed = row ? CodebookItemsSchema.safeParse(JSON.parse(row.items)) : null;
+  if (!parsed?.success) return loops;
+  const questions = (items: CodebookItem[]): string[] =>
+    items.flatMap((i) => (i.type === "condition" ? questions(i.children as CodebookItem[]) : [i.name]));
+  const walk = (items: CodebookItem[]) => {
+    for (const item of items) {
+      if (item.type === "unit_loop") loops.set(item.name, questions(item.children as CodebookItem[]));
+      else if (item.type === "condition") walk(item.children as CodebookItem[]);
+    }
+  };
+  walk(parsed.data);
+  return loops;
+}
+
+function reopenWarnings(db: DatabaseSync, jobId: number, previousCodebookId: number, codebookId: number): string[] {
+  if (previousCodebookId === codebookId) return [];
+  const before = loopVariables(db, jobId, previousCodebookId);
+  const after = loopVariables(db, jobId, codebookId);
+  const warnings: string[] = [];
+  for (const [loop, variables] of after) {
+    // The same loop in the previous version: same name, or else the one sharing most questions.
+    const previous =
+      before.get(loop) ??
+      [...before.values()].sort(
+        (a, b) => b.filter((v) => variables.includes(v)).length - a.filter((v) => variables.includes(v)).length,
+      )[0];
+    if (!previous || !previous.some((v) => variables.includes(v))) continue;
+    const added = variables.filter((v) => !previous.includes(v));
+    if (added.length === 0) continue;
+    const finished = listFinished(db, jobId, { loops: [{ loop, variables: previous }] }).length;
+    if (finished > 0) {
+      warnings.push(
+        `Loop '${loop}' gained questions (${added.join(", ")}): ${finished} finished unit codings ` +
+          `will be unfinished again, and coders get these units back to answer the new questions.`,
+      );
+    }
+  }
+  return warnings;
 }
 
 /** Everything the job server needs to run a deployed job (backend API `GET /deployment`). */
@@ -81,5 +136,8 @@ export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSp
       immutable: !!codebook.immutable,
     },
     unitsets: [{ name: ALL_UNITS_UNITSET, unitIds: allUnitIds }, ...unitsets],
+    annotationEpoch: (
+      db.prepare("SELECT annotationEpoch FROM deployments WHERE jobId = ?").get(jobId) as { annotationEpoch: number }
+    ).annotationEpoch,
   };
 }

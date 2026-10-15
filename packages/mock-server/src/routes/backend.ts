@@ -3,16 +3,14 @@ import type { DatabaseSync } from "node:sqlite";
 import {
   BackendAnnotationWriteSchema,
   BackendCoderWriteSchema,
+  FinishedRequestSchema,
   ResolveCoderRequestSchema,
-  type BackendAnnotation,
   type BackendCoder,
-  type BackendCoding,
   type BackendUnit,
-  type VariableValue,
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireJobServer, resolveCoder, type CoderRow } from "../auth.js";
-import { listCoderAnnotations, listDoneAnnotations, putAnnotation } from "../db/annotations.js";
+import { listCoderAnnotations, listFinished, putAnnotation } from "../db/annotations.js";
 import { getDeploymentSpec } from "../db/deployments.js";
 
 // The backend API (contracts `backendEndpoints`): what a db server exposes to
@@ -77,34 +75,18 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     return c.body(null, 204);
   });
 
-  // TODO: paginate (`?after=<cursor>`) once jobs get large enough for this
-  // dump on job-server cold start to matter. It is already compact: only
-  // the requested variables are returned.
-  app.get("/codings", (c) => {
-    const variables = (c.req.query("variables") ?? "").split(",").filter(Boolean);
-    const codings: BackendCoding[] = listDoneAnnotations(db, c.get("jobId")).map((row) => {
-      const coding: BackendCoding = { unitId: row.unitId, coderId: row.coderId, doneAt: new Date(row.doneAt ?? row.updated) };
-      if (variables.length > 0) {
-        const all = JSON.parse(row.variables) as Record<string, VariableValue>;
-        coding.values = Object.fromEntries(variables.filter((v) => v in all).map((v) => [v, all[v]]));
-      }
-      return coding;
-    });
-    return c.json(codings);
+  // TODO: paginate (`?after=<cursor>`) `finished` and `annotations` once jobs
+  // get large enough for it to matter.
+  app.post("/finished", async (c) => {
+    const parsed = FinishedRequestSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    return c.json(listFinished(db, c.get("jobId"), parsed.data));
   });
 
   app.get("/annotations", (c) => {
     const coderId = Number(c.req.query("coderId"));
     if (!Number.isInteger(coderId) || coderId <= 0) return c.json({ error: "coderId is required" }, 400);
-    const annotations: BackendAnnotation[] = listCoderAnnotations(db, c.get("jobId"), coderId).map((row) => ({
-      unitId: row.unitId,
-      coderId: row.coderId,
-      variables: JSON.parse(row.variables),
-      done: row.done === 1,
-      updated: new Date(row.updated),
-      codebookId: row.codebookId,
-    }));
-    return c.json(annotations);
+    return c.json(listCoderAnnotations(db, c.get("jobId"), coderId));
   });
 
   app.put("/annotations/:unitId/:coderId", async (c) => {
@@ -122,7 +104,7 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     if (!db.prepare("SELECT 1 FROM coders WHERE jobId = ? AND id = ?").get(jobId, coderId)) {
       return c.json({ error: "Coder not found" }, 404);
     }
-    putAnnotation(db, jobId, unitId, coderId, parsed.data.variables, parsed.data.done, parsed.data.codebookId);
+    putAnnotation(db, jobId, unitId, coderId, parsed.data.variables, parsed.data.codebookId);
     return c.body(null, 204);
   });
 

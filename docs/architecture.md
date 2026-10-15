@@ -81,20 +81,21 @@ worker:
    The cache has two parts, so a rebuild doesn't need every annotation in
    memory (that matters on the edge target, with idle evictions and a
    memory limit per Durable Object):
-   - **Distribution state**, for the whole job, loaded eagerly by
-     `DeploymentRuntime.load()`: `GET /deployment` + `GET /coders` +
-     `GET /codings?variables=...`. Codings are the finished annotations
-     only, ordered by `doneAt`, with just the values of the agreement
-     variables of dynamic sources (often none). That is a plain key
-     projection, so the db server still runs no codebook logic.
-   - **Coder workspaces**: a coder's own annotations, also unfinished ones,
-     via `GET /annotations?coderId=X`. Loaded when the coder first shows up
-     (and before any submit, which merges into the previous annotation, see
-     §8.2); evicted after `workspaceTtlMs` idle.
+   - **Distribution state**, loaded eagerly by `DeploymentRuntime.load()`:
+     `GET /deployment` + `GET /coders` + `POST /finished`, the last one
+     **for loops with dynamic sources only**: which coder finished which
+     unit there, plus the agreement variables' values. Fixed sources need
+     no global state: a coder's own finished units are enough.
+   - **Coder workspaces**: a coder's own live annotations, via
+     `GET /annotations?coderId=X`. Loaded when the coder shows up; their
+     finished units in every loop are derived from it. Evicted after
+     `workspaceTtlMs` idle.
 
-   A codebook redeploy only re-applies the spec. Codings are kept, unless a
-   dynamic source now compares on a variable they hold no agreement keys
-   for; then only the codings are fetched again.
+   A codebook redeploy keeps the derived codings if the loops' questions,
+   dynamic sources and agreement variables are unchanged. Otherwise, or
+   after a researcher reset (`annotationEpoch`), it rebuilds them.
+   Researcher status is computed on demand (`POST /finished` for every
+   loop), not held in memory.
 3. **Bounded retention.** Unit content is cached with a TTL. Dropping a
    deployment (`DELETE /admin/deployments/:id`) forgets everything held for
    it. That keeps GDPR retention simple: the job server is a processor with a
@@ -313,56 +314,49 @@ against the **current** codebook (`validateAnswer`, shared via contracts):
 
 | Change | Units the coder already finished | Unit in progress / new units |
 | --- | --- | --- |
-| Question added | stay finished (not reopened) | the new question is asked |
+| Question added | reopened: served again, only the new question to answer (warning on deploy) | the new question is asked |
 | Question removed | old answers kept in the database, no longer shown | not asked |
 | Codes changed (an answer's code removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
 | Question renamed | = removed + added | = removed + added |
 | Conditions / order changed | stay finished | follow the new codebook |
 | Distribution changed | routing kept if the coder's unitsets still exist in a branch, else re-routed (§6.1) | new rules apply |
 
-The rules that make this safe:
+How it works:
 
-- **The job server never deletes answers it doesn't understand.** When a
-  coder resubmits a unit, answers to questions the current codebook doesn't
-  have are merged back in. Data from earlier versions stays available for
-  analysis.
-- **Every annotation records the codebook it was written under**
-  (`annotations.codebookId`), so researchers can tell versions apart. It
-  changes when a unit is resubmitted under a newer version.
-- **"Finished" is decided when a coder submits a unit**, and is not
-  recomputed when the codebook changes. Otherwise a small edit could
-  silently reopen hundreds of units and change dynamic-source counts. The
-  job server sends it as `done` with every write; the db server stores it
-  and sets `doneAt` the first time it is true. `doneAt` never changes after
-  that, so editing a finished unit doesn't move it in the coder's progress.
+- **Annotations are stored per (unit, coder, variable)**, with `created`,
+  `updated`, `codebookId` and `retiredAt`. Only live rows (`retiredAt` empty)
+  count, and only those must be unique. Writes upsert per variable, so
+  answers to questions a later version removed are never overwritten. They
+  stay as data, tagged with the codebook they were written under.
+- **"Finished" is computed from the current codebook**: a unit is finished
+  in a loop when *every* question of that loop has a live value. Questions a
+  condition hid are stored as `skip`. The job server only accepts complete
+  units, so a stored unit is always complete under the codebook it was
+  written with. The db server only counts (`POST /finished` with the loop's
+  variable names); it never runs codebook logic. Finished units are tracked
+  per loop, so a unit in two loops is finished in each separately.
+- **Order** in a coder's progress is the first write of the unit's values
+  (`created`), so editing a finished unit doesn't move it.
+- **Adding a question to a loop reopens its finished units** (they lack the
+  new answer). Coders get them back first, with their earlier answers, and
+  answer only what's new. Deploying such a codebook returns a warning with
+  the number of affected codings.
+- **Reset** (`POST /job/:jobId/annotations/reset { variables, unitIds?,
+  coderIds? }`, a researcher action): retires live values instead of
+  deleting them. The units are unfinished again; the old values stay for
+  analysis. It bumps the deployment's `annotationEpoch`, so the job server
+  reloads.
 
-### 8.3 Open: reopening finished units
+### 8.3 Open: choosing what reopens
 
-Sometimes a researcher *does* want finished units revisited, e.g. after
-adding an important question or fixing a broken code. Options, roughly in
-order of preference:
-
-1. **Explicit reopen on deploy.** The deployment lists variables that must be
-   answered on finished units: `reopen: ["new_question"]`. The job server
-   treats a finished unit as open again if any listed variable lacks a valid
-   answer. `next` then serves those units first, and the client starts them
-   at the first open question. This is explicit, auditable, and per
-   question.
-2. **Automatic diff.** Compare codebook versions and reopen units whose
-   *required* questions are new or whose answers became invalid. More
-   magic, and hard to get right with conditions, because a question can
-   apply to only some units.
-3. **Re-code as a new job.** Copy the units into a new loop or job. This is
-   the cleanest for analysis, and the heaviest for coders.
-
-The job server can't evaluate QuickJS conditions today, so "required" can
-only be judged without them. That is another reason for option 1, where the
-researcher decides.
+With "finished = all current questions answered", adding a question always
+reopens finished units, and a reset reopens chosen units explicitly. Still
+open: letting the researcher add a question *without* reopening, e.g. by
+naming the variables that define "finished" per loop (default: all). Hold
+off until a real case asks for it.
 
 Other open points:
 
-- A unit used in two loops for the same coder shares one annotation (one
-  row per unit and coder).
 - `totalUnits` is unknown for dynamic sources without `maxUnits`; the client
   then counts the units seen so far.
 
@@ -419,12 +413,12 @@ Roughly in order:
 6. **`url_param` auto variables** are documented as client-side but not
    implemented in `JobManager` yet. Email-restricted invites need real coder
    authentication (item 3).
-7. **Scale.** `GET /backend/.../codings` is still a dump of every finished
-   coding on cold start, though a compact one (§3). Add `?after=<cursor>`
-   pagination. Per-unit state is O(units) in memory,
-   which is fine into the 100k range per deployment. Status computation is
-   O(coders x units) and should be cached or made incremental for large
-   jobs.
+7. **Scale.** On cold start the job server loads finished codings for
+   dynamic loops only (bounded by units x `maxCoders`), and coder workspaces
+   lazily (§3). Add `?after=<cursor>` pagination to `finished` and
+   `annotations`. Researcher status queries every loop's finished units on
+   demand: fine for occasional use, worth an aggregate endpoint if it gets
+   polled.
 8. **Deactivation semantics.** `active: false` stops new units (409), but
    coders can still submit units they were already working on. Decide
    whether that's what researchers expect.

@@ -27,8 +27,26 @@ export const DeploymentResponseSchema = DeploymentWriteSchema.extend({
   /** Bumped on every change, so the job server can detect a stale cached spec. */
   version: z.number().int().positive(),
   updated: z.coerce.date(),
+  /**
+   * Things the researcher should know about this deploy, e.g. that a loop
+   * gained questions, which reopens units coders already finished.
+   */
+  warnings: z.array(z.string()).optional(),
 });
 export type DeploymentResponse = z.infer<typeof DeploymentResponseSchema>;
+
+/**
+ * Researcher-facing: `POST /job/:jobId/annotations/reset`. Retires the live
+ * values of these variables (e.g. all questions of a loop), optionally only
+ * for some units or coders. Nothing is deleted: retired values stay for
+ * analysis, and the units count as unfinished again.
+ */
+export const ResetAnnotationsSchema = z.object({
+  variables: z.array(z.string()).min(1),
+  unitIds: z.array(IdSchema).optional(),
+  coderIds: z.array(IdSchema).optional(),
+});
+export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 
 // ---------------------------------------------------------------------------
 // Backend API: implemented by the db server, called only by the job server.
@@ -43,6 +61,12 @@ export const DeploymentSpecSchema = z.object({
   codebook: CodebookResponseSchema,
   /** All unitsets of the job, plus `__all__` (every unit id in the job). */
   unitsets: z.array(z.object({ name: z.string(), unitIds: z.array(IdSchema) })),
+  /**
+   * Bumped whenever annotations change outside the job server (e.g. a
+   * researcher resets units), so the job server reloads what it derived
+   * from them.
+   */
+  annotationEpoch: z.number().int().nonnegative().default(0),
 });
 export type DeploymentSpec = z.infer<typeof DeploymentSpecSchema>;
 
@@ -100,49 +124,64 @@ export const BackendCoderWriteSchema = z.object({
 });
 export type BackendCoderWrite = z.infer<typeof BackendCoderWriteSchema>;
 
+// Annotations are stored per (unit, coder, variable). A row can be retired
+// (`retiredAt`) instead of deleted, e.g. when a researcher resets units; only
+// live rows count. The db server never decides whether a unit is "finished":
+// the job server asks it to count live variables (docs/architecture.md §8).
+
 /**
- * `GET /backend/job/:jobId/annotations?coderId=X` -- one coder's variables for
- * one unit, as stored by the db server. Includes unfinished annotations.
+ * `GET /backend/job/:jobId/annotations?coderId=X` -- one coder's live
+ * annotations, per unit (the job server's per-coder workspace).
  */
 export const BackendAnnotationSchema = z.object({
   unitId: IdSchema,
   coderId: IdSchema,
+  /** Live values only, by variable name, including ones from older codebook versions. */
   variables: z.record(z.string(), VariableValueSchema),
-  /** As last written by the job server (see `BackendAnnotationWriteSchema.done`). */
-  done: z.boolean(),
-  /** Server timestamp of the last write. */
+  /** First write of any live value for this unit: the unit's place in the coder's progress. */
+  created: z.coerce.date(),
+  /** Last write. */
   updated: z.coerce.date(),
-  /** The codebook the annotation was last written under (absent for old annotations). */
-  codebookId: IdSchema.nullish(),
 });
 export type BackendAnnotation = z.infer<typeof BackendAnnotationSchema>;
 
 /**
- * `GET /backend/job/:jobId/codings?variables=a,b` -- the finished annotations
- * (`done`) of all coders, ordered by `doneAt`. This is what the job server
- * needs for distribution, so it can be loaded for a whole job cheaply:
- * `values` holds only the requested variables (a plain key projection of
- * `variables`; the job server asks for the agreement variables of dynamic
- * sources, often none).
+ * `POST /backend/job/:jobId/finished` -- which units coders finished in the
+ * given loops. A unit is finished for a coder when *all* `variables` of the
+ * loop have a live value. The db server only counts; `values` asks it to
+ * also return those variables' values (agreement rules).
  */
-export const BackendCodingSchema = z.object({
+export const FinishedRequestSchema = z.object({
+  loops: z.array(
+    z.object({
+      loop: z.string(),
+      variables: z.array(z.string()).min(1),
+      values: z.array(z.string()).optional(),
+    }),
+  ),
+  /** Only this coder's units. */
+  coderId: IdSchema.optional(),
+});
+export type FinishedRequest = z.infer<typeof FinishedRequestSchema>;
+
+export const BackendFinishedSchema = z.object({
+  loop: z.string(),
   unitId: IdSchema,
   coderId: IdSchema,
-  /** When the annotation was first written as done. Set once; resubmitting doesn't change it. */
-  doneAt: z.coerce.date(),
+  /** Earliest `created` of the loop's live values. Orders a coder's progress. */
+  created: z.coerce.date(),
   values: z.record(z.string(), VariableValueSchema).optional(),
 });
-export type BackendCoding = z.infer<typeof BackendCodingSchema>;
+export type BackendFinished = z.infer<typeof BackendFinishedSchema>;
 
-/** `PUT /backend/job/:jobId/annotations/:unitId/:coderId` -- write-through from the job server. */
+/**
+ * `PUT /backend/job/:jobId/annotations/:unitId/:coderId` -- write-through
+ * from the job server: upserts a live value per given variable. Variables
+ * not given are left as they are. The job server only writes complete units
+ * (every variable of the loop, `skip` for unasked questions).
+ */
 export const BackendAnnotationWriteSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
-  /**
-   * Whether the coder finished the unit, decided by the job server at submit
-   * time (docs/architecture.md §8.2). The db server stores it as is, and sets
-   * `doneAt` the first time it is true.
-   */
-  done: z.boolean(),
   /** The deployed codebook the coder answered under, so researchers can tell versions apart. */
   codebookId: IdSchema.optional(),
 });
@@ -179,11 +218,11 @@ export const backendEndpoints = {
     request: BackendCoderWriteSchema,
     response: z.void(),
   },
-  listCodings: {
-    method: "GET",
-    path: "/backend/job/:jobId/codings",
-    request: z.void(),
-    response: z.array(BackendCodingSchema),
+  listFinished: {
+    method: "POST",
+    path: "/backend/job/:jobId/finished",
+    request: FinishedRequestSchema,
+    response: z.array(BackendFinishedSchema),
   },
   listAnnotations: {
     method: "GET",
@@ -237,7 +276,8 @@ export const jobServerAdminEndpoints = {
     method: "POST",
     path: "/admin/deployments/:deploymentId/refresh",
     request: z.void(),
-    response: DeploymentStatusSchema,
+    /** The deployment version the job server now runs. */
+    response: z.object({ version: z.number().int().positive() }),
   },
   getDeploymentStatus: {
     method: "GET",

@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
-import { DeploymentWriteSchema, jobServerAdminEndpoints } from "@annotinder/contracts";
+import { DeploymentWriteSchema, ResetAnnotationsSchema, jobServerAdminEndpoints } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireJobUser } from "../auth.js";
 import { getDeployment, putDeployment } from "../db/deployments.js";
+import { retireAnnotations } from "../db/annotations.js";
 
 /** Where this db server's jobs are deployed, and how the job server knows this db server. */
 export interface JobServerLink {
@@ -43,6 +44,21 @@ export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
       console.warn(`Could not notify job server of deployment ${jobId}:`, err);
     }
     return c.json(deployment);
+  });
+
+  // Reset: retire the live values of these variables (e.g. a loop's
+  // questions), so the units are coded again. Nothing is deleted.
+  app.post("/annotations/reset", requireJobUser(db, "ADMIN"), async (c) => {
+    const parsed = ResetAnnotationsSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const jobId = c.get("jobId");
+    const retired = retireAnnotations(db, jobId, parsed.data);
+    try {
+      await callJobServer(jobServerAdminEndpoints.refreshDeployment.path, "POST", jobId);
+    } catch (err) {
+      console.warn(`Could not notify job server of reset in job ${jobId}:`, err);
+    }
+    return c.json({ retired });
   });
 
   app.get("/deployment/status", requireJobUser(db, "READ"), async (c) => {

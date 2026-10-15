@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
-import type { CoderUnitResponse, DeploymentStatus, SessionResponse, VariableValue } from "@annotinder/contracts";
+import type {
+  CoderUnitResponse,
+  DeploymentResponse,
+  DeploymentStatus,
+  SessionResponse,
+  VariableValue,
+} from "@annotinder/contracts";
 // The mock db server is used as-is (not a package dependency, only test code imports it).
 import { createDb } from "../../../mock-server/src/db/schema.js";
 import { seed } from "../../../mock-server/src/db/seed.js";
@@ -66,20 +72,34 @@ function coder(key: string, invite: string | null = "demo-secret", server = () =
       expect(res.status).toBe(200);
       return res.json() as Promise<CoderUnitResponse | null>;
     },
-    submit: (unitId: number, variables: Record<string, Partial<VariableValue>>) =>
-      call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId, variables }) }),
+    submit: (unitId: number, variables: Record<string, Partial<VariableValue>>, loop?: string) =>
+      call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId, loop, variables }) }),
     call,
   };
 }
 
+/** A finished unit in the one-question codebooks `redeploy` creates. */
 const sentiment = (code: string) => ({ sentiment: { done: true, codes: [{ code }] } });
+/** A finished unit in the seeded demo codebook: sentiment, plus its span and relation questions skipped. */
+const demo = (code: string) => ({
+  ...sentiment(code),
+  actors_and_issues: { done: true, skip: true },
+  actor_relations: { done: true, skip: true },
+});
 
+/** Live annotation values per (unit, coder), as stored by the db server. */
 function dbAnnotations() {
-  return db.prepare("SELECT unitId, coderId, variables FROM annotations ORDER BY unitId, coderId").all() as {
-    unitId: number;
-    coderId: number;
-    variables: string;
-  }[];
+  const rows = db
+    .prepare("SELECT unitId, coderId, variable, value, codebookId FROM annotation_values WHERE retiredAt IS NULL ORDER BY unitId, coderId")
+    .all() as { unitId: number; coderId: number; variable: string; value: string; codebookId: number }[];
+  const byUnit = new Map<string, { unitId: number; coderId: number; variables: Record<string, VariableValue>; codebookIds: number[] }>();
+  for (const row of rows) {
+    const key = `${row.unitId}/${row.coderId}`;
+    if (!byUnit.has(key)) byUnit.set(key, { unitId: row.unitId, coderId: row.coderId, variables: {}, codebookIds: [] });
+    byUnit.get(key)!.variables[row.variable] = JSON.parse(row.value);
+    byUnit.get(key)!.codebookIds.push(row.codebookId);
+  }
+  return [...byUnit.values()];
 }
 
 describe("coder flow through the job server", () => {
@@ -93,9 +113,9 @@ describe("coder flow through the job server", () => {
     expect(first?.externalId).toBe("unit-1");
     expect(first?.data.headline).toBeTypeOf("string");
 
-    expect((await c.submit(first!.id, sentiment("positive"))).status).toBe(204);
+    expect((await c.submit(first!.id, demo("positive"))).status).toBe(204);
     expect(dbAnnotations()).toHaveLength(1);
-    expect(JSON.parse(dbAnnotations()[0].variables).sentiment.codes[0].code).toBe("positive");
+    expect(dbAnnotations()[0].variables.sentiment.codes).toEqual([{ code: "positive" }]);
 
     expect((await c.next())?.externalId).toBe("unit-2");
     expect((await c.session()).progress).toEqual([{ unitset: "main_loop", doneUnitIds: [first!.id], totalUnits: 3 }]);
@@ -105,7 +125,11 @@ describe("coder flow through the job server", () => {
     const c = coder("coder-a");
     const unit = await c.next();
     expect((await c.submit(unit!.id, { nope: { done: true } })).status).toBe(400);
-    expect((await c.submit(unit!.id, sentiment("ecstatic"))).status).toBe(400);
+    expect((await c.submit(unit!.id, demo("ecstatic"))).status).toBe(400);
+    // only finished units are accepted: every question of the loop needs a value
+    const partial = await c.submit(unit!.id, sentiment("positive"));
+    expect(partial.status).toBe(400);
+    expect(await partial.json()).toMatchObject({ error: expect.stringContaining("actors_and_issues") });
     expect(dbAnnotations()).toHaveLength(0);
   });
 
@@ -123,7 +147,7 @@ describe("coder flow through the job server", () => {
   it("rebuilds its state from the db server after a restart", async () => {
     const c = coder("coder-a");
     const first = await c.next();
-    await c.submit(first!.id, sentiment("neutral"));
+    await c.submit(first!.id, demo("neutral"));
 
     jobServer = newJobServer(); // fresh process: empty memory
     const again = coder("coder-a", null);
@@ -138,14 +162,24 @@ describe("coder flow through the job server", () => {
     const c = coder("coder-a");
     for (let i = 0; i < 2; i++) {
       const unit = await c.next();
-      await c.submit(unit!.id, sentiment("neutral"));
+      await c.submit(unit!.id, demo("neutral"));
     }
     expect(await c.next()).toBeNull();
   });
 });
 
-/** Creates a codebook with the given unit_loop settings and deploys it as a new version. */
-async function redeploy(loop: object, extraItems: object[] = []) {
+const sentimentQuestion = {
+  type: "question",
+  name: "sentiment",
+  variable: { type: "select_code", question: "?", codes: [{ code: "positive" }, { code: "negative" }, { code: "neutral" }] },
+};
+
+/**
+ * Creates a codebook with the given unit_loop settings (by default with one
+ * question, `sentiment`) and deploys it as a new version. Returns the
+ * deployment response.
+ */
+async function redeploy(loop: object, extraItems: object[] = []): Promise<DeploymentResponse> {
   const res = await dbApp.request("/job/1/codebook", {
     method: "POST",
     headers: adminHeaders,
@@ -157,13 +191,7 @@ async function redeploy(loop: object, extraItems: object[] = []) {
           type: "unit_loop",
           name: "main_loop",
           layout: { template: "" },
-          children: [
-            {
-              type: "question",
-              name: "sentiment",
-              variable: { type: "select_code", question: "?", codes: [{ code: "positive" }, { code: "negative" }, { code: "neutral" }] },
-            },
-          ],
+          children: [sentimentQuestion],
           ...loop,
         },
       ],
@@ -177,6 +205,7 @@ async function redeploy(loop: object, extraItems: object[] = []) {
     body: JSON.stringify({ codebookId: codebook.id }),
   });
   expect(deploy.status).toBe(200);
+  return (await deploy.json()) as DeploymentResponse;
 }
 
 async function createUnitset(name: string, externalIds: string[]) {
@@ -310,7 +339,7 @@ describe("sessions across devices", () => {
   it("moves a session to another device with a one-time transfer link", async () => {
     const phone = coder("phone-key");
     const unit = await phone.next();
-    await phone.submit(unit!.id, sentiment("neutral"));
+    await phone.submit(unit!.id, demo("neutral"));
 
     const transfer = (await (await phone.call("/transfer", { method: "POST" })).json()) as { token: string };
     const redeem = () => raw({}, "/transfer/redeem", { method: "POST", body: JSON.stringify({ token: transfer.token }) });
@@ -365,7 +394,7 @@ describe("resuming and codebook updates", () => {
   it("serves units the coder already finished, but not other units", async () => {
     const c = coder("res");
     const first = await c.next();
-    await c.submit(first!.id, sentiment("positive"));
+    await c.submit(first!.id, demo("positive"));
     const again = await c.call(`/loop/main_loop/units/${first!.id}`);
     expect(again.status).toBe(200);
     expect(((await again.json()) as CoderUnitResponse).variables.sentiment.codes).toEqual([{ code: "positive" }]);
@@ -378,19 +407,16 @@ describe("resuming and codebook updates", () => {
     // demo codebook: sentiment + actors_and_issues + actor_relations
     const c = coder("upd");
     const unit = await c.next();
-    await c.submit(unit!.id, { ...sentiment("neutral"), actors_and_issues: { done: true, spans: [] } });
+    await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
 
     await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
     expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(204);
 
-    const row = db.prepare("SELECT variables, codebookId FROM annotations WHERE unitId = ?").get(unit!.id) as {
-      variables: string;
-      codebookId: number;
-    };
-    const stored = JSON.parse(row.variables);
-    expect(stored.sentiment.codes).toEqual([{ code: "positive" }]);
-    expect(stored).toHaveProperty("actors_and_issues"); // kept, though v2 no longer asks it
-    expect(row.codebookId).toBe(2);
+    const [stored] = dbAnnotations();
+    expect(stored.variables.sentiment.codes).toEqual([{ code: "positive" }]);
+    expect(stored.variables).toHaveProperty("actors_and_issues"); // kept, though v2 no longer asks it
+    const sentimentRow = db.prepare("SELECT codebookId FROM annotation_values WHERE variable = 'sentiment'").get();
+    expect(sentimentRow).toEqual({ codebookId: 2 });
   });
 });
 
@@ -426,11 +452,13 @@ describe("rebuilding from the db server", () => {
     expect((await status()).sources[0]).toMatchObject({ completeUnits: 1, codings: 3 });
     expect((await coder("d").next())!.id).not.toBe(unit!.id);
 
-    // the codings endpoint returned only the agreement variable
-    const codings = await dbApp.request("/backend/job/1/codings?variables=sentiment", {
-      headers: { authorization: `Bearer ${SECRET}` },
+    // the finished endpoint returns only the requested (agreement) values
+    const finished = await dbApp.request("/backend/job/1/finished", {
+      method: "POST",
+      headers: { authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+      body: JSON.stringify({ loops: [{ loop: "main_loop", variables: ["sentiment"], values: ["sentiment"] }] }),
     });
-    const rows = (await codings.json()) as { values: Record<string, unknown> }[];
+    const rows = (await finished.json()) as { values: Record<string, unknown> }[];
     expect(rows).toHaveLength(3);
     expect(rows.every((r) => Object.keys(r.values).join() === "sentiment")).toBe(true);
   });
@@ -438,42 +466,115 @@ describe("rebuilding from the db server", () => {
   it("keeps answers to removed questions when resubmitting after a restart", async () => {
     const c = coder("upd");
     const unit = await c.next();
-    await c.submit(unit!.id, { ...sentiment("neutral"), actors_and_issues: { done: true, spans: [] } });
+    await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
     await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
 
     jobServer = newJobServer();
     const again = coder("upd", null);
     expect((await again.submit(unit!.id, sentiment("positive"))).status).toBe(204);
-    const row = db.prepare("SELECT variables FROM annotations WHERE unitId = ?").get(unit!.id) as { variables: string };
-    expect(JSON.parse(row.variables)).toHaveProperty("actors_and_issues");
+    expect(dbAnnotations()[0].variables).toHaveProperty("actors_and_issues");
   });
 
-  it("does not re-download codings or annotations on a codebook redeploy", async () => {
+  it("keeps codings across a redeploy that keeps the loops, and reloads when they change", async () => {
+    const reloads = () =>
+      backendCalls.filter((call) => call === "POST /backend/job/1/finished" || call === "GET /backend/job/1/annotations");
+
+    // v2 changes the loop's questions (demo had three): finished units must be re-derived
+    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
     const c = coder("re");
     await c.submit((await c.next())!.id, sentiment("neutral"));
     backendCalls = [];
 
+    // v3, same loop: nothing re-downloaded
     await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect(backendCalls.filter((call) => /\/(codings|annotations|coders)$/.test(call) && call.startsWith("GET"))).toEqual([]);
+    expect(reloads()).toEqual([]);
 
-    // a new agreement variable does need the codings again
+    // v4 adds a dynamic source with an agreement rule: its finished codings are loaded
     await redeploy(agreeing);
     await c.session();
-    expect(backendCalls).toContain("GET /backend/job/1/codings");
-    expect(backendCalls).not.toContain("GET /backend/job/1/annotations");
+    expect(reloads()).toContain("POST /backend/job/1/finished");
   });
 
   it("keeps the order of finished units when an old unit is edited", async () => {
     const c = coder("order");
     const first = await c.next();
-    await c.submit(first!.id, sentiment("neutral"));
+    await c.submit(first!.id, demo("neutral"));
     const second = await c.next();
-    await c.submit(second!.id, sentiment("neutral"));
+    await c.submit(second!.id, demo("neutral"));
     await new Promise((r) => setTimeout(r, 5)); // a later timestamp for the edit
-    expect((await c.submit(first!.id, sentiment("positive"))).status).toBe(204);
+    expect((await c.submit(first!.id, demo("positive"))).status).toBe(204);
 
     jobServer = newJobServer();
     expect((await coder("order", null).session()).progress[0].doneUnitIds).toEqual([first!.id, second!.id]);
+  });
+});
+
+describe("finished units follow the current codebook", () => {
+  const relevance = {
+    type: "question",
+    name: "relevance",
+    variable: { type: "select_code", question: "?", codes: [{ code: "yes" }, { code: "no" }] },
+  };
+  const fixedMain = { units: [{ sources: [{ unitset: "main" }] }] };
+
+  it("reopens finished units when a loop gains a question, and warns on deploy", async () => {
+    expect((await redeploy(fixedMain)).warnings).toBeUndefined();
+    const c = coder("grow");
+    const unit = await c.next();
+    await c.submit(unit!.id, sentiment("positive"));
+    expect((await c.session()).progress[0].doneUnitIds).toEqual([unit!.id]);
+
+    const deployed = await redeploy({ ...fixedMain, children: [sentimentQuestion, relevance] });
+    expect(deployed.warnings).toEqual([expect.stringContaining("relevance")]);
+
+    // the unit is unfinished again: served first, with the earlier answer
+    expect((await c.session()).progress[0].doneUnitIds).toEqual([]);
+    const again = await c.next();
+    expect(again!.id).toBe(unit!.id);
+    expect(again!.variables.sentiment.codes).toEqual([{ code: "positive" }]);
+    await c.submit(unit!.id, { ...sentiment("positive"), relevance: { done: true, codes: [{ code: "yes" }] } });
+    expect((await c.session()).progress[0].doneUnitIds).toEqual([unit!.id]);
+  });
+
+  it("serves units again after a researcher resets them, keeping the old values", async () => {
+    await redeploy(fixedMain);
+    const c = coder("reset");
+    const first = await c.next();
+    await c.submit(first!.id, sentiment("negative"));
+    expect((await c.next())!.id).not.toBe(first!.id);
+
+    const res = await dbApp.request("/job/1/annotations/reset", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ variables: ["sentiment"], unitIds: [first!.id] }),
+    });
+    expect(await res.json()).toEqual({ retired: 1 });
+
+    expect((await c.session()).progress[0].doneUnitIds).toEqual([]);
+    const again = await c.next();
+    expect(again!.id).toBe(first!.id);
+    expect(again!.variables).toEqual({}); // retired values are not served
+    expect(db.prepare("SELECT COUNT(*) AS n FROM annotation_values WHERE retiredAt IS NOT NULL").get()).toEqual({ n: 1 });
+  });
+
+  it("tracks a unit separately in each loop it appears in", async () => {
+    const second = {
+      type: "unit_loop",
+      name: "second_loop",
+      layout: { template: "" },
+      units: [{ sources: [{ unitset: "main" }] }],
+      children: [relevance],
+    };
+    await redeploy(fixedMain, [second]);
+    const c = coder("two");
+    const unit = await c.next("main_loop");
+    expect((await c.submit(unit!.id, sentiment("neutral"), "main_loop")).status).toBe(204);
+
+    // finished in main_loop, not in second_loop
+    expect((await c.next("main_loop"))!.id).not.toBe(unit!.id);
+    expect((await c.next("second_loop"))!.id).toBe(unit!.id);
+    const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.unitset, p.doneUnitIds]));
+    expect(progress).toEqual({ second_loop: [], main_loop: [unit!.id] });
   });
 });

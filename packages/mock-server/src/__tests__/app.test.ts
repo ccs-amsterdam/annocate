@@ -285,19 +285,110 @@ describe("unitset generation", () => {
 });
 
 describe("schema migrations", () => {
-  it("backfills `done` for annotations written before it was stored", () => {
+  it("splits pre-2026-10-16 per-unit annotation blobs into per-variable rows", () => {
     const path = join(mkdtempSync(join(tmpdir(), "annotinder-")), "db.sqlite");
     const old = createDb(path);
-    old.exec("DROP INDEX annotations_done; ALTER TABLE annotations DROP COLUMN done");
-    const insert = old.prepare("INSERT INTO annotations (jobId, unitId, coderId, variables, updated) VALUES (1, ?, 1, ?, ?)");
-    insert.run(1, JSON.stringify({ a: { done: true }, b: { done: true } }), "2026-01-01T00:00:00.000Z");
-    insert.run(2, JSON.stringify({ a: { done: true }, b: { done: false } }), "2026-01-02T00:00:00.000Z");
+    old.exec(`CREATE TABLE annotations (jobId INTEGER, unitId INTEGER, coderId INTEGER, variables TEXT,
+      updated TEXT, codebookId INTEGER, done INTEGER, doneAt TEXT, PRIMARY KEY (unitId, coderId))`);
+    old
+      .prepare("INSERT INTO annotations VALUES (1, 7, 1, ?, '2026-01-02T00:00:00.000Z', 3, 1, '2026-01-01T00:00:00.000Z')")
+      .run(JSON.stringify({ a: { done: true, codes: [{ code: "x" }] }, b: { done: true, skip: true } }));
     old.close();
 
-    const rows = createDb(path).prepare("SELECT unitId, done, doneAt FROM annotations ORDER BY unitId").all();
+    const db = createDb(path);
+    const rows = db.prepare("SELECT unitId, variable, value, codebookId, created, retiredAt FROM annotation_values ORDER BY variable").all();
     expect(rows).toEqual([
-      { unitId: 1, done: 1, doneAt: "2026-01-01T00:00:00.000Z" },
-      { unitId: 2, done: 0, doneAt: null },
+      { unitId: 7, variable: "a", value: JSON.stringify({ done: true, codes: [{ code: "x" }] }), codebookId: 3, created: "2026-01-01T00:00:00.000Z", retiredAt: null },
+      { unitId: 7, variable: "b", value: JSON.stringify({ done: true, skip: true }), codebookId: 3, created: "2026-01-01T00:00:00.000Z", retiredAt: null },
     ]);
+    expect(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'annotations'").get()).toBeUndefined();
+  });
+});
+
+describe("annotations: finished counts and resets", () => {
+  const backend = { authorization: "Bearer dev-job-server-secret", "content-type": "application/json" };
+  const value = (code: string) => ({ done: true, codes: [{ code }] });
+
+  async function setup() {
+    const job = await createJob();
+    const units = (await json(
+      await app.request(`/job/${job.id}/units`, {
+        method: "POST",
+        headers: adminHeaders,
+        body: JSON.stringify({ units: [{ externalId: "u1", data: {} }, { externalId: "u2", data: {} }] }),
+      }),
+    )) as { id: number }[];
+    const invite = await json(
+      await app.request(`/job/${job.id}/coders/invite`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label: "x" }) }),
+    );
+    const coder = await json(
+      await app.request(`/backend/job/${job.id}/coders/resolve`, {
+        method: "POST",
+        headers: backend,
+        body: JSON.stringify({ coderKey: "k", inviteSecret: invite.secret }),
+      }),
+    );
+    const put = (unitId: number, variables: object) =>
+      app.request(`/backend/job/${job.id}/annotations/${unitId}/${coder.coderId}`, {
+        method: "PUT",
+        headers: backend,
+        body: JSON.stringify({ variables }),
+      });
+    const finished = async (variables: string[], values?: string[]) =>
+      (await json(
+        await app.request(`/backend/job/${job.id}/finished`, {
+          method: "POST",
+          headers: backend,
+          body: JSON.stringify({ loops: [{ loop: "l", variables, values }] }),
+        }),
+      )) as { unitId: number; values?: Record<string, unknown> }[];
+    return { job, units, coder, put, finished };
+  }
+
+  it("counts a unit as finished only when every given variable is live", async () => {
+    const { units, put, finished } = await setup();
+    await put(units[0].id, { q1: value("a"), q2: value("b") });
+    await put(units[1].id, { q1: value("a") });
+
+    expect((await finished(["q1", "q2"])).map((f) => f.unitId)).toEqual([units[0].id]);
+    expect((await finished(["q1"])).map((f) => f.unitId)).toEqual([units[0].id, units[1].id]);
+    // a question added later: nothing is finished until it is answered
+    expect(await finished(["q1", "q2", "q3"])).toEqual([]);
+    // values of requested variables come along
+    expect((await finished(["q1", "q2"], ["q2"]))[0].values).toMatchObject({ q2: value("b") });
+  });
+
+  it("upserts per variable and keeps variables that weren't sent", async () => {
+    const { units, put, finished } = await setup();
+    await put(units[0].id, { old: value("x"), q1: value("a") });
+    await put(units[0].id, { q1: value("b") });
+    const rows = db.prepare("SELECT variable, value FROM annotation_values WHERE retiredAt IS NULL ORDER BY variable").all() as {
+      variable: string;
+      value: string;
+    }[];
+    expect(rows.map((r) => [r.variable, JSON.parse(r.value).codes[0].code])).toEqual([
+      ["old", "x"],
+      ["q1", "b"],
+    ]);
+    expect(await finished(["q1"])).toHaveLength(1);
+  });
+
+  it("resets by retiring values: they stay, but no longer count", async () => {
+    const { job, units, put, finished } = await setup();
+    await app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: 1 }) });
+    await put(units[0].id, { q1: value("a") });
+    await put(units[1].id, { q1: value("a") });
+
+    const res = await app.request(`/job/${job.id}/annotations/reset`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ variables: ["q1"], unitIds: [units[0].id] }),
+    });
+    expect(await json(res)).toEqual({ retired: 1 });
+    expect((await finished(["q1"])).map((f) => f.unitId)).toEqual([units[1].id]);
+    // recoded after the reset: a new live row next to the retired one
+    await put(units[0].id, { q1: value("b") });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM annotation_values WHERE unitId = ?").get(units[0].id)).toEqual({ n: 2 });
+    expect(await finished(["q1"])).toHaveLength(2);
   });
 });

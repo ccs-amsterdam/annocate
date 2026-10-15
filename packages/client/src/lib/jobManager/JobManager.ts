@@ -693,10 +693,13 @@ export class JobManager {
         return;
       }
 
-      // No more steps for this unit: post answers to server
+      // No more steps: the unit is finished. Post an answer for every
+      // question of the loop -- `skip` for those a condition hid -- since the
+      // server only accepts complete units (docs/architecture.md §8.2).
       const doneValues: Record<string, VariableValue> = {};
+      for (const name of loopVariables(this.activeLoop).keys()) doneValues[name] = { done: true, skip: true };
       for (const [name, value] of Object.entries(this.unitVariableValues)) doneValues[name] = { ...value, done: true };
-      await this.jobServer.postUnitVariables(this.currentUnit.id, doneValues);
+      await this.jobServer.postUnitVariables(this.currentUnit.id, doneValues, this.activeLoop.name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }

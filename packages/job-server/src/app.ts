@@ -87,7 +87,7 @@ export function createJobServer(options: JobServerOptions) {
 
   coders.post("/variables/unit", async (c) => {
     const body = await parseBody(c, PostUnitVariablesSchema);
-    await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables);
+    await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop);
     return c.body(null, 204);
   });
 
@@ -111,13 +111,14 @@ export function createJobServer(options: JobServerOptions) {
   admin.post("/refresh", async (c) => {
     const runtime = await registry.get(c.req.param("deploymentId")!);
     await runtime.refresh(true);
-    return c.json(runtime.status());
+    // Not the status: that is computed from the db server, too heavy for a notification.
+    return c.json({ version: runtime.version });
   });
 
   admin.get("/status", async (c) => {
     const runtime = await registry.get(c.req.param("deploymentId")!);
     await runtime.refresh();
-    return c.json(runtime.status());
+    return c.json(await runtime.status());
   });
 
   admin.delete("/", (c) => {

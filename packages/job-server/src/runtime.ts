@@ -18,10 +18,12 @@ import { Codings, UnitPool, pickNext, type AgreementKeys } from "./distribution.
 import {
   agreementKey,
   codeValue,
-  collectAgreementVariables,
+  codingsSignature,
   collectCoderVariables,
   collectLoops,
-  isDone,
+  finishedLoops,
+  hasDynamicSources,
+  loopAgreementVariables,
   validateVariables,
   variableCodes,
   type LoopInfo,
@@ -66,11 +68,16 @@ type Workspace = Map<number, Record<string, VariableValue>>;
  * cache of the db server except dynamic leases, which are disposable. The
  * cache has two parts (docs/architecture.md §3):
  *
- *  - distribution state, for the whole job, loaded eagerly by `load`: the
- *    spec, the coders, and finished codings -- only which coder finished
- *    which unit, plus agreement keys for dynamic sources;
- *  - coder workspaces, the coder's own full annotations, loaded when the
- *    coder shows up and evicted when they go idle.
+ *  - distribution state, loaded eagerly by `load`: the spec, the coders,
+ *    and -- for loops with dynamic sources only -- which coder finished which
+ *    unit, plus agreement keys;
+ *  - coder workspaces, the coder's own live annotations, loaded when the
+ *    coder shows up and evicted when they go idle. A coder's finished units
+ *    in every loop are derived from it.
+ *
+ * "Finished" is always relative to the current codebook: every question of
+ * the loop has a live value (docs/architecture.md §8.2). Codings are kept
+ * per loop, so a unit in two loops is finished in each separately.
  *
  * This is the unit that would live in one Cloudflare Durable Object per
  * deployment; on Node it is one object in memory (see registry.ts).
@@ -83,13 +90,12 @@ export class DeploymentRuntime {
   private unitsets = new Map<string, number[]>();
   /** Units the db server no longer has. */
   private removedUnits = new Set<number>();
-  private codings = new Codings();
-  /** Agreement variables the current spec's dynamic sources compare on. */
-  private agreementVariables = new Set<string>();
-  /** Agreement variables `codings` holds keys for (those of the spec they were loaded under). */
-  private codingVariables = new Set<string>();
-  /** Codings submitted while `loadCodings` is fetching, replayed onto its result. */
-  private pendingCodings: [coderId: number, unitId: number, variables: Record<string, VariableValue>][] | null = null;
+  /** loop name -> finished codings in that loop. */
+  private codings = new Map<string, Codings>();
+  /** `codingsSignature` of the spec the codings were derived under. */
+  private codingsBasis = "";
+  /** Annotations written while `loadCodings` is fetching, replayed onto its result. */
+  private pendingCodings: [coderId: number, variables: Record<string, VariableValue>, unitId: number][] | null = null;
   /** `<loop>/<unitset>/<dynamic rule>` -> pool, created when the first coder is routed to it. */
   private pools = new Map<string, UnitPool>();
   /** coderId -> the coder's own annotations, returned with a unit and merged into on resubmit. */
@@ -117,16 +123,16 @@ export class DeploymentRuntime {
     const [spec, coders] = await Promise.all([this.backend.getDeployment(), this.backend.listCoders()]);
     this.applySpec(spec);
     this.coders = new Map(coders.map((c) => [c.coderId, c]));
-    this.workspaces.clear();
     await this.loadCodings();
     this.loadedAt = this.options.now();
   }
 
   /**
-   * Re-fetches the spec, and applies it if its version changed. Annotations
-   * don't change with the codebook, and neither does "done" (docs/architecture.md §8.2), so the
-   * codings are kept -- unless a dynamic source now compares on a variable
-   * they have no agreement keys for. Single-flight.
+   * Re-fetches the spec, and applies it if its version changed. Finished
+   * codings are derived from annotations *and* the codebook's loops, so they
+   * are kept only if the loops' questions, dynamic sources and agreement
+   * variables are unchanged, and no annotations were reset meanwhile
+   * (`annotationEpoch`). Single-flight.
    */
   async refresh(force = false): Promise<void> {
     if (!force && this.options.now() - this.specCheckedAt < this.options.specTtlMs) return;
@@ -134,12 +140,13 @@ export class DeploymentRuntime {
       try {
         this.evictExpired();
         const spec = await this.backend.getDeployment();
-        if (spec.version === this.spec.version) {
+        if (spec.version === this.spec.version && spec.annotationEpoch === this.spec.annotationEpoch) {
           this.specCheckedAt = this.options.now();
           return;
         }
+        const epochChanged = spec.annotationEpoch !== this.spec.annotationEpoch;
         this.applySpec(spec);
-        if ([...this.agreementVariables].some((v) => !this.codingVariables.has(v))) await this.loadCodings();
+        if (epochChanged || codingsSignature(this.loops.values()) !== this.codingsBasis) await this.loadCodings();
       } finally {
         this.refreshing = null;
       }
@@ -155,32 +162,54 @@ export class DeploymentRuntime {
     this.coderVariableTypes = collectCoderVariables(items);
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
-    this.agreementVariables = collectAgreementVariables(this.loops.values());
     this.pools.clear();
     this.removedUnits.clear();
   }
 
-  /** Replaces `codings` with the db server's finished codings, keyed on the current agreement variables. */
+  /**
+   * Rebuilds the codings: every coder's finished units for loops with
+   * dynamic sources (global state those need), and drops the workspaces, so
+   * other loops' codings are rebuilt per coder when they show up.
+   */
   private async loadCodings(): Promise<void> {
-    const variables = new Set(this.agreementVariables);
+    const dynamicLoops = [...this.loops.values()].filter(hasDynamicSources);
     const pending: NonNullable<typeof this.pendingCodings> = [];
     this.pendingCodings = pending;
     try {
-      const rows = await this.backend.listCodings([...variables]);
-      const codings = new Codings();
-      for (const row of rows) codings.record(row.coderId, row.unitId, agreementKeys(row.values ?? {}, variables));
-      for (const [coderId, unitId, values] of pending) codings.record(coderId, unitId, agreementKeys(values, variables));
-      this.codings = codings;
-      this.codingVariables = variables;
+      const rows = await this.backend.listFinished({
+        loops: dynamicLoops.map((info) => ({
+          loop: info.loop.name,
+          variables: [...info.variables.keys()],
+          values: loopAgreementVariables(info),
+        })),
+      });
+      this.codings = new Map();
+      this.workspaces.clear();
+      for (const row of rows) {
+        const info = this.loops.get(row.loop);
+        if (info) this.codingsFor(row.loop).record(row.coderId, row.unitId, agreementKeys(row.values ?? {}, info));
+      }
+      this.pendingCodings = null; // replaying must not append to the list being replayed
+      for (const [coderId, variables, unitId] of pending) this.recordFinished(coderId, unitId, variables);
+      this.codingsBasis = codingsSignature(this.loops.values());
       this.pools.clear(); // pools hold the Codings they were created with
     } finally {
       this.pendingCodings = null;
     }
   }
 
-  private recordCoding(coderId: number, unitId: number, variables: Record<string, VariableValue>): void {
-    this.codings.record(coderId, unitId, agreementKeys(variables, this.codingVariables));
-    this.pendingCodings?.push([coderId, unitId, variables]);
+  private codingsFor(loop: string): Codings {
+    let codings = this.codings.get(loop);
+    if (!codings) this.codings.set(loop, (codings = new Codings()));
+    return codings;
+  }
+
+  /** Records a unit as finished in every loop these answers finish it in. */
+  private recordFinished(coderId: number, unitId: number, variables: Record<string, VariableValue>): void {
+    for (const info of finishedLoops(variables, this.loops.values())) {
+      this.codingsFor(info.loop.name).record(coderId, unitId, agreementKeys(variables, info));
+    }
+    this.pendingCodings?.push([coderId, variables, unitId]);
   }
 
   /** The coder's own annotations, fetched from the db server if they aren't cached. */
@@ -195,7 +224,11 @@ export class DeploymentRuntime {
       loading = (async () => {
         try {
           const annotations = await this.backend.listAnnotations(coderId);
+          annotations.sort((a, b) => a.created.getTime() - b.created.getTime());
           const units: Workspace = new Map(annotations.map((a) => [a.unitId, a.variables]));
+          // The coder's finished units, in order of first answer (loops without
+          // dynamic sources only learn them here).
+          for (const a of annotations) this.recordFinished(coderId, a.unitId, a.variables);
           this.workspaces.set(coderId, { units, usedAt: this.options.now() });
           return units;
         } finally {
@@ -216,7 +249,11 @@ export class DeploymentRuntime {
    */
   async resolveCoder(request: ResolveCoderRequest): Promise<Coder> {
     const known = this.coderKeys.get(request.coderKey);
-    if (known !== undefined) return this.coders.get(known)!;
+    if (known !== undefined) {
+      // Their workspace may have been evicted or dropped by a reload.
+      await this.workspace(known);
+      return this.coders.get(known)!;
+    }
     const coder = await this.backend.resolveCoder(request);
     const coderKey = request.coderKey;
     this.coders.set(coder.coderId, coder);
@@ -297,7 +334,7 @@ export class DeploymentRuntime {
         const pools = this.assignedPools(coder, info.loop.name);
         return {
           unitset: info.loop.name,
-          doneUnitIds: this.codings.doneBy(coder.coderId).filter((id) => pools.some((p) => p.has(id))),
+          doneUnitIds: this.codingsFor(info.loop.name).doneBy(coder.coderId).filter((id) => pools.some((p) => p.has(id))),
           totalUnits: this.expectedUnits(info, pools),
         };
       }),
@@ -338,7 +375,7 @@ export class DeploymentRuntime {
     let pool = this.pools.get(key);
     if (!pool) {
       const unitIds = (this.unitsets.get(unitset) ?? []).filter((id) => !this.removedUnits.has(id));
-      this.pools.set(key, (pool = new UnitPool(unitset, unitIds, dynamic, this.codings)));
+      this.pools.set(key, (pool = new UnitPool(unitset, unitIds, dynamic, this.codingsFor(loop))));
     }
     return pool;
   }
@@ -395,7 +432,7 @@ export class DeploymentRuntime {
     const [pools, own] = await Promise.all([this.route(coder, info), this.workspace(coder.coderId)]);
 
     for (;;) {
-      const next = pickNext(pools, coder.coderId, this.codings, {
+      const next = pickNext(pools, coder.coderId, this.codingsFor(loopName), {
         order: info.loop.order ?? "sequential",
         maxUnits: info.loop.maxUnits,
         seed: this.spec.jobId * 1000,
@@ -439,33 +476,68 @@ export class DeploymentRuntime {
     return { id: unit.id, externalId: unit.externalId, data: unit.data, variables: own ?? {} };
   }
 
-  async submitUnit(coder: Coder, unitId: number, variables: Record<string, VariableValue>): Promise<void> {
-    const loops = [...this.loops.values()].filter((info) =>
-      this.assignedPools(coder, info.loop.name).some((p) => p.canSubmit(coder.coderId, unitId)),
+  /**
+   * A finished unit: answers to every question of the loop (`skip` for
+   * questions a condition hid). Partial submissions are refused, so a stored
+   * unit is always complete under the codebook it was written with.
+   */
+  async submitUnit(
+    coder: Coder,
+    unitId: number,
+    variables: Record<string, VariableValue>,
+    loopName?: string,
+  ): Promise<void> {
+    const loops = [...this.loops.values()].filter(
+      (info) =>
+        (loopName === undefined || info.loop.name === loopName) &&
+        this.assignedPools(coder, info.loop.name).some((p) => p.canSubmit(coder.coderId, unitId)),
     );
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
 
-    const allowed = new Map(loops.flatMap((l) => [...l.variables]));
-    const errors = validateVariables(allowed, variables);
+    const info = loops.find((l) => [...l.variables.keys()].every((name) => name in variables));
+    if (!info) {
+      const missing = [...loops[0].variables.keys()].filter((name) => !(name in variables));
+      throw new HttpError(400, `Unit not finished: no answer for ${missing.join(", ")}`);
+    }
+    const errors = validateVariables(info.variables, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
-    // Answers to questions the current codebook no longer has (an update
-    // removed or renamed them) are kept, not overwritten: they are still data.
-    // That needs the previous annotation, so the workspace must be loaded.
+    // Write-through: only once the db server has it does it count. The db
+    // server leaves values of other variables (e.g. questions an update
+    // removed) alone, so they stay as data.
+    await this.backend.putAnnotation(unitId, coder.coderId, variables, this.spec.codebook.id);
     const own = await this.workspace(coder.coderId);
-    const previous = own.get(unitId) ?? {};
-    const kept = Object.fromEntries(Object.entries(previous).filter(([name]) => !allowed.has(name)));
-    const merged = { ...kept, ...variables };
-    const done = isDone(merged);
-
-    // Write-through: only once the db server has it does it count.
-    await this.backend.putAnnotation(unitId, coder.coderId, merged, done, this.spec.codebook.id);
+    const merged = { ...own.get(unitId), ...variables };
     own.set(unitId, merged);
-    if (done) this.recordCoding(coder.coderId, unitId, merged);
+    this.recordFinished(coder.coderId, unitId, merged);
   }
 
-  status(): DeploymentStatus {
+  get version(): number {
+    return this.spec.version;
+  }
+
+  /**
+   * Progress per loop source. Computed on demand from the db server (every
+   * coder's finished units in every loop), since the job server only keeps
+   * global codings for dynamic loops.
+   */
+  async status(): Promise<DeploymentStatus> {
     const now = this.options.now();
+    const rows = await this.backend.listFinished({
+      loops: [...this.loops.values()].map((info) => ({
+        loop: info.loop.name,
+        variables: [...info.variables.keys()],
+        values: loopAgreementVariables(info),
+      })),
+    });
+    const finished = new Map<string, Codings>();
+    for (const row of rows) {
+      const info = this.loops.get(row.loop);
+      if (!info) continue;
+      if (!finished.has(row.loop)) finished.set(row.loop, new Codings());
+      finished.get(row.loop)!.record(row.coderId, row.unitId, agreementKeys(row.values ?? {}, info));
+    }
+
     const sources: DeploymentStatus["sources"] = [];
     for (const [loop] of this.loops) {
       const routed = [...this.coders.values()].filter((c) => c.assignments[loop]);
@@ -475,7 +547,14 @@ export class DeploymentRuntime {
           if (seen.has(pool)) continue;
           seen.add(pool);
           const coders = routed.filter((c) => c.assignments[loop].includes(pool.unitset)).map((c) => c.coderId);
-          sources.push({ loop, unitset: pool.unitset, ...pool.status(now, coders), coders: coders.length });
+          const counted = new UnitPool(pool.unitset, [...pool.unitIds], pool.dynamic, finished.get(loop) ?? new Codings());
+          sources.push({
+            loop,
+            unitset: pool.unitset,
+            ...counted.status(now, coders),
+            leasedUnits: pool.status(now, coders).leasedUnits,
+            coders: coders.length,
+          });
         }
       }
     }
@@ -516,6 +595,6 @@ export class DeploymentRuntime {
   }
 }
 
-function agreementKeys(variables: Record<string, VariableValue>, agreementVariables: Set<string>): AgreementKeys {
-  return Object.fromEntries([...agreementVariables].map((v) => [v, agreementKey(variables, v)]));
+function agreementKeys(variables: Record<string, VariableValue>, info: LoopInfo): AgreementKeys {
+  return Object.fromEntries(loopAgreementVariables(info).map((v) => [v, agreementKey(variables, v)]));
 }

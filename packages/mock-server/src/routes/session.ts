@@ -93,14 +93,15 @@ function loopUnitIds(db: DatabaseSync, jobId: number, loop: UnitLoopItem, coder:
   return loop.order === "random" ? seededShuffle(unique, coder.id + jobId * 1000) : unique;
 }
 
-/** Unit ids this coder finished, in order. */
+/** Unit ids this coder finished (every live value done), in order of first answer. */
 function doneUnitIds(db: DatabaseSync, coderId: number): number[] {
   const rows = db
-    .prepare("SELECT unitId, variables FROM annotations WHERE coderId = ? ORDER BY updated, rowid")
-    .all(coderId) as unknown as { unitId: number; variables: string }[];
-  return rows
-    .filter((r) => Object.values(JSON.parse(r.variables) as Record<string, VariableValue>).every((v) => v.done))
-    .map((r) => r.unitId);
+    .prepare(
+      `SELECT unitId FROM annotation_values WHERE coderId = ? AND retiredAt IS NULL
+       GROUP BY unitId HAVING MIN(json_extract(value, '$.done')) = 1 ORDER BY MIN(created), unitId`,
+    )
+    .all(coderId) as unknown as { unitId: number }[];
+  return rows.map((r) => r.unitId);
 }
 
 export function sessionRoutes(db: DatabaseSync) {
@@ -191,7 +192,7 @@ export function sessionRoutes(db: DatabaseSync) {
     if (!db.prepare("SELECT 1 FROM units WHERE jobId = ? AND id = ?").get(jobId, unitId)) {
       return c.json({ error: "Unit not found" }, 404);
     }
-    putAnnotation(db, jobId, unitId, coder.id, variables, Object.values(variables).every((v) => v.done));
+    putAnnotation(db, jobId, unitId, coder.id, variables);
     return c.body(null, 204);
   });
 

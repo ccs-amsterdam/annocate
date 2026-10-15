@@ -37,17 +37,41 @@ export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
 }
 
 /** The agreement variables of all dynamic sources: what distribution needs to know of finished codings. */
-export function collectAgreementVariables(loops: Iterable<LoopInfo>): Set<string> {
+/** Agreement variables the dynamic sources of a loop compare on. */
+export function loopAgreementVariables(info: LoopInfo): string[] {
   const variables = new Set<string>();
-  for (const { loop } of loops) {
-    for (const branch of loop.units) {
-      for (const source of branch.sources) {
-        const variable = source.dynamic?.agreement?.variable;
-        if (variable) variables.add(variable);
-      }
+  for (const branch of info.loop.units) {
+    for (const source of branch.sources) {
+      const variable = source.dynamic?.agreement?.variable;
+      if (variable) variables.add(variable);
     }
   }
-  return variables;
+  return [...variables];
+}
+
+export function hasDynamicSources(info: LoopInfo): boolean {
+  return info.loop.units.some((b) => b.sources.some((s) => s.dynamic));
+}
+
+/**
+ * Loops in which these answers finish a unit: every question of the loop
+ * (in the current codebook) has a value (docs/architecture.md §8.2).
+ */
+export function finishedLoops(variables: Record<string, VariableValue>, loops: Iterable<LoopInfo>): LoopInfo[] {
+  return [...loops].filter((info) => [...info.variables.keys()].every((name) => name in variables));
+}
+
+/**
+ * What finished codings derived from annotations depend on: per loop, its
+ * questions, whether it has dynamic sources, and their agreement variables.
+ * If this doesn't change between codebook versions, codings can be kept.
+ */
+export function codingsSignature(loops: Iterable<LoopInfo>): string {
+  return JSON.stringify(
+    [...loops]
+      .map((info) => [info.loop.name, [...info.variables.keys()].sort(), hasDynamicSources(info), loopAgreementVariables(info).sort()])
+      .sort(),
+  );
 }
 
 /** Coder-level (non-unit) variables: questions outside any unit_loop. */
@@ -96,7 +120,3 @@ export function agreementKey(variables: Record<string, VariableValue>, variable:
     .join("|");
 }
 
-export function isDone(variables: Record<string, VariableValue>): boolean {
-  const values = Object.values(variables);
-  return values.length > 0 && values.every((v) => v.done);
-}
