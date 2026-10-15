@@ -89,7 +89,12 @@ interface WorkspaceEntry {
   bytes: number;
   /** Loops where the coder was told there are no more units. All of them: the coder is done, evicted first. */
   exhausted: Set<string>;
+  /** unitId -> hash of the content last shown to the coder, sent along with their annotation. */
+  served: Map<number, string>;
 }
+
+/** Rough size of one `served` entry. */
+const SERVED_BYTES = 32;
 
 /** Rough in-memory size of a JSON value: enough to compare against a budget. */
 const sizeOf = (value: unknown) => JSON.stringify(value).length;
@@ -315,7 +320,7 @@ export class DeploymentRuntime {
           // dynamic sources only learn them here).
           for (const a of annotations) this.recordFinished(coderId, a.unitId, a.variables);
           const bytes = annotations.reduce((n, a) => n + sizeOf(a.variables), 0);
-          this.workspaces.set(coderId, { units, usedAt: this.options.now(), bytes, exhausted: new Set() });
+          this.workspaces.set(coderId, { units, usedAt: this.options.now(), bytes, exhausted: new Set(), served: new Map() });
           this.workspaceBytes += bytes;
           this.trimWorkspaces(coderId);
           return units;
@@ -546,6 +551,7 @@ export class DeploymentRuntime {
         continue;
       }
       next.pool.take(coder.coderId, next.unitId, this.options.now());
+      this.markServed(coder.coderId, unit);
       return {
         id: unit.id,
         externalId: unit.externalId,
@@ -569,6 +575,7 @@ export class DeploymentRuntime {
     }
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
+    this.markServed(coder.coderId, unit);
     return { id: unit.id, externalId: unit.externalId, data: unit.data, variables: own ?? {} };
   }
 
@@ -601,7 +608,10 @@ export class DeploymentRuntime {
     // Write-through: only once the db server has it does it count. The db
     // server leaves values of other variables (e.g. questions an update
     // removed) alone, so they stay as data.
-    await this.backend.putAnnotation(unitId, coder.coderId, variables, this.spec.codebook.id);
+    // What the coder saw: normally the unit's current hash, unless it changed
+    // after it was served. Recorded by the db server, not refused.
+    const unitHash = this.workspaces.get(coder.coderId)?.served.get(unitId) ?? this.units.get(unitId)?.unit.hash;
+    await this.backend.putAnnotation(unitId, coder.coderId, variables, this.spec.codebook.id, unitHash);
     const own = await this.workspace(coder.coderId);
     const previous = own.get(unitId);
     const merged = { ...previous, ...variables };
@@ -680,6 +690,16 @@ export class DeploymentRuntime {
         coderBytes: this.workspaceBytes,
       },
     };
+  }
+
+  private markServed(coderId: number, unit: BackendUnit): void {
+    const entry = this.workspaces.get(coderId);
+    if (!entry) return;
+    if (!entry.served.has(unit.id)) {
+      entry.bytes += SERVED_BYTES;
+      this.workspaceBytes += SERVED_BYTES;
+    }
+    entry.served.set(unit.id, unit.hash);
   }
 
   /** Drops unit content from the cache: all of it, or these units. */

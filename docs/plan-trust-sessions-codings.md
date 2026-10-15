@@ -327,8 +327,7 @@ longer reads as "what a db server must implement". Plan:
 - Writes that arrive with an old `codebookId` after a reset: store as-is
   (current lean), or reject (§10).
 - Renaming `POST /finished` once it also serves coder-level groups (§11).
-- Unit/codebook content hashes: per-write `unitHash`, and how db servers
-  store it (§12).
+- Codebook content hash on the codebook record (§12).
 
 ## 9. Review notes (2026-10-15)
 
@@ -623,7 +622,7 @@ cold start (e.g. a Durable Object waking up) is one `GET /deployment` plus
 the dynamic-loop `POST /finished`.
 
 
-## 12. Memory budgets (built) and content hashes (proposal)
+## 12. Memory budgets and unit content hashes (built)
 
 Discussed 2026-10-15.
 
@@ -636,7 +635,16 @@ timer: units shouldn't change once coding started, and a researcher refresh
 (`POST /job/:jobId/deployment/refresh` with `units: "all" | ids`) drops
 them on purpose. Details in `architecture.md` §3.
 
-**Proposal: make content changes visible with hashes.** Researchers should
+**Built: unit hashes,** as below: `BackendUnit.hash`, `unitHash` on
+annotation writes (the hash of what the coder was shown, tracked per coder
+by the job server), recorded and never refused. The mock server stores it
+only when it differs from the current hash (its units become immutable once
+annotated, so that is complete); the reference server stores it as given.
+The conformance suite checks the hashes and that a mismatch is accepted.
+Not built: the codebook content hash, and an annotation export to show
+them in (the mock server has no export yet).
+
+**Design: make content changes visible with hashes.** Researchers should
 be able to see whether the codebook or a unit changed under an annotation.
 Putting hashes on every annotation (per variable, in our storage) is
 wasteful. Instead:
@@ -660,6 +668,6 @@ wasteful. Instead:
   every annotation in an export says what it was made on, without being
   stored per row.
 
-Open: whether the job server should also refuse (409) a write whose unit
-changed since it was served, or just record it. Lean: record; refusing
-throws away a coder's work for a researcher's edit.
+**Decided:** record, never refuse (409) a write whose unit changed since
+it was served; refusing would throw away a coder's work for a researcher's
+edit.

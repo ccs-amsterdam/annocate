@@ -678,3 +678,33 @@ describe("memory", () => {
     expect(count(ANNOTATIONS)).toBe(1);
   });
 });
+
+describe("unit hashes", () => {
+  const shownHashes = () =>
+    db.prepare("SELECT DISTINCT unitId, unitHash FROM annotation_values WHERE retiredAt IS NULL").all() as {
+      unitId: number;
+      unitHash: string | null;
+    }[];
+
+  it("record which content a coder saw, when the unit changed after it was served", async () => {
+    const c = coder("hash");
+    const first = (await c.next())!;
+    await c.submit(first.id, demo("neutral"));
+    expect(shownHashes()).toEqual([{ unitId: first.id, unitHash: null }]); // current content
+
+    const second = (await c.next())!;
+    const before = db.prepare("SELECT externalId, data FROM units WHERE id = ?").get(second.id) as { externalId: string; data: string };
+    // The researcher overwrites it while the coder has it open (allowed: not annotated yet).
+    const res = await dbApp.request("/job/1/units", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ overwrite: true, units: [{ externalId: before.externalId, data: { text: "edited" } }] }),
+    });
+    expect(res.status).toBe(201);
+    expect((await c.submit(second.id, demo("neutral"))).status).toBe(204); // recorded, not refused
+
+    const { createHash } = await import("node:crypto");
+    const shown = createHash("sha256").update(before.externalId).update(before.data).digest("hex").slice(0, 16);
+    expect(shownHashes().find((r) => r.unitId === second.id)?.unitHash).toBe(shown);
+  });
+});

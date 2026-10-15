@@ -75,6 +75,12 @@ export const BackendUnitSchema = z.object({
   id: IdSchema,
   externalId: z.string(),
   data: UnitDataSchema,
+  /**
+   * Content hash: opaque to the job server, the same as long as `data` is,
+   * and different when it changes. Sent back as `unitHash` with
+   * annotations, so a db server can tell what content a coder was shown.
+   */
+  hash: z.string().min(1),
 });
 export type BackendUnit = z.infer<typeof BackendUnitSchema>;
 
@@ -193,6 +199,13 @@ export const BackendAnnotationWriteSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
   /** The deployed codebook the coder answered under, so researchers can tell versions apart. */
   codebookId: IdSchema.optional(),
+  /**
+   * `hash` of the unit content the coder was shown. Normally the unit's
+   * current hash; different if the unit changed after it was served (e.g.
+   * from the job server's cache). The db server records it, never refuses
+   * the write for it.
+   */
+  unitHash: z.string().min(1).optional(),
 });
 export type BackendAnnotationWrite = z.infer<typeof BackendAnnotationWriteSchema>;
 

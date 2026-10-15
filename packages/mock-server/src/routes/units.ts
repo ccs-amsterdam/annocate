@@ -1,9 +1,9 @@
-import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import { UnitsCreateBodySchema, type UnitResponse, type UnitMeta } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireJobUser } from "../auth.js";
+import { unitHash } from "../db/units.js";
 
 interface UnitRow {
   id: number;
@@ -17,8 +17,7 @@ function toResponse(row: UnitRow): UnitResponse {
   return { id: row.id, externalId: row.externalId, data: JSON.parse(row.data), immutable: !!row.immutable };
 }
 function toMeta(row: UnitRow): UnitMeta {
-  const hash = createHash("sha256").update(row.externalId).update(row.data).digest("hex").slice(0, 16);
-  return { id: row.id, externalId: row.externalId, hash };
+  return { id: row.id, externalId: row.externalId, hash: unitHash(row.externalId, row.data) };
 }
 
 export function unitRoutes(db: DatabaseSync) {

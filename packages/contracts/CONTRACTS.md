@@ -130,13 +130,13 @@ Coder headers: `x-coder-key` (always), `x-invite-secret` (first use),
 | Method | Path | Request | Response | Notes |
 | --- | --- | --- | --- | --- |
 | GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed |
-| GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out |
+| GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out. `hash`: content hash, changes whenever `data` does |
 | GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails). Only for researcher status, on demand; the job server loads coders one by one via `resolve` |
 | POST | `/backend/job/:jobId/coders/resolve` | `ResolveCoderRequestSchema` | `BackendCoderSchema` | Creates the coder from an invite (copying its preset `variables`); 401 for an unknown coder without a valid invite |
 | PUT | `/backend/job/:jobId/coders/:coderId` | `BackendCoderWriteSchema` | – | Full replace of `variables` + `assignments` |
 | POST | `/backend/job/:jobId/finished` | `FinishedRequestSchema` | `BackendFinishedSchema[]` | The bulk query. Per group of variables, the rows where every variable has a live value (the db server only filters), plus the values of `values` variables. `level: "unit"` (default): per (unit, coder), e.g. a loop's finished units. `level: "coder"`: per coder over coder-level values, `unitId: null`, e.g. `balanced` counts. Coder-level values may be stored on the coder record or as annotation rows with a null unit |
 | GET | `/backend/job/:jobId/annotations?coderId=X` | – | `BackendAnnotationSchema[]` | One coder's live values per unit, ordered by first write |
-| PUT | `/backend/job/:jobId/annotations/:unitId/:coderId` | `BackendAnnotationWriteSchema` | – | Upserts a live value per given variable; others are left alone. Only complete units are written |
+| PUT | `/backend/job/:jobId/annotations/:unitId/:coderId` | `BackendAnnotationWriteSchema` | – | Upserts a live value per given variable; others are left alone. Only complete units are written. `unitHash` is the hash of the content the coder was shown: store it (or only when it differs from the unit's current hash), never refuse the write for it |
 
 ## Auth
 

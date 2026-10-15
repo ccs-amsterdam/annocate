@@ -67,6 +67,10 @@ export function createDb(path = ":memory:"): DatabaseSync {
       variable TEXT NOT NULL,
       value TEXT NOT NULL,
       codebookId INTEGER,
+      -- Only set when the coder was shown other content than the unit has now
+      -- (it changed after being served); NULL means "the current content".
+      -- Units become immutable once annotated, so NULL stays true.
+      unitHash TEXT,
       created TEXT NOT NULL,
       updated TEXT NOT NULL,
       retiredAt TEXT
@@ -125,6 +129,7 @@ export function createDb(path = ":memory:"): DatabaseSync {
   addColumnIfMissing(db, "coders", "created", "TEXT");
   addColumnIfMissing(db, "deployments", "annotationEpoch", "INTEGER NOT NULL DEFAULT 0");
   migrateAnnotationsTable(db);
+  addColumnIfMissing(db, "annotation_values", "unitHash", "TEXT");
   return db;
 }
 

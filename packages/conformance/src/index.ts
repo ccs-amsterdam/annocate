@@ -109,7 +109,16 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   describe("GET /units", () => {
     it("returns the requested units' content and leaves out unknown ids", async () => {
       const units = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${id("u2")},999999999`)));
-      expect(units).toEqual([{ id: id("u2"), externalId: "u2", data: fixture.units[1].data }]);
+      expect(units).toEqual([{ id: id("u2"), externalId: "u2", data: fixture.units[1].data, hash: expect.any(String) }]);
+    });
+
+    it("gives each unit a content hash that is stable, and differs between different content", async () => {
+      const all = [...ids.values()].join(",");
+      const first = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${all}`)));
+      const again = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${all}`)));
+      const hashes = (units: typeof first) => new Map(units.map((u) => [u.id, u.hash]));
+      expect(hashes(again)).toEqual(hashes(first));
+      expect(new Set(first.map((u) => u.hash)).size).toBe(first.length); // fixture units all differ
     });
   });
 
@@ -178,6 +187,15 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   });
 
   describe("annotations", () => {
+    it("accepts the hash of the content shown, also when it is not the current one", async () => {
+      const coder = await newCoder("hash");
+      const [unit] = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${id("u1")}`)));
+      const write = (unitHash: string) =>
+        call(`/annotations/${unit.id}/${coder.coderId}`, { method: "PUT", body: { variables: { q1: answer("yes") }, unitHash } });
+      expect((await write(unit.hash)).status).toBe(204);
+      expect((await write("not-the-current-hash")).status).toBe(204); // recorded, never refused
+    });
+
     it("upserts values per variable and leaves other variables alone", async () => {
       const coder = await newCoder("ann");
       await ok(await put(id("u1"), coder.coderId, { q1: answer("yes"), old: answer("kept") }));

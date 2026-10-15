@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { unitHash } from "./units.js";
 import type {
   BackendAnnotation,
   BackendFinished,
@@ -171,16 +172,23 @@ export function putAnnotation(
   coderId: number,
   variables: Record<string, VariableValue>,
   codebookId?: number,
+  shownHash?: string,
 ): void {
   const now = new Date().toISOString();
+  // Record what the coder was shown only if it isn't the current content.
+  const unit = db.prepare("SELECT externalId, data FROM units WHERE jobId = ? AND id = ?").get(jobId, unitId) as
+    | { externalId: string; data: string }
+    | undefined;
+  const stale = shownHash !== undefined && unit !== undefined && shownHash !== unitHash(unit.externalId, unit.data);
   const upsert = db.prepare(
-    `INSERT INTO annotation_values (jobId, unitId, coderId, variable, value, codebookId, created, updated)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO annotation_values (jobId, unitId, coderId, variable, value, codebookId, unitHash, created, updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (unitId, coderId, variable) WHERE retiredAt IS NULL
-     DO UPDATE SET value = excluded.value, codebookId = excluded.codebookId, updated = excluded.updated`,
+     DO UPDATE SET value = excluded.value, codebookId = excluded.codebookId, unitHash = excluded.unitHash,
+       updated = excluded.updated`,
   );
   for (const [variable, value] of Object.entries(variables)) {
-    upsert.run(jobId, unitId, coderId, variable, JSON.stringify(value), codebookId ?? null, now, now);
+    upsert.run(jobId, unitId, coderId, variable, JSON.stringify(value), codebookId ?? null, stale ? shownHash : null, now, now);
   }
   db.prepare("UPDATE units SET immutable = 1 WHERE jobId = ? AND id = ?").run(jobId, unitId);
 

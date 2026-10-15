@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Hono, type Context } from "hono";
 import {
   ALL_UNITS_UNITSET,
@@ -49,6 +50,8 @@ interface Value {
   variable: string;
   value: VariableValue;
   codebookId?: number;
+  /** Hash of the unit content the coder was shown (unit-level values). */
+  unitHash?: string;
   created: Date;
   updated: Date;
   retiredAt?: Date;
@@ -56,7 +59,7 @@ interface Value {
 
 export interface Store {
   spec: DeploymentSpec;
-  units: Map<number, { id: number; externalId: string; data: Record<string, string | number | boolean> }>;
+  units: Map<number, { id: number; externalId: string; data: Record<string, string | number | boolean>; hash: string }>;
   invites: Invite[];
   coders: Coder[];
   values: Value[];
@@ -64,7 +67,9 @@ export interface Store {
 
 /** Loads a fixture as job `jobId`, deployed as version 1. */
 export function loadFixture(fixture: ConformanceFixture, jobId = 1): Store {
-  const units = new Map(fixture.units.map((u, i) => [i + 1, { id: i + 1, ...u }]));
+  // Units never change here; a db server that lets them change must change the hash too.
+  const hash = (data: unknown) => createHash("sha256").update(JSON.stringify(data)).digest("hex").slice(0, 16);
+  const units = new Map(fixture.units.map((u, i) => [i + 1, { id: i + 1, ...u, hash: hash(u.data) }]));
   const idOf = new Map([...units.values()].map((u) => [u.externalId, u.id]));
   return {
     spec: {
@@ -92,12 +97,17 @@ export function createServer(store: Store, secret: string) {
     store.values.find((v) => live(v) && v.unitId === unitId && v.coderId === coderId && v.variable === variable);
 
   /** Upserts a live value per variable; others are left alone. */
-  const upsert = (unitId: number | null, coderId: number, variables: Record<string, VariableValue>, codebookId?: number) => {
+  const upsert = (
+    unitId: number | null,
+    coderId: number,
+    variables: Record<string, VariableValue>,
+    meta: { codebookId?: number; unitHash?: string } = {},
+  ) => {
     const now = new Date();
     for (const [variable, value] of Object.entries(variables)) {
       const existing = liveValue(unitId, coderId, variable);
-      if (existing) Object.assign(existing, { value, updated: now, codebookId });
-      else store.values.push({ unitId, coderId, variable, value, codebookId, created: now, updated: now });
+      if (existing) Object.assign(existing, { value, updated: now, ...meta });
+      else store.values.push({ unitId, coderId, variable, value, ...meta, created: now, updated: now });
     }
   };
 
@@ -204,7 +214,9 @@ export function createServer(store: Store, secret: string) {
     if (!store.units.has(unitId)) return c.json({ error: "Unit not found" }, 404);
     if (!store.coders.some((x) => x.id === coderId)) return c.json({ error: "Coder not found" }, 404);
 
-    upsert(unitId, coderId, body.variables, body.codebookId);
+    // Stored as given, never refused: a mismatch with the unit's current
+    // hash means the coder saw older content.
+    upsert(unitId, coderId, body.variables, { codebookId: body.codebookId, unitHash: body.unitHash });
     return c.body(null, 204);
   });
 

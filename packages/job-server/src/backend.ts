@@ -123,10 +123,11 @@ export class BackendClient {
     coderId: number,
     variables: Record<string, VariableValue>,
     codebookId?: number,
+    unitHash?: string,
   ): Promise<void> {
     await this.request(backendEndpoints.putAnnotation.path, null, {
       method: "PUT",
-      body: { variables, codebookId },
+      body: { variables, codebookId, unitHash },
       params: { unitId, coderId },
     });
   }

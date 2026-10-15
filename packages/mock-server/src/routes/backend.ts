@@ -11,6 +11,7 @@ import {
 import type { HonoEnv } from "../honoEnv.js";
 import { requireJobServer, resolveCoder, type CoderRow } from "../auth.js";
 import { listCoderAnnotations, listFinished, putAnnotation } from "../db/annotations.js";
+import { unitHash } from "../db/units.js";
 import { getDeploymentSpec } from "../db/deployments.js";
 
 // The backend API (contracts `backendEndpoints`): what a db server exposes to
@@ -40,7 +41,12 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     const rows = db
       .prepare(`SELECT id, externalId, data FROM units WHERE jobId = ? AND id IN (${ids.map(() => "?").join(",")})`)
       .all(c.get("jobId"), ...ids) as unknown as { id: number; externalId: string; data: string }[];
-    const units: BackendUnit[] = rows.map((r) => ({ id: r.id, externalId: r.externalId, data: JSON.parse(r.data) }));
+    const units: BackendUnit[] = rows.map((r) => ({
+      id: r.id,
+      externalId: r.externalId,
+      data: JSON.parse(r.data),
+      hash: unitHash(r.externalId, r.data),
+    }));
     return c.json(units);
   });
 
@@ -104,7 +110,7 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
     if (!db.prepare("SELECT 1 FROM coders WHERE jobId = ? AND id = ?").get(jobId, coderId)) {
       return c.json({ error: "Coder not found" }, 404);
     }
-    putAnnotation(db, jobId, unitId, coderId, parsed.data.variables, parsed.data.codebookId);
+    putAnnotation(db, jobId, unitId, coderId, parsed.data.variables, parsed.data.codebookId, parsed.data.unitHash);
     return c.body(null, 204);
   });
 
