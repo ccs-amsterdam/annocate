@@ -269,8 +269,12 @@ longer reads as "what a db server must implement". Plan:
   reference and the mock server run it in their tests.
 - ~~**Dev server**~~ Kept as `packages/mock-server`: the researcher API plus
   its own backend API, so `pnpm dev` works; no longer the reference.
-- Remove the legacy coder routes and the `doneUnitIds` column once the admin
-  preview goes through the job server (architecture.md §10.1).
+- ~~Remove the legacy coder routes~~ Done: the admin preview runs on the job
+  server (`<backend>.<jobId>.preview`, in memory), and the mock server's
+  `routes/session.ts` is gone. The `doneUnitIds` column stays for now: the
+  researcher coder listing (`GET /coders`, `unitsDone`) still reads it. To
+  replace: progress per loop from the job server's status, or from
+  `POST /finished` on the db server.
 
 ## 6. Cleanup
 

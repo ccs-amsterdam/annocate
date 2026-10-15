@@ -130,8 +130,10 @@ Units, Unitsets, Coders, Preview. It uses an `AdminClient`
   (`POST /unitsets/generate`).
 - **Coders**: invites (login requirement, participant id, preset variables,
   max uses) and a progress table.
-- **Preview** still uses the mock server's legacy coder routes
-  (`architecture.md` §10).
+- **Preview** runs the job's latest codebook (deployed or not) on the job
+  server as deployment `<backend>.<jobId>.preview`, with a token from
+  `POST /job/:jobId/deployment/preview`. Coders and answers stay in the job
+  server's memory; nothing reaches the db server (`architecture.md` §5).
 
 ## 8. Tooling notes
 

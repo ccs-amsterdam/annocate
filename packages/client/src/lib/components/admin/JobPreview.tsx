@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { PreviewSession } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
 import { useCodebooksQuery, useUnitsQuery } from "../../admin/queries";
 import { JobRunner } from "../JobRunner";
@@ -7,7 +8,8 @@ import { Smartphone, Monitor, RotateCcw, AlertCircle, Maximize2 } from "lucide-r
 
 interface JobPreviewProps {
   client: AdminClient;
-  baseUrl: string;
+  /** The job server, normally the client's own origin (""): its session cookies are same-origin. */
+  jobServerUrl?: string;
 }
 
 interface DimensionPreset {
@@ -29,7 +31,13 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
   { label: "Laptop HD (1280×800)", width: 1280, height: 800 },
 ];
 
-export function JobPreview({ client, baseUrl }: JobPreviewProps) {
+/**
+ * Runs the job's latest codebook (deployed or not) in a device frame. The job
+ * server runs it as a preview deployment: coders and answers stay in its
+ * memory, nothing is written to the db server. Each preview session gets a
+ * fresh token, and with it a fresh coder.
+ */
+export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
   const codebooksQuery = useCodebooksQuery(client);
   const unitsQuery = useUnitsQuery(client);
 
@@ -41,7 +49,7 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
 
   const [previewKey, setPreviewKey] = useState(() => `preview-${client.jobId}-${Date.now()}`);
-  const [inviteSecret, setInviteSecret] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PreviewSession | null>(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,12 +59,9 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
       setCreatingInvite(true);
       setError(null);
       try {
-        const invite = await client.inviteCoder({
-          label: "preview-session",
-          auth: "none",
-        });
+        const session = await client.createPreview();
         if (!cancelled) {
-          setInviteSecret(invite.secret);
+          setPreview(session);
         }
       } catch (err) {
         if (!cancelled) {
@@ -259,15 +264,14 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
           <div className="p-4 text-center text-sm text-destructive">
             Failed to initialize preview: {error}
           </div>
-        ) : inviteSecret ? (
+        ) : preview ? (
           isFullScreen ? (
             /* Responsive Full Width */
             <div className="h-full w-full overflow-hidden rounded-xl border border-border bg-background shadow-lg">
               <JobRunner
                 key={previewKey}
-                baseUrl={baseUrl}
-                coderKey={previewKey}
-                inviteSecret={inviteSecret}
+                baseUrl={`${jobServerUrl}/d/${preview.deploymentId}`}
+                inviteSecret={preview.token}
                 preview={true}
               />
             </div>
@@ -284,9 +288,8 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
               <div className="flex-1 overflow-auto">
                 <JobRunner
                   key={previewKey}
-                  baseUrl={baseUrl}
-                  coderKey={previewKey}
-                  inviteSecret={inviteSecret}
+                  baseUrl={`${jobServerUrl}/d/${preview.deploymentId}`}
+                  inviteSecret={preview.token}
                   preview={true}
                 />
               </div>
@@ -313,9 +316,8 @@ export function JobPreview({ client, baseUrl }: JobPreviewProps) {
               <div className="flex-1 overflow-auto">
                 <JobRunner
                   key={previewKey}
-                  baseUrl={baseUrl}
-                  coderKey={previewKey}
-                  inviteSecret={inviteSecret}
+                  baseUrl={`${jobServerUrl}/d/${preview.deploymentId}`}
+                  inviteSecret={preview.token}
                   preview={true}
                 />
               </div>

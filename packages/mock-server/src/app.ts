@@ -7,7 +7,6 @@ import { jobRoutes } from "./routes/job.js";
 import { codebookRoutes } from "./routes/codebook.js";
 import { unitRoutes } from "./routes/units.js";
 import { unitsetRoutes } from "./routes/unitsets.js";
-import { sessionRoutes } from "./routes/session.js";
 import { coderRoutes } from "./routes/coders.js";
 import { backendRoutes } from "./routes/backend.js";
 import { deploymentRoutes, type JobServerLink } from "./routes/deployment.js";
@@ -42,7 +41,6 @@ export function createApp(db: DatabaseSync, options: AppOptions = {}) {
 
   // Legacy: coders talking to the db server directly. Superseded by the job
   // server; kept until the admin preview runs through the job server too.
-  app.route("/", sessionRoutes(db));
 
   return app;
 }

@@ -17,6 +17,7 @@ import {
   DeploymentStatusSchema,
   ResetAnnotationsSchema,
   RefreshDeploymentSchema,
+  PreviewSessionSchema,
 } from "../deployment.js";
 
 /**
@@ -169,6 +170,12 @@ export const endpoints = {
     path: "/job/:jobId/deployment/refresh",
     request: RefreshDeploymentSchema,
     response: z.object({ version: z.number().int().positive() }),
+  },
+  createPreview: {
+    method: "POST",
+    path: "/job/:jobId/deployment/preview",
+    request: z.void(),
+    response: PreviewSessionSchema,
   },
   resetAnnotations: {
     method: "POST",

@@ -29,19 +29,6 @@ interface UnitsetRow {
 
 const placeholders = (n: number) => Array(n).fill("?").join(",");
 
-/** A coder's live values for one unit. */
-export function getAnnotation(
-  db: DatabaseSync,
-  unitId: number,
-  coderId: number,
-): Record<string, VariableValue> | undefined {
-  const rows = db
-    .prepare("SELECT variable, value FROM annotation_values WHERE unitId = ? AND coderId = ? AND retiredAt IS NULL")
-    .all(unitId, coderId) as unknown as { variable: string; value: string }[];
-  if (rows.length === 0) return undefined;
-  return Object.fromEntries(rows.map((r) => [r.variable, JSON.parse(r.value)]));
-}
-
 /** One coder's live annotations per unit, ordered by first write (the job server's per-coder workspace). */
 export function listCoderAnnotations(db: DatabaseSync, jobId: number, coderId: number): BackendAnnotation[] {
   const rows = db
@@ -219,7 +206,7 @@ export function retireAnnotations(db: DatabaseSync, jobId: number, request: Rese
   return Number(result.changes);
 }
 
-/** Legacy per-unitset progress lists (`coders.doneUnitIds`), used by the legacy routes and `GET /coders`. */
+/** Legacy per-unitset progress lists (`coders.doneUnitIds`), still behind the researcher `GET /coders` listing. */
 function markDone(db: DatabaseSync, jobId: number, unitId: number, coderId: number): void {
   const coder = db.prepare("SELECT doneUnitIds FROM coders WHERE id = ?").get(coderId) as
     | { doneUnitIds: string }

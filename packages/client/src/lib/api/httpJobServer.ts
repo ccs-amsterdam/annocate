@@ -51,11 +51,6 @@ export interface JobServer {
 export interface HttpJobServerConfig {
   /** Base URL of the job's server including the deployment, e.g. "/d/mock.1" (same origin as the client). */
   baseUrl: string;
-  /**
-   * Only for the mock server's legacy coder routes (admin preview). Against
-   * a job server, the session is an httpOnly cookie it sets itself.
-   */
-  coderKey?: string;
   /** The invite link: creates the coder on first use, and selects this link's session cookie. */
   inviteSecret?: string;
   /** Participant id from the URL, for invites that take it from there. */
@@ -92,7 +87,6 @@ export class HttpJobServer implements JobServer {
       ...CLIENT_HEADERS,
       ...scopeHeaders(this.config),
     };
-    if (this.config.coderKey) headers["x-coder-key"] = this.config.coderKey;
     if (this.newSession) headers["x-new-session"] = "1";
     return headers;
   }

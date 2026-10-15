@@ -1,5 +1,5 @@
 import type { BackendAnnotationWrite, BackendCoderWrite } from "@annotinder/contracts";
-import { HttpError, type BackendClient } from "./backend.js";
+import { HttpError, type Backend } from "./backend.js";
 
 // Writes to the db server don't hold up the coder (docs/plan-trust-sessions-
 // codings.md §10): they are stored durably here first, the coder gets "ok",
@@ -108,7 +108,7 @@ export class Outbox {
   constructor(
     private deploymentId: string,
     private store: OutboxStore,
-    private backend: BackendClient,
+    private backend: Backend,
     private options: OutboxOptions,
     private log: (message: string) => void = (m) => console.warn(m),
   ) {}

@@ -161,31 +161,6 @@ export function resolveCoder(
 }
 
 /**
- * Hono middleware: resolves (creating if necessary, via an invite secret)
- * the requesting coder. Coder-facing routes are unscoped in the URL (no
- * `/job/:jobId` prefix) -- a coder's job is implied by their existing coder
- * row (looked up by devKey alone) or, for a brand-new coder, by the job that
- * owns the invite secret they present (invite secrets are unique across the
- * whole deployment).
- */
-export function requireCoder(db: DatabaseSync) {
-  return async (c: Context, next: Next) => {
-    const coderKey = c.req.header("x-coder-key");
-    if (!coderKey) return c.json({ error: "Missing x-coder-key header" }, 401);
-
-    const coder = resolveCoder(db, coderKey, c.req.header("x-invite-secret"), undefined, {
-      participantId: c.req.header("x-participant-id"),
-      newSession: c.req.header("x-new-session") === "1",
-    });
-    if ("error" in coder) return c.json({ error: coder.error, code: coder.code }, coder.status);
-
-    c.set("coder", coder);
-    c.set("jobId", coder.jobId);
-    await next();
-  };
-}
-
-/**
  * Hono middleware for the backend API (routes/backend.ts): only the job
  * server may call it, authenticated with the shared secret as a bearer
  * token. Dev-grade (constant secret, no request signing) like the rest of

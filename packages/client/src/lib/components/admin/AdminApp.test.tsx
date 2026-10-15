@@ -29,6 +29,7 @@ const stubClient: AdminClient = {
   generateUnitsets: () => new Promise(() => {}),
   listCoders: () => new Promise(() => {}),
   inviteCoder: () => new Promise(() => {}),
+  createPreview: () => new Promise(() => {}),
 };
 
 describe("AdminApp", () => {

@@ -15,6 +15,7 @@ import {
   type CoderProgress,
   type CoderInviteWrite,
   type CoderInviteResponse,
+  type PreviewSession,
 } from "@annotinder/contracts";
 
 /**
@@ -57,6 +58,9 @@ export interface AdminClient {
 
   listCoders(): Promise<CoderProgress[]>;
   inviteCoder(body: CoderInviteWrite): Promise<CoderInviteResponse>;
+
+  /** A preview session of the latest codebook, run by the job server in memory. */
+  createPreview(): Promise<PreviewSession>;
 }
 
 export interface HttpAdminClientConfig {
@@ -266,5 +270,10 @@ export class HttpAdminClient implements AdminClient {
       method: "POST",
       body: JSON.stringify(body),
     });
+  }
+
+  async createPreview(): Promise<PreviewSession> {
+    const jobId = this.requireJobId();
+    return this.request(endpoints.createPreview.path.replace(":jobId", String(jobId)), { method: "POST" });
   }
 }

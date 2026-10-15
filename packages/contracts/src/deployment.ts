@@ -346,6 +346,24 @@ export const RefreshDeploymentSchema = z.object({
 });
 export type RefreshDeployment = z.infer<typeof RefreshDeploymentSchema>;
 
+/**
+ * Researcher `POST /job/:jobId/deployment/preview`: a preview of the job's
+ * latest codebook (deployed or not), run by the job server as deployment
+ * `<backend>.<jobId>.preview`. Coders and answers stay in the job server's
+ * memory; nothing is written to the db server. The client uses `token` like
+ * an invite secret (`x-invite-secret`).
+ *
+ * Token format, so any db server can make one with the secret it shares with
+ * the job server: `preview.<jobId>.<expiresAtMs>.<hex HMAC-SHA256(secret,
+ * "preview.<jobId>.<expiresAtMs>")>`.
+ */
+export const PreviewSessionSchema = z.object({
+  deploymentId: z.string(),
+  token: z.string(),
+  expiresAt: z.coerce.date(),
+});
+export type PreviewSession = z.infer<typeof PreviewSessionSchema>;
+
 export const jobServerAdminEndpoints = {
   refreshDeployment: {
     method: "POST",

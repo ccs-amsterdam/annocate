@@ -1,12 +1,13 @@
 import { BackendClient, HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
 import { MemoryOutboxStore, Outbox, type OutboxStore } from "./outbox.js";
+import { PreviewBackend } from "./preview.js";
 
-/** Splits a deployment id `<backend>.<jobId>` into its parts. */
-export function parseDeploymentId(id: string): { backend: string; jobId: number } | null {
-  const match = /^([a-zA-Z0-9_-]+)\.(\d+)$/.exec(id);
+/** Splits a deployment id `<backend>.<jobId>`, or a researcher preview `<backend>.<jobId>.preview`. */
+export function parseDeploymentId(id: string): { backend: string; jobId: number; preview: boolean } | null {
+  const match = /^([a-zA-Z0-9_-]+)\.(\d+)(\.preview)?$/.exec(id);
   if (!match) return null;
-  return { backend: match[1], jobId: Number(match[2]) };
+  return { backend: match[1], jobId: Number(match[2]), preview: !!match[3] };
 }
 
 /**
@@ -42,11 +43,11 @@ export class DeploymentRegistry {
     await Promise.all(this.outboxStore.deployments().map((id) => this.get(id).catch(() => undefined)));
   }
 
-  backendFor(deploymentId: string): BackendConfig & { jobId: number } {
+  backendFor(deploymentId: string): BackendConfig & { jobId: number; preview: boolean } {
     const parsed = parseDeploymentId(deploymentId);
     const backend = parsed && this.backends[parsed.backend];
     if (!parsed || !backend) throw new HttpError(404, `Unknown deployment '${deploymentId}'`);
-    return { ...backend, jobId: parsed.jobId };
+    return { ...backend, jobId: parsed.jobId, preview: parsed.preview };
   }
 
   async get(deploymentId: string): Promise<DeploymentRuntime> {
@@ -61,11 +62,8 @@ export class DeploymentRegistry {
     if (cached) cached.usedAt = now;
     let runtime = cached?.runtime;
     if (!runtime) {
-      const { jobId, ...config } = this.backendFor(deploymentId);
-      const backend = new BackendClient(config, jobId, this.fetchImpl);
-      let outbox = this.outboxes.get(deploymentId);
-      if (!outbox) this.outboxes.set(deploymentId, (outbox = new Outbox(deploymentId, this.outboxStore, backend, this.runtimeOptions)));
-      const created = new DeploymentRuntime(deploymentId, backend, this.runtimeOptions, outbox);
+      const { jobId, preview, ...config } = this.backendFor(deploymentId);
+      const created = preview ? this.previewRuntime(deploymentId, config, jobId) : this.deploymentRuntime(deploymentId, config, jobId);
       const loading = created.load().then(() => created);
       runtime = loading;
       this.runtimes.set(deploymentId, { runtime, usedAt: now });
@@ -75,6 +73,24 @@ export class DeploymentRegistry {
       });
     }
     return runtime;
+  }
+
+  private deploymentRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
+    const backend = new BackendClient(config, jobId, this.fetchImpl);
+    let outbox = this.outboxes.get(deploymentId);
+    if (!outbox) this.outboxes.set(deploymentId, (outbox = new Outbox(deploymentId, this.outboxStore, backend, this.runtimeOptions)));
+    return new DeploymentRuntime(deploymentId, backend, this.runtimeOptions, outbox);
+  }
+
+  /**
+   * A researcher preview (preview.ts): the latest codebook, checked on every
+   * request so edits show right away, and coders and answers kept in memory.
+   */
+  private previewRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
+    const options: RuntimeOptions = { ...this.runtimeOptions, specTtlMs: 0, flushIntervalMs: 0 };
+    const db = new BackendClient(config, jobId, this.fetchImpl, true);
+    const backend = new PreviewBackend(db, config.secret, jobId, options.now);
+    return new DeploymentRuntime(deploymentId, backend, options, new Outbox(deploymentId, new MemoryOutboxStore(), backend, options));
   }
 
   /** Forgets a deployment, dropping all its cached units and annotations. */

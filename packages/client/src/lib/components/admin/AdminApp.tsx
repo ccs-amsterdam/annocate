@@ -33,6 +33,7 @@ export function AdminApp({
   initialJobId,
   queryClient,
   inviteUrl,
+  jobServerUrl,
 }: {
   client: AdminClient;
   /** The job server's base URL, used to build invite links in Coders & Preview. */
@@ -41,10 +42,18 @@ export function AdminApp({
   queryClient?: QueryClient;
   /** Builds the link coders open for an invite (host-app specific). */
   inviteUrl?: (invite: CoderInviteResponse) => string;
+  /** The job server for previews; normally the client's own origin (""), since its cookies are same-origin. */
+  jobServerUrl?: string;
 }) {
   return (
     <QueryClientProvider client={queryClient ?? defaultQueryClient}>
-      <AdminAppInner client={client} baseUrl={baseUrl} initialJobId={initialJobId} inviteUrl={inviteUrl} />
+      <AdminAppInner
+        client={client}
+        baseUrl={baseUrl}
+        initialJobId={initialJobId}
+        inviteUrl={inviteUrl}
+        jobServerUrl={jobServerUrl}
+      />
     </QueryClientProvider>
   );
 }
@@ -54,11 +63,13 @@ function AdminAppInner({
   baseUrl,
   initialJobId,
   inviteUrl,
+  jobServerUrl,
 }: {
   client: AdminClient;
   baseUrl: string;
   initialJobId?: number;
   inviteUrl?: (invite: CoderInviteResponse) => string;
+  jobServerUrl?: string;
 }) {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? null);
   const [tab, setTab] = useState<TabId>("Codebook");
@@ -83,6 +94,7 @@ function AdminAppInner({
       rootClient={client}
       baseUrl={baseUrl}
       inviteUrl={inviteUrl}
+      jobServerUrl={jobServerUrl}
       tab={tab}
       onTabChange={setTab}
       onBackToJobs={() => setSelectedJobId(null)}
@@ -96,6 +108,7 @@ function JobAdminView({
   rootClient,
   baseUrl,
   inviteUrl,
+  jobServerUrl,
   tab,
   onTabChange,
   onBackToJobs,
@@ -105,6 +118,7 @@ function JobAdminView({
   rootClient: AdminClient;
   baseUrl: string;
   inviteUrl?: (invite: CoderInviteResponse) => string;
+  jobServerUrl?: string;
   tab: TabId;
   onTabChange: (tab: TabId) => void;
   onBackToJobs: () => void;
@@ -211,7 +225,7 @@ function JobAdminView({
         {tab === "Units" && <UnitsManager client={client} />}
         {tab === "Unitsets" && <UnitsetsManager client={client} />}
         {tab === "Coders" && <CodersPanel client={client} baseUrl={baseUrl} inviteUrl={inviteUrl} />}
-        {tab === "Preview" && <JobPreview client={client} baseUrl={baseUrl} />}
+        {tab === "Preview" && <JobPreview client={client} jobServerUrl={jobServerUrl} />}
       </main>
 
       {/* Unsaved Changes Confirmation Modal */}

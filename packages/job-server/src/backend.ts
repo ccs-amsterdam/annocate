@@ -37,6 +37,19 @@ export interface BackendConfig {
   secret: string;
 }
 
+/** What the runtime needs from a db server: the backend API, or a preview's in-memory stand-in (preview.ts). */
+export type Backend = Pick<
+  BackendClient,
+  | "getDeployment"
+  | "getUnits"
+  | "listCoders"
+  | "resolveCoder"
+  | "putCoder"
+  | "listFinished"
+  | "listAnnotations"
+  | "putAnnotations"
+>;
+
 /**
  * Typed client for a db server's backend API (contracts `backendEndpoints`).
  * Responses are validated with the contract schemas, since db servers may be
@@ -47,6 +60,8 @@ export class BackendClient {
     private config: BackendConfig,
     private jobId: number,
     private fetchImpl: typeof fetch = fetch,
+    /** Ask for the preview spec (the latest codebook) instead of the deployed one. */
+    private preview = false,
   ) {}
 
   private async request<S extends z.ZodType>(
@@ -86,7 +101,8 @@ export class BackendClient {
   }
 
   getDeployment(): Promise<DeploymentSpec> {
-    return this.request(backendEndpoints.getDeployment.path, DeploymentSpecSchema);
+    const query = this.preview ? "?preview=1" : "";
+    return this.request(backendEndpoints.getDeployment.path + query, DeploymentSpecSchema);
   }
 
   async getUnits(ids: number[]): Promise<BackendUnit[]> {

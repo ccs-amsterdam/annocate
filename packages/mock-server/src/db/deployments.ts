@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { listFinished } from "./annotations.js";
 import {
@@ -107,12 +108,40 @@ function reopenWarnings(db: DatabaseSync, jobId: number, previousCodebookId: num
 export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSpec | null {
   const deployment = getDeployment(db, jobId);
   if (!deployment) return null;
-
   const codebook = db
     .prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?")
     .get(jobId, deployment.codebookId) as CodebookRow | undefined;
   if (!codebook) return null;
+  return buildSpec(db, jobId, codebook, {
+    version: deployment.version,
+    active: deployment.active,
+    annotationEpoch: (
+      db.prepare("SELECT annotationEpoch FROM deployments WHERE jobId = ?").get(jobId) as { annotationEpoch: number }
+    ).annotationEpoch,
+  });
+}
 
+/**
+ * The spec for previewing (`GET /backend/.../deployment?preview=1`): the
+ * job's latest codebook, deployed or not, always active. Its `version` is
+ * derived from the content, so the job server picks up every edit.
+ */
+export function getPreviewSpec(db: DatabaseSync, jobId: number): DeploymentSpec | null {
+  const codebook = db.prepare("SELECT * FROM codebooks WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as
+    | CodebookRow
+    | undefined;
+  if (!codebook) return null;
+  const spec = buildSpec(db, jobId, codebook, { version: 1, active: true, annotationEpoch: 0 });
+  const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.unitsets])).digest("hex");
+  return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
+}
+
+function buildSpec(
+  db: DatabaseSync,
+  jobId: number,
+  codebook: CodebookRow,
+  meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch">,
+): DeploymentSpec {
   const unitsets = (
     db.prepare("SELECT name, unitIds FROM unitsets WHERE jobId = ? ORDER BY id").all(jobId) as unknown as {
       name: string;
@@ -125,8 +154,7 @@ export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSp
 
   return {
     jobId,
-    version: deployment.version,
-    active: deployment.active,
+    ...meta,
     codebook: {
       id: codebook.id,
       jobId: codebook.jobId,
@@ -136,8 +164,5 @@ export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSp
       immutable: !!codebook.immutable,
     },
     unitsets: [{ name: ALL_UNITS_UNITSET, unitIds: allUnitIds }, ...unitsets],
-    annotationEpoch: (
-      db.prepare("SELECT annotationEpoch FROM deployments WHERE jobId = ?").get(jobId) as { annotationEpoch: number }
-    ).annotationEpoch,
   };
 }

@@ -36,12 +36,6 @@ import {
 export interface JobRunnerProps {
   /** Job server URL including the deployment, e.g. `https://jobs.example/d/mock.1`. */
   baseUrl: string;
-  /**
-   * Explicit coder key, only for the mock server's legacy coder routes
-   * (admin preview). Against a job server the session is an httpOnly cookie
-   * per deployment/invite/participant (docs/coder-identity.md).
-   */
-  coderKey?: string;
   inviteSecret?: string;
   /** Participant id from the URL, for invites that take it from there. */
   participantId?: string;
@@ -253,7 +247,6 @@ function computeGlobalPosition(nav: JobManagerNavigation): number {
  */
 function JobRunnerContent({
   baseUrl,
-  coderKey,
   inviteSecret,
   participantId,
   newSession,
@@ -263,8 +256,8 @@ function JobRunnerContent({
   onFinished,
 }: ContentProps) {
   const jobServer = useMemo(
-    () => new HttpJobServer({ baseUrl, coderKey, inviteSecret, participantId, newSession }),
-    [baseUrl, coderKey, inviteSecret, participantId, newSession],
+    () => new HttpJobServer({ baseUrl, inviteSecret, participantId, newSession }),
+    [baseUrl, inviteSecret, participantId, newSession],
   );
   const { manager, snapshot } = useJobManager(jobServer);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -699,11 +692,11 @@ function CoderSessionGate(props: JobRunnerProps) {
     [baseUrl, inviteSecret, participantId],
   );
   const [session, setSession] = useState<{ ready: boolean; generation: number; newSession: boolean; error: string | null }>(
-    () => ({ ready: !!props.coderKey || !transferToken, generation: 0, newSession: false, error: null }),
+    () => ({ ready: !transferToken, generation: 0, newSession: false, error: null }),
   );
 
   useEffect(() => {
-    if (props.coderKey || !transferToken) return;
+    if (!transferToken) return;
     let cancelled = false;
     redeemTransfer(scope, transferToken)
       .then(() => {
@@ -717,7 +710,7 @@ function CoderSessionGate(props: JobRunnerProps) {
     return () => {
       cancelled = true;
     };
-  }, [props.coderKey, transferToken, scope, onTransferRedeemed]);
+  }, [transferToken, scope, onTransferRedeemed]);
 
   if (session.error) {
     return (

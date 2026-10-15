@@ -13,7 +13,7 @@ import {
   type TopLevelItem,
   type VariableValue,
 } from "@annotinder/contracts";
-import { BackendClient, HttpError } from "./backend.js";
+import { HttpError, type Backend } from "./backend.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys } from "./distribution.js";
 import { DEFAULT_OUTBOX_OPTIONS, MemoryOutboxStore, Outbox, type OutboxOptions } from "./outbox.js";
 import {
@@ -164,7 +164,7 @@ export class DeploymentRuntime {
 
   constructor(
     readonly id: string,
-    private backend: BackendClient,
+    private backend: Backend,
     private options: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
     outbox?: Outbox,
   ) {

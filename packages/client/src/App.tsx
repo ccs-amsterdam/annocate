@@ -95,7 +95,7 @@ function App() {
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
         {view === "admin" ? (
-          <AdminApp client={adminClient} baseUrl={MOCK_SERVER_URL} inviteUrl={devInviteUrl} />
+          <AdminApp client={adminClient} baseUrl={MOCK_SERVER_URL} inviteUrl={devInviteUrl} jobServerUrl={JOB_SERVER_URL} />
         ) : (
           <JobRunner
             baseUrl={`${JOB_SERVER_URL}/d/${deploymentId}`}

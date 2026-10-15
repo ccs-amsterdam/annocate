@@ -7,7 +7,6 @@ describe("JobRunner menu bar and settings integration", () => {
     const html = renderToStaticMarkup(
       <JobRunner
         baseUrl="http://localhost:3000"
-        coderKey="test-coder"
       />
     );
     expect(html).toContain("Loading session...");

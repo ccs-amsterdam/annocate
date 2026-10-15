@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import {
@@ -19,6 +20,8 @@ export interface JobServerLink {
   secret: string;
   fetch?: typeof fetch;
 }
+
+const PREVIEW_TTL_MS = 12 * 60 * 60_000;
 
 export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
   const app = new Hono<HonoEnv>();
@@ -82,6 +85,17 @@ export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
     } catch {
       return c.json({ error: "Job server unreachable" }, 502);
     }
+  });
+
+  // A preview session for researchers (contracts PreviewSessionSchema): the
+  // job server runs the latest codebook in memory, writing nothing back.
+  app.post("/deployment/preview", requireJobUser(db, "WRITE"), (c) => {
+    if (!jobServer) return c.json({ error: "No job server configured" }, 503);
+    const jobId = c.get("jobId");
+    const expiresAt = Date.now() + PREVIEW_TTL_MS;
+    const payload = `preview.${jobId}.${expiresAt}`;
+    const token = `${payload}.${createHmac("sha256", jobServer.secret).update(payload).digest("hex")}`;
+    return c.json({ deploymentId: `${jobServer.backendName}.${jobId}.preview`, token, expiresAt: new Date(expiresAt) });
   });
 
   app.get("/deployment/status", requireJobUser(db, "READ"), async (c) => {

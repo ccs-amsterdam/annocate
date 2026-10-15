@@ -191,6 +191,15 @@ secret.
    outbox (sent to the db server with the next batch), and updates the
    queue.
 
+**Researcher preview.** `POST /job/:jobId/deployment/preview` on the db
+server returns a deployment id `<backend>.<jobId>.preview` and a token
+signed with the secret it shares with the job server (format in
+`PreviewSessionSchema`). The client opens it like an invite. The job server
+runs the latest codebook (`GET /backend/.../deployment?preview=1`, checked
+on every request so edits show at once) with the real units, but keeps
+coders and answers in memory (`preview.ts`): a preview writes nothing to
+the db server, and is gone when the job server forgets the deployment.
+
 **Researcher status.** `GET /job/:jobId/deployment/status` on the db server
 proxies `GET /admin/deployments/:id/status`: units complete / started /
 leased, codings, coders.
@@ -407,6 +416,7 @@ Other open points:
 | `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
 | `job-server/src/outbox.ts` | Durable pending writes, batched flushes with backoff (`outboxSqlite.ts`: the Node store) |
 | `job-server/src/session.ts` | Coder session cookies, CSRF header |
+| `job-server/src/preview.ts` | Researcher previews: preview tokens, in-memory coders and answers |
 | `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
 | `job-server/src/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `job-server/src/backend.ts` | Typed backend API client; validates db server responses |
@@ -425,42 +435,37 @@ reference db server. Both db servers run the conformance suite in their tests.
 
 Roughly in order:
 
-1. **Admin preview through the job server.** `JobPreview` still uses the mock
-   server's legacy coder routes (`routes/session.ts`), so the db server still
-   has to implement them. Plan: a preview deployment (`<backend>.<jobId>`
-   with a draft codebook, never frozen, annotations not written through, or
-   written to a scratch coder). Then the legacy routes can go.
-2. **Cloudflare target.** A Worker entry that routes `/d/:id/*` and
+1. **Cloudflare target.** A Worker entry that routes `/d/:id/*` and
    `/admin/deployments/:id/*` to a Durable Object per deployment, which holds
    one `DeploymentRuntime`. The runtime is already async and storage-free, so
    this is an adapter, not a port. Use a jurisdiction-restricted (EU) DO
    namespace where needed, and check the current Cloudflare terms first.
-3. **Auth.** Replace the shared bearer secret between the servers with
+2. **Auth.** Replace the shared bearer secret between the servers with
    HMAC-signed requests (or short-lived tokens) in both directions. Coder
    identity, sessions across devices and coder login are designed in
    `docs/coder-identity.md`.
-4. **Multimedia.** Images, audio and video in units should probably **not**
+3. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the job
    server returns short-lived signed URLs; the bytes come from a separate
    blob gateway. That could be R2 with signed URLs for the edge target, or
    the db server's own file endpoint for self-hosted. This keeps the job
    server's memory and cache JSON-only. The blob gateway follows the same
    trust choice as the job server it pairs with.
-5. **Semantic validation.** The current validation checks variable names,
+4. **Semantic validation.** The current validation checks variable names,
    codes, items and span/relation codes. Running codebook conditions
    (QuickJS) server-side, to reject answers to questions the coder should
    never have seen, is the natural next step. It belongs here, not in db
    servers.
-6. **`url_param` auto variables** are documented as client-side but not
+5. **`url_param` auto variables** are documented as client-side but not
    implemented in `JobManager` yet. Email-restricted invites need real coder
-   authentication (item 3).
-7. **Scale.** On cold start the job server loads finished codings for
+   authentication (item 2).
+6. **Scale.** On cold start the job server loads finished codings for
    dynamic loops only (bounded by units x `maxCoders`), and coder workspaces
    lazily (§3). Add `?after=<cursor>` pagination to `finished` and
    `annotations`. Researcher status queries every loop's finished units on
    demand: fine for occasional use, worth an aggregate endpoint if it gets
    polled.
-8. **Deactivation semantics.** `active: false` stops new units (409), but
+7. **Deactivation semantics.** `active: false` stops new units (409), but
    coders can still submit units they were already working on. Decide
    whether that's what researchers expect.
-9. **Reopening finished units after a codebook update** (§8.3).
+8. **Reopening finished units after a codebook update** (§8.3).

@@ -12,7 +12,7 @@ import type { HonoEnv } from "../honoEnv.js";
 import { requireJobServer, resolveCoder, type CoderRow } from "../auth.js";
 import { listCoderAnnotations, listFinished, putAnnotation } from "../db/annotations.js";
 import { unitHash } from "../db/units.js";
-import { getDeploymentSpec } from "../db/deployments.js";
+import { getDeploymentSpec, getPreviewSpec } from "../db/deployments.js";
 
 // The backend API (contracts `backendEndpoints`): what a db server exposes to
 // the job server. The job server holds no state of its own that it can't
@@ -26,9 +26,11 @@ export function backendRoutes(db: DatabaseSync, secret: string) {
   const app = new Hono<HonoEnv>();
   app.use("*", requireJobServer(db, secret));
 
+  // `?preview=1`: the latest codebook, deployed or not (researcher previews).
   app.get("/deployment", (c) => {
-    const spec = getDeploymentSpec(db, c.get("jobId"));
-    if (!spec) return c.json({ error: "Job is not deployed" }, 404);
+    const preview = c.req.query("preview") === "1";
+    const spec = preview ? getPreviewSpec(db, c.get("jobId")) : getDeploymentSpec(db, c.get("jobId"));
+    if (!spec) return c.json({ error: preview ? "Job has no codebook" : "Job is not deployed" }, 404);
     return c.json(spec);
   });
 

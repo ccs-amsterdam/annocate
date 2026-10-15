@@ -98,6 +98,7 @@ plan §3).
 | PUT | `/deployment` | `DeploymentWriteSchema` | `DeploymentResponseSchema` | Requires ADMIN; bumps `version`, freezes the codebook, notifies the job server |
 | GET | `/deployment/status` | – | `DeploymentStatusSchema` | Proxied from the job server |
 | POST | `/deployment/refresh` | `RefreshDeploymentSchema` | `{ version }` | Requires ADMIN; the job server re-checks the deployment now. `units: "all" \| ids` also drops its unit content cache (units aren't re-fetched otherwise) |
+| POST | `/deployment/preview` | – | `PreviewSessionSchema` | Requires WRITE; a preview of the latest codebook on the job server (`<backend>.<jobId>.preview`), in memory only. The token (HMAC with the job server secret, format in the schema) is used as the invite secret |
 | POST | `/annotations/reset` | `ResetAnnotationsSchema` | `{ retired }` | Requires ADMIN; retires live values (kept for analysis), so the units are coded again |
 
 ### Coder API (served by the job server)
@@ -131,7 +132,7 @@ start another session for a participant that already has one). Errors are
 
 | Method | Path | Request | Response | Notes |
 | --- | --- | --- | --- | --- |
-| GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed |
+| GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed. `?preview=1`: the latest codebook, deployed or not, `active`, with a `version` that changes with its content (researcher previews) |
 | GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out. `hash`: content hash, changes whenever `data` does |
 | GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails). Only for researcher status, on demand; the job server loads coders one by one via `resolve` |
 | POST | `/backend/job/:jobId/coders/resolve` | `ResolveCoderRequestSchema` | `BackendCoderSchema` | Creates the coder from an invite (copying its preset `variables`); 401 for an unknown coder without a valid invite |

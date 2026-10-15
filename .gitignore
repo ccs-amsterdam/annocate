@@ -28,6 +28,8 @@ pnpm-debug.log*
 
 # sqlite (mock server local db files)
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.sqlite3
 *.db
 

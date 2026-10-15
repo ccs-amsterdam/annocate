@@ -897,3 +897,75 @@ describe("outbox", () => {
     expect((await status()).outbox?.pending).toBe(0);
   });
 });
+
+describe("researcher preview", () => {
+  const draft = async (name: string) => {
+    const res = await dbApp.request("/job/1/codebook", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name,
+        items: [{ type: "unit_loop", name: "main_loop", layout: { template: "" }, children: [sentimentQuestion], units: [{ sources: [{ unitset: "main" }] }] }],
+      }),
+    });
+    expect(res.status).toBe(201);
+  };
+  const openPreview = async () => {
+    const res = await dbApp.request("/job/1/deployment/preview", { method: "POST", headers: adminHeaders });
+    expect(res.status).toBe(200);
+    return (await res.json()) as { deploymentId: string; token: string };
+  };
+  /** A browser on the preview deployment, with its own cookie. */
+  const previewer = (deploymentId: string, token: string) => {
+    let cookie = "";
+    return async (path: string, init: RequestInit = {}) => {
+      const res = await jobServer.request(`/d/${deploymentId}${path}`, {
+        ...init,
+        headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": token, cookie },
+      });
+      const [set] = res.headers.getSetCookie();
+      if (set) cookie = set.split(";")[0];
+      return res;
+    };
+  };
+
+  it("runs the latest codebook, deployed or not, and picks up edits", async () => {
+    await draft("draft 1");
+    const { deploymentId, token } = await openPreview();
+    expect(deploymentId).toBe("mock.1.preview");
+    const call = previewer(deploymentId, token);
+    expect(((await (await call("/session")).json()) as SessionResponse).codebook.name).toBe("draft 1");
+    // the real deployment is untouched
+    expect((await coder("real").session()).codebook.name).not.toBe("draft 1");
+
+    await draft("draft 2");
+    expect(((await (await call("/session")).json()) as SessionResponse).codebook.name).toBe("draft 2");
+  });
+
+  it("keeps the preview's coders and answers out of the db server", async () => {
+    await draft("draft");
+    const coders = () => (db.prepare("SELECT COUNT(*) AS n FROM coders").get() as { n: number }).n;
+    const before = coders();
+    const { deploymentId, token } = await openPreview();
+    const call = previewer(deploymentId, token);
+    const unit = (await (await call("/loop/main_loop/next")).json()) as CoderUnitResponse;
+    const submit = await call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("neutral") }) });
+    expect(submit.status).toBe(204);
+    expect(((await (await call("/session")).json()) as SessionResponse).progress[0].doneUnitIds).toEqual([unit.id]);
+    expect(dbAnnotations()).toEqual([]);
+    expect(coders()).toBe(before);
+    expect(backendCalls.some((c) => c.startsWith("POST /backend/job/1/annotations"))).toBe(false);
+  });
+
+  it("refuses forged, expired and other jobs' tokens", async () => {
+    await draft("draft");
+    const { token } = await openPreview();
+    const [, , exp, sig] = token.split(".");
+    const tries = [
+      `preview.1.${exp}.${"0".repeat(64)}`, // forged
+      `preview.1.${Date.now() - 1000}.${sig}`, // expired (and so the signature no longer matches either)
+      token.replace("preview.1.", "preview.2."), // another job
+    ];
+    for (const t of tries) expect((await previewer("mock.1.preview", t)("/session")).status).toBe(401);
+  });
+});
