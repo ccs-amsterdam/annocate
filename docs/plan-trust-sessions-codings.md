@@ -1,7 +1,7 @@
 # Plan: open job servers, coder sessions, finished codings, cleanup
 
-Status: discussion summary and work plan (2026-10-15). Nothing here is built
-yet. Complements `docs/architecture.md` and `docs/coder-identity.md`; once a
+Status: discussion summary and work plan (2026-10-15). Built parts are
+struck through or marked done. Complements `docs/architecture.md` and `docs/coder-identity.md`; once a
 part is built, fold it into those docs and delete it here.
 
 ## 0. Where things stand
@@ -302,9 +302,13 @@ longer reads as "what a db server must implement". Plan:
    the legacy coder routes (waits on the admin preview).
 4. **Sessions in httpOnly cookies** (§2), client and job server on one
    origin; signed coder session; db server stops storing coder keys.
-5. **Trust handshake** (§1): invite token, registration, signed handshake,
+5. **Coder-level annotations loaded lazily** (§11). Small; can go any time,
+   and makes (6) simpler.
+6. **Timed outbox to the db server** (§10), with Durable Object storage on
+   Cloudflare. After (4), which touches the same request paths.
+7. **Trust handshake** (§1): invite token, registration, signed handshake,
    job tokens, outbound fetch hygiene, quotas.
-6. **Authentication** (§3).
+8. **Authentication** (§3).
 
 ## 8. Open decisions
 
@@ -319,6 +323,12 @@ longer reads as "what a db server must implement". Plan:
 - Registration on public job servers: open, rate-limited, or account/API
   key (§1).
 - Status: computed on demand or db-side aggregates (§4).
+- Outbox flush interval and limits: max pending writes and max age before
+  the job server stops accepting work (§10).
+- Writes that arrive with an old `codebookId` after a reset: store as-is
+  (current lean), or reject (§10).
+- `balanced` counts: a db-side count endpoint, or per-job counters on the
+  job server rebuilt from it (§11).
 
 ## 9. Review notes (2026-10-15)
 
@@ -477,3 +487,111 @@ This is the db server's internal model, though. The contract needs a "reset
 these units/variables" operation (a researcher action) and the count from
 §9.3. A db server that stores JSON blobs per unit can implement reset by
 moving the blob to a history table.
+
+## 10. Decoupling db server writes: a timed outbox
+
+Discussed 2026-10-15. Not built.
+
+**Problem.** Every unit submit waits for `PUT /annotations/...` on the db
+server. A slow or unavailable db server stops coding.
+
+**Not doing:** letting the job server run without a db server (jobs pushed
+from R/Python, results pulled from the job server). That makes the job
+server a second database and complicates the trust story; the annotinder
+db server is the place for that, and it brings auth, rate limits and
+free-tier retention. Also not doing: an R session acting as db server over a
+websocket (its lifetime would be the job's lifetime).
+
+**Plan.**
+
+- **Submit:** validate, update the in-memory codings, append the write to a
+  durable **outbox** local to the job server, answer the coder. The coder's
+  "ok" means "stored on the job server", not "stored on the db server".
+- **Flush on a timer:** every minute (or earlier when N writes are pending),
+  send pending writes as one batch; delete them once acknowledged.
+- **Backoff on failure:** 1, 2, 5, then every 15 minutes. Status shows
+  "N writes pending since T"; an outage is never silent.
+- **Batch endpoint:** e.g. `PUT /backend/job/:jobId/annotations` with an
+  array of `{unitId, coderId, variables, codebookId?}`. Idempotent (upsert per
+  variable), so retrying a batch is harmless; per coder, writes stay in
+  order. Coder-level writes (§11) go through the same outbox. Added to the
+  conformance suite.
+- **Rebuild order:** on start, read the outbox before loading codings, so
+  the rebuilt state includes unflushed writes (then flush).
+- **Reset/redeploy:** flush before acting on a reset or redeploy
+  notification, so the db server doesn't retire rows that are still about
+  to arrive.
+- **Limits:** a cap on pending count and age; past it, the job server stops
+  serving new units rather than buffering without bound.
+- **Warm cache (optional, per job):** fetch the spec and all units up front
+  (and keep them in local storage, see below), so coders with a session
+  keep working through a db server outage. Cheap for text, not for
+  multimedia, hence optional. New coders still need `coders/resolve`, so
+  they wait for the db server.
+
+**Why durable, not in memory.** An in-memory buffer survives a clean
+shutdown (flush on SIGTERM) but loses up to a minute on a crash. On
+Cloudflare it is worse: a Durable Object is evicted from memory shortly after
+it goes idle, which is exactly when a coder has just finished and closed the
+tab.
+
+**Storage per target.**
+
+- **Cloudflare:** plain Workers are stateless. The state lives in a
+  **Durable Object** per deployment: one instance per id worldwide,
+  single-threaded (the same model as `DeploymentRuntime`). Its memory is a
+  cache, dropped when idle, so it rebuilds from the db server, which is the
+  existing "reset on restart" invariant. Each object also has its own
+  **transactional storage** (a small SQLite database co-located with it):
+  outbox writes there are local and fast. **Alarms** wake the object at a
+  set time without requests: the flush timer (and later lease expiry). A
+  jurisdiction option keeps objects in the EU. The same storage can cache
+  the spec and units, so a wake after idle doesn't refetch everything.
+  Check Cloudflare's current limits and terms before relying on details.
+- **Node:** a SQLite file (`node:sqlite`), so the Node deployment needs a
+  disk.
+
+**Invariant change.** "Rebuildable from the db server" becomes "rebuildable
+from the db server once the outbox is flushed". Annotations rest on the job
+server until the next flush (at most about a minute, bounded by the
+limits). `architecture.md` §3 and §4 should say so when this is built.
+
+## 11. Coder-level annotations
+
+Discussed 2026-10-15. Not built.
+
+**Storage (db server's choice).** Coder-level values (survey questions,
+`auto` variables) are now stored on the coder record (`variables`). A db
+server may as well store them as annotation rows with `unitId = null`:
+`(job, coder, null)` for coder-level, `(job, coder, unit)` for unit
+annotations, as an earlier annotinder did. That gives coder-level values
+the same `created`/`updated`/`codebookId`/`retiredAt` history and reset as
+unit values, for free. The backend API keeps separate endpoints for coder
+and unit writes either way; how they are stored is up to the db server.
+Note for SQL: in a unique index, NULLs are distinct by default, so the
+live-row index needs `NULLS NOT DISTINCT` (Postgres 15+), a separate partial
+index for `unitId IS NULL`, or a sentinel unit id. `assignments` (sticky
+loop routing) are distribution state, not annotations, and stay on the
+coder record.
+
+**Load lazily.** On start, the job server loads all coders
+(`GET /coders`), including their variables. It only needs a coder's values
+once that coder is active, and `coders/resolve` (called on every session
+start) already returns them. So load per coder, like the unit-annotation
+workspace, and drop `GET /coders` from the eager load. What the eager load
+was used for, and what replaces it:
+
+- **`balanced` auto variables** count how many coders have each option.
+  Replace with a count from the db server (e.g. `POST /coders/counts` with
+  variable names, returning counts per code), loaded on start for
+  `balanced` variables only, then kept up to date in memory as the job
+  server assigns values.
+- **Researcher status** (coders routed per loop/unitset): on demand from the
+  db server, like the rest of status; or a count endpoint over
+  `assignments`.
+- **Leases/codings** already key on coder id and don't need coder records.
+
+With this, a job server's memory grows with *active* coders only, and a
+cold start (e.g. a Durable Object waking up) is one `GET /deployment` plus
+the dynamic-loop `POST /finished`.
+
