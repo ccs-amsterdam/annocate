@@ -5,6 +5,8 @@ import {
   PostCoderVariablesSchema,
   PostUnitVariablesSchema,
   RedeemTransferSchema,
+  RefreshDeploymentSchema,
+  type RefreshDeployment,
 } from "@annotinder/contracts";
 import { HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRegistry } from "./registry.js";
@@ -110,6 +112,21 @@ export function createJobServer(options: JobServerOptions) {
 
   admin.post("/refresh", async (c) => {
     const runtime = await registry.get(c.req.param("deploymentId")!);
+    // The body is optional (a plain notification has none).
+    const text = await c.req.text();
+    let body: RefreshDeployment = {};
+    if (text) {
+      let raw: unknown;
+      try {
+        raw = JSON.parse(text);
+      } catch {
+        throw new HttpError(400, "Invalid JSON body");
+      }
+      const parsed = RefreshDeploymentSchema.safeParse(raw);
+      if (!parsed.success) throw new HttpError(400, "Invalid request body");
+      body = parsed.data;
+    }
+    if (body.units) runtime.clearUnits(body.units);
     await runtime.refresh(true);
     // Not the status: that is computed from the db server, too heavy for a notification.
     return c.json({ version: runtime.version });

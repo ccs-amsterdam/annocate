@@ -97,6 +97,7 @@ plan §3).
 | GET | `/deployment` | – | `DeploymentResponseSchema \| null` | |
 | PUT | `/deployment` | `DeploymentWriteSchema` | `DeploymentResponseSchema` | Requires ADMIN; bumps `version`, freezes the codebook, notifies the job server |
 | GET | `/deployment/status` | – | `DeploymentStatusSchema` | Proxied from the job server |
+| POST | `/deployment/refresh` | `RefreshDeploymentSchema` | `{ version }` | Requires ADMIN; the job server re-checks the deployment now. `units: "all" \| ids` also drops its unit content cache (units aren't re-fetched otherwise) |
 | POST | `/annotations/reset` | `ResetAnnotationsSchema` | `{ retired }` | Requires ADMIN; retires live values (kept for analysis), so the units are coded again |
 
 ### Coder API (served by the job server)

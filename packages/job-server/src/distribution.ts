@@ -32,6 +32,12 @@ export class Codings {
     return this.byUnit.get(unitId)?.has(coderId) ?? false;
   }
 
+  /** Drops the coder's codings (rebuilt from their annotations when they return). */
+  forget(coderId: number): void {
+    for (const unitId of this.doneBy(coderId)) this.byUnit.get(unitId)?.delete(coderId);
+    this.byCoder.delete(coderId);
+  }
+
   /** Unit ids the coder finished, in the order they finished them. */
   doneBy(coderId: number): number[] {
     return this.byCoder.get(coderId) ?? [];

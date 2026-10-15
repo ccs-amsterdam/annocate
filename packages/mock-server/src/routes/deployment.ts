@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
-import { DeploymentWriteSchema, ResetAnnotationsSchema, jobServerAdminEndpoints } from "@annotinder/contracts";
+import {
+  DeploymentWriteSchema,
+  RefreshDeploymentSchema,
+  ResetAnnotationsSchema,
+  jobServerAdminEndpoints,
+} from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireJobUser } from "../auth.js";
 import { getDeployment, putDeployment } from "../db/deployments.js";
@@ -18,10 +23,12 @@ export interface JobServerLink {
 export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
   const app = new Hono<HonoEnv>();
 
-  const callJobServer = (path: string, method: "GET" | "POST", jobId: number) => {
+  const callJobServer = (path: string, method: "GET" | "POST", jobId: number, body?: unknown) => {
     if (!jobServer) return Promise.resolve(null);
     const url = jobServer.url + path.replace(":deploymentId", `${jobServer.backendName}.${jobId}`);
-    return (jobServer.fetch ?? fetch)(url, { method, headers: { authorization: `Bearer ${jobServer.secret}` } });
+    const headers: Record<string, string> = { authorization: `Bearer ${jobServer.secret}` };
+    if (body !== undefined) headers["content-type"] = "application/json";
+    return (jobServer.fetch ?? fetch)(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   };
 
   app.get("/deployment", requireJobUser(db, "READ"), (c) => c.json(getDeployment(db, c.get("jobId"))));
@@ -59,6 +66,22 @@ export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
       console.warn(`Could not notify job server of reset in job ${jobId}:`, err);
     }
     return c.json({ retired });
+  });
+
+  // Ask the job server to re-check the deployment now; `units` also drops its
+  // unit content cache (all, or these ids), e.g. after fixing a unit's text.
+  app.post("/deployment/refresh", requireJobUser(db, "ADMIN"), async (c) => {
+    const parsed = RefreshDeploymentSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const jobId = c.get("jobId");
+    if (!getDeployment(db, jobId)) return c.json({ error: "Job is not deployed" }, 404);
+    if (!jobServer) return c.json({ error: "No job server configured" }, 503);
+    try {
+      const res = await callJobServer(jobServerAdminEndpoints.refreshDeployment.path, "POST", jobId, parsed.data);
+      return c.json(await res!.json(), res!.status as 200);
+    } catch {
+      return c.json({ error: "Job server unreachable" }, 502);
+    }
   });
 
   app.get("/deployment/status", requireJobUser(db, "READ"), async (c) => {

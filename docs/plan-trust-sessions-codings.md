@@ -327,6 +327,8 @@ longer reads as "what a db server must implement". Plan:
 - Writes that arrive with an old `codebookId` after a reset: store as-is
   (current lean), or reject (§10).
 - Renaming `POST /finished` once it also serves coder-level groups (§11).
+- Unit/codebook content hashes: per-write `unitHash`, and how db servers
+  store it (§12).
 
 ## 9. Review notes (2026-10-15)
 
@@ -620,3 +622,44 @@ With this, a job server's memory grows with *active* coders only, and a
 cold start (e.g. a Durable Object waking up) is one `GET /deployment` plus
 the dynamic-loop `POST /finished`.
 
+
+## 12. Memory budgets (built) and content hashes (proposal)
+
+Discussed 2026-10-15.
+
+**Built: memory budgets.** The job server keeps releasable state while
+there is room: unit content and active coders' annotations go
+least-recently-used first when over a budget (coders who are done first),
+never later than `maxIdleMs` (24 h); idle deployments are dropped on Node
+after `deploymentIdleMs` (6 h). Unit content is no longer re-fetched on a
+timer: units shouldn't change once coding started, and a researcher refresh
+(`POST /job/:jobId/deployment/refresh` with `units: "all" | ids`) drops
+them on purpose. Details in `architecture.md` §3.
+
+**Proposal: make content changes visible with hashes.** Researchers should
+be able to see whether the codebook or a unit changed under an annotation.
+Putting hashes on every annotation (per variable, in our storage) is
+wasteful. Instead:
+
+- **Codebook: already covered.** Deployed codebooks are immutable and every
+  annotation write carries `codebookId`. A content hash on the *codebook
+  record* (computed by the db server when it freezes it) adds
+  cross-job/cross-server comparison ("is this the same codebook?") at no
+  per-annotation cost.
+- **Units: hash on the unit, checked per write.** The db server stores a
+  short content hash per unit (e.g. 16 hex chars of SHA-256 over canonical
+  JSON of `data`) and returns it in `BackendUnit`. The job server sends the
+  hash of the content it actually served as `unitHash` on the annotation
+  write: one field per unit write, like `codebookId`. That also covers the
+  job server's cache: if a coder saw stale cached content, the hash says so.
+  The db server then stores it as it likes. Cheapest: only record writes
+  whose `unitHash` differs from the unit's current hash (normally none);
+  or store a small integer unit `version` per row, like `codebookId`, if
+  the db server keeps unit history anyway.
+- **Export:** codebook hash and unit hash are joined in at export time, so
+  every annotation in an export says what it was made on, without being
+  stored per row.
+
+Open: whether the job server should also refuse (409) a write whose unit
+changed since it was served, or just record it. Lean: record; refusing
+throws away a coder's work for a researcher's edit.

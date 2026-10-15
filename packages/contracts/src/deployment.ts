@@ -277,14 +277,36 @@ export const DeploymentStatusSchema = z.object({
   coders: z.number().int().nonnegative(),
   sources: z.array(SourceStatusSchema),
   loadedAt: z.coerce.date(),
+  /** What the job server holds in memory for this deployment (sizes estimated from JSON). */
+  memory: z
+    .object({
+      units: z.number().int().nonnegative(),
+      unitBytes: z.number().int().nonnegative(),
+      coders: z.number().int().nonnegative(),
+      coderBytes: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
+
+/**
+ * Refresh request (researcher `POST /job/:jobId/deployment/refresh`, passed
+ * on to the job server). The job server always re-checks the spec. Unit
+ * content is cached and normally never re-fetched, since units shouldn't
+ * change once coding started; `units` drops the cache for all (`"all"`) or
+ * some units, so changed content is served from then on.
+ */
+export const RefreshDeploymentSchema = z.object({
+  units: z.union([z.literal("all"), z.array(IdSchema)]).optional(),
+});
+export type RefreshDeployment = z.infer<typeof RefreshDeploymentSchema>;
 
 export const jobServerAdminEndpoints = {
   refreshDeployment: {
     method: "POST",
     path: "/admin/deployments/:deploymentId/refresh",
-    request: z.void(),
+    /** Optional body. */
+    request: RefreshDeploymentSchema,
     /** The deployment version the job server now runs. */
     response: z.object({ version: z.number().int().positive() }),
   },

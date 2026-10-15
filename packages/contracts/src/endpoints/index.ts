@@ -16,6 +16,7 @@ import {
   DeploymentResponseSchema,
   DeploymentStatusSchema,
   ResetAnnotationsSchema,
+  RefreshDeploymentSchema,
 } from "../deployment.js";
 
 /**
@@ -162,6 +163,12 @@ export const endpoints = {
     path: "/job/:jobId/deployment/status",
     request: z.void(),
     response: DeploymentStatusSchema,
+  },
+  refreshDeployment: {
+    method: "POST",
+    path: "/job/:jobId/deployment/refresh",
+    request: RefreshDeploymentSchema,
+    response: z.object({ version: z.number().int().positive() }),
   },
   resetAnnotations: {
     method: "POST",

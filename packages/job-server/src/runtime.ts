@@ -33,24 +33,43 @@ import {
 export interface RuntimeOptions {
   /** Re-fetch the deployment spec at most this often, in case a refresh notification was missed. */
   specTtlMs: number;
-  /** How long unit content stays cached. Units are immutable once deployed, so this only bounds retention. */
-  unitTtlMs: number;
+  /**
+   * Memory budget for cached unit content, estimated from its JSON size.
+   * Over budget, the least recently used units go first. Units shouldn't
+   * change once coding started, so they are not re-fetched otherwise; a
+   * refresh with `units` drops them on purpose.
+   */
+  unitCacheBytes: number;
   /** Units fetched ahead of the one a coder asked for. */
   prefetch: number;
   /** How long a "continue on another device" link stays valid. */
   transferTtlMs: number;
-  /** How long an idle coder's own annotations stay cached. They are re-fetched when the coder returns. */
-  workspaceTtlMs: number;
+  /**
+   * Memory budget for active coders' own annotations. Over budget, coders
+   * who finished every loop go first, then the least recently active. They
+   * are re-fetched when the coder returns.
+   */
+  workspaceCacheBytes: number;
+  /**
+   * Upper bound on keeping unused units and coder annotations, however much
+   * room is left: the job server keeps no more than it needs (bounded
+   * retention, docs/architecture.md §3).
+   */
+  maxIdleMs: number;
+  /** A loaded deployment nobody used for this long is dropped (registry.ts). */
+  deploymentIdleMs: number;
   now: () => number;
   random: () => number;
 }
 
 export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
   specTtlMs: 60_000,
-  unitTtlMs: 30 * 60_000,
+  unitCacheBytes: 64 * 2 ** 20,
   prefetch: 3,
   transferTtlMs: 15 * 60_000,
-  workspaceTtlMs: 30 * 60_000,
+  workspaceCacheBytes: 32 * 2 ** 20,
+  maxIdleMs: 24 * 60 * 60_000,
+  deploymentIdleMs: 6 * 60 * 60_000,
   now: () => Date.now(),
   random: Math.random,
 };
@@ -62,6 +81,18 @@ type AutoVariable = Extract<VariableType, { type: "auto" }>;
 
 /** A coder's own annotations (also unfinished ones): unitId -> variables. */
 type Workspace = Map<number, Record<string, VariableValue>>;
+
+interface WorkspaceEntry {
+  units: Workspace;
+  usedAt: number;
+  /** Estimated size, for the memory budget. */
+  bytes: number;
+  /** Loops where the coder was told there are no more units. All of them: the coder is done, evicted first. */
+  exhausted: Set<string>;
+}
+
+/** Rough in-memory size of a JSON value: enough to compare against a budget. */
+const sizeOf = (value: unknown) => JSON.stringify(value).length;
 
 /**
  * Everything the job server knows about one deployed job. All of it is a
@@ -99,15 +130,21 @@ export class DeploymentRuntime {
   private pendingCodings: [coderId: number, variables: Record<string, VariableValue>, unitId: number][] | null = null;
   /** `<loop>/<unitset>/<dynamic rule>` -> pool, created when the first coder is routed to it. */
   private pools = new Map<string, UnitPool>();
-  /** coderId -> the coder's own annotations, returned with a unit and merged into on resubmit. */
-  private workspaces = new Map<number, { units: Workspace; usedAt: number }>();
+  /**
+   * coderId -> the coder's own annotations, returned with a unit and merged
+   * into on resubmit. Map order is recency order (least recent first).
+   */
+  private workspaces = new Map<number, WorkspaceEntry>();
+  private workspaceBytes = 0;
   private workspaceLoads = new Map<number, Promise<Workspace>>();
   /** Active coders only; evicted together with their workspace. */
   private coders = new Map<number, Coder>();
   private coderKeys = new Map<string, number>();
   /** `balanced` auto variable -> coderId -> option, for every coder that has one. */
   private balanced = new Map<string, Map<number, string>>();
-  private units = new Map<number, { unit: BackendUnit; fetchedAt: number }>();
+  /** Unit content; Map order is recency order (least recent first). */
+  private units = new Map<number, { unit: BackendUnit; bytes: number; usedAt: number }>();
+  private unitBytes = 0;
   /** One-time transfer tokens -> coder key. Memory only: losing them just means making a new link. */
   private transfers = new Map<string, { coderKey: string; expires: number }>();
   private specCheckedAt = 0;
@@ -191,6 +228,7 @@ export class DeploymentRuntime {
       });
       this.codings = new Map();
       this.workspaces.clear();
+      this.workspaceBytes = 0;
       for (const row of rows) {
         const info = this.loops.get(row.loop);
         if (info && row.unitId !== null) {
@@ -262,6 +300,8 @@ export class DeploymentRuntime {
     const cached = this.workspaces.get(coderId);
     if (cached) {
       cached.usedAt = this.options.now();
+      this.workspaces.delete(coderId); // move to the most recent end
+      this.workspaces.set(coderId, cached);
       return Promise.resolve(cached.units);
     }
     let loading = this.workspaceLoads.get(coderId);
@@ -274,7 +314,10 @@ export class DeploymentRuntime {
           // The coder's finished units, in order of first answer (loops without
           // dynamic sources only learn them here).
           for (const a of annotations) this.recordFinished(coderId, a.unitId, a.variables);
-          this.workspaces.set(coderId, { units, usedAt: this.options.now() });
+          const bytes = annotations.reduce((n, a) => n + sizeOf(a.variables), 0);
+          this.workspaces.set(coderId, { units, usedAt: this.options.now(), bytes, exhausted: new Set() });
+          this.workspaceBytes += bytes;
+          this.trimWorkspaces(coderId);
           return units;
         } finally {
           this.workspaceLoads.delete(coderId);
@@ -488,7 +531,10 @@ export class DeploymentRuntime {
         seed: this.spec.jobId * 1000,
         now: this.options.now(),
       });
-      if (!next) return null;
+      if (!next) {
+        this.workspaces.get(coder.coderId)?.exhausted.add(loopName);
+        return null;
+      }
 
       const upcoming = pools.flatMap((p) => p.candidates(coder.coderId, this.options.now(), null)).slice(0, this.options.prefetch);
       const units = await this.getUnits([next.unitId, ...upcoming.filter((id) => id !== next.unitId)]);
@@ -557,8 +603,16 @@ export class DeploymentRuntime {
     // removed) alone, so they stay as data.
     await this.backend.putAnnotation(unitId, coder.coderId, variables, this.spec.codebook.id);
     const own = await this.workspace(coder.coderId);
-    const merged = { ...own.get(unitId), ...variables };
+    const previous = own.get(unitId);
+    const merged = { ...previous, ...variables };
     own.set(unitId, merged);
+    const entry = this.workspaces.get(coder.coderId);
+    if (entry?.units === own) {
+      const delta = sizeOf(merged) - (previous ? sizeOf(previous) : 0);
+      entry.bytes += delta;
+      this.workspaceBytes += delta;
+      this.trimWorkspaces(coder.coderId);
+    }
     this.recordFinished(coder.coderId, unitId, merged);
   }
 
@@ -619,13 +673,71 @@ export class DeploymentRuntime {
       coders: allCoders.length,
       sources,
       loadedAt: new Date(this.loadedAt),
+      memory: {
+        units: this.units.size,
+        unitBytes: this.unitBytes,
+        coders: this.workspaces.size,
+        coderBytes: this.workspaceBytes,
+      },
     };
   }
 
+  /** Drops unit content from the cache: all of it, or these units. */
+  clearUnits(ids: number[] | "all"): void {
+    for (const id of ids === "all" ? [...this.units.keys()] : ids) this.dropUnit(id);
+  }
+
+  private dropUnit(id: number): void {
+    const entry = this.units.get(id);
+    if (!entry) return;
+    this.units.delete(id);
+    this.unitBytes -= entry.bytes;
+  }
+
+  /** Least recently used units first, until within budget. */
+  private trimUnits(): void {
+    for (const id of this.units.keys()) {
+      if (this.unitBytes <= this.options.unitCacheBytes) return;
+      this.dropUnit(id);
+    }
+  }
+
+  /**
+   * Done coders first, then the least recently active, until within budget.
+   * Never the coder being served (`keep`): their codings must stay in place.
+   */
+  private trimWorkspaces(keep: number): void {
+    if (this.workspaceBytes <= this.options.workspaceCacheBytes) return;
+    const done = (w: WorkspaceEntry) => this.loops.size > 0 && [...this.loops.keys()].every((l) => w.exhausted.has(l));
+    for (const pass of [done, () => true]) {
+      for (const [id, entry] of this.workspaces) {
+        if (this.workspaceBytes <= this.options.workspaceCacheBytes) return;
+        if (id !== keep && pass(entry)) this.dropWorkspace(id);
+      }
+    }
+  }
+
+  /**
+   * Forgets a coder's annotations, and what was derived from them: their
+   * finished units in loops without dynamic sources (those keep global
+   * codings). Reloaded from the db server when the coder returns.
+   */
+  private dropWorkspace(coderId: number): void {
+    const entry = this.workspaces.get(coderId);
+    if (!entry) return;
+    this.workspaces.delete(coderId);
+    this.workspaceBytes -= entry.bytes;
+    for (const [loop, codings] of this.codings) {
+      const info = this.loops.get(loop);
+      if (!info || !hasDynamicSources(info)) codings.forget(coderId);
+    }
+  }
+
+  /** Applies the idle limit, and drops coders whose workspace is gone. */
   private evictExpired(): void {
     const now = this.options.now();
-    for (const [id, { fetchedAt }] of this.units) if (now - fetchedAt >= this.options.unitTtlMs) this.units.delete(id);
-    for (const [id, { usedAt }] of this.workspaces) if (now - usedAt >= this.options.workspaceTtlMs) this.workspaces.delete(id);
+    for (const [id, { usedAt }] of this.units) if (now - usedAt >= this.options.maxIdleMs) this.dropUnit(id);
+    for (const [id, { usedAt }] of this.workspaces) if (now - usedAt >= this.options.maxIdleMs) this.dropWorkspace(id);
     // Coders go with their workspace; they are resolved again when they come back.
     for (const id of this.coders.keys()) {
       if (!this.workspaces.has(id) && !this.workspaceLoads.has(id)) this.coders.delete(id);
@@ -639,16 +751,26 @@ export class DeploymentRuntime {
     const missing: number[] = [];
     for (const id of ids) {
       const cached = this.units.get(id);
-      if (cached && now - cached.fetchedAt < this.options.unitTtlMs) result.set(id, cached.unit);
-      else missing.push(id);
+      if (!cached) {
+        missing.push(id);
+        continue;
+      }
+      cached.usedAt = now;
+      this.units.delete(id); // move to the most recent end
+      this.units.set(id, cached);
+      result.set(id, cached.unit);
     }
     // Only go to the db server if the unit actually asked for is missing;
     // prefetch candidates ride along with that request.
     if (missing.includes(ids[0])) {
       for (const unit of await this.backend.getUnits(missing)) {
-        this.units.set(unit.id, { unit, fetchedAt: now });
+        this.dropUnit(unit.id);
+        const bytes = sizeOf(unit);
+        this.units.set(unit.id, { unit, bytes, usedAt: now });
+        this.unitBytes += bytes;
         result.set(unit.id, unit);
       }
+      this.trimUnits();
     }
     return result;
   }

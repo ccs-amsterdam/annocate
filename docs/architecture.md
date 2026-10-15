@@ -92,7 +92,7 @@ worker:
      routing) from `coders/resolve`, and their workspace, i.e. their own
      live annotations, via `GET /annotations?coderId=X`. Loaded when the
      coder shows up; their finished units in every loop are derived from
-     it. Evicted after `workspaceTtlMs` idle, so memory grows with active
+     it. Released under a memory budget (see 3.), so memory grows with active
      coders, not with all coders of a job.
 
    A codebook redeploy keeps the derived codings if the loops' questions,
@@ -100,10 +100,22 @@ worker:
    after a researcher reset (`annotationEpoch`), it rebuilds them.
    Researcher status is computed on demand (`POST /finished` for every
    loop, `GET /coders` for routing), not held in memory.
-3. **Bounded retention.** Unit content is cached with a TTL. Dropping a
-   deployment (`DELETE /admin/deployments/:id`) forgets everything held for
-   it. That keeps GDPR retention simple: the job server is a processor with a
-   short, documented retention window.
+3. **Bounded retention.** The job server keeps what it may release only
+   while there is room, and never longer than a fixed bound
+   (`RuntimeOptions` in `runtime.ts`, per deployment):
+
+   | Held | Released when |
+   | --- | --- |
+   | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose; otherwise units are not re-fetched, since they shouldn't change once coding started |
+   | A coder's record and annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without dynamic sources go with them, and are rebuilt when they return |
+   | Distribution state (spec, dynamic-loop codings, `balanced` counts, leases) | Not released while the deployment is loaded: it is bounded by units x coders per unit, and distribution needs it |
+   | The deployment as a whole | Unused for `deploymentIdleMs` (6 h) on Node; on Cloudflare when the Durable Object is evicted. Or `DELETE /admin/deployments/:id` |
+
+   Sizes are estimated from JSON length, since JavaScript gives no memory
+   pressure signal (and a Durable Object that exceeds its limit is simply
+   killed). `memory` in the deployment status shows current use. This keeps
+   GDPR retention simple: the job server is a processor with a short,
+   documented retention window.
 
 ## 4. Trust and hosting
 

@@ -12,6 +12,7 @@ import { createDb } from "../../../mock-server/src/db/schema.js";
 import { seed } from "../../../mock-server/src/db/seed.js";
 import { createApp } from "../../../mock-server/src/app.js";
 import { createJobServer } from "../app.js";
+import type { RuntimeOptions } from "../runtime.js";
 
 // End-to-end: client -> job server -> mock db server, wired together with
 // in-process fetch functions instead of real sockets.
@@ -36,14 +37,14 @@ function routeTo(base: string, app: { request: (path: string, init?: RequestInit
 /** Backend API calls made by the job server (method + path, no query). */
 let backendCalls: string[] = [];
 
-function newJobServer() {
+function newJobServer(runtime: Partial<RuntimeOptions> = {}) {
   const toDb = routeTo(DB_URL, dbApp);
   const fetch = ((input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
     backendCalls.push(`${init?.method ?? "GET"} ${url.pathname}`);
     return toDb(input, init);
   }) as typeof globalThis.fetch;
-  return createJobServer({ backends: { mock: { url: DB_URL, secret: SECRET } }, fetch });
+  return createJobServer({ backends: { mock: { url: DB_URL, secret: SECRET } }, fetch, runtime });
 }
 
 beforeEach(() => {
@@ -600,5 +601,80 @@ describe("finished units follow the current codebook", () => {
     expect((await c.next("second_loop"))!.id).toBe(unit!.id);
     const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.unitset, p.doneUnitIds]));
     expect(progress).toEqual({ second_loop: [], main_loop: [unit!.id] });
+  });
+});
+
+describe("memory", () => {
+  const status = async () =>
+    (await (await dbApp.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
+  const refresh = (body: object) =>
+    dbApp.request("/job/1/deployment/refresh", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
+  const count = (call: string) => backendCalls.filter((c) => c === call).length;
+  const UNITS = "GET /backend/job/1/units";
+  const ANNOTATIONS = "GET /backend/job/1/annotations";
+
+  it("keeps units cached until a refresh drops them", async () => {
+    const c = coder("units");
+    const unit = (await c.next())!;
+    await c.submit(unit.id, demo("neutral"));
+    db.prepare("UPDATE units SET data = ? WHERE id = ?").run(JSON.stringify({ text: "fixed" }), unit.id);
+
+    const back = async () => ((await (await c.call(`/loop/main_loop/units/${unit.id}`)).json()) as CoderUnitResponse).data;
+    expect(await back()).toEqual(unit.data); // cached: no change, no fetch
+    expect((await refresh({ units: [unit.id] })).status).toBe(200);
+    expect(await back()).toEqual({ text: "fixed" });
+  });
+
+  it("drops the least recently used units when over budget", async () => {
+    jobServer = newJobServer({ unitCacheBytes: 1 });
+    const c = coder("budget");
+    const unit = (await c.next())!;
+    await c.submit(unit.id, demo("neutral"));
+    expect((await c.call(`/loop/main_loop/units/${unit.id}`)).status).toBe(200);
+    expect(count(UNITS)).toBe(2); // nothing fits, so fetched again
+    expect((await status()).memory?.unitBytes).toBe(0);
+  });
+
+  it("drops coders who are done first when over budget, and rebuilds them on return", async () => {
+    await createUnitset("one", ["unit-1"]);
+    await redeploy({ units: [{ sources: [{ unitset: "one" }] }] });
+    const measure = coder("measure");
+    await measure.submit((await measure.next())!.id, sentiment("neutral"));
+    const perCoder = (await status()).memory!.coderBytes;
+    expect(perCoder).toBeGreaterThan(0);
+
+    jobServer = newJobServer({ workspaceCacheBytes: Math.floor(perCoder * 2.5) });
+    const busy = coder("busy");
+    await busy.submit((await busy.next())!.id, sentiment("neutral")); // least recent, not done
+    const done = coder("done");
+    await done.submit((await done.next())!.id, sentiment("neutral"));
+    expect(await done.next()).toBeNull(); // every loop exhausted: done
+    const third = coder("third");
+    await third.submit((await third.next())!.id, sentiment("neutral")); // over budget
+
+    backendCalls = [];
+    await busy.session();
+    expect(count(ANNOTATIONS)).toBe(0);
+    expect(await done.next()).toBeNull(); // reloaded, and still finished
+    expect(count(ANNOTATIONS)).toBe(1);
+  });
+
+  it("forgets idle coders and deployments", async () => {
+    let now = Date.now();
+    jobServer = newJobServer({ now: () => now, deploymentIdleMs: 1000 * 60 * 60_000 });
+    const c = coder("idle");
+    await c.submit((await c.next())!.id, demo("neutral"));
+    backendCalls = [];
+    now += 25 * 60 * 60_000; // past maxIdleMs
+    await c.session();
+    expect(count(ANNOTATIONS)).toBe(1);
+
+    jobServer = newJobServer({ now: () => now });
+    await c.session();
+    backendCalls = [];
+    now += 7 * 60 * 60_000; // past deploymentIdleMs: loaded afresh
+    await c.session();
+    expect(backendCalls).toContain("GET /backend/job/1/deployment");
+    expect(count(ANNOTATIONS)).toBe(1);
   });
 });
