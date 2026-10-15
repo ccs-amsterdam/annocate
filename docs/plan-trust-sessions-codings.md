@@ -318,7 +318,8 @@ longer reads as "what a db server must implement". Plan:
 6. ~~**Timed outbox to the db server** (§10)~~ Done on Node; the Durable
    Object store comes with the Cloudflare target.
 7. **Trust handshake** (§1): invite token, registration, signed handshake,
-   job tokens, outbound fetch hygiene, quotas.
+   job tokens, outbound fetch hygiene, quotas. Concrete proposal and the
+   decisions it needs: §13.
 8. **Authentication** (§3).
 
 ## 8. Open decisions
@@ -710,3 +711,67 @@ wasteful. Instead:
 **Decided:** record, never refuse (409) a write whose unit changed since
 it was served; refusing would throw away a coder's work for a researcher's
 edit.
+
+## 13. Proposal for building §1 (for discussion, 2026-10-15)
+
+Written while §1's open decisions wait for Kasper; nothing here is built.
+What exists today: one shared bearer secret per configured db server
+(`ANNOTINDER_BACKENDS`), used in both directions, and one HMAC-signed
+token type (researcher previews, `PreviewSessionSchema`), which shows the
+pattern works across languages.
+
+**Suggested order: two phases.**
+
+*Phase A, still an allowlist (small, removes the shared secret's reach):*
+
+1. **Keys instead of a shared secret.** Each side gets an Ed25519 key pair
+   and publishes its public keys at `/.well-known/jwks.json` (with `kid`,
+   so keys can rotate: publish the new key, sign with it, drop the old one
+   later). Config names the other side's base URL instead of a secret.
+2. **Per-job tokens.** The job server asks for a token per job:
+   `POST {db}/backend/job/:jobId/token` with a JWS-signed body
+   `{ iss: <job server URL>, aud: <db URL>, jobId, iat, exp, nonce }`. The
+   db server checks that this job is deployed to `iss`, verifies the
+   signature with `iss`'s JWKS (cached), and returns
+   `{ token, expiresAt }` (random; it stores a hash). The job server uses it
+   as the bearer for that job only and renews it the same way. A leaked job
+   token exposes one job for a limited time, not every job of the db server.
+3. **Db server to job server** (`refresh`, `status`, `drop`, preview
+   tokens): the db server signs a short JWS per call (`iss: <db URL>`,
+   `aud: <job server URL>`, `jobId`, `exp` of a minute), verified with the
+   db server's JWKS. Preview tokens become the same kind of JWS. Nothing to
+   store on the job server.
+
+*Phase B, open job servers (only if we want annotinder.com to accept any
+db server):*
+
+4. **Registration.** `POST /register` on the job server, a JWS from the db
+   server (`iss: <db URL>`, `jobId`). The job server fetches the db
+   server's JWKS (the only outbound fetch an outsider can trigger, so it is
+   rate-limited and hardened: https, port 443, public IPs only, no
+   redirects, timeouts, size limits), verifies, and records the pair.
+   Registration answers with the deployment id to put in invite links.
+5. **Quotas** per db server (deployments, units, coders, requests), the
+   "hosted by <db host>" label in the coder UI, and a blocklist.
+
+**Decisions needed:**
+
+- **Phase B at all, or not yet?** If every job server is run by someone who
+  also runs (or trusts) the db servers, phase A is enough. Lean: A first.
+- **How a job server finds a db server it has forgotten** (§1, "returning
+  coders"). (a) The deployment id encodes the db server, e.g.
+  `<base64url(db URL)>.<jobId>`: stateless, but long ids in links and
+  cookie paths. (b) Registrations are stored durably on the job server (a
+  tiny table next to the outbox): short ids (`<registration id>.<jobId>`),
+  but the job server keeps config state. Lean: (b) for phase B; in phase A
+  the allowlist already maps names to URLs, as today.
+- **Who may register on a public job server:** open with rate limits, an
+  API key per db server, or accounts. Lean: API key (issued by hand at
+  first).
+- **Invite links on the job server** (`/invitation/<token>`, §1 target) or
+  keep invite links on the client's own routes as now. Only matters for
+  phase B, where the client is served by the job server.
+
+**Effort:** phase A is roughly the size of §2 (keys, JWKS endpoint, token
+endpoint on both db servers and in the conformance suite, signed admin
+calls). Phase B adds registration, outbound fetch hardening and quotas.
