@@ -1,3 +1,4 @@
+import type { CoderSessionScope } from "../session/coderSession";
 import {
   endpoints,
   type SessionResponse,
@@ -48,48 +49,74 @@ export interface JobServer {
 }
 
 export interface HttpJobServerConfig {
-  /** Base URL of the job's server, e.g. "http://localhost:8787". */
+  /** Base URL of the job's server including the deployment, e.g. "/d/mock.1" (same origin as the client). */
   baseUrl: string;
-  /** A stable, client-generated key identifying this coder across requests/sessions (see mock-server's dev-mode auth). */
-  coderKey: string;
-  /** Only needed the first time this coderKey is used, to establish the coder via an invite link. */
+  /**
+   * Only for the mock server's legacy coder routes (admin preview). Against
+   * a job server, the session is an httpOnly cookie it sets itself.
+   */
+  coderKey?: string;
+  /** The invite link: creates the coder on first use, and selects this link's session cookie. */
   inviteSecret?: string;
-  /** Participant id from the URL, for invites that take it from there (only used when the coder is created). */
+  /** Participant id from the URL, for invites that take it from there. */
   participantId?: string;
-  /** Confirms starting a new session although this participant already has one elsewhere. */
+  /**
+   * Start a new session although this participant already has one elsewhere.
+   * Sent with the first request only: the job server then sets a new cookie.
+   */
   newSession?: boolean;
+}
+
+/** Required on every coder API request: cross-site forms can't send it (CSRF). */
+const CLIENT_HEADERS = { "x-annotinder": "1" };
+
+function scopeHeaders(scope: { inviteSecret?: string; participantId?: string }): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (scope.inviteSecret) headers["x-invite-secret"] = scope.inviteSecret;
+  if (scope.participantId) headers["x-participant-id"] = scope.participantId;
+  return headers;
 }
 
 /** Talks to a real server implementing the `@annotinder/contracts` endpoint registry over HTTP. */
 export class HttpJobServer implements JobServer {
-  constructor(private config: HttpJobServerConfig) {}
+  /** Still to be sent: cleared once a request succeeded, so only one new session is made. */
+  private newSession: boolean;
+
+  constructor(private config: HttpJobServerConfig) {
+    this.newSession = config.newSession ?? false;
+  }
 
   private headers(): Record<string, string> {
     const headers: Record<string, string> = {
       "content-type": "application/json",
-      "x-coder-key": this.config.coderKey,
+      ...CLIENT_HEADERS,
+      ...scopeHeaders(this.config),
     };
-    if (this.config.inviteSecret) headers["x-invite-secret"] = this.config.inviteSecret;
-    if (this.config.participantId) headers["x-participant-id"] = this.config.participantId;
-    if (this.config.newSession) headers["x-new-session"] = "1";
+    if (this.config.coderKey) headers["x-coder-key"] = this.config.coderKey;
+    if (this.newSession) headers["x-new-session"] = "1";
     return headers;
   }
 
-  /** Exchanges a transfer token for the coder key it stands for. No coder key needed. */
-  static async redeemTransfer(baseUrl: string, token: string): Promise<string> {
+  /** Exchanges a transfer token for this device's session cookie (set by the job server). */
+  static async redeemTransfer(scope: CoderSessionScope, token: string): Promise<void> {
     const path = endpoints.redeemTransfer.path;
-    const res = await fetch(`${baseUrl}${path}`, {
+    const res = await fetch(`${scope.baseUrl}${path}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      headers: { "content-type": "application/json", ...CLIENT_HEADERS, ...scopeHeaders(scope) },
       body: JSON.stringify({ token }),
     });
     if (!res.ok) throw await toError(res, path);
-    return ((await res.json()) as { coderKey: string }).coderKey;
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers: this.headers() });
+    const res = await fetch(`${this.config.baseUrl}${path}`, {
+      ...init,
+      credentials: "same-origin",
+      headers: this.headers(),
+    });
     if (!res.ok) throw await toError(res, path);
+    this.newSession = false;
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
   }

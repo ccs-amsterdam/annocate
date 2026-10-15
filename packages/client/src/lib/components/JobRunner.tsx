@@ -4,10 +4,7 @@ import { renderSVG } from "uqr";
 import { HttpJobServer, type JobServer } from "../api/httpJobServer";
 import {
   defaultTransferUrl,
-  getOrCreateCoderKey,
-  newCoderKey,
   redeemTransfer,
-  storeCoderKey,
   type CoderSessionScope,
 } from "../session/coderSession";
 import { useJobManager } from "../jobManager/useJobManager";
@@ -40,8 +37,9 @@ export interface JobRunnerProps {
   /** Job server URL including the deployment, e.g. `https://jobs.example/d/mock.1`. */
   baseUrl: string;
   /**
-   * Explicit coder key (e.g. for admin previews). Without it, a key is kept
-   * on this device per baseUrl/invite/participant (docs/coder-identity.md).
+   * Explicit coder key, only for the mock server's legacy coder routes
+   * (admin preview). Against a job server the session is an httpOnly cookie
+   * per deployment/invite/participant (docs/coder-identity.md).
    */
   coderKey?: string;
   inviteSecret?: string;
@@ -58,7 +56,6 @@ export interface JobRunnerProps {
 }
 
 interface ContentProps extends JobRunnerProps {
-  coderKey: string;
   newSession: boolean;
   onStartNewSession: () => void;
 }
@@ -690,9 +687,10 @@ export function JobRunner(props: JobRunnerProps) {
 }
 
 /**
- * Decides which coder key this device uses: an explicit one, one redeemed
- * from a transfer link, or the one stored for this invite/participant
- * (created on first visit). See docs/coder-identity.md §4.
+ * Gets the session ready before coding starts: redeems a transfer link (the
+ * job server then sets this device's session cookie), and starts a new
+ * session on request. The session itself is an httpOnly cookie, created by
+ * the job server on first visit. See docs/coder-identity.md §4.
  */
 function CoderSessionGate(props: JobRunnerProps) {
   const { baseUrl, inviteSecret, participantId, transferToken, onTransferRedeemed } = props;
@@ -700,21 +698,17 @@ function CoderSessionGate(props: JobRunnerProps) {
     () => ({ baseUrl, inviteSecret, participantId }),
     [baseUrl, inviteSecret, participantId],
   );
-  const [session, setSession] = useState<{ coderKey: string | null; newSession: boolean; error: string | null }>(
-    () => ({
-      coderKey: props.coderKey ?? (transferToken ? null : getOrCreateCoderKey(scope)),
-      newSession: false,
-      error: null,
-    }),
+  const [session, setSession] = useState<{ ready: boolean; generation: number; newSession: boolean; error: string | null }>(
+    () => ({ ready: !!props.coderKey || !transferToken, generation: 0, newSession: false, error: null }),
   );
 
   useEffect(() => {
     if (props.coderKey || !transferToken) return;
     let cancelled = false;
     redeemTransfer(scope, transferToken)
-      .then((coderKey) => {
+      .then(() => {
         if (cancelled) return;
-        setSession({ coderKey, newSession: false, error: null });
+        setSession((s) => ({ ...s, ready: true }));
         onTransferRedeemed?.();
       })
       .catch((err: unknown) => {
@@ -733,7 +727,7 @@ function CoderSessionGate(props: JobRunnerProps) {
       </SessionNotice>
     );
   }
-  if (!session.coderKey) {
+  if (!session.ready) {
     return (
       <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-8 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -742,17 +736,13 @@ function CoderSessionGate(props: JobRunnerProps) {
     );
   }
 
-  const startNewSession = () => {
-    const coderKey = newCoderKey();
-    storeCoderKey(scope, coderKey);
-    setSession({ coderKey, newSession: true, error: null });
-  };
+  // The job server replaces this device's cookie on the first request.
+  const startNewSession = () => setSession((s) => ({ ...s, generation: s.generation + 1, newSession: true }));
 
   return (
     <JobRunnerContent
-      key={session.coderKey}
+      key={session.generation}
       {...props}
-      coderKey={session.coderKey}
       newSession={session.newSession}
       onStartNewSession={startNewSession}
     />

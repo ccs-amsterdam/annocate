@@ -39,6 +39,10 @@ pnpm install
 pnpm dev          # runs the client, mock db server (:8787) and job server (:8788)
 ```
 
+Open the client on http://localhost:5173. Coders' requests (`/d/...`) are
+proxied by Vite to the job server: the coder session is a same-origin
+httpOnly cookie, so the client and job server must share an origin.
+
 The dev shell's "Annotate" view codes the seeded demo job through the job
 server (deployment `mock.1`). If you have a mock-server database from before
 the job server existed, run `pnpm reset-mock` once so the demo job is deployed.

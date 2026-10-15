@@ -16,11 +16,16 @@ describe("job server on the reference db server", () => {
     }) as typeof fetch;
     const jobServer = () => createJobServer({ backends: { ref: { url: "http://ref.test", secret: "s" } }, fetch: toDb });
     let server = jobServer();
-    const call = (path: string, init?: RequestInit) =>
-      server.request(`/d/ref.1${path}`, {
+    let cookie = ""; // the browser's session cookie
+    const call = async (path: string, init?: RequestInit) => {
+      const res = await server.request(`/d/ref.1${path}`, {
         ...init,
-        headers: { "content-type": "application/json", "x-coder-key": "k", "x-invite-secret": "conf-preset" },
+        headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": "conf-preset", cookie },
       });
+      const [set] = res.headers.getSetCookie();
+      if (set) cookie = set.split(";")[0];
+      return res;
+    };
 
     const session = (await (await call("/session")).json()) as SessionResponse;
     expect(session.variables.group.codes).toEqual([{ code: "b" }]);

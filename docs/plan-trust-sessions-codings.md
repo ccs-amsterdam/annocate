@@ -117,6 +117,14 @@ nothing hard about it. Notes:
 
 > Revised by §9.2: the db server keeps a coders table with coder keys; the
 > job server creates the keys and keeps them in an httpOnly cookie.
+>
+> **Built (2026-10-15)**, per §9.2's leaning: a random session key per job
+> session in an httpOnly cookie per deployment (`Path=/d/<deployment>`),
+> named by invite + participant id; the db server stores its SHA-256 as the
+> coder key. CSRF: required `x-annotinder` header, no CORS. Transfer links
+> set the cookie on the new device. Dev: Vite proxies `/d/`. Details in
+> `coder-identity.md` §4. Not built: a device id, signed sessions (not
+> needed while the db server keeps keys), and the open decision below.
 
 ### What the coder key is today
 
@@ -300,8 +308,8 @@ longer reads as "what a db server must implement". Plan:
 2. ~~**Codings model** (§4)~~ Done, per §9.3/§9.4.
 3. ~~**Mock server split + conformance suite** (§5)~~ Done, except removing
    the legacy coder routes (waits on the admin preview).
-4. **Sessions in httpOnly cookies** (§2), client and job server on one
-   origin; signed coder session; db server stops storing coder keys.
+4. ~~**Sessions in httpOnly cookies** (§2)~~ Done; the db server keeps
+   storing (hashed) coder keys, per §9.2.
 5. ~~**Coder-level annotations loaded lazily** (§11)~~ Done.
 6. **Timed outbox to the db server** (§10), with Durable Object storage on
    Cloudflare. After (4), which touches the same request paths.
@@ -328,6 +336,8 @@ longer reads as "what a db server must implement". Plan:
   (current lean), or reject (§10).
 - Renaming `POST /finished` once it also serves coder-level groups (§11).
 - Codebook content hash on the codebook record (§12).
+- Unit hash over the job server's extracted fields instead of the db
+  server's full `data`, once unit preprocessing is designed (§12).
 
 ## 9. Review notes (2026-10-15)
 
@@ -644,7 +654,25 @@ The conformance suite checks the hashes and that a mismatch is accepted.
 Not built: the codebook content hash, and an annotation export to show
 them in (the mock server has no export yet).
 
-**Design: make content changes visible with hashes.** Researchers should
+**Open (Kasper, 2026-10-15): hash what the coder sees, not what the db
+server stores.** Planned later: *unit preprocessing* in the job server.
+The client only gets the unit fields the codebook uses (any field used
+anywhere in the codebook), so the db server doesn't have to deal with
+that. Then a better hash may be one the job server computes over the
+*extracted* fields: it says exactly what the coder was shown. Consequences:
+
+- A codebook update that starts using another field changes the hash of
+  every unit. Arguably right: the coder then sees something else.
+- The db server would no longer compute or compare the hash itself (it
+  can't, without knowing the extraction); it only stores what it gets.
+  Letting the db server interpret the hash is tricky either way.
+- What is built now (db server hashes the full `data`, the job server
+  passes back the hash of what it served) would change: `BackendUnit.hash`
+  might go, and `unitHash` becomes a job-server-computed value. Decide
+  when unit preprocessing is designed; until then, treat `unitHash` as
+  provisional.
+
+**Design (as built): make content changes visible with hashes.** Researchers should
 be able to see whether the codebook or a unit changed under an annotation.
 Putting hashes on every annotation (per variable, in our storage) is
 wasteful. Instead:

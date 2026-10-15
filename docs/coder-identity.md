@@ -23,12 +23,13 @@ Complements `docs/architecture.md`.
 | Term | What it is | Where it lives |
 | --- | --- | --- |
 | **Coder** (`coderId`) | One annotation session in a job: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | db server |
-| **Coder key** | Random secret, created on the device, that unlocks one coder without login. It is a *key*, not an id: it moves with a transfer, so it isn't a device id; and it is a credential, so it isn't a session id. Sent as `x-coder-key`. | the coder's device (localStorage) + db server |
+| **Session key** | Random secret, created by the job server, that unlocks one coder without login. Kept in an httpOnly cookie, so page scripts never see it. It is a *key*, not an id: it moves with a transfer, so it isn't a device id. | the coder's browser (httpOnly cookie) |
+| **Coder key** | What the db server stores to find the coder: the SHA-256 of the session key, so a db leak doesn't hand out sessions. | db server |
 | **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed in a personal invite, or taken from the `participant` URL parameter. Never a credential. | db server (on the coder) |
 | **Verified identity** | `{ provider, subject, email? }` from a login (§5). The only thing that lets a coder resume from another device. | db server (on the coder) |
-| **Transfer link** | One-time, short-lived link that copies a coder key to another device. | job server memory (15 min) |
+| **Transfer link** | One-time, short-lived link that copies a session key to another device. | job server memory (15 min) |
 
-Every coder has a coder key, or a verified identity once auth exists. Some
+Every coder has a session key, or a verified identity once auth exists. Some
 also have a participant id; some also have a verified identity. For
 analysis, researchers group coders by participant id or email when they want
 to merge sessions of the same person. The system itself never merges
@@ -49,33 +50,40 @@ restrict an invite.
 
 ## 4. Sessions without login (implemented)
 
-- **First visit.** The client creates a random coder key and stores it on
-  the device. The storage scope is job server URL + deployment + invite +
-  participant id. So a shared lab computer keeps separate sessions per
-  invite or participant. The first request creates the coder (db server,
-  via the job server's `coders/resolve`).
-- **Same device later.** The stored key resumes the same coder.
+- **First visit.** The job server creates a random session key and, once
+  the db server accepted the coder (`coders/resolve`, with the key's hash),
+  sets it as a cookie: `HttpOnly`, `SameSite=Lax`, `Secure` over https,
+  `Path=/d/<deployment>`, 400 days. The cookie name includes a hash of the
+  invite secret and participant id (sent by the client as headers, from the
+  URL), so a shared lab computer keeps separate sessions per invite or
+  participant. The client never sees or stores the key.
+- **Same device later.** The cookie resumes the same coder.
+- **CSRF.** Every coder API request must carry `x-annotinder: 1`, which a
+  cross-site form or image can't send, and the job server sends no CORS
+  headers, so cross-origin scripts can't either. This relies on the client
+  and the job server sharing an origin (in dev: Vite proxies `/d/`).
 - **Another device.** On the device that has the session, the coder opens
   "Continue on another device":
   1. `POST /d/:deployment/transfer` returns a one-time token, valid for
      15 minutes.
   2. The client shows it as a link and a QR code.
   3. Opening the link on the new device calls
-     `POST /d/:deployment/transfer/redeem`, which returns the coder key.
-     Both devices can now continue the same session.
+     `POST /d/:deployment/transfer/redeem`, which sets the session cookie
+     there. Both devices can now continue the same session.
 
   Tokens live only in job-server memory. That fits the "nothing that can't
   be rebuilt" rule (`architecture.md` §3): losing them means making a new
   link.
-- **A participant link opened on a new device** (no stored key, and that
+- **A participant link opened on a new device** (no cookie, and that
   participant already has a session):
   1. The db server refuses to silently create a second coder. The job server
      answers `409 { code: "participant_has_session" }`.
   2. The client explains: "continue on the original device, or make a
      transfer link there".
   3. The client also offers **Start a new session**. That retries with
-     `x-new-session: 1` and creates a new coder with the same participant
-     id. The new coder cannot see the earlier annotations.
+     `x-new-session: 1` (first request only) and creates a new coder with
+     the same participant id; the job server sets a new cookie. The new
+     coder cannot see the earlier annotations.
 
   New sessions of a known participant don't count toward the invite's
   `maxUses`.
@@ -123,8 +131,6 @@ Until this exists, `auth: "required"` invites are refused with
 
 ## 6. Open points
 
-- **Hash coder keys at rest.** The db server could store a hash of the coder
-  key instead of the key itself. Cheap, and worth doing in a real db server.
 - **Revoking a transfer.** Should "move this session" (revoke the old
   device's key) exist next to "copy"? Probably only once there is a reason;
   with a login, the identity is the thing to revoke instead.

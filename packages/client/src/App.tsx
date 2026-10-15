@@ -10,9 +10,11 @@ import { LayoutDashboard, PenTool } from "lucide-react";
 // import { JobRunner } / { AdminApp } (or their building blocks) into a host
 // app instead -- see docs/client.md §1
 const MOCK_SERVER_URL = import.meta.env.VITE_MOCK_SERVER_URL ?? "http://localhost:8787";
-// Coders talk to the job server, not the db server (docs/architecture.md).
-// The seed demo job is deployed as `mock.1`.
-const JOB_SERVER_URL = import.meta.env.VITE_JOB_SERVER_URL ?? "http://localhost:8788";
+// Coders talk to the job server, not the db server (docs/architecture.md),
+// on the client's own origin: its session cookie is same-origin only. In dev,
+// Vite proxies `/d` to the job server (vite.config.ts). The seed demo job is
+// deployed as `mock.1`.
+const JOB_SERVER_URL = import.meta.env.VITE_JOB_SERVER_URL ?? "";
 
 const adminClient = new HttpAdminClient({
   baseUrl: MOCK_SERVER_URL,

@@ -151,7 +151,7 @@ export class DeploymentRuntime {
   private units = new Map<number, { unit: BackendUnit; bytes: number; usedAt: number }>();
   private unitBytes = 0;
   /** One-time transfer tokens -> coder key. Memory only: losing them just means making a new link. */
-  private transfers = new Map<string, { coderKey: string; expires: number }>();
+  private transfers = new Map<string, { sessionKey: string; expires: number }>();
   private specCheckedAt = 0;
   private loadedAt = 0;
   private refreshing: Promise<void> | null = null;
@@ -403,24 +403,24 @@ export class DeploymentRuntime {
   }
 
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
-  createTransfer(coderKey: string): TransferResponse {
+  createTransfer(sessionKey: string): TransferResponse {
     const now = this.options.now();
     for (const [token, t] of this.transfers) if (t.expires <= now) this.transfers.delete(token);
     const bytes = crypto.getRandomValues(new Uint8Array(24));
     const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     const expires = now + this.options.transferTtlMs;
-    this.transfers.set(token, { coderKey, expires });
+    this.transfers.set(token, { sessionKey, expires });
     return { token, expiresAt: new Date(expires) };
   }
 
-  /** Exchanges a transfer token (once) for the coder key. */
+  /** Exchanges a transfer token (once) for the session key, which the new device gets as its cookie. */
   redeemTransfer(token: string): string {
     const transfer = this.transfers.get(token);
     this.transfers.delete(token);
     if (!transfer || transfer.expires <= this.options.now()) {
       throw new HttpError(404, "This link has expired or was already used", "transfer_invalid");
     }
-    return transfer.coderKey;
+    return transfer.sessionKey;
   }
 
   session(coder: Coder): SessionResponse {

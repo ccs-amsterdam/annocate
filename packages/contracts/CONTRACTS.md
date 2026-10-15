@@ -114,11 +114,13 @@ registry because the client is written against them.
 | POST | `/variables/unit` | `PostUnitVariablesSchema` | – | Coder-authenticated; full replace of one unit's variables |
 | POST | `/variables/coder` | `PostCoderVariablesSchema` | – | Coder-authenticated; full replace of job-level variables |
 | POST | `/transfer` | – | `TransferResponseSchema` | Coder-authenticated; one-time token to continue the session on another device |
-| POST | `/transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` | No coder key needed; returns the session's coder key (once) |
+| POST | `/transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` | No session needed; sets this device's session cookie (once per token) |
 
-Coder headers: `x-coder-key` (always), `x-invite-secret` (first use),
-`x-participant-id` (invites with `participantFromUrl`), `x-new-session: 1`
-(start another session for a participant that already has one). Errors are
+The session is an httpOnly cookie set by the job server (same origin as the
+client). Coder headers: `x-annotinder: 1` (always; CSRF), `x-invite-secret`
+and `x-participant-id` from the URL (create the coder on first use, and
+select this link's session cookie), `x-new-session: 1` (first request only:
+start another session for a participant that already has one). Errors are
 `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 `docs/coder-identity.md`.
 

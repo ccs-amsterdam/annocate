@@ -1,36 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getOrCreateCoderKey, storeCoderKey } from "./coderSession";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { redeemTransfer } from "./coderSession";
 
-describe("coder keys on this device", () => {
-  beforeEach(() => {
-    const store = new Map<string, string>();
-    (globalThis as { localStorage?: unknown }).localStorage = {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => void store.set(k, v),
-    };
-  });
-  afterEach(() => {
-    delete (globalThis as { localStorage?: unknown }).localStorage;
-  });
+describe("redeemTransfer", () => {
+  afterEach(() => vi.unstubAllGlobals());
 
-  const scope = { baseUrl: "https://jobs/d/mock.1", inviteSecret: "inv" };
+  it("redeems a token once, with the scope's headers, and lets the server set the cookie", async () => {
+    const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const scope = { baseUrl: "/d/mock.1", participantId: "P1" };
+    await Promise.all([redeemTransfer(scope, "tok"), redeemTransfer(scope, "tok")]);
 
-  it("keeps one key per job server, invite and participant", () => {
-    const key = getOrCreateCoderKey(scope);
-    expect(key).toMatch(/^[0-9a-f]{48}$/);
-    expect(getOrCreateCoderKey(scope)).toBe(key);
-    expect(getOrCreateCoderKey({ ...scope, participantId: "P1" })).not.toBe(key);
-    expect(getOrCreateCoderKey({ ...scope, inviteSecret: "other" })).not.toBe(key);
-  });
-
-  it("replaces the stored key, e.g. after a transfer or for a new session", () => {
-    getOrCreateCoderKey(scope);
-    storeCoderKey(scope, "transferred");
-    expect(getOrCreateCoderKey(scope)).toBe("transferred");
-  });
-
-  it("still works without storage", () => {
-    delete (globalThis as { localStorage?: unknown }).localStorage;
-    expect(getOrCreateCoderKey(scope)).toMatch(/^[0-9a-f]{48}$/);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/d/mock.1/transfer/redeem");
+    expect(init.headers).toMatchObject({ "x-annotinder": "1", "x-participant-id": "P1" });
+    expect(init.credentials).toBe("same-origin");
   });
 });

@@ -156,7 +156,8 @@ secret.
 **Coder session.**
 
 1. **First request.** The job server calls `POST /backend/.../coders/resolve`
-   with the coder key and invite secret. The db server creates the coder if
+   with the coder key (a hash of the session cookie's key, see
+   `coder-identity.md` §4) and invite secret. The db server creates the coder if
    needed, copying the invite's preset variables. The job server then
    assigns any missing server-side `auto` variables (§7) and caches the
    coder.

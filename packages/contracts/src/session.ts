@@ -60,5 +60,5 @@ export type TransferResponse = z.infer<typeof TransferResponseSchema>;
 /** Body for `POST /transfer/redeem` (no coder auth needed). */
 export const RedeemTransferSchema = z.object({ token: z.string().min(1) });
 
-/** Response for `POST /transfer/redeem`: the coder key to store on the new device. */
-export const RedeemTransferResponseSchema = z.object({ coderKey: z.string() });
+/** Response for `POST /transfer/redeem`: empty; the job server sets the session cookie on the new device. */
+export const RedeemTransferResponseSchema = z.object({});

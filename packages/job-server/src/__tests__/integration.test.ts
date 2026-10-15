@@ -61,11 +61,39 @@ beforeEach(() => {
   });
   jobServer = newJobServer();
   backendCalls = [];
+  devices = new Map();
 });
 
-function coder(key: string, invite: string | null = "demo-secret", server = () => jobServer) {
-  const headers = { "content-type": "application/json", "x-coder-key": key, ...(invite ? { "x-invite-secret": invite } : {}) };
-  const call = (path: string, init?: RequestInit) => server().request(`/d/mock.1${path}`, { ...init, headers });
+/**
+ * Simulated browsers, by name: their cookies, and the invite link they were
+ * opened with (a reload sends it again, like the client does from the URL).
+ */
+let devices = new Map<string, { cookies: Map<string, string>; invite: string | null }>();
+
+/** A request from a device: sends its cookies and the client header, keeps cookies it is given. */
+async function send(name: string, path: string, init: RequestInit = {}, headers: Record<string, string> = {}, server = () => jobServer) {
+  let device = devices.get(name);
+  if (!device) devices.set(name, (device = { cookies: new Map(), invite: null }));
+  const cookie = [...device.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
+  const res = await server().request(`/d/mock.1${path}`, {
+    ...init,
+    headers: { "content-type": "application/json", "x-annotinder": "1", ...(cookie ? { cookie } : {}), ...headers },
+  });
+  for (const set of res.headers.getSetCookie()) {
+    const [pair] = set.split(";");
+    const at = pair.indexOf("=");
+    device.cookies.set(pair.slice(0, at), pair.slice(at + 1));
+  }
+  return res;
+}
+
+/** A coder on device `name`, opened with `invite` (`null`: the link the device was opened with before, if any). */
+function coder(name: string, invite: string | null = "demo-secret", server = () => jobServer) {
+  if (!devices.has(name)) devices.set(name, { cookies: new Map(), invite: null });
+  const device = devices.get(name)!;
+  if (invite !== null) device.invite = invite;
+  const call = (path: string, init?: RequestInit) =>
+    send(name, path, init, device.invite ? { "x-invite-secret": device.invite } : {}, server);
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
     next: async (loop = "main_loop") => {
@@ -140,7 +168,7 @@ describe("coder flow through the job server", () => {
   });
 
   it("returns 404 for unknown or undeployed jobs", async () => {
-    const headers = { "x-coder-key": "k", "x-invite-secret": "demo-secret" };
+    const headers = { "x-annotinder": "1", "x-invite-secret": "demo-secret" };
     expect((await jobServer.request("/d/other.1/session", { headers })).status).toBe(404);
     expect((await jobServer.request("/d/mock.99/session", { headers })).status).toBe(404);
   });
@@ -332,7 +360,8 @@ describe("routing coders to unitsets", () => {
     jobServer = newJobServer();
     const again = coder("carol", null);
     expect((await again.next())!.id).toBe(first!.id);
-    const stored = db.prepare("SELECT assignments FROM coders WHERE devKey = 'carol'").get() as { assignments: string };
+    const { coderId } = await again.session();
+    const stored = db.prepare("SELECT assignments FROM coders WHERE id = ?").get(coderId) as { assignments: string };
     expect(JSON.parse(stored.assignments)).toEqual({ main_loop: ["part_1", "overlap"] });
   });
 
@@ -357,23 +386,62 @@ describe("routing coders to unitsets", () => {
   });
 });
 
-describe("sessions across devices", () => {
-  const raw = (headers: Record<string, string>, path: string, init: RequestInit = {}) =>
-    jobServer.request(`/d/mock.1${path}`, { ...init, headers: { "content-type": "application/json", ...headers } });
+describe("sessions", () => {
+  it("keeps the session in an httpOnly cookie, and gives the db server only a hash of it", async () => {
+    const res = await send("browser", "/session", {}, { "x-invite-secret": "demo-secret" });
+    expect(res.status).toBe(200);
+    const [set] = res.headers.getSetCookie();
+    expect(set).toMatch(/^annotinder_[0-9a-f]{16}=/);
+    expect(set).toContain("HttpOnly");
+    expect(set).toContain("SameSite=Lax");
+    expect(set).toContain("Path=/d/mock.1");
 
+    const value = [...devices.get("browser")!.cookies.values()][0];
+    const { coderId } = (await res.json()) as SessionResponse;
+    const stored = (db.prepare("SELECT devKey FROM coders WHERE id = ?").get(coderId) as { devKey: string }).devKey;
+    const { createHash } = await import("node:crypto");
+    expect(stored).toBe(createHash("sha256").update(value).digest("hex"));
+
+    // the cookie continues the session; it isn't set again
+    const again = await send("browser", "/session", {}, { "x-invite-secret": "demo-secret" });
+    expect(((await again.json()) as SessionResponse).coderId).toBe(coderId);
+    expect(again.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("refuses requests without the client header (CSRF)", async () => {
+    const res = await jobServer.request("/d/mock.1/session", { headers: { "x-invite-secret": "demo-secret" } });
+    expect(res.status).toBe(403);
+  });
+
+  it("keeps separate sessions per invite on one device", async () => {
+    const other = await invite();
+    const a = (await (await send("shared", "/session", {}, { "x-invite-secret": "demo-secret" })).json()) as SessionResponse;
+    const b = (await (await send("shared", "/session", {}, { "x-invite-secret": other })).json()) as SessionResponse;
+    expect(a.coderId).not.toBe(b.coderId);
+    expect(devices.get("shared")!.cookies.size).toBe(2);
+  });
+
+  it("sets no cookie when the invite is refused", async () => {
+    const res = await send("nobody", "/session", {}, { "x-invite-secret": "wrong" });
+    expect(res.status).toBe(401);
+    expect(res.headers.getSetCookie()).toEqual([]);
+  });
+});
+
+describe("sessions across devices", () => {
   it("moves a session to another device with a one-time transfer link", async () => {
-    const phone = coder("phone-key");
+    const phone = coder("phone");
     const unit = await phone.next();
     await phone.submit(unit!.id, demo("neutral"));
 
     const transfer = (await (await phone.call("/transfer", { method: "POST" })).json()) as { token: string };
-    const redeem = () => raw({}, "/transfer/redeem", { method: "POST", body: JSON.stringify({ token: transfer.token }) });
+    // The link carries no invite: the laptop gets the session cookie for that.
+    const redeem = () => send("laptop", "/transfer/redeem", { method: "POST", body: JSON.stringify({ token: transfer.token }) });
     const redeemed = await redeem();
     expect(redeemed.status).toBe(200);
-    const { coderKey } = (await redeemed.json()) as { coderKey: string };
-    expect(coderKey).toBe("phone-key");
+    expect(await redeemed.json()).toEqual({});
 
-    const laptop = coder(coderKey, null);
+    const laptop = coder("laptop", null);
     expect((await laptop.session()).progress[0].doneUnitIds).toEqual([unit!.id]);
 
     const again = await redeem();
@@ -383,33 +451,33 @@ describe("sessions across devices", () => {
 
   it("never resumes a participant's session from a link alone", async () => {
     const secret = await invite(undefined, { participantFromUrl: true });
-    const headers = (key: string, extra: Record<string, string> = {}) => ({
-      "x-coder-key": key,
-      "x-invite-secret": secret,
-      "x-participant-id": "P123",
-      ...extra,
-    });
+    const link = { "x-invite-secret": secret, "x-participant-id": "P123" };
 
-    const first = await raw(headers("device-1"), "/session");
+    const first = await send("device-1", "/session", {}, link);
     expect(first.status).toBe(200);
     const firstCoder = ((await first.json()) as SessionResponse).coderId;
 
     // Same participant link on a new device: explained refusal, not a resumed session.
-    const second = await raw(headers("device-2"), "/session");
+    const second = await send("device-2", "/session", {}, link);
     expect(second.status).toBe(409);
     expect(await second.json()).toMatchObject({ code: "participant_has_session" });
 
     // Confirmed: a new, separate session with the same participant id.
-    const confirmed = await raw(headers("device-2", { "x-new-session": "1" }), "/session");
+    const confirmed = await send("device-2", "/session", {}, { ...link, "x-new-session": "1" });
     expect(confirmed.status).toBe(200);
-    expect(((await confirmed.json()) as SessionResponse).coderId).not.toBe(firstCoder);
+    const secondCoder = ((await confirmed.json()) as SessionResponse).coderId;
+    expect(secondCoder).not.toBe(firstCoder);
     const rows = db.prepare("SELECT participantId FROM coders WHERE participantId = 'P123'").all();
     expect(rows).toHaveLength(2);
+
+    // and that device keeps its new session
+    const reload = await send("device-2", "/session", {}, link);
+    expect(((await reload.json()) as SessionResponse).coderId).toBe(secondCoder);
   });
 
   it("refuses invites that require login (not supported yet)", async () => {
     const secret = await invite(undefined, { auth: "required" });
-    const res = await raw({ "x-coder-key": "k", "x-invite-secret": secret }, "/session");
+    const res = await send("login", "/session", {}, { "x-invite-secret": secret });
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "auth_required" });
   });
