@@ -146,29 +146,38 @@ export const BackendAnnotationSchema = z.object({
 export type BackendAnnotation = z.infer<typeof BackendAnnotationSchema>;
 
 /**
- * `POST /backend/job/:jobId/finished` -- which units coders finished in the
- * given loops. A unit is finished for a coder when *all* `variables` of the
- * loop have a live value. The db server only counts; `values` asks it to
- * also return those variables' values (agreement rules).
+ * `POST /backend/job/:jobId/finished` -- the job server's one bulk query
+ * over annotations. Per group of variables: the rows where *all* `variables`
+ * have a live value ("finished"), optionally with the values of `values`.
+ * The db server only filters; the job server does the counting.
+ *
+ * - `level: "unit"` (default): per (unit, coder). A group is a unit loop's
+ *   questions: which units coders finished, plus agreement values.
+ * - `level: "coder"`: per coder, over coder-level values (survey questions,
+ *   `auto` variables; `unitId: null`). E.g. which option of a `balanced`
+ *   variable each coder has.
  */
 export const FinishedRequestSchema = z.object({
   loops: z.array(
     z.object({
+      /** Label echoed in the rows: the loop name for unit-level groups. */
       loop: z.string(),
+      level: z.enum(["unit", "coder"]).optional(),
       variables: z.array(z.string()).min(1),
       values: z.array(z.string()).optional(),
     }),
   ),
-  /** Only this coder's units. */
+  /** Only this coder's rows. */
   coderId: IdSchema.optional(),
 });
 export type FinishedRequest = z.infer<typeof FinishedRequestSchema>;
 
 export const BackendFinishedSchema = z.object({
   loop: z.string(),
-  unitId: IdSchema,
+  /** `null` for coder-level groups. */
+  unitId: IdSchema.nullable(),
   coderId: IdSchema,
-  /** Earliest `created` of the loop's live values. Orders a coder's progress. */
+  /** Earliest `created` of the group's live values. Orders a coder's progress. */
   created: z.coerce.date(),
   values: z.record(z.string(), VariableValueSchema).optional(),
 });

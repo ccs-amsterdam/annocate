@@ -288,6 +288,30 @@ describe("routing coders to unitsets", () => {
     expect((await bob.next())!.id).toBe(u3); // then the overlap set
   });
 
+  it("load coders lazily, and keep balancing across a restart", async () => {
+    await createUnitset("part_1", ["unit-1"]);
+    await createUnitset("part_2", ["unit-2"]);
+    await createUnitset("overlap", ["unit-3"]);
+    await redeploy(routedLoop, [slot]);
+    const general = await invite();
+    expect((await coder("first", general).session()).variables.slot.codes).toEqual([{ code: "1" }]);
+
+    // a fresh job server knows the counts per option, without loading all coders
+    backendCalls = [];
+    jobServer = newJobServer();
+    expect((await coder("second", general).session()).variables.slot.codes).toEqual([{ code: "2" }]);
+    expect(backendCalls).not.toContain("GET /backend/job/1/coders");
+    expect(backendCalls).toContain("POST /backend/job/1/finished");
+
+    // returning coders are resolved again, and count once
+    expect((await coder("first", null).session()).variables.slot.codes).toEqual([{ code: "1" }]);
+    expect((await coder("third", general).session()).variables.slot.codes).toEqual([{ code: "1" }]);
+
+    // status still sees every coder, on demand
+    const status = (await (await dbApp.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
+    expect(status.coders).toBe(3);
+  });
+
   it("keep routing sticky and don't let the client overwrite assigned variables", async () => {
     await createUnitset("part_1", ["unit-1"]);
     await createUnitset("part_2", ["unit-2"]);

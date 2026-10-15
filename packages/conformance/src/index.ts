@@ -260,5 +260,45 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       const coders = rows.filter((r) => r.unitId === id("u3")).map((r) => r.coderId);
       expect(coders).toEqual(expect.arrayContaining([a.coderId, b.coderId]));
     });
+
+    it("lists coders with coder-level values for coder-level groups", async () => {
+      const preset = await resolve(key("lvl-preset"), { inviteSecret: "conf-preset" });
+      const set = await newCoder("lvl-set");
+      const none = await newCoder("lvl-none");
+      await ok(await call(`/coders/${set.coderId}`, { method: "PUT", body: { variables: { group: answer("a") }, assignments: {} } }));
+
+      const rows = await finished({ loops: [{ loop: "group", level: "coder", variables: ["group"], values: ["group"] }] });
+      const byCoder = new Map(rows.map((r) => [r.coderId, r]));
+      expect(byCoder.get(preset.coderId)).toMatchObject({ loop: "group", unitId: null });
+      expect(byCoder.get(preset.coderId)?.values?.group.codes).toEqual([{ code: "b" }]);
+      expect(byCoder.get(set.coderId)?.values?.group.codes).toEqual([{ code: "a" }]);
+      expect(byCoder.has(none.coderId)).toBe(false);
+
+      // only one coder
+      const one = await finished({ loops: [{ loop: "g", level: "coder", variables: ["group"] }], coderId: set.coderId });
+      expect(one.map((r) => [r.coderId, r.unitId])).toEqual([[set.coderId, null]]);
+    });
+
+    it("keeps coder-level and unit-level values apart", async () => {
+      const coder = await resolve(key("lvl-apart"), { inviteSecret: "conf-preset" });
+      await ok(await put(id("u1"), coder.coderId, { q1: answer("yes") }));
+      const unitLevel = await finished({ loops: [{ loop: "g", variables: ["group"] }], coderId: coder.coderId });
+      const coderLevel = await finished({ loops: [{ loop: "q", level: "coder", variables: ["q1"] }], coderId: coder.coderId });
+      expect(unitLevel).toEqual([]);
+      expect(coderLevel).toEqual([]);
+      // and coder-level values are not part of the coder's unit annotations
+      const annotations = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      expect(annotations.map((a) => a.unitId)).toEqual([id("u1")]);
+    });
+
+    it("drops coder-level values a full replace leaves out", async () => {
+      const coder = await newCoder("lvl-replace");
+      const put = (variables: Record<string, unknown>) =>
+        call(`/coders/${coder.coderId}`, { method: "PUT", body: { variables, assignments: {} } });
+      await ok(await put({ group: answer("a") }));
+      await ok(await put({}));
+      expect((await resolve(key("lvl-replace"))).variables).toEqual({});
+      expect(await finished({ loops: [{ loop: "g", level: "coder", variables: ["group"] }], coderId: coder.coderId })).toEqual([]);
+    });
   });
 }

@@ -78,7 +78,12 @@ export function listFinished(db: DatabaseSync, jobId: number, request: FinishedR
   const coderFilter = request.coderId !== undefined ? " AND coderId = ?" : "";
   const coderArg = request.coderId !== undefined ? [request.coderId] : [];
 
-  for (const { loop, variables: given, values: valueVariables } of request.loops) {
+  for (const group of request.loops) {
+    if (group.level === "coder") {
+      result.push(...listFinishedCoders(db, jobId, group, request.coderId));
+      continue;
+    }
+    const { loop, variables: given, values: valueVariables } = group;
     const variables = [...new Set(given)];
     const finished = db
       .prepare(
@@ -118,6 +123,37 @@ export function listFinished(db: DatabaseSync, jobId: number, request: FinishedR
         ...(wanted.length > 0 ? { values: values.get(`${row.unitId}/${row.coderId}`) ?? {} } : {}),
       });
     }
+  }
+  return result;
+}
+
+/**
+ * Coder-level groups. This server keeps coder-level values on the coder
+ * record (a JSON column) rather than as annotation rows with a null unit,
+ * so they are filtered here; both are fine (CONTRACTS.md).
+ */
+function listFinishedCoders(
+  db: DatabaseSync,
+  jobId: number,
+  group: FinishedRequest["loops"][number],
+  coderId: number | undefined,
+): BackendFinished[] {
+  const rows = db
+    .prepare(`SELECT id, variables, created FROM coders WHERE jobId = ?${coderId !== undefined ? " AND id = ?" : ""} ORDER BY id`)
+    .all(jobId, ...(coderId !== undefined ? [coderId] : [])) as unknown as { id: number; variables: string; created: string | null }[];
+  const result: BackendFinished[] = [];
+  for (const row of rows) {
+    const variables = JSON.parse(row.variables) as Record<string, VariableValue>;
+    if (!group.variables.every((v) => v in variables)) continue;
+    result.push({
+      loop: group.loop,
+      unitId: null,
+      coderId: row.id,
+      created: new Date(row.created ?? 0),
+      ...(group.values?.length
+        ? { values: Object.fromEntries(group.values.filter((v) => v in variables).map((v) => [v, variables[v]])) }
+        : {}),
+    });
   }
   return result;
 }

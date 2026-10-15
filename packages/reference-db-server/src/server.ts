@@ -34,13 +34,17 @@ interface Coder {
   id: number;
   key: string;
   participantId?: string;
-  variables: Record<string, VariableValue>;
+  /** Sticky loop routing: distribution state, not annotations, so kept here. */
   assignments: CoderAssignments;
 }
 
-/** One value of one variable, for one unit and coder. Retired values stay, but no longer count. */
+/**
+ * One value of one variable, for one unit and coder. Coder-level values
+ * (survey questions, `auto` variables) are the same rows with `unitId: null`.
+ * Retired values stay, but no longer count.
+ */
 interface Value {
-  unitId: number;
+  unitId: number | null;
   coderId: number;
   variable: string;
   value: VariableValue;
@@ -82,9 +86,29 @@ export function loadFixture(fixture: ConformanceFixture, jobId = 1): Store {
 }
 
 const live = (v: Value) => v.retiredAt === undefined;
-const toBackendCoder = (c: Coder): BackendCoder => ({ coderId: c.id, variables: c.variables, assignments: c.assignments });
 
 export function createServer(store: Store, secret: string) {
+  const liveValue = (unitId: number | null, coderId: number, variable: string) =>
+    store.values.find((v) => live(v) && v.unitId === unitId && v.coderId === coderId && v.variable === variable);
+
+  /** Upserts a live value per variable; others are left alone. */
+  const upsert = (unitId: number | null, coderId: number, variables: Record<string, VariableValue>, codebookId?: number) => {
+    const now = new Date();
+    for (const [variable, value] of Object.entries(variables)) {
+      const existing = liveValue(unitId, coderId, variable);
+      if (existing) Object.assign(existing, { value, updated: now, codebookId });
+      else store.values.push({ unitId, coderId, variable, value, codebookId, created: now, updated: now });
+    }
+  };
+
+  const toBackendCoder = (c: Coder): BackendCoder => ({
+    coderId: c.id,
+    variables: Object.fromEntries(
+      store.values.filter((v) => live(v) && v.unitId === null && v.coderId === c.id).map((v) => [v.variable, v.value]),
+    ),
+    assignments: c.assignments,
+  });
+
   const app = new Hono();
   const api = new Hono();
 
@@ -128,17 +152,16 @@ export function createServer(store: Store, secret: string) {
       invite.uses++;
     }
 
-    const coder: Coder = {
-      id: store.coders.length + 1,
-      key: body.coderKey,
-      participantId,
-      // Preset values for the codebook's `auto` variables with source "invite".
-      variables: Object.fromEntries(
+    const coder: Coder = { id: store.coders.length + 1, key: body.coderKey, participantId, assignments: {} };
+    store.coders.push(coder);
+    // Preset values for the codebook's `auto` variables with source "invite".
+    upsert(
+      null,
+      coder.id,
+      Object.fromEntries(
         Object.entries(invite.variables).map(([name, code]) => [name, { done: true, skip: false, codes: [{ code }] }]),
       ),
-      assignments: {},
-    };
-    store.coders.push(coder);
+    );
     return c.json(toBackendCoder(coder));
   });
 
@@ -147,7 +170,12 @@ export function createServer(store: Store, secret: string) {
     if (!body) return c.json({ error: "Invalid body" }, 400);
     const coder = store.coders.find((x) => x.id === Number(c.req.param("coderId")));
     if (!coder) return c.json({ error: "Coder not found" }, 404);
-    coder.variables = body.variables;
+    // Full replace: upsert the given values, retire the others.
+    const now = new Date();
+    for (const v of store.values) {
+      if (live(v) && v.unitId === null && v.coderId === coder.id && !(v.variable in body.variables)) v.retiredAt = now;
+    }
+    upsert(null, coder.id, body.variables);
     coder.assignments = body.assignments;
     return c.body(null, 204);
   });
@@ -158,6 +186,7 @@ export function createServer(store: Store, secret: string) {
     if (!coderId) return c.json({ error: "coderId is required" }, 400);
     const byUnit = new Map<number, BackendAnnotation>();
     for (const v of [...store.values].filter((v) => live(v) && v.coderId === coderId).sort(byCreated)) {
+      if (v.unitId === null) continue; // coder-level: returned with the coder
       const a = byUnit.get(v.unitId) ?? { unitId: v.unitId, coderId, variables: {}, created: v.created, updated: v.updated };
       a.variables[v.variable] = v.value;
       if (v.updated > a.updated) a.updated = v.updated;
@@ -175,26 +204,23 @@ export function createServer(store: Store, secret: string) {
     if (!store.units.has(unitId)) return c.json({ error: "Unit not found" }, 404);
     if (!store.coders.some((x) => x.id === coderId)) return c.json({ error: "Coder not found" }, 404);
 
-    const now = new Date();
-    for (const [variable, value] of Object.entries(body.variables)) {
-      const existing = store.values.find((v) => live(v) && v.unitId === unitId && v.coderId === coderId && v.variable === variable);
-      if (existing) Object.assign(existing, { value, updated: now, codebookId: body.codebookId });
-      else store.values.push({ unitId, coderId, variable, value, codebookId: body.codebookId, created: now, updated: now });
-    }
+    upsert(unitId, coderId, body.variables, body.codebookId);
     return c.body(null, 204);
   });
 
-  // Per group of variables: the (unit, coder) pairs where every variable is
-  // live ("finished"). Counting only; the job server decides the groups.
+  // Per group of variables: the (unit, coder) pairs -- or, for coder-level
+  // groups, the coders -- where every variable is live ("finished").
+  // Filtering only; the job server decides the groups and does the counting.
   api.post("/finished", async (c) => {
     const body = await parse(c, FinishedRequestSchema);
     if (!body) return c.json({ error: "Invalid body" }, 400);
     const result: BackendFinished[] = [];
     for (const group of body.loops) {
       const variables = new Set(group.variables);
+      const coderLevel = group.level === "coder";
       const pairs = new Map<string, Value[]>();
       for (const v of store.values) {
-        if (!live(v) || !variables.has(v.variable)) continue;
+        if (!live(v) || !variables.has(v.variable) || (v.unitId === null) !== coderLevel) continue;
         if (body.coderId !== undefined && v.coderId !== body.coderId) continue;
         const key = `${v.unitId}/${v.coderId}`;
         pairs.set(key, [...(pairs.get(key) ?? []), v]);
@@ -202,7 +228,7 @@ export function createServer(store: Store, secret: string) {
       const finished = [...pairs.values()]
         .filter((values) => values.length === variables.size)
         .map((values) => ({ values, created: new Date(Math.min(...values.map((v) => v.created.getTime()))) }))
-        .sort((a, b) => a.created.getTime() - b.created.getTime() || a.values[0].unitId - b.values[0].unitId);
+        .sort((a, b) => a.created.getTime() - b.created.getTime() || (a.values[0].unitId ?? 0) - (b.values[0].unitId ?? 0));
       for (const { values, created } of finished) {
         const { unitId, coderId } = values[0];
         const row: BackendFinished = { loop: group.loop, unitId, coderId, created };

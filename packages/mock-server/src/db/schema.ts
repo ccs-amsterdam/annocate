@@ -93,7 +93,8 @@ export function createDb(path = ":memory:"): DatabaseSync {
       doneUnitIds TEXT NOT NULL DEFAULT '{}',
       variables TEXT NOT NULL DEFAULT '{}',
       assignments TEXT NOT NULL DEFAULT '{}',
-      participantId TEXT
+      participantId TEXT,
+      created TEXT
     );
 
     CREATE TABLE IF NOT EXISTS invites (
@@ -121,6 +122,7 @@ export function createDb(path = ":memory:"): DatabaseSync {
   addColumnIfMissing(db, "invites", "participantId", "TEXT");
   addColumnIfMissing(db, "invites", "participantFromUrl", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "coders", "participantId", "TEXT");
+  addColumnIfMissing(db, "coders", "created", "TEXT");
   addColumnIfMissing(db, "deployments", "annotationEpoch", "INTEGER NOT NULL DEFAULT 0");
   migrateAnnotationsTable(db);
   return db;

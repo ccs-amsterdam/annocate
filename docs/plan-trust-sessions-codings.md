@@ -302,8 +302,7 @@ longer reads as "what a db server must implement". Plan:
    the legacy coder routes (waits on the admin preview).
 4. **Sessions in httpOnly cookies** (§2), client and job server on one
    origin; signed coder session; db server stops storing coder keys.
-5. **Coder-level annotations loaded lazily** (§11). Small; can go any time,
-   and makes (6) simpler.
+5. ~~**Coder-level annotations loaded lazily** (§11)~~ Done.
 6. **Timed outbox to the db server** (§10), with Durable Object storage on
    Cloudflare. After (4), which touches the same request paths.
 7. **Trust handshake** (§1): invite token, registration, signed handshake,
@@ -557,7 +556,14 @@ limits). `architecture.md` §3 and §4 should say so when this is built.
 
 ## 11. Coder-level annotations
 
-Discussed 2026-10-15. Not built.
+Discussed 2026-10-15. **Built:** `level: "unit" | "coder"` on
+`POST /finished` groups (`unitId: null` for coder-level rows); the job
+server loads `balanced` counts from it and coders lazily (evicted with
+their workspace); status reads `GET /coders` on demand. The reference db
+server stores coder-level values as rows with a null unit, the mock server
+keeps them on the coder record; the conformance suite covers both through
+the API. Once built parts are folded into `architecture.md`, this section
+can go.
 
 **Storage (db server's choice).** Coder-level values (survey questions,
 `auto` variables) are now stored on the coder record (`variables`). A db

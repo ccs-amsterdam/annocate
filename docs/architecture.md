@@ -82,20 +82,24 @@ worker:
    memory (that matters on the edge target, with idle evictions and a
    memory limit per Durable Object):
    - **Distribution state**, loaded eagerly by `DeploymentRuntime.load()`:
-     `GET /deployment` + `GET /coders` + `POST /finished`, the last one
-     **for loops with dynamic sources only**: which coder finished which
-     unit there, plus the agreement variables' values. Fixed sources need
-     no global state: a coder's own finished units are enough.
-   - **Coder workspaces**: a coder's own live annotations, via
-     `GET /annotations?coderId=X`. Loaded when the coder shows up; their
-     finished units in every loop are derived from it. Evicted after
-     `workspaceTtlMs` idle.
+     `GET /deployment` + `POST /finished`, the bulk query, for two things
+     only: **loops with dynamic sources** (which coder finished which unit
+     there, plus the agreement variables' values; fixed sources need no
+     global state, a coder's own finished units are enough), and
+     **`balanced` auto variables** (coder-level rows: which coder has which
+     option).
+   - **Active coders**: the coder record (coder-level values, loop
+     routing) from `coders/resolve`, and their workspace, i.e. their own
+     live annotations, via `GET /annotations?coderId=X`. Loaded when the
+     coder shows up; their finished units in every loop are derived from
+     it. Evicted after `workspaceTtlMs` idle, so memory grows with active
+     coders, not with all coders of a job.
 
    A codebook redeploy keeps the derived codings if the loops' questions,
    dynamic sources and agreement variables are unchanged. Otherwise, or
    after a researcher reset (`annotationEpoch`), it rebuilds them.
    Researcher status is computed on demand (`POST /finished` for every
-   loop), not held in memory.
+   loop, `GET /coders` for routing), not held in memory.
 3. **Bounded retention.** Unit content is cached with a TTL. Dropping a
    deployment (`DELETE /admin/deployments/:id`) forgets everything held for
    it. That keeps GDPR retention simple: the job server is a processor with a
@@ -255,7 +259,8 @@ The client skips them as steps.
 
 - `random`: weighted draw from `options` (job server).
 - `balanced`: the option fewest coders have so far (job server). This
-  spreads unknown coders evenly over `part_{slot}`.
+  spreads unknown coders evenly over `part_{slot}`. The counts come from a
+  coder-level `POST /finished` query on load, then are kept in memory.
 - `invite`: the value preset on the coder's invitation. If the invitation
   doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
   stays empty.

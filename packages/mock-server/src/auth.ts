@@ -155,8 +155,8 @@ export function resolveCoder(
     Object.entries(presets).map(([name, code]) => [name, { done: true, skip: false, codes: [{ code }] }]),
   );
   db.prepare(
-    "INSERT INTO coders (jobId, devKey, participantId, variables, doneUnitIds) VALUES (?, ?, ?, ?, '{}')",
-  ).run(invite.jobId, coderKey, participantId, JSON.stringify(variables));
+    "INSERT INTO coders (jobId, devKey, participantId, variables, doneUnitIds, created) VALUES (?, ?, ?, ?, '{}', ?)",
+  ).run(invite.jobId, coderKey, participantId, JSON.stringify(variables), new Date().toISOString());
   return db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as unknown as CoderRow;
 }
 
