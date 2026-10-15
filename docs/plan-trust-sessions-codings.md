@@ -327,8 +327,7 @@ longer reads as "what a db server must implement". Plan:
   the job server stops accepting work (§10).
 - Writes that arrive with an old `codebookId` after a reset: store as-is
   (current lean), or reject (§10).
-- `balanced` counts: a db-side count endpoint, or per-job counters on the
-  job server rebuilt from it (§11).
+- Renaming `POST /finished` once it also serves coder-level groups (§11).
 
 ## 9. Review notes (2026-10-15)
 
@@ -582,14 +581,34 @@ workspace, and drop `GET /coders` from the eager load. What the eager load
 was used for, and what replaces it:
 
 - **`balanced` auto variables** count how many coders have each option.
-  Replace with a count from the db server (e.g. `POST /coders/counts` with
-  variable names, returning counts per code), loaded on start for
-  `balanced` variables only, then kept up to date in memory as the job
-  server assigns values.
+  Load these with the same query endpoint as finished codings (below), on
+  start and for `balanced` variables only, then keep the counts up to date
+  in memory as the job server assigns values.
 - **Researcher status** (coders routed per loop/unitset): on demand from the
   db server, like the rest of status; or a count endpoint over
   `assignments`.
 - **Leases/codings** already key on coder id and don't need coder records.
+
+**One query endpoint.** Everything the job server reads in bulk is the same
+query: *per group of variables, the rows where every variable has a live
+value, optionally with the values*. Only the level differs:
+
+| Use | Level | Group | Values | Row |
+| --- | --- | --- | --- | --- |
+| Finished units, loop status | unit | a loop's variables | – | (unit, coder) |
+| Agreement (dynamic loops) | unit | a loop's variables | agreement variables | (unit, coder) + values |
+| `balanced` counts | coder | the `balanced` variable | that variable | (coder) + value |
+
+So `POST /finished` gets a `level: "unit" | "coder"` per group (default
+`unit`); coder-level rows have `unitId: null`. With coder-level values stored
+as annotation rows with a null unit (above), it is literally the same SQL
+with a different unit filter. A db server that keeps them on the coder
+record answers coder-level groups from there instead. The db server still
+only filters and returns rows; the job server does the counting (per code,
+per loop), so the endpoint stays one simple semantic. Rows per coder are
+few, so returning rows instead of counts costs little. The name could
+become e.g. `POST /codings` once it is more than "finished". Add
+coder-level groups to the conformance suite.
 
 With this, a job server's memory grows with *active* coders only, and a
 cold start (e.g. a Durable Object waking up) is one `GET /deployment` plus
