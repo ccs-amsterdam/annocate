@@ -318,8 +318,8 @@ longer reads as "what a db server must implement". Plan:
 6. ~~**Timed outbox to the db server** (§10)~~ Done on Node; the Durable
    Object store comes with the Cloudflare target.
 7. **Trust handshake** (§1): invite token, registration, signed handshake,
-   job tokens, outbound fetch hygiene, quotas. Concrete proposal and the
-   decisions it needs: §13.
+   job tokens, outbound fetch hygiene, quotas. Agreed design and build
+   order: §13.
 8. **Authentication** (§3).
 
 ## 8. Open decisions
@@ -712,66 +712,115 @@ wasteful. Instead:
 it was served; refusing would throw away a coder's work for a researcher's
 edit.
 
-## 13. Proposal for building §1 (for discussion, 2026-10-15)
+## 13. Trust between job server and db server: agreed design (2026-10-16)
 
-Written while §1's open decisions wait for Kasper; nothing here is built.
-What exists today: one shared bearer secret per configured db server
-(`ANNOTINDER_BACKENDS`), used in both directions, and one HMAC-signed
-token type (researcher previews, `PreviewSessionSchema`), which shows the
-pattern works across languages.
+Replaces the first proposal written here (keys on both sides, registration)
+after discussion; supersedes §1's "Target" where they differ. Not built yet.
 
-**Suggested order: two phases.**
+**Two modes, one code path.** A job server either has an **allowlist** of
+db server URLs (it only ever contacts those: db servers that want their own
+compute and control), or is **open** (any https db server; our public job
+servers, Cloudflare only). No persistent registry in either mode: nothing
+needs it (below).
 
-*Phase A, still an allowlist (small, removes the shared secret's reach):*
+**Job server identity: a key pair.** Each job server has an Ed25519 key
+pair (a Cloudflare secret, or a file/env var on Node) and publishes the
+public key at `/.well-known/jwks.json` (with `kid`; rotate by publishing the
+new key, switching, then removing the old one). This is the standard
+"private_key_jwt" client assertion (RFC 7523), which db server implementers
+can look up.
 
-1. **Keys instead of a shared secret.** Each side gets an Ed25519 key pair
-   and publishes its public keys at `/.well-known/jwks.json` (with `kid`,
-   so keys can rotate: publish the new key, sign with it, drop the old one
-   later). Config names the other side's base URL instead of a secret.
-2. **Per-job tokens.** The job server asks for a token per job:
-   `POST {db}/backend/job/:jobId/token` with a JWS-signed body
-   `{ iss: <job server URL>, aud: <db URL>, jobId, iat, exp, nonce }`. The
-   db server checks that this job is deployed to `iss`, verifies the
-   signature with `iss`'s JWKS (cached), and returns
-   `{ token, expiresAt }` (random; it stores a hash). The job server uses it
-   as the bearer for that job only and renews it the same way. A leaked job
-   token exposes one job for a limited time, not every job of the db server.
-3. **Db server to job server** (`refresh`, `status`, `drop`, preview
-   tokens): the db server signs a short JWS per call (`iss: <db URL>`,
-   `aud: <job server URL>`, `jobId`, `exp` of a minute), verified with the
-   db server's JWKS. Preview tokens become the same kind of JWS. Nothing to
-   store on the job server.
+**Getting a job token.** The job server sends the db server a JWS-signed
+request `{ iss: <job server URL>, aud: <db URL>, jobId, iat, exp (≈1 min),
+jti }`. The db server:
 
-*Phase B, open job servers (only if we want annotinder.com to accept any
-db server):*
+1. checks that this job is bound to job server `iss`. **The db server must
+   store this binding** (e.g. on its deployment or invitation rows); it
+   already stores the job and calls `refresh` on that job server, so this
+   is one column. (A stateless `job_proof` in invitations was considered:
+   correct, but redundant with that row, and harder to revoke.)
+2. verifies the signature with `iss`'s JWKS, fetched over TLS from the URL
+   it bound the job to (cached by `kid`);
+3. returns a **job token**: a JWT signed with the db server's single
+   secret, `{ jobId, aud: <job server URL>, exp, ck }`, checked statelessly
+   on every backend call. The db server stores no tokens, so there is
+   nothing to hash. The job server keeps it in memory (and may cache it in
+   its durable storage next to the outbox) and renews it the same way.
 
-4. **Registration.** `POST /register` on the job server, a JWS from the db
-   server (`iss: <db URL>`, `jobId`). The job server fetches the db
-   server's JWKS (the only outbound fetch an outsider can trigger, so it is
-   rate-limited and hardened: https, port 443, public IPs only, no
-   redirects, timeouts, size limits), verifies, and records the pair.
-   Registration answers with the deployment id to put in invite links.
-5. **Quotas** per db server (deployments, units, coders, requests), the
-   "hosted by <db host>" label in the coder UI, and a blocklist.
+**Db server -> job server calls** (`refresh`, `status`, `drop`, preview
+tokens): HMAC-signed with a **call key** with a timestamp (against replay).
+The call key is derived, so nobody stores it:
+`ck = HMAC(db secret, "calls" | job server URL | jobId)`. The db server
+recomputes it when needed; the job server reads it from the job token's
+`ck` claim (signed, not encrypted). Rotating the db secret invalidates call
+keys and tokens together; job servers then just ask for new tokens. Preview
+tokens become HMACs with the call key instead of today's shared secret.
 
-**Decisions needed:**
+**Deployment id = db host + job id**, e.g. `/d/amcat.example/42` (https
+implied; a db server with a path prefix states its base URL in the backend
+API docs, or we allow `host/prefix`). A job server that forgot a job gets
+everything back from the URL: the db URL and job id, then a new token.
+Readable, and the "hosted by" origin is visible in every link.
 
-- **Phase B at all, or not yet?** If every job server is run by someone who
-  also runs (or trusts) the db servers, phase A is enough. Lean: A first.
-- **How a job server finds a db server it has forgotten** (§1, "returning
-  coders"). (a) The deployment id encodes the db server, e.g.
-  `<base64url(db URL)>.<jobId>`: stateless, but long ids in links and
-  cookie paths. (b) Registrations are stored durably on the job server (a
-  tiny table next to the outbox): short ids (`<registration id>.<jobId>`),
-  but the job server keeps config state. Lean: (b) for phase B; in phase A
-  the allowlist already maps names to URLs, as today.
-- **Who may register on a public job server:** open with rate limits, an
-  API key per db server, or accounts. Lean: API key (issued by hand at
-  first).
-- **Invite links on the job server** (`/invitation/<token>`, §1 target) or
-  keep invite links on the client's own routes as now. Only matters for
-  phase B, where the client is served by the job server.
+**Invitations: db servers choose** short ids or JWTs. The invite secret is
+only needed on the first visit (in the URL, where length is fine) and is
+interpreted by the db server in `coders/resolve`. It never goes into the
+deployment id or the cookie.
 
-**Effort:** phase A is roughly the size of §2 (keys, JWKS endpoint, token
-endpoint on both db servers and in the conformance suite, signed admin
-calls). Phase B adds registration, outbound fetch hardening and quotas.
+**Forget invite details and URL parameters after the start.** Everything a
+job needs from them must be stored when the coder is created:
+
+- invite presets: already stored by the db server when it creates the
+  coder;
+- `random` / `balanced` auto variables: already assigned by the job server
+  in `resolveCoder` and stored via the outbox before it answers;
+- **`url_param` auto variables (to change):** the client sends the job's
+  relevant URL parameters with the first request; the job server assigns
+  them in `resolveCoder` like the other auto variables. Remaining edge: the
+  db server created the coder and the job server crashed before storing the
+  value; the next visit fills it in if the URL still has it, otherwise it
+  stays empty (documented, no machinery).
+- **Session cookie scope (to change):** today the cookie name includes the
+  invite secret; it should depend only on the deployment and participant
+  id, so a returning coder needs no invite.
+
+**Abuse and limits.** Deliberate volumetric DDoS is Cloudflare's job; the db
+host in a link is trivially spoofed, so per-host limits are about fair use
+and accidents, not security. The one security-relevant limit: **cap
+outbound calls per db host**, so nobody can use a job server to hammer a
+third party. On Cloudflare that needs a counter shared across Durable
+Objects (a small object per host, or the rate-limiting binding); on Node,
+memory. Outbound fetch hygiene stays (https, port 443, public IPs only, no
+redirects, timeouts, size limits). Public job servers are "best effort":
+coders may see "this job server is busy, try again later"; researchers who
+need guaranteed capacity self-host or use a managed db server.
+
+**Showing where a job comes from.** The coder UI always shows the db host
+(menu bar). Jobs from db servers that aren't ours could run under a
+separate subdomain (e.g. `public.annotinder.com`), which isolates cookies
+and keeps a malicious tenant from getting the main domain on phishing
+blocklists. No registry and no vetting: we label, we don't vouch.
+
+**Client and job server are one unit.** The coder API is internal between
+the two (served from the same origin, versioned together); a self-hosted
+job server serves (or sits behind) its own client. Only the backend API
+between db server and job server is a public contract, checked by the
+conformance suite.
+
+**Optional, low priority: embedding in iframes.** Annotation sessions only
+(never researcher or login cookies) could use
+`SameSite=None; Secure; Partitioned` cookies (CHIPS), plus
+`frame-ancestors` per job and an "open in a new tab" fallback when the
+browser blocks storage in iframes. CSRF stays covered by the required
+`x-annotinder` header and no CORS, but this gives up SameSite's extra
+layer for those cookies, and the coding UI relies on the full viewport.
+Default instead: redirect / open in a new tab, and make our own survey
+support good enough that Qualtrics embedding isn't needed.
+
+**Build order:** (1) job server keys + JWKS endpoint; (2) token endpoint
+and binding check in the mock and reference db servers, plus conformance
+tests (token issuance, rejection of unbound job servers and bad
+signatures); (3) the job server uses per-job tokens instead of the shared
+secret; (4) signed db -> job server calls and preview tokens; (5)
+deployment ids from db host + job id, open mode, outbound caps; (6)
+`url_param` in `resolveCoder` and the cookie scope change.
