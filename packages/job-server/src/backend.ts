@@ -33,7 +33,7 @@ export class HttpError extends Error {
   }
 }
 
-/** A db server this job server accepts deployments from (ANNOTINDER_BACKENDS). */
+/** A db server this job server works for (dbServers.ts). */
 export interface BackendConfig {
   url: string;
 }
@@ -84,6 +84,7 @@ export class BackendClient {
           body: init.body === undefined ? undefined : JSON.stringify(init.body),
         });
       } catch (err) {
+        if (err instanceof HttpError) throw err; // e.g. busy (outbound cap)
         throw new HttpError(502, `Db server unreachable: ${err instanceof Error ? err.message : String(err)}`);
       }
     };

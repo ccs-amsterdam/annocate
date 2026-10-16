@@ -331,8 +331,8 @@ export const backendEndpoints = {
 // ---------------------------------------------------------------------------
 // Job server admin API: called by the db server, signed with the job's call
 // key (JOB_SERVER_SIGNATURE_HEADER).
-// Deployment ids are `<backend name>.<jobId>`, where the backend name is how
-// the job server's config refers to that db server.
+// Deployment ids are `<db host>/<jobId>` (port included if not the default),
+// e.g. `amcat.nl/42`: a job server finds the db server from the id alone.
 // ---------------------------------------------------------------------------
 
 /** Progress of one source (unitset) of one unit_loop. */
@@ -396,7 +396,7 @@ export type RefreshDeployment = z.infer<typeof RefreshDeploymentSchema>;
 /**
  * Researcher `POST /job/:jobId/deployment/preview`: a preview of the job's
  * latest codebook (deployed or not), run by the job server as deployment
- * `<backend>.<jobId>.preview`. Coders and answers stay in the job server's
+ * `<db host>/<jobId>.preview`. Coders and answers stay in the job server's
  * memory; nothing is written to the db server. The client uses `token` like
  * an invite secret (`x-invite-secret`).
  *
@@ -418,7 +418,7 @@ export type PreviewSession = z.infer<typeof PreviewSessionSchema>;
  *   x-annotinder-signature: t=<unix seconds>,s=<base64url HMAC-SHA256(callKey,
  *     "<t>\n<METHOD>\n<path>\n<body>")>
  *
- * `path` is the request path (e.g. `/admin/deployments/mock.1/refresh`),
+ * `path` is the request path (e.g. `/admin/deployments/amcat.nl/42/refresh`),
  * `body` the raw body ("" if none). The job server accepts `t` within 5
  * minutes of its clock. It knows the call key from its own job token.
  */

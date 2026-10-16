@@ -21,7 +21,7 @@ const db = createDb(":memory:");
 seed(db);
 const jobId = loadFixture(db, fixture, JOB_SERVER_URL);
 const app = createApp(db, {
-  jobServer: { url: "https://default-job-server.example", backendName: "mock", fetch: toJobServer },
+  jobServer: { url: "https://default-job-server.example", fetch: toJobServer },
   tokens: { secret: "token-secret", publicUrl: DB_URL },
 });
 

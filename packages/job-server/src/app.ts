@@ -8,7 +8,8 @@ import {
   type RefreshDeployment,
   JOB_SERVER_SIGNATURE_HEADER,
 } from "@annotinder/contracts";
-import { HttpError, type BackendConfig } from "./backend.js";
+import { HttpError } from "./backend.js";
+import { DbServers, DEFAULT_DB_SERVER_OPTIONS, type DbServerOptions, type DbServerPolicy } from "./dbServers.js";
 import { DeploymentRegistry } from "./registry.js";
 import { verifyCallSignature } from "./jobTokens.js";
 import type { OutboxStore } from "./outbox.js";
@@ -24,8 +25,10 @@ import {
 import { DEFAULT_RUNTIME_OPTIONS, type Coder, type DeploymentRuntime, type RuntimeOptions } from "./runtime.js";
 
 export interface JobServerOptions {
-  /** Db servers this job server accepts deployments from, by name. */
-  backends: Record<string, BackendConfig>;
+  /** The db servers this job server works for: a list of URLs, or `"open"` for any https db server (dbServers.ts). */
+  dbServers: DbServerPolicy;
+  /** Outbound limits, and (open mode, Node) a check that hosts aren't private. */
+  dbServerOptions?: Partial<DbServerOptions>;
   /** This job server's own URL, as db servers bind jobs to it (plan §13). */
   publicUrl: string;
   fetch?: typeof fetch;
@@ -44,18 +47,22 @@ interface Env {
  * The job server's HTTP surface. Runtime-agnostic (plain Hono + fetch), so
  * the same app can run on Node (index.ts) or a Cloudflare Worker.
  *
- * - `/d/:deploymentId/...`: the coder-facing API (same paths as contracts
+ * - `/d/<db host>/<jobId>/...`: the coder-facing API (same paths as contracts
  *   `endpoints.getSession` etc.), so the client's `HttpJobServer` just uses
  *   `<job server>/d/<deploymentId>` as its base URL.
- * - `/admin/deployments/:deploymentId/...`: called by the db server.
+ * - `/admin/deployments/<db host>/<jobId>/...`: called by the db server.
  */
 export function createJobServer(options: JobServerOptions) {
   const signingKeys = Promise.resolve(options.signingKeys ?? SigningKeys.ephemeral());
-  const registry = new DeploymentRegistry(
-    options.backends,
-    { publicUrl: options.publicUrl.replace(/\/$/, ""), keys: signingKeys },
+  const dbServers = new DbServers(
+    options.dbServers,
     // Wrapped: Workers refuse `fetch` called as a method of another object.
     options.fetch ?? ((input, init) => fetch(input, init)),
+    { ...DEFAULT_DB_SERVER_OPTIONS, ...options.dbServerOptions },
+  );
+  const registry = new DeploymentRegistry(
+    dbServers,
+    { publicUrl: options.publicUrl.replace(/\/$/, ""), keys: signingKeys },
     { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime },
     options.outbox,
   );
@@ -78,10 +85,10 @@ export function createJobServer(options: JobServerOptions) {
   // browser refuses cross-origin calls that carry the required header.
 
   // Redeeming a transfer link: this device gets the session's cookie.
-  app.post("/d/:deploymentId/transfer/redeem", async (c) => {
+  app.post("/d/:host/:job/transfer/redeem", async (c) => {
     requireClientHeader(c);
     const body = await parseBody(c, RedeemTransferSchema);
-    const deploymentId = c.req.param("deploymentId");
+    const deploymentId = deploymentIdOf(c);
     const runtime = await registry.get(deploymentId);
     const sessionKey = runtime.redeemTransfer(body.token);
     const name = await sessionCookieName(c.req.header("x-invite-secret"), c.req.header("x-participant-id"));
@@ -92,7 +99,7 @@ export function createJobServer(options: JobServerOptions) {
   const coders = new Hono<Env>();
   coders.use("*", async (c, next) => {
     requireClientHeader(c);
-    const deploymentId = c.req.param("deploymentId")!;
+    const deploymentId = deploymentIdOf(c);
     const runtime = await registry.get(deploymentId);
     await runtime.refresh();
     c.set("runtime", runtime);
@@ -142,7 +149,7 @@ export function createJobServer(options: JobServerOptions) {
     return c.body(null, 204);
   });
 
-  app.route("/d/:deploymentId", coders);
+  app.route("/d/:host/:job", coders);
 
   // --- admin API (db server -> job server) ----------------------------------
 
@@ -150,7 +157,7 @@ export function createJobServer(options: JobServerOptions) {
   // Signed by the db server with the job's call key (contracts
   // JOB_SERVER_SIGNATURE_HEADER), which we know from our own job token.
   admin.use("*", async (c, next) => {
-    const deploymentId = c.req.param("deploymentId")!;
+    const deploymentId = deploymentIdOf(c);
     registry.backendFor(deploymentId); // 404 for unknown db servers, before any token request
     const callKey = await registry.tokensFor(deploymentId).callKey();
     const call = { method: c.req.method, path: new URL(c.req.url).pathname, body: await c.req.text() };
@@ -161,7 +168,7 @@ export function createJobServer(options: JobServerOptions) {
   });
 
   admin.post("/refresh", async (c) => {
-    const runtime = await registry.get(c.req.param("deploymentId")!);
+    const runtime = await registry.get(deploymentIdOf(c));
     // The body is optional (a plain notification has none).
     const text = await c.req.text();
     let body: RefreshDeployment = {};
@@ -183,20 +190,25 @@ export function createJobServer(options: JobServerOptions) {
   });
 
   admin.get("/status", async (c) => {
-    const runtime = await registry.get(c.req.param("deploymentId")!);
+    const runtime = await registry.get(deploymentIdOf(c));
     await runtime.refresh();
     return c.json(await runtime.status());
   });
 
   admin.delete("/", (c) => {
-    registry.drop(c.req.param("deploymentId")!);
+    registry.drop(deploymentIdOf(c));
     return c.body(null, 204);
   });
 
-  app.route("/admin/deployments/:deploymentId", admin);
+  app.route("/admin/deployments/:host/:job", admin);
 
   // Hosts call this to send what a previous run left behind (index.ts, worker.ts).
   return Object.assign(app, { flushPending: () => registry.flushPending() });
+}
+
+/** `<db host>/<jobId>` (or `.../<jobId>.preview`) from the route (dbServers.ts). */
+function deploymentIdOf(c: Context): string {
+  return `${c.req.param("host")!.toLowerCase()}/${c.req.param("job")}`;
 }
 
 async function parseBody<T>(c: Context, schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } }) {

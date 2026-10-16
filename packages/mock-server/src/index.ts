@@ -16,7 +16,6 @@ if (!hasJob) seed(db);
 const app = createApp(db, {
   jobServer: {
     url: process.env.JOB_SERVER_URL ?? "http://localhost:8788",
-    backendName: process.env.BACKEND_NAME ?? "mock",
   },
   tokens: {
     secret: process.env.TOKEN_SECRET ?? "dev-token-secret",

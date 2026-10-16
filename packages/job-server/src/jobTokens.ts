@@ -69,6 +69,7 @@ export class JobTokens {
         body: JSON.stringify({ assertion }),
       });
     } catch (err) {
+      if (err instanceof HttpError) throw err;
       throw new HttpError(502, `Db server unreachable: ${err instanceof Error ? err.message : String(err)}`);
     }
     if (res.status === 404) throw new HttpError(404, "Job not found");

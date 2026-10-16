@@ -152,7 +152,7 @@ function asJobServer() {
   const { x } = publicKey.export({ format: "jwk" }) as { x: string };
   const jwks = { keys: [{ kty: "OKP", crv: "Ed25519", x, kid: "k1" }] };
   app = createApp(db, {
-    jobServer: { url: JOB_SERVER, backendName: "mock", fetch: (async () => Response.json(jwks)) as unknown as typeof fetch },
+    jobServer: { url: JOB_SERVER, fetch: (async () => Response.json(jwks)) as unknown as typeof fetch },
     tokens: { secret: "token-secret", publicUrl: "http://mock.test" },
   });
   return async (jobId: number) => {

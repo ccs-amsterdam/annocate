@@ -8,7 +8,7 @@ import { HttpJobServer } from "../api/httpJobServer";
 
 /** Which session a page belongs to; sent along so the job server picks the right cookie. */
 export interface CoderSessionScope {
-  /** Job server base URL including the deployment, e.g. `/d/mock.1` (same origin as the client). */
+  /** Job server base URL including the deployment, e.g. `/d/amcat.nl/42` (same origin as the client). */
   baseUrl: string;
   inviteSecret?: string;
   participantId?: string;
@@ -38,4 +38,9 @@ export function defaultTransferUrl(token: string): string {
   url.searchParams.delete("participant");
   url.searchParams.set("transfer", token);
   return url.toString();
+}
+
+/** The db server's host from a job server base URL (`.../d/<db host>/<jobId>`): who hosts the job. */
+export function dbHostOf(baseUrl: string): string | null {
+  return /\/d\/([^/]+)\/[^/]+\/?$/.exec(baseUrl)?.[1] ?? null;
 }

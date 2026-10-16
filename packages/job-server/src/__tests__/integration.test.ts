@@ -68,7 +68,7 @@ function newJobServer(runtime: Partial<RuntimeOptions> = {}) {
     return toDb(input, init);
   }) as typeof globalThis.fetch;
   return createJobServer({
-    backends: { mock: { url: DB_URL } },
+    dbServers: [DB_URL],
     publicUrl: JOB_URL,
     signingKeys,
     fetch,
@@ -83,7 +83,6 @@ beforeEach(() => {
   dbApp = createApp(db, {
     jobServer: {
       url: JOB_URL,
-      backendName: "mock",
       fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }),
     },
     tokens: { secret: SECRET, publicUrl: DB_URL },
@@ -106,7 +105,7 @@ async function send(name: string, path: string, init: RequestInit = {}, headers:
   let device = devices.get(name);
   if (!device) devices.set(name, (device = { cookies: new Map(), invite: null }));
   const cookie = [...device.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
-  const res = await server().request(`/d/mock.1${path}`, {
+  const res = await server().request(`/d/db.test/1${path}`, {
     ...init,
     headers: { "content-type": "application/json", "x-annotinder": "1", ...(cookie ? { cookie } : {}), ...headers },
   });
@@ -209,8 +208,8 @@ describe("coder flow through the job server", () => {
 
   it("returns 404 for unknown or undeployed jobs", async () => {
     const headers = { "x-annotinder": "1", "x-invite-secret": "demo-secret" };
-    expect((await jobServer.request("/d/other.1/session", { headers })).status).toBe(404);
-    expect((await jobServer.request("/d/mock.99/session", { headers })).status).toBe(404);
+    expect((await jobServer.request("/d/other.test/1/session", { headers })).status).toBe(404);
+    expect((await jobServer.request("/d/db.test/99/session", { headers })).status).toBe(404);
   });
 
   it("rebuilds its state from the db server after a restart", async () => {
@@ -434,7 +433,7 @@ describe("sessions", () => {
     expect(set).toMatch(/^annotinder_[0-9a-f]{16}=/);
     expect(set).toContain("HttpOnly");
     expect(set).toContain("SameSite=Lax");
-    expect(set).toContain("Path=/d/mock.1");
+    expect(set).toContain("Path=/d/db.test/1");
 
     const value = [...devices.get("browser")!.cookies.values()][0];
     const { coderId } = (await res.json()) as SessionResponse;
@@ -449,7 +448,7 @@ describe("sessions", () => {
   });
 
   it("refuses requests without the client header (CSRF)", async () => {
-    const res = await jobServer.request("/d/mock.1/session", { headers: { "x-invite-secret": "demo-secret" } });
+    const res = await jobServer.request("/d/db.test/1/session", { headers: { "x-invite-secret": "demo-secret" } });
     expect(res.status).toBe(403);
   });
 
@@ -894,7 +893,7 @@ describe("outbox", () => {
     const c = coder("full");
     const first = (await c.next())!;
     dbUp = false;
-    expect(outboxStore.stats("mock.1").pending).toBe(1); // the coder's routing
+    expect(outboxStore.stats("db.test/1").pending).toBe(1); // the coder's routing
     expect((await c.submit(first.id, demo("neutral"))).status).toBe(204);
     const next = (await c.next())!;
     expect((await c.submit(next.id, demo("neutral"))).status).toBe(204); // 3 pending: full
@@ -957,7 +956,7 @@ describe("researcher preview", () => {
   it("runs the latest codebook, deployed or not, and picks up edits", async () => {
     await draft("draft 1");
     const { deploymentId, token } = await openPreview();
-    expect(deploymentId).toBe("mock.1.preview");
+    expect(deploymentId).toBe("db.test/1.preview");
     const call = previewer(deploymentId, token);
     expect(((await (await call("/session")).json()) as SessionResponse).codebook.name).toBe("draft 1");
     // the real deployment is untouched
@@ -991,7 +990,7 @@ describe("researcher preview", () => {
       `preview.1.${Date.now() - 1000}.${sig}`, // expired (and so the signature no longer matches either)
       token.replace("preview.1.", "preview.2."), // another job
     ];
-    for (const t of tries) expect((await previewer("mock.1.preview", t)("/session")).status).toBe(401);
+    for (const t of tries) expect((await previewer("db.test/1.preview", t)("/session")).status).toBe(401);
   });
 });
 
@@ -1005,7 +1004,7 @@ describe("trust between job server and db server (plan §13)", () => {
   it("refuses db server calls that aren't signed with the job's call key", async () => {
     await coder("warm").session();
     const refresh = (headers: Record<string, string>) =>
-      jobServer.request("/admin/deployments/mock.1/refresh", { method: "POST", headers });
+      jobServer.request("/admin/deployments/db.test/1/refresh", { method: "POST", headers });
     expect((await refresh({})).status).toBe(401);
     const t = Math.floor(Date.now() / 1000);
     expect((await refresh({ "x-annotinder-signature": `t=${t},s=${"A".repeat(43)}` })).status).toBe(401);
@@ -1018,7 +1017,7 @@ describe("trust between job server and db server (plan §13)", () => {
     await c.session();
     // The db server restarts with a new secret: earlier tokens are invalid.
     dbApp = createApp(db, {
-      jobServer: { url: JOB_URL, backendName: "mock", fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
+      jobServer: { url: JOB_URL, fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
       tokens: { secret: "rotated", publicUrl: DB_URL },
     });
     backendCalls = [];
@@ -1033,7 +1032,7 @@ describe("trust between job server and db server (plan §13)", () => {
     const c = coder("renew");
     await c.session();
     dbApp = createApp(db, {
-      jobServer: { url: JOB_URL, backendName: "mock", fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
+      jobServer: { url: JOB_URL, fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
       tokens: { secret: "rotated", publicUrl: DB_URL },
     });
     backendCalls = [];
@@ -1045,5 +1044,39 @@ describe("trust between job server and db server (plan §13)", () => {
     expect(backendCalls[renewal + 1]).toBe(backendCalls[renewal - 1]);
     expect(backendCalls.filter((call) => call.endsWith("/token"))).toHaveLength(1);
     expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
+  });
+});
+
+describe("open job server", () => {
+  it("codes for any https db server, found from the deployment id alone", async () => {
+    const DB = "https://db.annotinder-demo.org";
+    const openDb = createApp(db, {
+      jobServer: { url: JOB_URL, fetch: routeTo(JOB_URL, { request: (path, init) => openServer.request(path, init) }) },
+      tokens: { secret: SECRET, publicUrl: DB },
+    });
+    const openServer = createJobServer({
+      dbServers: "open",
+      publicUrl: JOB_URL,
+      signingKeys,
+      fetch: routeTo(DB, openDb),
+      runtime: { flushIntervalMs: 0 },
+    });
+    let cookie = "";
+    const call = async (path: string, init: RequestInit = {}) => {
+      const res = await openServer.request(`/d/db.annotinder-demo.org/1${path}`, {
+        ...init,
+        headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": "demo-secret", cookie },
+      });
+      const [set] = res.headers.getSetCookie();
+      if (set) cookie = set.split(";")[0];
+      return res;
+    };
+    expect((await call("/session")).status).toBe(200);
+    const unit = (await (await call("/loop/main_loop/next")).json()) as CoderUnitResponse;
+    expect((await call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: demo("neutral") }) })).status).toBe(204);
+    expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
+
+    // Hosts it can't reach as a public https server are unknown deployments.
+    expect((await openServer.request("/d/localhost:8787/1/session", { headers: { "x-annotinder": "1" } })).status).toBe(404);
   });
 });

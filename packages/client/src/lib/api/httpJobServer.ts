@@ -49,7 +49,7 @@ export interface JobServer {
 }
 
 export interface HttpJobServerConfig {
-  /** Base URL of the job's server including the deployment, e.g. "/d/mock.1" (same origin as the client). */
+  /** Base URL of the job's server including the deployment, e.g. "/d/amcat.nl/42" (same origin as the client). */
   baseUrl: string;
   /** The invite link: creates the coder on first use, and selects this link's session cookie. */
   inviteSecret?: string;

@@ -52,7 +52,6 @@ beforeAll(async () => {
   app = createApp(db, {
     jobServer: {
       url: JOB_SERVER_URL,
-      backendName: "mock",
       fetch: ((input: string | URL | Request, init?: RequestInit) =>
         current!.dispatchFetch(String(input instanceof Request ? input.url : input), init as never)) as unknown as typeof fetch,
     },
@@ -73,7 +72,7 @@ function worker(flushIntervalMs: number) {
     durableObjects: { DEPLOYMENTS: { className: "DeploymentObject", useSQLite: true } },
     durableObjectsPersist: persist,
     bindings: {
-      ANNOTINDER_BACKENDS: JSON.stringify({ mock: { url: dbUrl } }),
+      ANNOTINDER_DB_SERVERS: JSON.stringify([dbUrl]),
       ANNOTINDER_PUBLIC_URL: JOB_SERVER_URL,
       FLUSH_INTERVAL_MS: String(flushIntervalMs),
       ANNOTINDER_SIGNING_KEYS: signingKeys,
@@ -85,7 +84,7 @@ function worker(flushIntervalMs: number) {
 function browser(mf: () => Miniflare) {
   let cookie = "";
   return async (path: string, init: { method?: string; body?: string } = {}) => {
-    const res = await mf().dispatchFetch(`http://jobs.test/d/mock.1${path}`, {
+    const res = await mf().dispatchFetch(`http://jobs.test/d/${new URL(dbUrl).host}/1${path}`, {
       ...init,
       headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": "demo-secret", cookie },
     });

@@ -45,7 +45,7 @@ proxied by Vite to the job server: the coder session is a same-origin
 httpOnly cookie, so the client and job server must share an origin.
 
 The dev shell's "Annotate" view codes the seeded demo job through the job
-server (deployment `mock.1`). If you have a mock-server database from before
+server (deployment `localhost:8787/1`: the mock server's host and the job id). If you have a mock-server database from before
 the job server existed, run `pnpm reset-mock` once so the demo job is deployed.
 
 To check a db server you are building (in any language): load

@@ -16,22 +16,22 @@ import { retireAnnotations } from "../db/annotations.js";
 /** Where this db server's jobs are deployed, and how the job server knows this db server. */
 export interface JobServerLink {
   url: string;
-  /** This db server's name in the job server's backend config; deployment ids are `<backendName>.<jobId>`. */
-  backendName: string;
   fetch?: typeof fetch;
 }
 
 const PREVIEW_TTL_MS = 12 * 60 * 60_000;
 
-export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, jobServer?: JobServerLink) {
+export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, publicUrl: string, jobServer?: JobServerLink) {
   const app = new Hono<HonoEnv>();
+  // Job servers know a job by this db server's host and the job id (plan §13).
+  const deploymentId = (jobId: number) => `${new URL(publicUrl).host}/${jobId}`;
 
   // Calls to the job server the job is bound to, signed with the job's call
   // key (contracts JOB_SERVER_SIGNATURE_HEADER).
   const callJobServer = (path: string, method: "GET" | "POST", jobId: number, body?: unknown) => {
     const bound = jobServer ? boundJobServer(db, jobId, jobServer.url) : null;
     if (!jobServer || !bound) return Promise.resolve(null);
-    const fullPath = path.replace(":deploymentId", `${jobServer.backendName}.${jobId}`);
+    const fullPath = path.replace(":deploymentId", deploymentId(jobId));
     const text = body === undefined ? "" : JSON.stringify(body);
     const headers: Record<string, string> = { [JOB_SERVER_SIGNATURE_HEADER]: issuer.signCall(bound, jobId, method, fullPath, text) };
     if (body !== undefined) headers["content-type"] = "application/json";
@@ -98,7 +98,7 @@ export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, jobSe
     const jobId = c.get("jobId");
     const expiresAt = Date.now() + PREVIEW_TTL_MS;
     const token = issuer.previewToken(boundJobServer(db, jobId, jobServer.url)!, jobId, expiresAt);
-    return c.json({ deploymentId: `${jobServer.backendName}.${jobId}.preview`, token, expiresAt: new Date(expiresAt) });
+    return c.json({ deploymentId: `${deploymentId(jobId)}.preview`, token, expiresAt: new Date(expiresAt) });
   });
 
   app.get("/deployment/status", requireJobUser(db, "READ"), async (c) => {

@@ -3,6 +3,7 @@ import type { VariableValue } from "@annotinder/contracts";
 import { renderSVG } from "uqr";
 import { HttpJobServer, type JobServer } from "../api/httpJobServer";
 import {
+  dbHostOf,
   defaultTransferUrl,
   redeemTransfer,
   type CoderSessionScope,
@@ -34,7 +35,7 @@ import {
 } from "lucide-react";
 
 export interface JobRunnerProps {
-  /** Job server URL including the deployment, e.g. `https://jobs.example/d/mock.1`. */
+  /** Job server URL including the deployment, e.g. `https://jobs.example/d/amcat.nl/42`. */
   baseUrl: string;
   inviteSecret?: string;
   /** Participant id from the URL, for invites that take it from there. */
@@ -439,6 +440,13 @@ function JobRunnerContent({
                     {snapshot.navigation.phases.length}
                   </span>
                 </div>
+
+                {/* Who hosts this job: the db server, from the deployment id (plan §13). */}
+                {dbHostOf(baseUrl) && (
+                  <div className="px-3.5 py-1.5 border-b border-border/60 text-[11px] text-muted-foreground" title="The server that stores this job and your answers">
+                    Hosted by <span className="font-medium text-foreground">{dbHostOf(baseUrl)}</span>
+                  </div>
+                )}
 
                 {/* List of Navigation Phases */}
                 <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">

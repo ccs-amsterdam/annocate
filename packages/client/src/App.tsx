@@ -13,7 +13,7 @@ const MOCK_SERVER_URL = import.meta.env.VITE_MOCK_SERVER_URL ?? "http://localhos
 // Coders talk to the job server, not the db server (docs/architecture.md),
 // on the client's own origin: its session cookie is same-origin only. In dev,
 // Vite proxies `/d` to the job server (vite.config.ts). The seed demo job is
-// deployed as `mock.1`.
+// deployed as `<mock server host>/1`, e.g. `localhost:8787/1`.
 const JOB_SERVER_URL = import.meta.env.VITE_JOB_SERVER_URL ?? "";
 
 const adminClient = new HttpAdminClient({
@@ -30,11 +30,11 @@ function devInviteUrl(invite: { jobId: number; secret: string }): string {
 }
 
 function App() {
-  // Coder links (docs/coder-identity.md): ?deployment=mock.1&invite=...&participant=...
-  // or ?deployment=mock.1&transfer=... from "Continue on another device".
+  // Coder links (docs/coder-identity.md): ?deployment=localhost:8787/1&invite=...&participant=...
+  // or ?deployment=...&transfer=... from "Continue on another device".
   const [params, setParams] = useState(() => new URLSearchParams(window.location.search));
   const inviteSecret = params.get("invite") ?? "demo-secret";
-  const deploymentId = params.get("deployment") ?? "mock.1";
+  const deploymentId = params.get("deployment") ?? `${new URL(MOCK_SERVER_URL).host}/1`;
   const participantId = params.get("participant") ?? undefined;
   const transferToken = params.get("transfer") ?? undefined;
   const clearTransfer = useCallback(() => {

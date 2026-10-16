@@ -98,7 +98,7 @@ plan §3).
 | PUT | `/deployment` | `DeploymentWriteSchema` | `DeploymentResponseSchema` | Requires ADMIN; bumps `version`, freezes the codebook, notifies the job server |
 | GET | `/deployment/status` | – | `DeploymentStatusSchema` | Proxied from the job server |
 | POST | `/deployment/refresh` | `RefreshDeploymentSchema` | `{ version }` | Requires ADMIN; the job server re-checks the deployment now. `units: "all" \| ids` also drops its unit content cache (units aren't re-fetched otherwise) |
-| POST | `/deployment/preview` | – | `PreviewSessionSchema` | Requires WRITE; a preview of the latest codebook on the job server (`<backend>.<jobId>.preview`), in memory only. The token (HMAC with the job server secret, format in the schema) is used as the invite secret |
+| POST | `/deployment/preview` | – | `PreviewSessionSchema` | Requires WRITE; a preview of the latest codebook on the job server (`<db host>/<jobId>.preview`), in memory only. The token (HMAC with the job's call key, format in the schema) is used as the invite secret |
 | POST | `/annotations/reset` | `ResetAnnotationsSchema` | `{ retired }` | Requires ADMIN; retires live values (kept for analysis), so the units are coded again |
 
 ### Coder API (served by the job server)

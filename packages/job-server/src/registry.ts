@@ -1,4 +1,5 @@
 import { BackendClient, HttpError, type BackendConfig } from "./backend.js";
+import { parseDeploymentId, type DbServers } from "./dbServers.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
 import { MemoryOutboxStore, Outbox, type OutboxStore } from "./outbox.js";
 import { PreviewBackend } from "./preview.js";
@@ -10,13 +11,6 @@ export interface JobServerIdentity {
   /** Its own URL, as db servers bind jobs to it. */
   publicUrl: string;
   keys: Promise<SigningKeys>;
-}
-
-/** Splits a deployment id `<backend>.<jobId>`, or a researcher preview `<backend>.<jobId>.preview`. */
-export function parseDeploymentId(id: string): { backend: string; jobId: number; preview: boolean } | null {
-  const match = /^([a-zA-Z0-9_-]+)\.(\d+)(\.preview)?$/.exec(id);
-  if (!match) return null;
-  return { backend: match[1], jobId: Number(match[2]), preview: !!match[3] };
 }
 
 /**
@@ -34,13 +28,13 @@ export class DeploymentRegistry {
    * one.
    */
   private outboxes = new Map<string, Outbox>();
-  /** `<backend>.<jobId>` -> the job's token; shared by the deployment and its preview. */
+  /** `<db URL>|<jobId>` -> the job's token; shared by the deployment and its preview. */
   private tokens = new Map<string, JobTokens>();
 
   constructor(
-    private backends: Record<string, BackendConfig>,
+    /** The db servers this job server works for; all calls to them go through its `fetch`. */
+    private dbServers: DbServers,
     private identity: JobServerIdentity,
-    private fetchImpl: typeof fetch = (input, init) => fetch(input, init),
     private runtimeOptions: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
     /** Pending writes of all deployments; durable outside tests (outboxSqlite.ts). */
     private outboxStore: OutboxStore = new MemoryOutboxStore(),
@@ -63,9 +57,8 @@ export class DeploymentRegistry {
 
   backendFor(deploymentId: string): BackendConfig & { jobId: number; preview: boolean } {
     const parsed = parseDeploymentId(deploymentId);
-    const backend = parsed && this.backends[parsed.backend];
-    if (!parsed || !backend) throw new HttpError(404, `Unknown deployment '${deploymentId}'`);
-    return { ...backend, jobId: parsed.jobId, preview: parsed.preview };
+    if (!parsed) throw new HttpError(404, `Unknown deployment '${deploymentId}'`);
+    return { url: this.dbServers.urlFor(parsed.host), jobId: parsed.jobId, preview: parsed.preview };
   }
 
   async get(deploymentId: string): Promise<DeploymentRuntime> {
@@ -104,7 +97,7 @@ export class DeploymentRegistry {
         dbUrl: url,
         jobId,
         keys: this.identity.keys,
-        fetch: this.fetchImpl,
+        fetch: this.dbServers.fetch,
       });
       this.tokens.set(key, tokens);
     }
@@ -112,7 +105,7 @@ export class DeploymentRegistry {
   }
 
   private deploymentRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
-    const backend = new BackendClient(config, jobId, this.tokensFor(deploymentId), this.fetchImpl);
+    const backend = new BackendClient(config, jobId, this.tokensFor(deploymentId), this.dbServers.fetch);
     let outbox = this.outboxes.get(deploymentId);
     if (!outbox) this.outboxes.set(deploymentId, (outbox = new Outbox(deploymentId, this.outboxStore, backend, this.runtimeOptions)));
     return new DeploymentRuntime(deploymentId, backend, this.runtimeOptions, outbox);
@@ -125,7 +118,7 @@ export class DeploymentRegistry {
   private previewRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
     const options: RuntimeOptions = { ...this.runtimeOptions, specTtlMs: 0, flushIntervalMs: 0 };
     const tokens = this.tokensFor(deploymentId);
-    const db = new BackendClient(config, jobId, tokens, this.fetchImpl, true);
+    const db = new BackendClient(config, jobId, tokens, this.dbServers.fetch, true);
     const backend = new PreviewBackend(db, () => tokens.callKey(), jobId, options.now);
     return new DeploymentRuntime(deploymentId, backend, options, new Outbox(deploymentId, new MemoryOutboxStore(), backend, options));
   }

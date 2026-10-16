@@ -32,8 +32,8 @@ interface DurableObjectState {
 
 interface Env {
   DEPLOYMENTS: DurableObjectNamespace;
-  /** JSON: `{"amcat":{"url":"https://..."}}`, as ANNOTINDER_BACKENDS on Node. */
-  ANNOTINDER_BACKENDS: string;
+  /** As on Node: a JSON array of db server URLs, or `open`. */
+  ANNOTINDER_DB_SERVERS: string;
   /** This job server's own URL, as db servers bind jobs to it. */
   ANNOTINDER_PUBLIC_URL: string;
   /** Secret: this job server's private keys (keys.ts). Required here: every isolate must sign with the same key. */
@@ -44,7 +44,9 @@ interface Env {
   FLUSH_INTERVAL_MS?: string;
 }
 
-const BackendsSchema = z.record(z.string().regex(/^[a-zA-Z0-9_-]+$/), z.object({ url: z.string().url() }));
+const DbServersSchema = z.union([z.literal("open"), z.array(z.string().url())]);
+const dbServersFrom = (env: Env) =>
+  DbServersSchema.parse(env.ANNOTINDER_DB_SERVERS === "open" ? "open" : JSON.parse(env.ANNOTINDER_DB_SERVERS));
 
 /** Parsed once per isolate (Worker and Durable Objects alike). */
 let signingKeys: Promise<SigningKeys> | undefined;
@@ -57,14 +59,15 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === "/.well-known/jwks.json") return Response.json((await keysFrom(env)).jwks());
-    const match = /^\/(?:d|admin\/deployments)\/([^/]+)/.exec(pathname);
+    // One Durable Object per deployment: `<db host>/<jobId>` (a preview is its own deployment).
+    const match = /^\/(?:d|admin\/deployments)\/([^/]+\/[^/]+)/.exec(pathname);
     if (!match) return Response.json({ ok: true, service: "annotinder-job-server" });
     const namespace = env.DO_JURISDICTION ? env.DEPLOYMENTS.jurisdiction!(env.DO_JURISDICTION) : env.DEPLOYMENTS;
-    return namespace.get(namespace.idFromName(decodeURIComponent(match[1]))).fetch(request);
+    return namespace.get(namespace.idFromName(decodeURIComponent(match[1]).toLowerCase())).fetch(request);
   },
 };
 
-/** One deployment (`<backend>.<jobId>`, or a `.preview`). */
+/** One deployment (`<db host>/<jobId>`, or a `.preview`). */
 export class DeploymentObject {
   private app: ReturnType<typeof createJobServer>;
   /** Outbox timers (`fn` only matters on Node: here the alarm flushes everything due). */
@@ -81,7 +84,7 @@ export class DeploymentObject {
       ...(env.FLUSH_INTERVAL_MS ? { flushIntervalMs: Number(env.FLUSH_INTERVAL_MS) } : {}),
     };
     this.app = createJobServer({
-      backends: BackendsSchema.parse(JSON.parse(env.ANNOTINDER_BACKENDS)),
+      dbServers: dbServersFrom(env),
       publicUrl: env.ANNOTINDER_PUBLIC_URL,
       outbox: new DurableObjectOutboxStore(ctx.storage.sql),
       signingKeys: keysFrom(env),

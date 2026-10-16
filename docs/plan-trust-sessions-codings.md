@@ -829,6 +829,9 @@ secret; (4) signed db -> job server calls and preview tokens~~ done
 together, and the shared secret is gone (a rejected token has code
 `invalid_job_token`: renewed and retried once; the token endpoint answers
 404 for unknown jobs; on Node without `ANNOTINDER_SIGNING_KEYS` the key is
-kept in `job-server-signing-key.json`); (5)
-deployment ids from db host + job id, open mode, outbound caps; (6)
+kept in `job-server-signing-key.json`); (5) ~~deployment ids from db host + job id, open mode, outbound caps~~
+done (`dbServers.ts`; `ANNOTINDER_DB_SERVERS` = URLs or `open`; open mode:
+public DNS names on https only, private addresses refused on Node; no
+redirects, timeouts, size caps, per-host request caps; "hosted by" in the
+coder menu; the cap is per Durable Object on Cloudflare, not yet shared); (6)
 `url_param` in `resolveCoder` and the cookie scope change.

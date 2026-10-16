@@ -12,7 +12,7 @@ import type {
 import { HttpError, type Backend, type BackendClient } from "./backend.js";
 import { hmac, timingSafeEqual } from "./jobTokens.js";
 
-// Researcher previews (`<backend>.<jobId>.preview`, contracts
+// Researcher previews (`<db host>/<jobId>.preview`, contracts
 // PreviewSessionSchema): the latest codebook and the real units come from the
 // db server, but coders and answers stay here, in memory. Nothing a preview
 // does reaches the db server, and it is gone when the job server forgets the

@@ -170,16 +170,20 @@ with `{ codebookId, active }`. The db server:
 
 - bumps the deployment `version`;
 - freezes the codebook;
-- calls `POST /admin/deployments/<backend>.<jobId>/refresh` on the job
+- calls `POST /admin/deployments/<db host>/<jobId>/refresh` on the job
   server. This is best effort.
 
 The job server also re-checks the spec version at most every `specTtlMs`
 (60s), so a missed notification heals itself.
 
-**Deployment id.** The id is `<backend name>.<jobId>`, e.g. `mock.1`. The
-backend name is how the job server's config refers to that db server. Invite
-links point at the job server: `<job server>/d/<deploymentId>` + invite
-secret.
+**Deployment id.** The id is `<db host>/<jobId>`, e.g. `amcat.nl/42` (or
+`localhost:8787/1` in development): a job server that forgot a job finds the
+db server from the id alone. Invite links point at the job server:
+`<job server>/d/<db host>/<jobId>` + invite secret. Which db servers a job
+server works for is `ANNOTINDER_DB_SERVERS`: an allowlist of URLs, or
+`open` for any https db server (public job servers). Outbound calls never
+follow redirects, time out, cap response sizes and are capped per db host
+(`dbServers.ts`); the coder UI shows who hosts the job.
 
 **Coder session.**
 
@@ -204,7 +208,7 @@ secret.
    queue.
 
 **Researcher preview.** `POST /job/:jobId/deployment/preview` on the db
-server returns a deployment id `<backend>.<jobId>.preview` and a token
+server returns a deployment id `<db host>/<jobId>.preview` and a token
 signed with the secret it shares with the job server (format in
 `PreviewSessionSchema`). The client opens it like an invite. The job server
 runs the latest codebook (`GET /backend/.../deployment?preview=1`, checked
@@ -423,7 +427,8 @@ Other open points:
 | `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, placeholders, legacy migration |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment schemas, `backendEndpoints`, `jobServerAdminEndpoints`, status |
-| `job-server/src/app.ts` | Hono app: coder API under `/d/:deploymentId`, admin API |
+| `job-server/src/app.ts` | Hono app: coder API under `/d/<db host>/<jobId>`, admin API |
+| `job-server/src/dbServers.ts` | Which db servers (allowlist or open), deployment ids, outbound fetch limits |
 | `job-server/src/registry.ts` | Lazily loads one runtime per deployment; failures aren't cached |
 | `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
 | `job-server/src/outbox.ts` | Durable pending writes, batched flushes with backoff (`outboxSqlite.ts`: the Node store) |

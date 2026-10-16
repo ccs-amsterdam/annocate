@@ -27,11 +27,11 @@ describe("job server on the reference db server", () => {
     // The job server's durable outbox survives its restart (a file on Node).
     const outbox = new MemoryOutboxStore();
     const jobServer = () =>
-      createJobServer({ backends: { ref: { url: "http://ref.test" } }, publicUrl: "http://jobs.test", signingKeys, fetch: toDb, outbox });
+      createJobServer({ dbServers: ["http://ref.test"], publicUrl: "http://jobs.test", signingKeys, fetch: toDb, outbox });
     let server = jobServer();
     let cookie = ""; // the browser's session cookie
     const call = async (path: string, init?: RequestInit) => {
-      const res = await server.request(`/d/ref.1${path}`, {
+      const res = await server.request(`/d/ref.test/1${path}`, {
         ...init,
         headers: { "content-type": "application/json", "x-annotinder": "1", "x-invite-secret": "conf-preset", cookie },
       });

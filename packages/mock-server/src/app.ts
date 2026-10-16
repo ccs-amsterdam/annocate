@@ -37,11 +37,9 @@ export function createApp(db: DatabaseSync, options: AppOptions = {}) {
   app.route("/job/:jobId", unitRoutes(db));
   app.route("/job/:jobId", unitsetRoutes(db));
   app.route("/job/:jobId", coderRoutes(db));
-  const issuer = new JobTokenIssuer({
-    ...(options.tokens ?? { secret: "dev-token-secret", publicUrl: "http://localhost:8787" }),
-    fetch: options.jobServer?.fetch,
-  });
-  app.route("/job/:jobId", deploymentRoutes(db, issuer, options.jobServer));
+  const tokens = options.tokens ?? { secret: "dev-token-secret", publicUrl: "http://localhost:8787" };
+  const issuer = new JobTokenIssuer({ ...tokens, fetch: options.jobServer?.fetch });
+  app.route("/job/:jobId", deploymentRoutes(db, issuer, tokens.publicUrl, options.jobServer));
 
   // Called by the job server only (docs/architecture.md).
   app.route("/backend/job/:jobId", backendRoutes(db, issuer, options.jobServer?.url ?? null));
