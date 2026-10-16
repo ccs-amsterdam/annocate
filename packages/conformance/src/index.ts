@@ -1,3 +1,4 @@
+import { createHash, generateKeyPairSync, randomUUID, sign, type KeyObject } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, it, expect, beforeAll } from "vitest";
 import {
@@ -9,6 +10,7 @@ import {
   BackendUnitSchema,
   ConformanceFixtureSchema,
   DeploymentSpecSchema,
+  JobTokenResponseSchema,
   type BackendCoder,
   type ConformanceFixture,
   type DeploymentSpec,
@@ -36,6 +38,34 @@ export interface ConformanceTarget {
   secret: string;
   /** Defaults to the global `fetch`; tests can pass an in-process one. */
   fetch?: typeof fetch;
+  /**
+   * For the job token tests (plan §13): the job server URL the db server
+   * bound the fixture's job to, the URL the db server knows itself by
+   * (`aud`), and a way to serve a JWKS at `<jobServerUrl>/.well-known/jwks.json`
+   * (the suite plays that job server). Without it, those tests are skipped.
+   */
+  tokens?: {
+    jobServerUrl: string;
+    dbServerUrl: string;
+    serveJwks(jwks: { keys: object[] }): void | Promise<void>;
+  };
+}
+
+/** A job server identity for the token tests: an Ed25519 key and its JWKS. */
+function testJobServer() {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const jwk = publicKey.export({ format: "jwk" }) as { x: string };
+  const kid = createHash("sha256").update(JSON.stringify({ crv: "Ed25519", kty: "OKP", x: jwk.x })).digest("base64url");
+  return {
+    kid,
+    jwks: { keys: [{ kty: "OKP", crv: "Ed25519", x: jwk.x, kid, alg: "EdDSA", use: "sig" }] },
+    /** A compact JWS (EdDSA) over `claims`. */
+    sign(claims: Record<string, unknown>, key: KeyObject = privateKey, keyId = kid): string {
+      const b64 = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
+      const input = `${b64({ alg: "EdDSA", typ: "JWT", kid: keyId })}.${b64(claims)}`;
+      return `${input}.${sign(null, Buffer.from(input), key).toString("base64url")}`;
+    },
+  };
 }
 
 /**
@@ -346,6 +376,67 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       await ok(await put({}));
       expect((await resolve(key("lvl-replace"))).variables).toEqual({});
       expect(await finished({ loops: [{ loop: "g", level: "coder", variables: ["group"] }], coderId: coder.coderId })).toEqual([]);
+    });
+  });
+
+  describe("job tokens (POST /token)", () => {
+    const server = testJobServer();
+    const tokens = () => target().tokens;
+    const skip = () => !tokens();
+    const now = () => Math.floor(Date.now() / 1000);
+    const claims = (over: Record<string, unknown> = {}) => ({
+      iss: tokens()!.jobServerUrl,
+      aud: tokens()!.dbServerUrl,
+      jobId: target().jobId,
+      iat: now(),
+      exp: now() + 120,
+      jti: randomUUID(),
+      ...over,
+    });
+    // No shared secret: the signed request is the credential.
+    const request = (assertion: string) => call("/token", { method: "POST", body: { assertion }, auth: null });
+    const payload = (jwt: string) => JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString());
+
+    beforeAll(async () => {
+      if (!skip()) await tokens()!.serveJwks(server.jwks);
+    });
+
+    it("issues a job token to the job server the job is bound to", async (ctx) => {
+      if (skip()) return ctx.skip();
+      const res = await request(server.sign(claims()));
+      expect(res.status).toBe(200);
+      const body = JobTokenResponseSchema.parse(await res.json());
+      expect(body.expiresAt.getTime()).toBeGreaterThan(Date.now());
+      const token = payload(body.token);
+      expect(token).toMatchObject({ jobId: target().jobId, aud: tokens()!.jobServerUrl });
+      expect(typeof token.ck).toBe("string");
+      // The call key is derived, not random: the same for every token of this job.
+      const again = payload(JobTokenResponseSchema.parse(await (await request(server.sign(claims()))).json()).token);
+      expect(again.ck).toBe(token.ck);
+    });
+
+    it("refuses requests from job servers the job isn't bound to", async (ctx) => {
+      if (skip()) return ctx.skip();
+      expect((await request(server.sign(claims({ iss: "https://other-job-server.example" })))).status).toBe(401);
+    });
+
+    it("refuses requests signed with a key the job server doesn't publish", async (ctx) => {
+      if (skip()) return ctx.skip();
+      const stranger = generateKeyPairSync("ed25519").privateKey;
+      expect((await request(server.sign(claims(), stranger))).status).toBe(401); // same kid, wrong key
+      expect((await request(server.sign(claims(), stranger, "unknown-kid"))).status).toBe(401);
+      const [h, p, sig] = server.sign(claims()).split(".");
+      const forged = Buffer.from(JSON.stringify({ ...claims(), jobId: 999999 })).toString("base64url");
+      expect((await request(`${h}.${forged}.${sig}`)).status).toBe(401);
+      expect((await request(`${h}.${p}`)).status).toBe(401);
+    });
+
+    it("refuses requests for another db server, another job, or outside their time window", async (ctx) => {
+      if (skip()) return ctx.skip();
+      expect((await request(server.sign(claims({ aud: "https://other-db.example" })))).status).toBe(401);
+      expect((await request(server.sign(claims({ jobId: target().jobId + 1000 })))).status).toBe(401);
+      expect((await request(server.sign(claims({ iat: now() - 600, exp: now() - 300 })))).status).toBe(401); // expired
+      expect((await request(server.sign(claims({ exp: now() + 3600 })))).status).toBe(401); // too long
     });
   });
 }

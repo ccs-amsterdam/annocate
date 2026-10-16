@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { Hono, type Context } from "hono";
+import type { JobTokenIssuer } from "./jobTokens.js";
 import {
   ALL_UNITS_UNITSET,
   BackendAnnotationBatchSchema,
   BackendCoderWriteSchema,
   FinishedRequestSchema,
+  JobTokenRequestSchema,
   ResolveCoderRequestSchema,
   type BackendAnnotation,
   type BackendCoder,
@@ -59,19 +61,22 @@ interface Value {
 
 export interface Store {
   spec: DeploymentSpec;
+  /** The job server this job is deployed to: only it gets job tokens (plan §13). */
+  jobServerUrl: string | null;
   units: Map<number, { id: number; externalId: string; data: Record<string, string | number | boolean>; hash: string }>;
   invites: Invite[];
   coders: Coder[];
   values: Value[];
 }
 
-/** Loads a fixture as job `jobId`, deployed as version 1. */
-export function loadFixture(fixture: ConformanceFixture, jobId = 1): Store {
+/** Loads a fixture as job `jobId`, deployed as version 1 to `jobServerUrl`. */
+export function loadFixture(fixture: ConformanceFixture, jobId = 1, jobServerUrl: string | null = null): Store {
   // Units never change here; a db server that lets them change must change the hash too.
   const hash = (data: unknown) => createHash("sha256").update(JSON.stringify(data)).digest("hex").slice(0, 16);
   const units = new Map(fixture.units.map((u, i) => [i + 1, { id: i + 1, ...u, hash: hash(u.data) }]));
   const idOf = new Map([...units.values()].map((u) => [u.externalId, u.id]));
   return {
+    jobServerUrl,
     spec: {
       jobId,
       version: 1,
@@ -92,7 +97,7 @@ export function loadFixture(fixture: ConformanceFixture, jobId = 1): Store {
 
 const live = (v: Value) => v.retiredAt === undefined;
 
-export function createServer(store: Store, secret: string) {
+export function createServer(store: Store, secret: string, tokens?: JobTokenIssuer) {
   const liveValue = (unitId: number | null, coderId: number, variable: string) =>
     store.values.find((v) => live(v) && v.unitId === unitId && v.coderId === coderId && v.variable === variable);
 
@@ -121,6 +126,18 @@ export function createServer(store: Store, secret: string) {
 
   const app = new Hono();
   const api = new Hono();
+
+  // A job server asks for a job token with a request it signed (jobTokens.ts).
+  // Before the check below: this is how a job server gets authenticated.
+  api.post("/token", async (c) => {
+    const body = await parse(c, JobTokenRequestSchema);
+    if (!body) return c.json({ error: "Invalid body" }, 400);
+    if (!tokens) return c.json({ error: "Job tokens are not configured" }, 501);
+    const jobId = Number(c.req.param("jobId"));
+    const result = await tokens.issue(jobId, body.assertion, jobId === store.spec.jobId ? store.jobServerUrl : null);
+    if ("error" in result) return c.json({ error: result.error }, 401);
+    return c.json(result);
+  });
 
   // Only the job server may call this API: it presents the shared secret.
   api.use("*", async (c, next) => {

@@ -819,10 +819,12 @@ support good enough that Qualtrics embedding isn't needed.
 
 **Build order:** (1) ~~job server keys + JWKS endpoint~~ done (`keys.ts`,
 `ANNOTINDER_SIGNING_KEYS`, `keygen`; a per-process key on Node when unset;
-required on Cloudflare); (2) token endpoint
+required on Cloudflare); (2) ~~token endpoint
 and binding check in the mock and reference db servers, plus conformance
-tests (token issuance, rejection of unbound job servers and bad
-signatures); (3) the job server uses per-job tokens instead of the shared
+tests~~ done (`POST /backend/job/:jobId/token`; `JobTokenIssuer` in
+`reference-db-server/src/jobTokens.ts`, used by the mock server too; the
+mock stores the binding as `deployments.jobServerUrl`; the shared secret
+still guards every other backend call until step 3); (3) the job server uses per-job tokens instead of the shared
 secret; (4) signed db -> job server calls and preview tokens; (5)
 deployment ids from db host + job id, open mode, outbound caps; (6)
 `url_param` in `resolveCoder` and the cookie scope change.

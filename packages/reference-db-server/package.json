@@ -26,5 +26,11 @@
     "typescript": "5.7.2",
     "typescript-eslint": "^8.19.0",
     "vitest": "^5.0.1"
+  },
+  "exports": {
+    "./jobTokens": {
+      "types": "./dist/jobTokens.d.ts",
+      "default": "./dist/jobTokens.js"
+    }
   }
 }

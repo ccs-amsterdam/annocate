@@ -132,6 +132,7 @@ start another session for a participant that already has one). Errors are
 
 | Method | Path | Request | Response | Notes |
 | --- | --- | --- | --- | --- |
+| POST | `/backend/job/:jobId/token` | `JobTokenRequestSchema` | `JobTokenResponseSchema` | **No shared secret**: the body is a JWT the job server signed with its Ed25519 key. Check that the job is bound to its `iss` (store which job server each job runs on), `aud`, `jobId` and the time window, then verify with `<iss>/.well-known/jwks.json`. Returns a job token (HS256 with the db server's secret, claims `jobId`, `aud`, `exp`, `ck`). Reference implementation: `reference-db-server/src/jobTokens.ts`; any failure is 401 |
 | GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed. `?preview=1`: the latest codebook, deployed or not, `active`, with a `version` that changes with its content (researcher previews) |
 | GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out. `hash`: content hash, changes whenever `data` does |
 | GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails). Only for researcher status, on demand; the job server loads coders one by one via `resolve` |

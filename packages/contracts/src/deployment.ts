@@ -231,7 +231,42 @@ export const BackendAnnotationBatchResultSchema = z.object({
 });
 export type BackendAnnotationBatchResult = z.infer<typeof BackendAnnotationBatchResultSchema>;
 
+/**
+ * `POST /backend/job/:jobId/token` -- how a job server gets a **job token**
+ * (plan §13). No shared secret: `assertion` is a JWT signed by the job
+ * server (EdDSA / Ed25519, "private_key_jwt" as in RFC 7523), with claims
+ * `{ iss: <job server URL>, aud: <db server URL>, jobId, iat, exp, jti }`
+ * (`exp - iat` at most 5 minutes). The db server:
+ *
+ * 1. checks that the job is deployed and **bound to `iss`** (it stores which
+ *    job server each job runs on), that `aud` is its own URL, `jobId`
+ *    matches the path and the time window is valid;
+ * 2. verifies the signature with the key `kid` from `<iss>/.well-known/jwks.json`
+ *    (fetched over TLS, cached by `kid`);
+ * 3. returns a job token: a JWT it signs with its own secret (HS256), with
+ *    claims `{ jobId, aud: <job server URL>, iat, exp, ck }`. `ck` is the
+ *    **call key**, `base64url(HMAC-SHA256(secret, "calls|<job server
+ *    URL>|<jobId>"))`: derived, so the db server can recompute it to sign
+ *    its calls to the job server, and the job server reads it from the token.
+ *
+ * Any failure is `401 { error }`.
+ */
+export const JobTokenRequestSchema = z.object({ assertion: z.string().min(1) });
+export type JobTokenRequest = z.infer<typeof JobTokenRequestSchema>;
+
+export const JobTokenResponseSchema = z.object({
+  token: z.string().min(1),
+  expiresAt: z.coerce.date(),
+});
+export type JobTokenResponse = z.infer<typeof JobTokenResponseSchema>;
+
 export const backendEndpoints = {
+  requestJobToken: {
+    method: "POST",
+    path: "/backend/job/:jobId/token",
+    request: JobTokenRequestSchema,
+    response: JobTokenResponseSchema,
+  },
   getDeployment: {
     method: "GET",
     path: "/backend/job/:jobId/deployment",

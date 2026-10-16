@@ -44,7 +44,7 @@ export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
     if (!db.prepare("SELECT 1 FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, parsed.data.codebookId)) {
       return c.json({ error: "Codebook not found" }, 404);
     }
-    const deployment = putDeployment(db, jobId, parsed.data);
+    const deployment = putDeployment(db, jobId, parsed.data, jobServer?.url ?? null);
 
     // Tell the job server to pick up the new version. Best effort: if it's
     // down, it reloads the spec itself on its next cold start or TTL refresh.

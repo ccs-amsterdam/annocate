@@ -246,6 +246,9 @@ importers:
       '@annotinder/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@annotinder/reference-db-server':
+        specifier: workspace:*
+        version: link:../reference-db-server
       '@hono/node-server':
         specifier: ^2.1.1
         version: 2.1.1(hono@4.13.8)

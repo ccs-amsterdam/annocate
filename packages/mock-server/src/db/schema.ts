@@ -86,7 +86,9 @@ export function createDb(path = ":memory:"): DatabaseSync {
       active INTEGER NOT NULL DEFAULT 1,
       annotationEpoch INTEGER NOT NULL DEFAULT 0,
       version INTEGER NOT NULL,
-      updated TEXT NOT NULL
+      updated TEXT NOT NULL,
+      -- The job server this job runs on: only it gets job tokens (plan §13).
+      jobServerUrl TEXT
     );
 
     CREATE TABLE IF NOT EXISTS coders (
@@ -127,6 +129,7 @@ export function createDb(path = ":memory:"): DatabaseSync {
   addColumnIfMissing(db, "invites", "participantFromUrl", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "coders", "participantId", "TEXT");
   addColumnIfMissing(db, "coders", "created", "TEXT");
+  addColumnIfMissing(db, "deployments", "jobServerUrl", "TEXT");
   addColumnIfMissing(db, "deployments", "annotationEpoch", "INTEGER NOT NULL DEFAULT 0");
   migrateAnnotationsTable(db);
   addColumnIfMissing(db, "annotation_values", "unitHash", "TEXT");

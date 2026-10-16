@@ -21,6 +21,10 @@ const app = createApp(db, {
     backendName: process.env.BACKEND_NAME ?? "mock",
     secret,
   },
+  tokens: {
+    secret: process.env.TOKEN_SECRET ?? "dev-token-secret",
+    publicUrl: process.env.PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 8787}`,
+  },
 });
 
 const port = Number(process.env.PORT ?? 8787);

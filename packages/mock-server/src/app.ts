@@ -10,12 +10,19 @@ import { unitsetRoutes } from "./routes/unitsets.js";
 import { coderRoutes } from "./routes/coders.js";
 import { backendRoutes } from "./routes/backend.js";
 import { deploymentRoutes, type JobServerLink } from "./routes/deployment.js";
+import { JobTokenIssuer } from "@annotinder/reference-db-server/jobTokens";
 
 export interface AppOptions {
   /** Shared secret the job server uses for the backend API. */
   backendSecret?: string;
   /** If set, deployments notify this job server, and deployment status is proxied from it. */
   jobServer?: JobServerLink;
+  /**
+   * Job tokens (plan §13): the secret they are signed with, and this db
+   * server's own URL as job servers address it. JWKS are fetched with
+   * `jobServer.fetch` if given.
+   */
+  tokens?: { secret: string; publicUrl: string };
 }
 
 export const DEV_BACKEND_SECRET = "dev-job-server-secret";
@@ -37,7 +44,11 @@ export function createApp(db: DatabaseSync, options: AppOptions = {}) {
   app.route("/job/:jobId", deploymentRoutes(db, options.jobServer));
 
   // Called by the job server only (docs/architecture.md).
-  app.route("/backend/job/:jobId", backendRoutes(db, options.backendSecret ?? DEV_BACKEND_SECRET));
+  const tokens = options.tokens && {
+    issuer: new JobTokenIssuer({ ...options.tokens, fetch: options.jobServer?.fetch }),
+    jobServerUrl: options.jobServer?.url ?? null,
+  };
+  app.route("/backend/job/:jobId", backendRoutes(db, options.backendSecret ?? DEV_BACKEND_SECRET, tokens));
 
   // Legacy: coders talking to the db server directly. Superseded by the job
   // server; kept until the admin preview runs through the job server too.

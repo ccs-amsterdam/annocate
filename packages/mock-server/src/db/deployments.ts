@@ -45,15 +45,21 @@ export function getDeployment(db: DatabaseSync, jobId: number): DeploymentRespon
  * finished units in it: those units count as unfinished again
  * (docs/architecture.md §8.2).
  */
-export function putDeployment(db: DatabaseSync, jobId: number, body: DeploymentWrite): DeploymentResponse {
+/** Deploys a codebook; `jobServerUrl` is the job server it runs on (null: the configured one, see `boundJobServer`). */
+export function putDeployment(
+  db: DatabaseSync,
+  jobId: number,
+  body: DeploymentWrite,
+  jobServerUrl: string | null = null,
+): DeploymentResponse {
   const previous = getDeployment(db, jobId);
   const warnings = previous ? reopenWarnings(db, jobId, previous.codebookId, body.codebookId) : [];
   const version = (previous?.version ?? 0) + 1;
   db.prepare(
-    `INSERT INTO deployments (jobId, codebookId, active, version, updated) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO deployments (jobId, codebookId, active, version, updated, jobServerUrl) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT (jobId) DO UPDATE SET codebookId = excluded.codebookId, active = excluded.active,
-       version = excluded.version, updated = excluded.updated`,
-  ).run(jobId, body.codebookId, body.active ? 1 : 0, version, new Date().toISOString());
+       version = excluded.version, updated = excluded.updated, jobServerUrl = excluded.jobServerUrl`,
+  ).run(jobId, body.codebookId, body.active ? 1 : 0, version, new Date().toISOString(), jobServerUrl);
   db.prepare("UPDATE codebooks SET immutable = 1 WHERE jobId = ? AND id = ?").run(jobId, body.codebookId);
   return { ...getDeployment(db, jobId)!, ...(warnings.length > 0 ? { warnings } : {}) };
 }
@@ -119,6 +125,19 @@ export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSp
       db.prepare("SELECT annotationEpoch FROM deployments WHERE jobId = ?").get(jobId) as { annotationEpoch: number }
     ).annotationEpoch,
   });
+}
+
+/**
+ * The job server a deployed job is bound to (plan §13), or null if the job
+ * isn't deployed. Deployments without a stored URL (the seeded demo job, or
+ * made before bindings existed) are bound to this db server's configured job
+ * server: a dev convenience, a real db server stores it on every deploy.
+ */
+export function boundJobServer(db: DatabaseSync, jobId: number, configured: string | null): string | null {
+  const row = db.prepare("SELECT jobServerUrl FROM deployments WHERE jobId = ?").get(jobId) as
+    | { jobServerUrl: string | null }
+    | undefined;
+  return row ? (row.jobServerUrl ?? configured) : null;
 }
 
 /**

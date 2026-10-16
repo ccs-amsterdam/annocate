@@ -3,7 +3,7 @@ import { CodebookItemsSchema, type ConformanceFixture } from "@annotinder/contra
 import { putDeployment } from "./deployments.js";
 
 /** Loads a conformance fixture (packages/conformance) as a new, deployed job. Returns its id. */
-export function loadFixture(db: DatabaseSync, fixture: ConformanceFixture): number {
+export function loadFixture(db: DatabaseSync, fixture: ConformanceFixture, jobServerUrl: string | null = null): number {
   const created = new Date().toISOString();
   const lastId = () => (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 
@@ -30,7 +30,7 @@ export function loadFixture(db: DatabaseSync, fixture: ConformanceFixture): numb
     JSON.stringify(items),
     created,
   );
-  putDeployment(db, jobId, { codebookId: lastId(), active: true });
+  putDeployment(db, jobId, { codebookId: lastId(), active: true }, jobServerUrl);
 
   for (const invite of fixture.invites) {
     db.prepare(

@@ -7,12 +7,14 @@ import {
   ResolveCoderRequestSchema,
   type BackendCoder,
   type BackendUnit,
+  JobTokenRequestSchema,
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireJobServer, resolveCoder, type CoderRow } from "../auth.js";
 import { listCoderAnnotations, listFinished, putAnnotation } from "../db/annotations.js";
 import { unitHash } from "../db/units.js";
-import { getDeploymentSpec, getPreviewSpec } from "../db/deployments.js";
+import { boundJobServer, getDeploymentSpec, getPreviewSpec } from "../db/deployments.js";
+import type { JobTokenIssuer } from "@annotinder/reference-db-server/jobTokens";
 
 // The backend API (contracts `backendEndpoints`): what a db server exposes to
 // the job server. The job server holds no state of its own that it can't
@@ -22,8 +24,23 @@ function toBackendCoder(row: CoderRow): BackendCoder {
   return { coderId: row.id, variables: JSON.parse(row.variables), assignments: JSON.parse(row.assignments) };
 }
 
-export function backendRoutes(db: DatabaseSync, secret: string) {
+export function backendRoutes(db: DatabaseSync, secret: string, tokens?: { issuer: JobTokenIssuer; jobServerUrl: string | null }) {
   const app = new Hono<HonoEnv>();
+
+  // A job server asks for a job token with a request it signed (plan §13,
+  // reference-db-server/src/jobTokens.ts). Before the shared-secret check:
+  // this is how a job server gets authenticated.
+  app.post("/token", async (c) => {
+    if (!tokens) return c.json({ error: "Job tokens are not configured" }, 501);
+    const parsed = JobTokenRequestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Invalid body" }, 400);
+    const jobId = Number(c.req.param("jobId"));
+    const bound = Number.isInteger(jobId) ? boundJobServer(db, jobId, tokens.jobServerUrl) : null;
+    const result = await tokens.issuer.issue(jobId, parsed.data.assertion, bound);
+    if ("error" in result) return c.json({ error: result.error }, 401);
+    return c.json(result);
+  });
+
   app.use("*", requireJobServer(db, secret));
 
   // `?preview=1`: the latest codebook, deployed or not (researcher previews).
