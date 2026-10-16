@@ -1,6 +1,8 @@
 # Cloudflare target (src/worker.ts): `npx wrangler deploy` from this package.
 # Secrets: `npx wrangler secret put ANNOTINDER_BACKENDS` with the same JSON as
-# on Node, e.g. {"amcat":{"url":"https://amcat.example","secret":"..."}}.
+# on Node, e.g. {"amcat":{"url":"https://amcat.example","secret":"..."}}, and
+# `npx wrangler secret put ANNOTINDER_SIGNING_KEYS` with the output of
+# `pnpm --filter @annotinder/job-server keygen` (src/keys.ts).
 #
 # The client must be served from the same origin (session cookies): e.g. add
 # the built client as static assets here, with /d/* and /admin/* routed to

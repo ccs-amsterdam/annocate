@@ -10,7 +10,8 @@
     "typecheck": "tsc -b --noEmit && tsc -p tsconfig.test.json",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "keygen": "tsx src/keygen.ts"
   },
   "dependencies": {
     "@annotinder/contracts": "workspace:*",

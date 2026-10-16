@@ -10,6 +10,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { createDb } from "../../../mock-server/src/db/schema.js";
 import { seed } from "../../../mock-server/src/db/seed.js";
 import { createApp } from "../../../mock-server/src/app.js";
+import { SigningKeys } from "../keys.js";
 
 // The Cloudflare target, run in workerd (Miniflare) against a real mock db
 // server: the Worker routes to a Durable Object per deployment, whose outbox
@@ -20,6 +21,7 @@ let script: string;
 let db: DatabaseSync;
 let dbServer: ServerType;
 let dbUrl: string;
+let signingKeys: string;
 const persist = mkdtempSync(join(tmpdir(), "do-"));
 
 beforeAll(async () => {
@@ -33,6 +35,7 @@ beforeAll(async () => {
     write: false,
   });
   script = bundle.outputFiles[0].text;
+  signingKeys = JSON.stringify([await SigningKeys.generate()]);
 
   db = createDb(":memory:");
   seed(db);
@@ -60,6 +63,7 @@ function worker(flushIntervalMs: number) {
     bindings: {
       ANNOTINDER_BACKENDS: JSON.stringify({ mock: { url: dbUrl, secret: SECRET } }),
       FLUSH_INTERVAL_MS: String(flushIntervalMs),
+      ANNOTINDER_SIGNING_KEYS: signingKeys,
     },
   });
 }
@@ -88,6 +92,16 @@ const demoAnswers = {
 };
 
 describe("Cloudflare target (workerd)", () => {
+  it("publishes the configured keys, and Ed25519 works in workerd", async () => {
+    const mf = worker(300);
+    try {
+      const { keys } = (await (await mf.dispatchFetch("http://jobs.test/.well-known/jwks.json")).json()) as { keys: { x: string }[] };
+      expect(keys.map((k) => k.x)).toEqual([JSON.parse(signingKeys)[0].x]);
+    } finally {
+      await mf.dispose();
+    }
+  }, 60_000);
+
   it("codes through a Durable Object, flushes by alarm, and keeps the outbox across a restart", async () => {
     let mf = worker(300);
     const call = browser(() => mf);

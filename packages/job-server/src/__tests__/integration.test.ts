@@ -182,6 +182,15 @@ describe("coder flow through the job server", () => {
     expect((await coder("coder-x", "wrong").call("/session")).status).toBe(401);
   });
 
+  it("publishes its public keys for db servers", async () => {
+    const res = await jobServer.request("/.well-known/jwks.json");
+    expect(res.status).toBe(200);
+    const { keys } = (await res.json()) as { keys: { kty: string; d?: string }[] };
+    expect(keys).toHaveLength(1);
+    expect(keys[0].kty).toBe("OKP");
+    expect(keys[0].d).toBeUndefined();
+  });
+
   it("returns 404 for unknown or undeployed jobs", async () => {
     const headers = { "x-annotinder": "1", "x-invite-secret": "demo-secret" };
     expect((await jobServer.request("/d/other.1/session", { headers })).status).toBe(404);

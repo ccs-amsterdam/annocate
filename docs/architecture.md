@@ -422,6 +422,7 @@ Other open points:
 | `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
 | `job-server/src/outbox.ts` | Durable pending writes, batched flushes with backoff (`outboxSqlite.ts`: the Node store) |
 | `job-server/src/session.ts` | Coder session cookies, CSRF header |
+| `job-server/src/keys.ts` | The job server's Ed25519 keys: JWKS endpoint, signed requests to db servers |
 | `job-server/src/preview.ts` | Researcher previews: preview tokens, in-memory coders and answers |
 | `job-server/src/worker.ts` | Cloudflare entry: Worker routing + a Durable Object per deployment (`outboxDurable.ts`, `wrangler.toml`) |
 | `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |

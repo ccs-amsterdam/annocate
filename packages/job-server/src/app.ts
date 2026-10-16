@@ -10,6 +10,7 @@ import {
 import { HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRegistry } from "./registry.js";
 import type { OutboxStore } from "./outbox.js";
+import { SigningKeys } from "./keys.js";
 import {
   backendCoderKey,
   newSessionKey,
@@ -27,6 +28,8 @@ export interface JobServerOptions {
   runtime?: Partial<RuntimeOptions>;
   /** Where pending writes to db servers are kept; memory if not given (fine for tests, not for production). */
   outbox?: OutboxStore;
+  /** This job server's identity towards db servers (keys.ts). A key for this process only if not given (dev, tests). */
+  signingKeys?: SigningKeys | Promise<SigningKeys>;
 }
 
 interface Env {
@@ -59,6 +62,10 @@ export function createJobServer(options: JobServerOptions) {
   });
 
   app.get("/", (c) => c.json({ ok: true, service: "annotinder-job-server", contractsVersion: CONTRACTS_VERSION }));
+
+  // Public keys: db servers verify this job server's token requests with them.
+  const signingKeys = Promise.resolve(options.signingKeys ?? SigningKeys.ephemeral());
+  app.get("/.well-known/jwks.json", async (c) => c.json((await signingKeys).jwks()));
 
   // --- coder API ----------------------------------------------------------
 

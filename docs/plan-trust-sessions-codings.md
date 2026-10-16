@@ -817,7 +817,9 @@ layer for those cookies, and the coding UI relies on the full viewport.
 Default instead: redirect / open in a new tab, and make our own survey
 support good enough that Qualtrics embedding isn't needed.
 
-**Build order:** (1) job server keys + JWKS endpoint; (2) token endpoint
+**Build order:** (1) ~~job server keys + JWKS endpoint~~ done (`keys.ts`,
+`ANNOTINDER_SIGNING_KEYS`, `keygen`; a per-process key on Node when unset;
+required on Cloudflare); (2) token endpoint
 and binding check in the mock and reference db servers, plus conformance
 tests (token issuance, rejection of unbound job servers and bad
 signatures); (3) the job server uses per-job tokens instead of the shared

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createJobServer } from "./app.js";
 import { DurableObjectOutboxStore, type SqlStorage } from "./outboxDurable.js";
 import type { RuntimeOptions } from "./runtime.js";
+import { SigningKeys } from "./keys.js";
 
 // Cloudflare entry (docs/architecture.md §4, wrangler.toml). The Worker only
 // routes: every request for a deployment goes to that deployment's Durable
@@ -33,6 +34,8 @@ interface Env {
   DEPLOYMENTS: DurableObjectNamespace;
   /** Secret, JSON: `{"amcat":{"url":"https://...","secret":"..."}}`, as ANNOTINDER_BACKENDS on Node. */
   ANNOTINDER_BACKENDS: string;
+  /** Secret: this job server's private keys (keys.ts). Required here: every isolate must sign with the same key. */
+  ANNOTINDER_SIGNING_KEYS: string;
   /** E.g. "eu": keep Durable Objects (memory and outbox) in that jurisdiction. */
   DO_JURISDICTION?: string;
   /** Override for tests and dev; production uses the default (a minute). */
@@ -41,9 +44,18 @@ interface Env {
 
 const BackendsSchema = z.record(z.string().regex(/^[a-zA-Z0-9_-]+$/), z.object({ url: z.string().url(), secret: z.string().min(1) }));
 
+/** Parsed once per isolate (Worker and Durable Objects alike). */
+let signingKeys: Promise<SigningKeys> | undefined;
+function keysFrom(env: Env): Promise<SigningKeys> {
+  if (!env.ANNOTINDER_SIGNING_KEYS) throw new Error("ANNOTINDER_SIGNING_KEYS is not set (npx wrangler secret put ANNOTINDER_SIGNING_KEYS)");
+  return (signingKeys ??= SigningKeys.fromJson(env.ANNOTINDER_SIGNING_KEYS));
+}
+
 export default {
-  fetch(request: Request, env: Env): Promise<Response> | Response {
-    const match = /^\/(?:d|admin\/deployments)\/([^/]+)/.exec(new URL(request.url).pathname);
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const { pathname } = new URL(request.url);
+    if (pathname === "/.well-known/jwks.json") return Response.json((await keysFrom(env)).jwks());
+    const match = /^\/(?:d|admin\/deployments)\/([^/]+)/.exec(pathname);
     if (!match) return Response.json({ ok: true, service: "annotinder-job-server" });
     const namespace = env.DO_JURISDICTION ? env.DEPLOYMENTS.jurisdiction!(env.DO_JURISDICTION) : env.DEPLOYMENTS;
     return namespace.get(namespace.idFromName(decodeURIComponent(match[1]))).fetch(request);
@@ -69,6 +81,7 @@ export class DeploymentObject {
     this.app = createJobServer({
       backends: BackendsSchema.parse(JSON.parse(env.ANNOTINDER_BACKENDS)),
       outbox: new DurableObjectOutboxStore(ctx.storage.sql),
+      signingKeys: keysFrom(env),
       runtime,
     });
   }
