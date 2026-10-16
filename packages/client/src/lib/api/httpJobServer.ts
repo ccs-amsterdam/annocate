@@ -56,6 +56,11 @@ export interface HttpJobServerConfig {
   /** Participant id from the URL, for invites that take it from there. */
   participantId?: string;
   /**
+   * The page's other query parameters, for the codebook's `url_param` auto
+   * variables. The job server stores the ones it needs when the coder starts.
+   */
+  urlParams?: Record<string, string>;
+  /**
    * Start a new session although this participant already has one elsewhere.
    * Sent with the first request only: the job server then sets a new cookie.
    */
@@ -88,6 +93,8 @@ export class HttpJobServer implements JobServer {
       ...scopeHeaders(this.config),
     };
     if (this.newSession) headers["x-new-session"] = "1";
+    const query = new URLSearchParams(this.config.urlParams ?? {}).toString();
+    if (query) headers["x-url-params"] = query.slice(0, 2000);
     return headers;
   }
 

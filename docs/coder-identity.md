@@ -53,11 +53,15 @@ restrict an invite.
 - **First visit.** The job server creates a random session key and, once
   the db server accepted the coder (`coders/resolve`, with the key's hash),
   sets it as a cookie: `HttpOnly`, `SameSite=Lax`, `Secure` over https,
-  `Path=/d/<deployment>`, 400 days. The cookie name includes a hash of the
-  invite secret and participant id (sent by the client as headers, from the
-  URL), so a shared lab computer keeps separate sessions per invite or
-  participant. The client never sees or stores the key.
-- **Same device later.** The cookie resumes the same coder.
+  `Path=/d/<db host>/<jobId>`, 400 days. The cookie name includes a hash of
+  the participant id (sent by the client as a header, from the URL), so a
+  shared lab computer keeps separate sessions per participant. The invite
+  isn't part of it: everything the job needs from the invite and the URL
+  (preset and `url_param` variables) is stored when the coder starts, so
+  the invite and URL details can be forgotten. The client never sees or
+  stores the key.
+- **Same device later.** The cookie resumes the same coder, whatever link
+  (or none) the coder comes back with.
 - **CSRF.** Every coder API request must carry `x-annotinder: 1`, which a
   cross-site form or image can't send, and the job server sends no CORS
   headers, so cross-origin scripts can't either. This relies on the client

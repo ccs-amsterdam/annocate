@@ -833,5 +833,6 @@ kept in `job-server-signing-key.json`); (5) ~~deployment ids from db host + job 
 done (`dbServers.ts`; `ANNOTINDER_DB_SERVERS` = URLs or `open`; open mode:
 public DNS names on https only, private addresses refused on Node; no
 redirects, timeouts, size caps, per-host request caps; "hosted by" in the
-coder menu; the cap is per Durable Object on Cloudflare, not yet shared); (6)
-`url_param` in `resolveCoder` and the cookie scope change.
+coder menu; the cap is per Durable Object on Cloudflare, not yet shared); (6) ~~`url_param` in `resolveCoder` and the cookie scope change~~ done
+(`x-url-params`; the cookie name depends only on the participant id).
+§13 is complete.

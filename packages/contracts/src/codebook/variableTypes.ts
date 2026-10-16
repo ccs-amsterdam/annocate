@@ -65,7 +65,10 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
  * - `balanced`:  the option fewest coders have so far (e.g. spread coders over parts)
  * - `invite`:    the value preset on the coder's invitation; if the invitation
  *                doesn't set it, `fallback` decides (default: no value)
- * - `url_param`: read from a URL query param at session start (client side)
+ * - `url_param`: the value of a query parameter of the page the coder opened
+ *                (the client sends them as `x-url-params`); stored when the
+ *                coder starts, so later visits don't need it. If `options`
+ *                are given, other values are ignored.
  */
 export const AutoTypeSchema = z
   .object({

@@ -91,7 +91,7 @@ export function createJobServer(options: JobServerOptions) {
     const deploymentId = deploymentIdOf(c);
     const runtime = await registry.get(deploymentId);
     const sessionKey = runtime.redeemTransfer(body.token);
-    const name = await sessionCookieName(c.req.header("x-invite-secret"), c.req.header("x-participant-id"));
+    const name = await sessionCookieName(c.req.header("x-participant-id"));
     writeSession(c, deploymentId, name, sessionKey);
     return c.json({});
   });
@@ -109,15 +109,14 @@ export function createJobServer(options: JobServerOptions) {
     const inviteSecret = c.req.header("x-invite-secret");
     const participantId = c.req.header("x-participant-id");
     const newSession = c.req.header("x-new-session") === "1";
-    const name = await sessionCookieName(inviteSecret, participantId);
+    const name = await sessionCookieName(participantId);
     const existing = newSession ? undefined : readSession(c, name);
     const sessionKey = existing ?? newSessionKey();
-    const coder = await runtime.resolveCoder({
-      coderKey: await backendCoderKey(sessionKey),
-      inviteSecret,
-      participantId,
-      newSession,
-    });
+    const coder = await runtime.resolveCoder(
+      { coderKey: await backendCoderKey(sessionKey), inviteSecret, participantId, newSession },
+      // The page's query parameters, for `url_param` auto variables.
+      Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? "")),
+    );
     // Only once the db server accepted it (an invite may be invalid or used up).
     if (sessionKey !== existing) writeSession(c, deploymentId, name, sessionKey);
     c.set("sessionKey", sessionKey);

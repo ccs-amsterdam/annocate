@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { JobRunner } from "./lib/components/JobRunner";
 import { AdminApp } from "./lib/components/admin/AdminApp";
 import { HttpAdminClient } from "./lib/api/httpAdminClient";
@@ -37,6 +37,12 @@ function App() {
   const deploymentId = params.get("deployment") ?? `${new URL(MOCK_SERVER_URL).host}/1`;
   const participantId = params.get("participant") ?? undefined;
   const transferToken = params.get("transfer") ?? undefined;
+  // Everything else in the URL may feed the codebook's `url_param` auto variables.
+  const urlParams = useMemo(() => {
+    const rest = Object.fromEntries(params);
+    for (const own of ["invite", "deployment", "participant", "transfer", "view"]) delete rest[own];
+    return rest;
+  }, [params]);
   const clearTransfer = useCallback(() => {
     const next = new URLSearchParams(window.location.search);
     next.delete("transfer");
@@ -101,6 +107,7 @@ function App() {
             baseUrl={`${JOB_SERVER_URL}/d/${deploymentId}`}
             inviteSecret={inviteSecret}
             participantId={participantId}
+            urlParams={urlParams}
             transferToken={transferToken}
             onTransferRedeemed={clearTransfer}
           />

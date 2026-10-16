@@ -18,12 +18,13 @@ export function requireClientHeader(c: Context): void {
 }
 
 /**
- * The session cookie's name. A device keeps separate sessions per invite and
- * participant id (a shared lab computer, or a researcher trying links), so
- * they are part of the name; the deployment is in the cookie's path.
+ * The session cookie's name. The deployment is in the cookie's path; a
+ * device keeps separate sessions per participant id (a shared lab computer
+ * running a panel), so that is part of the name. The invite isn't: once a
+ * coder started, they come back without it (plan §13).
  */
-export async function sessionCookieName(inviteSecret?: string, participantId?: string): Promise<string> {
-  return `annotinder_${(await sha256(`${inviteSecret ?? ""}\n${participantId ?? ""}`)).slice(0, 16)}`;
+export async function sessionCookieName(participantId?: string): Promise<string> {
+  return `annotinder_${(await sha256(participantId ?? "")).slice(0, 16)}`;
 }
 
 export function newSessionKey(): string {

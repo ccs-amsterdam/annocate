@@ -40,6 +40,8 @@ export interface JobRunnerProps {
   inviteSecret?: string;
   /** Participant id from the URL, for invites that take it from there. */
   participantId?: string;
+  /** The page's other query parameters, for `url_param` auto variables (stored by the job server when the coder starts). */
+  urlParams?: Record<string, string>;
   /** Token from a "Continue on another device" link: redeemed for the session's coder key. */
   transferToken?: string;
   /** Called once a transfer token was redeemed, e.g. to remove it from the URL. */
@@ -250,15 +252,18 @@ function JobRunnerContent({
   baseUrl,
   inviteSecret,
   participantId,
+  urlParams,
   newSession,
   onStartNewSession,
   transferUrl,
   preview,
   onFinished,
 }: ContentProps) {
+  // By content: a new object with the same params must not restart the session.
+  const urlParamsKey = JSON.stringify(urlParams ?? {});
   const jobServer = useMemo(
-    () => new HttpJobServer({ baseUrl, inviteSecret, participantId, newSession }),
-    [baseUrl, inviteSecret, participantId, newSession],
+    () => new HttpJobServer({ baseUrl, inviteSecret, participantId, urlParams: JSON.parse(urlParamsKey), newSession }),
+    [baseUrl, inviteSecret, participantId, urlParamsKey, newSession],
   );
   const { manager, snapshot } = useJobManager(jobServer);
   const [menuOpen, setMenuOpen] = useState(false);

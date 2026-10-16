@@ -352,14 +352,16 @@ export class DeploymentRuntime {
   /**
    * The coder for a coder key; the db server creates it on first use (from
    * the invite, with participant id / new-session confirmation, see
-   * docs/coder-identity.md).
+   * docs/coder-identity.md). `urlParams` are the page's query parameters,
+   * for `url_param` auto variables: stored now, so the coder can come back
+   * without them (plan §13).
    */
-  async resolveCoder(request: ResolveCoderRequest): Promise<Coder> {
+  async resolveCoder(request: ResolveCoderRequest, urlParams: Record<string, string> = {}): Promise<Coder> {
     const known = this.coderKeys.get(request.coderKey);
     const cached = known !== undefined ? this.coders.get(known) : undefined;
     if (cached) {
-      // Their workspace may have been dropped by a reload.
-      await this.workspace(cached.coderId);
+      // Their workspace may have been dropped by a reload; a URL value missed earlier is filled in.
+      await Promise.all([this.workspace(cached.coderId), this.assignAutoVariables(cached, urlParams)]);
       return cached;
     }
     // Not active (new, evicted, or the job server restarted): the db server
@@ -369,18 +371,27 @@ export class DeploymentRuntime {
     this.coders.set(coder.coderId, coder);
     this.coderKeys.set(request.coderKey, coder.coderId);
     this.countBalanced(coder);
-    await Promise.all([this.assignAutoVariables(coder), this.workspace(coder.coderId)]);
+    await Promise.all([this.assignAutoVariables(coder, urlParams), this.workspace(coder.coderId)]);
     return coder;
   }
 
   /**
    * Assigns server-side `auto` variables (random / balanced / invite
-   * fallback) the coder doesn't have yet. Once assigned they never change.
+   * fallback / URL parameter) the coder doesn't have yet. Once assigned they
+   * never change. Saved (durably, via the outbox) before the coder is answered.
    */
-  private async assignAutoVariables(coder: Coder): Promise<void> {
+  private async assignAutoVariables(coder: Coder, urlParams: Record<string, string> = {}): Promise<void> {
     let changed = false;
     for (const [name, variable] of this.autoVariables) {
       if (variableCodes(coder.variables)[name] !== undefined) continue;
+      if (variable.source === "url_param") {
+        const value = urlParams[variable.urlParam ?? name];
+        // A value outside the codebook's options (if it lists any) is ignored, not stored.
+        if (value === undefined || value.length > 200 || (variable.options?.length && !variable.options.some((o) => o.code === value))) continue;
+        coder.variables = { ...coder.variables, [name]: codeValue(value) };
+        changed = true;
+        continue;
+      }
       const method = variable.source === "invite" ? variable.fallback : variable.source;
       if (method !== "random" && method !== "balanced") continue;
       const options = variable.options ?? [];
@@ -465,8 +476,7 @@ export class DeploymentRuntime {
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
     const merged = { ...variables };
-    for (const [name, variable] of this.autoVariables) {
-      if (variable.source === "url_param") continue;
+    for (const [name] of this.autoVariables) {
       if (coder.variables[name]) merged[name] = coder.variables[name];
       else delete merged[name];
     }

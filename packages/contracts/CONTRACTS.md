@@ -119,9 +119,11 @@ registry because the client is written against them.
 
 The session is an httpOnly cookie set by the job server (same origin as the
 client). Coder headers: `x-annotinder: 1` (always; CSRF), `x-invite-secret`
-and `x-participant-id` from the URL (create the coder on first use, and
-select this link's session cookie), `x-new-session: 1` (first request only:
-start another session for a participant that already has one). Errors are
+and `x-participant-id` from the URL (create the coder on first use; the
+participant id also selects the session cookie), `x-url-params` (the page's
+other query parameters, for `url_param` auto variables), `x-new-session: 1`
+(first request only: start another session for a participant that already
+has one). Errors are
 `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 `docs/coder-identity.md`.
 

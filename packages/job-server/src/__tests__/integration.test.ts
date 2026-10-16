@@ -452,11 +452,18 @@ describe("sessions", () => {
     expect(res.status).toBe(403);
   });
 
-  it("keeps separate sessions per invite on one device", async () => {
+  it("continues a device's session whatever link it comes back with; separate per participant", async () => {
     const other = await invite();
     const a = (await (await send("shared", "/session", {}, { "x-invite-secret": "demo-secret" })).json()) as SessionResponse;
     const b = (await (await send("shared", "/session", {}, { "x-invite-secret": other })).json()) as SessionResponse;
-    expect(a.coderId).not.toBe(b.coderId);
+    const bare = (await (await send("shared", "/session")).json()) as SessionResponse; // no invite at all
+    expect(b.coderId).toBe(a.coderId);
+    expect(bare.coderId).toBe(a.coderId);
+    expect(devices.get("shared")!.cookies.size).toBe(1);
+
+    const panel = await invite(undefined, { participantFromUrl: true });
+    const p1 = (await (await send("shared", "/session", {}, { "x-invite-secret": panel, "x-participant-id": "P1" })).json()) as SessionResponse;
+    expect(p1.coderId).not.toBe(a.coderId);
     expect(devices.get("shared")!.cookies.size).toBe(2);
   });
 
@@ -1078,5 +1085,35 @@ describe("open job server", () => {
 
     // Hosts it can't reach as a public https server are unknown deployments.
     expect((await openServer.request("/d/localhost:8787/1/session", { headers: { "x-annotinder": "1" } })).status).toBe(404);
+  });
+});
+
+describe("url_param auto variables", () => {
+  const source = (options?: string[]) => ({
+    type: "question",
+    name: "source",
+    variable: { type: "auto", source: "url_param", urlParam: "src", ...(options && { options: options.map((code) => ({ code })) }) },
+  });
+  const fromUrl = (name: string, params: string) => send(name, "/session", {}, { "x-invite-secret": "demo-secret", "x-url-params": params });
+  const sourceOf = async (res: Response) => ((await res.json()) as SessionResponse).variables.source?.codes?.[0]?.code;
+
+  it("are stored when the coder starts, and kept without the URL", async () => {
+    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }, [source()]);
+    expect(await sourceOf(await fromUrl("p", "src=panelA&other=x"))).toBe("panelA");
+    // a later visit without the parameter, even after a restart
+    jobServer = newJobServer();
+    expect(await sourceOf(await send("p", "/session"))).toBe("panelA");
+    // and the client can't overwrite it
+    await send("p", "/variables/coder", {
+      method: "POST",
+      body: JSON.stringify({ variables: { source: { done: true, codes: [{ code: "panelB" }] } } }),
+    });
+    expect(await sourceOf(await fromUrl("p", "src=panelB"))).toBe("panelA");
+  });
+
+  it("ignore values outside the options, and are filled in when they come later", async () => {
+    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }, [source(["a", "b"])]);
+    expect(await sourceOf(await fromUrl("q", "src=zzz"))).toBeUndefined();
+    expect(await sourceOf(await fromUrl("q", "src=b"))).toBe("b");
   });
 });

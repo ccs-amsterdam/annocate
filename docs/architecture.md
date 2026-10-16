@@ -319,8 +319,10 @@ The client skips them as steps.
 - `invite`: the value preset on the coder's invitation. If the invitation
   doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
   stays empty.
-- `url_param`: read from the URL by the client. Not implemented in the
-  client yet.
+- `url_param`: a query parameter of the page the coder opened (the client
+  sends them as `x-url-params`). Stored when the coder starts, like the
+  others, so later visits don't need it; values outside `options` (if
+  given) are ignored.
 
 The job server refuses to let the client overwrite assigned variables.
 `POST /variables/coder` keeps the stored values.
@@ -471,9 +473,7 @@ Roughly in order:
    (QuickJS) server-side, to reject answers to questions the coder should
    never have seen, is the natural next step. It belongs here, not in db
    servers.
-4. **`url_param` auto variables** are documented as client-side but not
-   implemented in `JobManager` yet. Email-restricted invites need real coder
-   authentication (item 1).
+4. **Email-restricted invites** need real coder authentication (item 1).
 5. **Scale.** On cold start the job server loads finished codings for
    dynamic loops only (bounded by units x `maxCoders`), and coder workspaces
    lazily (§3). Add `?after=<cursor>` pagination to `finished` and
