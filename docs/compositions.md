@@ -118,15 +118,42 @@ needs what the backend API has: a versioned schema in `packages/contracts`,
 an authentication scheme for scripts (API keys for hosted db servers, the
 local admin token for annotinder local), and a conformance suite.
 
-### Later: exposing a local job to the internet
+### Later: exposing a local job to the internet (a bridge)
 
-Instead of LAN sharing, the local app could act as a **db server for our
-public job servers**, reachable through an outbound tunnel (a relay we host,
-or e.g. a Cloudflare tunnel). Coders use open.annotinder.com as usual; only
-the job server's backend calls travel to the laptop, in batches, and the
-outbox buffers them while the laptop sleeps or is offline (up to its
-limits). Open questions: who runs the relay, what it may see (TLS end to
-end or not), abuse limits.
+Two variants, for different needs. In both, annotinder local dials out to a
+bridge (an outbound tunnel), so it works behind NAT and university
+firewalls; we only provide a public endpoint.
+
+**A. Local db server, our public job servers.** Annotinder local acts as a
+**db server for our public job servers**, reachable through the tunnel
+(a relay we host, or e.g. a Cloudflare tunnel). Coders use
+open.annotinder.com as usual; only the job server's backend calls travel to
+the laptop, in batches, and the outbox buffers them while the laptop sleeps
+or is offline (up to its limits). Cheap for the laptop and tolerant of it
+going away, but units and answers pass through our job servers.
+
+**B. Everything on the researcher's machine (highly secure coding).**
+Other coders connect to one researcher's annotinder local, which handles
+everything: db server, job server and client. Nothing else sees units or
+answers, so the connection must be **end-to-end encrypted**:
+
+- TLS must end on the researcher's machine, not at the bridge. A Cloudflare
+  tunnel does *not* do that (Cloudflare decrypts at its edge); a plain HTTPS
+  reverse proxy on a VPS doesn't either.
+- The bridge only forwards encrypted bytes, routed by hostname (SNI; TLS
+  passthrough, e.g. a small TCP relay, or tools like frp/rathole), under a
+  name like `<id>.<bridge domain>`.
+- So annotinder local needs a certificate for that name, with the private
+  key never leaving the machine: e.g. ACME (Let's Encrypt) DNS-01, with the
+  bridge setting the challenge record for that one subdomain on request.
+  Certificate rate limits per domain need checking (or a wildcard scheme).
+- The researcher's machine must stay online while others code, and all
+  traffic goes through the bridge (bandwidth is ours to pay).
+
+Both variants: the bridge's hostnames should live under a domain separate
+from annotinder.com, so a malicious user can't get the main domain on
+phishing blocklists; and the bridge needs abuse limits (who may register an
+endpoint, bandwidth caps).
 
 ## Order of work (proposal)
 
@@ -138,5 +165,5 @@ end or not), abuse limits.
    `npx` first.
 4. R package (and Python module) on the researcher API.
 5. Single binaries and their distribution through R and Python.
-6. Later: the tunnel to public job servers; pushing local jobs to another
-   db server.
+6. Later: the bridge (A: to our public job servers; B: end-to-end to the
+   researcher's machine); pushing local jobs to another db server.
