@@ -49,7 +49,9 @@ describe("CodebookTreeView", () => {
     expect(html).toContain("consent");
     expect(html).toContain("main_loop");
     expect(html).toContain("sentiment");
+    expect(html).toContain("Insert above consent");
     expect(html).toContain("Move item");
-    expect(html).toContain("Add item");
+    expect(html).toContain("Add to end of codebook");
+    expect(html).toContain("Add to end of main_loop");
   });
 });
