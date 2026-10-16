@@ -5,6 +5,9 @@ docs live in `docs/`:
 
 - `docs/architecture.md`: db server + job server split, unit distribution,
   resuming and codebook updates.
+- `docs/compositions.md`: the products (annotinder.com, open.annotinder.com,
+  annotinder local, R/Python clients) as compositions of db server, job
+  server and client.
 - `docs/coder-identity.md`: coder sessions, invitations, (planned) login.
 - `docs/client.md`: client design decisions (layout, spans, scripting, admin UI).
 - `packages/contracts/CONTRACTS.md`: the API contract.

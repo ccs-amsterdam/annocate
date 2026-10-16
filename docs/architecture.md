@@ -5,6 +5,10 @@ adds routing and invitations). First implementation in `packages/job-server`
 and `packages/mock-server`. Supersedes the former design plan's §3a (unit delivery and
 resumable progress) and the "heavy client, thin server" approach in §0.
 
+
+How these parts combine into products (hosted, open, local, R/Python
+clients): `docs/compositions.md`.
+
 ## 1. Why
 
 The original plan kept servers thin by putting all logic in the client, so
