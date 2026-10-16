@@ -2,7 +2,6 @@ import { conformanceSuite, fixture } from "@annotinder/conformance";
 import { JobTokenIssuer } from "../jobTokens.js";
 import { createServer, loadFixture } from "../server.js";
 
-const SECRET = "test-secret";
 const DB_URL = "http://reference.test";
 const JOB_SERVER_URL = "https://jobs.example";
 
@@ -17,12 +16,11 @@ const tokens = new JobTokenIssuer({
     return new Response("not found", { status: 404 });
   }) as typeof fetch,
 });
-const app = createServer(loadFixture(fixture, 7, JOB_SERVER_URL), SECRET, tokens);
+const app = createServer(loadFixture(fixture, 7, JOB_SERVER_URL), tokens);
 
 conformanceSuite(() => ({
   baseUrl: DB_URL,
   jobId: 7,
-  secret: SECRET,
   fetch: ((input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
     return app.request(url.pathname + url.search, init);

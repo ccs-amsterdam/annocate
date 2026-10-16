@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
 import type {
   CoderUnitResponse,
@@ -14,6 +14,7 @@ import { createApp } from "../../../mock-server/src/app.js";
 import { createJobServer } from "../app.js";
 import type { RuntimeOptions } from "../runtime.js";
 import { MemoryOutboxStore } from "../outbox.js";
+import { SigningKeys } from "../keys.js";
 
 // End-to-end: client -> job server -> mock db server, wired together with
 // in-process fetch functions instead of real sockets.
@@ -35,6 +36,20 @@ function routeTo(base: string, app: { request: (path: string, init?: RequestInit
   }) as typeof fetch;
 }
 
+/** The job server's key: the same across the restarts tests simulate, like a configured key. */
+let signingKeys: SigningKeys;
+beforeAll(async () => {
+  signingKeys = await SigningKeys.ephemeral();
+});
+
+/** A job token from the db server, asked for the way the job server does (plan §13). */
+async function jobToken(jobId: number): Promise<string> {
+  const iat = Math.floor(Date.now() / 1000);
+  const assertion = await signingKeys.sign({ iss: JOB_URL, aud: DB_URL, jobId, iat, exp: iat + 60, jti: crypto.randomUUID() });
+  const res = await dbApp.request(`/backend/job/${jobId}/token`, { method: "POST", body: JSON.stringify({ assertion }) });
+  return ((await res.json()) as { token: string }).token;
+}
+
 /** Backend API calls made by the job server (method + path, no query). */
 let backendCalls: string[] = [];
 
@@ -45,7 +60,7 @@ let outboxStore: MemoryOutboxStore;
 
 /** A (re)started job server. Writes go through right away unless `runtime` says otherwise. */
 function newJobServer(runtime: Partial<RuntimeOptions> = {}) {
-  const toDb = routeTo(DB_URL, dbApp);
+  const toDb = routeTo(DB_URL, { request: (path, init) => dbApp.request(path, init) }); // the current db server
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
     backendCalls.push(`${init?.method ?? "GET"} ${url.pathname}`);
@@ -53,7 +68,9 @@ function newJobServer(runtime: Partial<RuntimeOptions> = {}) {
     return toDb(input, init);
   }) as typeof globalThis.fetch;
   return createJobServer({
-    backends: { mock: { url: DB_URL, secret: SECRET } },
+    backends: { mock: { url: DB_URL } },
+    publicUrl: JOB_URL,
+    signingKeys,
     fetch,
     runtime: { flushIntervalMs: 0, ...runtime },
     outbox: outboxStore,
@@ -64,13 +81,12 @@ beforeEach(() => {
   db = createDb(":memory:");
   seed(db);
   dbApp = createApp(db, {
-    backendSecret: SECRET,
     jobServer: {
       url: JOB_URL,
       backendName: "mock",
-      secret: SECRET,
       fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }),
     },
+    tokens: { secret: SECRET, publicUrl: DB_URL },
   });
   dbUp = true;
   outboxStore = new MemoryOutboxStore();
@@ -572,7 +588,7 @@ describe("rebuilding from the db server", () => {
     // the finished endpoint returns only the requested (agreement) values
     const finished = await dbApp.request("/backend/job/1/finished", {
       method: "POST",
-      headers: { authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+      headers: { authorization: `Bearer ${await jobToken(1)}`, "content-type": "application/json" },
       body: JSON.stringify({ loops: [{ loop: "main_loop", variables: ["sentiment"], values: ["sentiment"] }] }),
     });
     const rows = (await finished.json()) as { values: Record<string, unknown> }[];
@@ -976,5 +992,58 @@ describe("researcher preview", () => {
       token.replace("preview.1.", "preview.2."), // another job
     ];
     for (const t of tries) expect((await previewer("mock.1.preview", t)("/session")).status).toBe(401);
+  });
+});
+
+describe("trust between job server and db server (plan §13)", () => {
+  it("asks for a job token with a signed request, and uses it for every call", async () => {
+    await coder("t").session();
+    expect(backendCalls[0]).toBe("POST /backend/job/1/token");
+    expect(backendCalls.filter((c) => c.endsWith("/token"))).toHaveLength(1); // reused
+  });
+
+  it("refuses db server calls that aren't signed with the job's call key", async () => {
+    await coder("warm").session();
+    const refresh = (headers: Record<string, string>) =>
+      jobServer.request("/admin/deployments/mock.1/refresh", { method: "POST", headers });
+    expect((await refresh({})).status).toBe(401);
+    const t = Math.floor(Date.now() / 1000);
+    expect((await refresh({ "x-annotinder-signature": `t=${t},s=${"A".repeat(43)}` })).status).toBe(401);
+    // the db server's own (signed) calls work: status is proxied through it
+    expect((await dbApp.request("/job/1/deployment/status", { headers: adminHeaders })).status).toBe(200);
+  });
+
+  it("gets a new token when the db server rejects the old one (e.g. a rotated secret)", async () => {
+    const c = coder("rotate");
+    await c.session();
+    // The db server restarts with a new secret: earlier tokens are invalid.
+    dbApp = createApp(db, {
+      jobServer: { url: JOB_URL, backendName: "mock", fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
+      tokens: { secret: "rotated", publicUrl: DB_URL },
+    });
+    backendCalls = [];
+    jobServer = newJobServer(); // a new process would also keep nothing; here the token is what's stale
+    await c.session();
+    const unit = (await c.next())!;
+    expect((await c.submit(unit.id, demo("neutral"))).status).toBe(204);
+    expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
+  });
+
+  it("renews a rejected token in a running job server, retrying the call once", async () => {
+    const c = coder("renew");
+    await c.session();
+    dbApp = createApp(db, {
+      jobServer: { url: JOB_URL, backendName: "mock", fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
+      tokens: { secret: "rotated", publicUrl: DB_URL },
+    });
+    backendCalls = [];
+    const unit = (await c.next())!;
+    expect((await c.submit(unit.id, demo("neutral"))).status).toBe(204);
+    // The first call with the stale token was rejected, a new token fetched, the call retried.
+    const renewal = backendCalls.indexOf("POST /backend/job/1/token");
+    expect(renewal).toBeGreaterThan(0);
+    expect(backendCalls[renewal + 1]).toBe(backendCalls[renewal - 1]);
+    expect(backendCalls.filter((call) => call.endsWith("/token"))).toHaveLength(1);
+    expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
   });
 });

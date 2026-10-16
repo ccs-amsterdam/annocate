@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { generateKeyPairSync, sign } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -141,12 +142,38 @@ describe("schema migrations", () => {
   });
 });
 
+/**
+ * Plays the job server for backend API tests: an Ed25519 key, served as its
+ * JWKS, and a job token obtained the way a job server gets one (plan §13).
+ */
+function asJobServer() {
+  const JOB_SERVER = "https://jobs.test";
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const { x } = publicKey.export({ format: "jwk" }) as { x: string };
+  const jwks = { keys: [{ kty: "OKP", crv: "Ed25519", x, kid: "k1" }] };
+  app = createApp(db, {
+    jobServer: { url: JOB_SERVER, backendName: "mock", fetch: (async () => Response.json(jwks)) as unknown as typeof fetch },
+    tokens: { secret: "token-secret", publicUrl: "http://mock.test" },
+  });
+  return async (jobId: number) => {
+    const b64 = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
+    const now = Math.floor(Date.now() / 1000);
+    const input = `${b64({ alg: "EdDSA", kid: "k1" })}.${b64({ iss: JOB_SERVER, aud: "http://mock.test", jobId, iat: now, exp: now + 60 })}`;
+    const assertion = `${input}.${sign(null, Buffer.from(input), privateKey).toString("base64url")}`;
+    const res = await app.request(`/backend/job/${jobId}/token`, { method: "POST", body: JSON.stringify({ assertion }) });
+    expect(res.status).toBe(200);
+    const { token } = (await res.json()) as { token: string };
+    return { authorization: `Bearer ${token}`, "content-type": "application/json" };
+  };
+}
+
 describe("annotations: finished counts and resets", () => {
-  const backend = { authorization: "Bearer dev-job-server-secret", "content-type": "application/json" };
+  let backend: Record<string, string>;
   const value = (code: string) => ({ done: true, codes: [{ code }] });
 
   async function setup() {
     const job = await createJob();
+    backend = await asJobServer()(job.id);
     const units = (await json(
       await app.request(`/job/${job.id}/units`, {
         method: "POST",

@@ -31,7 +31,8 @@ export interface JobTokenIssuerOptions {
   tokenTtlMs?: number;
 }
 
-export type IssueResult = { token: string; expiresAt: Date } | { error: string };
+/** `status`: 404 if the job doesn't exist or has no job server, 401 for anything else. */
+export type IssueResult = { token: string; expiresAt: Date } | { error: string; status: 401 | 404 };
 
 /** Longest validity a job server may give its own request (`exp - iat`). */
 const MAX_ASSERTION_S = 5 * 60;
@@ -57,33 +58,33 @@ export class JobTokenIssuer {
    */
   async issue(jobId: number, assertion: string, boundJobServer: string | null): Promise<IssueResult> {
     const parts = assertion.split(".");
-    if (parts.length !== 3) return { error: "Malformed assertion" };
+    if (parts.length !== 3) return { error: "Malformed assertion", status: 401 };
     const header = decodeJson(parts[0]);
     const claims = decodeJson(parts[1]);
     if (!header || !claims || header.alg !== "EdDSA" || typeof header.kid !== "string") {
-      return { error: "Malformed assertion" };
+      return { error: "Malformed assertion", status: 401 };
     }
 
     // 1. The claims: this job, this db server, the job server it is bound to, a short valid window.
     const nowS = Math.floor(this.now() / 1000);
     const { iss, aud, iat, exp } = claims;
-    if (boundJobServer === null) return { error: "Job is not deployed" };
-    if (claims.jobId !== jobId) return { error: "Assertion is for another job" };
-    if (aud !== this.options.publicUrl) return { error: "Assertion is for another db server" };
-    if (iss !== boundJobServer) return { error: "Job is not deployed to this job server" };
-    if (typeof iat !== "number" || typeof exp !== "number") return { error: "Assertion has no valid time window" };
-    if (exp <= nowS || iat > nowS + SKEW_S || exp - iat > MAX_ASSERTION_S) return { error: "Assertion expired or not yet valid" };
+    if (boundJobServer === null) return { error: "Job not found", status: 404 };
+    if (claims.jobId !== jobId) return { error: "Assertion is for another job", status: 401 };
+    if (aud !== this.options.publicUrl) return { error: "Assertion is for another db server", status: 401 };
+    if (iss !== boundJobServer) return { error: "Job is not deployed to this job server", status: 401 };
+    if (typeof iat !== "number" || typeof exp !== "number") return { error: "Assertion has no valid time window", status: 401 };
+    if (exp <= nowS || iat > nowS + SKEW_S || exp - iat > MAX_ASSERTION_S) return { error: "Assertion expired or not yet valid", status: 401 };
 
     // 2. The signature, with the job server's published key.
     const jwk = await this.key(boundJobServer, header.kid);
-    if (!jwk) return { error: "Unknown signing key" };
+    if (!jwk) return { error: "Unknown signing key", status: 401 };
     const valid = verify(
       null,
       Buffer.from(`${parts[0]}.${parts[1]}`),
       createPublicKey({ key: { kty: "OKP", crv: "Ed25519", x: jwk.x }, format: "jwk" }),
       Buffer.from(parts[2], "base64url"),
     );
-    if (!valid) return { error: "Invalid signature" };
+    if (!valid) return { error: "Invalid signature", status: 401 };
 
     // 3. The job token.
     const expiresAt = this.now() + (this.options.tokenTtlMs ?? 60 * 60_000);
@@ -101,6 +102,33 @@ export class JobTokenIssuer {
     const claims = decodeJson(parts[1]) as { jobId: number; aud: string; exp: number; ck: string } | null;
     if (!claims || typeof claims.exp !== "number" || claims.exp * 1000 <= this.now()) return null;
     return claims;
+  }
+
+  /**
+   * Checks the bearer token of a backend call for job `jobId`: valid, for this
+   * job, and for the job server the job is (still) bound to.
+   */
+  checkBearer(authorization: string | undefined, jobId: number, boundJobServer: string | null): boolean {
+    const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
+    const claims = token ? this.verifyToken(token) : null;
+    return !!claims && claims.jobId === jobId && boundJobServer !== null && claims.aud === boundJobServer;
+  }
+
+  /**
+   * The signature header for a call to the job server about job `jobId`
+   * (contracts `JOB_SERVER_SIGNATURE_HEADER`): HMAC with the call key over
+   * time, method, path and body.
+   */
+  signCall(jobServerUrl: string, jobId: number, method: string, path: string, body = ""): string {
+    const t = Math.floor(this.now() / 1000);
+    const s = createHmac("sha256", this.callKey(jobServerUrl, jobId)).update(`${t}\n${method}\n${path}\n${body}`).digest("base64url");
+    return `t=${t},s=${s}`;
+  }
+
+  /** A researcher preview token (contracts `PreviewSessionSchema`), valid until `expiresAt` (ms). */
+  previewToken(jobServerUrl: string, jobId: number, expiresAt: number): string {
+    const payload = `preview.${jobId}.${expiresAt}`;
+    return `${payload}.${createHmac("sha256", this.callKey(jobServerUrl, jobId)).update(payload).digest("hex")}`;
   }
 
   /** The key for calls to the job server about this job (plan §13); recomputed, never stored. */

@@ -10,6 +10,7 @@ import type {
   VariableValue,
 } from "@annotinder/contracts";
 import { HttpError, type Backend, type BackendClient } from "./backend.js";
+import { hmac, timingSafeEqual } from "./jobTokens.js";
 
 // Researcher previews (`<backend>.<jobId>.preview`, contracts
 // PreviewSessionSchema): the latest codebook and the real units come from the
@@ -17,15 +18,12 @@ import { HttpError, type Backend, type BackendClient } from "./backend.js";
 // does reaches the db server, and it is gone when the job server forgets the
 // deployment.
 
-/** Checks a preview token (the invite secret of a preview): made by the db server with the shared secret. */
-export async function verifyPreviewToken(secret: string, jobId: number, token: string, now: number): Promise<boolean> {
+/** Checks a preview token (the invite secret of a preview): made by the db server with the job's call key. */
+export async function verifyPreviewToken(callKey: string, jobId: number, token: string, now: number): Promise<boolean> {
   const match = /^preview\.(\d+)\.(\d+)\.([0-9a-f]{64})$/.exec(token);
   if (!match || Number(match[1]) !== jobId || Number(match[2]) <= now) return false;
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
-    "verify",
-  ]);
-  const signature = new Uint8Array(match[3].match(/../g)!.map((h) => parseInt(h, 16)));
-  return crypto.subtle.verify("HMAC", key, signature, new TextEncoder().encode(`preview.${match[1]}.${match[2]}`));
+  const expected = await hmac(callKey, `preview.${match[1]}.${match[2]}`);
+  return timingSafeEqual(Array.from(expected, (b) => b.toString(16).padStart(2, "0")).join(""), match[3]);
 }
 
 interface Coder extends BackendCoder {
@@ -39,7 +37,8 @@ export class PreviewBackend implements Backend {
 
   constructor(
     private db: BackendClient,
-    private secret: string,
+    /** The job's call key, which the db server signs preview tokens with. */
+    private callKey: () => Promise<string>,
     private jobId: number,
     private now: () => number = () => Date.now(),
   ) {}
@@ -55,7 +54,8 @@ export class PreviewBackend implements Backend {
     const known = this.coders.get(request.coderKey);
     if (known) return known;
     const valid =
-      request.inviteSecret !== undefined && (await verifyPreviewToken(this.secret, this.jobId, request.inviteSecret, this.now()));
+      request.inviteSecret !== undefined &&
+      (await verifyPreviewToken(await this.callKey(), this.jobId, request.inviteSecret, this.now()));
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
     const coder: Coder = { coderId: this.coders.size + 1, variables: {}, assignments: {}, created: new Date(this.now()) };
     this.coders.set(request.coderKey, coder);

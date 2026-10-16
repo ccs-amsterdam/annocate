@@ -6,6 +6,7 @@ import {
   BackendCoderSchema,
   BackendFinishedSchema,
   BackendUnitSchema,
+  INVALID_JOB_TOKEN,
   DeploymentSpecSchema,
   type BackendAnnotation,
   type BackendAnnotationBatchResult,
@@ -18,6 +19,7 @@ import {
   type DeploymentSpec,
   type ResolveCoderRequest,
 } from "@annotinder/contracts";
+import type { JobTokens } from "./jobTokens.js";
 
 /** An error that maps directly onto an HTTP response for the coder: `{ error, code? }`. */
 export class HttpError extends Error {
@@ -31,10 +33,9 @@ export class HttpError extends Error {
   }
 }
 
-/** A db server this job server accepts deployments from (see config.ts). */
+/** A db server this job server accepts deployments from (ANNOTINDER_BACKENDS). */
 export interface BackendConfig {
   url: string;
-  secret: string;
 }
 
 /** What the runtime needs from a db server: the backend API, or a preview's in-memory stand-in (preview.ts). */
@@ -59,6 +60,8 @@ export class BackendClient {
   constructor(
     private config: BackendConfig,
     private jobId: number,
+    /** This job's token (plan §13), sent with every call. */
+    private tokens: JobTokens,
     // Wrapped: Workers refuse `fetch` called as a method of another object.
     private fetchImpl: typeof fetch = (input, init) => fetch(input, init),
     /** Ask for the preview spec (the latest codebook) instead of the deployed one. */
@@ -73,19 +76,29 @@ export class BackendClient {
     let url = this.config.url + path.replace(":jobId", String(this.jobId));
     for (const [key, value] of Object.entries(init.params ?? {})) url = url.replace(`:${key}`, String(value));
 
-    let res: Response;
-    try {
-      res = await this.fetchImpl(url, {
-        method: init.method ?? "GET",
-        headers: { authorization: `Bearer ${this.config.secret}`, "content-type": "application/json" },
-        body: init.body === undefined ? undefined : JSON.stringify(init.body),
-      });
-    } catch (err) {
-      throw new HttpError(502, `Db server unreachable: ${err instanceof Error ? err.message : String(err)}`);
+    const send = async (token: string) => {
+      try {
+        return await this.fetchImpl(url, {
+          method: init.method ?? "GET",
+          headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+          body: init.body === undefined ? undefined : JSON.stringify(init.body),
+        });
+      } catch (err) {
+        throw new HttpError(502, `Db server unreachable: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    const token = await this.tokens.token();
+    let res = await send(token);
+    let text = res.ok ? "" : await res.text();
+    // A rejected token (expired early, db server secret rotated, job rebound):
+    // get a new one and try once more. Other 401s (e.g. a bad invite) are the coder's.
+    if (res.status === 401 && parseErrorBody(text)?.code === INVALID_JOB_TOKEN) {
+      this.tokens.invalidate(token);
+      res = await send(await this.tokens.token());
+      text = res.ok ? "" : await res.text();
     }
 
     if (!res.ok) {
-      const text = await res.text();
       // 401/404/409 are meaningful to the coder (bad invite, unit removed, participant
       // already has a session): pass on the db server's message and code. Anything
       // else is a db server failure.

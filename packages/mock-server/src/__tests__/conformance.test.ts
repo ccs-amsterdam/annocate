@@ -21,15 +21,13 @@ const db = createDb(":memory:");
 seed(db);
 const jobId = loadFixture(db, fixture, JOB_SERVER_URL);
 const app = createApp(db, {
-  backendSecret: "test-secret",
-  jobServer: { url: "https://default-job-server.example", backendName: "mock", secret: "test-secret", fetch: toJobServer },
+  jobServer: { url: "https://default-job-server.example", backendName: "mock", fetch: toJobServer },
   tokens: { secret: "token-secret", publicUrl: DB_URL },
 });
 
 conformanceSuite(() => ({
   baseUrl: DB_URL,
   jobId,
-  secret: "test-secret",
   fetch: ((input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
     return app.request(url.pathname + url.search, init);

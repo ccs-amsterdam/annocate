@@ -6,6 +6,7 @@ import {
   BackendAnnotationBatchSchema,
   BackendCoderWriteSchema,
   FinishedRequestSchema,
+  INVALID_JOB_TOKEN,
   JobTokenRequestSchema,
   ResolveCoderRequestSchema,
   type BackendAnnotation,
@@ -97,7 +98,7 @@ export function loadFixture(fixture: ConformanceFixture, jobId = 1, jobServerUrl
 
 const live = (v: Value) => v.retiredAt === undefined;
 
-export function createServer(store: Store, secret: string, tokens?: JobTokenIssuer) {
+export function createServer(store: Store, tokens: JobTokenIssuer) {
   const liveValue = (unitId: number | null, coderId: number, variable: string) =>
     store.values.find((v) => live(v) && v.unitId === unitId && v.coderId === coderId && v.variable === variable);
 
@@ -132,17 +133,19 @@ export function createServer(store: Store, secret: string, tokens?: JobTokenIssu
   api.post("/token", async (c) => {
     const body = await parse(c, JobTokenRequestSchema);
     if (!body) return c.json({ error: "Invalid body" }, 400);
-    if (!tokens) return c.json({ error: "Job tokens are not configured" }, 501);
     const jobId = Number(c.req.param("jobId"));
     const result = await tokens.issue(jobId, body.assertion, jobId === store.spec.jobId ? store.jobServerUrl : null);
-    if ("error" in result) return c.json({ error: result.error }, 401);
+    if ("error" in result) return c.json({ error: result.error }, result.status);
     return c.json(result);
   });
 
-  // Only the job server may call this API: it presents the shared secret.
+  // Everything else: only the job server the job is bound to, with its job token.
   api.use("*", async (c, next) => {
-    if (c.req.header("authorization") !== `Bearer ${secret}`) return c.json({ error: "Unauthorized" }, 401);
-    if (Number(c.req.param("jobId")) !== store.spec.jobId) return c.json({ error: "Job not found" }, 404);
+    const jobId = Number(c.req.param("jobId"));
+    const bound = jobId === store.spec.jobId ? store.jobServerUrl : null;
+    if (!tokens.checkBearer(c.req.header("authorization"), jobId, bound)) {
+      return c.json({ error: "Invalid or expired job token", code: INVALID_JOB_TOKEN }, 401);
+    }
     await next();
   });
 

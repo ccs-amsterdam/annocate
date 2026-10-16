@@ -1,8 +1,8 @@
 # Cloudflare target (src/worker.ts): `npx wrangler deploy` from this package.
-# Secrets: `npx wrangler secret put ANNOTINDER_BACKENDS` with the same JSON as
-# on Node, e.g. {"amcat":{"url":"https://amcat.example","secret":"..."}}, and
-# `npx wrangler secret put ANNOTINDER_SIGNING_KEYS` with the output of
-# `pnpm --filter @annotinder/job-server keygen` (src/keys.ts).
+# Secret: `npx wrangler secret put ANNOTINDER_SIGNING_KEYS` with the output
+# of `pnpm --filter @annotinder/job-server keygen` (src/keys.ts). Set
+# ANNOTINDER_BACKENDS (db servers, e.g. {"amcat":{"url":"https://amcat.example"}})
+# and ANNOTINDER_PUBLIC_URL (this Worker's URL) below or as variables.
 #
 # The client must be served from the same origin (session cookies): e.g. add
 # the built client as static assets here, with /d/* and /admin/* routed to
@@ -12,6 +12,8 @@ main = "src/worker.ts"
 compatibility_date = "2026-01-01"
 
 [vars]
+ANNOTINDER_PUBLIC_URL = "https://jobs.example"
+ANNOTINDER_BACKENDS = '{}'
 # Keep Durable Objects (memory and outbox) in the EU. Check Cloudflare's
 # current terms for jurisdictions before relying on this.
 DO_JURISDICTION = "eu"

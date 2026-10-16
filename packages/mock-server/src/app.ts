@@ -13,19 +13,15 @@ import { deploymentRoutes, type JobServerLink } from "./routes/deployment.js";
 import { JobTokenIssuer } from "@annotinder/reference-db-server/jobTokens";
 
 export interface AppOptions {
-  /** Shared secret the job server uses for the backend API. */
-  backendSecret?: string;
   /** If set, deployments notify this job server, and deployment status is proxied from it. */
   jobServer?: JobServerLink;
   /**
    * Job tokens (plan §13): the secret they are signed with, and this db
    * server's own URL as job servers address it. JWKS are fetched with
-   * `jobServer.fetch` if given.
+   * `jobServer.fetch` if given. Defaults are for local development.
    */
   tokens?: { secret: string; publicUrl: string };
 }
-
-export const DEV_BACKEND_SECRET = "dev-job-server-secret";
 
 /** Builds the full Hono app for a given (already-migrated) database. Kept as
  * a factory so tests can pass in a fresh in-memory db per test. */
@@ -41,14 +37,14 @@ export function createApp(db: DatabaseSync, options: AppOptions = {}) {
   app.route("/job/:jobId", unitRoutes(db));
   app.route("/job/:jobId", unitsetRoutes(db));
   app.route("/job/:jobId", coderRoutes(db));
-  app.route("/job/:jobId", deploymentRoutes(db, options.jobServer));
+  const issuer = new JobTokenIssuer({
+    ...(options.tokens ?? { secret: "dev-token-secret", publicUrl: "http://localhost:8787" }),
+    fetch: options.jobServer?.fetch,
+  });
+  app.route("/job/:jobId", deploymentRoutes(db, issuer, options.jobServer));
 
   // Called by the job server only (docs/architecture.md).
-  const tokens = options.tokens && {
-    issuer: new JobTokenIssuer({ ...options.tokens, fetch: options.jobServer?.fetch }),
-    jobServerUrl: options.jobServer?.url ?? null,
-  };
-  app.route("/backend/job/:jobId", backendRoutes(db, options.backendSecret ?? DEV_BACKEND_SECRET, tokens));
+  app.route("/backend/job/:jobId", backendRoutes(db, issuer, options.jobServer?.url ?? null));
 
   // Legacy: coders talking to the db server directly. Superseded by the job
   // server; kept until the admin preview runs through the job server too.

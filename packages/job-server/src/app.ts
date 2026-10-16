@@ -6,9 +6,11 @@ import {
   RedeemTransferSchema,
   RefreshDeploymentSchema,
   type RefreshDeployment,
+  JOB_SERVER_SIGNATURE_HEADER,
 } from "@annotinder/contracts";
 import { HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRegistry } from "./registry.js";
+import { verifyCallSignature } from "./jobTokens.js";
 import type { OutboxStore } from "./outbox.js";
 import { SigningKeys } from "./keys.js";
 import {
@@ -24,6 +26,8 @@ import { DEFAULT_RUNTIME_OPTIONS, type Coder, type DeploymentRuntime, type Runti
 export interface JobServerOptions {
   /** Db servers this job server accepts deployments from, by name. */
   backends: Record<string, BackendConfig>;
+  /** This job server's own URL, as db servers bind jobs to it (plan §13). */
+  publicUrl: string;
   fetch?: typeof fetch;
   runtime?: Partial<RuntimeOptions>;
   /** Where pending writes to db servers are kept; memory if not given (fine for tests, not for production). */
@@ -46,8 +50,10 @@ interface Env {
  * - `/admin/deployments/:deploymentId/...`: called by the db server.
  */
 export function createJobServer(options: JobServerOptions) {
+  const signingKeys = Promise.resolve(options.signingKeys ?? SigningKeys.ephemeral());
   const registry = new DeploymentRegistry(
     options.backends,
+    { publicUrl: options.publicUrl.replace(/\/$/, ""), keys: signingKeys },
     // Wrapped: Workers refuse `fetch` called as a method of another object.
     options.fetch ?? ((input, init) => fetch(input, init)),
     { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime },
@@ -64,7 +70,6 @@ export function createJobServer(options: JobServerOptions) {
   app.get("/", (c) => c.json({ ok: true, service: "annotinder-job-server", contractsVersion: CONTRACTS_VERSION }));
 
   // Public keys: db servers verify this job server's token requests with them.
-  const signingKeys = Promise.resolve(options.signingKeys ?? SigningKeys.ephemeral());
   app.get("/.well-known/jwks.json", async (c) => c.json((await signingKeys).jwks()));
 
   // --- coder API ----------------------------------------------------------
@@ -142,9 +147,16 @@ export function createJobServer(options: JobServerOptions) {
   // --- admin API (db server -> job server) ----------------------------------
 
   const admin = new Hono<Env>();
+  // Signed by the db server with the job's call key (contracts
+  // JOB_SERVER_SIGNATURE_HEADER), which we know from our own job token.
   admin.use("*", async (c, next) => {
-    const backend = registry.backendFor(c.req.param("deploymentId")!);
-    if (c.req.header("authorization") !== `Bearer ${backend.secret}`) throw new HttpError(401, "Unauthorized");
+    const deploymentId = c.req.param("deploymentId")!;
+    registry.backendFor(deploymentId); // 404 for unknown db servers, before any token request
+    const callKey = await registry.tokensFor(deploymentId).callKey();
+    const call = { method: c.req.method, path: new URL(c.req.url).pathname, body: await c.req.text() };
+    if (!(await verifyCallSignature(c.req.header(JOB_SERVER_SIGNATURE_HEADER), callKey, call, Date.now()))) {
+      throw new HttpError(401, "Invalid signature");
+    }
     await next();
   });
 

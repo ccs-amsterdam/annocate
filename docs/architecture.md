@@ -153,9 +153,15 @@ Either way, answers rest on the job server until the next outbox flush
 (normally under a minute, at most the outbox limits): its storage must be
 as trusted as its memory.
 
-A db server is configured with the job server it deploys to. A job server is
-configured with the db servers (backends) it accepts deployments from. Both
-directions currently use a shared bearer secret (see §10).
+A db server is configured with the job server it deploys to, and stores
+which job server each job is bound to. A job server is configured with the
+db servers (backends) it accepts deployments from, its own URL and an
+Ed25519 key. No shared secrets (plan §13): the job server gets a short-lived
+**job token** per job with a request it signs (the db server verifies it
+with the job server's `/.well-known/jwks.json`), and sends it on every
+backend call; the db server signs its calls to the job server with the
+job's derived call key (`jobTokens.ts`, `keys.ts`;
+`reference-db-server/src/jobTokens.ts` for the db server side).
 
 ## 5. Lifecycle
 
@@ -423,6 +429,7 @@ Other open points:
 | `job-server/src/outbox.ts` | Durable pending writes, batched flushes with backoff (`outboxSqlite.ts`: the Node store) |
 | `job-server/src/session.ts` | Coder session cookies, CSRF header |
 | `job-server/src/keys.ts` | The job server's Ed25519 keys: JWKS endpoint, signed requests to db servers |
+| `job-server/src/jobTokens.ts` | Job tokens per (db server, job), call key, checking db server signatures |
 | `job-server/src/preview.ts` | Researcher previews: preview tokens, in-memory coders and answers |
 | `job-server/src/worker.ts` | Cloudflare entry: Worker routing + a Durable Object per deployment (`outboxDurable.ts`, `wrangler.toml`) |
 | `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
@@ -443,10 +450,10 @@ reference db server. Both db servers run the conformance suite in their tests.
 
 Roughly in order:
 
-1. **Auth.** Replace the shared bearer secret between the servers with
-   HMAC-signed requests (or short-lived tokens) in both directions. Coder
-   identity, sessions across devices and coder login are designed in
-   `docs/coder-identity.md`.
+1. **Auth.** Between the servers: done for allowlisted db servers (plan
+   §13); open job servers, deployment ids from the db host and outbound
+   caps are next there. Coder identity, sessions across devices and coder
+   login are designed in `docs/coder-identity.md`.
 2. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the job
    server returns short-lived signed URLs; the bytes come from a separate

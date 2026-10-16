@@ -1,5 +1,8 @@
 import type { Context, Next } from "hono";
 import type { DatabaseSync } from "node:sqlite";
+import { INVALID_JOB_TOKEN } from "@annotinder/contracts";
+import type { JobTokenIssuer } from "@annotinder/reference-db-server/jobTokens";
+import { boundJobServer } from "./db/deployments.js";
 import type { Role } from "@annotinder/contracts";
 
 // Deliberately minimal, dev-only authentication. None of this is meant to
@@ -162,16 +165,15 @@ export function resolveCoder(
 
 /**
  * Hono middleware for the backend API (routes/backend.ts): only the job
- * server may call it, authenticated with the shared secret as a bearer
- * token. Dev-grade (constant secret, no request signing) like the rest of
- * this file.
+ * server the job is bound to, with a job token for this job (plan §13).
  */
-export function requireJobServer(db: DatabaseSync, secret: string) {
+export function requireJobToken(db: DatabaseSync, issuer: JobTokenIssuer, configuredJobServer: string | null) {
   return async (c: Context, next: Next) => {
-    if (c.req.header("authorization") !== `Bearer ${secret}`) return c.json({ error: "Unauthorized" }, 401);
-
     const jobId = Number(c.req.param("jobId"));
-    if (!Number.isInteger(jobId)) return c.json({ error: "Invalid job id" }, 400);
+    const bound = Number.isInteger(jobId) ? boundJobServer(db, jobId, configuredJobServer) : null;
+    if (!issuer.checkBearer(c.req.header("authorization"), jobId, bound)) {
+      return c.json({ error: "Invalid or expired job token", code: INVALID_JOB_TOKEN }, 401);
+    }
     const job = db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(jobId);
     if (!job) return c.json({ error: "Job not found" }, 404);
     c.set("jobId", jobId);

@@ -32,8 +32,10 @@ interface DurableObjectState {
 
 interface Env {
   DEPLOYMENTS: DurableObjectNamespace;
-  /** Secret, JSON: `{"amcat":{"url":"https://...","secret":"..."}}`, as ANNOTINDER_BACKENDS on Node. */
+  /** JSON: `{"amcat":{"url":"https://..."}}`, as ANNOTINDER_BACKENDS on Node. */
   ANNOTINDER_BACKENDS: string;
+  /** This job server's own URL, as db servers bind jobs to it. */
+  ANNOTINDER_PUBLIC_URL: string;
   /** Secret: this job server's private keys (keys.ts). Required here: every isolate must sign with the same key. */
   ANNOTINDER_SIGNING_KEYS: string;
   /** E.g. "eu": keep Durable Objects (memory and outbox) in that jurisdiction. */
@@ -42,7 +44,7 @@ interface Env {
   FLUSH_INTERVAL_MS?: string;
 }
 
-const BackendsSchema = z.record(z.string().regex(/^[a-zA-Z0-9_-]+$/), z.object({ url: z.string().url(), secret: z.string().min(1) }));
+const BackendsSchema = z.record(z.string().regex(/^[a-zA-Z0-9_-]+$/), z.object({ url: z.string().url() }));
 
 /** Parsed once per isolate (Worker and Durable Objects alike). */
 let signingKeys: Promise<SigningKeys> | undefined;
@@ -80,6 +82,7 @@ export class DeploymentObject {
     };
     this.app = createJobServer({
       backends: BackendsSchema.parse(JSON.parse(env.ANNOTINDER_BACKENDS)),
+      publicUrl: env.ANNOTINDER_PUBLIC_URL,
       outbox: new DurableObjectOutboxStore(ctx.storage.sql),
       signingKeys: keysFrom(env),
       runtime,

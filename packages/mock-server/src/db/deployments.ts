@@ -128,16 +128,16 @@ export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSp
 }
 
 /**
- * The job server a deployed job is bound to (plan §13), or null if the job
- * isn't deployed. Deployments without a stored URL (the seeded demo job, or
- * made before bindings existed) are bound to this db server's configured job
- * server: a dev convenience, a real db server stores it on every deploy.
+ * The job server a job is bound to (plan §13): only it gets job tokens for
+ * the job. The one it is deployed to; otherwise (not deployed yet, e.g. for
+ * previews, or the seeded demo job) this db server's configured job server.
  */
 export function boundJobServer(db: DatabaseSync, jobId: number, configured: string | null): string | null {
+  if (!db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(jobId)) return null;
   const row = db.prepare("SELECT jobServerUrl FROM deployments WHERE jobId = ?").get(jobId) as
     | { jobServerUrl: string | null }
     | undefined;
-  return row ? (row.jobServerUrl ?? configured) : null;
+  return row?.jobServerUrl ?? configured;
 }
 
 /**

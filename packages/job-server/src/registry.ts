@@ -2,6 +2,15 @@ import { BackendClient, HttpError, type BackendConfig } from "./backend.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
 import { MemoryOutboxStore, Outbox, type OutboxStore } from "./outbox.js";
 import { PreviewBackend } from "./preview.js";
+import { JobTokens } from "./jobTokens.js";
+import type { SigningKeys } from "./keys.js";
+
+/** Who this job server is towards db servers (plan §13). */
+export interface JobServerIdentity {
+  /** Its own URL, as db servers bind jobs to it. */
+  publicUrl: string;
+  keys: Promise<SigningKeys>;
+}
 
 /** Splits a deployment id `<backend>.<jobId>`, or a researcher preview `<backend>.<jobId>.preview`. */
 export function parseDeploymentId(id: string): { backend: string; jobId: number; preview: boolean } | null {
@@ -25,9 +34,12 @@ export class DeploymentRegistry {
    * one.
    */
   private outboxes = new Map<string, Outbox>();
+  /** `<backend>.<jobId>` -> the job's token; shared by the deployment and its preview. */
+  private tokens = new Map<string, JobTokens>();
 
   constructor(
     private backends: Record<string, BackendConfig>,
+    private identity: JobServerIdentity,
     private fetchImpl: typeof fetch = (input, init) => fetch(input, init),
     private runtimeOptions: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
     /** Pending writes of all deployments; durable outside tests (outboxSqlite.ts). */
@@ -81,8 +93,26 @@ export class DeploymentRegistry {
     return runtime;
   }
 
+  /** The job token for a deployment (or its preview): the call key db server calls are signed with. */
+  tokensFor(deploymentId: string): JobTokens {
+    const { jobId, url } = this.backendFor(deploymentId);
+    const key = `${url}|${jobId}`;
+    let tokens = this.tokens.get(key);
+    if (!tokens) {
+      tokens = new JobTokens({
+        publicUrl: this.identity.publicUrl,
+        dbUrl: url,
+        jobId,
+        keys: this.identity.keys,
+        fetch: this.fetchImpl,
+      });
+      this.tokens.set(key, tokens);
+    }
+    return tokens;
+  }
+
   private deploymentRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
-    const backend = new BackendClient(config, jobId, this.fetchImpl);
+    const backend = new BackendClient(config, jobId, this.tokensFor(deploymentId), this.fetchImpl);
     let outbox = this.outboxes.get(deploymentId);
     if (!outbox) this.outboxes.set(deploymentId, (outbox = new Outbox(deploymentId, this.outboxStore, backend, this.runtimeOptions)));
     return new DeploymentRuntime(deploymentId, backend, this.runtimeOptions, outbox);
@@ -94,8 +124,9 @@ export class DeploymentRegistry {
    */
   private previewRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
     const options: RuntimeOptions = { ...this.runtimeOptions, specTtlMs: 0, flushIntervalMs: 0 };
-    const db = new BackendClient(config, jobId, this.fetchImpl, true);
-    const backend = new PreviewBackend(db, config.secret, jobId, options.now);
+    const tokens = this.tokensFor(deploymentId);
+    const db = new BackendClient(config, jobId, tokens, this.fetchImpl, true);
+    const backend = new PreviewBackend(db, () => tokens.callKey(), jobId, options.now);
     return new DeploymentRuntime(deploymentId, backend, options, new Outbox(deploymentId, new MemoryOutboxStore(), backend, options));
   }
 

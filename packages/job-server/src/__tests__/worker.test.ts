@@ -16,7 +16,9 @@ import { SigningKeys } from "../keys.js";
 // server: the Worker routes to a Durable Object per deployment, whose outbox
 // lives in its SQLite storage and is flushed by alarms.
 
-const SECRET = "worker-test-secret";
+const JOB_SERVER_URL = "http://jobs.test";
+/** The Worker currently running (tests restart it); the db server fetches its JWKS through it. */
+let current: Miniflare | null = null;
 let script: string;
 let db: DatabaseSync;
 let dbServer: ServerType;
@@ -39,12 +41,22 @@ beforeAll(async () => {
 
   db = createDb(":memory:");
   seed(db);
-  const app = createApp(db, { backendSecret: SECRET });
+  // The db server needs its own URL (job tokens are addressed to it), so it is created once the port is known.
+  let app: ReturnType<typeof createApp> | null = null;
   await new Promise<void>((resolve) => {
-    dbServer = serve({ fetch: app.fetch, port: 0, hostname: "127.0.0.1" }, (info) => {
+    dbServer = serve({ fetch: (req) => app!.fetch(req), port: 0, hostname: "127.0.0.1" }, (info) => {
       dbUrl = `http://127.0.0.1:${info.port}`;
       resolve();
     });
+  });
+  app = createApp(db, {
+    jobServer: {
+      url: JOB_SERVER_URL,
+      backendName: "mock",
+      fetch: ((input: string | URL | Request, init?: RequestInit) =>
+        current!.dispatchFetch(String(input instanceof Request ? input.url : input), init as never)) as unknown as typeof fetch,
+    },
+    tokens: { secret: "worker-test-token-secret", publicUrl: dbUrl },
   });
 }, 60_000);
 
@@ -54,18 +66,19 @@ afterAll(() => {
 });
 
 function worker(flushIntervalMs: number) {
-  return new Miniflare({
+  return (current = new Miniflare({
     modules: true,
     script,
     compatibilityDate: "2026-01-01",
     durableObjects: { DEPLOYMENTS: { className: "DeploymentObject", useSQLite: true } },
     durableObjectsPersist: persist,
     bindings: {
-      ANNOTINDER_BACKENDS: JSON.stringify({ mock: { url: dbUrl, secret: SECRET } }),
+      ANNOTINDER_BACKENDS: JSON.stringify({ mock: { url: dbUrl } }),
+      ANNOTINDER_PUBLIC_URL: JOB_SERVER_URL,
       FLUSH_INTERVAL_MS: String(flushIntervalMs),
       ANNOTINDER_SIGNING_KEYS: signingKeys,
     },
-  });
+  }));
 }
 
 /** A browser: keeps the session cookie. */

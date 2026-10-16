@@ -127,12 +127,22 @@ start another session for a participant that already has one). Errors are
 
 ### Backend API (db server, called by the job server)
 
-`backendEndpoints` in `src/deployment.ts`. Authenticated with
-`authorization: Bearer <secret shared with the job server>`.
+`backendEndpoints` in `src/deployment.ts`. No shared secret (plan §13):
+the job server gets a **job token** per job from `POST .../token` (a request
+it signs with its Ed25519 key, verified against its published
+`/.well-known/jwks.json`), and sends it on every other call as
+`authorization: Bearer <token>`. A db server must store which job server
+each job is bound to, and refuse tokens for any other: `401 { code:
+"invalid_job_token" }`, after which the job server gets a new token and
+retries once. Calls the other way (`jobServerAdminEndpoints`: refresh,
+status, drop) are signed with the job's call key in the
+`x-annotinder-signature` header; see `JOB_SERVER_SIGNATURE_HEADER`.
+`reference-db-server/src/jobTokens.ts` implements all of the db server's
+side.
 
 | Method | Path | Request | Response | Notes |
 | --- | --- | --- | --- | --- |
-| POST | `/backend/job/:jobId/token` | `JobTokenRequestSchema` | `JobTokenResponseSchema` | **No shared secret**: the body is a JWT the job server signed with its Ed25519 key. Check that the job is bound to its `iss` (store which job server each job runs on), `aud`, `jobId` and the time window, then verify with `<iss>/.well-known/jwks.json`. Returns a job token (HS256 with the db server's secret, claims `jobId`, `aud`, `exp`, `ck`). Reference implementation: `reference-db-server/src/jobTokens.ts`; any failure is 401 |
+| POST | `/backend/job/:jobId/token` | `JobTokenRequestSchema` | `JobTokenResponseSchema` | **No shared secret**: the body is a JWT the job server signed with its Ed25519 key. Check that the job is bound to its `iss` (store which job server each job runs on), `aud`, `jobId` and the time window, then verify with `<iss>/.well-known/jwks.json`. Returns a job token (HS256 with the db server's secret, claims `jobId`, `aud`, `exp`, `ck`). Reference implementation: `reference-db-server/src/jobTokens.ts`. 404 if the job doesn't exist or has no job server; any other failure is 401 |
 | GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed. `?preview=1`: the latest codebook, deployed or not, `active`, with a `version` that changes with its content (researcher previews) |
 | GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out. `hash`: content hash, changes whenever `data` does |
 | GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails). Only for researcher status, on demand; the job server loads coders one by one via `resolve` |

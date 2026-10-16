@@ -34,17 +34,15 @@ export interface ConformanceTarget {
   baseUrl: string;
   /** The id the db server gave the fixture's job. */
   jobId: number;
-  /** The shared secret the job server would use (`authorization: Bearer <secret>`). */
-  secret: string;
   /** Defaults to the global `fetch`; tests can pass an in-process one. */
   fetch?: typeof fetch;
   /**
-   * For the job token tests (plan §13): the job server URL the db server
-   * bound the fixture's job to, the URL the db server knows itself by
-   * (`aud`), and a way to serve a JWKS at `<jobServerUrl>/.well-known/jwks.json`
-   * (the suite plays that job server). Without it, those tests are skipped.
+   * The suite plays the job server the fixture's job is bound to (plan §13):
+   * that job server's URL, the URL the db server knows itself by (`aud`),
+   * and a way to serve the suite's JWKS at `<jobServerUrl>/.well-known/jwks.json`.
+   * The suite gets a job token first and uses it for every call.
    */
-  tokens?: {
+  tokens: {
     jobServerUrl: string;
     dbServerUrl: string;
     serveJwks(jwks: { keys: object[] }): void | Promise<void>;
@@ -80,7 +78,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   const call = async (path: string, init: { method?: string; body?: unknown; auth?: string | null } = {}) => {
     const t = target();
     const headers: Record<string, string> = { "content-type": "application/json" };
-    const auth = init.auth === undefined ? `Bearer ${t.secret}` : init.auth;
+    const auth = init.auth === undefined ? `Bearer ${jobToken}` : init.auth;
     if (auth !== null) headers.authorization = auth;
     return (t.fetch ?? fetch)(`${t.baseUrl}/backend/job/${t.jobId}${path}`, {
       method: init.method ?? "GET",
@@ -107,6 +105,26 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   /** externalId -> unit id, as assigned by the db server. */
   const ids = new Map<string, number>();
 
+  // The suite's job server identity; registered first so every test has a job token.
+  const server = testJobServer();
+  const now = () => Math.floor(Date.now() / 1000);
+  const claims = (over: Record<string, unknown> = {}) => ({
+    iss: target().tokens.jobServerUrl,
+    aud: target().tokens.dbServerUrl,
+    jobId: target().jobId,
+    iat: now(),
+    exp: now() + 120,
+    jti: randomUUID(),
+    ...over,
+  });
+  // No bearer: the signed request is the credential.
+  const requestToken = (assertion: string) => call("/token", { method: "POST", body: { assertion }, auth: null });
+  let jobToken = "";
+  beforeAll(async () => {
+    await target().tokens.serveJwks(server.jwks);
+    jobToken = JobTokenResponseSchema.parse(await ok(await requestToken(server.sign(claims())))).token;
+  });
+
   beforeAll(async () => {
     spec = DeploymentSpecSchema.parse(await ok(await call("/deployment")));
     const all = spec.unitsets.find((u) => u.name === ALL_UNITS_UNITSET)?.unitIds ?? [];
@@ -116,9 +134,20 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   const id = (externalId: string) => ids.get(externalId)!;
 
   describe("authentication", () => {
-    it("refuses requests without the shared secret", async () => {
-      expect((await call("/deployment", { auth: null })).status).toBe(401);
-      expect((await call("/deployment", { auth: "Bearer wrong" })).status).toBe(401);
+    it("refuses calls without a valid job token, with code invalid_job_token", async () => {
+      for (const auth of [null, "Bearer wrong", `Bearer ${jobToken}x`]) {
+        const res = await call("/deployment", { auth });
+        expect(res.status).toBe(401);
+        expect(await res.json()).toMatchObject({ code: "invalid_job_token" });
+      }
+    });
+
+    it("refuses a job token for another job", async () => {
+      const t = target();
+      const res = await (t.fetch ?? fetch)(`${t.baseUrl}/backend/job/${t.jobId + 1000}/deployment`, {
+        headers: { authorization: `Bearer ${jobToken}` },
+      });
+      expect(res.status).toBe(401);
     });
   });
 
@@ -380,29 +409,11 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   });
 
   describe("job tokens (POST /token)", () => {
-    const server = testJobServer();
     const tokens = () => target().tokens;
-    const skip = () => !tokens();
-    const now = () => Math.floor(Date.now() / 1000);
-    const claims = (over: Record<string, unknown> = {}) => ({
-      iss: tokens()!.jobServerUrl,
-      aud: tokens()!.dbServerUrl,
-      jobId: target().jobId,
-      iat: now(),
-      exp: now() + 120,
-      jti: randomUUID(),
-      ...over,
-    });
-    // No shared secret: the signed request is the credential.
-    const request = (assertion: string) => call("/token", { method: "POST", body: { assertion }, auth: null });
+    const request = requestToken;
     const payload = (jwt: string) => JSON.parse(Buffer.from(jwt.split(".")[1], "base64url").toString());
 
-    beforeAll(async () => {
-      if (!skip()) await tokens()!.serveJwks(server.jwks);
-    });
-
-    it("issues a job token to the job server the job is bound to", async (ctx) => {
-      if (skip()) return ctx.skip();
+    it("issues a job token to the job server the job is bound to", async () => {
       const res = await request(server.sign(claims()));
       expect(res.status).toBe(200);
       const body = JobTokenResponseSchema.parse(await res.json());
@@ -415,13 +426,11 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       expect(again.ck).toBe(token.ck);
     });
 
-    it("refuses requests from job servers the job isn't bound to", async (ctx) => {
-      if (skip()) return ctx.skip();
+    it("refuses requests from job servers the job isn't bound to", async () => {
       expect((await request(server.sign(claims({ iss: "https://other-job-server.example" })))).status).toBe(401);
     });
 
-    it("refuses requests signed with a key the job server doesn't publish", async (ctx) => {
-      if (skip()) return ctx.skip();
+    it("refuses requests signed with a key the job server doesn't publish", async () => {
       const stranger = generateKeyPairSync("ed25519").privateKey;
       expect((await request(server.sign(claims(), stranger))).status).toBe(401); // same kid, wrong key
       expect((await request(server.sign(claims(), stranger, "unknown-kid"))).status).toBe(401);
@@ -431,8 +440,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       expect((await request(`${h}.${p}`)).status).toBe(401);
     });
 
-    it("refuses requests for another db server, another job, or outside their time window", async (ctx) => {
-      if (skip()) return ctx.skip();
+    it("refuses requests for another db server, another job, or outside their time window", async () => {
       expect((await request(server.sign(claims({ aud: "https://other-db.example" })))).status).toBe(401);
       expect((await request(server.sign(claims({ jobId: target().jobId + 1000 })))).status).toBe(401);
       expect((await request(server.sign(claims({ iat: now() - 600, exp: now() - 300 })))).status).toBe(401); // expired

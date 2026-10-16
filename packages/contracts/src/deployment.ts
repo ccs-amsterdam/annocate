@@ -50,7 +50,8 @@ export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 
 // ---------------------------------------------------------------------------
 // Backend API: implemented by the db server, called only by the job server.
-// Authenticated with `authorization: Bearer <shared secret>`.
+// Authenticated with a job token (`authorization: Bearer <token>`), which the
+// job server gets from `POST /backend/job/:jobId/token` (plan §13).
 // ---------------------------------------------------------------------------
 
 /** `GET /backend/job/:jobId/deployment` -- everything the job server needs to run the job, minus unit content. */
@@ -249,8 +250,18 @@ export type BackendAnnotationBatchResult = z.infer<typeof BackendAnnotationBatch
  *    URL>|<jobId>"))`: derived, so the db server can recompute it to sign
  *    its calls to the job server, and the job server reads it from the token.
  *
- * Any failure is `401 { error }`.
+ * `404 { error }` if the job doesn't exist or has no job server; any other
+ * failure is `401 { error }`.
+ *
+ * **Every other backend call** carries the job token as
+ * `authorization: Bearer <token>`. The db server checks its signature and
+ * expiry, that `jobId` matches the path, and that `aud` is still the job
+ * server the job is bound to. If not, it answers
+ * `401 { error, code: "invalid_job_token" }`, and the job server gets a new
+ * token and retries once. (Other 401s, e.g. an invalid invite in
+ * `coders/resolve`, have no such code.)
  */
+export const INVALID_JOB_TOKEN = "invalid_job_token";
 export const JobTokenRequestSchema = z.object({ assertion: z.string().min(1) });
 export type JobTokenRequest = z.infer<typeof JobTokenRequestSchema>;
 
@@ -318,7 +329,8 @@ export const backendEndpoints = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Job server admin API: called by the db server (same shared secret).
+// Job server admin API: called by the db server, signed with the job's call
+// key (JOB_SERVER_SIGNATURE_HEADER).
 // Deployment ids are `<backend name>.<jobId>`, where the backend name is how
 // the job server's config refers to that db server.
 // ---------------------------------------------------------------------------
@@ -388,9 +400,9 @@ export type RefreshDeployment = z.infer<typeof RefreshDeploymentSchema>;
  * memory; nothing is written to the db server. The client uses `token` like
  * an invite secret (`x-invite-secret`).
  *
- * Token format, so any db server can make one with the secret it shares with
- * the job server: `preview.<jobId>.<expiresAtMs>.<hex HMAC-SHA256(secret,
- * "preview.<jobId>.<expiresAtMs>")>`.
+ * Token format: `preview.<jobId>.<expiresAtMs>.<hex HMAC-SHA256(callKey,
+ * "preview.<jobId>.<expiresAtMs>")>`, with the job's call key (`ck` in its
+ * job token), which the db server derives from its secret.
  */
 export const PreviewSessionSchema = z.object({
   deploymentId: z.string(),
@@ -398,6 +410,19 @@ export const PreviewSessionSchema = z.object({
   expiresAt: z.coerce.date(),
 });
 export type PreviewSession = z.infer<typeof PreviewSessionSchema>;
+
+/**
+ * Calls from the db server to the job server (`jobServerAdminEndpoints`) are
+ * signed with the job's **call key** (`ck`, see `JobTokenRequestSchema`):
+ *
+ *   x-annotinder-signature: t=<unix seconds>,s=<base64url HMAC-SHA256(callKey,
+ *     "<t>\n<METHOD>\n<path>\n<body>")>
+ *
+ * `path` is the request path (e.g. `/admin/deployments/mock.1/refresh`),
+ * `body` the raw body ("" if none). The job server accepts `t` within 5
+ * minutes of its clock. It knows the call key from its own job token.
+ */
+export const JOB_SERVER_SIGNATURE_HEADER = "x-annotinder-signature";
 
 export const jobServerAdminEndpoints = {
   refreshDeployment: {

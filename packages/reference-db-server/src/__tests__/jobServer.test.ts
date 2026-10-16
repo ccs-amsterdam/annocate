@@ -5,19 +5,29 @@ import { createServer, loadFixture } from "../server.js";
 // Only test code reaches into the job server package.
 import { createJobServer } from "../../../job-server/src/app.js";
 import { MemoryOutboxStore } from "../../../job-server/src/outbox.js";
+import { SigningKeys } from "../../../job-server/src/keys.js";
+import { JobTokenIssuer } from "../jobTokens.js";
 
 // The reference db server is enough to run a job: a coder works through the
 // fixture's loop via the real job server.
 describe("job server on the reference db server", () => {
   it("serves units, accepts finished units and resumes after a restart", async () => {
-    const db = createServer(loadFixture(fixture), "s");
+    // The db server fetches the job server's keys from it, to issue job tokens.
+    const tokens = new JobTokenIssuer({
+      secret: "s",
+      publicUrl: "http://ref.test",
+      fetch: ((input: string | URL | Request) => server.request(new URL(String(input instanceof Request ? input.url : input)).pathname)) as typeof fetch,
+    });
+    const db = createServer(loadFixture(fixture, 1, "http://jobs.test"), tokens);
     const toDb = ((input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
       return db.request(url.pathname + url.search, init);
     }) as typeof fetch;
+    const signingKeys = SigningKeys.ephemeral(); // the job server's key, kept across its restart
     // The job server's durable outbox survives its restart (a file on Node).
     const outbox = new MemoryOutboxStore();
-    const jobServer = () => createJobServer({ backends: { ref: { url: "http://ref.test", secret: "s" } }, fetch: toDb, outbox });
+    const jobServer = () =>
+      createJobServer({ backends: { ref: { url: "http://ref.test" } }, publicUrl: "http://jobs.test", signingKeys, fetch: toDb, outbox });
     let server = jobServer();
     let cookie = ""; // the browser's session cookie
     const call = async (path: string, init?: RequestInit) => {

@@ -50,13 +50,12 @@ the job server existed, run `pnpm reset-mock` once so the demo job is deployed.
 
 To check a db server you are building (in any language): load
 `packages/conformance/fixture.json` freshly as a job (the suite uses up its
-single-use invites), then run
-`DB_SERVER_URL=http://host DB_SERVER_SECRET=... DB_SERVER_JOB_ID=1 pnpm conformance`.
-`pnpm dev:reference` serves the reference db server with that fixture on :8790.
-For the job token tests, bind the fixture's job to a job server URL and add
-`JOB_SERVER_PORT` (the suite serves that job server's keys there), e.g.
-`JOB_SERVER_URL=http://localhost:8791 pnpm dev:reference`, then
-`... JOB_SERVER_PORT=8791 pnpm conformance`.
+single-use invites), bound to the job server the suite plays (it serves
+that job server's keys on `JOB_SERVER_PORT`, default 8791), then run
+`DB_SERVER_URL=http://host DB_SERVER_JOB_ID=1 pnpm conformance`.
+For example, with the reference db server:
+`JOB_SERVER_URL=http://localhost:8791 pnpm dev:reference` (on :8790), then
+`DB_SERVER_URL=http://localhost:8790 pnpm conformance`.
 
 Other useful root scripts: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`
 (each runs across all packages).

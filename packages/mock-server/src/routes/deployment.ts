@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import {
@@ -6,10 +5,12 @@ import {
   RefreshDeploymentSchema,
   ResetAnnotationsSchema,
   jobServerAdminEndpoints,
+  JOB_SERVER_SIGNATURE_HEADER,
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
 import { requireJobUser } from "../auth.js";
-import { getDeployment, putDeployment } from "../db/deployments.js";
+import { boundJobServer, getDeployment, putDeployment } from "../db/deployments.js";
+import type { JobTokenIssuer } from "@annotinder/reference-db-server/jobTokens";
 import { retireAnnotations } from "../db/annotations.js";
 
 /** Where this db server's jobs are deployed, and how the job server knows this db server. */
@@ -17,21 +18,24 @@ export interface JobServerLink {
   url: string;
   /** This db server's name in the job server's backend config; deployment ids are `<backendName>.<jobId>`. */
   backendName: string;
-  secret: string;
   fetch?: typeof fetch;
 }
 
 const PREVIEW_TTL_MS = 12 * 60 * 60_000;
 
-export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
+export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, jobServer?: JobServerLink) {
   const app = new Hono<HonoEnv>();
 
+  // Calls to the job server the job is bound to, signed with the job's call
+  // key (contracts JOB_SERVER_SIGNATURE_HEADER).
   const callJobServer = (path: string, method: "GET" | "POST", jobId: number, body?: unknown) => {
-    if (!jobServer) return Promise.resolve(null);
-    const url = jobServer.url + path.replace(":deploymentId", `${jobServer.backendName}.${jobId}`);
-    const headers: Record<string, string> = { authorization: `Bearer ${jobServer.secret}` };
+    const bound = jobServer ? boundJobServer(db, jobId, jobServer.url) : null;
+    if (!jobServer || !bound) return Promise.resolve(null);
+    const fullPath = path.replace(":deploymentId", `${jobServer.backendName}.${jobId}`);
+    const text = body === undefined ? "" : JSON.stringify(body);
+    const headers: Record<string, string> = { [JOB_SERVER_SIGNATURE_HEADER]: issuer.signCall(bound, jobId, method, fullPath, text) };
     if (body !== undefined) headers["content-type"] = "application/json";
-    return (jobServer.fetch ?? fetch)(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    return (jobServer.fetch ?? fetch)(bound + fullPath, { method, headers, body: body === undefined ? undefined : text });
   };
 
   app.get("/deployment", requireJobUser(db, "READ"), (c) => c.json(getDeployment(db, c.get("jobId"))));
@@ -93,8 +97,7 @@ export function deploymentRoutes(db: DatabaseSync, jobServer?: JobServerLink) {
     if (!jobServer) return c.json({ error: "No job server configured" }, 503);
     const jobId = c.get("jobId");
     const expiresAt = Date.now() + PREVIEW_TTL_MS;
-    const payload = `preview.${jobId}.${expiresAt}`;
-    const token = `${payload}.${createHmac("sha256", jobServer.secret).update(payload).digest("hex")}`;
+    const token = issuer.previewToken(boundJobServer(db, jobId, jobServer.url)!, jobId, expiresAt);
     return c.json({ deploymentId: `${jobServer.backendName}.${jobId}.preview`, token, expiresAt: new Date(expiresAt) });
   });
 

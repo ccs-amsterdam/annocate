@@ -36,3 +36,4 @@ pnpm-debug.log*
 # editor
 .vscode/*
 !.vscode/extensions.json
+job-server-signing-key.json

@@ -824,7 +824,11 @@ and binding check in the mock and reference db servers, plus conformance
 tests~~ done (`POST /backend/job/:jobId/token`; `JobTokenIssuer` in
 `reference-db-server/src/jobTokens.ts`, used by the mock server too; the
 mock stores the binding as `deployments.jobServerUrl`; the shared secret
-still guards every other backend call until step 3); (3) the job server uses per-job tokens instead of the shared
-secret; (4) signed db -> job server calls and preview tokens; (5)
+still guards every other backend call until step 3); (3) ~~the job server uses per-job tokens instead of the shared
+secret; (4) signed db -> job server calls and preview tokens~~ done
+together, and the shared secret is gone (a rejected token has code
+`invalid_job_token`: renewed and retried once; the token endpoint answers
+404 for unknown jobs; on Node without `ANNOTINDER_SIGNING_KEYS` the key is
+kept in `job-server-signing-key.json`); (5)
 deployment ids from db host + job id, open mode, outbound caps; (6)
 `url_param` in `resolveCoder` and the cookie scope change.
