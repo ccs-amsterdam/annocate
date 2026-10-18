@@ -16,7 +16,11 @@ Complements `docs/architecture.md`.
   a personal invite) is a *label*, not a credential. Anyone holding the link
   could use it. So it never gives access to earlier annotations.
 - **Unauthenticated work stays on the device it was done on**, unless the
-  coder explicitly moves it with a one-time transfer link.
+  coder explicitly moves it with a one-time transfer link, or (where the db
+  server sends email) a recovery link the db server mails to the coder.
+- **For encrypted jobs, login is access control only** (who may code);
+  moving a session to a new device then takes a transfer or recovery link
+  (`docs/encryption.md`, "Resuming").
 
 ## 2. Terms
 
@@ -138,6 +142,12 @@ order of value for effort:
 
 Emails go only to the db server. The job server keeps them no longer than
 the request.
+
+**Recovery links** (optional, not built): a db server that sends email can
+offer "send me a recovery link", mailed by the db server itself. For
+encrypted jobs this is how a coder gets K on a new device; the address is
+registered with a MAC under K, and the link is redeemed without sending its
+secret (`docs/encryption.md`, "Resuming").
 
 Until this exists, `auth: "required"` invites are refused with
 `401 { code: "auth_required" }`.

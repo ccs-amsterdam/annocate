@@ -59,8 +59,8 @@ sees your answers".
 Encryption doesn't change who may resume; it follows the general rule in
 `docs/coder-identity.md` §1: **a participant id is a label, never a
 credential**. Panel companies put it in the URL, so anyone with the link
-has it. Continuing on another device needs a transfer link or a login, for
-every job, encrypted or not.
+has it. Continuing on another device needs a transfer link, for every job,
+encrypted or not; or, where the db server sends email, a recovery link.
 
 For encrypted jobs this means:
 
@@ -75,14 +75,30 @@ For encrypted jobs this means:
   one.
 - **No PINs or passwords** to unlock K: people forget them, and they add
   little over a link.
-- **Login.** Resuming on a new device by logging in also needs K there.
-  Only a login *at the db server* (`coder-identity.md` §5, method 1) can
-  hand it over: the client creates a one-time key pair, the db server
-  returns K wrapped with its public key on the redirect back (or in the URL
-  fragment). Logins the job server verifies (OIDC, email codes) can't: a job
-  server could then claim any identity and receive K. So for encrypted
-  jobs, those logins can't resume on a new device; the db server refuses
-  to hand out K after them.
+- **Login is access control, not recovery.** If a job uses auth, the job
+  server authenticates the coder (`coder-identity.md` §5) and passes the
+  verified identity to the db server, which decides who gets in. A login
+  doesn't bring K to a new device: whoever verifies a login could claim to
+  be anyone, so a job server that verified one could also receive K.
+- **Recovery by email (optional, db servers that send email).** The coder
+  can ask "send me a recovery link". The db server mails it itself, so the
+  job server never sees it:
+  - **Registering the address.** The client sends the address with
+    `HMAC(K, email)`. The db server (which can unwrap K) checks it; the job
+    server, without K, can't register an address of its own in the coder's
+    place. With an `emails` allowlist on the invite, the address comes from
+    the researcher through the db server, so the job server never supplies
+    it at all.
+  - **Redeeming the link.** The link opens the client (served by the job
+    server) with a secret R in the URL fragment, which isn't sent to
+    servers. The client never sends R itself: the new device creates a
+    one-time key pair and sends the public key with `HMAC(R, public key)`.
+    The db server checks it and returns K wrapped with that public key. R
+    is single use. The job server can relay all of this but can't redeem
+    it for a key of its own.
+  - **What remains:** whoever controls the mailbox can recover the session
+    (as with any recovery link), and the client code must be honest (see
+    "Where the guarantee ends").
 - **The rare case of switching devices** is covered by offering the
   transfer link up front (`coder-identity.md` §4, "Offer the link early").
 
@@ -173,7 +189,7 @@ guarantee ends").
    confidentiality if every ciphertext carries its key id and the db server
    decrypts by key id, since the job server can't read the client's key).
 2. ~~Resuming on a new device without a transfer link~~: decided, see
-   "Resuming" (a transfer link, or a login at the db server).
+   "Resuming" (a transfer link, or a recovery link by email).
 3. **Which variables:** every answer of a job, or only marked variables
    (then marked ones lose validation, agreement and routing; unmarked keep
    them)? A per-job switch is simpler and harder to get wrong.
