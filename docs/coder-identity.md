@@ -78,6 +78,15 @@ restrict an invite.
   Tokens live only in job-server memory. That fits the "nothing that can't
   be rebuilt" rule (`architecture.md` §3): losing them means making a new
   link.
+- **Offer the link early** (not built). Switching devices halfway is rare
+  (panel participants finish in one sitting), so "Continue on another
+  device" stays in the menu. For long jobs, the client also offers it once
+  at the start: "Want to finish later on another device? Save this link."
+  It is optional and asks nothing of the coder. It needs a link that stays
+  valid longer than a 15-minute transfer token (e.g. a long-lived transfer
+  token stored by the db server, revocable); open point.
+  We don't add PINs or passwords: forgotten easily, and little gain over a
+  link.
 - **A participant link opened on a new device** (no cookie, and that
   participant already has a session):
   1. The db server refuses to silently create a second coder. The job server
@@ -138,6 +147,10 @@ Until this exists, `auth: "required"` invites are refused with
 - **Revoking a transfer.** Should "move this session" (revoke the old
   device's key) exist next to "copy"? Probably only once there is a reason;
   with a login, the identity is the thing to revoke instead.
+- **A long-lived "continue later" link** (§4, "Offer the link early"):
+  stored by the db server (the job server's memory isn't durable), one per
+  session, revocable from the device that has the session. Should it be
+  single use (each redeem makes a new one)?
 - **Duplicate work across sessions of one participant.** Dynamic sources
   count codings per coder, so two sessions of one person can code the same
   unit. Possible later: optionally treat sessions with the same participant

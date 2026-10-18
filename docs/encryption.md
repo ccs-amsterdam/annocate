@@ -24,13 +24,12 @@ sees your answers".
 - **No direct call between client and db server is needed**: everything
   still flows through the job server, which only ever holds ciphertext. A
   db server doesn't need an endpoint clients can reach.
-- **Resuming with earlier answers** (we don't support resuming with them
-  hidden): the client encrypts with a per-session symmetric key K and sends
-  K once wrapped with the db server's public key (only the db server can
-  unwrap it). The device keeps K, so it can read its earlier answers; a new
-  device gets K through the transfer link (in the URL fragment, which is
-  never sent to servers). Without K, no resume: as today without the
-  device credential.
+- **Resuming with earlier answers**: the client encrypts with a
+  per-session symmetric key K and sends K once wrapped with the db server's
+  public key (only the db server can unwrap it). The device keeps K, so it
+  can read its earlier answers; a new device gets K through the transfer
+  link (in the URL fragment, which is never sent to servers). See
+  "Resuming" below for why this is the only way to resume.
 
 ### Alternative: a symmetric key exchanged directly with the db server
 
@@ -54,6 +53,38 @@ sees your answers".
   endpoint) and binding keys to coders (open question 1); what it buys over
   the preferred variant is resuming on a new device by logging in, without
   a transfer link.
+
+## Resuming (decided 2026-10-18)
+
+Encryption doesn't change who may resume; it follows the general rule in
+`docs/coder-identity.md` §1: **a participant id is a label, never a
+credential**. Panel companies put it in the URL, so anyone with the link
+has it. Continuing on another device needs a transfer link or a login, for
+every job, encrypted or not.
+
+For encrypted jobs this means:
+
+- **The session and K travel together.** The device with the session has K;
+  a transfer link carries both. There is no state "may continue, but can't
+  read its earlier answers", so branching and conditions on encrypted
+  answers keep working as in any job. We don't restrict branching.
+- **We don't support resuming with earlier answers hidden.** A participant
+  link on a new device without the session works as today
+  (`participant_has_session`): continue on the original device, make a
+  transfer link there, or start a new session that can't see the earlier
+  one.
+- **No PINs or passwords** to unlock K: people forget them, and they add
+  little over a link.
+- **Login.** Resuming on a new device by logging in also needs K there.
+  Only a login *at the db server* (`coder-identity.md` §5, method 1) can
+  hand it over: the client creates a one-time key pair, the db server
+  returns K wrapped with its public key on the redirect back (or in the URL
+  fragment). Logins the job server verifies (OIDC, email codes) can't: a job
+  server could then claim any identity and receive K. So for encrypted
+  jobs, those logins resume the coder without K (the db server refuses to
+  resume an encrypted session that way), or aren't offered.
+- **The rare case of switching devices** is covered by offering the
+  transfer link up front (`coder-identity.md` §4, "Offer the link early").
 
 ## Authenticity: invites and codebooks signed by the db server
 
@@ -141,11 +172,8 @@ guarantee ends").
    (but then the job server could register keys too; harmless for
    confidentiality if every ciphertext carries its key id and the db server
    decrypts by key id, since the job server can't read the client's key).
-2. **Resuming on a new device without a transfer link.** With the
-   preferred variant that needs K, which only the old device and the db
-   server have. Allowing it would mean a login that lets the db server hand
-   K back directly (the alternative variant's direct call), or accepting
-   that encrypted jobs need a transfer link to switch devices.
+2. ~~Resuming on a new device without a transfer link~~: decided, see
+   "Resuming" (a transfer link, or a login at the db server).
 3. **Which variables:** every answer of a job, or only marked variables
    (then marked ones lose validation, agreement and routing; unmarked keep
    them)? A per-job switch is simpler and harder to get wrong.
