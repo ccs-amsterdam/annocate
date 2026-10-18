@@ -81,8 +81,8 @@ For encrypted jobs this means:
   returns K wrapped with its public key on the redirect back (or in the URL
   fragment). Logins the job server verifies (OIDC, email codes) can't: a job
   server could then claim any identity and receive K. So for encrypted
-  jobs, those logins resume the coder without K (the db server refuses to
-  resume an encrypted session that way), or aren't offered.
+  jobs, those logins can't resume on a new device; the db server refuses
+  to hand out K after them.
 - **The rare case of switching devices** is covered by offering the
   transfer link up front (`coder-identity.md` §4, "Offer the link early").
 
