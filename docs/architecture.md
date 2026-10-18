@@ -153,6 +153,10 @@ The mitigation is choice of deployment target, not cryptography:
   For sensitive data. Coders of sensitive projects are usually near that
   server anyway, so losing the edge costs little.
 
+A possible hardening, not planned yet: encrypting participants' answers
+between client and db server, so the job server never sees them
+(`docs/encryption.md`).
+
 Either way, answers rest on the job server until the next outbox flush
 (normally under a minute, at most the outbox limits): its storage must be
 as trusted as its memory.
