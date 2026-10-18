@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { CircleDashedIcon, CircleQuestionMark, LucideListEnd, Plus } from "lucide-react";
+import { LucideListEnd, Plus } from "lucide-react";
 import { cn } from "cn";
 import { ActionButton } from "./TreeRow";
 import { ITEM_TYPES } from "./itemTypes";

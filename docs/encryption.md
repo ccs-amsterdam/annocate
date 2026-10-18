@@ -12,7 +12,27 @@ the job. The point is to need less trust in the job server *regarding
 participants' PII*, and to be able to say of a public job server: "it never
 sees your answers".
 
-## The design discussed
+## Two variants
+
+### Preferred: encrypt to the db server's public key
+
+- The db server has an **encryption key pair**; its public key reaches the
+  client in a way the job server can't spoof (see "Authenticity" below).
+- The client encrypts answers to that public key (hybrid encryption:
+  e.g. ECDH P-256 or X25519 + AES-GCM, all in WebCrypto) before they go to
+  the job server. Only the db server can decrypt.
+- **No direct call between client and db server is needed**: everything
+  still flows through the job server, which only ever holds ciphertext. A
+  db server doesn't need an endpoint clients can reach.
+- **Resuming with earlier answers** (we don't support resuming with them
+  hidden): the client encrypts with a per-session symmetric key K and sends
+  K once wrapped with the db server's public key (only the db server can
+  unwrap it). The device keeps K, so it can read its earlier answers; a new
+  device gets K through the transfer link (in the URL fragment, which is
+  never sent to servers). Without K, no resume: as today without the
+  device credential.
+
+### Alternative: a symmetric key exchanged directly with the db server
 
 - **The db server holds the key.** Per session, the client generates a
   random **symmetric** key and exchanges it **directly with the db server**
@@ -30,6 +50,38 @@ sees your answers".
   with earlier answers hidden": the partial leaks through branching aren't
   worth the complexity.
 - Everything else is the current design.
+- Costs a direct client-to-db-server call (a public, CORS-enabled db
+  endpoint) and binding keys to coders (open question 1); what it buys over
+  the preferred variant is resuming on a new device by logging in, without
+  a transfer link.
+
+## Authenticity: invites and codebooks signed by the db server
+
+The job server passes everything to the client, so it could hand out a
+different public key, or change the codebook (e.g. turn encryption off for
+a variable). Both are prevented by signatures from the db server, checked
+against a key the job server can't replace:
+
+- **The trust anchor is the invite link**, as the researcher distributes it
+  (email, panel company): its URL fragment carries the fingerprint of the db
+  server's **signing key**. The job server doesn't distribute links, and the
+  fragment is never sent to it. Returning coders (who may come back without
+  the link) and transferred devices keep the fingerprint: the client stores
+  it on first use, the transfer link carries it.
+- **Signed invitation:** the db server signs `{ job, invite, encryption
+  public key }`, so a key from another job or a substituted key fails the
+  check. (A job server sending coders a fake invite with its own key would
+  have to reach those coders first; the links come from the researcher.)
+- **Signed codebook:** the db server signs what the client relies on: the
+  codebook, which variables are encrypted, the encryption public key, job
+  and version (e.g. a JWS over the deployment spec, a new signature per
+  version). The job server passes the signature through; the client checks
+  it on every load and refuses a spec that doesn't verify.
+- **Key rotation:** a new signing key is announced signed by the old one,
+  or comes with new invite links.
+
+All of this assumes the client code itself is honest (see "Where the
+guarantee ends").
 
 ## What we gain
 
@@ -52,10 +104,9 @@ sees your answers".
 - **Condition leaks:** a plain `skip` on a question hidden by a condition
   reveals the condition's outcome. Encrypt the whole answer, `skip`
   included, so the job server sees only "answered".
-- **A direct call from client to db server:** the db server needs a public,
-  CORS-enabled endpoint for the key exchange. Today a db server only has
-  to be reachable by its job servers. (Annotinder local and the bridge,
-  `docs/compositions.md`, would need the same.)
+- **The direct call from client to db server** (alternative variant only):
+  the db server needs a public, CORS-enabled endpoint for the key exchange.
+  The preferred variant avoids it.
 - **Server-set values stay plain:** auto variables assigned by the job
   server (random, balanced, invite presets) and `url_param` values pass
   through it. Usually experimental conditions, not personal data.
@@ -77,13 +128,12 @@ sees your answers".
     keeps the processor (e.g. Cloudflare) from seeing answers. Note that
     if Cloudflare also serves the client code, that only holds as long as
     the processor doesn't tamper with code it serves.
-- **Key authenticity.** The client must know it is talking to the real db
-  server, not one the job server points it to: it can derive the db host
-  from the deployment id (`<db host>/<jobId>`) and rely on TLS to that host.
+- **Key authenticity** relies on the signed invite and codebook (above),
+  anchored in the link the researcher hands out.
 
 ## Open questions
 
-1. **Binding a key to a coder.** For resume, the db server must know which
+1. **Binding a key to a coder** (only for the alternative variant). For resume, the db server must know which
    coder a key belongs to, and the session credential today is an httpOnly
    cookie on the job server's origin, which the db server never sees.
    Options: a separate device credential the client holds for the db
@@ -91,12 +141,11 @@ sees your answers".
    (but then the job server could register keys too; harmless for
    confidentiality if every ciphertext carries its key id and the db server
    decrypts by key id, since the job server can't read the client's key).
-2. **Symmetric key exchange vs. public-key encryption.** Alternative: the
-   client encrypts to a job public key (fetched from the db host directly)
-   and keeps its own answers locally for resume. No key exchange and no
-   key storage on the db server, but resuming on another device can't show
-   earlier answers. The symmetric exchange is what makes resume-with-answers
-   possible.
+2. **Resuming on a new device without a transfer link.** With the
+   preferred variant that needs K, which only the old device and the db
+   server have. Allowing it would mean a login that lets the db server hand
+   K back directly (the alternative variant's direct call), or accepting
+   that encrypted jobs need a transfer link to switch devices.
 3. **Which variables:** every answer of a job, or only marked variables
    (then marked ones lose validation, agreement and routing; unmarked keep
    them)? A per-job switch is simpler and harder to get wrong.

@@ -4,7 +4,6 @@ import { useCodebookTree } from "./context";
 import { AddItemMenu } from "./AddItemMenu";
 import { TreeRow } from "./TreeRow";
 import { getItemKey, insertableTypesIn, type TreeNode } from "./utils";
-import { Icon } from "lucide-react";
 
 interface ListEndRowProps {
   /** Container whose child list this row closes; null for the codebook root. */
