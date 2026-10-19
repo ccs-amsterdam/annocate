@@ -7,6 +7,8 @@ interface UnsavedChangesDialogProps {
   onDiscard: () => void;
   onSave: () => void | Promise<void>;
   isSaving?: boolean;
+  /** Why saving failed, e.g. validation issues. */
+  error?: string | null;
 }
 
 /**
@@ -22,6 +24,7 @@ export function UnsavedChangesDialog({
   onDiscard,
   onSave,
   isSaving,
+  error,
 }: UnsavedChangesDialogProps) {
   if (!open) return null;
 
@@ -43,6 +46,8 @@ export function UnsavedChangesDialog({
         <p className="text-sm text-foreground/80 leading-relaxed">
           If you navigate away without saving, your modifications will be permanently lost. What would you like to do?
         </p>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
           <Button

@@ -46,12 +46,12 @@ beforeAll(async () => {
 async function jobToken(jobId: number): Promise<string> {
   const iat = Math.floor(Date.now() / 1000);
   const assertion = await signingKeys.sign({ iss: JOB_URL, aud: DB_URL, jobId, iat, exp: iat + 60, jti: crypto.randomUUID() });
-  const res = await dbApp.request(`/backend/job/${jobId}/token`, { method: "POST", body: JSON.stringify({ assertion }) });
+  const res = await dbApp.request(`/annotator/job/${jobId}/token`, { method: "POST", body: JSON.stringify({ assertion }) });
   return ((await res.json()) as { token: string }).token;
 }
 
-/** Backend API calls made by the job server (method + path, no query). */
-let backendCalls: string[] = [];
+/** Annotator API calls made by the job server (method + path, no query). */
+let annotatorCalls: string[] = [];
 
 /** While false, every call to the db server fails as if it were down. */
 let dbUp = true;
@@ -63,7 +63,7 @@ function newJobServer(runtime: Partial<RuntimeOptions> = {}) {
   const toDb = routeTo(DB_URL, { request: (path, init) => dbApp.request(path, init) }); // the current db server
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
-    backendCalls.push(`${init?.method ?? "GET"} ${url.pathname}`);
+    annotatorCalls.push(`${init?.method ?? "GET"} ${url.pathname}`);
     if (!dbUp) throw new TypeError("fetch failed");
     return toDb(input, init);
   }) as typeof globalThis.fetch;
@@ -90,7 +90,7 @@ beforeEach(() => {
   dbUp = true;
   outboxStore = new MemoryOutboxStore();
   jobServer = newJobServer();
-  backendCalls = [];
+  annotatorCalls = [];
   devices = new Map();
 });
 
@@ -166,7 +166,7 @@ describe("coder flow through the job server", () => {
     const c = coder("coder-a");
     const session = await c.session();
     expect(session.jobId).toBe(1);
-    expect(session.codebook.name).toBe("Demo codebook");
+    expect(session.codebook.note).toBe("First version: tone, actors and issues, and their relations");
 
     const first = await c.next();
     expect(first?.externalId).toBe("unit-1");
@@ -252,7 +252,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
     method: "POST",
     headers: adminHeaders,
     body: JSON.stringify({
-      name: "v2",
+      note: "v2",
       items: [
         ...extraItems,
         {
@@ -283,7 +283,7 @@ async function createUnitset(name: string, externalIds: string[]) {
 }
 
 async function invite(variables?: Record<string, string>, extra: object = {}) {
-  const res = await dbApp.request("/job/1/coders/invite", {
+  const res = await dbApp.request("/job/1/invites", {
     method: "POST",
     headers: adminHeaders,
     body: JSON.stringify({ label: "x", variables, ...extra }),
@@ -365,11 +365,11 @@ describe("routing coders to unitsets", () => {
     expect((await coder("first", general).session()).variables.slot.codes).toEqual([{ code: "1" }]);
 
     // a fresh job server knows the counts per option, without loading all coders
-    backendCalls = [];
+    annotatorCalls = [];
     jobServer = newJobServer();
     expect((await coder("second", general).session()).variables.slot.codes).toEqual([{ code: "2" }]);
-    expect(backendCalls).not.toContain("GET /backend/job/1/coders");
-    expect(backendCalls).toContain("POST /backend/job/1/finished");
+    expect(annotatorCalls).not.toContain("GET /annotator/job/1/coders");
+    expect(annotatorCalls).toContain("POST /annotator/job/1/finished");
 
     // returning coders are resolved again, and count once
     expect((await coder("first", null).session()).variables.slot.codes).toEqual([{ code: "1" }]);
@@ -592,7 +592,7 @@ describe("rebuilding from the db server", () => {
     expect((await coder("d").next())!.id).not.toBe(unit!.id);
 
     // the finished endpoint returns only the requested (agreement) values
-    const finished = await dbApp.request("/backend/job/1/finished", {
+    const finished = await dbApp.request("/annotator/job/1/finished", {
       method: "POST",
       headers: { authorization: `Bearer ${await jobToken(1)}`, "content-type": "application/json" },
       body: JSON.stringify({ loops: [{ loop: "main_loop", variables: ["sentiment"], values: ["sentiment"] }] }),
@@ -616,13 +616,13 @@ describe("rebuilding from the db server", () => {
 
   it("keeps codings across a redeploy that keeps the loops, and reloads when they change", async () => {
     const reloads = () =>
-      backendCalls.filter((call) => call === "POST /backend/job/1/finished" || call === "GET /backend/job/1/annotations");
+      annotatorCalls.filter((call) => call === "POST /annotator/job/1/finished" || call === "GET /annotator/job/1/annotations");
 
     // v2 changes the loop's questions (demo had three): finished units must be re-derived
     await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
     const c = coder("re");
     await c.submit((await c.next())!.id, sentiment("neutral"));
-    backendCalls = [];
+    annotatorCalls = [];
 
     // v3, same loop: nothing re-downloaded
     await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
@@ -632,7 +632,7 @@ describe("rebuilding from the db server", () => {
     // v4 adds a dynamic source with an agreement rule: its finished codings are loaded
     await redeploy(agreeing);
     await c.session();
-    expect(reloads()).toContain("POST /backend/job/1/finished");
+    expect(reloads()).toContain("POST /annotator/job/1/finished");
   });
 
   it("keeps the order of finished units when an old unit is edited", async () => {
@@ -723,9 +723,9 @@ describe("memory", () => {
     (await (await dbApp.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
   const refresh = (body: object) =>
     dbApp.request("/job/1/deployment/refresh", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
-  const count = (call: string) => backendCalls.filter((c) => c === call).length;
-  const UNITS = "GET /backend/job/1/units";
-  const ANNOTATIONS = "GET /backend/job/1/annotations";
+  const count = (call: string) => annotatorCalls.filter((c) => c === call).length;
+  const UNITS = "GET /annotator/job/1/units";
+  const ANNOTATIONS = "GET /annotator/job/1/annotations";
 
   it("keeps units cached until a refresh drops them", async () => {
     const c = coder("units");
@@ -766,7 +766,7 @@ describe("memory", () => {
     const third = coder("third");
     await third.submit((await third.next())!.id, sentiment("neutral")); // over budget
 
-    backendCalls = [];
+    annotatorCalls = [];
     await busy.session();
     expect(count(ANNOTATIONS)).toBe(0);
     expect(await done.next()).toBeNull(); // reloaded, and still finished
@@ -778,17 +778,17 @@ describe("memory", () => {
     jobServer = newJobServer({ now: () => now, deploymentIdleMs: 1000 * 60 * 60_000 });
     const c = coder("idle");
     await c.submit((await c.next())!.id, demo("neutral"));
-    backendCalls = [];
+    annotatorCalls = [];
     now += 25 * 60 * 60_000; // past maxIdleMs
     await c.session();
     expect(count(ANNOTATIONS)).toBe(1);
 
     jobServer = newJobServer({ now: () => now });
     await c.session();
-    backendCalls = [];
+    annotatorCalls = [];
     now += 7 * 60 * 60_000; // past deploymentIdleMs: loaded afresh
     await c.session();
-    expect(backendCalls).toContain("GET /backend/job/1/deployment");
+    expect(annotatorCalls).toContain("GET /annotator/job/1/deployment");
     expect(count(ANNOTATIONS)).toBe(1);
   });
 });
@@ -812,7 +812,11 @@ describe("unit hashes", () => {
     const res = await dbApp.request("/job/1/units", {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ overwrite: true, units: [{ externalId: before.externalId, data: { text: "edited" } }] }),
+      body: JSON.stringify({
+        overwrite: true,
+        // Same fields (the job's), new text
+        units: [{ externalId: before.externalId, data: { ...JSON.parse(before.data), text: "edited" } }],
+      }),
     });
     expect(res.status).toBe(201);
     expect((await c.submit(second.id, demo("neutral"))).status).toBe(204); // recorded, not refused
@@ -856,7 +860,7 @@ describe("outbox", () => {
 
     await timers.runAll();
     expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
-    expect(backendCalls.filter((call) => call === "POST /backend/job/1/annotations")).toHaveLength(1);
+    expect(annotatorCalls.filter((call) => call === "POST /annotator/job/1/annotations")).toHaveLength(1);
   });
 
   it("keeps coding while the db server is down, and catches up with backoff", async () => {
@@ -930,12 +934,12 @@ describe("outbox", () => {
 });
 
 describe("researcher preview", () => {
-  const draft = async (name: string) => {
+  const draft = async (note: string) => {
     const res = await dbApp.request("/job/1/codebook", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({
-        name,
+        note,
         items: [{ type: "unit_loop", name: "main_loop", layout: { template: "" }, children: [sentimentQuestion], units: [{ sources: [{ unitset: "main" }] }] }],
       }),
     });
@@ -965,12 +969,12 @@ describe("researcher preview", () => {
     const { deploymentId, token } = await openPreview();
     expect(deploymentId).toBe("db.test/1.preview");
     const call = previewer(deploymentId, token);
-    expect(((await (await call("/session")).json()) as SessionResponse).codebook.name).toBe("draft 1");
+    expect(((await (await call("/session")).json()) as SessionResponse).codebook.note).toBe("draft 1");
     // the real deployment is untouched
-    expect((await coder("real").session()).codebook.name).not.toBe("draft 1");
+    expect((await coder("real").session()).codebook.note).not.toBe("draft 1");
 
     await draft("draft 2");
-    expect(((await (await call("/session")).json()) as SessionResponse).codebook.name).toBe("draft 2");
+    expect(((await (await call("/session")).json()) as SessionResponse).codebook.note).toBe("draft 2");
   });
 
   it("keeps the preview's coders and answers out of the db server", async () => {
@@ -985,7 +989,7 @@ describe("researcher preview", () => {
     expect(((await (await call("/session")).json()) as SessionResponse).progress[0].doneUnitIds).toEqual([unit.id]);
     expect(dbAnnotations()).toEqual([]);
     expect(coders()).toBe(before);
-    expect(backendCalls.some((c) => c.startsWith("POST /backend/job/1/annotations"))).toBe(false);
+    expect(annotatorCalls.some((c) => c.startsWith("POST /annotator/job/1/annotations"))).toBe(false);
   });
 
   it("refuses forged, expired and other jobs' tokens", async () => {
@@ -1004,14 +1008,14 @@ describe("researcher preview", () => {
 describe("trust between job server and db server (plan §13)", () => {
   it("asks for a job token with a signed request, and uses it for every call", async () => {
     await coder("t").session();
-    expect(backendCalls[0]).toBe("POST /backend/job/1/token");
-    expect(backendCalls.filter((c) => c.endsWith("/token"))).toHaveLength(1); // reused
+    expect(annotatorCalls[0]).toBe("POST /annotator/job/1/token");
+    expect(annotatorCalls.filter((c) => c.endsWith("/token"))).toHaveLength(1); // reused
   });
 
   it("refuses db server calls that aren't signed with the job's call key", async () => {
     await coder("warm").session();
     const refresh = (headers: Record<string, string>) =>
-      jobServer.request("/admin/deployments/db.test/1/refresh", { method: "POST", headers });
+      jobServer.request("/db/deployments/db.test/1/refresh", { method: "POST", headers });
     expect((await refresh({})).status).toBe(401);
     const t = Math.floor(Date.now() / 1000);
     expect((await refresh({ "x-annotinder-signature": `t=${t},s=${"A".repeat(43)}` })).status).toBe(401);
@@ -1027,7 +1031,7 @@ describe("trust between job server and db server (plan §13)", () => {
       jobServer: { url: JOB_URL, fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
       tokens: { secret: "rotated", publicUrl: DB_URL },
     });
-    backendCalls = [];
+    annotatorCalls = [];
     jobServer = newJobServer(); // a new process would also keep nothing; here the token is what's stale
     await c.session();
     const unit = (await c.next())!;
@@ -1042,14 +1046,14 @@ describe("trust between job server and db server (plan §13)", () => {
       jobServer: { url: JOB_URL, fetch: routeTo(JOB_URL, { request: (path, init) => jobServer.request(path, init) }) },
       tokens: { secret: "rotated", publicUrl: DB_URL },
     });
-    backendCalls = [];
+    annotatorCalls = [];
     const unit = (await c.next())!;
     expect((await c.submit(unit.id, demo("neutral"))).status).toBe(204);
     // The first call with the stale token was rejected, a new token fetched, the call retried.
-    const renewal = backendCalls.indexOf("POST /backend/job/1/token");
+    const renewal = annotatorCalls.indexOf("POST /annotator/job/1/token");
     expect(renewal).toBeGreaterThan(0);
-    expect(backendCalls[renewal + 1]).toBe(backendCalls[renewal - 1]);
-    expect(backendCalls.filter((call) => call.endsWith("/token"))).toHaveLength(1);
+    expect(annotatorCalls[renewal + 1]).toBe(annotatorCalls[renewal - 1]);
+    expect(annotatorCalls.filter((call) => call.endsWith("/token"))).toHaveLength(1);
     expect(dbAnnotations().map((a) => a.unitId)).toEqual([unit.id]);
   });
 });

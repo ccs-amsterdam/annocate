@@ -11,6 +11,8 @@ export interface CodebookTreeState {
   selected: string | null;
   /** Key of the item currently being moved, or null when not in move mode. */
   movingKey: string | null;
+  /** Immutable codebook: no add, move or delete actions. */
+  readOnly: boolean;
 
   select: (key: string) => void;
   remove: (key: string) => void;

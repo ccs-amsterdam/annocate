@@ -1,11 +1,8 @@
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import {
-  ALL_UNITS_UNITSET,
-  GenerateUnitsetsSchema,
   UnitsetWriteSchema,
   migrateLegacyUnitLoop,
-  splitUnits,
   unitsetMatchesSource,
   type UnitsetResponse,
   type UnitLoopItem,
@@ -66,42 +63,6 @@ export function unitsetRoutes(db: DatabaseSync) {
     );
     const row = db.prepare("SELECT * FROM unitsets WHERE jobId = ? ORDER BY id DESC LIMIT 1").get(jobId) as unknown as UnitsetRow;
     return c.json(toResponse(row), 201);
-  });
-
-  // Splits units into `<prefix>_1..n` (+ `<prefix>_overlap`) as explicit
-  // unitsets. Adding units to the job later doesn't change them.
-  app.post("/unitsets/generate", requireJobUser(db, "WRITE"), async (c) => {
-    const parsed = GenerateUnitsetsSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-
-    const jobId = c.get("jobId");
-    const { prefix, from, ...options } = parsed.data;
-    let unitIds: number[];
-    if (!from || from === ALL_UNITS_UNITSET) {
-      const rows = db.prepare("SELECT id FROM units WHERE jobId = ? ORDER BY id").all(jobId) as unknown as { id: number }[];
-      unitIds = rows.map((r) => r.id);
-    } else {
-      const source = db.prepare("SELECT unitIds FROM unitsets WHERE jobId = ? AND name = ?").get(jobId, from) as
-        | { unitIds: string }
-        | undefined;
-      if (!source) return c.json({ error: `Unitset '${from}' not found` }, 404);
-      unitIds = JSON.parse(source.unitIds);
-    }
-
-    const { parts, overlap } = splitUnits(unitIds, options);
-    const sets = parts.map((ids, i) => ({ name: `${prefix}_${i + 1}`, unitIds: ids }));
-    if (overlap.length > 0) sets.push({ name: `${prefix}_overlap`, unitIds: overlap });
-
-    const exists = db.prepare("SELECT 1 FROM unitsets WHERE jobId = ? AND name = ?");
-    const taken = sets.find((set) => exists.get(jobId, set.name));
-    if (taken) return c.json({ error: `Unitset '${taken.name}' already exists` }, 409);
-
-    const insert = db.prepare("INSERT INTO unitsets (jobId, name, unitIds) VALUES (?, ?, ?)");
-    for (const set of sets) insert.run(jobId, set.name, JSON.stringify(set.unitIds));
-    const rows = db
-      .prepare(`SELECT * FROM unitsets WHERE jobId = ? AND name IN (${sets.map(() => "?").join(",")}) ORDER BY id`)
-      .all(jobId, ...sets.map((s) => s.name)) as unknown as UnitsetRow[];
-    return c.json(rows.map(toResponse), 201);
   });
 
   app.put("/unitsets/:id", requireJobUser(db, "WRITE"), async (c) => {

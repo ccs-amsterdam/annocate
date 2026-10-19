@@ -6,11 +6,11 @@ built yet beyond the parts themselves.
 Annotinder has three parts, each usable on its own:
 
 - **db server**: the source of truth. Researcher API (jobs, codebooks,
-  units, unitsets, invites, deployments, results) and backend API (for job
+  units, unitsets, invites, deployments, results) and annotator API (for job
   servers). Any language; conformance-tested (`packages/conformance`).
 - **job server**: the annotinder runtime coders talk to: distribution,
   validation, caching, the outbox. TypeScript only (`packages/job-server`).
-  Talks to db servers over the backend API, with job tokens (plan §13).
+  Talks to db servers over the annotator API, with job tokens (plan §13).
 - **client**: the web app, for coders and researchers (`packages/client`).
   Always served from the job server's origin (session cookies).
 
@@ -56,7 +56,7 @@ API, the same way whichever db server it is:
 One Node program, `annotinder-local`:
 
 - the **SQLite db server**: today's mock server, promoted. It already has
-  the researcher API, the backend API and SQLite storage. Needs: real
+  the researcher API, the annotator API and SQLite storage. Needs: real
   researcher authentication (a local admin token, written to the project
   folder), file import and export, and a better name.
 - the **job server**, imported as is. It reaches the db server through an
@@ -114,7 +114,7 @@ preview picks up the new codebook on the next request (already built:
 
 **Consequence: the researcher API becomes a public contract.** Today it is
 "what the mock server implements". Before the R and Python packages, it
-needs what the backend API has: a versioned schema in `packages/contracts`,
+needs what the annotator API has: a versioned schema in `packages/contracts`,
 an authentication scheme for scripts (API keys for hosted db servers, the
 local admin token for annotinder local), and a conformance suite.
 
@@ -127,7 +127,7 @@ firewalls; we only provide a public endpoint.
 **A. Local db server, our public job servers.** Annotinder local acts as a
 **db server for our public job servers**, reachable through the tunnel
 (a relay we host, or e.g. a Cloudflare tunnel). Coders use
-open.annotinder.com as usual; only the job server's backend calls travel to
+open.annotinder.com as usual; only the job server's annotator API calls travel to
 the laptop, in batches, and the outbox buffers them while the laptop sleeps
 or is offline (up to its limits). Cheap for the laptop and tolerant of it
 going away, but units and answers pass through our job servers.

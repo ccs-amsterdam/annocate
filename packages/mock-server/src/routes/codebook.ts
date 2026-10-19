@@ -7,7 +7,7 @@ import { requireJobUser } from "../auth.js";
 interface CodebookRow {
   id: number;
   jobId: number;
-  name: string;
+  note: string | null;
   items: string;
   created: string;
   immutable: number;
@@ -17,14 +17,14 @@ function toResponse(row: CodebookRow): CodebookResponse {
   return {
     id: row.id,
     jobId: row.jobId,
-    name: row.name,
+    note: row.note,
     items: JSON.parse(row.items),
     created: new Date(row.created),
     immutable: !!row.immutable,
   };
 }
 function toMeta(row: CodebookRow): CodebookMeta {
-  return { id: row.id, name: row.name, created: new Date(row.created), immutable: !!row.immutable };
+  return { id: row.id, note: row.note, created: new Date(row.created), immutable: !!row.immutable };
 }
 
 export function codebookRoutes(db: DatabaseSync) {
@@ -49,9 +49,9 @@ export function codebookRoutes(db: DatabaseSync) {
 
     const jobId = c.get("jobId");
     const created = new Date().toISOString();
-    db.prepare("INSERT INTO codebooks (jobId, name, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(
+    db.prepare("INSERT INTO codebooks (jobId, note, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(
       jobId,
-      parsed.data.name,
+      parsed.data.note ?? null,
       JSON.stringify(parsed.data.items),
       created,
     );
@@ -71,8 +71,8 @@ export function codebookRoutes(db: DatabaseSync) {
     const parsed = CodebookWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    db.prepare("UPDATE codebooks SET name = ?, items = ? WHERE jobId = ? AND id = ?").run(
-      parsed.data.name,
+    db.prepare("UPDATE codebooks SET note = ?, items = ? WHERE jobId = ? AND id = ?").run(
+      parsed.data.note ?? null,
       JSON.stringify(parsed.data.items),
       jobId,
       id,

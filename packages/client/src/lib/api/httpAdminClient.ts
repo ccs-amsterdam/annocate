@@ -1,5 +1,5 @@
 import {
-  endpoints,
+  researcherEndpoints,
   type JobWrite,
   type JobResponse,
   type JobUser,
@@ -7,15 +7,20 @@ import {
   type CodebookResponse,
   type CodebookWrite,
   type UnitMeta,
+  type UnitField,
+  type UnitPage,
   type UnitResponse,
   type UnitsCreateBody,
   type UnitsetResponse,
   type UnitsetWrite,
-  type GenerateUnitsets,
   type CoderProgress,
   type CoderInviteWrite,
   type CoderInviteResponse,
   type PreviewSession,
+  type DeploymentResponse,
+  type DeploymentStatus,
+  type DeploymentWrite,
+  type JobOverview,
 } from "@annotinder/contracts";
 
 /**
@@ -46,6 +51,10 @@ export interface AdminClient {
   deleteCodebook(id: number): Promise<void>;
 
   listUnits(): Promise<UnitMeta[]>;
+  /** The job's unit fields (set by the first upload); empty without units. */
+  getUnitFields(): Promise<UnitField[]>;
+  /** A page of units with data: all units, or one unitset's in its order. */
+  listUnitPage(query: { offset: number; limit: number; unitset?: string }): Promise<UnitPage>;
   getUnit(id: number): Promise<UnitResponse>;
   createUnits(body: UnitsCreateBody): Promise<UnitResponse[]>;
   deleteUnit(id: number): Promise<void>;
@@ -54,10 +63,24 @@ export interface AdminClient {
   createUnitset(body: UnitsetWrite): Promise<UnitsetResponse>;
   updateUnitset(id: number, body: UnitsetWrite): Promise<UnitsetResponse>;
   deleteUnitset(id: number): Promise<void>;
-  generateUnitsets(body: GenerateUnitsets): Promise<UnitsetResponse[]>;
 
   listCoders(): Promise<CoderProgress[]>;
-  inviteCoder(body: CoderInviteWrite): Promise<CoderInviteResponse>;
+  listInvites(): Promise<CoderInviteResponse[]>;
+  createInvite(body: CoderInviteWrite): Promise<CoderInviteResponse>;
+  /** No new coders from this invite; coders who already started keep working. */
+  revokeInvite(id: number): Promise<CoderInviteResponse>;
+  /** Only while unused: rejected once coders came in through it. */
+  deleteInvite(id: number): Promise<void>;
+
+  /** Counts and activity for the job's overview page. */
+  getOverview(): Promise<JobOverview>;
+
+  /** The live codebook version (what coders get); null if nothing was published yet. */
+  getDeployment(): Promise<DeploymentResponse | null>;
+  /** Publishes a codebook version: coders switch to it, and it becomes read only. */
+  putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
+  /** Progress as the job server sees it; fails if the job server can't be reached. */
+  getDeploymentStatus(): Promise<DeploymentStatus>;
 
   /** A preview session of the latest codebook, run by the job server in memory. */
   createPreview(): Promise<PreviewSession>;
@@ -112,7 +135,7 @@ export class HttpAdminClient implements AdminClient {
   }
 
   async listJobs(): Promise<JobResponse[]> {
-    return this.request(endpoints.listJobs.path);
+    return this.request(researcherEndpoints.listJobs.path);
   }
 
   async getJob(id?: number): Promise<JobResponse | null> {
@@ -122,7 +145,7 @@ export class HttpAdminClient implements AdminClient {
       return jobs[0] ?? null;
     }
     try {
-      return await this.request<JobResponse>(endpoints.getJob.path.replace(":id", String(targetId)));
+      return await this.request<JobResponse>(researcherEndpoints.getJob.path.replace(":id", String(targetId)));
     } catch (err) {
       if (err instanceof Error && /\(404\)/.test(err.message)) return null;
       throw err;
@@ -130,26 +153,26 @@ export class HttpAdminClient implements AdminClient {
   }
 
   async createJob(body: JobWrite): Promise<JobResponse> {
-    return this.request(endpoints.createJob.path, { method: "POST", body: JSON.stringify(body) });
+    return this.request(researcherEndpoints.createJob.path, { method: "POST", body: JSON.stringify(body) });
   }
 
   async updateJob(id: number, body: JobWrite): Promise<JobResponse> {
-    return this.request(endpoints.updateJob.path.replace(":id", String(id)), {
+    return this.request(researcherEndpoints.updateJob.path.replace(":id", String(id)), {
       method: "PUT",
       body: JSON.stringify(body),
     });
   }
 
   async deleteJob(id: number): Promise<void> {
-    await this.request(endpoints.deleteJob.path.replace(":id", String(id)), { method: "DELETE" });
+    await this.request(researcherEndpoints.deleteJob.path.replace(":id", String(id)), { method: "DELETE" });
   }
 
   async getJobUsers(id: number): Promise<JobUser[]> {
-    return this.request(endpoints.getJobUsers.path.replace(":id", String(id)));
+    return this.request(researcherEndpoints.getJobUsers.path.replace(":id", String(id)));
   }
 
   async putJobUsers(id: number, users: JobUser[]): Promise<void> {
-    await this.request(endpoints.putJobUsers.path.replace(":id", String(id)), {
+    await this.request(researcherEndpoints.putJobUsers.path.replace(":id", String(id)), {
       method: "PUT",
       body: JSON.stringify({ users }),
     });
@@ -157,19 +180,19 @@ export class HttpAdminClient implements AdminClient {
 
   async listCodebooks(): Promise<CodebookMeta[]> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.listCodebooks.path.replace(":jobId", String(jobId)));
+    return this.request(researcherEndpoints.listCodebooks.path.replace(":jobId", String(jobId)));
   }
 
   async getCodebook(id: number): Promise<CodebookResponse> {
     const jobId = this.requireJobId();
     return this.request(
-      endpoints.getCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.getCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
     );
   }
 
   async createCodebook(body: CodebookWrite): Promise<CodebookResponse> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.createCodebook.path.replace(":jobId", String(jobId)), {
+    return this.request(researcherEndpoints.createCodebook.path.replace(":jobId", String(jobId)), {
       method: "POST",
       body: JSON.stringify(body),
     });
@@ -178,7 +201,7 @@ export class HttpAdminClient implements AdminClient {
   async updateCodebook(id: number, body: CodebookWrite): Promise<CodebookResponse> {
     const jobId = this.requireJobId();
     return this.request(
-      endpoints.updateCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.updateCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
       {
         method: "PUT",
         body: JSON.stringify(body),
@@ -189,24 +212,34 @@ export class HttpAdminClient implements AdminClient {
   async deleteCodebook(id: number): Promise<void> {
     const jobId = this.requireJobId();
     await this.request(
-      endpoints.deleteCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.deleteCodebook.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
       { method: "DELETE" },
     );
   }
 
   async listUnits(): Promise<UnitMeta[]> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.listUnits.path.replace(":jobId", String(jobId)));
+    return this.request(researcherEndpoints.listUnits.path.replace(":jobId", String(jobId)));
+  }
+
+  async getUnitFields(): Promise<UnitField[]> {
+    return this.request(this.jobPath(researcherEndpoints.getUnitFields.path));
+  }
+
+  async listUnitPage(query: { offset: number; limit: number; unitset?: string }): Promise<UnitPage> {
+    const params = new URLSearchParams({ offset: String(query.offset), limit: String(query.limit) });
+    if (query.unitset) params.set("unitset", query.unitset);
+    return this.request(`${this.jobPath(researcherEndpoints.listUnitPage.path)}?${params}`);
   }
 
   async getUnit(id: number): Promise<UnitResponse> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.getUnit.path.replace(":jobId", String(jobId)).replace(":id", String(id)));
+    return this.request(researcherEndpoints.getUnit.path.replace(":jobId", String(jobId)).replace(":id", String(id)));
   }
 
   async createUnits(body: UnitsCreateBody): Promise<UnitResponse[]> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.createUnits.path.replace(":jobId", String(jobId)), {
+    return this.request(researcherEndpoints.createUnits.path.replace(":jobId", String(jobId)), {
       method: "POST",
       body: JSON.stringify(body),
     });
@@ -214,19 +247,19 @@ export class HttpAdminClient implements AdminClient {
 
   async deleteUnit(id: number): Promise<void> {
     const jobId = this.requireJobId();
-    await this.request(endpoints.deleteUnit.path.replace(":jobId", String(jobId)).replace(":id", String(id)), {
+    await this.request(researcherEndpoints.deleteUnit.path.replace(":jobId", String(jobId)).replace(":id", String(id)), {
       method: "DELETE",
     });
   }
 
   async listUnitsets(): Promise<UnitsetResponse[]> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.listUnitsets.path.replace(":jobId", String(jobId)));
+    return this.request(researcherEndpoints.listUnitsets.path.replace(":jobId", String(jobId)));
   }
 
   async createUnitset(body: UnitsetWrite): Promise<UnitsetResponse> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.createUnitset.path.replace(":jobId", String(jobId)), {
+    return this.request(researcherEndpoints.createUnitset.path.replace(":jobId", String(jobId)), {
       method: "POST",
       body: JSON.stringify(body),
     });
@@ -235,7 +268,7 @@ export class HttpAdminClient implements AdminClient {
   async updateUnitset(id: number, body: UnitsetWrite): Promise<UnitsetResponse> {
     const jobId = this.requireJobId();
     return this.request(
-      endpoints.updateUnitset.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.updateUnitset.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
       {
         method: "PUT",
         body: JSON.stringify(body),
@@ -246,34 +279,61 @@ export class HttpAdminClient implements AdminClient {
   async deleteUnitset(id: number): Promise<void> {
     const jobId = this.requireJobId();
     await this.request(
-      endpoints.deleteUnitset.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
+      researcherEndpoints.deleteUnitset.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
       { method: "DELETE" },
     );
   }
 
-  async generateUnitsets(body: GenerateUnitsets): Promise<UnitsetResponse[]> {
-    const jobId = this.requireJobId();
-    return this.request(endpoints.generateUnitsets.path.replace(":jobId", String(jobId)), {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-  }
 
   async listCoders(): Promise<CoderProgress[]> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.listCoders.path.replace(":jobId", String(jobId)));
+    return this.request(researcherEndpoints.listCoders.path.replace(":jobId", String(jobId)));
   }
 
-  async inviteCoder(body: CoderInviteWrite): Promise<CoderInviteResponse> {
+  private jobPath(path: string, id?: number): string {
+    const withJob = path.replace(":jobId", String(this.requireJobId()));
+    return id === undefined ? withJob : withJob.replace(":id", String(id));
+  }
+
+  async listInvites(): Promise<CoderInviteResponse[]> {
+    return this.request(this.jobPath(researcherEndpoints.listInvites.path));
+  }
+
+  async createInvite(body: CoderInviteWrite): Promise<CoderInviteResponse> {
+    return this.request(this.jobPath(researcherEndpoints.createInvite.path), { method: "POST", body: JSON.stringify(body) });
+  }
+
+  async revokeInvite(id: number): Promise<CoderInviteResponse> {
+    return this.request(this.jobPath(researcherEndpoints.revokeInvite.path, id), { method: "POST" });
+  }
+
+  async deleteInvite(id: number): Promise<void> {
+    return this.request(this.jobPath(researcherEndpoints.deleteInvite.path, id), { method: "DELETE" });
+  }
+
+  async getOverview(): Promise<JobOverview> {
+    return this.request(this.jobPath(researcherEndpoints.getOverview.path));
+  }
+
+  async getDeploymentStatus(): Promise<DeploymentStatus> {
+    return this.request(this.jobPath(researcherEndpoints.getDeploymentStatus.path));
+  }
+
+  async getDeployment(): Promise<DeploymentResponse | null> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.inviteCoder.path.replace(":jobId", String(jobId)), {
-      method: "POST",
+    return this.request(researcherEndpoints.getDeployment.path.replace(":jobId", String(jobId)));
+  }
+
+  async putDeployment(body: DeploymentWrite): Promise<DeploymentResponse> {
+    const jobId = this.requireJobId();
+    return this.request(researcherEndpoints.putDeployment.path.replace(":jobId", String(jobId)), {
+      method: "PUT",
       body: JSON.stringify(body),
     });
   }
 
   async createPreview(): Promise<PreviewSession> {
     const jobId = this.requireJobId();
-    return this.request(endpoints.createPreview.path.replace(":jobId", String(jobId)), { method: "POST" });
+    return this.request(researcherEndpoints.createPreview.path.replace(":jobId", String(jobId)), { method: "POST" });
   }
 }

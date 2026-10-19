@@ -3,6 +3,8 @@
 Monorepo for Annotinder: an annotation and survey tool for researchers. Design
 docs live in `docs/`:
 
+- `docs/api/`: **how the parts talk**: the four APIs (researcher, annotator,
+  client, DB), with a page per API and a section per endpoint.
 - `docs/architecture.md`: db server + job server split, unit distribution,
   resuming and codebook updates.
 - `docs/compositions.md`: the products (annotinder.com, open.annotinder.com,
@@ -12,7 +14,8 @@ docs live in `docs/`:
   answers between client and db server, so job servers never see them.
 - `docs/coder-identity.md`: coder sessions, invitations, (planned) login.
 - `docs/client.md`: client design decisions (layout, spans, scripting, admin UI).
-- `packages/contracts/CONTRACTS.md`: the API contract.
+- `packages/contracts/CONTRACTS.md`: the contracts package (schemas, design
+  notes, auth advice).
 
 ## Packages
 
@@ -24,12 +27,13 @@ docs live in `docs/`:
   - `pnpm --filter @annotinder/client build:lib` -- an importable component/hook
     library (`@annotinder/client`), for embedding in a host app's own React tree.
 - `packages/mock-server` -- the dev server (Hono + `node:sqlite`, requires
-  Node >= 22): the researcher API for the client's admin side plus the backend
-  API, so `pnpm dev` has a working db server. Not a template for a real one.
-- `packages/reference-db-server` -- the backend API and nothing else, in
-  memory, for one job loaded from a fixture (~230 lines). Read it as the
-  specification of what a db server does for the job server.
-- `packages/conformance` -- a test suite for the backend API, runnable
+  Node >= 22): the researcher API for the client's researcher UI plus the
+  annotator API, so `pnpm dev` has a working db server. Not a template for a
+  real one.
+- `packages/reference-db-server` -- what a db server implements: its README
+  lists every endpoint of both APIs, and it implements the annotator API
+  (in memory, one file per endpoint) for one job loaded from a fixture.
+- `packages/conformance` -- a test suite for the annotator API, runnable
   against any db server URL (`DB_SERVER_URL=... pnpm conformance`), plus the
   fixture a db server loads for it. Both servers above pass it.
 - `packages/job-server` -- the annotinder runtime coders talk to (Hono). Runs

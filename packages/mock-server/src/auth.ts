@@ -81,9 +81,10 @@ export interface CoderRow {
   email: string | null;
   devKey: string;
   variables: string;
-  doneUnitIds: string;
   assignments: string;
   participantId: string | null;
+  inviteId: number | null;
+  created: string | null;
 }
 
 export interface ResolveError {
@@ -101,11 +102,12 @@ interface InviteRow {
   variables: string;
   participantId: string | null;
   participantFromUrl: number;
+  revokedAt: string | null;
 }
 
 /**
  * Looks up the coder for a coder key, creating it from an invite secret on
- * first use (docs/coder-identity.md §4). With `jobId` set (backend API: the
+ * first use (docs/coder-identity.md §4). With `jobId` set (annotator API: the
  * job server already knows the job), the coder and invite must belong to it.
  *
  * A participant id is only a label: a new coder key for a participant that
@@ -145,6 +147,7 @@ export function resolveCoder(
   }
   // A new session of a known participant is the same person: it doesn't use up the invite.
   if (!knownParticipant) {
+    if (invite.revokedAt !== null) return { error: "This invite has been revoked", status: 401 };
     if (invite.maxUses !== null && invite.uses >= invite.maxUses) {
       return { error: "This invite has been used up", status: 401 };
     }
@@ -158,13 +161,13 @@ export function resolveCoder(
     Object.entries(presets).map(([name, code]) => [name, { done: true, skip: false, codes: [{ code }] }]),
   );
   db.prepare(
-    "INSERT INTO coders (jobId, devKey, participantId, variables, doneUnitIds, created) VALUES (?, ?, ?, ?, '{}', ?)",
-  ).run(invite.jobId, coderKey, participantId, JSON.stringify(variables), new Date().toISOString());
+    "INSERT INTO coders (jobId, devKey, participantId, variables, inviteId, created) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(invite.jobId, coderKey, participantId, JSON.stringify(variables), invite.id, new Date().toISOString());
   return db.prepare("SELECT * FROM coders WHERE devKey = ?").get(coderKey) as unknown as CoderRow;
 }
 
 /**
- * Hono middleware for the backend API (routes/backend.ts): only the job
+ * Hono middleware for the annotator API (routes/annotator.ts): only the job
  * server the job is bound to, with a job token for this job (plan §13).
  */
 export function requireJobToken(db: DatabaseSync, issuer: JobTokenIssuer, configuredJobServer: string | null) {

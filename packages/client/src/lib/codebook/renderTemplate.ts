@@ -31,7 +31,7 @@ export async function renderTemplate(
     matches.forEach((match, i) => {
       result += template.slice(cursor, match.index);
       const value = results[i];
-      result += value === undefined ? "" : String(value);
+      result += value === undefined || value === null ? "" : String(value);
       cursor = match.index + match[0].length;
     });
     result += template.slice(cursor);
@@ -43,7 +43,7 @@ export async function renderTemplate(
   rendered = rendered.replace(/(?<!::(?:field|tokenize)\[)\$unit\.([A-Za-z0-9_]+)/g, (match, fieldName) => {
     if (unitData && typeof unitData === "object" && fieldName in unitData) {
       const val = (unitData as Record<string, unknown>)[fieldName];
-      return val === undefined ? "" : String(val);
+      return val === undefined || val === null ? "" : String(val);
     }
     return match;
   });

@@ -7,7 +7,7 @@ import { CoderInviteWriteSchema } from "./coder.js";
  * The data a db server loads to be checked by the conformance suite
  * (`packages/conformance`): one deployed job. Plain JSON, so a db server in
  * any language can load it; ids are assigned by the db server, and the
- * suite finds them through the backend API (unitsets, `externalId`).
+ * suite finds them through the annotator API (unitsets, `externalId`).
  */
 export const ConformanceFixtureSchema = z.object({
   job: z.object({ name: z.string() }),

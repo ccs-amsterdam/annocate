@@ -8,7 +8,7 @@ import { codebookRoutes } from "./routes/codebook.js";
 import { unitRoutes } from "./routes/units.js";
 import { unitsetRoutes } from "./routes/unitsets.js";
 import { coderRoutes } from "./routes/coders.js";
-import { backendRoutes } from "./routes/backend.js";
+import { annotatorRoutes } from "./routes/annotator.js";
 import { deploymentRoutes, type JobServerLink } from "./routes/deployment.js";
 import { JobTokenIssuer } from "@annotinder/reference-db-server/jobTokens";
 
@@ -42,7 +42,7 @@ export function createApp(db: DatabaseSync, options: AppOptions = {}) {
   app.route("/job/:jobId", deploymentRoutes(db, issuer, tokens.publicUrl, options.jobServer));
 
   // Called by the job server only (docs/architecture.md).
-  app.route("/backend/job/:jobId", backendRoutes(db, issuer, options.jobServer?.url ?? null));
+  app.route("/annotator/job/:jobId", annotatorRoutes(db, issuer, options.jobServer?.url ?? null));
 
   // Legacy: coders talking to the db server directly. Superseded by the job
   // server; kept until the admin preview runs through the job server too.

@@ -1,4 +1,4 @@
-import { HttpError } from "./backend.js";
+import { HttpError } from "./annotatorClient.js";
 
 // Which db servers this job server works for, and how it talks to them
 // (plan §13). A deployment id is `<db host>/<jobId>` (a researcher preview:

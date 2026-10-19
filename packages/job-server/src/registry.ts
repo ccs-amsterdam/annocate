@@ -1,8 +1,8 @@
-import { BackendClient, HttpError, type BackendConfig } from "./backend.js";
+import { AnnotatorClient, HttpError, type DbServerConfig } from "./annotatorClient.js";
 import { parseDeploymentId, type DbServers } from "./dbServers.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
 import { MemoryOutboxStore, Outbox, type OutboxStore } from "./outbox.js";
-import { PreviewBackend } from "./preview.js";
+import { PreviewAnnotatorApi } from "./preview.js";
 import { JobTokens } from "./jobTokens.js";
 import type { SigningKeys } from "./keys.js";
 
@@ -55,7 +55,7 @@ export class DeploymentRegistry {
     );
   }
 
-  backendFor(deploymentId: string): BackendConfig & { jobId: number; preview: boolean } {
+  dbServerFor(deploymentId: string): DbServerConfig & { jobId: number; preview: boolean } {
     const parsed = parseDeploymentId(deploymentId);
     if (!parsed) throw new HttpError(404, `Unknown deployment '${deploymentId}'`);
     return { url: this.dbServers.urlFor(parsed.host), jobId: parsed.jobId, preview: parsed.preview };
@@ -73,7 +73,7 @@ export class DeploymentRegistry {
     if (cached) cached.usedAt = now;
     let runtime = cached?.runtime;
     if (!runtime) {
-      const { jobId, preview, ...config } = this.backendFor(deploymentId);
+      const { jobId, preview, ...config } = this.dbServerFor(deploymentId);
       const created = preview ? this.previewRuntime(deploymentId, config, jobId) : this.deploymentRuntime(deploymentId, config, jobId);
       const loading = created.load().then(() => created);
       runtime = loading;
@@ -88,7 +88,7 @@ export class DeploymentRegistry {
 
   /** The job token for a deployment (or its preview): the call key db server calls are signed with. */
   tokensFor(deploymentId: string): JobTokens {
-    const { jobId, url } = this.backendFor(deploymentId);
+    const { jobId, url } = this.dbServerFor(deploymentId);
     const key = `${url}|${jobId}`;
     let tokens = this.tokens.get(key);
     if (!tokens) {
@@ -104,23 +104,23 @@ export class DeploymentRegistry {
     return tokens;
   }
 
-  private deploymentRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
-    const backend = new BackendClient(config, jobId, this.tokensFor(deploymentId), this.dbServers.fetch);
+  private deploymentRuntime(deploymentId: string, config: DbServerConfig, jobId: number): DeploymentRuntime {
+    const annotator = new AnnotatorClient(config, jobId, this.tokensFor(deploymentId), this.dbServers.fetch);
     let outbox = this.outboxes.get(deploymentId);
-    if (!outbox) this.outboxes.set(deploymentId, (outbox = new Outbox(deploymentId, this.outboxStore, backend, this.runtimeOptions)));
-    return new DeploymentRuntime(deploymentId, backend, this.runtimeOptions, outbox);
+    if (!outbox) this.outboxes.set(deploymentId, (outbox = new Outbox(deploymentId, this.outboxStore, annotator, this.runtimeOptions)));
+    return new DeploymentRuntime(deploymentId, annotator, this.runtimeOptions, outbox);
   }
 
   /**
    * A researcher preview (preview.ts): the latest codebook, checked on every
    * request so edits show right away, and coders and answers kept in memory.
    */
-  private previewRuntime(deploymentId: string, config: BackendConfig, jobId: number): DeploymentRuntime {
+  private previewRuntime(deploymentId: string, config: DbServerConfig, jobId: number): DeploymentRuntime {
     const options: RuntimeOptions = { ...this.runtimeOptions, specTtlMs: 0, flushIntervalMs: 0 };
     const tokens = this.tokensFor(deploymentId);
-    const db = new BackendClient(config, jobId, tokens, this.dbServers.fetch, true);
-    const backend = new PreviewBackend(db, () => tokens.callKey(), jobId, options.now);
-    return new DeploymentRuntime(deploymentId, backend, options, new Outbox(deploymentId, new MemoryOutboxStore(), backend, options));
+    const db = new AnnotatorClient(config, jobId, tokens, this.dbServers.fetch, true);
+    const annotator = new PreviewAnnotatorApi(db, () => tokens.callKey(), jobId, options.now);
+    return new DeploymentRuntime(deploymentId, annotator, options, new Outbox(deploymentId, new MemoryOutboxStore(), annotator, options));
   }
 
   /** Forgets a deployment, dropping all its cached units and annotations. */

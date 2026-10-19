@@ -1,24 +1,25 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CoderInviteResponse } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
 import { useJobQuery, useJobsQuery } from "../../admin/queries";
 import { JobList } from "./JobList";
-import { JobSettings } from "./JobSettings";
 import { CodebookManager } from "./CodebookManager";
-import { UnitsManager } from "./UnitsManager";
-import { UnitsetsManager } from "./UnitsetsManager";
+import type { SaveFn } from "./CodebookEditor";
+import { UnitsPage } from "./units/UnitsPage";
 import { CodersPanel } from "./CodersPanel";
+import { InvitationsPanel } from "./InvitationsPanel";
+import { JobOverview } from "./overview/JobOverview";
 import { JobPreview } from "./JobPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Sliders, BookOpen, Layers, Users, Play, Archive } from "lucide-react";
+import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive } from "lucide-react";
 
 const TABS = [
-  { id: "Settings", label: "Settings", icon: Sliders },
+  { id: "Overview", label: "Overview", icon: LayoutDashboard },
   { id: "Codebook", label: "Codebook", icon: BookOpen },
   { id: "Units", label: "Units", icon: Layers },
-  { id: "Unitsets", label: "Unitsets", icon: Layers },
+  { id: "Invitations", label: "Invitations", icon: Link2 },
   { id: "Coders", label: "Coders", icon: Users },
   { id: "Preview", label: "Preview", icon: Play },
 ] as const;
@@ -72,7 +73,7 @@ function AdminAppInner({
   jobServerUrl?: string;
 }) {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? null);
-  const [tab, setTab] = useState<TabId>("Codebook");
+  const [tab, setTab] = useState<TabId>("Overview");
 
   // If a job is selected, create a client scoped to that job
   const jobClient = useMemo(() => {
@@ -130,6 +131,27 @@ function JobAdminView({
 
   const [isCodebookDirty, setIsCodebookDirty] = useState(false);
   const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
+  const saveCodebook = useRef<SaveFn | null>(null);
+  // A codebook version to open, from the overview; `n` remounts the manager on each request
+  const [codebookTarget, setCodebookTarget] = useState<{ id: number; n: number } | null>(null);
+  const [savingCodebook, setSavingCodebook] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function saveAndNavigate() {
+    setSavingCodebook(true);
+    setSaveError(null);
+    try {
+      await saveCodebook.current?.();
+      setIsCodebookDirty(false);
+      const nav = pendingNav;
+      setPendingNav(null);
+      nav?.();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingCodebook(false);
+    }
+  }
 
   function requestNavigation(action: () => void) {
     if (isCodebookDirty && tab === "Codebook") {
@@ -220,28 +242,51 @@ function JobAdminView({
 
       {/* Main Tab Content */}
       <main className="flex-1 overflow-auto p-4 sm:p-6">
-        {tab === "Settings" && <JobSettings client={client} onDeleted={onBackToJobs} />}
-        {tab === "Codebook" && <CodebookManager client={client} onDirtyChange={setIsCodebookDirty} />}
-        {tab === "Units" && <UnitsManager client={client} />}
-        {tab === "Unitsets" && <UnitsetsManager client={client} />}
-        {tab === "Coders" && <CodersPanel client={client} baseUrl={baseUrl} inviteUrl={inviteUrl} />}
+        {tab === "Overview" && (
+          <JobOverview
+            client={client}
+            onNavigate={onTabChange}
+            onOpenCodebook={(id) => {
+              setCodebookTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
+              onTabChange("Codebook");
+            }}
+            onDeleted={onBackToJobs}
+          />
+        )}
+        {tab === "Codebook" && (
+          <CodebookManager
+            key={codebookTarget?.n ?? 0}
+            initialVersionId={codebookTarget?.id ?? null}
+            client={client}
+            onDirtyChange={setIsCodebookDirty}
+            registerSave={(save) => {
+              saveCodebook.current = save;
+            }}
+          />
+        )}
+        {tab === "Units" && <UnitsPage client={client} />}
+        {tab === "Invitations" && <InvitationsPanel client={client} baseUrl={baseUrl} inviteUrl={inviteUrl} />}
+        {tab === "Coders" && <CodersPanel client={client} />}
         {tab === "Preview" && <JobPreview client={client} jobServerUrl={jobServerUrl} />}
       </main>
 
       {/* Unsaved Changes Confirmation Modal */}
       <UnsavedChangesDialog
         open={pendingNav !== null}
-        onCancel={() => setPendingNav(null)}
+        isSaving={savingCodebook}
+        error={saveError}
+        onCancel={() => {
+          setPendingNav(null);
+          setSaveError(null);
+        }}
         onDiscard={() => {
           setIsCodebookDirty(false);
           const nav = pendingNav;
           setPendingNav(null);
+          setSaveError(null);
           nav?.();
         }}
-        onSave={() => {
-          // Keep current modal state, user can save in CodebookEditor
-          setPendingNav(null);
-        }}
+        onSave={saveAndNavigate}
       />
     </div>
   );

@@ -4,7 +4,7 @@ import {
   DeploymentWriteSchema,
   RefreshDeploymentSchema,
   ResetAnnotationsSchema,
-  jobServerAdminEndpoints,
+  dbEndpoints,
   JOB_SERVER_SIGNATURE_HEADER,
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
@@ -53,7 +53,7 @@ export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, publi
     // Tell the job server to pick up the new version. Best effort: if it's
     // down, it reloads the spec itself on its next cold start or TTL refresh.
     try {
-      await callJobServer(jobServerAdminEndpoints.refreshDeployment.path, "POST", jobId);
+      await callJobServer(dbEndpoints.refreshDeployment.path, "POST", jobId);
     } catch (err) {
       console.warn(`Could not notify job server of deployment ${jobId}:`, err);
     }
@@ -68,7 +68,7 @@ export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, publi
     const jobId = c.get("jobId");
     const retired = retireAnnotations(db, jobId, parsed.data);
     try {
-      await callJobServer(jobServerAdminEndpoints.refreshDeployment.path, "POST", jobId);
+      await callJobServer(dbEndpoints.refreshDeployment.path, "POST", jobId);
     } catch (err) {
       console.warn(`Could not notify job server of reset in job ${jobId}:`, err);
     }
@@ -84,7 +84,7 @@ export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, publi
     if (!getDeployment(db, jobId)) return c.json({ error: "Job is not deployed" }, 404);
     if (!jobServer) return c.json({ error: "No job server configured" }, 503);
     try {
-      const res = await callJobServer(jobServerAdminEndpoints.refreshDeployment.path, "POST", jobId, parsed.data);
+      const res = await callJobServer(dbEndpoints.refreshDeployment.path, "POST", jobId, parsed.data);
       return c.json(await res!.json(), res!.status as 200);
     } catch {
       return c.json({ error: "Job server unreachable" }, 502);
@@ -106,7 +106,7 @@ export function deploymentRoutes(db: DatabaseSync, issuer: JobTokenIssuer, publi
     if (!getDeployment(db, jobId)) return c.json({ error: "Job is not deployed" }, 404);
     if (!jobServer) return c.json({ error: "No job server configured" }, 503);
     try {
-      const res = await callJobServer(jobServerAdminEndpoints.getDeploymentStatus.path, "GET", jobId);
+      const res = await callJobServer(dbEndpoints.getDeploymentStatus.path, "GET", jobId);
       return c.json(await res!.json(), res!.status as 200);
     } catch {
       return c.json({ error: "Job server unreachable" }, 502);

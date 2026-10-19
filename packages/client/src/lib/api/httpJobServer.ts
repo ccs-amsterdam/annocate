@@ -1,6 +1,6 @@
 import type { CoderSessionScope } from "../session/coderSession";
 import {
-  endpoints,
+  clientEndpoints,
   type SessionResponse,
   type CoderUnitResponse,
   type TransferResponse,
@@ -67,7 +67,7 @@ export interface HttpJobServerConfig {
   newSession?: boolean;
 }
 
-/** Required on every coder API request: cross-site forms can't send it (CSRF). */
+/** Required on every client API request: cross-site forms can't send it (CSRF). */
 const CLIENT_HEADERS = { "x-annotinder": "1" };
 
 function scopeHeaders(scope: { inviteSecret?: string; participantId?: string }): Record<string, string> {
@@ -100,7 +100,7 @@ export class HttpJobServer implements JobServer {
 
   /** Exchanges a transfer token for this device's session cookie (set by the job server). */
   static async redeemTransfer(scope: CoderSessionScope, token: string): Promise<void> {
-    const path = endpoints.redeemTransfer.path;
+    const path = clientEndpoints.redeemTransfer.path;
     const res = await fetch(`${scope.baseUrl}${path}`, {
       method: "POST",
       credentials: "same-origin",
@@ -123,32 +123,32 @@ export class HttpJobServer implements JobServer {
   }
 
   async getSession(): Promise<SessionResponse> {
-    return this.request(endpoints.getSession.path);
+    return this.request(clientEndpoints.getSession.path);
   }
 
   async getNextUnit(loop: string): Promise<CoderUnitResponse | null> {
-    return this.request(endpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop)));
+    return this.request(clientEndpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop)));
   }
 
   async getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse> {
     return this.request(
-      endpoints.getLoopUnit.path.replace(":loop", encodeURIComponent(loop)).replace(":unitId", String(unitId)),
+      clientEndpoints.getLoopUnit.path.replace(":loop", encodeURIComponent(loop)).replace(":unitId", String(unitId)),
     );
   }
 
   async postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string): Promise<void> {
-    await this.request(endpoints.postUnitVariables.path, {
+    await this.request(clientEndpoints.postUnitVariables.path, {
       method: "POST",
       body: JSON.stringify({ unitId, loop, variables }),
     });
   }
 
   async createTransfer(): Promise<TransferResponse> {
-    return this.request(endpoints.createTransfer.path, { method: "POST" });
+    return this.request(clientEndpoints.createTransfer.path, { method: "POST" });
   }
 
   async postCoderVariables(variables: Record<string, VariableValue>): Promise<void> {
-    await this.request(endpoints.postCoderVariables.path, {
+    await this.request(clientEndpoints.postCoderVariables.path, {
       method: "POST",
       body: JSON.stringify({ variables }),
     });

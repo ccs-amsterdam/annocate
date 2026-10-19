@@ -59,3 +59,9 @@ describe("renderTemplate", () => {
     expect(await renderTemplate("{{a}} and {{b}}", { a: 5, b: 2 }, cache)).toBe("5 and 2");
   });
 });
+
+describe("renderTemplate with empty unit values", () => {
+  it("renders null (an empty number or boolean cell) as nothing", async () => {
+    expect(await renderTemplate("n={{$unit.count}};$unit.count.", { $unit: { count: null } })).toBe("n=;.");
+  });
+});

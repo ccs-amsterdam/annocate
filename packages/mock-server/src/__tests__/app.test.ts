@@ -94,30 +94,65 @@ describe("codebook routes", () => {
   });
 });
 
-describe("unitset generation", () => {
-  it("splits units into parts plus an overlap set", async () => {
-    const job = await createJob();
-    await app.request(`/job/${job.id}/units`, {
+describe("units: fields and pages", () => {
+  async function upload(jobId: number, units: object[], overwrite = false) {
+    return app.request(`/job/${jobId}/units`, {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ units: Array.from({ length: 10 }, (_, i) => ({ externalId: `u${i}`, data: { i } })) }),
+      body: JSON.stringify({ units, overwrite }),
     });
-    const generate = (body: object) =>
-      app.request(`/job/${job.id}/unitsets/generate`, { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
+  }
 
-    const res = await generate({ prefix: "part", parts: 4, overlapUnits: 2 });
-    expect(res.status).toBe(201);
-    const sets = (await json(res)) as { name: string; unitIds: number[] }[];
-    expect(sets.map((s) => [s.name, s.unitIds.length])).toEqual([
-      ["part_1", 2],
-      ["part_2", 2],
-      ["part_3", 2],
-      ["part_4", 2],
-      ["part_overlap", 2],
+  it("takes the fields from the first upload and checks later ones against them", async () => {
+    const job = await createJob();
+    expect((await upload(job.id, [{ externalId: "u1", data: { n: 1, t: "a" } }])).status).toBe(201);
+    const fields = await json(await app.request(`/job/${job.id}/units/fields`, { headers: adminHeaders }));
+    expect(fields).toEqual([
+      { name: "n", type: "number" },
+      { name: "t", type: "text" },
     ]);
-    expect(new Set(sets.flatMap((s) => s.unitIds)).size).toBe(10);
 
-    expect((await generate({ prefix: "part", parts: 2 })).status).toBe(409);
+    // wrong type, missing or unknown field: nothing is stored
+    const bad = await upload(job.id, [
+      { externalId: "u2", data: { n: 2, t: "b" } },
+      { externalId: "u3", data: { n: "3", t: "c" } },
+    ]);
+    expect(bad.status).toBe(400);
+    expect((await json(bad)).error).toMatch(/u3.*'n' is number/);
+    expect((await upload(job.id, [{ externalId: "u2", data: { n: 2 } }])).status).toBe(400);
+    expect((await upload(job.id, [{ externalId: "u2", data: { n: 2, t: "b", x: 1 } }])).status).toBe(400);
+    expect(await json(await app.request(`/job/${job.id}/units`, { headers: adminHeaders }))).toHaveLength(1);
+
+    // empty values fit any type
+    expect((await upload(job.id, [{ externalId: "u2", data: { n: null, t: "b" } }])).status).toBe(201);
+  });
+
+  it("resets the fields when all units are deleted", async () => {
+    const job = await createJob();
+    const [unit] = await json(await upload(job.id, [{ externalId: "u1", data: { n: 1 } }]));
+    await app.request(`/job/${job.id}/units/${unit.id}`, { method: "DELETE", headers: adminHeaders });
+    expect((await upload(job.id, [{ externalId: "u1", data: { other: "x" } }])).status).toBe(201);
+  });
+
+  it("pages units, or a unitset's units in its order", async () => {
+    const job = await createJob();
+    const units = (await json(
+      await upload(job.id, Array.from({ length: 5 }, (_, i) => ({ externalId: `u${i}`, data: { i } }))),
+    )) as { id: number }[];
+    await app.request(`/job/${job.id}/unitsets`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "set", unitIds: [units[4].id, units[0].id, units[2].id] }),
+    });
+    const page = async (query: string) =>
+      json(await app.request(`/job/${job.id}/units/page?${query}`, { headers: adminHeaders }));
+
+    const all = await page("offset=1&limit=2");
+    expect(all.total).toBe(5);
+    expect(all.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u1", "u2"]);
+    const set = await page("unitset=set&offset=1&limit=5");
+    expect(set.total).toBe(3);
+    expect(set.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u0", "u2"]);
   });
 });
 
@@ -143,7 +178,7 @@ describe("schema migrations", () => {
 });
 
 /**
- * Plays the job server for backend API tests: an Ed25519 key, served as its
+ * Plays the job server for annotator API tests: an Ed25519 key, served as its
  * JWKS, and a job token obtained the way a job server gets one (plan §13).
  */
 function asJobServer() {
@@ -160,7 +195,7 @@ function asJobServer() {
     const now = Math.floor(Date.now() / 1000);
     const input = `${b64({ alg: "EdDSA", kid: "k1" })}.${b64({ iss: JOB_SERVER, aud: "http://mock.test", jobId, iat: now, exp: now + 60 })}`;
     const assertion = `${input}.${sign(null, Buffer.from(input), privateKey).toString("base64url")}`;
-    const res = await app.request(`/backend/job/${jobId}/token`, { method: "POST", body: JSON.stringify({ assertion }) });
+    const res = await app.request(`/annotator/job/${jobId}/token`, { method: "POST", body: JSON.stringify({ assertion }) });
     expect(res.status).toBe(200);
     const { token } = (await res.json()) as { token: string };
     return { authorization: `Bearer ${token}`, "content-type": "application/json" };
@@ -168,12 +203,12 @@ function asJobServer() {
 }
 
 describe("annotations: finished counts and resets", () => {
-  let backend: Record<string, string>;
+  let annotatorHeaders: Record<string, string>;
   const value = (code: string) => ({ done: true, codes: [{ code }] });
 
   async function setup() {
     const job = await createJob();
-    backend = await asJobServer()(job.id);
+    annotatorHeaders = await asJobServer()(job.id);
     const units = (await json(
       await app.request(`/job/${job.id}/units`, {
         method: "POST",
@@ -182,26 +217,26 @@ describe("annotations: finished counts and resets", () => {
       }),
     )) as { id: number }[];
     const invite = await json(
-      await app.request(`/job/${job.id}/coders/invite`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label: "x" }) }),
+      await app.request(`/job/${job.id}/invites`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label: "x" }) }),
     );
     const coder = await json(
-      await app.request(`/backend/job/${job.id}/coders/resolve`, {
+      await app.request(`/annotator/job/${job.id}/coders/resolve`, {
         method: "POST",
-        headers: backend,
+        headers: annotatorHeaders,
         body: JSON.stringify({ coderKey: "k", inviteSecret: invite.secret }),
       }),
     );
     const put = (unitId: number, variables: object) =>
-      app.request(`/backend/job/${job.id}/annotations`, {
+      app.request(`/annotator/job/${job.id}/annotations`, {
         method: "POST",
-        headers: backend,
+        headers: annotatorHeaders,
         body: JSON.stringify({ annotations: [{ unitId, coderId: coder.coderId, variables }] }),
       });
     const finished = async (variables: string[], values?: string[]) =>
       (await json(
-        await app.request(`/backend/job/${job.id}/finished`, {
+        await app.request(`/annotator/job/${job.id}/finished`, {
           method: "POST",
-          headers: backend,
+          headers: annotatorHeaders,
           body: JSON.stringify({ loops: [{ loop: "l", variables, values }] }),
         }),
       )) as { unitId: number; values?: Record<string, unknown> }[];
@@ -253,5 +288,109 @@ describe("annotations: finished counts and resets", () => {
     await put(units[0].id, { q1: value("b") });
     expect(db.prepare("SELECT COUNT(*) AS n FROM annotation_values WHERE unitId = ?").get(units[0].id)).toEqual({ n: 2 });
     expect(await finished(["q1"])).toHaveLength(2);
+  });
+});
+
+describe("invites, coder progress and overview", () => {
+  const value = (code: string) => ({ done: true, codes: [{ code }] });
+
+  async function setup() {
+    const job = await createJob();
+    const annotatorHeaders = await asJobServer()(job.id);
+    const units = (await json(
+      await app.request(`/job/${job.id}/units`, {
+        method: "POST",
+        headers: adminHeaders,
+        body: JSON.stringify({ units: [{ externalId: "u1", data: {} }, { externalId: "u2", data: {} }] }),
+      }),
+    )) as { id: number }[];
+    const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
+    const codebook = await json(
+      await app.request(`/job/${job.id}/codebook`, {
+        method: "POST",
+        headers: adminHeaders,
+        body: JSON.stringify({
+          items: [
+            {
+              type: "unit_loop",
+              name: "l",
+              units: [{ sources: [{ unitset: "main" }] }],
+              layout: { template: "" },
+              children: [question("q1"), question("q2")],
+            },
+          ],
+        }),
+      }),
+    );
+    await app.request(`/job/${job.id}/deployment`, {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ codebookId: codebook.id }),
+    });
+    const createInvite = async (label: string) =>
+      json(await app.request(`/job/${job.id}/invites`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label }) }));
+    const resolve = (coderKey: string, inviteSecret: string) =>
+      app.request(`/annotator/job/${job.id}/coders/resolve`, {
+        method: "POST",
+        headers: annotatorHeaders,
+        body: JSON.stringify({ coderKey, inviteSecret }),
+      });
+    const put = (coderId: number, unitId: number, variables: object) =>
+      app.request(`/annotator/job/${job.id}/annotations`, {
+        method: "POST",
+        headers: annotatorHeaders,
+        body: JSON.stringify({ annotations: [{ unitId, coderId, variables }] }),
+      });
+    const get = async (path: string) => json(await app.request(`/job/${job.id}${path}`, { headers: adminHeaders }));
+    return { job, units, createInvite, resolve, put, get };
+  }
+
+  it("lists invites; revoked invites take no new coders, used ones can't be deleted", async () => {
+    const { job, createInvite, resolve, get } = await setup();
+    const used = await createInvite("used");
+    const unused = await createInvite("unused");
+    expect((await resolve("a", used.secret)).status).toBe(200);
+
+    const invites = await get("/invites");
+    expect(invites.map((i: { label: string; uses: number }) => [i.label, i.uses])).toEqual([
+      ["used", 1],
+      ["unused", 0],
+    ]);
+
+    const del = (id: number) => app.request(`/job/${job.id}/invites/${id}`, { method: "DELETE", headers: adminHeaders });
+    expect((await del(used.id)).status).toBe(409);
+    expect((await del(unused.id)).status).toBe(204);
+
+    const revoked = await json(
+      await app.request(`/job/${job.id}/invites/${used.id}/revoke`, { method: "POST", headers: adminHeaders }),
+    );
+    expect(revoked.revokedAt).not.toBeNull();
+    expect((await resolve("b", used.secret)).status).toBe(401);
+    // coders who already started keep their access
+    expect((await resolve("a", used.secret)).status).toBe(200);
+  });
+
+  it("reports coder progress and the overview from live answers", async () => {
+    const { units, createInvite, resolve, put, get } = await setup();
+    const invite = await createInvite("batch 1");
+    const coderA = await json(await resolve("a", invite.secret));
+    await resolve("b", invite.secret);
+    await put(coderA.coderId, units[0].id, { q1: value("x"), q2: value("y") });
+    await put(coderA.coderId, units[1].id, { q1: value("x") });
+
+    const coders = await get("/coders");
+    expect(coders[0]).toMatchObject({ inviteLabel: "batch 1", answers: 3, finished: { l: 1 } });
+    expect(coders[0].lastActive).not.toBeNull();
+    expect(coders[1]).toMatchObject({ answers: 0, lastActive: null, finished: { l: 0 } });
+
+    const overview = await get("/overview");
+    expect(overview).toMatchObject({
+      units: 2,
+      coders: { total: 2, started: 1, activeLastDay: 1 },
+      answers: 3,
+      codings: 1,
+    });
+    expect(overview.activity).toHaveLength(30);
+    expect(overview.activity.at(-1)).toEqual({ day: new Date().toISOString().slice(0, 10), answers: 3, coders: 1 });
   });
 });

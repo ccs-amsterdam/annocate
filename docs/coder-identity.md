@@ -66,7 +66,7 @@ restrict an invite.
   stores the key.
 - **Same device later.** The cookie resumes the same coder, whatever link
   (or none) the coder comes back with.
-- **CSRF.** Every coder API request must carry `x-annotinder: 1`, which a
+- **CSRF.** Every client API request must carry `x-annotinder: 1`, which a
   cross-site form or image can't send, and the job server sends no CORS
   headers, so cross-origin scripts can't either. This relies on the client
   and the job server sharing an origin (in dev: Vite proxies `/d/`).

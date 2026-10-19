@@ -92,7 +92,7 @@ export class JobTokenIssuer {
     return { token, expiresAt: new Date(expiresAt) };
   }
 
-  /** Checks a job token (on every backend call); returns its claims, or null. */
+  /** Checks a job token (on every annotator API call); returns its claims, or null. */
   verifyToken(token: string): { jobId: number; aud: string; exp: number; ck: string } | null {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
@@ -105,7 +105,7 @@ export class JobTokenIssuer {
   }
 
   /**
-   * Checks the bearer token of a backend call for job `jobId`: valid, for this
+   * Checks the bearer token of an annotator API call for job `jobId`: valid, for this
    * job, and for the job server the job is (still) bound to.
    */
   checkBearer(authorization: string | undefined, jobId: number, boundJobServer: string | null): boolean {

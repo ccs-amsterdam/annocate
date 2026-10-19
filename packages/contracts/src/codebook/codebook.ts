@@ -12,15 +12,20 @@ export const CodebookItemsSchema = z
     }
   });
 
-/** Body for `POST /codebook` and `PUT /codebook/:id` -- always the full document. */
+/**
+ * Body for `POST /codebook` and `PUT /codebook/:id` -- always the full document.
+ * Versions are identified by their order of creation, not by name.
+ */
 export const CodebookWriteSchema = z.object({
-  name: z.string().min(1).max(256),
+  /** What changed in this version, e.g. "Added a sentiment question". */
+  note: z.string().max(1000).optional(),
   items: CodebookItemsSchema,
 });
 export type CodebookWrite = z.infer<typeof CodebookWriteSchema>;
 
 /** Full codebook document as returned by the server. */
 export const CodebookResponseSchema = CodebookWriteSchema.extend({
+  note: z.string().nullable(),
   id: IdSchema,
   jobId: IdSchema,
   created: z.coerce.date(),
@@ -32,7 +37,7 @@ export type CodebookResponse = z.infer<typeof CodebookResponseSchema>;
 /** Metadata-only listing, e.g. for `GET /codebook`. */
 export const CodebookMetaSchema = z.object({
   id: IdSchema,
-  name: z.string(),
+  note: z.string().nullable(),
   created: z.coerce.date(),
   immutable: z.boolean(),
 });

@@ -1,8 +1,8 @@
 import {
   branchMatches,
   resolveUnitsetName,
-  type BackendCoder,
-  type BackendUnit,
+  type AnnotatorCoder,
+  type AnnotatorUnit,
   type CoderUnitResponse,
   type DeploymentSpec,
   type DeploymentStatus,
@@ -13,7 +13,7 @@ import {
   type TopLevelItem,
   type VariableValue,
 } from "@annotinder/contracts";
-import { HttpError, type Backend } from "./backend.js";
+import { HttpError, type AnnotatorApi } from "./annotatorClient.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys } from "./distribution.js";
 import { DEFAULT_OUTBOX_OPTIONS, MemoryOutboxStore, Outbox, type OutboxOptions } from "./outbox.js";
 import {
@@ -78,7 +78,7 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
 };
 
 /** A coder as held by the runtime: what the db server stores for them. */
-export type Coder = BackendCoder;
+export type Coder = AnnotatorCoder;
 
 type AutoVariable = Extract<VariableType, { type: "auto" }>;
 
@@ -151,7 +151,7 @@ export class DeploymentRuntime {
   /** `balanced` auto variable -> coderId -> option, for every coder that has one. */
   private balanced = new Map<string, Map<number, string>>();
   /** Unit content; Map order is recency order (least recent first). */
-  private units = new Map<number, { unit: BackendUnit; bytes: number; usedAt: number }>();
+  private units = new Map<number, { unit: AnnotatorUnit; bytes: number; usedAt: number }>();
   private unitBytes = 0;
   /** One-time transfer tokens -> coder key. Memory only: losing them just means making a new link. */
   private transfers = new Map<string, { sessionKey: string; expires: number }>();
@@ -164,11 +164,11 @@ export class DeploymentRuntime {
 
   constructor(
     readonly id: string,
-    private backend: Backend,
+    private annotator: AnnotatorApi,
     private options: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
     outbox?: Outbox,
   ) {
-    this.outbox = outbox ?? new Outbox(id, new MemoryOutboxStore(), backend, options);
+    this.outbox = outbox ?? new Outbox(id, new MemoryOutboxStore(), annotator, options);
   }
 
   // --- state ------------------------------------------------------------------
@@ -177,7 +177,7 @@ export class DeploymentRuntime {
   async load(): Promise<void> {
     // Writes a previous run left behind go first, so what is loaded includes them.
     await this.outbox.flush();
-    this.applySpec(await this.backend.getDeployment());
+    this.applySpec(await this.annotator.getDeployment());
     await Promise.all([this.loadCodings(), this.loadBalanced()]);
     this.loadedAt = this.options.now();
   }
@@ -194,7 +194,7 @@ export class DeploymentRuntime {
     this.refreshing ??= (async () => {
       try {
         this.evictExpired();
-        const spec = await this.backend.getDeployment();
+        const spec = await this.annotator.getDeployment();
         if (spec.version === this.spec.version && spec.annotationEpoch === this.spec.annotationEpoch) {
           this.specCheckedAt = this.options.now();
           return;
@@ -237,7 +237,7 @@ export class DeploymentRuntime {
     const pending: NonNullable<typeof this.pendingCodings> = [];
     this.pendingCodings = pending;
     try {
-      const rows = await this.backend.listFinished({
+      const rows = await this.annotator.listFinished({
         loops: dynamicLoops.map((info) => ({
           loop: info.loop.name,
           variables: [...info.variables.keys()],
@@ -280,7 +280,7 @@ export class DeploymentRuntime {
       this.balanced = new Map();
       return;
     }
-    const rows = await this.backend.listFinished({
+    const rows = await this.annotator.listFinished({
       loops: names.map((name) => ({ loop: name, level: "coder", variables: [name], values: [name] })),
     });
     const balanced = new Map(names.map((name) => [name, new Map(this.balanced.get(name))]));
@@ -327,7 +327,7 @@ export class DeploymentRuntime {
       loading = (async () => {
         try {
           await this.outbox.flush(); // the coder's pending writes, before reading them back
-          const annotations = await this.backend.listAnnotations(coderId);
+          const annotations = await this.annotator.listAnnotations(coderId);
           annotations.sort((a, b) => a.created.getTime() - b.created.getTime());
           const units: Workspace = new Map(annotations.map((a) => [a.unitId, a.variables]));
           // The coder's finished units, in order of first answer (loops without
@@ -367,7 +367,7 @@ export class DeploymentRuntime {
     // Not active (new, evicted, or the job server restarted): the db server
     // has the record, including the coder-level values (after our pending writes).
     await this.outbox.flush();
-    const coder = await this.backend.resolveCoder(request);
+    const coder = await this.annotator.resolveCoder(request);
     this.coders.set(coder.coderId, coder);
     this.coderKeys.set(request.coderKey, coder.coderId);
     this.countBalanced(coder);
@@ -672,14 +672,14 @@ export class DeploymentRuntime {
     const now = this.options.now();
     await this.outbox.flush().catch(() => {}); // best effort: status reports the outbox either way
     const [rows, allCoders] = await Promise.all([
-      this.backend.listFinished({
+      this.annotator.listFinished({
         loops: [...this.loops.values()].map((info) => ({
           loop: info.loop.name,
           variables: [...info.variables.keys()],
           values: loopAgreementVariables(info),
         })),
       }),
-      this.backend.listCoders(),
+      this.annotator.listCoders(),
     ]);
     const finished = new Map<string, Codings>();
     for (const row of rows) {
@@ -726,7 +726,7 @@ export class DeploymentRuntime {
     };
   }
 
-  private markServed(coderId: number, unit: BackendUnit): void {
+  private markServed(coderId: number, unit: AnnotatorUnit): void {
     const entry = this.workspaces.get(coderId);
     if (!entry) return;
     if (!entry.served.has(unit.id)) {
@@ -799,9 +799,9 @@ export class DeploymentRuntime {
     for (const [key, id] of this.coderKeys) if (!this.coders.has(id)) this.coderKeys.delete(key);
   }
 
-  private async getUnits(ids: number[]): Promise<Map<number, BackendUnit>> {
+  private async getUnits(ids: number[]): Promise<Map<number, AnnotatorUnit>> {
     const now = this.options.now();
-    const result = new Map<number, BackendUnit>();
+    const result = new Map<number, AnnotatorUnit>();
     const missing: number[] = [];
     for (const id of ids) {
       const cached = this.units.get(id);
@@ -817,7 +817,7 @@ export class DeploymentRuntime {
     // Only go to the db server if the unit actually asked for is missing;
     // prefetch candidates ride along with that request.
     if (missing.includes(ids[0])) {
-      for (const unit of await this.backend.getUnits(missing)) {
+      for (const unit of await this.annotator.getUnits(missing)) {
         this.dropUnit(unit.id);
         const bytes = sizeOf(unit);
         this.units.set(unit.id, { unit, bytes, usedAt: now });

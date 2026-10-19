@@ -1,21 +1,21 @@
 import type { z } from "zod";
 import {
-  backendEndpoints,
-  BackendAnnotationSchema,
-  BackendAnnotationBatchResultSchema,
-  BackendCoderSchema,
-  BackendFinishedSchema,
-  BackendUnitSchema,
+  annotatorEndpoints,
+  AnnotatorAnnotationSchema,
+  AnnotatorAnnotationBatchResultSchema,
+  AnnotatorCoderSchema,
+  AnnotatorFinishedSchema,
+  AnnotatorUnitSchema,
   INVALID_JOB_TOKEN,
   DeploymentSpecSchema,
-  type BackendAnnotation,
-  type BackendAnnotationBatchResult,
-  type BackendAnnotationWrite,
-  type BackendCoder,
-  type BackendCoderWrite,
-  type BackendFinished,
+  type AnnotatorAnnotation,
+  type AnnotatorAnnotationBatchResult,
+  type AnnotatorAnnotationWrite,
+  type AnnotatorCoder,
+  type AnnotatorCoderWrite,
+  type AnnotatorFinished,
   type FinishedRequest,
-  type BackendUnit,
+  type AnnotatorUnit,
   type DeploymentSpec,
   type ResolveCoderRequest,
 } from "@annotinder/contracts";
@@ -34,13 +34,13 @@ export class HttpError extends Error {
 }
 
 /** A db server this job server works for (dbServers.ts). */
-export interface BackendConfig {
+export interface DbServerConfig {
   url: string;
 }
 
-/** What the runtime needs from a db server: the backend API, or a preview's in-memory stand-in (preview.ts). */
-export type Backend = Pick<
-  BackendClient,
+/** What the runtime needs from a db server: the annotator API, or a preview's in-memory stand-in (preview.ts). */
+export type AnnotatorApi = Pick<
+  AnnotatorClient,
   | "getDeployment"
   | "getUnits"
   | "listCoders"
@@ -52,13 +52,13 @@ export type Backend = Pick<
 >;
 
 /**
- * Typed client for a db server's backend API (contracts `backendEndpoints`).
+ * Typed client for a db server's annotator API (contracts `annotatorEndpoints`).
  * Responses are validated with the contract schemas, since db servers may be
  * written in any language.
  */
-export class BackendClient {
+export class AnnotatorClient {
   constructor(
-    private config: BackendConfig,
+    private config: DbServerConfig,
     private jobId: number,
     /** This job's token (plan §13), sent with every call. */
     private tokens: JobTokens,
@@ -117,43 +117,43 @@ export class BackendClient {
 
   getDeployment(): Promise<DeploymentSpec> {
     const query = this.preview ? "?preview=1" : "";
-    return this.request(backendEndpoints.getDeployment.path + query, DeploymentSpecSchema);
+    return this.request(annotatorEndpoints.getDeployment.path + query, DeploymentSpecSchema);
   }
 
-  async getUnits(ids: number[]): Promise<BackendUnit[]> {
+  async getUnits(ids: number[]): Promise<AnnotatorUnit[]> {
     if (ids.length === 0) return [];
-    return this.request(`${backendEndpoints.getUnits.path}?ids=${ids.join(",")}`, BackendUnitSchema.array());
+    return this.request(`${annotatorEndpoints.getUnits.path}?ids=${ids.join(",")}`, AnnotatorUnitSchema.array());
   }
 
-  listCoders(): Promise<BackendCoder[]> {
-    return this.request(backendEndpoints.listCoders.path, BackendCoderSchema.array());
+  listCoders(): Promise<AnnotatorCoder[]> {
+    return this.request(annotatorEndpoints.listCoders.path, AnnotatorCoderSchema.array());
   }
 
-  resolveCoder(request: ResolveCoderRequest): Promise<BackendCoder> {
-    return this.request(backendEndpoints.resolveCoder.path, BackendCoderSchema, { method: "POST", body: request });
+  resolveCoder(request: ResolveCoderRequest): Promise<AnnotatorCoder> {
+    return this.request(annotatorEndpoints.resolveCoder.path, AnnotatorCoderSchema, { method: "POST", body: request });
   }
 
-  async putCoder(coderId: number, body: BackendCoderWrite): Promise<void> {
-    await this.request(backendEndpoints.putCoder.path, null, { method: "PUT", body, params: { coderId } });
+  async putCoder(coderId: number, body: AnnotatorCoderWrite): Promise<void> {
+    await this.request(annotatorEndpoints.putCoder.path, null, { method: "PUT", body, params: { coderId } });
   }
 
   /** Units coders finished per loop (every given variable has a live value). */
-  listFinished(request: FinishedRequest): Promise<BackendFinished[]> {
+  listFinished(request: FinishedRequest): Promise<AnnotatorFinished[]> {
     if (request.loops.length === 0) return Promise.resolve([]);
-    return this.request(backendEndpoints.listFinished.path, BackendFinishedSchema.array(), {
+    return this.request(annotatorEndpoints.listFinished.path, AnnotatorFinishedSchema.array(), {
       method: "POST",
       body: request,
     });
   }
 
   /** One coder's live annotations, per unit. */
-  listAnnotations(coderId: number): Promise<BackendAnnotation[]> {
-    return this.request(`${backendEndpoints.listAnnotations.path}?coderId=${coderId}`, BackendAnnotationSchema.array());
+  listAnnotations(coderId: number): Promise<AnnotatorAnnotation[]> {
+    return this.request(`${annotatorEndpoints.listAnnotations.path}?coderId=${coderId}`, AnnotatorAnnotationSchema.array());
   }
 
   /** Applies writes in order; returns the ones the db server can never store. */
-  putAnnotations(annotations: BackendAnnotationWrite[]): Promise<BackendAnnotationBatchResult> {
-    return this.request(backendEndpoints.putAnnotations.path, BackendAnnotationBatchResultSchema, {
+  putAnnotations(annotations: AnnotatorAnnotationWrite[]): Promise<AnnotatorAnnotationBatchResult> {
+    return this.request(annotatorEndpoints.putAnnotations.path, AnnotatorAnnotationBatchResultSchema, {
       method: "POST",
       body: { annotations },
     });

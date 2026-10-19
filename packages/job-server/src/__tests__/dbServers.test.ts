@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DbServers, DEFAULT_DB_SERVER_OPTIONS, isPublicHostname, parseDeploymentId } from "../dbServers.js";
-import { HttpError } from "../backend.js";
+import { HttpError } from "../annotatorClient.js";
 
 describe("deployment ids", () => {
   it("are <db host>/<jobId>, or a preview", () => {

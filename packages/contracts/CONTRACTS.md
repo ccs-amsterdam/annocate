@@ -6,11 +6,12 @@ schemas, their inferred TypeScript types, and small pure helper functions
 (position parsing, codebook nesting validation) — no server or client
 runtime code, no HTTP client, no React.
 
-Any server backend (the dev server in `packages/mock-server`, or a real
-backend written in any language) is expected to implement the endpoints
-listed below and validate against these schemas. For the backend API, the
-smallest complete implementation is `packages/reference-db-server`, and
-`packages/conformance` checks a db server against it over HTTP: load
+A db server (the dev server in `packages/mock-server`, or a real one written
+in any language) implements the researcher API and the annotator API,
+validating against these schemas; the job server implements the client API
+and the DB API. What a db server needs, endpoint by endpoint:
+[`packages/reference-db-server/README.md`](../reference-db-server/README.md).
+`packages/conformance` checks a db server's annotator API over HTTP: load
 `ConformanceFixtureSchema` data (`packages/conformance/fixture.json`) as a
 job, then run `DB_SERVER_URL=... pnpm conformance`.
 
@@ -57,102 +58,24 @@ job, then run `DB_SERVER_URL=... pnpm conformance`.
 pnpm --filter @annotinder/contracts generate:json-schema
 ```
 
-Writes `dist/json-schema/endpoints.json` (the researcher-facing API, from
-`src/endpoints/index.ts`) and `dist/json-schema/backend-endpoints.json` (the
-API a db server exposes to the job server, from `src/deployment.ts`): for
-every endpoint, the HTTP method, path, and a JSON Schema for both the request
-and response body. This output is not checked into git
+Writes `dist/json-schema/{researcher,annotator,client,db}-api.json`, one per
+API: for every endpoint, the HTTP method, path, and a JSON Schema for both
+the request and response body. This output is not checked into git
 (see `.gitignore`); regenerate it whenever the contract changes.
 
 ## Endpoints
 
-All paths are implicitly scoped under a job; a server may run one job per
-deployment or route jobs by id — clients should not assume which (design
-plan §3).
+The endpoints are documented per API in [`docs/api/`](../../docs/api/README.md):
+an overview of the parts and how they talk, then one page per API with a
+section per endpoint. The registries here: `src/endpoints/researcher.ts`,
+`annotator.ts`, `client.ts`, `db.ts`.
 
-| Method | Path | Request | Response | Notes |
-| --- | --- | --- | --- | --- |
-| POST | `/job` | `JobWriteSchema` | `JobResponseSchema` | |
-| GET | `/job/:id` | – | `JobResponseSchema` | |
-| PUT | `/job/:id` | `JobWriteSchema` | `JobResponseSchema` | |
-| DELETE | `/job/:id` | – | – | |
-| GET | `/job/:id/users` | – | `JobUserSchema[]` | Requires ADMIN role |
-| PUT | `/job/:id/users` | `JobUsersWriteSchema` | – | Whole-resource replace; requires ADMIN role |
-| GET | `/codebook` | – | `CodebookMetaSchema[]` | |
-| GET | `/codebook/:id` | – | `CodebookResponseSchema` | |
-| POST | `/codebook` | `CodebookWriteSchema` | `CodebookResponseSchema` | |
-| PUT | `/codebook/:id` | `CodebookWriteSchema` | `CodebookResponseSchema` | Rejected once `immutable` |
-| DELETE | `/codebook/:id` | – | – | Rejected once `immutable` |
-| GET | `/units` | – | `UnitMetaSchema[]` | Lightweight sync/hash check |
-| GET | `/units/:id` | – | `UnitResponseSchema` | |
-| POST | `/units` | `UnitsCreateBodySchema` | `UnitResponseSchema[]` | Bulk create, max 200 per call |
-| DELETE | `/units/:id` | – | – | Rejected once `immutable` |
-| GET | `/unitsets` | – | `UnitsetResponseSchema[]` | |
-| POST | `/unitsets` | `UnitsetWriteSchema` | `UnitsetResponseSchema` | |
-| PUT | `/unitsets/:id` | `UnitsetWriteSchema` | `UnitsetResponseSchema` | |
-| DELETE | `/unitsets/:id` | – | – | Rejected while a codebook's unit_loop refers to it |
-| POST | `/unitsets/generate` | `GenerateUnitsetsSchema` | `UnitsetResponseSchema[]` | Split units into `<prefix>_1..n` (+ `<prefix>_overlap`) |
-| GET | `/coders` | – | `CoderProgressSchema[]` | Manager-facing progress listing; requires ADMIN/WRITE role |
-| POST | `/coders/invite` | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` | Requires ADMIN/WRITE role; `variables` presets the codebook's `auto` variables with `source: "invite"` |
-| GET | `/deployment` | – | `DeploymentResponseSchema \| null` | |
-| PUT | `/deployment` | `DeploymentWriteSchema` | `DeploymentResponseSchema` | Requires ADMIN; bumps `version`, freezes the codebook, notifies the job server |
-| GET | `/deployment/status` | – | `DeploymentStatusSchema` | Proxied from the job server |
-| POST | `/deployment/refresh` | `RefreshDeploymentSchema` | `{ version }` | Requires ADMIN; the job server re-checks the deployment now. `units: "all" \| ids` also drops its unit content cache (units aren't re-fetched otherwise) |
-| POST | `/deployment/preview` | – | `PreviewSessionSchema` | Requires WRITE; a preview of the latest codebook on the job server (`<db host>/<jobId>.preview`), in memory only. The token (HMAC with the job's call key, format in the schema) is used as the invite secret |
-| POST | `/annotations/reset` | `ResetAnnotationsSchema` | `{ retired }` | Requires ADMIN; retires live values (kept for analysis), so the units are coded again |
-
-### Coder API (served by the job server)
-
-Coders never talk to the db server; these are served by `packages/job-server`
-under `/d/<deploymentId>` (see `docs/architecture.md`). They are part of this
-registry because the client is written against them.
-
-| Method | Path | Request | Response | Notes |
-| --- | --- | --- | --- | --- |
-| GET | `/session` | – | `SessionResponseSchema` | Coder-authenticated; returns codebook, per-loop progress and the coder's variables (incl. assigned `auto` variables) |
-| GET | `/loop/:loop/next` | – | `CoderUnitResponseSchema \| null` | Coder-authenticated; the job server picks the unit per the loop's branches/sources; `null` means the coder is done with the loop |
-| GET | `/loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` | Coder-authenticated; a unit the coder already has answers for (or holds), with their answers, e.g. to go back after resuming |
-| POST | `/variables/unit` | `PostUnitVariablesSchema` | – | Coder-authenticated; full replace of one unit's variables |
-| POST | `/variables/coder` | `PostCoderVariablesSchema` | – | Coder-authenticated; full replace of job-level variables |
-| POST | `/transfer` | – | `TransferResponseSchema` | Coder-authenticated; one-time token to continue the session on another device |
-| POST | `/transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` | No session needed; sets this device's session cookie (once per token) |
-
-The session is an httpOnly cookie set by the job server (same origin as the
-client). Coder headers: `x-annotinder: 1` (always; CSRF), `x-invite-secret`
-and `x-participant-id` from the URL (create the coder on first use; the
-participant id also selects the session cookie), `x-url-params` (the page's
-other query parameters, for `url_param` auto variables), `x-new-session: 1`
-(first request only: start another session for a participant that already
-has one). Errors are
-`{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
-`docs/coder-identity.md`.
-
-### Backend API (db server, called by the job server)
-
-`backendEndpoints` in `src/deployment.ts`. No shared secret (plan §13):
-the job server gets a **job token** per job from `POST .../token` (a request
-it signs with its Ed25519 key, verified against its published
-`/.well-known/jwks.json`), and sends it on every other call as
-`authorization: Bearer <token>`. A db server must store which job server
-each job is bound to, and refuse tokens for any other: `401 { code:
-"invalid_job_token" }`, after which the job server gets a new token and
-retries once. Calls the other way (`jobServerAdminEndpoints`: refresh,
-status, drop) are signed with the job's call key in the
-`x-annotinder-signature` header; see `JOB_SERVER_SIGNATURE_HEADER`.
-`reference-db-server/src/jobTokens.ts` implements all of the db server's
-side.
-
-| Method | Path | Request | Response | Notes |
-| --- | --- | --- | --- | --- |
-| POST | `/backend/job/:jobId/token` | `JobTokenRequestSchema` | `JobTokenResponseSchema` | **No shared secret**: the body is a JWT the job server signed with its Ed25519 key. Check that the job is bound to its `iss` (store which job server each job runs on), `aud`, `jobId` and the time window, then verify with `<iss>/.well-known/jwks.json`. Returns a job token (HS256 with the db server's secret, claims `jobId`, `aud`, `exp`, `ck`). Reference implementation: `reference-db-server/src/jobTokens.ts`. 404 if the job doesn't exist or has no job server; any other failure is 401 |
-| GET | `/backend/job/:jobId/deployment` | – | `DeploymentSpecSchema` | 404 if not deployed. `?preview=1`: the latest codebook, deployed or not, `active`, with a `version` that changes with its content (researcher previews) |
-| GET | `/backend/job/:jobId/units?ids=1,2` | – | `BackendUnitSchema[]` | Missing ids are simply left out. `hash`: content hash, changes whenever `data` does |
-| GET | `/backend/job/:jobId/coders` | – | `BackendCoderSchema[]` | Variables + loop assignments of all coders (no emails). Only for researcher status, on demand; the job server loads coders one by one via `resolve` |
-| POST | `/backend/job/:jobId/coders/resolve` | `ResolveCoderRequestSchema` | `BackendCoderSchema` | Creates the coder from an invite (copying its preset `variables`); 401 for an unknown coder without a valid invite |
-| PUT | `/backend/job/:jobId/coders/:coderId` | `BackendCoderWriteSchema` | – | Full replace of `variables` + `assignments` |
-| POST | `/backend/job/:jobId/finished` | `FinishedRequestSchema` | `BackendFinishedSchema[]` | The bulk query. Per group of variables, the rows where every variable has a live value (the db server only filters), plus the values of `values` variables. `level: "unit"` (default): per (unit, coder), e.g. a loop's finished units. `level: "coder"`: per coder over coder-level values, `unitId: null`, e.g. `balanced` counts. Coder-level values may be stored on the coder record or as annotation rows with a null unit |
-| GET | `/backend/job/:jobId/annotations?coderId=X` | – | `BackendAnnotationSchema[]` | One coder's live values per unit, ordered by first write |
-| POST | `/backend/job/:jobId/annotations` | `BackendAnnotationBatchSchema` | `BackendAnnotationBatchResultSchema` | The job server's buffered writes (about once a minute), applied **in order**; each upserts a live value per given variable, others are left alone. Writes for unknown units/coders are skipped and listed in `rejected`; the call fails only if nothing could be stored. Retrying is harmless. `unitHash`: the hash of the content the coder was shown; store it, never refuse for it |
+| API | Served by | Called by | Registry | Spec |
+|---|---|---|---|---|
+| researcher API | db server | client researcher UI | `researcherEndpoints` | [researcher.md](../../docs/api/researcher.md) |
+| annotator API | db server | job server | `annotatorEndpoints` | [annotator.md](../../docs/api/annotator.md) |
+| client API | job server | client annotator | `clientEndpoints` | [client.md](../../docs/api/client.md) |
+| DB API | job server | db server | `dbEndpoints` | [db.md](../../docs/api/db.md) |
 
 ## Auth
 
@@ -171,7 +94,7 @@ implementations should NOT copy this as-is. Recommended production scheme
 for authors who want a stateless, horizontally-scalable session mechanism
 rather than DB-backed sessions (coder sessions: see `docs/coder-identity.md`):
 
-- **Job users**: front the admin API with whatever identity provider the
+- **Job users**: front the researcher API with whatever identity provider the
   deployment already has (SSO/OAuth/institutional login are typical for
   research-tool deployments); once a user is authenticated, issue an
   opaque bearer token that is an HMAC-signed claim of `{ jobId, email,

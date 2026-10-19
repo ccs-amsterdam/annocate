@@ -1,15 +1,15 @@
 import type {
-  BackendAnnotation,
-  BackendAnnotationBatchResult,
-  BackendAnnotationWrite,
-  BackendCoder,
-  BackendCoderWrite,
-  BackendFinished,
+  AnnotatorAnnotation,
+  AnnotatorAnnotationBatchResult,
+  AnnotatorAnnotationWrite,
+  AnnotatorCoder,
+  AnnotatorCoderWrite,
+  AnnotatorFinished,
   FinishedRequest,
   ResolveCoderRequest,
   VariableValue,
 } from "@annotinder/contracts";
-import { HttpError, type Backend, type BackendClient } from "./backend.js";
+import { HttpError, type AnnotatorApi, type AnnotatorClient } from "./annotatorClient.js";
 import { hmac, timingSafeEqual } from "./jobTokens.js";
 
 // Researcher previews (`<db host>/<jobId>.preview`, contracts
@@ -26,31 +26,31 @@ export async function verifyPreviewToken(callKey: string, jobId: number, token: 
   return timingSafeEqual(Array.from(expected, (b) => b.toString(16).padStart(2, "0")).join(""), match[3]);
 }
 
-interface Coder extends BackendCoder {
+interface Coder extends AnnotatorCoder {
   created: Date;
 }
 
-export class PreviewBackend implements Backend {
+export class PreviewAnnotatorApi implements AnnotatorApi {
   private coders = new Map<string, Coder>();
   /** `<unitId>/<coderId>` -> the coder's answers and when they were first written. */
-  private annotations = new Map<string, BackendAnnotation>();
+  private annotations = new Map<string, AnnotatorAnnotation>();
 
   constructor(
-    private db: BackendClient,
+    private db: AnnotatorClient,
     /** The job's call key, which the db server signs preview tokens with. */
     private callKey: () => Promise<string>,
     private jobId: number,
     private now: () => number = () => Date.now(),
   ) {}
 
-  getDeployment: Backend["getDeployment"] = () => this.db.getDeployment();
-  getUnits: Backend["getUnits"] = (ids) => this.db.getUnits(ids);
+  getDeployment: AnnotatorApi["getDeployment"] = () => this.db.getDeployment();
+  getUnits: AnnotatorApi["getUnits"] = (ids) => this.db.getUnits(ids);
 
-  async listCoders(): Promise<BackendCoder[]> {
+  async listCoders(): Promise<AnnotatorCoder[]> {
     return [...this.coders.values()];
   }
 
-  async resolveCoder(request: ResolveCoderRequest): Promise<BackendCoder> {
+  async resolveCoder(request: ResolveCoderRequest): Promise<AnnotatorCoder> {
     const known = this.coders.get(request.coderKey);
     if (known) return known;
     const valid =
@@ -62,18 +62,18 @@ export class PreviewBackend implements Backend {
     return coder;
   }
 
-  async putCoder(coderId: number, body: BackendCoderWrite): Promise<void> {
+  async putCoder(coderId: number, body: AnnotatorCoderWrite): Promise<void> {
     const coder = [...this.coders.values()].find((c) => c.coderId === coderId);
     if (!coder) throw new HttpError(404, "Coder not found");
     coder.variables = body.variables;
     coder.assignments = body.assignments;
   }
 
-  async listAnnotations(coderId: number): Promise<BackendAnnotation[]> {
+  async listAnnotations(coderId: number): Promise<AnnotatorAnnotation[]> {
     return [...this.annotations.values()].filter((a) => a.coderId === coderId);
   }
 
-  async putAnnotations(writes: BackendAnnotationWrite[]): Promise<BackendAnnotationBatchResult> {
+  async putAnnotations(writes: AnnotatorAnnotationWrite[]): Promise<AnnotatorAnnotationBatchResult> {
     const now = new Date(this.now());
     for (const w of writes) {
       const key = `${w.unitId}/${w.coderId}`;
@@ -89,8 +89,8 @@ export class PreviewBackend implements Backend {
     return { rejected: [] };
   }
 
-  async listFinished(request: FinishedRequest): Promise<BackendFinished[]> {
-    const rows: BackendFinished[] = [];
+  async listFinished(request: FinishedRequest): Promise<AnnotatorFinished[]> {
+    const rows: AnnotatorFinished[] = [];
     for (const group of request.loops) {
       const pick = (variables: Record<string, VariableValue>) =>
         group.values?.length ? { values: Object.fromEntries(group.values.filter((v) => v in variables).map((v) => [v, variables[v]])) } : {};

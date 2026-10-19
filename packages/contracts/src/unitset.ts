@@ -19,11 +19,12 @@ export const UnitsetResponseSchema = UnitsetWriteSchema.extend({
 export type UnitsetResponse = z.infer<typeof UnitsetResponseSchema>;
 
 /**
- * Body for `POST /job/:jobId/unitsets/generate`: split units into `parts`
- * unitsets (`<prefix>_1` .. `<prefix>_<parts>`), optionally setting aside an
- * overlap set (`<prefix>_overlap`) first, e.g. for intercoder reliability.
- * The result is ordinary, explicit unitsets: adding units to the job later
- * does not change them.
+ * Options for splitting units into `parts` unitsets (`<prefix>_1` ..
+ * `<prefix>_<parts>`), optionally setting aside an overlap set
+ * (`<prefix>_overlap`) first, e.g. for intercoder reliability. The client
+ * does the split (`splitUnits`) and creates the sets with `POST /unitsets`:
+ * ordinary, explicit unitsets, so adding units to the job later does not
+ * change them. db servers only store unitsets.
  */
 export const GenerateUnitsetsSchema = z
   .object({
@@ -45,9 +46,8 @@ export const GenerateUnitsetsSchema = z
 export type GenerateUnitsets = z.infer<typeof GenerateUnitsetsSchema>;
 
 /**
- * Pure splitting logic behind `POST /unitsets/generate` (exported so UIs can
- * preview and non-TS servers have a reference). Parts differ in size by at
- * most one unit.
+ * Splits unit ids into parts (and an overlap set), seeded so it is
+ * reproducible. Parts differ in size by at most one unit.
  */
 export function splitUnits(unitIds: number[], options: Omit<GenerateUnitsets, "prefix" | "from">) {
   const ids = options.shuffle === false ? [...unitIds] : seededShuffle(unitIds, options.seed ?? 0);

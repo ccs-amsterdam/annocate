@@ -24,9 +24,9 @@ export function loadFixture(db: DatabaseSync, fixture: ConformanceFixture, jobSe
   }
 
   const items = CodebookItemsSchema.parse(fixture.codebook.items);
-  db.prepare("INSERT INTO codebooks (jobId, name, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(
+  db.prepare("INSERT INTO codebooks (jobId, note, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(
     jobId,
-    fixture.codebook.name,
+    fixture.codebook.note ?? null,
     JSON.stringify(items),
     created,
   );

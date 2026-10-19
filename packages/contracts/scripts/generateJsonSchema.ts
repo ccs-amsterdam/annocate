@@ -6,8 +6,7 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { endpoints } from "../src/endpoints/index.js";
-import { backendEndpoints } from "../src/deployment.js";
+import { annotatorEndpoints, clientEndpoints, dbEndpoints, researcherEndpoints } from "../src/endpoints/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "../dist/json-schema");
@@ -23,9 +22,14 @@ function toJsonSchema(schema: z.ZodType, io: "input" | "output") {
   return z.toJSONSchema(schema, { io, unrepresentable: "any" });
 }
 
-// `endpoints.json`: the researcher-facing API every db server implements.
-// `backend-endpoints.json`: the API a db server exposes to the job server.
-const registries = { endpoints, "backend-endpoints": backendEndpoints };
+// One file per API (docs/api/README.md). A db server implements the first
+// two; the job server the last two.
+const registries = {
+  "researcher-api": researcherEndpoints,
+  "annotator-api": annotatorEndpoints,
+  "client-api": clientEndpoints,
+  "db-api": dbEndpoints,
+};
 
 for (const [file, registry] of Object.entries(registries)) {
   const combined: Record<string, unknown> = {};

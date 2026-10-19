@@ -1,5 +1,5 @@
-import type { BackendAnnotationWrite, BackendCoderWrite } from "@annotinder/contracts";
-import { HttpError, type Backend } from "./backend.js";
+import type { AnnotatorAnnotationWrite, AnnotatorCoderWrite } from "@annotinder/contracts";
+import { HttpError, type AnnotatorApi } from "./annotatorClient.js";
 
 // Writes to the db server don't hold up the coder (docs/plan-trust-sessions-
 // codings.md §10): they are stored durably here first, the coder gets "ok",
@@ -8,9 +8,9 @@ import { HttpError, type Backend } from "./backend.js";
 // it flushes, so it never reads state older than its own writes.
 
 export type OutboxWrite =
-  | { kind: "annotation"; write: BackendAnnotationWrite }
+  | { kind: "annotation"; write: AnnotatorAnnotationWrite }
   /** Full replace of a coder record: only the latest per coder is sent. */
-  | { kind: "coder"; coderId: number; write: BackendCoderWrite };
+  | { kind: "coder"; coderId: number; write: AnnotatorCoderWrite };
 
 export interface OutboxEntry {
   id: number;
@@ -108,7 +108,7 @@ export class Outbox {
   constructor(
     private deploymentId: string,
     private store: OutboxStore,
-    private backend: Backend,
+    private annotator: AnnotatorApi,
     private options: OutboxOptions,
     private log: (message: string) => void = (m) => console.warn(m),
   ) {}
@@ -190,7 +190,7 @@ export class Outbox {
     const annotations = entries.filter((e) => e.write.kind === "annotation");
     if (annotations.length > 0) {
       const writes = annotations.map((e) => (e.write as Extract<OutboxWrite, { kind: "annotation" }>).write);
-      const { rejected } = await this.backend.putAnnotations(writes);
+      const { rejected } = await this.annotator.putAnnotations(writes);
       for (const r of rejected) {
         const w = writes[r.index];
         this.log(`[${this.deploymentId}] db server rejected unit ${w?.unitId} of coder ${w?.coderId}: ${r.error}`);
@@ -206,7 +206,7 @@ export class Outbox {
     for (const [coderId, list] of byCoder) {
       const latest = list[list.length - 1].write as Extract<OutboxWrite, { kind: "coder" }>;
       try {
-        await this.backend.putCoder(coderId, latest.write);
+        await this.annotator.putCoder(coderId, latest.write);
       } catch (err) {
         // Only a coder the db server doesn't know can never succeed.
         if (!(err instanceof HttpError && err.status === 404)) throw err;

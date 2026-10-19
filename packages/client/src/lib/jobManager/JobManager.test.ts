@@ -31,7 +31,7 @@ function unitVar(name: string): UnitVariableItem {
 
 function session(items: TopLevelItem[]): SessionResponse {
   return {
-    codebook: { id: 1, name: "cb", items, immutable: false, created: new Date() } as SessionResponse["codebook"],
+    codebook: { id: 1, note: null, items, immutable: false, created: new Date() } as SessionResponse["codebook"],
     progress: [],
   } as unknown as SessionResponse;
 }

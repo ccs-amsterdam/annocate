@@ -36,10 +36,19 @@ export function createDb(path = ":memory:"): DatabaseSync {
     CREATE TABLE IF NOT EXISTS codebooks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       jobId INTEGER NOT NULL,
-      name TEXT NOT NULL,
+      note TEXT,
       items TEXT NOT NULL,
       created TEXT NOT NULL,
       immutable INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- The job's unit fields (contracts unitFields.ts), set by the first upload
+    CREATE TABLE IF NOT EXISTS unit_fields (
+      jobId INTEGER NOT NULL,
+      position INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      PRIMARY KEY (jobId, name)
     );
 
     CREATE TABLE IF NOT EXISTS unitsets (
@@ -96,7 +105,6 @@ export function createDb(path = ":memory:"): DatabaseSync {
       jobId INTEGER NOT NULL,
       email TEXT,
       devKey TEXT UNIQUE NOT NULL,
-      doneUnitIds TEXT NOT NULL DEFAULT '{}',
       variables TEXT NOT NULL DEFAULT '{}',
       assignments TEXT NOT NULL DEFAULT '{}',
       participantId TEXT,
@@ -132,7 +140,13 @@ export function createDb(path = ":memory:"): DatabaseSync {
   addColumnIfMissing(db, "deployments", "jobServerUrl", "TEXT");
   addColumnIfMissing(db, "deployments", "annotationEpoch", "INTEGER NOT NULL DEFAULT 0");
   migrateAnnotationsTable(db);
+  migrateCodebookNames(db);
   addColumnIfMissing(db, "annotation_values", "unitHash", "TEXT");
+  addColumnIfMissing(db, "invites", "created", "TEXT");
+  addColumnIfMissing(db, "invites", "revokedAt", "TEXT");
+  addColumnIfMissing(db, "coders", "inviteId", "INTEGER");
+  // For the overview's activity per day
+  db.exec("CREATE INDEX IF NOT EXISTS annotation_values_created ON annotation_values (jobId, created)");
   return db;
 }
 
@@ -141,6 +155,30 @@ function addColumnIfMissing(db: DatabaseSync, table: string, column: string, def
   if (columns.some((c) => c.name === column)) return false;
   db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   return true;
+}
+
+/**
+ * One-off: codebooks had a required `name` (copied to every version) instead
+ * of an optional `note`. SQLite can't drop the NOT NULL, so rebuild the table.
+ * The names are dropped: versions are identified by their order.
+ */
+function migrateCodebookNames(db: DatabaseSync): void {
+  const columns = db.prepare("PRAGMA table_info(codebooks)").all() as { name: string }[];
+  if (!columns.some((c) => c.name === "name")) return;
+  db.exec(`
+    CREATE TABLE codebooks_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      jobId INTEGER NOT NULL,
+      note TEXT,
+      items TEXT NOT NULL,
+      created TEXT NOT NULL,
+      immutable INTEGER NOT NULL DEFAULT 0
+    );
+    INSERT INTO codebooks_new (id, jobId, note, items, created, immutable)
+      SELECT id, jobId, NULL, items, created, immutable FROM codebooks;
+    DROP TABLE codebooks;
+    ALTER TABLE codebooks_new RENAME TO codebooks;
+  `);
 }
 
 /**

@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import type { DatabaseSync } from "node:sqlite";
 import {
-  BackendAnnotationBatchSchema,
-  BackendCoderWriteSchema,
+  AnnotatorAnnotationBatchSchema,
+  AnnotatorCoderWriteSchema,
   FinishedRequestSchema,
   ResolveCoderRequestSchema,
-  type BackendCoder,
-  type BackendUnit,
+  type AnnotatorCoder,
+  type AnnotatorUnit,
   JobTokenRequestSchema,
 } from "@annotinder/contracts";
 import type { HonoEnv } from "../honoEnv.js";
@@ -16,15 +16,15 @@ import { unitHash } from "../db/units.js";
 import { boundJobServer, getDeploymentSpec, getPreviewSpec } from "../db/deployments.js";
 import type { JobTokenIssuer } from "@annotinder/reference-db-server/jobTokens";
 
-// The backend API (contracts `backendEndpoints`): what a db server exposes to
+// The annotator API (contracts `annotatorEndpoints`): what a db server exposes to
 // the job server. The job server holds no state of its own that it can't
 // rebuild from these endpoints (docs/architecture.md).
 
-function toBackendCoder(row: CoderRow): BackendCoder {
+function toBackendCoder(row: CoderRow): AnnotatorCoder {
   return { coderId: row.id, variables: JSON.parse(row.variables), assignments: JSON.parse(row.assignments) };
 }
 
-export function backendRoutes(db: DatabaseSync, issuer: JobTokenIssuer, configuredJobServer: string | null) {
+export function annotatorRoutes(db: DatabaseSync, issuer: JobTokenIssuer, configuredJobServer: string | null) {
   const app = new Hono<HonoEnv>();
 
   // A job server asks for a job token with a request it signed (plan §13,
@@ -59,7 +59,7 @@ export function backendRoutes(db: DatabaseSync, issuer: JobTokenIssuer, configur
     const rows = db
       .prepare(`SELECT id, externalId, data FROM units WHERE jobId = ? AND id IN (${ids.map(() => "?").join(",")})`)
       .all(c.get("jobId"), ...ids) as unknown as { id: number; externalId: string; data: string }[];
-    const units: BackendUnit[] = rows.map((r) => ({
+    const units: AnnotatorUnit[] = rows.map((r) => ({
       id: r.id,
       externalId: r.externalId,
       data: JSON.parse(r.data),
@@ -84,7 +84,7 @@ export function backendRoutes(db: DatabaseSync, issuer: JobTokenIssuer, configur
   });
 
   app.put("/coders/:coderId", async (c) => {
-    const parsed = BackendCoderWriteSchema.safeParse(await c.req.json());
+    const parsed = AnnotatorCoderWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const result = db
@@ -115,7 +115,7 @@ export function backendRoutes(db: DatabaseSync, issuer: JobTokenIssuer, configur
 
   // The job server's buffered writes, applied in order (one transaction).
   app.post("/annotations", async (c) => {
-    const parsed = BackendAnnotationBatchSchema.safeParse(await c.req.json());
+    const parsed = AnnotatorAnnotationBatchSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const jobId = c.get("jobId");

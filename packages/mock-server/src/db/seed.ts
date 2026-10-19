@@ -51,7 +51,7 @@ export function seed(db: DatabaseSync): void {
 
   const items = CodebookItemsSchema.parse([
     {
-      type: "user_variable",
+      type: "question",
       name: "consent",
       variable: { type: "confirm", question: "Do you consent to participate?" },
     },
@@ -65,7 +65,7 @@ export function seed(db: DatabaseSync): void {
       },
       children: [
         {
-          type: "unit_variable",
+          type: "question",
           name: "sentiment",
           variable: {
             type: "select_code",
@@ -78,7 +78,7 @@ export function seed(db: DatabaseSync): void {
           },
         },
         {
-          type: "unit_variable",
+          type: "question",
           name: "actors_and_issues",
           variable: {
             type: "span",
@@ -97,7 +97,7 @@ export function seed(db: DatabaseSync): void {
           },
         },
         {
-          type: "unit_variable",
+          type: "question",
           name: "actor_relations",
           variable: {
             type: "relation",
@@ -111,9 +111,9 @@ export function seed(db: DatabaseSync): void {
     },
   ]);
 
-  db.prepare("INSERT INTO codebooks (jobId, name, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(
+  db.prepare("INSERT INTO codebooks (jobId, note, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(
     jobId,
-    "Demo codebook",
+    "First version: tone, actors and issues, and their relations",
     JSON.stringify(items),
     created,
   );

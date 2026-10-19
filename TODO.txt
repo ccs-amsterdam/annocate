@@ -1,35 +1,6 @@
 
+## Clean up structure of repo
 
-General layout of annotator
-- There should be some nice visual feedback when users interact with the answer form. Make it feel nice and alive, and also help coders see if the made a mistake. When they finish a varaible, and we move to the next variable, there could be a brief popover pop out above the answer form (which can be over a unit, so add bit of opacity) that shows the answer they gave (the color & the code/value) if relevant.
-- When we move to the next/previous unit or variable, the unit and variable divs should be animated to slide in from the right (next) or left (previous). This should be quick, but give the feel of moving forward and backward.
+Currently there is the mock-server and the reference-db-server. Perhaps we can just combine these. There is then just a reference-db-server that documetn everyuthing a db server needs, using plain SQL. And this is then also used in pnpm run dev.
 
-
-In the navigation in the top right corner of the annotation view:
-- the line indicating the unit (unit x / n) shouldnt be highlighted when we're inside a unit variable. this is already clear from the unit varible being the current variable
-- The line for the unit loop shouldn't show the loop name (e.g. main_loop) but just: [n] units
-- The dropdown for selecting a units shouldn't have a border. And the dropdown should just show the number.
-- Instead of 'change' opening another line, just make it a dropdown menu where you can scroll unit indices. ANd isntead of a change button, just add a dropdown icon and open the dropown when users click on the row
-- Normally, users shouldn't be able to navigate ahead. They need to finish the previous variables + units first. In the preview mode, this should be optional. So you can both test the real experience and quickly check the job
-
-Adding labels
-- Variables should have optional labels. If given, this is what is shown to the coder in the navigation dropdown (if not given, we show the question)
-- Codes should have labels. If not given, we use the code value. This is primarily usefull when performin analyses in different languages, keeping the code constant but only changing the label (we can think about multilingual support later)
-
-Numeric variables and scales:
-
-- We currently have one "answer type" that combines a code and an optional value. But we also want to support answer values that do not have codes, and where values are not optional. And it might be nice to link this to common terminology of nominal, ordinal, interval and ratio. We should make answer types for each of these. This will replace select_code and search_code.
-  - nominal variables have codes without values. This has the "allow multiple selections". Instead of the "vertical layout" boolean, the layout options are grid, wrap, vertical, and search. (search then replaces the search_code representation).
-  - ordinal variables have codes with implied values based on their order. Users can only decide the starting point of the value (e.g. -3), NOT the step size. Answers can have multiple values. This has the layout options: "horizontal", "vertical", "auto". Where horizontal has no wrap, and auto has wrap so that if it doesn't fit on one row, it makes it vertical.
-  - interval / ratio variables can both be under a "numeric" type. User sets the starting point AND stepsize.  UI options could be slider, stepper or buttons. There are no codes, but we can have labels with values that represent cutting poitns: {1: never", 2: rarely, etc}
-- the annotinder type can specify whether it adds values or not. Also, in the codebook editor, it should just always show the three codes (not the add button) and specify which is for swiping left, right and up.
-- The old "scale" type was not converted properly. The idea of this type is basically "likert scale" type questions, so we should also name it "likert scale". Its essentially multiple numeric types with the same offset and interval So we want to specify:
-  - Question (just like other types)
-  - Items:  list of specific items the question is about. Can be just words (e.g. question is "how much trust do you have in the following institutions") or things like statements (e.g. question is "to what extent do you agree with the follogin")
-  - scale: The number of items on the scale, and labels to go with it. e.g. a 7 point likert scale from -3 to 3, with labels "not at all", "a little", etc.
-    - A scale item should also be able to say if it's reversed or not.
-- The question here is also how we want to store scale item responses. Probably good to create a separate scale type of value. Then this can have a value that is the average of the answered values. And then there is a nested array of specific answer values for each item.
-- The main factor in considering the differences between code, numeric and scale type values, is how the researcher can use this in quickjs scipts. I would like to support
-
-!! IMPORTANT:
-- For reproducibility, we need to make sure that all options in a codebook are explicit when exporting the codebook. Otherwise, when we later add a new option that is a default, the old codebook is no longer valid. Maybe there are better ways to do this? Let's think about this.
+Currently the mock server also documents al sorts of migration stuff. THis is useless. Nobody should deploy the mock server. It should just be a readable, clean reference-db-server that is used for development and testing.

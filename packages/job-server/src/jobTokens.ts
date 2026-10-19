@@ -1,5 +1,5 @@
-import { JobTokenResponseSchema, backendEndpoints } from "@annotinder/contracts";
-import { HttpError } from "./backend.js";
+import { JobTokenResponseSchema, annotatorEndpoints } from "@annotinder/contracts";
+import { HttpError } from "./annotatorClient.js";
 import { base64url, type SigningKeys } from "./keys.js";
 
 // A job token per (db server, job), plan §13: requested with a JWT this job
@@ -60,7 +60,7 @@ export class JobTokens {
       exp: iat + 120,
       jti: crypto.randomUUID(),
     });
-    const url = dbUrl + backendEndpoints.requestJobToken.path.replace(":jobId", String(jobId));
+    const url = dbUrl + annotatorEndpoints.requestJobToken.path.replace(":jobId", String(jobId));
     let res: Response;
     try {
       res = await this.options.fetch(url, {

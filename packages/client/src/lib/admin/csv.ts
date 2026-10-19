@@ -1,3 +1,5 @@
+import { inferFieldType, parseFieldValue, type UnitCreate, type UnitData, type UnitField } from "@annotinder/contracts";
+
 /**
  * Minimal dependency-free CSV parser (docs/client.md §7), used for the units
  * upload UI. Deliberately simple -- handles double-quote-escaped fields
@@ -67,19 +69,50 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
   return { headers: headers ?? [], rows: dataRows };
 }
 
-/** Converts parsed rows to `UnitCreate`-shaped records, given which header is the external id column. */
-export function csvRowsToUnits(
-  headers: string[],
-  rows: string[][],
-  idColumn: string,
-): { externalId: string; data: Record<string, string | number | boolean> }[] {
+export interface CsvUnits {
+  /** The fields the units will have: the job's, or inferred from the columns for a first upload. */
+  fields: UnitField[];
+  units: UnitCreate[];
+  /** Problems that block the upload, e.g. a column that doesn't match the job's fields. */
+  errors: string[];
+}
+
+/**
+ * Converts parsed CSV rows to typed units (contracts unitFields.ts). Without
+ * `jobFields` (the job has no units yet) the field types are inferred from
+ * the columns; otherwise the columns must be the job's fields, and cells are
+ * parsed as their types. Empty number/boolean cells become null.
+ */
+export function csvToUnits(headers: string[], rows: string[][], idColumn: string, jobFields: UnitField[] = []): CsvUnits {
   const idIndex = headers.indexOf(idColumn);
-  return rows.map((row) => {
-    const data: Record<string, string | number | boolean> = {};
-    headers.forEach((header, i) => {
-      if (i === idIndex) return;
-      data[header] = row[i] ?? "";
-    });
+  const columns = headers.map((name, index) => ({ name, index })).filter((c) => c.index !== idIndex);
+  const errors: string[] = [];
+
+  let fields: UnitField[];
+  if (jobFields.length === 0) {
+    fields = columns.map((c) => ({ name: c.name, type: inferFieldType(rows.map((r) => r[c.index] ?? "")) }));
+  } else {
+    fields = jobFields;
+    const names = new Set(columns.map((c) => c.name));
+    const missing = jobFields.filter((f) => !names.has(f.name)).map((f) => f.name);
+    const extra = columns.filter((c) => !jobFields.some((f) => f.name === c.name)).map((c) => c.name);
+    if (missing.length) errors.push(`Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}`);
+    if (extra.length) errors.push(`Column${extra.length > 1 ? "s" : ""} not in the job's fields: ${extra.join(", ")}`);
+    if (errors.length) return { fields, units: [], errors };
+  }
+
+  const typeOf = new Map(fields.map((f) => [f.name, f.type]));
+  const units = rows.map((row, r) => {
+    const data: UnitData = {};
+    for (const c of columns) {
+      const raw = row[c.index] ?? "";
+      const value = parseFieldValue(raw, typeOf.get(c.name)!);
+      if (value === undefined) {
+        if (errors.length < 5) errors.push(`Row ${r + 2}: '${raw}' in ${c.name} is not a ${typeOf.get(c.name)}`);
+      } else data[c.name] = value;
+    }
     return { externalId: row[idIndex] ?? "", data };
   });
+  if (units.some((u) => u.externalId === "")) errors.push(`Some rows have no ${idColumn}`);
+  return { fields, units, errors };
 }

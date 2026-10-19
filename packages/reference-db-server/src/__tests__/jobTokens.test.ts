@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { JobTokenIssuer } from "../jobTokens.js";
 
-// Job tokens are checked on every backend call (from step 3 of plan §13).
+// Job tokens are checked on every annotator API call (from step 3 of plan §13).
 describe("JobTokenIssuer.verifyToken", () => {
   let now = Date.now();
   const issuer = new JobTokenIssuer({ secret: "s", publicUrl: "http://db.test", now: () => now });

@@ -3,21 +3,21 @@ import { readFileSync } from "node:fs";
 import { describe, it, expect, beforeAll } from "vitest";
 import {
   ALL_UNITS_UNITSET,
-  BackendAnnotationSchema,
-  BackendAnnotationBatchResultSchema,
-  BackendCoderSchema,
-  BackendFinishedSchema,
-  BackendUnitSchema,
+  AnnotatorAnnotationSchema,
+  AnnotatorAnnotationBatchResultSchema,
+  AnnotatorCoderSchema,
+  AnnotatorFinishedSchema,
+  AnnotatorUnitSchema,
   ConformanceFixtureSchema,
   DeploymentSpecSchema,
   JobTokenResponseSchema,
-  type BackendCoder,
+  type AnnotatorCoder,
   type ConformanceFixture,
   type DeploymentSpec,
 } from "@annotinder/contracts";
 
-// Conformance suite for the backend API: what a db server must do for the
-// job server (contracts `backendEndpoints`, docs/architecture.md). A db
+// Conformance suite for the annotator API: what a db server must do for the
+// job server (contracts `annotatorEndpoints`, docs/architecture.md). A db
 // server passes if it loaded `fixture.json` as one deployed job and every
 // test here passes against it.
 //
@@ -30,7 +30,7 @@ export const fixture: ConformanceFixture = ConformanceFixtureSchema.parse(
 );
 
 export interface ConformanceTarget {
-  /** The db server's base URL; the suite calls `<baseUrl>/backend/job/<jobId>/...`. */
+  /** The db server's base URL; the suite calls `<baseUrl>/annotator/job/<jobId>/...`. */
   baseUrl: string;
   /** The id the db server gave the fixture's job. */
   jobId: number;
@@ -80,7 +80,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
     const headers: Record<string, string> = { "content-type": "application/json" };
     const auth = init.auth === undefined ? `Bearer ${jobToken}` : init.auth;
     if (auth !== null) headers.authorization = auth;
-    return (t.fetch ?? fetch)(`${t.baseUrl}/backend/job/${t.jobId}${path}`, {
+    return (t.fetch ?? fetch)(`${t.baseUrl}/annotator/job/${t.jobId}${path}`, {
       method: init.method ?? "GET",
       headers,
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
@@ -90,16 +90,16 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
     return res.status === 204 ? undefined : res.json();
   };
-  const resolve = async (coderKey: string, extra: Record<string, unknown> = {}): Promise<BackendCoder> =>
-    BackendCoderSchema.parse(await ok(await call("/coders/resolve", { method: "POST", body: { coderKey, ...extra } })));
+  const resolve = async (coderKey: string, extra: Record<string, unknown> = {}): Promise<AnnotatorCoder> =>
+    AnnotatorCoderSchema.parse(await ok(await call("/coders/resolve", { method: "POST", body: { coderKey, ...extra } })));
   const newCoder = (name: string) => resolve(key(name), { inviteSecret: "conf-open" });
   const answer = (code: string) => ({ done: true, skip: false, codes: [{ code }] });
   const put = (unitId: number, coderId: number, variables: Record<string, unknown>) =>
     writeBatch([{ unitId, coderId, variables }]);
   /** The batch write endpoint, with its result validated. */
   const writeBatch = (annotations: unknown[]) => call("/annotations", { method: "POST", body: { annotations } });
-  const batchResult = async (res: Promise<Response>) => BackendAnnotationBatchResultSchema.parse(await ok(await res));
-  const finished = async (body: unknown) => BackendFinishedSchema.array().parse(await ok(await call("/finished", { method: "POST", body })));
+  const batchResult = async (res: Promise<Response>) => AnnotatorAnnotationBatchResultSchema.parse(await ok(await res));
+  const finished = async (body: unknown) => AnnotatorFinishedSchema.array().parse(await ok(await call("/finished", { method: "POST", body })));
 
   let spec: DeploymentSpec;
   /** externalId -> unit id, as assigned by the db server. */
@@ -128,7 +128,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   beforeAll(async () => {
     spec = DeploymentSpecSchema.parse(await ok(await call("/deployment")));
     const all = spec.unitsets.find((u) => u.name === ALL_UNITS_UNITSET)?.unitIds ?? [];
-    const units = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${all.join(",")}`)));
+    const units = AnnotatorUnitSchema.array().parse(await ok(await call(`/units?ids=${all.join(",")}`)));
     for (const unit of units) ids.set(unit.externalId, unit.id);
   });
   const id = (externalId: string) => ids.get(externalId)!;
@@ -144,7 +144,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
 
     it("refuses a job token for another job", async () => {
       const t = target();
-      const res = await (t.fetch ?? fetch)(`${t.baseUrl}/backend/job/${t.jobId + 1000}/deployment`, {
+      const res = await (t.fetch ?? fetch)(`${t.baseUrl}/annotator/job/${t.jobId + 1000}/deployment`, {
         headers: { authorization: `Bearer ${jobToken}` },
       });
       expect(res.status).toBe(401);
@@ -171,14 +171,14 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
 
   describe("GET /units", () => {
     it("returns the requested units' content and leaves out unknown ids", async () => {
-      const units = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${id("u2")},999999999`)));
+      const units = AnnotatorUnitSchema.array().parse(await ok(await call(`/units?ids=${id("u2")},999999999`)));
       expect(units).toEqual([{ id: id("u2"), externalId: "u2", data: fixture.units[1].data, hash: expect.any(String) }]);
     });
 
     it("gives each unit a content hash that is stable, and differs between different content", async () => {
       const all = [...ids.values()].join(",");
-      const first = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${all}`)));
-      const again = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${all}`)));
+      const first = AnnotatorUnitSchema.array().parse(await ok(await call(`/units?ids=${all}`)));
+      const again = AnnotatorUnitSchema.array().parse(await ok(await call(`/units?ids=${all}`)));
       const hashes = (units: typeof first) => new Map(units.map((u) => [u.id, u.hash]));
       expect(hashes(again)).toEqual(hashes(first));
       expect(new Set(first.map((u) => u.hash)).size).toBe(first.length); // fixture units all differ
@@ -190,7 +190,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       const created = await resolve(key("a"), { inviteSecret: "conf-open" });
       expect(created.assignments).toEqual({});
       expect((await resolve(key("a"))).coderId).toBe(created.coderId);
-      const listed = BackendCoderSchema.array().parse(await ok(await call("/coders")));
+      const listed = AnnotatorCoderSchema.array().parse(await ok(await call("/coders")));
       expect(listed.map((c) => c.coderId)).toContain(created.coderId);
     });
 
@@ -252,7 +252,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
   describe("annotations", () => {
     it("accepts the hash of the content shown, also when it is not the current one", async () => {
       const coder = await newCoder("hash");
-      const [unit] = BackendUnitSchema.array().parse(await ok(await call(`/units?ids=${id("u1")}`)));
+      const [unit] = AnnotatorUnitSchema.array().parse(await ok(await call(`/units?ids=${id("u1")}`)));
       const write = (unitHash: string) =>
         batchResult(writeBatch([{ unitId: unit.id, coderId: coder.coderId, variables: { q1: answer("yes") }, unitHash }]));
       expect(await write(unit.hash)).toEqual({ rejected: [] });
@@ -264,7 +264,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       await ok(await put(id("u1"), coder.coderId, { q1: answer("yes"), old: answer("kept") }));
       await ok(await put(id("u1"), coder.coderId, { q1: answer("no") }));
 
-      const annotations = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      const annotations = AnnotatorAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
       expect(annotations).toHaveLength(1);
       expect(annotations[0].unitId).toBe(id("u1"));
       expect(annotations[0].variables.q1.codes).toEqual([{ code: "no" }]);
@@ -279,7 +279,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       await new Promise((r) => setTimeout(r, 5));
       await ok(await put(id("u3"), coder.coderId, { q1: answer("no") }));
 
-      const annotations = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      const annotations = AnnotatorAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
       expect(annotations.map((a) => a.unitId)).toEqual([id("u3"), id("u1")]);
     });
 
@@ -287,7 +287,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       const a = await newCoder("own-a");
       const b = await newCoder("own-b");
       await ok(await put(id("u2"), a.coderId, { q1: answer("yes") }));
-      const ofB = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${b.coderId}`)));
+      const ofB = AnnotatorAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${b.coderId}`)));
       expect(ofB).toEqual([]);
       expect((await call("/annotations")).status).toBe(400);
     });
@@ -298,7 +298,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       expect(await batchResult(writeBatch([write(id("u1"), "yes"), write(id("u2"), "yes"), write(id("u1"), "no")]))).toEqual({
         rejected: [],
       });
-      const annotations = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      const annotations = AnnotatorAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
       expect(annotations.map((a) => [a.unitId, a.variables.q1.codes])).toEqual([
         [id("u1"), [{ code: "no" }]],
         [id("u2"), [{ code: "yes" }]],
@@ -315,7 +315,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
         ]),
       );
       expect(result.rejected.map((r) => r.index)).toEqual([0, 2]);
-      const stored = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      const stored = AnnotatorAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
       expect(stored.map((a) => a.unitId)).toEqual([id("u1")]);
     });
 
@@ -393,7 +393,7 @@ export function conformanceSuite(target: () => ConformanceTarget): void {
       expect(unitLevel).toEqual([]);
       expect(coderLevel).toEqual([]);
       // and coder-level values are not part of the coder's unit annotations
-      const annotations = BackendAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
+      const annotations = AnnotatorAnnotationSchema.array().parse(await ok(await call(`/annotations?coderId=${coder.coderId}`)));
       expect(annotations.map((a) => a.unitId)).toEqual([id("u1")]);
     });
 

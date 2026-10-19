@@ -12,6 +12,13 @@ export const UnitResponseSchema = z.object({
 });
 export type UnitResponse = z.infer<typeof UnitResponseSchema>;
 
+/** `GET /units/page`: one page of units with their data, and how many there are in all. */
+export const UnitPageSchema = z.object({
+  total: z.number().int().nonnegative(),
+  units: z.array(UnitResponseSchema),
+});
+export type UnitPage = z.infer<typeof UnitPageSchema>;
+
 /** Lightweight listing entry, e.g. for `GET /units` sync checks. */
 export const UnitMetaSchema = z.object({
   id: IdSchema,

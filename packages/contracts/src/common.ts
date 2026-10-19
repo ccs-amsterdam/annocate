@@ -24,6 +24,8 @@ export type Role = z.infer<typeof RoleSchema>;
 /** An inline CSS properties object, e.g. `{ fontSize: "1.3em" }`. */
 export const StyleSchema = z.record(z.string(), z.string());
 
-export const UnitDataValueSchema = z.union([z.string(), z.number(), z.boolean()]);
+/** One field's value; null is an empty value (e.g. an empty number cell in a CSV). See unitFields.ts. */
+export const UnitDataValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+export type UnitDataValue = z.infer<typeof UnitDataValueSchema>;
 export const UnitDataSchema = z.record(z.string(), UnitDataValueSchema);
 export type UnitData = z.infer<typeof UnitDataSchema>;

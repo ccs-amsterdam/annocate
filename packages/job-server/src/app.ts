@@ -8,14 +8,14 @@ import {
   type RefreshDeployment,
   JOB_SERVER_SIGNATURE_HEADER,
 } from "@annotinder/contracts";
-import { HttpError } from "./backend.js";
+import { HttpError } from "./annotatorClient.js";
 import { DbServers, DEFAULT_DB_SERVER_OPTIONS, type DbServerOptions, type DbServerPolicy } from "./dbServers.js";
 import { DeploymentRegistry } from "./registry.js";
 import { verifyCallSignature } from "./jobTokens.js";
 import type { OutboxStore } from "./outbox.js";
 import { SigningKeys } from "./keys.js";
 import {
-  backendCoderKey,
+  dbCoderKey,
   newSessionKey,
   readSession,
   requireClientHeader,
@@ -47,10 +47,11 @@ interface Env {
  * The job server's HTTP surface. Runtime-agnostic (plain Hono + fetch), so
  * the same app can run on Node (index.ts) or a Cloudflare Worker.
  *
- * - `/d/<db host>/<jobId>/...`: the coder-facing API (same paths as contracts
- *   `endpoints.getSession` etc.), so the client's `HttpJobServer` just uses
+ * - `/d/<db host>/<jobId>/...`: the client API (contracts `clientEndpoints`,
+ *   docs/api/client.md), so the client's `HttpJobServer` just uses
  *   `<job server>/d/<deploymentId>` as its base URL.
- * - `/admin/deployments/<db host>/<jobId>/...`: called by the db server.
+ * - `/db/deployments/<db host>/<jobId>/...` and `/.well-known/jwks.json`: the
+ *   DB API (contracts `dbEndpoints`, docs/api/db.md), called by db servers.
  */
 export function createJobServer(options: JobServerOptions) {
   const signingKeys = Promise.resolve(options.signingKeys ?? SigningKeys.ephemeral());
@@ -79,7 +80,7 @@ export function createJobServer(options: JobServerOptions) {
   // Public keys: db servers verify this job server's token requests with them.
   app.get("/.well-known/jwks.json", async (c) => c.json((await signingKeys).jwks()));
 
-  // --- coder API ----------------------------------------------------------
+  // --- client API (docs/api/client.md) ----------------------------------------
 
   // No CORS: the client is served from the job server's origin, so the
   // browser refuses cross-origin calls that carry the required header.
@@ -96,8 +97,8 @@ export function createJobServer(options: JobServerOptions) {
     return c.json({});
   });
 
-  const coders = new Hono<Env>();
-  coders.use("*", async (c, next) => {
+  const clientApi = new Hono<Env>();
+  clientApi.use("*", async (c, next) => {
     requireClientHeader(c);
     const deploymentId = deploymentIdOf(c);
     const runtime = await registry.get(deploymentId);
@@ -113,7 +114,7 @@ export function createJobServer(options: JobServerOptions) {
     const existing = newSession ? undefined : readSession(c, name);
     const sessionKey = existing ?? newSessionKey();
     const coder = await runtime.resolveCoder(
-      { coderKey: await backendCoderKey(sessionKey), inviteSecret, participantId, newSession },
+      { coderKey: await dbCoderKey(sessionKey), inviteSecret, participantId, newSession },
       // The page's query parameters, for `url_param` auto variables.
       Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? "")),
     );
@@ -124,40 +125,40 @@ export function createJobServer(options: JobServerOptions) {
     await next();
   });
 
-  coders.post("/transfer", (c) => c.json(c.get("runtime").createTransfer(c.get("sessionKey"))));
+  clientApi.post("/transfer", (c) => c.json(c.get("runtime").createTransfer(c.get("sessionKey"))));
 
-  coders.get("/session", (c) => c.json(c.get("runtime").session(c.get("coder"))));
+  clientApi.get("/session", (c) => c.json(c.get("runtime").session(c.get("coder"))));
 
-  coders.get("/loop/:loop/next", async (c) =>
+  clientApi.get("/loop/:loop/next", async (c) =>
     c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("loop"))),
   );
 
-  coders.get("/loop/:loop/units/:unitId", async (c) =>
+  clientApi.get("/loop/:loop/units/:unitId", async (c) =>
     c.json(await c.get("runtime").loopUnit(c.get("coder"), c.req.param("loop"), Number(c.req.param("unitId")))),
   );
 
-  coders.post("/variables/unit", async (c) => {
+  clientApi.post("/variables/unit", async (c) => {
     const body = await parseBody(c, PostUnitVariablesSchema);
     await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop);
     return c.body(null, 204);
   });
 
-  coders.post("/variables/coder", async (c) => {
+  clientApi.post("/variables/coder", async (c) => {
     const body = await parseBody(c, PostCoderVariablesSchema);
     await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables);
     return c.body(null, 204);
   });
 
-  app.route("/d/:host/:job", coders);
+  app.route("/d/:host/:job", clientApi);
 
-  // --- admin API (db server -> job server) ----------------------------------
+  // --- DB API (db server -> job server, docs/api/db.md) ----------------------
 
-  const admin = new Hono<Env>();
+  const dbApi = new Hono<Env>();
   // Signed by the db server with the job's call key (contracts
   // JOB_SERVER_SIGNATURE_HEADER), which we know from our own job token.
-  admin.use("*", async (c, next) => {
+  dbApi.use("*", async (c, next) => {
     const deploymentId = deploymentIdOf(c);
-    registry.backendFor(deploymentId); // 404 for unknown db servers, before any token request
+    registry.dbServerFor(deploymentId); // 404 for unknown db servers, before any token request
     const callKey = await registry.tokensFor(deploymentId).callKey();
     const call = { method: c.req.method, path: new URL(c.req.url).pathname, body: await c.req.text() };
     if (!(await verifyCallSignature(c.req.header(JOB_SERVER_SIGNATURE_HEADER), callKey, call, Date.now()))) {
@@ -166,7 +167,7 @@ export function createJobServer(options: JobServerOptions) {
     await next();
   });
 
-  admin.post("/refresh", async (c) => {
+  dbApi.post("/refresh", async (c) => {
     const runtime = await registry.get(deploymentIdOf(c));
     // The body is optional (a plain notification has none).
     const text = await c.req.text();
@@ -188,18 +189,18 @@ export function createJobServer(options: JobServerOptions) {
     return c.json({ version: runtime.version });
   });
 
-  admin.get("/status", async (c) => {
+  dbApi.get("/status", async (c) => {
     const runtime = await registry.get(deploymentIdOf(c));
     await runtime.refresh();
     return c.json(await runtime.status());
   });
 
-  admin.delete("/", (c) => {
+  dbApi.delete("/", (c) => {
     registry.drop(deploymentIdOf(c));
     return c.body(null, 204);
   });
 
-  app.route("/admin/deployments/:host/:job", admin);
+  app.route("/db/deployments/:host/:job", dbApi);
 
   // Hosts call this to send what a previous run left behind (index.ts, worker.ts).
   return Object.assign(app, { flushPending: () => registry.flushPending() });

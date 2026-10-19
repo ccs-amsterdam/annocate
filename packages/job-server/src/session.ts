@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { HttpError } from "./backend.js";
+import { HttpError } from "./annotatorClient.js";
 
 // Coder sessions (docs/coder-identity.md §4, plan §2): the job server makes
 // a random session key per job session and keeps it in an httpOnly cookie,
@@ -33,7 +33,7 @@ export function newSessionKey(): string {
 }
 
 /** What the db server stores for a session key: a db leak doesn't hand out sessions. */
-export function backendCoderKey(sessionKey: string): Promise<string> {
+export function dbCoderKey(sessionKey: string): Promise<string> {
   return sha256(sessionKey);
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv, csvRowsToUnits } from "./csv";
+import { parseCsv, csvToUnits } from "./csv";
 
 describe("parseCsv", () => {
   it("parses a simple CSV", () => {
@@ -29,19 +29,34 @@ describe("parseCsv", () => {
   });
 });
 
-describe("csvRowsToUnits", () => {
-  it("maps rows to units, excluding the id column from data", () => {
-    const units = csvRowsToUnits(
-      ["id", "text", "source"],
-      [
-        ["1", "hello", "news"],
-        ["2", "world", "blog"],
-      ],
-      "id",
-    );
-    expect(units).toEqual([
-      { externalId: "1", data: { text: "hello", source: "news" } },
-      { externalId: "2", data: { text: "world", source: "blog" } },
+describe("csvToUnits", () => {
+  const headers = ["id", "text", "count", "ok"];
+  const rows = [
+    ["1", "hello", "42", "true"],
+    ["2", "world", "", "false"],
+  ];
+
+  it("infers field types for a first upload and parses typed values", () => {
+    const result = csvToUnits(headers, rows, "id");
+    expect(result.fields).toEqual([
+      { name: "text", type: "text" },
+      { name: "count", type: "number" },
+      { name: "ok", type: "boolean" },
     ]);
+    expect(result.units).toEqual([
+      { externalId: "1", data: { text: "hello", count: 42, ok: true } },
+      { externalId: "2", data: { text: "world", count: null, ok: false } },
+    ]);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("uses the job's fields, reporting columns and values that don't fit", () => {
+    const jobFields = [
+      { name: "text", type: "text" as const },
+      { name: "count", type: "number" as const },
+    ];
+    expect(csvToUnits(headers, rows, "id", jobFields).errors).toEqual(["Column not in the job's fields: ok"]);
+    const bad = csvToUnits(["id", "text", "count"], [["1", "a", "many"]], "id", jobFields);
+    expect(bad.errors).toEqual(["Row 2: 'many' in count is not a number"]);
   });
 });

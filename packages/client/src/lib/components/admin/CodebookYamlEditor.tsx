@@ -140,7 +140,8 @@ export async function foldDefaultSections(editorInstance: any) {
  * Monaco-based YAML codebook editor.
  * Allows inspecting and editing codebook items directly as structured YAML,
  * with syntax highlighting, indentation guides, and real-time Zod schema validation.
- * Selectively folds only "variable" and "layout" sections by default.
+ * Opens unfolded (folding after mount made the editor jump); "Fold Details"
+ * collapses the "variable" and "layout" sections on request.
  */
 export function CodebookYamlEditor({ items, onChange, disabled }: CodebookYamlEditorProps) {
   const [yamlText, setYamlText] = useState(() => formatCodebookYaml(items));
@@ -212,7 +213,6 @@ export function CodebookYamlEditor({ items, onChange, disabled }: CodebookYamlEd
       const formatted = formatCodebookYaml(parsed);
       isInternalChangeRef.current = true;
       setYamlText(formatted);
-      setTimeout(() => foldDefaultSections(editorRef.current), 100);
     } catch {
       // Ignore if invalid syntax
     }
@@ -229,7 +229,6 @@ export function CodebookYamlEditor({ items, onChange, disabled }: CodebookYamlEd
 
   function handleEditorMount(editor: any) {
     editorRef.current = editor;
-    foldDefaultSections(editor);
   }
 
   return (

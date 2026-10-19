@@ -29,28 +29,33 @@ between them.
 
 ```
             researcher                          coder
-                │                                  │
+                │ researcher API                   │ client API
                 ▼                                  ▼
- ┌──────────────────────────┐      ┌───────────────────────────────┐
- │ db server (any language) │◄────►│ job server (TypeScript)       │
- │  source of truth         │      │  annotinder runtime           │
- │  jobs, codebooks, units, │      │  distribution, leases         │
- │  coders, annotations     │      │  validation                   │
- │  export/analysis         │      │  unit + annotation cache      │
- └──────────────────────────┘      └───────────────────────────────┘
-   researcher API                     coder API (/d/<deployment>/...)
-   + backend API (/backend/...)       + admin API (/admin/...)
+ ┌──────────────────────────┐ annotator API ┌───────────────────────────────┐
+ │ db server (any language) │◄──────────────│ job server (TypeScript)       │
+ │  source of truth         │               │  annotinder runtime           │
+ │  jobs, codebooks, units, │               │  distribution, leases         │
+ │  coders, annotations     │               │  validation                   │
+ │  export/analysis         │──────────────►│  unit + annotation cache      │
+ └──────────────────────────┘    DB API     └───────────────────────────────┘
 ```
+
+Each server serves two APIs; [`docs/api/`](api/README.md) has the overview
+and a page per API, with a section per endpoint.
 
 **db server.** It owns all data and is the source of truth. It can be written
 in any language. It implements:
 
-- the **researcher API** (`endpoints` in contracts), used by the client's
-  admin side: jobs, codebooks, units, unitsets, invites, deployments;
-- the **backend API** (`backendEndpoints` in contracts), used only by the job
-  server. This is plain CRUD: deployment spec, unit content, coder
-  resolution, finished codings, a coder's own annotations, and batched
-  writes.
+- the **researcher API** (`researcherEndpoints`, [spec](api/researcher.md)),
+  used by the client's researcher UI: jobs, codebooks, units, unitsets,
+  invitations, publishing, progress;
+- the **annotator API** (`annotatorEndpoints`, [spec](api/annotator.md)),
+  used only by the job server to run the annotator. This is plain CRUD:
+  deployment spec, unit content, coder resolution, finished codings, a
+  coder's own annotations, and batched writes.
+
+What a db server implements, endpoint by endpoint:
+[`packages/reference-db-server/README.md`](../packages/reference-db-server/README.md).
 
 It never runs codebook logic. It validates only the shape of annotations
 (JSON Schema is generated from the contracts) and referential integrity.
@@ -66,10 +71,14 @@ Coders talk only to the job server. It:
 - writes them through to the db server;
 - caches unit content and the coder's own annotations.
 
-**client.** No change in principle. The admin side talks to the db server.
-The coder side (`HttpJobServer`, `JobManager`) talks to the job server at
-`<job server>/d/<deploymentId>`, using exactly the coder endpoints it used
-before.
+The job server implements the **client API** (`clientEndpoints`,
+[spec](api/client.md)) for coders, under `/d/<deploymentId>`, and the
+**DB API** (`dbEndpoints`, [spec](api/db.md)), which db servers call to
+refresh a deployment or ask for its status.
+
+**client.** The researcher UI (`AdminClient`) talks to the db server's
+researcher API. The annotator (`HttpJobServer`, `JobManager`) talks to the
+job server's client API at `<job server>/d/<deploymentId>`.
 
 ## 3. Invariants
 
@@ -79,7 +88,7 @@ worker:
 1. **Durable before acknowledged, sent within a minute.** An answer is
    stored in the job server's **outbox** (a SQLite file on Node, Durable
    Object storage on Cloudflare) before the coder is told it was saved, and
-   sent to the db server in a batch (`POST /backend/.../annotations`) about
+   sent to the db server in a batch (`POST /annotator/.../annotations`) about
    once a minute, with backoff (1, 2, 5, then every 15 minutes) while the
    db server is unreachable. Coders with a session and cached units keep
    working through an outage; past a limit (10,000 pending writes or 24 h)
@@ -90,7 +99,7 @@ worker:
    older than its own writes. `flushIntervalMs: 0` makes it write-through.
    See `outbox.ts`.
 2. **Rebuildable, once the outbox is sent.** Everything else the job server
-   holds is a cache of the backend API; a restart sends what the outbox
+   holds is a cache of the annotator API; a restart sends what the outbox
    holds before loading anything. The one exception is dynamic-source **leases**, which are
    deliberately disposable: losing them only returns an abandoned unit to
    the queue early. So the job server needs no database and no backups.
@@ -125,7 +134,7 @@ worker:
    | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose; otherwise units are not re-fetched, since they shouldn't change once coding started. If one does, annotations say so: each write carries `unitHash`, the hash of the content the coder was shown |
    | A coder's record and annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without dynamic sources go with them, and are rebuilt when they return |
    | Distribution state (spec, dynamic-loop codings, `balanced` counts, leases) | Not released while the deployment is loaded: it is bounded by units x coders per unit, and distribution needs it |
-   | The deployment as a whole | Unused for `deploymentIdleMs` (6 h) on Node; on Cloudflare when the Durable Object is evicted. Or `DELETE /admin/deployments/:id` |
+   | The deployment as a whole | Unused for `deploymentIdleMs` (6 h) on Node; on Cloudflare when the Durable Object is evicted. Or `DELETE /db/deployments/:id` |
 
    Sizes are estimated from JSON length, since JavaScript gives no memory
    pressure signal (and a Durable Object that exceeds its limit is simply
@@ -143,7 +152,7 @@ The mitigation is choice of deployment target, not cryptography:
 
 - **Public edge** (Cloudflare Workers + Durable Objects). Fastest, and fine
   for non-sensitive material such as most crowd-coding jobs. `worker.ts`
-  routes `/d/<id>` and `/admin/deployments/<id>` to one Durable Object per
+  routes `/d/<id>` and `/db/deployments/<id>` to one Durable Object per
   deployment, which runs the same app as Node for that deployment: memory
   is a cache the platform drops when idle, the outbox lives in the object's
   SQLite storage (`outboxDurable.ts`) and is flushed by alarms.
@@ -163,11 +172,11 @@ as trusted as its memory.
 
 A db server is configured with the job server it deploys to, and stores
 which job server each job is bound to. A job server is configured with the
-db servers (backends) it accepts deployments from, its own URL and an
+db servers it accepts deployments from, its own URL and an
 Ed25519 key. No shared secrets (plan §13): the job server gets a short-lived
 **job token** per job with a request it signs (the db server verifies it
 with the job server's `/.well-known/jwks.json`), and sends it on every
-backend call; the db server signs its calls to the job server with the
+annotator API call; the db server signs its calls to the job server with the
 job's derived call key (`jobTokens.ts`, `keys.ts`;
 `reference-db-server/src/jobTokens.ts` for the db server side).
 
@@ -178,7 +187,7 @@ with `{ codebookId, active }`. The db server:
 
 - bumps the deployment `version`;
 - freezes the codebook;
-- calls `POST /admin/deployments/<db host>/<jobId>/refresh` on the job
+- calls `POST /db/deployments/<db host>/<jobId>/refresh` on the job
   server. This is best effort.
 
 The job server also re-checks the spec version at most every `specTtlMs`
@@ -195,7 +204,7 @@ follow redirects, time out, cap response sizes and are capped per db host
 
 **Coder session.**
 
-1. **First request.** The job server calls `POST /backend/.../coders/resolve`
+1. **First request.** The job server calls `POST /annotator/.../coders/resolve`
    with the coder key (a hash of the session cookie's key, see
    `coder-identity.md` §4) and invite secret. The db server creates the coder if
    needed, copying the invite's preset variables. The job server then
@@ -219,13 +228,13 @@ follow redirects, time out, cap response sizes and are capped per db host
 server returns a deployment id `<db host>/<jobId>.preview` and a token
 signed with the secret it shares with the job server (format in
 `PreviewSessionSchema`). The client opens it like an invite. The job server
-runs the latest codebook (`GET /backend/.../deployment?preview=1`, checked
+runs the latest codebook (`GET /annotator/.../deployment?preview=1`, checked
 on every request so edits show at once) with the real units, but keeps
 coders and answers in memory (`preview.ts`): a preview writes nothing to
 the db server, and is gone when the job server forgets the deployment.
 
 **Researcher status.** `GET /job/:jobId/deployment/status` on the db server
-proxies `GET /admin/deployments/:id/status`: units complete / started /
+proxies `GET /db/deployments/:id/status`: units complete / started /
 leased, codings, coders.
 
 ## 6. Distribution: the codebook describes the process
@@ -436,8 +445,9 @@ Other open points:
 | --- | --- |
 | `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, placeholders, legacy migration |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
-| `contracts/src/deployment.ts` | Deployment schemas, `backendEndpoints`, `jobServerAdminEndpoints`, status |
-| `job-server/src/app.ts` | Hono app: coder API under `/d/<db host>/<jobId>`, admin API |
+| `contracts/src/deployment.ts` | Deployment, annotator API and status schemas |
+| `contracts/src/endpoints/` | The four API registries: researcher, annotator, client, DB ([docs/api](api/README.md)) |
+| `job-server/src/app.ts` | Hono app: client API under `/d/<db host>/<jobId>`, DB API under `/db/deployments/...` |
 | `job-server/src/dbServers.ts` | Which db servers (allowlist or open), deployment ids, outbound fetch limits |
 | `job-server/src/registry.ts` | Lazily loads one runtime per deployment; failures aren't cached |
 | `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
@@ -449,10 +459,10 @@ Other open points:
 | `job-server/src/worker.ts` | Cloudflare entry: Worker routing + a Durable Object per deployment (`outboxDurable.ts`, `wrangler.toml`) |
 | `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
 | `job-server/src/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
-| `job-server/src/backend.ts` | Typed backend API client; validates db server responses |
-| `reference-db-server/src/server.ts` | Reference backend API: the whole db server side, in memory |
-| `conformance/src/index.ts` | Backend API conformance suite, runnable against any db server |
-| `mock-server/src/routes/backend.ts` | The dev server's backend API (sqlite) |
+| `job-server/src/annotatorClient.ts` | Typed annotator API client; validates db server responses |
+| `reference-db-server/src/annotator/` | Reference annotator API, one file per endpoint, in memory ([README](../packages/reference-db-server/README.md)) |
+| `conformance/src/index.ts` | Annotator API conformance suite, runnable against any db server |
+| `mock-server/src/routes/annotator.ts` | The dev server's annotator API (sqlite) |
 | `mock-server/src/routes/deployment.ts` | Researcher deployment endpoints, job server notification |
 | `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches and sources |
 

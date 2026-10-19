@@ -115,21 +115,36 @@ pass with per-slot memoization:
 
 ## 7. Admin UI
 
-`components/admin/AdminApp.tsx` is a tabbed shell: Settings, Codebook,
-Units, Unitsets, Coders, Preview. It uses an `AdminClient`
+`components/admin/AdminApp.tsx` is a tabbed shell: Overview, Codebook,
+Units, Invitations, Coders, Preview. It uses an `AdminClient`
 (`api/httpAdminClient.ts`).
 
 - **Codebook editor**: edits the whole document in memory (tree view and
   YAML), validated client-side with the contract's `validateCodebookItems`,
-  then saved as a whole. A deployed codebook is immutable; "Duplicate"
-  makes an editable copy. Unit loops have a distribution editor
-  (`UnitLoopForm.tsx`).
-- **Units**: CSV upload with a small built-in parser (`admin/csv.ts`).
-  Units are immutable once used.
-- **Unitsets**: manual selection, or "Split into parts…"
-  (`POST /unitsets/generate`).
-- **Coders**: invites (login requirement, participant id, preset variables,
-  max uses) and a progress table.
+  then saved as a whole. Versions (`codebook/versions.ts`,
+  docs/plan-codebook-publishing.md): coders get the *live* version (the
+  deployment's codebook); the editor works on the *draft* (the latest
+  version, if unpublished); older versions are read-only history that can be
+  restored as the draft. Editing the live version saves a new draft.
+  **Publish** (`PUT /deployment`) makes the draft live and freezes it; its
+  dialog lists the changes against the live version (`codebook/diff.ts`).
+  Unit loops have a distribution editor (`UnitLoopForm.tsx`).
+- **Units** (`units/`): units and unitsets on one page. CSV upload with a
+  small built-in parser (`admin/csv.ts`) that infers field types and shows
+  them before uploading; a paged table with a column per field and unitset
+  badges; pick a set to see its units in order; make a set from selected
+  units, or split units into parts (done client-side with `splitUnits`).
+  Units are immutable once used. The codebook editor warns about `$unit.x`
+  references to fields that don't exist (`codebook/unitFieldRefs.ts`).
+- **Overview** (`overview/`): live/paused/unpublished, the live and draft
+  codebook versions (open them in the editor), unit/coder/invitation counts,
+  answers per day (`GET /overview`), progress per loop from the job server
+  (`GET /deployment/status`), and the job settings (rename, archive, delete).
+- **Invitations**: create links (login requirement, participant id, preset
+  variables, max uses) and a table of all of them with uses and status;
+  revoke (no new coders), or delete while unused.
+- **Coders**: per coder the invitation, started, last active, answers, and
+  finished units per loop of the live codebook (docs/plan-job-admin.md).
 - **Preview** runs the job's latest codebook (deployed or not) on the job
   server as deployment `<db host>/<jobId>.preview`, with a token from
   `POST /job/:jobId/deployment/preview`. Coders and answers stay in the job

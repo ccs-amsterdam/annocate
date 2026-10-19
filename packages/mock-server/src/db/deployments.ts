@@ -21,7 +21,7 @@ interface DeploymentRow {
 interface CodebookRow {
   id: number;
   jobId: number;
-  name: string;
+  note: string | null;
   items: string;
   created: string;
   immutable: number;
@@ -65,7 +65,7 @@ export function putDeployment(
 }
 
 /** Loop name -> names of its questions (through conditions), from a stored codebook. */
-function loopVariables(db: DatabaseSync, jobId: number, codebookId: number): Map<string, string[]> {
+export function loopVariables(db: DatabaseSync, jobId: number, codebookId: number): Map<string, string[]> {
   const row = db.prepare("SELECT items FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, codebookId) as
     | { items: string }
     | undefined;
@@ -110,7 +110,7 @@ function reopenWarnings(db: DatabaseSync, jobId: number, previousCodebookId: num
   return warnings;
 }
 
-/** Everything the job server needs to run a deployed job (backend API `GET /deployment`). */
+/** Everything the job server needs to run a deployed job (annotator API `GET /deployment`). */
 export function getDeploymentSpec(db: DatabaseSync, jobId: number): DeploymentSpec | null {
   const deployment = getDeployment(db, jobId);
   if (!deployment) return null;
@@ -141,7 +141,7 @@ export function boundJobServer(db: DatabaseSync, jobId: number, configured: stri
 }
 
 /**
- * The spec for previewing (`GET /backend/.../deployment?preview=1`): the
+ * The spec for previewing (`GET /annotator/.../deployment?preview=1`): the
  * job's latest codebook, deployed or not, always active. Its `version` is
  * derived from the content, so the job server picks up every edit.
  */
@@ -177,7 +177,7 @@ function buildSpec(
     codebook: {
       id: codebook.id,
       jobId: codebook.jobId,
-      name: codebook.name,
+      note: codebook.note,
       items: JSON.parse(codebook.items),
       created: new Date(codebook.created),
       immutable: !!codebook.immutable,

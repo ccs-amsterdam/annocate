@@ -6,13 +6,14 @@ import { VariableValueSchema } from "./variableValue.js";
 // Contracts for the db-server <-> job-server split (see docs/architecture.md).
 //
 //  - db server:  source of truth for jobs, codebooks, units, coders and
-//                annotations. Any language. Implements the "backend API"
-//                below, which only the job server calls.
+//                annotations. Any language. Implements the annotator API
+//                (endpoints/annotator.ts), which only the job server calls;
+//                the schemas for it are below.
 //  - job server: the annotinder runtime (packages/job-server). Coders talk
 //                only to the job server; it distributes units (as described
 //                by the codebook's unit_loops), validates annotations and
 //                writes them through to the db server. Holds no state that
-//                cannot be rebuilt from the backend API.
+//                cannot be rebuilt from the annotator API.
 
 /** Researcher-facing: `PUT /job/:jobId/deployment` on the db server. */
 export const DeploymentWriteSchema = z.object({
@@ -49,12 +50,12 @@ export const ResetAnnotationsSchema = z.object({
 export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 
 // ---------------------------------------------------------------------------
-// Backend API: implemented by the db server, called only by the job server.
+// Annotator API: implemented by the db server, called only by the job server.
 // Authenticated with a job token (`authorization: Bearer <token>`), which the
-// job server gets from `POST /backend/job/:jobId/token` (plan §13).
+// job server gets from `POST /annotator/job/:jobId/token` (plan §13).
 // ---------------------------------------------------------------------------
 
-/** `GET /backend/job/:jobId/deployment` -- everything the job server needs to run the job, minus unit content. */
+/** `GET /annotator/job/:jobId/deployment` -- everything the job server needs to run the job, minus unit content. */
 export const DeploymentSpecSchema = z.object({
   jobId: IdSchema,
   version: z.number().int().positive(),
@@ -71,8 +72,8 @@ export const DeploymentSpecSchema = z.object({
 });
 export type DeploymentSpec = z.infer<typeof DeploymentSpecSchema>;
 
-/** `GET /backend/job/:jobId/units?ids=1,2,3` -- unit content, for the job server's cache. */
-export const BackendUnitSchema = z.object({
+/** `GET /annotator/job/:jobId/units?ids=1,2,3` -- unit content, for the job server's cache. */
+export const AnnotatorUnitSchema = z.object({
   id: IdSchema,
   externalId: z.string(),
   data: UnitDataSchema,
@@ -83,7 +84,7 @@ export const BackendUnitSchema = z.object({
    */
   hash: z.string().min(1),
 });
-export type BackendUnit = z.infer<typeof BackendUnitSchema>;
+export type AnnotatorUnit = z.infer<typeof AnnotatorUnitSchema>;
 
 /**
  * unit_loop name -> the unitset names (placeholders resolved) this coder was
@@ -95,15 +96,15 @@ export const CoderAssignmentsSchema = z.record(z.string(), z.array(z.string()));
 export type CoderAssignments = z.infer<typeof CoderAssignmentsSchema>;
 
 /** A coder as the job server sees it. No email or other identifying data. */
-export const BackendCoderSchema = z.object({
+export const AnnotatorCoderSchema = z.object({
   coderId: IdSchema,
   /** Coder-level variables, including values preset by their invitation. */
   variables: z.record(z.string(), VariableValueSchema),
   assignments: CoderAssignmentsSchema.default({}),
 });
-export type BackendCoder = z.infer<typeof BackendCoderSchema>;
+export type AnnotatorCoder = z.infer<typeof AnnotatorCoderSchema>;
 
-/** `POST /backend/job/:jobId/coders/resolve` */
+/** `POST /annotator/job/:jobId/coders/resolve` */
 export const ResolveCoderRequestSchema = z.object({
   /** Client-generated, persisted coder key (dev-mode coder auth; see mock-server auth.ts). */
   coderKey: z.string().min(1),
@@ -124,12 +125,12 @@ export const ResolveCoderRequestSchema = z.object({
 });
 export type ResolveCoderRequest = z.infer<typeof ResolveCoderRequestSchema>;
 
-/** `PUT /backend/job/:jobId/coders/:coderId` -- full replace of the job-server-managed coder state. */
-export const BackendCoderWriteSchema = z.object({
+/** `PUT /annotator/job/:jobId/coders/:coderId` -- full replace of the job-server-managed coder state. */
+export const AnnotatorCoderWriteSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
   assignments: CoderAssignmentsSchema,
 });
-export type BackendCoderWrite = z.infer<typeof BackendCoderWriteSchema>;
+export type AnnotatorCoderWrite = z.infer<typeof AnnotatorCoderWriteSchema>;
 
 // Annotations are stored per (unit, coder, variable). A row can be retired
 // (`retiredAt`) instead of deleted, e.g. when a researcher resets units; only
@@ -137,10 +138,10 @@ export type BackendCoderWrite = z.infer<typeof BackendCoderWriteSchema>;
 // the job server asks it to count live variables (docs/architecture.md §8).
 
 /**
- * `GET /backend/job/:jobId/annotations?coderId=X` -- one coder's live
+ * `GET /annotator/job/:jobId/annotations?coderId=X` -- one coder's live
  * annotations, per unit (the job server's per-coder workspace).
  */
-export const BackendAnnotationSchema = z.object({
+export const AnnotatorAnnotationSchema = z.object({
   unitId: IdSchema,
   coderId: IdSchema,
   /** Live values only, by variable name, including ones from older codebook versions. */
@@ -150,10 +151,10 @@ export const BackendAnnotationSchema = z.object({
   /** Last write. */
   updated: z.coerce.date(),
 });
-export type BackendAnnotation = z.infer<typeof BackendAnnotationSchema>;
+export type AnnotatorAnnotation = z.infer<typeof AnnotatorAnnotationSchema>;
 
 /**
- * `POST /backend/job/:jobId/finished` -- the job server's one bulk query
+ * `POST /annotator/job/:jobId/finished` -- the job server's one bulk query
  * over annotations. Per group of variables: the rows where *all* `variables`
  * have a live value ("finished"), optionally with the values of `values`.
  * The db server only filters; the job server does the counting.
@@ -179,7 +180,7 @@ export const FinishedRequestSchema = z.object({
 });
 export type FinishedRequest = z.infer<typeof FinishedRequestSchema>;
 
-export const BackendFinishedSchema = z.object({
+export const AnnotatorFinishedSchema = z.object({
   loop: z.string(),
   /** `null` for coder-level groups. */
   unitId: IdSchema.nullable(),
@@ -188,7 +189,7 @@ export const BackendFinishedSchema = z.object({
   created: z.coerce.date(),
   values: z.record(z.string(), VariableValueSchema).optional(),
 });
-export type BackendFinished = z.infer<typeof BackendFinishedSchema>;
+export type AnnotatorFinished = z.infer<typeof AnnotatorFinishedSchema>;
 
 /**
  * One unit's answers from one coder: upserts a live value per given
@@ -196,7 +197,7 @@ export type BackendFinished = z.infer<typeof BackendFinishedSchema>;
  * writes complete units (every variable of the loop, `skip` for unasked
  * questions).
  */
-export const BackendAnnotationWriteSchema = z.object({
+export const AnnotatorAnnotationWriteSchema = z.object({
   unitId: IdSchema,
   coderId: IdSchema,
   variables: z.record(z.string(), VariableValueSchema),
@@ -210,10 +211,10 @@ export const BackendAnnotationWriteSchema = z.object({
    */
   unitHash: z.string().min(1).optional(),
 });
-export type BackendAnnotationWrite = z.infer<typeof BackendAnnotationWriteSchema>;
+export type AnnotatorAnnotationWrite = z.infer<typeof AnnotatorAnnotationWriteSchema>;
 
 /**
- * `POST /backend/job/:jobId/annotations` -- the job server's buffered
+ * `POST /annotator/job/:jobId/annotations` -- the job server's buffered
  * writes (its outbox, flushed about once a minute), applied **in order**:
  * a later write for the same unit and coder wins. Writes that can never
  * succeed (unknown unit or coder) are skipped and reported in `rejected`,
@@ -221,19 +222,19 @@ export type BackendAnnotationWrite = z.infer<typeof BackendAnnotationWriteSchema
  * nothing could be stored (e.g. the db server is down). Retrying a batch is
  * harmless: writes are upserts.
  */
-export const BackendAnnotationBatchSchema = z.object({
-  annotations: z.array(BackendAnnotationWriteSchema).min(1).max(1000),
+export const AnnotatorAnnotationBatchSchema = z.object({
+  annotations: z.array(AnnotatorAnnotationWriteSchema).min(1).max(1000),
 });
-export type BackendAnnotationBatch = z.infer<typeof BackendAnnotationBatchSchema>;
+export type AnnotatorAnnotationBatch = z.infer<typeof AnnotatorAnnotationBatchSchema>;
 
-export const BackendAnnotationBatchResultSchema = z.object({
+export const AnnotatorAnnotationBatchResultSchema = z.object({
   /** Index into `annotations`, and why. */
   rejected: z.array(z.object({ index: z.number().int().nonnegative(), error: z.string() })),
 });
-export type BackendAnnotationBatchResult = z.infer<typeof BackendAnnotationBatchResultSchema>;
+export type AnnotatorAnnotationBatchResult = z.infer<typeof AnnotatorAnnotationBatchResultSchema>;
 
 /**
- * `POST /backend/job/:jobId/token` -- how a job server gets a **job token**
+ * `POST /annotator/job/:jobId/token` -- how a job server gets a **job token**
  * (plan §13). No shared secret: `assertion` is a JWT signed by the job
  * server (EdDSA / Ed25519, "private_key_jwt" as in RFC 7523), with claims
  * `{ iss: <job server URL>, aud: <db server URL>, jobId, iat, exp, jti }`
@@ -253,7 +254,7 @@ export type BackendAnnotationBatchResult = z.infer<typeof BackendAnnotationBatch
  * `404 { error }` if the job doesn't exist or has no job server; any other
  * failure is `401 { error }`.
  *
- * **Every other backend call** carries the job token as
+ * **Every other annotator API call** carries the job token as
  * `authorization: Bearer <token>`. The db server checks its signature and
  * expiry, that `jobId` matches the path, and that `aud` is still the job
  * server the job is bound to. If not, it answers
@@ -271,66 +272,9 @@ export const JobTokenResponseSchema = z.object({
 });
 export type JobTokenResponse = z.infer<typeof JobTokenResponseSchema>;
 
-export const backendEndpoints = {
-  requestJobToken: {
-    method: "POST",
-    path: "/backend/job/:jobId/token",
-    request: JobTokenRequestSchema,
-    response: JobTokenResponseSchema,
-  },
-  getDeployment: {
-    method: "GET",
-    path: "/backend/job/:jobId/deployment",
-    request: z.void(),
-    response: DeploymentSpecSchema,
-  },
-  getUnits: {
-    method: "GET",
-    path: "/backend/job/:jobId/units",
-    request: z.void(),
-    response: z.array(BackendUnitSchema),
-  },
-  listCoders: {
-    method: "GET",
-    path: "/backend/job/:jobId/coders",
-    request: z.void(),
-    response: z.array(BackendCoderSchema),
-  },
-  resolveCoder: {
-    method: "POST",
-    path: "/backend/job/:jobId/coders/resolve",
-    request: ResolveCoderRequestSchema,
-    response: BackendCoderSchema,
-  },
-  putCoder: {
-    method: "PUT",
-    path: "/backend/job/:jobId/coders/:coderId",
-    request: BackendCoderWriteSchema,
-    response: z.void(),
-  },
-  listFinished: {
-    method: "POST",
-    path: "/backend/job/:jobId/finished",
-    request: FinishedRequestSchema,
-    response: z.array(BackendFinishedSchema),
-  },
-  listAnnotations: {
-    method: "GET",
-    path: "/backend/job/:jobId/annotations",
-    request: z.void(),
-    response: z.array(BackendAnnotationSchema),
-  },
-  putAnnotations: {
-    method: "POST",
-    path: "/backend/job/:jobId/annotations",
-    request: BackendAnnotationBatchSchema,
-    response: BackendAnnotationBatchResultSchema,
-  },
-} as const;
-
 // ---------------------------------------------------------------------------
-// Job server admin API: called by the db server, signed with the job's call
-// key (JOB_SERVER_SIGNATURE_HEADER).
+// Job server DB API (endpoints/db.ts): called by the db server, signed with
+// the job's call key (JOB_SERVER_SIGNATURE_HEADER).
 // Deployment ids are `<db host>/<jobId>` (port included if not the default),
 // e.g. `amcat.nl/42`: a job server finds the db server from the id alone.
 // ---------------------------------------------------------------------------
@@ -411,38 +355,3 @@ export const PreviewSessionSchema = z.object({
 });
 export type PreviewSession = z.infer<typeof PreviewSessionSchema>;
 
-/**
- * Calls from the db server to the job server (`jobServerAdminEndpoints`) are
- * signed with the job's **call key** (`ck`, see `JobTokenRequestSchema`):
- *
- *   x-annotinder-signature: t=<unix seconds>,s=<base64url HMAC-SHA256(callKey,
- *     "<t>\n<METHOD>\n<path>\n<body>")>
- *
- * `path` is the request path (e.g. `/admin/deployments/amcat.nl/42/refresh`),
- * `body` the raw body ("" if none). The job server accepts `t` within 5
- * minutes of its clock. It knows the call key from its own job token.
- */
-export const JOB_SERVER_SIGNATURE_HEADER = "x-annotinder-signature";
-
-export const jobServerAdminEndpoints = {
-  refreshDeployment: {
-    method: "POST",
-    path: "/admin/deployments/:deploymentId/refresh",
-    /** Optional body. */
-    request: RefreshDeploymentSchema,
-    /** The deployment version the job server now runs. */
-    response: z.object({ version: z.number().int().positive() }),
-  },
-  getDeploymentStatus: {
-    method: "GET",
-    path: "/admin/deployments/:deploymentId/status",
-    request: z.void(),
-    response: DeploymentStatusSchema,
-  },
-  dropDeployment: {
-    method: "DELETE",
-    path: "/admin/deployments/:deploymentId",
-    request: z.void(),
-    response: z.void(),
-  },
-} as const;

@@ -1,8 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import { unitHash } from "./units.js";
 import type {
-  BackendAnnotation,
-  BackendFinished,
+  AnnotatorAnnotation,
+  AnnotatorFinished,
   FinishedRequest,
   ResetAnnotations,
   VariableValue,
@@ -10,8 +10,8 @@ import type {
 
 // Annotations, one row per (unit, coder, variable) in `annotation_values`.
 // Rows are retired, never deleted; only live rows (retiredAt IS NULL) count.
-// Shared by the legacy coder routes (routes/session.ts) and the backend API
-// the job server writes through (routes/backend.ts).
+// Shared by the legacy coder routes (routes/session.ts) and the annotator API
+// the job server writes through (routes/annotator.ts).
 
 interface ValueRow {
   unitId: number;
@@ -22,22 +22,17 @@ interface ValueRow {
   updated: string;
 }
 
-interface UnitsetRow {
-  name: string;
-  unitIds: string;
-}
-
 const placeholders = (n: number) => Array(n).fill("?").join(",");
 
 /** One coder's live annotations per unit, ordered by first write (the job server's per-coder workspace). */
-export function listCoderAnnotations(db: DatabaseSync, jobId: number, coderId: number): BackendAnnotation[] {
+export function listCoderAnnotations(db: DatabaseSync, jobId: number, coderId: number): AnnotatorAnnotation[] {
   const rows = db
     .prepare(
       `SELECT unitId, coderId, variable, value, created, updated FROM annotation_values
        WHERE jobId = ? AND coderId = ? AND retiredAt IS NULL ORDER BY created, id`,
     )
     .all(jobId, coderId) as unknown as ValueRow[];
-  const byUnit = new Map<number, BackendAnnotation>();
+  const byUnit = new Map<number, AnnotatorAnnotation>();
   for (const row of rows) {
     let annotation = byUnit.get(row.unitId);
     if (!annotation) {
@@ -61,8 +56,8 @@ export function listCoderAnnotations(db: DatabaseSync, jobId: number, coderId: n
  * live value. The db server only counts; which variables make up a loop is
  * the job server's business (it reads the codebook).
  */
-export function listFinished(db: DatabaseSync, jobId: number, request: FinishedRequest): BackendFinished[] {
-  const result: BackendFinished[] = [];
+export function listFinished(db: DatabaseSync, jobId: number, request: FinishedRequest): AnnotatorFinished[] {
+  const result: AnnotatorFinished[] = [];
   const coderFilter = request.coderId !== undefined ? " AND coderId = ?" : "";
   const coderArg = request.coderId !== undefined ? [request.coderId] : [];
 
@@ -125,11 +120,11 @@ function listFinishedCoders(
   jobId: number,
   group: FinishedRequest["loops"][number],
   coderId: number | undefined,
-): BackendFinished[] {
+): AnnotatorFinished[] {
   const rows = db
     .prepare(`SELECT id, variables, created FROM coders WHERE jobId = ?${coderId !== undefined ? " AND id = ?" : ""} ORDER BY id`)
     .all(jobId, ...(coderId !== undefined ? [coderId] : [])) as unknown as { id: number; variables: string; created: string | null }[];
-  const result: BackendFinished[] = [];
+  const result: AnnotatorFinished[] = [];
   for (const row of rows) {
     const variables = JSON.parse(row.variables) as Record<string, VariableValue>;
     if (!group.variables.every((v) => v in variables)) continue;
@@ -149,8 +144,7 @@ function listFinishedCoders(
 /**
  * Upserts a live value per given variable; variables not given are left
  * alone (so values from older codebook versions stay). `created` is kept on
- * update. Also marks the unit immutable, and -- for the legacy coder routes
- * and `GET /coders` -- records it as done when every given value is done.
+ * update. Also marks the unit immutable.
  */
 export function putAnnotation(
   db: DatabaseSync,
@@ -178,9 +172,6 @@ export function putAnnotation(
     upsert.run(jobId, unitId, coderId, variable, JSON.stringify(value), codebookId ?? null, stale ? shownHash : null, now, now);
   }
   db.prepare("UPDATE units SET immutable = 1 WHERE jobId = ? AND id = ?").run(jobId, unitId);
-
-  const values = Object.values(variables);
-  if (values.length > 0 && values.every((v) => v.done)) markDone(db, jobId, unitId, coderId);
 }
 
 /**
@@ -204,23 +195,4 @@ export function retireAnnotations(db: DatabaseSync, jobId: number, request: Rese
     .run(new Date().toISOString(), ...args);
   db.prepare("UPDATE deployments SET annotationEpoch = annotationEpoch + 1 WHERE jobId = ?").run(jobId);
   return Number(result.changes);
-}
-
-/** Legacy per-unitset progress lists (`coders.doneUnitIds`), still behind the researcher `GET /coders` listing. */
-function markDone(db: DatabaseSync, jobId: number, unitId: number, coderId: number): void {
-  const coder = db.prepare("SELECT doneUnitIds FROM coders WHERE id = ?").get(coderId) as
-    | { doneUnitIds: string }
-    | undefined;
-  if (!coder) return;
-  const doneUnitIds = JSON.parse(coder.doneUnitIds) as Record<string, number[]>;
-  const mark = (key: string) => {
-    const done = doneUnitIds[key] ?? [];
-    if (!done.includes(unitId)) doneUnitIds[key] = [...done, unitId];
-  };
-  mark("__all__");
-  const unitsets = db.prepare("SELECT name, unitIds FROM unitsets WHERE jobId = ?").all(jobId) as unknown as UnitsetRow[];
-  for (const unitset of unitsets) {
-    if ((JSON.parse(unitset.unitIds) as number[]).includes(unitId)) mark(unitset.name);
-  }
-  db.prepare("UPDATE coders SET doneUnitIds = ? WHERE id = ?").run(JSON.stringify(doneUnitIds), coderId);
 }

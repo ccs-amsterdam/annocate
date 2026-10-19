@@ -15,6 +15,8 @@ interface CodebookTreeViewProps {
   onMoveItem: (source: string, target: string, position: MoveTargetPosition) => void;
   onMoveToRootEnd: (source: string) => void;
   validationIssues?: CodebookValidationIssue[];
+  /** Immutable codebook: items can be selected, but not added, moved or deleted. */
+  readOnly?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export function CodebookTreeView({
   onMoveItem,
   onMoveToRootEnd,
   validationIssues = [],
+  readOnly = false,
 }: CodebookTreeViewProps) {
   const [movingKey, setMovingKey] = useState<string | null>(null);
   const cancelMove = () => setMovingKey(null);
@@ -58,6 +61,7 @@ export function CodebookTreeView({
     items,
     selected,
     movingKey,
+    readOnly,
 
     select: onSelect,
     remove: onDelete,

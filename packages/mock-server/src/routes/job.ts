@@ -68,7 +68,7 @@ export function jobRoutes(db: DatabaseSync) {
 
   app.delete("/job/:id", requireJobUser(db, "ADMIN"), (c) => {
     const jobId = c.get("jobId");
-    for (const table of ["job_users", "codebooks", "unitsets", "units", "coders", "invites", "jobs"]) {
+    for (const table of ["job_users", "codebooks", "unitsets", "units", "unit_fields", "coders", "invites", "jobs"]) {
       db.prepare(`DELETE FROM ${table} WHERE ${table === "jobs" ? "id" : "jobId"} = ?`).run(jobId);
     }
     return c.body(null, 204);

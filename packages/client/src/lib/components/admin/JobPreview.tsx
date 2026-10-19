@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import type { PreviewSession } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
-import { useCodebooksQuery, useUnitsQuery } from "../../admin/queries";
+import { useCodebooksQuery, useDeploymentQuery, useUnitsQuery } from "../../admin/queries";
+import { describeVersions } from "../../codebook/versions";
 import { JobRunner } from "../JobRunner";
 import { Button } from "@/components/ui/button";
 import { Smartphone, Monitor, RotateCcw, AlertCircle, Maximize2 } from "lucide-react";
@@ -32,13 +33,14 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
 ];
 
 /**
- * Runs the job's latest codebook (deployed or not) in a device frame. The job
+ * Runs the job's latest codebook (the draft, else the live version) in a device frame. The job
  * server runs it as a preview deployment: coders and answers stay in its
  * memory, nothing is written to the db server. Each preview session gets a
  * fresh token, and with it a fresh coder.
  */
 export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
   const codebooksQuery = useCodebooksQuery(client);
+  const deploymentQuery = useDeploymentQuery(client);
   const unitsQuery = useUnitsQuery(client);
 
   const [deviceMode, setDeviceMode] = useState<"mobile" | "desktop">("mobile");
@@ -84,7 +86,12 @@ export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
     setPreviewKey(`preview-${client.jobId}-${Date.now()}`);
   };
 
-  const hasCodebook = (codebooksQuery.data?.length ?? 0) > 0;
+  const codebooks = codebooksQuery.data ?? [];
+  const hasCodebook = codebooks.length > 0;
+  const latest = codebooks.at(-1);
+  const latestStatus = latest
+    ? describeVersions(codebooks, deploymentQuery.data?.codebookId ?? null).statusOf(latest.id)
+    : null;
   const hasUnits = (unitsQuery.data?.length ?? 0) > 0;
 
   if (codebooksQuery.isLoading || unitsQuery.isLoading) {
@@ -176,6 +183,15 @@ export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
               Full Width
             </button>
           </div>
+
+          {latest && (
+            <span
+              className="rounded-md bg-muted px-2 py-1 text-xs text-foreground"
+              title="Preview runs the latest version. Coders keep using the live version until you publish."
+            >
+              Previewing v{codebooks.length} ({latestStatus === "draft" ? "draft" : latestStatus === "live" ? "live" : "not live"})
+            </span>
+          )}
 
           {/* Presets and Dimension Inputs */}
           {!isFullScreen && (

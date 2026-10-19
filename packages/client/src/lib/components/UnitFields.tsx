@@ -29,7 +29,7 @@ export function UnitFields({ layout, data }: { layout: UnitLayout; data: UnitDat
       if (!name) return null;
       const stripped = name.replace(/^\$unit\./, "");
       const value = lookup[name] ?? lookup[stripped];
-      const text = value === undefined ? "" : String(value);
+      const text = value === undefined || value === null ? "" : String(value);
 
       if (as === "image") return <img src={text} alt={stripped} className="max-w-full" />;
 

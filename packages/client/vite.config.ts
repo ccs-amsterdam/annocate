@@ -15,7 +15,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // The coder API is same-origin (session cookies): forward it to the job server.
+    // The job server's client API is same-origin (session cookies): forward it to the job server.
     proxy: {
       "/d/": process.env.JOB_SERVER_URL ?? "http://localhost:8788",
     },

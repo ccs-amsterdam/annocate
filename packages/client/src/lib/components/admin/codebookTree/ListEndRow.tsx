@@ -4,6 +4,7 @@ import { useCodebookTree } from "./context";
 import { AddItemMenu } from "./AddItemMenu";
 import { TreeRow } from "./TreeRow";
 import { getItemKey, insertableTypesIn, type TreeNode } from "./utils";
+import { Icon, LucideListEnd } from "lucide-react";
 
 interface ListEndRowProps {
   /** Container whose child list this row closes; null for the codebook root. */
@@ -21,7 +22,8 @@ interface ListEndRowProps {
  * point (and all there is in an empty codebook), so it stays full size.
  */
 export function ListEndRow({ parent }: ListEndRowProps) {
-  const { movingKey } = useCodebookTree();
+  const { movingKey, readOnly } = useCodebookTree();
+  if (readOnly) return null;
   if (movingKey === null) return <AddAtEndRow parent={parent} />;
   return <MoveToEndRow parent={parent} />;
 }
@@ -35,7 +37,7 @@ function AddAtEndRow({ parent }: ListEndRowProps) {
     <TreeRow size={"normal"}>
       <AddItemMenu
         title={`Add to end of ${containerName}`}
-        label={`${containerName} item`}
+        label={`add ${containerName} item`}
         allowedTypes={insertableTypesIn(tree.items, parent)}
         onAdd={(type) => tree.insertAtEnd(parentKey, type)}
       />
@@ -47,11 +49,9 @@ function MoveToEndRow({ parent }: ListEndRowProps) {
   const tree = useCodebookTree();
   const [hovered, setHovered] = useState(false);
   const parentKey = parent ? getItemKey(parent) : null;
-  const compact = parent !== null;
-  const size = compact ? "compact" : "normal";
 
   // Keep the empty row so the layout stays identical to normal mode
-  if (!tree.canMoveToEnd(parentKey)) return <TreeRow size={size} />;
+  if (!tree.canMoveToEnd(parentKey)) return <TreeRow size="normal" />;
 
   function handleClick(e: MouseEvent) {
     e.stopPropagation();
@@ -60,21 +60,24 @@ function MoveToEndRow({ parent }: ListEndRowProps) {
 
   return (
     <TreeRow
-      size={size}
+      size='normal'
       onClick={handleClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       showInsertionLine={hovered}
       className="cursor-pointer"
     >
-      <span
+
+      <button
+        type="button"
         className={cn(
-          "rounded-md border border-dashed border-border px-2 font-medium text-muted-foreground group-hover:border-primary/60 group-hover:text-foreground",
-          compact ? "py-0 text-[10px] leading-4" : "py-0.5 text-xs",
+          "flex cursor-pointer items-center gap-2.5 rounded leading-4 text-muted-foreground/60 transition-colors hover:text-foreground",
+          "text-foreground ",
         )}
       >
+        <LucideListEnd className="h-4 w-4 m-auto" />
         Move here
-      </span>
+      </button>
     </TreeRow>
   );
 }

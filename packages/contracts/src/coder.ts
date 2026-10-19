@@ -21,7 +21,17 @@ export const CoderProgressSchema = z.object({
   email: z.string().email().optional(),
   /** External label (e.g. a panel company's participant id); see docs/coder-identity.md. */
   participantId: z.string().optional(),
-  unitsDone: z.record(z.string(), z.number().int().nonnegative()), // unitset name -> count done
+  /** The invite the coder came in through; null for coders from before this was recorded. */
+  inviteId: IdSchema.nullable(),
+  inviteLabel: z.string().nullable(),
+  /** When the coder was created (first opened the invite); null if unknown. */
+  started: z.coerce.date().nullable(),
+  /** Their latest answer; null if they haven't answered anything yet. */
+  lastActive: z.coerce.date().nullable(),
+  /** Live answers (unit-level variable values). */
+  answers: z.number().int().nonnegative(),
+  /** unit_loop name -> units this coder finished, for the loops of the live codebook. */
+  finished: z.record(z.string(), z.number().int().nonnegative()),
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 
@@ -67,5 +77,12 @@ export const CoderInviteResponseSchema = CoderInviteWriteSchema.extend({
   secret: z.string(),
   /** Number of coders created from this invite so far. */
   uses: z.number().int().nonnegative(),
+  /** Null for invites from before this was recorded. */
+  created: z.coerce.date().nullable(),
+  /**
+   * Set once revoked (`POST /invites/:id/revoke`): no new coders. Coders who
+   * already started keep working. An invite can only be deleted while unused.
+   */
+  revokedAt: z.coerce.date().nullable(),
 });
 export type CoderInviteResponse = z.infer<typeof CoderInviteResponseSchema>;

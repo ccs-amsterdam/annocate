@@ -2,48 +2,43 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CodebookVersionsView } from "./CodebookVersionsDialog";
 import type { CodebookMeta } from "@annotinder/contracts";
+import { describeVersions } from "../../codebook/versions";
 
 describe("CodebookVersionsDialog", () => {
   const mockCodebooks: CodebookMeta[] = [
     {
       id: 1,
-      name: "Initial Codebook",
+      note: "Initial Codebook",
       created: new Date("2026-09-01T10:00:00Z"),
       immutable: true,
     },
     {
       id: 2,
-      name: "Sentiment and Actors",
+      note: null,
       created: new Date("2026-09-15T14:30:00Z"),
       immutable: false,
     },
   ];
 
-  it("renders versions, timestamps, active status, immutability, and provenance explanation", () => {
+  it("renders versions with their live/draft status and the explanation", () => {
     const html = renderToStaticMarkup(
       <CodebookVersionsView
         codebooks={mockCodebooks}
-        currentVersion={2}
-        latestCodebookId={2}
-        onSelectVersion={vi.fn()}
-        onCreateNewVersion={vi.fn()}
-        onDuplicateVersion={vi.fn()}
+        versions={describeVersions(mockCodebooks, 1)}
+        openId={2}
+        onView={vi.fn()}
+        onRestore={vi.fn()}
       />,
     );
 
-    // Provenance explanation
-    expect(html).toContain("About Codebook Versions &amp; Provenance");
-    expect(html).toContain("one active version");
-    expect(html).toContain("immutable");
-
-    // Version items
+    expect(html).toContain("Coders use the");
+    expect(html).toContain("v1");
     expect(html).toContain("Initial Codebook");
-    expect(html).toContain("Sentiment and Actors");
-
-    // Status badges
-    expect(html).toContain("Active Version");
-    expect(html).toContain("Immutable");
+    expect(html).toContain("v2");
+    expect(html).toContain("Live");
     expect(html).toContain("Draft");
-    expect(html).toContain("In Editor");
+    expect(html).toContain("In editor");
+    // Only the live version can be restored; the draft is edited directly
+    expect(html.match(/Restore as draft/g)).toHaveLength(1);
   });
 });

@@ -1,201 +1,236 @@
-import { useState } from "react";
-import type { CodebookMeta, CodebookResponse } from "@annotinder/contracts";
+import { useRef, useState } from "react";
+import type { CodebookResponse } from "@annotinder/contracts";
 import type { AdminClient } from "../../api/httpAdminClient";
-import { useCodebooksQuery, useCodebookQuery } from "../../admin/queries";
-import { CodebookEditor } from "./CodebookEditor";
+import {
+  useCodebooksQuery,
+  useCodebookQuery,
+  useCreateCodebookMutation,
+  useDeleteCodebookMutation,
+  useDeploymentQuery,
+  usePublishMutation,
+  useUpdateCodebookMutation,
+} from "../../admin/queries";
+import { describeVersions } from "../../codebook/versions";
+import { CodebookEditor, type CodebookEditorMode, type SaveFn } from "./CodebookEditor";
+import { CodebookStatusBanner } from "./CodebookStatusBanner";
 import { CodebookVersionsDialog } from "./CodebookVersionsDialog";
+import { PublishDialog } from "./PublishDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
-import { Button } from "@/components/ui/button";
-import { Plus, Loader2, GitBranch } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface CodebookManagerProps {
   client: AdminClient;
   /** Callback to notify parent (AdminApp) if there are unsaved changes */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Receives the editor's save function, so the parent can save before navigating away. */
+  registerSave?: (save: SaveFn | null) => void;
+  /** Version to open first (e.g. from the overview); null opens the current version. */
+  initialVersionId?: number | null;
 }
 
 /**
- * Single-tab codebook manager with version history modal dialog.
- * Shows the active codebook version in full height by default, with a "Versions"
- * button in the editor action bar providing a complete overview of versions,
- * timestamps, active status, immutability, and provenance settings.
+ * The codebook tab: one editor on the current version, a banner saying how it
+ * relates to what coders use, and the versions dialog.
+ *
+ * Versions (docs/plan-codebook-publishing.md): coders get the *live* version
+ * (the deployment's codebook), the editor works on the *draft* (the latest
+ * version, if not yet published), and everything else is read-only history.
+ * Publishing makes the draft live, which also freezes it.
  */
-export function CodebookManager({ client, onDirtyChange }: CodebookManagerProps) {
+export function CodebookManager({ client, onDirtyChange, registerSave, initialVersionId = null }: CodebookManagerProps) {
   const codebooksQuery = useCodebooksQuery(client);
+  const deploymentQuery = useDeploymentQuery(client);
   const codebooks = codebooksQuery.data ?? [];
+  const versions = describeVersions(codebooks, deploymentQuery.data?.codebookId ?? null);
 
-  // Currently selected codebook ID for inspection/editing, or "new" / "duplicate", or null (default to latest)
-  const [selectedVersionId, setSelectedVersionId] = useState<number | "new" | "duplicate" | null>(null);
+  // The version shown in the editor; null follows the current version (draft, else latest)
+  const [selectedId, setSelectedId] = useState<number | null>(initialVersionId);
+  const openId = selectedId ?? versions.currentId;
+  const openQuery = useCodebookQuery(client, openId);
+  const liveQuery = useCodebookQuery(client, versions.liveId);
 
-  // When duplicating an existing codebook to make a new draft
-  const [duplicateSource, setDuplicateSource] = useState<CodebookResponse | null>(null);
-
-  // Versions overview modal state
+  // Bumped when the open version's content is replaced underneath the editor (restore)
+  const [editorEpoch, setEditorEpoch] = useState(0);
   const [versionsDialogOpen, setVersionsDialogOpen] = useState(false);
+  const [toPublish, setToPublish] = useState<CodebookResponse | null>(null);
+
+  const createCodebook = useCreateCodebookMutation(client);
+  const updateCodebook = useUpdateCodebookMutation(client);
+  const deleteCodebook = useDeleteCodebookMutation(client);
+  const publish = usePublishMutation(client);
 
   // Unsaved changes tracking
+  const saveRef = useRef<SaveFn | null>(null);
   const [isDirty, setIsDirtyInternal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [pendingSaving, setPendingSaving] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
 
   function setIsDirty(dirty: boolean) {
     setIsDirtyInternal(dirty);
     onDirtyChange?.(dirty);
   }
 
-  // Intercept version changes if unsaved edits exist
   function requestNavigation(action: () => void) {
-    if (isDirty) {
-      setPendingAction(() => action);
-    } else {
-      action();
+    if (isDirty) setPendingAction(() => action);
+    else action();
+  }
+
+  async function saveAndContinue() {
+    setPendingSaving(true);
+    setPendingError(null);
+    try {
+      await saveRef.current?.();
+      const action = pendingAction;
+      setPendingAction(null);
+      action?.();
+    } catch (e) {
+      setPendingError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPendingSaving(false);
     }
   }
 
-  // The latest codebook is the active version
-  const latestCodebookId = codebooks.length > 0 ? codebooks[codebooks.length - 1].id : null;
+  // An id that isn't listed yet was just created: it's the new current version
+  const isListed = openId !== null && versions.numberOf(openId) !== null;
+  const openCodebook = openId === null ? null : (openQuery.data ?? null);
+  const mode: CodebookEditorMode =
+    openId === null
+      ? "draft"
+      : isListed && openId !== versions.currentId
+        ? "history"
+        : openCodebook?.immutable
+          ? "live"
+          : "draft";
+  const openNumber = openId === null ? null : (versions.numberOf(openId) ?? codebooks.length + 1);
+  const liveNumber = versions.liveId === null ? null : versions.numberOf(versions.liveId);
+  const draftNumber = versions.draftId === null ? null : versions.numberOf(versions.draftId);
 
-  // The active version: if user hasn't explicitly chosen a version, default to the latest codebook
-  const currentVersion: number | "new" | "duplicate" =
-    selectedVersionId !== null
-      ? selectedVersionId
-      : latestCodebookId !== null
-        ? latestCodebookId
-        : "new";
-
-  // Active codebook ID to fetch
-  const activeId = typeof currentVersion === "number" ? currentVersion : null;
-  const activeCodebookQuery = useCodebookQuery(client, activeId);
-
-  function handleCreateNewVersion() {
-    requestNavigation(() => {
-      // If we have an active codebook, clone it as initial draft for the new version
-      if (activeCodebook) {
-        setDuplicateSource({
-          ...activeCodebook,
-          id: -1,
-          name: `${activeCodebook.name} (v${codebooks.length + 1})`,
-          immutable: false,
-        });
-        setSelectedVersionId("duplicate");
-      } else {
-        setSelectedVersionId("new");
-      }
-    });
+  function viewVersion(id: number) {
+    requestNavigation(() => setSelectedId(id === versions.currentId ? null : id));
   }
 
-  function handleSelectVersion(targetId: number) {
-    requestNavigation(() => {
-      setSelectedVersionId(targetId);
-      setDuplicateSource(null);
-    });
-  }
-
-  async function handleDuplicateVersion(meta: CodebookMeta) {
+  /** Copies a version into the draft (replacing the draft's content, if there is one). */
+  function restoreVersion(id: number) {
     requestNavigation(async () => {
       try {
-        const full = await client.getCodebook(meta.id);
-        setDuplicateSource({
-          ...full,
-          id: -1,
-          name: `${full.name} (v${codebooks.length + 1})`,
-          immutable: false,
-        });
-        setSelectedVersionId("duplicate");
+        const source = await client.getCodebook(id);
+        const body = { items: source.items };
+        if (versions.draftId !== null) {
+          if (!confirm(`Replace the draft (v${draftNumber}) with the content of v${versions.numberOf(id)}?`)) return;
+          await updateCodebook.mutateAsync({ id: versions.draftId, body });
+          setSelectedId(null);
+        } else {
+          const created = await createCodebook.mutateAsync(body);
+          setSelectedId(created.id);
+        }
+        setIsDirty(false);
+        setEditorEpoch((n) => n + 1);
       } catch (e) {
-        console.error("Failed to duplicate codebook version", e);
+        alert(`Could not restore v${versions.numberOf(id)}: ${e instanceof Error ? e.message : String(e)}`);
       }
     });
   }
 
-  if (codebooksQuery.isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground text-sm">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        Loading codebooks...
-      </div>
-    );
+  async function discardDraft() {
+    if (versions.draftId === null) return;
+    if (!confirm(`Discard draft v${draftNumber} and all its changes?`)) return;
+    try {
+      await deleteCodebook.mutateAsync(versions.draftId);
+    } catch (e) {
+      alert(`Could not discard the draft: ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    }
+    setIsDirty(false);
+    setSelectedId(null);
+    setEditorEpoch((n) => n + 1);
   }
 
-  // If no codebooks exist yet for this job
-  if (codebooks.length === 0 && currentVersion !== "new") {
+  if (codebooksQuery.isLoading || deploymentQuery.isLoading || (openId !== null && !openCodebook)) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border p-12 text-center">
-        <div className="rounded-full bg-primary/10 p-4 text-primary">
-          <GitBranch className="h-8 w-8" />
-        </div>
-        <div>
-          <h3 className="text-base font-bold text-foreground">No Codebook Yet</h3>
-          <p className="mt-1 text-sm text-muted-foreground max-w-sm">
-            Create your first codebook to define annotation questions, unit loops, and variables for this job.
-          </p>
-        </div>
-        <Button onClick={() => setSelectedVersionId("new")} className="mt-2">
-          <Plus className="mr-1.5 h-4 w-4" />
-          Create Codebook
-        </Button>
-      </div>
-    );
-  }
-
-  const activeCodebook: CodebookResponse | null =
-    currentVersion === "new"
-      ? null
-      : currentVersion === "duplicate"
-        ? duplicateSource
-        : (activeCodebookQuery.data ?? null);
-
-  if (currentVersion !== "new" && currentVersion !== "duplicate" && !activeCodebook) {
-    return (
-      <div className="flex h-64 items-center justify-center gap-2 text-muted-foreground text-sm">
+      <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        Loading codebook version...
+        Loading codebook...
       </div>
     );
   }
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Full-height embedded Codebook Editor with non-intrusive Versions button */}
       <div className="flex-1 overflow-hidden">
         <CodebookEditor
-          key={currentVersion === "new" ? "new" : currentVersion === "duplicate" ? "duplicate" : currentVersion}
+          key={`${openId ?? "new"}:${editorEpoch}`}
           client={client}
-          codebook={currentVersion === "new" ? null : activeCodebook}
+          codebook={openCodebook}
+          mode={mode}
+          registerSave={(save) => {
+            saveRef.current = save;
+            registerSave?.(save);
+          }}
+          banner={
+            <CodebookStatusBanner
+              mode={mode}
+              openNumber={openNumber}
+              liveNumber={liveNumber}
+              draftNumber={draftNumber}
+              onDiscardDraft={versions.draftId !== null && openId === versions.draftId ? discardDraft : undefined}
+              onRestore={openId !== null ? () => restoreVersion(openId) : undefined}
+              onBackToCurrent={() => viewVersion(versions.currentId ?? -1)}
+            />
+          }
           onDirtyChange={setIsDirty}
           onOpenVersions={() => setVersionsDialogOpen(true)}
           onSaved={(saved) => {
             setIsDirty(false);
-            setSelectedVersionId(saved.id);
-            setDuplicateSource(null);
+            setSelectedId(saved.id);
           }}
+          onPublish={setToPublish}
         />
       </div>
 
-      {/* Overview Modal Dialog for Codebook Versions & Provenance */}
       <CodebookVersionsDialog
         open={versionsDialogOpen}
         onClose={() => setVersionsDialogOpen(false)}
         codebooks={codebooks}
-        currentVersion={currentVersion}
-        latestCodebookId={latestCodebookId}
-        onSelectVersion={handleSelectVersion}
-        onCreateNewVersion={handleCreateNewVersion}
-        onDuplicateVersion={handleDuplicateVersion}
+        versions={versions}
+        openId={openId}
+        onView={viewVersion}
+        onRestore={restoreVersion}
       />
 
-      {/* Unsaved changes confirmation dialog */}
+      <PublishDialog
+        key={toPublish?.id ?? "closed"}
+        codebook={toPublish}
+        versionNumber={toPublish ? (versions.numberOf(toPublish.id) ?? codebooks.length + 1) : 0}
+        live={versions.liveId !== null ? (liveQuery.data ?? null) : null}
+        liveNumber={liveNumber}
+        onPublish={async (codebook, note) => {
+          if (note !== (codebook.note ?? "")) {
+            await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items } });
+          }
+          const deployment = await publish.mutateAsync(codebook.id);
+          setSelectedId(null);
+          return deployment;
+        }}
+        onClose={() => setToPublish(null)}
+      />
+
       <UnsavedChangesDialog
         open={pendingAction !== null}
-        onCancel={() => setPendingAction(null)}
+        isSaving={pendingSaving}
+        error={pendingError}
+        onCancel={() => {
+          setPendingAction(null);
+          setPendingError(null);
+        }}
         onDiscard={() => {
           setIsDirty(false);
-          const act = pendingAction;
+          const action = pendingAction;
           setPendingAction(null);
-          act?.();
+          setPendingError(null);
+          action?.();
         }}
-        onSave={() => {
-          setPendingAction(null);
-        }}
+        onSave={saveAndContinue}
       />
     </div>
   );

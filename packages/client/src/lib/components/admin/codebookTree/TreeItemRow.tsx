@@ -23,7 +23,7 @@ function EditItemRow({ item }: TreeItemRowProps) {
   const key = getItemKey(item);
   const [insertPreview, setInsertPreview] = useState(false);
 
-  const actions = (
+  const actions = !tree.readOnly && (
     <>
       <AddItemMenu
         title={`Insert above ${item.name || "item"}`}

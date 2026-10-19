@@ -1,7 +1,6 @@
 {
   "job": { "name": "Conformance job" },
   "codebook": {
-    "name": "Conformance codebook",
     "items": [
       {
         "type": "question",

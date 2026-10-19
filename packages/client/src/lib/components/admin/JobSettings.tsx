@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
 
 /**
- * Job settings panel (docs/client.md §7): edit job name, toggle archived status,
- * or delete the job.
+ * Job settings (docs/client.md §7), shown at the bottom of the overview: edit
+ * the job name, toggle archived status, or delete the job.
  */
 export function JobSettings({
   client,
@@ -70,13 +70,12 @@ function JobEditForm({
   return (
     <div className="max-w-md space-y-6">
       <form
-        className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-sm"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           updateJob.mutate({ id: job.id, body: { name, archived } });
         }}
       >
-        <h2 className="text-lg font-semibold text-foreground">General Settings</h2>
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">Job Name</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} required />
