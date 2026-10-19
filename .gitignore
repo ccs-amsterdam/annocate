@@ -26,7 +26,7 @@ pnpm-debug.log*
 .env
 .env.*.local
 
-# sqlite (mock server local db files)
+# sqlite (reference db server local db files)
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

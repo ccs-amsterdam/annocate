@@ -23,16 +23,14 @@ docs live in `docs/`:
   and any server implementation. No React/Node-specific dependencies.
 - `packages/client` -- the React + Vite client. Builds two ways:
   - `pnpm --filter @annotinder/client build:app` -- a standalone SPA, used for
-    local development against the mock server.
+    local development against the reference db server.
   - `pnpm --filter @annotinder/client build:lib` -- an importable component/hook
     library (`@annotinder/client`), for embedding in a host app's own React tree.
-- `packages/mock-server` -- the dev server (Hono + `node:sqlite`, requires
-  Node >= 22): the researcher API for the client's researcher UI plus the
-  annotator API, so `pnpm dev` has a working db server. Not a template for a
-  real one.
-- `packages/reference-db-server` -- what a db server implements: its README
-  lists every endpoint of both APIs, and it implements the annotator API
-  (in memory, one file per endpoint) for one job loaded from a fixture.
+- `packages/reference-db-server` -- what a db server implements, and the dev
+  server `pnpm dev` runs (Hono + `node:sqlite`, requires Node >= 22). Its README
+  lists every endpoint of both APIs (the researcher API for the client's
+  researcher UI and the annotator API), with one file per endpoint path. It is
+  a readable reference, not a template for a production server.
 - `packages/conformance` -- a test suite for the annotator API, runnable
   against any db server URL (`DB_SERVER_URL=... pnpm conformance`), plus the
   fixture a db server loads for it. Both servers above pass it.
@@ -46,7 +44,7 @@ docs live in `docs/`:
 
 ```bash
 pnpm install
-pnpm dev          # runs the client, mock db server (:8787) and job server (:8788)
+pnpm dev          # runs the client, reference db server (:8787) and job server (:8788)
 ```
 
 Open the client on http://localhost:5173. Coders' requests (`/d/...`) are
@@ -54,8 +52,8 @@ proxied by Vite to the job server: the coder session is a same-origin
 httpOnly cookie, so the client and job server must share an origin.
 
 The dev shell's "Annotate" view codes the seeded demo job through the job
-server (deployment `localhost:8787/1`: the mock server's host and the job id). If you have a mock-server database from before
-the job server existed, run `pnpm reset-mock` once so the demo job is deployed.
+server (deployment `localhost:8787/1`: the db server's host and the job id). If you have a database from before
+the job server existed, run `pnpm reset-db` once so the demo job is deployed.
 
 To check a db server you are building (in any language): load
 `packages/conformance/fixture.json` freshly as a job (the suite uses up its

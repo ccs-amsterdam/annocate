@@ -9,7 +9,8 @@
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit && tsc -p tsconfig.test.json",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:reset": "tsx src/reset.ts"
   },
   "dependencies": {
     "@annotinder/contracts": "workspace:*",

@@ -106,7 +106,7 @@ export type AnnotatorCoder = z.infer<typeof AnnotatorCoderSchema>;
 
 /** `POST /annotator/job/:jobId/coders/resolve` */
 export const ResolveCoderRequestSchema = z.object({
-  /** Client-generated, persisted coder key (dev-mode coder auth; see mock-server auth.ts). */
+  /** Client-generated, persisted coder key (dev-mode coder auth; see reference-db-server auth.ts). */
   coderKey: z.string().min(1),
   /**
    * Required the first time a coderKey is seen, to create the coder from an

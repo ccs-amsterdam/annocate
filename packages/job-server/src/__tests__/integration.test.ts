@@ -7,10 +7,10 @@ import type {
   SessionResponse,
   VariableValue,
 } from "@annotinder/contracts";
-// The mock db server is used as-is (not a package dependency, only test code imports it).
-import { createDb } from "../../../mock-server/src/db/schema.js";
-import { seed } from "../../../mock-server/src/db/seed.js";
-import { createApp } from "../../../mock-server/src/app.js";
+// The reference db server is used as-is (not a package dependency, only test code imports it).
+import { openDb as openRefDb } from "../../../reference-db-server/src/db.js";
+import { seed } from "../../../reference-db-server/src/seed.js";
+import { createApp } from "../../../reference-db-server/src/app.js";
 import { createJobServer } from "../app.js";
 import type { RuntimeOptions } from "../runtime.js";
 import { MemoryOutboxStore } from "../outbox.js";
@@ -78,7 +78,7 @@ function newJobServer(runtime: Partial<RuntimeOptions> = {}) {
 }
 
 beforeEach(() => {
-  db = createDb(":memory:");
+  db = openRefDb(":memory:");
   seed(db);
   dbApp = createApp(db, {
     jobServer: {
@@ -437,7 +437,7 @@ describe("sessions", () => {
 
     const value = [...devices.get("browser")!.cookies.values()][0];
     const { coderId } = (await res.json()) as SessionResponse;
-    const stored = (db.prepare("SELECT devKey FROM coders WHERE id = ?").get(coderId) as { devKey: string }).devKey;
+    const stored = (db.prepare("SELECT coderKey FROM coders WHERE id = ?").get(coderId) as { coderKey: string }).coderKey;
     const { createHash } = await import("node:crypto");
     expect(stored).toBe(createHash("sha256").update(value).digest("hex"));
 
@@ -818,7 +818,7 @@ describe("unit hashes", () => {
         units: [{ externalId: before.externalId, data: { ...JSON.parse(before.data), text: "edited" } }],
       }),
     });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(201); // recorded, not refused
     expect((await c.submit(second.id, demo("neutral"))).status).toBe(204); // recorded, not refused
 
     const { createHash } = await import("node:crypto");

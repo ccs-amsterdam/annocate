@@ -7,9 +7,9 @@ import { build } from "esbuild";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
-import { createDb } from "../../../mock-server/src/db/schema.js";
-import { seed } from "../../../mock-server/src/db/seed.js";
-import { createApp } from "../../../mock-server/src/app.js";
+import { openDb as openRefDb } from "../../../reference-db-server/src/db.js";
+import { seed } from "../../../reference-db-server/src/seed.js";
+import { createApp } from "../../../reference-db-server/src/app.js";
 import { SigningKeys } from "../keys.js";
 
 // The Cloudflare target, run in workerd (Miniflare) against a real mock db
@@ -39,7 +39,7 @@ beforeAll(async () => {
   script = bundle.outputFiles[0].text;
   signingKeys = JSON.stringify([await SigningKeys.generate()]);
 
-  db = createDb(":memory:");
+  db = openRefDb(":memory:");
   seed(db);
   // The db server needs its own URL (job tokens are addressed to it), so it is created once the port is known.
   let app: ReturnType<typeof createApp> | null = null;
