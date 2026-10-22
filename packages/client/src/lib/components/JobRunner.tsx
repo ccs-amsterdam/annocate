@@ -14,6 +14,7 @@ import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 import { CoderSettingsProvider, useCoderSettings } from "../context/CoderSettingsContext";
 import { Question } from "./Question";
 import { UnitFields } from "./UnitFields";
+import { DockedAnswerPane } from "./DockedAnswerPane";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -55,90 +56,6 @@ export interface JobRunnerProps {
 interface ContentProps extends JobRunnerProps {
   newSession: boolean;
   onStartNewSession: () => void;
-}
-
-/**
- * Docked bottom question container that maintains a stable, controlled height
- * so that question transitions never shift the unit document above.
- * Includes a top draggable handle to let coders resize the panel to their device preference.
- */
-function DockedAnswerPane({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [height, setHeight] = useState<number>(() => {
-    if (typeof window === "undefined") return 220;
-    const saved = localStorage.getItem("annocate_docked_pane_height");
-    const num = saved ? parseInt(saved, 10) : NaN;
-    return !isNaN(num) && num >= 130 && num <= 700 ? num : 220;
-  });
-
-  const isDraggingRef = useRef(false);
-
-  useEffect(() => {
-    function onMouseMove(e: MouseEvent) {
-      if (!isDraggingRef.current) return;
-      const newH = Math.max(130, Math.min(window.innerHeight * 0.75, window.innerHeight - e.clientY));
-      setHeight(newH);
-    }
-    function onTouchMove(e: TouchEvent) {
-      if (!isDraggingRef.current || e.touches.length === 0) return;
-      const touch = e.touches[0];
-      const newH = Math.max(130, Math.min(window.innerHeight * 0.75, window.innerHeight - touch.clientY));
-      setHeight(newH);
-    }
-    function onEnd() {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        document.body.style.userSelect = "";
-        localStorage.setItem("annocate_docked_pane_height", String(Math.round(height)));
-      }
-    }
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onEnd);
-    window.addEventListener("touchmove", onTouchMove);
-    window.addEventListener("touchend", onEnd);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onEnd);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onEnd);
-    };
-  }, [height]);
-
-  function startDragging(e: React.MouseEvent | React.TouchEvent) {
-    e.preventDefault();
-    isDraggingRef.current = true;
-    document.body.style.userSelect = "none";
-  }
-
-  return (
-    <div
-      style={{ height: `${height}px` }}
-      className="z-10 flex flex-col min-h-0 shrink-0 border-t border-border bg-card/95 shadow-lg backdrop-blur transition-colors duration-150 relative"
-    >
-      {/* Draggable resize handle at top border: taller touch target (h-5 sm:h-6) for easy selecting */}
-      <div
-        onMouseDown={startDragging}
-        onTouchStart={startDragging}
-        className="group flex h-5 sm:h-6 w-full cursor-row-resize items-center justify-center hover:bg-primary/15 active:bg-primary/25 transition-colors shrink-0 select-none"
-        title="Drag to resize answer panel"
-        role="separator"
-        aria-orientation="horizontal"
-      >
-        <div className="h-1.5 w-12 sm:w-14 rounded-full bg-border group-hover:bg-primary/60 transition-colors" />
-      </div>
-
-      {/* Content div with reduced top padding to maintain balanced aesthetics with the taller drag bar */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3.5 pb-2.5 pt-0.5 sm:px-6 sm:pb-3.5 sm:pt-1">
-        <div className="mx-auto w-full max-w-xl">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -649,9 +566,10 @@ function JobRunnerContent({
           initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}
           variableName={item.name}
         >
-          <div className="flex flex-1 flex-col overflow-hidden relative">
-            {/* Scrollable Unit Content (Document) */}
-            <div className="flex-1 min-h-[100px] overflow-y-auto p-3 sm:p-5">
+          {/* A size container: the answer pane's max height is a share of this area (cqh) */}
+          <div className="flex flex-1 flex-col overflow-hidden relative [container-type:size]">
+            {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
+            <div className="subtle-scrollbar flex-1 min-h-[100px] overflow-y-auto p-3 sm:p-5 [scrollbar-gutter:stable]">
               <div
                 key={unitAnimationKey}
                 className={`mx-auto max-w-2xl ${unitSlideClass}`}

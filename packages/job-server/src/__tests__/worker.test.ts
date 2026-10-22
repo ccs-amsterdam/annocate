@@ -99,8 +99,11 @@ const annotatedUnits = () =>
 
 const demoAnswers = {
   sentiment: { done: true, codes: [{ code: "neutral" }] },
+  is_news: { done: true, skip: true },
+  topics: { done: true, skip: true },
   actors_and_issues: { done: true, spans: [] },
-  actor_relations: { done: true, relations: [] },
+  framing: { done: true, skip: true },
+  usefulness: { done: true, skip: true },
 };
 
 describe("Cloudflare target (workerd)", () => {

@@ -52,6 +52,26 @@ describe("Question dispatcher", () => {
     expect(html).toContain("high");
   });
 
+  it("renders scale items as rows of values, showing the code only for the selected value", () => {
+    const item: QuestionItem = {
+      name: "interest",
+      type: "user_variable",
+      variable: {
+        type: "scale",
+        question: "How interested are you?",
+        items: [{ name: "politics", label: "Politics" }, { name: "tech" }],
+        codes: [{ code: "not at all", value: 1 }, { code: "somewhat", value: 2 }, { code: "very", value: 3 }],
+      },
+    };
+    const initialValue = { done: true, skip: false, codes: [{ item: "politics", code: "somewhat", value: 2 }] };
+    const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} initialValue={initialValue} />);
+    expect(html).toContain("Politics");
+    expect(html).toContain(">tech<");
+    expect(html).toContain(">somewhat</button>"); // selected: shows its code
+    expect(html).toContain(">2</button>"); // the unanswered tech row: values only
+    expect(html).toContain("1 / 2");
+  });
+
   it("renders annotinder (swipe)", () => {
     const item: QuestionItem = {
       name: "swipe_q",

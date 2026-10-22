@@ -1,124 +1,135 @@
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CodebookCode } from "@annotinder/contracts";
+import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { buildCodeValue } from "./answerValue";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
+import { getCodeButtonStyle } from "../../utils/color";
+import { useCoderSettings } from "../../context/CoderSettingsContext";
 
 type ScaleVariable = Extract<QuestionVariable, { type: "scale" }>;
 
-interface ScaleItemState {
-  item: string;
+/** Key for the single answer of a scale without items. */
+const SINGLE = "__single";
+
+interface ScaleItem {
+  name: string;
   label: string;
 }
 
-function getScaleItems(variable: ScaleVariable): ScaleItemState[] {
-  if (!variable.items?.length) {
-    return [{ item: "__default", label: variable.question }];
-  }
-
-  return variable.items.map((item) => ({ item: item.name, label: item.label ?? item.name }));
+function getScaleItems(variable: ScaleVariable): ScaleItem[] {
+  if (!variable.items?.length) return [{ name: SINGLE, label: "" }];
+  return variable.items.map((item) => ({ name: item.name, label: item.label ?? item.name.replaceAll("_", " ") }));
 }
 
-function getScaleConditionValue(selectedCodes: Record<string, CodebookCode>, hasItems: boolean): string | Record<string, string> {
-  if (!hasItems) {
-    return Object.values(selectedCodes)[0]?.code ?? "";
-  }
-
-  return Object.fromEntries(Object.entries(selectedCodes).map(([item, code]) => [item, code.code]));
+/** Uncoloured codes get a primary-colour gradient from the first to the last point of the scale. */
+function gradientStyle(index: number, count: number): CSSProperties {
+  const pct = count > 1 ? Math.round(30 + (70 * index) / (count - 1)) : 100;
+  return { backgroundColor: `color-mix(in srgb, var(--primary) ${pct}%, transparent)` };
 }
 
-function getButtonStyle(code: CodebookCode, selected: boolean): CSSProperties | undefined {
-  if (!code.color) return undefined;
-  return selected
-    ? { backgroundColor: code.color, borderColor: code.color, color: "#111827" }
-    : { borderColor: code.color, color: code.color };
-}
-
-export function ScaleAnswerField({ variable, onAnswer }: AnswerFieldProps<ScaleVariable>) {
-  const scaleItems = useMemo(() => getScaleItems(variable), [variable]);
-  const [selectedCodes, setSelectedCodes] = useState<Record<string, CodebookCode>>({});
-
-  // See SelectCodeAnswerField's equivalent comment: no reset-on-`variable`-
-  // change effect needed since JobRunner keys `Question` by item.name.
-
+/**
+ * A row of buttons per item that all show the same scale, so they only show
+ * the code's value (or position). The selected button grows to show its code.
+ */
+export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<ScaleVariable>) {
+  const { theme } = useCoderSettings();
+  const isDark = theme === "dark";
+  const items = useMemo(() => getScaleItems(variable), [variable]);
   const hasItems = Boolean(variable.items?.length);
-  const isComplete = scaleItems.every((item) => selectedCodes[item.item]);
 
-  function selectCode(itemName: string, code: CodebookCode) {
+  const [selected, setSelected] = useState<Record<string, CodebookCode>>(() => {
+    if (!initialValue || !("codes" in initialValue) || !Array.isArray(initialValue.codes)) return {};
+    const byCode = new Map(variable.codes.map((c) => [c.code, c]));
+    const initial: Record<string, CodebookCode> = {};
+    for (const c of initialValue.codes as { code?: string; item?: string }[]) {
+      const code = c.code ? byCode.get(c.code) : undefined;
+      if (code) initial[hasItems ? (c.item ?? "") : SINGLE] = code;
+    }
+    return initial;
+  });
+
+  const nAnswered = items.filter((item) => selected[item.name]).length;
+  const done = nAnswered === items.length;
+
+  function select(itemName: string, code: CodebookCode) {
     if (!hasItems) {
+      setSelected({ [SINGLE]: code });
       onAnswer(buildCodeValue([{ code: code.code, value: code.value }]), code.code);
       return;
     }
-
-    setSelectedCodes((current) => ({ ...current, [itemName]: code }));
+    setSelected((current) => ({ ...current, [itemName]: code }));
   }
 
-  function submitItemScale() {
-    if (!isComplete) return;
-
+  function submit() {
+    if (!done) return;
     onAnswer(
-      buildCodeValue(
-        scaleItems.map((item) => ({
-          item: item.item,
-          code: selectedCodes[item.item].code,
-          value: selectedCodes[item.item].value,
-        })),
-      ),
-      getScaleConditionValue(selectedCodes, hasItems),
+      buildCodeValue(items.map((item) => ({ item: item.name, code: selected[item.name].code, value: selected[item.name].value }))),
+      Object.fromEntries(items.map((item) => [item.name, selected[item.name].code])),
     );
   }
 
-  const singleSelection = selectedCodes[scaleItems[0]?.item ?? "__default"];
-  const singleIndex = singleSelection ? variable.codes.findIndex((code) => code.code === singleSelection.code) : undefined;
+  // Number keys answer the first unanswered item; Enter continues once every item is answered.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.key === "Enter" && hasItems && done) {
+        event.preventDefault();
+        submit();
+        return;
+      }
+      const index = Number.parseInt(event.key, 10) - 1;
+      if (Number.isNaN(index) || index < 0 || index >= Math.min(variable.codes.length, 9)) return;
+      const target = items.find((item) => !selected[item.name]) ?? (hasItems ? undefined : items[0]);
+      if (!target) return;
+      event.preventDefault();
+      select(target.name, variable.codes[index]);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
+  const first = variable.codes[0];
+  const last = variable.codes[variable.codes.length - 1];
 
   return (
-    <div className="space-y-6">
-      {!hasItems && variable.codes.length > 1 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{variable.codes[0]?.code}</span>
-            <span>{variable.codes[variable.codes.length - 1]?.code}</span>
-          </div>
-          <Slider
-            min={0}
-            max={variable.codes.length - 1}
-            step={1}
-            value={singleIndex != null ? [singleIndex] : undefined}
-            onValueChange={(value: number[]) => {
-              const nextCode = variable.codes[value[0]];
-              if (nextCode) setSelectedCodes({ __default: nextCode });
-            }}
-            onValueCommit={(value: number[]) => {
-              const nextCode = variable.codes[value[0]];
-              if (nextCode) onAnswer(buildCodeValue([{ code: nextCode.code, value: nextCode.value }]), nextCode.code);
-            }}
-          />
+    <div className="flex flex-col gap-2">
+      {variable.codes.length > 1 && (
+        <div className="flex justify-between gap-4 px-1 text-xs text-muted-foreground">
+          <span className="max-w-[40%]">{first.code}</span>
+          <span className="max-w-[40%] text-right">{last.code}</span>
         </div>
       )}
 
-      <div className="space-y-4">
-        {scaleItems.map((item) => {
-          const current = selectedCodes[item.item];
+      <div className="flex flex-col gap-2">
+        {items.map((item) => {
+          const current = selected[item.name];
           return (
-            <div key={item.item} className="space-y-3">
-              {hasItems && <p className="text-sm font-medium text-foreground">{item.label}</p>}
-              <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(80px,1fr))]">
-                {variable.codes.map((code) => {
-                  const selected = current?.code === code.code;
+            <div key={item.name} className="flex flex-col gap-1">
+              {hasItems && <div className="text-center text-sm text-foreground">{item.label}</div>}
+              <div className="mx-auto flex w-full max-w-[500px] gap-1.5">
+                {variable.codes.map((code, index) => {
+                  const isCurrent = current?.code === code.code;
+                  const colorStyle = getCodeButtonStyle(code.color, isCurrent, isDark);
+                  const style = colorStyle ?? (isCurrent ? undefined : gradientStyle(index, variable.codes.length));
                   return (
-                    <Button
-                      key={`${item.item}-${code.code}`}
+                    <button
+                      key={code.code}
                       type="button"
-                      variant={selected ? "default" : "outline"}
-                      className="h-auto min-h-14 flex-col gap-1 whitespace-normal px-2 py-3"
-                      style={getButtonStyle(code, selected)}
-                      onClick={() => selectCode(item.item, code)}
+                      title={code.code}
+                      aria-label={code.code}
+                      aria-pressed={isCurrent}
+                      onClick={() => select(item.name, code)}
+                      style={style}
+                      className={`h-8 min-w-0 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap rounded-md border border-transparent px-1 text-sm font-bold text-foreground transition-all duration-200 ${
+                        isCurrent
+                          ? `flex-[3_1_auto] px-3 ${colorStyle ? "" : "bg-secondary text-secondary-foreground dark:bg-foreground dark:text-background"} ring-2 ring-primary ring-offset-1 ring-offset-background`
+                          : "flex-1 basis-0 hover:brightness-110"
+                      }`}
                     >
-                      <span className="text-base font-semibold">{code.value ?? code.code}</span>
-                      <span className="text-xs opacity-80">{code.code}</span>
-                    </Button>
+                      {isCurrent ? code.code : (code.value ?? index + 1)}
+                    </button>
                   );
                 })}
               </div>
@@ -128,14 +139,9 @@ export function ScaleAnswerField({ variable, onAnswer }: AnswerFieldProps<ScaleV
       </div>
 
       {hasItems && (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            {isComplete ? "All scale items answered." : `Answer ${scaleItems.length - Object.keys(selectedCodes).length} more item(s) to continue.`}
-          </p>
-          <Button type="button" size="lg" disabled={!isComplete} onClick={submitItemScale}>
-            Continue
-          </Button>
-        </div>
+        <Button type="button" className="mt-1" disabled={!done} onClick={submit}>
+          {done ? <Play className="size-4" /> : `${nAnswered} / ${items.length}`}
+        </Button>
       )}
     </div>
   );

@@ -247,3 +247,13 @@
     animation: none !important;
   }
 }
+
+/* Thin scrollbar that only shows while hovering the scroll area. Pair with
+   `scrollbar-gutter: stable` so content doesn't move when it appears. */
+@utility subtle-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  &:hover {
+    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent) transparent;
+  }
+}

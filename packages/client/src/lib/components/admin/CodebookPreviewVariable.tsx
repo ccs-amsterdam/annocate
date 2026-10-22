@@ -1,5 +1,6 @@
-import { useState } from "react";
-import type { CodebookItem, UnitData, VariableValue } from "@annotinder/contracts";
+import { useEffect, useState } from "react";
+import type { CodebookItem, UnitData, UnitLayout, VariableValue } from "@annotinder/contracts";
+import { renderTemplate } from "../../codebook/renderTemplate";
 import { Question } from "../Question";
 import { UnitFields } from "../UnitFields";
 import { SpanAnnotationProvider } from "../../context/SpanAnnotationContext";
@@ -27,17 +28,20 @@ interface CodebookPreviewVariableProps {
 export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVariableProps) {
   const [answerState, setAnswerState] = useState<{ value: VariableValue; conditionValue?: unknown } | null>(null);
 
-  const isVariable = item.type === "user_variable" || item.type === "unit_variable";
+  const isVariable = item.type === "question" || item.type === "user_variable" || item.type === "unit_variable";
   const isLoop = item.type === "unit_loop";
   const isCondition = item.type === "condition";
+  const inLoop = isLoop || item.type === "unit_variable" || (isVariable && !!parentLoop);
+  const isAuto = isVariable && item.variable.type === "auto";
 
-  const spanVariable = item.type === "unit_variable" && item.variable.type === "span" ? item.variable : null;
+  const spanVariable = isVariable && inLoop && item.variable.type === "span" ? item.variable : null;
 
   const layout = isLoop
     ? item.layout
     : parentLoop?.layout ?? {
-        template: "# {{$unit.headline}}\n\n::tokenize[$unit.text]",
+        template: "# $unit.headline\n\n::tokenize[$unit.text]",
       };
+  const resolvedLayout = useResolvedLayout(layout);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -58,7 +62,7 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
       <div className="flex-1 overflow-y-auto bg-background/50 p-4">
         <div className="mx-auto flex max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-md">
           {/* Mock Document Area (if unit variable or loop) */}
-          {(item.type === "unit_variable" || isLoop) && (
+          {inLoop && (
             <div className="border-b border-border/60 bg-background p-4 text-sm">
               <span className="mb-2 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 Mock Unit Document
@@ -70,16 +74,16 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
                   codes={spanVariable.codes}
                   initialSpans={[]}
                 >
-                  <UnitFields layout={layout} data={MOCK_UNIT_DATA} />
+                  <UnitFields layout={resolvedLayout} data={MOCK_UNIT_DATA} />
                 </SpanAnnotationProvider>
               ) : (
-                <UnitFields layout={layout} data={MOCK_UNIT_DATA} />
+                <UnitFields layout={resolvedLayout} data={MOCK_UNIT_DATA} />
               )}
             </div>
           )}
 
           {/* Interactive Question Card */}
-          {isVariable && (
+          {isVariable && !isAuto && (
             <div className="p-4 bg-card">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
@@ -103,6 +107,17 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
             </div>
           )}
 
+          {/* Auto variables are assigned, never asked */}
+          {isVariable && isAuto && (
+            <div className="p-4 text-sm">
+              <span className="text-xs font-semibold text-primary">Assigned variable</span>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Coders never see this item. The server assigns its value when a coder starts; use it in conditions
+                and layout templates.
+              </p>
+            </div>
+          )}
+
           {/* Condition Preview */}
           {isCondition && (
             <div className="p-4 text-sm">
@@ -119,4 +134,26 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
       </div>
     </div>
   );
+}
+
+/**
+ * The layout with its `{{ }}` blocks evaluated against the mock unit, like
+ * JobManager does for a real unit. Answers aren't known here, so expressions
+ * that use them render as empty.
+ */
+function useResolvedLayout(layout: UnitLayout): UnitLayout {
+  const [resolved, setResolved] = useState(layout);
+  const key = JSON.stringify(layout);
+  useEffect(() => {
+    let cancelled = false;
+    const scope = { ...layout.constants, ...MOCK_UNIT_DATA, $unit: MOCK_UNIT_DATA };
+    renderTemplate(layout.template, scope).then((template) => {
+      if (!cancelled) setResolved({ ...layout, template });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on content: the default layout is a new object each render
+  }, [key]);
+  return resolved;
 }

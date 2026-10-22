@@ -139,11 +139,14 @@ function coder(name: string, invite: string | null = "demo-secret", server = () 
 
 /** A finished unit in the one-question codebooks `redeploy` creates. */
 const sentiment = (code: string) => ({ sentiment: { done: true, codes: [{ code }] } });
-/** A finished unit in the seeded demo codebook: sentiment, plus its span and relation questions skipped. */
+/** A finished unit in the seeded demo codebook: sentiment, plus its other loop questions skipped. */
 const demo = (code: string) => ({
   ...sentiment(code),
+  is_news: { done: true, skip: true },
+  topics: { done: true, skip: true },
   actors_and_issues: { done: true, skip: true },
-  actor_relations: { done: true, skip: true },
+  framing: { done: true, skip: true },
+  usefulness: { done: true, skip: true },
 });
 
 /** Live annotation values per (unit, coder), as stored by the db server. */
@@ -166,7 +169,7 @@ describe("coder flow through the job server", () => {
     const c = coder("coder-a");
     const session = await c.session();
     expect(session.jobId).toBe(1);
-    expect(session.codebook.note).toBe("First version: tone, actors and issues, and their relations");
+    expect(session.codebook.note).toBe("Demo: a tour of AnnoTinder's question types and features");
 
     const first = await c.next();
     expect(first?.externalId).toBe("unit-1");
@@ -543,7 +546,7 @@ describe("resuming and codebook updates", () => {
   });
 
   it("keeps answers to questions a codebook update removed, and tags the codebook version", async () => {
-    // demo codebook: sentiment + actors_and_issues + actor_relations
+    // demo codebook: sentiment + actors_and_issues + other loop questions
     const c = coder("upd");
     const unit = await c.next();
     await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
@@ -618,7 +621,7 @@ describe("rebuilding from the db server", () => {
     const reloads = () =>
       annotatorCalls.filter((call) => call === "POST /annotator/job/1/finished" || call === "GET /annotator/job/1/annotations");
 
-    // v2 changes the loop's questions (demo had three): finished units must be re-derived
+    // v2 changes the loop's questions (demo had six): finished units must be re-derived
     await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
     const c = coder("re");
     await c.submit((await c.next())!.id, sentiment("neutral"));

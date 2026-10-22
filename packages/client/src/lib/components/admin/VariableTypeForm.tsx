@@ -1,5 +1,6 @@
 import type { UnitVariableType, UserVariableType } from "@annotinder/contracts";
 import { CodesEditor } from "./CodesEditor";
+import { ScaleItemsEditor } from "./ScaleItemsEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,7 @@ function QuestionFields({
  * Dispatches on `variable.type` to render the right sub-form
  * (docs/client.md §7). Covers every `UserVariableType`/`UnitVariableType` variant
  * (variableTypes.ts). Less-common nested fields (`questionStyle`,
- * `instructionStyle`, `items` on `scale`) are intentionally not exposed here
- * yet.
+ * `instructionStyle`) are intentionally not exposed here yet.
  */
 export function VariableTypeForm({
   variable,
@@ -85,6 +85,7 @@ export function VariableTypeForm({
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <CodesEditor codes={v.codes} onChange={(codes) => onChange({ ...v, codes })} />
+          <ScaleItemsEditor items={v.items} onChange={(items) => onChange({ ...v, items })} />
         </>
       );
     }
