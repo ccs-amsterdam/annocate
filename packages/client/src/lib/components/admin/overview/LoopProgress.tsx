@@ -1,7 +1,7 @@
 import type { DeploymentStatus } from "@annotinder/contracts";
 
 /**
- * Progress per unitset of each loop, as the job server sees it: complete
+ * Progress per unitset of each loop: complete
  * units (every routed coder finished them, or the saturation rule was met
  * for dynamic sources) out of all units.
  */

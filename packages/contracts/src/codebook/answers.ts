@@ -1,7 +1,7 @@
 import type { UnitVariableType, UserVariableType } from "./variableTypes.js";
 import type { VariableValue } from "../variableValue.js";
 
-// Checks answers against the *current* codebook. Shared by the job server
+// Checks answers against the *current* codebook. Shared by the server
 // (rejects invalid submissions) and the client (treats answers that no longer
 // fit an updated codebook as unanswered, so the question is asked again; see
 // docs/architecture.md §8).

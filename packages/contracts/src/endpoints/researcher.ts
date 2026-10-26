@@ -16,11 +16,12 @@ import {
 } from "../deployment.js";
 
 /**
- * The researcher API (docs/api/researcher.md): served by a db server, called
- * by the client's researcher UI (`AdminClient`). Jobs, codebooks, units,
- * unitsets, invitations, coder progress, deployment.
+ * The researcher API (docs/api/researcher.md): called by the client's
+ * researcher UI (`AdminClient`), and by scripts (R, Python) and other
+ * systems. Jobs, codebooks, units, unitsets, invitations, coder progress,
+ * deployment.
  *
- * Path params are written as `:param`. A db server hosts any number of jobs;
+ * Path params are written as `:param`. A server hosts any number of jobs;
  * per-job resources are routed under `/job/:jobId/...`.
  */
 export const researcherEndpoints = {
@@ -119,9 +120,7 @@ export const researcherEndpoints = {
   deleteInvite: { method: "DELETE", path: "/job/:jobId/invites/:id", request: z.void(), response: z.void() },
   getOverview: { method: "GET", path: "/job/:jobId/overview", request: z.void(), response: JobOverviewSchema },
 
-  // Deploying a job to a job server (docs/architecture.md). The db server
-  // stores the deployment and notifies the job server; status is proxied
-  // from the job server.
+  // Deploying a job: which codebook coders get (docs/architecture.md).
   getDeployment: {
     method: "GET",
     path: "/job/:jobId/deployment",

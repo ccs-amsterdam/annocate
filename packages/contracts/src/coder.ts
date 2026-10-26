@@ -54,8 +54,8 @@ export const CoderInviteWriteSchema = z.object({
   participantFromUrl: z.boolean().optional(),
   /**
    * Restrict the invite to these (authenticated) email addresses. Stored on
-   * the db server only; never part of the codebook. Not enforced by the dev
-   * reference db server, which has no email authentication.
+   * the server only; never part of the codebook. Not enforced yet: there is
+   * no email authentication.
    */
   emails: z.array(z.string().email()).optional(),
   /** Stop accepting new coders after this many. */

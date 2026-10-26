@@ -43,9 +43,9 @@ The server API stays as it is; everything above is derived from
 
 When a new version is published, coders who are working **switch to it at
 their next unit**. Answers they already gave stay linked to the version they
-were given under. This is what the job server already does: `PUT /deployment`
-bumps the version and notifies it, and it applies the new spec on the coder's
-next request (`Runtime.refresh`).
+were given under. This is what the server already does: `PUT /deployment`
+bumps the version and refreshes the runtime, which applies the new spec on
+the coder's next request (`DeploymentRuntime.refresh`).
 
 ### Version notes instead of names
 
@@ -54,8 +54,8 @@ was a list of identical names. Versions are now identified by number (order
 of creation), and carry an optional `note` saying what changed
 (`CodebookWriteSchema.note`, null when unset). The publish dialog asks for it,
 prefilled with a summary of the changes (`summarizeChanges` in
-`codebook/diff.ts`). Coders never saw the name. The mock server rebuilds its
-`codebooks` table to drop the old column (`migrateCodebookNames`).
+`codebook/diff.ts`). Coders never saw the name. (The dev database was rebuilt
+without the old column.)
 
 ## Phase 1: admin UI (client only)
 
@@ -105,7 +105,7 @@ and gets a draft on their first save.
 
 ## Phase 2: coder client follows a new version
 
-The job server switches at the next request, but the coder's browser keeps
+The server switches at the next request, but the coder's browser keeps
 the codebook it loaded with the session (`JobManager` calls `getSession`
 once), so a coder could answer questions that no longer exist or miss new
 ones. Add the deployment `version` to the session and unit responses; when

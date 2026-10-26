@@ -26,7 +26,7 @@ pnpm-debug.log*
 .env
 .env.*.local
 
-# sqlite (reference db server local db files)
+# sqlite (the server's local db files)
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
@@ -36,4 +36,3 @@ pnpm-debug.log*
 # editor
 .vscode/*
 !.vscode/extensions.json
-job-server-signing-key.json

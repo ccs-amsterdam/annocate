@@ -37,13 +37,13 @@ export function AdminApp({
   jobServerUrl,
 }: {
   client: AdminClient;
-  /** The job server's base URL, used to build invite links in Coders & Preview. */
+  /** The researcher API's base URL. */
   baseUrl: string;
   initialJobId?: number;
   queryClient?: QueryClient;
   /** Builds the link coders open for an invite (host-app specific). */
   inviteUrl?: (invite: CoderInviteResponse) => string;
-  /** The job server for previews; normally the client's own origin (""), since its cookies are same-origin. */
+  /** Where coder sessions run (`<url>/d/...`), for previews; normally the client's own origin (""), since their cookies are same-origin. */
   jobServerUrl?: string;
 }) {
   return (

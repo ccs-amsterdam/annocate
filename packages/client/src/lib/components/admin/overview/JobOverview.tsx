@@ -108,7 +108,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: J
           ) : statusQuery.data ? (
             <LoopProgress status={statusQuery.data} />
           ) : statusQuery.isError ? (
-            <p className="text-sm text-muted-foreground">The job server can&apos;t be reached right now.</p>
+            <p className="text-sm text-muted-foreground">Progress can&apos;t be loaded right now.</p>
           ) : (
             <Loading />
           )}

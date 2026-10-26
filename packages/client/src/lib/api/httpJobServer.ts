@@ -7,7 +7,7 @@ import {
   type VariableValue,
 } from "@annotinder/contracts";
 
-/** A failed job server request, with the server's machine-readable `code` if any (contracts `CoderErrorCode`). */
+/** A failed server request, with the server's machine-readable `code` if any (contracts `CoderErrorCode`). */
 export class JobServerError extends Error {
   constructor(
     message: string,
@@ -37,14 +37,14 @@ export interface BranchChoice {
 
 /**
  * Client-side abstraction over "however we talk to a job's backend" (docs/client.md §2). `HttpJobServer` is the only implementation for now
- * (talking to a job server, packages/job-server); a future
+ * (talking to the server's client API, packages/server); a future
  * design/offline variant (for Storybook-like isolated component dev) can
  * implement the same interface without a network round-trip.
  */
 export interface JobServer {
   getSession(): Promise<SessionResponse>;
   /**
-   * Next unit for a unit_loop; which unit is decided by the job server. `null` = the coder is done with the loop.
+   * Next unit for a unit_loop; which unit is decided by the server. `null` = the coder is done with the loop.
    * `branch`: the branch of the loop the client chose, with its filled-in unitset names (contracts NextUnitQuerySchema).
    */
   getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null>;
@@ -66,12 +66,12 @@ export interface HttpJobServerConfig {
   participantId?: string;
   /**
    * The page's other query parameters, for the codebook's `url_param` auto
-   * variables. The job server stores the ones it needs when the coder starts.
+   * variables. The server stores the ones it needs when the coder starts.
    */
   urlParams?: Record<string, string>;
   /**
    * Start a new session although this participant already has one elsewhere.
-   * Sent with the first request only: the job server then sets a new cookie.
+   * Sent with the first request only: the server then sets a new cookie.
    */
   newSession?: boolean;
 }
@@ -107,7 +107,7 @@ export class HttpJobServer implements JobServer {
     return headers;
   }
 
-  /** Exchanges a transfer token for this device's session cookie (set by the job server). */
+  /** Exchanges a transfer token for this device's session cookie (set by the server). */
   static async redeemTransfer(scope: CoderSessionScope, token: string): Promise<void> {
     const path = clientEndpoints.redeemTransfer.path;
     const res = await fetch(`${scope.baseUrl}${path}`, {

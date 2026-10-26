@@ -9,7 +9,7 @@ import { Smartphone, Monitor, RotateCcw, AlertCircle, Maximize2 } from "lucide-r
 
 interface JobPreviewProps {
   client: AdminClient;
-  /** The job server, normally the client's own origin (""): its session cookies are same-origin. */
+  /** Where coder sessions run (`<url>/d/...`); normally the client's own origin (""): session cookies are same-origin. */
   jobServerUrl?: string;
 }
 
@@ -33,9 +33,9 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
 ];
 
 /**
- * Runs the job's latest codebook (the draft, else the live version) in a device frame. The job
+ * Runs the job's latest codebook (the draft, else the live version) in a device frame. The
  * server runs it as a preview deployment: coders and answers stay in its
- * memory, nothing is written to the db server. Each preview session gets a
+ * memory, nothing is stored. Each preview session gets a
  * fresh token, and with it a fresh coder.
  */
 export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {

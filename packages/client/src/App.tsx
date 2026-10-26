@@ -5,36 +5,34 @@ import { HttpAdminClient } from "./lib/api/httpAdminClient";
 import { LayoutDashboard, PenTool } from "lucide-react";
 
 // Standalone dev-app shell: runs the annotinder-client against a local
-// reference db server + job server, using a device-stored coder key per invite
-// (the seed demo job's invite secret by default). Real deployments should
-// import { JobRunner } / { AdminApp } (or their building blocks) into a host
-// app instead -- see docs/client.md §1
-const DB_SERVER_URL = import.meta.env.VITE_DB_SERVER_URL ?? "http://localhost:8787";
-// Coders talk to the job server, not the db server (docs/architecture.md),
-// on the client's own origin: its session cookie is same-origin only. In dev,
-// Vite proxies `/d` to the job server (vite.config.ts). The seed demo job is
-// deployed as `<db server host>/1`, e.g. `localhost:8787/1`.
-const JOB_SERVER_URL = import.meta.env.VITE_JOB_SERVER_URL ?? "";
+// server (the seed demo job's invite secret by default). Real deployments
+// should import { JobRunner } / { AdminApp } (or their building blocks) into
+// a host app instead -- see docs/client.md §1
+const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:8787";
+// Coders use the client API (`/d/<jobId>`) on the client's own origin: their
+// session cookie is same-origin only. In dev, Vite proxies `/d` to the server
+// (vite.config.ts).
+const CODER_API_URL = "";
 
 const adminClient = new HttpAdminClient({
-  baseUrl: DB_SERVER_URL,
+  baseUrl: SERVER_URL,
   devRole: "ADMIN",
   devEmail: "dev@example.com",
 });
 
 type View = "admin" | "annotate";
 
-/** Invite links for this dev shell: the reference db server is the job server's `mock` backend. */
+/** Invite links for this dev shell. */
 function devInviteUrl(invite: { jobId: number; secret: string }): string {
-  return `${window.location.origin}${window.location.pathname}?deployment=mock.${invite.jobId}&invite=${invite.secret}`;
+  return `${window.location.origin}${window.location.pathname}?deployment=${invite.jobId}&invite=${invite.secret}`;
 }
 
 function App() {
-  // Coder links (docs/coder-identity.md): ?deployment=localhost:8787/1&invite=...&participant=...
+  // Coder links (docs/coder-identity.md): ?deployment=1&invite=...&participant=...
   // or ?deployment=...&transfer=... from "Continue on another device".
   const [params, setParams] = useState(() => new URLSearchParams(window.location.search));
   const inviteSecret = params.get("invite") ?? "demo-secret";
-  const deploymentId = params.get("deployment") ?? `${new URL(DB_SERVER_URL).host}/1`;
+  const deploymentId = params.get("deployment") ?? "1";
   const participantId = params.get("participant") ?? undefined;
   const transferToken = params.get("transfer") ?? undefined;
   // Everything else in the URL may feed the codebook's `url_param` auto variables.
@@ -101,10 +99,10 @@ function App() {
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
         {view === "admin" ? (
-          <AdminApp client={adminClient} baseUrl={DB_SERVER_URL} inviteUrl={devInviteUrl} jobServerUrl={JOB_SERVER_URL} />
+          <AdminApp client={adminClient} baseUrl={SERVER_URL} inviteUrl={devInviteUrl} jobServerUrl={CODER_API_URL} />
         ) : (
           <JobRunner
-            baseUrl={`${JOB_SERVER_URL}/d/${deploymentId}`}
+            baseUrl={`${CODER_API_URL}/d/${deploymentId}`}
             inviteSecret={inviteSecret}
             participantId={participantId}
             urlParams={urlParams}

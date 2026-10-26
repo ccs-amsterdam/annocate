@@ -57,7 +57,7 @@ export const VariableValueSchema = z.object({
   skip: z.boolean().default(false),
   /**
    * Reserved for a signed answer-validation scheme. Not used: validation
-   * now happens on the job server (docs/architecture.md). Kept optional so
+   * now happens on the server (docs/architecture.md). Kept optional so
    * removing it later isn't urgent.
    */
   proof: z.string().optional(),

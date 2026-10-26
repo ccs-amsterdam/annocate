@@ -18,9 +18,9 @@ design lives in `architecture.md` and `coder-identity.md`; the API in
   emits `style.css`. Its output name is pinned in `vite.lib.config.ts`
   (`assetFileNames`), because Vite's default changed once and broke the
   `exports["./style.css"]` path.
-- **Hosting.** The client and the job server always share an origin (needed
-  for the httpOnly session cookies planned in
-  `plan-trust-sessions-codings.md`).
+- **Hosting.** The client and the server's client API (`/d/...`) always
+  share an origin: coder sessions are httpOnly cookies
+  (`coder-identity.md` §4).
 - Not published to npm yet.
 
 ## 2. JobManager (coding runtime)
@@ -38,7 +38,7 @@ design lives in `architecture.md` and `coder-identity.md`; the API in
 - It renders the unit layout and the current question's texts
   (`currentUnitTemplate`, `currentTexts` on the snapshot), because
   evaluation is async and rendering is not.
-- It chooses the unit loop branch for the coder and tells the job server
+- It chooses the unit loop branch for the coder and tells the server
   (`architecture.md` §6.1).
 - Navigation: back and forward, jumping to a phase, unit or question. Unit
   history is kept **per loop**. On resume it is rebuilt from the session's
@@ -124,7 +124,7 @@ engine can run later. That suits reproducibility. Simple conditions don't
 need a JS engine at all: rules (below) are evaluated in plain TypeScript.
 
 All conditions are evaluated on the client, including unit loop branches;
-the job server is only told the chosen branch (`architecture.md` §6.1).
+the server is only told the chosen branch (`architecture.md` §6.1).
 
 ### References and conditions
 
@@ -237,21 +237,21 @@ Units, Invitations, Coders, Preview. It uses an `AdminClient`
   references to fields that don't exist (`codebook/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
   codebook versions (open them in the editor), unit/coder/invitation counts,
-  answers per day (`GET /overview`), progress per loop from the job server
+  answers per day (`GET /overview`), progress per loop
   (`GET /deployment/status`), and the job settings (rename, archive, delete).
 - **Invitations**: create links (login requirement, participant id, preset
   variables, max uses) and a table of all of them with uses and status;
   revoke (no new coders), or delete while unused.
 - **Coders**: per coder the invitation, started, last active, answers, and
   finished units per loop of the live codebook (docs/plan-job-admin.md).
-- **Preview** runs the job's latest codebook (deployed or not) on the job
-  server as deployment `<db host>/<jobId>.preview`, with a token from
-  `POST /job/:jobId/deployment/preview`. Coders and answers stay in the job
-  server's memory; nothing reaches the db server (`architecture.md` §5).
+- **Preview** runs the job's latest codebook (deployed or not) as
+  deployment `<jobId>.preview`, with a token from
+  `POST /job/:jobId/deployment/preview`. Coders and answers stay in the
+  server's memory; nothing is stored (`architecture.md` §5).
 
 ## 8. Tooling notes
 
-- Node ≥ 22. The mock server uses the built-in `node:sqlite`, loaded via
+- Node ≥ 22. The server (`packages/server`) uses the built-in `node:sqlite`, loaded via
   `createRequire` because Vite/Vitest don't resolve it as a builtin.
 - Vitest configs exclude `**/dist/**`. Otherwise built test files run
   twice after `tsc -b`.

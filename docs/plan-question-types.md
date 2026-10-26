@@ -76,7 +76,7 @@ Today one concept is spread over three types and their options:
 ## 3. Answers
 
 Stored answer shape stays `VariableValue.codes: [{ item?, code?, value? }]`,
-so storage, the db server, agreement keys and exports don't change.
+so storage, agreement keys and exports don't change.
 
 | Type | Stored per answer | Notes |
 | --- | --- | --- |
@@ -175,9 +175,9 @@ researcher may want to keep the old values (open question 2).
   scale fields, plus a `NumericAnswerField`. Show `label ?? code`
   everywhere (span labels, relation labels, annotinder).
   `VariableTypeForm`, `CodesEditor`, the YAML editor tests, `Question.tsx`.
-- `job-server`: nothing expected; check `codeOf`/`agreementKey` with
-  numeric answers (no `code`).
-- `reference-db-server`: the demo seed (`seed.ts`) uses the new types.
+- `server`: nothing expected in the runtime; check `codeOf`/`agreementKey`
+  with numeric answers (no `code`). The demo seed (`seed.ts`) uses the new
+  types.
 - Docs: `client.md`, `CONTRACTS.md`, `TODO.txt` (the nominal/ordinal/numeric
   note), and the `VariableValue` TODO in `variableValue.ts`.
 
@@ -188,7 +188,7 @@ researcher may want to keep the old values (open question 2).
 2. Client answer fields: `CategoricalAnswerField` (all layouts),
    `NumericAnswerField`. Remove the old fields.
 3. Editor: forms, codes editor, items, layout select with resolved `auto`.
-4. Seed and tests in job-server and reference-db-server.
+4. Seed and tests in `packages/server`.
 5. Docs.
 
 ## 9. Open questions

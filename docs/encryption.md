@@ -1,7 +1,34 @@
 # Encrypting answers between client and db server (possible hardening)
 
-Status: discussion summary (2026-10-18). Not planned yet; an option to
-consider later. Nothing here is built.
+Status: **on hold** (2026-10-26). Discussion summary from 2026-10-18; not
+planned, nothing built.
+
+**The premise changed.** This was written for two servers: a job server
+that serves coders but shouldn't read answers, and a db server that holds
+the key. On 2026-10-26 they merged into one server (`docs/architecture.md`),
+so "the job server never sees answers" no longer means anything: the server
+that serves coders also stores the data. The rest of this document is kept
+as history.
+
+What still carries over, if we come back to it:
+
+- **Costs of encrypting in the browser:** the server can't validate
+  answers against the codebook, can't use them for agreement-based
+  saturation or routing, and conditions leak through plain `skip` values
+  (see "What we lose or must change").
+- **Resuming:** the session and the key K travel together (a transfer link
+  carries both); no resuming with earlier answers hidden.
+- **Signed invites and codebooks** as a way to anchor a key the serving
+  side can't swap.
+
+What is open:
+
+- **Who holds the key now.** The likely answer: the researcher. Answers
+  are encrypted to the researcher's public key, and the server stores only
+  ciphertext. Then recovery links by email (below) and export (decrypting
+  on the researcher's machine) need rethinking, and the threat model is
+  "the hosting provider and a database leak", not "a job server in the
+  middle".
 
 ## Goal
 
@@ -200,4 +227,4 @@ guarantee ends").
    the branch)? A per-job switch is simpler and harder to get wrong.
 4. **Is it worth it** compared to the alternatives for sensitive work:
    self-hosted job servers, or annotinder local with the end-to-end bridge
-   (`docs/compositions.md`, variant B)?
+   (the bridge in `docs/compositions.md`)?

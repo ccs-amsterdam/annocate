@@ -1,18 +1,16 @@
 # Client API
 
-Served by the **job server**, called by the client's **annotator**
-(`HttpJobServer`, driven by `JobManager`). Coders only ever talk to the job
-server; it gets what it needs from the db server through the
-[annotator API](annotator.md).
+Served by the **server**, called by the client's **annotator**
+(`HttpJobServer`, driven by `JobManager`).
 
 - Contracts: `clientEndpoints` in
   [`contracts/src/endpoints/client.ts`](../../packages/contracts/src/endpoints/client.ts);
   schemas in `contracts/src/session.ts`, `unit.ts`, `variableValue.ts`.
-- Implementation: [`job-server/src/app.ts`](../../packages/job-server/src/app.ts)
-  (routes), [`runtime.ts`](../../packages/job-server/src/runtime.ts) (the work).
+- Implementation: [`server/src/coder.ts`](../../packages/server/src/coder.ts)
+  (routes), [`runtime/runtime.ts`](../../packages/server/src/runtime/runtime.ts) (the work).
 - Caller: [`client/src/lib/api/httpJobServer.ts`](../../packages/client/src/lib/api/httpJobServer.ts).
 
-All paths are under `/d/<deploymentId>`, e.g. `/d/amcat.nl/42/session`
+All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 ([deployment ids](README.md#deployment-ids)).
 
 | Endpoint | | Request | Response |
@@ -27,8 +25,9 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/amcat.nl/42/session`
 
 ## Sessions and headers
 
-The session is an httpOnly cookie set by the job server, so the client must
-be served from the job server's origin (in development, Vite proxies `/d/`).
+The session is an httpOnly cookie set by the server, so the client must be
+served from the server's origin (in development, Vite proxies `/d/`). The
+server sends no CORS headers for these paths.
 Headers:
 
 - `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
@@ -55,13 +54,13 @@ assigned `auto` variables). Creates the coder and session on first use.
 
 `GET /loop/:loop/next?branch=<i>&unitsets=<name>&unitsets=<name>` → `CoderUnitResponseSchema | null`
 
-The job server picks the coder's next unit from the sources of the coder's
+The server picks the coder's next unit from the sources of the coder's
 branch (fixed sets, or a shared queue with leases). `null`: the coder is
 done with the loop. 409 while the job is paused (`active: false`).
 
 The client chooses the branch (`NextUnitQuerySchema`): the index of the
 first branch in the loop's `units` whose `when` holds, and its unitset
-names with `$var` references filled in, one per source. The job server
+names with `$var` references filled in, one per source. The server
 checks them (400 if the names don't fit that branch's sources, 409 if a
 unitset doesn't exist) and stores the routing; afterwards the parameters
 are ignored (routing is sticky, `architecture.md` §6.1). Without them, a
@@ -79,8 +78,10 @@ answers: to go back to it, e.g. after resuming.
 
 `POST /variables/unit` (`PostUnitVariablesSchema`) → 204
 
-Full replace of one unit's answers. Validated against the codebook, then
-written to the db server in the next batch ([putAnnotations](annotator.md#putannotations)).
+One finished unit's answers: every question of the loop (`skip` for
+questions a condition hid). Validated against the codebook, then stored
+before the response; values of variables not sent (e.g. questions a
+codebook update removed) are kept.
 
 ### postCoderVariables
 

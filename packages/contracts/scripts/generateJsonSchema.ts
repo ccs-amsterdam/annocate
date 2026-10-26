@@ -1,12 +1,11 @@
-// Generates a JSON Schema document for every schema in the endpoint registries,
-// so a server backend written in a non-TS language
-// can validate requests/responses against this contract without depending on
-// zod. Run via `pnpm --filter @annotinder/contracts generate:json-schema`.
+// Generates a JSON Schema document for every schema in the endpoint
+// registries, so clients in other languages (R, Python) can validate
+// requests/responses without depending on zod. Run via `pnpm --filter @annotinder/contracts generate:json-schema`.
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { annotatorEndpoints, clientEndpoints, dbEndpoints, researcherEndpoints } from "../src/endpoints/index.js";
+import { clientEndpoints, researcherEndpoints } from "../src/endpoints/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "../dist/json-schema");
@@ -22,13 +21,10 @@ function toJsonSchema(schema: z.ZodType, io: "input" | "output") {
   return z.toJSONSchema(schema, { io, unrepresentable: "any" });
 }
 
-// One file per API (docs/api/README.md). A db server implements the first
-// two; the job server the last two.
+// One file per API (docs/api/README.md).
 const registries = {
   "researcher-api": researcherEndpoints,
-  "annotator-api": annotatorEndpoints,
   "client-api": clientEndpoints,
-  "db-api": dbEndpoints,
 };
 
 for (const [file, registry] of Object.entries(registries)) {

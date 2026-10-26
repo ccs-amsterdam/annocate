@@ -1,20 +1,18 @@
 # Researcher API
 
-Served by a **db server**, called by the client's **researcher UI**
-(`AdminClient`): managing jobs, codebooks, units, invitations, publishing and
-progress.
+Served by the **server** at `/job/...`, called by the client's **researcher
+UI** (`AdminClient`), and by scripts (R, Python) and other systems (AmCAT):
+managing jobs, codebooks, units, invitations, publishing and progress.
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
-- Implementation: the mock server,
-  [`mock-server/src/routes/`](../../packages/mock-server/src/routes/) (sqlite;
-  the only implementation so far).
+- Implementation: [`server/src/researcher/`](../../packages/server/src/researcher/), one file per
+  path, with shared queries in [`shared/`](../../packages/server/src/shared/).
 - Caller: [`client/src/lib/api/httpAdminClient.ts`](../../packages/client/src/lib/api/httpAdminClient.ts).
 
 **Roles.** Job users have a role per job: `READ` < `WRITE` < `ADMIN`. The
-role column below is the minimum. How users log in is up to the db server
-(the contract never sees credentials); see `packages/contracts/CONTRACTS.md`
-for advice.
+role column below is the minimum. Real login is not built yet: the server
+trusts `x-dev-role` / `x-dev-email` headers (development only).
 
 **Errors** are `{ error }` with a 4xx/5xx status: 400 invalid body, 401 not
 signed in or role too low (403 is fine too), 404 not found, 409 not allowed
@@ -54,7 +52,7 @@ in this state (e.g. editing a published codebook).
 | [revokeInvite](#revokeinvite) | `POST /job/:jobId/invites/:id/revoke` | WRITE | – | `CoderInviteResponseSchema` |
 | [deleteInvite](#deleteinvite) | `DELETE /job/:jobId/invites/:id` | WRITE | – | – |
 | [listCoders](#listcoders) | `GET /job/:jobId/coders` | WRITE | – | `CoderProgressSchema[]` |
-| **Publishing and the job server** | | | | |
+| **Publishing** | | | | |
 | [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
 | [putDeployment](#putdeployment) | `PUT /job/:jobId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
 | [getDeploymentStatus](#getdeploymentstatus) | `GET /job/:jobId/deployment/status` | READ | – | `DeploymentStatusSchema` |
@@ -65,17 +63,17 @@ in this state (e.g. editing a published codebook).
 ## Jobs
 
 Schemas: [`contracts/src/job.ts`](../../packages/contracts/src/job.ts), [`overview.ts`](../../packages/contracts/src/overview.ts).
-Implementation: [`routes/job.ts`](../../packages/mock-server/src/routes/job.ts), overview in [`routes/coders.ts`](../../packages/mock-server/src/routes/coders.ts) / [`db/progress.ts`](../../packages/mock-server/src/db/progress.ts).
+Implementation: [`researcher/job.ts`](../../packages/server/src/researcher/job.ts), [`job.$id.ts`](../../packages/server/src/researcher/job.$id.ts), [`job.$id.users.ts`](../../packages/server/src/researcher/job.$id.users.ts), overview in [`overview.ts`](../../packages/server/src/researcher/overview.ts) / [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 
 ### listJobs
 
 `GET /job` → `JobResponseSchema[]`. The jobs the user has a role in (the
-mock server, which has no real users, returns all jobs).
+server, which has no real users yet, returns all jobs).
 
 ### createJob
 
 `POST /job` → `JobResponseSchema` (201). The creator should become its
-`ADMIN` (the mock server has no real users; any `x-dev-role` may create).
+`ADMIN` (the server has no real users yet; any `x-dev-role` may create).
 
 ### getJob
 
@@ -95,8 +93,7 @@ mock server, which has no real users, returns all jobs).
 
 ### putJobUsers
 
-`PUT /job/:id/users` → 204. Replaces the whole list. Role changes apply to
-tokens issued after the change.
+`PUT /job/:id/users` → 204. Replaces the whole list.
 
 ### getOverview
 
@@ -104,7 +101,7 @@ tokens issued after the change.
 page: units, unitsets with sizes, coders (total, started, active in the last
 24 hours), live answers, finished codings for the live codebook's loops, and
 answers per day for the last 30 days. "Finished": every question of the
-loop has a live answer, as in [listFinished](annotator.md#listfinished).
+loop has a live answer.
 Index answers by (job, created) to keep the per-day count cheap.
 
 ## Codebooks
@@ -113,7 +110,7 @@ Versions of the job's codebook, in order of creation. One is **live** (the
 deployment's); the latest, if unpublished, is the **draft**
 ([`docs/plan-codebook-publishing.md`](../plan-codebook-publishing.md)).
 Schemas: [`contracts/src/codebook/codebook.ts`](../../packages/contracts/src/codebook/codebook.ts).
-Implementation: [`routes/codebook.ts`](../../packages/mock-server/src/routes/codebook.ts).
+Implementation: [`researcher/codebook.ts`](../../packages/server/src/researcher/codebook.ts), [`codebook.$id.ts`](../../packages/server/src/researcher/codebook.$id.ts).
 
 ### listCodebooks
 
@@ -142,7 +139,7 @@ items and note. 409 once `immutable` (published).
 ## Units and unitsets
 
 Schemas: [`contracts/src/unit.ts`](../../packages/contracts/src/unit.ts), [`unitFields.ts`](../../packages/contracts/src/unitFields.ts), [`unitset.ts`](../../packages/contracts/src/unitset.ts).
-Implementation: [`routes/units.ts`](../../packages/mock-server/src/routes/units.ts), [`routes/unitsets.ts`](../../packages/mock-server/src/routes/unitsets.ts).
+Implementation: [`researcher/units*.ts`](../../packages/server/src/researcher/), [`unitsets*.ts`](../../packages/server/src/researcher/).
 
 **Unit fields.** All units of a job have the same fields, each `text`,
 `number` or `boolean`; values are stored typed (`42`, not `"42"`), and `null`
@@ -208,12 +205,12 @@ refers to it.
 
 Splitting units into sets (`<prefix>_1..n`, plus an overlap set) is done by
 the client (`splitUnits` in `unitset.ts`), which then creates each set with
-[createUnitset](#createunitset): a db server only stores unitsets.
+[createUnitset](#createunitset): the server only stores unitsets.
 
 ## Invitations and coders
 
 Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
-Implementation: [`routes/coders.ts`](../../packages/mock-server/src/routes/coders.ts), [`db/progress.ts`](../../packages/mock-server/src/db/progress.ts).
+Implementation: [`researcher/invites*.ts`](../../packages/server/src/researcher/), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 See [`docs/coder-identity.md`](../coder-identity.md) for what invitations do.
 
 ### listInvites
@@ -230,8 +227,7 @@ variables with `source: "invite"` for coders who use it.
 ### revokeInvite
 
 `POST /job/:jobId/invites/:id/revoke` → `CoderInviteResponseSchema`. No new
-coders from this invite ([resolveCoder](annotator.md#resolvecoder) refuses
-them); coders who already started keep working.
+coders from this invite; coders who already started keep working.
 
 ### deleteInvite
 
@@ -244,12 +240,12 @@ came in through it, since coders refer to their invite.
 participant id, started, last active, live answers, and finished units per
 loop of the live codebook.
 
-## Publishing and the job server
+## Publishing
 
-These change or read the job's state on the job server; the db server
-passes them on through the [DB API](db.md). Schemas:
+These change or read what coders get; status, refresh and preview go to the
+job's runtime in memory (`server.deployments`). Schemas:
 [`contracts/src/deployment.ts`](../../packages/contracts/src/deployment.ts).
-Implementation: [`routes/deployment.ts`](../../packages/mock-server/src/routes/deployment.ts), [`db/deployments.ts`](../../packages/mock-server/src/db/deployments.ts).
+Implementation: [`researcher/deployment*.ts`](../../packages/server/src/researcher/), [`shared/deployments.ts`](../../packages/server/src/shared/deployments.ts), [`runtime/registry.ts`](../../packages/server/src/runtime/registry.ts).
 
 ### getDeployment
 
@@ -262,36 +258,35 @@ codebook id, `active`, `version`; null if never published.
 codebook version (or pause/resume with `active`):
 
 1. store it, bump `version`, and make the codebook immutable;
-2. bind the job to the job server (for [job tokens](annotator.md#requestjobtoken));
-3. call [refreshDeployment](db.md#refreshdeployment) on the job server
-   (best effort).
+2. have a loaded runtime re-read the deployment.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again.
 
 ### getDeploymentStatus
 
-`GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: passed on
-from [the job server](db.md#getdeploymentstatus). 404 if not published, 502
-if the job server can't be reached.
+`GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: per loop
+and unitset the units complete, started and leased, codings and coders,
+plus what the runtime holds in memory. Computed on demand. 404 if not
+published.
 
 ### refreshDeployment
 
-`POST /job/:jobId/deployment/refresh` → `{ version }`: passed on to
-[the job server](db.md#refreshdeployment), e.g. with `units` after fixing
-unit content.
+`POST /job/:jobId/deployment/refresh` (`RefreshDeploymentSchema`) →
+`{ version }`: re-read the deployment now; `units` (`"all"` or ids) also
+drops cached unit content, e.g. after fixing a unit's text.
 
 ### createPreview
 
 `POST /job/:jobId/deployment/preview` → `PreviewSessionSchema`. A preview of
-the latest codebook (published or not) on the job server, as deployment
-`<db host>/<jobId>.preview`, kept in the job server's memory only. The token
-(format in the schema: an HMAC with the job's call key) is used like an
-invite secret.
+the latest codebook (published or not), as deployment `<jobId>.preview`:
+the real units, but coders and answers kept in memory only. The token (an
+HMAC with the server's secret, valid 12 hours) is used like an invite
+secret.
 
 ### resetAnnotations
 
 `POST /job/:jobId/annotations/reset` → `{ retired }`. Retires the live values
 of these variables (optionally only some units or coders): kept for
 analysis, but they no longer count, so the units are coded again. Bump the
-deployment's `annotationEpoch` and refresh the job server.
+deployment's `annotationEpoch` and refresh the runtime.

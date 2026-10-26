@@ -47,8 +47,6 @@ export const CoderErrorCodeSchema = z.enum([
   "auth_required",
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
-  /** The job server can't store more answers until the db server is reachable again. */
-  "storage_unavailable",
   /** `GET /loop/:loop/next` needs the client's branch choice (`branch` + `unitsets`), see NextUnitQuerySchema. */
   "branch_required",
 ]);
@@ -64,5 +62,5 @@ export type TransferResponse = z.infer<typeof TransferResponseSchema>;
 /** Body for `POST /transfer/redeem` (no coder auth needed). */
 export const RedeemTransferSchema = z.object({ token: z.string().min(1) });
 
-/** Response for `POST /transfer/redeem`: empty; the job server sets the session cookie on the new device. */
+/** Response for `POST /transfer/redeem`: empty; the server sets the session cookie on the new device. */
 export const RedeemTransferResponseSchema = z.object({});

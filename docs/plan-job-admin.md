@@ -7,7 +7,7 @@
   whether coding is progressing.
 - The Settings tab only renames, archives and deletes the job.
 - "Coders" mixes two things: creating invitation links and coder progress.
-  Invitations are stored by the db server, but there is no endpoint to list
+  Invitations are stored by the server, but there is no endpoint to list
   them, so a link disappears from the UI once you navigate away. They can't
   be revoked.
 - Coder progress (`GET /coders`, `unitsDone` per unitset) comes from a
@@ -37,8 +37,8 @@
 | `activity` | `{ day, answers, coders }[]`: per day, the last 30 days |
 
 The activity timeline is one `GROUP BY` day over the job's answers of the last
-30 days. The mock server adds an index on `(jobId, created)`; a real db server
-can do the same, or keep a per-day counter.
+30 days. The server has an index on `(jobId, created)`; a per-day counter is an
+alternative.
 
 The tab shows:
 
@@ -49,14 +49,14 @@ The tab shows:
 - **Coders**: total, started, active in the last 24 hours, finished codings;
   open invitations (links to Invitations and Coders).
 - **Activity**: answers per day, last 30 days.
-- **Progress per loop** (when live): from the job server's
+- **Progress per loop** (when live): from
   `GET /deployment/status` (`sources`: complete/started/total units per
-  unitset). Best effort; hidden if the job server can't be reached.
+  unitset). Hidden if it can't be loaded.
 - **Settings** (bottom): rename, archive, delete; what was the Settings tab.
 
 "Done" per coder (finished everything assigned to them) isn't shown: only the
-job server knows how many units a coder gets (routing, loop limits). That
-would need the job server to report it per coder; later.
+runtime knows how many units a coder gets (routing, loop limits). That
+would need the runtime to report it per coder; later.
 
 ## Phase 2: Invitations and Coders tabs
 
@@ -82,7 +82,7 @@ codebook. Replaces `unitsDone` (and the legacy `doneUnitIds` bookkeeping).
 ## Phase 3: units (done, 2026-10-19)
 
 Built as proposed, with two changes: field types can't be changed yet (later),
-and splitting units into sets moved to the client: the db server no longer
+and splitting units into sets moved to the client: the server no longer
 has `POST /unitsets/generate`, it only stores unitsets. Spec:
 [docs/api/researcher.md#units-and-unitsets](api/researcher.md#units-and-unitsets).
 

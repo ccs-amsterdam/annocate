@@ -24,7 +24,7 @@ export const NextUnitQuerySchema = z.object({
 export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
 
 /**
- * The client API (docs/api/client.md): served by the job server under
+ * The client API (docs/api/client.md): served by the server under
  * `/d/<deploymentId>`, called by the client's annotator (`HttpJobServer`).
  * Paths are relative to that base: a coder is tied to one deployment by the
  * URL, and to one coder by their session cookie.

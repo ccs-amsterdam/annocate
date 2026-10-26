@@ -79,10 +79,10 @@ export interface AdminClient {
   getDeployment(): Promise<DeploymentResponse | null>;
   /** Publishes a codebook version: coders switch to it, and it becomes read only. */
   putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
-  /** Progress as the job server sees it; fails if the job server can't be reached. */
+  /** Progress of the live job, per loop and unitset. */
   getDeploymentStatus(): Promise<DeploymentStatus>;
 
-  /** A preview session of the latest codebook, run by the job server in memory. */
+  /** A preview session of the latest codebook, run in memory. */
   createPreview(): Promise<PreviewSession>;
 }
 

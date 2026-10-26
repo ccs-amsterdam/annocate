@@ -3,7 +3,6 @@ import type { VariableValue } from "@annotinder/contracts";
 import { renderSVG } from "uqr";
 import { HttpJobServer, type JobServer } from "../api/httpJobServer";
 import {
-  dbHostOf,
   defaultTransferUrl,
   redeemTransfer,
   type CoderSessionScope,
@@ -36,12 +35,12 @@ import {
 } from "lucide-react";
 
 export interface JobRunnerProps {
-  /** Job server URL including the deployment, e.g. `https://jobs.example/d/amcat.nl/42`. */
+  /** Server URL including the deployment, e.g. `/d/42` (same origin as the client). */
   baseUrl: string;
   inviteSecret?: string;
   /** Participant id from the URL, for invites that take it from there. */
   participantId?: string;
-  /** The page's other query parameters, for `url_param` auto variables (stored by the job server when the coder starts). */
+  /** The page's other query parameters, for `url_param` auto variables (stored by the server when the coder starts). */
   urlParams?: Record<string, string>;
   /** Token from a "Continue on another device" link: redeemed for the session's coder key. */
   transferToken?: string;
@@ -158,7 +157,7 @@ function computeGlobalPosition(nav: JobManagerNavigation): number {
 }
 
 /**
- * Top-level component that boots a coder session against a job server and
+ * Top-level component that boots a coder session against the server and
  * renders the current step, driven by JobManager (docs/client.md §2).
  *
  * Implements a mobile-first responsive 2-pane layout:
@@ -363,13 +362,6 @@ function JobRunnerContent({
                     {snapshot.navigation.phases.length}
                   </span>
                 </div>
-
-                {/* Who hosts this job: the db server, from the deployment id (plan §13). */}
-                {dbHostOf(baseUrl) && (
-                  <div className="px-3.5 py-1.5 border-b border-border/60 text-[11px] text-muted-foreground" title="The server that stores this job and your answers">
-                    Hosted by <span className="font-medium text-foreground">{dbHostOf(baseUrl)}</span>
-                  </div>
-                )}
 
                 {/* List of Navigation Phases */}
                 <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
@@ -613,9 +605,9 @@ export function JobRunner(props: JobRunnerProps) {
 
 /**
  * Gets the session ready before coding starts: redeems a transfer link (the
- * job server then sets this device's session cookie), and starts a new
+ * server then sets this device's session cookie), and starts a new
  * session on request. The session itself is an httpOnly cookie, created by
- * the job server on first visit. See docs/coder-identity.md §4.
+ * the server on first visit. See docs/coder-identity.md §4.
  */
 function CoderSessionGate(props: JobRunnerProps) {
   const { baseUrl, inviteSecret, participantId, transferToken, onTransferRedeemed } = props;
@@ -661,7 +653,7 @@ function CoderSessionGate(props: JobRunnerProps) {
     );
   }
 
-  // The job server replaces this device's cookie on the first request.
+  // The server replaces this device's cookie on the first request.
   const startNewSession = () => setSession((s) => ({ ...s, generation: s.generation + 1, newSession: true }));
 
   return (

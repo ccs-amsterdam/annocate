@@ -27,7 +27,6 @@ export * from "./variableValue.js";
 export * from "./session.js";
 export * from "./deployment.js";
 export * from "./overview.js";
-export * from "./conformance.js";
 
 export * from "./endpoints/index.js";
 

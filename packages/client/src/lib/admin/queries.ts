@@ -248,7 +248,7 @@ export function useOverviewQuery(client: AdminClient): UseQueryResult<JobOvervie
   return useQuery({ queryKey: keys.overview(client.jobId), queryFn: () => client.getOverview(), refetchInterval: 30_000 });
 }
 
-/** The job server's view of the live job; errors (not retried) when it can't be reached. */
+/** Progress of the live job; errors are not retried. */
 export function useDeploymentStatusQuery(client: AdminClient, enabled: boolean): UseQueryResult<DeploymentStatus> {
   return useQuery({
     queryKey: keys.deploymentStatus(client.jobId),

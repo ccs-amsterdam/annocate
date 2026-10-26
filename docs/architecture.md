@@ -1,12 +1,11 @@
-# Annotinder server architecture: db server + job server
+# Annotinder server architecture
 
-Status: draft v2 (2026-10-10; v2 moves distribution into the codebook and
-adds routing and invitations). First implementation in `packages/job-server`
-and `packages/mock-server`. Supersedes the former design plan's §3a (unit delivery and
-resumable progress) and the "heavy client, thin server" approach in §0.
+Status: draft v3 (2026-10-26; v3 merges the db server and the job server
+into one server, `packages/server`). Storage is SQLite (`node:sqlite`) for
+now; the next step moves it to Postgres (`pg` in production, PGlite for
+tests, development and annotinder local).
 
-
-How these parts combine into products (hosted, open, local, R/Python
+How the server and client combine into products (hosted, local, R/Python
 clients): `docs/compositions.md`.
 
 ## 1. Why
@@ -20,222 +19,170 @@ servers could be written in Python, R and Node. That breaks down for:
 - **Validating annotations.** You can't trust the client, but re-implementing
   codebook validation (and eventually QuickJS conditions) in every server
   language is not realistic.
-- **Speed.** Coders should get units fast, with caching close to them.
 
-So the server side is split into two roles, with one shared contract
-between them.
+v2 split the server side in two: a db server (any language, the source of
+truth) and a job server (TypeScript, the runtime coders talk to), with an
+API and a trust scheme between them. v3 merges them again, because the
+reasons for the split lapsed:
+
+- **Db servers in other languages.** In practice there would be one or two
+  (AmCAT, maybe annotinder local), and annotinder local is a TypeScript app
+  anyway. R and Python don't need a server: they are clients of the
+  researcher API.
+- **Data stays with the researcher's own server.** Other systems now copy
+  units into annotinder (as the job server cached them anyway); whoever
+  needs the data on their own infrastructure runs the whole server.
+- **Edge caching.** Coding traffic is light; one server near the coders,
+  with Postgres, is fast enough.
+
+The split cost an API between the servers, job tokens and keys, a durable
+outbox, open-mode safety limits and a conformance suite. One server needs
+none of that, and features that would have burdened every db server (keeping
+old versions of units and annotations) become easy.
+
+Other systems (AmCAT, R, Python) use the researcher API: they push units,
+codebooks and settings, and download annotations (a webhook that posts new
+annotations may come later).
 
 ## 2. Roles
 
 ```
-            researcher                          coder
-                │ researcher API                   │ client API
-                ▼                                  ▼
- ┌──────────────────────────┐ annotator API ┌───────────────────────────────┐
- │ db server (any language) │◄──────────────│ job server (TypeScript)       │
- │  source of truth         │               │  annotinder runtime           │
- │  jobs, codebooks, units, │               │  distribution, leases         │
- │  coders, annotations     │               │  validation                   │
- │  export/analysis         │──────────────►│  unit + annotation cache      │
- └──────────────────────────┘    DB API     └───────────────────────────────┘
+      researcher, R, Python, AmCAT                   coder
+                │ researcher API                       │ client API
+                ▼ /job/...                             ▼ /d/<deploymentId>/...
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ server (TypeScript, packages/server)                                │
+ │  researcher API: jobs, codebooks, units, unitsets, invitations,     │
+ │    deployment, progress, results                                    │
+ │  runtime (one per deployment, in memory): distribution, leases,     │
+ │    validation, unit + annotation cache                              │
+ │  database: the source of truth                                      │
+ └─────────────────────────────────────────────────────────────────────┘
 ```
 
-Each server serves two APIs; [`docs/api/`](api/README.md) has the overview
+The server serves two APIs; [`docs/api/`](api/README.md) has the overview
 and a page per API, with a section per endpoint.
 
-**db server.** It owns all data and is the source of truth. It can be written
-in any language. It implements:
-
 - the **researcher API** (`researcherEndpoints`, [spec](api/researcher.md)),
-  used by the client's researcher UI: jobs, codebooks, units, unitsets,
-  invitations, publishing, progress;
-- the **annotator API** (`annotatorEndpoints`, [spec](api/annotator.md)),
-  used only by the job server to run the annotator. This is plain CRUD:
-  deployment spec, unit content, coder resolution, finished codings, a
-  coder's own annotations, and batched writes.
+  at `/job/...`: used by the client's researcher UI, scripts (R, Python) and
+  other systems. CORS is allowed, so a client on another origin can call it.
+- the **client API** (`clientEndpoints`, [spec](api/client.md)), at
+  `/d/<deploymentId>/...`: used by the client's annotator. A deployment id is
+  the job id, or `<jobId>.preview` for a researcher preview. No CORS: the
+  session is an httpOnly cookie on the client's origin (`coder.ts`).
 
-What a db server implements, endpoint by endpoint:
-[`packages/reference-db-server/README.md`](../packages/reference-db-server/README.md).
+**The runtime** (`src/runtime/`) runs a deployed job for coders. It:
 
-It never runs codebook logic. It validates only the shape of annotations
-(JSON Schema is generated from the contracts) and referential integrity.
-
-**job server.** This is the annotinder runtime. There is a single TypeScript
-implementation, and the same code is meant to run on Node and on Cloudflare.
-Coders talk only to the job server. It:
-
-- resolves coders (via the db server) and serves the session and codebook;
-- decides which unit a coder gets next, following the codebook's unit loops (fixed sets or a shared
-  queue with leases, stopping rules and caps);
+- resolves coders and serves the session and codebook;
+- decides which unit a coder gets next, following the codebook's unit
+  loops (fixed sets or a shared queue with leases, stopping rules and caps);
 - validates annotations against the codebook;
-- writes them through to the db server;
+- writes them to the database;
 - caches unit content and the coder's own annotations.
 
-The job server implements the **client API** (`clientEndpoints`,
-[spec](api/client.md)) for coders, under `/d/<deploymentId>`, and the
-**DB API** (`dbEndpoints`, [spec](api/db.md)), which db servers call to
-refresh a deployment or ask for its status.
+It reads and writes through a `Store` (`store.ts`): `DbStore` for the
+database, `PreviewStore` for previews.
 
-**client.** The researcher UI (`AdminClient`) talks to the db server's
-researcher API. The annotator (`HttpJobServer`, `JobManager`) talks to the
-job server's client API at `<job server>/d/<deploymentId>`.
+**client.** The researcher UI (`AdminClient`) talks to the researcher API.
+The annotator (`HttpJobServer`, `JobManager`) talks to the client API at
+`/d/<deploymentId>`, on its own origin (in development, Vite proxies `/d`
+to the server).
 
 ## 3. Invariants
 
-These are what make the job server safe to run anywhere, including an edge
-worker:
-
-1. **Durable before acknowledged, sent within a minute.** An answer is
-   stored in the job server's **outbox** (a SQLite file on Node, Durable
-   Object storage on Cloudflare) before the coder is told it was saved, and
-   sent to the db server in a batch (`POST /annotator/.../annotations`) about
-   once a minute, with backoff (1, 2, 5, then every 15 minutes) while the
-   db server is unreachable. Coders with a session and cached units keep
-   working through an outage; past a limit (10,000 pending writes or 24 h)
-   new answers are refused (`503 storage_unavailable`) rather than buffered
-   forever. The researcher status shows what is pending. Before the job
-   server *reads* from the db server (loading, reloading, a returning
-   coder, status), it sends its pending writes, so it never reads state
-   older than its own writes. `flushIntervalMs: 0` makes it write-through.
-   See `outbox.ts`.
-2. **Rebuildable, once the outbox is sent.** Everything else the job server
-   holds is a cache of the annotator API; a restart sends what the outbox
-   holds before loading anything. The one exception is dynamic-source **leases**, which are
-   deliberately disposable: losing them only returns an abandoned unit to
-   the queue early. So the job server needs no database and no backups.
-   The cache has two parts, so a rebuild doesn't need every annotation in
-   memory (that matters on the edge target, with idle evictions and a
-   memory limit per Durable Object):
+1. **Stored before acknowledged.** An answer is written to the database
+   before the coder is told it was saved. There is no buffering.
+2. **Rebuildable.** Everything the runtime holds in memory is a cache of the
+   database, except dynamic-source **leases**, which are deliberately
+   disposable: losing them only returns an abandoned unit to the queue
+   early. A restart loads what it needs again. The cache has two parts, so
+   a rebuild doesn't need every annotation in memory:
    - **Distribution state**, loaded eagerly by `DeploymentRuntime.load()`:
-     `GET /deployment` + `POST /finished`, the bulk query, for two things
+     the deployment spec and the bulk `listFinished` query, for two things
      only: **loops with dynamic sources** (which coder finished which unit
      there, plus the agreement variables' values; fixed sources need no
      global state, a coder's own finished units are enough), and
      **`balanced` auto variables** (coder-level rows: which coder has which
      option).
    - **Active coders**: the coder record (coder-level values, loop
-     routing) from `coders/resolve`, and their workspace, i.e. their own
-     live annotations, via `GET /annotations?coderId=X`. Loaded when the
-     coder shows up; their finished units in every loop are derived from
-     it. Released under a memory budget (see 3.), so memory grows with active
-     coders, not with all coders of a job.
+     routing) and their workspace, i.e. their own live annotations. Loaded
+     when the coder shows up; their finished units in every loop are
+     derived from it. Released under a memory budget (see 3.), so memory
+     grows with active coders, not with all coders of a job.
 
    A codebook redeploy keeps the derived codings if the loops' questions,
    dynamic sources and agreement variables are unchanged. Otherwise, or
    after a researcher reset (`annotationEpoch`), it rebuilds them.
-   Researcher status is computed on demand (`POST /finished` for every
-   loop, `GET /coders` for routing), not held in memory.
-3. **Bounded retention.** The job server keeps what it may release only
-   while there is room, and never longer than a fixed bound
-   (`RuntimeOptions` in `runtime.ts`, per deployment):
+   Researcher status is computed on demand (finished units for every loop,
+   all coders for routing), not held in memory.
+3. **Bounded memory.** The runtime keeps what it may release only while
+   there is room, and never longer than a fixed bound (`RuntimeOptions` in
+   `runtime.ts`, per deployment):
 
    | Held | Released when |
    | --- | --- |
-   | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose; otherwise units are not re-fetched, since they shouldn't change once coding started. If one does, annotations say so: each write carries `unitHash`, the hash of the content the coder was shown |
+   | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose; otherwise units are not re-read, since they shouldn't change once coding started. If one does, annotations say so: each write carries `unitHash`, the hash of the content the coder was shown |
    | A coder's record and annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without dynamic sources go with them, and are rebuilt when they return |
    | Distribution state (spec, dynamic-loop codings, `balanced` counts, leases) | Not released while the deployment is loaded: it is bounded by units x coders per unit, and distribution needs it |
-   | The deployment as a whole | Unused for `deploymentIdleMs` (6 h) on Node; on Cloudflare when the Durable Object is evicted. Or `DELETE /db/deployments/:id` |
+   | The deployment as a whole | Unused for `deploymentIdleMs` (6 h), or when the job is deleted |
 
    Sizes are estimated from JSON length, since JavaScript gives no memory
-   pressure signal (and a Durable Object that exceeds its limit is simply
-   killed). `memory` in the deployment status shows current use. This keeps
-   GDPR retention simple: the job server is a processor with a short,
-   documented retention window.
+   pressure signal. `memory` in the deployment status shows current use.
+4. **One process.** Leases and the dynamic-loop codings live in the memory
+   of one process (`registry.ts`). Running several server processes would
+   need them in the database (§10).
 
 ## 4. Trust and hosting
 
-The job server sees units and annotations in plaintext. It must be trusted
-for confidentiality, not only integrity. That is the price of putting
-validation, real-valued stopping rules and caching in one place.
+The server sees units and answers in plaintext, like any web application
+that stores them. Where it runs is the researcher's choice: annotinder.com
+(hosted by us, in the EU), or self-hosted (e.g. a university server) for
+sensitive data.
 
-The mitigation is choice of deployment target, not cryptography:
-
-- **Public edge** (Cloudflare Workers + Durable Objects). Fastest, and fine
-  for non-sensitive material such as most crowd-coding jobs. `worker.ts`
-  routes `/d/<id>` and `/db/deployments/<id>` to one Durable Object per
-  deployment, which runs the same app as Node for that deployment: memory
-  is a cache the platform drops when idle, the outbox lives in the object's
-  SQLite storage (`outboxDurable.ts`) and is flushed by alarms.
-  `wrangler.toml` keeps objects in the EU jurisdiction (check Cloudflare's
-  current terms). Tested in workerd via Miniflare (`worker.test.ts`).
-- **Self-hosted Node** (e.g. an EU university server next to the db server).
-  For sensitive data. Coders of sensitive projects are usually near that
-  server anyway, so losing the edge costs little.
-
-A possible hardening, not planned yet: encrypting participants' answers
-between client and db server, so the job server never sees them
-(`docs/encryption.md`).
-
-Either way, answers rest on the job server until the next outbox flush
-(normally under a minute, at most the outbox limits): its storage must be
-as trusted as its memory.
-
-A db server is configured with the job server it deploys to, and stores
-which job server each job is bound to. A job server is configured with the
-db servers it accepts deployments from, its own URL and an
-Ed25519 key. No shared secrets (plan §13): the job server gets a short-lived
-**job token** per job with a request it signs (the db server verifies it
-with the job server's `/.well-known/jwks.json`), and sends it on every
-annotator API call; the db server signs its calls to the job server with the
-job's derived call key (`jobTokens.ts`, `keys.ts`;
-`reference-db-server/src/jobTokens.ts` for the db server side).
+A possible hardening, not planned yet: encrypting participants' answers in
+the client, so the server stores only ciphertext (`docs/encryption.md`).
 
 ## 5. Lifecycle
 
-**Deploy.** A researcher calls `PUT /job/:jobId/deployment` on the db server
-with `{ codebookId, active }`. The db server:
+**Deploy.** A researcher calls `PUT /job/:jobId/deployment` with
+`{ codebookId, active }`. The server bumps the deployment `version`, freezes
+the codebook, and has a loaded runtime re-read the deployment
+(`Deployments.refresh`). A runtime also re-checks the spec version at most
+every `specTtlMs` (60s).
 
-- bumps the deployment `version`;
-- freezes the codebook;
-- calls `POST /db/deployments/<db host>/<jobId>/refresh` on the job
-  server. This is best effort.
-
-The job server also re-checks the spec version at most every `specTtlMs`
-(60s), so a missed notification heals itself.
-
-**Deployment id.** The id is `<db host>/<jobId>`, e.g. `amcat.nl/42` (or
-`localhost:8787/1` in development): a job server that forgot a job finds the
-db server from the id alone. Invite links point at the job server:
-`<job server>/d/<db host>/<jobId>` + invite secret. Which db servers a job
-server works for is `ANNOTINDER_DB_SERVERS`: an allowlist of URLs, or
-`open` for any https db server (public job servers). Outbound calls never
-follow redirects, time out, cap response sizes and are capped per db host
-(`dbServers.ts`); the coder UI shows who hosts the job.
+**Coder links.** Invite links point at the client with the deployment id
+(the job id) and the invite secret; the client calls `/d/<jobId>/...`.
 
 **Coder session.**
 
-1. **First request.** The job server calls `POST /annotator/.../coders/resolve`
-   with the coder key (a hash of the session cookie's key, see
-   `coder-identity.md` §4) and invite secret. The db server creates the coder if
-   needed, copying the invite's preset variables. The job server then
-   assigns any missing server-side `auto` variables (§7) and caches the
-   coder.
+1. **First request.** The runtime resolves the coder by coder key (a hash
+   of the session cookie's key, see `coder-identity.md` §4) and invite
+   secret, creating the coder if needed and copying the invite's preset
+   variables. It then assigns any missing server-side `auto` variables (§7)
+   and caches the coder.
 2. **`GET /session`.** Served from the cache: the codebook, per-loop
    progress, and the coder's variables (so client-side conditions can use
    assigned variables).
-3. **`GET /loop/:loop/next`.** On the first call for a loop, the job server
+3. **`GET /loop/:loop/next`.** On the first call for a loop, the runtime
    routes the coder to a branch (§6) and stores that. It then picks a unit
-   and, for a dynamic source, leases it. It then serves the unit content from its cache. On a
-   cache miss it fetches the unit plus the next few prefetch candidates from
-   the db server in one request. If the db server no longer has the unit, it
-   is dropped from the queue and the next one is tried.
-4. **`POST /variables/unit`.** The job server checks that the unit was
-   assigned to this coder, validates the variables, stores them in its
-   outbox (sent to the db server with the next batch), and updates the
-   queue.
+   and, for a dynamic source, leases it, and serves the unit content from
+   its cache. On a cache miss it reads the unit plus the next few prefetch
+   candidates in one query. If a unit no longer exists, it is dropped from
+   the queue and the next one is tried.
+4. **`POST /variables/unit`.** The runtime checks that the unit was assigned
+   to this coder, validates the variables, writes them to the database, and
+   updates the queue.
 
-**Researcher preview.** `POST /job/:jobId/deployment/preview` on the db
-server returns a deployment id `<db host>/<jobId>.preview` and a token
-signed with the secret it shares with the job server (format in
-`PreviewSessionSchema`). The client opens it like an invite. The job server
-runs the latest codebook (`GET /annotator/.../deployment?preview=1`, checked
-on every request so edits show at once) with the real units, but keeps
-coders and answers in memory (`preview.ts`): a preview writes nothing to
-the db server, and is gone when the job server forgets the deployment.
+**Researcher preview.** `POST /job/:jobId/deployment/preview` returns
+deployment id `<jobId>.preview` and a token signed with the server's secret
+(`ANNOTINDER_SECRET`; random per process if not set, so previews then end
+with a restart). The client opens it like an invite. The runtime runs the
+latest codebook (checked on every request, so edits show at once) with the
+real units, but keeps coders and answers in memory (`preview.ts`): a
+preview stores nothing, and is gone when the server forgets the deployment.
 
-**Researcher status.** `GET /job/:jobId/deployment/status` on the db server
-proxies `GET /db/deployments/:id/status`: units complete / started /
-leased, codings, coders.
+**Researcher status.** `GET /job/:jobId/deployment/status`: units complete /
+started / leased, codings, coders, and the runtime's memory use.
 
 ## 6. Distribution: the codebook describes the process
 
@@ -248,7 +195,7 @@ There are three layers:
 | --- | --- | --- |
 | Codebook | questions, conditions, `unit_loop` distribution; refers to unitsets by name and to coders only via coder-level variables | yes |
 | Unitsets | name -> ordered list of unit ids (e.g. `part_1`..`part_5`, `part_overlap`) | data, not process |
-| Invitations | links with access rules and preset values for codebook variables | no (private to the db server) |
+| Invitations | links with access rules and preset values for codebook variables | no (stored on the server only) |
 
 ### 6.1 Unit loops
 
@@ -300,12 +247,12 @@ with the coder's answer as text. Codebook validation checks both.
 **The client chooses the branch.** When it enters a loop, the client
 evaluates the branches in order, takes the first that matches, fills in its
 unitset names, and asks `GET /loop/:loop/next?branch=<i>&unitsets=<names>`.
-The job server checks that the branch exists, that the names fit that
+The runtime checks that the branch exists, that the names fit that
 branch's sources (`unitsetMatchesSource`) and that the unitsets exist, and
 stores them. A loop with a single unconditional branch without references
 routes without the parameters; any other loop answers 409
 `branch_required` until the client chooses. If no branch matches, the
-coder has no units in the loop. This way the job server never needs the
+coder has no units in the loop. This way the server never needs the
 answers a branch depends on, which is what end-to-end encryption needs
 (`encryption.md`, "Routing on answers").
 
@@ -319,8 +266,8 @@ change their stored group; only which units they ask for. If a study needs
 the routing enforced, a strict mode could later check the filled-in names
 against server-held `auto` values (only possible for unencrypted ones).
 
-**Routing is sticky.** The resolved unitset names are stored on the db
-server per coder and loop (`assignments`, e.g. `{ main: ["part_2",
+**Routing is sticky.** The resolved unitset names are stored per coder
+and loop (`assignments`, e.g. `{ main: ["part_2",
 "part_overlap"] }`), and later choices are ignored. A coder who later
 changes an answer used in `when` keeps their units, as long as the codebook
 still has a branch that produces the same names.
@@ -352,10 +299,10 @@ The splitting logic is a pure function, `splitUnits` in contracts.
 **`auto` variables** are assigned, never asked, and never changed afterwards.
 The client skips them as steps.
 
-- `random`: weighted draw from `options` (job server).
-- `balanced`: the option fewest coders have so far (job server). This
+- `random`: weighted draw from `options` (server).
+- `balanced`: the option fewest coders have so far (server). This
   spreads unknown coders evenly over `part_$var.slot.code`. The counts come from a
-  coder-level `POST /finished` query on load, then are kept in memory.
+  coder-level `listFinished` query on load, then are kept in memory.
 - `invite`: the value preset on the coder's invitation. If the invitation
   doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
   stays empty.
@@ -364,10 +311,10 @@ The client skips them as steps.
   others, so later visits don't need it; values outside `options` (if
   given) are ignored.
 
-The job server refuses to let the client overwrite assigned variables.
+The server refuses to let the client overwrite assigned variables.
 `POST /variables/coder` keeps the stored values.
 
-**Invitations** (db server only, never in the codebook):
+**Invitations** (stored on the server, never in the codebook):
 
 ```json
 { "label": "Alice", "access": "only_authenticated", "emails": ["alice@uni.nl"], "maxUses": 1, "variables": { "slot": "2" } }
@@ -399,7 +346,7 @@ continues where they left off:
   only when the coder navigates to them, via
   `GET /loop/:loop/units/:unitId`. That endpoint only serves units the coder
   has answers for or currently holds, so nobody can peek ahead. New units
-  still come from `GET /loop/:loop/next`, which keeps the job server in
+  still come from `GET /loop/:loop/next`, which keeps the server in
   charge of distribution.
 - **Within the unit at the frontier,** the client starts at the first
   question without a valid answer. That unit can be partly answered after a
@@ -411,7 +358,7 @@ between visits when distribution is dynamic.
 ### 8.2 What happens when the codebook changes
 
 A researcher deploys a new codebook version for a running job. Answers are
-keyed by question name, and the job server and client always check them
+keyed by question name, and the server and client always check them
 against the **current** codebook (`validateAnswer`, shared via contracts):
 
 | Change | Units the coder already finished | Unit in progress / new units |
@@ -432,10 +379,10 @@ How it works:
   stay as data, tagged with the codebook they were written under.
 - **"Finished" is computed from the current codebook**: a unit is finished
   in a loop when *every* question of that loop has a live value. Questions a
-  condition hid are stored as `skip`. The job server only accepts complete
+  condition hid are stored as `skip`. The runtime only accepts complete
   units, so a stored unit is always complete under the codebook it was
-  written with. The db server only counts (`POST /finished` with the loop's
-  variable names); it never runs codebook logic. Finished units are tracked
+  written with. The database query only counts (`listFinished` with the
+  loop's variable names); the codebook logic stays in the runtime. Finished units are tracked
   per loop, so a unit in two loops is finished in each separately.
 - **Order** in a coder's progress is the first write of the unit's values
   (`created`), so editing a finished unit doesn't move it.
@@ -446,7 +393,7 @@ How it works:
 - **Reset** (`POST /job/:jobId/annotations/reset { variables, unitIds?,
   coderIds? }`, a researcher action): retires live values instead of
   deleting them. The units are unfinished again; the old values stay for
-  analysis. It bumps the deployment's `annotationEpoch`, so the job server
+  analysis. It bumps the deployment's `annotationEpoch`, so the runtime
   reloads.
 
 ### 8.3 Open: choosing what reopens
@@ -469,62 +416,76 @@ Other open points:
 | `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, unitset references, legacy migration |
 | `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var`/`$const` references, template parsing, scopes; conditions (rules or script) and rule evaluation |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
-| `contracts/src/deployment.ts` | Deployment, annotator API and status schemas |
-| `contracts/src/endpoints/` | The four API registries: researcher, annotator, client, DB ([docs/api](api/README.md)) |
-| `job-server/src/app.ts` | Hono app: client API under `/d/<db host>/<jobId>`, DB API under `/db/deployments/...` |
-| `job-server/src/dbServers.ts` | Which db servers (allowlist or open), deployment ids, outbound fetch limits |
-| `job-server/src/registry.ts` | Lazily loads one runtime per deployment; failures aren't cached |
-| `job-server/src/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
-| `job-server/src/outbox.ts` | Durable pending writes, batched flushes with backoff (`outboxSqlite.ts`: the Node store) |
-| `job-server/src/session.ts` | Coder session cookies, CSRF header |
-| `job-server/src/keys.ts` | The job server's Ed25519 keys: JWKS endpoint, signed requests to db servers |
-| `job-server/src/jobTokens.ts` | Job tokens per (db server, job), call key, checking db server signatures |
-| `job-server/src/preview.ts` | Researcher previews: preview tokens, in-memory coders and answers |
-| `job-server/src/worker.ts` | Cloudflare entry: Worker routing + a Durable Object per deployment (`outboxDurable.ts`, `wrangler.toml`) |
-| `job-server/src/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
-| `job-server/src/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
-| `job-server/src/annotatorClient.ts` | Typed annotator API client; validates db server responses |
-| `reference-db-server/src/annotator/` | Reference annotator API, one file per endpoint, in memory ([README](../packages/reference-db-server/README.md)) |
-| `conformance/src/index.ts` | Annotator API conformance suite, runnable against any db server |
-| `mock-server/src/routes/annotator.ts` | The dev server's annotator API (sqlite) |
-| `mock-server/src/routes/deployment.ts` | Researcher deployment endpoints, job server notification |
+| `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |
+| `contracts/src/endpoints/` | The two API registries: researcher, client ([docs/api](api/README.md)) |
+| `server/src/app.ts` | Hono app: researcher API under `/job/...`, client API under `/d/<deploymentId>` |
+| `server/src/coder.ts` | The client API routes: session cookie, coder resolution, units, answers, transfers |
+| `server/src/researcher/` | The researcher API, one file per path |
+| `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
+| `server/schema.sql`, `src/db.ts` | The data model (SQLite for now) |
+| `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; refresh, status, preview tokens |
+| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
+| `server/src/runtime/store.ts` | `Store`: what the runtime reads and writes; `DbStore` on the database |
+| `server/src/runtime/types.ts` | The runtime's internal types (spec, coder, annotations, finished rows) |
+| `server/src/runtime/session.ts` | Coder session cookies, CSRF header |
+| `server/src/runtime/preview.ts` | Researcher previews: preview tokens, `PreviewStore` with in-memory coders and answers |
+| `server/src/runtime/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
+| `server/src/runtime/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches and sources |
 
-`job-server/src/__tests__/integration.test.ts` runs the real mock server and
-job server against each other, through in-process `fetch`;
-`reference-db-server/src/__tests__/jobServer.test.ts` does the same with the
-reference db server. Both db servers run the conformance suite in their tests.
+`server/src/__tests__/coder.test.ts` runs coders end to end through the
+app's fetch handler, against an in-memory database; a new app on the same
+database is a restart. `app.test.ts` covers the researcher API and the
+store's queries.
 
 ## 10. Open questions and next steps
 
 Roughly in order:
 
-1. **Auth.** Between the servers: done for allowlisted db servers (plan
-   §13); open job servers, deployment ids from the db host and outbound
-   caps are next there. Coder identity, sessions across devices and coder
-   login are designed in `docs/coder-identity.md`.
-2. **Multimedia.** Images, audio and video in units should probably **not**
-   flow through the JSON path. Proposal: units reference media by id; the job
-   server returns short-lived signed URLs; the bytes come from a separate
-   blob gateway. That could be R2 with signed URLs for the edge target, or
-   the db server's own file endpoint for self-hosted. This keeps the job
-   server's memory and cache JSON-only. The blob gateway follows the same
-   trust choice as the job server it pairs with.
-3. **Semantic validation.** The current validation checks variable names,
+1. **Postgres.** Move storage to Postgres: `pg` in production, PGlite for
+   tests, development and annotinder local, so there is one SQL dialect.
+2. **Researcher API as a public contract.** R, Python and other systems
+   (AmCAT) use it: script authentication (API keys), downloading
+   annotations (with pagination), maybe a webhook that posts new
+   annotations.
+3. **Auth.** Real researcher authentication (today: dev headers). Coder
+   login (`docs/coder-identity.md` §5) now simply lives on the server.
+   Email-restricted invites need it.
+4. **Limits.** Rate and resource limits, and quotas per account (e.g. a
+   course hands out a number of jobs per student).
+5. **Hashes.** A codebook content hash, and a unit hash over the fields the
+   codebook uses (after unit preprocessing) instead of the full data: easier
+   now that one server does both. Until then `unitHash` is provisional.
+6. **Keeping history.** When units are updated after being coded, keep a
+   copy of the old version; keep older versions of annotations. (Today an
+   annotation written with an old `codebookId` after a reset is stored as
+   is.)
+7. **Sessions.** A device id derived across jobs, versus today's session key
+   per job; reopening anonymous invites on the same device.
+8. **Multimedia.** Images, audio and video in units should probably **not**
+   flow through the JSON path. Proposal: units reference media by id; the
+   server returns short-lived signed URLs to a blob store. This keeps the
+   runtime's memory and cache JSON-only.
+9. **Semantic validation.** The current validation checks variable names,
    codes, items and span/relation codes. Running codebook conditions
    (QuickJS) server-side, to reject answers to questions the coder should
-   never have seen, would be the next step. It belongs here, not in db
-   servers. It conflicts with end-to-end encryption, though (the server
-   would need the answers), which is why conditions and branch choice now
-   run on the client (§6.1).
-4. **Email-restricted invites** need real coder authentication (item 1).
-5. **Scale.** On cold start the job server loads finished codings for
-   dynamic loops only (bounded by units x `maxCoders`), and coder workspaces
-   lazily (§3). Add `?after=<cursor>` pagination to `finished` and
-   `annotations`. Researcher status queries every loop's finished units on
-   demand: fine for occasional use, worth an aggregate endpoint if it gets
-   polled.
-6. **Deactivation semantics.** `active: false` stops new units (409), but
-   coders can still submit units they were already working on. Decide
-   whether that's what researchers expect.
-7. **Reopening finished units after a codebook update** (§8.3).
+   never have seen, would be the next step. It conflicts with end-to-end
+   encryption, though (the server would need the answers), which is why
+   conditions and branch choice run on the client (§6.1).
+10. **Scale.** On cold start the runtime loads finished codings for dynamic
+    loops only (bounded by units x `maxCoders`), and coder workspaces
+    lazily (§3). Researcher status is computed on demand: fine for
+    occasional use; aggregates kept in the database if it gets polled.
+    More than one server process needs leases and codings in the database
+    (§3.4); with Postgres, e.g. leases as rows picked with
+    `FOR UPDATE SKIP LOCKED`.
+11. **Admin unit cache.** A client-side cache of units for the researcher
+    UI (IndexedDB), compared by ids and hashes.
+12. **Deactivation semantics.** `active: false` stops new units (409), but
+    coders can still submit units they were already working on. Decide
+    whether that's what researchers expect.
+13. **Reopening finished units after a codebook update** (§8.3).
+
+Smaller things worth an issue: a swipe-card UI for the `annotinder` answer
+type; `VariableValue` as a discriminated union; a live preview of a
+codebook item while editing it.

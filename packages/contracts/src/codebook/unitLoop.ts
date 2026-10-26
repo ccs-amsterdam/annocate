@@ -70,7 +70,7 @@ export type UnitSource = z.infer<typeof UnitSourceSchema>;
 export const UnitBranchSchema = z.object({
   /**
    * Absent = always matches. The first matching branch wins. Evaluated by
-   * the client, which tells the job server the branch it chose.
+   * the client, which tells the server the branch it chose.
    */
   when: ConditionSchema.optional(),
   sources: z.array(UnitSourceSchema).min(1, "A branch needs at least one unit source"),

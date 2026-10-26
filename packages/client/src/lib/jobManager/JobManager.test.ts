@@ -143,7 +143,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     expect(manager.getSnapshot().currentItem?.name).toBe("shown_to_a");
   });
 
-  it("asks the job server for the next unit by loop name", async () => {
+  it("asks the server for the next unit by loop name", async () => {
     let unitsServed = 0;
     const getNextUnit = vi.fn(async (loop: string) => {
       expect(loop).toBe("loop_all_units");

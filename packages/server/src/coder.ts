@@ -1,0 +1,105 @@
+import { Hono, type Context } from "hono";
+import { NextUnitQuerySchema, PostCoderVariablesSchema, PostUnitVariablesSchema, RedeemTransferSchema } from "@annotinder/contracts";
+import type { Server } from "./context.js";
+import { HttpError } from "./shared/http.js";
+import { dbCoderKey, newSessionKey, readSession, requireClientHeader, sessionCookieName, writeSession } from "./runtime/session.js";
+import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
+
+interface Env {
+  Variables: { runtime: DeploymentRuntime; coder: Coder; sessionKey: string };
+}
+
+/**
+ * The client API (contracts `clientEndpoints`, docs/api/client.md), under
+ * `/d/<deploymentId>`: `<jobId>`, or `<jobId>.preview`. The client's
+ * `HttpJobServer` uses `/d/<deploymentId>` as its base URL.
+ *
+ * No CORS: the client is served from this server's origin, so the browser
+ * refuses cross-origin calls that carry the required header.
+ */
+export function coderApi(server: Server): Hono {
+  const app = new Hono();
+
+  // Redeeming a transfer link: this device gets the session's cookie.
+  app.post("/transfer/redeem", async (c) => {
+    requireClientHeader(c);
+    const body = await parseBody(c, RedeemTransferSchema);
+    const deploymentId = c.req.param("deployment")!;
+    const runtime = await server.deployments.get(deploymentId);
+    const sessionKey = runtime.redeemTransfer(body.token);
+    const name = await sessionCookieName(c.req.header("x-participant-id"));
+    writeSession(c, deploymentId, name, sessionKey);
+    return c.json({});
+  });
+
+  const session = new Hono<Env>();
+  session.use("*", async (c, next) => {
+    requireClientHeader(c);
+    const deploymentId = c.req.param("deployment")!;
+    const runtime = await server.deployments.get(deploymentId);
+    await runtime.refresh();
+    c.set("runtime", runtime);
+
+    // The session cookie, or a new session: no cookie yet, or the coder asked
+    // for a new one (a participant id that already has a session elsewhere).
+    const inviteSecret = c.req.header("x-invite-secret");
+    const participantId = c.req.header("x-participant-id");
+    const newSession = c.req.header("x-new-session") === "1";
+    const name = await sessionCookieName(participantId);
+    const existing = newSession ? undefined : readSession(c, name);
+    const sessionKey = existing ?? newSessionKey();
+    const coder = await runtime.resolveCoder(
+      { coderKey: await dbCoderKey(sessionKey), inviteSecret, participantId, newSession },
+      // The page's query parameters, for `url_param` auto variables.
+      Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? "")),
+    );
+    // Only once the coder was accepted (an invite may be invalid or used up).
+    if (sessionKey !== existing) writeSession(c, deploymentId, name, sessionKey);
+    c.set("sessionKey", sessionKey);
+    c.set("coder", coder);
+    await next();
+  });
+
+  session.post("/transfer", (c) => c.json(c.get("runtime").createTransfer(c.get("sessionKey"))));
+
+  session.get("/session", (c) => c.json(c.get("runtime").session(c.get("coder"))));
+
+  session.get("/loop/:loop/next", async (c) => {
+    const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), unitsets: c.req.queries("unitsets") });
+    if (!query.success) return c.json({ error: "Invalid branch or unitsets" }, 400);
+    const { branch, unitsets } = query.data;
+    const names = unitsets === undefined ? [] : Array.isArray(unitsets) ? unitsets : [unitsets];
+    return c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("loop"), { branch, unitsets: names }));
+  });
+
+  session.get("/loop/:loop/units/:unitId", async (c) =>
+    c.json(await c.get("runtime").loopUnit(c.get("coder"), c.req.param("loop"), Number(c.req.param("unitId")))),
+  );
+
+  session.post("/variables/unit", async (c) => {
+    const body = await parseBody(c, PostUnitVariablesSchema);
+    await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop);
+    return c.body(null, 204);
+  });
+
+  session.post("/variables/coder", async (c) => {
+    const body = await parseBody(c, PostCoderVariablesSchema);
+    await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables);
+    return c.body(null, 204);
+  });
+
+  app.route("/", session);
+  return app;
+}
+
+async function parseBody<T>(c: Context, schema: { safeParse(v: unknown): { success: true; data: T } | { success: false } }) {
+  let raw: unknown;
+  try {
+    raw = await c.req.json();
+  } catch {
+    throw new HttpError(400, "Invalid JSON body");
+  }
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) throw new HttpError(400, "Invalid request body");
+  return parsed.data;
+}

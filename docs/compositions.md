@@ -1,53 +1,51 @@
 # Compositions: one set of parts, several products
 
-Status: direction agreed 2026-10-16 (discussion summary). Nothing here is
-built yet beyond the parts themselves.
+Status: direction agreed 2026-10-16; updated 2026-10-26 after merging the
+db server and job server into one server. Nothing here is built yet beyond
+the parts themselves.
 
-Annotinder has three parts, each usable on its own:
+Annotinder has two parts:
 
-- **db server**: the source of truth. Researcher API (jobs, codebooks,
-  units, unitsets, invites, deployments, results) and annotator API (for job
-  servers). Any language; conformance-tested (`packages/conformance`).
-- **job server**: the annotinder runtime coders talk to: distribution,
-  validation, caching, the outbox. TypeScript only (`packages/job-server`).
-  Talks to db servers over the annotator API, with job tokens (plan §13).
-- **client**: the web app, for coders and researchers (`packages/client`).
-  Always served from the job server's origin (session cookies).
+- **server** (`packages/server`): one Node program. The researcher API
+  (jobs, codebooks, units, unitsets, invites, deployments, results) and the
+  client API for coders (`/d/<jobId>`): distribution, validation, sessions.
+  It owns the data. Storage: SQLite now; Postgres next (`pg` in production,
+  PGlite for tests, development and annotinder local).
+- **client** (`packages/client`): the web app, for coders and researchers.
+  Always served from the server's origin for coders (session cookies).
+
+Other systems (AmCAT, R, Python) are **clients of the researcher API**: they
+push units, a codebook and job settings, and download annotations (maybe
+later: a webhook that posts batches of annotations).
 
 The products below are compositions of these parts, not separate code. New
 code goes into the parts; a product is configuration and packaging.
 
 ## The products
 
-**annotinder.com**: hosted by us.
+**annotinder.com**: hosted by us. The server on Postgres, EU-hosted, plus
+the web client.
 
-- annotinder db server (hosted by us)
-- annotinder job servers: an allowlist with only our db server; EU-hosted,
-  GDPR-proof, securely tied to the db server
-- annotinder web client
+**Self-hosted annotinder**: the same server and client, run by a university
+or project on its own infrastructure (Node and Postgres). For data that must
+stay in-house.
 
-**open.annotinder.com**: for anyone who runs their own db server.
+**annotinder local**: everything on one machine, in one process.
 
-- a self-hosted db server (AmCAT, a university's own, ...)
-- our public job servers: open mode (`ANNOTINDER_DB_SERVERS=open`), Cloudflare,
-  best effort; the coder UI shows which db server hosts a job
-- the annotinder web client
-
-**annotinder local**: everything on one machine.
-
-- db server, job server and client in one process, on one origin
+- the server (on PGlite or SQLite) and the built client, on one origin
 - for: a researcher annotating locally in a nice interface, with their data
   in files; developing a codebook from R or Python with a live preview; a
   team on a LAN coding together (when the network allows it)
 
-**Researcher API clients**: anything that talks to a db server's researcher
-API, the same way whichever db server it is:
+**Researcher API clients**: anything that talks to the researcher API, the
+same way whichever server it is:
 
 - R package
 - Python module
+- AmCAT (copies units into annotinder, so annotinder can run without it)
 - the web client (its admin side)
 - annotinder local's own UI (later, nice to have: push a job from local to
-  another db server)
+  another server)
 
 ## Annotinder local
 
@@ -55,15 +53,10 @@ API, the same way whichever db server it is:
 
 One Node program, `annotinder-local`:
 
-- the **SQLite db server**: today's mock server, promoted. It already has
-  the researcher API, the annotator API and SQLite storage. Needs: real
-  researcher authentication (a local admin token, written to the project
-  folder), file import and export, and a better name.
-- the **job server**, imported as is. It reaches the db server through an
-  in-memory `fetch` (as the job server's integration tests already do): no
-  network between them, and exactly the production code paths, including
-  the job token handshake (which costs nothing in-process). No special
-  "local mode" to maintain.
+- the **server**, as is: researcher API, client API and storage. Needs:
+  real researcher authentication (a local admin token, written to the
+  project folder) and file import and export. No special "local mode" to
+  maintain: exactly the production code paths.
 - the **built client**, served from the same origin.
 - a small CLI: `annotinder-local [project folder]`, which starts it and
   prints (or opens) the URL.
@@ -75,27 +68,25 @@ is the network itself (firewalls, client isolation on eduroam).
 
 ### Data: files people can copy
 
-Leaning (not decided): **SQLite as the store, a project folder as the
+Leaning (not decided): **the database as the store, a project folder as the
 interface.**
 
-- The project folder holds `annotinder.sqlite` and the files people care
-  about: the codebook (`codebook.json`), units imported from a CSV or a
-  directory (one file per unit), and annotations written out as coders
-  work (e.g. `annotations.jsonl`: append-only, survives crashes, diffs well;
-  and/or a CSV export).
+- The project folder holds the database and the files people care about:
+  the codebook (`codebook.json`), units imported from a CSV or a directory
+  (one file per unit), and annotations written out as coders work (e.g.
+  `annotations.jsonl`: append-only, survives crashes, diffs well; and/or a
+  CSV export).
 - Why not files only: concurrent coders, partial writes and the
-  distribution queries (`/finished`) are what a database is for. The SQLite
-  file itself is also a single copyable file.
+  distribution queries are what a database is for. A PGlite or SQLite
+  database is also just a folder or file you can copy.
 - Formats (CSV, JSONL, xlsx, parquet, ...) are still open.
 
 ### Distribution
 
 1. `npx annotinder-local` for people with Node 22+.
 2. Single binaries per platform (no Node needed): Node's single executable
-   applications (keeps `node:sqlite`), or Bun's compiled binaries (would
-   need a small SQLite adapter: `bun:sqlite` has nearly the same API as
-   `node:sqlite`, so one db server can run on either). Built in CI for
-   Linux, macOS and Windows; published as GitHub releases.
+   applications, or Bun's compiled binaries. Built in CI for Linux, macOS
+   and Windows; published as GitHub releases.
    - R: `annotinder::install()` downloads the binary on first use (as
      quarto and tinytex do; CRAN doesn't allow shipping binaries).
    - Python: platform wheels with the binary inside (as ruff does).
@@ -107,36 +98,25 @@ interface.**
 ### From R and Python
 
 R and Python are researcher API clients, nothing more: the same package
-works against annotinder local and a hosted db server. Codebook development:
+works against annotinder local and a hosted server. Codebook development:
 R pushes the codebook and opens the preview URL in the RStudio Viewer; the
 preview picks up the new codebook on the next request (already built:
-`<db host>/<jobId>.preview`).
+deployment `<jobId>.preview`).
 
-**Consequence: the researcher API becomes a public contract.** Today it is
-"what the mock server implements". Before the R and Python packages, it
-needs what the annotator API has: a versioned schema in `packages/contracts`,
-an authentication scheme for scripts (API keys for hosted db servers, the
-local admin token for annotinder local), and a conformance suite.
+**Consequence: the researcher API is the public contract.** Today it is
+"what the server implements". Before the R and Python packages, it needs a
+versioned schema in `packages/contracts` (mostly there), an authentication
+scheme for scripts (API keys for hosted servers, the local admin token for
+annotinder local), and documentation per endpoint (`docs/api/`).
 
 ### Later: exposing a local job to the internet (a bridge)
 
-Two variants, for different needs. In both, annotinder local dials out to a
-bridge (an outbound tunnel), so it works behind NAT and university
-firewalls; we only provide a public endpoint.
-
-**A. Local db server, our public job servers.** Annotinder local acts as a
-**db server for our public job servers**, reachable through the tunnel
-(a relay we host, or e.g. a Cloudflare tunnel). Coders use
-open.annotinder.com as usual; only the job server's annotator API calls travel to
-the laptop, in batches, and the outbox buffers them while the laptop sleeps
-or is offline (up to its limits). Cheap for the laptop and tolerant of it
-going away, but units and answers pass through our job servers.
-
-**B. Everything on the researcher's machine (highly secure coding).**
 Other coders connect to one researcher's annotinder local, which handles
-everything: db server, job server and client. Nothing else sees units or
-answers, so the connection must be **end-to-end encrypted**:
+everything. Nothing else sees units or answers (highly secure coding), so
+the connection must be **end-to-end encrypted**:
 
+- Annotinder local dials out to a bridge (an outbound tunnel), so it works
+  behind NAT and university firewalls; we only provide a public endpoint.
 - TLS must end on the researcher's machine, not at the bridge. A Cloudflare
   tunnel does *not* do that (Cloudflare decrypts at its edge); a plain HTTPS
   reverse proxy on a VPS doesn't either.
@@ -149,21 +129,18 @@ answers, so the connection must be **end-to-end encrypted**:
   Certificate rate limits per domain need checking (or a wildcard scheme).
 - The researcher's machine must stay online while others code, and all
   traffic goes through the bridge (bandwidth is ours to pay).
-
-Both variants: the bridge's hostnames should live under a domain separate
-from annotinder.com, so a malicious user can't get the main domain on
-phishing blocklists; and the bridge needs abuse limits (who may register an
-endpoint, bandwidth caps).
+- The bridge's hostnames should live under a domain separate from
+  annotinder.com, so a malicious user can't get the main domain on
+  phishing blocklists; and the bridge needs abuse limits (who may register
+  an endpoint, bandwidth caps).
 
 ## Order of work (proposal)
 
-1. Researcher API as a public contract: schemas in contracts, script
-   authentication, conformance suite.
-2. Promote the mock server to the SQLite db server: researcher auth, file
-   import/export, a name; keep it the dev server too.
-3. `annotinder-local`: the composition, the project folder, the CLI;
-   `npx` first.
+1. Researcher API as a public contract: complete schemas in contracts,
+   script authentication, docs.
+2. Postgres in the server (PGlite for tests, development and local).
+3. `annotinder-local`: the composition, the project folder, file import and
+   export, the CLI; `npx` first.
 4. R package (and Python module) on the researcher API.
 5. Single binaries and their distribution through R and Python.
-6. Later: the bridge (A: to our public job servers; B: end-to-end to the
-   researcher's machine); pushing local jobs to another db server.
+6. Later: the bridge; pushing local jobs to another server.

@@ -3,7 +3,7 @@ import type { UnitData, UnitDataValue } from "./common.js";
 
 /**
  * A job's unit fields (docs/plan-job-admin.md, phase 3): every unit has the
- * same fields, each with a type. A db server takes them from the first
+ * same fields, each with a type. The server takes them from the first
  * upload (`fieldsOfUnits`) and checks later uploads against them
  * (`checkUnitData`); deleting all units resets them. Values are stored typed,
  * so `{{$unit.count > 40}}` compares numbers. `null` is an empty value of

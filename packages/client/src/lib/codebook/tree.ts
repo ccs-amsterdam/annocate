@@ -138,7 +138,7 @@ async function walkSteps(
       steps.push(node);
     } else {
       if (answers[node.name] !== undefined) visible[node.name] = answers[node.name];
-      // `auto` questions are assigned (by the job server or from the URL), never asked.
+      // `auto` questions are assigned (by the server or from the URL), never asked.
       if (node.variable.type !== "auto") steps.push(node);
     }
   }

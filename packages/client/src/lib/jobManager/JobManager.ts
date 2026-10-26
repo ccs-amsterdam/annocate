@@ -48,7 +48,7 @@ export interface NavigationPhase {
   isCurrent: boolean;
   isCompleted: boolean;
   unitCount?: number;
-  /** Units this coder will get in the loop, if known (from the job server). */
+  /** Units this coder will get in the loop, if known (from the server). */
   totalUnits?: number;
   currentUnitIndex?: number;
   units?: NavigationUnitItem[];
@@ -77,7 +77,7 @@ export interface JobManagerSnapshot {
   userVariableValues: Record<string, VariableValue>;
   currentUnitVariables: Record<string, VariableValue> | null;
   error: string | null;
-  /** Machine-readable error code from the job server (e.g. `participant_has_session`), if any. */
+  /** Machine-readable error code from the server (e.g. `participant_has_session`), if any. */
   errorCode: string | null;
   navigation: JobManagerNavigation;
 }
@@ -116,7 +116,7 @@ function loopVariables(loop: UnitLoopItem): Map<string, AnyVariableType> {
 /**
  * Answers that still fit the current codebook. Answers to questions that no
  * longer exist, or with codes the question no longer has, are left out, so
- * the coder is asked again (the job server keeps answers to removed
+ * the coder is asked again (the server keeps answers to removed
  * questions in the database). See docs/architecture.md §8.
  */
 function currentAnswers(
@@ -301,7 +301,7 @@ export class JobManager {
     this.history().index = index;
   }
 
-  /** Makes a history entry the current unit, loading it from the job server if needed. */
+  /** Makes a history entry the current unit, loading it from the server if needed. */
   private async openEntry(index: number): Promise<void> {
     const loop = this.activeLoop!;
     const entry = this.unitHistory[index];
@@ -623,7 +623,7 @@ export class JobManager {
   /**
    * The branch of a loop's `units` for this coder: the first whose `when`
    * holds, with its unitset names filled in; null if none matches.
-   * Evaluated here rather than on the job server, so the server never
+   * Evaluated here rather than on the server, so the server never
    * needs the answers (docs/architecture.md §6).
    */
   private async chooseBranch(loop: UnitLoopItem): Promise<BranchChoice | null> {
@@ -643,7 +643,7 @@ export class JobManager {
   }
 
   /**
-   * The next unit of a loop from the job server, telling it the chosen
+   * The next unit of a loop from the server, telling it the chosen
    * branch (ignored once the coder is routed: routing is sticky). If no
    * branch matches and the coder wasn't routed before, the coder has no
    * units in this loop.
@@ -738,7 +738,7 @@ export class JobManager {
       this.currentUnit = null;
     }
 
-    // At frontier: ask the job server for the next unit of this loop.
+    // At frontier: ask the server for the next unit of this loop.
     const nextUnit = await this.fetchNextUnit(this.activeLoop);
     if (!nextUnit) {
       // Loop finished: advance to the next top-level item.

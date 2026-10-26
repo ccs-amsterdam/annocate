@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 /**
  * Splits units (all, or one unitset) into `<prefix>_1..n` plus an optional
  * `<prefix>_overlap` set, e.g. for intercoder reliability. The split happens
- * here (`splitUnits`, shuffled with a seed); the db server just stores the
+ * here (`splitUnits`, shuffled with a seed); the server just stores the
  * resulting unitsets. Units added to the job later are not added to them.
  */
 export function SplitUnitsets({

@@ -24,7 +24,7 @@ export type UnitsetResponse = z.infer<typeof UnitsetResponseSchema>;
  * (`<prefix>_overlap`) first, e.g. for intercoder reliability. The client
  * does the split (`splitUnits`) and creates the sets with `POST /unitsets`:
  * ordinary, explicit unitsets, so adding units to the job later does not
- * change them. db servers only store unitsets.
+ * change them. The server only stores unitsets.
  */
 export const GenerateUnitsetsSchema = z
   .object({
