@@ -33,8 +33,13 @@ software has it (value labels in SPSS and Stata, labelled vectors in R):
 - **The label is display only** (defaults to the value). It can change, and
   later be translated (`string | Record<lang, string>`), without touching
   data.
-- **Nominal** questions: values are strings or numbers, the researcher's
-  choice (`"sports"`, or `1` as in many survey traditions).
+- **The level decides the type** of the values; there is no separate
+  setting.
+- **Nominal** questions: values are **strings**, standardized terms (e.g.
+  from a typology: `human_interest`), with the label for presentation
+  ("Human interest"). The editor proposes a value derived from the label
+  (lower case, `_` for spaces and punctuation); the researcher can change it.
+  Values are non-empty, trimmed and unique.
 - **Ordinal** questions (and scales): values are **numbers, rising in the
   order of the options**; default 1..n, any numbers allowed (0..4, -2..2).
   So comparing values is comparing order, and the export is numeric.
@@ -43,6 +48,11 @@ software has it (value labels in SPSS and Stata, labelled vectors in R):
   record the codebook version (`codebookId`), so the mapping is never lost.
 - Changing an option's value in a published codebook changes what earlier
   answers mean, like renaming a question: the editor warns.
+- **Switching the level** converts the values, visibly in the editor:
+  nominal → ordinal numbers the options 1..n in their order (an old value
+  becomes the label if there was none); ordinal → nominal derives the values
+  from the labels. In a published codebook the editor warns, as for changing
+  a value.
 
 Spans and relations use the same options (`{ value, label?, color? }`).
 
@@ -55,7 +65,7 @@ Spans and relations use the same options (`{ value, label?, color? }`).
   type: "categorical",
   question, instruction, ...           // shared VariableBase fields
   level?: "nominal" | "ordinal",       // default "nominal"
-  options: [{ value, label?, color?, screenOut? }],
+  options: [{ value, label?, color? }],
   multiple?: boolean,                  // nominal only
   layout?: "auto" | "flex" | "row" | "grid" | "compact" | "dropdown",  // default "auto"
   columns?: 1 | 2 | 3 | 4,             // with layout "grid"; default 1
@@ -104,7 +114,29 @@ One answer per item. Today's `scale` *without* items becomes an ordinal
 - `confirm`, `auto`: unchanged (`auto` options get the same
   `{ value, label? }`).
 - `span`, `relation`: their codes become options.
-- `annotinder` (swipe): open question 1.
+- `annotinder` (swipe): options instead of codes, **2 or 3**; the order is
+  the direction (1st left, 2nd right, 3rd up). Validation refuses more; the
+  editor shows the arrows next to the options. Later `layout: "swipe"` of
+  `categorical` (open question 1).
+
+### 3.5 `end`: end the session
+
+A codebook item (not a question) that ends the coder's session when the
+coder reaches it, usually inside a condition. Replaces `screenOut` on codes,
+which nothing acted on.
+
+```ts
+{
+  type: "end",
+  name,
+  outcome: "screenout" | "complete",
+  message?: string,                    // markdown template shown at the end
+  redirectUrl?: string,                // e.g. back to a panel company
+  condition?: ...,                     // as on other items
+}
+```
+
+One closed type, not a general "action" item.
 
 ## 4. Answers
 
@@ -237,6 +269,7 @@ migration.
 | `scale` with `items` | `scale` |
 | `scale` without `items` | `categorical`, ordinal |
 | `codes: [{ code, value? }]` | `options`: nominal `{ value: code }`; ordinal `{ value: value ?? position, label: code }` |
+| `screenOut` on codes | dropped (add an `end` item in a condition) |
 | rules conditions | the equivalent simple script |
 | `$var.q.code` / `.value` in scripts | not migrated: validation flags them, the author updates them |
 
@@ -284,8 +317,7 @@ migration.
 ## 11. Open questions
 
 1. **`annotinder` (swipe).** Fold it into `categorical` as `layout: "swipe"`
-   (at most 3 options, single answer)? Recommendation: yes, once the swipe
-   card UI exists; keep the type until then.
+   once the swipe card UI exists; keep the type until then.
 2. **Numeric batteries** (a feeling thermometer for several parties, 0–100).
    Recommendation: leave out until a real case asks; `scale` could later
    take a numeric range instead of options.
