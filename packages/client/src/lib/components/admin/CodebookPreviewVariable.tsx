@@ -27,7 +27,7 @@ interface CodebookPreviewVariableProps {
  * options, scale items, codes, colors, or unit layout.
  */
 export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVariableProps) {
-  const [answerState, setAnswerState] = useState<{ value: VariableValue; conditionValue?: unknown } | null>(null);
+  const [answerState, setAnswerState] = useState<{ value: VariableValue } | null>(null);
 
   const isVariable = item.type === "question" || item.type === "user_variable" || item.type === "unit_variable";
   const isLoop = item.type === "unit_loop";
@@ -54,7 +54,7 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
         </div>
         {answerState && (
           <span className="rounded bg-primary/15 px-2 py-0.5 text-[10px] font-mono text-primary font-medium">
-            Answered: {JSON.stringify(answerState.conditionValue ?? answerState.value)}
+            Answered: {JSON.stringify(answerState.value)}
           </span>
         )}
       </div>
@@ -72,7 +72,7 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
                 <SpanAnnotationProvider
                   key={item.name}
                   column={spanVariable.column}
-                  codes={spanVariable.codes}
+                  options={spanVariable.options}
                   initialSpans={[]}
                 >
                   <UnitFields layout={layout} rendered={rendered} />
@@ -103,7 +103,7 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
               <Question
                 key={`${item.name}-${JSON.stringify(item.variable)}`}
                 item={item}
-                onAnswer={(value, conditionValue) => setAnswerState({ value, conditionValue })}
+                onAnswer={(value) => setAnswerState({ value })}
               />
             </div>
           )}

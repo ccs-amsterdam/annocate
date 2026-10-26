@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IdSchema, SafeNameSchema } from "./common.js";
+import { SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
@@ -34,6 +35,8 @@ export const CoderProgressSchema = z.object({
   finished: z.record(z.string(), z.number().int().nonnegative()),
   /** Coder-level values: answers outside unit loops, and `auto` variables (invite presets, random, URL). */
   variables: z.record(z.string(), VariableValueSchema),
+  /** Set if the coder's session ended at an `end` item (screened out or complete). */
+  ended: SessionEndSchema.nullable(),
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 

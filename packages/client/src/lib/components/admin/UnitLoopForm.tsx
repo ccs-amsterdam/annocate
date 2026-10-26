@@ -132,7 +132,7 @@ export function UnitLoopForm({
               variant="ghost"
               size="sm"
               className="self-start text-xs"
-              onClick={() => setBranch(b, { ...branch, when: { rules: [] } })}
+              onClick={() => setBranch(b, { ...branch, when: { script: "true" } })}
             >
               <Plus className="h-3.5 w-3.5" /> Condition
             </Button>

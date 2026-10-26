@@ -1,3 +1,4 @@
+import { optionLabel } from "@annotinder/contracts";
 import { useEffect } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/SpanAnnotationContext";
@@ -37,7 +38,12 @@ export function SpanEditLabel({
   const isDark = theme === "dark";
 
   function colorFor(code: string): string | undefined {
-    return annotation.codes.find((c) => c.code === code)?.color;
+    return annotation.options.find((c) => c.value === code)?.color;
+  }
+
+  function labelFor(value: string): string {
+    const option = annotation.options.find((c) => c.value === value);
+    return option ? optionLabel(option) : value;
   }
 
   const spanSummary = span.slices.map((s) => s.text).join(" ... ");
@@ -52,7 +58,7 @@ export function SpanEditLabel({
   };
 
   const handleCodeChange = (newCode: string) => {
-    if (newCode === span.code) return;
+    if (newCode === span.value) return;
     annotation.updateSpan(span.id, newCode);
     if (onCodeChanged) {
       onCodeChanged(newCode);
@@ -91,9 +97,9 @@ export function SpanEditLabel({
       }
 
       const num = parseInt(e.key, 10);
-      if (!isNaN(num) && num >= 1 && num <= annotation.codes.length) {
+      if (!isNaN(num) && num >= 1 && num <= annotation.options.length) {
         e.preventDefault();
-        const newCode = annotation.codes[num - 1].code;
+        const newCode = annotation.options[num - 1].value;
         handleCodeChange(newCode);
       }
     }
@@ -102,7 +108,7 @@ export function SpanEditLabel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [annotation, span, onCancel, onCodeChanged, onDelete]);
 
-  const badgeStyle = getCodeBadgeStyle(colorFor(span.code), isDark);
+  const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
 
   return (
     <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-1">
@@ -124,7 +130,7 @@ export function SpanEditLabel({
             style={badgeStyle}
             className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold shrink-0"
           >
-            {span.code}
+            {labelFor(span.value)}
           </span>
           <span
             className="text-xs sm:text-sm font-serif italic text-foreground truncate max-w-sm sm:max-w-md"
@@ -154,11 +160,11 @@ export function SpanEditLabel({
 
       {/* Action Row: Code buttons to change label + Delete button */}
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
-        {annotation.codes.map((c, idx) => {
-          const isCurrent = c.code === span.code;
+        {annotation.options.map((c, idx) => {
+          const isCurrent = c.value === span.value;
           return (
             <button
-              key={c.code}
+              key={c.value}
               type="button"
               disabled={isCurrent}
               className={`relative flex flex-1 min-w-[95px] max-w-[180px] items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-xs ${
@@ -167,11 +173,11 @@ export function SpanEditLabel({
                   : "hover:scale-105 active:scale-95"
               }`}
               style={getCodeButtonStyle(c.color, isCurrent, isDark)}
-              onClick={() => handleCodeChange(c.code)}
-              title={isCurrent ? `Currently assigned: ${c.code}` : `Change to ${c.code}`}
+              onClick={() => handleCodeChange(c.value)}
+              title={isCurrent ? `Currently assigned: ${optionLabel(c)}` : `Change to ${optionLabel(c)}`}
             >
               {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
-              <span className="truncate">{c.code}</span>
+              <span className="truncate">{optionLabel(c)}</span>
               {isCurrent && <Check className="h-3.5 w-3.5 ml-0.5 text-foreground shrink-0" />}
             </button>
           );

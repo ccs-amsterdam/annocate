@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { diffCodebooks, summarizeChanges } from "./diff";
+import { diffCodebooks, summarizeChanges, valueChanges } from "./diff";
 
 const question = (name: string, question = "?") =>
   ({ type: "question", name, variable: { type: "confirm", question } }) as TopLevelItem;
@@ -50,5 +50,19 @@ describe("summarizeChanges", () => {
 
   it("is empty without changes", () => {
     expect(summarizeChanges([])).toBe("");
+  });
+});
+
+describe("valueChanges", () => {
+  const q = (variable: object) => [{ type: "question", name: "q", variable }] as unknown as TopLevelItem[];
+  it("warns when values disappear or the level changes", () => {
+    const before = q({ type: "categorical", question: "?", options: [{ value: "a" }, { value: "b" }] });
+    expect(valueChanges(before, q({ type: "categorical", question: "?", options: [{ value: "a", label: "A!" }, { value: "b" }] }))).toEqual([]);
+    expect(valueChanges(before, q({ type: "categorical", question: "?", options: [{ value: "a" }] }))).toEqual([
+      `'q' no longer has the value "b": earlier answers with it no longer fit.`,
+    ]);
+    expect(valueChanges(before, q({ type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }] }))).toEqual([
+      `'q' changed from nominal to ordinal: its values changed, so earlier answers no longer fit.`,
+    ]);
   });
 });

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import type { CodebookCode } from "@annotinder/contracts";
+import { optionLabel, SWIPE_DIRECTIONS, type NominalOption } from "@annotinder/contracts";
 import { ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buildCodeValue } from "./answerValue";
+import { buildValues } from "./answerValue";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
 type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
@@ -10,20 +10,15 @@ type Direction = "left" | "right" | "up";
 
 interface DirectionOption {
   direction: Direction;
-  code: CodebookCode;
+  option: NominalOption;
   label: string;
 }
 
+/** The options in order: left, right, up. */
 function getDirectionOptions(variable: AnnotinderVariable): DirectionOption[] {
-  const mapping: Array<{ direction: Direction; label: string }> = [
-    { direction: "left", label: "Swipe left" },
-    { direction: "right", label: "Swipe right" },
-    { direction: "up", label: "Swipe up" },
-  ];
-
-  return mapping.flatMap((entry, index) => {
-    const code = variable.codes[index];
-    return code ? [{ ...entry, code }] : [];
+  return variable.options.slice(0, 3).map((option, index) => {
+    const direction = SWIPE_DIRECTIONS[index];
+    return { direction, option, label: `Swipe ${direction}` };
   });
 }
 
@@ -48,7 +43,7 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
       if (!nextOption) return;
 
       event.preventDefault();
-      onAnswer(buildCodeValue([{ code: nextOption.code.code, value: nextOption.code.value }]), nextOption.code.code);
+      onAnswer(buildValues([{ value: nextOption.option.value }]));
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -65,13 +60,13 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
             type="button"
             variant="outline"
             className="h-auto min-h-24 flex-col gap-3 whitespace-normal px-4 py-4"
-            style={option.code.color ? { borderColor: option.code.color, color: option.code.color } : undefined}
-            onClick={() => onAnswer(buildCodeValue([{ code: option.code.code, value: option.code.value }]), option.code.code)}
+            style={option.option.color ? { borderColor: option.option.color, color: option.option.color } : undefined}
+            onClick={() => onAnswer(buildValues([{ value: option.option.value }]))}
           >
             {getDirectionIcon(option.direction)}
             <span className="text-center">
               <span className="block text-xs uppercase tracking-wide opacity-70">{option.label}</span>
-              <span className="block font-medium">{option.code.code}</span>
+              <span className="block font-medium">{optionLabel(option.option)}</span>
             </span>
           </Button>
         ))}

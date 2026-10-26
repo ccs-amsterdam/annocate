@@ -1,4 +1,4 @@
-import type { CodebookItem, InLoopItem, TopLevelItem } from "@annotinder/contracts";
+import { collectQuestions, questionValues, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
 
 export type CodebookChangeKind = "added" | "removed" | "changed" | "moved";
 
@@ -73,4 +73,31 @@ export function summarizeChanges(changes: CodebookChange[], maxLength = 200): st
   const summary = parts.join("; ");
   const sentence = summary.charAt(0).toUpperCase() + summary.slice(1);
   return sentence.length > maxLength ? `${sentence.slice(0, maxLength - 1)}…` : sentence;
+}
+
+/**
+ * Questions whose stored values change meaning (docs/client.md §2): option
+ * values removed (also by switching the level, which converts them).
+ * Earlier answers with those values no longer fit, as if the question was
+ * renamed.
+ */
+export function valueChanges(before: (TopLevelItem | InLoopItem)[], after: (TopLevelItem | InLoopItem)[]): string[] {
+  const old = collectQuestions(before).questions;
+  const warnings: string[] = [];
+  for (const [name, variable] of collectQuestions(after).questions) {
+    const prev = old.get(name);
+    if (!prev || prev.type !== variable.type) continue;
+    const level = (v: typeof variable) => (v.type === "categorical" ? (v.level ?? "nominal") : null);
+    if (level(prev) !== level(variable)) {
+      warnings.push(`'${name}' changed from ${level(prev)} to ${level(variable)}: its values changed, so earlier answers no longer fit.`);
+      continue;
+    }
+    const now = new Set(questionValues(variable) ?? []);
+    const removed = (questionValues(prev) ?? []).filter((v) => !now.has(v));
+    if (removed.length > 0) {
+      const list = removed.map((v) => JSON.stringify(v)).join(", ");
+      warnings.push(`'${name}' no longer has the value${removed.length === 1 ? "" : "s"} ${list}: earlier answers with ${removed.length === 1 ? "it" : "them"} no longer fit.`);
+    }
+  }
+  return warnings;
 }

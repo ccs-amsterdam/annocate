@@ -1,3 +1,4 @@
+import { optionLabel } from "@annotinder/contracts";
 import React, { useRef, useCallback, useEffect } from "react";
 import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import { useSpanAnnotation } from "../context/SpanAnnotationContext";
@@ -455,7 +456,12 @@ export function SelectableText({ text }: { text: string }) {
   }
 
   function colorFor(code: string): string | undefined {
-    return annotation?.codes.find((c) => c.code === code)?.color;
+    return annotation?.options.find((c) => c.value === code)?.color;
+  }
+
+  function labelFor(value: string): string {
+    const option = annotation?.options.find((c) => c.value === value);
+    return option ? optionLabel(option) : value;
   }
 
   function handleSegmentClick(e: React.MouseEvent, spans: SpanAnswer[]) {
@@ -508,8 +514,8 @@ export function SelectableText({ text }: { text: string }) {
             return (
               <mark
                 key={i}
-                style={getSpanHighlightStyle({ color: colorFor(span.code), isStart, isEnd })}
-                title={`${span.code}: "${spanSummary}" (click to view labels)`}
+                style={getSpanHighlightStyle({ color: colorFor(span.value), isStart, isEnd })}
+                title={`${labelFor(span.value)}: "${spanSummary}" (click to view labels)`}
                 onClick={(e) => handleSegmentClick(e, seg.spans)}
                 className={`cursor-pointer transition-opacity hover:opacity-85 font-normal ${
                   seg.isPending ? "ring-2 ring-primary/80 ring-offset-1" : ""
@@ -522,13 +528,13 @@ export function SelectableText({ text }: { text: string }) {
 
           // Multiple overlapping spans on this segment
           const spansInfo = seg.spans.map((s) => ({
-            color: colorFor(s.code),
+            color: colorFor(s.value),
             isStart: s.slices.some((sl) => sl.offset === seg.start),
             isEnd: s.slices.some((sl) => sl.offset + sl.length === seg.end),
           }));
           const stackedStyle = getStackedUnderlineStyle(spansInfo);
           const title = seg.spans
-            .map((s) => `${s.code}: "${s.slices.map((sl) => sl.text).join(" ... ")}"`)
+            .map((s) => `${labelFor(s.value)}: "${s.slices.map((sl) => sl.text).join(" ... ")}"`)
             .join(", ");
 
           const isFocused = Boolean(

@@ -5,19 +5,17 @@ import { ClientIdSchema } from "./common.js";
 // JSON-serializable value (replacing the old app's `Annotation` /
 // `VariableAnnotations` rows).
 //
-// TODO: tighten this to a discriminated union keyed by the variable's
-// `type` (see codebook/variableTypes.ts), e.g. together with the planned
-// nominal/ordinal/numeric answer types (TODO.txt). For now all three answer
-// shapes are optional siblings, since a given variable's `type` only ever
-// populates one of them.
+// Answers hold option values, never labels (docs/client.md §4): what a
+// variable's `type` stores is one of `values` (categorical, numeric, scale,
+// annotinder, auto), `spans` or `relations`; confirm stores none.
 
-/** Answer for "code"-style variable types: select_code/search_code/scale/annotinder/confirm/auto. */
-export const CodeAnswerSchema = z.object({
-  /** Set when the variable has `items` (see codebook/variableTypes.ts VariableItemsSchema) -- one answer per item. */
+/** One answer: an option value (or a number), for a scale per item. */
+export const ValueAnswerSchema = z.object({
+  value: z.union([z.string(), z.number()]),
+  /** The scale item this answer is for. */
   item: z.string().optional(),
-  code: z.string().optional(),
-  value: z.number().optional(),
 });
+export type ValueAnswer = z.infer<typeof ValueAnswerSchema>;
 
 /** A single contiguous text fragment within a span answer. */
 export const SpanSliceSchema = z.object({
@@ -38,7 +36,7 @@ export type SpanSlice = z.infer<typeof SpanSliceSchema>;
 export const SpanAnswerSchema = z.object({
   id: ClientIdSchema,
   field: z.string(),
-  code: z.string(),
+  value: z.string(),
   slices: z.array(SpanSliceSchema).min(1),
 });
 export type SpanAnswer = z.infer<typeof SpanAnswerSchema>;
@@ -48,14 +46,14 @@ export const RelationAnswerSchema = z.object({
   id: ClientIdSchema,
   fromId: ClientIdSchema,
   toId: ClientIdSchema,
-  code: z.string(),
+  value: z.string(),
 });
 export type RelationAnswer = z.infer<typeof RelationAnswerSchema>;
 
 export const VariableValueSchema = z.object({
   done: z.boolean().default(false),
   skip: z.boolean().default(false),
-  codes: z.array(CodeAnswerSchema).optional(),
+  values: z.array(ValueAnswerSchema).optional(),
   spans: z.array(SpanAnswerSchema).optional(),
   relations: z.array(RelationAnswerSchema).optional(),
 });

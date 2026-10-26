@@ -123,7 +123,8 @@ export interface Steps {
 /**
  * Walks items in document order. Each condition is evaluated against the
  * answers of the questions before it that are visible (validation ensures a
- * condition only refers to earlier questions), so one pass suffices.
+ * condition only refers to earlier questions), so one pass suffices. An
+ * `end` item that is reached is the last step: returns true there.
  */
 async function walkSteps(
   nodes: (TopLevelItem | InLoopItem)[],
@@ -132,21 +133,25 @@ async function walkSteps(
   ctx: StepContext,
   unit: { data: UnitData; constants?: Record<string, string> } | null,
   steps: CodebookItem[],
-): Promise<void> {
+): Promise<boolean> {
   for (const node of nodes) {
     if (node.type === "condition") {
       const scope = buildScope(ctx.questions, visible, unit?.data, unit?.constants);
       if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.name}`)) {
-        await walkSteps(node.children, answers, visible, ctx, unit, steps);
+        if (await walkSteps(node.children, answers, visible, ctx, unit, steps)) return true;
       }
     } else if (node.type === "unit_loop") {
       steps.push(node);
+    } else if (node.type === "end") {
+      steps.push(node);
+      return true;
     } else {
       if (answers[node.name] !== undefined) visible[node.name] = answers[node.name];
       // `auto` questions are assigned (by the server or from the URL), never asked.
       if (node.variable.type !== "auto") steps.push(node);
     }
   }
+  return false;
 }
 
 /** Top-level steps (questions and unit loops; loops aren't entered) given the coder's answers. */

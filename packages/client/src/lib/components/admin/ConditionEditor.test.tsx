@@ -4,37 +4,41 @@ import { availableQuestions, type TopLevelItem } from "@annotinder/contracts";
 import { ConditionEditor } from "./ConditionEditor";
 
 const items = [
-  { type: "question", name: "role", variable: { type: "select_code", question: "?", codes: [{ code: "student" }, { code: "expert" }] } },
-  { type: "condition", name: "gate", condition: { rules: [] }, children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }] },
+  { type: "question", name: "role", variable: { type: "categorical", question: "?", options: [{ value: "student" }, { value: "expert", label: "Expert" }] } },
+  { type: "condition", name: "gate", condition: { script: "true" }, children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }] },
   { type: "question", name: "later", variable: { type: "confirm", question: "?" } },
 ] as TopLevelItem[];
 
 describe("ConditionEditor", () => {
   const questions = availableQuestions(items, [1]);
 
-  it("offers only the references validation accepts at this point", () => {
+  it("shows a simple condition as rules, with only the questions available here", () => {
     const html = renderToStaticMarkup(
-      <ConditionEditor
-        condition={{ rules: [{ ref: "$var.role.code", op: "is", value: "student" }] }}
-        onChange={() => {}}
-        questions={questions}
-      />,
+      <ConditionEditor condition={{ script: `$var.role.isAny("student", "expert")` }} onChange={() => {}} questions={questions} />,
     );
-    expect(html).toContain("$var.role.code");
-    expect(html).toContain("$var.role.answered");
-    expect(html).not.toContain("$var.inner");
-    expect(html).not.toContain("$var.later");
-    expect(html).not.toContain("$unit.(field)");
-    // codes as toggles
-    expect(html).toContain(">expert</button>");
+    expect(html).toContain('<option value="role" selected="">role</option>');
+    expect(html).toContain('<option value="isAny" selected="">is one of</option>');
+    expect(html).not.toContain("inner");
+    expect(html).not.toContain("later");
+    // values as toggles, showing their labels
+    expect(html).toContain(">Expert</button>");
+    expect(html).not.toContain("<textarea");
+  });
+
+  it("edits other scripts as scripts", () => {
+    const html = renderToStaticMarkup(
+      <ConditionEditor condition={{ script: `$var.role.value === "x"` }} onChange={() => {}} questions={questions} />,
+    );
+    expect(html).toContain("<textarea");
   });
 
   it("shows a script editor with a reference cheat sheet in script mode", () => {
     const html = renderToStaticMarkup(
-      <ConditionEditor condition={{ script: "$var.role.code === 'expert'" }} onChange={() => {}} questions={questions} loop={{ constants: ["intro"] }} />,
+      <ConditionEditor condition={{ script: "$var.role.value === 'expert'" }} onChange={() => {}} questions={questions} loop={{ constants: ["intro"] }} />,
     );
     expect(html).toContain("<textarea");
     expect(html).toContain("$const.intro");
+    expect(html).toContain("$var.role.is(…)");
     expect(html).toContain("$unit.&lt;field&gt;");
   });
 });

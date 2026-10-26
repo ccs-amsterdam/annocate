@@ -1,6 +1,5 @@
 import {
   extractReferences,
-  parseReference,
   templateReferences,
   type Condition,
   type InLoopItem,
@@ -16,14 +15,9 @@ export interface UnitFieldWarning {
   message: string;
 }
 
-/** References in a condition: its rules' refs, or its script's. */
+/** References in a condition's script. */
 function conditionReferences(condition: Condition | undefined): Reference[] {
-  if (!condition) return [];
-  if ("script" in condition) return extractReferences(condition.script).references;
-  return condition.rules.flatMap((rule) => {
-    const parsed = parseReference(rule.ref);
-    return "ref" in parsed ? [parsed.ref] : [];
-  });
+  return condition ? extractReferences(condition.script).references : [];
 }
 
 /**
@@ -55,6 +49,10 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
       if (child.type === "condition") {
         check(child.name, conditionReferences(child.condition));
         walk(child.children, constants);
+        continue;
+      }
+      if (child.type === "end") {
+        check(child.name, templateReferences(child.message ?? "").references);
         continue;
       }
       const variable = child.variable;

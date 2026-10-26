@@ -25,10 +25,10 @@ function topCondition(name: string, children: TopLevelItem[], condition: Conditi
 function inLoopCondition(name: string, children: InLoopItem[], condition: Condition = { script: "true" }): InLoopItem {
   return { type: "condition", name, condition, children };
 }
-const select = (codes: string[], extra: object = {}) => ({
-  type: "select_code",
+const select = (values: string[], extra: object = {}) => ({
+  type: "categorical",
   question: "?",
-  codes: codes.map((code, i) => ({ code, value: i })),
+  options: values.map((value) => ({ value })),
   ...extra,
 });
 const messages = (items: unknown[]) => validateCodebookItems(items).map((i) => i.message);
@@ -58,7 +58,7 @@ describe("validateCodebookItems", () => {
   });
 
   it("checks that loop branches refer to preceding coder variables", () => {
-    const slot = questionVar("slot", { type: "auto", source: "invite", options: [{ code: "1" }, { code: "2" }] });
+    const slot = questionVar("slot", { type: "auto", source: "invite", options: [{ value: "1" }, { value: "2" }] });
     const loop = (units: unknown): TopLevelItem =>
       ({ type: "unit_loop", name: "loop", units, layout: { template: "" }, children: [questionVar("q1")] }) as TopLevelItem;
 
@@ -66,8 +66,8 @@ describe("validateCodebookItems", () => {
       slot,
       loop([
         {
-          when: { rules: [{ ref: "$var.slot.code", op: "is", value: ["1", "2"] }] },
-          sources: [{ unitset: "part_$var.slot.code" }, { unitset: "overlap" }],
+          when: { script: `$var.slot.isAny("1", "2")` },
+          sources: [{ unitset: "part_$var.slot.value" }, { unitset: "overlap" }],
         },
         {
           sources: [
@@ -79,20 +79,20 @@ describe("validateCodebookItems", () => {
     expect(validateCodebookItems(valid)).toEqual([]);
     expect(() => CodebookItemsSchema.parse(valid)).not.toThrow();
 
-    const when = (value: string) => ({ rules: [{ ref: "$var.slot.code", op: "is", value }] });
+    const when = (value: string) => ({ script: `$var.slot.is("${value}")` });
     // variable defined after the loop
     expect(messages([loop([{ when: when("1"), sources: [{ unitset: "a" }] }]), slot])).toEqual([
-      "$var.slot.code: 'slot' is asked after this point",
+      "$var.slot.is: 'slot' is asked after this point",
     ]);
     expect(messages([slot, loop([{ when: when("3"), sources: [{ unitset: "a" }] }])])).toEqual([
-      "'3' is not a code of 'slot'",
+      `$var.slot.is(...): "3" is not a value of 'slot' ("1", "2")`,
     ]);
-    expect(messages([slot, loop([{ sources: [{ unitset: "part_$var.group.code" }] }])])).toEqual([
-      "$var.group.code: 'group' is not a question",
+    expect(messages([slot, loop([{ sources: [{ unitset: "part_$var.group.value" }] }])])).toEqual([
+      "$var.group.value: 'group' is not a question",
     ]);
     // a question of the loop itself, or $unit, can't route
     expect(
-      messages([slot, loop([{ when: { rules: [{ ref: "$var.q1.answered", op: "is", value: true }] }, sources: [{ unitset: "a" }] }])]),
+      messages([slot, loop([{ when: { script: "$var.q1.answered" }, sources: [{ unitset: "a" }] }])]),
     ).toEqual(["$var.q1.answered: branches and unitset names can only use coder-level questions from before the loop"]);
     expect(messages([slot, loop([{ when: { script: "$unit.x > 1" }, sources: [{ unitset: "a" }] }])])).toEqual([
       "$unit.x: branches and unitset names can only use coder-level $var references",
@@ -134,7 +134,7 @@ describe("validateCodebookItems", () => {
           type: "span",
           question: "Highlight spans",
           column: "text",
-          codes: [{ code: "tag" }],
+          options: [{ value: "tag" }],
         }),
       ], "$unit.text::tokenize"),
     ];
@@ -148,7 +148,7 @@ describe("validateCodebookItems", () => {
         type: "span",
         question: "Bad",
         column: "text",
-        codes: [{ code: "tag" }],
+        options: [{ value: "tag" }],
       }),
       unitLoop("loop", [questionVar("q1")]),
     ];
@@ -243,29 +243,26 @@ describe("validateCodebookItems", () => {
 describe("reference validation", () => {
   const role = questionVar("role", select(["student", "researcher"]));
   const topics = questionVar("topics", select(["a", "b"], { multiple: true }));
-  const interest = questionVar("interest", { type: "scale", question: "?", codes: [{ code: "low", value: 1 }, { code: "high", value: 5 }], items: [{ name: "tech" }] });
+  const edu = questionVar("edu", { type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }, { value: 3 }] });
+  const age = questionVar("age", { type: "numeric", question: "?", min: 0, max: 120 });
+  const interest = questionVar("interest", { type: "scale", question: "?", options: [{ value: 1 }, { value: 5 }], items: [{ name: "tech" }] });
 
-  it("accepts references to earlier questions, in rules, scripts and texts", () => {
+  it("accepts references to earlier questions, in conditions, scripts and texts", () => {
     const items = [
       role,
       topics,
       interest,
-      topCondition("c1", [questionVar("why", { ...confirmVariable, question: "You are a $var.role.code. Topics: {{ $var.topics.code.join(' ') }}" })], {
-        match: "any",
-        rules: [
-          { ref: "$var.role.code", op: "is", value: "student" },
-          { ref: "$var.topics.code", op: "is", value: ["a", "b"] },
-          { ref: "$var.interest.tech.value", op: "gte", value: 4 },
-        ],
+      topCondition("c1", [questionVar("why", { ...confirmVariable, question: "You are a $var.role.label. Topics: {{ $var.topics.labels.join(' ') }}" })], {
+        script: `$var.role.is("student") || $var.topics.hasAny("a", "b") || $var.interest.items.tech.gte(5)`,
       }),
       unitLoop(
         "loop",
         [
           questionVar("rel", select(["yes", "no"], { question: "Is $const.subject in **$unit.headline**?" })),
-          inLoopCondition("c2", [questionVar("q2")], { script: "$var.rel.code === 'yes' && $var.why.answered && $unit.n > 3" }),
+          inLoopCondition("c2", [questionVar("q2")], { script: "$var.rel.value === 'yes' && $var.why.answered && $unit.n > 3" }),
           questionVar("q3", { ...confirmVariable, question: "{{ $var.q2.answered ? 'again' : '' }}" }),
         ],
-        "# $unit.headline\n\n$const.subject::markdown\n\n{{ $var.role.code }}",
+        "# $unit.headline\n\n$const.subject::markdown\n\n{{ $var.role.value }}",
         { subject: "politics" },
       ),
     ];
@@ -279,7 +276,7 @@ describe("reference validation", () => {
     expect(messages([questionVar("q", { ...confirmVariable, question: "{{ $var.q.answered }}" })])).toEqual([
       "$var.q.answered: a question can't refer to itself",
     ]);
-    expect(messages([topCondition("c", [questionVar("inner")], { rules: [{ ref: "$var.inner.answered", op: "is", value: true }] })])).toEqual([
+    expect(messages([topCondition("c", [questionVar("inner")], { script: "$var.inner.answered" })])).toEqual([
       "$var.inner.answered: 'inner' is inside this condition",
     ]);
   });
@@ -300,34 +297,46 @@ describe("reference validation", () => {
     ]);
   });
 
-  it("checks that the property fits the question type", () => {
-    const check = (ref: string) => messages([role, topics, interest, questionVar("c", confirmVariable), topCondition("x", [questionVar("q")], { script: ref })]);
-    expect(check("$var.role.text")).toEqual(["$var.role.text: .text is only available for span questions"]);
-    expect(check("$var.interest.code")).toEqual(["$var.interest.code: 'interest' has items; use $var.interest.<item>.code"]);
-    expect(check("$var.interest.food.code")).toEqual(["$var.interest.food.code: 'food' is not an item of 'interest'"]);
-    expect(check("$var.c.code")).toEqual(["$var.c.code: 'c' is a confirm question; only .answered is available"]);
-    expect(check("$var.role")).toEqual(["$var.role needs a property: .code, .value, .text or .answered"]);
-    expect(check("$var[name].code")).toEqual(["Names after $var must be literal ($var.name), not computed ($var[...])"]);
+  it("checks that the property or method fits the question type", () => {
+    const check = (script: string) =>
+      messages([role, topics, interest, questionVar("c", confirmVariable), topCondition("x", [questionVar("q")], { script })]);
+    expect(check("$var.role.texts")).toEqual(["$var.role.texts: 'role' (single) has no .texts; use .value, .label, .answered"]);
+    expect(check("$var.interest.value")).toEqual([
+      "$var.interest.value: 'interest' (scale) has no .value; use .values, .items.<item>, .answered",
+    ]);
+    expect(check("$var.interest.items.food.value")).toEqual(["$var.interest.items.food.value: 'food' is not an item of 'interest'"]);
+    expect(check("$var.c.value")).toEqual(["$var.c.value: 'c' (confirm) has no .value; use .answered"]);
+    expect(check("$var.topics.is('a')")).toEqual([
+      "$var.topics.is(): 'topics' (multiple) has no .is(); use .has(), .hasAny(), .hasAll(), .count()",
+    ]);
+    expect(check("$var[name].value")).toEqual(["Names after $var must be literal ($var.name), not computed ($var[...])"]);
     expect(check("Object.keys($var)")).toEqual(["$var must be followed by a name ($var.name)"]);
-    // .value on codes without values is a warning, not an error
-    const noValues = questionVar("nv", { type: "select_code", question: "?", codes: [{ code: "a" }] });
-    const issues = validateCodebookItems([noValues, topCondition("x", [questionVar("q")], { script: "$var.nv.value > 1" })]);
-    expect(issues).toEqual([expect.objectContaining({ warning: true })]);
-    expect(() => CodebookItemsSchema.parse([noValues, topCondition("x", [questionVar("q")], { script: "$var.nv.value > 1" })])).not.toThrow();
   });
 
-  it("checks that rule ops and values fit the reference", () => {
-    const rule = (ref: string, op: string, value: unknown) =>
-      messages([role, topics, topCondition("x", [questionVar("q")], { rules: [{ ref, op, value }] } as Condition)]);
-    expect(rule("$var.topics.code", "gt", 1)).toEqual(["$var.topics.code holds a list; 'gt' needs a single number"]);
-    expect(rule("$var.role.code", "gt", 1)).toEqual(["'gt' needs a numeric reference (.value, or a numeric unit field), not $var.role.code"]);
-    expect(rule("$var.role.value", "gt", "1")).toEqual(["'gt' needs a number"]);
-    expect(rule("$var.role.code", "is", ["student", "prof"])).toEqual(["'prof' is not a code of 'role'"]);
-    expect(rule("role", "is", "student")).toEqual(["'role' is not a reference ($unit.x, $var.q.code, $const.y)"]);
+  it("checks the arguments of helpers in simple conditions", () => {
+    const check = (script: string) => messages([role, topics, edu, age, interest, topCondition("x", [questionVar("q")], { script })]);
+    expect(check(`$var.role.isAny("student", "prof")`)).toEqual([
+      `$var.role.isAny(...): "prof" is not a value of 'role' ("student", "researcher")`,
+    ]);
+    expect(check(`$var.edu.gte("2")`)).toEqual([`$var.edu.gte(...): "2" is not a value of 'edu' (1, 2, 3)`]);
+    expect(check(`$var.edu.gte(4)`)).toEqual([`$var.edu.gte(...): 4 is not a value of 'edu' (1, 2, 3)`]);
+    expect(check(`$var.age.between(18)`)).toEqual([`$var.age.between(...) takes 2 arguments`]);
+    expect(check(`$var.age.gt(200)`)).toEqual([`$var.age.gt(...): 200 is outside the range of 'age'`]);
+    expect(check(`$var.topics.hasAll()`)).toEqual([`$var.topics.hasAll(...) takes at least 1 arguments`]);
+    expect(check(`$var.interest.items.tech.is(3)`)).toEqual([`$var.interest.items.tech.is(...): 3 is not a value of 'interest' (1, 5)`]);
+    expect(check(`$var.topics.count() > 1 && $var.age.between(18, 65)`)).toEqual([]);
+    // Advanced scripts: references are checked, values not.
+    expect(check(`$var.role.is("prof") || $unit.x`)).toEqual(["$unit.x can only be used inside a unit loop"]);
+  });
+
+  it("flags old .code references", () => {
+    expect(messages([role, topCondition("x", [questionVar("q")], { script: "$var.role.code === 'a'" })])).toEqual([
+      "$var.role.code: unknown property (.code is now .value, or .values for several answers); use .value, .label, .values, .labels, .texts, .answered, .items or a method",
+    ]);
   });
 
   it("only allows ::tokenize on a bare $unit/$const in the layout, and requires it for span columns", () => {
-    const span = questionVar("s", { type: "span", question: "?", column: "text", codes: [{ code: "x" }] });
+    const span = questionVar("s", { type: "span", question: "?", column: "text", options: [{ value: "x" }] });
     expect(messages([unitLoop("l", [span], "{{ $unit.text }}::tokenize")])).toEqual([
       "::tokenize only works on a bare $unit.<field> or $const.<name>",
       "Span question 's' selects text in 'text', but the layout doesn't show it as $unit.text::tokenize",
@@ -337,10 +346,64 @@ describe("reference validation", () => {
     ]);
     expect(messages([unitLoop("l", [span], "$const.text::tokenize", { text: "a b c" })])).toEqual([]);
   });
+});
 
-  it("reserves reference properties as item names", () => {
-    const bad = questionVar("s", { type: "scale", question: "?", codes: [{ code: "a" }], items: [{ name: "code" }] });
-    expect(() => CodebookItemsSchema.parse([bad])).toThrow(/Item names can't be/);
+describe("question types", () => {
+  const parse = (variable: object) => CodebookItemsSchema.safeParse([questionVar("q", variable)]);
+  const errorsOf = (variable: object) => {
+    const result = parse(variable);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
+
+  it("types option values by level", () => {
+    expect(errorsOf(select(["a", "b"]))).toEqual([]);
+    expect(errorsOf({ type: "categorical", question: "?", options: [{ value: 1 }] })).toEqual(["Nominal values are strings, not 1"]);
+    expect(errorsOf(select(["a", "a"]))).toEqual(["Duplicate value 'a'"]);
+    expect(errorsOf(select([" a"]))).toEqual(["' a' has spaces around it"]);
+    expect(errorsOf({ type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }, { value: 3 }] })).toEqual([]);
+    expect(errorsOf({ type: "categorical", level: "ordinal", question: "?", options: [{ value: 2 }, { value: 1 }] })).toEqual([
+      "Ordinal values must rise in the order of the options (1 after 2)",
+    ]);
+    expect(errorsOf({ type: "categorical", level: "ordinal", multiple: true, question: "?", options: [{ value: 1 }] })).toEqual([
+      "An ordinal question takes one answer (multiple is for nominal questions)",
+    ]);
+  });
+
+  it("takes 2 or 3 swipe options", () => {
+    const swipe = (n: number) => ({ type: "annotinder", question: "?", options: ["l", "r", "u", "x"].slice(0, n).map((value) => ({ value })) });
+    expect(errorsOf(swipe(1))).toEqual(["Swiping needs 2 or 3 options (left, right, up)"]);
+    expect(errorsOf(swipe(3))).toEqual([]);
+    expect(errorsOf(swipe(4))).toEqual(["Swiping takes at most 3 options (left, right, up)"]);
+  });
+
+  it("checks numeric ranges and scales", () => {
+    expect(errorsOf({ type: "numeric", question: "?", min: 0, max: 10, layout: "buttons" })).toEqual([]);
+    expect(errorsOf({ type: "numeric", question: "?", min: 0, layout: "slider" })).toEqual(["Layout slider needs both min and max"]);
+    expect(errorsOf({ type: "scale", question: "?", items: [], options: [{ value: 1 }] })).toEqual(["A scale needs at least one item"]);
+  });
+});
+
+describe("end items", () => {
+  const end = (extra: object = {}) => ({ type: "end", name: "stop", outcome: "screenout", ...extra });
+
+  it("can end the session inside a condition, with a message and a redirect", () => {
+    const pid = questionVar("pid", { type: "auto", source: "url_param", urlParam: "pid" });
+    const items = [
+      pid,
+      questionVar("consent", select(["yes", "no"])),
+      topCondition("gate", [end({ message: "Thanks, $var.pid.value", redirectUrl: "https://panel.example/end?id=$var.pid.value" })] as never, {
+        script: `$var.consent.is("no")`,
+      }),
+      unitLoop("l", [inLoopCondition("check", [end({ name: "fail", outcome: "complete" }) as never], { script: "$unit.x > 1" })]),
+    ];
+    expect(validateCodebookItems(items)).toEqual([]);
+    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+  });
+
+  it("checks the redirect URL", () => {
+    expect(messages([end({ redirectUrl: "panel.example/end" })])).toEqual(["The redirect URL must start with https:// (or http://)"]);
+    expect(messages([end({ redirectUrl: "https://x/{{ 1 }}" })])).toEqual(["Redirect URLs can only use $var references, not {{ }}"]);
+    expect(() => CodebookItemsSchema.parse([end({ outcome: "done" })])).toThrow();
   });
 });
 

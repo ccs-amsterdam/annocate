@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo, type ReactNode } from "react";
-import type { CodebookCode, SpanAnswer, SpanSlice } from "@annotinder/contracts";
+import type { NominalOption, SpanAnswer, SpanSlice } from "@annotinder/contracts";
 
 export interface PendingSpan {
   slices: SpanSlice[];
@@ -27,20 +27,21 @@ export interface PendingSpan {
 export interface SpanAnnotationState {
   /** The unit data column the current span variable targets. */
   column: string;
-  codes: CodebookCode[];
+  /** The span question's options (value, label, color). */
+  options: NominalOption[];
   spans: SpanAnswer[];
   selectionMode: "word" | "character";
   setSelectionMode: (mode: "word" | "character") => void;
   allowGaps: boolean;
   pendingSpan: PendingSpan | null;
   setPendingSpan: (pending: PendingSpan | null) => void;
-  addSpan: (slices: SpanSlice[], code: string) => void;
-  updateSpan: (id: string, newCode: string) => void;
+  addSpan: (slices: SpanSlice[], value: string) => void;
+  updateSpan: (id: string, newValue: string) => void;
   removeSpan: (id: string) => void;
   /** True if any candidate slice overlaps any already-collected span. */
   overlapsExisting: (slices: SpanSlice[]) => boolean;
-  /** True if an identical span (same code and exact same slices) exists. */
-  hasExactSpan: (slices: SpanSlice[], code: string) => boolean;
+  /** True if an identical span (same value and exact same slices) exists. */
+  hasExactSpan: (slices: SpanSlice[], value: string) => boolean;
   /** True when the list of all labeled spans is open in place of the answer form */
   isViewingAllLabels: boolean;
   setIsViewingAllLabels: (viewing: boolean) => void;
@@ -57,7 +58,7 @@ export function useSpanAnnotation(): SpanAnnotationState | null {
 
 export function SpanAnnotationProvider({
   column,
-  codes,
+  options,
   defaultSelectionMode = "word",
   allowGaps = false,
   initialSpans,
@@ -67,7 +68,7 @@ export function SpanAnnotationProvider({
   children,
 }: {
   column: string;
-  codes: CodebookCode[];
+  options: NominalOption[];
   defaultSelectionMode?: "word" | "character";
   allowGaps?: boolean;
   /** Seeds already-collected spans, e.g. when resuming a unit that already
@@ -109,19 +110,19 @@ export function SpanAnnotationProvider({
   const value = useMemo<SpanAnnotationState>(
     () => ({
       column,
-      codes,
+      options,
       spans,
       selectionMode,
       setSelectionMode,
       allowGaps,
       pendingSpan,
       setPendingSpan,
-      addSpan: (slices, code) =>
+      addSpan: (slices, spanValue) =>
         setSpans((prev) => {
-          // Ignore exact duplicate of same code on same slices
+          // Ignore exact duplicate of same value on same slices
           const isDuplicate = prev.some(
             (s) =>
-              s.code === code &&
+              s.value === spanValue &&
               s.slices.length === slices.length &&
               s.slices.every((sl, idx) => sl.offset === slices[idx].offset && sl.length === slices[idx].length),
           );
@@ -131,13 +132,13 @@ export function SpanAnnotationProvider({
             {
               id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
               field: column,
-              code,
+              value: spanValue,
               slices,
             },
           ];
         }),
-      updateSpan: (id, newCode) =>
-        setSpans((prev) => prev.map((s) => (s.id === id ? { ...s, code: newCode } : s))),
+      updateSpan: (id, newValue) =>
+        setSpans((prev) => prev.map((s) => (s.id === id ? { ...s, value: newValue } : s))),
       removeSpan: (id) => setSpans((prev) => prev.filter((s) => s.id !== id)),
       overlapsExisting: (slices) =>
         spans.some((s) =>
@@ -147,10 +148,10 @@ export function SpanAnnotationProvider({
             ),
           ),
         ),
-      hasExactSpan: (slices, code) =>
+      hasExactSpan: (slices, spanValue) =>
         spans.some(
           (s) =>
-            s.code === code &&
+            s.value === spanValue &&
             s.slices.length === slices.length &&
             s.slices.every((sl, idx) => sl.offset === slices[idx].offset && sl.length === slices[idx].length),
         ),
@@ -159,7 +160,7 @@ export function SpanAnnotationProvider({
       focusedSpanId,
       setFocusedSpanId,
     }),
-    [column, codes, spans, selectionMode, allowGaps, pendingSpan, isViewingAllLabels, focusedSpanId],
+    [column, options, spans, selectionMode, allowGaps, pendingSpan, isViewingAllLabels, focusedSpanId],
   );
 
   return <SpanAnnotationContext.Provider value={value}>{children}</SpanAnnotationContext.Provider>;

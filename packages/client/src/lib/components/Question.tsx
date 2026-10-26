@@ -2,11 +2,11 @@ import type { CSSProperties, ReactNode } from "react";
 import type { VariableValue } from "@annotinder/contracts";
 import {
   AnnotinderAnswerField,
+  CategoricalAnswerField,
   ConfirmAnswerField,
+  NumericAnswerField,
   RelationAnswerField,
   ScaleAnswerField,
-  SearchCodeAnswerField,
-  SelectCodeAnswerField,
   SpanAnswerField,
   UnsupportedAnswerField,
 } from "./answerFields";
@@ -19,7 +19,7 @@ import type { QuestionItem } from "./answerFields/types";
 interface QuestionProps {
   /** A question (or a legacy user/unit variable item): only its variable is used. */
   item: Pick<QuestionItem, "variable">;
-  onAnswer: (value: VariableValue, conditionValue?: unknown) => void;
+  onAnswer: (value: VariableValue) => void;
   /** This unit's variable answers submitted so far -- see `AnswerFieldProps.unitVariables`. */
   unitVariables?: Record<string, VariableValue>;
   /** Any previously submitted answer for this question -- for review or editing */
@@ -77,17 +77,17 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
     case "confirm":
       answerField = <ConfirmAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
-    case "select_code":
-      answerField = <SelectCodeAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
+    case "categorical":
+      answerField = <CategoricalAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
+      break;
+    case "numeric":
+      answerField = <NumericAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
     case "scale":
       answerField = <ScaleAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
     case "annotinder":
       answerField = <AnnotinderAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
-      break;
-    case "search_code":
-      answerField = <SearchCodeAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
     case "span":
       answerField = <SpanAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;

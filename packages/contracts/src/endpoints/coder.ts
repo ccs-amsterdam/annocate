@@ -3,6 +3,7 @@ import { CoderUnitResponseSchema } from "../unit.js";
 import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue.js";
 import {
   SessionResponseSchema,
+  EndSessionSchema,
   TransferResponseSchema,
   RedeemTransferSchema,
   RedeemTransferResponseSchema,
@@ -52,6 +53,8 @@ export const coderEndpoints = {
     request: PostCoderVariablesSchema,
     response: z.void(),
   },
+  /** The coder reached an `end` item: the session is over (screened out or complete). */
+  endSession: { method: "POST", path: "/end", request: EndSessionSchema, response: z.void() },
   createTransfer: { method: "POST", path: "/transfer", request: z.void(), response: TransferResponseSchema },
   redeemTransfer: {
     method: "POST",

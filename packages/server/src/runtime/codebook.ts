@@ -2,6 +2,7 @@ import {
   validateVariables,
   type AnyVariableType,
   type CodebookItem,
+  type EndItem,
   type TopLevelItem,
   type UnitLoopItem,
   type VariableValue,
@@ -78,7 +79,7 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
   const walk = (list: TopLevelItem[]) => {
     for (const item of list) {
       if (item.type === "condition") walk(item.children);
-      else if (item.type !== "unit_loop") variables.set(item.name, item.variable);
+      else if (item.type !== "unit_loop" && item.type !== "end") variables.set(item.name, item.variable);
     }
   };
   walk(items);
@@ -88,33 +89,46 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
 function collectQuestions(items: CodebookItem[], into: Map<string, VariableType>) {
   for (const item of items) {
     if (item.type === "condition") collectQuestions(item.children as CodebookItem[], into);
-    else if (item.type !== "unit_loop") into.set(item.name, item.variable);
+    else if (item.type !== "unit_loop" && item.type !== "end") into.set(item.name, item.variable);
   }
 }
 
-/** The code of a single-valued answer (e.g. an assigned `auto` variable). */
-export function codeOf(value: VariableValue | undefined): string | undefined {
-  if (!value || value.skip) return undefined;
-  return value.codes?.[0]?.code;
+/** The value of a single-valued answer (e.g. an assigned `auto` variable), as text. */
+export function valueOf(answer: VariableValue | undefined): string | undefined {
+  if (!answer || answer.skip) return undefined;
+  const value = answer.values?.[0]?.value;
+  return value === undefined ? undefined : String(value);
 }
 
-/** variable name -> code, for all single-coded coder variables (`auto` assignment and balancing; routing is chosen by the client). */
-export function variableCodes(variables: Record<string, VariableValue>): Record<string, string | undefined> {
-  return Object.fromEntries(Object.entries(variables).map(([name, value]) => [name, codeOf(value)]));
+/** variable name -> value, for all single-valued coder variables (`auto` assignment and balancing; routing is chosen by the client). */
+export function variableValues(variables: Record<string, VariableValue>): Record<string, string | undefined> {
+  return Object.fromEntries(Object.entries(variables).map(([name, answer]) => [name, valueOf(answer)]));
 }
 
-/** A coder variable value holding one code, as stored for assigned `auto` variables. */
-export function codeValue(code: string): VariableValue {
-  return { done: true, skip: false, codes: [{ code }] };
+/** A coder variable holding one value, as stored for assigned `auto` variables. */
+export function singleValue(value: string): VariableValue {
+  return { done: true, skip: false, values: [{ value }] };
 }
 
-/** A canonical string of a variable's answer, used to test agreement between coders. */
+/** A canonical string of a variable's answer (its values, per item), used to test agreement between coders. */
 export function agreementKey(variables: Record<string, VariableValue>, variable: string): string | null {
-  const value = variables[variable];
-  if (!value || value.skip || !value.codes?.length) return null;
-  return value.codes
-    .map((c) => `${c.item ?? ""}:${c.code ?? ""}:${c.value ?? ""}`)
+  const answer = variables[variable];
+  if (!answer || answer.skip || !answer.values?.length) return null;
+  return answer.values
+    .map((v) => `${v.item ?? ""}:${JSON.stringify(v.value)}`)
     .sort()
     .join("|");
 }
 
+
+/** The `end` item with this name, anywhere in the codebook. */
+export function findEndItem(items: readonly CodebookItem[], name: string): EndItem | null {
+  for (const item of items) {
+    if (item.type === "end" && item.name === name) return item;
+    if ("children" in item) {
+      const found = findEndItem(item.children as CodebookItem[], name);
+      if (found) return found;
+    }
+  }
+  return null;
+}

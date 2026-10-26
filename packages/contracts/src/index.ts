@@ -7,11 +7,13 @@
 
 export * from "./common.js";
 
-export * from "./codebook/codes.js";
+export * from "./codebook/options.js";
 export * from "./codebook/variableTypes.js";
 export * from "./codebook/references.js";
 export * from "./codebook/condition.js";
 export * from "./codebook/layout.js";
+export * from "./codebook/answerLayout.js";
+export * from "./codebook/migrate.js";
 export * from "./codebook/unitLoop.js";
 export * from "./codebook/item.js";
 export * from "./codebook/validation.js";

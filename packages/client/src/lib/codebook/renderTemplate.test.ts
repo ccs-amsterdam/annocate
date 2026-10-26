@@ -5,7 +5,7 @@ import { prepareTemplate, renderTemplate, staticTemplate } from "./renderTemplat
 
 const scope = (unit: Record<string, unknown>, constants: Record<string, unknown> = {}): ReferenceScope => ({
   $unit: unit,
-  $var: { role: { answered: true, code: "student", value: 1 }, topics: { answered: true, code: ["a", "b"] } },
+  $var: { role: { answered: true, value: "student", label: "Student" }, topics: { answered: true, values: ["a", "b"], labels: ["A", "B"] } },
   $const: constants,
 });
 
@@ -27,10 +27,10 @@ describe("prepareTemplate", () => {
 describe("renderTemplate", () => {
   it("evaluates refs and {{ }} against the scope", async () => {
     const rendered = await renderTemplate(
-      "# $unit.headline: {{ $unit.n * 2 }}, $var.role.code, $var.topics.code, $const.intro, {{ null }}",
+      "# $unit.headline: {{ $unit.n * 2 }}, $var.role.label, $var.topics.values, $const.intro, {{ null }}",
       scope({ headline: "Hi", n: 21 }, { intro: "welcome" }),
     );
-    expect(rendered.values.map((v) => v.text)).toEqual(["Hi", "42", "student", "a, b", "welcome", ""]);
+    expect(rendered.values.map((v) => v.text)).toEqual(["Hi", "42", "Student", "a, b", "welcome", ""]);
   });
 
   it("treats $ref and {{$ref}} the same", async () => {
@@ -61,6 +61,6 @@ describe("renderTemplate", () => {
 
 describe("staticTemplate", () => {
   it("shows each value's source", () => {
-    expect(staticTemplate("Hi $var.role.code").values.map((v) => v.text)).toEqual(["$var.role.code"]);
+    expect(staticTemplate("Hi $var.role.value").values.map((v) => v.text)).toEqual(["$var.role.value"]);
   });
 });

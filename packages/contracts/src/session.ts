@@ -20,6 +20,18 @@ export const UnitsetProgressSchema = z.object({
   totalUnits: z.number().int().nonnegative().nullable().optional(),
 });
 
+/** How a session ended: the `end` item the coder reached, and its outcome. */
+export const SessionEndSchema = z.object({
+  item: z.string(),
+  outcome: z.enum(["screenout", "complete"]),
+  at: z.coerce.date(),
+});
+export type SessionEnd = z.infer<typeof SessionEndSchema>;
+
+/** Body for `POST /end`: the `end` item the coder reached. */
+export const EndSessionSchema = z.object({ item: z.string().min(1) });
+export type EndSession = z.infer<typeof EndSessionSchema>;
+
 /** Response for `GET /session`. */
 export const SessionResponseSchema = z.object({
   coderId: IdSchema,
@@ -40,6 +52,8 @@ export const SessionResponseSchema = z.object({
    * the client can use them.
    */
   variables: z.record(z.string(), VariableValueSchema).default({}),
+  /** Set once the coder reached an `end` item (`POST /end`): the session is over. */
+  ended: SessionEndSchema.nullable().optional(),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
@@ -58,6 +72,8 @@ export const CoderErrorCodeSchema = z.enum([
   "codebook_changed",
   /** `GET /loop/:loop/next` needs the client's branch choice (`branch` + `unitsets`), see NextUnitQuerySchema. */
   "branch_required",
+  /** The coder reached an `end` item: no more units or answers. */
+  "session_ended",
 ]);
 export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
 

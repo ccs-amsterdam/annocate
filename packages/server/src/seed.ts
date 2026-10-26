@@ -55,22 +55,47 @@ export async function seed(db: Sql): Promise<void> {
       variable: {
         type: "auto",
         source: "random",
-        options: [{ code: "control" }, { code: "experiment" }],
+        options: [{ value: "control" }, { value: "experiment" }],
       },
+    },
+    {
+      type: "question",
+      name: "age",
+      variable: {
+        type: "numeric",
+        question: "How old are you?",
+        instruction: "A numeric question. With an open range it is a number input; with a small range, buttons; else a slider.",
+        min: 0,
+        max: 120,
+        layout: "input",
+      },
+    },
+    {
+      type: "condition",
+      name: "too_young",
+      condition: { script: "$var.age.lt(16)" },
+      children: [
+        {
+          type: "end",
+          name: "screen_out_young",
+          outcome: "screenout",
+          message: "Thanks for your interest! This demo is for people aged 16 and older. (An end item in a condition ended your session.)",
+        },
+      ],
     },
     {
       type: "question",
       name: "experience",
       variable: {
-        type: "select_code",
-        vertical: true,
+        type: "categorical",
+        level: "ordinal",
         question: "How much experience do you have with manual content analysis?",
         instruction:
-          "This is a select_code question with vertical buttons. Your answer changes what comes next: beginners get a tip above each unit, experts get an extra question.",
-        codes: [
-          { code: "new", color: "#22c55e" },
-          { code: "some", color: "#3b82f6" },
-          { code: "expert", color: "#a855f7" },
+          "An ordinal question: its options are ordered, and their values are numbers. Your answer changes what comes next: beginners get a tip above each unit, experts get an extra question.",
+        options: [
+          { value: 1, label: "New to it", color: "#22c55e" },
+          { value: 2, label: "Some", color: "#3b82f6" },
+          { value: 3, label: "Expert", color: "#a855f7" },
         ],
       },
     },
@@ -78,38 +103,42 @@ export async function seed(db: Sql): Promise<void> {
       type: "question",
       name: "role",
       variable: {
-        type: "search_code",
+        type: "categorical",
+        layout: "dropdown",
         question: "What best describes your role?",
-        instruction: "A search_code question: type to filter the options. Useful when there are many codes.",
-        codes: [
-          { code: "student" },
-          { code: "PhD candidate" },
-          { code: "researcher" },
-          { code: "lecturer" },
-          { code: "journalist" },
-          { code: "data scientist" },
-          { code: "developer" },
-          { code: "policy maker" },
-          { code: "fact checker" },
-          { code: "other" },
+        instruction: "A long list as a dropdown: type to filter the options.",
+        options: [
+          { value: "student", label: "Student" },
+          { value: "phd", label: "PhD candidate" },
+          { value: "researcher", label: "Researcher" },
+          { value: "lecturer", label: "Lecturer" },
+          { value: "journalist", label: "Journalist" },
+          { value: "data_scientist", label: "Data scientist" },
+          { value: "developer", label: "Developer" },
+          { value: "policy_maker", label: "Policy maker" },
+          { value: "fact_checker", label: "Fact checker" },
+          { value: "other", label: "Other" },
         ],
       },
     },
     {
       type: "condition",
       name: "experiment_only",
-      condition: { rules: [{ ref: "$var.group.code", op: "is", value: "experiment" }] },
+      condition: { script: `$var.group.is("experiment")` },
       children: [
         {
           type: "question",
           name: "experiment_check",
           variable: {
-            type: "select_code",
+            type: "categorical",
             question:
               "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?",
             instruction:
               "An auto question assigned you to a group at random. A condition item then shows this question only to the experiment group.",
-            codes: [{ code: "yes" }, { code: "no" }],
+            options: [
+              { value: "yes", label: "Yes" },
+              { value: "no", label: "No" },
+            ],
           },
         },
       ],
@@ -121,18 +150,18 @@ export async function seed(db: Sql): Promise<void> {
         type: "scale",
         question: "How interested are you in news about these topics?",
         instruction:
-          "A scale question can have several items that share the same scale. If you rate technology 4 or higher, you'll get an extra question in the units.",
+          "A scale: several items rated on the same options. If you rate technology 4 or higher, you'll get an extra question in the units.",
         items: [
           { name: "politics", label: "Politics" },
           { name: "technology", label: "Technology" },
           { name: "science", label: "Science" },
         ],
-        codes: [
-          { code: "not at all", value: 1 },
-          { code: "a little", value: 2 },
-          { code: "somewhat", value: 3 },
-          { code: "quite", value: 4 },
-          { code: "very", value: 5 },
+        options: [
+          { value: 1, label: "not at all" },
+          { value: 2, label: "a little" },
+          { value: 3, label: "somewhat" },
+          { value: 4, label: "quite" },
+          { value: 5, label: "very" },
         ],
       },
     },
@@ -142,8 +171,8 @@ export async function seed(db: Sql): Promise<void> {
       units: [{ sources: [{ unitset: "main" }] }],
       layout: {
         template:
-          "{{ $var.group.code === 'experiment' ? $const.experiment_banner : $const.control_banner }}::markdown\n\n" +
-          "{{ $var.experience.code === 'new' ? $const.beginner_tip : '' }}::markdown\n\n" +
+          "{{ $var.group.is('experiment') ? $const.experiment_banner : $const.control_banner }}::markdown\n\n" +
+          "{{ $var.experience.is(1) ? $const.beginner_tip : '' }}::markdown\n\n" +
           "# $unit.headline\n\n$unit.text::tokenize",
         constants: {
           control_banner:
@@ -162,11 +191,11 @@ export async function seed(db: Sql): Promise<void> {
             type: "annotinder",
             question: "Is this a news article?",
             instruction:
-              "An annotinder question: swipe the card left, right or up, or use the arrow keys. It's the fastest way to answer simple questions.",
-            codes: [
-              { code: "No", color: "#ef4444" },
-              { code: "Yes", color: "#22c55e" },
-              { code: "Not sure", color: "#9ca3af" },
+              "A swipe question: swipe the card left, right or up, or use the arrow keys. It's the fastest way to answer simple questions.",
+            options: [
+              { value: "no", label: "No", color: "#ef4444" },
+              { value: "yes", label: "Yes", color: "#22c55e" },
+              { value: "unsure", label: "Not sure", color: "#9ca3af" },
             ],
           },
         },
@@ -174,14 +203,14 @@ export async function seed(db: Sql): Promise<void> {
           type: "question",
           name: "sentiment",
           variable: {
-            type: "select_code",
+            type: "categorical",
             question: "What is the overall tone of this article?",
             instruction:
-              "A select_code question: pick one code. Codes can have their own colours. Texts can use earlier answers: you said you are a **$var.role.code**.",
-            codes: [
-              { code: "positive", color: "#4caf50" },
-              { code: "neutral", color: "#9e9e9e" },
-              { code: "negative", color: "#f44336" },
+              "A categorical question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**.",
+            options: [
+              { value: "positive", label: "Positive", color: "#4caf50" },
+              { value: "neutral", label: "Neutral", color: "#9e9e9e" },
+              { value: "negative", label: "Negative", color: "#f44336" },
             ],
           },
         },
@@ -189,16 +218,16 @@ export async function seed(db: Sql): Promise<void> {
           type: "question",
           name: "topics",
           variable: {
-            type: "select_code",
+            type: "categorical",
             multiple: true,
             question: "Which topics does this article discuss? Select all that apply.",
-            instruction: "With multiple: true, a select_code question lets you pick several codes.",
-            codes: [
-              { code: "usability" },
-              { code: "methodology" },
-              { code: "experiments" },
-              { code: "data quality" },
-              { code: "journalism" },
+            instruction: "With multiple: true, a categorical question lets you pick several options.",
+            options: [
+              { value: "usability", label: "Usability" },
+              { value: "methodology", label: "Methodology" },
+              { value: "experiments", label: "Experiments" },
+              { value: "data_quality", label: "Data quality" },
+              { value: "journalism", label: "Journalism" },
             ],
           },
         },
@@ -211,35 +240,35 @@ export async function seed(db: Sql): Promise<void> {
             instruction:
               "A span question: select words in the text and give them a label. You can label as many spans as you like.",
             column: "text",
-            codes: [
-              { code: "person", color: "#2563eb" },
-              { code: "organisation", color: "#7c3aed" },
-              { code: "feature", color: "#ea580c" },
-              { code: "product", color: "#059669" },
+            options: [
+              { value: "person", label: "Person", color: "#2563eb" },
+              { value: "organisation", label: "Organisation", color: "#7c3aed" },
+              { value: "feature", label: "Feature", color: "#ea580c" },
+              { value: "product", label: "Product", color: "#059669" },
             ],
           },
         },
         {
           type: "condition",
           name: "experts_only",
-          condition: { rules: [{ ref: "$var.experience.code", op: "is", value: "expert" }] },
+          condition: { script: "$var.experience.is(3)" },
           children: [
             {
               type: "question",
               name: "framing",
               variable: {
-                type: "search_code",
+                type: "categorical",
                 question: "Which frame best describes this article?",
                 instruction:
                   "You see this question because you said you are an expert. A condition inside the unit loop can use your earlier answers.",
-                codes: [
-                  { code: "innovation" },
-                  { code: "efficiency" },
-                  { code: "scientific progress" },
-                  { code: "risk" },
-                  { code: "conflict" },
-                  { code: "human interest" },
-                  { code: "economic consequences" },
+                options: [
+                  { value: "innovation", label: "Innovation" },
+                  { value: "efficiency", label: "Efficiency" },
+                  { value: "scientific_progress", label: "Scientific progress" },
+                  { value: "risk", label: "Risk" },
+                  { value: "conflict", label: "Conflict" },
+                  { value: "human_interest", label: "Human interest" },
+                  { value: "economic_consequences", label: "Economic consequences" },
                 ],
               },
             },
@@ -248,21 +277,21 @@ export async function seed(db: Sql): Promise<void> {
         {
           type: "condition",
           name: "tech_fans",
-          condition: { script: "$var.interest.technology.value >= 4" },
+          condition: { script: "$var.interest.items.technology.gte(4)" },
           children: [
             {
               type: "question",
               name: "usefulness",
               variable: {
-                type: "scale",
+                type: "numeric",
                 question: "How useful would the feature in this article be for your own work?",
                 instruction:
-                  "You see this because you are interested in technology. A scale question without items asks for a single rating.",
-                codes: [
-                  { code: "not useful", value: 1 },
-                  { code: "slightly useful", value: 2 },
-                  { code: "useful", value: 3 },
-                  { code: "very useful", value: 4 },
+                  "You see this because you are interested in technology. A numeric question with a small range shows a button per value.",
+                min: 0,
+                max: 10,
+                labels: [
+                  { value: 0, label: "not useful" },
+                  { value: 10, label: "very useful" },
                 ],
               },
             },
@@ -276,7 +305,7 @@ export async function seed(db: Sql): Promise<void> {
       variable: {
         type: "confirm",
         question:
-          "That's it! You've seen swipe questions, single and multiple choice, searchable lists, scales, span annotation, a random experiment, and conditions that change the questions and the layout. Thanks for taking the tour.",
+          "That's it! You've seen swipe questions, single and multiple choice, dropdowns, ordinal questions, numbers, scales, span annotation, a random experiment, and conditions that change the questions and the layout. Thanks for taking the tour.",
       },
     },
   ]);

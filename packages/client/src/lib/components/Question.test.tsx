@@ -20,39 +20,64 @@ describe("Question dispatcher", () => {
     expect(html).toContain("I confirm");
   });
 
-  it("renders select_code", () => {
+  it("renders categorical questions as option buttons", () => {
     const item: QuestionItem = {
       name: "code_q",
       type: "unit_variable",
       variable: {
-        type: "select_code",
+        type: "categorical",
         question: "Pick a code",
-        codes: [{ code: "pos", value: 1 }, { code: "neg", value: 2 }],
+        options: [{ value: "pos", label: "Positive" }, { value: "neg" }],
       },
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
     expect(html).toContain("Pick a code");
-    expect(html).toContain("pos");
-    expect(html).toContain("neg");
+    expect(html).toContain("Positive");
+    expect(html).toContain(">neg<");
   });
 
-  it("renders scale", () => {
+  it("renders long lists as a dropdown", () => {
     const item: QuestionItem = {
-      name: "scale_q",
+      name: "search_q",
       type: "unit_variable",
       variable: {
-        type: "scale",
-        question: "Rate sentiment",
-        codes: [{ code: "low", value: 1 }, { code: "high", value: 5 }],
+        type: "categorical",
+        question: "Search topic",
+        options: Array.from({ length: 20 }, (_, i) => ({ value: `topic_${i}` })),
       },
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
-    expect(html).toContain("Rate sentiment");
-    expect(html).toContain("low");
-    expect(html).toContain("high");
+    expect(html).toContain("Search topic");
+    expect(html).toContain('role="combobox"');
   });
 
-  it("renders scale items as rows of values, showing the code only for the selected value", () => {
+  it("renders an ordinal question in the order of its options", () => {
+    const item: QuestionItem = {
+      name: "ord_q",
+      type: "unit_variable",
+      variable: {
+        type: "categorical",
+        level: "ordinal",
+        question: "Rate sentiment",
+        options: [{ value: 1, label: "low" }, { value: 2, label: "mid" }, { value: 3, label: "high" }],
+      },
+    };
+    const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
+    expect(html.indexOf("low")).toBeLessThan(html.indexOf("high"));
+  });
+
+  it("renders numeric questions by their range", () => {
+    const numeric = (extra: object): QuestionItem => ({
+      name: "n",
+      type: "unit_variable",
+      variable: { type: "numeric", question: "How many?", ...extra },
+    });
+    expect(renderToStaticMarkup(<Question item={numeric({ min: 0, max: 10 })} onAnswer={onAnswer} />)).toContain(">10</button>");
+    expect(renderToStaticMarkup(<Question item={numeric({ min: 0, max: 100, labels: [{ value: 0, label: "cold" }] })} onAnswer={onAnswer} />)).toContain('type="range"');
+    expect(renderToStaticMarkup(<Question item={numeric({})} onAnswer={onAnswer} />)).toContain('type="number"');
+  });
+
+  it("renders scale items as rows of values, showing the label only for the selected value", () => {
     const item: QuestionItem = {
       name: "interest",
       type: "user_variable",
@@ -60,57 +85,59 @@ describe("Question dispatcher", () => {
         type: "scale",
         question: "How interested are you?",
         items: [{ name: "politics", label: "Politics" }, { name: "tech" }],
-        codes: [{ code: "not at all", value: 1 }, { code: "somewhat", value: 2 }, { code: "very", value: 3 }],
+        options: [{ value: 1, label: "not at all" }, { value: 2, label: "somewhat" }, { value: 3, label: "very" }],
       },
     };
-    const initialValue = { done: true, skip: false, codes: [{ item: "politics", code: "somewhat", value: 2 }] };
+    const initialValue = { done: true, skip: false, values: [{ item: "politics", value: 2 }] };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} initialValue={initialValue} />);
     expect(html).toContain("Politics");
     expect(html).toContain(">tech<");
-    expect(html).toContain(">somewhat</button>"); // selected: shows its code
+    expect(html).toContain(">somewhat</button>"); // selected: shows its label
     expect(html).toContain(">2</button>"); // the unanswered tech row: values only
     expect(html).toContain("1 / 2");
   });
 
-  it("renders annotinder (swipe)", () => {
+  it("renders a scale as a grid", () => {
+    const item: QuestionItem = {
+      name: "interest",
+      type: "user_variable",
+      variable: {
+        type: "scale",
+        layout: "grid",
+        question: "?",
+        items: [{ name: "politics" }],
+        options: [{ value: 1, label: "no" }, { value: 2, label: "yes" }],
+      },
+    };
+    const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
+    expect(html).toContain("<table");
+    expect(html).toContain('aria-label="politics: yes"');
+  });
+
+  it("renders annotinder (swipe) in the order left, right, up", () => {
     const item: QuestionItem = {
       name: "swipe_q",
       type: "unit_variable",
       variable: {
         type: "annotinder",
         question: "Relevant?",
-        codes: [{ code: "yes", value: 1 }, { code: "no", value: 0 }],
+        options: [{ value: "no" }, { value: "yes" }],
       },
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
     expect(html).toContain("Relevant?");
-    expect(html).toContain("yes");
-    expect(html).toContain("no");
-  });
-
-  it("renders search_code", () => {
-    const item: QuestionItem = {
-      name: "search_q",
-      type: "unit_variable",
-      variable: {
-        type: "search_code",
-        question: "Search topic",
-        codes: [{ code: "economy" }, { code: "sports" }],
-      },
-    };
-    const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
-    expect(html).toContain("Search topic");
-    expect(html).toContain("Search and choose a code");
+    expect(html.indexOf("Swipe left")).toBeLessThan(html.indexOf(">no<"));
+    expect(html.indexOf("Swipe right")).toBeLessThan(html.indexOf(">yes<"));
   });
 
   it("renders span (wrapped in SpanAnnotationProvider, as JobRunner does)", () => {
     const item: QuestionItem = {
       name: "span_q",
       type: "unit_variable",
-      variable: { type: "span", question: "Select spans", column: "text", codes: [{ code: "actor" }] },
+      variable: { type: "span", question: "Select spans", column: "text", options: [{ value: "actor" }] },
     };
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider column="text" codes={[{ code: "actor" }]}>
+      <SpanAnnotationProvider column="text" options={[{ value: "actor" }]}>
         <Question item={item} onAnswer={onAnswer} />
       </SpanAnnotationProvider>,
     );
@@ -123,15 +150,15 @@ describe("Question dispatcher", () => {
     const item: QuestionItem = {
       name: "span_q",
       type: "unit_variable",
-      variable: { type: "span", question: "Select spans", column: "text", codes: [{ code: "actor" }] },
+      variable: { type: "span", question: "Select spans", column: "text", options: [{ value: "actor" }] },
     };
     const initialSpans = [
-      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
+      { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
         column="text"
-        codes={[{ code: "actor" }]}
+        options={[{ value: "actor" }]}
         initialSpans={initialSpans}
         initialIsViewingAllLabels={true}
       >
@@ -148,13 +175,13 @@ describe("Question dispatcher", () => {
     const item: QuestionItem = {
       name: "span_q",
       type: "unit_variable",
-      variable: { type: "span", question: "Select spans", column: "text", codes: [{ code: "actor" }] },
+      variable: { type: "span", question: "Select spans", column: "text", options: [{ value: "actor" }] },
     };
     const initialSpans = [
-      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
+      { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider column="text" codes={[{ code: "actor" }]} initialSpans={initialSpans}>
+      <SpanAnnotationProvider column="text" options={[{ value: "actor" }]} initialSpans={initialSpans}>
         <Question item={item} onAnswer={onAnswer} />
       </SpanAnnotationProvider>,
     );
@@ -173,11 +200,11 @@ describe("Question dispatcher", () => {
         type: "span",
         question: "Select spans",
         column: "text",
-        codes: [{ code: "actor" }, { code: "issue" }],
+        options: [{ value: "actor" }, { value: "issue" }],
       },
     };
     const initialSpans = [
-      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
+      { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const initialPendingSpan = {
       slices: [{ offset: 0, length: 5, text: "hello" }],
@@ -188,7 +215,7 @@ describe("Question dispatcher", () => {
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
         column="text"
-        codes={[{ code: "actor" }, { code: "issue" }]}
+        options={[{ value: "actor" }, { value: "issue" }]}
         initialSpans={initialSpans}
         initialPendingSpan={initialPendingSpan}
       >
@@ -209,11 +236,11 @@ describe("Question dispatcher", () => {
         type: "span",
         question: "Select spans",
         column: "text",
-        codes: [{ code: "actor" }, { code: "issue" }],
+        options: [{ value: "actor" }, { value: "issue" }],
       },
     };
     const initialSpans = [
-      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
+      { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const initialPendingSpan = {
       slices: [{ offset: 0, length: 5, text: "hello" }],
@@ -225,7 +252,7 @@ describe("Question dispatcher", () => {
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
         column="text"
-        codes={[{ code: "actor" }, { code: "issue" }]}
+        options={[{ value: "actor" }, { value: "issue" }]}
         initialSpans={initialSpans}
         initialPendingSpan={initialPendingSpan}
       >
@@ -248,12 +275,12 @@ describe("Question dispatcher", () => {
         type: "span",
         question: "Select spans",
         column: "text",
-        codes: [{ code: "actor" }, { code: "issue" }],
+        options: [{ value: "actor" }, { value: "issue" }],
       },
     };
     const initialSpans = [
-      { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
-      { id: "s2", field: "text", code: "issue", slices: [{ offset: 0, length: 5, text: "hello" }] },
+      { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
+      { id: "s2", field: "text", value: "issue", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const initialPendingSpan = {
       slices: [{ offset: 0, length: 5, text: "hello" }],
@@ -264,7 +291,7 @@ describe("Question dispatcher", () => {
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
         column="text"
-        codes={[{ code: "actor" }, { code: "issue" }]}
+        options={[{ value: "actor" }, { value: "issue" }]}
         initialSpans={initialSpans}
         initialPendingSpan={initialPendingSpan}
       >
@@ -285,13 +312,13 @@ describe("Question dispatcher", () => {
         type: "span",
         question: "Select spans",
         column: "text",
-        codes: [{ code: "actor" }, { code: "issue" }],
+        options: [{ value: "actor" }, { value: "issue" }],
       },
     };
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
         column="text"
-        codes={[{ code: "actor" }, { code: "issue" }]}
+        options={[{ value: "actor" }, { value: "issue" }]}
         initialPendingSpan={{ slices: [{ offset: 0, length: 5, text: "hello" }], mode: "create" }}
       >
         <Question item={item} onAnswer={onAnswer} />
@@ -311,7 +338,7 @@ describe("Question dispatcher", () => {
         question: "Link actors to issues",
         from: { variable: "spans_var" },
         to: { variable: "spans_var" },
-        codes: [{ code: "supports" }, { code: "opposes" }],
+        options: [{ value: "supports" }, { value: "opposes" }],
       },
     };
     const unitVariables = {
@@ -319,8 +346,8 @@ describe("Question dispatcher", () => {
         done: true,
         skip: false,
         spans: [
-          { id: "s1", field: "text", code: "actor", slices: [{ offset: 0, length: 4, text: "John" }] },
-          { id: "s2", field: "text", code: "issue", slices: [{ offset: 10, length: 7, text: "Climate" }] },
+          { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 4, text: "John" }] },
+          { id: "s2", field: "text", value: "issue", slices: [{ offset: 10, length: 7, text: "Climate" }] },
         ],
       },
     };

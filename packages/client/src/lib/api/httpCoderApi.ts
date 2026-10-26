@@ -53,6 +53,8 @@ export interface CoderApi {
   /** A finished unit: answers to every question of the loop (`skip` for hidden ones). */
   postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string): Promise<void>;
   postCoderVariables(variables: Record<string, VariableValue>): Promise<void>;
+  /** The coder reached an `end` item: the session is over (screened out or complete). */
+  endSession(item: string): Promise<void>;
   /** A one-time token to continue this session on another device (docs/coder-identity.md). */
   createTransfer?(): Promise<TransferResponse>;
 }
@@ -172,5 +174,9 @@ export class HttpCoderApi implements CoderApi {
       method: "POST",
       body: JSON.stringify({ variables }),
     });
+  }
+
+  async endSession(item: string): Promise<void> {
+    await this.request(coderEndpoints.endSession.path, { method: "POST", body: JSON.stringify({ item }) });
   }
 }

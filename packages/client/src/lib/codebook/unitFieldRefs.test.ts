@@ -13,11 +13,11 @@ const items = [
       {
         type: "condition",
         name: "c",
-        condition: { rules: [{ ref: "$unit.source", op: "is", value: "x" }] },
+        condition: { script: "$unit.source === 'x'" },
         children: [{ type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } }],
       },
-      { type: "question", name: "spans", variable: { type: "span", question: "?", column: "note", codes: [] } },
-      { type: "question", name: "spans2", variable: { type: "span", question: "?", column: "text", codes: [] } },
+      { type: "question", name: "spans", variable: { type: "span", question: "?", column: "note", options: [] } },
+      { type: "question", name: "spans2", variable: { type: "span", question: "?", column: "text", options: [] } },
     ],
   },
 ] as unknown as TopLevelItem[];

@@ -91,6 +91,17 @@ describe("codebook routes", () => {
     const codebook = await json(goodRes);
     expect(codebook.immutable).toBe(false);
   });
+
+  it("serves codebooks stored in the old shape migrated", async () => {
+    const job = await createJob();
+    const old = [{ type: "question", name: "q", variable: { type: "select_code", question: "?", codes: [{ code: "a" }] } }];
+    const [{ id }] = await db.query<{ id: number }>("INSERT INTO codebooks (job_id, items) VALUES ($1, $2) RETURNING id", [
+      job.id,
+      JSON.stringify(old),
+    ]);
+    const codebook = await json(await app.request(`/job/${job.id}/codebook/${id}`, { headers: adminHeaders }));
+    expect(codebook.items[0].variable).toEqual({ type: "categorical", question: "?", options: [{ value: "a" }] });
+  });
 });
 
 describe("units: fields and pages", () => {
@@ -167,7 +178,7 @@ async function status(call: Promise<unknown>): Promise<number> {
 }
 
 describe("annotations: finished counts and resets", () => {
-  const value = (code: string): VariableValue => ({ done: true, skip: false, codes: [{ code }] });
+  const value = (code: string): VariableValue => ({ done: true, skip: false, values: [{ value: code }] });
 
   async function setup() {
     const job = await createJob();
@@ -209,7 +220,7 @@ describe("annotations: finished counts and resets", () => {
     const rows = await db.query<{ variable: string; value: VariableValue }>(
       "SELECT variable, value FROM annotation_values WHERE retired_at IS NULL ORDER BY variable",
     );
-    expect(rows.map((r) => [r.variable, r.value.codes?.[0].code])).toEqual([
+    expect(rows.map((r) => [r.variable, r.value.values?.[0].value])).toEqual([
       ["old", "x"],
       ["q1", "b"],
     ]);
@@ -237,7 +248,7 @@ describe("annotations: finished counts and resets", () => {
 });
 
 describe("invites, coder progress and overview", () => {
-  const value = (code: string): VariableValue => ({ done: true, skip: false, codes: [{ code }] });
+  const value = (code: string): VariableValue => ({ done: true, skip: false, values: [{ value: code }] });
 
   async function setup() {
     const job = await createJob();

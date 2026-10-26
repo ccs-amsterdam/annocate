@@ -6,6 +6,7 @@ import {
   type UnitLoopItem,
   type UnitsetResponse,
   type CodebookValidationIssue,
+  type EndItem,
 } from "@annotinder/contracts";
 import { UnitLoopForm } from "./UnitLoopForm";
 import { ConditionEditor } from "./ConditionEditor";
@@ -16,12 +17,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   VariableTypeForm,
   defaultVariableForAnyType,
+  VARIABLE_TYPE_LABELS,
   VARIABLE_TYPE_OPTIONS_USER,
   VARIABLE_TYPE_OPTIONS_UNIT,
 } from "./VariableTypeForm";
 
-export const ITEM_TYPE_OPTIONS_TOP: CodebookItem["type"][] = ["question", "unit_loop", "condition"];
-export const ITEM_TYPE_OPTIONS_IN_LOOP: CodebookItem["type"][] = ["question", "condition"];
+export const ITEM_TYPE_OPTIONS_TOP: CodebookItem["type"][] = ["question", "unit_loop", "condition", "end"];
+export const ITEM_TYPE_OPTIONS_IN_LOOP: CodebookItem["type"][] = ["question", "condition", "end"];
 
 export function defaultItemForType(
   type: CodebookItem["type"],
@@ -66,9 +68,11 @@ export function defaultItemForType(
       return {
         type: "condition",
         name,
-        condition: { rules: [] },
+        condition: { script: "true" },
         children: [],
       } as CodebookItem;
+    case "end":
+      return { type: "end", name, outcome: "screenout" };
   }
 }
 
@@ -126,19 +130,19 @@ export function ItemForm({
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-foreground">Answer Type</label>
             <select
-              className="h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold capitalize"
+              className="h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold"
               value={item.variable.type}
               onChange={(e) => {
-                const nextType = e.target.value;
-                onChange({
-                  ...item,
-                  variable: defaultVariableForAnyType(nextType),
-                } as CodebookItem);
+                // Keep the question texts across types.
+                const next = defaultVariableForAnyType(e.target.value);
+                const { question, instruction } = item.variable as { question?: string; instruction?: string };
+                if ("question" in next) Object.assign(next, { question: question ?? "", ...(instruction ? { instruction } : {}) });
+                onChange({ ...item, variable: next } as CodebookItem);
               }}
             >
               {(isInsideLoop ? VARIABLE_TYPE_OPTIONS_UNIT : VARIABLE_TYPE_OPTIONS_USER).map((t) => (
                 <option key={t} value={t}>
-                  {t.replace("_", " ")}
+                  {VARIABLE_TYPE_LABELS[t]}
                 </option>
               ))}
             </select>
@@ -187,11 +191,15 @@ export function ItemForm({
         </div>
       )}
 
+      {item.type === "end" && (
+        <EndItemFields item={item as EndItem} onChange={onChange} issues={validationIssues} />
+      )}
+
       {item.type === "condition" && (
         <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
           <label className="text-xs font-semibold text-foreground">Show the items in this condition if</label>
           <ConditionEditor
-            condition={(item as { condition: Condition }).condition ?? { rules: [] }}
+            condition={(item as { condition: Condition }).condition ?? { script: "true" }}
             onChange={(condition) => onChange({ ...item, condition } as CodebookItem)}
             questions={availableQuestions}
             loop={loopConstants ? { constants: loopConstants } : null}
@@ -199,6 +207,59 @@ export function ItemForm({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/** An `end` item: how the session ends, the message shown, and where the coder is sent. */
+function EndItemFields({
+  item,
+  onChange,
+  issues,
+}: {
+  item: EndItem;
+  onChange: (updated: CodebookItem) => void;
+  issues: CodebookValidationIssue[];
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-border/60 pt-4">
+      <p className="text-[11px] text-muted-foreground">
+        Reaching this item ends the coder&apos;s session. Put it inside a condition to end it only for some coders.
+      </p>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-foreground">Outcome</label>
+        <select
+          className="h-9 rounded-md border border-input bg-background px-3 text-xs"
+          value={item.outcome}
+          onChange={(e) => onChange({ ...item, outcome: e.target.value as EndItem["outcome"] })}
+        >
+          <option value="screenout">Screened out (not eligible)</option>
+          <option value="complete">Complete</option>
+        </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-foreground">Message (optional)</label>
+        <Textarea
+          value={item.message ?? ""}
+          rows={3}
+          onChange={(e) => onChange({ ...item, message: e.target.value || undefined })}
+          placeholder="Thank you for your time."
+        />
+        <IssueList issues={issuesAt(issues, "message")} />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-foreground">Redirect to (optional)</label>
+        <Input
+          value={item.redirectUrl ?? ""}
+          onChange={(e) => onChange({ ...item, redirectUrl: e.target.value || undefined })}
+          placeholder="https://panel.example/return?status=screenout&id=$var.pid.value"
+          className="font-mono text-xs"
+        />
+        <IssueList issues={issuesAt(issues, "redirectUrl")} />
+        <p className="text-[11px] text-muted-foreground">
+          E.g. a panel company&apos;s return link. <code>$var</code> references are filled in, URL-encoded.
+        </p>
+      </div>
     </div>
   );
 }

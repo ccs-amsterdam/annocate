@@ -3,7 +3,7 @@ import type { CodebookResponse, TopLevelItem } from "@annotinder/contracts";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { diffCodebooks, summarizeChanges, type CodebookChange } from "../../codebook/diff";
+import { diffCodebooks, summarizeChanges, valueChanges, type CodebookChange } from "../../codebook/diff";
 
 interface PublishDialogProps {
   /** The version to publish; the dialog is closed when null. */
@@ -32,6 +32,7 @@ export function PublishDialog({ codebook, versionNumber, live, liveNumber, onPub
 
   const changes =
     codebook && live ? diffCodebooks(live.items as TopLevelItem[], codebook.items as TopLevelItem[]) : null;
+  const valueWarnings = codebook && live ? valueChanges(live.items as TopLevelItem[], codebook.items as TopLevelItem[]) : [];
   const [note, setNote] = useState(
     () => codebook?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""),
   );
@@ -86,6 +87,16 @@ export function PublishDialog({ codebook, versionNumber, live, liveNumber, onPub
             </DialogHeader>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto text-sm">
+              {valueWarnings.length > 0 && (
+                <ul className="space-y-2">
+                  {valueWarnings.map((w) => (
+                    <li key={w} className="flex gap-2 rounded-md bg-amber-500/10 p-2 text-foreground">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {changes && (
                 <section>
                   <h4 className="mb-1.5 font-semibold text-foreground">Changes since v{liveNumber}</h4>

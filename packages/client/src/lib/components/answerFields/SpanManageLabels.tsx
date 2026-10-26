@@ -1,3 +1,4 @@
+import { optionLabel } from "@annotinder/contracts";
 import { useState, useEffect } from "react";
 import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
 import type { SpanAnnotationState } from "../../context/SpanAnnotationContext";
@@ -39,7 +40,12 @@ export function SpanManageLabels({
   );
 
   function colorFor(code: string): string | undefined {
-    return annotation.codes.find((c) => c.code === code)?.color;
+    return annotation.options.find((c) => c.value === code)?.color;
+  }
+
+  function labelFor(value: string): string {
+    const option = annotation.options.find((c) => c.value === value);
+    return option ? optionLabel(option) : value;
   }
 
   const activeSpan = spans.find((s) => s.id === selectedSpanId) ?? null;
@@ -110,7 +116,7 @@ export function SpanManageLabels({
       {/* List of current labels on this text */}
       <div className="flex flex-col gap-1.5 pt-0.5">
         {spans.map((s, idx) => {
-          const badgeStyle = getCodeBadgeStyle(colorFor(s.code), isDark);
+          const badgeStyle = getCodeBadgeStyle(colorFor(s.value), isDark);
           const spanSummary = s.slices.map((sl) => sl.text).join(" ... ");
           return (
             <button
@@ -125,7 +131,7 @@ export function SpanManageLabels({
                   style={badgeStyle}
                   className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold shrink-0"
                 >
-                  {s.code}
+                  {labelFor(s.value)}
                 </span>
                 <span
                   className="text-xs font-serif italic text-foreground/90 truncate"

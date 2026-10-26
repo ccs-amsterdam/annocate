@@ -14,10 +14,10 @@ import { CoderSettingsProvider, useCoderSettings } from "../context/CoderSetting
 import { Question } from "./Question";
 import { UnitFields } from "./UnitFields";
 import { DockedAnswerPane } from "./DockedAnswerPane";
+import { SessionEnd } from "./SessionEnd";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  CheckCircle2,
   AlertTriangle,
   Loader2,
   Menu,
@@ -280,24 +280,7 @@ function JobRunnerContent({
   }
 
   if (snapshot.phase === "finished") {
-    return (
-      <div className="flex h-full min-h-[300px] items-center justify-center p-6">
-        <div className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-border bg-card p-8 text-center shadow-lg">
-          <div className="rounded-full bg-primary/10 p-4 text-primary">
-            <CheckCircle2 className="h-10 w-10" />
-          </div>
-          <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground">Job Complete!</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            You&apos;ve completed all available units. Thank you for your contributions!
-          </p>
-          {onFinished && (
-            <Button onClick={onFinished} className="mt-6">
-              Done
-            </Button>
-          )}
-        </div>
-      </div>
-    );
+    return <SessionEnd ending={snapshot.ending} preview={preview} onFinished={onFinished} />;
   }
 
   if (!snapshot.currentItem || (snapshot.currentItem.type !== "user_variable" && snapshot.currentItem.type !== "unit_variable" && snapshot.currentItem.type !== "question")) {
@@ -553,7 +536,7 @@ function JobRunnerContent({
         <SpanAnnotationProvider
           key={`unit-${snapshot.currentUnit!.id}`}
           column={spanVariable?.column ?? ""}
-          codes={spanVariable?.codes ?? []}
+          options={spanVariable?.options ?? []}
           defaultSelectionMode={spanVariable?.selectionMode ?? "word"}
           allowGaps={spanVariable?.gaps ?? false}
           initialSpans={spanVariable ? snapshot.currentUnitVariables?.[item.name]?.spans : undefined}

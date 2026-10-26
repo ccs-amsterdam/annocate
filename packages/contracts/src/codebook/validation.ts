@@ -1,10 +1,10 @@
 import { TopLevelItemSchema, type CodebookItem } from "./item.js";
-import type { AnyVariableType } from "./answers.js";
-import { NUMERIC_OPS, type Condition } from "./condition.js";
+import type { AnyVariableType } from "./variableTypes.js";
+import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
+import { migrateCodebookItems } from "./migrate.js";
 import type { UnitBranch } from "./unitLoop.js";
 import {
   extractReferences,
-  parseReference,
   parseTemplate,
   referenceShape,
   referenceText,
@@ -16,7 +16,7 @@ import {
 export interface CodebookValidationIssue {
   path: (string | number)[];
   message: string;
-  /** A warning doesn't block saving (e.g. `.value` on codes without values). */
+  /** A warning doesn't block saving. */
   warning?: boolean;
 }
 
@@ -51,12 +51,18 @@ interface RefContext {
  *    another loop), and fit the question's type. Agreement rules must refer
  *    to questions inside the loop, span columns must be tokenized.
  *
+ * In simple conditions (condition.ts) the helper arguments are checked too.
  * Script syntax isn't checked here (no JS engine); the admin editor does that.
+ * Old codebooks are migrated first (migrate.ts).
  */
-export function validateCodebookItems(items: unknown[]): CodebookValidationIssue[] {
-  const issues: CodebookValidationIssue[] = [];
+export function validateCodebookItems(rawItems: unknown[]): CodebookValidationIssue[] {
+  const items = migrateCodebookItems(rawItems) as unknown[];
+  return [...schemaIssues(items), ...semanticIssues(items)];
+}
 
-  // 1. Zod schema validation
+/** Zod schema validation of each item. */
+function schemaIssues(items: unknown[]): CodebookValidationIssue[] {
+  const issues: CodebookValidationIssue[] = [];
   for (let i = 0; i < items.length; i++) {
     const result = TopLevelItemSchema.safeParse(items[i]);
     if (!result.success) {
@@ -68,8 +74,12 @@ export function validateCodebookItems(items: unknown[]): CodebookValidationIssue
       }
     }
   }
+  return issues;
+}
 
-  // 2. Tree-walking semantic validation
+/** What the item schemas can't check: names, structure, references (see validateCodebookItems). */
+export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
+  const issues: CodebookValidationIssue[] = [];
   const { questions, loopOf } = collectQuestions(items);
   const seenNames = new Map<string, Path>();
   const spanVariables = new Set<string>();
@@ -115,56 +125,65 @@ export function validateCodebookItems(items: unknown[]): CodebookValidationIssue
     for (const ref of references) checkRef(ref, ctx);
   }
 
+  /** The arguments of a helper call in a simple condition: their number, and that they are values of the question. */
+  function checkCall(call: SimpleCall, ctx: RefContext) {
+    const variable = questions.get(call.question);
+    const path = call.item ? [call.question, "items", call.item, call.method] : [call.question, call.method];
+    const shape = variable && referenceShape(questions, { ns: "var", path, call: true });
+    if (!variable || !shape?.ok) return;
+    const text = `$var.${path.join(".")}(...)`;
+    const arity: Record<string, [number, number]> = { count: [0, 0], between: [2, 2], isAny: [1, Infinity], hasAny: [1, Infinity], hasAll: [1, Infinity] };
+    const [min, max] = arity[call.method] ?? [1, 1];
+    if (call.args.length < min || call.args.length > max) {
+      const n = min === max ? `${min}` : `at least ${min}`;
+      issue(ctx.path, `${text} takes ${n} argument${min === 1 && max === 1 ? "" : "s"}`);
+      return;
+    }
+    if (variable.type === "numeric") {
+      for (const arg of call.args) {
+        if (typeof arg !== "number") issue(ctx.path, `${text}: ${JSON.stringify(arg)} is not a number`);
+        else if ((variable.min !== undefined && arg < variable.min) || (variable.max !== undefined && arg > variable.max)) {
+          issue(ctx.path, `${text}: ${arg} is outside the range of '${call.question}'`);
+        }
+      }
+      return;
+    }
+    if (!shape.values) return;
+    for (const arg of call.args) {
+      if (!shape.values.includes(arg)) {
+        issue(ctx.path, `${text}: ${JSON.stringify(arg)} is not a value of '${call.question}' (${shape.values.map((v) => JSON.stringify(v)).join(", ")})`);
+      }
+    }
+  }
+
   function checkCondition(condition: Condition | undefined, ctx: RefContext) {
     if (!condition || typeof condition !== "object") return;
-    if ("script" in condition) {
-      if (!condition.script?.trim()) issue([...ctx.path, "script"], "The script is empty");
-      return checkScript(condition.script ?? "", { ...ctx, path: [...ctx.path, "script"] });
-    }
-    (condition.rules ?? []).forEach((rule, r) => {
-      const path = [...ctx.path, "rules", r];
-      const parsed = parseReference(rule?.ref ?? "");
-      if ("error" in parsed) return issue([...path, "ref"], parsed.error);
-      const shape = checkRef(parsed.ref, { ...ctx, path: [...path, "ref"] });
-      if (!shape?.ok) return;
-      const values = Array.isArray(rule.value) ? rule.value : [rule.value];
-      const text = referenceText(parsed.ref);
-      if (NUMERIC_OPS.includes(rule.op)) {
-        if (shape.array) issue([...path, "op"], `${text} holds a list; '${rule.op}' needs a single number`);
-        else if (shape.type !== "number" && shape.type !== "any") {
-          issue([...path, "op"], `'${rule.op}' needs a numeric reference (.value, or a numeric unit field), not ${text}`);
-        }
-        if (Array.isArray(rule.value) || typeof rule.value !== "number") issue([...path, "value"], `'${rule.op}' needs a number`);
-        return;
-      }
-      if (shape.type === "boolean" && values.some((v) => typeof v !== "boolean" && v !== "true" && v !== "false")) {
-        issue([...path, "value"], `${text} is true or false`);
-      }
-      if (shape.codes) {
-        for (const value of values) {
-          if (!shape.codes.includes(String(value))) issue([...path, "value"], `'${value}' is not a code of '${parsed.ref.path[0]}'`);
-        }
-      }
-    });
+    const path = [...ctx.path, "script"];
+    if (!condition.script?.trim()) issue(path, "The script is empty");
+    checkScript(condition.script ?? "", { ...ctx, path });
+    const simple = parseSimpleCondition(condition.script ?? "");
+    if (simple) for (const call of simpleConditionCalls(simple)) checkCall(call, { ...ctx, path });
   }
 
   /** Checks a template; returns the names it tokenizes. */
-  function checkTemplate(source: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset"): Set<string> {
+  function checkTemplate(source: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): Set<string> {
     const tokenized = new Set<string>();
     if (typeof source !== "string") return tokenized;
     const parsed = parseTemplate(source);
     refErrors(parsed.errors, ctx.path);
     for (const segment of parsed.segments) {
       if (segment.type !== "expression") continue;
-      if (kind === "unitset") {
-        if (!segment.ref) issue(ctx.path, "Unitset names can only use $var references, not {{ }}");
-        else if (segment.ref.suffix) issue(ctx.path, `Unitset names can't use ::${segment.ref.suffix}`);
+      if (kind === "unitset" || kind === "url") {
+        const what = kind === "url" ? "Redirect URLs" : "Unitset names";
+        if (!segment.ref) issue(ctx.path, `${what} can only use $var references, not {{ }}`);
+        else if (segment.ref.suffix) issue(ctx.path, `${what} can't use ::${segment.ref.suffix}`);
       } else {
         refErrors(extractReferences(segment.script).errors, ctx.path);
       }
       for (const ref of segment.references) {
         const shape = checkRef(ref, ctx);
         if (kind === "unitset" && shape?.ok && shape.array) issue(ctx.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
+        if (kind === "url" && ref.ns !== "var") issue(ctx.path, `${referenceText(ref)}: redirect URLs can only use $var references`);
       }
       if (segment.suffix === "tokenize") {
         if (kind !== "layout") issue(ctx.path, "::tokenize can only be used in the unit layout");
@@ -276,6 +295,14 @@ export function validateCodebookItems(items: unknown[]): CodebookValidationIssue
           issue([...itemPath, "children"], `condition '${item.name}' must have at least one child item`);
         } else {
           walk(item.children, [...itemPath, "children"], loop);
+        }
+      } else if (item.type === "end") {
+        const end = item as { message?: unknown; redirectUrl?: unknown };
+        const ctx = { loop: loop?.name ?? null, available, constants: loop?.constants };
+        checkTemplate(end.message, { ...ctx, path: [...itemPath, "message"] }, "text");
+        checkTemplate(end.redirectUrl, { ...ctx, path: [...itemPath, "redirectUrl"] }, "url");
+        if (typeof end.redirectUrl === "string" && !/^https?:\/\//.test(end.redirectUrl)) {
+          issue([...itemPath, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
         }
       } else if (item.type === "question") {
         if (!loop && (item.variable?.type === "span" || item.variable?.type === "relation")) {

@@ -1,3 +1,4 @@
+import { optionLabel } from "@annotinder/contracts";
 import { useState, useEffect } from "react";
 import type { SpanAnswer } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,12 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
   };
 
   function colorFor(code: string): string | undefined {
-    return annotation?.codes.find((c) => c.code === code)?.color;
+    return annotation?.options.find((c) => c.value === code)?.color;
+  }
+
+  function labelFor(value: string): string {
+    const option = annotation?.options.find((c) => c.value === value);
+    return option ? optionLabel(option) : value;
   }
 
   const pending = annotation?.pendingSpan;
@@ -92,9 +98,9 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
       }
 
       const num = parseInt(e.key, 10);
-      if (!isNaN(num) && num >= 1 && num <= annotation.codes.length) {
+      if (!isNaN(num) && num >= 1 && num <= annotation.options.length) {
         e.preventDefault();
-        const code = annotation.codes[num - 1].code;
+        const code = annotation.options[num - 1].value;
         annotation.addSpan(annotation.pendingSpan.slices, code);
         annotation.setPendingSpan(null);
       }
@@ -156,19 +162,19 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
             {/* Code choices flexing to fill the row without trailing blank space */}
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              {annotation?.codes.map((c, idx) => (
+              {annotation?.options.map((c, idx) => (
                 <button
-                  key={c.code}
+                  key={c.value}
                   type="button"
                   className="relative flex flex-1 min-w-[95px] max-w-[180px] items-center justify-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
                   style={getCodeButtonStyle(c.color, false, isDark)}
                   onClick={() => {
-                    annotation.addSpan(pending.slices, c.code);
+                    annotation.addSpan(pending.slices, c.value);
                     annotation.setPendingSpan(null);
                   }}
                 >
                   {idx < 9 && <ShortcutBadge shortcut={String(idx + 1)} />}
-                  <span className="truncate">{c.code}</span>
+                  <span className="truncate">{optionLabel(c)}</span>
                 </button>
               ))}
             </div>
@@ -239,7 +245,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
 
               <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[140px] pr-0.5">
                 {annotation.spans.map((span) => {
-                  const badgeStyle = getCodeBadgeStyle(colorFor(span.code), isDark);
+                  const badgeStyle = getCodeBadgeStyle(colorFor(span.value), isDark);
                   const spanSummary = span.slices.map((sl) => sl.text).join(" ... ");
                   return (
                     <button
@@ -253,7 +259,7 @@ export function SpanAnswerField({ onAnswer }: AnswerFieldProps<SpanVariable>) {
                           style={badgeStyle}
                           className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold shrink-0"
                         >
-                          {span.code}
+                          {labelFor(span.value)}
                         </span>
                         <span
                           className="text-xs font-serif italic text-foreground/90 truncate"

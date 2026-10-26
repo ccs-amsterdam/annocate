@@ -27,7 +27,7 @@ function unitVar(name: string): UnitVariableItem {
   return {
     name,
     type: "unit_variable",
-    variable: { type: "select_code", question: "?", codes: [{ code: "A" }, { code: "B" }] },
+    variable: { type: "categorical", question: "?", options: [{ value: "A" }, { value: "B" }] },
   };
 }
 
@@ -36,18 +36,18 @@ function unitLoop(name: string, children: InLoopItem[], unitset = "main"): UnitL
 }
 
 const answered: VariableValue = { done: true, skip: false };
-const code = (c: string): VariableValue => ({ done: true, skip: false, codes: [{ code: c }] });
+const code = (c: string): VariableValue => ({ done: true, skip: false, values: [{ value: c }] });
 
 describe("tree utilities", () => {
   const loopNode = unitLoop("main_loop", [
     unitVar("sentiment"),
-    inLoopCondition("inner_gate", { rules: [{ ref: "$var.sentiment.code", op: "is", value: "A" }] }, [unitVar("followup")]),
+    inLoopCondition("inner_gate", { script: `$var.sentiment.is("A")` }, [unitVar("followup")]),
     inLoopCondition("unit_gate", { script: "$unit.n > 1" }, [unitVar("long")]),
   ]);
 
   const items: TopLevelItem[] = [
     confirm("consent"),
-    topCondition("gate", { rules: [{ ref: "$var.consent.answered", op: "is", value: true }] }, [confirm("gated_question")]),
+    topCondition("gate", { script: "$var.consent.answered" }, [confirm("gated_question")]),
     topCondition("second", { script: "$var.gated_question.answered" }, [confirm("deeper")]),
     loopNode,
   ];

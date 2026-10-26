@@ -8,9 +8,10 @@ import type {
   CoderUnitResponse,
   SessionResponse,
   AnyVariableType,
+  EndItem,
   ReferenceScope,
 } from "@annotinder/contracts";
-import { buildScope, collectQuestions, fillUnitsetName, validateAnswer } from "@annotinder/contracts";
+import { buildScope, collectQuestions, fillRedirectUrl, fillUnitsetName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
@@ -43,7 +44,7 @@ export interface NavigationUnitQuestion {
 export interface NavigationPhase {
   index: number;
   name: string;
-  type: "user_variable" | "unit_loop" | "condition" | "question";
+  type: "user_variable" | "unit_loop" | "condition" | "question" | "end";
   label: string;
   isCurrent: boolean;
   isCompleted: boolean;
@@ -79,7 +80,16 @@ export interface JobManagerSnapshot {
   error: string | null;
   /** Machine-readable error code from the server (e.g. `participant_has_session`), if any. */
   errorCode: string | null;
+  /** With phase `finished`: the `end` item that ended the session, if one did. */
+  ending: SessionEnding | null;
   navigation: JobManagerNavigation;
+}
+
+/** How the session ended at an `end` item: its message and redirect, with their values filled in. */
+export interface SessionEnding {
+  item: EndItem;
+  message: RenderedTemplate | null;
+  redirectUrl: string | null;
 }
 
 export type JobManagerListener = () => void;
@@ -106,7 +116,7 @@ function loopVariables(loop: UnitLoopItem): Map<string, AnyVariableType> {
   const walk = (items: InLoopItem[]) => {
     for (const item of items) {
       if (item.type === "condition") walk(item.children);
-      else result.set(item.name, item.variable);
+      else if (item.type !== "end") result.set(item.name, item.variable);
     }
   };
   walk(loop.children);
@@ -129,6 +139,18 @@ function currentAnswers(
       return variable !== undefined && validateAnswer(name, variable, value).length === 0;
     }),
   );
+}
+
+/** The `end` item with this name (a session that ended on it); null if the codebook no longer has it. */
+function findEnd(items: (TopLevelItem | InLoopItem)[], name: string): EndItem | null {
+  for (const item of items) {
+    if (item.type === "end" && item.name === name) return item;
+    if ("children" in item) {
+      const found = findEnd(item.children as (TopLevelItem | InLoopItem)[], name);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 function errorCodeOf(err: unknown): string | null {
@@ -221,6 +243,7 @@ export class JobManager {
     currentUnitVariables: null,
     error: null,
     errorCode: null,
+    ending: null,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -269,6 +292,13 @@ export class JobManager {
       this.maxReachedTopIndex = 0;
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.unitset, p]));
+      if (session.ended) {
+        // The coder reached an `end` item before: show it again.
+        const item = findEnd(this.items, session.ended.item);
+        await this.refreshTopSteps();
+        await this.publishEnding(item, buildScope(this.questions, this.coderVisible));
+        return;
+      }
       // Resume where the coder left off: skip answered questions and
       // finished units (they stay reachable by navigating back).
       this.resuming = true;
@@ -692,6 +722,33 @@ export class JobManager {
     }
   }
 
+  /** The coder reached an `end` item: tells the server, and shows the ending. */
+  private async reachEnd(item: EndItem, scope: ReferenceScope): Promise<void> {
+    await this.coderApi.endSession(item.name);
+    await this.publishEnding(item, scope);
+  }
+
+  /** Publishes the finished phase; with an `end` item, its message and redirect. */
+  private async publishEnding(item: EndItem | null, scope: ReferenceScope): Promise<void> {
+    const ending: SessionEnding | null = item && {
+      item,
+      message: item.message ? await renderTemplate(item.message, scope, this.expressionCache, `end:${item.name}`) : null,
+      redirectUrl: item.redirectUrl ? fillRedirectUrl(item.redirectUrl, scope) : null,
+    };
+    this.activeLoop = null;
+    this.currentUnit = null;
+    this.publish({
+      phase: "finished",
+      currentItem: null,
+      currentUnit: null,
+      currentUnitLayout: null,
+      currentUnitTemplate: null,
+      currentTexts: null,
+      currentUnitVariables: null,
+      ending,
+    });
+  }
+
   private async advanceTop(): Promise<void> {
     await this.refreshTopSteps();
     this.topIndex += 1;
@@ -699,15 +756,12 @@ export class JobManager {
     const next = this.topSteps[this.topIndex];
 
     if (!next) {
-      this.publish({
-        phase: "finished",
-        currentItem: null,
-        currentUnit: null,
-        currentUnitLayout: null,
-        currentUnitTemplate: null,
-        currentTexts: null,
-        currentUnitVariables: null,
-      });
+      await this.publishEnding(null, buildScope(this.questions, this.coderVisible));
+      return;
+    }
+
+    if (next.type === "end") {
+      await this.reachEnd(next, buildScope(this.questions, this.coderVisible));
       return;
     }
 
@@ -736,7 +790,7 @@ export class JobManager {
       await this.refreshLoopSteps();
       this.loopIndex += 1;
       const next = this.loopSteps[this.loopIndex];
-      if (next) {
+      if (next && next.type !== "end") {
         await this.publishLoopStep();
         return;
       }
@@ -754,6 +808,12 @@ export class JobManager {
       await this.coderApi.postUnitVariables(this.currentUnit.id, doneValues, this.activeLoop.name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
+      }
+      // An `end` item in the loop: the unit is saved, then the session ends.
+      if (next?.type === "end") {
+        const scope = buildScope(this.questions, this.unitVisible, this.currentUnit.data, this.activeLoop.layout.constants);
+        await this.reachEnd(next, scope);
+        return;
       }
 
       // If reviewing an earlier unit in history, advance to the next unit in history

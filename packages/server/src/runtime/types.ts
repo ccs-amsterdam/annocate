@@ -1,4 +1,4 @@
-import type { CodebookResponse, UnitData, VariableValue } from "@annotinder/contracts";
+import type { CodebookResponse, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
 // part of any API: coders get what the coder API (contracts
@@ -42,6 +42,8 @@ export interface Coder {
   /** Coder-level variables, including values preset by their invitation. */
   variables: Record<string, VariableValue>;
   assignments: CoderAssignments;
+  /** Set once the coder reached an `end` item: the session is over. */
+  ended: SessionEnd | null;
 }
 
 /** The coder for a session (docs/coder-identity.md). */
@@ -64,6 +66,7 @@ export interface ResolveCoderRequest {
 export interface CoderWrite {
   variables: Record<string, VariableValue>;
   assignments: CoderAssignments;
+  ended: SessionEnd | null;
 }
 
 /** One coder's live values for one unit (the runtime's per-coder workspace). */

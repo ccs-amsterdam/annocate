@@ -68,9 +68,10 @@ export class DbStore implements Store {
   }
 
   async putCoder(coderId: number, write: CoderWrite): Promise<void> {
-    const updated = await this.sql.query("UPDATE coders SET variables = $1, assignments = $2 WHERE job_id = $3 AND id = $4 RETURNING id", [
+    const updated = await this.sql.query("UPDATE coders SET variables = $1, assignments = $2, ended = $3 WHERE job_id = $4 AND id = $5 RETURNING id", [
       JSON.stringify(write.variables),
       JSON.stringify(write.assignments),
+      write.ended === null ? null : JSON.stringify(write.ended),
       this.jobId,
       coderId,
     ]);
@@ -156,7 +157,7 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   }
   // The invite's presets become the coder's values for the codebook's `auto`
   // variables with source "invite".
-  const variables = Object.fromEntries(Object.entries(invite.variables).map(([name, code]) => [name, { done: true, skip: false, codes: [{ code }] }]));
+  const variables = Object.fromEntries(Object.entries(invite.variables).map(([name, value]) => [name, { done: true, skip: false, values: [{ value }] }]));
   const created = await one<CoderRow>(
     sql,
     "INSERT INTO coders (job_id, coder_key, participant_id, variables, invite_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",

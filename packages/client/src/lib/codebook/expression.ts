@@ -4,7 +4,7 @@ import {
   type QuickJSWASMModule,
 } from "quickjs-emscripten-core";
 import variant from "@jitl/quickjs-wasmfile-release-sync";
-import { parseReference, referenceValue, type ReferenceScope } from "@annotinder/contracts";
+import { HELPER_PRELUDE, parseReference, referenceValue, type ReferenceScope } from "@annotinder/contracts";
 
 /**
  * Shared QuickJS sandbox for evaluating codebook-authored JS expressions
@@ -25,15 +25,18 @@ const IDENTIFIER_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 /** How long one evaluation may run (docs/client.md §5). */
 export const EXPRESSION_DEADLINE_MS = 100;
 
+/** Adds the helper methods (`$var.q.is(...)`) to the scope inside the sandbox. */
+const HELPER_SETUP = `$var = ${HELPER_PRELUDE}($var);`;
+
 /**
  * Evaluates a codebook script against `{ $unit, $var, $const }` (the only
- * names in scope). A script that is just one reference is looked up
- * directly, without starting QuickJS.
+ * names in scope), with the helper methods on `$var`. A script that is just
+ * one reference is looked up directly, without starting QuickJS.
  */
 export async function evaluateScript(script: string, scope: ReferenceScope): Promise<unknown> {
   const single = parseReference(script);
   if ("ref" in single) return referenceValue(scope, single.ref);
-  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var, $const: scope.$const });
+  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var, $const: scope.$const }, HELPER_SETUP);
 }
 
 /** A syntax error in a script, or null if it parses (it isn't run). For the admin editor. */
@@ -60,9 +63,10 @@ export async function scriptSyntaxError(script: string): Promise<string | null> 
  * callers decide what's in scope), returning the raw (JSON-round-tripped)
  * result. Returns `undefined` and logs on any evaluation error (invalid
  * syntax, thrown error, timeout, OOM) rather than throwing, since a bad
- * expression shouldn't crash the coder's session.
+ * expression shouldn't crash the coder's session. `setup` (statements) runs
+ * first, e.g. to add the helper methods.
  */
-export async function evaluateExpression(expression: string, values: Record<string, unknown>): Promise<unknown> {
+export async function evaluateExpression(expression: string, values: Record<string, unknown>, setup = ""): Promise<unknown> {
   try {
     const QuickJS = await loadQuickJS();
 
@@ -80,7 +84,7 @@ export async function evaluateExpression(expression: string, values: Record<stri
       });
       fnHandle.dispose();
 
-      const script = `((${names.join(", ")}) => (${expression}\n))`;
+      const script = `((${names.join(", ")}) => { ${setup} return (${expression}\n); })`;
       const fnResult = vm.evalCode(script);
       if (fnResult.error) {
         console.error(`Failed to evaluate expression '${expression}':`, vm.dump(fnResult.error));

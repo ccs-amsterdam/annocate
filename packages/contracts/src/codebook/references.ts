@@ -1,15 +1,18 @@
 import type { VariableValue } from "../variableValue.js";
-import type { AnyVariableType } from "./answers.js";
+import { optionLabel, type OptionValue } from "./options.js";
+import type { AnyVariableType } from "./variableTypes.js";
 
-// One reference syntax for scripts, templates, question texts and condition
-// rules (docs/client.md "References and conditions"):
+// One reference syntax for scripts, templates, question texts and conditions
+// (docs/client.md "References and conditions"). The name says the shape:
 //
-//   $unit.<field>                 a unit data column (inside a unit loop)
-//   $const.<name>                 a layout constant (inside a unit loop)
-//   $var.<q>.code / .value        code / numeric value of question q
-//   $var.<q>.<item>.code / .value one item of a scale with `items`
-//   $var.<q>.text                 selected texts (span questions)
-//   $var.<q>.answered             true if answered and not skipped
+//   $unit.<field>                       a unit data column (inside a unit loop)
+//   $const.<name>                       a layout constant (inside a unit loop)
+//   $var.<q>.value / .label             one answer (null when unanswered)
+//   $var.<q>.values / .labels           several answers ([] when unanswered)
+//   $var.<q>.texts                      the selected texts (span questions)
+//   $var.<q>.items.<item>.value/.label  one item of a scale
+//   $var.<q>.answered                   true if answered and not skipped
+//   $var.<q>.is("x"), .gte(3), ...      helper methods (HELPER_METHODS)
 //
 // Names are always literal, so what a codebook refers to (and where) can be
 // checked without running anything. All functions here are pure, shared by
@@ -21,14 +24,22 @@ export type ReferenceNamespace = "unit" | "var" | "const";
 export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "tokenize"] as const;
 export type OutputSuffix = (typeof OUTPUT_SUFFIXES)[number];
 
-/** `$var` properties; item names may not use these. */
-export const VAR_PROPERTIES = ["code", "value", "text", "answered"] as const;
+/** `$var.<q>` properties. */
+export const VAR_PROPERTIES = ["value", "label", "values", "labels", "texts", "answered", "items"] as const;
 export type VarProperty = (typeof VAR_PROPERTIES)[number];
+/** Properties of a scale item, `$var.<q>.items.<item>`. */
+export const ITEM_PROPERTIES = ["value", "label"] as const;
+
+/** Helper methods on a question (or a scale item), e.g. `$var.topics.has("sports")`. */
+export const HELPER_METHODS = ["is", "isAny", "gt", "gte", "lt", "lte", "eq", "between", "has", "hasAny", "hasAll", "count"] as const;
+export type HelperMethod = (typeof HELPER_METHODS)[number];
 
 export interface Reference {
   ns: ReferenceNamespace;
-  /** `["headline"]` for `$unit.headline`, `["interest", "tech", "value"]` for `$var.interest.tech.value`. */
+  /** `["headline"]` for `$unit.headline`, `["interest", "items", "tech", "value"]` for `$var.interest.items.tech.value`. */
   path: string[];
+  /** Set when the last path segment is a helper method that is called: `$var.q.is(...)`. */
+  call?: boolean;
   /** Template output suffix (`::markdown`), if given. */
   suffix?: OutputSuffix;
   /** Offsets in the source: `source.slice(start, end)` is the reference (including the suffix). */
@@ -51,7 +62,7 @@ const NAME = /[A-Za-z0-9_]/;
 const IDENT_CHAR = /[A-Za-z0-9_$]/;
 const NAMESPACES: ReferenceNamespace[] = ["unit", "var", "const"];
 
-/** The source text of a reference, e.g. `$var.role.code`. */
+/** The source text of a reference, e.g. `$var.role.value`. */
 export function referenceText(ref: Pick<Reference, "ns" | "path">): string {
   return `$${ref.ns}.${ref.path.join(".")}`;
 }
@@ -67,7 +78,7 @@ function readReference(
   at: number,
   template: boolean,
 ): { ref?: Reference; error?: ReferenceError; end: number } | null {
-  // In a script, `a$var` and `x.$var` are ordinary identifiers; in a template, `part_$var.slot.code` is a reference.
+  // In a script, `a$var` and `x.$var` are ordinary identifiers; in a template, `part_$var.slot.value` is a reference.
   if (!template && at > 0 && (IDENT_CHAR.test(source[at - 1]) || source[at - 1] === ".")) return null;
   const ns = NAMESPACES.find((n) => source.startsWith(n, at + 1) && !IDENT_CHAR.test(source[at + 1 + n.length] ?? ""));
   if (!ns) return null;
@@ -89,20 +100,37 @@ function readReference(
     return fail(`$${ns} must be followed by a name ($${ns}.name)`);
   }
   const path = [first];
+  let call = false;
   if (ns === "var") {
-    const second = segment();
-    if (second === null) return fail(`$var.${first} needs a property: .code, .value, .text or .answered`);
-    path.push(second);
-    if (!(VAR_PROPERTIES as readonly string[]).includes(second)) {
-      // An item of a scale question: $var.q.item.code
-      const third = segment();
-      if (third !== "code" && third !== "value") {
-        return fail(`$var.${first}.${second} needs a property: .code or .value (for items), or use .code, .value, .text or .answered`);
+    // A property, or a called method: of the question or of a scale item.
+    const member = (allowed: readonly string[], label: string): string | { error: string } => {
+      const name = segment();
+      if (name === null) return { error: `${label} needs a property: ${allowed.map((p) => `.${p}`).join(", ")}, or a method like .is(...)` };
+      if ((HELPER_METHODS as readonly string[]).includes(name)) {
+        if (source[pos] !== "(") return { error: `${label}.${name} is a method: call it, ${label}.${name}(...)` };
+        if (template) return { error: `${label}.${name}(...) can only be used inside {{ }}` };
+        call = true;
+        return name;
       }
-      path.push(third);
+      if (!allowed.includes(name)) {
+        const hint = name === "code" ? " (.code is now .value, or .values for several answers)" : name === "text" ? " (.text is now .texts)" : "";
+        return { error: `${label}.${name}: unknown property${hint}; use ${allowed.map((p) => `.${p}`).join(", ")} or a method` };
+      }
+      return name;
+    };
+    const second = member(VAR_PROPERTIES, `$var.${first}`);
+    if (typeof second !== "string") return fail(second.error);
+    path.push(second);
+    if (second === "items") {
+      const item = segment();
+      if (item === null) return fail(`$var.${first}.items needs an item name: $var.${first}.items.<item>.value`);
+      path.push(item);
+      const property = member(ITEM_PROPERTIES, `$var.${first}.items.${item}`);
+      if (typeof property !== "string") return fail(property.error);
+      path.push(property);
     }
   }
-  if (source[pos] === "[") return fail(`Names in ${referenceText({ ns, path })}[...] must be literal, not computed`);
+  if (!call && source[pos] === "[") return fail(`Names in ${referenceText({ ns, path })}[...] must be literal, not computed`);
 
   let suffix: OutputSuffix | undefined;
   if (template && source.startsWith("::", pos)) {
@@ -116,7 +144,7 @@ function readReference(
       return fail(`Unknown output '::${name}' (use ::text, ::markdown, ::image or ::tokenize)`);
     }
   }
-  return { ref: { ns, path, suffix, start: at, end: pos }, end: pos };
+  return { ref: { ns, path, ...(call ? { call } : {}), suffix, start: at, end: pos }, end: pos };
 }
 
 /**
@@ -215,7 +243,7 @@ export interface ParsedTemplate {
 /**
  * Splits a template (the unit layout, a question or instruction text, a
  * unitset name) into literal text and expressions. Syntax: `$unit.x`,
- * `$var.q.code`, `$const.y` or `{{ js }}`, each with an optional
+ * `$var.q.value`, `$const.y` or `{{ js }}`, each with an optional
  * `::text|markdown|image|tokenize` suffix. `\$` is a literal `$`; references
  * inside markdown code spans and fences stay literal.
  */
@@ -348,17 +376,68 @@ function codeRanges(source: string): [number, number][] {
 
 // ---- shapes ------------------------------------------------------------------
 
+/**
+ * What a question holds, which decides its references and helper methods:
+ * one answer (`single`, `ordinal`, `numeric`), several (`multiple`, `span`,
+ * `relation`), one per item (`scale`), or none (`confirm`).
+ */
+export type QuestionKind = "single" | "ordinal" | "numeric" | "multiple" | "span" | "relation" | "scale" | "confirm";
+
+export function questionKind(variable: AnyVariableType): QuestionKind {
+  switch (variable.type) {
+    case "categorical":
+      return variable.multiple ? "multiple" : variable.level === "ordinal" ? "ordinal" : "single";
+    case "annotinder":
+    case "auto":
+      return "single";
+    default:
+      return variable.type;
+  }
+}
+
+/** The properties of `$var.<q>` per kind (besides `answered`). */
+const KIND_PROPERTIES: Record<QuestionKind, readonly string[]> = {
+  single: ["value", "label"],
+  ordinal: ["value", "label"],
+  numeric: ["value", "label"],
+  multiple: ["values", "labels"],
+  span: ["values", "labels", "texts"],
+  relation: ["values", "labels"],
+  scale: ["values", "items"],
+  confirm: [],
+};
+
+/** The helper methods per kind; scale items take the `ordinal` ones. */
+export const KIND_METHODS: Record<QuestionKind, readonly HelperMethod[]> = {
+  single: ["is", "isAny"],
+  ordinal: ["is", "isAny", "gt", "gte", "lt", "lte"],
+  numeric: ["eq", "gt", "gte", "lt", "lte", "between"],
+  multiple: ["has", "hasAny", "hasAll", "count"],
+  span: ["has", "count"],
+  relation: ["has", "count"],
+  scale: [],
+  confirm: [],
+};
+
+/** The option values of a question (for checking arguments and rule values); undefined for numeric and confirm. */
+export function questionValues(variable: AnyVariableType): OptionValue[] | undefined {
+  if ("options" in variable && variable.options) return variable.options.map((o) => o.value);
+  return undefined;
+}
+
 export type ReferenceValueType = "string" | "number" | "boolean" | "any";
 
 /** What a reference holds, as follows from the codebook (never from the runtime value). */
 export type ReferenceShape =
   | {
       ok: true;
-      /** Arrays (multi-select, spans) are `[]` when unanswered; scalars are `null`. */
+      /** Arrays (`values`, `labels`, `texts`) are `[]` when unanswered; scalars are `null`. */
       array: boolean;
       type: ReferenceValueType;
-      /** The possible codes, if known. */
-      codes?: string[];
+      /** The possible values, if known. */
+      values?: OptionValue[];
+      /** For a called helper method: its name, and the kind of the question (or scale item) it is called on. */
+      method?: { name: HelperMethod; kind: QuestionKind };
       warning?: string;
     }
   | { ok: false; reason: string };
@@ -367,70 +446,77 @@ export type ReferenceShape =
  * The shape of a reference. `$var` refs are looked up in `questions`;
  * `$unit` fields are untyped here (`any`); constants are strings.
  */
-export function referenceShape(questions: ReadonlyMap<string, AnyVariableType>, ref: Pick<Reference, "ns" | "path">): ReferenceShape {
+export function referenceShape(
+  questions: ReadonlyMap<string, AnyVariableType>,
+  ref: Pick<Reference, "ns" | "path" | "call">,
+): ReferenceShape {
   if (ref.ns === "unit") return { ok: true, array: false, type: "any" };
   if (ref.ns === "const") return { ok: true, array: false, type: "string" };
   const [name, ...rest] = ref.path;
   const variable = questions.get(name);
   if (!variable) return { ok: false, reason: `'${name}' is not a question` };
-  return varShape(name, variable, rest);
+  return varShape(name, variable, rest, ref.call === true);
 }
 
-function varShape(name: string, variable: AnyVariableType, rest: string[]): ReferenceShape {
-  const property = rest[rest.length - 1] as VarProperty;
-  const item = rest.length === 2 ? rest[0] : undefined;
+function valueType(kind: QuestionKind): ReferenceValueType {
+  return kind === "ordinal" || kind === "numeric" || kind === "scale" ? "number" : "string";
+}
+
+function methodShape(label: string, name: string, method: string, kind: QuestionKind, values?: OptionValue[]): ReferenceShape {
+  if (!(KIND_METHODS[kind] as readonly string[]).includes(method)) {
+    const available = KIND_METHODS[kind];
+    return {
+      ok: false,
+      reason: `${label}(): '${name}' (${kind}) has no .${method}()${available.length ? `; use ${available.map((m) => `.${m}()`).join(", ")}` : ""}`,
+    };
+  }
+  return { ok: true, array: false, type: method === "count" ? "number" : "boolean", values, method: { name: method as HelperMethod, kind } };
+}
+
+function varShape(name: string, variable: AnyVariableType, rest: string[], call: boolean): ReferenceShape {
   const label = `$var.${[name, ...rest].join(".")}`;
-  if (property === "answered") {
-    return item ? { ok: false, reason: `${label}: use $var.${name}.answered` } : { ok: true, array: false, type: "boolean" };
-  }
-  const type = variable.type;
-  if (type === "confirm") return { ok: false, reason: `${label}: '${name}' is a confirm question; only .answered is available` };
+  const kind = questionKind(variable);
+  const values = questionValues(variable);
+  const [property] = rest;
 
-  const codes = type === "auto" ? variable.options?.map((o) => o.code) : "codes" in variable ? variable.codes.map((c) => c.code) : undefined;
-  const hasValues = type !== "auto" && "codes" in variable && variable.codes.some((c) => c.value !== undefined);
-  const items = type === "scale" ? variable.items : undefined;
-
-  if (property === "text") {
-    if (item) return { ok: false, reason: `${label}: items have no .text` };
-    if (type !== "span") return { ok: false, reason: `${label}: .text is only available for span questions` };
-    return { ok: true, array: true, type: "string" };
+  if (property === "items") {
+    if (variable.type !== "scale") return { ok: false, reason: `${label}: '${name}' has no items (only scales do)` };
+    const [, item, itemProperty] = rest;
+    if (!variable.items.some((i) => i.name === item)) return { ok: false, reason: `${label}: '${item}' is not an item of '${name}'` };
+    if (call) return methodShape(label, `${name}.items.${item}`, itemProperty, "ordinal", values);
+    return { ok: true, array: false, type: itemProperty === "label" ? "string" : "number", values: itemProperty === "value" ? values : undefined };
   }
-
-  if (items && items.length > 0) {
-    if (!item) return { ok: false, reason: `${label}: '${name}' has items; use $var.${name}.<item>.${property}` };
-    if (!items.some((i) => i.name === item)) return { ok: false, reason: `${label}: '${item}' is not an item of '${name}'` };
-  } else if (item) {
-    return { ok: false, reason: `${label}: '${name}' has no items` };
+  if (call) return methodShape(label, name, property, kind, values);
+  if (property === "answered") return { ok: true, array: false, type: "boolean" };
+  if (!KIND_PROPERTIES[kind].includes(property)) {
+    const available = [...KIND_PROPERTIES[kind].map((p) => (p === "items" ? ".items.<item>" : `.${p}`)), ".answered"];
+    return { ok: false, reason: `${label}: '${name}' (${kind}) has no .${property}; use ${available.join(", ")}` };
   }
-
-  const array = type === "span" || type === "relation" || ((type === "select_code" || type === "search_code") && variable.multiple === true);
-  if (property === "value") {
-    if (type === "span" || type === "relation") return { ok: false, reason: `${label}: ${type} questions have no .value` };
-    const warning = hasValues ? undefined : `${label}: the codes of '${name}' have no values, so this is always empty`;
-    return { ok: true, array, type: "number", warning };
-  }
-  return { ok: true, array, type: "string", codes };
+  const array = property === "values" || property === "labels" || property === "texts";
+  if (property === "value" || property === "values") return { ok: true, array, type: valueType(kind), values };
+  return { ok: true, array, type: "string" };
 }
 
 export interface ReferenceOption {
-  /** E.g. `$var.role.code`. */
+  /** E.g. `$var.role.value`. */
   ref: string;
   shape: Extract<ReferenceShape, { ok: true }>;
 }
 
 /**
- * The `$var` references to these questions that fit their types (no
- * errors or warnings), e.g. for a reference picker. Pass the questions
- * available at a point (validation `availableQuestions`).
+ * The `$var` references to these questions that fit their types, e.g. for a
+ * reference picker. Pass the questions available at a point (validation
+ * `availableQuestions`).
  */
 export function referenceOptions(questions: Iterable<{ name: string; variable: AnyVariableType }>): ReferenceOption[] {
   const options: ReferenceOption[] = [];
   for (const { name, variable } of questions) {
     const lookup = new Map([[name, variable]]);
-    const items = variable.type === "scale" ? (variable.items ?? []) : [];
+    const kind = questionKind(variable);
     const paths = [
-      ...items.flatMap((item) => [[item.name, "code"], [item.name, "value"]]),
-      ...VAR_PROPERTIES.map((p) => [p]),
+      ...KIND_PROPERTIES[kind].filter((p) => p !== "items").map((p) => [p]),
+      ...(variable.type === "scale" ? variable.items.flatMap((item) => ITEM_PROPERTIES.map((p) => ["items", item.name, p])) : []),
+      ["answered"],
     ];
     for (const rest of paths) {
       const ref = { ns: "var" as const, path: [name, ...rest] };
@@ -443,12 +529,21 @@ export function referenceOptions(questions: Iterable<{ name: string; variable: A
 
 // ---- scope -------------------------------------------------------------------
 
+/** A scale item in the scope. */
+export interface ItemScopeEntry {
+  value: number | null;
+  label: string | null;
+}
+
+/** A question in the scope: the properties its kind has (see KIND_PROPERTIES). */
 export interface VarScopeEntry {
-  code?: string | null | string[];
-  value?: number | null | number[];
-  text?: string[];
   answered: boolean;
-  [item: string]: unknown;
+  value?: OptionValue | null;
+  label?: string | null;
+  values?: OptionValue[];
+  labels?: string[];
+  texts?: string[];
+  items?: Record<string, ItemScopeEntry>;
 }
 
 export interface ReferenceScope {
@@ -458,9 +553,11 @@ export interface ReferenceScope {
 }
 
 /**
- * The `{ $unit, $var, $const }` object scripts and rules are evaluated
+ * The `{ $unit, $var, $const }` object scripts and conditions are evaluated
  * against. Every question in `questions` is present (null, or `[]` for
- * arrays, when unanswered), so scripts don't throw on later questions.
+ * lists, when unanswered), so scripts don't throw on later questions. Helper
+ * methods are not in here (the scope is plain data): simple conditions apply
+ * them with `applyHelper`, the script sandbox adds them (HELPER_PRELUDE).
  */
 export function buildScope(
   questions: ReadonlyMap<string, AnyVariableType>,
@@ -473,42 +570,62 @@ export function buildScope(
   return { $unit: { ...(unit ?? {}) }, $var, $const: { ...(constants ?? {}) } };
 }
 
-function varEntry(variable: AnyVariableType, value: VariableValue | undefined): VarScopeEntry {
-  const answered = value !== undefined && !value.skip;
-  const v = answered ? value : undefined;
-  const type = variable.type;
-  if (type === "confirm") return { answered };
-
-  const codebookValue = (code: string | undefined) =>
-    type !== "auto" && "codes" in variable ? variable.codes.find((c) => c.code === code)?.value : undefined;
-  const valueOf = (c: { code?: string; value?: number }) => c.value ?? codebookValue(c.code) ?? null;
-
-  if (type === "span") {
-    const spans = v?.spans ?? [];
-    return { answered, code: spans.map((s) => s.code), text: spans.map((s) => s.slices.map((t) => t.text).join(" ")) };
+/** The label of a value: the option's label, a numeric break-point label, or the value as text. */
+export function valueLabel(variable: AnyVariableType, value: OptionValue): string {
+  if ("options" in variable && variable.options) {
+    const option = variable.options.find((o) => o.value === value);
+    if (option) return optionLabel(option);
   }
-  if (type === "relation") return { answered, code: (v?.relations ?? []).map((r) => r.code) };
-
-  const codes = v?.codes ?? [];
-  if (type === "scale" && variable.items?.length) {
-    const entry: VarScopeEntry = { answered };
-    for (const item of variable.items) {
-      const answer = codes.find((c) => c.item === item.name);
-      entry[item.name] = { code: answer?.code ?? null, value: answer ? valueOf(answer) : null };
-    }
-    return entry;
+  if (variable.type === "numeric") {
+    const label = variable.labels?.find((l) => l.value === value);
+    if (label) return label.label;
   }
-  if ((type === "select_code" || type === "search_code") && variable.multiple) {
-    const own = codes.filter((c) => c.item === undefined && c.code !== undefined);
-    return {
-      answered,
-      code: own.map((c) => c.code!),
-      value: own.map(valueOf).filter((n): n is number => n !== null),
-    };
-  }
-  const first = codes.find((c) => c.item === undefined) ?? codes[0];
-  return { answered, code: first?.code ?? null, value: first ? valueOf(first) : null };
+  return String(value);
 }
+
+function varEntry(variable: AnyVariableType, answer: VariableValue | undefined): VarScopeEntry {
+  const answered = answer !== undefined && !answer.skip;
+  const v = answered ? answer : undefined;
+  const kind = questionKind(variable);
+  const labelOf = (value: OptionValue) => valueLabel(variable, value);
+
+  switch (kind) {
+    case "confirm":
+      return { answered };
+    case "span": {
+      const spans = v?.spans ?? [];
+      return {
+        answered,
+        values: spans.map((s) => s.value),
+        labels: spans.map((s) => labelOf(s.value)),
+        texts: spans.map((s) => s.slices.map((t) => t.text).join(" ")),
+      };
+    }
+    case "relation": {
+      const relations = v?.relations ?? [];
+      return { answered, values: relations.map((r) => r.value), labels: relations.map((r) => labelOf(r.value)) };
+    }
+    case "scale": {
+      const items: Record<string, ItemScopeEntry> = {};
+      const values: OptionValue[] = [];
+      for (const item of variable.type === "scale" ? variable.items : []) {
+        const value = v?.values?.find((a) => a.item === item.name)?.value;
+        items[item.name] = typeof value === "number" ? { value, label: labelOf(value) } : { value: null, label: null };
+        if (typeof value === "number") values.push(value);
+      }
+      return { answered, values, items };
+    }
+    case "multiple": {
+      const values = (v?.values ?? []).filter((a) => a.item === undefined).map((a) => a.value);
+      return { answered, values, labels: values.map(labelOf) };
+    }
+    default: {
+      const value = v?.values?.find((a) => a.item === undefined)?.value ?? null;
+      return { answered, value, label: value === null ? null : labelOf(value) };
+    }
+  }
+}
+
 
 /** The value at a reference in a scope (undefined if absent). */
 export function referenceValue(scope: ReferenceScope, ref: Pick<Reference, "ns" | "path">): unknown {
@@ -523,11 +640,11 @@ export function referenceValue(scope: ReferenceScope, ref: Pick<Reference, "ns" 
 /** Parses a string that is exactly one reference (as in a condition rule's `ref`). */
 export function parseReference(text: string): { ref: Reference } | { error: string } {
   const trimmed = text.trim();
-  if (!trimmed.startsWith("$")) return { error: `'${text}' is not a reference ($unit.x, $var.q.code, $const.y)` };
+  if (!trimmed.startsWith("$")) return { error: `'${text}' is not a reference ($unit.x, $var.q.value, $const.y)` };
   const read = readReference(trimmed, 0, false);
-  if (!read) return { error: `'${text}' is not a reference ($unit.x, $var.q.code, $const.y)` };
+  if (!read) return { error: `'${text}' is not a reference ($unit.x, $var.q.value, $const.y)` };
   if (read.error) return { error: read.error.message };
-  if (read.end !== trimmed.length) return { error: `'${text}' must be a single reference` };
+  if (read.end !== trimmed.length || read.ref?.call) return { error: `'${text}' must be a single reference` };
   return { ref: read.ref! };
 }
 

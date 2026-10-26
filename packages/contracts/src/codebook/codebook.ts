@@ -1,16 +1,22 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
 import { TopLevelItemSchema } from "./item.js";
-import { codebookErrors } from "./validation.js";
+import { migrateCodebookItems } from "./migrate.js";
+import { semanticIssues } from "./validation.js";
 
-export const CodebookItemsSchema = z
-  .array(TopLevelItemSchema)
-  .min(1, "A codebook needs at least one item")
-  .superRefine((items, ctx) => {
-    for (const issue of codebookErrors(items)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: issue.path, message: issue.message });
-    }
-  });
+/** A codebook's items; old codebooks are migrated on parse (migrate.ts). */
+export const CodebookItemsSchema = z.preprocess(
+  migrateCodebookItems,
+  z
+    .array(TopLevelItemSchema)
+    .min(1, "A codebook needs at least one item")
+    .superRefine((items, ctx) => {
+      // The item schemas report their own issues; add the rest.
+      for (const issue of semanticIssues(items).filter((i) => !i.warning)) {
+        ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
+      }
+    }),
+);
 
 /**
  * Body for `POST /codebook` and `PUT /codebook/:id` -- always the full document.

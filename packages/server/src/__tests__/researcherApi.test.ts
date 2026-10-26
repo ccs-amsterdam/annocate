@@ -51,7 +51,7 @@ async function call<N extends ResearcherEndpointName>(
 const question = (name: string) => ({
   type: "question",
   name,
-  variable: { type: "select_code", question: "?", codes: [{ code: "yes" }, { code: "no" }] },
+  variable: { type: "categorical", question: "?", options: [{ value: "yes" }, { value: "no" }] },
 });
 
 /** A job with two units and a one-question loop, deployed; returns its id. */
@@ -87,7 +87,7 @@ async function code(jobId: number, invite: string, answer: string): Promise<void
   for (;;) {
     const unit = (await (await send("/loop/loop/next")).json()) as { id: number } | null;
     if (!unit) return;
-    const variables = { q: { done: true, codes: [{ code: answer }] } };
+    const variables = { q: { done: true, values: [{ value: answer }] } };
     expect((await send("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, loop: "loop", variables }) })).status).toBe(204);
   }
 }
@@ -171,7 +171,7 @@ describe("downloading annotations", () => {
     expect(rows.map((r) => r.id)).toEqual([...rows.map((r) => r.id)].sort((a, b) => a - b));
     expect(new Set(rows.map((r) => r.unitId))).toEqual(new Set(unitIds));
     expect(rows.map((r) => r.externalId).sort()).toEqual(["a", "a", "b", "b"]);
-    expect(rows.filter((r) => r.value.codes?.[0].code === "no")).toHaveLength(2);
+    expect(rows.filter((r) => r.value.values?.[0].value === "no")).toHaveLength(2);
     expect(rows[0]).not.toHaveProperty("retiredAt");
 
     // Coder-level values and progress come with the coders.

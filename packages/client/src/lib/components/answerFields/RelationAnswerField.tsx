@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { RelationAnswer, RelationOptions, SpanAnswer, VariableValue } from "@annotinder/contracts";
+import { optionLabel, type RelationAnswer, type RelationOptions, type SpanAnswer, type VariableValue } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 import { getCodeBadgeStyle } from "../../utils/color";
@@ -9,23 +9,23 @@ type RelationVariable = Extract<QuestionVariable, { type: "relation" }>;
 
 /** The spans available as one endpoint of a relation: this unit's spans
  * submitted so far for `opts.variable` (a sibling `span` unit_variable),
- * optionally filtered to just the codes listed in `opts.values`. */
+ * optionally filtered to just the values listed in `opts.values`. */
 function endpointSpans(unitVariables: Record<string, VariableValue> | undefined, opts: RelationOptions): SpanAnswer[] {
   const spans = unitVariables?.[opts.variable]?.spans ?? [];
   if (!opts.values || opts.values.length === 0) return spans;
-  return spans.filter((s) => opts.values?.includes(s.code));
+  return spans.filter((s) => opts.values?.includes(s.value));
 }
 
 function spanLabel(span: SpanAnswer | undefined): string {
   if (!span) return "(unknown span)";
   const summary = span.slices.map((s) => s.text).join(" ... ");
-  return `"${summary}" (${span.code})`;
+  return `"${summary}" (${span.value})`;
 }
 
 /**
  * Answer field for `relation` unit_variables (docs/client.md §4):
  * links two already-created spans (from sibling `span` unit_variables named
- * in `variable.from`/`variable.to`) with a relation code.
+ * in `variable.from`/`variable.to`) with a relation type (an option).
  */
 export function RelationAnswerField({ variable, unitVariables, onAnswer }: AnswerFieldProps<RelationVariable>) {
   const fromSpans = endpointSpans(unitVariables, variable.from);
@@ -34,11 +34,11 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
   const [relations, setRelations] = useState<RelationAnswer[]>([]);
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
-  const [code, setCode] = useState(variable.codes[0]?.code ?? "");
+  const [code, setCode] = useState(variable.options[0]?.value ?? "");
 
   function handleAdd() {
     if (!fromId || !toId || !code) return;
-    if (relations.some((r) => r.fromId === fromId && r.toId === toId && r.code === code)) {
+    if (relations.some((r) => r.fromId === fromId && r.toId === toId && r.value === code)) {
       return;
     }
     setRelations((prev) => [
@@ -47,7 +47,7 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         fromId,
         toId,
-        code,
+        value: code,
       },
     ]);
     setFromId("");
@@ -59,7 +59,12 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
   }
 
   function colorFor(codeName: string): string | undefined {
-    return variable.codes.find((c) => c.code === codeName)?.color;
+    return variable.options.find((c) => c.value === codeName)?.color;
+  }
+
+  function labelFor(value: string): string {
+    const option = variable.options.find((c) => c.value === value);
+    return option ? optionLabel(option) : value;
   }
 
   return (
@@ -87,9 +92,9 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
           onChange={(e) => setCode(e.target.value)}
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
-          {variable.codes.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.code}
+          {variable.options.map((c) => (
+            <option key={c.value} value={c.value}>
+              {optionLabel(c)}
             </option>
           ))}
         </select>
@@ -128,7 +133,7 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
             {relations.map((rel) => {
               const from = fromSpans.find((s) => s.id === rel.fromId);
               const to = toSpans.find((s) => s.id === rel.toId);
-              const badgeStyle = getCodeBadgeStyle(colorFor(rel.code));
+              const badgeStyle = getCodeBadgeStyle(colorFor(rel.value));
               return (
                 <div
                   key={rel.id}
@@ -136,7 +141,7 @@ export function RelationAnswerField({ variable, unitVariables, onAnswer }: Answe
                 >
                   <span className="truncate">{spanLabel(from)}</span>
                   <span className="rounded border px-1.5 py-0.2 font-semibold shrink-0" style={badgeStyle}>
-                    {rel.code}
+                    {labelFor(rel.value)}
                   </span>
                   <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
                   <span className="truncate">{spanLabel(to)}</span>

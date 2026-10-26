@@ -55,7 +55,7 @@ export class PreviewStore implements Store {
       request.inviteSecret !== undefined &&
       verifyPreviewToken(this.secret, this.jobId, request.inviteSecret, this.now());
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
-    const coder: Coder = { coderId: this.coders.size + 1, variables: {}, assignments: {}, created: new Date(this.now()) };
+    const coder: Coder = { coderId: this.coders.size + 1, variables: {}, assignments: {}, ended: null, created: new Date(this.now()) };
     this.coders.set(request.coderKey, coder);
     return coder;
   }
@@ -65,6 +65,7 @@ export class PreviewStore implements Store {
     if (!coder) throw new HttpError(404, "Coder not found");
     coder.variables = body.variables;
     coder.assignments = body.assignments;
+    coder.ended = body.ended;
   }
 
   async listAnnotations(coderId: number): Promise<CoderAnnotation[]> {

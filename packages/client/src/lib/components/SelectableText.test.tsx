@@ -141,7 +141,7 @@ describe("SelectableText and SpanAnnotationProvider", () => {
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
         column="headline"
-        codes={[{ code: "actor", color: "#2196f3" }]}
+        options={[{ value: "actor", color: "#2196f3" }]}
       >
         <SelectableText text="Sample headline text" />
       </SpanAnnotationProvider>,
@@ -152,16 +152,16 @@ describe("SelectableText and SpanAnnotationProvider", () => {
 
   it("renders multiple overlapping spans on the same piece of text", () => {
     const initialSpans: SpanAnswer[] = [
-      { id: "1", field: "text", code: "actor", slices: [{ offset: 4, length: 15, text: "quick brown fox" }] },
-      { id: "2", field: "text", code: "color", slices: [{ offset: 10, length: 9, text: "brown fox" }] },
+      { id: "1", field: "text", value: "actor", slices: [{ offset: 4, length: 15, text: "quick brown fox" }] },
+      { id: "2", field: "text", value: "color", slices: [{ offset: 10, length: 9, text: "brown fox" }] },
     ];
 
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
         column="text"
-        codes={[
-          { code: "actor", color: "#2196f3" },
-          { code: "color", color: "#ff9800" },
+        options={[
+          { value: "actor", color: "#2196f3" },
+          { value: "color", color: "#ff9800" },
         ]}
         initialSpans={initialSpans}
       >

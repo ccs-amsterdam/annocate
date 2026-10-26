@@ -1,4 +1,4 @@
-import type { CodebookMeta, CodebookResponse } from "@annotinder/contracts";
+import { migrateCodebookItems, type CodebookMeta, type CodebookResponse } from "@annotinder/contracts";
 
 /** A row of `codebooks`. */
 export interface CodebookRow {
@@ -10,8 +10,10 @@ export interface CodebookRow {
   immutable: boolean;
 }
 
+/** A stored codebook as served; codebooks stored in an older shape are migrated (contracts migrate.ts). */
 export function toCodebookResponse(row: CodebookRow): CodebookResponse {
-  return { id: row.id, jobId: row.job_id, note: row.note, items: row.items, created: row.created, immutable: row.immutable };
+  const items = migrateCodebookItems(row.items) as CodebookResponse["items"];
+  return { id: row.id, jobId: row.job_id, note: row.note, items, created: row.created, immutable: row.immutable };
 }
 
 export function toCodebookMeta(row: CodebookRow): CodebookMeta {

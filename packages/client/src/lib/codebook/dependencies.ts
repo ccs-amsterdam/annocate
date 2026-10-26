@@ -11,6 +11,10 @@ export function extractDependencies(script: string, scope: ReferenceScope): Reco
   const { references, errors } = extractReferences(script);
   if (errors.length > 0) return null;
   const deps: Record<string, unknown> = {};
-  for (const ref of references) deps[referenceText(ref)] = referenceValue(scope, ref);
+  for (const ref of references) {
+    // A helper call depends on the question (or scale item) it is called on.
+    const target = ref.call ? { ns: ref.ns, path: ref.path.slice(0, -1) } : ref;
+    deps[referenceText(target)] = referenceValue(scope, target);
+  }
   return deps;
 }

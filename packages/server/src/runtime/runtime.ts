@@ -15,15 +15,16 @@ import type { Store } from "./store.js";
 import type { Coder, DeploymentSpec, ResolveCoderRequest, Unit } from "./types.js";
 import {
   agreementKey,
-  codeValue,
+  singleValue,
   codingsSignature,
   collectCoderVariables,
   collectLoops,
+  findEndItem,
   finishedLoops,
   hasDynamicSources,
   loopAgreementVariables,
   validateVariables,
-  variableCodes,
+  variableValues,
   type LoopInfo,
   type VariableType,
 } from "./codebook.js";
@@ -271,7 +272,7 @@ export class DeploymentRuntime {
     });
     const balanced = new Map(names.map((name) => [name, new Map(this.balanced.get(name))]));
     for (const row of rows) {
-      const code = variableCodes(row.values ?? {})[row.loop];
+      const code = variableValues(row.values ?? {})[row.loop];
       if (code !== undefined) balanced.get(row.loop)?.set(row.coderId, code);
     }
     this.balanced = balanced;
@@ -279,7 +280,7 @@ export class DeploymentRuntime {
 
   /** Records the coder's options for `balanced` variables. */
   private countBalanced(coder: Coder): void {
-    const codes = variableCodes(coder.variables);
+    const codes = variableValues(coder.variables);
     for (const [name, byCoder] of this.balanced) {
       if (codes[name] !== undefined) byCoder.set(coder.coderId, codes[name]);
     }
@@ -366,12 +367,12 @@ export class DeploymentRuntime {
   private async assignAutoVariables(coder: Coder, urlParams: Record<string, string> = {}): Promise<void> {
     let changed = false;
     for (const [name, variable] of this.autoVariables) {
-      if (variableCodes(coder.variables)[name] !== undefined) continue;
+      if (variableValues(coder.variables)[name] !== undefined) continue;
       if (variable.source === "url_param") {
         const value = urlParams[variable.urlParam ?? name];
         // A value outside the codebook's options (if it lists any) is ignored, not stored.
-        if (value === undefined || value.length > 200 || (variable.options?.length && !variable.options.some((o) => o.code === value))) continue;
-        coder.variables = { ...coder.variables, [name]: codeValue(value) };
+        if (value === undefined || value.length > 200 || (variable.options?.length && !variable.options.some((o) => o.value === value))) continue;
+        coder.variables = { ...coder.variables, [name]: singleValue(value) };
         changed = true;
         continue;
       }
@@ -380,7 +381,7 @@ export class DeploymentRuntime {
       const options = variable.options ?? [];
       if (options.length === 0) continue;
       const code = method === "random" ? this.drawWeighted(options) : this.leastUsed(name, options);
-      coder.variables = { ...coder.variables, [name]: codeValue(code) };
+      coder.variables = { ...coder.variables, [name]: singleValue(code) };
       changed = true;
     }
     if (changed) {
@@ -389,26 +390,26 @@ export class DeploymentRuntime {
     }
   }
 
-  private drawWeighted(options: { code: string; weight?: number }[]): string {
+  private drawWeighted(options: { value: string; weight?: number }[]): string {
     const total = options.reduce((n, o) => n + (o.weight ?? 1), 0);
     let r = this.options.random() * total;
     for (const o of options) {
       r -= o.weight ?? 1;
-      if (r < 0) return o.code;
+      if (r < 0) return o.value;
     }
-    return options[options.length - 1].code;
+    return options[options.length - 1].value;
   }
 
-  private leastUsed(name: string, options: { code: string }[]): string {
-    const counts = new Map(options.map((o) => [o.code, 0]));
-    for (const code of this.balanced.get(name)?.values() ?? []) {
-      if (counts.has(code)) counts.set(code, counts.get(code)! + 1);
+  private leastUsed(name: string, options: { value: string }[]): string {
+    const counts = new Map(options.map((o) => [o.value, 0]));
+    for (const value of this.balanced.get(name)?.values() ?? []) {
+      if (counts.has(value)) counts.set(value, counts.get(value)! + 1);
     }
-    return options.reduce((best, o) => (counts.get(o.code)! < counts.get(best.code)! ? o : best)).code;
+    return options.reduce((best, o) => (counts.get(o.value)! < counts.get(best.value)! ? o : best)).value;
   }
 
   private async saveCoder(coder: Coder): Promise<void> {
-    await this.store.putCoder(coder.coderId, { variables: coder.variables, assignments: coder.assignments });
+    await this.store.putCoder(coder.coderId, { variables: coder.variables, assignments: coder.assignments, ended: coder.ended });
   }
 
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
@@ -447,11 +448,30 @@ export class DeploymentRuntime {
         };
       }),
       variables: coder.variables,
+      ended: coder.ended,
     };
+  }
+
+  /**
+   * The coder reached an `end` item: the session is over (screened out or
+   * complete), and nothing more is accepted. Its outcome comes from the
+   * codebook. Reaching it again (e.g. after a reload) changes nothing.
+   */
+  async endSession(coder: Coder, item: string): Promise<void> {
+    if (coder.ended) return;
+    const end = findEndItem(this.spec.codebook.items, item);
+    if (!end) throw new HttpError(400, `No end item '${item}'`);
+    coder.ended = { item, outcome: end.outcome, at: new Date(this.options.now()) };
+    await this.saveCoder(coder);
+  }
+
+  private assertOpen(coder: Coder): void {
+    if (coder.ended) throw new HttpError(409, "This session has ended", "session_ended");
   }
 
   /** Coder-level answers. Server-assigned auto variables can't be overwritten by the client. */
   async submitCoderVariables(coder: Coder, variables: Record<string, VariableValue>): Promise<void> {
+    this.assertOpen(coder);
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
@@ -547,6 +567,7 @@ export class DeploymentRuntime {
   // --- units ------------------------------------------------------------------
 
   async nextUnit(coder: Coder, loopName: string, choice: BranchChoice = { unitsets: [] }): Promise<CoderUnitResponse | null> {
+    this.assertOpen(coder);
     if (!this.spec.active) throw new HttpError(409, "This job is not active");
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
@@ -613,6 +634,7 @@ export class DeploymentRuntime {
     variables: Record<string, VariableValue>,
     loopName?: string,
   ): Promise<void> {
+    this.assertOpen(coder);
     const loops = [...this.loops.values()].filter(
       (info) =>
         (loopName === undefined || info.loop.name === loopName) &&

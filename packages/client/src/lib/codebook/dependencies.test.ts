@@ -4,20 +4,24 @@ import { extractDependencies } from "./dependencies";
 
 const scope: ReferenceScope = {
   $unit: { text: "hi", n: 3 },
-  $var: { role: { answered: true, code: "a", value: 1 } },
+  $var: { role: { answered: true, value: "a", label: "A" } },
   $const: {},
 };
 
 describe("extractDependencies", () => {
   it("reads the values at the referenced paths", () => {
-    expect(extractDependencies("$unit.n > 2 && $var.role.code === 'a'", scope)).toEqual({
+    expect(extractDependencies("$unit.n > 2 && $var.role.value === 'a'", scope)).toEqual({
       "$unit.n": 3,
-      "$var.role.code": "a",
+      "$var.role.value": "a",
     });
   });
 
+  it("makes a helper call depend on its question", () => {
+    expect(extractDependencies(`$var.role.is("a")`, scope)).toEqual({ "$var.role": { answered: true, value: "a", label: "A" } });
+  });
+
   it("ignores references in strings and comments", () => {
-    expect(extractDependencies("'$unit.text' // $var.role.code", scope)).toEqual({});
+    expect(extractDependencies("'$unit.text' // $var.role.value", scope)).toEqual({});
   });
 
   it("returns null for computed references (not cacheable)", () => {

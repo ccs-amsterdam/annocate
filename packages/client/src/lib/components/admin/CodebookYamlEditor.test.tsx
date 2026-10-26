@@ -39,10 +39,10 @@ describe("CodebookYamlEditor", () => {
         "    - name: child1",
         "      type: unit_variable",
         "      variable:",
-        "        type: select_code",
-        "        codes:",
-        "          - code: pos",
-        "          - code: neg",
+        "        type: categorical",
+        "        options:",
+        "          - value: pos",
+        "          - value: neg",
         "    - name: child2",
         "      type: unit_variable",
         "- name: item3",
@@ -61,10 +61,10 @@ describe("CodebookYamlEditor", () => {
         "    - name: child1",
         "      type: unit_variable",
         "      variable:",
-        "        type: select_code",
-        "        codes:",
-        "          - code: pos",
-        "          - code: neg",
+        "        type: categorical",
+        "        options:",
+        "          - value: pos",
+        "          - value: neg",
         "",
         "    - name: child2",
         "      type: unit_variable",
@@ -98,18 +98,18 @@ describe("CodebookYamlEditor", () => {
               name: "q1",
               type: "unit_variable",
               variable: {
-                type: "select_code",
+                type: "categorical",
                 question: "Sentiment?",
-                codes: [{ code: "pos" }, { code: "neg" }],
+                options: [{ value: "pos" }, { value: "neg" }],
               },
             },
             {
               name: "q2",
               type: "unit_variable",
               variable: {
-                type: "select_code",
+                type: "categorical",
                 question: "Topic?",
-                codes: [{ code: "news" }, { code: "sports" }],
+                options: [{ value: "news" }, { value: "sports" }],
               },
             },
           ],
@@ -122,7 +122,7 @@ describe("CodebookYamlEditor", () => {
       expect(yaml).toContain("children:\n\n    - name: q1");
       expect(yaml).toContain("\n\n    - name: q2");
       // Codes sub-list should remain compact without blank lines
-      expect(yaml).toContain("codes:\n          - code: pos\n          - code: neg");
+      expect(yaml).toContain("options:\n          - value: pos\n          - value: neg");
     });
   });
 
@@ -145,7 +145,7 @@ describe("CodebookYamlEditor", () => {
         "    - name: sentiment", // line 14
         "      type: unit_variable", // line 15
         "      variable:", // line 16 -> matches
-        "        type: select_code", // line 17
+        "        type: categorical", // line 17
       ].join("\n");
 
       const lineNumbers = getFoldableLineNumbers(sampleYaml);

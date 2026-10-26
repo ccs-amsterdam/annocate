@@ -1,4 +1,4 @@
-import { GitBranch, HelpCircle, Repeat, type LucideIcon } from "lucide-react";
+import { GitBranch, HelpCircle, LogOut, Repeat, type LucideIcon } from "lucide-react";
 import type { ItemType } from "./utils";
 
 interface ItemTypeInfo {
@@ -30,6 +30,12 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: GitBranch,
     color: "",
     blockClass: "",
+  },
+  end: {
+    label: "End",
+    description: "End the session (screen out or complete)",
+    icon: LogOut,
+    color: "text-destructive",
   },
   // Legacy variable types render like questions
   unit_variable: {

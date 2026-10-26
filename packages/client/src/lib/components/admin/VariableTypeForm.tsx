@@ -1,11 +1,22 @@
-import type { UnitVariableType, UserVariableType } from "@annotinder/contracts";
-import { CodesEditor } from "./CodesEditor";
+import {
+  CATEGORICAL_LAYOUTS,
+  NUMERIC_LAYOUTS,
+  SCALE_LAYOUTS,
+  convertOptionsLevel,
+  layoutWarning,
+  resolveLayout,
+  type AnyVariableType,
+  type CategoricalType,
+  type NumericType,
+  type UnitVariableType,
+  type UserVariableType,
+} from "@annotinder/contracts";
+import { OptionsEditor } from "./OptionsEditor";
 import { ScaleItemsEditor } from "./ScaleItemsEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-type AnyVariableType = UserVariableType | UnitVariableType;
 
 /** Just the shared `question`/`instruction` fields -- kept as a plain (non-union-derived) shape so
  * patches don't get incorrectly widened back into a cross-product union of every variable type
@@ -70,12 +81,21 @@ export function VariableTypeForm({
   unitVariableNames?: string[];
 }) {
   switch (variable.type) {
-    case "annotinder": {
+    case "categorical": {
       const v = variable;
       return (
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
-          <CodesEditor codes={v.codes} max={3} onChange={(codes) => onChange({ ...v, codes })} />
+          <CategoricalFields variable={v} onChange={onChange} />
+        </>
+      );
+    }
+    case "numeric": {
+      const v = variable;
+      return (
+        <>
+          <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
+          <NumericFields variable={v} onChange={onChange} />
         </>
       );
     }
@@ -84,36 +104,23 @@ export function VariableTypeForm({
       return (
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
-          <CodesEditor codes={v.codes} onChange={(codes) => onChange({ ...v, codes })} />
           <ScaleItemsEditor items={v.items} onChange={(items) => onChange({ ...v, items })} />
+          <OptionsEditor level="ordinal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+          <LayoutSelect
+            variable={v}
+            layouts={SCALE_LAYOUTS}
+            onChange={(layout) => onChange({ ...v, layout: layout === "auto" ? undefined : (layout as typeof v.layout) })}
+          />
         </>
       );
     }
-    case "select_code":
-    case "search_code": {
+    case "annotinder": {
       const v = variable;
       return (
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
-          <CodesEditor codes={v.codes} onChange={(codes) => onChange({ ...v, codes })} />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!!v.multiple}
-              onChange={(e) => onChange({ ...v, multiple: e.target.checked || undefined })}
-            />
-            Allow multiple selections
-          </label>
-          {v.type === "select_code" && (
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={!!v.vertical}
-                onChange={(e) => onChange({ ...v, vertical: e.target.checked || undefined })}
-              />
-              Vertical layout
-            </label>
-          )}
+          <OptionsEditor swipe max={3} options={v.options} onChange={(options) => onChange({ ...v, options })} />
+          <p className="text-[11px] text-muted-foreground">Coders swipe left for the first option, right for the second, up for the third.</p>
         </>
       );
     }
@@ -165,51 +172,24 @@ export function VariableTypeForm({
             </div>
           )}
           {v.source !== "url_param" && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Options (code, optional weight)</label>
-              {(v.options ?? []).map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    placeholder="code"
-                    value={opt.code}
-                    onChange={(e) => {
-                      const options = [...(v.options ?? [])];
-                      options[i] = { ...opt, code: e.target.value };
-                      onChange({ ...v, options });
-                    }}
-                    className="w-32"
-                  />
-                  <Input
-                    placeholder="weight"
-                    type="number"
-                    value={opt.weight ?? ""}
-                    onChange={(e) => {
-                      const options = [...(v.options ?? [])];
-                      options[i] = { ...opt, weight: e.target.value === "" ? undefined : Number(e.target.value) };
-                      onChange({ ...v, options });
-                    }}
-                    className="w-20"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onChange({ ...v, options: (v.options ?? []).filter((_, j) => j !== i) })}
-                  >
-                    ✕
-                  </Button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="self-start"
-                onClick={() => onChange({ ...v, options: [...(v.options ?? []), { code: "" }] })}
-              >
-                + Add option
-              </Button>
-            </div>
+            <OptionsEditor
+              options={v.options ?? []}
+              onChange={(options) => onChange({ ...v, options })}
+              extra={
+                v.source === "random"
+                  ? (option, update) => (
+                      <Input
+                        placeholder="weight"
+                        type="number"
+                        title="Weight of this option in the random draw (default 1)"
+                        value={option.weight ?? ""}
+                        onChange={(e) => update({ weight: e.target.value === "" ? undefined : Number(e.target.value) })}
+                        className="h-8 w-16 text-xs"
+                      />
+                    )
+                  : undefined
+              }
+            />
           )}
         </>
       );
@@ -238,7 +218,7 @@ export function VariableTypeForm({
               <option value="character">Character level (select exact characters)</option>
             </select>
           </div>
-          <CodesEditor codes={v.codes} onChange={(codes) => onChange({ ...v, codes })} />
+          <OptionsEditor options={v.options} onChange={(options) => onChange({ ...v, options })} />
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -263,7 +243,7 @@ export function VariableTypeForm({
       return (
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
-          <CodesEditor codes={v.codes} onChange={(codes) => onChange({ ...v, codes })} />
+          <OptionsEditor options={v.options} onChange={(options) => onChange({ ...v, options })} />
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium">From (span variable)</label>
@@ -312,49 +292,253 @@ export function VariableTypeForm({
   }
 }
 
-export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = [
-  "annotinder",
-  "scale",
-  "select_code",
-  "search_code",
-  "confirm",
-  "auto",
-];
-export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
-  "annotinder",
-  "scale",
-  "select_code",
-  "search_code",
-  "confirm",
-  "span",
-  "relation",
-];
+export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["categorical", "numeric", "scale", "annotinder", "confirm", "auto"];
+export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = ["categorical", "numeric", "scale", "annotinder", "confirm", "span", "relation"];
+
+/** How answer types are named in the editor. */
+export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
+  categorical: "Categorical (pick options)",
+  numeric: "Number",
+  scale: "Scale (items on the same options)",
+  annotinder: "Swipe",
+  confirm: "Confirm",
+  auto: "Auto (assigned, not asked)",
+  span: "Span (select text)",
+  relation: "Relation (link spans)",
+};
 
 export function defaultVariableForAnyType(type: string): AnyVariableType {
   switch (type) {
-    case "annotinder":
-      return { type: "annotinder", question: "", codes: [{ code: "yes" }, { code: "no" }] };
+    case "categorical":
+      return { type: "categorical", question: "", options: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }] };
+    case "numeric":
+      return { type: "numeric", question: "", min: 0, max: 10 };
     case "scale":
-      return { type: "scale", question: "", codes: [{ code: "1" }, { code: "2" }, { code: "3" }] };
-    case "select_code":
-      return { type: "select_code", question: "", codes: [{ code: "option 1" }] };
-    case "search_code":
-      return { type: "search_code", question: "", codes: [{ code: "option 1" }] };
+      return {
+        type: "scale",
+        question: "",
+        items: [{ name: "item_1" }],
+        options: [
+          { value: 1, label: "Strongly disagree" },
+          { value: 2, label: "Disagree" },
+          { value: 3, label: "Neutral" },
+          { value: 4, label: "Agree" },
+          { value: 5, label: "Strongly agree" },
+        ],
+      };
+    case "annotinder":
+      return { type: "annotinder", question: "", options: [{ value: "no", label: "No" }, { value: "yes", label: "Yes" }] };
     case "confirm":
       return { type: "confirm", question: "" };
     case "auto":
-      return { type: "auto", source: "random", options: [{ code: "control" }, { code: "experiment" }] };
+      return { type: "auto", source: "random", options: [{ value: "control" }, { value: "experiment" }] };
     case "span":
-      return { type: "span", question: "", column: "", codes: [{ code: "label 1" }] };
+      return { type: "span", question: "", column: "", options: [{ value: "label_1", label: "Label 1" }] };
     case "relation":
       return {
         type: "relation",
         question: "",
-        codes: [{ code: "relation 1" }],
+        options: [{ value: "relation_1", label: "Relation 1" }],
         from: { variable: "" },
         to: { variable: "" },
       };
     default:
       throw new Error(`Unknown variable type: ${type}`);
   }
+}
+
+const selectClass = "h-9 rounded-md border border-input bg-background px-3 text-sm";
+
+const LAYOUT_LABELS: Record<string, string> = {
+  flex: "Flex (buttons wrap)",
+  row: "Row (one row)",
+  grid: "Grid (columns)",
+  compact: "Compact (values; the selected one shows its label)",
+  dropdown: "Dropdown with filter",
+  input: "Number input",
+  slider: "Slider",
+  buttons: "Buttons (one per value)",
+};
+
+function describeLayout(resolved: ReturnType<typeof resolveLayout>): string {
+  const label = LAYOUT_LABELS[resolved.layout] ?? resolved.layout;
+  return "columns" in resolved && resolved.layout === "grid" ? `${label.split(" (")[0]}, ${resolved.columns} column${resolved.columns === 1 ? "" : "s"}` : label;
+}
+
+/** A layout select whose `auto` entry says what auto picks for this question (resolveLayout). */
+function LayoutSelect({
+  variable,
+  layouts,
+  onChange,
+}: {
+  variable: AnyVariableType & { layout?: string };
+  layouts: readonly string[];
+  onChange: (layout: string) => void;
+}) {
+  const auto = resolveLayout({ ...variable, layout: undefined } as AnyVariableType);
+  const warning = layoutWarning(variable);
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium">Layout</label>
+      <select className={selectClass} value={variable.layout ?? "auto"} onChange={(e) => onChange(e.target.value)}>
+        {layouts.map((l) => (
+          <option key={l} value={l}>
+            {l === "auto" ? `Auto (${describeLayout(auto)})` : LAYOUT_LABELS[l]}
+          </option>
+        ))}
+      </select>
+      {warning && <p className="text-[11px] text-amber-600 dark:text-amber-400">{warning}</p>}
+    </div>
+  );
+}
+
+function CategoricalFields({ variable: v, onChange }: { variable: CategoricalType; onChange: (next: AnyVariableType) => void }) {
+  const ordinal = v.level === "ordinal";
+  const setLevel = (level: "nominal" | "ordinal") => {
+    if (level === (v.level ?? "nominal")) return;
+    const next: CategoricalType = { ...v, level: level === "ordinal" ? "ordinal" : undefined, options: convertOptionsLevel(v.options, level) };
+    if (level === "ordinal") delete next.multiple;
+    if (level === "nominal" && next.layout === "compact") delete next.layout;
+    onChange(next);
+  };
+  const layouts = CATEGORICAL_LAYOUTS.filter((l) => l !== "compact" || ordinal);
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium">Level</label>
+        <select className={selectClass} value={v.level ?? "nominal"} onChange={(e) => setLevel(e.target.value as "nominal" | "ordinal")}>
+          <option value="nominal">Nominal: categories, values are terms (text)</option>
+          <option value="ordinal">Ordinal: ordered, values are numbers rising in order</option>
+        </select>
+        <p className="text-[11px] text-muted-foreground">
+          Switching converts the values: to ordinal they become 1..n, to nominal they are derived from the labels.
+        </p>
+      </div>
+      <OptionsEditor level={ordinal ? "ordinal" : "nominal"} options={v.options} onChange={(options) => onChange({ ...v, options })} />
+      {!ordinal && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={!!v.multiple} onChange={(e) => onChange({ ...v, multiple: e.target.checked || undefined })} />
+          Allow several answers
+        </label>
+      )}
+      <LayoutSelect
+        variable={v}
+        layouts={layouts}
+        onChange={(layout) => {
+          const next: CategoricalType = { ...v, layout: layout === "auto" ? undefined : (layout as CategoricalType["layout"]) };
+          if (layout !== "grid") delete next.columns;
+          onChange(next);
+        }}
+      />
+      {v.layout === "grid" && (
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium">Columns</label>
+          <select className={selectClass} value={v.columns ?? 1} onChange={(e) => onChange({ ...v, columns: Number(e.target.value) })}>
+            {[1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </>
+  );
+}
+
+const STEP_PRESETS = [
+  { step: 1, label: "Whole numbers" },
+  { step: 0.1, label: "One decimal" },
+  { step: 0.01, label: "Two decimals" },
+];
+
+function NumericFields({ variable: v, onChange }: { variable: NumericType; onChange: (next: AnyVariableType) => void }) {
+  const step = v.step ?? 1;
+  const preset = STEP_PRESETS.some((p) => p.step === step);
+  const numberOrUndefined = (text: string) => (text === "" ? undefined : Number(text));
+  const labels = v.labels ?? [];
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium">Minimum</label>
+          <Input type="number" value={v.min ?? ""} onChange={(e) => onChange({ ...v, min: numberOrUndefined(e.target.value) })} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium">Maximum</label>
+          <Input type="number" value={v.max ?? ""} onChange={(e) => onChange({ ...v, max: numberOrUndefined(e.target.value) })} />
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-sm font-medium">Steps</label>
+        <div className="flex gap-2">
+          <select
+            className={`${selectClass} flex-1`}
+            value={preset ? String(step) : "custom"}
+            onChange={(e) => onChange({ ...v, step: e.target.value === "custom" ? 5 : Number(e.target.value) === 1 ? undefined : Number(e.target.value) })}
+          >
+            {STEP_PRESETS.map((p) => (
+              <option key={p.step} value={String(p.step)}>
+                {p.label}
+              </option>
+            ))}
+            <option value="custom">Custom</option>
+          </select>
+          {!preset && (
+            <Input
+              type="number"
+              className="w-24"
+              value={step}
+              onChange={(e) => onChange({ ...v, step: Number(e.target.value) > 0 ? Number(e.target.value) : undefined })}
+            />
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium">Labels (optional)</label>
+        <p className="text-[11px] text-muted-foreground">Text at points of the range, e.g. 0 &quot;cold&quot;, 100 &quot;warm&quot;.</p>
+        {labels.map((l, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Input
+              type="number"
+              className="w-24"
+              value={l.value}
+              onChange={(e) => onChange({ ...v, labels: labels.map((x, j) => (j === i ? { ...x, value: Number(e.target.value) } : x)) })}
+            />
+            <Input
+              className="flex-1"
+              value={l.label}
+              onChange={(e) => onChange({ ...v, labels: labels.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Remove label"
+              onClick={() => {
+                const next = labels.filter((_, j) => j !== i);
+                onChange({ ...v, labels: next.length ? next : undefined });
+              }}
+            >
+              ✕
+            </Button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => onChange({ ...v, labels: [...labels, { value: v.min ?? 0, label: "" }] })}
+        >
+          + Add label
+        </Button>
+      </div>
+      <LayoutSelect
+        variable={v}
+        layouts={NUMERIC_LAYOUTS}
+        onChange={(layout) => onChange({ ...v, layout: layout === "auto" ? undefined : (layout as NumericType["layout"]) })}
+      />
+    </>
+  );
 }

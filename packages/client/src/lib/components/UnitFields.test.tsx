@@ -43,7 +43,7 @@ describe("UnitFields", () => {
   it("makes the tokenized field selectable for the span question that targets it", async () => {
     const props = await render({ template: "$unit.body::tokenize" }, { body: "Some words here" });
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider column="body" codes={[{ code: "x" }]} initialSpans={[]}>
+      <SpanAnnotationProvider column="body" options={[{ value: "x" }]} initialSpans={[]}>
         <UnitFields {...props} />
       </SpanAnnotationProvider>,
     );
