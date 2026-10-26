@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CoderInviteResponse, CoderInviteWrite } from "@annotinder/contracts";
 import { Ban, Check, Copy, Trash2 } from "lucide-react";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useCreateInviteMutation,
   useDeleteInviteMutation,
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 type InviteUrl = (invite: CoderInviteResponse) => string;
 
 interface InvitationsPanelProps {
-  client: AdminClient;
+  client: ResearcherApi;
   baseUrl: string;
   /** Builds the link coders open for an invite (host-app specific). */
   inviteUrl?: InviteUrl;
@@ -91,7 +91,7 @@ const STATUS_STYLE: Record<InviteStatus, string> = {
   revoked: "bg-destructive/10 text-destructive",
 };
 
-function InviteRow({ client, invite, link }: { client: AdminClient; invite: CoderInviteResponse; link: string }) {
+function InviteRow({ client, invite, link }: { client: ResearcherApi; invite: CoderInviteResponse; link: string }) {
   const revoke = useRevokeInviteMutation(client);
   const remove = useDeleteInviteMutation(client);
   const status = statusOf(invite);
@@ -174,7 +174,7 @@ function CopyLink({ link, disabled }: { link: string; disabled: boolean }) {
   );
 }
 
-function CreateInviteForm({ client }: { client: AdminClient }) {
+function CreateInviteForm({ client }: { client: ResearcherApi }) {
   const createInvite = useCreateInviteMutation(client);
   const [label, setLabel] = useState("");
   const [auth, setAuth] = useState<CoderInviteWrite["auth"]>("none");

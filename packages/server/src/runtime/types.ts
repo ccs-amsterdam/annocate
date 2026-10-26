@@ -1,8 +1,8 @@
 import type { CodebookResponse, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
-// part of any API: coders get what the client API (contracts
-// `clientEndpoints`) returns.
+// part of any API: coders get what the coder API (contracts
+// `coderEndpoints`) returns.
 
 /** Everything the runtime needs to run a deployed job, minus unit content. */
 export interface DeploymentSpec {

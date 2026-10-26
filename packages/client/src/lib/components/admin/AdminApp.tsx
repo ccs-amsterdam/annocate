@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CoderInviteResponse } from "@annotinder/contracts";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useJobQuery, useJobsQuery } from "../../admin/queries";
 import { JobList } from "./JobList";
 import { CodebookManager } from "./CodebookManager";
@@ -34,9 +34,9 @@ export function AdminApp({
   initialJobId,
   queryClient,
   inviteUrl,
-  jobServerUrl,
+  coderApiUrl,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   /** The researcher API's base URL. */
   baseUrl: string;
   initialJobId?: number;
@@ -44,7 +44,7 @@ export function AdminApp({
   /** Builds the link coders open for an invite (host-app specific). */
   inviteUrl?: (invite: CoderInviteResponse) => string;
   /** Where coder sessions run (`<url>/d/...`), for previews; normally the client's own origin (""), since their cookies are same-origin. */
-  jobServerUrl?: string;
+  coderApiUrl?: string;
 }) {
   return (
     <QueryClientProvider client={queryClient ?? defaultQueryClient}>
@@ -53,7 +53,7 @@ export function AdminApp({
         baseUrl={baseUrl}
         initialJobId={initialJobId}
         inviteUrl={inviteUrl}
-        jobServerUrl={jobServerUrl}
+        coderApiUrl={coderApiUrl}
       />
     </QueryClientProvider>
   );
@@ -64,13 +64,13 @@ function AdminAppInner({
   baseUrl,
   initialJobId,
   inviteUrl,
-  jobServerUrl,
+  coderApiUrl,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   baseUrl: string;
   initialJobId?: number;
   inviteUrl?: (invite: CoderInviteResponse) => string;
-  jobServerUrl?: string;
+  coderApiUrl?: string;
 }) {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? null);
   const [tab, setTab] = useState<TabId>("Overview");
@@ -95,7 +95,7 @@ function AdminAppInner({
       rootClient={client}
       baseUrl={baseUrl}
       inviteUrl={inviteUrl}
-      jobServerUrl={jobServerUrl}
+      coderApiUrl={coderApiUrl}
       tab={tab}
       onTabChange={setTab}
       onBackToJobs={() => setSelectedJobId(null)}
@@ -109,17 +109,17 @@ function JobAdminView({
   rootClient,
   baseUrl,
   inviteUrl,
-  jobServerUrl,
+  coderApiUrl,
   tab,
   onTabChange,
   onBackToJobs,
   onSwitchJob,
 }: {
-  client: AdminClient;
-  rootClient: AdminClient;
+  client: ResearcherApi;
+  rootClient: ResearcherApi;
   baseUrl: string;
   inviteUrl?: (invite: CoderInviteResponse) => string;
-  jobServerUrl?: string;
+  coderApiUrl?: string;
   tab: TabId;
   onTabChange: (tab: TabId) => void;
   onBackToJobs: () => void;
@@ -267,7 +267,7 @@ function JobAdminView({
         {tab === "Units" && <UnitsPage client={client} />}
         {tab === "Invitations" && <InvitationsPanel client={client} baseUrl={baseUrl} inviteUrl={inviteUrl} />}
         {tab === "Coders" && <CodersPanel client={client} />}
-        {tab === "Preview" && <JobPreview client={client} jobServerUrl={jobServerUrl} />}
+        {tab === "Preview" && <JobPreview client={client} coderApiUrl={coderApiUrl} />}
       </main>
 
       {/* Unsaved Changes Confirmation Modal */}

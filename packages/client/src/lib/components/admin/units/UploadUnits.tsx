@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { UnitField } from "@annotinder/contracts";
 import { AlertCircle } from "lucide-react";
-import type { AdminClient } from "../../../api/httpAdminClient";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCreateUnitsMutation } from "../../../admin/queries";
 import { csvToUnits, parseCsv } from "../../../admin/csv";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ export function UploadUnits({
   jobFields,
   onDone,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   jobFields: UnitField[];
   onDone: () => void;
 }) {

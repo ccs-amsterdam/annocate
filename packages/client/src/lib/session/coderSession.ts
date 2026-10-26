@@ -1,4 +1,4 @@
-import { HttpJobServer } from "../api/httpJobServer";
+import { HttpCoderApi } from "../api/httpCoderApi";
 
 // Device-side half of docs/coder-identity.md §4. The session itself lives in
 // an httpOnly cookie the server sets (one per deployment, invite and
@@ -23,7 +23,7 @@ export function redeemTransfer(scope: CoderSessionScope, token: string): Promise
   // twice) must reuse the same redemption rather than redeem again.
   let pending = redemptions.get(token);
   if (!pending) {
-    pending = HttpJobServer.redeemTransfer(scope, token);
+    pending = HttpCoderApi.redeemTransfer(scope, token);
     redemptions.set(token, pending);
   }
   return pending;

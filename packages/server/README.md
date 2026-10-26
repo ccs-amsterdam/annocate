@@ -6,8 +6,8 @@ The annotinder server: one Hono app on one database.
   invitations, publishing, progress. Used by the client's researcher UI, and
   by scripts (R, Python) and other systems (AmCAT). Spec:
   [docs/api/researcher.md](../../docs/api/researcher.md).
-- the **client API** (`/d/<deploymentId>/...`): what coders' browsers call.
-  Spec: [docs/api/client.md](../../docs/api/client.md).
+- the **coder API** (`/d/<deploymentId>/...`): what coders' browsers call.
+  Spec: [docs/api/coder.md](../../docs/api/coder.md).
 
 How it works: [docs/architecture.md](../../docs/architecture.md).
 
@@ -33,7 +33,7 @@ Environment:
 - [`src/researcher/`](src/researcher/): the researcher API, one file per
   path. Researcher auth is **dev only** ([`auth.ts`](src/researcher/auth.ts):
   plain `x-dev-role` / `x-dev-email` headers).
-- [`src/coder.ts`](src/coder.ts): the client API.
+- [`src/coder.ts`](src/coder.ts): the coder API.
 - [`src/runtime/`](src/runtime/): runs deployed jobs in memory: unit
   distribution, validation, sessions, previews. It reads and writes the
   database through [`store.ts`](src/runtime/store.ts).

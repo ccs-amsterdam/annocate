@@ -48,7 +48,7 @@ annotations may come later).
 
 ```
       researcher, R, Python, AmCAT                   coder
-                │ researcher API                       │ client API
+                │ researcher API                       │ coder API
                 ▼ /job/...                             ▼ /d/<deploymentId>/...
  ┌─────────────────────────────────────────────────────────────────────┐
  │ server (TypeScript, packages/server)                                │
@@ -66,7 +66,7 @@ and a page per API, with a section per endpoint.
 - the **researcher API** (`researcherEndpoints`, [spec](api/researcher.md)),
   at `/job/...`: used by the client's researcher UI, scripts (R, Python) and
   other systems. CORS is allowed, so a client on another origin can call it.
-- the **client API** (`clientEndpoints`, [spec](api/client.md)), at
+- the **coder API** (`coderEndpoints`, [spec](api/coder.md)), at
   `/d/<deploymentId>/...`: used by the client's annotator. A deployment id is
   the job id, or `<jobId>.preview` for a researcher preview. No CORS: the
   session is an httpOnly cookie on the client's origin (`coder.ts`).
@@ -83,8 +83,8 @@ and a page per API, with a section per endpoint.
 It reads and writes through a `Store` (`store.ts`): `DbStore` for the
 database, `PreviewStore` for previews.
 
-**client.** The researcher UI (`AdminClient`) talks to the researcher API.
-The annotator (`HttpJobServer`, `JobManager`) talks to the client API at
+**client.** The researcher UI (`ResearcherApi`) talks to the researcher API.
+The annotator (`HttpCoderApi`, `JobManager`) talks to the coder API at
 `/d/<deploymentId>`, on its own origin (in development, Vite proxies `/d`
 to the server).
 
@@ -418,8 +418,8 @@ Other open points:
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |
 | `contracts/src/endpoints/` | The two API registries: researcher, client ([docs/api](api/README.md)) |
-| `server/src/app.ts` | Hono app: researcher API under `/job/...`, client API under `/d/<deploymentId>` |
-| `server/src/coder.ts` | The client API routes: session cookie, coder resolution, units, answers, transfers |
+| `server/src/app.ts` | Hono app: researcher API under `/job/...`, coder API under `/d/<deploymentId>` |
+| `server/src/coder.ts` | The coder API routes: session cookie, coder resolution, units, answers, transfers |
 | `server/src/researcher/` | The researcher API, one file per path |
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
 | `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |

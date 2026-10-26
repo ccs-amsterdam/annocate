@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRight, CircleDot, FilePen, PauseCircle, CircleOff } from "lucide-react";
-import type { AdminClient } from "../../../api/httpAdminClient";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
   useCodebooksQuery,
   useDeploymentQuery,
@@ -17,7 +17,7 @@ import { LoopProgress } from "./LoopProgress";
 export type OverviewTarget = "Units" | "Invitations" | "Coders";
 
 interface JobOverviewProps {
-  client: AdminClient;
+  client: ResearcherApi;
   onNavigate: (tab: OverviewTarget) => void;
   /** Opens the Codebook tab on this version. */
   onOpenCodebook: (versionId: number) => void;

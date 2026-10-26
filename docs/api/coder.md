@@ -1,14 +1,14 @@
-# Client API
+# Coder API
 
 Served by the **server**, called by the client's **annotator**
-(`HttpJobServer`, driven by `JobManager`).
+(`HttpCoderApi`, driven by `JobManager`).
 
-- Contracts: `clientEndpoints` in
-  [`contracts/src/endpoints/client.ts`](../../packages/contracts/src/endpoints/client.ts);
+- Contracts: `coderEndpoints` in
+  [`contracts/src/endpoints/coder.ts`](../../packages/contracts/src/endpoints/coder.ts);
   schemas in `contracts/src/session.ts`, `unit.ts`, `variableValue.ts`.
 - Implementation: [`server/src/coder.ts`](../../packages/server/src/coder.ts)
   (routes), [`runtime/runtime.ts`](../../packages/server/src/runtime/runtime.ts) (the work).
-- Caller: [`client/src/lib/api/httpJobServer.ts`](../../packages/client/src/lib/api/httpJobServer.ts).
+- Caller: [`client/src/lib/api/httpCoderApi.ts`](../../packages/client/src/lib/api/httpCoderApi.ts).
 
 All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 ([deployment ids](README.md#deployment-ids)).

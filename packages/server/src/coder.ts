@@ -10,9 +10,9 @@ interface Env {
 }
 
 /**
- * The client API (contracts `clientEndpoints`, docs/api/client.md), under
+ * The coder API (contracts `coderEndpoints`, docs/api/coder.md), under
  * `/d/<deploymentId>`: `<jobId>`, or `<jobId>.preview`. The client's
- * `HttpJobServer` uses `/d/<deploymentId>` as its base URL.
+ * `HttpCoderApi` uses `/d/<deploymentId>` as its base URL.
  *
  * No CORS: the client is served from this server's origin, so the browser
  * refuses cross-origin calls that carry the required header.

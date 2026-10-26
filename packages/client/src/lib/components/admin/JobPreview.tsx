@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { PreviewSession } from "@annotinder/contracts";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCodebooksQuery, useDeploymentQuery, useUnitsQuery } from "../../admin/queries";
 import { describeVersions } from "../../codebook/versions";
 import { JobRunner } from "../JobRunner";
@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Smartphone, Monitor, RotateCcw, AlertCircle, Maximize2 } from "lucide-react";
 
 interface JobPreviewProps {
-  client: AdminClient;
+  client: ResearcherApi;
   /** Where coder sessions run (`<url>/d/...`); normally the client's own origin (""): session cookies are same-origin. */
-  jobServerUrl?: string;
+  coderApiUrl?: string;
 }
 
 interface DimensionPreset {
@@ -38,7 +38,7 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
  * memory, nothing is stored. Each preview session gets a
  * fresh token, and with it a fresh coder.
  */
-export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
+export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
   const codebooksQuery = useCodebooksQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const unitsQuery = useUnitsQuery(client);
@@ -286,7 +286,7 @@ export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
             <div className="h-full w-full overflow-hidden rounded-xl border border-border bg-background shadow-lg">
               <JobRunner
                 key={previewKey}
-                baseUrl={`${jobServerUrl}/d/${preview.deploymentId}`}
+                baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                 inviteSecret={preview.token}
                 preview={true}
               />
@@ -304,7 +304,7 @@ export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
               <div className="flex-1 overflow-auto">
                 <JobRunner
                   key={previewKey}
-                  baseUrl={`${jobServerUrl}/d/${preview.deploymentId}`}
+                  baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                   inviteSecret={preview.token}
                   preview={true}
                 />
@@ -332,7 +332,7 @@ export function JobPreview({ client, jobServerUrl = "" }: JobPreviewProps) {
               <div className="flex-1 overflow-auto">
                 <JobRunner
                   key={previewKey}
-                  baseUrl={`${jobServerUrl}/d/${preview.deploymentId}`}
+                  baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                   inviteSecret={preview.token}
                   preview={true}
                 />

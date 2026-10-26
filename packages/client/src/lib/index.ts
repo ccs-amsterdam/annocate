@@ -21,7 +21,7 @@ import "../index.css";
 // job management screens on top of the core plumbing exported here.
 export const ANNOTINDER_CLIENT_VERSION = "0.1.0";
 
-export * from "./api/httpJobServer";
+export * from "./api/httpCoderApi";
 export * from "./codebook/tree";
 export * from "./codebook/expression";
 export * from "./codebook/conditions";
@@ -41,7 +41,7 @@ export * from "./context/CoderSettingsContext";
 export * from "./components/answerFields";
 
 // Phase 5: job/codebook management UI (docs/client.md §7).
-export * from "./api/httpAdminClient";
+export * from "./api/httpResearcherApi";
 export * from "./admin/queries";
 export * from "./codebook/codebookEdit";
 export * from "./admin/csv";

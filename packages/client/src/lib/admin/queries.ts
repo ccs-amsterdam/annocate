@@ -18,12 +18,12 @@ import type {
   UnitsetResponse,
   UnitsetWrite,
 } from "@annotinder/contracts";
-import type { AdminClient } from "../api/httpAdminClient";
+import type { ResearcherApi } from "../api/httpResearcherApi";
 
 /**
- * TanStack Query hooks wrapping `AdminClient` (docs/client.md §7), used
+ * TanStack Query hooks wrapping `ResearcherApi` (docs/client.md §7), used
  * by the management UI components under `components/admin/*`. Each hook
- * takes the `AdminClient` instance explicitly rather than via context, so the
+ * takes the `ResearcherApi` instance explicitly rather than via context, so the
  * management UI stays usable as a plain library export without imposing a
  * particular provider structure on host apps beyond a `QueryClientProvider`
  * ancestor (see `AdminApp.tsx`, which supplies its own by default).
@@ -47,11 +47,11 @@ export const keys = {
   overview: (jobId?: number) => ["admin", "job", jobId ?? "current", "overview"] as const,
 };
 
-export function useJobsQuery(client: AdminClient): UseQueryResult<JobResponse[]> {
+export function useJobsQuery(client: ResearcherApi): UseQueryResult<JobResponse[]> {
   return useQuery({ queryKey: keys.jobs, queryFn: () => client.listJobs() });
 }
 
-export function useJobQuery(client: AdminClient, id?: number): UseQueryResult<JobResponse | null> {
+export function useJobQuery(client: ResearcherApi, id?: number): UseQueryResult<JobResponse | null> {
   const targetId = id ?? client.jobId;
   return useQuery({
     queryKey: keys.job(targetId),
@@ -59,7 +59,7 @@ export function useJobQuery(client: AdminClient, id?: number): UseQueryResult<Jo
   });
 }
 
-export function useCreateJobMutation(client: AdminClient): UseMutationResult<JobResponse, Error, JobWrite> {
+export function useCreateJobMutation(client: ResearcherApi): UseMutationResult<JobResponse, Error, JobWrite> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: JobWrite) => client.createJob(body),
@@ -71,7 +71,7 @@ export function useCreateJobMutation(client: AdminClient): UseMutationResult<Job
 }
 
 export function useUpdateJobMutation(
-  client: AdminClient,
+  client: ResearcherApi,
 ): UseMutationResult<JobResponse, Error, { id: number; body: JobWrite }> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -83,7 +83,7 @@ export function useUpdateJobMutation(
   });
 }
 
-export function useDeleteJobMutation(client: AdminClient): UseMutationResult<void, Error, number> {
+export function useDeleteJobMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteJob(id),
@@ -93,11 +93,11 @@ export function useDeleteJobMutation(client: AdminClient): UseMutationResult<voi
   });
 }
 
-export function useCodebooksQuery(client: AdminClient): UseQueryResult<CodebookMeta[]> {
+export function useCodebooksQuery(client: ResearcherApi): UseQueryResult<CodebookMeta[]> {
   return useQuery({ queryKey: keys.codebooks(client.jobId), queryFn: () => client.listCodebooks() });
 }
 
-export function useCodebookQuery(client: AdminClient, id: number | null): UseQueryResult<CodebookResponse> {
+export function useCodebookQuery(client: ResearcherApi, id: number | null): UseQueryResult<CodebookResponse> {
   return useQuery({
     queryKey: keys.codebook(client.jobId, id ?? -1),
     queryFn: () => client.getCodebook(id as number),
@@ -106,7 +106,7 @@ export function useCodebookQuery(client: AdminClient, id: number | null): UseQue
 }
 
 export function useCreateCodebookMutation(
-  client: AdminClient,
+  client: ResearcherApi,
 ): UseMutationResult<CodebookResponse, Error, CodebookWrite> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -119,7 +119,7 @@ export function useCreateCodebookMutation(
 }
 
 export function useUpdateCodebookMutation(
-  client: AdminClient,
+  client: ResearcherApi,
 ): UseMutationResult<CodebookResponse, Error, { id: number; body: CodebookWrite }> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -131,7 +131,7 @@ export function useUpdateCodebookMutation(
   });
 }
 
-export function useDeleteCodebookMutation(client: AdminClient): UseMutationResult<void, Error, number> {
+export function useDeleteCodebookMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteCodebook(id),
@@ -139,16 +139,16 @@ export function useDeleteCodebookMutation(client: AdminClient): UseMutationResul
   });
 }
 
-export function useUnitsQuery(client: AdminClient): UseQueryResult<UnitMeta[]> {
+export function useUnitsQuery(client: ResearcherApi): UseQueryResult<UnitMeta[]> {
   return useQuery({ queryKey: keys.units(client.jobId), queryFn: () => client.listUnits() });
 }
 
-export function useUnitFieldsQuery(client: AdminClient): UseQueryResult<UnitField[]> {
+export function useUnitFieldsQuery(client: ResearcherApi): UseQueryResult<UnitField[]> {
   return useQuery({ queryKey: keys.unitFields(client.jobId), queryFn: () => client.getUnitFields() });
 }
 
 export function useUnitPageQuery(
-  client: AdminClient,
+  client: ResearcherApi,
   query: { offset: number; limit: number; unitset?: string },
 ): UseQueryResult<UnitPage> {
   return useQuery({
@@ -158,7 +158,7 @@ export function useUnitPageQuery(
   });
 }
 
-export function useCreateUnitsMutation(client: AdminClient) {
+export function useCreateUnitsMutation(client: ResearcherApi) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: UnitsCreateBody) => client.createUnits(body),
@@ -166,7 +166,7 @@ export function useCreateUnitsMutation(client: AdminClient) {
   });
 }
 
-export function useDeleteUnitMutation(client: AdminClient): UseMutationResult<void, Error, number> {
+export function useDeleteUnitMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteUnit(id),
@@ -174,12 +174,12 @@ export function useDeleteUnitMutation(client: AdminClient): UseMutationResult<vo
   });
 }
 
-export function useUnitsetsQuery(client: AdminClient): UseQueryResult<UnitsetResponse[]> {
+export function useUnitsetsQuery(client: ResearcherApi): UseQueryResult<UnitsetResponse[]> {
   return useQuery({ queryKey: keys.unitsets(client.jobId), queryFn: () => client.listUnitsets() });
 }
 
 export function useCreateUnitsetMutation(
-  client: AdminClient,
+  client: ResearcherApi,
 ): UseMutationResult<UnitsetResponse, Error, UnitsetWrite> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -192,7 +192,7 @@ export function useCreateUnitsetMutation(
 }
 
 export function useUpdateUnitsetMutation(
-  client: AdminClient,
+  client: ResearcherApi,
 ): UseMutationResult<UnitsetResponse, Error, { id: number; body: UnitsetWrite }> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -204,7 +204,7 @@ export function useUpdateUnitsetMutation(
   });
 }
 
-export function useDeleteUnitsetMutation(client: AdminClient): UseMutationResult<void, Error, number> {
+export function useDeleteUnitsetMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteUnitset(id),
@@ -215,16 +215,16 @@ export function useDeleteUnitsetMutation(client: AdminClient): UseMutationResult
   });
 }
 
-export function useCodersQuery(client: AdminClient): UseQueryResult<CoderProgress[]> {
+export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgress[]> {
   return useQuery({ queryKey: keys.coders(client.jobId), queryFn: () => client.listCoders(), refetchInterval: 10_000 });
 }
 
-export function useInvitesQuery(client: AdminClient): UseQueryResult<CoderInviteResponse[]> {
+export function useInvitesQuery(client: ResearcherApi): UseQueryResult<CoderInviteResponse[]> {
   return useQuery({ queryKey: keys.invites(client.jobId), queryFn: () => client.listInvites(), refetchInterval: 30_000 });
 }
 
 /** Create, revoke or delete an invite; each refreshes the invite list. */
-function useInviteMutation<T, V>(client: AdminClient, mutationFn: (vars: V) => Promise<T>) {
+function useInviteMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) => Promise<T>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
@@ -232,24 +232,24 @@ function useInviteMutation<T, V>(client: AdminClient, mutationFn: (vars: V) => P
   });
 }
 
-export function useCreateInviteMutation(client: AdminClient) {
+export function useCreateInviteMutation(client: ResearcherApi) {
   return useInviteMutation(client, (body: CoderInviteWrite) => client.createInvite(body));
 }
 
-export function useRevokeInviteMutation(client: AdminClient) {
+export function useRevokeInviteMutation(client: ResearcherApi) {
   return useInviteMutation(client, (id: number) => client.revokeInvite(id));
 }
 
-export function useDeleteInviteMutation(client: AdminClient) {
+export function useDeleteInviteMutation(client: ResearcherApi) {
   return useInviteMutation(client, (id: number) => client.deleteInvite(id));
 }
 
-export function useOverviewQuery(client: AdminClient): UseQueryResult<JobOverview> {
+export function useOverviewQuery(client: ResearcherApi): UseQueryResult<JobOverview> {
   return useQuery({ queryKey: keys.overview(client.jobId), queryFn: () => client.getOverview(), refetchInterval: 30_000 });
 }
 
 /** Progress of the live job; errors are not retried. */
-export function useDeploymentStatusQuery(client: AdminClient, enabled: boolean): UseQueryResult<DeploymentStatus> {
+export function useDeploymentStatusQuery(client: ResearcherApi, enabled: boolean): UseQueryResult<DeploymentStatus> {
   return useQuery({
     queryKey: keys.deploymentStatus(client.jobId),
     queryFn: () => client.getDeploymentStatus(),
@@ -260,7 +260,7 @@ export function useDeploymentStatusQuery(client: AdminClient, enabled: boolean):
 }
 
 /** The live codebook version; null if the job was never published. */
-export function useDeploymentQuery(client: AdminClient): UseQueryResult<DeploymentResponse | null> {
+export function useDeploymentQuery(client: ResearcherApi): UseQueryResult<DeploymentResponse | null> {
   return useQuery({ queryKey: keys.deployment(client.jobId), queryFn: () => client.getDeployment() });
 }
 
@@ -269,7 +269,7 @@ export function useDeploymentQuery(client: AdminClient): UseQueryResult<Deployme
  * active/paused state. The published version becomes read only, so the
  * codebooks are refetched too.
  */
-export function usePublishMutation(client: AdminClient): UseMutationResult<DeploymentResponse, Error, number> {
+export function usePublishMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, number> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (codebookId: number) => {

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { JobRunner } from "./lib/components/JobRunner";
 import { AdminApp } from "./lib/components/admin/AdminApp";
-import { HttpAdminClient } from "./lib/api/httpAdminClient";
+import { HttpResearcherApi } from "./lib/api/httpResearcherApi";
 import { LayoutDashboard, PenTool } from "lucide-react";
 
 // Standalone dev-app shell: runs the annotinder-client against a local
@@ -9,12 +9,12 @@ import { LayoutDashboard, PenTool } from "lucide-react";
 // should import { JobRunner } / { AdminApp } (or their building blocks) into
 // a host app instead -- see docs/client.md §1
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:8787";
-// Coders use the client API (`/d/<jobId>`) on the client's own origin: their
+// Coders use the coder API (`/d/<jobId>`) on the client's own origin: their
 // session cookie is same-origin only. In dev, Vite proxies `/d` to the server
 // (vite.config.ts).
 const CODER_API_URL = "";
 
-const adminClient = new HttpAdminClient({
+const researcherApi = new HttpResearcherApi({
   baseUrl: SERVER_URL,
   devRole: "ADMIN",
   devEmail: "dev@example.com",
@@ -99,7 +99,7 @@ function App() {
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
         {view === "admin" ? (
-          <AdminApp client={adminClient} baseUrl={SERVER_URL} inviteUrl={devInviteUrl} jobServerUrl={CODER_API_URL} />
+          <AdminApp client={researcherApi} baseUrl={SERVER_URL} inviteUrl={devInviteUrl} coderApiUrl={CODER_API_URL} />
         ) : (
           <JobRunner
             baseUrl={`${CODER_API_URL}/d/${deploymentId}`}

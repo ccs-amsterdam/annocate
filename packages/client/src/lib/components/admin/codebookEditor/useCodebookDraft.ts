@@ -5,7 +5,7 @@ import {
   type CodebookResponse,
   type TopLevelItem,
 } from "@annotinder/contracts";
-import type { AdminClient } from "../../../api/httpAdminClient";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCreateCodebookMutation, useUpdateCodebookMutation } from "../../../admin/queries";
 import {
   deleteItem,
@@ -25,7 +25,7 @@ import { defaultItemForType } from "../ItemForm";
 import type { ItemType } from "../codebookTree/utils";
 
 interface UseCodebookDraftOptions {
-  client: AdminClient;
+  client: ResearcherApi;
   /** The version being edited; null/undefined for a new codebook. */
   codebook?: CodebookResponse | null;
   readOnly: boolean;

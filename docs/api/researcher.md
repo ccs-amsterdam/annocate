@@ -1,14 +1,14 @@
 # Researcher API
 
 Served by the **server** at `/job/...`, called by the client's **researcher
-UI** (`AdminClient`), and by scripts (R, Python) and other systems (AmCAT):
+UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
 managing jobs, codebooks, units, invitations, publishing and progress.
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
 - Implementation: [`server/src/researcher/`](../../packages/server/src/researcher/), one file per
   path, with shared queries in [`shared/`](../../packages/server/src/shared/).
-- Caller: [`client/src/lib/api/httpAdminClient.ts`](../../packages/client/src/lib/api/httpAdminClient.ts).
+- Caller: [`client/src/lib/api/httpResearcherApi.ts`](../../packages/client/src/lib/api/httpResearcherApi.ts).
 
 **Roles.** Job users have a role per job: `READ` < `WRITE` < `ADMIN`. The
 role column below is the minimum. Real login is not built yet: the server

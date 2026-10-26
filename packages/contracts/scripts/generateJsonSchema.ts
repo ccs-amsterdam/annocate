@@ -5,7 +5,7 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { clientEndpoints, researcherEndpoints } from "../src/endpoints/index.js";
+import { coderEndpoints, researcherEndpoints } from "../src/endpoints/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "../dist/json-schema");
@@ -24,7 +24,7 @@ function toJsonSchema(schema: z.ZodType, io: "input" | "output") {
 // One file per API (docs/api/README.md).
 const registries = {
   "researcher-api": researcherEndpoints,
-  "client-api": clientEndpoints,
+  "coder-api": coderEndpoints,
 };
 
 for (const [file, registry] of Object.entries(registries)) {

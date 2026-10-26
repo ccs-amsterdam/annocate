@@ -11,7 +11,7 @@ import type {
   ReferenceScope,
 } from "@annotinder/contracts";
 import { buildScope, collectQuestions, fillUnitsetName, validateAnswer } from "@annotinder/contracts";
-import type { BranchChoice, JobServer } from "../api/httpJobServer";
+import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
 import { computeLoopSteps, computeTopLevelSteps, type StepContext } from "../codebook/tree";
@@ -174,7 +174,7 @@ function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
  */
 export class JobManager {
   private items: TopLevelItem[] = [];
-  private jobServer: JobServer;
+  private coderApi: CoderApi;
   private listeners: Set<JobManagerListener> = new Set();
   private expressionCache = new ExpressionCache();
 
@@ -225,8 +225,8 @@ export class JobManager {
     },
   };
 
-  constructor(jobServer: JobServer) {
-    this.jobServer = jobServer;
+  constructor(coderApi: CoderApi) {
+    this.coderApi = coderApi;
   }
 
   getSnapshot(): JobManagerSnapshot {
@@ -251,7 +251,7 @@ export class JobManager {
   private async doStart(): Promise<void> {
     try {
       this.publish({ phase: "loading", error: null, errorCode: null });
-      const session: SessionResponse = await this.jobServer.getSession();
+      const session: SessionResponse = await this.coderApi.getSession();
       this.items = session.codebook.items as TopLevelItem[];
       this.questions = collectQuestions(this.items).questions;
       // Coder-level variables so far, including server-assigned `auto`
@@ -306,7 +306,7 @@ export class JobManager {
     const loop = this.activeLoop!;
     const entry = this.unitHistory[index];
     if (!entry.unit) {
-      const unit = await this.jobServer.getLoopUnit(loop.name, entry.unitId);
+      const unit = await this.coderApi.getLoopUnit(loop.name, entry.unitId);
       entry.unit = unit;
       entry.answers = { ...(unit.variables ?? {}) };
     }
@@ -519,7 +519,7 @@ export class JobManager {
       const isUnit = item.type === "unit_variable" || (item.type === "question" && this.activeLoop !== null);
       if (!isUnit) {
         this.userVariableValues[item.name] = value;
-        await this.jobServer.postCoderVariables(this.userVariableValues);
+        await this.coderApi.postCoderVariables(this.userVariableValues);
         await this.advanceTop();
       } else {
         this.unitVariableValues[item.name] = value;
@@ -651,7 +651,7 @@ export class JobManager {
   private async fetchNextUnit(loop: UnitLoopItem): Promise<CoderUnitResponse | null> {
     const choice = await this.chooseBranch(loop);
     try {
-      return await this.jobServer.getNextUnit(loop.name, choice ?? undefined);
+      return await this.coderApi.getNextUnit(loop.name, choice ?? undefined);
     } catch (err) {
       if (choice === null && errorCodeOf(err) === "branch_required") return null;
       throw err;
@@ -717,7 +717,7 @@ export class JobManager {
         const value = this.unitVisible[name];
         doneValues[name] = value ? { ...value, done: true } : { done: true, skip: true };
       }
-      await this.jobServer.postUnitVariables(this.currentUnit.id, doneValues, this.activeLoop.name);
+      await this.coderApi.postUnitVariables(this.currentUnit.id, doneValues, this.activeLoop.name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }

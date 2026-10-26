@@ -4,7 +4,7 @@ Monorepo for Annotinder: an annotation and survey tool for researchers. Design
 docs live in `docs/`:
 
 - `docs/api/`: **the APIs**: the researcher API (researcher UI, R, Python,
-  other systems) and the client API (coders), a section per endpoint.
+  other systems) and the coder API (coders), a section per endpoint.
 - `docs/architecture.md`: the server, unit distribution, resuming and
   codebook updates.
 - `docs/compositions.md`: the products (annotinder.com, self-hosted,
@@ -26,7 +26,7 @@ docs live in `docs/`:
   - `pnpm --filter @annotinder/client build:lib` -- an importable component/hook
     library (`@annotinder/client`), for embedding in a host app's own React tree.
 - `packages/server` -- the server (Hono + Postgres or PGlite, Node >= 22): the
-  researcher API and the client API on one database, and the runtime that
+  researcher API and the coder API on one database, and the runtime that
   distributes units over coders and validates their answers. See its
   README and `docs/architecture.md`.
 

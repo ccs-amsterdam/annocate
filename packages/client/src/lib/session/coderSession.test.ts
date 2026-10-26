@@ -18,17 +18,17 @@ describe("redeemTransfer", () => {
   });
 });
 
-describe("HttpJobServer", () => {
+describe("HttpCoderApi", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("sends the page's other query parameters for url_param variables", async () => {
     const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetch);
-    const { HttpJobServer } = await import("../api/httpJobServer");
-    await new HttpJobServer({ baseUrl: "/d/amcat.nl/42", urlParams: { src: "panel A", wave: "2" } }).getSession();
+    const { HttpCoderApi } = await import("../api/httpCoderApi");
+    await new HttpCoderApi({ baseUrl: "/d/amcat.nl/42", urlParams: { src: "panel A", wave: "2" } }).getSession();
     const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(new URLSearchParams((init.headers as Record<string, string>)["x-url-params"])).toEqual(new URLSearchParams("src=panel+A&wave=2"));
-    await new HttpJobServer({ baseUrl: "/d/amcat.nl/42" }).getSession();
+    await new HttpCoderApi({ baseUrl: "/d/amcat.nl/42" }).getSession();
     expect((fetch.mock.calls[1] as unknown as [string, RequestInit])[1].headers).not.toHaveProperty("x-url-params");
   });
 });

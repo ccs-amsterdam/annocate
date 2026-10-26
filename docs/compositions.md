@@ -8,7 +8,7 @@ Annotinder has two parts:
 
 - **server** (`packages/server`): one Node program. The researcher API
   (jobs, codebooks, units, unitsets, invites, deployments, results) and the
-  client API for coders (`/d/<jobId>`): distribution, validation, sessions.
+  coder API for coders (`/d/<jobId>`): distribution, validation, sessions.
   It owns the data, in Postgres: a Postgres server (`DATABASE_URL`), or
   PGlite (Postgres compiled to WebAssembly, in process) for tests,
   development and annotinder local.
@@ -54,7 +54,7 @@ same way whichever server it is:
 
 One Node program, `annotinder-local`:
 
-- the **server**, as is: researcher API, client API and storage. Needs:
+- the **server**, as is: researcher API, coder API and storage. Needs:
   real researcher authentication (a local admin token, written to the
   project folder) and file import and export. No special "local mode" to
   maintain: exactly the production code paths.

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { IdSchema } from "./common.js";
 
 // Deploying a job (researcher API): which codebook coders get, its status,
-// and previews. The coder side is the client API (endpoints/client.ts).
+// and previews. The coder side is the coder API (endpoints/coder.ts).
 
 /** Researcher-facing: `PUT /job/:jobId/deployment`. */
 export const DeploymentWriteSchema = z.object({

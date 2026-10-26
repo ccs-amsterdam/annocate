@@ -1,5 +1,5 @@
 import type { CoderProgress } from "@annotinder/contracts";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCodersQuery } from "../../admin/queries";
 import { formatWhen } from "../../admin/format";
 
@@ -8,7 +8,7 @@ import { formatWhen } from "../../admin/format";
  * invitation, when they were last active, and how many units they finished
  * per loop of the live codebook. Invitations are on their own tab.
  */
-export function CodersPanel({ client }: { client: AdminClient }) {
+export function CodersPanel({ client }: { client: ResearcherApi }) {
   const codersQuery = useCodersQuery(client);
   const coders = sortByActivity(codersQuery.data ?? []);
   // Loops of the live codebook (every coder has the same keys)

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { CodebookResponse } from "@annotinder/contracts";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../codebook/unitFieldRefs";
 import { CodebookYamlEditor } from "./CodebookYamlEditor";
@@ -22,7 +22,7 @@ export type CodebookEditorMode = "draft" | "live" | "history";
 export type SaveFn = () => Promise<CodebookResponse>;
 
 interface CodebookEditorProps {
-  client: AdminClient;
+  client: ResearcherApi;
   /** The version to edit; null/undefined for a new codebook. Mount with a `key` per version. */
   codebook?: CodebookResponse | null;
   mode?: CodebookEditorMode;

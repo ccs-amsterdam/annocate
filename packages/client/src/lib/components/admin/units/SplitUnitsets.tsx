@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { splitUnits, type UnitsetResponse } from "@annotinder/contracts";
-import type { AdminClient } from "../../../api/httpAdminClient";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCreateUnitsetMutation } from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ export function SplitUnitsets({
   unitsets,
   onDone,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   /** Name of the unitset being split; null for all units. */
   source: string | null;
   unitIds: number[];

@@ -17,7 +17,7 @@ import {
 
 /**
  * The researcher API (docs/api/researcher.md): called by the client's
- * researcher UI (`AdminClient`), and by scripts (R, Python) and other
+ * researcher UI (`ResearcherApi`), and by scripts (R, Python) and other
  * systems. Jobs, codebooks, units, unitsets, invitations, coder progress,
  * deployment.
  *

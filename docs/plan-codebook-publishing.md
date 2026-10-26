@@ -59,7 +59,7 @@ without the old column.)
 
 ## Phase 1: admin UI (client only)
 
-1. **API**: `getDeployment` / `putDeployment` on `AdminClient`, and
+1. **API**: `getDeployment` / `putDeployment` on `ResearcherApi`, and
    `useDeploymentQuery` / `usePublishMutation` in `admin/queries.ts`
    (publishing invalidates the deployment and the codebook list, since the
    published version becomes frozen).

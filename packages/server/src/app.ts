@@ -39,7 +39,7 @@ export interface AppOptions {
 }
 
 /**
- * The server: the researcher API (`/job/...`) and the client API for coders
+ * The server: the researcher API (`/job/...`) and the coder API for coders
  * (`/d/<deploymentId>/...`), on one database. A new app on the same
  * database is a restart: runtimes rebuild from the database.
  */
@@ -63,7 +63,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   });
   app.get("/", (c) => c.json({ ok: true, service: "annotinder", contractsVersion: CONTRACTS_VERSION }));
 
-  // Client API (coder.ts): same origin as the client, no CORS.
+  // Coder API (coder.ts): same origin as the client, no CORS.
   app.route("/d/:deployment", coderApi(server));
 
   // Researcher API (researcher/): full paths, dev-only auth (researcher/auth.ts).

@@ -1,13 +1,13 @@
 import { useState } from "react";
 import type { JobResponse } from "@annotinder/contracts";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCreateJobMutation, useDeleteJobMutation, useJobsQuery } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, FolderOpen, Trash2, Calendar, Archive } from "lucide-react";
 
 interface JobListProps {
-  client: AdminClient;
+  client: ResearcherApi;
   onSelectJob: (jobId: number) => void;
 }
 

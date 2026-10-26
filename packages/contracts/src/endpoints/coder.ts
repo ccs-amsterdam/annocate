@@ -24,12 +24,12 @@ export const NextUnitQuerySchema = z.object({
 export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
 
 /**
- * The client API (docs/api/client.md): served by the server under
- * `/d/<deploymentId>`, called by the client's annotator (`HttpJobServer`).
+ * The coder API (docs/api/coder.md): served by the server under
+ * `/d/<deploymentId>`, called by the client's annotator (`HttpCoderApi`).
  * Paths are relative to that base: a coder is tied to one deployment by the
  * URL, and to one coder by their session cookie.
  */
-export const clientEndpoints = {
+export const coderEndpoints = {
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
   getNextUnit: {
     method: "GET",
@@ -61,4 +61,4 @@ export const clientEndpoints = {
   },
 } as const;
 
-export type ClientEndpointName = keyof typeof clientEndpoints;
+export type CoderEndpointName = keyof typeof coderEndpoints;

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { CodebookResponse } from "@annotinder/contracts";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useCodebooksQuery,
   useCodebookQuery,
@@ -19,7 +19,7 @@ import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Loader2 } from "lucide-react";
 
 interface CodebookManagerProps {
-  client: AdminClient;
+  client: ResearcherApi;
   /** Callback to notify parent (AdminApp) if there are unsaved changes */
   onDirtyChange?: (isDirty: boolean) => void;
   /** Receives the editor's save function, so the parent can save before navigating away. */

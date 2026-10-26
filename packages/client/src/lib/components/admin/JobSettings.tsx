@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { JobResponse } from "@annotinder/contracts";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCreateJobMutation, useDeleteJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ export function JobSettings({
   client,
   onDeleted,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   onDeleted?: () => void;
 }) {
   const jobQuery = useJobQuery(client);
@@ -57,7 +57,7 @@ function JobEditForm({
   onDeleted,
 }: {
   job: JobResponse;
-  client: AdminClient;
+  client: ResearcherApi;
   onDeleted?: () => void;
 }) {
   const updateJob = useUpdateJobMutation(client);

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import type { VariableValue } from "@annotinder/contracts";
 import { renderSVG } from "uqr";
-import { HttpJobServer, type JobServer } from "../api/httpJobServer";
+import { HttpCoderApi, type CoderApi } from "../api/httpCoderApi";
 import {
   defaultTransferUrl,
   redeemTransfer,
@@ -177,11 +177,11 @@ function JobRunnerContent({
 }: ContentProps) {
   // By content: a new object with the same params must not restart the session.
   const urlParamsKey = JSON.stringify(urlParams ?? {});
-  const jobServer = useMemo(
-    () => new HttpJobServer({ baseUrl, inviteSecret, participantId, urlParams: JSON.parse(urlParamsKey), newSession }),
+  const coderApi = useMemo(
+    () => new HttpCoderApi({ baseUrl, inviteSecret, participantId, urlParams: JSON.parse(urlParamsKey), newSession }),
     [baseUrl, inviteSecret, participantId, urlParamsKey, newSession],
   );
-  const { manager, snapshot } = useJobManager(jobServer);
+  const { manager, snapshot } = useJobManager(coderApi);
   const [menuOpen, setMenuOpen] = useState(false);
   const [navDirection, setNavDirection] = useState<"next" | "previous">("next");
 
@@ -543,7 +543,7 @@ function JobRunnerContent({
 
         {/* Right Section: Coder Settings Menu */}
         <div className="flex items-center gap-1 shrink-0">
-          {!preview && <TransferMenu jobServer={jobServer} transferUrl={transferUrl ?? defaultTransferUrl} />}
+          {!preview && <TransferMenu coderApi={coderApi} transferUrl={transferUrl ?? defaultTransferUrl} />}
           <CoderSettingsMenu />
         </div>
       </header>
@@ -681,17 +681,17 @@ function SessionNotice({ title, children }: { title: string; children: ReactNode
 }
 
 /** "Continue on another device": a one-time link + QR code for this session. */
-function TransferMenu({ jobServer, transferUrl }: { jobServer: JobServer; transferUrl: (token: string) => string }) {
+function TransferMenu({ coderApi, transferUrl }: { coderApi: CoderApi; transferUrl: (token: string) => string }) {
   const [link, setLink] = useState<{ url: string; expiresAt: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   async function open(isOpen: boolean) {
-    if (!isOpen || !jobServer.createTransfer) return;
+    if (!isOpen || !coderApi.createTransfer) return;
     setError(null);
     setCopied(false);
     try {
-      const transfer = await jobServer.createTransfer();
+      const transfer = await coderApi.createTransfer();
       setLink({ url: transferUrl(transfer.token), expiresAt: new Date(transfer.expiresAt) });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

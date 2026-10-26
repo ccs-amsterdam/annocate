@@ -10,7 +10,7 @@ import type {
 } from "@annotinder/contracts";
 import { describe, expect, it, vi } from "vitest";
 
-import type { JobServer } from "../api/httpJobServer";
+import type { CoderApi } from "../api/httpCoderApi";
 import { JobManager } from "./JobManager";
 
 function confirm(name: string): UserVariableItem {
@@ -40,10 +40,10 @@ function unit(id: number): CoderUnitResponse {
   return { id, data: {}, variables: {} } as CoderUnitResponse;
 }
 
-/** A stub JobServer whose methods can be individually made to reject once, then succeed. */
-function makeFlakyServer(overrides: Partial<JobServer> = {}): JobServer & { calls: Record<string, number> } {
+/** A stub CoderApi whose methods can be individually made to reject once, then succeed. */
+function makeFlakyServer(overrides: Partial<CoderApi> = {}): CoderApi & { calls: Record<string, number> } {
   const calls: Record<string, number> = {};
-  const base: JobServer = {
+  const base: CoderApi = {
     getSession: vi.fn(async () => {
       calls.getSession = (calls.getSession ?? 0) + 1;
       return session([confirm("consent")]);

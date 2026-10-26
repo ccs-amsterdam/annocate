@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { UnitField, UnitResponse, UnitsetResponse } from "@annotinder/contracts";
 import { ChevronLeft, ChevronRight, Lock, Trash2, Upload, Scissors } from "lucide-react";
-import type { AdminClient } from "../../../api/httpAdminClient";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
   useCreateUnitsetMutation,
   useDeleteUnitMutation,
@@ -24,7 +24,7 @@ const PAGE_SIZE = 50;
  * Pick a unitset to see its units in its order; select units to make a new
  * unitset, or split units into parts.
  */
-export function UnitsPage({ client }: { client: AdminClient }) {
+export function UnitsPage({ client }: { client: ResearcherApi }) {
   const fieldsQuery = useUnitFieldsQuery(client);
   const unitsetsQuery = useUnitsetsQuery(client);
   const unitsQuery = useUnitsQuery(client);
@@ -139,7 +139,7 @@ function UnitsetBar({
   onSelect,
   onSplit,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   unitsets: UnitsetResponse[];
   allCount: number;
   current: UnitsetResponse | null;
@@ -199,7 +199,7 @@ function SelectionBar({
   unitsets,
   onClear,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   selected: Set<number>;
   unitsets: UnitsetResponse[];
   onClear: () => void;
@@ -236,7 +236,7 @@ function UnitTable({
   onSelectedChange,
   loading,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   units: UnitResponse[];
   fields: UnitField[];
   setsOf: Map<number, string[]>;

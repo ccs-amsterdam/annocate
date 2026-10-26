@@ -25,16 +25,16 @@ import {
 
 /**
  * Client-side abstraction over the job-management ("admin") side of the API
- * (docs/client.md §7) -- distinct from `JobServer` (api/httpJobServer.ts),
+ * (docs/client.md §7) -- distinct from `CoderApi` (api/httpCoderApi.ts),
  * which is the coder-facing, annotation-time interface.
  *
  * Supports listing, creating, and selecting jobs. Per-job resources (codebooks,
  * units, unitsets, coders) are accessed via a job-scoped client created by
  * calling `client.forJob(jobId)`.
  */
-export interface AdminClient {
+export interface ResearcherApi {
   readonly jobId?: number;
-  forJob(jobId: number): AdminClient;
+  forJob(jobId: number): ResearcherApi;
 
   listJobs(): Promise<JobResponse[]>;
   getJob(id?: number): Promise<JobResponse | null>;
@@ -86,7 +86,7 @@ export interface AdminClient {
   createPreview(): Promise<PreviewSession>;
 }
 
-export interface HttpAdminClientConfig {
+export interface HttpResearcherApiConfig {
   /** Base URL of the server, e.g. "http://localhost:8787". */
   baseUrl: string;
   /** Dev-mode auth (docs/coder-identity.md -- replaced by HMAC-signed sessions in a real deployment). */
@@ -97,20 +97,20 @@ export interface HttpAdminClientConfig {
 }
 
 /** Talks to a real server implementing the `@annotinder/contracts` admin endpoints over HTTP. */
-export class HttpAdminClient implements AdminClient {
-  constructor(private config: HttpAdminClientConfig) {}
+export class HttpResearcherApi implements ResearcherApi {
+  constructor(private config: HttpResearcherApiConfig) {}
 
   get jobId(): number | undefined {
     return this.config.jobId;
   }
 
-  forJob(jobId: number): AdminClient {
-    return new HttpAdminClient({ ...this.config, jobId });
+  forJob(jobId: number): ResearcherApi {
+    return new HttpResearcherApi({ ...this.config, jobId });
   }
 
   private requireJobId(): number {
     if (this.config.jobId === undefined) {
-      throw new Error("AdminClient must be scoped to a jobId (e.g. client.forJob(id)) to access job resources");
+      throw new Error("ResearcherApi must be scoped to a jobId (e.g. client.forJob(id)) to access job resources");
     }
     return this.config.jobId;
   }

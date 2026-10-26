@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AdminApp } from "./AdminApp";
-import type { AdminClient } from "../../api/httpAdminClient";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 
-const stubClient: AdminClient = {
+const stubClient: ResearcherApi = {
   jobId: 1,
   forJob: () => stubClient,
   listJobs: () => new Promise(() => {}),

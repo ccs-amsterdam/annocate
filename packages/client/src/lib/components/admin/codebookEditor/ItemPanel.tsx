@@ -7,7 +7,7 @@ import {
   type UnitLoopItem,
 } from "@annotinder/contracts";
 import { AlertTriangle, Edit3, Eye } from "lucide-react";
-import type { AdminClient } from "../../../api/httpAdminClient";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useUnitsetsQuery } from "../../../admin/queries";
 import { findParent, flattenTree, isInsideUnitLoop, itemAtPath, itemPath } from "../../../codebook/tree";
 import { ItemForm } from "../ItemForm";
@@ -26,7 +26,7 @@ export function ItemPanel({
   readOnly,
   warnings,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   draft: CodebookDraft;
   readOnly: boolean;
   warnings: UnitFieldWarning[];
@@ -91,7 +91,7 @@ function ItemEditForm({
   item,
   readOnly,
 }: {
-  client: AdminClient;
+  client: ResearcherApi;
   draft: CodebookDraft;
   item: CodebookItem;
   readOnly: boolean;

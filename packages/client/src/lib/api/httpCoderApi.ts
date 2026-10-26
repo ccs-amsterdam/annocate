@@ -1,6 +1,6 @@
 import type { CoderSessionScope } from "../session/coderSession";
 import {
-  clientEndpoints,
+  coderEndpoints,
   type SessionResponse,
   type CoderUnitResponse,
   type TransferResponse,
@@ -8,7 +8,7 @@ import {
 } from "@annotinder/contracts";
 
 /** A failed server request, with the server's machine-readable `code` if any (contracts `CoderErrorCode`). */
-export class JobServerError extends Error {
+export class CoderApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
@@ -18,14 +18,14 @@ export class JobServerError extends Error {
   }
 }
 
-async function toError(res: Response, path: string): Promise<JobServerError> {
+async function toError(res: Response, path: string): Promise<CoderApiError> {
   const text = await res.text();
   try {
     const body = JSON.parse(text) as { error?: unknown; code?: unknown };
     const message = typeof body.error === "string" ? body.error : text;
-    return new JobServerError(message, res.status, typeof body.code === "string" ? body.code : undefined);
+    return new CoderApiError(message, res.status, typeof body.code === "string" ? body.code : undefined);
   } catch {
-    return new JobServerError(`Request to ${path} failed (${res.status}): ${text}`, res.status);
+    return new CoderApiError(`Request to ${path} failed (${res.status}): ${text}`, res.status);
   }
 }
 
@@ -36,12 +36,12 @@ export interface BranchChoice {
 }
 
 /**
- * Client-side abstraction over "however we talk to a job's backend" (docs/client.md §2). `HttpJobServer` is the only implementation for now
- * (talking to the server's client API, packages/server); a future
+ * Client-side abstraction over "however we talk to a job's backend" (docs/client.md §2). `HttpCoderApi` is the only implementation for now
+ * (talking to the server's coder API, packages/server); a future
  * design/offline variant (for Storybook-like isolated component dev) can
  * implement the same interface without a network round-trip.
  */
-export interface JobServer {
+export interface CoderApi {
   getSession(): Promise<SessionResponse>;
   /**
    * Next unit for a unit_loop; which unit is decided by the server. `null` = the coder is done with the loop.
@@ -57,7 +57,7 @@ export interface JobServer {
   createTransfer?(): Promise<TransferResponse>;
 }
 
-export interface HttpJobServerConfig {
+export interface HttpCoderApiConfig {
   /** Base URL of the job's server including the deployment, e.g. "/d/amcat.nl/42" (same origin as the client). */
   baseUrl: string;
   /** The invite link: creates the coder on first use, and selects this link's session cookie. */
@@ -76,7 +76,7 @@ export interface HttpJobServerConfig {
   newSession?: boolean;
 }
 
-/** Required on every client API request: cross-site forms can't send it (CSRF). */
+/** Required on every coder API request: cross-site forms can't send it (CSRF). */
 const CLIENT_HEADERS = { "x-annotinder": "1" };
 
 function scopeHeaders(scope: { inviteSecret?: string; participantId?: string }): Record<string, string> {
@@ -87,11 +87,11 @@ function scopeHeaders(scope: { inviteSecret?: string; participantId?: string }):
 }
 
 /** Talks to a real server implementing the `@annotinder/contracts` endpoint registry over HTTP. */
-export class HttpJobServer implements JobServer {
+export class HttpCoderApi implements CoderApi {
   /** Still to be sent: cleared once a request succeeded, so only one new session is made. */
   private newSession: boolean;
 
-  constructor(private config: HttpJobServerConfig) {
+  constructor(private config: HttpCoderApiConfig) {
     this.newSession = config.newSession ?? false;
   }
 
@@ -109,7 +109,7 @@ export class HttpJobServer implements JobServer {
 
   /** Exchanges a transfer token for this device's session cookie (set by the server). */
   static async redeemTransfer(scope: CoderSessionScope, token: string): Promise<void> {
-    const path = clientEndpoints.redeemTransfer.path;
+    const path = coderEndpoints.redeemTransfer.path;
     const res = await fetch(`${scope.baseUrl}${path}`, {
       method: "POST",
       credentials: "same-origin",
@@ -132,7 +132,7 @@ export class HttpJobServer implements JobServer {
   }
 
   async getSession(): Promise<SessionResponse> {
-    return this.request(clientEndpoints.getSession.path);
+    return this.request(coderEndpoints.getSession.path);
   }
 
   async getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null> {
@@ -141,29 +141,29 @@ export class HttpJobServer implements JobServer {
       query.set("branch", String(branch.branch));
       for (const name of branch.unitsets) query.append("unitsets", name);
     }
-    const path = clientEndpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop));
+    const path = coderEndpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop));
     return this.request(branch ? `${path}?${query}` : path);
   }
 
   async getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse> {
     return this.request(
-      clientEndpoints.getLoopUnit.path.replace(":loop", encodeURIComponent(loop)).replace(":unitId", String(unitId)),
+      coderEndpoints.getLoopUnit.path.replace(":loop", encodeURIComponent(loop)).replace(":unitId", String(unitId)),
     );
   }
 
   async postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string): Promise<void> {
-    await this.request(clientEndpoints.postUnitVariables.path, {
+    await this.request(coderEndpoints.postUnitVariables.path, {
       method: "POST",
       body: JSON.stringify({ unitId, loop, variables }),
     });
   }
 
   async createTransfer(): Promise<TransferResponse> {
-    return this.request(clientEndpoints.createTransfer.path, { method: "POST" });
+    return this.request(coderEndpoints.createTransfer.path, { method: "POST" });
   }
 
   async postCoderVariables(variables: Record<string, VariableValue>): Promise<void> {
-    await this.request(clientEndpoints.postCoderVariables.path, {
+    await this.request(coderEndpoints.postCoderVariables.path, {
       method: "POST",
       body: JSON.stringify({ variables }),
     });

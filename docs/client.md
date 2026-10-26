@@ -18,7 +18,7 @@ design lives in `architecture.md` and `coder-identity.md`; the API in
   emits `style.css`. Its output name is pinned in `vite.lib.config.ts`
   (`assetFileNames`), because Vite's default changed once and broke the
   `exports["./style.css"]` path.
-- **Hosting.** The client and the server's client API (`/d/...`) always
+- **Hosting.** The client and the server's coder API (`/d/...`) always
   share an origin: coder sessions are httpOnly cookies
   (`coder-identity.md` §4).
 - Not published to npm yet.
@@ -28,7 +28,7 @@ design lives in `architecture.md` and `coder-identity.md`; the API in
 `src/lib/jobManager/JobManager.ts` is a framework-agnostic state machine;
 `useJobManager` binds it to React with `useSyncExternalStore`.
 
-- It talks only to the `JobServer` interface (`api/httpJobServer.ts`). Tests
+- It talks only to the `CoderApi` interface (`api/httpCoderApi.ts`). Tests
   use stubs.
 - It computes the visible steps from the codebook: top-level items, then
   loop questions, with conditions evaluated in document order (§5,
@@ -205,8 +205,8 @@ pass with per-slot memoization:
 ## 7. Admin UI
 
 `components/admin/AdminApp.tsx` is a tabbed shell: Overview, Codebook,
-Units, Invitations, Coders, Preview. It uses an `AdminClient`
-(`api/httpAdminClient.ts`).
+Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
+(`api/httpResearcherApi.ts`).
 
 - **Codebook editor**: edits the whole document in memory (tree view and
   YAML), validated client-side with the contract's `validateCodebookItems`,

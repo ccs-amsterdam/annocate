@@ -8,7 +8,7 @@ runtime code, no HTTP client, no React.
 
 The server (`packages/server`) implements both APIs: the researcher API
 (jobs, codebooks, units, publishing; used by the researcher UI, R, Python
-and other systems) and the client API (used by coders' browsers). Types the
+and other systems) and the coder API (used by coders' browsers). Types the
 server uses internally (e.g. what its runtime reads from the database) live
 in the server, not here.
 
@@ -55,7 +55,7 @@ in the server, not here.
 pnpm --filter @annotinder/contracts generate:json-schema
 ```
 
-Writes `dist/json-schema/{researcher,client}-api.json`, one per API: for
+Writes `dist/json-schema/{researcher,coder}-api.json`, one per API: for
 every endpoint, the HTTP method, path, and a JSON Schema for both the
 request and response body. This output is not checked into git (see
 `.gitignore`); regenerate it whenever the contract changes.
@@ -64,12 +64,12 @@ request and response body. This output is not checked into git (see
 
 Documented per API in [`docs/api/`](../../docs/api/README.md), with a
 section per endpoint. The registries: `src/endpoints/researcher.ts` and
-`src/endpoints/client.ts`.
+`src/endpoints/coder.ts`.
 
 | API | Called by | Registry | Spec |
 |---|---|---|---|
 | researcher API | researcher UI, R, Python, other systems | `researcherEndpoints` | [researcher.md](../../docs/api/researcher.md) |
-| client API | coders' browsers | `clientEndpoints` | [client.md](../../docs/api/client.md) |
+| coder API | coders' browsers | `coderEndpoints` | [coder.md](../../docs/api/coder.md) |
 
 ## Auth
 
