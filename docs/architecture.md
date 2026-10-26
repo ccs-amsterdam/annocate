@@ -2,7 +2,7 @@
 
 Status: current (2026-10-26). One server, `packages/server`, on Postgres:
 `pg` against a Postgres server in production, PGlite (Postgres in
-WebAssembly, in process) for tests, development and annotinder local.
+WebAssembly, in process) for tests and development.
 
 How the server and client combine into products (hosted, self-hosted,
 local, R/Python clients): `docs/compositions.md`.
@@ -443,8 +443,9 @@ Roughly in order:
      means: today it stops new units (409), but coders can still submit
      units they hold.
    - Choosing what reopens after a codebook update (§8.3).
-3. **annotinder local** (`compositions.md`): the composition, project
-   folder, file import and export, a CLI; then the R and Python packages.
+3. **Local coding from R and Python** (`compositions.md`): the runtime in
+   the browser, R or Python as the host; then the R and Python packages.
+   (Not a standalone local app or binaries: see "Not planned" there.)
 4. **Researcher API follow-ups.** A webhook that posts new annotations; a
    download button in the researcher UI; per coder whether they are done
    (only the runtime knows how many units a coder gets); changing a unit

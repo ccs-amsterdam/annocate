@@ -8,7 +8,7 @@ docs live in `docs/`:
 - `docs/architecture.md`: the server, unit distribution, resuming and
   codebook updates.
 - `docs/compositions.md`: the products (annotinder.com, self-hosted,
-  annotinder local, R/Python clients).
+  local coding from R and Python).
 - `docs/encryption.md`: (on hold) encrypting participants' answers in the
   browser.
 - `docs/coder-identity.md`: identity, sessions, invitations and login

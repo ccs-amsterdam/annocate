@@ -21,7 +21,7 @@ different and still open.
   serves the client code can always break browser encryption: this protects
   against leaks and curious infrastructure, not a malicious operator.
 - **Is it worth it** next to the alternatives for sensitive work: a
-  self-hosted server, or annotinder local (`compositions.md`).
+  self-hosted server, or local coding from R or Python (`compositions.md`).
 
 ## What we would give up (still true)
 
