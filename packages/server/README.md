@@ -16,9 +16,15 @@ pnpm dev:server   # from the repo root: http://localhost:8787, seeded with a dem
 pnpm reset-db     # recreate and reseed the local database
 ```
 
-Environment: `PORT` (8787), `DB_PATH` (`annotinder.sqlite` in this
-package), `ANNOTINDER_SECRET` (signs preview tokens; random per process if
-not set, so previews end with a restart).
+Environment:
+
+- `DATABASE_URL`: a Postgres server, e.g. `postgres://user:pass@host/annotinder`.
+  Without it, the server uses PGlite (Postgres compiled to WebAssembly, in
+  process) in `PGLITE_DIR` (default `.pglite` in this package): no Postgres
+  install needed for development. `pnpm reset-db` only resets PGlite.
+- `PORT` (8787).
+- `ANNOTINDER_SECRET`: signs preview tokens; random per process if not
+  set, so previews end with a restart.
 
 ## Code
 
@@ -32,8 +38,11 @@ not set, so previews end with a restart).
   distribution, validation, sessions, previews. It reads and writes the
   database through [`store.ts`](src/runtime/store.ts).
 - [`src/shared/`](src/shared/): database queries used by both.
-- [`schema.sql`](schema.sql): the data model. No migrations yet: the
-  development database is recreated when this file changes
-  ([`src/db.ts`](src/db.ts)).
+- [`migrations/`](migrations/): the data model, as numbered SQL files,
+  applied in order at startup ([`src/db.ts`](src/db.ts)). A change is a new
+  file, never an edit to an applied one.
 
-Storage is SQLite (`node:sqlite`, Node >= 22) for now; Postgres is next.
+Tests run on PGlite (one instance per test file, emptied before each
+test). To run them against a Postgres server instead, point
+`TEST_DATABASE_URL` at a scratch database: each test worker gets its own
+schema there, and its tables are emptied.

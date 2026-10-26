@@ -1,18 +1,18 @@
 import { Hono } from "hono";
 import { CodebookWriteSchema } from "@annotinder/contracts";
+import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import type { CodebookRow } from "../shared/deployments.js";
-import { toCodebookResponse } from "../shared/codebooks.js";
+import { toCodebookResponse, type CodebookRow } from "../shared/codebooks.js";
 
 export function codebook(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/codebook/:id", requireJobUser(db, "READ"), (c) => {
-    const row = db
-      .prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?")
-      .get(c.get("jobId"), Number(c.req.param("id"))) as unknown as CodebookRow | undefined;
+  const get = (jobId: number, id: number) => one<CodebookRow>(db, "SELECT * FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, id]);
+
+  app.get("/job/:jobId/codebook/:id", requireJobUser(db, "READ"), async (c) => {
+    const row = await get(c.get("jobId"), Number(c.req.param("id")));
     if (!row) return c.json({ error: "Codebook not found" }, 404);
     return c.json(toCodebookResponse(row));
   });
@@ -20,35 +20,31 @@ export function codebook(server: Server): Hono<Env> {
   app.put("/job/:jobId/codebook/:id", requireJobUser(db, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
-    const existing = db.prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, id) as
-      | CodebookRow
-      | undefined;
+    const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Codebook not found" }, 404);
     if (existing.immutable) return c.json({ error: "Codebook is immutable and cannot be edited" }, 409);
 
     const parsed = CodebookWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    db.prepare("UPDATE codebooks SET note = ?, items = ? WHERE jobId = ? AND id = ?").run(
-      parsed.data.note ?? null,
-      JSON.stringify(parsed.data.items),
-      jobId,
-      id,
+    const row = await one<CodebookRow>(
+      db,
+      "UPDATE codebooks SET note = $1, items = $2 WHERE job_id = $3 AND id = $4 AND NOT immutable RETURNING *",
+      [parsed.data.note ?? null, JSON.stringify(parsed.data.items), jobId, id],
     );
-    const row = db.prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, id) as unknown as CodebookRow;
+    // Deployed meanwhile.
+    if (!row) return c.json({ error: "Codebook is immutable and cannot be edited" }, 409);
     return c.json(toCodebookResponse(row));
   });
 
-  app.delete("/job/:jobId/codebook/:id", requireJobUser(db, "WRITE"), (c) => {
+  app.delete("/job/:jobId/codebook/:id", requireJobUser(db, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
-    const existing = db.prepare("SELECT * FROM codebooks WHERE jobId = ? AND id = ?").get(jobId, id) as
-      | CodebookRow
-      | undefined;
+    const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Codebook not found" }, 404);
     if (existing.immutable) return c.json({ error: "Codebook is immutable and cannot be deleted" }, 409);
 
-    db.prepare("DELETE FROM codebooks WHERE jobId = ? AND id = ?").run(jobId, id);
+    await db.query("DELETE FROM codebooks WHERE job_id = $1 AND id = $2 AND NOT immutable", [jobId, id]);
     return c.body(null, 204);
   });
 

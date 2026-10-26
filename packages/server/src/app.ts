@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { DatabaseSync } from "node:sqlite";
+import type { Sql } from "./db.js";
 import { CONTRACTS_VERSION } from "@annotinder/contracts";
 import type { Env, Server } from "./context.js";
 import { coderApi } from "./coder.js";
@@ -40,11 +40,10 @@ export interface AppOptions {
 
 /**
  * The server: the researcher API (`/job/...`) and the client API for coders
- * (`/d/<deploymentId>/...`), on one database. Kept as a factory so tests can
- * pass in a fresh in-memory db per test; a new app on the same db is a
- * restart (runtimes rebuild from the db).
+ * (`/d/<deploymentId>/...`), on one database. A new app on the same
+ * database is a restart: runtimes rebuild from the database.
  */
-export function createApp(db: DatabaseSync, options: AppOptions = {}) {
+export function createApp(db: Sql, options: AppOptions = {}) {
   const secret = options.secret ?? crypto.randomUUID();
   const server: Server = {
     db,
@@ -54,6 +53,11 @@ export function createApp(db: DatabaseSync, options: AppOptions = {}) {
   const app = new Hono<Env>();
   app.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
+    // Postgres: a malformed or out-of-range value in a parameter (e.g. an id in the path).
+    const pgCode = (err as { code?: unknown }).code;
+    if (pgCode === "22P02" || pgCode === "22003") return c.json({ error: "Invalid parameter" }, 400);
+    // A unique constraint, e.g. two units with the same external id in one upload.
+    if (pgCode === "23505") return c.json({ error: "Already exists" }, 409);
     console.error(err);
     return c.json({ error: "Internal error" }, 500);
   });

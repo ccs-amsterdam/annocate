@@ -1,17 +1,15 @@
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import fs from "node:fs";
-import { openDb } from "./db.js";
+import { openPglite } from "./db.js";
+import { DEFAULT_PGLITE_DIR } from "./database.js";
 import { seed } from "./seed.js";
 
-const defaultPath = resolve(dirname(fileURLToPath(import.meta.url)), "../annotinder.sqlite");
-const path = process.argv[2] ?? process.env.DB_PATH ?? defaultPath;
+// Recreates the local PGlite database (PGLITE_DIR, default .pglite) with a
+// demo job. Never touches a Postgres server (DATABASE_URL).
 
-console.log(`Resetting db at ${path} ...`);
-if (path !== ":memory:") for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(path + suffix, { force: true });
-
-const db = openDb(path);
-seed(db);
-db.close();
-
+const dir = process.argv[2] ?? process.env.PGLITE_DIR ?? DEFAULT_PGLITE_DIR;
+console.log(`Resetting the PGlite database in ${dir} ...`);
+fs.rmSync(dir, { recursive: true, force: true });
+const db = await openPglite(dir);
+await seed(db);
+await db.close();
 console.log("Done: schema created and seeded with a demo job.");

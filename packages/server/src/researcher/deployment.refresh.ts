@@ -14,7 +14,7 @@ export function deploymentRefresh(server: Server): Hono<Env> {
     const parsed = RefreshDeploymentSchema.safeParse(await c.req.json().catch(() => ({})));
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");
-    if (!getDeployment(db, jobId)) return c.json({ error: "Job is not deployed" }, 404);
+    if (!(await getDeployment(db, jobId))) return c.json({ error: "Job is not deployed" }, 404);
     return c.json({ version: await server.deployments.refresh(jobId, parsed.data.units) });
   });
 

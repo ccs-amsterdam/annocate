@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import type { DatabaseSync } from "node:sqlite";
+import { one, type Sql } from "../db.js";
 import type { Role } from "@annotinder/contracts";
 
 // DEV ONLY: not secure, and not real authentication. Job users send plain headers
@@ -18,25 +18,26 @@ import type { Role } from "@annotinder/contracts";
 
 const ROLE_RANK: Record<Role, number> = { READ: 0, WRITE: 1, ADMIN: 2 };
 
+/** Ids are Postgres INTEGERs. */
+const MAX_ID = 2 ** 31 - 1;
+
 export interface JobUserAuth {
   email: string;
   role: Role;
 }
 
-export function authenticateJobUser(c: Context, db: DatabaseSync, jobId: number): JobUserAuth | null {
+export async function authenticateJobUser(c: Context, sql: Sql, jobId: number): Promise<JobUserAuth | null> {
   const role = c.req.header("x-dev-role") as Role | undefined;
   const email = c.req.header("x-dev-email") ?? "dev@localhost";
   if (!role || !(role in ROLE_RANK)) return null;
 
-  const existingUsers = db.prepare("SELECT 1 FROM job_users WHERE jobId = ?").get(jobId);
+  const existingUsers = await one(sql, "SELECT 1 FROM job_users WHERE job_id = $1", [jobId]);
   if (!existingUsers) {
     // Bootstrap: no job users configured yet, allow any dev-role header through.
     return { email, role };
   }
 
-  const row = db.prepare("SELECT role FROM job_users WHERE jobId = ? AND email = ?").get(jobId, email) as
-    | { role: Role }
-    | undefined;
+  const row = await one<{ role: Role }>(sql, "SELECT role FROM job_users WHERE job_id = $1 AND email = $2", [jobId, email]);
   if (!row) return null;
   if (ROLE_RANK[row.role] < ROLE_RANK[role]) return null; // header can't claim a higher role than granted
   return { email, role: row.role };
@@ -47,16 +48,16 @@ export function authenticateJobUser(c: Context, db: DatabaseSync, jobId: number)
  * `minRole`, for the job identified by the `:jobId` path param (a server
  * hosts any number of jobs, so jobId always comes from the URL).
  */
-export function requireJobUser(db: DatabaseSync, minRole: Role) {
+export function requireJobUser(sql: Sql, minRole: Role) {
   return async (c: Context, next: Next) => {
     const raw = c.req.param("jobId");
     const jobId = raw ? Number(raw) : NaN;
-    if (!Number.isInteger(jobId)) return c.json({ error: "Invalid job id" }, 400);
+    if (!Number.isInteger(jobId) || jobId <= 0 || jobId > MAX_ID) return c.json({ error: "Invalid job id" }, 400);
 
-    const job = db.prepare("SELECT 1 FROM jobs WHERE id = ?").get(jobId);
+    const job = await one(sql, "SELECT 1 FROM jobs WHERE id = $1", [jobId]);
     if (!job) return c.json({ error: "Job not found" }, 404);
 
-    const auth = authenticateJobUser(c, db, jobId);
+    const auth = await authenticateJobUser(c, sql, jobId);
     if (!auth || ROLE_RANK[auth.role] < ROLE_RANK[minRole]) {
       return c.json({ error: "Unauthorized" }, 401);
     }

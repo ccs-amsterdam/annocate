@@ -1,13 +1,11 @@
-import type { DatabaseSync } from "node:sqlite";
 import { CodebookItemsSchema } from "@annotinder/contracts";
+import { one, type Sql } from "./db.js";
 import { putDeployment } from "./shared/deployments.js";
 import { setUnitFields } from "./shared/units.js";
 
 /** Seeds a freshly-created (empty) db with one demo job. */
-export function seed(db: DatabaseSync): void {
-  const created = new Date().toISOString();
-  db.prepare("INSERT INTO jobs (name, archived, created) VALUES (?, 0, ?)").run("Demo job", created);
-  const jobId = (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+export async function seed(db: Sql): Promise<void> {
+  const jobId = (await one<{ id: number }>(db, "INSERT INTO jobs (name) VALUES ($1) RETURNING id", ["Demo job"]))!.id;
 
   const units = [
     {
@@ -23,29 +21,21 @@ export function seed(db: DatabaseSync): void {
       text: "Beyond swiping, AnnoTinder supports span annotation, where coders select words in a text and give them a label. The team says the server can hand the same unit to several coders until they agree, which helps researchers measure intercoder reliability. Data journalist",
     },
   ];
-  units.forEach((data, i) =>
-    db.prepare("INSERT INTO units (jobId, externalId, data) VALUES (?, ?, ?)").run(jobId, `unit-${i + 1}`, JSON.stringify(data)),
-  );
+  const unitIds: number[] = [];
+  for (const [i, data] of units.entries()) {
+    const row = await one<{ id: number }>(db, "INSERT INTO units (job_id, external_id, data) VALUES ($1, $2, $3) RETURNING id", [
+      jobId,
+      `unit-${i + 1}`,
+      JSON.stringify(data),
+    ]);
+    unitIds.push(row!.id);
+  }
 
-  setUnitFields(db, jobId, [
+  await setUnitFields(db, jobId, [
     { name: "headline", type: "text" },
     { name: "text", type: "text" },
   ]);
-  const unit1 = (db.prepare("SELECT id FROM units WHERE jobId = ? AND externalId = ?").get(jobId, "unit-1") as {
-    id: number;
-  }).id;
-  const unit2 = (db.prepare("SELECT id FROM units WHERE jobId = ? AND externalId = ?").get(jobId, "unit-2") as {
-    id: number;
-  }).id;
-  const unit3 = (db.prepare("SELECT id FROM units WHERE jobId = ? AND externalId = ?").get(jobId, "unit-3") as {
-    id: number;
-  }).id;
-
-  db.prepare("INSERT INTO unitsets (jobId, name, unitIds) VALUES (?, ?, ?)").run(
-    jobId,
-    "main",
-    JSON.stringify([unit1, unit2, unit3]),
-  );
+  await db.query("INSERT INTO unitsets (job_id, name, unit_ids) VALUES ($1, $2, $3)", [jobId, "main", unitIds]);
 
   const items = CodebookItemsSchema.parse([
     {
@@ -291,21 +281,12 @@ export function seed(db: DatabaseSync): void {
     },
   ]);
 
-  db.prepare("INSERT INTO codebooks (jobId, note, items, created, immutable) VALUES (?, ?, ?, ?, 0)").run(
+  const codebookId = (await one<{ id: number }>(db, "INSERT INTO codebooks (job_id, note, items) VALUES ($1, $2, $3) RETURNING id", [
     jobId,
     "Demo: a tour of AnnoTinder's question types and features",
     JSON.stringify(items),
-    created,
-  );
+  ]))!.id;
+  await putDeployment(db, jobId, { codebookId, active: true });
 
-  const codebookId = (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
-  putDeployment(db, jobId, { codebookId, active: true });
-
-  db.prepare("INSERT INTO invites (jobId, label, auth, secret, created) VALUES (?, ?, ?, ?, ?)").run(
-    jobId,
-    "Demo invite",
-    "none",
-    "demo-secret",
-    created,
-  );
+  await db.query("INSERT INTO invites (job_id, label, auth, secret) VALUES ($1, $2, $3, $4)", [jobId, "Demo invite", "none", "demo-secret"]);
 }

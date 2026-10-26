@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { DatabaseSync } from "node:sqlite";
-import { openDb } from "../db.js";
+import type { Sql } from "../db.js";
+import { emptyDb } from "./testDb.js";
 import { createApp } from "../app.js";
 import { DbStore } from "../runtime/store.js";
 import { HttpError } from "../shared/http.js";
 import type { CodebookItem, VariableValue } from "@annotinder/contracts";
 
-let db: DatabaseSync;
+let db: Sql;
 let app: ReturnType<typeof createApp>;
 
 const adminHeaders = { "content-type": "application/json", "x-dev-role": "ADMIN" };
@@ -16,8 +16,8 @@ async function json(res: Response): Promise<any> {
   return res.json();
 }
 
-beforeEach(() => {
-  db = openDb(":memory:");
+beforeEach(async () => {
+  db = await emptyDb();
   app = createApp(db);
 });
 
@@ -206,11 +206,10 @@ describe("annotations: finished counts and resets", () => {
     const { units, put, finished } = await setup();
     await put(units[0].id, { old: value("x"), q1: value("a") });
     await put(units[0].id, { q1: value("b") });
-    const rows = db.prepare("SELECT variable, value FROM annotation_values WHERE retiredAt IS NULL ORDER BY variable").all() as {
-      variable: string;
-      value: string;
-    }[];
-    expect(rows.map((r) => [r.variable, JSON.parse(r.value).codes[0].code])).toEqual([
+    const rows = await db.query<{ variable: string; value: VariableValue }>(
+      "SELECT variable, value FROM annotation_values WHERE retired_at IS NULL ORDER BY variable",
+    );
+    expect(rows.map((r) => [r.variable, r.value.codes?.[0].code])).toEqual([
       ["old", "x"],
       ["q1", "b"],
     ]);
@@ -232,7 +231,7 @@ describe("annotations: finished counts and resets", () => {
     expect((await finished(["q1"])).map((f) => f.unitId)).toEqual([units[1].id]);
     // recoded after the reset: a new live row next to the retired one
     await put(units[0].id, { q1: value("b") });
-    expect(db.prepare("SELECT COUNT(*) AS n FROM annotation_values WHERE unitId = ?").get(units[0].id)).toEqual({ n: 2 });
+    expect(await db.query("SELECT COUNT(*)::int AS n FROM annotation_values WHERE unit_id = $1", [units[0].id])).toEqual([{ n: 2 }]);
     expect(await finished(["q1"])).toHaveLength(2);
   });
 });

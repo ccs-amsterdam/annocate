@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import type { DatabaseSync } from "node:sqlite";
 import {
   UnitsetWriteSchema,
   unitsetMatchesSource,
   type UnitLoopItem,
 } from "@annotinder/contracts";
+import { one, type Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { toUnitsetResponse, type UnitsetRow } from "../shared/unitsets.js";
@@ -13,8 +13,8 @@ import { toUnitsetResponse, type UnitsetRow } from "../shared/unitsets.js";
  * True if any codebook in this job has a unit_loop source that refers to
  * `unitsetName` (directly, or via a `{placeholder}` pattern like `part_{slot}`).
  */
-function isReferencedByCodebook(db: DatabaseSync, jobId: number, unitsetName: string): boolean {
-  const rows = db.prepare("SELECT items FROM codebooks WHERE jobId = ?").all(jobId) as { items: string }[];
+async function isReferencedByCodebook(sql: Sql, jobId: number, unitsetName: string): Promise<boolean> {
+  const rows = await sql.query<{ items: unknown }>("SELECT items FROM codebooks WHERE job_id = $1", [jobId]);
   const references = (items: { type: string; units?: UnitLoopItem["units"]; children?: unknown[] }[]): boolean =>
     items.some((item) => {
       if (item.type === "unit_loop") {
@@ -22,46 +22,43 @@ function isReferencedByCodebook(db: DatabaseSync, jobId: number, unitsetName: st
       }
       return item.type === "condition" && references((item.children ?? []) as typeof items);
     });
-  return rows.some((row) => references(JSON.parse(row.items)));
+  return rows.some((row) => references(row.items as Parameters<typeof references>[0]));
 }
 
 export function unitset(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
+  const get = (jobId: number, id: number) => one<UnitsetRow>(db, "SELECT * FROM unitsets WHERE job_id = $1 AND id = $2", [jobId, id]);
+
   app.put("/job/:jobId/unitsets/:id", requireJobUser(db, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
-    const existing = db.prepare("SELECT * FROM unitsets WHERE jobId = ? AND id = ?").get(jobId, id) as
-      | UnitsetRow
-      | undefined;
+    const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Unitset not found" }, 404);
 
     const parsed = UnitsetWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    db.prepare("UPDATE unitsets SET name = ?, unitIds = ? WHERE jobId = ? AND id = ?").run(
+    const row = await one<UnitsetRow>(db, "UPDATE unitsets SET name = $1, unit_ids = $2 WHERE job_id = $3 AND id = $4 RETURNING *", [
       parsed.data.name,
-      JSON.stringify(parsed.data.unitIds),
+      parsed.data.unitIds,
       jobId,
       id,
-    );
-    const row = db.prepare("SELECT * FROM unitsets WHERE jobId = ? AND id = ?").get(jobId, id) as unknown as UnitsetRow;
-    return c.json(toUnitsetResponse(row));
+    ]);
+    return c.json(toUnitsetResponse(row!));
   });
 
-  app.delete("/job/:jobId/unitsets/:id", requireJobUser(db, "WRITE"), (c) => {
+  app.delete("/job/:jobId/unitsets/:id", requireJobUser(db, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
-    const existing = db.prepare("SELECT * FROM unitsets WHERE jobId = ? AND id = ?").get(jobId, id) as
-      | UnitsetRow
-      | undefined;
+    const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Unitset not found" }, 404);
-    if (isReferencedByCodebook(db, jobId, existing.name)) {
+    if (await isReferencedByCodebook(db, jobId, existing.name)) {
       return c.json({ error: "Unitset is referenced by a codebook unit_loop and cannot be deleted" }, 409);
     }
 
-    db.prepare("DELETE FROM unitsets WHERE jobId = ? AND id = ?").run(jobId, id);
+    await db.query("DELETE FROM unitsets WHERE job_id = $1 AND id = $2", [jobId, id]);
     return c.body(null, 204);
   });
 

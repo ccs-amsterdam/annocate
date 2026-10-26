@@ -1,24 +1,26 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { DatabaseSync } from "node:sqlite";
 import type {
   CoderUnitResponse,
   DeploymentResponse,
   DeploymentStatus,
   SessionResponse,
+  UnitData,
   VariableValue,
 } from "@annotinder/contracts";
-import { openDb } from "../db.js";
+import type { Sql } from "../db.js";
+import { emptyDb } from "./testDb.js";
 import { seed } from "../seed.js";
 import { createApp } from "../app.js";
 import type { RuntimeOptions } from "../runtime/runtime.js";
 import { DbStore, type Store } from "../runtime/store.js";
+import { unitHash } from "../shared/units.js";
 
 // End-to-end: client -> server -> database, through the app's fetch handler
 // (no sockets). A new app on the same database is a restart.
 
 const adminHeaders = { "content-type": "application/json", "x-dev-role": "ADMIN" };
 
-let db: DatabaseSync;
+let db: Sql;
 let server: ReturnType<typeof createApp>;
 
 /** What the runtime read or wrote (Store method names), in order. */
@@ -43,9 +45,9 @@ function restart(runtime: Partial<RuntimeOptions> = {}) {
   return createApp(db, { secret: "test-secret", runtime, wrapStore: recording });
 }
 
-beforeEach(() => {
-  db = openDb(":memory:");
-  seed(db);
+beforeEach(async () => {
+  db = await emptyDb();
+  await seed(db);
   server = restart();
   storeCalls = [];
   devices = new Map();
@@ -114,16 +116,21 @@ const demo = (code: string) => ({
   usefulness: { done: true, skip: true },
 });
 
+async function unitByExternalId(externalId: string): Promise<{ id: number }> {
+  return (await db.query<{ id: number }>("SELECT id FROM units WHERE external_id = $1", [externalId]))[0];
+}
+
 /** Live annotation values per (unit, coder), as stored in the database. */
-function dbAnnotations() {
-  const rows = db
-    .prepare("SELECT unitId, coderId, variable, value, codebookId FROM annotation_values WHERE retiredAt IS NULL ORDER BY unitId, coderId")
-    .all() as { unitId: number; coderId: number; variable: string; value: string; codebookId: number }[];
+async function dbAnnotations() {
+  const rows = await db.query<{ unitId: number; coderId: number; variable: string; value: VariableValue; codebookId: number }>(
+    `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, codebook_id AS "codebookId"
+     FROM annotation_values WHERE retired_at IS NULL ORDER BY unit_id, coder_id`,
+  );
   const byUnit = new Map<string, { unitId: number; coderId: number; variables: Record<string, VariableValue>; codebookIds: number[] }>();
   for (const row of rows) {
     const key = `${row.unitId}/${row.coderId}`;
     if (!byUnit.has(key)) byUnit.set(key, { unitId: row.unitId, coderId: row.coderId, variables: {}, codebookIds: [] });
-    byUnit.get(key)!.variables[row.variable] = JSON.parse(row.value);
+    byUnit.get(key)!.variables[row.variable] = row.value;
     byUnit.get(key)!.codebookIds.push(row.codebookId);
   }
   return [...byUnit.values()];
@@ -141,8 +148,8 @@ describe("coder flow", () => {
     expect(first?.data.headline).toBeTypeOf("string");
 
     expect((await c.submit(first!.id, demo("positive"))).status).toBe(204);
-    expect(dbAnnotations()).toHaveLength(1);
-    expect(dbAnnotations()[0].variables.sentiment.codes).toEqual([{ code: "positive" }]);
+    expect(await dbAnnotations()).toHaveLength(1);
+    expect((await dbAnnotations())[0].variables.sentiment.codes).toEqual([{ code: "positive" }]);
 
     expect((await c.next())?.externalId).toBe("unit-2");
     expect((await c.session()).progress).toEqual([{ unitset: "main_loop", doneUnitIds: [first!.id], totalUnits: 3 }]);
@@ -157,7 +164,7 @@ describe("coder flow", () => {
     const partial = await c.submit(unit!.id, sentiment("positive"));
     expect(partial.status).toBe(400);
     expect(await partial.json()).toMatchObject({ error: expect.stringContaining("actors_and_issues") });
-    expect(dbAnnotations()).toHaveLength(0);
+    expect(await dbAnnotations()).toHaveLength(0);
   });
 
   it("requires a valid invite for new coders", async () => {
@@ -183,7 +190,7 @@ describe("coder flow", () => {
   });
 
   it("skips units that were deleted", async () => {
-    const unit3 = db.prepare("SELECT id FROM units WHERE externalId = 'unit-3'").get() as { id: number };
+    const unit3 = await unitByExternalId("unit-3");
     expect((await server.request(`/job/1/units/${unit3.id}`, { method: "DELETE", headers: adminHeaders })).status).toBe(204);
 
     const c = coder("coder-a");
@@ -236,7 +243,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
 }
 
 async function createUnitset(name: string, externalIds: string[]) {
-  const ids = externalIds.map((e) => (db.prepare("SELECT id FROM units WHERE externalId = ?").get(e) as { id: number }).id);
+  const ids = await Promise.all(externalIds.map(async (e) => (await unitByExternalId(e)).id));
   await server.request("/job/1/unitsets", { method: "POST", headers: adminHeaders, body: JSON.stringify({ name, unitIds: ids }) });
   return ids;
 }
@@ -369,8 +376,8 @@ describe("routing coders to unitsets", () => {
     expect((await again.next())!.id).toBe(first!.id);
     expect((await again.next("main_loop", part(2)))!.id).toBe(first!.id);
     const { coderId } = await again.session();
-    const stored = db.prepare("SELECT assignments FROM coders WHERE id = ?").get(coderId) as { assignments: string };
-    expect(JSON.parse(stored.assignments)).toEqual({ main_loop: ["part_1", "overlap"] });
+    const [stored] = await db.query<{ assignments: unknown }>("SELECT assignments FROM coders WHERE id = $1", [coderId]);
+    expect(stored.assignments).toEqual({ main_loop: ["part_1", "overlap"] });
   });
 
   it("route by the branch the client chose", async () => {
@@ -413,7 +420,7 @@ describe("sessions", () => {
 
     const value = [...devices.get("browser")!.cookies.values()][0];
     const { coderId } = (await res.json()) as SessionResponse;
-    const stored = (db.prepare("SELECT coderKey FROM coders WHERE id = ?").get(coderId) as { coderKey: string }).coderKey;
+    const [{ stored }] = await db.query<{ stored: string }>("SELECT coder_key AS stored FROM coders WHERE id = $1", [coderId]);
     const { createHash } = await import("node:crypto");
     expect(stored).toBe(createHash("sha256").update(value).digest("hex"));
 
@@ -489,7 +496,7 @@ describe("sessions across devices", () => {
     expect(confirmed.status).toBe(200);
     const secondCoder = ((await confirmed.json()) as SessionResponse).coderId;
     expect(secondCoder).not.toBe(firstCoder);
-    const rows = db.prepare("SELECT participantId FROM coders WHERE participantId = 'P123'").all();
+    const rows = await db.query("SELECT participant_id FROM coders WHERE participant_id = 'P123'");
     expect(rows).toHaveLength(2);
 
     // and that device keeps its new session
@@ -514,7 +521,7 @@ describe("resuming and codebook updates", () => {
     expect(again.status).toBe(200);
     expect(((await again.json()) as CoderUnitResponse).variables.sentiment.codes).toEqual([{ code: "positive" }]);
 
-    const unit3 = (db.prepare("SELECT id FROM units WHERE externalId = 'unit-3'").get() as { id: number }).id;
+    const unit3 = (await unitByExternalId("unit-3")).id;
     expect((await c.call(`/loop/main_loop/units/${unit3}`)).status).toBe(404);
   });
 
@@ -527,11 +534,11 @@ describe("resuming and codebook updates", () => {
     await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
     expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(204);
 
-    const [stored] = dbAnnotations();
+    const [stored] = await dbAnnotations();
     expect(stored.variables.sentiment.codes).toEqual([{ code: "positive" }]);
     expect(stored.variables).toHaveProperty("actors_and_issues"); // kept, though v2 no longer asks it
-    const sentimentRow = db.prepare("SELECT codebookId FROM annotation_values WHERE variable = 'sentiment'").get();
-    expect(sentimentRow).toEqual({ codebookId: 2 });
+    const sentimentRows = await db.query(`SELECT codebook_id AS "codebookId" FROM annotation_values WHERE variable = 'sentiment'`);
+    expect(sentimentRows).toEqual([{ codebookId: 2 }]);
   });
 });
 
@@ -582,7 +589,7 @@ describe("rebuilding from the database", () => {
     server = restart();
     const again = coder("upd", null);
     expect((await again.submit(unit!.id, sentiment("positive"))).status).toBe(204);
-    expect(dbAnnotations()[0].variables).toHaveProperty("actors_and_issues");
+    expect((await dbAnnotations())[0].variables).toHaveProperty("actors_and_issues");
   });
 
   it("keeps codings across a redeploy that keeps the loops, and reloads when they change", async () => {
@@ -665,7 +672,7 @@ describe("finished units follow the current codebook", () => {
     const again = await c.next();
     expect(again!.id).toBe(first!.id);
     expect(again!.variables).toEqual({}); // retired values are not served
-    expect(db.prepare("SELECT COUNT(*) AS n FROM annotation_values WHERE retiredAt IS NOT NULL").get()).toEqual({ n: 1 });
+    expect(await db.query("SELECT COUNT(*)::int AS n FROM annotation_values WHERE retired_at IS NOT NULL")).toEqual([{ n: 1 }]);
   });
 
   it("tracks a unit separately in each loop it appears in", async () => {
@@ -702,7 +709,7 @@ describe("memory", () => {
     const c = coder("units");
     const unit = (await c.next())!;
     await c.submit(unit.id, demo("neutral"));
-    db.prepare("UPDATE units SET data = ? WHERE id = ?").run(JSON.stringify({ text: "fixed" }), unit.id);
+    await db.query("UPDATE units SET data = $1 WHERE id = $2", [JSON.stringify({ text: "fixed" }), unit.id]);
 
     const back = async () => ((await (await c.call(`/loop/main_loop/units/${unit.id}`)).json()) as CoderUnitResponse).data;
     expect(await back()).toEqual(unit.data); // cached: no change, no fetch
@@ -766,19 +773,18 @@ describe("memory", () => {
 
 describe("unit hashes", () => {
   const shownHashes = () =>
-    db.prepare("SELECT DISTINCT unitId, unitHash FROM annotation_values WHERE retiredAt IS NULL").all() as {
-      unitId: number;
-      unitHash: string | null;
-    }[];
+    db.query<{ unitId: number; unitHash: string | null }>(
+      `SELECT DISTINCT unit_id AS "unitId", unit_hash AS "unitHash" FROM annotation_values WHERE retired_at IS NULL`,
+    );
 
   it("record which content a coder saw, when the unit changed after it was served", async () => {
     const c = coder("hash");
     const first = (await c.next())!;
     await c.submit(first.id, demo("neutral"));
-    expect(shownHashes()).toEqual([{ unitId: first.id, unitHash: null }]); // current content
+    expect(await shownHashes()).toEqual([{ unitId: first.id, unitHash: null }]); // current content
 
     const second = (await c.next())!;
-    const before = db.prepare("SELECT externalId, data FROM units WHERE id = ?").get(second.id) as { externalId: string; data: string };
+    const [before] = await db.query<{ externalId: string; data: UnitData }>(`SELECT external_id AS "externalId", data FROM units WHERE id = $1`, [second.id]);
     // The researcher overwrites it while the coder has it open (allowed: not annotated yet).
     const res = await server.request("/job/1/units", {
       method: "POST",
@@ -786,15 +792,14 @@ describe("unit hashes", () => {
       body: JSON.stringify({
         overwrite: true,
         // Same fields (the job's), new text
-        units: [{ externalId: before.externalId, data: { ...JSON.parse(before.data), text: "edited" } }],
+        units: [{ externalId: before.externalId, data: { ...before.data, text: "edited" } }],
       }),
     });
     expect(res.status).toBe(201); // recorded, not refused
     expect((await c.submit(second.id, demo("neutral"))).status).toBe(204); // recorded, not refused
 
-    const { createHash } = await import("node:crypto");
-    const shown = createHash("sha256").update(before.externalId).update(before.data).digest("hex").slice(0, 16);
-    expect(shownHashes().find((r) => r.unitId === second.id)?.unitHash).toBe(shown);
+    const shown = unitHash(before.externalId, before.data);
+    expect((await shownHashes()).find((r) => r.unitId === second.id)?.unitHash).toBe(shown);
   });
 });
 
@@ -844,16 +849,16 @@ describe("researcher preview", () => {
 
   it("keeps the preview's coders and answers out of the database", async () => {
     await draft("draft");
-    const coders = () => (db.prepare("SELECT COUNT(*) AS n FROM coders").get() as { n: number }).n;
-    const before = coders();
+    const coders = async () => (await db.query<{ n: number }>("SELECT COUNT(*)::int AS n FROM coders"))[0].n;
+    const before = await coders();
     const { deploymentId, token } = await openPreview();
     const call = previewer(deploymentId, token);
     const unit = (await (await call("/loop/main_loop/next")).json()) as CoderUnitResponse;
     const submit = await call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("neutral") }) });
     expect(submit.status).toBe(204);
     expect(((await (await call("/session")).json()) as SessionResponse).progress[0].doneUnitIds).toEqual([unit.id]);
-    expect(dbAnnotations()).toEqual([]);
-    expect(coders()).toBe(before);
+    expect(await dbAnnotations()).toEqual([]);
+    expect(await coders()).toBe(before);
   });
 
   it("refuses forged, expired and other jobs' tokens", async () => {

@@ -1,12 +1,13 @@
 import type { UnitsetResponse } from "@annotinder/contracts";
 
+/** A row of `unitsets`. */
 export interface UnitsetRow {
   id: number;
-  jobId: number;
+  job_id: number;
   name: string;
-  unitIds: string;
+  unit_ids: number[];
 }
 
 export function toUnitsetResponse(row: UnitsetRow): UnitsetResponse {
-  return { id: row.id, jobId: row.jobId, name: row.name, unitIds: JSON.parse(row.unitIds) };
+  return { id: row.id, jobId: row.job_id, name: row.name, unitIds: row.unit_ids };
 }

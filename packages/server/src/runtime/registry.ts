@@ -1,4 +1,4 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Sql } from "../db.js";
 import type { DeploymentStatus } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import { getDeployment } from "../shared/deployments.js";
@@ -17,7 +17,7 @@ export class Deployments {
   private runtimes = new Map<string, { runtime: Promise<DeploymentRuntime>; usedAt: number }>();
 
   constructor(
-    private db: DatabaseSync,
+    private db: Sql,
     /** Signs preview tokens. */
     private secret: string,
     private options: RuntimeOptions = DEFAULT_RUNTIME_OPTIONS,
@@ -57,7 +57,7 @@ export class Deployments {
   async refresh(jobId: number, units?: number[] | "all"): Promise<number | null> {
     const loaded = this.runtimes.get(String(jobId));
     const runtime = loaded && (await loaded.runtime.catch(() => null));
-    if (!runtime) return getDeployment(this.db, jobId)?.version ?? null;
+    if (!runtime) return (await getDeployment(this.db, jobId))?.version ?? null;
     if (units) runtime.clearUnits(units);
     await runtime.refresh(true);
     return runtime.version;

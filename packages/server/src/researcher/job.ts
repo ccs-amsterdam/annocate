@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { JobWriteSchema } from "@annotinder/contracts";
+import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { toJobResponse, type JobRow } from "../shared/jobs.js";
 
@@ -11,10 +12,10 @@ export function jobs(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job", (c) => {
+  app.get("/job", async (c) => {
     const role = c.req.header("x-dev-role");
     if (!role) return c.json({ error: "Unauthorized" }, 401);
-    const rows = db.prepare("SELECT * FROM jobs ORDER BY id").all() as unknown as JobRow[];
+    const rows = await db.query<JobRow>("SELECT * FROM jobs ORDER BY id");
     return c.json(rows.map(toJobResponse));
   });
 
@@ -25,14 +26,11 @@ export function jobs(server: Server): Hono<Env> {
     const parsed = JobWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const created = new Date().toISOString();
-    db.prepare("INSERT INTO jobs (name, archived, created) VALUES (?, ?, ?)").run(
+    const row = await one<JobRow>(db, "INSERT INTO jobs (name, archived) VALUES ($1, $2) RETURNING *", [
       parsed.data.name,
-      parsed.data.archived ? 1 : 0,
-      created,
-    );
-    const row = db.prepare("SELECT * FROM jobs ORDER BY id DESC LIMIT 1").get() as unknown as JobRow;
-    return c.json(toJobResponse(row), 201);
+      parsed.data.archived ?? false,
+    ]);
+    return c.json(toJobResponse(row!), 201);
   });
 
   return app;

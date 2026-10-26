@@ -9,8 +9,9 @@ Annotinder has two parts:
 - **server** (`packages/server`): one Node program. The researcher API
   (jobs, codebooks, units, unitsets, invites, deployments, results) and the
   client API for coders (`/d/<jobId>`): distribution, validation, sessions.
-  It owns the data. Storage: SQLite now; Postgres next (`pg` in production,
-  PGlite for tests, development and annotinder local).
+  It owns the data, in Postgres: a Postgres server (`DATABASE_URL`), or
+  PGlite (Postgres compiled to WebAssembly, in process) for tests,
+  development and annotinder local.
 - **client** (`packages/client`): the web app, for coders and researchers.
   Always served from the server's origin for coders (session cookies).
 
@@ -32,7 +33,7 @@ stay in-house.
 
 **annotinder local**: everything on one machine, in one process.
 
-- the server (on PGlite or SQLite) and the built client, on one origin
+- the server (on PGlite) and the built client, on one origin
 - for: a researcher annotating locally in a nice interface, with their data
   in files; developing a codebook from R or Python with a live preview; a
   team on a LAN coding together (when the network allows it)
@@ -77,16 +78,17 @@ interface.**
   `annotations.jsonl`: append-only, survives crashes, diffs well; and/or a
   CSV export).
 - Why not files only: concurrent coders, partial writes and the
-  distribution queries are what a database is for. A PGlite or SQLite
-  database is also just a folder or file you can copy.
+  distribution queries are what a database is for. A PGlite database is
+  also just a folder you can copy.
 - Formats (CSV, JSONL, xlsx, parquet, ...) are still open.
 
 ### Distribution
 
 1. `npx annotinder-local` for people with Node 22+.
 2. Single binaries per platform (no Node needed): Node's single executable
-   applications, or Bun's compiled binaries. Built in CI for Linux, macOS
-   and Windows; published as GitHub releases.
+   applications, or Bun's compiled binaries (PGlite's WebAssembly and data
+   files must be bundled as assets). Built in CI for Linux, macOS and
+   Windows; published as GitHub releases.
    - R: `annotinder::install()` downloads the binary on first use (as
      quarto and tinytex do; CRAN doesn't allow shipping binaries).
    - Python: platform wheels with the binary inside (as ruff does).
@@ -138,7 +140,7 @@ the connection must be **end-to-end encrypted**:
 
 1. Researcher API as a public contract: complete schemas in contracts,
    script authentication, docs.
-2. Postgres in the server (PGlite for tests, development and local).
+2. ~~Postgres in the server~~ Done (2026-10-26).
 3. `annotinder-local`: the composition, the project folder, file import and
    export, the CLI; `npx` first.
 4. R package (and Python module) on the researcher API.

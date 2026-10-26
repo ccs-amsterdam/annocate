@@ -9,7 +9,7 @@ export function deploymentStatus(server: Server): Hono<Env> {
 
   app.get("/job/:jobId/deployment/status", requireJobUser(db, "READ"), async (c) => {
     const jobId = c.get("jobId");
-    if (!getDeployment(db, jobId)) return c.json({ error: "Job is not deployed" }, 404);
+    if (!(await getDeployment(db, jobId))) return c.json({ error: "Job is not deployed" }, 404);
     return c.json(await server.deployments.status(jobId));
   });
 

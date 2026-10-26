@@ -26,7 +26,8 @@ pnpm-debug.log*
 .env
 .env.*.local
 
-# sqlite (the server's local db files)
+# local databases (the server's PGlite directory, old sqlite files)
+.pglite/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

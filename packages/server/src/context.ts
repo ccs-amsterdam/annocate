@@ -1,10 +1,10 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Sql } from "./db.js";
 import type { Role } from "@annotinder/contracts";
 import type { Deployments } from "./runtime/registry.js";
 
 /** What every endpoint gets (built in app.ts). */
 export interface Server {
-  db: DatabaseSync;
+  db: Sql;
   /** The runtimes of deployed jobs and previews, in memory (runtime/registry.ts). */
   deployments: Deployments;
 }

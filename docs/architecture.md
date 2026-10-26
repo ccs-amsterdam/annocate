@@ -1,9 +1,9 @@
 # Annotinder server architecture
 
 Status: draft v3 (2026-10-26; v3 merges the db server and the job server
-into one server, `packages/server`). Storage is SQLite (`node:sqlite`) for
-now; the next step moves it to Postgres (`pg` in production, PGlite for
-tests, development and annotinder local).
+into one server, `packages/server`). Storage is Postgres: `pg` against a
+Postgres server in production, PGlite (Postgres in WebAssembly, in process)
+for tests, development and annotinder local.
 
 How the server and client combine into products (hosted, local, R/Python
 clients): `docs/compositions.md`.
@@ -422,7 +422,7 @@ Other open points:
 | `server/src/coder.ts` | The client API routes: session cookie, coder resolution, units, answers, transfers |
 | `server/src/researcher/` | The researcher API, one file per path |
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
-| `server/schema.sql`, `src/db.ts` | The data model (SQLite for now) |
+| `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |
 | `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; refresh, status, preview tokens |
 | `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
 | `server/src/runtime/store.ts` | `Store`: what the runtime reads and writes; `DbStore` on the database |
@@ -442,8 +442,8 @@ store's queries.
 
 Roughly in order:
 
-1. **Postgres.** Move storage to Postgres: `pg` in production, PGlite for
-   tests, development and annotinder local, so there is one SQL dialect.
+1. ~~**Postgres.**~~ Done: `pg` in production, PGlite for tests,
+   development and annotinder local; one SQL dialect.
 2. **Researcher API as a public contract.** R, Python and other systems
    (AmCAT) use it: script authentication (API keys), downloading
    annotations (with pagination), maybe a webhook that posts new

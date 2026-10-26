@@ -1,19 +1,20 @@
-import type { Coder } from "../runtime/types.js";
+import type { VariableValue } from "@annotinder/contracts";
+import type { Coder, CoderAssignments } from "../runtime/types.js";
 
-/** A row of `coders` (schema.sql). */
+/** A row of `coders`. */
 export interface CoderRow {
   id: number;
-  jobId: number;
-  coderKey: string;
+  job_id: number;
+  coder_key: string;
   email: string | null;
-  participantId: string | null;
-  inviteId: number | null;
-  variables: string;
-  assignments: string;
-  created: string;
+  participant_id: string | null;
+  invite_id: number | null;
+  variables: Record<string, VariableValue>;
+  assignments: CoderAssignments;
+  created: Date;
 }
 
 /** A coder as the runtime sees it: no email or other identifying data. */
 export function toCoder(row: CoderRow): Coder {
-  return { coderId: row.id, variables: JSON.parse(row.variables), assignments: JSON.parse(row.assignments) };
+  return { coderId: row.id, variables: row.variables, assignments: row.assignments };
 }

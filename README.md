@@ -25,7 +25,7 @@ docs live in `docs/`:
     local development against the server.
   - `pnpm --filter @annotinder/client build:lib` -- an importable component/hook
     library (`@annotinder/client`), for embedding in a host app's own React tree.
-- `packages/server` -- the server (Hono + `node:sqlite`, Node >= 22): the
+- `packages/server` -- the server (Hono + Postgres or PGlite, Node >= 22): the
   researcher API and the client API on one database, and the runtime that
   distributes units over coders and validates their answers. See its
   README and `docs/architecture.md`.

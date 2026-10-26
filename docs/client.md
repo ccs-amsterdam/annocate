@@ -251,8 +251,8 @@ Units, Invitations, Coders, Preview. It uses an `AdminClient`
 
 ## 8. Tooling notes
 
-- Node ≥ 22. The server (`packages/server`) uses the built-in `node:sqlite`, loaded via
-  `createRequire` because Vite/Vitest don't resolve it as a builtin.
+- Node ≥ 22. The server (`packages/server`) stores its data in Postgres:
+  PGlite in tests and development (no Postgres install needed).
 - Vitest configs exclude `**/dist/**`. Otherwise built test files run
   twice after `tsc -b`.
 - Tailwind 4 (CSS-first `@theme`); `tw-animate-css` is imported without
