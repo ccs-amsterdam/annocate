@@ -25,7 +25,7 @@ interface JobOverviewProps {
 }
 
 /**
- * The job's front page (docs/plan-job-admin.md): whether it's live, which
+ * The job's front page (docs/client.md §7): whether it's live, which
  * codebook versions are live and in draft, units, coders, activity and
  * progress, and the job settings.
  */

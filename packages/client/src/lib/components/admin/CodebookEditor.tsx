@@ -10,7 +10,7 @@ import { TreePanel } from "./codebookEditor/TreePanel";
 import { ItemPanel } from "./codebookEditor/ItemPanel";
 
 /**
- * How the opened version can be edited (docs/plan-codebook-publishing.md):
+ * How the opened version can be edited (docs/client.md §7):
  * - draft:   saving updates it (or creates it, for a new codebook).
  * - live:    the live version, with no draft yet. Editable, but saving
  *            creates a new codebook: the draft. Coders keep the live version.

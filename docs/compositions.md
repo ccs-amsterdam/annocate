@@ -1,8 +1,8 @@
 # Compositions: one set of parts, several products
 
-Status: direction agreed 2026-10-16; updated 2026-10-26 after merging the
-db server and job server into one server. Nothing here is built yet beyond
-the parts themselves.
+Status: direction agreed (2026-10-16, updated 2026-10-26). The parts are
+built; the products beyond the server and client (annotinder local, the R
+and Python packages) are not.
 
 Annotinder has two parts:
 
@@ -13,7 +13,7 @@ Annotinder has two parts:
   PGlite (Postgres compiled to WebAssembly, in process) for tests,
   development and annotinder local.
 - **client** (`packages/client`): the web app, for coders and researchers.
-  Always served from the server's origin for coders (session cookies).
+  Always served from the server's origin (session cookies).
 
 Other systems (AmCAT, R, Python) are **clients of the researcher API**: they
 push units, a codebook and job settings, and download annotations (maybe
@@ -25,7 +25,8 @@ code goes into the parts; a product is configuration and packaging.
 ## The products
 
 **annotinder.com**: hosted by us. The server on Postgres, EU-hosted, plus
-the web client.
+the web client; researcher login through a self-hosted OpenID Connect
+provider (probably Authentik).
 
 **Self-hosted annotinder**: the same server and client, run by a university
 or project on its own infrastructure (Node and Postgres). For data that must
@@ -54,10 +55,11 @@ same way whichever server it is:
 
 One Node program, `annotinder-local`:
 
-- the **server**, as is: researcher API, coder API and storage. Needs:
-  real researcher authentication (a local admin token, written to the
-  project folder) and file import and export. No special "local mode" to
-  maintain: exactly the production code paths.
+- the **server**, as is: researcher API, coder API and storage (PGlite in
+  the project folder). Needs: a way in for the local researcher without a
+  login provider (e.g. an API key the CLI makes and writes to the project
+  folder, for R and Python and the browser) and file import and export. No
+  special "local mode" to maintain: exactly the production code paths.
 - the **built client**, served from the same origin.
 - a small CLI: `annotinder-local [project folder]`, which starts it and
   prints (or opens) the URL.
@@ -105,11 +107,9 @@ R pushes the codebook and opens the preview URL in the RStudio Viewer; the
 preview picks up the new codebook on the next request (already built:
 deployment `<jobId>.preview`).
 
-**Consequence: the researcher API is the public contract.** Today it is
-"what the server implements". Before the R and Python packages, it needs a
-versioned schema in `packages/contracts` (mostly there), an authentication
-scheme for scripts (API keys for hosted servers, the local admin token for
-annotinder local), and documentation per endpoint (`docs/api/`).
+**The researcher API is the public contract** (`docs/api/researcher.md`):
+schemas in `packages/contracts`, API keys for scripts, a paged annotation
+download, and tests that use it the way a script does.
 
 ### Later: exposing a local job to the internet (a bridge)
 
@@ -138,11 +138,8 @@ the connection must be **end-to-end encrypted**:
 
 ## Order of work (proposal)
 
-1. Researcher API as a public contract: complete schemas in contracts,
-   script authentication, docs.
-2. ~~Postgres in the server~~ Done (2026-10-26).
-3. `annotinder-local`: the composition, the project folder, file import and
+1. `annotinder-local`: the composition, the project folder, file import and
    export, the CLI; `npx` first.
-4. R package (and Python module) on the researcher API.
-5. Single binaries and their distribution through R and Python.
-6. Later: the bridge; pushing local jobs to another server.
+2. R package (and Python module) on the researcher API.
+3. Single binaries and their distribution through R and Python.
+4. Later: the bridge; pushing local jobs to another server.

@@ -11,10 +11,13 @@ docs live in `docs/`:
   annotinder local, R/Python clients).
 - `docs/encryption.md`: (on hold) encrypting participants' answers in the
   browser.
-- `docs/coder-identity.md`: coder sessions, invitations, (planned) login.
+- `docs/coder-identity.md`: identity, sessions, invitations and login
+  (researchers; coders planned).
 - `docs/client.md`: client design decisions (layout, spans, scripting, admin UI).
+- `docs/plan-question-types.md`: proposal, not built: `categorical` and
+  `numeric` question types.
 - `packages/contracts/CONTRACTS.md`: the contracts package (schemas, design
-  notes, auth advice).
+  notes).
 
 ## Packages
 

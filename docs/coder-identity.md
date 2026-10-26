@@ -1,24 +1,20 @@
-# Coder identity, sessions and auth
+# Identity, sessions and login
 
-Status: draft v1 (2026-10-10; updated 2026-10-26 for the single server).
-The "coder key / transfer link / participant id" part is implemented, and
-researcher login (§7). Coder login (§5) is designed but not yet built.
+Status: current (2026-10-26). Coder sessions without login (§4) and
+researcher login (§7) are implemented; coder login (§5) is planned.
 Complements `docs/architecture.md`.
 
 ## 1. Principles
 
-- **The server verifies who a coder is, and decides whether they get in**
-  (the invite's rules). It doesn't manage coder accounts: identity comes
-  from a login provider or a link.
+- **A login provider proves who someone is; the server decides whether they
+  get in** (job roles, the invite's rules). The server keeps no passwords:
+  identity is a verified email address from the provider (§7).
 - **Only authentication unlocks earlier work from another device.** An id
   that comes from a link (a participant id in a survey URL, or one hidden in
   a personal invite) is a *label*, not a credential. Anyone holding the link
   could use it. So it never gives access to earlier annotations.
 - **Unauthenticated work stays on the device it was done on**, unless the
-  coder explicitly moves it with a one-time transfer link, or (where the
-  server sends email) a recovery link the server mails to the coder.
-- **For encrypted jobs** (on hold, `docs/encryption.md`), login was only
-  access control; moving a session took a transfer or recovery link.
+  coder explicitly moves it with a one-time transfer link.
 
 ## 2. Terms
 
@@ -28,7 +24,7 @@ Complements `docs/architecture.md`.
 | **Session key** | Random secret, created by the server, that unlocks one coder without login. Kept in an httpOnly cookie, so page scripts never see it. It is a *key*, not an id: it moves with a transfer, so it isn't a device id. | the coder's browser (httpOnly cookie) |
 | **Coder key** | What the database stores to find the coder: the SHA-256 of the session key, so a database leak doesn't hand out sessions. | database |
 | **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed in a personal invite, or taken from the `participant` URL parameter. Never a credential. | database (on the coder) |
-| **Verified identity** | `{ provider, subject, email? }` from a login (§5). The only thing that lets a coder resume from another device. | database (on the coder) |
+| **Verified identity** | A verified email address from a login (§5, §7). The only thing that lets a coder resume from another device. | database (users) |
 | **Transfer link** | One-time, short-lived link that copies a session key to another device. | server memory (15 min) |
 
 Every coder has a session key, or a verified identity once auth exists. Some
@@ -108,56 +104,33 @@ restrict an invite.
 - **Anonymous links on a new device** simply start a new session. There is
   nothing to detect.
 
-## 5. Authentication (designed, not built)
+## 5. Coder login (planned)
 
-**Plan (2026-10-26):** coders log in the way researchers do (§7): one OpenID
-Connect provider (e.g. a self-hosted Authentik) that handles social logins
-and email magic links, identity by verified email, our own session. The
-methods below are then the provider's business, except the assertion from
-another system. The earlier notes:
+As researcher login (§7): the same OpenID Connect provider (which handles
+social logins and email magic links), identity by verified email, and our
+own session. For coders:
 
-A verified identity replaces the coder key as the credential. Methods, in
-order of value for effort:
+1. An invite with `auth: "required"` (or `"optional"`, if the coder
+   chooses) sends the coder to log in first.
+2. The server checks the invite's rules: `emails` (an allowlist), revoked,
+   `maxUses`.
+3. It finds the coder for that user in this job, or creates one, and sets
+   the coder session cookie (§4) for it. The same login on another device
+   finds the same coder: that is how logged-in coders resume anywhere.
 
-1. **Assertion from another system.** A system with its own login (e.g.
-   AmCAT) signs a short JWT `{ job, coderId | subject, exp }` that the
-   server accepts. No second login for coders. Cheapest to build.
-2. **OIDC.** One generic implementation, configured per provider:
-   - Google and Microsoft (many universities);
-   - ORCID;
-   - SURFconext / eduGAIN for Dutch and EU institutions.
-
-   No per-login cost.
-3. **Email one-time code or magic link.** The only method with running
-   costs and abuse risk. It is limited to invites with an `emails`
-   allowlist, so the server never mails arbitrary addresses and volume
-   is bounded by what researchers invited. Add rate limits per address and
-   per invite. Each deployment configures its own email provider (SES,
-   Resend, SMTP), so costs land on the job that uses it.
-
-**Flow.**
-
-1. The server verifies the identity.
-2. It checks the invite rules (allowlist, `maxUses`), and finds the
-   existing coder for that identity in this job, or creates one.
-3. It issues a short-lived signed session token
-   `{ deployment, coderId, exp }`. Sessions are stateless; nothing is stored.
-
-Emails are stored with the coder, never shown to other coders.
-
-**Recovery links** (optional, not built): where the server sends email, a
-coder can ask "send me a recovery link". It moves the session to the device
-that opens it, like a transfer link. (`docs/encryption.md` had a design
-that also carries an encryption key; on hold since the merge.)
-
-Until this exists, `auth: "required"` invites are refused with
+The coder record links to the user; emails are never shown to other
+coders. Until this exists, `auth: "required"` invites are refused with
 `401 { code: "auth_required" }`.
+
+Possible later: a system with its own login (e.g. AmCAT) vouches for a
+coder with a short signed assertion `{ job, subject, exp }`, so coders don't
+log in twice.
 
 ## 6. Open points
 
 - **Revoking a transfer.** Should "move this session" (revoke the old
   device's key) exist next to "copy"? Probably only once there is a reason;
-  with a login, the identity is the thing to revoke instead.
+  with a login, the login is the thing to use instead.
 - **A long-lived "continue later" link** (§4, "Offer the link early"):
   stored in the database (server memory isn't durable), one per
   session, revocable from the device that has the session. Should it be
@@ -208,6 +181,6 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
     warns about this);
   - with 2FA: losing a second factor must not be recoverable by email alone,
     or a mailbox is enough after all.
-- **Not built:** coder login (§5), a list of active sessions, logging out
-  everywhere, logout at the provider.
+- **Not built:** a list of active sessions, logging out everywhere, logout
+  at the provider (`architecture.md` §10).
 

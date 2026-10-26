@@ -1,7 +1,7 @@
 import type { CodebookMeta } from "@annotinder/contracts";
 
 /**
- * Where each codebook version stands (docs/plan-codebook-publishing.md):
+ * Where each codebook version stands (docs/client.md §7):
  * - live:    the deployed version, what coders get. Frozen.
  * - draft:   the latest version, if it isn't frozen. What the editor and
  *            Preview work on.

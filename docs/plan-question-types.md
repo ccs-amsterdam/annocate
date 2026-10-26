@@ -178,8 +178,8 @@ researcher may want to keep the old values (open question 2).
 - `server`: nothing expected in the runtime; check `codeOf`/`agreementKey`
   with numeric answers (no `code`). The demo seed (`seed.ts`) uses the new
   types.
-- Docs: `client.md`, `CONTRACTS.md`, `TODO.txt` (the nominal/ordinal/numeric
-  note), and the `VariableValue` TODO in `variableValue.ts`.
+- Docs: `client.md`, `CONTRACTS.md`, and the `VariableValue` TODO in
+  `variableValue.ts`.
 
 ## 8. Order of work
 

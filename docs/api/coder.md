@@ -26,7 +26,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 ## Sessions and headers
 
 The session is an httpOnly cookie set by the server, so the client must be
-served from the server's origin (in development, Vite proxies `/d/`). The
+served from the server's origin (in development, Vite proxies to the server). The
 server sends no CORS headers for these paths.
 Headers:
 

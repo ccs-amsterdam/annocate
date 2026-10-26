@@ -192,7 +192,7 @@ Index answers by (job, created) to keep the per-day count cheap.
 
 Versions of the job's codebook, in order of creation. One is **live** (the
 deployment's); the latest, if unpublished, is the **draft**
-([`docs/plan-codebook-publishing.md`](../plan-codebook-publishing.md)).
+([`docs/client.md`](../client.md) §7).
 Schemas: [`contracts/src/codebook/codebook.ts`](../../packages/contracts/src/codebook/codebook.ts).
 Implementation: [`researcher/codebook.ts`](../../packages/server/src/researcher/codebook.ts), [`codebook.$id.ts`](../../packages/server/src/researcher/codebook.$id.ts).
 

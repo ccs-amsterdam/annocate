@@ -22,7 +22,7 @@ interface InvitationsPanelProps {
 }
 
 /**
- * Invitation links (docs/plan-job-admin.md): create them, and see all of them
+ * Invitation links (docs/client.md §7): create them, and see all of them
  * with how often they were used. Used invites can only be revoked, not
  * deleted: coders and their answers refer to the invite they came from.
  */

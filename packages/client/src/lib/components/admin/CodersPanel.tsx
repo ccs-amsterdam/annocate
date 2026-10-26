@@ -4,7 +4,7 @@ import { useCodersQuery } from "../../admin/queries";
 import { formatWhen } from "../../admin/format";
 
 /**
- * Coder progress (docs/plan-job-admin.md): who started, through which
+ * Coder progress (docs/client.md §7): who started, through which
  * invitation, when they were last active, and how many units they finished
  * per loop of the live codebook. Invitations are on their own tab.
  */

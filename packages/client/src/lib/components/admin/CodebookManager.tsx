@@ -32,7 +32,7 @@ interface CodebookManagerProps {
  * The codebook tab: one editor on the current version, a banner saying how it
  * relates to what coders use, and the versions dialog.
  *
- * Versions (docs/plan-codebook-publishing.md): coders get the *live* version
+ * Versions (docs/client.md §7): coders get the *live* version
  * (the deployment's codebook), the editor works on the *draft* (the latest
  * version, if not yet published), and everything else is read-only history.
  * Publishing makes the draft live, which also freezes it.

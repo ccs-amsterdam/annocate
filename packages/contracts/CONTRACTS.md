@@ -43,11 +43,8 @@ in the server, not here.
 - **`VariableValue` is intentionally loose for now.** A coder's answer for a
   single variable (`src/variableValue.ts`) is a single object with optional
   `codes`/`spans`/`relations` arrays rather than a schema-per-variable-type
-  discriminated union. This is a pragmatic v1 choice, to be tightened once
-  Phase 3 (porting `JobManager`) reveals concrete needs.
-- **`proof` field reserved, not enforced.** `VariableValueSchema.proof` is a
-  placeholder for the future HMAC-signed answer-validation scheme (design
-  plan §4). It is not generated or checked by anything yet.
+  discriminated union. A pragmatic first version; a discriminated union is
+  an open item (`docs/architecture.md` §10).
 
 ## JSON Schema generation
 

@@ -1,6 +1,0 @@
-
-## Clean up structure of repo
-
-Currently there is the mock-server and the reference-db-server. Perhaps we can just combine these. There is then just a reference-db-server that documetn everyuthing a db server needs, using plain SQL. And this is then also used in pnpm run dev.
-
-Currently the mock server also documents al sorts of migration stuff. THis is useless. Nobody should deploy the mock server. It should just be a readable, clean reference-db-server that is used for development and testing.

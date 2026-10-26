@@ -55,12 +55,6 @@ export type RelationAnswer = z.infer<typeof RelationAnswerSchema>;
 export const VariableValueSchema = z.object({
   done: z.boolean().default(false),
   skip: z.boolean().default(false),
-  /**
-   * Reserved for a signed answer-validation scheme. Not used: validation
-   * now happens on the server (docs/architecture.md). Kept optional so
-   * removing it later isn't urgent.
-   */
-  proof: z.string().optional(),
   codes: z.array(CodeAnswerSchema).optional(),
   spans: z.array(SpanAnswerSchema).optional(),
   relations: z.array(RelationAnswerSchema).optional(),

@@ -1,9 +1,7 @@
 # Client: design decisions
 
-Status: current (2026-10-15). Collects the client-side decisions from the
-former `annotinder-client_design_plan.txt` that still hold. Server-side
-design lives in `architecture.md` and `coder-identity.md`; the API in
-`packages/contracts/CONTRACTS.md`.
+Status: current (2026-10-26). Server-side design lives in
+`architecture.md` and `coder-identity.md`; the APIs in `docs/api/`.
 
 ## 1. Packaging
 
@@ -18,9 +16,10 @@ design lives in `architecture.md` and `coder-identity.md`; the API in
   emits `style.css`. Its output name is pinned in `vite.lib.config.ts`
   (`assetFileNames`), because Vite's default changed once and broke the
   `exports["./style.css"]` path.
-- **Hosting.** The client and the server's coder API (`/d/...`) always
-  share an origin: coder sessions are httpOnly cookies
-  (`coder-identity.md` §4).
+- **Hosting.** The client and the server always share an origin: coder and
+  researcher sessions are httpOnly cookies (`coder-identity.md` §4, §7).
+  In development, Vite proxies `/d`, `/job`, `/me` and `/auth` to the
+  server. Only scripts with API keys call the server from elsewhere.
 - Not published to npm yet.
 
 ## 2. JobManager (coding runtime)
@@ -47,7 +46,7 @@ design lives in `architecture.md` and `coder-identity.md`; the API in
   so far. Relation questions need it to find sibling span answers.
 - `start()` is idempotent (React StrictMode runs effects twice).
   `retry()` re-runs the last failed operation; this is safe because writes
-  are full replaces.
+  are upserts.
 
 ## 3. Unit layout and texts
 
@@ -217,14 +216,27 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 
 - **Codebook editor**: edits the whole document in memory (tree view and
   YAML), validated client-side with the contract's `validateCodebookItems`,
-  then saved as a whole. Versions (`codebook/versions.ts`,
-  docs/plan-codebook-publishing.md): coders get the *live* version (the
-  deployment's codebook); the editor works on the *draft* (the latest
-  version, if unpublished); older versions are read-only history that can be
-  restored as the draft. Editing the live version saves a new draft.
-  **Publish** (`PUT /deployment`) makes the draft live and freezes it; its
-  dialog lists the changes against the live version (`codebook/diff.ts`).
-  Unit loops have a distribution editor (`UnitLoopForm.tsx`).
+  then saved as a whole. Unit loops have a distribution editor
+  (`UnitLoopForm.tsx`).
+- **Versions and publishing** (as in Qualtrics or REDCap: edit a draft,
+  publish it), derived from `GET /codebook` and `GET /deployment`
+  (`codebook/versions.ts`):
+  - *live*: the version coders get (the deployment's codebook), frozen,
+    since annotations refer to it (`codebookId`);
+  - *draft*: the latest version, if it isn't frozen; what the editor and
+    Preview work on;
+  - *history*: every other version, read only; can be restored as the
+    draft.
+
+  Editing the live version saves a new draft; coders keep the live one
+  until it is published. A status banner says which you're looking at and
+  what to do next. **Publish** (`PUT /deployment`) makes the draft live and
+  freezes it. Its dialog lists the changes against the live version
+  (`codebook/diff.ts`), prefills the version note (versions are numbered,
+  with an optional `note`) and shows the server's warnings (e.g. a loop
+  gained questions, which reopens finished units). Coders who are working
+  switch to the new version at their next unit; answers they gave stay
+  linked to the version they were given under.
   Condition items and branch `when` use `ConditionEditor.tsx`: a
   **Rules | Script** toggle. In rules mode the reference picker lists only
   what validation accepts at that point (`availableQuestions` +
@@ -250,7 +262,7 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   variables, max uses) and a table of all of them with uses and status;
   revoke (no new coders), or delete while unused.
 - **Coders**: per coder the invitation, started, last active, answers, and
-  finished units per loop of the live codebook (docs/plan-job-admin.md).
+  finished units per loop of the live codebook.
 - **Preview** runs the job's latest codebook (deployed or not) as
   deployment `<jobId>.preview`, with a token from
   `POST /job/:jobId/deployment/preview`. Coders and answers stay in the

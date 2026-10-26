@@ -20,7 +20,7 @@ interface PublishDialogProps {
 /**
  * Confirms publishing a codebook version: what changed compared with the
  * live version, and what publishing does to coders and to the version itself
- * (docs/plan-codebook-publishing.md). Asks for a version note, prefilled
+ * (docs/client.md §7). Asks for a version note, prefilled
  * with a summary of the changes. Shows the server's warnings afterwards.
  *
  * Mount it with a `key` per codebook, so the note starts fresh.

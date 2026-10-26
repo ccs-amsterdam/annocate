@@ -1,48 +1,29 @@
 # Annotinder server architecture
 
-Status: draft v3 (2026-10-26; v3 merges the db server and the job server
-into one server, `packages/server`). Storage is Postgres: `pg` against a
-Postgres server in production, PGlite (Postgres in WebAssembly, in process)
-for tests, development and annotinder local.
+Status: current (2026-10-26). One server, `packages/server`, on Postgres:
+`pg` against a Postgres server in production, PGlite (Postgres in
+WebAssembly, in process) for tests, development and annotinder local.
 
-How the server and client combine into products (hosted, local, R/Python
-clients): `docs/compositions.md`.
+How the server and client combine into products (hosted, self-hosted,
+local, R/Python clients): `docs/compositions.md`.
 
-## 1. Why
+## 1. Why a server with logic
 
-The original plan kept servers thin by putting all logic in the client, so
-servers could be written in Python, R and Node. That breaks down for:
+Keeping all logic in the client, so servers could be thin and written in any
+language, breaks down for:
 
 - **Unit distribution across coders** (crowd coding: "code each unit until 5
   coders agree, at most 100 units per coder"). This needs a live, shared queue
   that no single client can own.
-- **Validating annotations.** You can't trust the client, but re-implementing
-  codebook validation (and eventually QuickJS conditions) in every server
-  language is not realistic.
+- **Validating annotations.** You can't trust the client.
 
-v2 split the server side in two: a db server (any language, the source of
-truth) and a job server (TypeScript, the runtime coders talk to), with an
-API and a trust scheme between them. v3 merges them again, because the
-reasons for the split lapsed:
-
-- **Db servers in other languages.** In practice there would be one or two
-  (AmCAT, maybe annotinder local), and annotinder local is a TypeScript app
-  anyway. R and Python don't need a server: they are clients of the
-  researcher API.
-- **Data stays with the researcher's own server.** Other systems now copy
-  units into annotinder (as the job server cached them anyway); whoever
-  needs the data on their own infrastructure runs the whole server.
-- **Edge caching.** Coding traffic is light; one server near the coders,
-  with Postgres, is fast enough.
-
-The split cost an API between the servers, job tokens and keys, a durable
-outbox, open-mode safety limits and a conformance suite. One server needs
-none of that, and features that would have burdened every db server (keeping
-old versions of units and annotations) become easy.
-
-Other systems (AmCAT, R, Python) use the researcher API: they push units,
-codebooks and settings, and download annotations (a webhook that posts new
-annotations may come later).
+So the server (TypeScript) runs the job: distribution, validation, sessions.
+Other systems (AmCAT, R, Python) don't run a server of their own: they use
+the researcher API to push units, codebooks and settings, and to download
+annotations. (An earlier design split the server into a "db server" in any
+language and a "job server"; it was merged back on 2026-10-26, since that
+split cost an API and a trust scheme between the two and served no real
+case.)
 
 ## 2. Roles
 
@@ -64,8 +45,9 @@ The server serves two APIs; [`docs/api/`](api/README.md) has the overview
 and a page per API, with a section per endpoint.
 
 - the **researcher API** (`researcherEndpoints`, [spec](api/researcher.md)),
-  at `/job/...`: used by the client's researcher UI, scripts (R, Python) and
-  other systems. CORS is allowed, so a client on another origin can call it.
+  at `/job/...`, `/me` and `/auth/...`: used by the client's researcher UI
+  (session cookie after logging in), scripts (R, Python) and other systems
+  (API keys). Login and keys: `coder-identity.md` §7.
 - the **coder API** (`coderEndpoints`, [spec](api/coder.md)), at
   `/d/<deploymentId>/...`: used by the client's annotator. A deployment id is
   the job id, or `<jobId>.preview` for a researcher preview. No CORS: the
@@ -83,10 +65,10 @@ and a page per API, with a section per endpoint.
 It reads and writes through a `Store` (`store.ts`): `DbStore` for the
 database, `PreviewStore` for previews.
 
-**client.** The researcher UI (`ResearcherApi`) talks to the researcher API.
-The annotator (`HttpCoderApi`, `JobManager`) talks to the coder API at
-`/d/<deploymentId>`, on its own origin (in development, Vite proxies `/d`
-to the server).
+**client.** The researcher UI (`ResearcherApi`) talks to the researcher API,
+the annotator (`HttpCoderApi`, `JobManager`) to the coder API. The client
+and the server share an origin, since sessions are httpOnly cookies; in
+development, Vite proxies the server's paths.
 
 ## 3. Invariants
 
@@ -284,8 +266,9 @@ units:
 ### 6.2 Unitsets are explicit
 
 Unitsets are stored lists, not recipes. That way adding units to a job never
-changes an existing distribution. `POST /job/:jobId/unitsets/generate`
-(and the "Split into parts…" UI) makes them easy to create:
+changes an existing distribution. The researcher UI's "Split into parts"
+makes them easy to create (in the client, then stored with
+`POST /job/:jobId/unitsets`):
 
 - shuffle the units with a seed;
 - set aside an overlap (`overlapUnits` or `overlapFraction`) as
@@ -317,7 +300,7 @@ The server refuses to let the client overwrite assigned variables.
 **Invitations** (stored on the server, never in the codebook):
 
 ```json
-{ "label": "Alice", "access": "only_authenticated", "emails": ["alice@uni.nl"], "maxUses": 1, "variables": { "slot": "2" } }
+{ "label": "Alice", "auth": "required", "emails": ["alice@uni.nl"], "maxUses": 1, "variables": { "slot": "2" } }
 ```
 
 - **Routing a specific coder.** A per-coder invite with
@@ -326,8 +309,8 @@ The server refuses to let the client overwrite assigned variables.
 - **General links.** A link with no preset relies on the variable's
   `fallback`.
 - **Enforcement today.** `maxUses` is enforced. Email restrictions are
-  stored, but they need real coder authentication before they can be
-  enforced. Participant ids and login are covered in
+  stored, but need coder login before they can be enforced; until then
+  `auth: "required"` invites are refused. Participant ids and login:
   `docs/coder-identity.md`.
 
 ## 8. Resuming, and codebook updates
@@ -417,10 +400,11 @@ Other open points:
 | `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var`/`$const` references, template parsing, scopes; conditions (rules or script) and rule evaluation |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |
-| `contracts/src/endpoints/` | The two API registries: researcher, client ([docs/api](api/README.md)) |
+| `contracts/src/endpoints/` | The two API registries: researcher, coder ([docs/api](api/README.md)) |
 | `server/src/app.ts` | Hono app: researcher API under `/job/...`, coder API under `/d/<deploymentId>` |
 | `server/src/coder.ts` | The coder API routes: session cookie, coder resolution, units, answers, transfers |
-| `server/src/researcher/` | The researcher API, one file per path |
+| `server/src/researcher/` | The researcher API, one file per path; `auth.ts` (sessions, API keys, dev headers), `login.ts` (`/auth/...`) |
+| `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | Researcher login with an OpenID Connect provider, users and API keys, sessions |
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
 | `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |
 | `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; refresh, status, preview tokens |
@@ -433,61 +417,71 @@ Other open points:
 | `server/src/runtime/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches and sources |
 
-`server/src/__tests__/coder.test.ts` runs coders end to end through the
-app's fetch handler, against an in-memory database; a new app on the same
-database is a restart. `app.test.ts` covers the researcher API and the
-store's queries.
+Tests (`server/src/__tests__/`) run through the app's fetch handler on
+PGlite (or a Postgres server with `TEST_DATABASE_URL`): `coder.test.ts`
+runs coders end to end (a new app on the same database is a restart),
+`app.test.ts` the researcher API and the store's queries,
+`researcherApi.test.ts` the API as a script uses it (responses checked
+against the contract schemas), `login.test.ts` login against a mock
+provider.
 
 ## 10. Open questions and next steps
 
 Roughly in order:
 
-1. ~~**Postgres.**~~ Done: `pg` in production, PGlite for tests,
-   development and annotinder local; one SQL dialect.
-2. ~~**Researcher API as a public contract.**~~ Done: personal API keys,
-   a paged annotation download, coder-level values with the coders, and
-   end-to-end tests on the contract schemas
-   (`server/src/__tests__/researcherApi.test.ts`). Later, maybe: a webhook
-   that posts new annotations; a download button in the researcher UI.
-3. **Auth.** ~~Researcher login~~ Done (`docs/coder-identity.md` §7): an
-   OpenID Connect provider, identity by verified email, our own sessions.
-   Next: coder login on the same code (§5); email-restricted invites need
-   it.
-4. **Limits.** Rate and resource limits, and quotas per account (e.g. a
+1. **Coder login** (`coder-identity.md` §5), on the researcher login's code.
+   Email-restricted invites (`auth: "required"`) need it.
+2. **Publishing follow-ups.**
+   - The coder's browser follows a new version: the server switches at the
+     next request, but the client keeps the codebook it loaded with the
+     session, so a coder could answer removed questions or miss new ones.
+     Put the deployment `version` in session and unit responses, and reload
+     the session when it changes.
+   - A dry run of a publish, so the reopen warnings (§8.2) show before
+     confirming instead of after.
+   - Pausing a job from the UI (`active: false`), and deciding what pausing
+     means: today it stops new units (409), but coders can still submit
+     units they hold.
+   - Choosing what reopens after a codebook update (§8.3).
+3. **annotinder local** (`compositions.md`): the composition, project
+   folder, file import and export, a CLI; then the R and Python packages.
+4. **Researcher API follow-ups.** A webhook that posts new annotations; a
+   download button in the researcher UI; per coder whether they are done
+   (only the runtime knows how many units a coder gets); changing a unit
+   field's type.
+5. **Limits.** Rate and resource limits, and quotas per account (e.g. a
    course hands out a number of jobs per student).
-5. **Hashes.** A codebook content hash, and a unit hash over the fields the
-   codebook uses (after unit preprocessing) instead of the full data: easier
-   now that one server does both. Until then `unitHash` is provisional.
-6. **Keeping history.** When units are updated after being coded, keep a
+6. **Hashes.** A codebook content hash, and a unit hash over the fields the
+   codebook uses (after unit preprocessing) instead of the full data. Until
+   then `unitHash` is provisional.
+7. **Keeping history.** When units are updated after being coded, keep a
    copy of the old version; keep older versions of annotations. (Today an
    annotation written with an old `codebookId` after a reset is stored as
    is.)
-7. **Sessions.** A device id derived across jobs, versus today's session key
-   per job; reopening anonymous invites on the same device.
-8. **Multimedia.** Images, audio and video in units should probably **not**
+8. **Sessions.** For coders: a device id across jobs versus today's session
+   key per job; reopening anonymous invites on the same device. For
+   researchers: a list of active sessions, logging out everywhere, logging
+   out at the provider.
+9. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the
    server returns short-lived signed URLs to a blob store. This keeps the
    runtime's memory and cache JSON-only.
-9. **Semantic validation.** The current validation checks variable names,
-   codes, items and span/relation codes. Running codebook conditions
-   (QuickJS) server-side, to reject answers to questions the coder should
-   never have seen, would be the next step. It conflicts with end-to-end
-   encryption, though (the server would need the answers), which is why
-   conditions and branch choice run on the client (§6.1).
-10. **Scale.** On cold start the runtime loads finished codings for dynamic
+10. **Semantic validation.** Validation checks variable names, codes, items
+    and span/relation codes. Running codebook conditions (QuickJS)
+    server-side, to reject answers to questions the coder should never
+    have seen, would be the next step. Conditions and branch choice run on
+    the client today (§6.1), which keeps client-side encryption of answers
+    possible (`encryption.md`).
+11. **Scale.** On cold start the runtime loads finished codings for dynamic
     loops only (bounded by units x `maxCoders`), and coder workspaces
     lazily (§3). Researcher status is computed on demand: fine for
     occasional use; aggregates kept in the database if it gets polled.
     More than one server process needs leases and codings in the database
     (§3.4); with Postgres, e.g. leases as rows picked with
     `FOR UPDATE SKIP LOCKED`.
-11. **Admin unit cache.** A client-side cache of units for the researcher
+12. **Admin unit cache.** A client-side cache of units for the researcher
     UI (IndexedDB), compared by ids and hashes.
-12. **Deactivation semantics.** `active: false` stops new units (409), but
-    coders can still submit units they were already working on. Decide
-    whether that's what researchers expect.
-13. **Reopening finished units after a codebook update** (§8.3).
 
 Smaller things worth an issue: a swipe-card UI for the `annotinder` answer
 type; `VariableValue` as a discriminated union; a live preview of a
-codebook item while editing it.
+codebook item while editing it. Client gaps: `client.md` §9.

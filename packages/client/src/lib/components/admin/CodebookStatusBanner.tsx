@@ -19,7 +19,7 @@ interface CodebookStatusBannerProps {
 
 /**
  * Says which version is open, whether coders are using it, and what to do
- * to change it (docs/plan-codebook-publishing.md).
+ * to change it (docs/client.md §7).
  */
 export function CodebookStatusBanner({
   mode,

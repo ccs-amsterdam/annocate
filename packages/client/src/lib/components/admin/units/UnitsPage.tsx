@@ -19,7 +19,7 @@ import { SplitUnitsets } from "./SplitUnitsets";
 const PAGE_SIZE = 50;
 
 /**
- * Units and unitsets in one place (docs/plan-job-admin.md, phase 3): a table
+ * Units and unitsets in one place (docs/client.md §7): a table
  * of units with a column per field and badges for the unitsets they're in.
  * Pick a unitset to see its units in its order; select units to make a new
  * unitset, or split units into parts.

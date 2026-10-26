@@ -1,20 +1,20 @@
 # The APIs: how the parts talk
 
 Annotinder has two parts: the **client** (browser) and the **server**
-(TypeScript, `packages/server`; stores everything and runs the annotator).
-The server serves two APIs.
+(TypeScript, `packages/server`; stores everything and runs the jobs). The
+server serves two APIs.
 
 ```
- client (browser), R, Python, other systems
- ┌───────────────────────────────┐        ┌──────────────────────────────┐
- │ researcher UI   (ResearcherApi) │        │ annotator    (HttpCoderApi) │
- │ scripts, AmCAT                │        │                              │
- └───────────────┬───────────────┘        └───────────────┬──────────────┘
-                 │ researcher API  /job/...               │ coder API  /d/<deploymentId>/...
-                 ▼                                        ▼
- ┌────────────────────────────────────────────────────────────────────────┐
- │ server                                                                 │
- └────────────────────────────────────────────────────────────────────────┘
+ ┌─────────────────────────────────┐   ┌──────────────────────────────┐
+ │ researcher UI (ResearcherApi)   │   │ annotator (HttpCoderApi)     │
+ │ scripts (R, Python), AmCAT      │   │                              │
+ └────────────────┬────────────────┘   └───────────────┬──────────────┘
+                  │ researcher API                      │ coder API
+                  │ /job/..., /me, /auth/...            │ /d/<deploymentId>/...
+                  ▼                                     ▼
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ server                                                              │
+ └─────────────────────────────────────────────────────────────────────┘
 ```
 
 | API | Called by | For | Contracts | Spec |

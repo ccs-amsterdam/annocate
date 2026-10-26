@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { UnitData, UnitDataValue } from "./common.js";
 
 /**
- * A job's unit fields (docs/plan-job-admin.md, phase 3): every unit has the
+ * A job's unit fields (docs/client.md §7, "Units"): every unit has the
  * same fields, each with a type. The server takes them from the first
  * upload (`fieldsOfUnits`) and checks later uploads against them
  * (`checkUnitData`); deleting all units resets them. Values are stored typed,
