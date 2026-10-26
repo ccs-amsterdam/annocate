@@ -26,7 +26,18 @@ import {
   type ApiKeyCreated,
   type AnnotationPage,
   type AnnotationsQuery,
+  type AuthOptions,
 } from "@annotinder/contracts";
+
+/** A failed researcher API request, with its HTTP status (401: not logged in, 403: no role in the job). */
+export class ResearcherApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 /**
  * Client-side abstraction over the job-management ("admin") side of the API
@@ -41,6 +52,12 @@ export interface ResearcherApi {
   readonly jobId?: number;
   forJob(jobId: number): ResearcherApi;
 
+  /** How researchers can sign in on this server (no authentication needed). */
+  getAuthOptions(): Promise<AuthOptions>;
+  /** Ends the login session (session cookie). */
+  logout(): Promise<void>;
+  /** Where the browser goes to log in; it comes back to `returnTo` (a path on this origin). */
+  loginUrl(returnTo: string): string;
   /** Who the client is authenticated as. */
   getMe(): Promise<MeResponse>;
   listApiKeys(): Promise<ApiKeyResponse[]>;
@@ -104,7 +121,11 @@ export interface ResearcherApi {
 export interface HttpResearcherApiConfig {
   /** Base URL of the server, e.g. "http://localhost:8787". */
   baseUrl: string;
-  /** A researcher's API key (`authorization: Bearer`). */
+  /**
+   * A researcher's API key (`authorization: Bearer`). Without one, the
+   * session cookie from logging in is used: the server must then be on the
+   * client's origin (baseUrl "").
+   */
   apiKey?: string;
   /** Development auth headers instead of a key; only accepted by a server with ANNOTINDER_DEV_AUTH=1. */
   devRole?: "ADMIN" | "WRITE" | "READ";
@@ -133,7 +154,8 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   private headers(): Record<string, string> {
-    const headers: Record<string, string> = { "content-type": "application/json" };
+    // `x-annotinder` lets the server accept the session cookie (against CSRF).
+    const headers: Record<string, string> = { "content-type": "application/json", "x-annotinder": "1" };
     if (this.config.apiKey) {
       headers.authorization = `Bearer ${this.config.apiKey}`;
     } else if (this.config.devRole) {
@@ -144,13 +166,26 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers: this.headers() });
+    const res = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers: this.headers(), credentials: "same-origin" });
     if (!res.ok) {
       const body = await res.text();
-      throw new Error(`Request to ${path} failed (${res.status}): ${body}`);
+      throw new ResearcherApiError(res.status, `Request to ${path} failed (${res.status}): ${body}`);
     }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
+  }
+
+  async getAuthOptions(): Promise<AuthOptions> {
+    return this.request(researcherEndpoints.getAuthOptions.path);
+  }
+
+  async logout(): Promise<void> {
+    await this.request(researcherEndpoints.logout.path, { method: "POST" });
+  }
+
+  /** Where the browser goes to log in; it comes back to `returnTo` (a path on this origin). */
+  loginUrl(returnTo: string): string {
+    return `${this.config.baseUrl}/auth/login?returnTo=${encodeURIComponent(returnTo)}`;
   }
 
   async getMe(): Promise<MeResponse> {

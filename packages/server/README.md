@@ -23,19 +23,28 @@ Environment:
   process) in `PGLITE_DIR` (default `.pglite` in this package): no Postgres
   install needed for development. `pnpm reset-db` only resets PGlite.
 - `PORT` (8787).
+- Researcher login (`docs/coder-identity.md` §7): `OIDC_ISSUER`,
+  `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` (an OpenID Connect provider, e.g.
+  Authentik), `ANNOTINDER_PUBLIC_URL` (where browsers reach the server and
+  the client; the provider redirects to `<url>/auth/callback`), and
+  optionally `OIDC_REQUIRE_MFA=1` (refuse logins without a second factor).
+  Plain http issuers only on localhost. Without these, there is no login:
+  API keys only.
 - `ANNOTINDER_DEV_AUTH=1`: also accept development auth headers
   (`x-dev-role`) for the researcher API, as the dev shell's researcher UI
   sends. `pnpm dev` sets it ([`src/dev.ts`](src/dev.ts)). Never on a
   reachable server.
-- `ANNOTINDER_SECRET`: signs preview tokens; random per process if not
-  set, so previews end with a restart.
+- `ANNOTINDER_SECRET`: signs preview tokens and the short-lived login
+  cookie; random per process if not set, so previews (and logins in
+  progress) end with a restart. Set it in production.
 
 ## API keys
 
-Researchers authenticate with personal API keys. There is no researcher
-login yet, so the first key for a researcher is made on the server's
-machine, with the same database settings as the server (stop the server
-first when it runs on PGlite: only one process can open it):
+Scripts authenticate with personal API keys. Logged-in researchers make
+them in the researcher UI (account menu, "API keys"). On a server without
+login, keys are made on the server's machine, with the same database
+settings as the server (stop the server first when it runs on PGlite: only
+one process can open it):
 
 ```sh
 pnpm --filter @annotinder/server keys create --email a@uni.nl --label "R scripts"

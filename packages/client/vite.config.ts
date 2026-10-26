@@ -15,9 +15,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // The client API is same-origin (session cookies): forward it to the server.
+    // The server is same-origin with the client (session cookies): forward
+    // its paths (coder API, researcher API, login) to it.
     proxy: {
-      "/d/": process.env.SERVER_URL ?? "http://localhost:8787",
+      "^/(d|job|me|auth)(/|\\?|$)": process.env.SERVER_URL ?? "http://localhost:8787",
     },
   },
 });

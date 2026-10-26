@@ -10,14 +10,23 @@ managing jobs, codebooks, units, invitations, publishing and progress.
   path, with shared queries in [`shared/`](../../packages/server/src/shared/).
 - Caller: [`client/src/lib/api/httpResearcherApi.ts`](../../packages/client/src/lib/api/httpResearcherApi.ts).
 
-**Authentication.** Every request carries a researcher's personal API key:
-`authorization: Bearer <key>` (keys start with `atk_`). A key identifies a
-user by email. There is no researcher login yet, so the first key comes from
-the server's machine (`pnpm --filter @annotinder/server keys create --email
-<email>`, see the server's README); with a key, a researcher can make more
-([createApiKey](#createapikey)). Implementation:
-[`researcher/auth.ts`](../../packages/server/src/researcher/auth.ts),
-[`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts).
+**Authentication.** A researcher is a user, identified by their verified
+email address. Requests carry one of:
+
+- the **session cookie** from logging in (the researcher UI): the browser
+  goes to `GET /auth/login?returnTo=<path>`, logs in at the server's OpenID
+  Connect provider and comes back with an httpOnly cookie. Same origin
+  only, and every request needs the `x-annotinder: 1` header (CSRF). See
+  `docs/coder-identity.md` §7.
+- a personal **API key**: `authorization: Bearer <key>` (keys start with
+  `atk_`), for scripts and other systems. Logged-in researchers make keys
+  in the UI ([createApiKey](#createapikey)); without login, the server's
+  `keys` command makes them (see the server's README).
+
+Implementation: [`researcher/auth.ts`](../../packages/server/src/researcher/auth.ts),
+[`researcher/login.ts`](../../packages/server/src/researcher/login.ts),
+[`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts),
+[`shared/sessions.ts`](../../packages/server/src/shared/sessions.ts).
 
 Development only: a server started with `ANNOTINDER_DEV_AUTH=1` (as `pnpm
 dev` does) also accepts `x-dev-role` / `x-dev-email` headers instead of a
@@ -42,6 +51,8 @@ response checked against its contract schema.
 | Endpoint | | Role | Request | Response |
 |---|---|---|---|---|
 | **Account** | | | | |
+| [getAuthOptions](#getauthoptions) | `GET /auth/options` | none | – | `AuthOptionsSchema` |
+| [logout](#logout) | `POST /auth/logout` | none | – | – |
 | [getMe](#getme) | `GET /me` | any | – | `MeResponseSchema` |
 | [listApiKeys](#listapikeys) | `GET /me/keys` | any | – | `ApiKeyResponseSchema[]` |
 | [createApiKey](#createapikey) | `POST /me/keys` | any | `ApiKeyWriteSchema` | `ApiKeyCreatedSchema` |
@@ -93,6 +104,24 @@ response checked against its contract schema.
 Schemas: [`contracts/src/account.ts`](../../packages/contracts/src/account.ts).
 Implementation: [`researcher/me.ts`](../../packages/server/src/researcher/me.ts),
 [`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts).
+
+### getAuthOptions
+
+`GET /auth/options` → `AuthOptionsSchema`, without authentication: whether
+this server has login (`login`) and accepts development headers
+(`devAuth`).
+
+### logout
+
+`POST /auth/logout` (with `x-annotinder: 1`) → 204: ends the login session
+and clears its cookie.
+
+Logging in itself is not a JSON endpoint: the browser opens
+`GET /auth/login?returnTo=<path on this origin>`, which redirects to the
+provider; the provider redirects back to `/auth/callback`, which starts the
+session and redirects to `returnTo`. A refused login comes back with
+`?loginError=email_unverified|mfa_required|login_failed`
+(`LoginErrorSchema`).
 
 ### getMe
 

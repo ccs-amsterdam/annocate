@@ -43,6 +43,9 @@ const stubClient: ResearcherApi = {
   listApiKeys: () => new Promise(() => {}),
   createApiKey: () => new Promise(() => {}),
   revokeApiKey: () => new Promise(() => {}),
+  getAuthOptions: () => new Promise(() => {}),
+  logout: () => new Promise(() => {}),
+  loginUrl: (returnTo) => `/auth/login?returnTo=${returnTo}`,
 };
 
 describe("AdminApp", () => {

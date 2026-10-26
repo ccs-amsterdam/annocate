@@ -449,10 +449,10 @@ Roughly in order:
    end-to-end tests on the contract schemas
    (`server/src/__tests__/researcherApi.test.ts`). Later, maybe: a webhook
    that posts new annotations; a download button in the researcher UI.
-3. **Auth.** Researcher login for the web UI (today: development headers,
-   or API keys for scripts; keys are made with a CLI on the server until
-   then). Coder login (`docs/coder-identity.md` §5) now simply lives on the
-   server. Email-restricted invites need it.
+3. **Auth.** ~~Researcher login~~ Done (`docs/coder-identity.md` §7): an
+   OpenID Connect provider, identity by verified email, our own sessions.
+   Next: coder login on the same code (§5); email-restricted invites need
+   it.
 4. **Limits.** Rate and resource limits, and quotas per account (e.g. a
    course hands out a number of jobs per student).
 5. **Hashes.** A codebook content hash, and a unit hash over the fields the

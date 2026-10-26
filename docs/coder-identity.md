@@ -1,9 +1,9 @@
 # Coder identity, sessions and auth
 
 Status: draft v1 (2026-10-10; updated 2026-10-26 for the single server).
-The "coder key / transfer link / participant id" part is implemented.
-Authentication (§5) is designed but not yet built. Complements
-`docs/architecture.md`.
+The "coder key / transfer link / participant id" part is implemented, and
+researcher login (§7). Coder login (§5) is designed but not yet built.
+Complements `docs/architecture.md`.
 
 ## 1. Principles
 
@@ -110,6 +110,12 @@ restrict an invite.
 
 ## 5. Authentication (designed, not built)
 
+**Plan (2026-10-26):** coders log in the way researchers do (§7): one OpenID
+Connect provider (e.g. a self-hosted Authentik) that handles social logins
+and email magic links, identity by verified email, our own session. The
+methods below are then the provider's business, except the assertion from
+another system. The earlier notes:
+
 A verified identity replaces the coder key as the credential. Methods, in
 order of value for effort:
 
@@ -160,3 +166,48 @@ Until this exists, `auth: "required"` invites are refused with
   count codings per coder, so two sessions of one person can code the same
   unit. Possible later: optionally treat sessions with the same participant
   id as one person for distribution.
+
+## 7. Researcher login (implemented, 2026-10-26)
+
+Code: `server/src/oidc.ts`, `researcher/login.ts`, `shared/sessions.ts`;
+client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
+
+- **A login provider proves who someone is; the session is ours.** Any
+  OpenID Connect provider, configured by its issuer URL (e.g. a self-hosted
+  Authentik that handles social logins and email magic links). The server
+  runs the authorization code flow with PKCE itself (`/auth/login`,
+  `/auth/callback`), so tokens never reach the browser, checks the ID token,
+  and starts its own session: a random key in an httpOnly cookie, its hash
+  in the `sessions` table, 14 days, sliding. Every request with the cookie
+  needs the `x-annotinder: 1` header (CSRF), as on the coder API. The
+  provider's tokens are not kept: we never call it on the researcher's
+  behalf. Logging out ends our session (`POST /auth/logout`), not the
+  provider's.
+- **Identity is the verified email address.** The provider MUST verify
+  email addresses: a login without `email_verified: true` is refused. The
+  user is found or created by their (lowercased) email; `sub` is not used.
+  So switching or adding providers keeps everyone's account, and logging in
+  with Google and with a magic link for the same address is the same user.
+  Roles in jobs (`job_users`) and API keys belong to that user.
+- **Accepted risk: whoever controls the mailbox controls the account.** That
+  holds for any system with email login or email recovery. A recycled
+  address (an institution giving an old address to someone new) inherits
+  its previous owner's job roles. Job admins see who has a role and can
+  remove it.
+- **Two-factor authentication is recommended, not required.** It is the
+  researcher's own responsibility; the login screen says so, especially for
+  jobs with sensitive data. A server can require it: `OIDC_REQUIRE_MFA=1`
+  refuses logins whose ID token `amr` claim names no second factor.
+- **Setting up a provider** (e.g. Authentik):
+  - redirect URI `<ANNOTINDER_PUBLIC_URL>/auth/callback`, scopes `openid
+    email`, a confidential client (client id and secret);
+  - `email_verified` must reflect a real check (social logins whose
+    provider verified the address, magic links after the link was opened);
+  - a social login source may only be linked to an existing user by email
+    if that source verifies addresses (Authentik's "user matching mode"
+    warns about this);
+  - with 2FA: losing a second factor must not be recoverable by email alone,
+    or a mailbox is enough after all.
+- **Not built:** coder login (§5), a list of active sessions, logging out
+  everywhere, logout at the provider.
+

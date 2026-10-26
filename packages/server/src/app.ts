@@ -11,6 +11,8 @@ import { HttpError } from "./shared/http.js";
 import { annotationsReset } from "./researcher/annotations.reset.js";
 import { annotations } from "./researcher/annotations.js";
 import { me } from "./researcher/me.js";
+import { login } from "./researcher/login.js";
+import { Oidc, type OidcOptions } from "./oidc.js";
 import { codebook } from "./researcher/codebook.$id.js";
 import { codebooks } from "./researcher/codebook.js";
 import { coders } from "./researcher/coders.js";
@@ -43,6 +45,12 @@ export interface AppOptions {
    * (researcher/auth.ts). For local development and tests only.
    */
   devAuth?: boolean;
+  /**
+   * Researcher login with an OpenID Connect provider (oidc.ts). `publicUrl`
+   * is where browsers reach this server (and the client), e.g.
+   * `https://annotinder.com`; the provider redirects to `<publicUrl>/auth/callback`.
+   */
+  login?: { oidc: OidcOptions; publicUrl: string };
 }
 
 /**
@@ -56,6 +64,8 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     db,
     deployments: new Deployments(db, secret, { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime }, options.wrapStore),
     devAuth: options.devAuth ?? false,
+    login: options.login ? { oidc: new Oidc(options.login.oidc), publicUrl: options.login.publicUrl.replace(/\/$/, "") } : null,
+    secret,
   };
 
   const app = new Hono<Env>();
@@ -76,7 +86,9 @@ export function createApp(db: Sql, options: AppOptions = {}) {
 
   // Researcher API (researcher/): full paths, API keys (researcher/auth.ts).
   // CORS, so a client on another origin (e.g. the Vite dev server) can call it.
+  // Cookies are same-origin only: CORS here is for API keys.
   for (const path of ["/job", "/job/*", "/me", "/me/*"]) app.use(path, cors());
+  app.route("/", login(server));
   app.route("/", me(server));
   // Order matters: units/fields and units/page before units/:id.
   app.route("/", jobs(server));

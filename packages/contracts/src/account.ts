@@ -2,9 +2,11 @@ import { z } from "zod";
 import { IdSchema } from "./common.js";
 
 // Researchers and their API keys (researcher API, docs/api/researcher.md).
-// A researcher is a user, identified by email; what they may do in a job is
-// their role there (job users, job.ts). Scripts (R, Python) and other
-// systems authenticate with a personal API key: `authorization: Bearer <key>`.
+// A researcher is a user, identified by their verified email; what they may
+// do in a job is their role there (job users, job.ts). The researcher UI
+// uses a session cookie from logging in (`/auth/login`, an OpenID Connect
+// provider); scripts (R, Python) and other systems use a personal API key:
+// `authorization: Bearer <key>`.
 
 /** `GET /me`: who the request is authenticated as. */
 export const MeResponseSchema = z.object({
@@ -36,3 +38,18 @@ export const ApiKeyCreatedSchema = ApiKeyResponseSchema.extend({
   key: z.string(),
 });
 export type ApiKeyCreated = z.infer<typeof ApiKeyCreatedSchema>;
+
+/**
+ * `GET /auth/options` (no authentication): how researchers can sign in here.
+ * `login`: the server has an OpenID Connect provider (`/auth/login`).
+ * `devAuth`: it accepts development headers (`x-dev-role`).
+ */
+export const AuthOptionsSchema = z.object({
+  login: z.boolean(),
+  devAuth: z.boolean(),
+});
+export type AuthOptions = z.infer<typeof AuthOptionsSchema>;
+
+/** Why a login was refused, as `?loginError=` on the page the researcher returns to. */
+export const LoginErrorSchema = z.enum(["email_unverified", "mfa_required", "login_failed"]);
+export type LoginError = z.infer<typeof LoginErrorSchema>;

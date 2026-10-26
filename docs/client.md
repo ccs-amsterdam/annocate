@@ -208,6 +208,13 @@ pass with per-slot memoization:
 Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
+- **Login**: `account/ResearcherGate.tsx` shows its children to a logged-in
+  researcher and a login screen otherwise (with the 2FA recommendation and
+  the reason a login was refused); `account/AccountMenu.tsx` has the
+  researcher's email, their API keys and logging out
+  (`docs/coder-identity.md` §7). The dev shell (`App.tsx`) uses them when
+  the server has login, and development headers when it doesn't.
+
 - **Codebook editor**: edits the whole document in memory (tree view and
   YAML), validated client-side with the contract's `validateCodebookItems`,
   then saved as a whole. Versions (`codebook/versions.ts`,

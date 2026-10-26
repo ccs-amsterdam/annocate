@@ -2,6 +2,7 @@ import type { Sql } from "./db.js";
 import type { Role } from "@annotinder/contracts";
 import type { Deployments } from "./runtime/registry.js";
 import type { Researcher } from "./researcher/auth.js";
+import type { Oidc } from "./oidc.js";
 
 /** What every endpoint gets (built in app.ts). */
 export interface Server {
@@ -10,6 +11,10 @@ export interface Server {
   deployments: Deployments;
   /** Accept development auth headers (researcher/auth.ts). Never on a reachable server. */
   devAuth: boolean;
+  /** Researcher login (researcher/login.ts); null when no provider is configured. */
+  login: { oidc: Oidc; publicUrl: string } | null;
+  /** Signs short-lived cookies and preview tokens. */
+  secret: string;
 }
 
 /** Hono context variables, set by the auth middleware. */

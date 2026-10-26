@@ -7,7 +7,10 @@ import { createApp } from "./app.js";
 // Node entry point. PORT (default 8787); DATABASE_URL (Postgres), or else
 // PGLITE_DIR (a local PGlite database, default .pglite in this package);
 // ANNOTINDER_SECRET (signs preview tokens; random per process if not set);
-// ANNOTINDER_DEV_AUTH=1 (accept development auth headers: local only).
+// ANNOTINDER_DEV_AUTH=1 (accept development auth headers: local only);
+// researcher login: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
+// ANNOTINDER_PUBLIC_URL (where browsers reach the server), and optionally
+// OIDC_REQUIRE_MFA=1.
 
 const port = Number(process.env.PORT ?? 8787);
 const db = await openDatabase();
@@ -15,10 +18,27 @@ const db = await openDatabase();
 if (!(await one(db, "SELECT 1 FROM jobs LIMIT 1"))) await seed(db);
 
 const devAuth = process.env.ANNOTINDER_DEV_AUTH === "1";
-const app = createApp(db, { secret: process.env.ANNOTINDER_SECRET, devAuth });
+const { OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, ANNOTINDER_PUBLIC_URL } = process.env;
+const login =
+  OIDC_ISSUER && OIDC_CLIENT_ID && OIDC_CLIENT_SECRET
+    ? {
+        oidc: {
+          issuer: OIDC_ISSUER,
+          clientId: OIDC_CLIENT_ID,
+          clientSecret: OIDC_CLIENT_SECRET,
+          requireMfa: process.env.OIDC_REQUIRE_MFA === "1",
+        },
+        publicUrl: ANNOTINDER_PUBLIC_URL ?? `http://localhost:${port}`,
+      }
+    : undefined;
+if (login && !process.env.ANNOTINDER_SECRET) {
+  console.warn("ANNOTINDER_SECRET is not set: logins in progress and previews end with a restart");
+}
+const app = createApp(db, { secret: process.env.ANNOTINDER_SECRET, devAuth, login });
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);
+  console.log(login ? `  researcher login: ${login.oidc.issuer}, callback ${login.publicUrl}/auth/callback` : "  researcher login: not configured (OIDC_ISSUER)");
   if (devAuth) console.warn("  development auth headers accepted (ANNOTINDER_DEV_AUTH=1): never on a reachable server");
 });
 

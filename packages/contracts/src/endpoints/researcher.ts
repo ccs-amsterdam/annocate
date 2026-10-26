@@ -6,7 +6,7 @@ import { UnitFieldSchema } from "../unitFields.js";
 import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
-import { ApiKeyCreatedSchema, ApiKeyResponseSchema, ApiKeyWriteSchema, MeResponseSchema } from "../account.js";
+import { ApiKeyCreatedSchema, ApiKeyResponseSchema, ApiKeyWriteSchema, AuthOptionsSchema, MeResponseSchema } from "../account.js";
 import { AnnotationPageSchema, AnnotationsQuerySchema } from "../annotations.js";
 import {
   DeploymentWriteSchema,
@@ -26,10 +26,15 @@ import {
  * Path params are written as `:param`. A server hosts any number of jobs;
  * per-job resources are routed under `/job/:jobId/...`.
  *
- * Authentication: `authorization: Bearer <API key>` (account.ts). What a
- * user may do in a job is their role there (job users).
+ * Authentication (account.ts): a session cookie from logging in (with the
+ * `x-annotinder: 1` header, against CSRF), or `authorization: Bearer <API
+ * key>`. What a user may do in a job is their role there (job users).
+ * Logging in itself is a browser redirect, not a JSON endpoint:
+ * `GET /auth/login?returnTo=<path>`.
  */
 export const researcherEndpoints = {
+  getAuthOptions: { method: "GET", path: "/auth/options", request: z.void(), response: AuthOptionsSchema },
+  logout: { method: "POST", path: "/auth/logout", request: z.void(), response: z.void() },
   getMe: { method: "GET", path: "/me", request: z.void(), response: MeResponseSchema },
   listApiKeys: { method: "GET", path: "/me/keys", request: z.void(), response: z.array(ApiKeyResponseSchema) },
   createApiKey: { method: "POST", path: "/me/keys", request: ApiKeyWriteSchema, response: ApiKeyCreatedSchema },

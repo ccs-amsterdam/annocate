@@ -2,12 +2,20 @@ import type { Context, Next } from "hono";
 import type { Role } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Env, Server } from "../context.js";
+import { getCookie } from "hono/cookie";
 import { userForKey } from "../shared/accounts.js";
+import { userForSession } from "../shared/sessions.js";
+import { CLIENT_HEADER } from "../runtime/session.js";
+import { SESSION_COOKIE } from "./login.js";
 
-// Researcher authentication (docs/api/researcher.md#authentication).
+// Researcher authentication (docs/api/researcher.md).
 //
-// - API keys: `authorization: Bearer <key>` (shared/accounts.ts). The key
-//   identifies a user (by email); their role in a job is in `job_users`.
+// - Session cookie, after logging in (researcher/login.ts), with the
+//   `x-annotinder: 1` header on every request: a cross-site form or image
+//   can't send it, so it blocks CSRF.
+// - API keys: `authorization: Bearer <key>` (shared/accounts.ts).
+//
+// Both identify a user by email; their role in a job is in `job_users`.
 // - Development only (`devAuth`, ANNOTINDER_DEV_AUTH=1): plain
 //   `x-dev-role` / `x-dev-email` headers, checked against nothing but
 //   `job_users`. A job without job users lets any dev role through. Never
@@ -37,6 +45,11 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   if (bearer) {
     const user = await userForKey(server.db, bearer.trim());
     return user ? { email: user.email, userId: user.id } : null;
+  }
+  const session = getCookie(c, SESSION_COOKIE);
+  if (session && c.req.header(CLIENT_HEADER) === "1") {
+    const user = await userForSession(server.db, session);
+    if (user) return { email: user.email, userId: user.id };
   }
   const devRole = c.req.header("x-dev-role") as Role | undefined;
   if (server.devAuth && devRole && devRole in ROLE_RANK) {

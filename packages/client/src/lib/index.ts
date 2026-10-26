@@ -46,6 +46,8 @@ export * from "./admin/queries";
 export * from "./codebook/codebookEdit";
 export * from "./admin/csv";
 export * from "./components/admin/AdminApp";
+export * from "./components/admin/account/ResearcherGate";
+export * from "./components/admin/account/AccountMenu";
 export * from "./components/admin/JobSettings";
 export * from "./components/admin/CodebookManager";
 export * from "./components/admin/CodebookEditor";

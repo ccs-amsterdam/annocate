@@ -1,6 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AuthOptions } from "@annotinder/contracts";
 import { JobRunner } from "./lib/components/JobRunner";
 import { AdminApp } from "./lib/components/admin/AdminApp";
+import { ResearcherGate } from "./lib/components/admin/account/ResearcherGate";
+import { AccountMenu } from "./lib/components/admin/account/AccountMenu";
 import { HttpResearcherApi } from "./lib/api/httpResearcherApi";
 import { LayoutDashboard, PenTool } from "lucide-react";
 
@@ -8,23 +11,48 @@ import { LayoutDashboard, PenTool } from "lucide-react";
 // server (the seed demo job's invite secret by default). Real deployments
 // should import { JobRunner } / { AdminApp } (or their building blocks) into
 // a host app instead -- see docs/client.md §1
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:8787";
-// Coders use the coder API (`/d/<jobId>`) on the client's own origin: their
-// session cookie is same-origin only. In dev, Vite proxies `/d` to the server
-// (vite.config.ts).
+//
+// The server is on the client's own origin (session cookies are same-origin
+// only): in dev, Vite proxies the API paths to it (vite.config.ts).
+const SERVER_URL = "";
 const CODER_API_URL = "";
 
-const researcherApi = new HttpResearcherApi({
-  baseUrl: SERVER_URL,
-  devRole: "ADMIN",
-  devEmail: "dev@example.com",
-});
+/** Logged-in researchers: the session cookie. */
+const sessionApi = new HttpResearcherApi({ baseUrl: SERVER_URL });
+/** A server without login but with development auth (`pnpm dev` without OIDC settings). */
+const devApi = new HttpResearcherApi({ baseUrl: SERVER_URL, devRole: "ADMIN", devEmail: "dev@example.com" });
 
 type View = "admin" | "annotate";
 
 /** Invite links for this dev shell. */
 function devInviteUrl(invite: { jobId: number; secret: string }): string {
   return `${window.location.origin}${window.location.pathname}?deployment=${invite.jobId}&invite=${invite.secret}`;
+}
+
+/** The researcher UI: behind a login if the server has one, else with development headers. */
+function ResearcherView() {
+  const [options, setOptions] = useState<AuthOptions | null>(null);
+  useEffect(() => {
+    sessionApi.getAuthOptions().then(setOptions, () => setOptions({ login: false, devAuth: false }));
+  }, []);
+  if (!options) return null;
+
+  const admin = (api: HttpResearcherApi) => (
+    <AdminApp client={api} baseUrl={SERVER_URL} inviteUrl={devInviteUrl} coderApiUrl={CODER_API_URL} />
+  );
+  if (!options.login && options.devAuth) return admin(devApi);
+  return (
+    <ResearcherGate client={sessionApi}>
+      {(me) => (
+        <div className="flex h-full flex-col">
+          <div className="flex justify-end border-b border-border px-4 py-1">
+            <AccountMenu client={sessionApi} me={me} />
+          </div>
+          <div className="flex-1 overflow-auto">{admin(sessionApi)}</div>
+        </div>
+      )}
+    </ResearcherGate>
+  );
 }
 
 function App() {
@@ -99,7 +127,7 @@ function App() {
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
         {view === "admin" ? (
-          <AdminApp client={researcherApi} baseUrl={SERVER_URL} inviteUrl={devInviteUrl} coderApiUrl={CODER_API_URL} />
+          <ResearcherView />
         ) : (
           <JobRunner
             baseUrl={`${CODER_API_URL}/d/${deploymentId}`}
