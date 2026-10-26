@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
+import { ConditionSchema } from "./condition.js";
+import { outputText, parseTemplate, referenceValue, type ReferenceScope, type Reference } from "./references.js";
 
 // How a unit_loop gets its units (docs/architecture.md §6). The codebook
 // describes the *process* only: it refers to unitsets by name and to coders
@@ -56,8 +58,8 @@ export function dynamicSourceDefaults(d: DynamicSource) {
 export const UnitSourceSchema = z.object({
   /**
    * Unitset name, or `__all__` for every unit in the job. May contain
-   * `{variable}` placeholders, filled with the coder's value for that
-   * coder-level variable (e.g. `part_{slot}`).
+   * `$var` references to coder-level questions, filled in with the coder's
+   * answer as text (e.g. `part_$var.slot.code`).
    */
   unitset: z.string().min(1),
   /** Absent: fixed (the coder gets every unit of the set). Present: dynamic. */
@@ -65,18 +67,12 @@ export const UnitSourceSchema = z.object({
 });
 export type UnitSource = z.infer<typeof UnitSourceSchema>;
 
-/**
- * `{ variable: value }` or `{ variable: [values] }`; several keys must all
- * match. Values are compared with the coder's code for that coder-level
- * variable. Declarative on purpose: evaluated by the job server, readable
- * without a JS engine.
- */
-export const UnitBranchConditionSchema = z.record(SafeNameSchema, z.union([z.string(), z.array(z.string()).min(1)]));
-export type UnitBranchCondition = z.infer<typeof UnitBranchConditionSchema>;
-
 export const UnitBranchSchema = z.object({
-  /** Absent = always matches. The first matching branch wins. */
-  when: UnitBranchConditionSchema.optional(),
+  /**
+   * Absent = always matches. The first matching branch wins. Evaluated by
+   * the client, which tells the job server the branch it chose.
+   */
+  when: ConditionSchema.optional(),
   sources: z.array(UnitSourceSchema).min(1, "A branch needs at least one unit source"),
 });
 export type UnitBranch = z.infer<typeof UnitBranchSchema>;
@@ -110,38 +106,39 @@ export function migrateLegacyUnitLoop(raw: unknown): unknown {
   };
 }
 
-const PLACEHOLDER = /\{([a-zA-Z0-9_]+)\}/g;
-
-/** Variable names used as `{placeholders}` in a unitset name. */
-export function unitsetPlaceholders(unitset: string): string[] {
-  return [...unitset.matchAll(PLACEHOLDER)].map((m) => m[1]);
+/** The `$var` references in a unitset name (`part_$var.slot.code`). */
+export function unitsetReferences(unitset: string): Reference[] {
+  return parseTemplate(unitset).segments.flatMap((s) => (s.type === "expression" ? s.references : []));
 }
 
-/** Fills `{placeholders}`; returns null if a value is missing. */
-export function resolveUnitsetName(unitset: string, values: Record<string, string | undefined>): string | null {
-  let missing = false;
-  const name = unitset.replace(PLACEHOLDER, (_, variable: string) => {
-    const value = values[variable];
-    if (value === undefined) missing = true;
-    return value ?? "";
-  });
-  return missing ? null : name;
+/** Whether a unitset name has references to fill in (the client must choose the branch). */
+export function unitsetHasReferences(unitset: string): boolean {
+  return parseTemplate(unitset).segments.some((s) => s.type === "expression");
 }
 
-/** Whether a unitset name could be produced by a (possibly `{placeholder}`-containing) source unitset. */
+/**
+ * Fills in a unitset name's references from a scope; null if a value is
+ * empty (the coder has no answer) or the name uses `{{ }}`.
+ */
+export function fillUnitsetName(unitset: string, scope: ReferenceScope): string | null {
+  let name = "";
+  for (const segment of parseTemplate(unitset).segments) {
+    if (segment.type === "text") {
+      name += segment.text.replace(/\\\$/g, "$");
+      continue;
+    }
+    if (!segment.ref) return null;
+    const value = outputText(referenceValue(scope, segment.ref));
+    if (value === "") return null;
+    name += value;
+  }
+  return name;
+}
+
+/** Whether a unitset name could be produced by a (possibly `$var`-containing) source unitset. */
 export function unitsetMatchesSource(sourceUnitset: string, name: string): boolean {
-  const pattern = sourceUnitset
-    .split(PLACEHOLDER)
-    .map((part, i) => (i % 2 === 1 ? ".+" : part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+  const pattern = parseTemplate(sourceUnitset)
+    .segments.map((s) => (s.type === "expression" ? ".+" : s.text.replace(/\\\$/g, "$").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
     .join("");
   return new RegExp(`^${pattern}$`).test(name);
-}
-
-/** Whether a branch condition matches the coder's variable codes. */
-export function branchMatches(when: UnitBranchCondition | undefined, values: Record<string, string | undefined>) {
-  if (!when) return true;
-  return Object.entries(when).every(([variable, expected]) => {
-    const value = values[variable];
-    return value !== undefined && (Array.isArray(expected) ? expected.includes(value) : expected === value);
-  });
 }

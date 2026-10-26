@@ -311,7 +311,7 @@ function JobRunnerContent({
 
   const item = snapshot.currentItem;
   const isUnitVar = item.type === "unit_variable" || (item.type === "question" && snapshot.phase === "unit_variable");
-  const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout);
+  const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate);
   const spanVariable = isUnitVar && item.variable.type === "span" ? item.variable : null;
 
   const handleAnswer = (val: VariableValue) => {
@@ -329,6 +329,7 @@ function JobRunnerContent({
           : snapshot.currentUnitVariables?.[item.name]
       }
       unitVariables={snapshot.currentUnitVariables ?? undefined}
+      texts={snapshot.currentTexts}
     />
   );
 
@@ -575,7 +576,7 @@ function JobRunnerContent({
                 className={`mx-auto max-w-2xl ${unitSlideClass}`}
                 onAnimationEnd={() => setUnitSlideClass("")}
               >
-                <UnitFields layout={snapshot.currentUnitLayout!} data={snapshot.currentUnit!.data} />
+                <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} />
               </div>
             </div>
 

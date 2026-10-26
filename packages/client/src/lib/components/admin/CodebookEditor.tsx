@@ -92,7 +92,7 @@ export function CodebookEditor({
         mode={mode}
         view={view}
         onViewChange={setView}
-        validationIssues={draft.validationIssues}
+        validationIssues={draft.validationErrors}
         warnings={warnings.map((w) => w.message)}
         dirty={dirty}
         canSave={draft.canSave}

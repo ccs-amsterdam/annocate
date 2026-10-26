@@ -144,10 +144,14 @@ guarantee ends").
   client (as now, but no longer enforced) and the db server.
 - **Agreement-based saturation:** impossible for encrypted variables; we
   say so explicitly (the codebook editor refuses agreement rules on them).
-- **Routing on answers:** the job server can't route on encrypted values
-  (`when` branches, unitset `{placeholders}`, `balanced` on them). Either
-  such variables can't be encrypted, or the client picks the branch, which
-  reveals the branch.
+- **Routing on answers:** the job server can't route on encrypted values.
+  Decided (2026-10): the client evaluates every condition, including unit
+  loop branch `when`, and fills in `$var` references in unitset names; it
+  only tells the job server the chosen branch and unitset names
+  (`architecture.md` §6.1). This reveals the branch and the unitset names,
+  not the answers. The trade-off is that a coder can pick their own branch;
+  routing is not access control. `balanced` assignment needs the values in
+  plain text, so a variable that is balanced on can't be encrypted.
 - **Condition leaks:** a plain `skip` on a question hidden by a condition
   reveals the condition's outcome. Encrypt the whole answer, `skip`
   included, so the job server sees only "answered".
@@ -191,8 +195,9 @@ guarantee ends").
 2. ~~Resuming on a new device without a transfer link~~: decided, see
    "Resuming" (a transfer link, or a recovery link by email).
 3. **Which variables:** every answer of a job, or only marked variables
-   (then marked ones lose validation, agreement and routing; unmarked keep
-   them)? A per-job switch is simpler and harder to get wrong.
+   (then marked ones lose validation, agreement and `balanced` assignment;
+   unmarked keep them; routing works either way, since the client chooses
+   the branch)? A per-job switch is simpler and harder to get wrong.
 4. **Is it worth it** compared to the alternatives for sensitive work:
    self-hosted job servers, or annotinder local with the end-to-end bridge
    (`docs/compositions.md`, variant B)?

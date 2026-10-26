@@ -4,13 +4,14 @@ import {
   type QuickJSWASMModule,
 } from "quickjs-emscripten-core";
 import variant from "@jitl/quickjs-wasmfile-release-sync";
+import { parseReference, referenceValue, type ReferenceScope } from "@annotinder/contracts";
 
 /**
  * Shared QuickJS sandbox for evaluating codebook-authored JS expressions
- * (docs/client.md §5 -- `condition` items' `expression`, and unit_loop layout
- * templates' `{{ expression }}` interpolation, docs/client.md §3). Both `conditions.ts`
- * and `renderTemplate.ts` build on `evaluateExpression` rather than each
- * loading/configuring their own QuickJS instance.
+ * (docs/client.md §5 -- script conditions, and `{{ }}` in templates,
+ * docs/client.md §3). Both `conditions.ts` and `renderTemplate.ts` build on
+ * `evaluateScript` rather than each loading/configuring their own QuickJS
+ * instance.
  */
 let quickJsModulePromise: Promise<QuickJSWASMModule> | null = null;
 
@@ -20,6 +21,38 @@ function loadQuickJS(): Promise<QuickJSWASMModule> {
 }
 
 const IDENTIFIER_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+/** How long one evaluation may run (docs/client.md §5). */
+export const EXPRESSION_DEADLINE_MS = 100;
+
+/**
+ * Evaluates a codebook script against `{ $unit, $var, $const }` (the only
+ * names in scope). A script that is just one reference is looked up
+ * directly, without starting QuickJS.
+ */
+export async function evaluateScript(script: string, scope: ReferenceScope): Promise<unknown> {
+  const single = parseReference(script);
+  if ("ref" in single) return referenceValue(scope, single.ref);
+  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var, $const: scope.$const });
+}
+
+/** A syntax error in a script, or null if it parses (it isn't run). For the admin editor. */
+export async function scriptSyntaxError(script: string): Promise<string | null> {
+  const QuickJS = await loadQuickJS();
+  const vm = QuickJS.newContext();
+  try {
+    const result = vm.evalCode(`(($unit, $var, $const) => (${script}\n))`);
+    if (result.error) {
+      const error = vm.dump(result.error) as { message?: string } | string;
+      result.error.dispose();
+      return typeof error === "string" ? error : (error?.message ?? "Syntax error");
+    }
+    result.value.dispose();
+    return null;
+  } finally {
+    vm.dispose();
+  }
+}
 
 /**
  * Evaluates `expression` (a JS expression) against a map of currently-known
@@ -40,14 +73,14 @@ export async function evaluateExpression(expression: string, values: Record<stri
     const vm = QuickJS.newContext();
     try {
       vm.runtime.setMemoryLimit(1024 * 1024);
-      vm.runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + 100));
+      vm.runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXPRESSION_DEADLINE_MS));
 
       const fnHandle = vm.newFunction("evaluate", (...handles) => {
         return handles[0];
       });
       fnHandle.dispose();
 
-      const script = `((${names.join(", ")}) => (${expression}))`;
+      const script = `((${names.join(", ")}) => (${expression}\n))`;
       const fnResult = vm.evalCode(script);
       if (fnResult.error) {
         console.error(`Failed to evaluate expression '${expression}':`, vm.dump(fnResult.error));

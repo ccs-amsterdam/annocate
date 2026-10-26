@@ -117,6 +117,14 @@ async function send(name: string, path: string, init: RequestInit = {}, headers:
   return res;
 }
 
+/** The query a client sends with the branch it chose (contracts NextUnitQuerySchema). */
+function branchQuery(branch?: { branch: number; unitsets: string[] }) {
+  if (!branch) return "";
+  const query = new URLSearchParams({ branch: String(branch.branch) });
+  for (const name of branch.unitsets) query.append("unitsets", name);
+  return `?${query}`;
+}
+
 /** A coder on device `name`, opened with `invite` (`null`: the link the device was opened with before, if any). */
 function coder(name: string, invite: string | null = "demo-secret", server = () => jobServer) {
   if (!devices.has(name)) devices.set(name, { cookies: new Map(), invite: null });
@@ -126,8 +134,8 @@ function coder(name: string, invite: string | null = "demo-secret", server = () 
     send(name, path, init, device.invite ? { "x-invite-secret": device.invite } : {}, server);
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
-    next: async (loop = "main_loop") => {
-      const res = await call(`/loop/${loop}/next`);
+    next: async (loop = "main_loop", branch?: { branch: number; unitsets: string[] }) => {
+      const res = await call(`/loop/${loop}/next${branchQuery(branch)}`);
       expect(res.status).toBe(200);
       return res.json() as Promise<CoderUnitResponse | null>;
     },
@@ -335,7 +343,8 @@ describe("dynamic sources", () => {
 
 describe("routing coders to unitsets", () => {
   const slot = { type: "question", name: "slot", variable: { type: "auto", source: "invite", options: [{ code: "1" }, { code: "2" }], fallback: "balanced" } };
-  const routedLoop = { units: [{ sources: [{ unitset: "part_{slot}" }, { unitset: "overlap" }] }] };
+  const routedLoop = { units: [{ sources: [{ unitset: "part_$var.slot.code" }, { unitset: "overlap" }] }] };
+  const part = (n: number) => ({ branch: 0, unitsets: [`part_${n}`, "overlap"] });
 
   it("route invited coders by their preset slot, and balance the rest", async () => {
     const [u1, u2, u3] = await createUnitset("part_1", ["unit-1"]).then(async (p1) => [
@@ -347,13 +356,17 @@ describe("routing coders to unitsets", () => {
 
     const alice = coder("alice", await invite({ slot: "2" }));
     expect((await alice.session()).variables.slot.codes).toEqual([{ code: "2" }]);
-    expect((await alice.next())!.id).toBe(u2);
+    // the client fills in the unitset names; without them the server can't route
+    const required = await alice.call("/loop/main_loop/next");
+    expect(required.status).toBe(409);
+    expect(await required.json()).toMatchObject({ code: "branch_required" });
+    expect((await alice.next("main_loop", part(2)))!.id).toBe(u2);
 
     // no preset: balanced fallback -> slot 1 (slot 2 already has alice)
     const general = await invite();
     const bob = coder("bob", general);
     expect((await bob.session()).variables.slot.codes).toEqual([{ code: "1" }]);
-    const bobUnit = await bob.next();
+    const bobUnit = await bob.next("main_loop", part(1));
     expect(bobUnit!.id).toBe(u1);
     await bob.submit(bobUnit!.id, sentiment("neutral"));
     expect((await bob.next())!.id).toBe(u3); // then the overlap set
@@ -390,7 +403,11 @@ describe("routing coders to unitsets", () => {
     await redeploy(routedLoop, [slot]);
 
     const carol = coder("carol", await invite({ slot: "1" }));
-    const first = await carol.next();
+    // names that don't fit the branch, or don't exist, are refused
+    expect((await carol.call(`/loop/main_loop/next${branchQuery({ branch: 0, unitsets: ["main", "overlap"] })}`)).status).toBe(400);
+    expect((await carol.call(`/loop/main_loop/next${branchQuery({ branch: 1, unitsets: ["part_1", "overlap"] })}`)).status).toBe(400);
+    expect((await carol.call(`/loop/main_loop/next${branchQuery(part(3))}`)).status).toBe(409);
+    const first = await carol.next("main_loop", part(1));
     const tamper = await carol.call("/variables/coder", {
       method: "POST",
       body: JSON.stringify({ variables: { slot: { done: true, codes: [{ code: "2" }] } } }),
@@ -398,20 +415,26 @@ describe("routing coders to unitsets", () => {
     expect(tamper.status).toBe(204);
     expect((await carol.session()).variables.slot.codes).toEqual([{ code: "1" }]);
 
-    // even after a restart, carol keeps her routing
+    // even after a restart, carol keeps her routing (another choice is ignored)
     jobServer = newJobServer();
     const again = coder("carol", null);
     expect((await again.next())!.id).toBe(first!.id);
+    expect((await again.next("main_loop", part(2)))!.id).toBe(first!.id);
     const { coderId } = await again.session();
     const stored = db.prepare("SELECT assignments FROM coders WHERE id = ?").get(coderId) as { assignments: string };
     expect(JSON.parse(stored.assignments)).toEqual({ main_loop: ["part_1", "overlap"] });
   });
 
-  it("route by a coder's answer with `when`, first matching branch wins", async () => {
+  it("route by the branch the client chose", async () => {
     const leaning = { type: "question", name: "leaning", variable: { type: "select_code", question: "?", codes: [{ code: "left" }, { code: "right" }] } };
     await createUnitset("left_units", ["unit-1"]);
     await redeploy(
-      { units: [{ when: { leaning: "left" }, sources: [{ unitset: "left_units" }] }, { sources: [{ unitset: "main" }] }] },
+      {
+        units: [
+          { when: { rules: [{ ref: "$var.leaning.code", op: "is", value: "left" }] }, sources: [{ unitset: "left_units" }] },
+          { sources: [{ unitset: "main" }] },
+        ],
+      },
       [leaning],
     );
     const lefty = coder("lefty");
@@ -419,12 +442,14 @@ describe("routing coders to unitsets", () => {
       method: "POST",
       body: JSON.stringify({ variables: { leaning: { done: true, codes: [{ code: "left" }] } } }),
     });
-    const unit = await lefty.next();
+    // the client evaluated `when` and chose branch 0
+    const unit = await lefty.next("main_loop", { branch: 0, unitsets: ["left_units"] });
     await lefty.submit(unit!.id, sentiment("neutral"));
     expect(await lefty.next()).toBeNull(); // only the one unit in left_units
 
     const other = coder("other");
-    expect((await other.next())!.externalId).toBe("unit-1"); // default branch: main
+    expect((await other.call("/loop/main_loop/next")).status).toBe(409); // two branches: the client must choose
+    expect((await other.next("main_loop", { branch: 1, unitsets: ["main"] }))!.externalId).toBe("unit-1");
   });
 });
 

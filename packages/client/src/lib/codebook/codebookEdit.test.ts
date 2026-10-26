@@ -16,7 +16,7 @@ import {
 import { flattenTree } from "./tree";
 
 function cond(name: string, children: CodebookItem[] = []): TopLevelItem {
-  return { type: "condition", name, expression: "true", children: children as TopLevelItem[] };
+  return { type: "condition", name, condition: { script: "true" }, children: children as TopLevelItem[] };
 }
 
 describe("codebookEdit", () => {
@@ -219,8 +219,8 @@ describe("codebookEdit", () => {
       const next = updateItem(items, "p1", {
         type: "condition",
         name: "p1_renamed",
-        expression: "x > 1",
-      } as TopLevelItem);
+        condition: { script: "$var.x.value > 1" },
+      } as unknown as TopLevelItem);
       expect(flattenTree(next).map((i) => i.name)).toEqual(["p1_renamed", "child"]);
     });
   });

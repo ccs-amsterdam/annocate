@@ -1,67 +1,66 @@
 import { describe, expect, it } from "vitest";
-
+import type { ReferenceScope } from "@annotinder/contracts";
 import { ExpressionCache } from "./expressionCache";
-import { renderTemplate } from "./renderTemplate";
+import { prepareTemplate, renderTemplate, staticTemplate } from "./renderTemplate";
 
-describe("renderTemplate", () => {
-  it("substitutes known values", async () => {
-    expect(await renderTemplate("# {{headline}}", { headline: "Big news" })).toBe("# Big news");
+const scope = (unit: Record<string, unknown>, constants: Record<string, unknown> = {}): ReferenceScope => ({
+  $unit: unit,
+  $var: { role: { answered: true, code: "student", value: 1 }, topics: { answered: true, code: ["a", "b"] } },
+  $const: constants,
+});
+
+describe("prepareTemplate", () => {
+  it("replaces values with placeholders, giving values alone on a line their own block", () => {
+    const { markdown, expressions } = prepareTemplate("# $unit.headline\nintro\n$unit.text::markdown\nmore");
+    expect(markdown).toBe("# 0\nintro\n\n1\n\nmore");
+    expect(expressions.map((e) => [e.script, e.suffix, e.alone])).toEqual([
+      ["$unit.headline", "text", false],
+      ["$unit.text", "markdown", true],
+    ]);
   });
 
-  it("substitutes multiple expressions and coerces non-strings", async () => {
-    expect(await renderTemplate("{{a}} and {{b}}", { a: 1, b: true })).toBe("1 and true");
-  });
-
-  it("replaces missing values with an empty string", async () => {
-    expect(await renderTemplate("Hello {{missing}}!", {})).toBe("Hello !");
-  });
-
-  it("supports $unit.field in {{ expression }} syntax", async () => {
-    expect(
-      await renderTemplate("# {{$unit.headline}}\n\nAuthor: {{$unit.author}}", {
-        $unit: { headline: "Breaking News", author: "Jane Doe" },
-      }),
-    ).toBe("# Breaking News\n\nAuthor: Jane Doe");
-  });
-
-  it("supports standalone $unit.field in template text", async () => {
-    expect(
-      await renderTemplate("# $unit.headline\n\n$unit.text", {
-        $unit: { headline: "Direct Field", text: "Some content here" },
-      }),
-    ).toBe("# Direct Field\n\nSome content here");
-  });
-
-  it("evaluates real JS expressions, e.g. a conditional referencing layout constants", async () => {
-    const values = { is_experiment: true, experiment_intro: "Experiment intro", control_intro: "Control intro" };
-    expect(await renderTemplate("{{is_experiment ? experiment_intro : control_intro}}", values)).toBe(
-      "Experiment intro",
-    );
-    expect(
-      await renderTemplate("{{is_experiment ? experiment_intro : control_intro}}", { ...values, is_experiment: false }),
-    ).toBe("Control intro");
-  });
-
-  it("leaves ::field/::tokenize directive syntax untouched, even with $unit. prefix", async () => {
-    expect(
-      await renderTemplate("# {{$unit.headline}}\n\n::tokenize[$unit.body]", {
-        $unit: { headline: "Hi", body: "Tokens" },
-      }),
-    ).toBe("# Hi\n\n::tokenize[$unit.body]");
-  });
-
-  it("supports an optional ExpressionCache (docs/client.md §6), still returning correct results", async () => {
-    const cache = new ExpressionCache();
-    expect(await renderTemplate("{{a}} and {{b}}", { a: 1, b: 2 }, cache)).toBe("1 and 2");
-    // Same values -> cached slots reused, still correct.
-    expect(await renderTemplate("{{a}} and {{b}}", { a: 1, b: 2 }, cache)).toBe("1 and 2");
-    // A changed value -> that slot recomputed, still correct.
-    expect(await renderTemplate("{{a}} and {{b}}", { a: 5, b: 2 }, cache)).toBe("5 and 2");
+  it("leaves refs in code spans and escaped refs alone", () => {
+    expect(prepareTemplate("`$unit.a` \\$unit.b").expressions).toEqual([]);
   });
 });
 
-describe("renderTemplate with empty unit values", () => {
+describe("renderTemplate", () => {
+  it("evaluates refs and {{ }} against the scope", async () => {
+    const rendered = await renderTemplate(
+      "# $unit.headline: {{ $unit.n * 2 }}, $var.role.code, $var.topics.code, $const.intro, {{ null }}",
+      scope({ headline: "Hi", n: 21 }, { intro: "welcome" }),
+    );
+    expect(rendered.values.map((v) => v.text)).toEqual(["Hi", "42", "student", "a, b", "welcome", ""]);
+  });
+
+  it("treats $ref and {{$ref}} the same", async () => {
+    const s = scope({ text: "**x**" });
+    const bare = await renderTemplate("$unit.text::markdown", s);
+    const braced = await renderTemplate("{{$unit.text}}::markdown", s);
+    expect(bare).toEqual(braced);
+  });
+
+  it("names the field of a ::tokenize value", async () => {
+    const rendered = await renderTemplate("$unit.body::tokenize", scope({ body: "a b" }));
+    expect(rendered.values).toEqual([{ suffix: "tokenize", text: "a b", name: "body", block: true }]);
+  });
+
+  it("uses an ExpressionCache, still returning correct results", async () => {
+    const cache = new ExpressionCache();
+    const text = async (n: number) => (await renderTemplate("{{ $unit.n + 1 }}", scope({ n }), cache)).values[0].text;
+    expect(await text(1)).toBe("2");
+    expect(await text(1)).toBe("2");
+    expect(await text(5)).toBe("6");
+  });
+
   it("renders null (an empty number or boolean cell) as nothing", async () => {
-    expect(await renderTemplate("n={{$unit.count}};$unit.count.", { $unit: { count: null } })).toBe("n=;.");
+    const rendered = await renderTemplate("n={{$unit.count}};$unit.count.", scope({ count: null }));
+    expect(rendered.values.map((v) => v.text)).toEqual(["", ""]);
+  });
+});
+
+describe("staticTemplate", () => {
+  it("shows each value's source", () => {
+    expect(staticTemplate("Hi $var.role.code").values.map((v) => v.text)).toEqual(["$var.role.code"]);
   });
 });

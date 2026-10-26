@@ -7,6 +7,7 @@ import {
   RefreshDeploymentSchema,
   type RefreshDeployment,
   JOB_SERVER_SIGNATURE_HEADER,
+  NextUnitQuerySchema,
 } from "@annotinder/contracts";
 import { HttpError } from "./annotatorClient.js";
 import { DbServers, DEFAULT_DB_SERVER_OPTIONS, type DbServerOptions, type DbServerPolicy } from "./dbServers.js";
@@ -129,9 +130,13 @@ export function createJobServer(options: JobServerOptions) {
 
   clientApi.get("/session", (c) => c.json(c.get("runtime").session(c.get("coder"))));
 
-  clientApi.get("/loop/:loop/next", async (c) =>
-    c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("loop"))),
-  );
+  clientApi.get("/loop/:loop/next", async (c) => {
+    const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), unitsets: c.req.queries("unitsets") });
+    if (!query.success) return c.json({ error: "Invalid branch or unitsets" }, 400);
+    const { branch, unitsets } = query.data;
+    const names = unitsets === undefined ? [] : Array.isArray(unitsets) ? unitsets : [unitsets];
+    return c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("loop"), { branch, unitsets: names }));
+  });
 
   clientApi.get("/loop/:loop/units/:unitId", async (c) =>
     c.json(await c.get("runtime").loopUnit(c.get("coder"), c.req.param("loop"), Number(c.req.param("unitId")))),

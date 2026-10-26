@@ -11,6 +11,8 @@ import {
   UnsupportedAnswerField,
 } from "./answerFields";
 import { useSpanAnnotation } from "../context/SpanAnnotationContext";
+import { staticTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
+import { TemplateMarkdown } from "./TemplateMarkdown";
 
 import type { QuestionItem } from "./answerFields/types";
 
@@ -21,35 +23,45 @@ interface QuestionProps {
   unitVariables?: Record<string, VariableValue>;
   /** Any previously submitted answer for this question -- for review or editing */
   initialValue?: VariableValue;
+  /** The question and instruction texts with their values filled in (JobManager); without, values show their source. */
+  texts?: QuestionTexts | null;
 }
 
-function renderQuestionText(variable: QuestionItem["variable"]) {
+/** A question's texts, rendered as templates (docs/client.md §3). */
+export interface QuestionTexts {
+  question?: RenderedTemplate;
+  instruction?: RenderedTemplate;
+}
+
+const TEXT_COMPONENTS = { p: ({ children }: { children?: ReactNode }) => <p className="m-0">{children}</p> };
+
+function renderQuestionText(variable: QuestionItem["variable"], rendered?: RenderedTemplate) {
   if (!("question" in variable) || !variable.question) return null;
 
   return (
-    <h3
-      className="whitespace-pre-wrap text-base sm:text-lg font-semibold leading-snug tracking-tight text-foreground"
+    <div
+      className="flex flex-col gap-1 text-base sm:text-lg font-semibold leading-snug tracking-tight text-foreground"
       style={variable.questionStyle as CSSProperties | undefined}
     >
-      {variable.question}
-    </h3>
+      <TemplateMarkdown rendered={rendered ?? staticTemplate(variable.question)} components={TEXT_COMPONENTS} />
+    </div>
   );
 }
 
-function renderInstruction(variable: QuestionItem["variable"]) {
+function renderInstruction(variable: QuestionItem["variable"], rendered?: RenderedTemplate) {
   if (!("instruction" in variable) || !variable.instruction) return null;
 
   return (
-    <p
-      className="whitespace-pre-wrap text-xs sm:text-sm text-muted-foreground leading-normal"
+    <div
+      className="flex flex-col gap-1 text-xs sm:text-sm text-muted-foreground leading-normal"
       style={variable.instructionStyle as CSSProperties | undefined}
     >
-      {variable.instruction}
-    </p>
+      <TemplateMarkdown rendered={rendered ?? staticTemplate(variable.instruction)} components={TEXT_COMPONENTS} />
+    </div>
   );
 }
 
-export function Question({ item, onAnswer, unitVariables, initialValue }: QuestionProps) {
+export function Question({ item, onAnswer, unitVariables, initialValue, texts }: QuestionProps) {
   const { variable } = item;
   const spanAnnotation = useSpanAnnotation();
 
@@ -91,8 +103,8 @@ export function Question({ item, onAnswer, unitVariables, initialValue }: Questi
     <div className="flex flex-col gap-2 w-full">
       {!hideHeader && (
         <div className="flex flex-col gap-0.5">
-          {renderQuestionText(variable)}
-          {renderInstruction(variable)}
+          {renderQuestionText(variable, texts?.question)}
+          {renderInstruction(variable, texts?.instruction)}
         </div>
       )}
       <div className={hideHeader ? "" : "pt-0.5"}>{answerField}</div>

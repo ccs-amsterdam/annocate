@@ -6,6 +6,7 @@ import { ITEM_TYPES } from "./itemTypes";
 import { AddItemMenu } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
 import { getItemKey, insertableTypesNextTo, type ItemType, type TreeNode } from "./utils";
+import { describeCondition } from "../../../codebook/conditions";
 
 interface TreeItemRowProps {
   item: TreeNode;
@@ -105,7 +106,7 @@ function ItemLabel({ item, selected = false, issue }: { item: TreeNode; selected
         {item.name || <em className="font-normal text-muted-foreground">(unnamed)</em>}
       </span>
       {item.type === "condition" && (
-        <span className="truncate font-mono text-xs text-muted-foreground/80">if {item.expression}:</span>
+        <span className="truncate font-mono text-xs text-muted-foreground/80">if {describeCondition(item.condition)}:</span>
       )}
       {issue && (
         <span title={issue} className="shrink-0 text-destructive">

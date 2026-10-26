@@ -224,7 +224,7 @@ export function VariableTypeForm({
             <Input
               value={v.column}
               onChange={(e) => onChange({ ...v, column: e.target.value })}
-              placeholder="Must match a ::tokenize[name] in the unit_loop layout"
+              placeholder="Must be shown as $unit.<column>::tokenize in the layout"
             />
           </div>
           <div className="flex flex-col gap-1">

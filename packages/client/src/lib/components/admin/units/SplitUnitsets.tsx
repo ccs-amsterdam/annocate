@@ -92,7 +92,7 @@ export function SplitUnitsets({
       </div>
       <p className="text-muted-foreground">
         Creates {sets.map((s) => `${s.name} (${s.unitIds.length})`).join(", ")}. Units are shuffled first. Route coders
-        to a part in a unit loop with e.g. <code>{`${prefix}_{slot}`}</code>.
+        to a part in a unit loop with e.g. <code>{`${prefix}_$var.slot.code`}</code>.
       </p>
       {taken && <p className="text-destructive">A unitset named {taken.name} already exists: pick another prefix.</p>}
       {error && <p className="text-destructive">{error}</p>}

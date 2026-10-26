@@ -9,6 +9,21 @@ import {
 } from "../session.js";
 
 /**
+ * Query of `GET /loop/:loop/next`: the branch of the loop's `units` the client
+ * chose (the first whose `when` matches, evaluated on the client) and its
+ * unitset names with `$var` references filled in, one per source (repeat
+ * `unitsets`). Required the first time a coder enters a loop, unless the loop
+ * has a single unconditional branch without references (409
+ * `branch_required` otherwise). Ignored once the coder is routed: routing
+ * is sticky.
+ */
+export const NextUnitQuerySchema = z.object({
+  branch: z.coerce.number().int().min(0).optional(),
+  unitsets: z.union([z.string(), z.array(z.string())]).optional(),
+});
+export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
+
+/**
  * The client API (docs/api/client.md): served by the job server under
  * `/d/<deploymentId>`, called by the client's annotator (`HttpJobServer`).
  * Paths are relative to that base: a coder is tied to one deployment by the
@@ -19,6 +34,7 @@ export const clientEndpoints = {
   getNextUnit: {
     method: "GET",
     path: "/loop/:loop/next",
+    query: NextUnitQuerySchema,
     request: z.void(),
     response: CoderUnitResponseSchema.nullable(),
   },

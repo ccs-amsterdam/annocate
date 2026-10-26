@@ -1,15 +1,11 @@
 import { z } from "zod";
 
-// Redesigned from the previous app's layout schemas (docs/client.md §3, resolved 2026-09-18):
-// collapsed the old array-of-typed-fields (text/markdown/image) + CSS-grid
-// arrangement system down to a SINGLE markdown template. Rationale: the old
-// system grew fields -> grid -> markdown-with-injected-fields over time,
-// each layer mostly subsuming the previous one's use cases; a single
-// markdown template (rendered via a real, XSS-safe-by-construction markdown
-// library -- no raw HTML, see UnitFields.tsx) covers layout/arrangement via
-// ordinary markdown/CSS, images via a `::field[column]{as="image"}`
-// directive, and per-element styling via directive attributes converted to
-// React style objects. Attached to a `unit_loop` codebook item.
+// A unit's layout (docs/client.md §3): a single markdown template, rendered
+// with a real, XSS-safe-by-construction markdown library (no raw HTML, see
+// UnitFields.tsx). Values are inserted with references and `{{ }}` (see
+// references.ts); they are plain text unless a suffix says otherwise, so a
+// value is never interpreted as markdown by accident. Attached to a
+// `unit_loop` codebook item.
 export const UnitLayoutMetaFieldSchema = z.object({
   name: z.string(),
   column: z.string(),
@@ -19,25 +15,19 @@ export const UnitLayoutSchema = z.object({
   template: z
     .string()
     .describe(
-      "Markdown template for the unit. Supports {{ expression }} (a JS expression, evaluated in the same " +
-        "QuickJS sandbox as `condition` items -- docs/client.md §5 -- against unit data columns, this layout's " +
-        "`constants`, and known variable values; e.g. `{{is_experiment ? experiment_intro : control_intro}}`), " +
-        'and a `::field[name]` / `::tokenize[name]` directive (leaf directive syntax) for "special" rendering ' +
-        'of a unit data column OR one of this layout\'s `constants` (same lookup, one namespace): ' +
-        '`::field[name]{as="image"}` renders it as an image, a bare `::field[name]` renders its literal text ' +
-        "(optionally `{markdown=true}` to interpret it as nested markdown -- NOT combinable with `::tokenize`, " +
-        "see below), and `::tokenize[name]` renders its literal text as interactively selectable for the " +
-        "currently-active `span` variable targeting that name (docs/client.md §3).",
+      "Markdown template for the unit. Insert values with `$unit.<field>`, `$const.<name>`, `$var.<q>.code` " +
+        "or `{{ js }}` (evaluated in the QuickJS sandbox over $unit, $var and $const), each optionally followed " +
+        "by `::text` (default: literal text), `::markdown`, `::image` or `::tokenize` (only on a bare " +
+        "`$unit.x` / `$const.x`: selectable text for span questions). `\\$` is a literal `$` (docs/client.md §3).",
     ),
   /**
    * Named string constants (docs/client.md §3), versioned alongside the
    * codebook/layout rather than per-unit data -- e.g. per-experimental-
-   * condition intro text. Referenced the same way as unit data columns in
-   * `{{...}}` expressions and `::field`/`::tokenize` directives, so
-   * `::tokenize[name]` always resolves to ONE stable, versioned string
-   * (a real data column OR a layout constant, never a composed/rendered
-   * blob) -- preserving the guarantee that stored span character offsets
-   * remain meaningful without needing to replay a particular rendering.
+   * condition intro text. Referenced as `$const.<name>`. Only a bare
+   * `$unit.x::tokenize` / `$const.x::tokenize` can be tokenized, so span
+   * offsets always point into ONE stable, versioned string (a data column
+   * or a constant, never a composed/rendered blob) and stay meaningful
+   * without replaying a particular rendering.
    */
   constants: z.record(z.string(), z.string()).optional(),
   style: z.record(z.string(), z.string()).optional().describe("Optional inline CSS for the layout's root container"),

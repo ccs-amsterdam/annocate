@@ -8,12 +8,15 @@ import type {
   CoderUnitResponse,
   SessionResponse,
   AnyVariableType,
+  ReferenceScope,
 } from "@annotinder/contracts";
-import { validateAnswer } from "@annotinder/contracts";
-import type { JobServer } from "../api/httpJobServer";
+import { buildScope, collectQuestions, fillUnitsetName, validateAnswer } from "@annotinder/contracts";
+import type { BranchChoice, JobServer } from "../api/httpJobServer";
+import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
-import { computeLoopSteps, computeTopLevelSteps } from "../codebook/tree";
-import { renderTemplate } from "../codebook/renderTemplate";
+import { computeLoopSteps, computeTopLevelSteps, type StepContext } from "../codebook/tree";
+import { renderTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
+import type { QuestionTexts } from "../components/Question";
 
 export type JobManagerPhase =
   | "loading"
@@ -67,6 +70,10 @@ export interface JobManagerSnapshot {
   currentItem: CodebookItem | null;
   currentUnit: CoderUnitResponse | null;
   currentUnitLayout: UnitLayout | null;
+  /** The layout's template with its values evaluated for the current unit. */
+  currentUnitTemplate: RenderedTemplate | null;
+  /** The current question's texts with their values evaluated. */
+  currentTexts: QuestionTexts | null;
   userVariableValues: Record<string, VariableValue>;
   currentUnitVariables: Record<string, VariableValue> | null;
   error: string | null;
@@ -171,7 +178,13 @@ export class JobManager {
   private listeners: Set<JobManagerListener> = new Set();
   private expressionCache = new ExpressionCache();
 
+  /** Every question in the codebook, for building `$var` scopes. */
+  private questions = new Map<string, AnyVariableType>();
   private topSteps: CodebookItem[] = [];
+  /** Answers of coder-level questions that are currently shown (hidden ones count as unanswered). */
+  private coderVisible: Record<string, VariableValue> = {};
+  /** `coderVisible` plus the current unit's answers to questions that are currently shown. */
+  private unitVisible: Record<string, VariableValue> = {};
   private topIndex = -1;
   private maxReachedTopIndex = 0;
   private activeLoop: UnitLoopItem | null = null;
@@ -187,7 +200,6 @@ export class JobManager {
   private progress = new Map<string, { doneUnitIds: number[]; totalUnits?: number | null }>();
   /** True while restoring a resumed session: answered questions are skipped until one needs input. */
   private resuming = false;
-  private conditionValues: Record<string, unknown> = {};
 
   private lastFailedOperation: (() => Promise<void>) | null = null;
   private starting: Promise<void> | null = null;
@@ -197,6 +209,8 @@ export class JobManager {
     currentItem: null,
     currentUnit: null,
     currentUnitLayout: null,
+    currentUnitTemplate: null,
+    currentTexts: null,
     userVariableValues: {},
     currentUnitVariables: null,
     error: null,
@@ -239,11 +253,11 @@ export class JobManager {
       this.publish({ phase: "loading", error: null, errorCode: null });
       const session: SessionResponse = await this.jobServer.getSession();
       this.items = session.codebook.items as TopLevelItem[];
+      this.questions = collectQuestions(this.items).questions;
       // Coder-level variables so far, including server-assigned `auto`
       // variables (condition, slot, ...), so conditions can use them.
       for (const [name, value] of Object.entries(session.variables ?? {})) {
         this.userVariableValues[name] = value;
-        this.recordConditionValue(name, value);
       }
       this.topIndex = -1;
       this.maxReachedTopIndex = 0;
@@ -345,30 +359,16 @@ export class JobManager {
     // 1. Step backward within current unit's questions
     if (this.loopIndex > 0) {
       this.loopIndex -= 1;
-      const step = this.loopSteps[this.loopIndex];
-      this.publish({
-        phase: "unit_variable",
-        currentItem: step,
-        currentUnit: this.currentUnit,
-        currentUnitLayout: this.activeLoop ? await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!) : null,
-        currentUnitVariables: { ...this.unitVariableValues },
-      });
+      await this.publishLoopStep();
       return;
     }
 
     // 2. Step backward to previous unit in history
     if (this.unitHistoryIndex > 0 && this.activeLoop) {
       await this.openEntry(this.unitHistoryIndex - 1);
-      this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+      await this.refreshLoopSteps();
       this.loopIndex = Math.max(0, this.loopSteps.length - 1);
-      const step = this.loopSteps[this.loopIndex];
-      this.publish({
-        phase: "unit_variable",
-        currentItem: step,
-        currentUnit: this.currentUnit,
-        currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-        currentUnitVariables: { ...this.unitVariableValues },
-      });
+      await this.publishLoopStep();
       return;
     }
 
@@ -381,29 +381,16 @@ export class JobManager {
         this.activeLoop = prevTop as UnitLoopItem;
         if (this.unitHistory.length > 0) {
           await this.openEntry(this.unitHistory.length - 1);
-          this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+          await this.refreshLoopSteps();
           this.loopIndex = Math.max(0, this.loopSteps.length - 1);
-          const step = this.loopSteps[this.loopIndex];
-          this.publish({
-            phase: "unit_variable",
-            currentItem: step,
-            currentUnit: this.currentUnit,
-            currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-            currentUnitVariables: { ...this.unitVariableValues },
-          });
+          await this.publishLoopStep();
           return;
         }
       }
 
       this.activeLoop = null;
       this.currentUnit = null;
-      this.publish({
-        phase: "user_variable",
-        currentItem: prevTop,
-        currentUnit: null,
-        currentUnitLayout: null,
-        currentUnitVariables: null,
-      });
+      await this.publishTopStep(prevTop);
     }
   }
 
@@ -415,30 +402,16 @@ export class JobManager {
     // 1. Forward within questions of current unit
     if (this.loopIndex < this.loopSteps.length - 1) {
       this.loopIndex += 1;
-      const step = this.loopSteps[this.loopIndex];
-      this.publish({
-        phase: "unit_variable",
-        currentItem: step,
-        currentUnit: this.currentUnit,
-        currentUnitLayout: this.activeLoop ? await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!) : null,
-        currentUnitVariables: { ...this.unitVariableValues },
-      });
+      await this.publishLoopStep();
       return;
     }
 
     // 2. Forward to next unit in history
     if (this.unitHistoryIndex < this.unitHistory.length - 1 && this.activeLoop) {
       await this.openEntry(this.unitHistoryIndex + 1);
-      this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+      await this.refreshLoopSteps();
       this.loopIndex = 0;
-      const step = this.loopSteps[0];
-      this.publish({
-        phase: "unit_variable",
-        currentItem: step,
-        currentUnit: this.currentUnit,
-        currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-        currentUnitVariables: { ...this.unitVariableValues },
-      });
+      await this.publishLoopStep();
       return;
     }
 
@@ -458,13 +431,7 @@ export class JobManager {
       } else {
         this.activeLoop = null;
         this.currentUnit = null;
-        this.publish({
-          phase: "user_variable",
-          currentItem: nextTop,
-          currentUnit: null,
-          currentUnitLayout: null,
-          currentUnitVariables: null,
-        });
+        await this.publishTopStep(nextTop);
       }
     }
   }
@@ -475,7 +442,7 @@ export class JobManager {
 
     // In preview mode with allowFetchAhead: fetch units ahead up to target unitIndex
     while (allowFetchAhead && this.unitHistory.length <= unitIndex) {
-      const nextUnit = await this.jobServer.getNextUnit(this.activeLoop.name);
+      const nextUnit = await this.fetchNextUnit(this.activeLoop);
       if (!nextUnit) break;
       this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...(nextUnit.variables ?? {}) } });
     }
@@ -484,15 +451,9 @@ export class JobManager {
     const target = Math.max(0, Math.min(unitIndex, this.unitHistory.length - 1));
 
     await this.openEntry(target);
-    this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+    await this.refreshLoopSteps();
     this.loopIndex = 0;
-    this.publish({
-      phase: "unit_variable",
-      currentItem: this.loopSteps[0],
-      currentUnit: this.currentUnit,
-      currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-      currentUnitVariables: { ...this.unitVariableValues },
-    });
+    await this.publishLoopStep();
   }
 
   async jumpToLoopStep(stepIndex: number, allowAhead = false): Promise<void> {
@@ -505,14 +466,7 @@ export class JobManager {
     }
     this.syncCurrentUnitAnswers();
     this.loopIndex = stepIndex;
-    const step = this.loopSteps[this.loopIndex];
-    this.publish({
-      phase: "unit_variable",
-      currentItem: step,
-      currentUnit: this.currentUnit,
-      currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-      currentUnitVariables: { ...this.unitVariableValues },
-    });
+    await this.publishLoopStep();
   }
 
   async jumpToUnitQuestion(phaseIndex: number, stepIndex: number, allowAhead = false): Promise<void> {
@@ -540,15 +494,9 @@ export class JobManager {
       // in it during this visit (e.g. resumed session), to the frontier.
       if (this.unitHistoryIndex >= 0) {
         await this.openEntry(Math.min(this.unitHistoryIndex, this.unitHistory.length - 1));
-        this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+        await this.refreshLoopSteps();
         this.loopIndex = 0;
-        this.publish({
-          phase: "unit_variable",
-          currentItem: this.loopSteps[0],
-          currentUnit: this.currentUnit,
-          currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-          currentUnitVariables: { ...this.unitVariableValues },
-        });
+        await this.publishLoopStep();
       } else {
         this.currentUnit = null;
         this.loopIndex = -1;
@@ -557,26 +505,15 @@ export class JobManager {
     } else {
       this.activeLoop = null;
       this.currentUnit = null;
-      this.publish({
-        phase: "user_variable",
-        currentItem: target,
-        currentUnit: null,
-        currentUnitLayout: null,
-        currentUnitVariables: null,
-      });
+      await this.publishTopStep(target);
     }
   }
 
-  async answer(value: VariableValue, conditionValue?: unknown): Promise<void> {
+  async answer(value: VariableValue): Promise<void> {
     const item = this.snapshot.currentItem;
     if (!item || (item.type !== "user_variable" && item.type !== "unit_variable" && item.type !== "question")) return;
 
-    this.lastFailedOperation = () => this.answer(value, conditionValue);
-    if (conditionValue !== undefined) {
-      this.conditionValues[item.name] = conditionValue;
-    } else {
-      this.recordConditionValue(item.name, value);
-    }
+    this.lastFailedOperation = () => this.answer(value);
 
     try {
       const isUnit = item.type === "unit_variable" || (item.type === "question" && this.activeLoop !== null);
@@ -610,32 +547,119 @@ export class JobManager {
     }
   }
 
-  private recordConditionValue(name: string, value: VariableValue): void {
-    if (value && typeof value === "object" && "value" in value) {
-      this.conditionValues[name] = (value as { value: unknown }).value;
-    } else {
-      this.conditionValues[name] = value;
+  private get stepContext(): StepContext {
+    return { questions: this.questions, cache: this.expressionCache };
+  }
+
+  private async refreshTopSteps(): Promise<void> {
+    const { steps, visible } = await computeTopLevelSteps(this.items, this.userVariableValues, this.stepContext);
+    this.topSteps = steps;
+    this.coderVisible = visible;
+  }
+
+  private async refreshLoopSteps(): Promise<void> {
+    if (!this.activeLoop || !this.currentUnit) return;
+    const { steps, visible } = await computeLoopSteps(
+      this.activeLoop,
+      this.coderVisible,
+      this.unitVariableValues,
+      this.currentUnit.data,
+      this.stepContext,
+    );
+    this.loopSteps = steps;
+    this.unitVisible = visible;
+  }
+
+  /** A question's texts with their values filled in. */
+  private async questionTexts(item: CodebookItem | undefined, scope: ReferenceScope): Promise<QuestionTexts | null> {
+    if (!item || !("variable" in item) || !("question" in item.variable)) return null;
+    const { question, instruction } = item.variable;
+    const [q, i] = await Promise.all([
+      question ? renderTemplate(question, scope, this.expressionCache, `question:${item.name}`) : undefined,
+      instruction ? renderTemplate(instruction, scope, this.expressionCache, `instruction:${item.name}`) : undefined,
+    ]);
+    return { question: q, instruction: i };
+  }
+
+  /** Publishes the current step of the current unit, with the layout and texts rendered. */
+  private async publishLoopStep(): Promise<void> {
+    const loop = this.activeLoop;
+    const unit = this.currentUnit;
+    if (!loop || !unit) return;
+    const step = this.loopSteps[this.loopIndex];
+    try {
+      const scope = buildScope(this.questions, this.unitVisible, unit.data, loop.layout.constants);
+      const [template, texts] = await Promise.all([
+        renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${loop.name}`),
+        this.questionTexts(step, scope),
+      ]);
+      this.publish({
+        phase: "unit_variable",
+        currentItem: step,
+        currentUnit: unit,
+        currentUnitLayout: loop.layout,
+        currentUnitTemplate: template,
+        currentTexts: texts,
+        currentUnitVariables: { ...this.unitVariableValues },
+      });
+    } catch (err) {
+      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
     }
   }
 
-  private async resolveUnitLayout(layout: UnitLayout, unit: CoderUnitResponse): Promise<UnitLayout> {
+  /** Publishes a top-level (coder-level) question. */
+  private async publishTopStep(item: CodebookItem): Promise<void> {
+    this.publish({
+      phase: "user_variable",
+      currentItem: item,
+      currentUnit: null,
+      currentUnitLayout: null,
+      currentUnitTemplate: null,
+      currentTexts: await this.questionTexts(item, buildScope(this.questions, this.coderVisible)),
+      currentUnitVariables: null,
+    });
+  }
+
+  /**
+   * The branch of a loop's `units` for this coder: the first whose `when`
+   * holds, with its unitset names filled in; null if none matches.
+   * Evaluated here rather than on the job server, so the server never
+   * needs the answers (docs/architecture.md §6).
+   */
+  private async chooseBranch(loop: UnitLoopItem): Promise<BranchChoice | null> {
+    const scope = buildScope(this.questions, this.coderVisible);
+    for (const [i, branch] of loop.units.entries()) {
+      if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${loop.name}:${i}`))) {
+        continue;
+      }
+      const unitsets = branch.sources.map((source) => fillUnitsetName(source.unitset, scope));
+      const missing = branch.sources.find((_, s) => unitsets[s] === null);
+      if (missing) {
+        throw new Error(`Unit loop '${loop.name}': no unitset '${missing.unitset}' for this coder (an answer it uses is missing)`);
+      }
+      return { branch: i, unitsets: unitsets as string[] };
+    }
+    return null;
+  }
+
+  /**
+   * The next unit of a loop from the job server, telling it the chosen
+   * branch (ignored once the coder is routed: routing is sticky). If no
+   * branch matches and the coder wasn't routed before, the coder has no
+   * units in this loop.
+   */
+  private async fetchNextUnit(loop: UnitLoopItem): Promise<CoderUnitResponse | null> {
+    const choice = await this.chooseBranch(loop);
     try {
-      const scope = {
-        ...layout.constants,
-        ...unit.data,
-        $unit: unit.data,
-        ...this.conditionValues,
-      };
-      const rendered = await renderTemplate(layout.template, scope, this.expressionCache);
-      return { ...layout, template: rendered };
+      return await this.jobServer.getNextUnit(loop.name, choice ?? undefined);
     } catch (err) {
-      this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
-      return layout;
+      if (choice === null && errorCodeOf(err) === "branch_required") return null;
+      throw err;
     }
   }
 
   private async advanceTop(): Promise<void> {
-    this.topSteps = await computeTopLevelSteps(this.items, this.conditionValues, this.expressionCache);
+    await this.refreshTopSteps();
     this.topIndex += 1;
     this.maxReachedTopIndex = Math.max(this.maxReachedTopIndex, this.topIndex);
     const next = this.topSteps[this.topIndex];
@@ -646,6 +670,8 @@ export class JobManager {
         currentItem: null,
         currentUnit: null,
         currentUnitLayout: null,
+        currentUnitTemplate: null,
+        currentTexts: null,
         currentUnitVariables: null,
       });
       return;
@@ -665,13 +691,7 @@ export class JobManager {
     }
 
     this.resuming = false;
-    this.publish({
-      phase: "user_variable",
-      currentItem: next,
-      currentUnit: null,
-      currentUnitLayout: null,
-      currentUnitVariables: null,
-    });
+    await this.publishTopStep(next);
   }
 
   private async advanceUnit(): Promise<void> {
@@ -679,26 +699,24 @@ export class JobManager {
 
     // Advance loop question step within the current unit
     if (this.currentUnit) {
-      this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+      await this.refreshLoopSteps();
       this.loopIndex += 1;
       const next = this.loopSteps[this.loopIndex];
       if (next) {
-        this.publish({
-          phase: "unit_variable",
-          currentItem: next,
-          currentUnit: this.currentUnit,
-          currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-          currentUnitVariables: { ...this.unitVariableValues },
-        });
+        await this.publishLoopStep();
         return;
       }
 
       // No more steps: the unit is finished. Post an answer for every
       // question of the loop -- `skip` for those a condition hid -- since the
       // server only accepts complete units (docs/architecture.md §8.2).
+      // An answer to a question that is now hidden (an earlier answer
+      // changed) is posted as `skip` too.
       const doneValues: Record<string, VariableValue> = {};
-      for (const name of loopVariables(this.activeLoop).keys()) doneValues[name] = { done: true, skip: true };
-      for (const [name, value] of Object.entries(this.unitVariableValues)) doneValues[name] = { ...value, done: true };
+      for (const name of loopVariables(this.activeLoop).keys()) {
+        const value = this.unitVisible[name];
+        doneValues[name] = value ? { ...value, done: true } : { done: true, skip: true };
+      }
       await this.jobServer.postUnitVariables(this.currentUnit.id, doneValues, this.activeLoop.name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
@@ -707,17 +725,11 @@ export class JobManager {
       // If reviewing an earlier unit in history, advance to the next unit in history
       if (this.unitHistoryIndex < this.unitHistory.length - 1) {
         await this.openEntry(this.unitHistoryIndex + 1);
-        this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+        await this.refreshLoopSteps();
         this.loopIndex = 0;
         const firstStep = this.loopSteps[0];
         if (firstStep) {
-          this.publish({
-            phase: "unit_variable",
-            currentItem: firstStep,
-            currentUnit: this.currentUnit,
-            currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-            currentUnitVariables: { ...this.unitVariableValues },
-          });
+          await this.publishLoopStep();
           return;
         }
       }
@@ -727,7 +739,7 @@ export class JobManager {
     }
 
     // At frontier: ask the job server for the next unit of this loop.
-    const nextUnit = await this.jobServer.getNextUnit(this.activeLoop.name);
+    const nextUnit = await this.fetchNextUnit(this.activeLoop);
     if (!nextUnit) {
       // Loop finished: advance to the next top-level item.
       this.activeLoop = null;
@@ -738,7 +750,7 @@ export class JobManager {
     this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...(nextUnit.variables ?? {}) } });
     await this.openEntry(this.unitHistory.length - 1);
 
-    this.loopSteps = await computeLoopSteps(this.activeLoop, this.conditionValues, this.expressionCache);
+    await this.refreshLoopSteps();
     // Start at the first question without a (still valid) answer: the unit
     // may be partly done (reload mid-unit, or the codebook gained a question).
     const firstOpen = this.loopSteps.findIndex((step) => this.unitVariableValues[step.name] === undefined);
@@ -751,13 +763,7 @@ export class JobManager {
     }
 
     this.resuming = false;
-    this.publish({
-      phase: "unit_variable",
-      currentItem: firstStep,
-      currentUnit: this.currentUnit,
-      currentUnitLayout: await this.resolveUnitLayout(this.activeLoop.layout, this.currentUnit!),
-      currentUnitVariables: { ...this.unitVariableValues },
-    });
+    await this.publishLoopStep();
   }
 
   private buildNavigation(): JobManagerNavigation {

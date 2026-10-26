@@ -33,6 +33,7 @@ export * from "./jobManager/useJobManager";
 export * from "./components/JobRunner";
 export * from "./components/Question";
 export * from "./components/UnitFields";
+export * from "./components/TemplateMarkdown";
 export * from "./components/SelectableText";
 export * from "./components/ShortcutBadge";
 export * from "./context/SpanAnnotationContext";

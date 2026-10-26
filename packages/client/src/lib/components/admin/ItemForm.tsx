@@ -1,11 +1,16 @@
 import {
   ALL_UNITS_UNITSET,
+  type AnyVariableType,
   type CodebookItem,
+  type Condition,
   type UnitLoopItem,
   type UnitsetResponse,
   type CodebookValidationIssue,
 } from "@annotinder/contracts";
 import { UnitLoopForm } from "./UnitLoopForm";
+import { ConditionEditor } from "./ConditionEditor";
+import { IssueList } from "./IssueList";
+import { issuesAt } from "./issues";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -62,7 +67,7 @@ export function defaultItemForType(
       return {
         type: "condition",
         name,
-        expression: "true",
+        condition: { rules: [] },
         children: [],
       } as CodebookItem;
   }
@@ -72,7 +77,8 @@ export function ItemForm({
   item,
   unitsets,
   unitVariableNames = [],
-  coderVariableNames = [],
+  availableQuestions = [],
+  loopConstants = null,
   validationIssues = [],
   isInsideLoop = false,
   onChange,
@@ -80,8 +86,10 @@ export function ItemForm({
   item: CodebookItem;
   unitsets: UnitsetResponse[];
   unitVariableNames?: string[];
-  /** Coder-level variables defined before this item (for unit_loop branch conditions). */
-  coderVariableNames?: string[];
+  /** Questions references may use at this item (contracts `availableQuestions`): for conditions and branches. */
+  availableQuestions?: { name: string; variable: AnyVariableType }[];
+  /** The layout constants of the enclosing unit loop, if the item is inside one. */
+  loopConstants?: string[] | null;
   validationIssues?: CodebookValidationIssue[];
   isInsideLoop?: boolean;
   onChange: (updated: CodebookItem) => void;
@@ -92,8 +100,6 @@ export function ItemForm({
   };
 
   const nameError = getFieldError("name");
-  const templateError = getFieldError("template");
-  const expressionError = getFieldError("expression");
 
   return (
     <div className="flex flex-col gap-4">
@@ -143,6 +149,8 @@ export function ItemForm({
             unitVariableNames={unitVariableNames}
             onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
           />
+          {/* Reference problems in the question and instruction texts, and others about the answer type */}
+          <IssueList issues={issuesAt(validationIssues, "variable")} />
         </>
       )}
 
@@ -151,7 +159,7 @@ export function ItemForm({
           <UnitLoopForm
             loop={item as UnitLoopItem}
             unitsets={unitsets}
-            coderVariableNames={coderVariableNames}
+            coderQuestions={availableQuestions}
             validationIssues={validationIssues}
             onChange={(loop) => onChange(loop)}
           />
@@ -167,36 +175,29 @@ export function ItemForm({
                 } as CodebookItem)
               }
               rows={4}
-              placeholder="e.g., {{ text }} or <p>{{ title }}</p>"
-              className={`font-mono text-xs ${templateError ? "border-destructive" : ""}`}
+              placeholder={"# $unit.headline\n\n$unit.text::tokenize"}
+              className={`font-mono text-xs ${issuesAt(validationIssues, "layout").some((i) => !i.warning) ? "border-destructive" : ""}`}
             />
-            {templateError ? (
-              <p className="text-xs text-destructive">{templateError}</p>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">
-                Mustache template for presenting the unit.
-              </p>
-            )}
+            <IssueList issues={issuesAt(validationIssues, "layout")} />
+            <p className="text-[11px] text-muted-foreground">
+              Markdown. Insert values with <code>$unit.field</code>, <code>$const.name</code>, <code>$var.question.code</code>{" "}
+              or <code>{"{{ js }}"}</code>. Values are plain text; add <code>::markdown</code>, <code>::image</code> or{" "}
+              <code>::tokenize</code> (for span questions) to show them differently.
+            </p>
           </div>
         </div>
       )}
 
       {item.type === "condition" && (
         <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
-          <label className="text-xs font-semibold text-foreground">JavaScript Expression</label>
-          <Input
-            value={(item as any).expression}
-            onChange={(e) => onChange({ ...item, expression: e.target.value } as CodebookItem)}
-            placeholder="e.g., consent === true, age > 18"
-            className={`font-mono text-xs ${expressionError ? "border-destructive" : ""}`}
+          <label className="text-xs font-semibold text-foreground">Show the items in this condition if</label>
+          <ConditionEditor
+            condition={(item as { condition: Condition }).condition ?? { rules: [] }}
+            onChange={(condition) => onChange({ ...item, condition } as CodebookItem)}
+            questions={availableQuestions}
+            loop={loopConstants ? { constants: loopConstants } : null}
+            issues={issuesAt(validationIssues, "condition")}
           />
-          {expressionError ? (
-            <p className="text-xs text-destructive">{expressionError}</p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">
-              Evaluated against variables answered earlier.
-            </p>
-          )}
         </div>
       )}
     </div>

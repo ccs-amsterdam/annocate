@@ -53,9 +53,11 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCod
 
   const cleanItems = useMemo(() => stripKeys(items), [items]);
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
+  // Errors and warnings; only errors block saving (warnings show next to the item).
   const validationIssues = useMemo(() => validateCodebookItems(cleanItems), [cleanItems]);
+  const validationErrors = useMemo(() => validationIssues.filter((i) => !i.warning), [validationIssues]);
   const dirty = serialized !== savedSerialized;
-  const canSave = !readOnly && items.length > 0 && validationIssues.length === 0;
+  const canSave = !readOnly && items.length > 0 && validationErrors.length === 0;
   const selectedItem = selected ? findItem(items, selected) : null;
 
   useWarnBeforeUnload(dirty);
@@ -128,6 +130,7 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCod
     selected,
     selectedItem,
     validationIssues,
+    validationErrors,
     dirty,
     canSave,
     saving: createCodebook.isPending || updateCodebook.isPending,

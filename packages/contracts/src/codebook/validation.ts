@@ -1,10 +1,42 @@
-import { z } from "zod";
 import { TopLevelItemSchema, type CodebookItem } from "./item.js";
-import { unitsetPlaceholders, type UnitBranch } from "./unitLoop.js";
+import type { AnyVariableType } from "./answers.js";
+import { NUMERIC_OPS, type Condition } from "./condition.js";
+import type { UnitBranch } from "./unitLoop.js";
+import {
+  extractReferences,
+  parseReference,
+  parseTemplate,
+  referenceShape,
+  referenceText,
+  type Reference,
+  type ReferenceError,
+  type ReferenceShape,
+} from "./references.js";
 
 export interface CodebookValidationIssue {
   path: (string | number)[];
   message: string;
+  /** A warning doesn't block saving (e.g. `.value` on codes without values). */
+  warning?: boolean;
+}
+
+type Path = (string | number)[];
+
+/** Where references are checked, and what they may refer to there. */
+interface RefContext {
+  path: Path;
+  /** The unit loop around this point (null at the top level). */
+  loop: string | null;
+  /** Questions answered before this point. */
+  available: ReadonlySet<string>;
+  /** The layout constants of the loop around this point. */
+  constants?: ReadonlySet<string>;
+  /** The question whose text this is (it can't refer to itself). */
+  self?: string;
+  /** Questions inside the condition being checked. */
+  inside?: ReadonlySet<string>;
+  /** Checking a branch `when` or unitset name: only coder-level `$var` refs from before the loop. */
+  branch?: boolean;
 }
 
 /**
@@ -13,8 +45,13 @@ export interface CodebookValidationIssue {
  * 2. Enforces unique names across all items in the tree
  * 3. Enforces that span variable references in relations exist in preceding items
  * 4. Enforces structural rules (unit_loop cannot be nested, etc.)
- * 5. Enforces that unit_loop branches only refer to coder-level variables
- *    defined before the loop, and agreement rules to questions inside it
+ * 5. Checks every reference (`$var`, `$unit`, `$const`) in conditions,
+ *    branch `when`, unitset names, the layout template and question texts:
+ *    it must exist, be available at that point (asked before, not in
+ *    another loop), and fit the question's type. Agreement rules must refer
+ *    to questions inside the loop, span columns must be tokenized.
+ *
+ * Script syntax isn't checked here (no JS engine); the admin editor does that.
  */
 export function validateCodebookItems(items: unknown[]): CodebookValidationIssue[] {
   const issues: CodebookValidationIssue[] = [];
@@ -33,189 +70,308 @@ export function validateCodebookItems(items: unknown[]): CodebookValidationIssue
   }
 
   // 2. Tree-walking semantic validation
-  const seenNames = new Map<string, (string | number)[]>();
+  const { questions, loopOf } = collectQuestions(items);
+  const seenNames = new Map<string, Path>();
   const spanVariables = new Set<string>();
-  /** Coder-level (outside any loop) variables seen so far -> their codes, if known. */
-  const coderVariables = new Map<string, string[] | null>();
+  /** Coder-level questions seen so far. */
+  const coderAvailable = new Set<string>();
+  /** Questions of the current loop seen so far. */
+  let loopAvailable = new Set<string>();
 
-  function codesOf(variable: unknown): string[] | null {
-    const v = variable as { type?: string; codes?: { code: string }[]; options?: { code: string }[] };
-    if (v?.type === "auto") return v.options?.map((o) => o.code) ?? null;
-    return v?.codes?.map((c) => c.code) ?? null;
-  }
+  const issue = (path: Path, message: string, warning = false) =>
+    issues.push(warning ? { path, message, warning } : { path, message });
 
-  function questionNames(list: unknown, into = new Set<string>()): Set<string> {
-    if (!Array.isArray(list)) return into;
-    for (const raw of list) {
-      const child = raw as Partial<CodebookItem>;
-      if (child?.type === "condition") questionNames((child as { children?: unknown }).children, into);
-      else if (child?.name) into.add(child.name);
+  function checkRef(ref: Reference, ctx: RefContext): ReferenceShape | null {
+    const text = referenceText(ref);
+    if (ref.ns !== "var") {
+      if (ctx.branch) return issue(ctx.path, `${text}: branches and unitset names can only use coder-level $var references`), null;
+      if (ctx.loop === null) return issue(ctx.path, `${text} can only be used inside a unit loop`), null;
+      if (ref.ns === "const" && !ctx.constants?.has(ref.path[0])) {
+        return issue(ctx.path, `${text}: '${ref.path[0]}' is not a constant of this loop's layout`), null;
+      }
+      return referenceShape(questions, ref);
     }
-    return into;
+    const name = ref.path[0];
+    const where = loopOf.get(name);
+    if (where === undefined) return issue(ctx.path, `${text}: '${name}' is not a question`), null;
+    if (name === ctx.self) return issue(ctx.path, `${text}: a question can't refer to itself`), null;
+    if (ctx.inside?.has(name)) return issue(ctx.path, `${text}: '${name}' is inside this condition`), null;
+    if (ctx.branch && where !== null) {
+      return issue(ctx.path, `${text}: branches and unitset names can only use coder-level questions from before the loop`), null;
+    }
+    if (where !== null && where !== ctx.loop) return issue(ctx.path, `${text}: '${name}' is a question of unit loop '${where}'`), null;
+    if (!ctx.available.has(name)) return issue(ctx.path, `${text}: '${name}' is asked after this point`), null;
+    const shape = referenceShape(questions, ref);
+    if (!shape.ok) issue(ctx.path, shape.reason);
+    else if (shape.warning) issue(ctx.path, shape.warning, true);
+    return shape;
   }
 
-  function checkLoopBranches(item: Partial<CodebookItem>, itemPath: (string | number)[]) {
-    const branches = (item as { units?: UnitBranch[] }).units;
-    if (!Array.isArray(branches)) return;
-    const loopQuestions = questionNames((item as { children?: unknown }).children);
-    branches.forEach((branch, b) => {
-      for (const [variable, expected] of Object.entries(branch?.when ?? {})) {
-        const path = [...itemPath, "units", b, "when", variable];
-        if (!coderVariables.has(variable)) {
-          issues.push({ path, message: `'${variable}' is not a coder-level variable defined before this loop` });
-          continue;
+  const refErrors = (errors: ReferenceError[], path: Path) => errors.forEach((e) => issue(path, e.message));
+
+  function checkScript(script: string, ctx: RefContext) {
+    const { references, errors } = extractReferences(script);
+    refErrors(errors, ctx.path);
+    for (const ref of references) checkRef(ref, ctx);
+  }
+
+  function checkCondition(condition: Condition | undefined, ctx: RefContext) {
+    if (!condition || typeof condition !== "object") return;
+    if ("script" in condition) {
+      if (!condition.script?.trim()) issue([...ctx.path, "script"], "The script is empty");
+      return checkScript(condition.script ?? "", { ...ctx, path: [...ctx.path, "script"] });
+    }
+    (condition.rules ?? []).forEach((rule, r) => {
+      const path = [...ctx.path, "rules", r];
+      const parsed = parseReference(rule?.ref ?? "");
+      if ("error" in parsed) return issue([...path, "ref"], parsed.error);
+      const shape = checkRef(parsed.ref, { ...ctx, path: [...path, "ref"] });
+      if (!shape?.ok) return;
+      const values = Array.isArray(rule.value) ? rule.value : [rule.value];
+      const text = referenceText(parsed.ref);
+      if (NUMERIC_OPS.includes(rule.op)) {
+        if (shape.array) issue([...path, "op"], `${text} holds a list; '${rule.op}' needs a single number`);
+        else if (shape.type !== "number" && shape.type !== "any") {
+          issue([...path, "op"], `'${rule.op}' needs a numeric reference (.value, or a numeric unit field), not ${text}`);
         }
-        const codes = coderVariables.get(variable);
-        for (const value of Array.isArray(expected) ? expected : [expected]) {
-          if (codes && !codes.includes(value)) issues.push({ path, message: `'${value}' is not a code of '${variable}'` });
+        if (Array.isArray(rule.value) || typeof rule.value !== "number") issue([...path, "value"], `'${rule.op}' needs a number`);
+        return;
+      }
+      if (shape.type === "boolean" && values.some((v) => typeof v !== "boolean" && v !== "true" && v !== "false")) {
+        issue([...path, "value"], `${text} is true or false`);
+      }
+      if (shape.codes) {
+        for (const value of values) {
+          if (!shape.codes.includes(String(value))) issue([...path, "value"], `'${value}' is not a code of '${parsed.ref.path[0]}'`);
         }
       }
-      (branch?.sources ?? []).forEach((source, i) => {
-        const path = [...itemPath, "units", b, "sources", i];
-        for (const variable of unitsetPlaceholders(source?.unitset ?? "")) {
-          if (!coderVariables.has(variable)) {
-            issues.push({
-              path: [...path, "unitset"],
-              message: `Placeholder '{${variable}}' is not a coder-level variable defined before this loop`,
-            });
-          }
-        }
-        const agreement = source?.dynamic?.agreement?.variable;
-        if (agreement && !loopQuestions.has(agreement)) {
-          issues.push({
-            path: [...path, "dynamic", "agreement", "variable"],
-            message: `Agreement variable '${agreement}' is not a question in this loop`,
-          });
-        }
-      });
     });
   }
 
-  function walk(
-    itemList: unknown[],
-    currentPath: (string | number)[],
-    insideUnitLoop: boolean,
-  ) {
+  /** Checks a template; returns the names it tokenizes. */
+  function checkTemplate(source: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset"): Set<string> {
+    const tokenized = new Set<string>();
+    if (typeof source !== "string") return tokenized;
+    const parsed = parseTemplate(source);
+    refErrors(parsed.errors, ctx.path);
+    for (const segment of parsed.segments) {
+      if (segment.type !== "expression") continue;
+      if (kind === "unitset") {
+        if (!segment.ref) issue(ctx.path, "Unitset names can only use $var references, not {{ }}");
+        else if (segment.ref.suffix) issue(ctx.path, `Unitset names can't use ::${segment.ref.suffix}`);
+      } else {
+        refErrors(extractReferences(segment.script).errors, ctx.path);
+      }
+      for (const ref of segment.references) {
+        const shape = checkRef(ref, ctx);
+        if (kind === "unitset" && shape?.ok && shape.array) issue(ctx.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
+      }
+      if (segment.suffix === "tokenize") {
+        if (kind !== "layout") issue(ctx.path, "::tokenize can only be used in the unit layout");
+        else if (!segment.ref || segment.ref.ns === "var") issue(ctx.path, "::tokenize only works on a bare $unit.<field> or $const.<name>");
+        else tokenized.add(segment.ref.path[0]);
+      }
+    }
+    return tokenized;
+  }
+
+  function checkLoop(item: Partial<CodebookItem>, itemPath: Path, loopName: string) {
+    const loop = item as { units?: UnitBranch[]; children?: unknown; layout?: { template?: unknown; constants?: Record<string, string> } };
+    const loopQuestions = questionNames(loop.children);
+    const branchCtx = (path: Path): RefContext => ({ path, loop: null, available: coderAvailable, branch: true });
+    (Array.isArray(loop.units) ? loop.units : []).forEach((branch, b) => {
+      checkCondition(branch?.when, branchCtx([...itemPath, "units", b, "when"]));
+      (branch?.sources ?? []).forEach((source, i) => {
+        const path = [...itemPath, "units", b, "sources", i];
+        checkTemplate(source?.unitset, branchCtx([...path, "unitset"]), "unitset");
+        const agreement = source?.dynamic?.agreement?.variable;
+        if (agreement && !loopQuestions.has(agreement)) {
+          issue([...path, "dynamic", "agreement", "variable"], `Agreement variable '${agreement}' is not a question in this loop`);
+        }
+      });
+    });
+
+    const constants = new Set(Object.keys(loop.layout?.constants ?? {}));
+    const tokenized = checkTemplate(
+      loop.layout?.template,
+      { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, constants },
+      "layout",
+    );
+    forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {
+      const variable = q.variable as { type?: string; column?: string } | undefined;
+      if (variable?.type === "span" && variable.column && !tokenized.has(variable.column)) {
+        issue(
+          [...path, "variable", "column"],
+          `Span question '${q.name}' selects text in '${variable.column}', but the layout doesn't show it as $unit.${variable.column}::tokenize`,
+        );
+      }
+    });
+    return constants;
+  }
+
+  function walk(itemList: unknown[], currentPath: Path, loop: { name: string; constants: Set<string> } | null) {
     if (!Array.isArray(itemList)) return;
 
     itemList.forEach((rawItem, index) => {
       if (!rawItem || typeof rawItem !== "object") return;
       const item = rawItem as Partial<CodebookItem>;
       const itemPath = [...currentPath, index];
+      const isQuestion = item.type === "question" || item.type === "unit_variable" || item.type === "user_variable";
+      const available = loop ? new Set([...coderAvailable, ...loopAvailable]) : coderAvailable;
 
       // Check name validity and uniqueness
       if (!item.name || item.name.trim() === "") {
-        issues.push({
-          path: [...itemPath, "name"],
-          message: "Item name cannot be empty",
-        });
+        issue([...itemPath, "name"], "Item name cannot be empty");
       } else {
         if (!/^[a-zA-Z0-9_.-]+$/.test(item.name)) {
-          issues.push({
-            path: [...itemPath, "name"],
-            message: `Name '${item.name}' contains invalid characters (letters, numbers, _, -, . only)`,
-          });
+          issue([...itemPath, "name"], `Name '${item.name}' contains invalid characters (letters, numbers, _, -, . only)`);
         }
-        if (seenNames.has(item.name)) {
-          issues.push({
-            path: [...itemPath, "name"],
-            message: `Duplicate name '${item.name}'`,
-          });
-        } else {
-          seenNames.set(item.name, itemPath);
-        }
+        if (seenNames.has(item.name)) issue([...itemPath, "name"], `Duplicate name '${item.name}'`);
+        else seenNames.set(item.name, itemPath);
       }
 
-      // Check relation variable references
-      if (
-        (item.type === "question" || item.type === "unit_variable" || item.type === "user_variable") &&
-        item.variable?.type === "relation"
-      ) {
-        const fromVar = (item.variable as { from?: { variable?: string } }).from?.variable;
-        const toVar = (item.variable as { to?: { variable?: string } }).to?.variable;
-        if (fromVar && !spanVariables.has(fromVar)) {
-          issues.push({
-            path: [...itemPath, "variable", "from", "variable"],
-            message: `Relation 'from' refers to '${fromVar}' which is not a preceding span variable`,
-          });
+      if (isQuestion) {
+        const variable = item.variable as { type?: string; question?: unknown; instruction?: unknown; from?: { variable?: string }; to?: { variable?: string } } | undefined;
+        // Check relation variable references
+        if (variable?.type === "relation") {
+          for (const end of ["from", "to"] as const) {
+            const ref = variable[end]?.variable;
+            if (ref && !spanVariables.has(ref)) {
+              issue([...itemPath, "variable", end, "variable"], `Relation '${end}' refers to '${ref}' which is not a preceding span variable`);
+            }
+          }
         }
-        if (toVar && !spanVariables.has(toVar)) {
-          issues.push({
-            path: [...itemPath, "variable", "to", "variable"],
-            message: `Relation 'to' refers to '${toVar}' which is not a preceding span variable`,
-          });
+        if (variable?.type === "span" && item.name) spanVariables.add(item.name);
+
+        for (const field of ["question", "instruction"] as const) {
+          checkTemplate(
+            variable?.[field],
+            { path: [...itemPath, "variable", field], loop: loop?.name ?? null, available, constants: loop?.constants, self: item.name },
+            "text",
+          );
         }
-      }
-
-      // Record span variables for downstream relation checking
-      if (
-        (item.type === "question" || item.type === "unit_variable" || item.type === "user_variable") &&
-        item.variable?.type === "span"
-      ) {
-        if (item.name) spanVariables.add(item.name);
-      }
-
-      // Record coder-level variables for downstream unit_loop branch checking
-      if (!insideUnitLoop && (item.type === "question" || item.type === "user_variable") && item.name) {
-        coderVariables.set(item.name, codesOf(item.variable));
+        if (item.name) (loop ? loopAvailable : coderAvailable).add(item.name);
       }
 
       // Check structural rules
       if (item.type === "unit_loop") {
-        checkLoopBranches(item, itemPath);
-        if (insideUnitLoop) {
-          issues.push({
-            path: [...itemPath, "type"],
-            message: `unit_loop '${item.name}' cannot be nested inside another unit_loop`,
-          });
-        }
+        if (loop) issue([...itemPath, "type"], `unit_loop '${item.name}' cannot be nested inside another unit_loop`);
+        const constants = checkLoop(item, itemPath, item.name ?? "");
         if (!item.children || item.children.length === 0) {
-          issues.push({
-            path: [...itemPath, "children"],
-            message: `unit_loop '${item.name}' must have at least one child item`,
-          });
-        } else {
-          walk(item.children, [...itemPath, "children"], true);
+          issue([...itemPath, "children"], `unit_loop '${item.name}' must have at least one child item`);
+        } else if (!loop) {
+          loopAvailable = new Set();
+          walk(item.children, [...itemPath, "children"], { name: item.name ?? "", constants });
+          loopAvailable = new Set();
         }
       } else if (item.type === "condition") {
+        checkCondition(item.condition, {
+          path: [...itemPath, "condition"],
+          loop: loop?.name ?? null,
+          available,
+          constants: loop?.constants,
+          inside: questionNames(item.children),
+        });
         if (!item.children || item.children.length === 0) {
-          issues.push({
-            path: [...itemPath, "children"],
-            message: `condition '${item.name}' must have at least one child item`,
-          });
+          issue([...itemPath, "children"], `condition '${item.name}' must have at least one child item`);
         } else {
-          walk(item.children, [...itemPath, "children"], insideUnitLoop);
+          walk(item.children, [...itemPath, "children"], loop);
         }
       } else if (item.type === "question") {
-        if (!insideUnitLoop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
-          issues.push({
-            path: [...itemPath, "variable", "type"],
-            message: `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`,
-          });
-        } else if (insideUnitLoop && item.variable?.type === "auto") {
-          issues.push({
-            path: [...itemPath, "variable", "type"],
-            message: `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`,
-          });
+        if (!loop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
+          issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`);
+        } else if (loop && item.variable?.type === "auto") {
+          issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`);
         }
       } else if (item.type === "user_variable") {
-        if (insideUnitLoop) {
-          issues.push({
-            path: [...itemPath, "type"],
-            message: `user_variable '${item.name}' cannot be nested inside a unit_loop (use unit_variable instead)`,
-          });
-        }
+        if (loop) issue([...itemPath, "type"], `user_variable '${item.name}' cannot be nested inside a unit_loop (use unit_variable instead)`);
       } else if (item.type === "unit_variable") {
-        if (!insideUnitLoop) {
-          issues.push({
-            path: [...itemPath, "type"],
-            message: `unit_variable '${item.name}' must be nested inside a unit_loop`,
-          });
-        }
+        if (!loop) issue([...itemPath, "type"], `unit_variable '${item.name}' must be nested inside a unit_loop`);
       }
     });
   }
 
-  walk(items, [], false);
+  walk(items, [], null);
   return issues;
+}
+
+/** Validation errors only (warnings left out): what blocks saving a codebook. */
+export function codebookErrors(items: unknown[]): CodebookValidationIssue[] {
+  return validateCodebookItems(items).filter((i) => !i.warning);
+}
+
+/** Every question in the tree (name -> type), and the loop it is in (null: coder-level). */
+export function collectQuestions(items: unknown): {
+  questions: Map<string, AnyVariableType>;
+  loopOf: Map<string, string | null>;
+} {
+  const questions = new Map<string, AnyVariableType>();
+  const loopOf = new Map<string, string | null>();
+  const walk = (list: unknown, loop: string | null) => {
+    if (!Array.isArray(list)) return;
+    for (const raw of list) {
+      const item = raw as Partial<CodebookItem> | null;
+      if (!item || typeof item !== "object") continue;
+      if (item.type === "unit_loop") walk(item.children, item.name ?? "");
+      else if (item.type === "condition") walk(item.children, loop);
+      else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
+        questions.set(item.name, item.variable as AnyVariableType);
+        loopOf.set(item.name, loop);
+      }
+    }
+  };
+  walk(items, null);
+  return { questions, loopOf };
+}
+
+/**
+ * The questions a reference may use at an item, by the same rules as
+ * validation: coder-level questions before it, and in a loop the loop's
+ * earlier questions. `at` is the item's path (as in validation issues); for
+ * a condition this excludes its own children, for a unit loop (its branches
+ * and layout) its questions. Used by the admin editor's reference picker.
+ */
+export function availableQuestions(items: unknown[], at: Path): { name: string; variable: AnyVariableType }[] {
+  const result: { name: string; variable: AnyVariableType }[] = [];
+  const target = JSON.stringify(at);
+  let found = false;
+  const walk = (list: unknown, path: Path): void => {
+    if (!Array.isArray(list)) return;
+    for (let i = 0; i < list.length && !found; i++) {
+      const item = list[i] as Partial<CodebookItem> | null;
+      const itemPath = [...path, i];
+      if (JSON.stringify(itemPath) === target) {
+        found = true;
+        return;
+      }
+      if (!item || typeof item !== "object") continue;
+      if (item.type === "unit_loop") {
+        const before = result.length;
+        walk(item.children, [...itemPath, "children"]);
+        if (found) return;
+        result.splice(before);
+      } else if (item.type === "condition") {
+        walk(item.children, [...itemPath, "children"]);
+      } else if (item.name && "variable" in item && item.variable) {
+        result.push({ name: item.name, variable: item.variable as AnyVariableType });
+      }
+    }
+  };
+  walk(items, []);
+  return result;
+}
+
+function questionNames(list: unknown, into = new Set<string>()): Set<string> {
+  forEachQuestion(list, [], (q) => q.name && into.add(q.name));
+  return into;
+}
+
+function forEachQuestion(list: unknown, path: Path, visit: (item: Partial<CodebookItem> & { variable?: unknown }, path: Path) => void) {
+  if (!Array.isArray(list)) return;
+  list.forEach((raw, i) => {
+    const child = raw as Partial<CodebookItem> | null;
+    if (!child || typeof child !== "object") return;
+    if (child.type === "condition") forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
+    else if (child.type !== "unit_loop") visit(child as Partial<CodebookItem> & { variable?: unknown }, [...path, i]);
+  });
 }

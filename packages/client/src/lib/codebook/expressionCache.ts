@@ -1,57 +1,45 @@
+import type { ReferenceScope } from "@annotinder/contracts";
 import { extractDependencies } from "./dependencies";
-import { evaluateExpression } from "./expression";
+import { evaluateScript } from "./expression";
 
 interface CacheEntry {
-  deps: Record<string, unknown>;
+  script: string;
+  deps: string;
   result: unknown;
 }
 
-function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  return aKeys.every((k) => Object.is(a[k], b[k]));
-}
-
 /**
- * Per-slot memoized QuickJS expression evaluation (docs/client.md §6): a
- * generic "recompute pass + per-slot memoization" utility, replacing the old
- * app's hand-maintained "variable X changing should re-run computation Y, Z"
- * trigger graph (flagged 2026-09-18 as bookkeeping that drifts out of sync
- * with actual script content over time).
+ * Per-slot memoized script evaluation (docs/client.md §6): a generic
+ * "recompute pass + per-slot memoization" utility, instead of a
+ * hand-maintained "variable X changing should re-run computation Y, Z"
+ * trigger graph that drifts out of sync with the scripts.
  *
- * Each `evaluate` call is a "slot" (a `condition` item's expression, or one
- * `{{...}}` block in a unit_loop layout template) identified by a
- * caller-supplied stable `key`. Dependencies are extracted (conservatively,
- * see `dependencies.ts`) from the expression's own source text against the
- * full set of currently-known value names -- not hand-declared -- so
- * there's no separate dependency list to fall out of sync. On each call, if
- * the slot was evaluated before AND every one of its declared dependencies'
- * current values are `Object.is`-equal to what they were last time, the
- * cached result is reused without invoking QuickJS again; otherwise the
- * expression is (re-)evaluated and the cache entry updated.
+ * Each `evaluate` call is a "slot" (a condition, or one expression in a
+ * template) identified by a caller-supplied stable `key`. Its dependencies
+ * are the values at the references in its source (`dependencies.ts`), so
+ * there's no separate dependency list to fall out of sync. If the slot was
+ * evaluated before with the same script and equal dependency values, the
+ * cached result is reused without invoking QuickJS again.
  *
  * One instance is owned per `JobManager` (i.e. per coder session) and
- * shared across both condition evaluation (`tree.ts`) and unit-layout
- * template interpolation (`renderTemplate.ts`) -- see their `cache?`
- * parameters. Naturally invalidates itself across units/steps: e.g. a
- * template block referencing a per-unit data column simply gets a cache
- * miss once that column's value differs for the next unit, with no manual
- * "clear on unit change" bookkeeping required.
+ * shared across condition evaluation (`tree.ts`) and template rendering
+ * (`renderTemplate.ts`). Invalidates itself across units/steps: a template
+ * expression using a unit field simply misses once the next unit's value
+ * differs.
  */
 export class ExpressionCache {
   private cache = new Map<string, CacheEntry>();
 
-  async evaluate(key: string, expression: string, values: Record<string, unknown>): Promise<unknown> {
-    const depNames = extractDependencies(expression, Object.keys(values));
-    const deps: Record<string, unknown> = {};
-    for (const name of depNames) deps[name] = values[name];
+  async evaluate(key: string, script: string, scope: ReferenceScope): Promise<unknown> {
+    const depValues = extractDependencies(script, scope);
+    if (depValues === null) return evaluateScript(script, scope);
+    const deps = JSON.stringify(depValues);
 
     const cached = this.cache.get(key);
-    if (cached && shallowEqual(cached.deps, deps)) return cached.result;
+    if (cached && cached.script === script && cached.deps === deps) return cached.result;
 
-    const result = await evaluateExpression(expression, values);
-    this.cache.set(key, { deps, result });
+    const result = await evaluateScript(script, scope);
+    this.cache.set(key, { script, deps, result });
     return result;
   }
 }

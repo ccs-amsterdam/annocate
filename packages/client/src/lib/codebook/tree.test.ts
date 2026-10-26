@@ -1,24 +1,26 @@
-import type { TopLevelItem, InLoopItem, UserVariableItem, UnitVariableItem, UnitLoopItem } from "@annotinder/contracts";
-import { describe, expect, it } from "vitest";
 import {
-  computeLoopSteps,
-  computeTopLevelSteps,
-  findItem,
-  findParent,
-  flattenTree,
-  isInsideUnitLoop,
-} from "./tree";
+  collectQuestions,
+  type TopLevelItem,
+  type InLoopItem,
+  type UserVariableItem,
+  type UnitVariableItem,
+  type UnitLoopItem,
+  type VariableValue,
+  type Condition,
+} from "@annotinder/contracts";
+import { describe, expect, it } from "vitest";
+import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTree, isInsideUnitLoop } from "./tree";
 
 function confirm(name: string): UserVariableItem {
   return { name, type: "user_variable", variable: { type: "confirm", question: "?" } };
 }
 
-function topCondition(name: string, expression: string, children: TopLevelItem[]): TopLevelItem {
-  return { name, type: "condition", expression, children };
+function topCondition(name: string, condition: Condition, children: TopLevelItem[]): TopLevelItem {
+  return { name, type: "condition", condition, children };
 }
 
-function inLoopCondition(name: string, expression: string, children: InLoopItem[]): InLoopItem {
-  return { name, type: "condition", expression, children };
+function inLoopCondition(name: string, condition: Condition, children: InLoopItem[]): InLoopItem {
+  return { name, type: "condition", condition, children };
 }
 
 function unitVar(name: string): UnitVariableItem {
@@ -33,27 +35,37 @@ function unitLoop(name: string, children: InLoopItem[], unitset = "main"): UnitL
   return { name, type: "unit_loop", units: [{ sources: [{ unitset }] }], layout: { template: "" }, children };
 }
 
+const answered: VariableValue = { done: true, skip: false };
+const code = (c: string): VariableValue => ({ done: true, skip: false, codes: [{ code: c }] });
+
 describe("tree utilities", () => {
   const loopNode = unitLoop("main_loop", [
     unitVar("sentiment"),
-    inLoopCondition("inner_gate", "sentiment === 'A'", [unitVar("followup")]),
+    inLoopCondition("inner_gate", { rules: [{ ref: "$var.sentiment.code", op: "is", value: "A" }] }, [unitVar("followup")]),
+    inLoopCondition("unit_gate", { script: "$unit.n > 1" }, [unitVar("long")]),
   ]);
 
   const items: TopLevelItem[] = [
     confirm("consent"),
-    topCondition("gate", "consent === true", [confirm("gated_question")]),
+    topCondition("gate", { rules: [{ ref: "$var.consent.answered", op: "is", value: true }] }, [confirm("gated_question")]),
+    topCondition("second", { script: "$var.gated_question.answered" }, [confirm("deeper")]),
     loopNode,
   ];
+  const ctx = { questions: collectQuestions(items).questions };
 
   it("flattenTree returns all items in document order", () => {
     expect(flattenTree(items).map((i) => i.name)).toEqual([
       "consent",
       "gate",
       "gated_question",
+      "second",
+      "deeper",
       "main_loop",
       "sentiment",
       "inner_gate",
       "followup",
+      "unit_gate",
+      "long",
     ]);
   });
 
@@ -77,23 +89,30 @@ describe("tree utilities", () => {
 
   describe("computeTopLevelSteps", () => {
     it("excludes a condition's children when false, does not descend into unit_loop", async () => {
-      const steps = await computeTopLevelSteps(items, { consent: false });
+      const { steps } = await computeTopLevelSteps(items, {}, ctx);
       expect(steps.map((i) => i.name)).toEqual(["consent", "main_loop"]);
     });
 
     it("includes a condition's children when true", async () => {
-      const steps = await computeTopLevelSteps(items, { consent: true });
+      const { steps } = await computeTopLevelSteps(items, { consent: answered }, ctx);
       expect(steps.map((i) => i.name)).toEqual(["consent", "gated_question", "main_loop"]);
+    });
+
+    it("treats answers of hidden questions as unanswered", async () => {
+      // gated_question was answered, but consent is now skipped: gate hides it, so `second` doesn't show either
+      const answers = { consent: { done: true, skip: true }, gated_question: answered };
+      const { steps, visible } = await computeTopLevelSteps(items, answers, ctx);
+      expect(steps.map((i) => i.name)).toEqual(["consent", "main_loop"]);
+      expect(Object.keys(visible)).toEqual(["consent"]);
     });
   });
 
   describe("computeLoopSteps", () => {
-    it("gates nested conditions within the loop using per-unit values", async () => {
-      expect((await computeLoopSteps(loopNode, { sentiment: "A" })).map((i) => i.name)).toEqual([
-        "sentiment",
-        "followup",
-      ]);
-      expect((await computeLoopSteps(loopNode, { sentiment: "B" })).map((i) => i.name)).toEqual(["sentiment"]);
+    it("gates nested conditions within the loop using per-unit values and unit data", async () => {
+      const names = async (unitAnswers: Record<string, VariableValue>, n: number) =>
+        (await computeLoopSteps(loopNode, {}, unitAnswers, { n }, ctx)).steps.map((i) => i.name);
+      expect(await names({ sentiment: code("A") }, 1)).toEqual(["sentiment", "followup"]);
+      expect(await names({ sentiment: code("B") }, 2)).toEqual(["sentiment", "long"]);
     });
   });
 });

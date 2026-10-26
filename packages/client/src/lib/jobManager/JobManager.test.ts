@@ -78,7 +78,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     await manager.start();
     expect(manager.getSnapshot().phase).toBe("user_variable");
 
-    await manager.answer({ value: true } as unknown as VariableValue, true);
+    await manager.answer({ value: true } as unknown as VariableValue);
     expect(manager.getSnapshot().phase).toBe("error");
     expect(postCoderVariables).toHaveBeenCalledTimes(1);
 
@@ -118,7 +118,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     expect(manager.getSnapshot().phase).toBe("unit_variable");
     expect(manager.getSnapshot().currentItem?.name).toBe("sentiment");
 
-    await manager.answer({ codes: [{ value: "A" }] } as unknown as VariableValue, "A");
+    await manager.answer({ codes: [{ value: "A" }] } as unknown as VariableValue);
     expect(manager.getSnapshot().phase).toBe("error");
 
     await manager.retry();
@@ -129,7 +129,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
   it("skips auto variables and uses their server-assigned values in conditions", async () => {
     const items = [
       { type: "question", name: "group", variable: { type: "auto", source: "balanced", options: [{ code: "a" }, { code: "b" }] } },
-      { type: "condition", name: "only_a", expression: "group.codes[0].code === 'a'", children: [confirm("shown_to_a")] },
+      { type: "condition", name: "only_a", condition: { script: "$var.group.code === 'a'" }, children: [confirm("shown_to_a")] },
       confirm("everyone"),
     ] as TopLevelItem[];
     const server = makeFlakyServer({
@@ -158,7 +158,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     });
     const manager = new JobManager(server);
     await manager.start();
-    expect(getNextUnit).toHaveBeenCalledWith("loop_all_units");
+    expect(getNextUnit).toHaveBeenCalledWith("loop_all_units", { branch: 0, unitsets: ["__all__"] });
     expect(manager.getSnapshot().phase).toBe("unit_variable");
     expect(manager.getSnapshot().currentUnit?.id).toBe(10);
   });
@@ -181,7 +181,7 @@ describe("JobManager navigation, backwards navigation, and answer re-editing", (
     expect(manager.getSnapshot().navigation.canGoBack).toBe(false);
 
     // Answer first question
-    await manager.answer({ codes: [{ value: "A" }] } as unknown as VariableValue, "A");
+    await manager.answer({ codes: [{ value: "A" }] } as unknown as VariableValue);
     expect(manager.getSnapshot().currentItem?.name).toBe("q2");
     expect(manager.getSnapshot().navigation.canGoBack).toBe(true);
 
@@ -218,7 +218,7 @@ describe("JobManager navigation, backwards navigation, and answer re-editing", (
     // Unit 101
     expect(manager.getSnapshot().currentUnit?.id).toBe(101);
     expect(manager.getSnapshot().navigation.canGoBack).toBe(false);
-    await manager.answer({ codes: [{ value: "pos" }] } as unknown as VariableValue, "pos");
+    await manager.answer({ codes: [{ value: "pos" }] } as unknown as VariableValue);
 
     // Unit 102
     expect(manager.getSnapshot().currentUnit?.id).toBe(102);
@@ -231,7 +231,7 @@ describe("JobManager navigation, backwards navigation, and answer re-editing", (
     expect(manager.getSnapshot().currentUnitVariables?.sentiment).toEqual({ codes: [{ value: "pos" }], done: true });
 
     // Modify answer for Unit 101 and re-submit
-    await manager.answer({ codes: [{ value: "neg" }] } as unknown as VariableValue, "neg");
+    await manager.answer({ codes: [{ value: "neg" }] } as unknown as VariableValue);
 
     // Should now automatically advance to Unit 102 from history!
     expect(manager.getSnapshot().currentUnit?.id).toBe(102);
@@ -253,9 +253,9 @@ describe("JobManager navigation, backwards navigation, and answer re-editing", (
     await manager.start();
 
     // Answer unit 1
-    await manager.answer({ codes: [{ value: "1" }] } as unknown as VariableValue, "1");
+    await manager.answer({ codes: [{ value: "1" }] } as unknown as VariableValue);
     // Answer unit 2
-    await manager.answer({ codes: [{ value: "2" }] } as unknown as VariableValue, "2");
+    await manager.answer({ codes: [{ value: "2" }] } as unknown as VariableValue);
     // Now on unit 3
     expect(manager.getSnapshot().currentUnit?.id).toBe(3);
     expect(manager.getSnapshot().navigation.totalUnitsInHistory).toBe(3);
@@ -282,7 +282,7 @@ describe("JobManager navigation, backwards navigation, and answer re-editing", (
     expect(manager.getSnapshot().phase).toBe("user_variable");
     expect(manager.getSnapshot().currentItem?.name).toBe("consent");
 
-    await manager.answer({ value: true } as unknown as VariableValue, true);
+    await manager.answer({ value: true } as unknown as VariableValue);
     expect(manager.getSnapshot().phase).toBe("unit_variable");
 
     // Jump back to consent phase (phase index 0)
@@ -366,7 +366,7 @@ describe("resuming a session", () => {
 
 describe("submitting a finished unit", () => {
   it("posts every question of the loop, with skip for those a condition hid", async () => {
-    const hidden = { type: "condition", name: "never", expression: "false", children: [unitVar("q2")] } as InLoopItem;
+    const hidden = { type: "condition", name: "never", condition: { script: "false" }, children: [unitVar("q2")] } as InLoopItem;
     const postUnitVariables = vi.fn(async () => {});
     let served = false;
     const server = makeFlakyServer({
@@ -383,5 +383,89 @@ describe("submitting a finished unit", () => {
       { q1: { done: true, skip: false }, q2: { done: true, skip: true } },
       "main",
     );
+  });
+});
+
+describe("choosing a unit loop branch", () => {
+  const slot = { type: "question", name: "slot", variable: { type: "auto", source: "invite", options: [{ code: "1" }, { code: "2" }] } };
+  const role = {
+    type: "question",
+    name: "role",
+    variable: { type: "select_code", question: "Role?", codes: [{ code: "student" }, { code: "expert" }] },
+  };
+  const loop = {
+    type: "unit_loop",
+    name: "main",
+    units: [
+      { when: { rules: [{ ref: "$var.role.code", op: "is", value: "expert" }] }, sources: [{ unitset: "hard" }] },
+      { when: { script: "$var.slot.code === '2'" }, sources: [{ unitset: "part_$var.slot.code" }, { unitset: "overlap" }] },
+      { sources: [{ unitset: "fallback" }] },
+    ],
+    layout: { template: "" },
+    children: [unitVar("q1")],
+  };
+
+  async function start(answers: Record<string, VariableValue>, getNextUnit = vi.fn(async () => null)) {
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => ({ ...session([slot, role, loop] as TopLevelItem[]), variables: answers })),
+      getNextUnit,
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    return { manager, getNextUnit };
+  }
+  const code = (c: string): VariableValue => ({ done: true, skip: false, codes: [{ code: c }] });
+
+  it("sends the first matching branch and its filled-in unitset names", async () => {
+    const { getNextUnit } = await start({ slot: code("2"), role: code("student") });
+    expect(getNextUnit).toHaveBeenCalledWith("main", { branch: 1, unitsets: ["part_2", "overlap"] });
+
+    const expert = await start({ slot: code("2"), role: code("expert") });
+    expect(expert.getNextUnit).toHaveBeenCalledWith("main", { branch: 0, unitsets: ["hard"] });
+
+    const other = await start({ slot: code("1"), role: code("student") });
+    expect(other.getNextUnit).toHaveBeenCalledWith("main", { branch: 2, unitsets: ["fallback"] });
+  });
+
+  it("treats branch_required as no units when no branch matches", async () => {
+    const noFallback = { ...loop, units: loop.units.slice(0, 1) };
+    const getNextUnit = vi.fn(async () => {
+      throw Object.assign(new Error("branch required"), { code: "branch_required" });
+    });
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => ({ ...session([slot, role, noFallback] as TopLevelItem[]), variables: { role: code("student") } })),
+      getNextUnit,
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    expect(getNextUnit).toHaveBeenCalledWith("main", undefined);
+    expect(manager.getSnapshot().phase).toBe("finished");
+  });
+});
+
+describe("rendering templates", () => {
+  it("fills in question texts and the layout from answers and unit data", async () => {
+    const items = [
+      { type: "question", name: "role", variable: { type: "select_code", question: "Role?", codes: [{ code: "student" }] } },
+      {
+        type: "unit_loop",
+        name: "main",
+        units: [{ sources: [{ unitset: "__all__" }] }],
+        layout: { template: "# $unit.title\n\n$const.intro", constants: { intro: "Hello" } },
+        children: [
+          { type: "question", name: "q1", variable: { type: "confirm", question: "As a $var.role.code, is **$unit.title** news?" } },
+        ],
+      },
+    ] as TopLevelItem[];
+    let served = false;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => ({ ...session(items), variables: { role: { done: true, skip: false, codes: [{ code: "student" }] } } })),
+      getNextUnit: vi.fn(async () => (served ? null : ((served = true), { id: 1, externalId: "u1", data: { title: "*Big*" }, variables: {} } as CoderUnitResponse))),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    const snap = manager.getSnapshot();
+    expect(snap.currentUnitTemplate?.values.map((v) => v.text)).toEqual(["*Big*", "Hello"]);
+    expect(snap.currentTexts?.question?.values.map((v) => v.text)).toEqual(["student", "*Big*"]);
   });
 });

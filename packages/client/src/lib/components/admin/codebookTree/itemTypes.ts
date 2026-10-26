@@ -26,7 +26,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
   },
   condition: {
     label: "Condition",
-    description: "Branch based on JS expression",
+    description: "Show items only if rules or a script hold",
     icon: GitBranch,
     color: "",
     blockClass: "",

@@ -1,6 +1,6 @@
 import {
-  branchMatches,
-  resolveUnitsetName,
+  unitsetHasReferences,
+  unitsetMatchesSource,
   type AnnotatorCoder,
   type AnnotatorUnit,
   type CoderUnitResponse,
@@ -30,6 +30,12 @@ import {
   type LoopInfo,
   type VariableType,
 } from "./codebook.js";
+
+/** The branch of a loop the client chose (`GET /loop/:loop/next?branch=&unitsets=`), see contracts NextUnitQuerySchema. */
+export interface BranchChoice {
+  branch?: number;
+  unitsets: string[];
+}
 
 /** Includes the outbox settings (outbox.ts): how writes to the db server are buffered. */
 export interface RuntimeOptions extends Omit<OutboxOptions, "now"> {
@@ -507,14 +513,12 @@ export class DeploymentRuntime {
     return pool;
   }
 
-  /** The branch whose resolved unitset names equal `names`, if the codebook still has one. */
-  private poolsFor(info: LoopInfo, names: string[], values: Record<string, string | undefined>): UnitPool[] | null {
-    for (const branch of info.loop.units) {
-      const resolved = branch.sources.map((s) => resolveUnitsetName(s.unitset, values));
-      if (resolved.length !== names.length || resolved.some((n, i) => n !== names[i])) continue;
-      return branch.sources.map((s, i) => this.pool(info.loop.name, names[i], s.dynamic));
-    }
-    return null;
+  /** The pools of the first branch whose sources can produce `names`, if the codebook still has one. */
+  private poolsFor(info: LoopInfo, names: string[]): UnitPool[] | null {
+    const branch = info.loop.units.find(
+      (b) => b.sources.length === names.length && b.sources.every((s, i) => unitsetMatchesSource(s.unitset, names[i])),
+    );
+    return branch ? branch.sources.map((s, i) => this.pool(info.loop.name, names[i], s.dynamic)) : null;
   }
 
   /** Pools the coder is already routed to for a loop (no new routing). */
@@ -522,41 +526,57 @@ export class DeploymentRuntime {
     const info = this.loops.get(loop);
     const names = coder.assignments[loop];
     if (!info || !names) return [];
-    return this.poolsFor(info, names, variableCodes(coder.variables)) ?? [];
+    return this.poolsFor(info, names) ?? [];
   }
 
   /**
-   * Routes a coder in a loop: the first branch whose `when` matches. Sticky:
-   * stored on the db server, and reused as long as the codebook still has a
-   * branch with the same unitsets (so a codebook update that keeps it doesn't
-   * move coders around).
+   * Routes a coder in a loop. The client evaluates the branch conditions
+   * (they may use answers the job server shouldn't need, docs/encryption.md)
+   * and sends the chosen branch with its filled-in unitset names; the server
+   * checks that the names fit that branch's sources and exist. A loop with a
+   * single unconditional branch without references routes without a choice.
+   * Sticky: stored on the db server, and reused as long as the codebook still
+   * has a branch that produces the same unitsets (so a codebook update that
+   * keeps it doesn't move coders around).
    */
-  private async route(coder: Coder, info: LoopInfo): Promise<UnitPool[]> {
-    const values = variableCodes(coder.variables);
-    const stored = coder.assignments[info.loop.name];
-    const existing = stored && this.poolsFor(info, stored, values);
+  private async route(coder: Coder, info: LoopInfo, choice: BranchChoice): Promise<UnitPool[]> {
+    const loop = info.loop;
+    const stored = coder.assignments[loop.name];
+    const existing = stored && this.poolsFor(info, stored);
     if (existing) return existing;
 
-    const branch = info.loop.units.find((b) => branchMatches(b.when, values));
-    if (!branch) return [];
-    const names = branch.sources.map((s) => resolveUnitsetName(s.unitset, values));
-    const missing = branch.sources.find((s, i) => names[i] === null || !this.unitsets.has(names[i]!));
-    if (missing) {
-      throw new HttpError(409, `Unit loop '${info.loop.name}': unitset '${missing.unitset}' does not exist for this coder`);
+    let branchIndex = choice.branch;
+    let names = choice.unitsets;
+    if (branchIndex === undefined) {
+      const only = loop.units.length === 1 ? loop.units[0] : undefined;
+      if (!only || only.when || only.sources.some((s) => unitsetHasReferences(s.unitset))) {
+        throw new HttpError(409, `Unit loop '${loop.name}': the client must choose a branch`, "branch_required");
+      }
+      branchIndex = 0;
+      names = only.sources.map((s) => s.unitset);
+    }
+    const branch = loop.units[branchIndex];
+    if (!branch) throw new HttpError(400, `Unit loop '${loop.name}' has no branch ${branchIndex}`);
+    if (names.length !== branch.sources.length || branch.sources.some((s, i) => !unitsetMatchesSource(s.unitset, names[i]))) {
+      throw new HttpError(400, `Unit loop '${loop.name}': unitsets [${names.join(", ")}] don't fit branch ${branchIndex}`);
+    }
+    const missing = names.find((name) => !this.unitsets.has(name));
+    if (missing !== undefined) {
+      throw new HttpError(409, `Unit loop '${loop.name}': unitset '${missing}' does not exist for this coder`);
     }
 
-    coder.assignments = { ...coder.assignments, [info.loop.name]: names as string[] };
+    coder.assignments = { ...coder.assignments, [loop.name]: names };
     await this.saveCoder(coder);
-    return branch.sources.map((s, i) => this.pool(info.loop.name, names[i]!, s.dynamic));
+    return branch.sources.map((s, i) => this.pool(loop.name, names[i], s.dynamic));
   }
 
   // --- units ------------------------------------------------------------------
 
-  async nextUnit(coder: Coder, loopName: string): Promise<CoderUnitResponse | null> {
+  async nextUnit(coder: Coder, loopName: string, choice: BranchChoice = { unitsets: [] }): Promise<CoderUnitResponse | null> {
     if (!this.spec.active) throw new HttpError(409, "This job is not active");
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
-    const [pools, own] = await Promise.all([this.route(coder, info), this.workspace(coder.coderId)]);
+    const [pools, own] = await Promise.all([this.route(coder, info, choice), this.workspace(coder.coderId)]);
 
     for (;;) {
       const next = pickNext(pools, coder.coderId, this.codingsFor(loopName), {

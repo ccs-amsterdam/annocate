@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
+import { ConditionSchema, type Condition } from "./condition.js";
 import { UnitLayoutSchema } from "./layout.js";
 import { UnitLoopDistributionShape, migrateLegacyUnitLoop } from "./unitLoop.js";
 import {
@@ -71,16 +72,14 @@ export type InLoopItem =
   | {
       type: "condition";
       name: string;
-      expression: string;
+      condition: Condition;
       children: InLoopItem[];
     };
 
 export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "condition" }>> = z.lazy(() =>
   ItemBaseSchema.extend({
     type: z.literal("condition"),
-    expression: z
-      .string()
-      .describe("A JS boolean expression evaluated against prior variable values"),
+    condition: ConditionSchema.describe("Rules or a script over earlier answers ($var), and in a loop $unit/$const"),
     children: z.array(InLoopItemSchema).min(1, "Condition must have at least one child item"),
   })
 );
@@ -119,16 +118,14 @@ export type TopLevelItem =
   | {
       type: "condition";
       name: string;
-      expression: string;
+      condition: Condition;
       children: TopLevelItem[];
     };
 
 export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type: "condition" }>> = z.lazy(() =>
   ItemBaseSchema.extend({
     type: z.literal("condition"),
-    expression: z
-      .string()
-      .describe("A JS boolean expression evaluated against prior variable values"),
+    condition: ConditionSchema.describe("Rules or a script over earlier answers ($var), and in a loop $unit/$const"),
     children: z.array(TopLevelItemSchema).min(1, "Condition must have at least one child item"),
   })
 );

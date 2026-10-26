@@ -108,7 +108,7 @@ export function seed(db: DatabaseSync): void {
     {
       type: "condition",
       name: "experiment_only",
-      expression: "group?.codes?.[0]?.code === 'experiment'",
+      condition: { rules: [{ ref: "$var.group.code", op: "is", value: "experiment" }] },
       children: [
         {
           type: "question",
@@ -152,9 +152,9 @@ export function seed(db: DatabaseSync): void {
       units: [{ sources: [{ unitset: "main" }] }],
       layout: {
         template:
-          "{{ group?.codes?.[0]?.code === 'experiment' ? experiment_banner : control_banner }}\n\n" +
-          "{{ experience?.codes?.[0]?.code === 'new' ? beginner_tip : '' }}\n\n" +
-          "# $unit.headline\n\n::tokenize[$unit.text]",
+          "{{ $var.group.code === 'experiment' ? $const.experiment_banner : $const.control_banner }}::markdown\n\n" +
+          "{{ $var.experience.code === 'new' ? $const.beginner_tip : '' }}::markdown\n\n" +
+          "# $unit.headline\n\n$unit.text::tokenize",
         constants: {
           control_banner:
             "> **Control group.** This banner comes from the unit layout. It depends on the group you were randomly assigned to.",
@@ -186,7 +186,8 @@ export function seed(db: DatabaseSync): void {
           variable: {
             type: "select_code",
             question: "What is the overall tone of this article?",
-            instruction: "A select_code question: pick one code. Codes can have their own colours.",
+            instruction:
+              "A select_code question: pick one code. Codes can have their own colours. Texts can use earlier answers: you said you are a **$var.role.code**.",
             codes: [
               { code: "positive", color: "#4caf50" },
               { code: "neutral", color: "#9e9e9e" },
@@ -231,7 +232,7 @@ export function seed(db: DatabaseSync): void {
         {
           type: "condition",
           name: "experts_only",
-          expression: "experience?.codes?.[0]?.code === 'expert'",
+          condition: { rules: [{ ref: "$var.experience.code", op: "is", value: "expert" }] },
           children: [
             {
               type: "question",
@@ -257,7 +258,7 @@ export function seed(db: DatabaseSync): void {
         {
           type: "condition",
           name: "tech_fans",
-          expression: "interest?.codes?.find((c) => c.item === 'technology')?.value >= 4",
+          condition: { script: "$var.interest.technology.value >= 4" },
           children: [
             {
               type: "question",

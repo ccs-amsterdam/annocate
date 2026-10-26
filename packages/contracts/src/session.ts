@@ -49,6 +49,8 @@ export const CoderErrorCodeSchema = z.enum([
   "transfer_invalid",
   /** The job server can't store more answers until the db server is reachable again. */
   "storage_unavailable",
+  /** `GET /loop/:loop/next` needs the client's branch choice (`branch` + `unitsets`), see NextUnitQuerySchema. */
+  "branch_required",
 ]);
 export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
 

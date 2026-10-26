@@ -37,6 +37,7 @@ for (const [file, registry] of Object.entries(registries)) {
     combined[name] = {
       method: def.method,
       path: def.path,
+      ...("query" in def && def.query ? { query: toJsonSchema(def.query as z.ZodType, "input") } : {}),
       request: toJsonSchema(def.request, "input"),
       response: toJsonSchema(def.response, "output"),
     };

@@ -29,6 +29,12 @@ async function toError(res: Response, path: string): Promise<JobServerError> {
   }
 }
 
+/** The branch of a unit loop's `units` the client chose for the coder, and its unitset names. */
+export interface BranchChoice {
+  branch: number;
+  unitsets: string[];
+}
+
 /**
  * Client-side abstraction over "however we talk to a job's backend" (docs/client.md §2). `HttpJobServer` is the only implementation for now
  * (talking to a job server, packages/job-server); a future
@@ -37,8 +43,11 @@ async function toError(res: Response, path: string): Promise<JobServerError> {
  */
 export interface JobServer {
   getSession(): Promise<SessionResponse>;
-  /** Next unit for a unit_loop; which unit is decided by the job server. `null` = the coder is done with the loop. */
-  getNextUnit(loop: string): Promise<CoderUnitResponse | null>;
+  /**
+   * Next unit for a unit_loop; which unit is decided by the job server. `null` = the coder is done with the loop.
+   * `branch`: the branch of the loop the client chose, with its filled-in unitset names (contracts NextUnitQuerySchema).
+   */
+  getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null>;
   /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
   getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
   /** A finished unit: answers to every question of the loop (`skip` for hidden ones). */
@@ -126,8 +135,14 @@ export class HttpJobServer implements JobServer {
     return this.request(clientEndpoints.getSession.path);
   }
 
-  async getNextUnit(loop: string): Promise<CoderUnitResponse | null> {
-    return this.request(clientEndpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop)));
+  async getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null> {
+    const query = new URLSearchParams();
+    if (branch) {
+      query.set("branch", String(branch.branch));
+      for (const name of branch.unitsets) query.append("unitsets", name);
+    }
+    const path = clientEndpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop));
+    return this.request(branch ? `${path}?${query}` : path);
   }
 
   async getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse> {

@@ -1,32 +1,46 @@
 import { describe, expect, it } from "vitest";
-
+import type { ReferenceScope } from "@annotinder/contracts";
 import { evaluateCondition } from "./conditions";
+import { scriptSyntaxError } from "./expression";
+
+const scope: ReferenceScope = {
+  $unit: { count: 20, source: "nyt" },
+  $var: {
+    role: { answered: true, code: "student", value: 1 },
+    topics: { answered: true, code: ["a", "b"], value: [] },
+  },
+  $const: { mode: "x" },
+};
 
 describe("evaluateCondition", () => {
-  it("evaluates a simple comparison against known values", async () => {
-    expect(await evaluateCondition("age >= 18", { age: 20 })).toBe(true);
-    expect(await evaluateCondition("age >= 18", { age: 10 })).toBe(false);
+  it("evaluates scripts over $unit, $var and $const", async () => {
+    expect(await evaluateCondition({ script: "$unit.count >= 18 && $var.role.code === 'student'" }, scope)).toBe(true);
+    expect(await evaluateCondition({ script: "$var.topics.code.includes('c')" }, scope)).toBe(false);
+    expect(await evaluateCondition({ script: "$const.mode === 'x' // a comment" }, scope)).toBe(true);
   });
 
-  it("supports referencing multiple variables and real JS operators", async () => {
-    expect(await evaluateCondition("consent === true && country === 'NL'", { consent: true, country: "NL" })).toBe(
-      true,
-    );
-    expect(await evaluateCondition("consent === true && country === 'NL'", { consent: true, country: "BE" })).toBe(
-      false,
-    );
+  it("evaluates rules without a JS engine", async () => {
+    expect(await evaluateCondition({ rules: [{ ref: "$var.topics.code", op: "is", value: "b" }] }, scope)).toBe(true);
+    expect(await evaluateCondition({ match: "any", rules: [{ ref: "$unit.count", op: "lt", value: 10 }] }, scope)).toBe(false);
   });
 
-  it("ignores values whose names aren't valid identifiers", async () => {
-    // "123abc" can't be a `let` binding name; it's silently excluded from scope.
-    expect(await evaluateCondition("true", { "123abc": "x" })).toBe(true);
+  it("has no bare-name globals", async () => {
+    expect(await evaluateCondition({ script: "typeof role === 'undefined' && typeof count === 'undefined'" }, scope)).toBe(true);
   });
 
-  it("returns false and does not throw on invalid expressions", async () => {
-    expect(await evaluateCondition("this is not valid js (((", {})).toBe(false);
+  it("returns false and does not throw on invalid scripts", async () => {
+    expect(await evaluateCondition({ script: "this is not valid js (((" }, scope)).toBe(false);
   });
 
   it("is sandboxed from the host environment (no access to host globals)", async () => {
-    expect(await evaluateCondition("typeof process === 'undefined'", {})).toBe(true);
+    expect(await evaluateCondition({ script: "typeof process === 'undefined'" }, scope)).toBe(true);
+  });
+});
+
+describe("scriptSyntaxError", () => {
+  it("reports syntax errors without running the script", async () => {
+    expect(await scriptSyntaxError("$var.a.code === 'x'")).toBeNull();
+    expect(await scriptSyntaxError("while (true) {}")).not.toBeNull();
+    expect(await scriptSyntaxError("$var.a.code ===")).not.toBeNull();
   });
 });

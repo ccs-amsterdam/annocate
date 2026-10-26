@@ -94,13 +94,13 @@ function collectQuestions(items: CodebookItem[], into: Map<string, VariableType>
   }
 }
 
-/** The code of a single-valued answer (what `when` conditions and `{placeholders}` compare against). */
+/** The code of a single-valued answer (e.g. an assigned `auto` variable). */
 export function codeOf(value: VariableValue | undefined): string | undefined {
   if (!value || value.skip) return undefined;
   return value.codes?.[0]?.code;
 }
 
-/** variable name -> code, for all single-coded coder variables. */
+/** variable name -> code, for all single-coded coder variables (`auto` assignment and balancing; routing is chosen by the client). */
 export function variableCodes(variables: Record<string, VariableValue>): Record<string, string | undefined> {
   return Object.fromEntries(Object.entries(variables).map(([name, value]) => [name, codeOf(value)]));
 }

@@ -18,7 +18,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/amcat.nl/42/session`
 | Endpoint | | Request | Response |
 |---|---|---|---|
 | [getSession](#getsession) | `GET /session` | – | `SessionResponseSchema` |
-| [getNextUnit](#getnextunit) | `GET /loop/:loop/next` | – | `CoderUnitResponseSchema \| null` |
+| [getNextUnit](#getnextunit) | `GET /loop/:loop/next?branch=&unitsets=` | – | `CoderUnitResponseSchema \| null` |
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
 | [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | – |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
@@ -53,11 +53,20 @@ assigned `auto` variables). Creates the coder and session on first use.
 
 ### getNextUnit
 
-`GET /loop/:loop/next` → `CoderUnitResponseSchema | null`
+`GET /loop/:loop/next?branch=<i>&unitsets=<name>&unitsets=<name>` → `CoderUnitResponseSchema | null`
 
-The job server picks the coder's next unit per the loop's branches and
-sources (fixed sets, or a shared queue with leases). `null`: the coder is
+The job server picks the coder's next unit from the sources of the coder's
+branch (fixed sets, or a shared queue with leases). `null`: the coder is
 done with the loop. 409 while the job is paused (`active: false`).
+
+The client chooses the branch (`NextUnitQuerySchema`): the index of the
+first branch in the loop's `units` whose `when` holds, and its unitset
+names with `$var` references filled in, one per source. The job server
+checks them (400 if the names don't fit that branch's sources, 409 if a
+unitset doesn't exist) and stores the routing; afterwards the parameters
+are ignored (routing is sticky, `architecture.md` §6.1). Without them, a
+loop with a single unconditional branch without references routes by
+itself; other loops answer 409 with code `branch_required`.
 
 ### getLoopUnit
 

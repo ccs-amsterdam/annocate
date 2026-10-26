@@ -1,6 +1,13 @@
-import type { TopLevelItem, UnitField } from "@annotinder/contracts";
-
-const UNIT_REF = /\$unit\.([A-Za-z0-9_]+)/g;
+import {
+  extractReferences,
+  parseReference,
+  templateReferences,
+  type Condition,
+  type InLoopItem,
+  type Reference,
+  type TopLevelItem,
+  type UnitField,
+} from "@annotinder/contracts";
 
 export interface UnitFieldWarning {
   /** The item that refers to the field (the loop itself for its layout). */
@@ -9,11 +16,22 @@ export interface UnitFieldWarning {
   message: string;
 }
 
+/** References in a condition: its rules' refs, or its script's. */
+function conditionReferences(condition: Condition | undefined): Reference[] {
+  if (!condition) return [];
+  if ("script" in condition) return extractReferences(condition.script).references;
+  return condition.rules.flatMap((rule) => {
+    const parsed = parseReference(rule.ref);
+    return "ref" in parsed ? [parsed.ref] : [];
+  });
+}
+
 /**
  * References to unit fields that don't exist: `$unit.x` anywhere in a unit
  * loop (layout template, conditions, question texts), and the `column` of
- * span/relation questions (which may also name a layout constant). Nothing
- * to check while the job has no units (`fields` empty).
+ * span questions (which may also name a layout constant). Warnings, not
+ * errors: units may still be uploaded after the codebook is written.
+ * Nothing to check while the job has no units (`fields` empty).
  */
 export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): UnitFieldWarning[] {
   if (fields.length === 0) return [];
@@ -26,30 +44,36 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
     seen.add(key);
     warnings.push({ item, field, message });
   };
+  const check = (item: string, refs: Reference[]) => {
+    for (const ref of refs) {
+      if (ref.ns === "unit" && !known.has(ref.path[0])) warn(item, ref.path[0], `${item}: $unit.${ref.path[0]} is not a unit field`);
+    }
+  };
 
-  for (const loop of items) {
-    if (loop.type !== "unit_loop") continue;
-    const constants = new Set(Object.keys(loop.layout?.constants ?? {}));
-    scan(loop, loop.name, (item, value, key) => {
-      if (key === "column" && !known.has(value) && !constants.has(value)) {
-        warn(item, value, `${item}: column '${value}' is not a unit field`);
+  const walk = (children: InLoopItem[], constants: Set<string>) => {
+    for (const child of children) {
+      if (child.type === "condition") {
+        check(child.name, conditionReferences(child.condition));
+        walk(child.children, constants);
+        continue;
       }
-      for (const [, field] of value.matchAll(UNIT_REF)) {
-        if (!known.has(field)) warn(item, field, `${item}: $unit.${field} is not a unit field`);
+      const variable = child.variable;
+      check(child.name, templateReferences(variable.question ?? "").references);
+      check(child.name, templateReferences(variable.instruction ?? "").references);
+      if (variable.type === "span" && !known.has(variable.column) && !constants.has(variable.column)) {
+        warn(child.name, variable.column, `${child.name}: column '${variable.column}' is not a unit field`);
       }
-    });
-  }
+    }
+  };
+
+  const visit = (list: TopLevelItem[]) => {
+    for (const item of list) {
+      if (item.type === "condition") visit(item.children);
+      if (item.type !== "unit_loop") continue;
+      check(item.name, templateReferences(item.layout?.template ?? "").references);
+      walk(item.children, new Set(Object.keys(item.layout?.constants ?? {})));
+    }
+  };
+  visit(items);
   return warnings;
-}
-
-/** Calls `visit` for every string in `node`, with the name of the closest item around it and its key. */
-function scan(node: unknown, item: string, visit: (item: string, value: string, key: string) => void, key = "") {
-  if (typeof node === "string") return visit(item, node, key);
-  if (Array.isArray(node)) return node.forEach((child) => scan(child, item, visit));
-  if (node && typeof node === "object") {
-    const record = node as Record<string, unknown>;
-    // A nested item (question, condition) names itself
-    const owner = "type" in record && typeof record.name === "string" ? record.name : item;
-    for (const [k, v] of Object.entries(record)) if (k !== "name" && k !== "type") scan(v, owner, visit, k);
-  }
 }

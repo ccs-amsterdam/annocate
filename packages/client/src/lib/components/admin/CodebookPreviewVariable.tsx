@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CodebookItem, UnitData, UnitLayout, VariableValue } from "@annotinder/contracts";
-import { renderTemplate } from "../../codebook/renderTemplate";
+import { renderTemplate, type RenderedTemplate } from "../../codebook/renderTemplate";
+import { describeCondition } from "../../codebook/conditions";
 import { Question } from "../Question";
 import { UnitFields } from "../UnitFields";
 import { SpanAnnotationProvider } from "../../context/SpanAnnotationContext";
@@ -39,9 +40,9 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
   const layout = isLoop
     ? item.layout
     : parentLoop?.layout ?? {
-        template: "# $unit.headline\n\n::tokenize[$unit.text]",
+        template: "# $unit.headline\n\n$unit.text::tokenize",
       };
-  const resolvedLayout = useResolvedLayout(layout);
+  const rendered = useRenderedLayout(layout);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -74,10 +75,10 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
                   codes={spanVariable.codes}
                   initialSpans={[]}
                 >
-                  <UnitFields layout={resolvedLayout} data={MOCK_UNIT_DATA} />
+                  <UnitFields layout={layout} rendered={rendered} />
                 </SpanAnnotationProvider>
               ) : (
-                <UnitFields layout={resolvedLayout} data={MOCK_UNIT_DATA} />
+                <UnitFields layout={layout} rendered={rendered} />
               )}
             </div>
           )}
@@ -123,10 +124,10 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
             <div className="p-4 text-sm">
               <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Condition Item</span>
               <p className="mt-1 text-xs text-muted-foreground">
-                Expression: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{item.expression || "(empty)"}</code>
+                Shown when: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{describeCondition(item.condition)}</code>
               </p>
               <p className="mt-3 text-xs text-muted-foreground">
-                Condition items do not display a visible card to annotators; they evaluate JavaScript logic to branch or filter items.
+                Condition items do not display a visible card to annotators; their rules or script decide which items are shown.
               </p>
             </div>
           )}
@@ -137,23 +138,23 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
 }
 
 /**
- * The layout with its `{{ }}` blocks evaluated against the mock unit, like
- * JobManager does for a real unit. Answers aren't known here, so expressions
+ * The layout with its values evaluated against the mock unit, like
+ * JobManager does for a real unit. Answers aren't known here, so values
  * that use them render as empty.
  */
-function useResolvedLayout(layout: UnitLayout): UnitLayout {
-  const [resolved, setResolved] = useState(layout);
+function useRenderedLayout(layout: UnitLayout): RenderedTemplate {
+  const [rendered, setRendered] = useState<RenderedTemplate>({ markdown: "", values: [] });
   const key = JSON.stringify(layout);
   useEffect(() => {
     let cancelled = false;
-    const scope = { ...layout.constants, ...MOCK_UNIT_DATA, $unit: MOCK_UNIT_DATA };
-    renderTemplate(layout.template, scope).then((template) => {
-      if (!cancelled) setResolved({ ...layout, template });
+    const scope = { $unit: MOCK_UNIT_DATA, $var: {}, $const: layout.constants ?? {} };
+    renderTemplate(layout.template, scope).then((result) => {
+      if (!cancelled) setRendered(result);
     });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on content: the default layout is a new object each render
   }, [key]);
-  return resolved;
+  return rendered;
 }

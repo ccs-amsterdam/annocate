@@ -28,7 +28,7 @@ export function TreePanel({ draft, readOnly }: { draft: CodebookDraft; readOnly:
           onDelete={draft.remove}
           onMoveItem={draft.move}
           onMoveToRootEnd={draft.moveToEnd}
-          validationIssues={draft.validationIssues}
+          validationIssues={draft.validationErrors}
           readOnly={readOnly}
         />
       </div>

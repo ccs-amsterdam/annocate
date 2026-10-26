@@ -1,12 +1,15 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { CodebookCodesSchema, CodebookSwipeCodesSchema } from "./codes.js";
+import { VAR_PROPERTIES } from "./references.js";
 
 // Shared question/instruction presentation fields.
 export const VariableBaseSchema = z.object({
-  question: z.string().describe("The question shown to the annotator. Supports markdown and scripts."),
+  question: z
+    .string()
+    .describe("The question shown to the annotator: a markdown template with $var references and {{ }} (in a loop also $unit/$const)."),
   questionStyle: z.record(z.string(), z.string()).optional(),
-  instruction: z.string().optional().describe("Extra instructions for this variable. Supports markdown and scripts."),
+  instruction: z.string().optional().describe("Extra instructions for this variable; a markdown template like `question`."),
   instructionStyle: z.record(z.string(), z.string()).optional(),
   instructionAuto: z
     .boolean()
@@ -15,7 +18,9 @@ export const VariableBaseSchema = z.object({
 });
 
 export const VariableItemSchema = z.object({
-  name: SafeNameSchema.describe("Sub-item name, concatenated with the variable name (variable.item)."),
+  name: SafeNameSchema.refine((name) => !(VAR_PROPERTIES as readonly string[]).includes(name), {
+    message: `Item names can't be ${VAR_PROPERTIES.join(", ")} (they are reference properties: $var.q.code)`,
+  }).describe("Sub-item name, referenced as $var.<question>.<item>.code / .value."),
   label: z.string().max(128).optional(),
 });
 export const VariableItemsSchema = z
@@ -58,7 +63,7 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
 /**
  * An "auto" variable: assigned rather than asked. Used for experimental
  * conditions and for routing coders to unitsets (unit_loop `when` and
- * `{placeholders}`, see unitLoop.ts). Assigned once, on the server, when the
+ * `$var` references in unitset names, see unitLoop.ts). Assigned once, on the server, when the
  * coder starts, and never changed by the coder afterwards.
  *
  * - `random`:    a (weighted) random draw from `options`
@@ -95,8 +100,8 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
   column: z
     .string()
     .describe(
-      "The unit data column (or layout `constants` entry) to select spans in -- must be rendered via a " +
-        "`::tokenize[name]` directive in the unit_loop's layout template (docs/client.md §3)",
+      "The unit data column (or layout `constants` entry) to select spans in -- must be rendered as " +
+        "`$unit.<column>::tokenize` (or `$const.<name>::tokenize`) in the unit_loop's layout template (docs/client.md §3)",
     ),
   codes: CodebookCodesSchema,
   editMode: z.boolean().optional(),

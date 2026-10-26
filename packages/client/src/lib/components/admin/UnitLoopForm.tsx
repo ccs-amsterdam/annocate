@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import {
   ALL_UNITS_UNITSET,
+  type AnyVariableType,
   type CodebookItem,
   type CodebookValidationIssue,
   type DynamicSource,
@@ -11,6 +12,9 @@ import {
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ConditionEditor } from "./ConditionEditor";
+import { IssueList } from "./IssueList";
+import { issuesAt } from "./issues";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 
@@ -20,19 +24,20 @@ function questionNames(items: CodebookItem[]): string[] {
 
 /**
  * Edits how a unit_loop distributes units (contracts unitLoop.ts): branches
- * with an optional `when` on coder-level variables, each with one or more
- * fixed or dynamic unitset sources.
+ * with an optional `when` condition on coder-level questions, each with one
+ * or more fixed or dynamic unitset sources.
  */
 export function UnitLoopForm({
   loop,
   unitsets,
-  coderVariableNames,
+  coderQuestions,
   validationIssues,
   onChange,
 }: {
   loop: UnitLoopItem;
   unitsets: UnitsetResponse[];
-  coderVariableNames: string[];
+  /** Coder-level questions before the loop: what branch conditions and unitset names may use. */
+  coderQuestions: { name: string; variable: AnyVariableType }[];
   validationIssues: CodebookValidationIssue[];
   onChange: (loop: UnitLoopItem) => void;
 }) {
@@ -40,7 +45,7 @@ export function UnitLoopForm({
   const loopQuestions = questionNames(loop.children as CodebookItem[]);
   const setBranches = (units: UnitBranch[]) => onChange({ ...loop, units });
   const setBranch = (b: number, branch: UnitBranch) => setBranches(branches.map((x, i) => (i === b ? branch : x)));
-  const issues = validationIssues.filter((i) => i.path.includes("units"));
+  const issues = issuesAt(validationIssues, "units");
 
   return (
     <div className="flex flex-col gap-3">
@@ -77,8 +82,8 @@ export function UnitLoopForm({
       </div>
 
       <p className="text-[11px] text-muted-foreground">
-        Each coder gets the units of the first branch whose condition matches. A unitset name can contain{" "}
-        <code>{"{variable}"}</code> to use a coder variable, e.g. <code>part_{"{slot}"}</code>.
+        Each coder gets the units of the first branch whose condition matches (checked in the coder&apos;s browser). A
+        unitset name can use an earlier answer, e.g. <code>part_$var.slot.code</code>.
       </p>
 
       {branches.map((branch, b) => (
@@ -100,11 +105,38 @@ export function UnitLoopForm({
             )}
           </div>
 
-          <WhenEditor
-            when={branch.when}
-            coderVariableNames={coderVariableNames}
-            onChange={(when) => setBranch(b, { ...branch, when })}
-          />
+          {branch.when ? (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-muted-foreground">Only for coders where</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => setBranch(b, { sources: branch.sources })}
+                >
+                  Always
+                </Button>
+              </div>
+              <ConditionEditor
+                condition={branch.when}
+                onChange={(when) => setBranch(b, { ...branch, when })}
+                questions={coderQuestions}
+                issues={issuesAt(validationIssues, "units", b, "when")}
+              />
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="self-start text-xs"
+              onClick={() => setBranch(b, { ...branch, when: { rules: [] } })}
+            >
+              <Plus className="h-3.5 w-3.5" /> Condition
+            </Button>
+          )}
 
           {branch.sources.map((source, s) => (
             <SourceEditor
@@ -140,69 +172,7 @@ export function UnitLoopForm({
         <Plus className="h-3.5 w-3.5" /> Branch
       </Button>
 
-      {issues.map((issue, i) => (
-        <p key={i} className="text-xs text-destructive">
-          {issue.message}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-function WhenEditor({
-  when,
-  coderVariableNames,
-  onChange,
-}: {
-  when: UnitBranch["when"];
-  coderVariableNames: string[];
-  onChange: (when: UnitBranch["when"]) => void;
-}) {
-  const entries = Object.entries(when ?? {});
-  const set = (next: [string, string | string[]][]) => onChange(next.length > 0 ? Object.fromEntries(next) : undefined);
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      {entries.map(([variable, expected], i) => (
-        <div key={i} className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground">{i === 0 ? "if" : "and"}</span>
-          <select
-            className={selectClass}
-            value={variable}
-            onChange={(e) => set(entries.map((x, j) => (j === i ? [e.target.value, x[1]] : x)))}
-          >
-            {[variable, ...coderVariableNames.filter((n) => n !== variable && !(n in (when ?? {})))].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <span className="text-muted-foreground">is</span>
-          <Input
-            className="h-8 text-xs"
-            placeholder="value, or a, b, c"
-            value={Array.isArray(expected) ? expected.join(", ") : expected}
-            onChange={(e) => {
-              const values = e.target.value.split(",").map((v) => v.trim());
-              set(entries.map((x, j) => (j === i ? [x[0], values.length > 1 ? values : values[0]] : x)));
-            }}
-          />
-          <Button type="button" variant="ghost" size="icon-sm" onClick={() => set(entries.filter((_, j) => j !== i))}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      ))}
-      {coderVariableNames.some((n) => !(n in (when ?? {}))) && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="self-start text-xs"
-          onClick={() => set([...entries, [coderVariableNames.find((n) => !(n in (when ?? {})))!, ""]])}
-        >
-          <Plus className="h-3.5 w-3.5" /> Condition
-        </Button>
-      )}
+      <IssueList issues={issues.filter((issue) => !issue.path.includes("when"))} />
     </div>
   );
 }

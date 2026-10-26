@@ -1,9 +1,15 @@
 import { useMemo, useState } from "react";
-import type { CodebookItem, CodebookValidationIssue, TopLevelItem, UnitLoopItem } from "@annotinder/contracts";
+import {
+  availableQuestions,
+  type CodebookItem,
+  type CodebookValidationIssue,
+  type TopLevelItem,
+  type UnitLoopItem,
+} from "@annotinder/contracts";
 import { AlertTriangle, Edit3, Eye } from "lucide-react";
 import type { AdminClient } from "../../../api/httpAdminClient";
 import { useUnitsetsQuery } from "../../../admin/queries";
-import { findParent, flattenTree, isInsideUnitLoop } from "../../../codebook/tree";
+import { findParent, flattenTree, isInsideUnitLoop, itemAtPath, itemPath } from "../../../codebook/tree";
 import { ItemForm } from "../ItemForm";
 import { CodebookPreviewVariable } from "../CodebookPreviewVariable";
 import { getItemKey } from "../codebookTree/utils";
@@ -94,7 +100,10 @@ function ItemEditForm({
   const { items, cleanItems, validationIssues } = draft;
   const key = getItemKey(item);
 
-  const { unitVariableNames, coderVariableNames } = useMemo(() => variableNames(items), [items]);
+  const { unitVariableNames } = useMemo(() => variableNames(items), [items]);
+  // What references may use at this item: the same rules as validation
+  const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
+  const loop = enclosingLoop(items, item);
   const itemIssues = useMemo(
     () => issuesOfItem(item, validationIssues, cleanItems),
     [item, validationIssues, cleanItems],
@@ -107,7 +116,8 @@ function ItemEditForm({
         item={item}
         unitsets={unitsetsQuery.data ?? []}
         unitVariableNames={unitVariableNames}
-        coderVariableNames={coderVariableNames}
+        availableQuestions={available}
+        loopConstants={loop ? Object.keys(loop.layout?.constants ?? {}) : null}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
         onChange={(next) => draft.update(key, next)}
@@ -116,16 +126,13 @@ function ItemEditForm({
   );
 }
 
-/** Names of unit-level questions (inside a loop) and coder-level questions (outside), for references in forms. */
+/** Names of unit-level questions (inside a loop), for references in forms. */
 function variableNames(items: TopLevelItem[]) {
   const all = flattenTree(items);
   const inLoop = (i: CodebookItem) => isInsideUnitLoop(items, getItemKey(i));
   return {
     unitVariableNames: all
       .filter((i) => i.type === "unit_variable" || (i.type === "question" && inLoop(i)))
-      .map((i) => i.name),
-    coderVariableNames: all
-      .filter((i) => (i.type === "question" || i.type === "user_variable") && !inLoop(i))
       .map((i) => i.name),
   };
 }
@@ -140,23 +147,11 @@ function enclosingLoop(items: TopLevelItem[], item: CodebookItem): UnitLoopItem 
   return undefined;
 }
 
-/** Validation issues about this item: mentioning it by name, or pointing at it by path. */
+/** Validation issues about this item: pointing at it by path, or (without a path to an item) mentioning it by name. */
 function issuesOfItem(item: CodebookItem, issues: CodebookValidationIssue[], cleanItems: TopLevelItem[]) {
   return issues.filter((issue) => {
-    if (item.name && issue.message.includes(`'${item.name}'`)) return true;
-    return itemAtPath(cleanItems, issue.path)?.name === item.name;
+    const at = itemAtPath(cleanItems, issue.path);
+    if (at) return at.name === item.name;
+    return Boolean(item.name) && issue.message.includes(`'${item.name}'`);
   });
-}
-
-/** Follows the numeric segments of a validation issue's path through the item tree. */
-function itemAtPath(items: TopLevelItem[], path: (string | number)[]): CodebookItem | null {
-  let current: unknown = items;
-  for (const segment of path) {
-    if (typeof segment !== "number") continue;
-    if (Array.isArray(current)) current = current[segment];
-    else if (current && typeof current === "object" && "children" in current && Array.isArray(current.children)) {
-      current = current.children[segment];
-    }
-  }
-  return (current as CodebookItem | undefined) ?? null;
 }

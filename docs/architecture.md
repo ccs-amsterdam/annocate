@@ -260,9 +260,10 @@ name: main
 order: random            # sequential (default) | random: per-coder shuffle, sources interleaved
 maxUnits: 100            # per coder, across all sources of the branch
 units:                   # first matching branch wins; no match = no units
-  - when: { group: treatment }             # coder variable codes; [a, b] = any of; keys are ANDed
+  - when:                                  # a condition (rules or script) on coder-level questions
+      rules: [ { ref: $var.group.code, op: is, value: treatment } ]
     sources:
-      - { unitset: "part_{slot}" }         # fixed: coder gets every unit of their part
+      - { unitset: "part_$var.slot.code" } # fixed: coder gets every unit of their part
       - { unitset: part_overlap }          # fixed: everyone also gets the overlap units
   - sources:
       - unitset: pool
@@ -291,16 +292,38 @@ unitset can be used both ways.
     - `cover` (default) prefers least-coded units;
     - `saturate` prefers units closest to completion.
 
-**`when`.** This is declarative (equality / any-of on coder-level variables)
-rather than QuickJS. The job server evaluates it, any researcher can read
-it, and it can be reproduced without a JS engine. Codebook validation checks
-that `when` keys and `{placeholders}` refer to coder-level variables defined
-*before* the loop, and that `when` values are among their codes.
+**`when`.** The same condition as a `condition` item (rules or a script,
+`client.md` "References and conditions"), on coder-level questions from
+before the loop. Unitset names can contain `$var` references, filled in
+with the coder's answer as text. Codebook validation checks both.
+
+**The client chooses the branch.** When it enters a loop, the client
+evaluates the branches in order, takes the first that matches, fills in its
+unitset names, and asks `GET /loop/:loop/next?branch=<i>&unitsets=<names>`.
+The job server checks that the branch exists, that the names fit that
+branch's sources (`unitsetMatchesSource`) and that the unitsets exist, and
+stores them. A loop with a single unconditional branch without references
+routes without the parameters; any other loop answers 409
+`branch_required` until the client chooses. If no branch matches, the
+coder has no units in the loop. This way the job server never needs the
+answers a branch depends on, which is what end-to-end encryption needs
+(`encryption.md`, "Routing on answers").
+
+*Trust trade-off.* A coder can choose their own branch, by sending another
+branch index, or other unitset names that fit a branch's sources (e.g.
+`part_3` instead of `part_2`). The server only guarantees that a coder gets
+units of a unitset the codebook could route *someone* to. Routing is a
+convenience for the researcher, not access control. `auto` assignment
+(random, balanced, invite) itself stays on the server, so a coder can't
+change their stored group; only which units they ask for. If a study needs
+the routing enforced, a strict mode could later check the filled-in names
+against server-held `auto` values (only possible for unencrypted ones).
 
 **Routing is sticky.** The resolved unitset names are stored on the db
 server per coder and loop (`assignments`, e.g. `{ main: ["part_2",
-"part_overlap"] }`). A coder who later changes an answer used in `when`
-keeps their units.
+"part_overlap"] }`), and later choices are ignored. A coder who later
+changes an answer used in `when` keeps their units, as long as the codebook
+still has a branch that produces the same names.
 
 The example "1000 units, until 5 coders agree, max 100 per coder" is:
 
@@ -331,7 +354,7 @@ The client skips them as steps.
 
 - `random`: weighted draw from `options` (job server).
 - `balanced`: the option fewest coders have so far (job server). This
-  spreads unknown coders evenly over `part_{slot}`. The counts come from a
+  spreads unknown coders evenly over `part_$var.slot.code`. The counts come from a
   coder-level `POST /finished` query on load, then are kept in memory.
 - `invite`: the value preset on the coder's invitation. If the invitation
   doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
@@ -443,7 +466,8 @@ Other open points:
 
 | Where | What |
 | --- | --- |
-| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, placeholders, legacy migration |
+| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, unitset references, legacy migration |
+| `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var`/`$const` references, template parsing, scopes; conditions (rules or script) and rule evaluation |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment, annotator API and status schemas |
 | `contracts/src/endpoints/` | The four API registries: researcher, annotator, client, DB ([docs/api](api/README.md)) |
@@ -489,8 +513,10 @@ Roughly in order:
 3. **Semantic validation.** The current validation checks variable names,
    codes, items and span/relation codes. Running codebook conditions
    (QuickJS) server-side, to reject answers to questions the coder should
-   never have seen, is the natural next step. It belongs here, not in db
-   servers.
+   never have seen, would be the next step. It belongs here, not in db
+   servers. It conflicts with end-to-end encryption, though (the server
+   would need the answers), which is why conditions and branch choice now
+   run on the client (§6.1).
 4. **Email-restricted invites** need real coder authentication (item 1).
 5. **Scale.** On cold start the job server loads finished codings for
    dynamic loops only (bounded by units x `maxCoders`), and coder workspaces

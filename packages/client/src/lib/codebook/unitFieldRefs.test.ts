@@ -7,9 +7,15 @@ const items = [
     type: "unit_loop",
     name: "loop",
     units: [{ sources: [{ unitset: "main" }] }],
-    layout: { template: "# {{$unit.headline}}\n\n::tokenize[$unit.body]", constants: { note: "x" } },
+    layout: { template: "# {{$unit.headline}}\n\n$unit.body::tokenize", constants: { note: "x" } },
     children: [
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },
+      {
+        type: "condition",
+        name: "c",
+        condition: { rules: [{ ref: "$unit.source", op: "is", value: "x" }] },
+        children: [{ type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } }],
+      },
       { type: "question", name: "spans", variable: { type: "span", question: "?", column: "note", codes: [] } },
       { type: "question", name: "spans2", variable: { type: "span", question: "?", column: "text", codes: [] } },
     ],
@@ -24,6 +30,8 @@ describe("unknownUnitFields", () => {
     ];
     expect(unknownUnitFields(items, fields).map((w) => [w.item, w.field])).toEqual([
       ["q1", "topic"],
+      ["c", "source"],
+      ["q2", "quoted"],
       ["spans2", "text"],
     ]);
   });

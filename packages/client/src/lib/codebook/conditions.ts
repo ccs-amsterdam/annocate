@@ -1,15 +1,35 @@
-import { evaluateExpression } from "./expression";
+import { evaluateRules, type Condition, type ReferenceScope } from "@annotinder/contracts";
+import { evaluateScript } from "./expression";
+import type { ExpressionCache } from "./expressionCache";
 
 /**
- * Evaluates a codebook `condition` item's expression (docs/client.md §5)
- * against a map of currently-known variable values (name -> the value the
- * coder picked, e.g. a code string), coercing the result to a boolean.
- *
- * A thin wrapper around the shared QuickJS-sandboxed `evaluateExpression`
- * (see `expression.ts` for the sandbox choice's full history/rationale) --
- * `renderTemplate.ts`'s `{{ expression }}` interpolation (docs/client.md §3) uses the
- * same sandbox via the same function.
+ * Evaluates a condition (docs/client.md "References and conditions") for a
+ * `condition` item or a unit-loop branch `when`: rules directly (shared with
+ * the contracts package), scripts in the QuickJS sandbox (truthy = holds).
+ * A failing script counts as false.
  */
-export async function evaluateCondition(expression: string, values: Record<string, unknown>): Promise<boolean> {
-  return Boolean(await evaluateExpression(expression, values));
+export async function evaluateCondition(
+  condition: Condition,
+  scope: ReferenceScope,
+  cache?: ExpressionCache,
+  key = "condition",
+): Promise<boolean> {
+  if (!("script" in condition)) return evaluateRules(condition, scope);
+  const result = cache ? await cache.evaluate(key, condition.script, scope) : await evaluateScript(condition.script, scope);
+  return Boolean(result);
+}
+
+const OP_LABELS: Record<string, string> = { is: "is", isnot: "is not", gt: ">", gte: "≥", lt: "<", lte: "≤" };
+
+/** A one-line summary of a condition, e.g. for the codebook tree. */
+export function describeCondition(condition: Condition | undefined): string {
+  if (!condition) return "(none)";
+  if ("script" in condition) return condition.script.trim() || "(empty script)";
+  if (condition.rules.length === 0) return "always";
+  return condition.rules
+    .map((rule) => {
+      const value = Array.isArray(rule.value) ? rule.value.join(" / ") : String(rule.value);
+      return `${rule.ref} ${OP_LABELS[rule.op] ?? rule.op} ${value}`;
+    })
+    .join(condition.match === "any" ? " or " : " and ");
 }
