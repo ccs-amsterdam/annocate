@@ -136,6 +136,66 @@ the connection must be **end-to-end encrypted**:
   phishing blocklists; and the bridge needs abuse limits (who may register
   an endpoint, bandwidth caps).
 
+## Option: R or Python as the host
+
+An alternative to annotinder local for the R and Python use cases
+(developing a codebook with a live preview; a researcher coding their own
+data), as the old annotinder did it: R (or Python) starts a tiny server,
+and the browser does the work.
+
+**R's part: storage only, three endpoints**, on a random local port:
+
+- `GET /job`: codebook, units and unitsets, from R objects;
+- `GET /annotations`: what has been coded so far;
+- `POST /annotations`: answers, written back into R (a data frame, a file).
+
+R needs only `httpuv` and `jsonlite`; Python only its standard library. No
+Node, no binaries.
+
+**The browser runs the job**, with the server's own runtime:
+
+```
+UI (JobRunner, JobManager)          unchanged: talks to the CoderApi interface
+  ▼
+LocalCoderApi                       new: calls the runtime directly, no HTTP
+  ▼
+DeploymentRuntime                   the server's code, running in the browser
+  ▼
+RStore                              new: a Store over R's three endpoints
+```
+
+- `LocalCoderApi` does what `server/src/coder.ts` does, minus HTTP and
+  cookies: each `CoderApi` method calls the matching runtime method.
+- `RStore` implements `Store` (`server/src/runtime/store.ts`): the spec and
+  units from `GET /job` (kept in memory), annotations from
+  `GET /annotations` once (finished units computed in memory: one coder),
+  writes as `POST /annotations` (coder-level answers as rows without a
+  unit). There is one coder.
+- Needed first: the runtime moves out of `packages/server` into a package
+  that runs in Node and the browser.
+- No PGlite (R holds the data); QuickJS stays (the client runs conditions
+  and scripts with it, as always).
+
+**Where the client comes from:**
+
+- served by R from the package (`http://localhost:8403`): same origin, no
+  CORS or browser permission prompts; the package ships the built client
+  (a few MB: check against CRAN's size limit). Preferred.
+- or from annotinder.com (`https://annotinder.com/r/8403`): always the
+  latest client, but an https page calling `http://localhost` meets
+  browsers' local-network protections (Chrome asks for permission; CORS
+  headers needed).
+
+Either way the link carries a random token (`#<token>`) that R checks, so
+other web pages can't write to the port.
+
+**Limits:** one coder per R session: each browser runs its own runtime, so
+there is no shared queue across coders (dynamic sources only make sense for
+one coder). Teams use a server (self-hosted or annotinder.com).
+
+If this covers the R and Python use cases, annotinder local (above) is only
+needed for a LAN team without a server.
+
 ## Order of work (proposal)
 
 1. `annotinder-local`: the composition, the project folder, file import and
