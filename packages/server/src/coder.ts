@@ -5,6 +5,9 @@ import { HttpError } from "./shared/http.js";
 import { dbCoderKey, newSessionKey, readSession, requireClientHeader, sessionCookieName, writeSession } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 
+/** The deployment version the client's codebook belongs to (contracts SessionResponse.version). */
+const VERSION_HEADER = "x-annotinder-version";
+
 interface Env {
   Variables: { runtime: DeploymentRuntime; coder: Coder; sessionKey: string };
 }
@@ -39,6 +42,14 @@ export function coderApi(server: Server): Hono {
     const runtime = await server.deployments.get(deploymentId);
     await runtime.refresh();
     c.set("runtime", runtime);
+    // The client works with the codebook of the version it loaded; after a
+    // publish it must load the session again (the session and transfer
+    // links don't depend on the codebook).
+    const version = c.req.header(VERSION_HEADER);
+    const exempt = c.req.path.endsWith("/session") || c.req.path.endsWith("/transfer");
+    if (version !== undefined && version !== String(runtime.version) && !exempt) {
+      throw new HttpError(409, "A new version of the codebook was published", "codebook_changed");
+    }
 
     // The session cookie, or a new session: no cookie yet, or the coder asked
     // for a new one (a participant id that already has a session elsewhere).

@@ -203,6 +203,12 @@ export class JobManager {
 
   private lastFailedOperation: (() => Promise<void>) | null = null;
   private starting: Promise<void> | null = null;
+  /**
+   * After a new codebook version: the unit the coder was working on and its
+   * answers not yet saved, put back when the reloaded session returns to
+   * that unit (`reloadAfterPublish`).
+   */
+  private carryOver: { loop: string; unitId: number; answers: Record<string, VariableValue> } | null = null;
 
   private snapshot: JobManagerSnapshot = {
     phase: "loading",
@@ -444,7 +450,9 @@ export class JobManager {
     while (allowFetchAhead && this.unitHistory.length <= unitIndex) {
       const nextUnit = await this.fetchNextUnit(this.activeLoop);
       if (!nextUnit) break;
-      this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...(nextUnit.variables ?? {}) } });
+      // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
+    const carried = this.carryOver?.loop === this.activeLoop.name && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
+    this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     }
 
     if (this.unitHistory.length === 0) return;
@@ -527,8 +535,34 @@ export class JobManager {
       }
       this.lastFailedOperation = null;
     } catch (err) {
+      if (errorCodeOf(err) === "codebook_changed") {
+        await this.reloadAfterPublish();
+        return;
+      }
       this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
     }
+  }
+
+  /**
+   * A new codebook version was published while the coder was working (the
+   * server answered `codebook_changed`): load the session again, as after a
+   * reload, so the coder continues where they were under the new version.
+   * Answers to the current unit that weren't saved yet are kept, if they
+   * still fit; coder-level answers are saved one by one, so at most the
+   * last one is asked again.
+   */
+  private async reloadAfterPublish(): Promise<void> {
+    if (this.activeLoop && this.currentUnit) {
+      this.carryOver = { loop: this.activeLoop.name, unitId: this.currentUnit.id, answers: { ...this.unitVariableValues } };
+    }
+    this.starting = null;
+    this.userVariableValues = {};
+    this.unitVariableValues = {};
+    this.activeLoop = null;
+    this.currentUnit = null;
+    this.expressionCache = new ExpressionCache();
+    await this.start();
+    this.carryOver = null;
   }
 
   async submitAnswer(value: VariableValue): Promise<void> {
@@ -747,7 +781,9 @@ export class JobManager {
       return;
     }
 
-    this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...(nextUnit.variables ?? {}) } });
+    // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
+    const carried = this.carryOver?.loop === this.activeLoop.name && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
+    this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     await this.openEntry(this.unitHistory.length - 1);
 
     await this.refreshLoopSteps();

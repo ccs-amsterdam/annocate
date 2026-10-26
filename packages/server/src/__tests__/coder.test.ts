@@ -66,7 +66,13 @@ async function send(name: string, path: string, init: RequestInit = {}, headers:
   const cookie = [...device.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
   const res = await app().request(`/d/1${path}`, {
     ...init,
-    headers: { "content-type": "application/json", "x-annotinder": "1", ...(cookie ? { cookie } : {}), ...headers },
+    headers: {
+      "content-type": "application/json",
+      "x-annotinder": "1",
+      ...(cookie ? { cookie } : {}),
+      ...(init.headers as Record<string, string> | undefined),
+      ...headers,
+    },
   });
   for (const set of res.headers.getSetCookie()) {
     const [pair] = set.split(";");
@@ -513,6 +519,30 @@ describe("sessions across devices", () => {
 });
 
 describe("resuming and codebook updates", () => {
+  it("refuses requests made with an older codebook version, until the session is loaded again", async () => {
+    const c = coder("v");
+    const { version } = await c.session();
+    const unit = await c.next();
+    const withVersion = (v: number) => ({ headers: { "x-annotinder-version": String(v) } });
+    const answers = JSON.stringify({ unitId: unit!.id, variables: demo("neutral") });
+
+    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
+    const stale = await c.call("/variables/unit", { method: "POST", body: answers, ...withVersion(version) });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toMatchObject({ code: "codebook_changed" });
+    expect(await dbAnnotations()).toHaveLength(0);
+
+    // The session itself is always served, with the new version.
+    const reloaded = (await (await c.call("/session", withVersion(version))).json()) as SessionResponse;
+    expect(reloaded.version).toBe(version + 1);
+    const fresh = await c.call("/variables/unit", {
+      method: "POST",
+      body: JSON.stringify({ unitId: unit!.id, variables: sentiment("neutral") }),
+      ...withVersion(reloaded.version),
+    });
+    expect(fresh.status).toBe(204);
+  });
+
   it("serves units the coder already finished, but not other units", async () => {
     const c = coder("res");
     const first = await c.next();

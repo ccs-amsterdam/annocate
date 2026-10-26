@@ -36,7 +36,15 @@ Headers:
 - `x-url-params`: the page's other query parameters, for `url_param` auto
   variables;
 - `x-new-session: 1` (first request only): start another session for a
-  participant that already has one.
+  participant that already has one;
+- `x-annotinder-version`: the `version` of the loaded session (below).
+
+**New codebook versions.** `GET /session` returns the deployment's
+`version`, bumped on every publish. The client sends it back with every
+request. After a publish, requests with the old version (all but
+`/session` and `/transfer`) answer 409 `codebook_changed`, before anything
+is stored; the client then loads the session again and continues where it
+was (`docs/client.md` §2).
 
 Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 [`docs/coder-identity.md`](../coder-identity.md).
@@ -47,8 +55,9 @@ Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 
 `GET /session` → `SessionResponseSchema`
 
-The codebook, per-loop progress and the coder's variables (including
-assigned `auto` variables). Creates the coder and session on first use.
+The codebook and its `version`, per-loop progress and the coder's
+variables (including assigned `auto` variables). Creates the coder and
+session on first use.
 
 ### getNextUnit
 

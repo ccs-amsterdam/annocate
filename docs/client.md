@@ -44,6 +44,13 @@ Status: current (2026-10-26). Server-side design lives in
   finished unit ids, and units are loaded lazily (`architecture.md` §8.1).
 - `currentUnitVariables` on the snapshot exposes the current unit's answers
   so far. Relation questions need it to find sibling span answers.
+- **A new codebook version while coding**: the server answers 409
+  `codebook_changed` to answers given under the old version
+  (`api/coder.md`). `JobManager` then loads the session again, as after a
+  reload, and returns to the unit the coder had open with their unsaved
+  answers to it, as far as they fit the new version; a question the new
+  version added is asked. At most the last coder-level answer is asked
+  again.
 - `start()` is idempotent (React StrictMode runs effects twice).
   `retry()` re-runs the last failed operation; this is safe because writes
   are upserts.
@@ -235,8 +242,9 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   (`codebook/diff.ts`), prefills the version note (versions are numbered,
   with an optional `note`) and shows the server's warnings (e.g. a loop
   gained questions, which reopens finished units). Coders who are working
-  switch to the new version at their next unit; answers they gave stay
-  linked to the version they were given under.
+  switch to the new version when they next save (§2), keeping the answers
+  to the unit they have open; saved answers stay linked to the version they
+  were given under.
   Condition items and branch `when` use `ConditionEditor.tsx`: a
   **Rules | Script** toggle. In rules mode the reference picker lists only
   what validation accepts at that point (`availableQuestions` +

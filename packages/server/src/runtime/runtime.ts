@@ -437,6 +437,7 @@ export class DeploymentRuntime {
       coderId: coder.coderId,
       jobId: this.spec.jobId,
       codebook: this.spec.codebook,
+      version: this.spec.version,
       progress: [...this.loops.values()].map((info) => {
         const pools = this.assignedPools(coder, info.loop.name);
         return {

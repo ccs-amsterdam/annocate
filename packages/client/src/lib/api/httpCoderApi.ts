@@ -90,6 +90,8 @@ function scopeHeaders(scope: { inviteSecret?: string; participantId?: string }):
 export class HttpCoderApi implements CoderApi {
   /** Still to be sent: cleared once a request succeeded, so only one new session is made. */
   private newSession: boolean;
+  /** The deployment version of the loaded session, sent with every request (`codebook_changed` after a publish). */
+  private version: number | null = null;
 
   constructor(private config: HttpCoderApiConfig) {
     this.newSession = config.newSession ?? false;
@@ -102,6 +104,7 @@ export class HttpCoderApi implements CoderApi {
       ...scopeHeaders(this.config),
     };
     if (this.newSession) headers["x-new-session"] = "1";
+    if (this.version !== null) headers["x-annotinder-version"] = String(this.version);
     const query = new URLSearchParams(this.config.urlParams ?? {}).toString();
     if (query) headers["x-url-params"] = query.slice(0, 2000);
     return headers;
@@ -132,7 +135,9 @@ export class HttpCoderApi implements CoderApi {
   }
 
   async getSession(): Promise<SessionResponse> {
-    return this.request(coderEndpoints.getSession.path);
+    const session = await this.request<SessionResponse>(coderEndpoints.getSession.path);
+    this.version = session.version;
+    return session;
   }
 
   async getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null> {

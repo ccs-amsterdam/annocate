@@ -130,7 +130,9 @@ the client, so the server stores only ciphertext (`docs/encryption.md`).
 `{ codebookId, active }`. The server bumps the deployment `version`, freezes
 the codebook, and has a loaded runtime re-read the deployment
 (`Deployments.refresh`). A runtime also re-checks the spec version at most
-every `specTtlMs` (60s).
+every `specTtlMs` (60s). Coders' browsers send the version their codebook belongs
+to; requests with an older one get 409 `codebook_changed`, and the client
+loads the session again (`api/coder.md`).
 
 **Coder links.** Invite links point at the client with the deployment id
 (the job id) and the invite secret; the client calls `/d/<jobId>/...`.
@@ -432,11 +434,6 @@ Roughly in order:
 1. **Coder login** (`coder-identity.md` §5), on the researcher login's code.
    Email-restricted invites (`auth: "required"`) need it.
 2. **Publishing follow-ups.**
-   - The coder's browser follows a new version: the server switches at the
-     next request, but the client keeps the codebook it loaded with the
-     session, so a coder could answer removed questions or miss new ones.
-     Put the deployment `version` in session and unit responses, and reload
-     the session when it changes.
    - A dry run of a publish, so the reopen warnings (§8.2) show before
      confirming instead of after.
    - Pausing a job from the UI (`active: false`), and deciding what pausing

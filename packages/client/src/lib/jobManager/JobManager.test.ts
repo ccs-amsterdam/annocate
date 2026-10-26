@@ -469,3 +469,45 @@ describe("rendering templates", () => {
     expect(snap.currentTexts?.question?.values.map((v) => v.text)).toEqual(["student", "*Big*"]);
   });
 });
+
+describe("a new codebook version while coding", () => {
+  it("loads the new codebook and continues the same unit, keeping the answers given so far", async () => {
+    const v1 = [unitLoop("loop", [unitVar("q1"), unitVar("q2")])];
+    const v2 = [unitLoop("loop", [unitVar("q1"), unitVar("q2"), unitVar("q3")])];
+    let version = 1;
+    let rejectOnce = true;
+    const posted: Record<string, VariableValue>[] = [];
+    let unitsServed = 0;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session(version === 1 ? v1 : v2)),
+      // Unit 1 is served until it is finished.
+      getNextUnit: vi.fn(async () => (posted.length === 0 ? (unitsServed++, unit(1)) : null)),
+      postUnitVariables: vi.fn(async (_unitId: number, variables: Record<string, VariableValue>) => {
+        if (rejectOnce) {
+          // Published meanwhile: the server refuses answers to the old version.
+          rejectOnce = false;
+          version = 2;
+          throw Object.assign(new Error("A new version of the codebook was published"), { code: "codebook_changed" });
+        }
+        posted.push(variables);
+      }),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    const a = { done: true, codes: [{ code: "A" }] } as VariableValue;
+    await manager.answer(a); // q1
+    await manager.answer(a); // q2: the unit is done, but the post is refused
+
+    // Reloaded: the same unit, at the question the new version added, with q1 and q2 kept.
+    expect(manager.getSnapshot().phase).toBe("unit_variable");
+    expect(manager.getSnapshot().currentUnit?.id).toBe(1);
+    expect(manager.getSnapshot().currentItem?.name).toBe("q3");
+    expect(manager.getSnapshot().currentUnitVariables).toMatchObject({ q1: a, q2: a });
+    expect(unitsServed).toBe(2);
+
+    await manager.answer(a); // q3
+    expect(posted).toHaveLength(1);
+    expect(Object.keys(posted[0]).sort()).toEqual(["q1", "q2", "q3"]);
+    expect(manager.getSnapshot().phase).toBe("finished");
+  });
+});

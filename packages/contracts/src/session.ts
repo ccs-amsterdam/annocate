@@ -24,8 +24,15 @@ export const UnitsetProgressSchema = z.object({
 export const SessionResponseSchema = z.object({
   coderId: IdSchema,
   jobId: IdSchema,
-  /** The codebook this session was started with (immutable for the lifetime of the session, see CONTRACTS.md). */
+  /** The published codebook coders get now. */
   codebook: CodebookResponseSchema,
+  /**
+   * The deployment's version: bumped on every publish. The client sends it
+   * back as `x-annotinder-version`; after a publish the server answers
+   * 409 `codebook_changed`, and the client loads the session again
+   * (docs/api/coder.md).
+   */
+  version: z.number().int().positive(),
   progress: z.array(UnitsetProgressSchema),
   /**
    * The coder's coder-level variables so far, including server-assigned
@@ -47,6 +54,8 @@ export const CoderErrorCodeSchema = z.enum([
   "auth_required",
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
+  /** A new codebook version was published since the session was loaded: load it again. */
+  "codebook_changed",
   /** `GET /loop/:loop/next` needs the client's branch choice (`branch` + `unitsets`), see NextUnitQuerySchema. */
   "branch_required",
 ]);
