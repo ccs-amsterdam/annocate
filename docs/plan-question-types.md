@@ -1,53 +1,70 @@
-# Plan: categorical, numeric and scale question types
+# Plan: question types, answer values and conditions
 
-Status: proposal (2026-10-22, revised 2026-10-26), not built. Replaces
-`select_code` and `search_code` with `categorical`, adds `numeric`, and
-keeps `scale` for batteries of items. Once built, fold the result into
-`packages/contracts/CONTRACTS.md` and `docs/client.md`, and delete this
+Status: decided, not built (2026-10-22, revised 2026-10-26). Replaces
+`select_code` and `search_code` with `categorical`, adds `numeric`, keeps
+`scale` for batteries of items; options get a value and a label; conditions
+become one notation with checked helper methods. Once built, fold the result
+into `packages/contracts/CONTRACTS.md` and `docs/client.md`, and delete this
 file.
 
 ## 1. Problem
 
-Today one concept is spread over several types and their options:
-
-- `select_code`, `search_code` and `scale` without items all ask "pick one
-  (or more) of these codes". They differ only in how that looks: buttons, a
-  search dropdown, or a row of scale buttons. So part of the UI choice is
-  the *type* and part is an *option* (`vertical`).
-- Every code has an optional free `value`. It means "ordinal position" on a
-  scale, but nothing stops values like 3, 17, 4 on a nominal question.
-- The `code` is both what is stored and what the coder sees. Fixing a typo
-  in a code changes the data.
+- One concept is spread over several types: `select_code`, `search_code`
+  and `scale` without items all ask "pick one (or more) of these". They
+  differ only in how that looks, so part of the UI choice is the *type* and
+  part is an *option* (`vertical`).
+- Every code has a string `code` (stored *and* shown) and an optional free
+  numeric `value`. Fixing a typo in a code changes the data; nothing stops
+  values like 3, 17, 4 on a nominal question.
 - There is no type for numbers (e.g. 0–100 thermometer, age).
+- Conditions come in two notations (rules and scripts); only rules are fully
+  checked, and references like `.code` / `.value` change shape with the
+  question.
 - Answer forms get tall: on a phone they can push the unit off screen.
 
-## 2. Types
+## 2. Options: a value and a label
 
-### 2.1 `categorical`: one question, pick from codes
+Every option of a question is `{ value, label?, color? }`, as analysis
+software has it (value labels in SPSS and Stata, labelled vectors in R):
+
+- **The value is the source of truth**: what is stored, compared, used in
+  conditions and exported. A single number or string, never a list or
+  object. Unique within the question.
+- **The label is display only** (defaults to the value). It can change, and
+  later be translated (`string | Record<lang, string>`), without touching
+  data.
+- **Nominal** questions: values are strings or numbers, the researcher's
+  choice (`"sports"`, or `1` as in many survey traditions).
+- **Ordinal** questions (and scales): values are **numbers, rising in the
+  order of the options**; default 1..n, any numbers allowed (0..4, -2..2).
+  So comparing values is comparing order, and the export is numeric.
+- If a researcher wants both a mnemonic and a number, they choose one as
+  the value; the other is a label or a recode in analysis. Annotations
+  record the codebook version (`codebookId`), so the mapping is never lost.
+- Changing an option's value in a published codebook changes what earlier
+  answers mean, like renaming a question: the editor warns.
+
+Spans and relations use the same options (`{ value, label?, color? }`).
+
+## 3. Types
+
+### 3.1 `categorical`: one question, pick from options
 
 ```ts
 {
   type: "categorical",
   question, instruction, ...           // shared VariableBase fields
   level?: "nominal" | "ordinal",       // default "nominal"
-  codes: [{ code, label?, color?, screenOut? }],
+  options: [{ value, label?, color?, screenOut? }],
   multiple?: boolean,                  // nominal only
   layout?: "auto" | "flex" | "row" | "grid" | "compact" | "dropdown",  // default "auto"
   columns?: 1 | 2 | 3 | 4,             // with layout "grid"; default 1
 }
 ```
 
-- **code vs label.** `code` is the stored identifier (unique, never shown if
-  a label exists). `label` is what the coder sees, defaulting to `code`.
-  Labels can change without touching data. Later `label` can become
-  `string | Record<lang, string>` for translations.
-- **No `value` on codes.** Nominal codes have no value. Ordinal codes have
-  value 1..n by position; not editable.
-- **Ordinal and `multiple` don't combine.** The schema rejects
-  `multiple` with `level: "ordinal"`.
-- **No items**: rating several items is `scale` (2.3).
+Ordinal and `multiple` don't combine (the schema rejects it).
 
-### 2.2 `numeric`: one number
+### 3.2 `numeric`: one number
 
 ```ts
 {
@@ -60,14 +77,12 @@ Today one concept is spread over several types and their options:
 }
 ```
 
-- `slider` and `buttons` need both `min` and `max`. `input` works with an
-  open range.
-- The editor offers `step` presets (whole numbers, 1 decimal, 2 decimals)
-  plus a custom value.
-- `labels` are shown under the slider or buttons at their positions, and as
-  hints next to an input.
+`slider` and `buttons` need both `min` and `max`; `input` works with an open
+range. The editor offers `step` presets (whole numbers, 1 or 2 decimals)
+plus a custom value. `labels` are shown at their positions under a slider
+or buttons, and as hints next to an input.
 
-### 2.3 `scale`: several items rated on the same codes
+### 3.3 `scale`: several items rated on the same options
 
 A battery (Likert): the items are what make it a scale.
 
@@ -76,171 +91,204 @@ A battery (Likert): the items are what make it a scale.
   type: "scale",
   question, instruction, ...
   items: [{ name, label? }],           // at least one
-  codes: [{ code, label?, color? }],   // ordinal: value 1..n by position
+  options: [{ value, label?, color? }], // ordinal: numbers rising in order
   layout?: "auto" | "compact" | "grid",
 }
 ```
 
-- One answer per item. Codes have no `value`: 1..n by position, as ordinal
-  `categorical`.
-- Today's `scale` *without* items becomes an ordinal `categorical`.
+One answer per item. Today's `scale` *without* items becomes an ordinal
+`categorical`.
 
-### 2.4 Other types
+### 3.4 Other types
 
-- `confirm`, `auto`, `span`, `relation`: unchanged. Their codes also get
-  the optional `label` (span and relation labels are shown to coders too).
-- `annotinder`: see open question 1.
+- `confirm`, `auto`: unchanged (`auto` options get the same
+  `{ value, label? }`).
+- `span`, `relation`: their codes become options.
+- `annotinder` (swipe): open question 1.
 
-## 3. Answers
+## 4. Answers
 
-Stored answer shape stays `VariableValue.codes: [{ item?, code?, value? }]`,
-so storage, agreement keys and exports don't change.
+The stored answer (`VariableValue`) holds values, not codes:
 
-| Type | Stored per answer | Notes |
+| Type | Stored | |
 | --- | --- | --- |
-| categorical, nominal | `{ code }` | |
-| categorical, ordinal | `{ code, value }` | `value` = position the coder saw (1..n) |
-| scale | `{ item, code, value }` | one per item |
-| numeric | `{ value }` | no `code` |
+| categorical | `values: [{ value }]` | one, or several with `multiple` |
+| numeric | `values: [{ value }]` | a number |
+| scale | `values: [{ item, value }]` | one per item |
+| span | `spans: [{ value, field, offset, length, text }]` | |
+| relation | `relations: [{ value, from, to }]` | |
+| confirm | `{}` (just `done`) | |
 
-Condition and template expressions keep working: `x.codes[0].code`,
-`x.codes.find(c => c.item === 'y')?.value`.
+Plus `done` and `skip` as today. Agreement keys and exports use the values.
 
-Validation (`contracts/codebook/answers.ts`):
+Validation (`contracts/codebook/answers.ts`): every value is one of the
+options (categorical, scale, span, relation), one per item for a scale, at
+most one unless `multiple`; numeric: within `min`/`max` and a multiple of
+`step` from `min` (or from 0), with a float tolerance.
 
-- categorical and scale: `code` must be one of the codes; one answer in
-  total (or per item) unless `multiple`. `value` isn't checked: it records
-  what the coder saw, and a reordered scale shouldn't make old answers
-  invalid (which would re-ask the question, `docs/architecture.md` §8).
-- numeric: `value` within `min`/`max` and a multiple of `step` from `min`
-  (or from 0), with a float tolerance.
+## 5. References and conditions
 
-## 4. Layout: compact by design
+### 5.1 References: the name says the shape
 
-**Goal: the answer form never takes more than about half the screen**
-(half the viewport height; on a phone, about 350–420 px), so the unit
-stays in view. Only very long question texts should push past it. Every
-layout is tight: buttons at least about 40 px tall (comfortable to tap),
-little padding, the instruction behind an info icon instead of always
-shown.
+| Question | References |
+| --- | --- |
+| categorical (single), numeric | `$var.q.value`, `$var.q.label`: null when unanswered |
+| categorical with `multiple`, span, relation | `$var.q.values`, `$var.q.labels`: empty when unanswered; span also `$var.q.texts` |
+| scale | `$var.q.values` (all items, in item order); one item: `$var.q.items.<item>.value`, `.label` |
+| any | `$var.q.answered`: answered and not skipped |
 
-### 4.1 Options
+Using `.value` on a multiple-answer question or `.values` on a single one is
+a validation error.
+
+### 5.2 Helper methods, checked by validation
+
+Methods on the question (not on its value), so validation knows the type and
+checks both the method and its arguments. Every method is false while the
+question is unanswered.
+
+| Question | Methods |
+| --- | --- |
+| categorical, single | `is(v)`, `isAny(v1, v2, ...)` |
+| ordinal, and scale items (`$var.q.items.x`) | also `gt(v)`, `gte(v)`, `lt(v)`, `lte(v)` |
+| categorical with `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
+| numeric | `eq(v)`, `gt(v)`, `gte(v)`, `lt(v)`, `lte(v)`, `between(a, b)` |
+| span | `has(v)` (a span with that value), `count()` |
+
+Validation: the method fits the question's type (`$var.topics.gte(4)` on a
+nominal question is an error), and every argument is one of the options'
+values (or, for numeric, a number in range). Ordinal comparisons compare
+values, which are numbers in the order of the options (§2); labels are never
+used in logic.
+
+### 5.3 One notation for conditions
+
+A condition is a script. A **simple** condition uses only helper calls,
+`$var.q.answered`, `&&`, `||`, `!` and parentheses:
+
+```js
+$var.topics.has("sports") && ($var.edu.gte(3) || !$var.consent.answered)
+```
+
+- The condition editor's rules mode reads and writes exactly this form;
+  there is no separate rules format to store anymore.
+- Anything else is an **advanced** script: plain JavaScript in QuickJS with
+  the same methods and references. Its references are checked as now, its
+  values not. The editor recommends the helpers for that reason.
+- Simple scripts are evaluated in TypeScript (no QuickJS), as rules are now.
+- Unit loop branches (`when`) use the same conditions.
+
+## 6. Layout: fixed and compact
+
+**`auto` is fixed per question**, not per device: every coder sees the same
+layout, so devices don't become a mode effect in a survey or experiment.
+`resolveLayout(variable)` is a pure function in contracts, designed for the
+**smallest phones** (about 360 px wide) and a height budget of half such a
+screen. Larger screens show the same layout, centered at a set maximum
+width; only spacing and font size scale. The editor shows what `auto`
+picks.
+
+Every layout is tight: buttons about 40 px tall (comfortable to tap), little
+padding, the instruction behind an info icon instead of always shown.
+
+### 6.1 Options
 
 - `flex`: buttons wrap and grow to fill each row.
 - `row`: one row, equal-width buttons, no wrapping (CSS grid).
 - `grid`: `columns` equal columns (1 = a vertical list).
 - `compact`: ordinal only. Buttons show the value; the selected one grows
-  and shows its label. This is the current `ScaleAnswerField` design. For a
-  scale: one row per item.
+  and shows its label (the current `ScaleAnswerField` design). For a scale:
+  one row per item.
 - `dropdown`: a combobox, always with a filter box. For long lists.
 
-There is no separate search option on buttons: many codes means a
-dropdown.
+### 6.2 `auto`
 
-### 4.2 `auto`: the most readable layout that fits
+From the number of options and the length of their labels, for a 360 px
+wide screen within the height budget:
 
-`resolveLayout(variable, { width, height })`, a pure function in contracts
-with the measured width of the answer form and its height budget (about
-half the viewport). It estimates each candidate layout's height from the
-number of codes, label lengths and the width, and takes the first that
-fits, in order of readability. The editor shows what `auto` picks for a
-phone and a laptop ("Auto: 2 columns on a phone"), and it is unit-tested.
+- Nominal: `row` (2–3 short labels), else `grid` with 2 columns (short
+  labels), else 1 column, else `dropdown`, which always fits.
+- Ordinal: `row` for 2–3 options, else `grid` with 1 column (the order reads
+  top to bottom), else `compact`.
+- Scale: `compact`, one row per item.
+- Numeric: `buttons` when `min`/`max` are set and there are at most 11
+  steps (e.g. 0–10); `slider` for larger closed ranges; `input` when the
+  range is open.
 
-- Nominal: `row` (2–3 short labels), then `grid` with 2 columns, then
-  1 column, then `dropdown`, which always fits. Long labels rule out
-  multiple columns.
-- Ordinal: `row` for 2–3 codes, then `grid` with 1 column (the order reads
-  top to bottom), then `compact`.
-- Scale: `compact`, one row per item; if the items don't fit, page through
-  them (open question 6).
-- Numeric: `buttons` (compact row) when `min`/`max` are set and there are at
-  most 11 steps (e.g. 0–10); `slider` for larger closed ranges; `input`
-  when the range is open.
+### 6.3 Never a hidden option
 
-The form re-resolves when the size changes (rotating a phone).
+- **Single questions** never need scrolling: `auto` fits them on the
+  smallest phone. A researcher who picks a layout that doesn't fit gets a
+  warning in the editor.
+- **Scales** may scroll: the continue button only works once every item is
+  answered, and otherwise scrolls to the first missing item and highlights
+  it. So a hidden item can't be skipped unnoticed; no paging.
 
-## 5. Migrating existing codebooks
+## 7. Migrating existing codebooks
 
 Published codebooks are immutable JSON, so migration happens on parse, with
 a `z.preprocess` on the variable schema (like `migrateLegacyUnitLoop`). The
-editor saves the new shape.
+editor saves the new shape. Nothing is in use yet, so stored answers need no
+migration.
 
 | Old | New |
 | --- | --- |
 | `select_code` | `categorical`, nominal; `vertical: true` → `grid`, 1 column; else `auto` |
 | `search_code` | `categorical`, nominal, `dropdown` |
-| `scale` with `items` | `scale`; `auto` |
-| `scale` without `items` | `categorical`, ordinal; `auto` |
-| `value` on codes | dropped |
+| `scale` with `items` | `scale` |
+| `scale` without `items` | `categorical`, ordinal |
+| `codes: [{ code, value? }]` | `options`: nominal `{ value: code }`; ordinal `{ value: value ?? position, label: code }` |
+| rules conditions | the equivalent simple script |
+| `$var.q.code` / `.value` in scripts | not migrated: validation flags them, the author updates them |
 
-Effects on data: stored answers keep their codes and values. New answers to
-a migrated `scale` whose values weren't 1..n (e.g. -2..2) get 1..n. The
-migration should report that as a warning in the editor, since the
-researcher may want to keep the old values (open question 2).
-
-## 6. Admin editor
+## 8. Admin editor
 
 - Type picker: categorical, numeric, scale, confirm, auto (plus span,
   relation in loops).
-- Categorical: a nominal/ordinal toggle; a codes editor with code, label,
-  colour (no value; ordinal shows the 1..n position read-only and allows
-  reordering); `multiple` (nominal only); a layout select whose `auto`
-  entry shows the resolved choice; `columns` for a grid.
-- Scale: the items editor and the codes editor; layout.
+- An options editor (value, label, colour; ordinal values numeric and rising,
+  1..n by default; reordering an ordinal question renumbers on request).
+- Categorical: nominal/ordinal toggle; `multiple` (nominal only); layout
+  select whose `auto` entry shows the resolved choice; `columns` for a grid.
+- Scale: the items editor and the options editor; layout.
 - Numeric: min, max, step presets, the break-point labels editor, layout.
-- The live preview renders the question as configured, so authors see what
-  `auto` does.
+- Conditions: the rules mode writes simple scripts with the helpers; the
+  script mode shows the helpers in its cheat sheet.
+- The live preview renders the question as configured.
 
-## 7. Where it changes
+## 9. Where it changes
 
-- `contracts`: `variableTypes.ts` (new types, migration), `codes.ts` (drop
-  `value`, add `label`), `answers.ts` (validation), new `layout.ts`
-  helper with `resolveLayout`, `validation.ts`, `CONTRACTS.md`.
-- `client`: a `CategoricalAnswerField` replacing the select and search
-  fields, a `NumericAnswerField`, and the `ScaleAnswerField` adapted (labels,
-  paging). Measuring the form's width and height budget for `auto`. Show `label ?? code`
-  everywhere (span labels, relation labels, annotinder).
-  `VariableTypeForm`, `CodesEditor`, the YAML editor tests, `Question.tsx`.
-- `server`: nothing expected in the runtime; check `codeOf`/`agreementKey`
-  with numeric answers (no `code`). The demo seed (`seed.ts`) uses the new
-  types.
-- Docs: `client.md`, `CONTRACTS.md`, and the `VariableValue` TODO in
-  `variableValue.ts`.
+- `contracts`: `variableTypes.ts` (types, options, migration), `codes.ts`
+  (options), `answers.ts` (validation), `variableValue.ts` (answer shape),
+  `references.ts` and `condition.ts` (value/values, helpers, the simple
+  form), a new `layout.ts` (`resolveLayout`), `validation.ts`,
+  `CONTRACTS.md`.
+- `client`: `CategoricalAnswerField` (replacing the select and search
+  fields), `NumericAnswerField`, `ScaleAnswerField` (labels, missing-item
+  check); span and relation fields on options; the scope and QuickJS
+  prelude with the helper methods; the simple-script evaluator; the
+  condition editor; `VariableTypeForm`, the options editor; compact styling.
+- `server`: validation comes from contracts; agreement keys on values
+  (`codebook.ts`); the demo seed.
+- Docs: `client.md` (§3–§5), `CONTRACTS.md`.
 
-## 8. Order of work
+## 10. Order of work
 
-1. Contracts: schemas, migration, validation, `resolveLayout`, with tests
-   (migration of every old type, `auto` for phone and laptop sizes,
-   numeric validation).
-2. Client answer fields: `CategoricalAnswerField` (all layouts),
-   `NumericAnswerField`, `ScaleAnswerField`; the height budget. Remove the
-   old fields.
-3. Editor: forms, codes editor, items, layout select with resolved `auto`.
-4. Seed and tests in `packages/server`.
+1. Contracts: options, types, answer shape, migration, validation,
+   `resolveLayout`, references and helpers, the simple-script parser; with
+   tests.
+2. Client: answer fields and compact styling; scope, helpers, evaluation;
+   remove the old fields.
+3. Editor: forms, options editor, condition editor on simple scripts.
+4. Server: agreement keys, seed, tests.
 5. Docs.
 
-## 9. Open questions
+## 11. Open questions
 
 1. **`annotinder` (swipe).** Fold it into `categorical` as `layout: "swipe"`
-   (at most 3 codes, single answer, no items)? It is the same question,
-   shown differently. Recommendation: yes, in a later step, once the swipe
-   card UI exists; keep the type for now.
-2. **Custom ordinal values.** Do researchers need ordinal scales like
-   -2..2 or 0..4? Recommendation: no custom values, but an optional
-   `start` (default 1), so 0..4 and -2..2 are possible without free values.
-3. **Ordinal `value` in the answer.** Store it (what the coder saw) or derive
-   it at export from the codebook version (annotations are tagged with
-   `codebookId`)? Recommendation: store it; it's cheap and survives
-   reordering.
-4. **`compact` for a single ordinal question.** `auto` uses it only when a
-   vertical list doesn't fit (§4.2). It's compact on phones but hides the
-   labels until a choice is made.
-5. **Numeric answer shape.** `codes: [{ value }]` keeps everything else
-   unchanged but reads oddly. The `VariableValue` discriminated union (TODO
-   in `variableValue.ts`) would fix that; out of scope here.
-6. **A scale that doesn't fit.** Page through the items ("items 1–5 of 12")
-   or scroll within the form? Recommendation: page; it keeps the form
-   within its budget.
-7. **Numeric batteries** (a feeling thermometer for several parties, 0–100).
-   Leave out for now, or let `scale` later take a numeric range instead of
-   codes? Recommendation: leave out until a real case asks.
+   (at most 3 options, single answer)? Recommendation: yes, once the swipe
+   card UI exists; keep the type until then.
+2. **Numeric batteries** (a feeling thermometer for several parties, 0–100).
+   Recommendation: leave out until a real case asks; `scale` could later
+   take a numeric range instead of options.
+3. **Scale-level helpers** (e.g. a sum or mean of the items). Not needed
+   for conditions so far; advanced scripts can compute them from
+   `$var.q.values`.

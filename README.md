@@ -14,8 +14,8 @@ docs live in `docs/`:
 - `docs/coder-identity.md`: identity, sessions, invitations and login
   (researchers; coders planned).
 - `docs/client.md`: client design decisions (layout, spans, scripting, admin UI).
-- `docs/plan-question-types.md`: proposal, not built: `categorical`,
-  `numeric` and `scale` question types, and compact answer forms.
+- `docs/plan-question-types.md`: decided, not built: question types,
+  answer values and labels, conditions with checked helpers, compact forms.
 - `packages/contracts/CONTRACTS.md`: the contracts package (schemas, design
   notes).
 
