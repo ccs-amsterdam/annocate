@@ -4,8 +4,8 @@ import pg from "pg";
 
 /**
  * The database: Postgres, through `pg` (a real server, `DATABASE_URL`) or
- * PGlite (Postgres compiled to WebAssembly, in process: tests, development,
- * annotinder local). Queries use `$1, $2, ...` parameters. JSONB columns come
+ * PGlite (Postgres compiled to WebAssembly, in process: tests and
+ * development). Queries use `$1, $2, ...` parameters. JSONB columns come
  * back parsed, TIMESTAMPTZ as Date, BIGINT (e.g. `COUNT(*)`) as number.
  * JSONB parameters are passed as strings (`JSON.stringify`): `pg` would send
  * a JS array as a Postgres array.
