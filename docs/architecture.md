@@ -191,10 +191,10 @@ name: main
 order: random            # sequential (default) | random: per-coder shuffle, sources interleaved
 maxUnits: 100            # per coder, across all sources of the branch
 units:                   # first matching branch wins; no match = no units
-  - when:                                  # a condition (rules or script) on coder-level questions
-      rules: [ { ref: $var.group.code, op: is, value: treatment } ]
+  - when:                                  # a condition on coder-level questions
+      script: $var.group.is("treatment")
     sources:
-      - { unitset: "part_$var.slot.code" } # fixed: coder gets every unit of their part
+      - { unitset: "part_$var.slot.value" } # fixed: coder gets every unit of their part
       - { unitset: part_overlap }          # fixed: everyone also gets the overlap units
   - sources:
       - unitset: pool
@@ -223,7 +223,7 @@ unitset can be used both ways.
     - `cover` (default) prefers least-coded units;
     - `saturate` prefers units closest to completion.
 
-**`when`.** The same condition as a `condition` item (rules or a script,
+**`when`.** The same condition as a `condition` item (a script,
 `client.md` "References and conditions"), on coder-level questions from
 before the loop. Unitset names can contain `$var` references, filled in
 with the coder's answer as text. Codebook validation checks both.
@@ -286,7 +286,7 @@ The client skips them as steps.
 
 - `random`: weighted draw from `options` (server).
 - `balanced`: the option fewest coders have so far (server). This
-  spreads unknown coders evenly over `part_$var.slot.code`. The counts come from a
+  spreads unknown coders evenly over `part_$var.slot.value`. The counts come from a
   coder-level `listFinished` query on load, then are kept in memory.
 - `invite`: the value preset on the coder's invitation. If the invitation
   doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
@@ -350,7 +350,7 @@ against the **current** codebook (`validateAnswer`, shared via contracts):
 | --- | --- | --- |
 | Question added | reopened: served again, only the new question to answer (warning on deploy) | the new question is asked |
 | Question removed | old answers kept in the database, no longer shown | not asked |
-| Codes changed (an answer's code removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
+| Option values changed (an answer's value removed) | stay finished; the answer is dropped from view and asked again if the coder navigates back and resubmits | asked again |
 | Question renamed | = removed + added | = removed + added |
 | Conditions / order changed | stay finished | follow the new codebook |
 | Distribution changed | routing kept if the coder's unitsets still exist in a branch, else re-routed (§6.1) | new rules apply |
@@ -399,7 +399,7 @@ Other open points:
 | Where | What |
 | --- | --- |
 | `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, unitset references, legacy migration |
-| `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var`/`$const` references, template parsing, scopes; conditions (rules or script) and rule evaluation |
+| `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var`/`$const` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |
 | `contracts/src/endpoints/` | The two API registries: researcher, coder ([docs/api](api/README.md)) |
@@ -464,8 +464,8 @@ Roughly in order:
    flow through the JSON path. Proposal: units reference media by id; the
    server returns short-lived signed URLs to a blob store. This keeps the
    runtime's memory and cache JSON-only.
-10. **Semantic validation.** Validation checks variable names, codes, items
-    and span/relation codes. Running codebook conditions (QuickJS)
+10. **Semantic validation.** Validation checks variable names, option
+    values, items, and the arguments of helpers in simple conditions. Running codebook conditions (QuickJS)
     server-side, to reject answers to questions the coder should never
     have seen, would be the next step. Conditions and branch choice run on
     the client today (§6.1), which keeps client-side encryption of answers

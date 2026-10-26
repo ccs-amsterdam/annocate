@@ -56,8 +56,9 @@ Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 `GET /session` → `SessionResponseSchema`
 
 The codebook and its `version`, per-loop progress and the coder's
-variables (including assigned `auto` variables). Creates the coder and
-session on first use.
+variables (including assigned `auto` variables), and `ended` if the
+session ended at an `end` item. Creates the coder and session on first
+use.
 
 ### getNextUnit
 
@@ -97,6 +98,16 @@ codebook update removed) are kept.
 `POST /variables/coder` (`PostCoderVariablesSchema`) → 204
 
 Full replace of the coder-level answers (survey questions outside loops).
+
+### endSession
+
+`POST /end` (`EndSessionSchema`: `{ item }`) → 204
+
+The coder reached this `end` item: the session is over. The server stores
+the item and its outcome from the codebook (`screenout` or `complete`; 400
+if the codebook has no such end item). Afterwards units and answers are
+refused with 409 `session_ended`; `GET /session` returns `ended`, so the
+client shows the ending again. Ending an ended session changes nothing.
 
 ### createTransfer
 

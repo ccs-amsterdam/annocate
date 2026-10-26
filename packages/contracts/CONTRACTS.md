@@ -40,11 +40,25 @@ in the server, not here.
   (`validateCodebookItems`, for reuse by a codebook editor UI) and wired into
   `CodebookItemsSchema` via `.superRefine` so they're enforced whenever a
   codebook document is parsed.
+- **Question types and answers** (`docs/client.md` §4). Options are
+  `{ value, label?, color? }`: the value is stored and compared, the label
+  shown; nominal values are strings, ordinal values numbers rising in
+  option order (`src/codebook/options.ts`). Types: `categorical`,
+  `numeric`, `scale`, `annotinder`, `confirm`, `auto`, and in loops `span`
+  and `relation` (`src/codebook/variableTypes.ts`); plus the `end` item
+  (`src/codebook/item.ts`). `resolveLayout` (`src/codebook/answerLayout.ts`)
+  says how a question is laid out. Codebooks in the older shape are
+  migrated on parse (`src/codebook/migrate.ts`).
+- **References and conditions** (`docs/client.md` §5):
+  `src/codebook/references.ts` (references, their shapes, scopes),
+  `src/codebook/condition.ts` (conditions are scripts; helper methods;
+  simple conditions parsed and evaluated without a JS engine).
 - **`VariableValue` is intentionally loose for now.** A coder's answer for a
   single variable (`src/variableValue.ts`) is a single object with optional
-  `codes`/`spans`/`relations` arrays rather than a schema-per-variable-type
-  discriminated union. A pragmatic first version; a discriminated union is
-  an open item (`docs/architecture.md` §10).
+  `values`/`spans`/`relations` arrays rather than a schema-per-variable-type
+  discriminated union; `validateAnswer` (`src/codebook/answers.ts`) checks
+  it against the variable. A discriminated union is an open item
+  (`docs/architecture.md` §10).
 
 ## JSON Schema generation
 

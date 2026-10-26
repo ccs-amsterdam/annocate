@@ -39,6 +39,8 @@ Status: current (2026-10-26). Server-side design lives in
   evaluation is async and rendering is not.
 - It chooses the unit loop branch for the coder and tells the server
   (`architecture.md` §6.1).
+- An `end` item that is reached is the last step: it tells the server and
+  publishes the ending (§4 "End items").
 - Navigation: back and forward, jumping to a phase, unit or question. Unit
   history is kept **per loop**. On resume it is rebuilt from the session's
   finished unit ids, and units are loaded lazily (`architecture.md` §8.1).
@@ -65,7 +67,7 @@ templates with the same syntax.
 - Rendering: `react-markdown` + `remark-gfm` (`components/TemplateMarkdown.tsx`).
   Raw HTML is not supported (no `rehype-raw`), so templates are XSS-safe by
   construction. Root styling uses `style`, a React style object.
-- **Values**: `$unit.<field>`, `$const.<name>`, `$var.<q>.code` (all
+- **Values**: `$unit.<field>`, `$const.<name>`, `$var.<q>.label` (all
   references, see "References and conditions") or `{{ js }}`, each with an
   optional suffix:
   - `::text` (default): the value as literal text. It never goes through
@@ -93,11 +95,80 @@ templates with the same syntax.
 - **`constants`**: named strings versioned with the codebook. Used for
   annotatable text that isn't a unit column, and for conditional content
   (e.g. per experimental group:
-  `{{ $var.group.code === 'a' ? $const.intro_a : $const.intro_b }}::markdown`).
+  `{{ $var.group.is('a') ? $const.intro_a : $const.intro_b }}::markdown`).
 - `$unit` and `$const` only exist inside a unit loop; outside, texts can
   only use `$var`.
 
-## 4. Span and relation answers
+## 4. Questions and answers
+
+### Options: a value and a label
+
+Every option is `{ value, label?, color? }` (`contracts/src/codebook/options.ts`),
+as in SPSS or Stata value labels:
+
+- **The value** is what is stored, compared in conditions and exported.
+  Values are unique within a question. Changing one in a published codebook
+  changes what earlier answers mean; the publish dialog warns
+  (`codebook/diff.ts` `valueChanges`).
+- **The label** is what coders see (default: the value). It can change
+  without touching data.
+- **The level decides the type of the values.** Nominal: strings,
+  standardized terms (`human_interest`), non-empty, trimmed, unique; the
+  editor derives the value from the label until it is edited by hand.
+  Ordinal (and scales): numbers rising in option order (default 1..n), so
+  comparing values compares order. Switching the level converts the values:
+  to ordinal 1..n (an old value becomes the label if there was none), to
+  nominal values derived from the labels (`convertOptionsLevel`).
+
+### Types
+
+| Type | What | Stored (`VariableValue`) |
+| --- | --- | --- |
+| `categorical` | pick from options; `level` nominal (default) or ordinal; `multiple` (nominal only) | `values: [{ value }]`, several with `multiple` |
+| `numeric` | one number; `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]` |
+| `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]`, one per item |
+| `annotinder` | swipe a card: 2 or 3 options, in the order left, right, up | `values: [{ value }]` |
+| `confirm` | a button | nothing besides `done` |
+| `auto` | assigned, not asked (random, balanced, invite, URL parameter) | `values: [{ value }]` |
+| `span` | select text in the unit (loops only) | `spans: [{ id, field, value, slices }]` |
+| `relation` | link two spans (loops only) | `relations: [{ id, fromId, toId, value }]` |
+
+Answers hold values, never labels. `validateAnswer` (contracts) checks them
+against the current codebook: values of the options, one per item for a
+scale, at most one unless `multiple`, numbers within `min`/`max` and on the
+`step` grid (from `min`, or 0).
+
+Codebooks in the shape before 2026-10 (`select_code`, `search_code`,
+`scale` without items, `codes`, rules conditions) are migrated on parse
+(`contracts/src/codebook/migrate.ts`), also when the server serves a stored
+one; `screenOut` on codes is dropped (use an `end` item).
+
+### Layout: fixed and compact
+
+`layout: "auto"` (the default) is fixed per question, not per device, so
+every coder sees the same form and devices don't become a mode effect.
+`resolveLayout` (`contracts/src/codebook/answerLayout.ts`) picks it for the
+smallest phones (about 360 px wide) within half such a screen's height; the
+editor shows what `auto` picks, and `layoutWarning` warns when a chosen
+layout doesn't fit. Buttons are about 40 px tall.
+
+- Categorical: `row` (one row, equal buttons), `grid` with `columns`, `flex`
+  (wrapping), `compact` (ordinal: buttons show the value, the selected one
+  grows and shows its label), `dropdown` (a combobox with a filter box).
+  Auto, nominal: a row for 2-3 short labels, else 2 columns, else 1 column,
+  else a dropdown. Auto, ordinal: a row for 2-3 options, else 1 column
+  (order reads top to bottom), else compact.
+- Numeric: `buttons` (auto when the range has at most 11 values), `slider`
+  (larger closed ranges), `input` (open ranges).
+- Scale: `compact` (a row per item, default) or `grid` (a table).
+- Single questions never need scrolling. A scale may: Continue then
+  scrolls to the first unanswered item and highlights it, so no item is
+  skipped unnoticed.
+
+Number keys 1-9 pick an option; one answer is given on the first click,
+several are confirmed with Continue.
+
+### Span and relation answers
 
 - Span and relation questions are ordinary steps in the question flow, not
   a separate "annotation mode". `JobRunner` mounts a `SpanAnnotationProvider`
@@ -110,7 +181,19 @@ templates with the same syntax.
   removes it. Earlier spans of a resumed unit are passed in as
   `initialSpans`.
 - Relations link two existing spans of sibling span questions (`from`/`to`)
-  with a code, picked from dropdowns labelled with the span text.
+  with one of the relation's options, picked from dropdowns labelled with
+  the span text.
+
+### End items
+
+An `end` item ends the coder's session when the coder reaches it, usually
+inside a condition: `outcome` `screenout` or `complete`, an optional
+`message` (a template) and an optional `redirectUrl`, e.g. a panel
+company's return link, whose `$var` references are filled in URL-encoded.
+`JobManager` tells the server (`POST /end`; in a loop after saving the
+unit) and shows the ending (`SessionEnd.tsx`, redirecting after a few
+seconds). The server stores the outcome; the session then refuses units and
+answers (409 `session_ended`), and a reload shows the ending again.
 
 ## 5. Scripting sandbox: QuickJS
 
@@ -127,7 +210,7 @@ Why not CEL: CEL is safe by design, but its bindings outside Go are thin;
 there is none for R. JavaScript is better known by codebook authors, R can
 run it via `V8` (Jeroen Ooms' package), and scripts stay plain JS that any
 engine can run later. That suits reproducibility. Simple conditions don't
-need a JS engine at all: rules (below) are evaluated in plain TypeScript.
+need a JS engine at all: they are evaluated in plain TypeScript (below).
 
 All conditions are evaluated on the client, including unit loop branches;
 the server is only told the chosen branch (`architecture.md` §6.1).
@@ -135,62 +218,72 @@ the server is only told the chosen branch (`architecture.md` §6.1).
 ### References and conditions
 
 One reference syntax is used everywhere: scripts, templates, question and
-instruction texts, condition rules and unitset names
-(`contracts/src/codebook/references.ts`).
+instruction texts, conditions and unitset names
+(`contracts/src/codebook/references.ts`). The name says the shape:
 
-| Reference | Meaning | Where |
+| Reference | Meaning | Questions |
 | --- | --- | --- |
-| `$unit.<field>` | unit data column | inside a unit loop |
-| `$const.<name>` | layout constant | inside a unit loop |
-| `$var.<q>.code` / `.value` | code / numeric value of question `q` | after `q` is asked |
-| `$var.<q>.<item>.code` / `.value` | one item of a scale with `items` | after `q` is asked |
-| `$var.<q>.text` | selected texts (span questions) | after `q` is asked |
-| `$var.<q>.answered` | `true` if answered and not skipped | after `q` is asked |
+| `$unit.<field>` | unit data column (inside a unit loop) | |
+| `$const.<name>` | layout constant (inside a unit loop) | |
+| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single categorical, numeric, swipe, auto |
+| `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | categorical with `multiple`, span, relation |
+| `$var.<q>.texts` | the selected texts | span |
+| `$var.<q>.values` | all items' values, in item order | scale |
+| `$var.<q>.items.<item>.value`, `.label` | one item | scale |
+| `$var.<q>.answered` | answered and not skipped | any |
 
-The shape follows from the codebook, never from the runtime value:
+Using `.value` on a multiple-answer question or `.values` on a single one
+is a validation error, and so is the old `.code`. A numeric answer's label
+is its break-point label, if it has one. Every question of the codebook is
+in `$var` (`buildScope`), so a script never throws on a question that isn't
+answered yet. Names must be literal: `$var[x]` or `Object.keys($var)` is an
+error, so validation can check every reference.
 
-- Scalar (`null` when unanswered): single `select_code`/`search_code`,
-  `annotinder`, `scale` without items, `auto`. `.value` comes from the
-  answer, or else the code's `value` in the codebook.
-- Array (`[]` when unanswered): `multiple: true`, `span` (`.code`, `.text`),
-  `relation` (`.code`).
-- `confirm`: only `.answered`.
+**Helper methods** are called on the question (or a scale item), so
+validation knows the type and checks both the method and its arguments.
+Every method is false (`count()`: 0) while the question is unanswered.
 
-Every question of the codebook is in `$var` (`buildScope`), so a script
-never throws on a question that isn't answered yet. Names must be literal:
-`$var[x]` or `Object.keys($var)` is an error, so validation can check every
-reference. Item names can't be `code`, `value`, `text` or `answered`.
+| Question | Methods |
+| --- | --- |
+| single (categorical, swipe, auto) | `is(v)`, `isAny(v1, v2, ...)` |
+| ordinal, scale items (`$var.q.items.x`) | also `gt(v)`, `gte(v)`, `lt(v)`, `lte(v)` |
+| categorical with `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
+| numeric | `eq(n)`, `gt(n)`, `gte(n)`, `lt(n)`, `lte(n)`, `between(a, b)` |
+| span, relation | `has(v)`, `count()` |
 
-A **condition** (`contracts/src/codebook/condition.ts`) is either rules or
-a script, and is used by `condition` items and unit loop branch `when`:
+They compare values (never labels), with strict equality: `is("2")` never
+matches the ordinal value `2`. `applyHelper` (contracts) is the TypeScript
+implementation; `HELPER_PRELUDE` adds the same methods to `$var` inside
+QuickJS; a client test checks that both agree.
+
+A **condition** (`contracts/src/codebook/condition.ts`) is a script, used by
+`condition` items and unit loop branch `when`; truthy = holds:
 
 ```yaml
-condition:                       # rules: match all (default) or any
-  match: any
-  rules:
-    - { ref: $var.experience.code, op: is, value: expert }
-    - { ref: $var.topics.code, op: is, value: [politics, economy] }   # array ref: contains any of
-    - { ref: $var.interest.tech.value, op: gte, value: 4 }
-condition:                       # or a script; truthy = holds
-  script: "$var.interest.tech.value >= 4 && $unit.source !== 'blog'"
+condition:
+  script: $var.topics.has("sports") && ($var.edu.gte(3) || !$var.consent.answered)
 ```
 
-`is`/`isnot` compare with a value, or any/none of an array of values; on
-array refs they mean contains / doesn't contain. `gt`, `gte`, `lt`, `lte`
-need a numeric ref (`.value`, or a numeric unit field). No rules: always
-holds.
+- A **simple** condition uses only helper calls, `.answered`, `true`,
+  `false`, `&&`, `||`, `!` and parentheses (`count()` with a comparison:
+  `$var.topics.count() >= 2`). It is parsed (`parseSimpleCondition`) and
+  evaluated in TypeScript (`evaluateSimpleCondition`), without QuickJS.
+- Anything else is an **advanced** script, run in QuickJS with the same
+  references and helpers, e.g. `$var.age.gte(18) && $unit.source !== "blog"`.
 
 **Validation** (`validateCodebookItems`) walks the codebook in document
-order and checks every reference in rules, scripts, templates and texts:
-the question exists and comes before this point (not the question itself,
-not inside the condition's own children, not in another loop); the
-property fits its type; rule operators and values fit the reference (codes
-must exist); `$unit`/`$const` only inside a loop (unknown `$const` is an
-error; unknown `$unit` fields are a warning in the editor, once the job has
-units); branch `when` and unitset names only use coder-level `$var` refs
-from before the loop; `::tokenize` as described in §3. `.value` on codes
-without values is a warning. Script syntax is checked in the admin editor
-(QuickJS), not in contracts.
+order and checks every reference in scripts, templates and texts: the
+question exists and comes before this point (not the question itself, not
+inside the condition's own children, not in another loop); the property or
+method fits its type; `$unit`/`$const` only inside a loop (unknown `$const`
+is an error; unknown `$unit` fields are a warning in the editor, once the
+job has units); branch `when`, unitset names and end item redirect URLs
+only use coder-level `$var` refs from before the loop; `::tokenize` as
+described in §3. In simple conditions the helper arguments are checked too:
+their number, and that they are values of the question's options (numeric:
+numbers within its range). In advanced scripts references are checked,
+values not. Script syntax is checked in the admin editor (QuickJS), not in
+contracts.
 
 ## 6. Recomputation and caching
 
@@ -245,16 +338,25 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   switch to the new version when they next save (§2), keeping the answers
   to the unit they have open; saved answers stay linked to the version they
   were given under.
+  The publish dialog also warns when option values disappear or a
+  question's level changes (earlier answers no longer fit).
+  Questions are edited per type (`VariableTypeForm.tsx`): the options
+  editor (`OptionsEditor.tsx`: label, value, colour, order; nominal values
+  follow the label until edited, ordinal values can be renumbered 1..n;
+  swipe options show their direction), the level, `multiple`, a layout
+  select whose `auto` entry names what auto picks, and for numeric
+  questions the range, step presets and break-point labels.
   Condition items and branch `when` use `ConditionEditor.tsx`: a
-  **Rules | Script** toggle. In rules mode the reference picker lists only
-  what validation accepts at that point (`availableQuestions` +
-  `referenceOptions` from contracts), and the value is a set of code
-  toggles when codes are known. Script mode has a cheat sheet of
-  references and a QuickJS syntax check. Rules → Script pre-fills the
-  equivalent script (`rulesToScript`); Script → Rules discards the script
-  after a confirm. Validation messages (errors red, warnings amber) show
-  under the condition, template and question fields; only errors block
-  saving.
+  **Rules | Script** toggle over the same script. Rules mode reads and
+  writes simple conditions that are a flat list of rows, all joined by
+  "and" or all by "or" (`codebook/conditionRules.ts`): per row a question
+  (or scale item) available at that point (`availableQuestions`), an
+  operator that fits its type (is, is one of, ≥, has any of, count ≥, is
+  answered, ...) and its values as toggles or number inputs. Other scripts
+  open in script mode, with a cheat sheet of references and helpers and a
+  QuickJS syntax check. Validation messages (errors red, warnings amber)
+  show under the condition, template and question fields; only errors
+  block saving.
 - **Units** (`units/`): units and unitsets on one page. CSV upload with a
   small built-in parser (`admin/csv.ts`) that infers field types and shows
   them before uploading; a paged table with a column per field and unitset
@@ -269,8 +371,9 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 - **Invitations**: create links (login requirement, participant id, preset
   variables, max uses) and a table of all of them with uses and status;
   revoke (no new coders), or delete while unused.
-- **Coders**: per coder the invitation, started, last active, answers, and
-  finished units per loop of the live codebook.
+- **Coders**: per coder the invitation, started, last active, answers,
+  finished units per loop of the live codebook, and how the session ended
+  at an `end` item, if it did (`ended`).
 - **Preview** runs the job's latest codebook (deployed or not) as
   deployment `<jobId>.preview`, with a token from
   `POST /job/:jobId/deployment/preview`. Coders and answers stay in the
@@ -298,3 +401,9 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   or browser e2e suite in CI yet (browser checks so far are manual
   Playwright runs).
 - No visual/UX parity pass against the old app was done.
+- Swipe questions (`annotinder`) show direction buttons and take the arrow
+  keys; the swipe-card gesture UI is still to come, and could then become
+  `layout: "swipe"` of `categorical`.
+- Not built (no case yet): numeric batteries (a thermometer per party),
+  scale-level helpers (sum, mean; advanced scripts can compute them from
+  `$var.q.values`), translated labels.

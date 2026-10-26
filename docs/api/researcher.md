@@ -324,7 +324,9 @@ came in through it, since coders refer to their invite.
 participant id, started, last active, live answers, finished units per
 loop of the live codebook, and `variables`: their coder-level values
 (answers outside unit loops, and `auto` variables such as invite presets,
-random or balanced conditions and URL parameters).
+random or balanced conditions and URL parameters), and `ended`: how the
+session ended at an `end` item (item, outcome `screenout` or `complete`,
+time), or null.
 
 ## Publishing
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// The options of a question (docs/plan-question-types.md §2): a value, stored
+// The options of a question (docs/client.md §4): a value, stored
 // and used in conditions and exports, and a label, shown to the coder. The
 // question's level decides the type of the values: strings for nominal
 // questions (standardized terms, e.g. `human_interest`), numbers rising in
