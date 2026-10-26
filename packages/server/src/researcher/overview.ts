@@ -8,7 +8,7 @@ export function overview(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/overview", requireJobUser(db, "READ"), async (c) => c.json(await jobOverview(db, c.get("jobId"))));
+  app.get("/job/:jobId/overview", requireJobUser(server, "READ"), async (c) => c.json(await jobOverview(db, c.get("jobId"))));
 
   return app;
 }

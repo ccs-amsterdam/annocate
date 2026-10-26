@@ -32,6 +32,8 @@ export const CoderProgressSchema = z.object({
   answers: z.number().int().nonnegative(),
   /** unit_loop name -> units this coder finished, for the loops of the live codebook. */
   finished: z.record(z.string(), z.number().int().nonnegative()),
+  /** Coder-level values: answers outside unit loops, and `auto` variables (invite presets, random, URL). */
+  variables: z.record(z.string(), VariableValueSchema),
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 

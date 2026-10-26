@@ -38,6 +38,11 @@ const stubClient: ResearcherApi = {
   getDeployment: () => new Promise(() => {}),
   putDeployment: () => new Promise(() => {}),
   createPreview: () => new Promise(() => {}),
+  listAnnotations: () => new Promise(() => {}),
+  getMe: () => new Promise(() => {}),
+  listApiKeys: () => new Promise(() => {}),
+  createApiKey: () => new Promise(() => {}),
+  revokeApiKey: () => new Promise(() => {}),
 };
 
 describe("AdminApp", () => {

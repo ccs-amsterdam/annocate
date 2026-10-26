@@ -9,7 +9,7 @@ export function inviteRevoke(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.post("/job/:jobId/invites/:id/revoke", requireJobUser(db, "WRITE"), async (c) => {
+  app.post("/job/:jobId/invites/:id/revoke", requireJobUser(server, "WRITE"), async (c) => {
     const row = await one<InviteRow>(
       db,
       "UPDATE invites SET revoked_at = COALESCE(revoked_at, now()) WHERE job_id = $1 AND id = $2 RETURNING *",

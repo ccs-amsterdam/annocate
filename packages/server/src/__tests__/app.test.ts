@@ -18,7 +18,7 @@ async function json(res: Response): Promise<any> {
 
 beforeEach(async () => {
   db = await emptyDb();
-  app = createApp(db);
+  app = createApp(db, { devAuth: true });
 });
 
 async function createJob(name = "Test job") {

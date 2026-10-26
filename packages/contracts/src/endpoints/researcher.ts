@@ -6,6 +6,8 @@ import { UnitFieldSchema } from "../unitFields.js";
 import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
+import { ApiKeyCreatedSchema, ApiKeyResponseSchema, ApiKeyWriteSchema, MeResponseSchema } from "../account.js";
+import { AnnotationPageSchema, AnnotationsQuerySchema } from "../annotations.js";
 import {
   DeploymentWriteSchema,
   DeploymentResponseSchema,
@@ -23,8 +25,16 @@ import {
  *
  * Path params are written as `:param`. A server hosts any number of jobs;
  * per-job resources are routed under `/job/:jobId/...`.
+ *
+ * Authentication: `authorization: Bearer <API key>` (account.ts). What a
+ * user may do in a job is their role there (job users).
  */
 export const researcherEndpoints = {
+  getMe: { method: "GET", path: "/me", request: z.void(), response: MeResponseSchema },
+  listApiKeys: { method: "GET", path: "/me/keys", request: z.void(), response: z.array(ApiKeyResponseSchema) },
+  createApiKey: { method: "POST", path: "/me/keys", request: ApiKeyWriteSchema, response: ApiKeyCreatedSchema },
+  revokeApiKey: { method: "POST", path: "/me/keys/:id/revoke", request: z.void(), response: ApiKeyResponseSchema },
+
   listJobs: { method: "GET", path: "/job", request: z.void(), response: z.array(JobResponseSchema) },
   createJob: { method: "POST", path: "/job", request: JobWriteSchema, response: JobResponseSchema },
   getJob: { method: "GET", path: "/job/:id", request: z.void(), response: JobResponseSchema },
@@ -150,6 +160,14 @@ export const researcherEndpoints = {
     path: "/job/:jobId/deployment/preview",
     request: z.void(),
     response: PreviewSessionSchema,
+  },
+  /** Annotations, a page at a time (annotations.ts). */
+  listAnnotations: {
+    method: "GET",
+    path: "/job/:jobId/annotations",
+    query: AnnotationsQuerySchema,
+    request: z.void(),
+    response: AnnotationPageSchema,
   },
   resetAnnotations: {
     method: "POST",

@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/dev.ts",
     "start": "node dist/index.js",
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit && tsc -p tsconfig.test.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint .",
-    "db:reset": "tsx src/reset.ts"
+    "db:reset": "tsx src/reset.ts",
+    "keys": "tsx src/keys.ts"
   },
   "dependencies": {
     "@annotinder/contracts": "workspace:*",

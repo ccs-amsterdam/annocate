@@ -9,12 +9,12 @@ export function job(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId", requireJobUser(db, "READ"), async (c) => {
+  app.get("/job/:jobId", requireJobUser(server, "READ"), async (c) => {
     const row = await one<JobRow>(db, "SELECT * FROM jobs WHERE id = $1", [c.get("jobId")]);
     return c.json(toJobResponse(row!));
   });
 
-  app.put("/job/:jobId", requireJobUser(db, "ADMIN"), async (c) => {
+  app.put("/job/:jobId", requireJobUser(server, "ADMIN"), async (c) => {
     const parsed = JobWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
@@ -27,7 +27,7 @@ export function job(server: Server): Hono<Env> {
   });
 
   // Deleting the job cascades to all of its rows (migrations/).
-  app.delete("/job/:jobId", requireJobUser(db, "ADMIN"), async (c) => {
+  app.delete("/job/:jobId", requireJobUser(server, "ADMIN"), async (c) => {
     await db.query("DELETE FROM jobs WHERE id = $1", [c.get("jobId")]);
     server.deployments.drop(c.get("jobId"));
     return c.body(null, 204);

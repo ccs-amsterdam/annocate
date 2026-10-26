@@ -12,7 +12,7 @@ export function unitsPage(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/units/page", requireJobUser(db, "READ"), async (c) => {
+  app.get("/job/:jobId/units/page", requireJobUser(server, "READ"), async (c) => {
     const jobId = c.get("jobId");
     const offset = Math.max(0, Number(c.req.query("offset") ?? 0) || 0);
     const limit = Math.min(MAX_PAGE, Math.max(1, Number(c.req.query("limit") ?? 50) || 50));

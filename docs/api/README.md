@@ -37,7 +37,7 @@ each entry `{ method, path, request, response }` with zod schemas.
 
 | API | How |
 |---|---|
-| researcher API | Job users with a role per job: `READ`, `WRITE` or `ADMIN`. Real login is not built yet: the server trusts `x-dev-role` / `x-dev-email` headers (dev only). CORS is allowed, so a client on another origin can call it. |
+| researcher API | A personal API key (`authorization: Bearer <key>`); the user's role per job is `READ`, `WRITE` or `ADMIN`. Development servers (`ANNOTINDER_DEV_AUTH=1`) also accept `x-dev-role` / `x-dev-email` headers. CORS is allowed, so a client on another origin can call it. See [researcher.md](researcher.md). |
 | coder API | A session cookie the server sets (httpOnly, same origin as the client), created from an invite secret. No CORS. [coder.md#sessions-and-headers](coder.md#sessions-and-headers) |
 
 ## Deployment ids

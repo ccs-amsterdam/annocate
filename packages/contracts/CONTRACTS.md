@@ -78,6 +78,7 @@ Not modeled in this package: the contract never sees credentials.
 - **Coders**: an httpOnly session cookie the server sets, plus the
   `x-annotinder: 1` header against CSRF (`docs/coder-identity.md`). The
   client never sees the session key.
-- **Researchers**: development only for now (`x-dev-role` / `x-dev-email`
-  plain headers, `packages/server/src/researcher/auth.ts`). Real accounts,
-  and API keys for scripts (R, Python) and other systems, are still to do.
+- **Researchers**: a personal API key, `authorization: Bearer <key>`
+  (`account.ts`); the role per job is in job users (`job.ts`). Development
+  servers also accept `x-dev-role` / `x-dev-email` headers. Login for the
+  web UI is still to do.

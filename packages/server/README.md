@@ -23,8 +23,29 @@ Environment:
   process) in `PGLITE_DIR` (default `.pglite` in this package): no Postgres
   install needed for development. `pnpm reset-db` only resets PGlite.
 - `PORT` (8787).
+- `ANNOTINDER_DEV_AUTH=1`: also accept development auth headers
+  (`x-dev-role`) for the researcher API, as the dev shell's researcher UI
+  sends. `pnpm dev` sets it ([`src/dev.ts`](src/dev.ts)). Never on a
+  reachable server.
 - `ANNOTINDER_SECRET`: signs preview tokens; random per process if not
   set, so previews end with a restart.
+
+## API keys
+
+Researchers authenticate with personal API keys. There is no researcher
+login yet, so the first key for a researcher is made on the server's
+machine, with the same database settings as the server (stop the server
+first when it runs on PGlite: only one process can open it):
+
+```sh
+pnpm --filter @annotinder/server keys create --email a@uni.nl --label "R scripts"
+pnpm --filter @annotinder/server keys list --email a@uni.nl
+pnpm --filter @annotinder/server keys revoke --email a@uni.nl --id 3
+```
+
+The key is printed once. With it, a researcher can create jobs (and
+becomes their ADMIN), give others a role (`PUT /job/:id/users`), and make
+or revoke their own keys (`/me/keys`).
 
 ## Code
 

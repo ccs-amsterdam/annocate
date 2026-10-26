@@ -9,12 +9,12 @@ export function codebooks(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/codebook", requireJobUser(db, "READ"), async (c) => {
+  app.get("/job/:jobId/codebook", requireJobUser(server, "READ"), async (c) => {
     const rows = await db.query<CodebookRow>("SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id", [c.get("jobId")]);
     return c.json(rows.map(toCodebookMeta));
   });
 
-  app.post("/job/:jobId/codebook", requireJobUser(db, "WRITE"), async (c) => {
+  app.post("/job/:jobId/codebook", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = CodebookWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 

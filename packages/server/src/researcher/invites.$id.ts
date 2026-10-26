@@ -9,7 +9,7 @@ export function invite(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.delete("/job/:jobId/invites/:id", requireJobUser(db, "WRITE"), async (c) => {
+  app.delete("/job/:jobId/invites/:id", requireJobUser(server, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
     const existing = await one<InviteRow>(db, "SELECT * FROM invites WHERE job_id = $1 AND id = $2", [jobId, id]);

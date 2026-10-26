@@ -11,13 +11,13 @@ export function codebook(server: Server): Hono<Env> {
 
   const get = (jobId: number, id: number) => one<CodebookRow>(db, "SELECT * FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, id]);
 
-  app.get("/job/:jobId/codebook/:id", requireJobUser(db, "READ"), async (c) => {
+  app.get("/job/:jobId/codebook/:id", requireJobUser(server, "READ"), async (c) => {
     const row = await get(c.get("jobId"), Number(c.req.param("id")));
     if (!row) return c.json({ error: "Codebook not found" }, 404);
     return c.json(toCodebookResponse(row));
   });
 
-  app.put("/job/:jobId/codebook/:id", requireJobUser(db, "WRITE"), async (c) => {
+  app.put("/job/:jobId/codebook/:id", requireJobUser(server, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
     const existing = await get(jobId, id);
@@ -37,7 +37,7 @@ export function codebook(server: Server): Hono<Env> {
     return c.json(toCodebookResponse(row));
   });
 
-  app.delete("/job/:jobId/codebook/:id", requireJobUser(db, "WRITE"), async (c) => {
+  app.delete("/job/:jobId/codebook/:id", requireJobUser(server, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
     const existing = await get(jobId, id);

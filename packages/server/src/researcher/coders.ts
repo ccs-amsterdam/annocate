@@ -8,7 +8,7 @@ export function coders(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/coders", requireJobUser(db, "WRITE"), async (c) => c.json(await listCoderProgress(db, c.get("jobId"))));
+  app.get("/job/:jobId/coders", requireJobUser(server, "WRITE"), async (c) => c.json(await listCoderProgress(db, c.get("jobId"))));
 
   return app;
 }

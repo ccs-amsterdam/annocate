@@ -21,6 +21,11 @@ import {
   type DeploymentStatus,
   type DeploymentWrite,
   type JobOverview,
+  type MeResponse,
+  type ApiKeyResponse,
+  type ApiKeyCreated,
+  type AnnotationPage,
+  type AnnotationsQuery,
 } from "@annotinder/contracts";
 
 /**
@@ -35,6 +40,13 @@ import {
 export interface ResearcherApi {
   readonly jobId?: number;
   forJob(jobId: number): ResearcherApi;
+
+  /** Who the client is authenticated as. */
+  getMe(): Promise<MeResponse>;
+  listApiKeys(): Promise<ApiKeyResponse[]>;
+  /** A new API key: `key` is returned only this once. */
+  createApiKey(label: string): Promise<ApiKeyCreated>;
+  revokeApiKey(id: number): Promise<ApiKeyResponse>;
 
   listJobs(): Promise<JobResponse[]>;
   getJob(id?: number): Promise<JobResponse | null>;
@@ -84,13 +96,18 @@ export interface ResearcherApi {
 
   /** A preview session of the latest codebook, run in memory. */
   createPreview(): Promise<PreviewSession>;
+
+  /** One page of annotations; pass `next` as `after` for the following page. */
+  listAnnotations(query?: AnnotationsQuery): Promise<AnnotationPage>;
 }
 
 export interface HttpResearcherApiConfig {
   /** Base URL of the server, e.g. "http://localhost:8787". */
   baseUrl: string;
-  /** Dev-mode auth (docs/coder-identity.md -- replaced by HMAC-signed sessions in a real deployment). */
-  devRole: "ADMIN" | "WRITE" | "READ";
+  /** A researcher's API key (`authorization: Bearer`). */
+  apiKey?: string;
+  /** Development auth headers instead of a key; only accepted by a server with ANNOTINDER_DEV_AUTH=1. */
+  devRole?: "ADMIN" | "WRITE" | "READ";
   devEmail?: string;
   /** Optional job ID to scope per-job requests (codebooks, units, etc.). */
   jobId?: number;
@@ -116,11 +133,13 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   private headers(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "content-type": "application/json",
-      "x-dev-role": this.config.devRole,
-    };
-    if (this.config.devEmail) headers["x-dev-email"] = this.config.devEmail;
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (this.config.apiKey) {
+      headers.authorization = `Bearer ${this.config.apiKey}`;
+    } else if (this.config.devRole) {
+      headers["x-dev-role"] = this.config.devRole;
+      if (this.config.devEmail) headers["x-dev-email"] = this.config.devEmail;
+    }
     return headers;
   }
 
@@ -132,6 +151,29 @@ export class HttpResearcherApi implements ResearcherApi {
     }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
+  }
+
+  async getMe(): Promise<MeResponse> {
+    return this.request(researcherEndpoints.getMe.path);
+  }
+
+  async listApiKeys(): Promise<ApiKeyResponse[]> {
+    return this.request(researcherEndpoints.listApiKeys.path);
+  }
+
+  async createApiKey(label: string): Promise<ApiKeyCreated> {
+    return this.request(researcherEndpoints.createApiKey.path, { method: "POST", body: JSON.stringify({ label }) });
+  }
+
+  async revokeApiKey(id: number): Promise<ApiKeyResponse> {
+    return this.request(researcherEndpoints.revokeApiKey.path.replace(":id", String(id)), { method: "POST" });
+  }
+
+  async listAnnotations(query: AnnotationsQuery = {}): Promise<AnnotationPage> {
+    const params = new URLSearchParams();
+    for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, String(value));
+    const path = researcherEndpoints.listAnnotations.path.replace(":jobId", String(this.requireJobId()));
+    return this.request(params.size ? `${path}?${params}` : path);
   }
 
   async listJobs(): Promise<JobResponse[]> {

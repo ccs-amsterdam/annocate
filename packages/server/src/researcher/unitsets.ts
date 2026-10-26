@@ -9,12 +9,12 @@ export function unitsets(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/unitsets", requireJobUser(db, "READ"), async (c) => {
+  app.get("/job/:jobId/unitsets", requireJobUser(server, "READ"), async (c) => {
     const rows = await db.query<UnitsetRow>("SELECT * FROM unitsets WHERE job_id = $1 ORDER BY id", [c.get("jobId")]);
     return c.json(rows.map(toUnitsetResponse));
   });
 
-  app.post("/job/:jobId/unitsets", requireJobUser(db, "WRITE"), async (c) => {
+  app.post("/job/:jobId/unitsets", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = UnitsetWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 

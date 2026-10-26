@@ -10,7 +10,7 @@ export function deploymentRefresh(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.post("/job/:jobId/deployment/refresh", requireJobUser(db, "ADMIN"), async (c) => {
+  app.post("/job/:jobId/deployment/refresh", requireJobUser(server, "ADMIN"), async (c) => {
     const parsed = RefreshDeploymentSchema.safeParse(await c.req.json().catch(() => ({})));
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");

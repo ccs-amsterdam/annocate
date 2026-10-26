@@ -9,6 +9,8 @@ import { DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime/runtime.
 import type { Store } from "./runtime/store.js";
 import { HttpError } from "./shared/http.js";
 import { annotationsReset } from "./researcher/annotations.reset.js";
+import { annotations } from "./researcher/annotations.js";
+import { me } from "./researcher/me.js";
 import { codebook } from "./researcher/codebook.$id.js";
 import { codebooks } from "./researcher/codebook.js";
 import { coders } from "./researcher/coders.js";
@@ -36,6 +38,11 @@ export interface AppOptions {
   runtime?: Partial<RuntimeOptions>;
   /** Tests: observe or alter what the runtime reads and writes. */
   wrapStore?: (store: Store) => Store;
+  /**
+   * Accept development auth headers (`x-dev-role`) for the researcher API
+   * (researcher/auth.ts). For local development and tests only.
+   */
+  devAuth?: boolean;
 }
 
 /**
@@ -48,6 +55,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   const server: Server = {
     db,
     deployments: new Deployments(db, secret, { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime }, options.wrapStore),
+    devAuth: options.devAuth ?? false,
   };
 
   const app = new Hono<Env>();
@@ -66,10 +74,10 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   // Coder API (coder.ts): same origin as the client, no CORS.
   app.route("/d/:deployment", coderApi(server));
 
-  // Researcher API (researcher/): full paths, dev-only auth (researcher/auth.ts).
+  // Researcher API (researcher/): full paths, API keys (researcher/auth.ts).
   // CORS, so a client on another origin (e.g. the Vite dev server) can call it.
-  app.use("/job/*", cors());
-  app.use("/job", cors());
+  for (const path of ["/job", "/job/*", "/me", "/me/*"]) app.use(path, cors());
+  app.route("/", me(server));
   // Order matters: units/fields and units/page before units/:id.
   app.route("/", jobs(server));
   app.route("/", job(server));
@@ -92,6 +100,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   app.route("/", deploymentRefresh(server));
   app.route("/", deploymentPreview(server));
   app.route("/", annotationsReset(server));
+  app.route("/", annotations(server));
 
   return app;
 }

@@ -7,11 +7,11 @@ export function jobUsers(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/users", requireJobUser(db, "ADMIN"), async (c) =>
+  app.get("/job/:jobId/users", requireJobUser(server, "ADMIN"), async (c) =>
     c.json(await db.query("SELECT email, role FROM job_users WHERE job_id = $1", [c.get("jobId")])),
   );
 
-  app.put("/job/:jobId/users", requireJobUser(db, "ADMIN"), async (c) => {
+  app.put("/job/:jobId/users", requireJobUser(server, "ADMIN"), async (c) => {
     const parsed = JobUsersWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 

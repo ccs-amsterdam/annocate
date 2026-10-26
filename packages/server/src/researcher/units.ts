@@ -9,14 +9,14 @@ export function units(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/units", requireJobUser(db, "READ"), async (c) => {
+  app.get("/job/:jobId/units", requireJobUser(server, "READ"), async (c) => {
     const rows = await db.query<UnitRow>("SELECT * FROM units WHERE job_id = $1 ORDER BY id", [c.get("jobId")]);
     return c.json(rows.map(toUnitMeta));
   });
 
   // All or nothing: every unit must fit the job's fields (set by the first
   // upload), and existing units may only be replaced with `overwrite`.
-  app.post("/job/:jobId/units", requireJobUser(db, "WRITE"), async (c) => {
+  app.post("/job/:jobId/units", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");

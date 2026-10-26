@@ -10,7 +10,7 @@ export function annotationsReset(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.post("/job/:jobId/annotations/reset", requireJobUser(db, "ADMIN"), async (c) => {
+  app.post("/job/:jobId/annotations/reset", requireJobUser(server, "ADMIN"), async (c) => {
     const parsed = ResetAnnotationsSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");

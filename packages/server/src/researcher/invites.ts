@@ -10,12 +10,12 @@ export function invites(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/invites", requireJobUser(db, "WRITE"), async (c) => {
+  app.get("/job/:jobId/invites", requireJobUser(server, "WRITE"), async (c) => {
     const rows = await db.query<InviteRow>("SELECT * FROM invites WHERE job_id = $1 ORDER BY id", [c.get("jobId")]);
     return c.json(rows.map(toInviteResponse));
   });
 
-  app.post("/job/:jobId/invites", requireJobUser(db, "WRITE"), async (c) => {
+  app.post("/job/:jobId/invites", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = CoderInviteWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 

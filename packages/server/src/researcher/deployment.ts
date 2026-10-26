@@ -9,9 +9,9 @@ export function deployment(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/deployment", requireJobUser(db, "READ"), async (c) => c.json(await getDeployment(db, c.get("jobId"))));
+  app.get("/job/:jobId/deployment", requireJobUser(server, "READ"), async (c) => c.json(await getDeployment(db, c.get("jobId"))));
 
-  app.put("/job/:jobId/deployment", requireJobUser(db, "ADMIN"), async (c) => {
+  app.put("/job/:jobId/deployment", requireJobUser(server, "ADMIN"), async (c) => {
     const parsed = DeploymentWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 

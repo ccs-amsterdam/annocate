@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     environment: "node",
     passWithNoTests: true,
+    // Starting PGlite (__tests__/testDb.ts) takes seconds, more on a busy machine.
+    hookTimeout: 60_000,
     // Vitest 5's default excludes no longer reliably keep compiled output
     // out of test discovery once `tsc -b` has populated dist/ with
     // *.test.js -- explicitly excluding it avoids running every test twice

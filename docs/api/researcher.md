@@ -10,16 +10,42 @@ managing jobs, codebooks, units, invitations, publishing and progress.
   path, with shared queries in [`shared/`](../../packages/server/src/shared/).
 - Caller: [`client/src/lib/api/httpResearcherApi.ts`](../../packages/client/src/lib/api/httpResearcherApi.ts).
 
-**Roles.** Job users have a role per job: `READ` < `WRITE` < `ADMIN`. The
-role column below is the minimum. Real login is not built yet: the server
-trusts `x-dev-role` / `x-dev-email` headers (development only).
+**Authentication.** Every request carries a researcher's personal API key:
+`authorization: Bearer <key>` (keys start with `atk_`). A key identifies a
+user by email. There is no researcher login yet, so the first key comes from
+the server's machine (`pnpm --filter @annotinder/server keys create --email
+<email>`, see the server's README); with a key, a researcher can make more
+([createApiKey](#createapikey)). Implementation:
+[`researcher/auth.ts`](../../packages/server/src/researcher/auth.ts),
+[`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts).
 
-**Errors** are `{ error }` with a 4xx/5xx status: 400 invalid body, 401 not
-signed in or role too low (403 is fine too), 404 not found, 409 not allowed
-in this state (e.g. editing a published codebook).
+Development only: a server started with `ANNOTINDER_DEV_AUTH=1` (as `pnpm
+dev` does) also accepts `x-dev-role` / `x-dev-email` headers instead of a
+key, which the dev shell's researcher UI uses. Never on a reachable server.
+
+**Roles.** A user has a role per job (job users): `READ` < `WRITE` <
+`ADMIN`. The role column below is the minimum. Whoever creates a job is its
+`ADMIN`.
+
+**Errors** are `{ error }` with a 4xx/5xx status: 400 invalid body or
+parameter, 401 no valid API key, 403 no (sufficient) role in the job, 404
+not found, 409 not allowed in this state (e.g. editing a published
+codebook).
+
+**From R or Python**: everything a script needs is here: create a job,
+upload units ([createUnits](#createunits)) and a codebook, publish it,
+invite coders, then download the annotations ([listAnnotations](#listannotations))
+and the coders with their coder-level answers ([listCoders](#listcoders)).
+`server/src/__tests__/researcherApi.test.ts` does exactly this, with every
+response checked against its contract schema.
 
 | Endpoint | | Role | Request | Response |
 |---|---|---|---|---|
+| **Account** | | | | |
+| [getMe](#getme) | `GET /me` | any | – | `MeResponseSchema` |
+| [listApiKeys](#listapikeys) | `GET /me/keys` | any | – | `ApiKeyResponseSchema[]` |
+| [createApiKey](#createapikey) | `POST /me/keys` | any | `ApiKeyWriteSchema` | `ApiKeyCreatedSchema` |
+| [revokeApiKey](#revokeapikey) | `POST /me/keys/:id/revoke` | any | – | `ApiKeyResponseSchema` |
 | **Jobs** | | | | |
 | [listJobs](#listjobs) | `GET /job` | any | – | `JobResponseSchema[]` |
 | [createJob](#createjob) | `POST /job` | any | `JobWriteSchema` | `JobResponseSchema` |
@@ -59,6 +85,34 @@ in this state (e.g. editing a published codebook).
 | [refreshDeployment](#refreshdeployment) | `POST /job/:jobId/deployment/refresh` | ADMIN | `RefreshDeploymentSchema` | `{ version }` |
 | [createPreview](#createpreview) | `POST /job/:jobId/deployment/preview` | WRITE | – | `PreviewSessionSchema` |
 | [resetAnnotations](#resetannotations) | `POST /job/:jobId/annotations/reset` | ADMIN | `ResetAnnotationsSchema` | `{ retired }` |
+| **Annotations** | | | | |
+| [listAnnotations](#listannotations) | `GET /job/:jobId/annotations` | READ | query `AnnotationsQuerySchema` | `AnnotationPageSchema` |
+
+## Account
+
+Schemas: [`contracts/src/account.ts`](../../packages/contracts/src/account.ts).
+Implementation: [`researcher/me.ts`](../../packages/server/src/researcher/me.ts),
+[`shared/accounts.ts`](../../packages/server/src/shared/accounts.ts).
+
+### getMe
+
+`GET /me` → `MeResponseSchema`: the email the request is authenticated as.
+
+### listApiKeys
+
+`GET /me/keys` → `ApiKeyResponseSchema[]`: your keys, revoked ones
+included, with their prefix and when they were last used. Never the keys
+themselves: the server stores only a hash.
+
+### createApiKey
+
+`POST /me/keys` → `ApiKeyCreatedSchema` (201): a new key, `key` shown only
+in this response.
+
+### revokeApiKey
+
+`POST /me/keys/:id/revoke` → `ApiKeyResponseSchema`. The key stops working
+at once. 404 if it isn't one of your keys.
 
 ## Jobs
 
@@ -67,13 +121,14 @@ Implementation: [`researcher/job.ts`](../../packages/server/src/researcher/job.t
 
 ### listJobs
 
-`GET /job` → `JobResponseSchema[]`. The jobs the user has a role in (the
-server, which has no real users yet, returns all jobs).
+`GET /job` → `JobResponseSchema[]`. The jobs the user has a role in (with
+development headers: all jobs).
 
 ### createJob
 
-`POST /job` → `JobResponseSchema` (201). The creator should become its
-`ADMIN` (the server has no real users yet; any `x-dev-role` may create).
+`POST /job` → `JobResponseSchema` (201). The creator becomes its `ADMIN`.
+(With development headers the job has no job users, which lets any
+development role in.)
 
 ### getJob
 
@@ -237,8 +292,10 @@ came in through it, since coders refer to their invite.
 ### listCoders
 
 `GET /job/:jobId/coders` → `CoderProgressSchema[]`: per coder the invite,
-participant id, started, last active, live answers, and finished units per
-loop of the live codebook.
+participant id, started, last active, live answers, finished units per
+loop of the live codebook, and `variables`: their coder-level values
+(answers outside unit loops, and `auto` variables such as invite presets,
+random or balanced conditions and URL parameters).
 
 ## Publishing
 
@@ -290,3 +347,26 @@ secret.
 of these variables (optionally only some units or coders): kept for
 analysis, but they no longer count, so the units are coded again. Bump the
 deployment's `annotationEpoch` and refresh the runtime.
+
+## Annotations
+
+Schemas: [`contracts/src/annotations.ts`](../../packages/contracts/src/annotations.ts).
+Implementation: [`researcher/annotations.ts`](../../packages/server/src/researcher/annotations.ts).
+
+### listAnnotations
+
+`GET /job/:jobId/annotations?after=&limit=&retired=` → `AnnotationPageSchema`:
+one row per unit, coder and variable (`value` is a `VariableValue`), with
+the unit's `externalId`, the coder's `participantId`, the codebook version
+it was answered under, and `created` / `updated`.
+
+- **Paging**: rows come in the order they were first written (by `id`).
+  `limit` rows per page (default 1000, at most 10000); pass `next` as
+  `after` for the next page, until `next` is null. A page never changes once
+  read, also while coders keep coding, so a script can keep `next` and
+  fetch only what is new later.
+- **Live values only**, unless `retired=true`: then also values that were
+  reset or replaced, with `retiredAt`.
+- Coder-level answers (outside unit loops) are not rows here; they come
+  with the coders ([listCoders](#listcoders)).
+

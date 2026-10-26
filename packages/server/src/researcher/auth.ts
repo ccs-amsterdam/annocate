@@ -1,67 +1,92 @@
 import type { Context, Next } from "hono";
-import { one, type Sql } from "../db.js";
 import type { Role } from "@annotinder/contracts";
+import { one } from "../db.js";
+import type { Env, Server } from "../context.js";
+import { userForKey } from "../shared/accounts.js";
 
-// DEV ONLY: not secure, and not real authentication. Job users send plain headers
-// and nothing checks them against a password or token. This exists so the
-// researcher API can be exercised during development and tests. Real
-// researcher identity is not implemented yet.
+// Researcher authentication (docs/api/researcher.md#authentication).
 //
-// Job users authenticate via plain headers (no password/token exchange):
-//   x-dev-role:  ADMIN | WRITE | READ
-//   x-dev-email: any string, used only for job_users lookups/display
-//
-// As a bootstrap convenience, if a job has zero `job_users` rows yet (a fresh
-// job), any request with `x-dev-role` set is treated as authorized -- there's
-// no one to lock out yet. Once users are added via `PUT /job/:jobId/users`, the
-// supplied email must match a row with a sufficient role.
+// - API keys: `authorization: Bearer <key>` (shared/accounts.ts). The key
+//   identifies a user (by email); their role in a job is in `job_users`.
+// - Development only (`devAuth`, ANNOTINDER_DEV_AUTH=1): plain
+//   `x-dev-role` / `x-dev-email` headers, checked against nothing but
+//   `job_users`. A job without job users lets any dev role through. Never
+//   enable this on a reachable server.
 
 const ROLE_RANK: Record<Role, number> = { READ: 0, WRITE: 1, ADMIN: 2 };
 
 /** Ids are Postgres INTEGERs. */
 const MAX_ID = 2 ** 31 - 1;
 
+/** Who a researcher request is from. */
+export interface Researcher {
+  email: string;
+  /** Set for API key users. */
+  userId?: number;
+  /** Development headers only: the role the request claims. */
+  devRole?: Role;
+}
+
 export interface JobUserAuth {
   email: string;
   role: Role;
 }
 
-export async function authenticateJobUser(c: Context, sql: Sql, jobId: number): Promise<JobUserAuth | null> {
-  const role = c.req.header("x-dev-role") as Role | undefined;
-  const email = c.req.header("x-dev-email") ?? "dev@localhost";
-  if (!role || !(role in ROLE_RANK)) return null;
-
-  const existingUsers = await one(sql, "SELECT 1 FROM job_users WHERE job_id = $1", [jobId]);
-  if (!existingUsers) {
-    // Bootstrap: no job users configured yet, allow any dev-role header through.
-    return { email, role };
+async function authenticate(c: Context, server: Server): Promise<Researcher | null> {
+  const bearer = /^Bearer (.+)$/.exec(c.req.header("authorization") ?? "")?.[1];
+  if (bearer) {
+    const user = await userForKey(server.db, bearer.trim());
+    return user ? { email: user.email, userId: user.id } : null;
   }
+  const devRole = c.req.header("x-dev-role") as Role | undefined;
+  if (server.devAuth && devRole && devRole in ROLE_RANK) {
+    return { email: c.req.header("x-dev-email") ?? "dev@localhost", devRole };
+  }
+  return null;
+}
 
-  const row = await one<{ role: Role }>(sql, "SELECT role FROM job_users WHERE job_id = $1 AND email = $2", [jobId, email]);
-  if (!row) return null;
-  if (ROLE_RANK[row.role] < ROLE_RANK[role]) return null; // header can't claim a higher role than granted
-  return { email, role: row.role };
+/** The researcher's role in a job, if any. */
+async function roleIn(server: Server, researcher: Researcher, jobId: number): Promise<Role | null> {
+  const row = await one<{ role: Role }>(server.db, "SELECT role FROM job_users WHERE job_id = $1 AND email = $2", [
+    jobId,
+    researcher.email,
+  ]);
+  if (!researcher.devRole) return row?.role ?? null;
+  // Development: a job without job users lets any role through; otherwise the
+  // header can't claim more than was granted.
+  if (!row) return (await one(server.db, "SELECT 1 FROM job_users WHERE job_id = $1", [jobId])) ? null : researcher.devRole;
+  return ROLE_RANK[row.role] < ROLE_RANK[researcher.devRole] ? null : researcher.devRole;
+}
+
+/** Middleware: an authenticated researcher (401 otherwise), as `researcher`. */
+export function requireResearcher(server: Server) {
+  return async (c: Context<Env>, next: Next) => {
+    const researcher = await authenticate(c, server);
+    if (!researcher) return c.json({ error: "Unauthorized" }, 401);
+    c.set("researcher", researcher);
+    await next();
+  };
 }
 
 /**
- * Hono middleware factory: requires an authenticated job user with at least
- * `minRole`, for the job identified by the `:jobId` path param (a server
- * hosts any number of jobs, so jobId always comes from the URL).
+ * Middleware: an authenticated researcher with at least `minRole` in the job
+ * of the `:jobId` path param. 401 without (valid) credentials, 404 for an
+ * unknown job, 403 without the role.
  */
-export function requireJobUser(sql: Sql, minRole: Role) {
-  return async (c: Context, next: Next) => {
+export function requireJobUser(server: Server, minRole: Role) {
+  return async (c: Context<Env>, next: Next) => {
+    const researcher = await authenticate(c, server);
+    if (!researcher) return c.json({ error: "Unauthorized" }, 401);
+
     const raw = c.req.param("jobId");
     const jobId = raw ? Number(raw) : NaN;
     if (!Number.isInteger(jobId) || jobId <= 0 || jobId > MAX_ID) return c.json({ error: "Invalid job id" }, 400);
+    if (!(await one(server.db, "SELECT 1 FROM jobs WHERE id = $1", [jobId]))) return c.json({ error: "Job not found" }, 404);
 
-    const job = await one(sql, "SELECT 1 FROM jobs WHERE id = $1", [jobId]);
-    if (!job) return c.json({ error: "Job not found" }, 404);
-
-    const auth = await authenticateJobUser(c, sql, jobId);
-    if (!auth || ROLE_RANK[auth.role] < ROLE_RANK[minRole]) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-    c.set("jobUser", auth);
+    const role = await roleIn(server, researcher, jobId);
+    if (!role || ROLE_RANK[role] < ROLE_RANK[minRole]) return c.json({ error: "Forbidden" }, 403);
+    c.set("researcher", researcher);
+    c.set("jobUser", { email: researcher.email, role });
     c.set("jobId", jobId);
     await next();
   };

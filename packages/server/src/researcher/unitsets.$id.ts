@@ -31,7 +31,7 @@ export function unitset(server: Server): Hono<Env> {
 
   const get = (jobId: number, id: number) => one<UnitsetRow>(db, "SELECT * FROM unitsets WHERE job_id = $1 AND id = $2", [jobId, id]);
 
-  app.put("/job/:jobId/unitsets/:id", requireJobUser(db, "WRITE"), async (c) => {
+  app.put("/job/:jobId/unitsets/:id", requireJobUser(server, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
     const existing = await get(jobId, id);
@@ -49,7 +49,7 @@ export function unitset(server: Server): Hono<Env> {
     return c.json(toUnitsetResponse(row!));
   });
 
-  app.delete("/job/:jobId/unitsets/:id", requireJobUser(db, "WRITE"), async (c) => {
+  app.delete("/job/:jobId/unitsets/:id", requireJobUser(server, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const id = Number(c.req.param("id"));
     const existing = await get(jobId, id);

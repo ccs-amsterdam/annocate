@@ -42,7 +42,7 @@ function recording(store: Store): Store {
 
 /** A (re)started server on the same database: empty memory. */
 function restart(runtime: Partial<RuntimeOptions> = {}) {
-  return createApp(db, { secret: "test-secret", runtime, wrapStore: recording });
+  return createApp(db, { secret: "test-secret", runtime, wrapStore: recording, devAuth: true });
 }
 
 beforeEach(async () => {

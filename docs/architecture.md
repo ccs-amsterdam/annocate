@@ -444,13 +444,15 @@ Roughly in order:
 
 1. ~~**Postgres.**~~ Done: `pg` in production, PGlite for tests,
    development and annotinder local; one SQL dialect.
-2. **Researcher API as a public contract.** R, Python and other systems
-   (AmCAT) use it: script authentication (API keys), downloading
-   annotations (with pagination), maybe a webhook that posts new
-   annotations.
-3. **Auth.** Real researcher authentication (today: dev headers). Coder
-   login (`docs/coder-identity.md` §5) now simply lives on the server.
-   Email-restricted invites need it.
+2. ~~**Researcher API as a public contract.**~~ Done: personal API keys,
+   a paged annotation download, coder-level values with the coders, and
+   end-to-end tests on the contract schemas
+   (`server/src/__tests__/researcherApi.test.ts`). Later, maybe: a webhook
+   that posts new annotations; a download button in the researcher UI.
+3. **Auth.** Researcher login for the web UI (today: development headers,
+   or API keys for scripts; keys are made with a CLI on the server until
+   then). Coder login (`docs/coder-identity.md` §5) now simply lives on the
+   server. Email-restricted invites need it.
 4. **Limits.** Rate and resource limits, and quotas per account (e.g. a
    course hands out a number of jobs per student).
 5. **Hashes.** A codebook content hash, and a unit hash over the fields the

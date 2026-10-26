@@ -8,7 +8,7 @@ export function unitsFields(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/units/fields", requireJobUser(db, "READ"), async (c) => c.json(await getUnitFields(db, c.get("jobId"))));
+  app.get("/job/:jobId/units/fields", requireJobUser(server, "READ"), async (c) => c.json(await getUnitFields(db, c.get("jobId"))));
 
   return app;
 }
