@@ -28,10 +28,15 @@ export function flattenTree(items: (TopLevelItem | InLoopItem)[]): CodebookItem[
   return result;
 }
 
+/** The codebook editor's key of an item (stable while its name is edited), if it has one. */
+export function keyOf(item: CodebookItem | TopLevelItem | InLoopItem): string | undefined {
+  return (item as { _key?: string })._key;
+}
+
 /** Finds an item anywhere in the tree by its unique name or _key. */
 export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: string): CodebookItem | null {
   for (const item of items) {
-    if ((item as any)._key === identifier || item.name === identifier) return item;
+    if (keyOf(item) === identifier || item.name === identifier) return item;
     if ("children" in item && Array.isArray(item.children)) {
       const found = findItem(item.children, identifier);
       if (found) return found;
@@ -47,7 +52,7 @@ export function findParent(
 ): (UnitLoopItem | ConditionItem) | null {
   for (const item of items) {
     if ("children" in item && Array.isArray(item.children)) {
-      if (item.children.some((child) => (child as any)._key === identifier || child.name === identifier)) {
+      if (item.children.some((child) => keyOf(child) === identifier || child.name === identifier)) {
         return item as UnitLoopItem | ConditionItem;
       }
       const found = findParent(item.children, identifier);
@@ -93,7 +98,7 @@ export function isInsideUnitLoop(items: TopLevelItem[], identifier: string): boo
   let parent = findParent(items, identifier);
   while (parent) {
     if (parent.type === "unit_loop") return true;
-    parent = findParent(items, (parent as any)._key || parent.name);
+    parent = findParent(items, keyOf(parent) || parent.name);
   }
   return false;
 }

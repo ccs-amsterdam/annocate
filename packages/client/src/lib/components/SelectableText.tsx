@@ -228,7 +228,7 @@ export function SelectableText({ text }: { text: string }) {
 
     const a = getAbsoluteOffset(containerRef.current, range.startContainer, range.startOffset);
     const b = getAbsoluteOffset(containerRef.current, range.endContainer, range.endOffset);
-    let [offset, end] = a <= b ? [a, b] : [b, a];
+    const [offset, end] = a <= b ? [a, b] : [b, a];
     const isClick = selection.isCollapsed || a === b;
     selection.removeAllRanges();
 

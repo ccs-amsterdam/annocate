@@ -17,7 +17,8 @@ import { TemplateMarkdown } from "./TemplateMarkdown";
 import type { QuestionItem } from "./answerFields/types";
 
 interface QuestionProps {
-  item: QuestionItem;
+  /** A question (or a legacy user/unit variable item): only its variable is used. */
+  item: Pick<QuestionItem, "variable">;
   onAnswer: (value: VariableValue, conditionValue?: unknown) => void;
   /** This unit's variable answers submitted so far -- see `AnswerFieldProps.unitVariables`. */
   unitVariables?: Record<string, VariableValue>;

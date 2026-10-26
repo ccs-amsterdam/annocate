@@ -3,12 +3,7 @@ import { SafeNameSchema } from "../common.js";
 import { ConditionSchema, type Condition } from "./condition.js";
 import { UnitLayoutSchema } from "./layout.js";
 import { UnitLoopDistributionShape, migrateLegacyUnitLoop } from "./unitLoop.js";
-import {
-  UserVariableTypeSchema,
-  UnitVariableTypeSchema,
-  type UserVariableType,
-  type UnitVariableType,
-} from "./variableTypes.js";
+import { UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 
 const ItemBaseSchema = z.object({
   name: SafeNameSchema,

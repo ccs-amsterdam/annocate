@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TopLevelItem, InLoopItem, UserVariableItem, UnitVariableItem } from "./item.js";
+import type { TopLevelItem, InLoopItem, UserVariableItem, UnitVariableItem, TopLevelQuestionItem, InLoopQuestionItem } from "./item.js";
 import { availableQuestions, validateCodebookItems } from "./validation.js";
 import { CodebookItemsSchema } from "./codebook.js";
 import type { Condition } from "./condition.js";
@@ -12,8 +12,9 @@ function userVar(name: string): UserVariableItem {
 function unitVar(name: string): UnitVariableItem {
   return { type: "unit_variable", name, variable: confirmVariable };
 }
-function questionVar(name: string, variable: any = confirmVariable): any {
-  return { type: "question", name, variable };
+/** A question usable at the top level and in loops; `variable` is unchecked test data. */
+function questionVar(name: string, variable: object = confirmVariable): TopLevelQuestionItem & InLoopQuestionItem {
+  return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
 }
 function unitLoop(name: string, children: InLoopItem[], template = "", constants?: Record<string, string>): TopLevelItem {
   return { type: "unit_loop", name, units: [{ sources: [{ unitset: "__all__" }] }], layout: { template, constants }, children };

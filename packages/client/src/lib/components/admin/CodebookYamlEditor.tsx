@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import YAML from "yaml";
-import Editor from "@monaco-editor/react";
+import Editor, { type OnMount } from "@monaco-editor/react";
 import { CodebookItemsSchema, type TopLevelItem } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, AlertCircle, Sparkles, Minimize2, Maximize2 } from "lucide-react";
@@ -74,11 +74,29 @@ export function getFoldableLineNumbers(text: string): number[] {
   return lineNumbers;
 }
 
+type MonacoEditor = Parameters<OnMount>[0];
+
+/** Monaco's folding contribution: internals, not in its public types. */
+interface FoldingRegions {
+  length: number;
+  getStartLineNumber(index: number): number;
+  isCollapsed(index: number): boolean;
+  toRegion(index: number): unknown;
+}
+interface FoldingModel {
+  regions: FoldingRegions | null;
+  toggleCollapseState(regions: unknown[]): void;
+  onDidChange?(listener: () => void): { dispose?(): void } | undefined;
+}
+interface FoldingContribution {
+  getFoldingModel?(): Promise<FoldingModel | null>;
+}
+
 /**
  * Specifically collapses ONLY the folding regions starting on "variable" or "layout" lines.
  * Never collapses parent regions (such as "- name:" items) or other sections.
  */
-export async function foldDefaultSections(editorInstance: any) {
+export async function foldDefaultSections(editorInstance: MonacoEditor | null) {
   if (!editorInstance) return;
   const model = editorInstance.getModel?.();
   if (!model) return;
@@ -88,17 +106,17 @@ export async function foldDefaultSections(editorInstance: any) {
   if (lineNumbers.length === 0) return;
   const targetLines = new Set(lineNumbers);
 
-  const foldingController = editorInstance.getContribution?.("editor.contrib.folding");
+  const foldingController = editorInstance.getContribution("editor.contrib.folding") as FoldingContribution | null;
   if (!foldingController?.getFoldingModel) return;
 
   const foldingModel = await foldingController.getFoldingModel();
   if (!foldingModel) return;
 
   function doFold(): boolean {
-    const regions = foldingModel.regions;
+    const regions = foldingModel!.regions;
     if (!regions || regions.length === 0) return false;
 
-    const toToggle: any[] = [];
+    const toToggle: unknown[] = [];
     for (let i = 0; i < regions.length; i++) {
       const startLine = regions.getStartLineNumber(i);
       const isCollapsed = regions.isCollapsed(i);
@@ -109,7 +127,7 @@ export async function foldDefaultSections(editorInstance: any) {
     }
 
     if (toToggle.length > 0) {
-      foldingModel.toggleCollapseState(toToggle);
+      foldingModel!.toggleCollapseState(toToggle);
     }
     return true;
   }
@@ -148,7 +166,7 @@ export function CodebookYamlEditor({ items, onChange, disabled }: CodebookYamlEd
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [isValid, setIsValid] = useState(true);
   const isInternalChangeRef = useRef(false);
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<MonacoEditor | null>(null);
 
   // Determine dark mode based on document class or OS preference
   const isDark =
@@ -227,7 +245,7 @@ export function CodebookYamlEditor({ items, onChange, disabled }: CodebookYamlEd
     foldDefaultSections(editorRef.current);
   }
 
-  function handleEditorMount(editor: any) {
+  function handleEditorMount(editor: MonacoEditor) {
     editorRef.current = editor;
   }
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useMemo, type ReactNode } from "react";
 import type { CodebookCode, SpanAnswer, SpanSlice } from "@annotinder/contracts";
 
 export interface PendingSpan {
@@ -85,13 +85,18 @@ export function SpanAnnotationProvider({
   const [isViewingAllLabels, setIsViewingAllLabels] = useState(initialIsViewingAllLabels ?? false);
   const [focusedSpanId, setFocusedSpanId] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Another question or other initial values: start over. Adjusted while
+  // rendering rather than in an effect, so there is no render with stale state.
+  const inputs = { variableName, initialSpans, initialPendingSpan, initialIsViewingAllLabels, defaultSelectionMode };
+  const [previousInputs, setPreviousInputs] = useState(inputs);
+  if ((Object.keys(inputs) as (keyof typeof inputs)[]).some((k) => inputs[k] !== previousInputs[k])) {
+    setPreviousInputs(inputs);
     setSpans(initialSpans ?? []);
     setPendingSpanState(initialPendingSpan ?? null);
     setIsViewingAllLabels(initialIsViewingAllLabels ?? false);
     setFocusedSpanId(null);
     setSelectionMode(defaultSelectionMode);
-  }, [variableName, initialSpans, initialPendingSpan, initialIsViewingAllLabels, defaultSelectionMode]);
+  }
 
   const setPendingSpan = (pending: PendingSpan | null) => {
     setPendingSpanState(pending);

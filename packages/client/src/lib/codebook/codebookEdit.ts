@@ -5,9 +5,29 @@ import type {
   UnitLoopItem,
   ConditionItem,
 } from "@annotinder/contracts";
-import { findItem, findParent, flattenTree, isInsideUnitLoop } from "./tree";
+import { findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "./tree";
 
 export type MoveTargetPosition = "before" | "after" | "inside";
+
+/**
+ * An item as the tree edits below handle it: any codebook item, with the
+ * editor's `_key` (stable identity while names are edited) and children.
+ */
+interface Node {
+  _key?: string;
+  name: string;
+  type: string;
+  children?: Node[];
+}
+
+const asNodes = (items: (TopLevelItem | InLoopItem | CodebookItem)[]) => items as unknown as Node[];
+const asItems = (nodes: Node[]) => nodes as unknown as TopLevelItem[];
+const hasChildren = (node: Node): node is Node & { children: Node[] } => Array.isArray(node.children);
+
+/** An item's children (loops and conditions), else none. */
+function childrenOf(item: CodebookItem | TopLevelItem | InLoopItem): (TopLevelItem | InLoopItem)[] {
+  return "children" in item && Array.isArray(item.children) ? (item.children as (TopLevelItem | InLoopItem)[]) : [];
+}
 
 let keySeed = 0;
 export function generateKey(): string {
@@ -16,26 +36,24 @@ export function generateKey(): string {
 }
 
 export function ensureKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
-  return items.map((node) => {
-    const copy: any = {
-      ...node,
-      _key: (node as any)._key || generateKey(),
-    };
-    if ("children" in copy && Array.isArray(copy.children)) {
-      copy.children = ensureKeys(copy.children);
-    }
-    return copy;
-  }) as T;
+  const withKeys = (nodes: Node[]): Node[] =>
+    nodes.map((node) => {
+      const copy: Node = { ...node, _key: node._key || generateKey() };
+      if (hasChildren(copy)) copy.children = withKeys(copy.children);
+      return copy;
+    });
+  return withKeys(asNodes(items)) as unknown as T;
 }
 
 export function stripKeys<T extends TopLevelItem[] | InLoopItem[]>(items: T): T {
-  return items.map((node) => {
-    const { _key, ...rest }: any = node;
-    if ("children" in rest && Array.isArray(rest.children)) {
-      rest.children = stripKeys(rest.children);
-    }
-    return rest;
-  }) as T;
+  const withoutKeys = (nodes: Node[]): Node[] =>
+    nodes.map((node) => {
+      const rest: Node = { ...node };
+      delete rest._key;
+      if (hasChildren(rest)) rest.children = withoutKeys(rest.children);
+      return rest;
+    });
+  return withoutKeys(asNodes(items)) as unknown as T;
 }
 
 export function getUniqueItemName(
@@ -63,19 +81,18 @@ export function insertItem(
     return [...items, newItem as TopLevelItem];
   }
 
-  function insertInNodes(nodes: any[]): any[] {
+  function insertInNodes(nodes: Node[]): Node[] {
     return nodes.map((node) => {
       if (
         (node._key === parentIdentifier || node.name === parentIdentifier) &&
-        "children" in node &&
-        Array.isArray(node.children)
+        hasChildren(node)
       ) {
         return {
           ...node,
-          children: [...node.children, newItem],
+          children: [...node.children, ...asNodes([newItem])],
         };
       }
-      if ("children" in node && Array.isArray(node.children)) {
+      if (hasChildren(node)) {
         return {
           ...node,
           children: insertInNodes(node.children),
@@ -85,7 +102,7 @@ export function insertItem(
     });
   }
 
-  return insertInNodes(items) as TopLevelItem[];
+  return asItems(insertInNodes(asNodes(items)));
 }
 
 export function insertItemBefore(
@@ -93,20 +110,20 @@ export function insertItemBefore(
   targetIdentifier: string,
   newItem: CodebookItem,
 ): TopLevelItem[] {
-  function insertInNodes(nodes: any[]): { list: any[]; inserted: boolean } {
+  function insertInNodes(nodes: Node[]): { list: Node[]; inserted: boolean } {
     const idx = nodes.findIndex(
       (n) => n._key === targetIdentifier || n.name === targetIdentifier,
     );
     if (idx !== -1) {
       const copy = [...nodes];
-      copy.splice(idx, 0, newItem);
+      copy.splice(idx, 0, ...asNodes([newItem]));
       return { list: copy, inserted: true };
     }
 
     let didInsert = false;
     const nextList = nodes.map((node) => {
       if (didInsert) return node;
-      if ("children" in node && Array.isArray(node.children)) {
+      if (hasChildren(node)) {
         const res = insertInNodes(node.children);
         if (res.inserted) {
           didInsert = true;
@@ -119,15 +136,15 @@ export function insertItemBefore(
     return { list: nextList, inserted: didInsert };
   }
 
-  return insertInNodes(items).list as TopLevelItem[];
+  return insertInNodes(asNodes(items)).list as TopLevelItem[];
 }
 
 export function deleteItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
-  function deleteFromNodes(nodes: any[]): any[] {
+  function deleteFromNodes(nodes: Node[]): Node[] {
     return nodes
       .filter((node) => node._key !== identifier && node.name !== identifier)
       .map((node) => {
-        if ("children" in node && Array.isArray(node.children)) {
+        if (hasChildren(node)) {
           return {
             ...node,
             children: deleteFromNodes(node.children),
@@ -137,7 +154,7 @@ export function deleteItem(items: TopLevelItem[], identifier: string): TopLevelI
       });
   }
 
-  return deleteFromNodes(items) as TopLevelItem[];
+  return asItems(deleteFromNodes(asNodes(items)));
 }
 
 /**
@@ -155,26 +172,20 @@ export function canMoveItemTo(
   const targetItem = findItem(items, targetIdentifier);
   if (!sourceItem || !targetItem) return false;
 
-  const sourceKey = (sourceItem as any)._key;
-  const targetKey = (targetItem as any)._key;
+  const sourceKey = keyOf(sourceItem);
+  const targetKey = keyOf(targetItem);
   if (sourceKey && targetKey && sourceKey === targetKey) return false;
 
   // Cannot move into own descendants
-  if ("children" in sourceItem && Array.isArray((sourceItem as any).children)) {
-    const descendants = flattenTree((sourceItem as any).children);
-    if (
-      descendants.some(
-        (d) =>
-          d.name === targetItem.name ||
-          (targetKey && (d as any)._key === targetKey),
-      )
-    ) {
+  if (childrenOf(sourceItem).length > 0) {
+    const descendants = flattenTree(childrenOf(sourceItem));
+    if (descendants.some((d) => d.name === targetItem.name || (targetKey && keyOf(d) === targetKey))) {
       return false;
     }
   }
 
   // Determine target container (parent)
-  let targetParent: (UnitLoopItem | ConditionItem) | null = null;
+  let targetParent: (UnitLoopItem | ConditionItem) | null;
   if (position === "inside") {
     // Target must be a container with children
     if (targetItem.type !== "unit_loop" && targetItem.type !== "condition") {
@@ -189,7 +200,7 @@ export function canMoveItemTo(
   const isTargetInLoop =
     targetParent !== null &&
     (targetParent.type === "unit_loop" ||
-      isInsideUnitLoop(items, (targetParent as any)._key || targetParent.name));
+      isInsideUnitLoop(items, keyOf(targetParent) || targetParent.name));
 
   // Check item type constraints:
   if (sourceItem.type === "user_variable") {
@@ -210,7 +221,7 @@ export function canMoveItemTo(
     if (position === "inside" && targetItem.type === "unit_loop") return false;
   } else if (sourceItem.type === "condition") {
     const sourceDescendants = flattenTree(
-      "children" in sourceItem ? (sourceItem as any).children : [],
+      childrenOf(sourceItem),
     );
     const hasInLoopOnly = sourceDescendants.some(
       (d) =>
@@ -235,9 +246,9 @@ export function canMoveItemTo(
 export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string): boolean {
   const sourceItem = findItem(items, sourceIdentifier);
   if (!sourceItem) return false;
-  const sourceKey = (sourceItem as any)._key || sourceItem.name;
+  const sourceKey = keyOf(sourceItem) || sourceItem.name;
   const lastRoot = items[items.length - 1];
-  if (lastRoot && ((lastRoot as any)._key === sourceKey || lastRoot.name === sourceKey)) {
+  if (lastRoot && (keyOf(lastRoot) === sourceKey || lastRoot.name === sourceKey)) {
     return false;
   }
   if (sourceItem.type === "unit_variable") return false;
@@ -248,7 +259,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
     return false;
   }
   if (sourceItem.type === "condition") {
-    const descendants = flattenTree("children" in sourceItem ? (sourceItem as any).children : []);
+    const descendants = flattenTree(childrenOf(sourceItem));
     if (
       descendants.some(
         (d) =>
@@ -288,44 +299,39 @@ export function moveItemTo(
   const targetItem = findItem(items, targetIdentifier);
   if (!sourceItem || !targetItem) return items;
 
-  const sourceKey = (sourceItem as any)._key;
-  const targetKey = (targetItem as any)._key;
+  const sourceKey = keyOf(sourceItem);
+  const targetKey = keyOf(targetItem);
   if (sourceKey && targetKey && sourceKey === targetKey) return items;
 
   // Cannot move into own descendants
-  if ("children" in sourceItem && Array.isArray((sourceItem as any).children)) {
-    const descendants = flattenTree((sourceItem as any).children);
-    if (
-      descendants.some(
-        (d) =>
-          d.name === targetItem.name ||
-          (targetKey && (d as any)._key === targetKey),
-      )
-    ) {
+  if (childrenOf(sourceItem).length > 0) {
+    const descendants = flattenTree(childrenOf(sourceItem));
+    if (descendants.some((d) => d.name === targetItem.name || (targetKey && keyOf(d) === targetKey))) {
       return items;
     }
   }
+
+  const moving = asNodes([sourceItem]);
 
   // Step 1: Remove source item from tree
   const withoutSource = deleteItem(items, sourceKey || sourceIdentifier);
 
   // Step 2: Insert source item into new position relative to target
   if (position === "inside") {
-    function insertInside(nodes: any[]): any[] {
+    function insertInside(nodes: Node[]): Node[] {
       return nodes.map((node) => {
         if (
           (node._key === targetIdentifier ||
             node.name === targetIdentifier ||
             (targetKey && node._key === targetKey)) &&
-          "children" in node &&
-          Array.isArray(node.children)
+          hasChildren(node)
         ) {
           return {
             ...node,
-            children: [...node.children, sourceItem],
+            children: [...node.children, ...moving],
           };
         }
-        if ("children" in node && Array.isArray(node.children)) {
+        if (hasChildren(node)) {
           return {
             ...node,
             children: insertInside(node.children),
@@ -334,11 +340,11 @@ export function moveItemTo(
         return node;
       });
     }
-    return insertInside(withoutSource) as TopLevelItem[];
+    return asItems(insertInside(asNodes(withoutSource)));
   }
 
   // Step 3: Insert before or after target in its containing array
-  function insertSibling(nodes: any[]): { list: any[]; inserted: boolean } {
+  function insertSibling(nodes: Node[]): { list: Node[]; inserted: boolean } {
     const idx = nodes.findIndex(
       (n) =>
         n._key === targetIdentifier ||
@@ -348,14 +354,14 @@ export function moveItemTo(
     if (idx !== -1) {
       const copy = [...nodes];
       const insertIdx = position === "before" ? idx : idx + 1;
-      copy.splice(insertIdx, 0, sourceItem);
+      copy.splice(insertIdx, 0, ...moving);
       return { list: copy, inserted: true };
     }
 
     let didInsert = false;
     const nextList = nodes.map((node) => {
       if (didInsert) return node;
-      if ("children" in node && Array.isArray(node.children)) {
+      if (hasChildren(node)) {
         const res = insertSibling(node.children);
         if (res.inserted) {
           didInsert = true;
@@ -368,7 +374,7 @@ export function moveItemTo(
     return { list: nextList, inserted: didInsert };
   }
 
-  return insertSibling(withoutSource).list as TopLevelItem[];
+  return insertSibling(asNodes(withoutSource)).list as TopLevelItem[];
 }
 
 export function moveItem(
@@ -376,7 +382,7 @@ export function moveItem(
   identifier: string,
   direction: "up" | "down",
 ): TopLevelItem[] {
-  function moveInList(list: any[]): { list: any[]; moved: boolean } {
+  function moveInList(list: Node[]): { list: Node[]; moved: boolean } {
     const idx = list.findIndex((i) => i._key === identifier || i.name === identifier);
     if (idx !== -1) {
       const targetIdx = direction === "up" ? idx - 1 : idx + 1;
@@ -394,7 +400,7 @@ export function moveItem(
     let didMove = false;
     const nextList = list.map((node) => {
       if (didMove) return node;
-      if ("children" in node && Array.isArray(node.children)) {
+      if (hasChildren(node)) {
         const res = moveInList(node.children);
         if (res.moved) {
           didMove = true;
@@ -407,12 +413,12 @@ export function moveItem(
     return { list: nextList, moved: didMove };
   }
 
-  return moveInList(items).list as TopLevelItem[];
+  return moveInList(asNodes(items)).list as TopLevelItem[];
 }
 
 export function indentItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
-  function indentInList(list: any[]): {
-    list: any[];
+  function indentInList(list: Node[]): {
+    list: Node[];
     handled: boolean;
   } {
     const idx = list.findIndex((i) => i._key === identifier || i.name === identifier);
@@ -420,7 +426,7 @@ export function indentItem(items: TopLevelItem[], identifier: string): TopLevelI
       const prevSibling = list[idx - 1];
       if (
         (prevSibling.type === "unit_loop" || prevSibling.type === "condition") &&
-        "children" in prevSibling
+        hasChildren(prevSibling)
       ) {
         const itemToIndent = list[idx];
         const remaining = list.filter((_, i) => i !== idx);
@@ -436,7 +442,7 @@ export function indentItem(items: TopLevelItem[], identifier: string): TopLevelI
     let didHandle = false;
     const nextList = list.map((node) => {
       if (didHandle) return node;
-      if ("children" in node && Array.isArray(node.children)) {
+      if (hasChildren(node)) {
         const res = indentInList(node.children);
         if (res.handled) {
           didHandle = true;
@@ -449,7 +455,7 @@ export function indentItem(items: TopLevelItem[], identifier: string): TopLevelI
     return { list: nextList, handled: didHandle };
   }
 
-  return indentInList(items).list as TopLevelItem[];
+  return indentInList(asNodes(items)).list as TopLevelItem[];
 }
 
 export function outdentItem(items: TopLevelItem[], identifier: string): TopLevelItem[] {
@@ -461,8 +467,8 @@ export function outdentItem(items: TopLevelItem[], identifier: string): TopLevel
 
   return moveItemTo(
     items,
-    (item as any)._key || item.name,
-    (parent as any)._key || parent.name,
+    keyOf(item) || item.name,
+    keyOf(parent) || parent.name,
     "after",
   );
 }
@@ -472,15 +478,11 @@ export function updateItem(
   identifier: string,
   updated: CodebookItem,
 ): TopLevelItem[] {
-  function updateInNodes(nodes: any[]): any[] {
+  function updateInNodes(nodes: Node[]): Node[] {
     return nodes.map((node) => {
       if (node._key === identifier || node.name === identifier) {
         const children =
-          "children" in updated
-            ? updated.children
-            : "children" in node
-              ? (node as UnitLoopItem | ConditionItem).children
-              : undefined;
+          "children" in updated ? asNodes(childrenOf(updated)) : node.children;
 
         return {
           ...node,
@@ -488,7 +490,7 @@ export function updateItem(
           ...(children !== undefined ? { children } : {}),
         };
       }
-      if ("children" in node && Array.isArray(node.children)) {
+      if (hasChildren(node)) {
         return {
           ...node,
           children: updateInNodes(node.children),
@@ -498,5 +500,5 @@ export function updateItem(
     });
   }
 
-  return updateInNodes(items) as TopLevelItem[];
+  return asItems(updateInNodes(asNodes(items)));
 }

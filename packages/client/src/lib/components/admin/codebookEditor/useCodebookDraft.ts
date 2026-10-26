@@ -20,9 +20,9 @@ import {
   updateItem,
   type MoveTargetPosition,
 } from "../../../codebook/codebookEdit";
-import { findItem, isInsideUnitLoop } from "../../../codebook/tree";
+import { findItem } from "../../../codebook/tree";
 import { defaultItemForType } from "../ItemForm";
-import { getItemKey, type ItemType } from "../codebookTree/utils";
+import type { ItemType } from "../codebookTree/utils";
 
 interface UseCodebookDraftOptions {
   client: AdminClient;
@@ -62,23 +62,20 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCod
 
   useWarnBeforeUnload(dirty);
 
-  function createItem(type: ItemType, inLoop: boolean) {
+  function createItem(type: ItemType) {
     const name = getUniqueItemName(items, type);
     const childName = getUniqueItemName(items, `${name}_q`);
-    return { ...defaultItemForType(type, name, inLoop, childName), _key: generateKey() };
+    return { ...defaultItemForType(type, name, childName), _key: generateKey() };
   }
 
   function insertBefore(targetKey: string, type: ItemType) {
-    const item = createItem(type, isInsideUnitLoop(items, targetKey));
+    const item = createItem(type);
     setItems(ensureKeys(insertItemBefore(items, targetKey, item)));
     setSelected(item._key);
   }
 
   function insertAtEnd(parentKey: string | null, type: ItemType) {
-    const parent = parentKey ? findItem(items, parentKey) : null;
-    const inLoop =
-      parent !== null && (parent.type === "unit_loop" || isInsideUnitLoop(items, getItemKey(parent)));
-    const item = createItem(type, inLoop);
+    const item = createItem(type);
     setItems(ensureKeys(insertItem(items, parentKey, item)));
     setSelected(item._key);
   }

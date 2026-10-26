@@ -26,7 +26,6 @@ export const ITEM_TYPE_OPTIONS_IN_LOOP: CodebookItem["type"][] = ["question", "c
 export function defaultItemForType(
   type: CodebookItem["type"],
   name: string,
-  _inLoop = false,
   childName?: string,
 ): CodebookItem {
   const qName = childName || `${name}_q1`;
@@ -41,13 +40,13 @@ export function defaultItemForType(
       return {
         type: "user_variable",
         name,
-        variable: defaultVariableForAnyType("confirm") as any,
+        variable: defaultVariableForAnyType("confirm"),
       } as CodebookItem;
     case "unit_variable":
       return {
         type: "unit_variable",
         name,
-        variable: defaultVariableForAnyType("confirm") as any,
+        variable: defaultVariableForAnyType("confirm"),
       } as CodebookItem;
     case "unit_loop":
       return {
@@ -60,7 +59,7 @@ export function defaultItemForType(
             type: "question",
             name: qName,
             variable: defaultVariableForAnyType("confirm"),
-          } as any,
+          },
         ],
       } as CodebookItem;
     case "condition":
@@ -130,7 +129,7 @@ export function ItemForm({
               className="h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold capitalize"
               value={item.variable.type}
               onChange={(e) => {
-                const nextType = e.target.value as any;
+                const nextType = e.target.value;
                 onChange({
                   ...item,
                   variable: defaultVariableForAnyType(nextType),
@@ -145,7 +144,7 @@ export function ItemForm({
             </select>
           </div>
           <VariableTypeForm
-            variable={item.variable as any}
+            variable={item.variable}
             unitVariableNames={unitVariableNames}
             onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
           />
@@ -167,11 +166,11 @@ export function ItemForm({
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-foreground">Template</label>
             <Textarea
-              value={(item as any).layout?.template ?? ""}
+              value={(item as UnitLoopItem).layout?.template ?? ""}
               onChange={(e) =>
                 onChange({
                   ...item,
-                  layout: { ...(item as any).layout, template: e.target.value },
+                  layout: { ...(item as UnitLoopItem).layout, template: e.target.value },
                 } as CodebookItem)
               }
               rows={4}

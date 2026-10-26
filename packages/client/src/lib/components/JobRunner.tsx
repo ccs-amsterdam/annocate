@@ -320,7 +320,7 @@ function JobRunnerContent({
 
   const questionElement = (
     <Question
-      item={item as any}
+      item={item}
       onAnswer={handleAnswer}
       initialValue={
         !isUnitVar
