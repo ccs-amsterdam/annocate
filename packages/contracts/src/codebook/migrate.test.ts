@@ -157,3 +157,10 @@ describe("constants become snippets", () => {
     expect(loop.children[0].variable.question).toBe("About $snippet.intro");
   });
 });
+
+describe("span fields", () => {
+  it("migrates a span question's column to fields", () => {
+    const [item] = migrateCodebookItems([q("s", { type: "span", question: "?", column: "text", options: [{ value: "x" }] })]) as { variable: object }[];
+    expect(item.variable).toEqual({ type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] });
+  });
+});

@@ -37,7 +37,7 @@ export function UnitFields({
       ref={ref}
       style={layout.style as CSSProperties | undefined}
       className={cn(
-        "flex flex-col gap-4 text-foreground",
+        "template-markdown flex flex-col gap-4 text-foreground",
         // A fixed colour scheme (layout.colorScheme): the unit in its own colours, whatever the coder chose.
         layout.colorScheme && [layout.colorScheme, "rounded-lg bg-background p-3"],
       )}

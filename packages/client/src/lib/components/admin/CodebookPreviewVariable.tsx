@@ -70,7 +70,7 @@ export function CodebookPreviewVariable({
       };
   const loop = isLoop ? item : parentLoop;
   // Span questions' fields are selectable during every question, as while coding.
-  const selectable = loop ? spanColumns(loop) : spanVariable ? [spanVariable.column] : [];
+  const selectable = loop ? spanColumns(loop) : (spanVariable?.fields ?? []);
   const rendered = useRenderedLayout(layout, unitData, questions, answers, progress, selectable);
 
   return (
@@ -99,7 +99,7 @@ export function CodebookPreviewVariable({
               {spanVariable ? (
                 <SpanAnnotationProvider
                   key={itemName(item)}
-                  column={spanVariable.column}
+                  fields={spanVariable.fields}
                   options={spanVariable.options}
                   defaultSelectionMode={spanVariable.selectionMode ?? "word"}
                   allowGaps={spanVariable.gaps ?? false}

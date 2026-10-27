@@ -46,7 +46,7 @@ describe("UnitFields", () => {
     const rendered = await renderTemplate(layout.template, scope, undefined, "t", { selectable: ["body"] });
     const during = (column: string) =>
       renderToStaticMarkup(
-        <SpanAnnotationProvider column={column} options={[{ value: "x" }]} initialSpans={[]}>
+        <SpanAnnotationProvider fields={[column]} options={[{ value: "x" }]} initialSpans={[]}>
           <UnitFields layout={layout} rendered={rendered} />
         </SpanAnnotationProvider>,
       );

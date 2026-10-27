@@ -1,7 +1,7 @@
 import { optionLabel } from "@annotinder/contracts";
 import React, { useRef, useCallback, useEffect } from "react";
 import type { SpanAnswer, SpanSlice } from "@annotinder/contracts";
-import { useSpanAnnotation } from "../context/SpanAnnotationContext";
+import { useSpanAnnotation, type PendingSpan } from "../context/SpanAnnotationContext";
 import { getSpanHighlightStyle, getStackedUnderlineStyle } from "../utils/color";
 
 /**
@@ -218,7 +218,15 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
   const context = useSpanAnnotation();
   // Only the span question on screen that selects in this field can select;
   // otherwise the text looks the same, so the layout doesn't shift.
-  const annotation = context && (field === undefined || context.column === field) ? context : null;
+  const own = field ?? context?.fields[0];
+  const ctx = context && own !== undefined && context.fields.includes(own) ? context : null;
+  // This field's spans and pending selection (a question can select in several fields).
+  const annotation = ctx && {
+    ...ctx,
+    spans: ctx.spans.filter((s) => s.field === own),
+    pendingSpan: (ctx.pendingSpan?.field ?? ctx.fields[0]) === own ? ctx.pendingSpan : null,
+    setPendingSpan: (p: PendingSpan | null) => ctx.setPendingSpan(p && { ...p, field: own }),
+  };
   const containerRef = useRef<HTMLDivElement>(null);
 
   const pending = annotation?.pendingSpan ?? null;
@@ -374,9 +382,15 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
     }
   }, [annotation, pending, text]);
 
-  function handleMouseUp() {
-    processSelection();
-  }
+  // On the document, not the text: a drag over an inline field (a headline
+  // over two lines) can end between its line boxes. processSelection only
+  // acts on a selection inside this text.
+  const active = annotation !== null;
+  useEffect(() => {
+    if (!active) return;
+    document.addEventListener("mouseup", processSelection);
+    return () => document.removeEventListener("mouseup", processSelection);
+  }, [active, processSelection]);
 
   function handleKeyUp(e: React.KeyboardEvent) {
     if (e.shiftKey || e.key.startsWith("Arrow")) {
@@ -492,7 +506,6 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
       <Container
         ref={containerRef as React.Ref<HTMLDivElement & HTMLSpanElement>}
         tabIndex={annotation ? 0 : undefined}
-        onMouseUp={annotation ? handleMouseUp : undefined}
         onKeyUp={annotation ? handleKeyUp : undefined}
         className="whitespace-pre-wrap select-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded p-1 transition-all leading-[1.8]"
       >

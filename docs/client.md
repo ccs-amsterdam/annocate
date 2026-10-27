@@ -64,7 +64,9 @@ A unit's layout is **one markdown template** (`UnitLayoutSchema`:
 typed field arrays and grid arrangement. Question and instruction texts are
 templates with the same syntax.
 
-- Rendering: `react-markdown` + `remark-gfm` (`components/TemplateMarkdown.tsx`).
+- Rendering: `react-markdown` + `remark-gfm` (`components/TemplateMarkdown.tsx`);
+  headings, quotes, lists, links and tables in a unit get modest styles
+  (`.template-markdown` in index.css).
   Raw HTML is not supported (no `rehype-raw`), so templates are XSS-safe by
   construction. Root styling uses `style`, a React style object.
 - **Values**: `$unit.<field>`, `$var.<q>.label` (all
@@ -86,8 +88,9 @@ templates with the same syntax.
     questions can't select in it, it doesn't follow the app's fonts or
     dark mode, and HTML that loads images or styles from the web shows
     without them.
-- **Selectable text**: a span question's `column` is a unit field that the
-  layout shows as plain text (`$unit.x` or `{{$unit.x}}`; validation
+- **Selectable text**: a span question's `fields` (one or more; until
+  2026-10-28 a single `column`, migrated) are unit fields that the layout
+  shows as plain text (`$unit.x` or `{{$unit.x}}`; validation
   enforces it), so span offsets always point into one stable string, never
   rendered output. Every such field (all span questions of the loop) is
   rendered as `SelectableText` during every question of the unit, looking
@@ -269,7 +272,10 @@ the buttons answer directly.
   are always `SelectableText` (§3, "Selectable text"); only the active
   question's can select.
 - Spans are stored as **character offsets** (`offset`, `length`) plus the
-  selected `text` (redundant, but saves analysis a re-slice). No
+  selected `text` (redundant, but saves analysis a re-slice), and the
+  `field` they are in: one span question can select in several fields
+  (e.g. the headline and the text). Each field shows its own spans; the
+  pending selection belongs to one field. No
   tokenization library. In word mode a selection (and a click) snaps to
   words; in character mode it is exactly what was selected, and a click
   only opens an existing span.

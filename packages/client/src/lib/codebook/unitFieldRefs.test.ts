@@ -15,8 +15,8 @@ const items = [
         condition: { script: "$unit.source === 'x'" },
         children: [{ type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } }],
       },
-      { type: "question", name: "spans", variable: { type: "span", question: "?", column: "note", options: [] } },
-      { type: "question", name: "spans2", variable: { type: "span", question: "?", column: "text", options: [] } },
+      { type: "question", name: "spans", variable: { type: "span", question: "?", fields: ["note"], options: [] } },
+      { type: "question", name: "spans2", variable: { type: "span", question: "?", fields: ["text"], options: [] } },
     ],
   },
 ] as unknown as TopLevelItem[];

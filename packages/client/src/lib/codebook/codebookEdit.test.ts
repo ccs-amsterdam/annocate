@@ -127,7 +127,7 @@ describe("codebookEdit", () => {
           {
             type: "question",
             name: "span_q",
-            variable: { type: "span", question: "Highlight", column: "text", options: [{ value: "A" }] },
+            variable: { type: "span", question: "Highlight", fields: ["text"], options: [{ value: "A" }] },
           },
         ],
       };
@@ -172,7 +172,7 @@ describe("codebookEdit", () => {
           {
             type: "question",
             name: "span_q",
-            variable: { type: "span", question: "Highlight", column: "text", options: [{ value: "A" }] },
+            variable: { type: "span", question: "Highlight", fields: ["text"], options: [{ value: "A" }] },
           },
         ],
       };

@@ -140,7 +140,7 @@ describe("SelectableText and SpanAnnotationProvider", () => {
   it("renders non-overlapping text when no spans exist", () => {
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
-        column="headline"
+        fields={["headline"]}
         options={[{ value: "actor", color: "#2196f3" }]}
       >
         <SelectableText text="Sample headline text" />
@@ -158,7 +158,7 @@ describe("SelectableText and SpanAnnotationProvider", () => {
 
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
-        column="text"
+        fields={["text"]}
         options={[
           { value: "actor", color: "#2196f3" },
           { value: "color", color: "#ff9800" },
@@ -173,4 +173,23 @@ describe("SelectableText and SpanAnnotationProvider", () => {
     expect(html).toContain("<mark");
     expect(html).toContain("quick brown fox");
   });
+
+  it("shows each field's own spans when a question selects in several fields", () => {
+    const initialSpans: SpanAnswer[] = [
+      { id: "1", field: "headline", value: "actor", slices: [{ offset: 0, length: 4, text: "Lena" }] },
+      { id: "2", field: "text", value: "actor", slices: [{ offset: 4, length: 5, text: "Bakker" }] },
+    ];
+    const html = renderToStaticMarkup(
+      <SpanAnnotationProvider fields={["headline", "text"]} options={[{ value: "actor" }]} initialSpans={initialSpans}>
+        <SelectableText text="Lena wins" field="headline" />
+        <SelectableText text="Dr. Bakker said" field="text" />
+        <SelectableText text="Not annotated" field="other" />
+      </SpanAnnotationProvider>,
+    );
+    expect(html.match(/<mark/g)).toHaveLength(2);
+    expect(html).toMatch(/<mark[^>]*>Lena<\/mark>/);
+    expect(html).toMatch(/<mark[^>]*>Bakke<\/mark>/);
+    expect(html.match(/tabindex="0"/g)).toHaveLength(2);
+  });
 });
+

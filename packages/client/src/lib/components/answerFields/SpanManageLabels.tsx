@@ -165,6 +165,7 @@ export function SpanManageLabels({
             className="h-7 text-xs gap-1 cursor-pointer"
             onClick={() => {
               annotation.setPendingSpan({
+                field: annotation.pendingSpan?.field,
                 slices: candidateSlices,
                 anchorOffset: candidateSlices[0]?.offset,
                 mode: "create",

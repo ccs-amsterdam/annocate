@@ -62,8 +62,8 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
       const variable = child.variable;
       check(child.name, text(variable.question));
       check(child.name, text(variable.instruction));
-      if (variable.type === "span" && !known.has(variable.column)) {
-        warn(child.name, variable.column, `${child.name}: column '${variable.column}' is not a unit field`);
+      if (variable.type === "span") {
+        for (const field of variable.fields.filter((f) => !known.has(f))) warn(child.name, field, `${child.name}: '${field}' is not a unit field`);
       }
     }
   };

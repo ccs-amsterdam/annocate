@@ -34,7 +34,7 @@ export function SessionEnd({ ending, preview, onFinished }: SessionEndProps) {
         </div>
         <h2 className="mt-4 text-xl font-bold tracking-tight text-foreground">{screenout ? "Thank you" : "Job Complete!"}</h2>
         {ending?.message ? (
-          <div className="mt-2 text-sm text-muted-foreground">
+          <div className="template-markdown mt-2 text-sm text-muted-foreground">
             <TemplateMarkdown rendered={ending.message} />
           </div>
         ) : (

@@ -237,10 +237,10 @@ export async function seed(db: Sql): Promise<void> {
           name: "actors_and_issues",
           variable: {
             type: "span",
-            question: "Label the people, organisations, features and products in the text.",
+            question: "Label the people, organisations, features and products in the headline and the text.",
             instruction:
-              "A span question: select words in the text and give them a label. You can label as many spans as you like.",
-            column: "text",
+              "A span question: select words in the headline or the text and give them a label. You can label as many spans as you like.",
+            fields: ["headline", "text"],
             options: [
               { value: "person", label: "Person", color: "#2563eb" },
               { value: "organisation", label: "Organisation", color: "#7c3aed" },

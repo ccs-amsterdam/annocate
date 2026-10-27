@@ -152,10 +152,10 @@ describe("Question dispatcher", () => {
     const item: QuestionItem = {
       name: "span_q",
       type: "unit_variable",
-      variable: { type: "span", question: "Select spans", column: "text", options: [{ value: "actor" }] },
+      variable: { type: "span", question: "Select spans", fields: ["text"], options: [{ value: "actor" }] },
     };
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider column="text" options={[{ value: "actor" }]}>
+      <SpanAnnotationProvider fields={["text"]} options={[{ value: "actor" }]}>
         <Question item={item} onAnswer={onAnswer} />
       </SpanAnnotationProvider>,
     );
@@ -168,14 +168,14 @@ describe("Question dispatcher", () => {
     const item: QuestionItem = {
       name: "span_q",
       type: "unit_variable",
-      variable: { type: "span", question: "Select spans", column: "text", options: [{ value: "actor" }] },
+      variable: { type: "span", question: "Select spans", fields: ["text"], options: [{ value: "actor" }] },
     };
     const initialSpans = [
       { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
-        column="text"
+        fields={["text"]}
         options={[{ value: "actor" }]}
         initialSpans={initialSpans}
         initialIsViewingAllLabels={true}
@@ -193,13 +193,13 @@ describe("Question dispatcher", () => {
     const item: QuestionItem = {
       name: "span_q",
       type: "unit_variable",
-      variable: { type: "span", question: "Select spans", column: "text", options: [{ value: "actor" }] },
+      variable: { type: "span", question: "Select spans", fields: ["text"], options: [{ value: "actor" }] },
     };
     const initialSpans = [
       { id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 5, text: "hello" }] },
     ];
     const html = renderToStaticMarkup(
-      <SpanAnnotationProvider column="text" options={[{ value: "actor" }]} initialSpans={initialSpans}>
+      <SpanAnnotationProvider fields={["text"]} options={[{ value: "actor" }]} initialSpans={initialSpans}>
         <Question item={item} onAnswer={onAnswer} />
       </SpanAnnotationProvider>,
     );
@@ -217,7 +217,7 @@ describe("Question dispatcher", () => {
       variable: {
         type: "span",
         question: "Select spans",
-        column: "text",
+        fields: ["text"],
         options: [{ value: "actor" }, { value: "issue" }],
       },
     };
@@ -232,7 +232,7 @@ describe("Question dispatcher", () => {
 
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
-        column="text"
+        fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
         initialSpans={initialSpans}
         initialPendingSpan={initialPendingSpan}
@@ -253,7 +253,7 @@ describe("Question dispatcher", () => {
       variable: {
         type: "span",
         question: "Select spans",
-        column: "text",
+        fields: ["text"],
         options: [{ value: "actor" }, { value: "issue" }],
       },
     };
@@ -269,7 +269,7 @@ describe("Question dispatcher", () => {
 
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
-        column="text"
+        fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
         initialSpans={initialSpans}
         initialPendingSpan={initialPendingSpan}
@@ -292,7 +292,7 @@ describe("Question dispatcher", () => {
       variable: {
         type: "span",
         question: "Select spans",
-        column: "text",
+        fields: ["text"],
         options: [{ value: "actor" }, { value: "issue" }],
       },
     };
@@ -308,7 +308,7 @@ describe("Question dispatcher", () => {
 
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
-        column="text"
+        fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
         initialSpans={initialSpans}
         initialPendingSpan={initialPendingSpan}
@@ -329,13 +329,13 @@ describe("Question dispatcher", () => {
       variable: {
         type: "span",
         question: "Select spans",
-        column: "text",
+        fields: ["text"],
         options: [{ value: "actor" }, { value: "issue" }],
       },
     };
     const html = renderToStaticMarkup(
       <SpanAnnotationProvider
-        column="text"
+        fields={["text"]}
         options={[{ value: "actor" }, { value: "issue" }]}
         initialPendingSpan={{ slices: [{ offset: 0, length: 5, text: "hello" }], mode: "create" }}
       >

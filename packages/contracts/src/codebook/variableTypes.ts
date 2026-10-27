@@ -155,11 +155,12 @@ export type AutoType = z.infer<typeof AutoTypeSchema>;
 
 export const SpanTypeSchema = VariableBaseSchema.extend({
   type: z.literal("span"),
-  column: z
-    .string()
+  fields: z
+    .array(z.string().min(1))
+    .min(1, "Choose a unit field to select in")
     .describe(
-      "The unit field to select spans in: the loop's layout shows it as plain `$unit.<column>` " +
-        "(selectable for the whole unit, docs/client.md §3)",
+      "The unit fields to select spans in (each span records its field): the loop's layout shows each as plain " +
+        "`$unit.<field>` (selectable for the whole unit, docs/client.md §3)",
     ),
   options: NominalOptionsSchema,
   editMode: z.boolean().optional(),

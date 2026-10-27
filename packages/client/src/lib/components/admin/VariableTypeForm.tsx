@@ -76,11 +76,14 @@ export function VariableTypeForm({
   variable,
   onChange,
   unitVariableNames,
+  layoutFields,
 }: {
   variable: AnyVariableType;
   onChange: (next: AnyVariableType) => void;
   /** Sibling `unit_variable` names in the same codebook, for `relation`'s from/to variable pickers. */
   unitVariableNames?: string[];
+  /** In a loop: the unit fields its layout shows (what a span question can select in). */
+  layoutFields?: string[];
 }) {
   switch (variable.type) {
     case "nominal":
@@ -197,14 +200,7 @@ export function VariableTypeForm({
       return (
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Unit field to select in</label>
-            <Input
-              value={v.column}
-              onChange={(e) => onChange({ ...v, column: e.target.value })}
-              placeholder="Shown as $unit.<field> in the layout"
-            />
-          </div>
+          <SpanFieldsPicker value={v.fields} layoutFields={layoutFields} onChange={(fields) => onChange({ ...v, fields })} />
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium">Default Selection Mode</label>
             <select
@@ -351,7 +347,7 @@ export function defaultVariableForAnyType(type: string): AnyVariableType {
     case "auto":
       return { type: "auto", source: "random", options: [{ value: "control" }, { value: "experiment" }] };
     case "span":
-      return { type: "span", question: "", column: "", options: [{ value: "label_1", label: "Label 1" }] };
+      return { type: "span", question: "", fields: [], options: [{ value: "label_1", label: "Label 1" }] };
     case "relation":
       return {
         type: "relation",
@@ -561,5 +557,65 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
         onChange={(layout) => onChange({ ...v, layout: layout === "auto" ? undefined : (layout as NumericType["layout"]) })}
       />
     </>
+  );
+}
+
+/**
+ * The unit fields a span question selects in: the fields the loop's layout
+ * shows, to switch on and off (each span records its field). Without the
+ * layout's fields (outside a loop): names separated by commas.
+ */
+function SpanFieldsPicker({
+  value,
+  layoutFields,
+  onChange,
+}: {
+  value: string[];
+  layoutFields?: string[];
+  onChange: (fields: string[]) => void;
+}) {
+  const toggle = (field: string) => onChange(value.includes(field) ? value.filter((f) => f !== field) : [...value, field]);
+  const names = [...new Set([...(layoutFields ?? []), ...value])];
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium">Unit fields to select in</label>
+      {layoutFields ? (
+        names.length === 0 ? (
+          <p className="text-xs text-muted-foreground">The layout shows no unit fields yet: add them as $unit.&lt;field&gt; in the loop&apos;s layout.</p>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {names.map((name) => {
+              const shown = layoutFields.includes(name);
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => toggle(name)}
+                  title={shown ? undefined : "The layout doesn't show this field as $unit." + name}
+                  className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${
+                    !shown
+                      ? "border-destructive text-destructive"
+                      : value.includes(name)
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        <Input
+          value={value.join(", ")}
+          onChange={(e) => onChange(e.target.value.split(",").map((f) => f.trim()).filter(Boolean))}
+          placeholder="text, headline"
+        />
+      )}
+      <p className="text-[11px] text-muted-foreground">
+        Spans record the field they are in, so one question can annotate e.g. the headline and the text.
+      </p>
+    </div>
   );
 }

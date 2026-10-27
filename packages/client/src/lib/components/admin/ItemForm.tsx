@@ -148,6 +148,7 @@ export function ItemForm({
           <VariableTypeForm
             variable={item.variable}
             unitVariableNames={unitVariableNames}
+            layoutFields={isInsideLoop ? loopFields : undefined}
             onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
           />
           {isInsideLoop && loopFields && (
@@ -265,7 +266,7 @@ function ShowFieldSelect({
           onChange(next);
         }}
       >
-        <option value="">{variable.type === "span" ? `Its text (${variable.column || "none"})` : "None"}</option>
+        <option value="">{variable.type === "span" ? `Its first field (${variable.fields[0] || "none"})` : "None"}</option>
         {fields.map((f) => (
           <option key={f} value={f}>
             {f}

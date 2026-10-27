@@ -103,7 +103,7 @@ const questions = new Map<string, AnyVariableType>([
   ["age", { type: "numeric", question: "?", labels: [{ value: 18, label: "adult" }] }],
   ["ok", { type: "confirm", question: "?" }],
   ["slot", { type: "auto", source: "invite", options: [{ value: "1" }] }],
-  ["ents", { type: "span", question: "?", column: "text", options: [{ value: "PER", label: "Person" }] }],
+  ["ents", { type: "span", question: "?", fields: ["text"], options: [{ value: "PER", label: "Person" }] }],
 ]);
 
 describe("referenceShape", () => {

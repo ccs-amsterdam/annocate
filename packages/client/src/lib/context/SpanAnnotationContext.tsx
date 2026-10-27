@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useMemo, type ReactNode } from "re
 import type { NominalOption, SpanAnswer, SpanSlice } from "@annotinder/contracts";
 
 export interface PendingSpan {
+  /** The unit field the slices are in (a span question can select in several). */
+  field?: string;
   slices: SpanSlice[];
   anchorOffset?: number;
   /** When clicking an existing span, contains all overlapping span IDs on that token/word */
@@ -18,15 +20,15 @@ export interface PendingSpan {
  * form (which receives the coder's code choice and renders via
  * `Question`/`SpanAnswerField`) and the interactive text selection that has
  * to happen inside `UnitFields`' rendered layout, for the SAME unit-data
- * column (docs/client.md §4: annotation should be integrated with the
+ * fields (docs/client.md §4: annotation should be integrated with the
  * question flow, not a separate "annotation mode").
  *
  * `JobRunner` mounts one `SpanAnnotationProvider` wrapping both `UnitFields`
  * and the answer form whenever the current step is a `span` unit_variable.
  */
 export interface SpanAnnotationState {
-  /** The unit data column the current span variable targets. */
-  column: string;
+  /** The unit fields the current span question selects in. */
+  fields: string[];
   /** The span question's options (value, label, color). */
   options: NominalOption[];
   spans: SpanAnswer[];
@@ -35,10 +37,11 @@ export interface SpanAnnotationState {
   allowGaps: boolean;
   pendingSpan: PendingSpan | null;
   setPendingSpan: (pending: PendingSpan | null) => void;
+  /** Adds a span in the pending selection's field. */
   addSpan: (slices: SpanSlice[], value: string) => void;
   updateSpan: (id: string, newValue: string) => void;
   removeSpan: (id: string) => void;
-  /** True if any candidate slice overlaps any already-collected span. */
+  /** True if any candidate slice overlaps an already-collected span (in the pending selection's field). */
   overlapsExisting: (slices: SpanSlice[]) => boolean;
   /** True if an identical span (same value and exact same slices) exists. */
   hasExactSpan: (slices: SpanSlice[], value: string) => boolean;
@@ -57,7 +60,7 @@ export function useSpanAnnotation(): SpanAnnotationState | null {
 }
 
 export function SpanAnnotationProvider({
-  column,
+  fields,
   options,
   defaultSelectionMode = "word",
   allowGaps = false,
@@ -67,7 +70,7 @@ export function SpanAnnotationProvider({
   variableName,
   children,
 }: {
-  column: string;
+  fields: string[];
   options: NominalOption[];
   defaultSelectionMode?: "word" | "character";
   allowGaps?: boolean;
@@ -107,9 +110,15 @@ export function SpanAnnotationProvider({
     }
   };
 
+  // Compared by content: callers pass a new array each render.
+  const fieldsKey = fields.join("\u0000");
+  // Spans in the field of the pending selection (overlap and duplicates are per field).
+  const pendingField = pendingSpan?.field ?? fields[0];
+  const inPendingField = (list: SpanAnswer[]) => list.filter((s) => s.field === pendingField);
+
   const value = useMemo<SpanAnnotationState>(
     () => ({
-      column,
+      fields,
       options,
       spans,
       selectionMode,
@@ -131,7 +140,7 @@ export function SpanAnnotationProvider({
             ...prev,
             {
               id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-              field: column,
+              field: pendingSpan?.field ?? fields[0] ?? "",
               value: spanValue,
               slices,
             },
@@ -141,7 +150,7 @@ export function SpanAnnotationProvider({
         setSpans((prev) => prev.map((s) => (s.id === id ? { ...s, value: newValue } : s))),
       removeSpan: (id) => setSpans((prev) => prev.filter((s) => s.id !== id)),
       overlapsExisting: (slices) =>
-        spans.some((s) =>
+        inPendingField(spans).some((s) =>
           s.slices.some((sSlice) =>
             slices.some(
               (cand) => cand.offset < sSlice.offset + sSlice.length && sSlice.offset < cand.offset + cand.length,
@@ -149,7 +158,7 @@ export function SpanAnnotationProvider({
           ),
         ),
       hasExactSpan: (slices, spanValue) =>
-        spans.some(
+        inPendingField(spans).some(
           (s) =>
             s.value === spanValue &&
             s.slices.length === slices.length &&
@@ -160,7 +169,7 @@ export function SpanAnnotationProvider({
       focusedSpanId,
       setFocusedSpanId,
     }),
-    [column, options, spans, selectionMode, allowGaps, pendingSpan, isViewingAllLabels, focusedSpanId],
+    [fieldsKey, options, spans, selectionMode, allowGaps, pendingSpan, isViewingAllLabels, focusedSpanId],
   );
 
   return <SpanAnnotationContext.Provider value={value}>{children}</SpanAnnotationContext.Provider>;

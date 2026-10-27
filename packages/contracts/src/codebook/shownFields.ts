@@ -33,10 +33,10 @@ export function shownUnitFields(items: readonly unknown[]): string[] {
         } else if (item.type === "end") {
           text(item.message);
         } else if ("variable" in item && item.variable) {
-          const variable = item.variable as { question?: unknown; instruction?: unknown; type?: string; column?: string };
+          const variable = item.variable as { question?: unknown; instruction?: unknown; type?: string; fields?: unknown };
           text(variable.question);
           text(variable.instruction);
-          if (variable.type === "span" && variable.column) fields.add(variable.column);
+          if (variable.type === "span" && Array.isArray(variable.fields)) for (const f of variable.fields) if (typeof f === "string") fields.add(f);
         }
       }
     };

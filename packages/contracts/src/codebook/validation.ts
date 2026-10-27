@@ -306,15 +306,17 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         : [],
     );
     forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {
-      const variable = q.variable as { type?: string; column?: string; field?: unknown } | undefined;
+      const variable = q.variable as { type?: string; fields?: unknown; field?: unknown } | undefined;
       if (typeof variable?.field === "string" && !shownFields.has(variable.field)) {
         issue([...path, "variable", "field"], `Field '${variable.field}' is not shown in the layout (as $unit.${variable.field})`);
       }
-      if (variable?.type === "span" && variable.column && !selectable.has(variable.column)) {
-        issue(
-          [...path, "variable", "column"],
-          `Span question '${q.name}' selects text in '${variable.column}', but the layout doesn't show it as plain $unit.${variable.column}`,
-        );
+      for (const field of variable?.type === "span" && Array.isArray(variable.fields) ? variable.fields : []) {
+        if (typeof field === "string" && !selectable.has(field)) {
+          issue(
+            [...path, "variable", "fields"],
+            `Span question '${q.name}' selects text in '${field}', but the layout doesn't show it as plain $unit.${field}`,
+          );
+        }
       }
     });
     return snippets;

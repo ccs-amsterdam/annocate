@@ -55,8 +55,14 @@ export function migrateVariable(raw: unknown): unknown {
       const { level, ...other } = raw;
       return { ...other, type: level === "ordinal" ? "ordinal" : "nominal" };
     }
+    case "span": {
+      // Until 2026-10-28 a span question selected in one `column`; now in one or more `fields`.
+      const migrated: Raw = "codes" in raw ? { ...rest, options: nominalOptions(codes) } : { ...raw };
+      if (typeof migrated.column === "string" && !Array.isArray(migrated.fields)) migrated.fields = migrated.column ? [migrated.column] : [];
+      delete migrated.column;
+      return migrated;
+    }
     case "annotinder":
-    case "span":
     case "relation":
       return "codes" in raw ? { ...rest, options: nominalOptions(codes) } : raw;
     case "auto":

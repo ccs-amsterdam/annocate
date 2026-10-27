@@ -362,13 +362,18 @@ describe("reference validation", () => {
   });
 
   it("requires span columns to be shown as plain text in the layout (::tokenize is the old spelling)", () => {
-    const span = questionVar("s", { type: "span", question: "?", column: "text", options: [{ value: "x" }] });
+    const span = questionVar("s", { type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] });
     expect(messages([unitLoop("l", [span], "$unit.text::markdown")])).toEqual([
       "Span question 's' selects text in 'text', but the layout doesn't show it as plain $unit.text",
     ]);
     expect(messages([unitLoop("l", [span], "# $unit.headline\n\n$unit.text")])).toEqual([]);
     expect(messages([unitLoop("l", [span], "{{$unit.text}}")])).toEqual([]);
     expect(messages([unitLoop("l", [span], "$unit.text::tokenize")])).toEqual([]);
+    const both = questionVar("s", { type: "span", question: "?", fields: ["headline", "text"], options: [{ value: "x" }] });
+    expect(messages([unitLoop("l", [both], "# $unit.headline\n\n$unit.text")])).toEqual([]);
+    expect(messages([unitLoop("l", [both], "# $unit.headline::markdown\n\n$unit.text")])).toEqual([
+      "Span question 's' selects text in 'headline', but the layout doesn't show it as plain $unit.headline",
+    ]);
   });
 
 
