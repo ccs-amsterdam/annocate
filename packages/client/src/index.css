@@ -3,7 +3,10 @@
 @import 'tailwindcss';
 
 /* `dark:` follows the `dark` class on <html> (context/theme.ts), not only the system setting. */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Dark mode: `.dark` on <html> (the coder's choice), or on a part that is
+   always dark; a part inside that is always light has `.light` (a unit
+   layout's `colorScheme`, UnitFields). */
+@custom-variant dark (&:where(.dark, .dark *):not(:where(.light, .light *)));
 
 @theme {
   --color-border: var(--border);
@@ -76,7 +79,8 @@
 
     --font-sans: 'Geist Variable', sans-serif
   }
-  :root {
+  :root,
+  .light {
     /* Ported from old/src/app/globals.css -- Annotinder's teal brand theme,
        instead of the unbranded shadcn scaffold default. */
     --background: hsl(240 10% 99%);
@@ -297,5 +301,14 @@
 @media (prefers-reduced-motion: reduce) {
   .field-focus {
     animation: none;
+  }
+}
+
+@layer base {
+  .light {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
   }
 }

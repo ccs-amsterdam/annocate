@@ -126,6 +126,13 @@ templates with the same syntax.
   sits between two marker paragraphs that `remarkTemplateValues` turns
   into a `<template-style>` element. `JobManager` passes the question on
   screen and the loop's question order for `from`.
+- **`colorScheme`** (optional, `light` or `dark`): the unit is always
+  shown in those colours (with its own background), whatever the coder
+  chose; for styled content that only looks right in one. The rest of the
+  app follows the coder. `UnitFields` gives the layout the `light` or
+  `dark` class: the theme variables are defined for `:root, .light` and
+  `.dark`, and Tailwind's `dark:` variant doesn't apply inside `.light`
+  (index.css).
 - **Field markers**: the element of every bare `$unit.<field>` value has
   `data-field="<field>"` (an attribute, not an `id`: a field may be used
   twice, and ids could clash with the app's). A question's optional

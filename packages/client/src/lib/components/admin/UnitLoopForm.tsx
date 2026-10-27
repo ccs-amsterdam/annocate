@@ -329,6 +329,22 @@ function LayoutTab({
         <IssueList issues={issues} />
       </Section>
 
+      <Section title="Colours" help="Styled content may only look right in light or dark colours.">
+        <select
+          className={`${selectClass} w-fit`}
+          value={layout.colorScheme ?? ""}
+          onChange={(e) => {
+            const next = { ...layout, colorScheme: (e.target.value || undefined) as UnitLayout["colorScheme"] };
+            if (!next.colorScheme) delete next.colorScheme;
+            onChange({ ...loop, layout: next });
+          }}
+        >
+          <option value="">Follow the coder&apos;s light or dark mode</option>
+          <option value="light">Always light</option>
+          <option value="dark">Always dark</option>
+        </select>
+      </Section>
+
       <Section
         title="Constants"
         help="Texts the template uses as $const.<name>, e.g. an introduction per experimental condition. They are part of the codebook version."

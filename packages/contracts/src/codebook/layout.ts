@@ -31,6 +31,10 @@ export const UnitLayoutSchema = z.object({
    */
   constants: z.record(z.string(), z.string()).optional(),
   style: z.record(z.string(), z.string()).optional().describe("Optional inline CSS for the layout's root container"),
+  colorScheme: z
+    .enum(["light", "dark"])
+    .optional()
+    .describe("Always show the unit in light or dark colours (e.g. for styled content). Default: follow the coder's setting."),
   /** A non-rendered "meta" field, e.g. a source link shown alongside the unit but not part of the template. */
   meta: z.array(UnitLayoutMetaFieldSchema).optional(),
 });

@@ -64,4 +64,11 @@ describe("UnitFields", () => {
     expect(html).toContain("<code>$unit.a</code>");
     expect(html).not.toContain("undefined");
   });
+
+  it("shows a unit always light or dark with the layout's colorScheme", async () => {
+    const light = renderToStaticMarkup(<UnitFields {...await render({ template: "x", colorScheme: "light" }, {})} />);
+    expect(light).toMatch(/class="[^"]*\blight\b[^"]*bg-background/);
+    const follow = renderToStaticMarkup(<UnitFields {...await render({ template: "x" }, {})} />);
+    expect(follow).not.toMatch(/\b(light|dark)\b/);
+  });
 });

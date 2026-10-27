@@ -2,13 +2,15 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import type { UnitLayout } from "@annotinder/contracts";
 import type { RenderedTemplate } from "../codebook/renderTemplate";
 import { TemplateMarkdown } from "./TemplateMarkdown";
+import { cn } from "cn";
 
 /**
  * Renders a unit's layout (docs/client.md §3): its template, with the
  * values already evaluated (`renderTemplate`, done by `JobManager`). With
  * `focusField` (the question's `field`, or a span question's column) the
  * field's element (`data-field`) is scrolled into view and briefly
- * highlighted when the question comes up.
+ * highlighted when the question comes up. A layout's `colorScheme` shows
+ * the unit always light or dark.
  */
 export function UnitFields({
   layout,
@@ -31,7 +33,15 @@ export function UnitFields({
   }, [focusField, rendered]);
 
   return (
-    <div ref={ref} style={layout.style as CSSProperties | undefined} className="flex flex-col gap-4 text-foreground">
+    <div
+      ref={ref}
+      style={layout.style as CSSProperties | undefined}
+      className={cn(
+        "flex flex-col gap-4 text-foreground",
+        // A fixed colour scheme (layout.colorScheme): the unit in its own colours, whatever the coder chose.
+        layout.colorScheme && [layout.colorScheme, "rounded-lg bg-background p-3"],
+      )}
+    >
       <TemplateMarkdown rendered={rendered} />
     </div>
   );
