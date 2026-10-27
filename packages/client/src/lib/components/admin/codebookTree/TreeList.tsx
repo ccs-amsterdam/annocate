@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { cn } from "cn";
 import type { TreePosition } from "../../../codebook/codebookEdit";
 import { TreeItemRow } from "./TreeItemRow";
@@ -13,22 +12,14 @@ interface TreeListProps {
   parent: TreeNode | null;
 }
 
-/**
- * Renders a list of items (recursing into children). While moving, a
- * "move here" slot shows at every place the ticked items may go: before
- * each item and at the end of each list.
- */
+/** Renders a list of items (recursing into children). */
 export function TreeList({ nodes, parent }: TreeListProps) {
   const end: TreePosition = { into: parent === null ? null : getItemKey(parent) };
   return (
     <div className="flex flex-col">
       {nodes.map((node) => (
-        <Fragment key={getItemKey(node)}>
-          <MoveSlot position={{ before: getItemKey(node) }} />
-          <TreeNodeView item={node} />
-        </Fragment>
+        <TreeNodeView key={getItemKey(node)} item={node} />
       ))}
-      <MoveSlot position={end} />
       <PreviewLine position={end} />
     </div>
   );
@@ -70,24 +61,5 @@ function PreviewLine({ position }: { position: TreePosition }) {
     <div className="relative h-0">
       <InsertionLine />
     </div>
-  );
-}
-
-/** A place the ticked items can move to (only while moving, only where they may go). */
-function MoveSlot({ position }: { position: TreePosition }) {
-  const tree = useCodebookTree();
-  if (!tree.moving || !tree.canMoveTo(position)) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => tree.moveTo(position)}
-      className="group/slot flex h-5 w-full cursor-pointer items-center gap-2 px-2"
-    >
-      <span className="h-px flex-1 border-t border-dashed border-primary/40 group-hover/slot:border-solid group-hover/slot:border-primary" />
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/60 group-hover/slot:text-primary">
-        Move here
-      </span>
-      <span className="h-px flex-1 border-t border-dashed border-primary/40 group-hover/slot:border-solid group-hover/slot:border-primary" />
-    </button>
   );
 }

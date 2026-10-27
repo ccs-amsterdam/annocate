@@ -18,7 +18,7 @@ export function TreePanel({ draft, readOnly }: { draft: CodebookDraft; readOnly:
         </p>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 scroll-pt-10 overflow-y-auto">
         <CodebookTreeView
           items={draft.items}
           selected={draft.selected}

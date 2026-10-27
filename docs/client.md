@@ -355,9 +355,12 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     possibly for several levels; an empty container: inside or after it)
     its menu asks where first (`addPositions` in `codebook/codebookEdit.ts`).
     Moving and deleting work on ticked items (a container brings its
-    children), from the toolbar above the tree: Delete asks once; Move
-    shows a "move here" slot at every place all ticked items may go (and
-    where it changes something), and they move there in order.
+    children), from the toolbar above the tree: Delete asks once. Move
+    turns each row's + into "move below this item", at the same place (the
+    tree doesn't shift), on rows below which all ticked items may go (and
+    where it changes something); where that is ambiguous it asks, as
+    adding does. "Move to the top" is in the toolbar. The items keep
+    their order.
   - **JSON**: the whole codebook (`CodebookJsonEditor.tsx`). JSON rather
     than YAML: the structure is explicit (no indentation to get right in a
     browser), and the editor (Monaco, bundled and loaded only with the

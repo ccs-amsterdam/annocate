@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Move, Trash2, X } from "lucide-react";
+import { CornerDownLeft, Move, Trash2, X } from "lucide-react";
 import type { CodebookValidationIssue, TopLevelItem } from "@annotinder/contracts";
 import {
   addPositions,
@@ -38,14 +38,15 @@ interface CodebookTreeViewProps {
  *   is ambiguous (the last item of a loop: inside or after the loop; an
  *   empty loop or condition: inside or after it) its menu asks where first.
  * - Moving and deleting: tick items (a container brings its children),
- *   then Move or Delete in the toolbar. Move shows a "move here" slot at
- *   every place all ticked items may go.
+ *   then Move or Delete in the toolbar. While moving, each row's + becomes
+ *   "move below this item" (asking where if ambiguous, like adding), on
+ *   rows where all ticked items may go; nothing else in the tree changes.
  *
  * Components (see ./codebookTree):
- * - TreeList     recursive list of items, with the move slots
+ * - TreeList     recursive list of items
  * - TreeItemRow  an item row: tick box, item, +
  * - TreeRow      shared fixed-height row layout + insertion line
- * - AddItemMenu  "+" button: where (if ambiguous), then item type
+ * - AddItemMenu  "+" button: where (if ambiguous), then item type; or where to move
  */
 export function CodebookTreeView({
   items,
@@ -124,7 +125,14 @@ export function CodebookTreeView({
         <div className="sticky top-0 z-10 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
           {moving ? (
             <>
-              <span className="font-medium text-primary">Click &ldquo;Move here&rdquo; where {count} should go</span>
+              <span className="font-medium text-primary">
+                Click <CornerDownLeft className="inline h-3.5 w-3.5" /> on a row to move {count} below it
+              </span>
+              {items.length > 0 && state.canMoveTo({ before: getItemKey(items[0]) }) && (
+                <Button size="sm" variant="outline" className="h-7" onClick={() => state.moveTo({ before: getItemKey(items[0]) })}>
+                  Move to the top
+                </Button>
+              )}
               <Button size="sm" variant="ghost" className="ml-auto h-7" onClick={() => setMoving(false)}>
                 Cancel
               </Button>

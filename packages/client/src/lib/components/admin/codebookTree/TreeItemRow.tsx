@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CornerDownLeft } from "lucide-react";
 import { cn } from "cn";
 import { useCodebookTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
@@ -43,27 +43,41 @@ export function positionLabel(items: TopLevelItem[], position: TreePosition): st
 /**
  * An item row: a tick box (for moving and deleting several items, shown
  * on hover or while items are ticked), the item (click: open it), and a +
- * to add an item below it (shown on hover).
+ * to add an item below it (shown on hover). While moving, the + becomes
+ * "move below this item", at the same place: rows never shift.
  */
 export function TreeItemRow({ item }: { item: TreeNode }) {
   const tree = useCodebookTree();
   const key = getItemKey(item);
   const ticked = tree.isChecked(key);
   const inTicked = ticked && !tree.checked.has(key);
-  const editable = !tree.readOnly && !tree.moving;
+  const positions = tree.readOnly ? [] : tree.addPositions(key);
+  // Moving: the places below this row the ticked items may go.
+  const options: AddOption[] = (tree.moving ? positions.filter(tree.canMoveTo) : positions).map((position) => ({
+    position,
+    label: positionLabel(tree.items, position),
+    types: insertableTypesAt(tree.items, position),
+  }));
 
-  const options: AddOption[] = editable
-    ? tree.addPositions(key).map((position) => ({
-        position,
-        label: positionLabel(tree.items, position),
-        types: insertableTypesAt(tree.items, position),
-      }))
-    : [];
+  const action = tree.readOnly ? null : tree.moving ? (
+    <AddItemMenu
+      key="move"
+      icon={CornerDownLeft}
+      title="Move below this item"
+      className="text-primary"
+      options={options.map((o) => ({ ...o, label: `Move ${o.label[0].toLowerCase()}${o.label.slice(1)}` }))}
+      onAdd={() => undefined}
+      onPick={tree.moveTo}
+      onPreview={tree.setPreview}
+    />
+  ) : (
+    <AddItemMenu key="add" options={options} onAdd={tree.addAt} onPreview={tree.setPreview} />
+  );
 
   return (
     <TreeRow
-      actions={editable && <AddItemMenu options={options} onAdd={tree.addAt} onPreview={tree.setPreview} />}
-      dimActions
+      actions={action}
+      dimActions={!tree.moving}
       className={cn(
         tree.selected === key ? "font-bold hover:text-foreground" : "font-thin hover:bg-muted/10",
         ticked && "bg-primary/10",
