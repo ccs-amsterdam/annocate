@@ -4,74 +4,74 @@ import { ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildValues } from "./answerValue";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
+import { useSwipe, type SwipeDirection } from "../SwipeCard";
 
 type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
-type Direction = "left" | "right" | "up";
 
-interface DirectionOption {
-  direction: Direction;
-  option: NominalOption;
-  label: string;
-}
+const ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
+const KEYS: Record<string, SwipeDirection> = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up" };
 
-/** The options in order: left, right, up. */
-function getDirectionOptions(variable: AnnotinderVariable): DirectionOption[] {
-  return variable.options.slice(0, 3).map((option, index) => {
-    const direction = SWIPE_DIRECTIONS[index];
-    return { direction, option, label: `Swipe ${direction}` };
-  });
-}
-
-function getDirectionIcon(direction: Direction) {
-  if (direction === "left") return <ArrowLeft className="size-5" />;
-  if (direction === "right") return <ArrowRight className="size-5" />;
-  return <ArrowUp className="size-5" />;
-}
-
+/**
+ * A swipe question: the card (the unit, see `SwipeCard`) is swiped left,
+ * right or up for the 1st, 2nd and 3rd option. The buttons and arrow keys
+ * do the same; with a card they fly it off first.
+ */
 export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<AnnotinderVariable>) {
-  const directionOptions = getDirectionOptions(variable);
+  const swipe = useSwipe();
+  const options = variable.options.slice(0, 3);
+
+  const choose = (direction: SwipeDirection) => {
+    const option = options[SWIPE_DIRECTIONS.indexOf(direction)];
+    if (!option) return;
+    if (swipe) swipe.swipe(direction);
+    else onAnswer(buildValues([{ value: option.value }]));
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-
-      const direction =
-        event.key === "ArrowLeft" ? "left" : event.key === "ArrowRight" ? "right" : event.key === "ArrowUp" ? "up" : null;
-      if (!direction) return;
-
-      const nextOption = directionOptions.find((option) => option.direction === direction);
-      if (!nextOption) return;
-
+      const direction = KEYS[event.key];
+      if (!direction || !options[SWIPE_DIRECTIONS.indexOf(direction)]) return;
       event.preventDefault();
-      onAnswer(buildValues([{ value: nextOption.option.value }]));
+      choose(direction);
     };
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [directionOptions, onAnswer]);
+  });
+
+  // Left on the left, right on the right, up in the middle.
+  const [left, right, up] = options;
+  const buttons: [SwipeDirection, NominalOption | undefined][] = [
+    ["left", left],
+    ["up", up],
+    ["right", right],
+  ];
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Use the arrow keys or tap a direction to choose a response.</p>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {directionOptions.map((option) => (
-          <Button
-            key={option.direction}
-            type="button"
-            variant="outline"
-            className="h-auto min-h-24 flex-col gap-3 whitespace-normal px-4 py-4"
-            style={option.option.color ? { borderColor: option.option.color, color: option.option.color } : undefined}
-            onClick={() => onAnswer(buildValues([{ value: option.option.value }]))}
-          >
-            {getDirectionIcon(option.direction)}
-            <span className="text-center">
-              <span className="block text-xs uppercase tracking-wide opacity-70">{option.label}</span>
-              <span className="block font-medium">{optionLabel(option.option)}</span>
-            </span>
-          </Button>
-        ))}
+    <div className="flex flex-col gap-1.5">
+      <div className="flex gap-1.5">
+        {buttons.map(([direction, option]) => {
+          if (!option) return null;
+          const Icon = ICONS[direction];
+          return (
+            <Button
+              key={direction}
+              type="button"
+              variant="outline"
+              aria-label={`${optionLabel(option)} (swipe ${direction})`}
+              className={`h-10 min-w-0 flex-1 gap-1.5 px-2 ${direction === "right" ? "flex-row-reverse" : ""}`}
+              style={option.color ? { borderColor: option.color, color: option.color } : undefined}
+              onClick={() => choose(direction)}
+            >
+              <Icon className="size-4 shrink-0" />
+              <span className="truncate font-medium">{optionLabel(option)}</span>
+            </Button>
+          );
+        })}
       </div>
-      {/* TODO: replace this directional-button fallback with a swipe-card gesture UI (as in the old app). */}
+      <p className="text-center text-[11px] text-muted-foreground">
+        {swipe ? "Swipe the card, use the arrow keys, or tap." : "Use the arrow keys or tap."}
+      </p>
     </div>
   );
 }

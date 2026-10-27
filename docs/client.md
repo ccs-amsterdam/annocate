@@ -168,6 +168,19 @@ layout doesn't fit. Buttons are about 40 px tall.
 Number keys 1-9 pick an option; one answer is given on the first click,
 several are confirmed with Continue.
 
+**Swiping** (`annotinder`, `components/SwipeCard.tsx`): in a unit loop the
+unit itself is the card; outside one, the question card. The coder drags
+it left, right or up (1st, 2nd, 3rd option); while dragging it tilts and
+shows the option for that direction. Released past 30% of its width (100+
+px up), or flung, it flies off and that option is the answer; otherwise it
+springs back. The answer pane keeps the question with a compact row of
+direction buttons (left, up, right), and the arrow keys work too; both fly
+the card off the same way. Pointer events, no gesture library. Long units
+still scroll: vertical drags are the browser's (`touch-action: pan-y`),
+except an upward drag once the content is at its bottom (then `pan-up`, so
+the browser only scrolls back up). Without a card (the editor's preview)
+the buttons answer directly.
+
 ### Span and relation answers
 
 - Span and relation questions are ordinary steps in the question flow, not
@@ -401,9 +414,8 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   or browser e2e suite in CI yet (browser checks so far are manual
   Playwright runs).
 - No visual/UX parity pass against the old app was done.
-- Swipe questions (`annotinder`) show direction buttons and take the arrow
-  keys; the swipe-card gesture UI is still to come, and could then become
-  `layout: "swipe"` of `categorical`.
+- Swipe could become `layout: "swipe"` of `categorical` instead of its own
+  type (`annotinder`).
 - Not built (no case yet): numeric batteries (a thermometer per party),
   scale-level helpers (sum, mean; advanced scripts can compute them from
   `$var.q.values`), translated labels.

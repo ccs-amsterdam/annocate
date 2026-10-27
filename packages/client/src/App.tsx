@@ -79,7 +79,7 @@ function App() {
   const [view, setView] = useState<View>(params.has("invite") || params.has("transfer") ? "annotate" : "admin");
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen flex-col overflow-clip bg-background text-foreground">
       {/* Dev Shell Navbar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
         <div className="flex items-center gap-3">
@@ -87,11 +87,11 @@ function App() {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
               A
             </span>
-            <span className="font-heading text-lg font-bold tracking-tight text-foreground">
+            <span className="hidden font-heading text-lg font-bold tracking-tight text-foreground sm:inline">
               Annotinder
             </span>
           </div>
-          <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          <span className="hidden rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline">
             dev mode
           </span>
         </div>
