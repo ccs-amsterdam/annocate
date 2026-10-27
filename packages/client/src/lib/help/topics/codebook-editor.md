@@ -28,7 +28,7 @@ The tree shows every item, indented under the loop or condition it is in.
 Its icon shows what it is: a question has the icon of its answer type
 (hover over an icon to see the type), a loop a circular arrow, a condition
 a branch, an end item an exit arrow. A loop shows its label (or *Unit loop*)
-and which units it hands out (*all units*, *part_1, shared*, or *2 branches*
+and which units it hands out (*all units*, *part_1, shared*, or *2 coder groups*
 for a loop with two [coder groups](coder-groups.md), ...); a condition shows
 its condition in words (*if age < 18*), or its label if you gave it one.
 

@@ -169,6 +169,18 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     expect(itemName(manager.getSnapshot().currentItem!)).toBe("last");
   });
 
+  it("lists the unit's questions in the navigation as shown: hidden ones left out, texts as plain labels", async () => {
+    const q3 = { ...unitVar("q3"), variable: { ...unitVar("q3").variable, question: "## Is **$unit.headline** about [[topic]]?\nMore" } } as InLoopItem;
+    const loop = unitLoop("loop", [unitVar("q1"), { type: "condition", condition: { script: `$var.q1.is("A")` }, children: [unitVar("q2")] } as InLoopItem, q3]);
+    const server = makeFlakyServer({ getSession: vi.fn(async () => session([loop])), getNextUnit: vi.fn(async () => unit(1)) });
+    const manager = new JobManager(server);
+    await manager.start();
+    await manager.answer({ done: true, values: [{ value: "B" }] } as VariableValue);
+    const questions = manager.getSnapshot().navigation.phases[0].questions!;
+    expect(questions.map((q) => [q.name, q.isCurrent])).toEqual([["q1", false], ["q3", true]]);
+    expect(questions[1].label).toBe("Is … about …?");
+  });
+
   it("asks the server for the next unit by loop name", async () => {
     let unitsServed = 0;
     const getNextUnit = vi.fn(async (loop: string) => {

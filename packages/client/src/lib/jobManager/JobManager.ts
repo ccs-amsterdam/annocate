@@ -161,33 +161,25 @@ function errorCodeOf(err: unknown): string | null {
 function getQuestionLabel(item: CodebookItem): string {
   if ("variable" in item && item.variable && "question" in item.variable) {
     const q = item.variable.question;
-    if (typeof q === "string" && q.trim().length > 0) {
-      return q.trim().split("\n")[0];
-    }
+    if (typeof q === "string" && q.trim().length > 0) return plainLabel(q) || (itemName(item) ?? "");
   }
   if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   return itemName(item) ?? "";
 }
 
-function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
-  const result: NavigationUnitQuestion[] = [];
-  function walk(subItems: InLoopItem[]) {
-    for (const sub of subItems) {
-      if (sub.type === "question") {
-        result.push({
-          index: result.length,
-          name: sub.name,
-          label: getQuestionLabel(sub),
-          isCurrent: false,
-          isCompleted: false,
-        });
-      } else if (sub.type === "condition" && sub.children) {
-        walk(sub.children);
-      }
-    }
-  }
-  walk(items);
-  return result;
+/**
+ * A question text's first line as a short plain label for the navigation
+ * menu: without markdown marks, block fences, and with values and snippets
+ * as "…" (they aren't filled in there).
+ */
+function plainLabel(text: string): string {
+  const line = text.split("\n").find((l) => l.trim() && !/^\s*:{3,}/.test(l)) ?? "";
+  return line
+    .replace(/\{\{[\s\S]*?\}\}(::\w+)?|\$(unit|var)(\.\w+)+(::\w+)?|\[\[\w+\]\]/g, "…")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s*(#+|>|[-*+]|\d+\.)\s+/, "")
+    .replace(/[*_`]/g, "")
+    .trim();
 }
 
 /**
@@ -942,16 +934,12 @@ export class JobManager {
             isCurrent: hIdx === history.index,
           }));
 
-          const extracted = extractUnitQuestions(step.children);
-          questions = extracted.map((q) => {
-            const isQCurrent = q.index === this.loopIndex;
-            const isQCompleted = q.index < this.loopIndex;
-            return {
-              ...q,
-              isCurrent: isQCurrent,
-              isCompleted: isQCompleted,
-            };
-          });
+          // The questions this unit shows (conditions applied), numbered as the coder meets them.
+          questions = this.loopSteps.flatMap((q, qIdx) =>
+            q.type === "question"
+              ? [{ index: qIdx, name: q.name, label: getQuestionLabel(q), isCurrent: qIdx === this.loopIndex, isCompleted: qIdx < this.loopIndex }]
+              : [],
+          );
         }
       }
 

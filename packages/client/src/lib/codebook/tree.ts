@@ -98,10 +98,10 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
-/** What a unit loop goes over, for the codebook tree: its unitset(s) and mode, or the number of branches. */
+/** What a unit loop goes over, for the codebook tree: its unitset(s) and mode, or the number of coder groups (branches). */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
   const branches = Array.isArray(loop.units) ? loop.units : [];
-  if (branches.length !== 1) return branches.length > 1 ? `${branches.length} branches` : "";
+  if (branches.length !== 1) return branches.length > 1 ? `${branches.length} coder groups` : "";
   const branch = branches[0];
   const name = (unitset: string) => (unitset === ALL_UNITS_UNITSET ? "all units" : unitset);
   const own =
