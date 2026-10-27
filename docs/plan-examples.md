@@ -1,6 +1,6 @@
 # Plan: example jobs (and later templates)
 
-Status: plan, not built (2026-10-27).
+Status: decided, not built (2026-10-27).
 
 ## Goal
 
