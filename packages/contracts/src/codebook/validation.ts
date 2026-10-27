@@ -66,17 +66,35 @@ function schemaIssues(items: unknown[]): CodebookValidationIssue[] {
   for (let i = 0; i < items.length; i++) {
     const result = TopLevelItemSchema.safeParse(items[i]);
     if (!result.success) {
-      for (const err of result.error.issues) {
-        issues.push({
-          path: [i, ...err.path.filter((p): p is string | number => typeof p !== "symbol")],
-          message: err.message,
-        });
-      }
+      for (const err of flattenUnions(result.error.issues)) issues.push({ path: [i, ...err.path], message: err.message });
     }
   }
   return issues;
 }
 
+interface RawIssue {
+  code?: string;
+  path: PropertyKey[];
+  message: string;
+  errors?: RawIssue[][];
+}
+
+/**
+ * Item types are a union, so zod reports a bad item as "Invalid input" with
+ * the issues of every member. This keeps the member whose `type` matched
+ * (the one with the fewest issues if several did), recursively, so the
+ * message is about the actual problem.
+ */
+function flattenUnions(issues: readonly RawIssue[], prefix: (string | number)[] = []): { path: (string | number)[]; message: string }[] {
+  return issues.flatMap((issue) => {
+    const path = [...prefix, ...issue.path.filter((p): p is string | number => typeof p !== "symbol")];
+    if (issue.code !== "invalid_union" || !issue.errors?.length) return [{ path, message: issue.message }];
+    const matching = issue.errors.filter((branch) => !branch.some((e) => e.path.length === 1 && e.path[0] === "type"));
+    if (matching.length === 0) return [{ path, message: issue.message }];
+    const best = matching.reduce((a, b) => (b.length < a.length ? b : a));
+    return flattenUnions(best, path);
+  });
+}
 /** What the item schemas can't check: names, structure, references (see validateCodebookItems). */
 export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   const issues: CodebookValidationIssue[] = [];

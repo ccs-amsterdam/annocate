@@ -27,7 +27,7 @@ function unitVar(name: string): UnitVariableItem {
   return {
     name,
     type: "unit_variable",
-    variable: { type: "categorical", question: "?", options: [{ value: "A" }, { value: "B" }] },
+    variable: { type: "nominal", question: "?", options: [{ value: "A" }, { value: "B" }] },
   };
 }
 

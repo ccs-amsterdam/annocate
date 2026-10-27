@@ -1,12 +1,14 @@
 import {
-  CATEGORICAL_LAYOUTS,
+  NOMINAL_LAYOUTS,
   NUMERIC_LAYOUTS,
+  ORDINAL_LAYOUTS,
   SCALE_LAYOUTS,
   convertOptionsLevel,
   layoutWarning,
   resolveLayout,
   type AnyVariableType,
   type CategoricalType,
+  type NominalType,
   type NumericType,
   type UnitVariableType,
   type UserVariableType,
@@ -81,7 +83,8 @@ export function VariableTypeForm({
   unitVariableNames?: string[];
 }) {
   switch (variable.type) {
-    case "categorical": {
+    case "nominal":
+    case "ordinal": {
       const v = variable;
       return (
         <>
@@ -105,7 +108,7 @@ export function VariableTypeForm({
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <ScaleItemsEditor items={v.items} onChange={(items) => onChange({ ...v, items })} />
-          <OptionsEditor level="ordinal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+          <OptionsEditor key="ordinal" level="ordinal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
           <LayoutSelect
             variable={v}
             layouts={SCALE_LAYOUTS}
@@ -287,13 +290,23 @@ export function VariableTypeForm({
   }
 }
 
-export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["categorical", "numeric", "scale", "annotinder", "confirm", "auto"];
-export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = ["categorical", "numeric", "scale", "annotinder", "confirm", "span", "relation"];
+export const VARIABLE_TYPE_OPTIONS_USER: UserVariableType["type"][] = ["nominal", "ordinal", "numeric", "scale", "annotinder", "confirm", "auto"];
+export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
+  "nominal",
+  "ordinal",
+  "numeric",
+  "scale",
+  "annotinder",
+  "confirm",
+  "span",
+  "relation",
+];
 
 /** How answer types are named in the editor. */
 export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
-  categorical: "Categorical (pick options)",
-  numeric: "Number",
+  nominal: "Nominal (categories)",
+  ordinal: "Ordinal (ordered options)",
+  numeric: "Numeric (interval/ratio)",
   scale: "Scale (items on the same options)",
   annotinder: "Swipe",
   confirm: "Confirm",
@@ -304,8 +317,18 @@ export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
 
 export function defaultVariableForAnyType(type: string): AnyVariableType {
   switch (type) {
-    case "categorical":
-      return { type: "categorical", question: "", options: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }] };
+    case "nominal":
+      return { type: "nominal", question: "", options: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }] };
+    case "ordinal":
+      return {
+        type: "ordinal",
+        question: "",
+        options: [
+          { value: 1, label: "Low" },
+          { value: 2, label: "Medium" },
+          { value: 3, label: "High" },
+        ],
+      };
     case "numeric":
       return { type: "numeric", question: "", min: 0, max: 10 };
     case "scale":
@@ -387,41 +410,28 @@ function LayoutSelect({
   );
 }
 
+/** Options, several answers (nominal) and layout of a nominal or ordinal question. */
 function CategoricalFields({ variable: v, onChange }: { variable: CategoricalType; onChange: (next: AnyVariableType) => void }) {
-  const ordinal = v.level === "ordinal";
-  const setLevel = (level: "nominal" | "ordinal") => {
-    if (level === (v.level ?? "nominal")) return;
-    const next: CategoricalType = { ...v, level: level === "ordinal" ? "ordinal" : undefined, options: convertOptionsLevel(v.options, level) };
-    if (level === "ordinal") delete next.multiple;
-    if (level === "nominal" && next.layout === "compact") delete next.layout;
+  const ordinal = v.type === "ordinal";
+  const setLayout = (layout: string) => {
+    const next = { ...v, layout: layout === "auto" ? undefined : layout } as CategoricalType;
+    if (layout !== "grid") delete next.columns;
     onChange(next);
   };
-  const layouts = CATEGORICAL_LAYOUTS.filter((l) => l !== "compact" || ordinal);
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium">Level</label>
-        <select className={selectClass} value={v.level ?? "nominal"} onChange={(e) => setLevel(e.target.value as "nominal" | "ordinal")}>
-          <option value="nominal">Nominal: categories, values are terms (text)</option>
-          <option value="ordinal">Ordinal: ordered, values are numbers rising in order</option>
-        </select>
-      </div>
-      <OptionsEditor key={ordinal ? "ordinal" : "nominal"} level={ordinal ? "ordinal" : "nominal"} options={v.options} onChange={(options) => onChange({ ...v, options })} />
-      {!ordinal && (
+      {v.type === "ordinal" ? (
+        <OptionsEditor key="ordinal" level="ordinal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+      ) : (
+        <OptionsEditor key="nominal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+      )}
+      {v.type === "nominal" && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={!!v.multiple} onChange={(e) => onChange({ ...v, multiple: e.target.checked || undefined })} />
           Allow several answers
         </label>
       )}
-      <LayoutSelect
-        variable={v}
-        layouts={layouts}
-        onChange={(layout) => {
-          const next: CategoricalType = { ...v, layout: layout === "auto" ? undefined : (layout as CategoricalType["layout"]) };
-          if (layout !== "grid") delete next.columns;
-          onChange(next);
-        }}
-      />
+      <LayoutSelect variable={v} layouts={ordinal ? ORDINAL_LAYOUTS : NOMINAL_LAYOUTS} onChange={setLayout} />
       {v.layout === "grid" && (
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Columns</label>
@@ -436,6 +446,26 @@ function CategoricalFields({ variable: v, onChange }: { variable: CategoricalTyp
       )}
     </>
   );
+}
+
+/**
+ * A question's variable as another answer type. Nominal and ordinal convert
+ * into each other, keeping the options (values: 1..n to ordinal, derived
+ * from the labels to nominal); other types start from their defaults. The
+ * question texts are kept.
+ */
+export function switchVariableType(current: AnyVariableType, type: AnyVariableType["type"]): AnyVariableType {
+  if (current.type === type) return current;
+  if ((current.type === "nominal" || current.type === "ordinal") && (type === "nominal" || type === "ordinal")) {
+    const rest = { ...(current as NominalType) };
+    delete rest.multiple;
+    const layout = rest.layout && (type === "ordinal" ? ORDINAL_LAYOUTS : NOMINAL_LAYOUTS).some((l) => l === rest.layout) ? rest.layout : undefined;
+    return { ...rest, type, layout, options: convertOptionsLevel(current.options, type) } as AnyVariableType;
+  }
+  const next = defaultVariableForAnyType(type);
+  const { question, instruction } = current as { question?: string; instruction?: string };
+  if ("question" in next) Object.assign(next, { question: question ?? "", ...(instruction ? { instruction } : {}) });
+  return next;
 }
 
 const STEP_PRESETS = [

@@ -10,12 +10,12 @@ import {
 import { buildScope } from "./references.js";
 
 const questions = new Map<string, AnyVariableType>([
-  ["role", { type: "categorical", question: "?", options: [{ value: "student" }, { value: "staff" }] }],
-  ["topics", { type: "categorical", question: "?", multiple: true, options: [{ value: "x" }, { value: "y" }, { value: "z" }] }],
-  ["edu", { type: "categorical", level: "ordinal", question: "?", options: [{ value: 1, label: "low" }, { value: 2 }, { value: 3 }] }],
+  ["role", { type: "nominal", question: "?", options: [{ value: "student" }, { value: "staff" }] }],
+  ["topics", { type: "nominal", question: "?", multiple: true, options: [{ value: "x" }, { value: "y" }, { value: "z" }] }],
+  ["edu", { type: "ordinal", question: "?", options: [{ value: 1, label: "low" }, { value: 2 }, { value: 3 }] }],
   ["age", { type: "numeric", question: "?", min: 0, max: 120 }],
   ["interest", { type: "scale", question: "?", items: [{ name: "tech" }, { name: "art" }], options: [{ value: 1 }, { value: 5 }] }],
-  ["later", { type: "categorical", question: "?", options: [{ value: "a" }] }],
+  ["later", { type: "nominal", question: "?", options: [{ value: "a" }] }],
 ]);
 const scope = buildScope(questions, {
   role: { done: true, skip: false, values: [{ value: "staff" }] },

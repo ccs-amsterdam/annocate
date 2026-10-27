@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { validateAnswer } from "./answers.js";
 import { layoutWarning, resolveLayout } from "./answerLayout.js";
 import { convertOptionsLevel, valueFromLabel } from "./options.js";
-import type { AnyVariableType, CategoricalType } from "./variableTypes.js";
+import type { AnyVariableType, NominalType, OrdinalType } from "./variableTypes.js";
 
 const answer = (values: { value: string | number; item?: string }[]) => ({ done: true, skip: false, values });
 
 describe("validateAnswer", () => {
-  const role: AnyVariableType = { type: "categorical", question: "?", options: [{ value: "a" }, { value: "b" }] };
+  const role: AnyVariableType = { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] };
   const topics: AnyVariableType = { ...role, multiple: true };
   const age: AnyVariableType = { type: "numeric", question: "?", min: 0, max: 10, step: 0.5 };
   const scale: AnyVariableType = { type: "scale", question: "?", items: [{ name: "x" }, { name: "y" }], options: [{ value: 1 }, { value: 2 }] };
@@ -55,8 +55,8 @@ describe("options", () => {
 });
 
 describe("resolveLayout", () => {
-  const nominal = (labels: string[], extra: Partial<CategoricalType> = {}): CategoricalType => ({
-    type: "categorical",
+  const nominal = (labels: string[], extra: Partial<NominalType> = {}): NominalType => ({
+    type: "nominal",
     question: "?",
     options: labels.map((value) => ({ value })),
     ...extra,
@@ -71,9 +71,8 @@ describe("resolveLayout", () => {
   });
 
   it("keeps ordinal options in order", () => {
-    const ordinal = (n: number): CategoricalType => ({
-      type: "categorical",
-      level: "ordinal",
+    const ordinal = (n: number): OrdinalType => ({
+      type: "ordinal",
       question: "?",
       options: Array.from({ length: n }, (_, i) => ({ value: i + 1 })),
     });

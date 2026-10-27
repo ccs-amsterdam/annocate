@@ -26,7 +26,7 @@ function inLoopCondition(name: string, children: InLoopItem[], condition: Condit
   return { type: "condition", name, condition, children };
 }
 const select = (values: string[], extra: object = {}) => ({
-  type: "categorical",
+  type: "nominal",
   question: "?",
   options: values.map((value) => ({ value })),
   ...extra,
@@ -243,7 +243,7 @@ describe("validateCodebookItems", () => {
 describe("reference validation", () => {
   const role = questionVar("role", select(["student", "researcher"]));
   const topics = questionVar("topics", select(["a", "b"], { multiple: true }));
-  const edu = questionVar("edu", { type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }, { value: 3 }] });
+  const edu = questionVar("edu", { type: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }, { value: 3 }] });
   const age = questionVar("age", { type: "numeric", question: "?", min: 0, max: 120 });
   const interest = questionVar("interest", { type: "scale", question: "?", options: [{ value: 1 }, { value: 5 }], items: [{ name: "tech" }] });
 
@@ -350,22 +350,23 @@ describe("reference validation", () => {
 
 describe("question types", () => {
   const parse = (variable: object) => CodebookItemsSchema.safeParse([questionVar("q", variable)]);
+  // What the editor shows (validateCodebookItems), checked against the schema.
   const errorsOf = (variable: object) => {
-    const result = parse(variable);
-    return result.success ? [] : result.error.issues.map((i) => i.message);
+    const messages = validateCodebookItems([questionVar("q", variable)]).map((i) => i.message);
+    expect(parse(variable).success).toBe(messages.length === 0);
+    return messages;
   };
 
   it("types option values by level", () => {
     expect(errorsOf(select(["a", "b"]))).toEqual([]);
-    expect(errorsOf({ type: "categorical", question: "?", options: [{ value: 1 }] })).toEqual(["Nominal values are strings, not 1"]);
+    expect(errorsOf({ type: "nominal", question: "?", options: [{ value: 1 }] })).toEqual([
+      "Nominal values are text (numbers rising in order: use an ordinal question)",
+    ]);
     expect(errorsOf(select(["a", "a"]))).toEqual(["Duplicate value 'a'"]);
     expect(errorsOf(select([" a"]))).toEqual(["' a' has spaces around it"]);
-    expect(errorsOf({ type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }, { value: 3 }] })).toEqual([]);
-    expect(errorsOf({ type: "categorical", level: "ordinal", question: "?", options: [{ value: 2 }, { value: 1 }] })).toEqual([
+    expect(errorsOf({ type: "ordinal", question: "?", options: [{ value: 1 }, { value: 3 }] })).toEqual([]);
+    expect(errorsOf({ type: "ordinal", question: "?", options: [{ value: 2 }, { value: 1 }] })).toEqual([
       "Ordinal values must rise in the order of the options (1 after 2)",
-    ]);
-    expect(errorsOf({ type: "categorical", level: "ordinal", multiple: true, question: "?", options: [{ value: 1 }] })).toEqual([
-      "An ordinal question takes one answer (multiple is for nominal questions)",
     ]);
   });
 

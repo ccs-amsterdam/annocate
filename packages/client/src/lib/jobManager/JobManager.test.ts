@@ -25,7 +25,7 @@ function unitVar(name: string): UnitVariableItem {
   return {
     name,
     type: "unit_variable",
-    variable: { type: "categorical", question: "?", options: [{ value: "A" }, { value: "B" }] },
+    variable: { type: "nominal", question: "?", options: [{ value: "A" }, { value: "B" }] },
   };
 }
 
@@ -303,7 +303,7 @@ describe("JobManager navigation, backwards navigation, and answer re-editing", (
 describe("resuming a session", () => {
   const code = (c: string) => ({ done: true, skip: false, values: [{ value: c }] });
   const select = (name: string, codes: string[]) =>
-    ({ type: "question", name, variable: { type: "categorical", question: name, options: codes.map((c) => ({ value: c })) } }) as InLoopItem;
+    ({ type: "question", name, variable: { type: "nominal", question: name, options: codes.map((c) => ({ value: c })) } }) as InLoopItem;
   const unitWith = (id: number, variables: Record<string, unknown>) =>
     ({ id, externalId: `u${id}`, data: {}, variables }) as unknown as CoderUnitResponse;
 
@@ -394,7 +394,7 @@ describe("choosing a unit loop branch", () => {
   const role = {
     type: "question",
     name: "role",
-    variable: { type: "categorical", question: "Role?", options: [{ value: "student" }, { value: "expert" }] },
+    variable: { type: "nominal", question: "Role?", options: [{ value: "student" }, { value: "expert" }] },
   };
   const loop = {
     type: "unit_loop",
@@ -449,7 +449,7 @@ describe("choosing a unit loop branch", () => {
 describe("rendering templates", () => {
   it("fills in question texts and the layout from answers and unit data", async () => {
     const items = [
-      { type: "question", name: "role", variable: { type: "categorical", question: "Role?", options: [{ value: "student" }] } },
+      { type: "question", name: "role", variable: { type: "nominal", question: "Role?", options: [{ value: "student" }] } },
       {
         type: "unit_loop",
         name: "main",
@@ -516,7 +516,7 @@ describe("a new codebook version while coding", () => {
 });
 
 describe("end items", () => {
-  const consent = { type: "question", name: "consent", variable: { type: "categorical", question: "?", options: [{ value: "yes" }, { value: "no" }] } };
+  const consent = { type: "question", name: "consent", variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] } };
   const pid = { type: "question", name: "pid", variable: { type: "auto", source: "url_param", urlParam: "pid" } };
   const stop = {
     type: "end",

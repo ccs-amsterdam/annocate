@@ -98,7 +98,7 @@ describe("CodebookYamlEditor", () => {
               name: "q1",
               type: "unit_variable",
               variable: {
-                type: "categorical",
+                type: "nominal",
                 question: "Sentiment?",
                 options: [{ value: "pos" }, { value: "neg" }],
               },
@@ -107,7 +107,7 @@ describe("CodebookYamlEditor", () => {
               name: "q2",
               type: "unit_variable",
               variable: {
-                type: "categorical",
+                type: "nominal",
                 question: "Topic?",
                 options: [{ value: "news" }, { value: "sports" }],
               },

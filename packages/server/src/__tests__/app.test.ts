@@ -100,7 +100,7 @@ describe("codebook routes", () => {
       JSON.stringify(old),
     ]);
     const codebook = await json(await app.request(`/job/${job.id}/codebook/${id}`, { headers: adminHeaders }));
-    expect(codebook.items[0].variable).toEqual({ type: "categorical", question: "?", options: [{ value: "a" }] });
+    expect(codebook.items[0].variable).toEqual({ type: "nominal", question: "?", options: [{ value: "a" }] });
   });
 });
 

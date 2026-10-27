@@ -3,8 +3,8 @@ import { parseSimpleCondition, type AnyVariableType } from "@annotinder/contract
 import { conditionToRows, defaultRow, rowsToScript, ruleTargets } from "./conditionRules";
 
 const targets = ruleTargets([
-  { name: "role", variable: { type: "categorical", question: "?", options: [{ value: "a" }, { value: "b" }] } },
-  { name: "topics", variable: { type: "categorical", multiple: true, question: "?", options: [{ value: "x" }, { value: "y" }] } },
+  { name: "role", variable: { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] } },
+  { name: "topics", variable: { type: "nominal", multiple: true, question: "?", options: [{ value: "x" }, { value: "y" }] } },
   { name: "age", variable: { type: "numeric", question: "?" } },
   { name: "battery", variable: { type: "scale", question: "?", items: [{ name: "tech" }], options: [{ value: 1 }, { value: 5 }] } },
 ] as { name: string; variable: AnyVariableType }[]);

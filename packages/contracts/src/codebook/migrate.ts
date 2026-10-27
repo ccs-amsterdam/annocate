@@ -3,7 +3,7 @@ import type { OptionValue } from "./options.js";
 import { migrateLegacyUnitLoop } from "./unitLoop.js";
 
 // Codebooks written before the question types of 2026-10 (select_code,
-// search_code, `codes`, rules conditions) are migrated on parse, so stored
+// search_code, `codes`, rules conditions, `categorical` with a `level`) are migrated on parse, so stored
 // codebooks keep working; the editor saves the new shape. Old `.code` /
 // `.value` references inside scripts are not rewritten: validation flags them.
 
@@ -37,18 +37,23 @@ export function migrateVariable(raw: unknown): unknown {
     case "select_code":
       return {
         ...rest,
-        type: "categorical",
+        type: "nominal",
         options: nominalOptions(codes),
         ...(vertical ? { layout: "grid", columns: 1 } : {}),
       };
     case "search_code":
-      return { ...rest, type: "categorical", options: nominalOptions(codes), layout: "dropdown" };
+      return { ...rest, type: "nominal", options: nominalOptions(codes), layout: "dropdown" };
     case "scale": {
       if (!("codes" in raw)) return raw;
       const items = Array.isArray(raw.items) ? raw.items : [];
       if (items.length > 0) return { ...rest, options: ordinalOptions(codes) };
       delete rest.items;
-      return { ...rest, type: "categorical", level: "ordinal", options: ordinalOptions(codes) };
+      return { ...rest, type: "ordinal", options: ordinalOptions(codes) };
+    }
+    case "categorical": {
+      // 2026-10-26 to 27: one type with a `level`.
+      const { level, ...other } = raw;
+      return { ...other, type: level === "ordinal" ? "ordinal" : "nominal" };
     }
     case "annotinder":
     case "span":
@@ -98,7 +103,7 @@ function ruleToSimple(rule: OldRule, questions: Questions): SimpleCondition | nu
   if (property !== "code" && property !== "value") return null;
 
   const options = Array.isArray(variable.options) ? (variable.options as { value: OptionValue; label?: string }[]) : [];
-  const ordinal = variable.type === "scale" || variable.level === "ordinal";
+  const ordinal = variable.type === "scale" || variable.type === "ordinal";
   // Old codes of ordinal questions are now labels; old values are now values.
   const toValue = (v: unknown): OptionValue | null => {
     if (ordinal && property === "code") return options.find((o) => o.label === String(v))?.value ?? null;

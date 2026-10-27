@@ -17,7 +17,9 @@ export type Option = z.infer<typeof OptionSchema>;
 export type OptionValue = Option["value"];
 
 export const NominalOptionSchema = OptionSchema.extend({
-  value: z.string().describe("A standardized term, e.g. `human_interest`."),
+  value: z.string({ error: "Nominal values are text (numbers rising in order: use an ordinal question)" }).describe(
+    "A standardized term, e.g. `human_interest`.",
+  ),
 });
 export type NominalOption = z.infer<typeof NominalOptionSchema>;
 

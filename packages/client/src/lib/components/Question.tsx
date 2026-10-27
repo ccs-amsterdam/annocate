@@ -77,7 +77,8 @@ export function Question({ item, onAnswer, unitVariables, initialValue, texts }:
     case "confirm":
       answerField = <ConfirmAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
-    case "categorical":
+    case "nominal":
+    case "ordinal":
       answerField = <CategoricalAnswerField variable={variable} onAnswer={onAnswer} initialValue={initialValue} />;
       break;
     case "numeric":

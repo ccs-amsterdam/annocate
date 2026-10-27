@@ -56,13 +56,13 @@ describe("summarizeChanges", () => {
 describe("valueChanges", () => {
   const q = (variable: object) => [{ type: "question", name: "q", variable }] as unknown as TopLevelItem[];
   it("warns when values disappear or the level changes", () => {
-    const before = q({ type: "categorical", question: "?", options: [{ value: "a" }, { value: "b" }] });
-    expect(valueChanges(before, q({ type: "categorical", question: "?", options: [{ value: "a", label: "A!" }, { value: "b" }] }))).toEqual([]);
-    expect(valueChanges(before, q({ type: "categorical", question: "?", options: [{ value: "a" }] }))).toEqual([
+    const before = q({ type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] });
+    expect(valueChanges(before, q({ type: "nominal", question: "?", options: [{ value: "a", label: "A!" }, { value: "b" }] }))).toEqual([]);
+    expect(valueChanges(before, q({ type: "nominal", question: "?", options: [{ value: "a" }] }))).toEqual([
       `'q' no longer has the value "b": earlier answers with it no longer fit.`,
     ]);
-    expect(valueChanges(before, q({ type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }] }))).toEqual([
-      `'q' changed from nominal to ordinal: its values changed, so earlier answers no longer fit.`,
+    expect(valueChanges(before, q({ type: "ordinal", question: "?", options: [{ value: 1 }] }))).toEqual([
+      `'q' changed from nominal to ordinal: earlier answers no longer fit.`,
     ]);
   });
 });

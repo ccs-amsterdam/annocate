@@ -95,9 +95,9 @@ describe("parseTemplate", () => {
 });
 
 const questions = new Map<string, AnyVariableType>([
-  ["role", { type: "categorical", question: "?", options: [{ value: "student", label: "Student" }, { value: "staff" }] }],
-  ["topics", { type: "categorical", question: "?", multiple: true, options: [{ value: "x" }, { value: "y" }] }],
-  ["edu", { type: "categorical", level: "ordinal", question: "?", options: [{ value: 1, label: "low" }, { value: 2, label: "high" }] }],
+  ["role", { type: "nominal", question: "?", options: [{ value: "student", label: "Student" }, { value: "staff" }] }],
+  ["topics", { type: "nominal", question: "?", multiple: true, options: [{ value: "x" }, { value: "y" }] }],
+  ["edu", { type: "ordinal", question: "?", options: [{ value: 1, label: "low" }, { value: 2, label: "high" }] }],
   ["interest", { type: "scale", question: "?", options: [{ value: 1, label: "low" }, { value: 5, label: "high" }], items: [{ name: "tech" }] }],
   ["age", { type: "numeric", question: "?", labels: [{ value: 18, label: "adult" }] }],
   ["ok", { type: "confirm", question: "?" }],

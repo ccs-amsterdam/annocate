@@ -3,11 +3,9 @@ import { SafeNameSchema } from "../common.js";
 import {
   NominalOptionSchema,
   NominalOptionsSchema,
-  OptionSchema,
   OrdinalOptionsSchema,
   SwipeOptionsSchema,
   nominalValueErrors,
-  ordinalValueErrors,
 } from "./options.js";
 
 // Shared question/instruction presentation fields.
@@ -24,29 +22,37 @@ export const VariableBaseSchema = z.object({
     .describe("If true, the instruction is automatically shown the first time this variable appears."),
 });
 
-export const CATEGORICAL_LAYOUTS = ["auto", "flex", "row", "grid", "compact", "dropdown"] as const;
-export type CategoricalLayout = (typeof CATEGORICAL_LAYOUTS)[number];
+export const NOMINAL_LAYOUTS = ["auto", "flex", "row", "grid", "dropdown"] as const;
+export type NominalLayout = (typeof NOMINAL_LAYOUTS)[number];
+export const ORDINAL_LAYOUTS = ["auto", "row", "grid", "compact", "dropdown"] as const;
+export type OrdinalLayout = (typeof ORDINAL_LAYOUTS)[number];
+
+const columnsField = z.number().int().min(1).max(4).optional().describe("Columns of layout grid (default 1).");
 
 /**
- * Pick from options: one, or several with `multiple` (nominal only). The
- * level decides the values: strings (nominal) or numbers rising in option
- * order (ordinal).
+ * Nominal: pick one of the options, or several with `multiple`. Values are
+ * strings: standardized terms (e.g. `human_interest`), shown by their label.
  */
-export const CategoricalTypeSchema = VariableBaseSchema.extend({
-  type: z.literal("categorical"),
-  level: z.enum(["nominal", "ordinal"]).optional().describe("Default nominal."),
-  options: z.array(OptionSchema).min(1, "At least one option is required"),
-  multiple: z.boolean().optional().describe("Several answers (nominal only)."),
-  layout: z.enum(CATEGORICAL_LAYOUTS).optional().describe("Default auto: chosen from the options (resolveLayout)."),
-  columns: z.number().int().min(1).max(4).optional().describe("Columns of layout grid (default 1)."),
-}).superRefine((v, ctx) => {
-  const ordinal = v.level === "ordinal";
-  const errors = ordinal ? ordinalValueErrors(v.options) : nominalValueErrors(v.options);
-  errors.forEach((message) => ctx.addIssue({ code: "custom", message, path: ["options"] }));
-  if (ordinal && v.multiple) ctx.addIssue({ code: "custom", message: "An ordinal question takes one answer (multiple is for nominal questions)", path: ["multiple"] });
-  if (!ordinal && v.layout === "compact") ctx.addIssue({ code: "custom", message: "The compact layout is for ordinal questions", path: ["layout"] });
+export const NominalTypeSchema = VariableBaseSchema.extend({
+  type: z.literal("nominal"),
+  options: NominalOptionsSchema,
+  multiple: z.boolean().optional().describe("Several answers."),
+  layout: z.enum(NOMINAL_LAYOUTS).optional().describe("Default auto: chosen from the options (resolveLayout)."),
+  columns: columnsField,
 });
-export type CategoricalType = z.infer<typeof CategoricalTypeSchema>;
+export type NominalType = z.infer<typeof NominalTypeSchema>;
+
+/** Ordinal: pick one of ordered options. Values are numbers rising in option order (default 1..n). */
+export const OrdinalTypeSchema = VariableBaseSchema.extend({
+  type: z.literal("ordinal"),
+  options: OrdinalOptionsSchema,
+  layout: z.enum(ORDINAL_LAYOUTS).optional().describe("Default auto: chosen from the options (resolveLayout)."),
+  columns: columnsField,
+});
+export type OrdinalType = z.infer<typeof OrdinalTypeSchema>;
+
+/** The question types that pick from options, laid out the same way. */
+export type CategoricalType = NominalType | OrdinalType;
 
 export const NUMERIC_LAYOUTS = ["auto", "input", "slider", "buttons"] as const;
 export type NumericLayout = (typeof NUMERIC_LAYOUTS)[number];
@@ -175,7 +181,8 @@ export type RelationType = z.infer<typeof RelationTypeSchema>;
 
 /** The answer types allowed on a coder-level question (see codebook/item.ts). */
 export const UserVariableTypeSchema = z.discriminatedUnion("type", [
-  CategoricalTypeSchema,
+  NominalTypeSchema,
+  OrdinalTypeSchema,
   NumericTypeSchema,
   ScaleTypeSchema,
   AnnotinderTypeSchema,
@@ -190,7 +197,8 @@ export type UserVariableType = z.infer<typeof UserVariableTypeSchema>;
  * annotation types that only make sense in the context of a unit.
  */
 export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
-  CategoricalTypeSchema,
+  NominalTypeSchema,
+  OrdinalTypeSchema,
   NumericTypeSchema,
   ScaleTypeSchema,
   AnnotinderTypeSchema,

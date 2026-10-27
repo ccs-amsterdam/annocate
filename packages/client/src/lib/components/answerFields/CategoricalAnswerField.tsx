@@ -8,15 +8,15 @@ import { buildValues, initialValues } from "./answerValue";
 import { CompactRow, EndLabels, OptionButton, optionsContainerStyle, useNumberShortcuts } from "./OptionButtons";
 import type { AnswerFieldProps, QuestionVariable } from "./types";
 
-type CategoricalVariable = Extract<QuestionVariable, { type: "categorical" }>;
+type CategoricalVariable = Extract<QuestionVariable, { type: "nominal" | "ordinal" }>;
 
 /**
- * Pick one (or with `multiple`, several) of the options, laid out as the
+ * Nominal and ordinal questions: pick one (or with `multiple`, several) of the options, laid out as the
  * question says or as `auto` picks (resolveLayout). One answer is given on
  * the first click; several are confirmed with Continue.
  */
 export function CategoricalAnswerField({ variable, onAnswer, initialValue }: AnswerFieldProps<CategoricalVariable>) {
-  const multiple = Boolean(variable.multiple);
+  const multiple = variable.type === "nominal" && Boolean(variable.multiple);
   const resolved = resolveLayout(variable);
   const layout = "columns" in resolved ? resolved.layout : "grid";
   const columns = "columns" in resolved ? resolved.columns : 1;

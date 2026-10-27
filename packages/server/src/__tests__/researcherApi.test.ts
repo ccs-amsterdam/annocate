@@ -51,7 +51,7 @@ async function call<N extends ResearcherEndpointName>(
 const question = (name: string) => ({
   type: "question",
   name,
-  variable: { type: "categorical", question: "?", options: [{ value: "yes" }, { value: "no" }] },
+  variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
 });
 
 /** A job with two units and a one-question loop, deployed; returns its id. */

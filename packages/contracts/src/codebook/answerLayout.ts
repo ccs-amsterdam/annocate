@@ -1,5 +1,5 @@
 import { optionLabel } from "./options.js";
-import type { AnyVariableType, CategoricalLayout, CategoricalType, NumericLayout, NumericType, ScaleLayout } from "./variableTypes.js";
+import type { AnyVariableType, CategoricalType, NominalLayout, NumericLayout, NumericType, OrdinalLayout, ScaleLayout } from "./variableTypes.js";
 
 // How an answer form is laid out (docs/client.md §4). `auto` is fixed per
 // question, not per device, so every coder sees the same form: it is chosen
@@ -18,7 +18,7 @@ const CHAR = 8;
 const PADDING = 24;
 
 export type ResolvedLayout =
-  | { layout: Exclude<CategoricalLayout, "auto">; columns: number }
+  | { layout: Exclude<NominalLayout | OrdinalLayout, "auto">; columns: number }
   | { layout: Exclude<NumericLayout, "auto"> }
   | { layout: Exclude<ScaleLayout, "auto"> }
   | { layout: "swipe" }
@@ -43,7 +43,7 @@ function categorical(variable: CategoricalType): ResolvedLayout {
   if (variable.layout && variable.layout !== "auto") {
     return { layout: variable.layout, columns: variable.layout === "grid" ? (variable.columns ?? 1) : 1 };
   }
-  if (variable.level === "ordinal") {
+  if (variable.type === "ordinal") {
     if (labels.length <= 3) return { layout: "row", columns: 1 };
     if (labels.length * ROW <= HEIGHT_BUDGET) return { layout: "grid", columns: 1 };
     return { layout: "compact", columns: 1 };
@@ -70,7 +70,8 @@ function numeric(variable: NumericType): ResolvedLayout {
 /** The layout a question is shown with: its own, or what `auto` picks. */
 export function resolveLayout(variable: AnyVariableType): ResolvedLayout {
   switch (variable.type) {
-    case "categorical":
+    case "nominal":
+    case "ordinal":
       return categorical(variable);
     case "numeric":
       return numeric(variable);
@@ -88,7 +89,7 @@ export function resolveLayout(variable: AnyVariableType): ResolvedLayout {
  * the smallest phone (single questions never scroll); null if it fits.
  */
 export function layoutWarning(variable: AnyVariableType): string | null {
-  if (variable.type !== "categorical" || !variable.layout || variable.layout === "auto") return null;
+  if ((variable.type !== "nominal" && variable.type !== "ordinal") || !variable.layout || variable.layout === "auto") return null;
   const labels = variable.options.map(optionLabel);
   const tooTall = "doesn't fit half a small phone screen; coders would have to scroll (auto picks a layout that fits)";
   switch (variable.layout) {

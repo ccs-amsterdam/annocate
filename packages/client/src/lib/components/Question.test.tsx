@@ -26,7 +26,7 @@ describe("Question dispatcher", () => {
       name: "code_q",
       type: "unit_variable",
       variable: {
-        type: "categorical",
+        type: "nominal",
         question: "Pick a code",
         options: [{ value: "pos", label: "Positive" }, { value: "neg" }],
       },
@@ -42,7 +42,7 @@ describe("Question dispatcher", () => {
       name: "search_q",
       type: "unit_variable",
       variable: {
-        type: "categorical",
+        type: "nominal",
         question: "Search topic",
         options: Array.from({ length: 20 }, (_, i) => ({ value: `topic_${i}` })),
       },
@@ -57,8 +57,7 @@ describe("Question dispatcher", () => {
       name: "ord_q",
       type: "unit_variable",
       variable: {
-        type: "categorical",
-        level: "ordinal",
+        type: "ordinal",
         question: "Rate sentiment",
         options: [{ value: 1, label: "low" }, { value: 2, label: "mid" }, { value: 3, label: "high" }],
       },

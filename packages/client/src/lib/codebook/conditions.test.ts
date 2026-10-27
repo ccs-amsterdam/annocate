@@ -4,12 +4,12 @@ import { evaluateCondition } from "./conditions";
 import { evaluateScript, scriptSyntaxError } from "./expression";
 
 const questions = new Map<string, AnyVariableType>([
-  ["role", { type: "categorical", question: "?", options: [{ value: "student" }, { value: "staff" }] }],
-  ["topics", { type: "categorical", question: "?", multiple: true, options: [{ value: "a" }, { value: "b" }, { value: "c" }] }],
-  ["edu", { type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }, { value: 3 }] }],
+  ["role", { type: "nominal", question: "?", options: [{ value: "student" }, { value: "staff" }] }],
+  ["topics", { type: "nominal", question: "?", multiple: true, options: [{ value: "a" }, { value: "b" }, { value: "c" }] }],
+  ["edu", { type: "ordinal", question: "?", options: [{ value: 1 }, { value: 2 }, { value: 3 }] }],
   ["age", { type: "numeric", question: "?" }],
   ["battery", { type: "scale", question: "?", items: [{ name: "x" }, { name: "y" }], options: [{ value: 1 }, { value: 5 }] }],
-  ["later", { type: "categorical", question: "?", options: [{ value: "a" }] }],
+  ["later", { type: "nominal", question: "?", options: [{ value: "a" }] }],
 ]);
 const scope = buildScope(
   questions,

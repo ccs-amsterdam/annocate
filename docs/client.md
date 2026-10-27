@@ -112,20 +112,22 @@ as in SPSS or Stata value labels:
   (`codebook/diff.ts` `valueChanges`).
 - **The label** is what coders see (default: the value). It can change
   without touching data.
-- **The level decides the type of the values.** Nominal: strings,
-  standardized terms (`human_interest`), non-empty, trimmed, unique; the
-  editor derives the value from the label until it is edited by hand.
-  Ordinal (and scales): numbers rising in option order (default 1..n), so
-  comparing values compares order. Switching the level converts the values:
-  to ordinal 1..n (an old value becomes the label if there was none), to
-  nominal values derived from the labels (`convertOptionsLevel`).
+- **The measurement level decides the type of the values.** Nominal:
+  strings, standardized terms (`human_interest`), non-empty, trimmed,
+  unique; the editor derives the value from the label until it is edited
+  by hand. Ordinal (and scales): numbers rising in option order (default
+  1..n), so comparing values compares order. Switching a question between
+  nominal and ordinal converts the values: to ordinal 1..n (an old value
+  becomes the label if there was none), to nominal values derived from the
+  labels (`convertOptionsLevel`).
 
 ### Types
 
 | Type | What | Stored (`VariableValue`) |
 | --- | --- | --- |
-| `categorical` | pick from options; `level` nominal (default) or ordinal; `multiple` (nominal only) | `values: [{ value }]`, several with `multiple` |
-| `numeric` | one number; `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]` |
+| `nominal` | pick from categories; `multiple` for several answers | `values: [{ value }]`, several with `multiple` |
+| `ordinal` | pick from ordered options | `values: [{ value }]` |
+| `numeric` | one number (interval/ratio); `min`, `max`, `step` (default 1), break-point `labels` | `values: [{ value }]` |
 | `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]`, one per item |
 | `annotinder` | swipe a card: 2 or 3 options, in the order left, right, up | `values: [{ value }]` |
 | `confirm` | a button | nothing besides `done` |
@@ -138,8 +140,14 @@ against the current codebook: values of the options, one per item for a
 scale, at most one unless `multiple`, numbers within `min`/`max` and on the
 `step` grid (from `min`, or 0).
 
+The answer types follow the measurement levels researchers know: nominal,
+ordinal, numeric (interval and ratio look the same to a coder, so they are
+one type). Nominal and ordinal share their answer form
+(`CategoricalAnswerField`) and layouts.
+
 Codebooks in the shape before 2026-10 (`select_code`, `search_code`,
-`scale` without items, `codes`, rules conditions) are migrated on parse
+`scale` without items, `codes`, rules conditions, and the short-lived
+`categorical` with a `level`) are migrated on parse
 (`contracts/src/codebook/migrate.ts`), also when the server serves a stored
 one; `screenOut` on codes is dropped (use an `end` item).
 
@@ -152,9 +160,10 @@ smallest phones (about 360 px wide) within half such a screen's height; the
 editor shows what `auto` picks, and `layoutWarning` warns when a chosen
 layout doesn't fit. Buttons are about 40 px tall.
 
-- Categorical: `row` (one row, equal buttons), `grid` with `columns`, `flex`
-  (wrapping), `compact` (ordinal: buttons show the value, the selected one
-  grows and shows its label), `dropdown` (a combobox with a filter box).
+- Nominal and ordinal: `row` (one row, equal buttons), `grid` with
+  `columns`, `flex` (wrapping; nominal only), `compact` (ordinal only:
+  buttons show the value, the selected one grows and shows its label),
+  `dropdown` (a combobox with a filter box).
   Auto, nominal: a row for 2-3 short labels, else 2 columns, else 1 column,
   else a dropdown. Auto, ordinal: a row for 2-3 options, else 1 column
   (order reads top to bottom), else compact.
@@ -238,8 +247,8 @@ instruction texts, conditions and unitset names
 | --- | --- | --- |
 | `$unit.<field>` | unit data column (inside a unit loop) | |
 | `$const.<name>` | layout constant (inside a unit loop) | |
-| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single categorical, numeric, swipe, auto |
-| `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | categorical with `multiple`, span, relation |
+| `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, auto |
+| `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | nominal with `multiple`, span, relation |
 | `$var.<q>.texts` | the selected texts | span |
 | `$var.<q>.values` | all items' values, in item order | scale |
 | `$var.<q>.items.<item>.value`, `.label` | one item | scale |
@@ -258,9 +267,9 @@ Every method is false (`count()`: 0) while the question is unanswered.
 
 | Question | Methods |
 | --- | --- |
-| single (categorical, swipe, auto) | `is(v)`, `isAny(v1, v2, ...)` |
+| single (nominal, swipe, auto) | `is(v)`, `isAny(v1, v2, ...)` |
 | ordinal, scale items (`$var.q.items.x`) | also `gt(v)`, `gte(v)`, `lt(v)`, `lte(v)` |
-| categorical with `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
+| nominal with `multiple` | `has(v)`, `hasAny(...)`, `hasAll(...)`, `count()` |
 | numeric | `eq(n)`, `gt(n)`, `gte(n)`, `lt(n)`, `lte(n)`, `between(a, b)` |
 | span, relation | `has(v)`, `count()` |
 
@@ -356,13 +365,17 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   to the unit they have open; saved answers stay linked to the version they
   were given under.
   The publish dialog also warns when option values disappear or a
-  question's level changes (earlier answers no longer fit).
+  question's type changes, e.g. from nominal to ordinal (earlier answers
+  no longer fit).
+  The answer type select converts between nominal and ordinal, keeping
+  the options (`switchVariableType`); other switches start from the type's
+  defaults, keeping the question text.
   Questions are edited per type (`VariableTypeForm.tsx`): the options
   editor (`OptionsEditor.tsx`: label, value, colour, order; nominal values
   follow the label until edited; ordinal values are 1..n in option order
   and renumbered when options move, unless "Custom values" is on, which
   isn't stored: options that aren't 1..n open with it on;
-  swipe options show their direction), the level, `multiple`, a layout
+  swipe options show their direction), `multiple`, a layout
   select whose `auto` entry names what auto picks, and for numeric
   questions the range, step presets and break-point labels.
   Condition items and branch `when` use `ConditionEditor.tsx`: a
@@ -420,7 +433,7 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   or browser e2e suite in CI yet (browser checks so far are manual
   Playwright runs).
 - No visual/UX parity pass against the old app was done.
-- Swipe could become `layout: "swipe"` of `categorical` instead of its own
+- Swipe could become `layout: "swipe"` of `nominal` instead of its own
   type (`annotinder`).
 - Not built (no case yet): numeric batteries (a thermometer per party),
   scale-level helpers (sum, mean; advanced scripts can compute them from

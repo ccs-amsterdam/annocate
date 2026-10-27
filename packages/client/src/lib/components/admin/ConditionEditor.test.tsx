@@ -4,7 +4,7 @@ import { availableQuestions, type TopLevelItem } from "@annotinder/contracts";
 import { ConditionEditor } from "./ConditionEditor";
 
 const items = [
-  { type: "question", name: "role", variable: { type: "categorical", question: "?", options: [{ value: "student" }, { value: "expert", label: "Expert" }] } },
+  { type: "question", name: "role", variable: { type: "nominal", question: "?", options: [{ value: "student" }, { value: "expert", label: "Expert" }] } },
   { type: "condition", name: "gate", condition: { script: "true" }, children: [{ type: "question", name: "inner", variable: { type: "confirm", question: "?" } }] },
   { type: "question", name: "later", variable: { type: "confirm", question: "?" } },
 ] as TopLevelItem[];

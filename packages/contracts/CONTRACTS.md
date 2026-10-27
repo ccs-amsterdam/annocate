@@ -43,8 +43,8 @@ in the server, not here.
 - **Question types and answers** (`docs/client.md` §4). Options are
   `{ value, label?, color? }`: the value is stored and compared, the label
   shown; nominal values are strings, ordinal values numbers rising in
-  option order (`src/codebook/options.ts`). Types: `categorical`,
-  `numeric`, `scale`, `annotinder`, `confirm`, `auto`, and in loops `span`
+  option order (`src/codebook/options.ts`). Types: `nominal`,
+  `ordinal`, `numeric`, `scale`, `annotinder`, `confirm`, `auto`, and in loops `span`
   and `relation` (`src/codebook/variableTypes.ts`); plus the `end` item
   (`src/codebook/item.ts`). `resolveLayout` (`src/codebook/answerLayout.ts`)
   says how a question is laid out. Codebooks in the older shape are

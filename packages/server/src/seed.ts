@@ -87,11 +87,10 @@ export async function seed(db: Sql): Promise<void> {
       type: "question",
       name: "experience",
       variable: {
-        type: "categorical",
-        level: "ordinal",
+        type: "ordinal",
         question: "How much experience do you have with manual content analysis?",
         instruction:
-          "An ordinal question: its options are ordered, and their values are numbers. Your answer changes what comes next: beginners get a tip above each unit, experts get an extra question.",
+          "An ordinal question: its options are ordered, and their values are numbers (1, 2, 3). Your answer changes what comes next: beginners get a tip above each unit, experts get an extra question.",
         options: [
           { value: 1, label: "New to it", color: "#22c55e" },
           { value: 2, label: "Some", color: "#3b82f6" },
@@ -103,7 +102,7 @@ export async function seed(db: Sql): Promise<void> {
       type: "question",
       name: "role",
       variable: {
-        type: "categorical",
+        type: "nominal",
         layout: "dropdown",
         question: "What best describes your role?",
         instruction: "A long list as a dropdown: type to filter the options.",
@@ -130,7 +129,7 @@ export async function seed(db: Sql): Promise<void> {
           type: "question",
           name: "experiment_check",
           variable: {
-            type: "categorical",
+            type: "nominal",
             question:
               "You were randomly assigned to the experiment group, so only you (and others in this group) see this question. Did you know codebooks can contain experiments?",
             instruction:
@@ -203,10 +202,10 @@ export async function seed(db: Sql): Promise<void> {
           type: "question",
           name: "sentiment",
           variable: {
-            type: "categorical",
+            type: "nominal",
             question: "What is the overall tone of this article?",
             instruction:
-              "A categorical question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**.",
+              "A nominal question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**.",
             options: [
               { value: "positive", label: "Positive", color: "#4caf50" },
               { value: "neutral", label: "Neutral", color: "#9e9e9e" },
@@ -218,10 +217,10 @@ export async function seed(db: Sql): Promise<void> {
           type: "question",
           name: "topics",
           variable: {
-            type: "categorical",
+            type: "nominal",
             multiple: true,
             question: "Which topics does this article discuss? Select all that apply.",
-            instruction: "With multiple: true, a categorical question lets you pick several options.",
+            instruction: "With multiple: true, a nominal question lets you pick several options.",
             options: [
               { value: "usability", label: "Usability" },
               { value: "methodology", label: "Methodology" },
@@ -257,7 +256,7 @@ export async function seed(db: Sql): Promise<void> {
               type: "question",
               name: "framing",
               variable: {
-                type: "categorical",
+                type: "nominal",
                 question: "Which frame best describes this article?",
                 instruction:
                   "You see this question because you said you are an expert. A condition inside the unit loop can use your earlier answers.",

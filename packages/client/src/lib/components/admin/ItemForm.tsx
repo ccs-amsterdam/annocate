@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   VariableTypeForm,
   defaultVariableForAnyType,
+  switchVariableType,
   VARIABLE_TYPE_LABELS,
   VARIABLE_TYPE_OPTIONS_USER,
   VARIABLE_TYPE_OPTIONS_UNIT,
@@ -126,13 +127,9 @@ export function ItemForm({
             <select
               className="h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold"
               value={item.variable.type}
-              onChange={(e) => {
-                // Keep the question texts across types.
-                const next = defaultVariableForAnyType(e.target.value);
-                const { question, instruction } = item.variable as { question?: string; instruction?: string };
-                if ("question" in next) Object.assign(next, { question: question ?? "", ...(instruction ? { instruction } : {}) });
-                onChange({ ...item, variable: next } as CodebookItem);
-              }}
+              onChange={(e) =>
+                onChange({ ...item, variable: switchVariableType(item.variable, e.target.value as AnyVariableType["type"]) } as CodebookItem)
+              }
             >
               {(isInsideLoop ? VARIABLE_TYPE_OPTIONS_UNIT : VARIABLE_TYPE_OPTIONS_USER).map((t) => (
                 <option key={t} value={t}>

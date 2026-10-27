@@ -77,7 +77,7 @@ export function summarizeChanges(changes: CodebookChange[], maxLength = 200): st
 
 /**
  * Questions whose stored values change meaning (docs/client.md §2): option
- * values removed (also by switching the level, which converts them).
+ * values removed, or a question that changed type.
  * Earlier answers with those values no longer fit, as if the question was
  * renamed.
  */
@@ -86,10 +86,9 @@ export function valueChanges(before: (TopLevelItem | InLoopItem)[], after: (TopL
   const warnings: string[] = [];
   for (const [name, variable] of collectQuestions(after).questions) {
     const prev = old.get(name);
-    if (!prev || prev.type !== variable.type) continue;
-    const level = (v: typeof variable) => (v.type === "categorical" ? (v.level ?? "nominal") : null);
-    if (level(prev) !== level(variable)) {
-      warnings.push(`'${name}' changed from ${level(prev)} to ${level(variable)}: its values changed, so earlier answers no longer fit.`);
+    if (!prev) continue;
+    if (prev.type !== variable.type) {
+      warnings.push(`'${name}' changed from ${prev.type} to ${variable.type}: earlier answers no longer fit.`);
       continue;
     }
     const now = new Set(questionValues(variable) ?? []);

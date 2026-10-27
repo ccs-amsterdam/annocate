@@ -211,7 +211,7 @@ describe("coder flow", () => {
 const sentimentQuestion = {
   type: "question",
   name: "sentiment",
-  variable: { type: "categorical", question: "?", options: [{ value: "positive" }, { value: "negative" }, { value: "neutral" }] },
+  variable: { type: "nominal", question: "?", options: [{ value: "positive" }, { value: "negative" }, { value: "neutral" }] },
 };
 
 /**
@@ -387,7 +387,7 @@ describe("routing coders to unitsets", () => {
   });
 
   it("route by the branch the client chose", async () => {
-    const leaning = { type: "question", name: "leaning", variable: { type: "categorical", question: "?", options: [{ value: "left" }, { value: "right" }] } };
+    const leaning = { type: "question", name: "leaning", variable: { type: "nominal", question: "?", options: [{ value: "left" }, { value: "right" }] } };
     await createUnitset("left_units", ["unit-1"]);
     await redeploy(
       {
@@ -661,7 +661,7 @@ describe("finished units follow the current codebook", () => {
   const relevance = {
     type: "question",
     name: "relevance",
-    variable: { type: "categorical", question: "?", options: [{ value: "yes" }, { value: "no" }] },
+    variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
   };
   const fixedMain = { units: [{ sources: [{ unitset: "main" }] }] };
 

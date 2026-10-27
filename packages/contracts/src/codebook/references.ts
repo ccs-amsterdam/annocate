@@ -385,8 +385,10 @@ export type QuestionKind = "single" | "ordinal" | "numeric" | "multiple" | "span
 
 export function questionKind(variable: AnyVariableType): QuestionKind {
   switch (variable.type) {
-    case "categorical":
-      return variable.multiple ? "multiple" : variable.level === "ordinal" ? "ordinal" : "single";
+    case "nominal":
+      return variable.multiple ? "multiple" : "single";
+    case "ordinal":
+      return "ordinal";
     case "annotinder":
     case "auto":
       return "single";

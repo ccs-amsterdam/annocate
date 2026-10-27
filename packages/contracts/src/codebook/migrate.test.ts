@@ -16,12 +16,23 @@ describe("migrateCodebookItems", () => {
     ];
     const items = CodebookItemsSchema.parse(old) as { variable: unknown }[];
     expect(items.map((i) => i.variable)).toEqual([
-      { type: "categorical", question: "?", layout: "grid", columns: 1, options: [{ value: "a", color: "red" }, { value: "b" }] },
-      { type: "categorical", question: "?", multiple: true, layout: "dropdown", options: [{ value: "x" }] },
-      { type: "categorical", level: "ordinal", question: "?", options: [{ value: 1, label: "no" }, { value: 2, label: "yes" }] },
+      { type: "nominal", question: "?", layout: "grid", columns: 1, options: [{ value: "a", color: "red" }, { value: "b" }] },
+      { type: "nominal", question: "?", multiple: true, layout: "dropdown", options: [{ value: "x" }] },
+      { type: "ordinal", question: "?", options: [{ value: 1, label: "no" }, { value: 2, label: "yes" }] },
       { type: "scale", question: "?", items: [{ name: "tech" }], options: [{ value: 0, label: "low" }, { value: 4, label: "high" }] },
       { type: "auto", source: "random", options: [{ value: "1", weight: 2 }] },
       { type: "annotinder", question: "?", options: [{ value: "no" }, { value: "yes" }] },
+    ]);
+  });
+
+  it("splits the categorical type of 2026-10-26 by its level", () => {
+    const old = [
+      q("a", { type: "categorical", question: "?", options: [{ value: "x" }] }),
+      q("b", { type: "categorical", level: "ordinal", question: "?", options: [{ value: 1 }] }),
+    ];
+    expect((CodebookItemsSchema.parse(old) as { variable: unknown }[]).map((i) => i.variable)).toEqual([
+      { type: "nominal", question: "?", options: [{ value: "x" }] },
+      { type: "ordinal", question: "?", options: [{ value: 1 }] },
     ]);
   });
 
