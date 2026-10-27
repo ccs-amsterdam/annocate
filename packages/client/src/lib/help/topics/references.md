@@ -173,5 +173,7 @@ problems with the item they are in. Common messages:
 | `$var.topic.is(...) can only be used inside {{ }}` | Helper methods work in scripts and conditions, not as a plain value |
 | `$unit.headlne is not a unit field` (warning) | A typo, or the units don't have this column |
 
-The editor helps you write references: type `$` in a template and it lists
-the unit fields and questions you can use at that point.
+In a loop's layout, the editor helps you write references: type `$` and it
+lists the unit fields and questions you can use there. In a condition's
+**Script** mode, **References and helpers you can use here** lists them
+too.
