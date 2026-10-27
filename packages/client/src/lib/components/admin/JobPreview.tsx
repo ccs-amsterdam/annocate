@@ -199,6 +199,12 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
               <span className="text-muted-foreground font-medium">Preset:</span>
               <select
                 className="h-8 rounded-md border border-input bg-background px-2 text-xs font-medium"
+                // The preset matching the current size, if any ("Custom" otherwise)
+                value={
+                  (deviceMode === "mobile" ? MOBILE_PRESETS : DESKTOP_PRESETS).find((p) =>
+                    deviceMode === "mobile" ? p.width === mobileWidth && p.height === mobileHeight : p.width === desktopWidth && p.height === desktopHeight,
+                  )?.label ?? ""
+                }
                 onChange={(e) => {
                   const val = e.target.value;
                   const preset = (deviceMode === "mobile" ? MOBILE_PRESETS : DESKTOP_PRESETS).find(
@@ -215,6 +221,9 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                   }
                 }}
               >
+                <option value="" disabled>
+                  Custom
+                </option>
                 {(deviceMode === "mobile" ? MOBILE_PRESETS : DESKTOP_PRESETS).map((p) => (
                   <option key={p.label} value={p.label}>
                     {p.label}

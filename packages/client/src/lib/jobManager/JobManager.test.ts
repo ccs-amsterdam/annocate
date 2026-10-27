@@ -147,6 +147,28 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     expect(itemName(manager.getSnapshot().currentItem!)).toBe("shown_to_a");
   });
 
+  it("stores a coder-level answer a changed earlier answer now hides as skipped", async () => {
+    const role = { type: "question", name: "role", variable: { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] } };
+    const items = [role, { type: "condition", condition: { script: `$var.role.is("a")` }, children: [confirm("followup")] }, confirm("last")] as TopLevelItem[];
+    const posted: Record<string, VariableValue>[] = [];
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session(items)),
+      postCoderVariables: vi.fn(async (vars: Record<string, VariableValue>) => void posted.push(vars)),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    const pick = (value: string) => ({ done: true, values: [{ value }] }) as unknown as VariableValue;
+    await manager.answer(pick("a"));
+    await manager.answer({ done: true } as unknown as VariableValue);
+    expect(posted.at(-1)!.followup).toEqual({ done: true });
+    await manager.goBack();
+    await manager.goBack();
+    expect(itemName(manager.getSnapshot().currentItem!)).toBe("role");
+    await manager.answer(pick("b"));
+    expect(posted.at(-1)!.followup).toEqual({ done: true, skip: true });
+    expect(itemName(manager.getSnapshot().currentItem!)).toBe("last");
+  });
+
   it("asks the server for the next unit by loop name", async () => {
     let unitsServed = 0;
     const getNextUnit = vi.fn(async (loop: string) => {
@@ -480,6 +502,32 @@ describe("rendering templates", () => {
 });
 
 describe("a new codebook version while coding", () => {
+  it("loads the session again when navigating meets the new version", async () => {
+    let refuse = false;
+    let served = false;
+    const getSession = vi.fn(
+      async () => ({ ...session([unitLoop("loop", [unitVar("q1")])]), progress: [{ unitset: "1", doneUnitIds: [10], totalUnits: 2 }] }) as SessionResponse,
+    );
+    const server = makeFlakyServer({
+      getSession,
+      getNextUnit: vi.fn(async () => (served ? null : ((served = true), unit(11)))),
+      getLoopUnit: vi.fn(async (_loop: string, id: number) => {
+        if (refuse) {
+          refuse = false;
+          throw Object.assign(new Error("A new version of the codebook was published"), { code: "codebook_changed" });
+        }
+        return unit(id);
+      }),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    expect(manager.getSnapshot().currentUnit?.id).toBe(11);
+    refuse = true;
+    await manager.goBack(); // to unit 10, loaded from the server: refused
+    expect(getSession).toHaveBeenCalledTimes(2);
+    expect(manager.getSnapshot().phase).not.toBe("error");
+  });
+
   it("loads the new codebook and continues the same unit, keeping the answers given so far", async () => {
     const v1 = [unitLoop("loop", [unitVar("q1"), unitVar("q2")])];
     const v2 = [unitLoop("loop", [unitVar("q1"), unitVar("q2"), unitVar("q3")])];

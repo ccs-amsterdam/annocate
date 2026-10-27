@@ -397,6 +397,10 @@ export class JobManager {
   }
 
   async goBack(): Promise<void> {
+    await this.guarded(() => this.goBackNow());
+  }
+
+  private async goBackNow(): Promise<void> {
     if (!this.canGoBack()) return;
 
     this.syncCurrentUnitAnswers();
@@ -440,6 +444,10 @@ export class JobManager {
   }
 
   async goForward(allowFree = false): Promise<void> {
+    await this.guarded(() => this.goForwardNow(allowFree));
+  }
+
+  private async goForwardNow(allowFree = false): Promise<void> {
     if (!this.canGoForward(allowFree)) return;
 
     this.syncCurrentUnitAnswers();
@@ -482,6 +490,10 @@ export class JobManager {
   }
 
   async jumpToUnit(unitIndex: number, allowFetchAhead = false): Promise<void> {
+    await this.guarded(() => this.jumpToUnitNow(unitIndex, allowFetchAhead));
+  }
+
+  private async jumpToUnitNow(unitIndex: number, allowFetchAhead = false): Promise<void> {
     if (!this.activeLoop) return;
     this.syncCurrentUnitAnswers();
 
@@ -527,6 +539,10 @@ export class JobManager {
   }
 
   async jumpToPhase(phaseIndex: number, allowAhead = false): Promise<void> {
+    await this.guarded(() => this.jumpToPhaseNow(phaseIndex, allowAhead));
+  }
+
+  private async jumpToPhaseNow(phaseIndex: number, allowAhead = false): Promise<void> {
     if (phaseIndex < 0 || phaseIndex >= this.topSteps.length) return;
     if (!allowAhead && phaseIndex > this.maxReachedTopIndex) return;
     if (phaseIndex === this.topIndex && this.activeLoop) return;
@@ -559,22 +575,32 @@ export class JobManager {
   async answer(value: VariableValue): Promise<void> {
     const item = this.snapshot.currentItem;
     if (!item || item.type !== "question") return;
-
-    this.lastFailedOperation = () => this.answer(value);
-
-    try {
-      const isUnit = this.activeLoop !== null;
-      if (!isUnit) {
+    await this.guarded(async () => {
+      if (this.activeLoop === null) {
         this.userVariableValues[item.name] = value;
-        await this.coderApi.postCoderVariables(this.userVariableValues);
+        await this.coderApi.postCoderVariables(await this.postedCoderValues());
         await this.advanceTop();
       } else {
         this.unitVariableValues[item.name] = value;
         await this.advanceUnit();
       }
-      this.lastFailedOperation = null;
+    });
+  }
+
+  /**
+   * Runs an operation that talks to the server (answering, navigating). A
+   * failure shows as an error that `retry()` repeats; a new codebook version
+   * (`codebook_changed`) loads the session again.
+   */
+  private async guarded(operation: () => Promise<void>): Promise<void> {
+    this.lastFailedOperation = operation;
+    try {
+      await operation();
+      // (An operation that handles its own failure, like start(), sets its own retry.)
+      if (this.lastFailedOperation === operation) this.lastFailedOperation = null;
     } catch (err) {
       if (errorCodeOf(err) === "codebook_changed") {
+        this.lastFailedOperation = null;
         await this.reloadAfterPublish();
         return;
       }
@@ -611,7 +637,7 @@ export class JobManager {
   async retry(): Promise<void> {
     const op = this.lastFailedOperation;
     if (!op) return;
-    await op();
+    await this.guarded(op);
   }
 
   private syncCurrentUnitAnswers(): void {
@@ -800,6 +826,16 @@ export class JobManager {
 
     this.resuming = false;
     await this.publishTopStep(next);
+  }
+
+  /**
+   * The coder-level answers to store: an answer to a question a condition
+   * now hides (an earlier answer changed) is stored as `skip`, as in loops.
+   * The answer itself stays here, should the question show again.
+   */
+  private async postedCoderValues(): Promise<Record<string, VariableValue>> {
+    const { visible } = await computeTopLevelSteps(this.items, this.userVariableValues, this.stepContext);
+    return Object.fromEntries(Object.entries(this.userVariableValues).map(([name, value]) => [name, name in visible ? value : { done: true, skip: true }]));
   }
 
   private async advanceUnit(): Promise<void> {

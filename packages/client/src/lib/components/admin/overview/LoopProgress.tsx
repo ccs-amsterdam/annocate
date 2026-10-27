@@ -1,4 +1,4 @@
-import type { DeploymentStatus } from "@annotinder/contracts";
+import { ALL_UNITS_UNITSET, type DeploymentStatus } from "@annotinder/contracts";
 
 /**
  * Progress per unitset of each loop (once coders are routed to it): complete
@@ -18,7 +18,7 @@ export function LoopProgress({ status }: { status: DeploymentStatus }) {
             <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
               <span className="truncate">
                 <span className="font-mono">{s.loop}</span>
-                <span className="text-muted-foreground"> · {s.unitset}</span>
+                <span className="text-muted-foreground"> · {s.unitset === ALL_UNITS_UNITSET ? "all units" : s.unitset}</span>
               </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
                 {s.completeUnits} / {s.totalUnits} complete · {s.coders} coder{s.coders === 1 ? "" : "s"}

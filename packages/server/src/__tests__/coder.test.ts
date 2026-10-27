@@ -616,6 +616,11 @@ describe("sessions across devices", () => {
     // and that device keeps its new session
     const reload = await send("device-2", "/session", {}, link);
     expect(((await reload.json()) as SessionResponse).coderId).toBe(secondCoder);
+
+    // A revoked invite starts no new sessions, also not for a known participant; existing ones go on.
+    await db.query("UPDATE invites SET revoked_at = now() WHERE secret = $1", [secret]);
+    expect((await send("device-3", "/session", {}, { ...link, "x-new-session": "1" })).status).toBe(401);
+    expect((await send("device-2", "/session", {}, link)).status).toBe(200);
   });
 
   it("refuses invites that require login (not supported yet)", async () => {

@@ -168,6 +168,8 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   const invite = await one<InviteRow>(sql, "SELECT * FROM invites WHERE secret = $1", [request.inviteSecret]);
   if (!invite || invite.job_id !== jobId) throw new HttpError(401, "Invalid invite secret");
   if (invite.auth === "required") throw new HttpError(401, "This invite requires login", "auth_required");
+  // Revoked: no new sessions, also not for a known participant (existing sessions go on).
+  if (invite.revoked_at !== null) throw new HttpError(401, "This invite has been revoked");
   // A participant id is a label, never a credential: a new key for a known
   // participant gets a *new* session, and only when asked for.
   const participantId = invite.participant_id ?? (invite.participant_from_url ? request.participantId : undefined) ?? null;
@@ -178,7 +180,6 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   }
   // A new session of a known participant is the same person: it doesn't use up the invite.
   if (!knownParticipant) {
-    if (invite.revoked_at !== null) throw new HttpError(401, "This invite has been revoked");
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
     const used = await sql.query("UPDATE invites SET uses = uses + 1 WHERE id = $1 AND (max_uses IS NULL OR uses < max_uses) RETURNING id", [
       invite.id,
