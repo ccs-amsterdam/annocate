@@ -25,14 +25,16 @@ interface CodebookTreeViewProps {
 /**
  * Hierarchical view of the codebook items.
  *
- * Every list has N items and N+1 positions. Each item row targets the position
- * *above* itself (both for "+" and for move targets), and every list ends with
- * a ListEndRow that targets the position after the last item.
+ * Every list has N items and N+1 positions. Each item row's + targets the
+ * position *above* itself; a loop or condition's list-end button the
+ * position after its last child; the codebook's end row the position after
+ * its last item. In move mode the same buttons, at the same places, become
+ * the move targets.
  *
  * Components (see ./codebookTree):
- * - TreeList     recursive list of items, closed by a ListEndRow
+ * - TreeList     recursive list of items (the codebook's closed by a ListEndRow)
  * - TreeItemRow  an item row (EditItemRow / MoveItemRow)
- * - ListEndRow   "add to end" / "Move here" row
+ * - ListEndRow   "add item" / "Move to the end" row of the codebook
  * - TreeRow      shared fixed-height row layout + insertion line
  * - AddItemMenu  "+" button with item type menu
  */
@@ -50,6 +52,7 @@ export function CodebookTreeView({
   readOnly = false,
 }: CodebookTreeViewProps) {
   const [movingKey, setMovingKey] = useState<string | null>(null);
+  const [endPreview, setEndPreview] = useState<string | null>(null);
   const cancelMove = () => setMovingKey(null);
 
   useEffect(() => {
@@ -92,6 +95,9 @@ export function CodebookTreeView({
       }
       cancelMove();
     },
+
+    endPreview,
+    setEndPreview,
 
     isChanged: (item) => changed?.has(getItemKey(item)) ?? false,
 

@@ -51,7 +51,9 @@ describe("CodebookTreeView", () => {
     expect(html).toContain("sentiment");
     expect(html).toContain("Insert above consent");
     expect(html).toContain("Move item");
-    expect(html).toContain("Add to end of codebook");
-    expect(html).toContain("Add to end of main_loop");
+    expect(html).toContain("Add to the end of the codebook");
+    // A container adds to the end of its children from its own row: no end row per list.
+    expect(html).toContain("Add to the end of main_loop");
+    expect(html.match(/add item/g)).toHaveLength(1);
   });
 });

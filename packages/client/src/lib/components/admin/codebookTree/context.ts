@@ -27,6 +27,10 @@ export interface CodebookTreeState {
   canMoveToEnd: (parentKey: string | null) => boolean;
   moveToEnd: (parentKey: string | null) => void;
 
+  /** The container whose end is being previewed as a place to add or move to (an insertion line under its children). */
+  endPreview: string | null;
+  setEndPreview: (key: string | null) => void;
+
   getIssue: (item: CodebookItem) => string | null;
   /** Whether the item has unsaved changes. */
   isChanged: (item: CodebookItem) => boolean;

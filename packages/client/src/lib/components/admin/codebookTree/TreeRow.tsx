@@ -62,7 +62,8 @@ export function TreeRow({
   );
 }
 
-function InsertionLine() {
+/** A line marking where something will be inserted: on the top edge of its (relative) parent. */
+export function InsertionLine() {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex -translate-y-1/2 items-center">
       <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />

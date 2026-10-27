@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { LucideListEnd, Plus } from "lucide-react";
+import { LucideListEnd, Plus, type LucideIcon } from "lucide-react";
 import { cn } from "cn";
 import { ActionButton } from "./TreeRow";
 import { ITEM_TYPES } from "./itemTypes";
@@ -20,10 +20,12 @@ interface AddItemMenuProps {
    * instead of an icon in the row's action column.
    */
   label?: string;
+  /** The action-column button's icon (default +). */
+  icon?: LucideIcon;
 }
 
 /** A "+" button that opens a menu for picking the type of the new item. */
-export function AddItemMenu({ title, allowedTypes, onAdd, onActiveChange, label }: AddItemMenuProps) {
+export function AddItemMenu({ title, allowedTypes, onAdd, onActiveChange, label, icon = Plus }: AddItemMenuProps) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,7 @@ export function AddItemMenu({ title, allowedTypes, onAdd, onActiveChange, label 
     <div ref={containerRef} className={`relative ${label === undefined ? "" : "w-full flex"}`}>
       {label === undefined ? (
 
-        <ActionButton icon={Plus} {...triggerProps} />
+        <ActionButton icon={icon} {...triggerProps} />
       ) : (
         <button
           type="button"

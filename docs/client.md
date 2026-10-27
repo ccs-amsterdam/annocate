@@ -348,6 +348,10 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
     them (names of questions are variables, of unit loops and end items
     what results and the server use; until 2026-10-27 every item had one,
     and old condition names are dropped on parse).
+    Adding and moving use the same places: a row's + inserts above it, a
+    loop or condition's list-end button adds to the end of its children,
+    and one row at the bottom adds to the end of the codebook. In move
+    mode those buttons become "move here" buttons.
   - **JSON**: the whole codebook (`CodebookJsonEditor.tsx`). JSON rather
     than YAML: the structure is explicit (no indentation to get right in a
     browser), and the editor (Monaco, bundled and loaded only with the

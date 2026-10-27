@@ -1,11 +1,11 @@
-import { createElement, useState, type MouseEvent } from "react";
-import { AlertCircle, Move, Trash2, X } from "lucide-react";
+import { createElement, useState } from "react";
+import { AlertCircle, ArrowUpToLine, ListEnd, Move, Trash2, X } from "lucide-react";
 import { cn } from "cn";
 import { useCodebookTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
-import { getItemKey, insertableTypesNextTo, type TreeNode } from "./utils";
+import { getChildren, getItemKey, insertableTypesIn, insertableTypesNextTo, type TreeNode } from "./utils";
 import { parseSimpleCondition } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
@@ -21,14 +21,38 @@ export function TreeItemRow({ item }: TreeItemRowProps) {
   return <MoveItemRow item={item} />;
 }
 
-/** Normal mode: click to select; actions to insert above, move and delete. */
+/** How a container is called in "add to the end of ...": a condition's title is a whole condition. */
+function containerName(item: TreeNode): string {
+  return item.type === "condition" ? "this condition" : itemTitle(item) || "this container";
+}
+
+/**
+ * Normal mode: click to select; actions to insert above, move and delete.
+ * Loops and conditions also add to the end of their children (the only
+ * place a row's "insert above" can't reach).
+ */
 function EditItemRow({ item }: TreeItemRowProps) {
   const tree = useCodebookTree();
   const key = getItemKey(item);
   const [insertPreview, setInsertPreview] = useState(false);
+  const [endActive, setEndActive] = useState(false);
+  const isContainer = getChildren(item) !== null;
 
   const actions = !tree.readOnly && (
     <>
+      {isContainer && (
+        <AddItemMenu
+          icon={ListEnd}
+          title={`Add to the end of ${containerName(item)}`}
+          allowedTypes={insertableTypesIn(tree.items, item)}
+          onAdd={(type) => tree.insertAtEnd(key, type)}
+          onActiveChange={(active) => {
+            setEndActive(active);
+            if (active) tree.setEndPreview(key);
+            else if (tree.endPreview === key) tree.setEndPreview(null);
+          }}
+        />
+      )}
       <AddItemMenu
         title={`Insert above ${itemTitle(item) || "item"}`}
         allowedTypes={insertableTypesNextTo(tree.items, item)}
@@ -44,7 +68,7 @@ function EditItemRow({ item }: TreeItemRowProps) {
     <TreeRow
 
       actions={actions}
-      dimActions={!insertPreview}
+      dimActions={!insertPreview && !endActive}
       showInsertionLine={insertPreview}
       className={cn(
         "",
@@ -63,35 +87,59 @@ function EditItemRow({ item }: TreeItemRowProps) {
 }
 
 /**
- * Move mode: clicking a valid row moves the item to that row's position
- * (i.e. directly above it). Clicking anything else cancels the move.
+ * Move mode: the add buttons become move buttons, at the same places: "move
+ * above this item" and, on loops and conditions, "move to the end of its
+ * children". Clicking anything else cancels the move.
  */
 function MoveItemRow({ item }: TreeItemRowProps) {
   const tree = useCodebookTree();
   const key = getItemKey(item);
   const isMovingItem = tree.movingKey === key;
-  const isValidTarget = tree.canMoveBefore(key);
-  const [hovered, setHovered] = useState(false);
+  const canAbove = tree.canMoveBefore(key);
+  const canEnd = getChildren(item) !== null && tree.canMoveToEnd(key);
+  const [abovePreview, setAbovePreview] = useState(false);
 
-  function handleClick(e: MouseEvent) {
-    e.stopPropagation();
-    if (isValidTarget) tree.moveBefore(key);
-    else tree.cancelMove();
-  }
+  const actions = isMovingItem ? (
+    <MovingBadge onCancel={tree.cancelMove} />
+  ) : (
+    <>
+      {canEnd && (
+        <ActionButton
+          icon={ListEnd}
+          title={`Move to the end of ${containerName(item)}`}
+          className="text-primary"
+          onMouseEnter={() => tree.setEndPreview(key)}
+          onMouseLeave={() => tree.endPreview === key && tree.setEndPreview(null)}
+          onClick={(e) => {
+            e.stopPropagation();
+            tree.setEndPreview(null);
+            tree.moveToEnd(key);
+          }}
+        />
+      )}
+      {canAbove && (
+        <ActionButton
+          icon={ArrowUpToLine}
+          title={`Move above ${itemTitle(item) || "item"}`}
+          className="text-primary"
+          onMouseEnter={() => setAbovePreview(true)}
+          onMouseLeave={() => setAbovePreview(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            tree.moveBefore(key);
+          }}
+        />
+      )}
+    </>
+  );
 
   return (
     <TreeRow
-
-      onClick={handleClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      showInsertionLine={isValidTarget && hovered}
-      actions={isMovingItem && <MovingBadge onCancel={tree.cancelMove} />}
+      showInsertionLine={abovePreview}
+      actions={actions}
       className={cn(
-        "cursor-pointer",
         isMovingItem && "bg-primary/10 ring-1 ring-primary/40",
-        isValidTarget && "text-foreground hover:bg-muted/40",
-        !isValidTarget && !isMovingItem && "select-none opacity-30",
+        !isMovingItem && !canAbove && !canEnd && "select-none opacity-40",
       )}
     >
       <ItemLabel item={item} issue={tree.getIssue(item)} />
