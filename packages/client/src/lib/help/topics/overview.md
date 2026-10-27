@@ -50,7 +50,7 @@ asked once per unit.
 A typical content analysis looks like this:
 
 ```text
-Instructions          a question with a "Continue" button
+Instructions          a confirm question ("I confirm")
 Unit loop             every coder gets 100 news articles
   ├ Topic             nominal: politics, economy, sports, ...
   ├ Tone              ordinal: negative, neutral, positive
