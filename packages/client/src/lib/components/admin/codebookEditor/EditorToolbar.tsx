@@ -34,9 +34,9 @@ interface EditorToolbarProps {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  /** The selected item, if it has unsaved changes (for "revert this item"). */
-  changedItem: { name: string; isNew: boolean } | null;
-  onRevertItem: () => void;
+  /** Items with unsaved changes, in codebook order (for "revert item"). */
+  changedItems: ChangedItem[];
+  onRevertItem: (key: string) => void;
   onRevertAll: () => void;
   saving: boolean;
   onSave: () => void;
@@ -60,7 +60,7 @@ export function EditorToolbar({
   canRedo,
   onUndo,
   onRedo,
-  changedItem,
+  changedItems,
   onRevertItem,
   onRevertAll,
   saving,
@@ -102,7 +102,7 @@ export function EditorToolbar({
             <Button type="button" variant="ghost" size="icon-sm" onClick={onRedo} disabled={!canRedo} title="Redo" aria-label="Redo">
               <Redo2 className="h-4 w-4" />
             </Button>
-            <RevertMenu dirty={dirty} changedItem={changedItem} onRevertItem={onRevertItem} onRevertAll={onRevertAll} />
+            <RevertMenu dirty={dirty} changedItems={changedItems} onRevertItem={onRevertItem} onRevertAll={onRevertAll} />
           </div>
         )}
 
@@ -208,19 +208,24 @@ function IssuesMenu({
   );
 }
 
-/**
- * Going back to the last save: one item, or everything. In a menu with a
- * short explanation, since "revert" alone is easy to misread.
- */
+/** An item with unsaved changes, as the revert menu lists it. */
+export interface ChangedItem {
+  key: string;
+  name: string;
+  /** New since the last save: reverting removes it. */
+  isNew: boolean;
+}
+
+/** Going back to the last save: one of the changed items, or everything. */
 function RevertMenu({
   dirty,
-  changedItem,
+  changedItems,
   onRevertItem,
   onRevertAll,
 }: {
   dirty: boolean;
-  changedItem: { name: string; isNew: boolean } | null;
-  onRevertItem: () => void;
+  changedItems: ChangedItem[];
+  onRevertItem: (key: string) => void;
   onRevertAll: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -228,6 +233,7 @@ function RevertMenu({
     setOpen(false);
     action();
   };
+  const row = "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -237,31 +243,25 @@ function RevertMenu({
           <ChevronDown className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-1">
-        <button
-          type="button"
-          disabled={!changedItem}
-          onClick={() => choose(onRevertItem)}
-          className="flex w-full flex-col items-start gap-0.5 rounded px-2 py-1.5 text-left text-xs hover:bg-muted disabled:opacity-50 disabled:hover:bg-transparent"
-        >
-          <span className="font-semibold text-foreground">
-            {changedItem ? `Revert ${changedItem.name}` : "Revert the selected item"}
-          </span>
-          <span className="text-muted-foreground">
-            {changedItem?.isNew
-              ? "This item is new since the last save: it is removed."
-              : changedItem
-                ? "Back to how it was at the last save. Other items keep their changes."
-                : "The selected item has no unsaved changes."}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => choose(onRevertAll)}
-          className="flex w-full flex-col items-start gap-0.5 rounded px-2 py-1.5 text-left text-xs hover:bg-muted"
-        >
-          <span className="font-semibold text-foreground">Revert all unsaved changes</span>
-          <span className="text-muted-foreground">The whole codebook back to the last save. You can still undo this.</span>
+      <PopoverContent align="end" className="w-72 p-1">
+        {changedItems.length > 0 && (
+          <>
+            <p className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Revert item</p>
+            <ul className="max-h-60 overflow-y-auto">
+              {changedItems.map((item) => (
+                <li key={item.key}>
+                  <button type="button" className={row} onClick={() => choose(() => onRevertItem(item.key))}>
+                    <span className="truncate font-mono text-foreground">{item.name || "(unnamed)"}</span>
+                    {item.isNew && <span className="shrink-0 text-muted-foreground">new: removes it</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="my-1 border-t border-border" />
+          </>
+        )}
+        <button type="button" className={`${row} font-semibold text-foreground`} onClick={() => choose(onRevertAll)}>
+          Revert all changes
         </button>
       </PopoverContent>
     </Popover>

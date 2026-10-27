@@ -5,8 +5,8 @@ import { useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../codebook/unitFieldRefs";
 import { CodebookYamlEditor } from "./CodebookYamlEditor";
 import { useCodebookDraft } from "./codebookEditor/useCodebookDraft";
-import { EditorToolbar, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
-import { findItem, itemAtPath, keyOf } from "../../codebook/tree";
+import { EditorToolbar, type ChangedItem, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
+import { findItem, flattenTree, itemAtPath, keyOf } from "../../codebook/tree";
 import type { CodebookBackup } from "../../codebook/localBackup";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -96,6 +96,15 @@ export function CodebookEditor({
     [warnings],
   );
 
+  const changedItems = useMemo<ChangedItem[]>(
+    () =>
+      flattenTree(draft.items).flatMap((item) => {
+        const key = keyOf(item);
+        return key && draft.changed.has(key) ? [{ key, name: item.name, isNew: !findItem(draft.savedItems, key) }] : [];
+      }),
+    [draft.items, draft.changed, draft.savedItems],
+  );
+
   /** Opens the item an issue is about, in the visual editor. */
   function openIssue(issue: EditorIssue) {
     const target = issue.target;
@@ -145,12 +154,8 @@ export function CodebookEditor({
         canRedo={draft.canRedo}
         onUndo={draft.undo}
         onRedo={draft.redo}
-        changedItem={
-          draft.selected && draft.changed.has(draft.selected) && draft.selectedItem
-            ? { name: draft.selectedItem.name, isNew: !findItem(draft.savedItems, draft.selected) }
-            : null
-        }
-        onRevertItem={() => draft.selected && draft.revert(draft.selected)}
+        changedItems={changedItems}
+        onRevertItem={draft.revert}
         onRevertAll={draft.revertAll}
         saving={draft.saving}
         onSave={() => void draft.save().catch(() => {})}

@@ -351,8 +351,8 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
     Changes less than a second apart are one step, so typing a word is one
     step, and occasionally two quick edits are too.
   - Items with unsaved changes have a dot in the tree. **Revert** opens a
-    menu: the selected item back to the last save (a new item is removed),
-    or all unsaved changes; both can be undone.
+    menu listing them ("Revert item": one back to the last save; a new item
+    is removed) and "Revert all changes".
   - A draft is deleted only from the versions dialog ("Delete draft", with
     a confirm), so it isn't mistaken for dropping unsaved changes.
   - **Backup**: unsaved edits are copied to the browser's localStorage a
