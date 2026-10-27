@@ -41,6 +41,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                 <th className="p-2 font-medium">Started</th>
                 <th className="p-2 font-medium">Last active</th>
                 <th className="p-2 text-right font-medium">Answers</th>
+                <th className="p-2 font-medium">Ended</th>
                 {loops.map((loop) => (
                   <th key={loop} className="p-2 text-right font-medium">
                     Finished in <span className="font-mono">{loop}</span>
@@ -58,6 +59,9 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                   <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(coder.started)}</td>
                   <td className="p-2 whitespace-nowrap">{formatWhen(coder.lastActive)}</td>
                   <td className="p-2 text-right tabular-nums">{coder.answers}</td>
+                  <td className="p-2 whitespace-nowrap text-muted-foreground" title={coder.ended ? `At ${coder.ended.item}` : undefined}>
+                    {coder.ended ? (coder.ended.outcome === "complete" ? "Complete" : "Screened out") : "–"}
+                  </td>
                   {loops.map((loop) => (
                     <td key={loop} className="p-2 text-right tabular-nums">
                       {coder.finished[loop] ?? 0}
