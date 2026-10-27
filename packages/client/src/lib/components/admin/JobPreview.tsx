@@ -82,7 +82,10 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
     };
   }, [client, previewKey]);
 
+  // A reset starts a new preview coder (the browser's preview session cookie would continue the old one).
+  const [wasReset, setWasReset] = useState(false);
   const handleReset = () => {
+    setWasReset(true);
     setPreviewKey(`preview-${client.jobId}-${Date.now()}`);
   };
 
@@ -297,6 +300,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                 key={previewKey}
                 baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                 inviteSecret={preview.token}
+                newSession={wasReset}
                 preview={true}
               />
             </div>
@@ -315,6 +319,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                   key={previewKey}
                   baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                   inviteSecret={preview.token}
+                  newSession={wasReset}
                   preview={true}
                 />
               </div>
@@ -343,6 +348,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
                   key={previewKey}
                   baseUrl={`${coderApiUrl}/d/${preview.deploymentId}`}
                   inviteSecret={preview.token}
+                  newSession={wasReset}
                   preview={true}
                 />
               </div>

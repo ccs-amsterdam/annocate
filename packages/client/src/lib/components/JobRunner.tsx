@@ -52,6 +52,8 @@ export interface JobRunnerProps {
   transferUrl?: (token: string) => string;
   onFinished?: () => void;
   preview?: boolean;
+  /** Start a new session rather than continue this browser's (e.g. resetting a preview). */
+  newSession?: boolean;
 }
 
 interface ContentProps extends JobRunnerProps {
@@ -617,13 +619,13 @@ export function JobRunner(props: JobRunnerProps) {
  * the server on first visit. See docs/coder-identity.md §4.
  */
 function CoderSessionGate(props: JobRunnerProps) {
-  const { baseUrl, inviteSecret, participantId, transferToken, onTransferRedeemed } = props;
+  const { baseUrl, inviteSecret, participantId, transferToken, onTransferRedeemed, newSession = false } = props;
   const scope = useMemo<CoderSessionScope>(
     () => ({ baseUrl, inviteSecret, participantId }),
     [baseUrl, inviteSecret, participantId],
   );
   const [session, setSession] = useState<{ ready: boolean; generation: number; newSession: boolean; error: string | null }>(
-    () => ({ ready: !transferToken, generation: 0, newSession: false, error: null }),
+    () => ({ ready: !transferToken, generation: 0, newSession, error: null }),
   );
 
   useEffect(() => {
