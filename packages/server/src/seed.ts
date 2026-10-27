@@ -173,7 +173,7 @@ export async function seed(db: Sql): Promise<void> {
           // from the topics question on a reminder of the earlier answer.
           "::: if $var.group.is('experiment')\n$snippet.experiment_banner\n::: else\n$snippet.control_banner\n:::\n\n" +
           "::: if $var.experience.is(1)\n$snippet.beginner_tip\n:::\n\n" +
-          "# $unit.headline\n\n$unit.text::tokenize\n\n" +
+          "# $unit.headline\n\n$unit.text\n\n" +
           ":::: from topics\n::: style margin-top: 1em; font-size: 90%; opacity: 0.8\nYou rated the tone of this article as **$var.sentiment.label**.\n:::\n::::",
         snippets: {
           control_banner:

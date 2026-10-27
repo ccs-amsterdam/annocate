@@ -361,16 +361,16 @@ describe("reference validation", () => {
     ]);
   });
 
-  it("only allows ::tokenize on a bare $unit/$const in the layout, and requires it for span columns", () => {
+  it("requires span columns to be shown as plain text in the layout (::tokenize is the old spelling)", () => {
     const span = questionVar("s", { type: "span", question: "?", column: "text", options: [{ value: "x" }] });
-    expect(messages([unitLoop("l", [span], "{{ $unit.text }}::tokenize")])).toEqual([
-      "::tokenize only works on a bare $unit.<field> or $const.<name>",
-      "Span question 's' selects text in 'text', but the layout doesn't show it as $unit.text::tokenize",
+    expect(messages([unitLoop("l", [span], "$unit.text::markdown")])).toEqual([
+      "Span question 's' selects text in 'text', but the layout doesn't show it as plain $unit.text",
     ]);
-    expect(messages([unitLoop("l", [questionVar("q", { ...confirmVariable, question: "$unit.text::tokenize" })], "$unit.text")])).toEqual([
-      "::tokenize can only be used in the unit layout",
-    ]);
+    expect(messages([unitLoop("l", [span], "# $unit.headline\n\n$unit.text")])).toEqual([]);
+    expect(messages([unitLoop("l", [span], "{{$unit.text}}")])).toEqual([]);
+    expect(messages([unitLoop("l", [span], "$unit.text::tokenize")])).toEqual([]);
   });
+
 
   it("checks templates with their snippets put in, and snippets that include themselves", () => {
     const group = questionVar("group", select(["a", "b"]));

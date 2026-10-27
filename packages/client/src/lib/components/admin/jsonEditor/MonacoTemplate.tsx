@@ -47,7 +47,6 @@ const SUFFIXES = [
   ["text", "literal text (default)"],
   ["markdown", "the value as markdown"],
   ["image", "the value is an image URL"],
-  ["tokenize", "selectable text, for span questions (only on a bare $unit.x / $const.x)"],
   ["html", "the value as HTML, in a sandbox (no scripts, nothing loaded from elsewhere)"],
 ] as const;
 

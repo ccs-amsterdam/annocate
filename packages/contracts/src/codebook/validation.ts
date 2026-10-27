@@ -54,11 +54,11 @@ interface RefContext {
  * 2. Enforces unique names across all items in the tree
  * 3. Enforces that span variable references in relations exist in preceding items
  * 4. Enforces structural rules (unit_loop cannot be nested, etc.)
- * 5. Checks every reference (`$var`, `$unit`, `$const`) in conditions,
+ * 5. Checks every reference (`$var`, `$unit`, `$snippet`) in conditions,
  *    branch `when`, unitset names, the layout template and question texts:
  *    it must exist, be available at that point (asked before, not in
  *    another loop), and fit the question's type. Agreement rules must refer
- *    to questions inside the loop, span columns must be tokenized.
+ *    to questions inside the loop, span columns must be shown as plain text.
  *
  * In simple conditions (condition.ts) the helper arguments are checked too.
  * Script syntax isn't checked here (no JS engine); the admin editor does that.
@@ -219,10 +219,10 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     return ctxAt;
   }
 
-  /** Checks a template; returns the names it tokenizes. */
+  /** Checks a template; returns the unit fields it shows as plain text (what span questions can select in). */
   function checkTemplate(raw: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): Set<string> {
-    const tokenized = new Set<string>();
-    if (typeof raw !== "string") return tokenized;
+    const selectable = new Set<string>();
+    if (typeof raw !== "string") return selectable;
     // In a loop, snippets are put in first: the template is checked as it will be shown.
     let source = raw;
     if (ctx.snippets) {
@@ -250,13 +250,15 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         if (kind === "unitset" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
         if (kind === "url" && ref.ns !== "var") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var references`);
       }
-      if (segment.suffix === "tokenize") {
-        if (kind !== "layout") issue(here.path, "::tokenize can only be used in the unit layout");
-        else if (!segment.ref || segment.ref.ns === "var") issue(here.path, "::tokenize only works on a bare $unit.<field> or $const.<name>");
-        else tokenized.add(segment.ref.path[0]);
+      // A unit field shown as plain text (`$unit.x`, or `{{$unit.x}}`; `::tokenize` is
+      // the old spelling) is what span questions can select in.
+      const only = segment.references.length === 1 ? segment.references[0] : undefined;
+      const ref = segment.ref ?? (only && segment.script === referenceText(only) ? only : undefined);
+      if (kind === "layout" && ref?.ns === "unit" && (segment.suffix === "text" || segment.suffix === "tokenize")) {
+        selectable.add(ref.path[0]);
       }
     }
-    return tokenized;
+    return selectable;
   }
 
   function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
@@ -290,7 +292,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     });
 
     const snippets = loop.layout?.snippets ?? {};
-    const tokenized = checkTemplate(
+    const selectable = checkTemplate(
       loop.layout?.template,
       { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, snippets, loopOrder: [...loopQuestions] },
       "layout",
@@ -308,10 +310,10 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       if (typeof variable?.field === "string" && !shownFields.has(variable.field)) {
         issue([...path, "variable", "field"], `Field '${variable.field}' is not shown in the layout (as $unit.${variable.field})`);
       }
-      if (variable?.type === "span" && variable.column && !tokenized.has(variable.column)) {
+      if (variable?.type === "span" && variable.column && !selectable.has(variable.column)) {
         issue(
           [...path, "variable", "column"],
-          `Span question '${q.name}' selects text in '${variable.column}', but the layout doesn't show it as $unit.${variable.column}::tokenize`,
+          `Span question '${q.name}' selects text in '${variable.column}', but the layout doesn't show it as plain $unit.${variable.column}`,
         );
       }
     });

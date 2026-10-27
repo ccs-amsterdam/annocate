@@ -15,7 +15,7 @@ import { branchUnitsets, buildScope, loopTitle, unitLoops, collectQuestions, fil
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
-import { computeLoopSteps, computeTopLevelSteps, flattenTree, type StepContext } from "../codebook/tree";
+import { computeLoopSteps, computeTopLevelSteps, flattenTree, spanColumns, type StepContext } from "../codebook/tree";
 import { renderTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
 import type { QuestionTexts } from "../components/Question";
 
@@ -671,6 +671,7 @@ export class JobManager {
         renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`, {
           progress: { current: step && "name" in step ? step.name : null, order: loopQuestionNames(loop) },
           snippets,
+          selectable: spanColumns(loop),
         }),
         this.questionTexts(step, scope, snippets),
       ]);

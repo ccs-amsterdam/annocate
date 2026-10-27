@@ -14,6 +14,7 @@ import { Question } from "../Question";
 import { UnitFields } from "../UnitFields";
 import { SpanAnnotationProvider } from "../../context/SpanAnnotationContext";
 import { Smartphone } from "lucide-react";
+import { spanColumns } from "../../codebook/tree";
 
 const MOCK_UNIT_DATA: UnitData = {
   headline: "Sample Headline: Global Climate Summit Reaches Historic Agreement",
@@ -65,9 +66,12 @@ export function CodebookPreviewVariable({
   const layout = isLoop
     ? item.layout
     : parentLoop?.layout ?? {
-        template: "# $unit.headline\n\n$unit.text::tokenize",
+        template: "# $unit.headline\n\n$unit.text",
       };
-  const rendered = useRenderedLayout(layout, unitData, questions, answers, progress);
+  const loop = isLoop ? item : parentLoop;
+  // Span questions' fields are selectable during every question, as while coding.
+  const selectable = loop ? spanColumns(loop) : spanVariable ? [spanVariable.column] : [];
+  const rendered = useRenderedLayout(layout, unitData, questions, answers, progress, selectable);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -97,6 +101,8 @@ export function CodebookPreviewVariable({
                   key={itemName(item)}
                   column={spanVariable.column}
                   options={spanVariable.options}
+                  defaultSelectionMode={spanVariable.selectionMode ?? "word"}
+                  allowGaps={spanVariable.gaps ?? false}
                   initialSpans={[]}
                 >
                   <UnitFields layout={layout} rendered={rendered} />
@@ -172,13 +178,14 @@ function useRenderedLayout(
   questions: ReadonlyMap<string, AnyVariableType> | undefined,
   answers: Record<string, VariableValue> | undefined,
   progress: TemplateProgress | undefined,
+  selectable: string[],
 ): RenderedTemplate {
   const [rendered, setRendered] = useState<RenderedTemplate>({ markdown: "", values: [] });
-  const key = JSON.stringify([layout, unit, answers, progress]);
+  const key = JSON.stringify([layout, unit, answers, progress, selectable]);
   useEffect(() => {
     let cancelled = false;
     const scope = buildScope(questions ?? new Map(), answers ?? {}, unit);
-    renderTemplate(layout.template, scope, undefined, "preview", { progress, snippets: layout.snippets }).then(
+    renderTemplate(layout.template, scope, undefined, "preview", { progress, snippets: layout.snippets, selectable }).then(
       (result) => !cancelled && setRendered(result),
       () => undefined,
     );

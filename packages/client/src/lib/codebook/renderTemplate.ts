@@ -16,10 +16,10 @@ import type { ExpressionCache } from "./expressionCache";
 /** One evaluated value in a template, rendered by its suffix (docs/client.md §3). */
 export interface TemplateValue {
   suffix: OutputSuffix;
-  /** The value as text (`outputText`): the literal text, markdown source, image URL or text to tokenize. */
+  /** The value as text (`outputText`): the literal text, markdown source, image URL or HTML. */
   text: string;
-  /** For `::tokenize`: the unit field or constant it shows (span questions target it by name). */
-  name?: string;
+  /** A unit field a span question of the loop selects in: shown as selectable text, during every question. */
+  selectable?: boolean;
   /** Stands alone on its line: rendered as a block. */
   block: boolean;
   /** For a bare `$unit.<field>`: the field, marked on the element (`data-field`) so a question can scroll to it. */
@@ -123,18 +123,24 @@ export function prepareTemplate(source: string): { markdown: string; expressions
   return { markdown, expressions };
 }
 
-function toValue(expression: TemplateExpression, value: unknown): TemplateValue {
-  const name = expression.suffix === "tokenize" && expression.ref ? expression.ref.path[0] : undefined;
-  // `{{$unit.x}}` is the same as `$unit.x`
+function toValue(expression: TemplateExpression, value: unknown, selectable: readonly string[] = []): TemplateValue {
+  // `{{$unit.x}}` is the same as `$unit.x`; `::tokenize` is the old spelling of `::text`
   const only = expression.references.length === 1 ? expression.references[0] : undefined;
   const ref = expression.ref ?? (only && expression.script === referenceText(only) ? only : undefined);
   const field = ref?.ns === "unit" ? ref.path[0] : undefined;
-  return { suffix: expression.suffix, text: outputText(value), name, block: expression.alone, ...(field ? { field } : {}) };
+  const suffix = expression.suffix === "tokenize" ? "text" : expression.suffix;
+  return {
+    suffix,
+    text: outputText(value),
+    block: expression.alone,
+    ...(field ? { field } : {}),
+    ...(field && suffix === "text" && selectable.includes(field) ? { selectable: true } : {}),
+  };
 }
 
 /**
  * Evaluates a template's values (the unit layout, or a question or
- * instruction text) against a `{ $unit, $var, $const }` scope.
+ * instruction text) against a `{ $unit, $var }` scope.
  * `keyPrefix` names the template's slots in the cache.
  */
 export async function renderTemplate(
@@ -142,7 +148,16 @@ export async function renderTemplate(
   scope: ReferenceScope,
   cache?: ExpressionCache,
   keyPrefix = "template",
-  { progress, snippets }: { progress?: TemplateProgress; snippets?: Record<string, string> } = {},
+  {
+    progress,
+    snippets,
+    selectable,
+  }: {
+    progress?: TemplateProgress;
+    snippets?: Record<string, string>;
+    /** The unit fields span questions of the loop select in (shown as selectable text). */
+    selectable?: readonly string[];
+  } = {},
 ): Promise<RenderedTemplate> {
   // Snippets first: as if typed into the template (contracts snippets.ts).
   source = expandSnippets(source, snippets).source;
@@ -156,7 +171,7 @@ export async function renderTemplate(
   const results = await Promise.all(
     expressions.map((e, i) => (cache ? cache.evaluate(`${keyPrefix}:${i}`, e.script, scope) : evaluateScript(e.script, scope))),
   );
-  const values = expressions.map((e, i) => toValue(e, results[i]));
+  const values = expressions.map((e, i) => toValue(e, results[i], selectable));
   return { markdown, values, styles };
 }
 

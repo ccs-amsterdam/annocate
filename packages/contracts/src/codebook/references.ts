@@ -20,6 +20,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 export type ReferenceNamespace = "unit" | "var";
 
 /** How a template value is output (`$ref::markdown`); `text` is the default. */
+/** `tokenize` is the old spelling of `text` (span questions now select in any plain `$unit.<field>`). */
 export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "tokenize", "html"] as const;
 export type OutputSuffix = (typeof OUTPUT_SUFFIXES)[number];
 
@@ -157,7 +158,7 @@ function readReference(
       pos += 2 + name.length;
     } else if (name) {
       pos += 2 + name.length;
-      return fail(`Unknown output '::${name}' (use ::text, ::markdown, ::image, ::tokenize or ::html)`);
+      return fail(`Unknown output '::${name}' (use ::text, ::markdown, ::image or ::html)`);
     }
   }
   return { ref: { ns, path, ...(call ? { call } : {}), suffix, start: at, end: pos }, end: pos };
@@ -303,7 +304,7 @@ export function templateFences(source: string): TemplateFence[] {
  * Splits a template (the unit layout, a question or instruction text, a
  * unitset name) into literal text and expressions. Syntax: `$unit.x`,
  * `$var.q.value` or `{{ js }}`, each with an optional
- * `::text|markdown|image|tokenize` suffix. `\$` is a literal `$`; references
+ * `::text|markdown|image|html` suffix (`::tokenize`: the old spelling of `::text`). `\$` is a literal `$`; references
  * inside markdown code spans and fences stay literal. Block fence lines
  * (`::: if ...`) are left out: `parseTemplateBlocks` reads them.
  */
@@ -347,7 +348,7 @@ export function parseTemplate(source: string): ParsedTemplate {
       const match = /^::([A-Za-z]+)/.exec(source.slice(end));
       if (match) {
         if ((OUTPUT_SUFFIXES as readonly string[]).includes(match[1])) suffix = match[1] as OutputSuffix;
-        else errors.push({ message: `Unknown output '::${match[1]}' (use ::text, ::markdown, ::image, ::tokenize or ::html)`, start: end, end: end + match[0].length });
+        else errors.push({ message: `Unknown output '::${match[1]}' (use ::text, ::markdown, ::image or ::html)`, start: end, end: end + match[0].length });
         end += match[0].length;
       }
       const extracted = extractReferences(script, i + 2);

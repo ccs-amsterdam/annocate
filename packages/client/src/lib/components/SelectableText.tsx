@@ -214,8 +214,11 @@ function getAbsoluteOffset(root: Node, target: Node, offsetInTarget: number): nu
  *   - Clicking an existing label opens the manage menu for that word (showing current labels + "Create new label").
  *   - Dragging across text creates a range selection.
  */
-export function SelectableText({ text }: { text: string }) {
-  const annotation = useSpanAnnotation();
+export function SelectableText({ text, field, inline = false }: { text: string; field?: string; inline?: boolean }) {
+  const context = useSpanAnnotation();
+  // Only the span question on screen that selects in this field can select;
+  // otherwise the text looks the same, so the layout doesn't shift.
+  const annotation = context && (field === undefined || context.column === field) ? context : null;
   const containerRef = useRef<HTMLDivElement>(null);
 
   const pending = annotation?.pendingSpan ?? null;
@@ -235,7 +238,8 @@ export function SelectableText({ text }: { text: string }) {
 
     if (isClick) {
       const caret = offset;
-      const wordRange = getWordAtPosition(text, caret);
+      // Character mode: no snapping, so a click only opens an existing span (spans are made by selecting).
+      const wordRange = annotation.selectionMode === "word" ? getWordAtPosition(text, caret) : null;
 
       // Case 1: If a span is ALREADY pending in create mode:
       if (pending && pending.mode === "create") {
@@ -481,14 +485,15 @@ export function SelectableText({ text }: { text: string }) {
     });
   }
 
+  const Container = inline ? "span" : "div";
   return (
-    <div className="flex flex-col gap-2.5">
+    <Container className={inline ? undefined : "flex flex-col gap-2.5"}>
       {/* Interactive Text View */}
-      <div
-        ref={containerRef}
-        tabIndex={0}
-        onMouseUp={handleMouseUp}
-        onKeyUp={handleKeyUp}
+      <Container
+        ref={containerRef as React.Ref<HTMLDivElement & HTMLSpanElement>}
+        tabIndex={annotation ? 0 : undefined}
+        onMouseUp={annotation ? handleMouseUp : undefined}
+        onKeyUp={annotation ? handleKeyUp : undefined}
         className="whitespace-pre-wrap select-text focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded p-1 transition-all leading-[1.8]"
       >
         {segments.map((seg, i) => {
@@ -555,7 +560,7 @@ export function SelectableText({ text }: { text: string }) {
             </mark>
           );
         })}
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

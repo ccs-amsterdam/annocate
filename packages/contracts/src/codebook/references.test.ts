@@ -83,7 +83,7 @@ describe("parseTemplate", () => {
 
   it("reports unknown suffixes and unclosed blocks", () => {
     expect(parseTemplate("$unit.a::bold").errors.map((e) => e.message)).toEqual([
-      "Unknown output '::bold' (use ::text, ::markdown, ::image, ::tokenize or ::html)",
+      "Unknown output '::bold' (use ::text, ::markdown, ::image or ::html)",
     ]);
     expect(parseTemplate("{{ 1 + ").errors.map((e) => e.message)).toEqual(["Unclosed {{"]);
   });

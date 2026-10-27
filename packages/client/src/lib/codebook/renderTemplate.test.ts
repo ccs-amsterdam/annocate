@@ -39,9 +39,14 @@ describe("renderTemplate", () => {
     expect(bare).toEqual(braced);
   });
 
-  it("names the field of a ::tokenize value", async () => {
-    const rendered = await renderTemplate("$unit.body::tokenize", scope({ body: "a b" }));
-    expect(rendered.values).toEqual([{ suffix: "tokenize", text: "a b", name: "body", block: true, field: "body" }]);
+  it("marks the fields span questions select in as selectable (::tokenize is the old spelling of ::text)", async () => {
+    const rendered = await renderTemplate("$unit.body::tokenize\n\n$unit.title", scope({ body: "a b", title: "T" }), undefined, "t", {
+      selectable: ["body"],
+    });
+    expect(rendered.values).toEqual([
+      { suffix: "text", text: "a b", block: true, field: "body", selectable: true },
+      { suffix: "text", text: "T", block: true, field: "title" },
+    ]);
   });
 
   it("uses an ExpressionCache, still returning correct results", async () => {

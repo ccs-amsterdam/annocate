@@ -12,7 +12,7 @@ import {
 export const VariableBaseSchema = z.object({
   question: z
     .string()
-    .describe("The question shown to the annotator: a markdown template with $var references and {{ }} (in a loop also $unit/$const)."),
+    .describe("The question shown to the annotator: a markdown template with $var references and {{ }} (in a loop also $unit and $snippet)."),
   questionStyle: z.record(z.string(), z.string()).optional(),
   instruction: z.string().optional().describe("Extra instructions for this variable; a markdown template like `question`."),
   instructionStyle: z.record(z.string(), z.string()).optional(),
@@ -158,8 +158,8 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
   column: z
     .string()
     .describe(
-      "The unit data column (or layout `constants` entry) to select spans in -- must be rendered as " +
-        "`$unit.<column>::tokenize` (or `$const.<name>::tokenize`) in the unit_loop's layout template (docs/client.md §3)",
+      "The unit field to select spans in: the loop's layout shows it as plain `$unit.<column>` " +
+        "(selectable for the whole unit, docs/client.md §3)",
     ),
   options: NominalOptionsSchema,
   editMode: z.boolean().optional(),

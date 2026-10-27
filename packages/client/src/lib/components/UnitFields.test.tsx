@@ -40,15 +40,20 @@ describe("UnitFields", () => {
     expect(html).toContain("<p>A <strong>bold</strong> note.</p>");
   });
 
-  it("makes the tokenized field selectable for the span question that targets it", async () => {
-    const props = await render({ template: "$unit.body::tokenize" }, { body: "Some words here" });
-    const html = renderToStaticMarkup(
-      <SpanAnnotationProvider column="body" options={[{ value: "x" }]} initialSpans={[]}>
-        <UnitFields {...props} />
-      </SpanAnnotationProvider>,
-    );
-    expect(html).toContain("Some");
-    expect(html).toContain(`tabindex="0"`);
+  it("shows a span question's field as the same selectable text during every question, selecting only during its own", async () => {
+    const scope: ReferenceScope = { $unit: { body: "Some words here" }, $var: {} };
+    const layout = { template: "$unit.body" };
+    const rendered = await renderTemplate(layout.template, scope, undefined, "t", { selectable: ["body"] });
+    const during = (column: string) =>
+      renderToStaticMarkup(
+        <SpanAnnotationProvider column={column} options={[{ value: "x" }]} initialSpans={[]}>
+          <UnitFields layout={layout} rendered={rendered} />
+        </SpanAnnotationProvider>,
+      );
+    expect(during("body")).toContain(`tabindex="0"`);
+    expect(during("")).not.toContain("tabindex");
+    // The same element either way: nothing shifts between questions
+    expect(during("").replace(/ tabindex="0"/g, "")).toBe(during("body").replace(/ tabindex="0"/g, ""));
   });
 
   it("fills in values in link URLs, and doesn't eat colons in text", async () => {

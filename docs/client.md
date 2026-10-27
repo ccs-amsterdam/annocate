@@ -86,10 +86,15 @@ templates with the same syntax.
     questions can't select in it, it doesn't follow the app's fonts or
     dark mode, and HTML that loads images or styles from the web shows
     without them.
-  - `::tokenize`: text that span questions can annotate. Only on a bare
-    `$unit.x` or `$const.x` in the layout (validation enforces it), so span
-    offsets always point into one stable string, never rendered output.
-    Every span question's `column` must be tokenized in the layout.
+- **Selectable text**: a span question's `column` is a unit field that the
+  layout shows as plain text (`$unit.x` or `{{$unit.x}}`; validation
+  enforces it), so span offsets always point into one stable string, never
+  rendered output. Every such field (all span questions of the loop) is
+  rendered as `SelectableText` during every question of the unit, looking
+  the same whether or not the question on screen selects in it, so the
+  layout doesn't shift; only that question's span question can select.
+  `::tokenize` (until 2026-10-28 the way to mark such a field) is read as
+  `::text`. Image fields may later work the same way for image questions.
 - `$unit.text` is the same as `{{$unit.text}}`, and `$unit.text::markdown`
   as `{{$unit.text}}::markdown`. `\$` is a literal `$`; references inside
   code spans and fences stay literal. Values become text predictably:
@@ -260,11 +265,14 @@ the buttons answer directly.
 
 - Span and relation questions are ordinary steps in the question flow, not
   a separate "annotation mode". `JobRunner` mounts a `SpanAnnotationProvider`
-  while a span question is active. `UnitFields` then renders the matching
-  `$unit.<column>::tokenize` value as `SelectableText`.
+  while a span question is active. The fields span questions select in
+  are always `SelectableText` (§3, "Selectable text"); only the active
+  question's can select.
 - Spans are stored as **character offsets** (`offset`, `length`) plus the
   selected `text` (redundant, but saves analysis a re-slice). No
-  tokenization library. Selection can still snap to words.
+  tokenization library. In word mode a selection (and a click) snaps to
+  words; in character mode it is exactly what was selected, and a click
+  only opens an existing span.
 - Overlapping spans are rejected when selecting. Clicking a highlighted span
   removes it. Earlier spans of a resumed unit are passed in as
   `initialSpans`.
@@ -365,8 +373,8 @@ inside the condition's own children, not in another loop); the property or
 method fits its type; `$unit` and `$snippet` only inside a loop (unknown
 snippets are an error; unknown `$unit` fields are a warning in the editor, once the
 job has units); branch `when`, unitset names and end item redirect URLs
-only use coder-level `$var` refs from before the loop; `::tokenize` as
-described in §3. In simple conditions the helper arguments are checked too:
+only use coder-level `$var` refs from before the loop; span columns shown
+as plain text, as described in §3. In simple conditions the helper arguments are checked too:
 their number, and that they are values of the question's options (numeric:
 numbers within its range). In advanced scripts references are checked,
 values not. Script syntax is checked in the admin editor (QuickJS), not in
@@ -493,7 +501,7 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   scheme. Above every `::: if` line a code lens shows the condition in
   words, and "edit" opens the rules editor (`ConditionDialog`) for it. An
   Insert menu (`TemplateInsertMenu.tsx`) writes the text for a unit field
-  (as headline, text, selectable text or image), a snippet, "Show if…" (the rules
+  (as headline, text or image), a snippet, "Show if…" (the rules
   editor), "Show from…" and a few styles; blocks wrap the selected text.
   The text stays the source of truth. The layout's `style` and `meta` are
   only in the JSON views.

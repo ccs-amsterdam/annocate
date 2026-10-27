@@ -3,7 +3,6 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { RenderedTemplate, TemplateValue } from "../codebook/renderTemplate";
 import { remarkTemplateValues } from "../codebook/templateValues";
-import { useSpanAnnotation } from "../context/SpanAnnotationContext";
 import { SelectableText } from "./SelectableText";
 import { SandboxedHtml } from "./SandboxedHtml";
 
@@ -12,8 +11,8 @@ import { SandboxedHtml } from "./SandboxedHtml";
  * instruction text. The markdown is rendered with `react-markdown` (no raw
  * HTML), and each value by its suffix: `text` as a React text node (never
  * parsed as markdown), `markdown` as nested markdown, `image` as an image,
- * `tokenize` as text a span question can select in, `html` in a sandboxed
- * iframe.
+ * `html` in a sandboxed iframe; a unit field span questions select in as
+ * selectable text.
  */
 export function TemplateMarkdown({ rendered, components }: { rendered: RenderedTemplate; components?: Components }) {
   const allComponents = {
@@ -47,7 +46,6 @@ function styleComponents(styles: Record<string, string>[] | undefined): Componen
 }
 
 function TemplateValueView({ value, block, styles }: { value: TemplateValue; block: boolean; styles?: Record<string, string>[] }) {
-  const annotation = useSpanAnnotation();
   // A unit field's element is marked (data-field), so a question can scroll to it (UnitFields).
   const field = value.field ? { "data-field": value.field } : {};
   const wrap = (content: ReactNode, pre = true) =>
@@ -63,7 +61,7 @@ function TemplateValueView({ value, block, styles }: { value: TemplateValue; blo
 
   switch (value.suffix) {
     case "image":
-      return value.text ? <img src={value.text} alt={value.name ?? ""} className="max-w-full" {...field} /> : null;
+      return value.text ? <img src={value.text} alt={value.field ?? ""} className="max-w-full" {...field} /> : null;
     case "html":
       // Researchers' or units' own HTML, in a sandbox (SandboxedHtml.tsx)
       return value.text ? (
@@ -81,12 +79,12 @@ function TemplateValueView({ value, block, styles }: { value: TemplateValue; blo
         </ReactMarkdown>,
         false,
       );
-    case "tokenize":
-      if (annotation && value.name !== undefined && annotation.column === value.name) {
-        return wrap(<SelectableText text={value.text} />, false);
-      }
-      return wrap(value.text);
     default:
+      // A field span questions select in: the same element during every
+      // question (selecting only works during theirs), so nothing shifts.
+      if (value.selectable && value.field) {
+        return wrap(<SelectableText text={value.text} field={value.field} inline={!block} />, false);
+      }
       return wrap(value.text);
   }
 }

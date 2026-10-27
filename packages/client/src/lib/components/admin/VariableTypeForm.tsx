@@ -198,11 +198,11 @@ export function VariableTypeForm({
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Column / constant to tokenize</label>
+            <label className="text-sm font-medium">Unit field to select in</label>
             <Input
               value={v.column}
               onChange={(e) => onChange({ ...v, column: e.target.value })}
-              placeholder="Must be shown as $unit.<column>::tokenize in the layout"
+              placeholder="Shown as $unit.<field> in the layout"
             />
           </div>
           <div className="flex flex-col gap-1">

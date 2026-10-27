@@ -44,7 +44,7 @@ export async function scriptSyntaxError(script: string): Promise<string | null> 
   const QuickJS = await loadQuickJS();
   const vm = QuickJS.newContext();
   try {
-    const result = vm.evalCode(`(($unit, $var, $const) => (${script}\n))`);
+    const result = vm.evalCode(`(($unit, $var) => (${script}\n))`);
     if (result.error) {
       const error = vm.dump(result.error) as { message?: string } | string;
       result.error.dispose();

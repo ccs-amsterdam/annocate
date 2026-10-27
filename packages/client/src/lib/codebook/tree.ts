@@ -229,3 +229,10 @@ export function enclosingLoop(items: TopLevelItem[], item: CodebookItem): UnitLo
   }
   return undefined;
 }
+
+/** The unit fields the span questions of a loop select in: shown as selectable text in its layout. */
+export function spanColumns(loop: UnitLoopItem): string[] {
+  return flattenTree(loop.children).flatMap((item) =>
+    "variable" in item && item.variable.type === "span" && item.variable.column ? [item.variable.column] : [],
+  );
+}

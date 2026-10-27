@@ -12,7 +12,7 @@ import { HELPER_METHODS, type HelperMethod, type ReferenceScope } from "./refere
 
 export const ConditionSchema = z
   .object({
-    /** A JS expression over `$unit`, `$var` and `$const`; truthy = shown / matches. */
+    /** A JS expression over `$unit` and `$var`; truthy = shown / matches. */
     script: z.string(),
   })
   .strict();

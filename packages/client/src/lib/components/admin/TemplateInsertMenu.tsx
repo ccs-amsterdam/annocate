@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, Code2, Eye, GitBranch, Heading1, Image, Paintbrush, Puzzle, Text, TextSelect } from "lucide-react";
+import { ChevronDown, ChevronLeft, Code2, Eye, GitBranch, Heading1, Image, Paintbrush, Puzzle, Text } from "lucide-react";
 import type { AnyVariableType, Condition } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,11 +19,11 @@ const STYLES: { label: string; css: string }[] = [
   { label: "Custom CSS…", css: "property: value" },
 ];
 
-type Step = "menu" | "headline" | "text" | "tokenize" | "image" | "snippet" | "from" | "style";
+type Step = "menu" | "headline" | "text" | "image" | "snippet" | "from" | "style";
 
 /**
- * "Insert" above the unit template: unit fields (as headline, text,
- * selectable text or image), "Show if…" (a condition from the rules
+ * "Insert" above the unit template: unit fields (as headline, text or
+ * image), "Show if…" (a condition from the rules
  * editor), "Show from…" (a question of the loop) and styles. Blocks wrap
  * the selected text. The text stays the source of truth: this only writes
  * it (docs/client.md §7, "Unit loops").
@@ -58,10 +58,9 @@ export function TemplateInsertMenu({
     setStep(null);
     editor?.insertSnippet(snippet);
   };
-  const fieldSnippet: Record<"headline" | "text" | "tokenize" | "image", (f: string) => string> = {
+  const fieldSnippet: Record<"headline" | "text" | "image", (f: string) => string> = {
     headline: (f) => `# ${literal(`$unit.${f}`)}\n$0`,
     text: (f) => `${literal(`$unit.${f}`)}\n$0`,
-    tokenize: (f) => `${literal(`$unit.${f}::tokenize`)}\n$0`,
     image: (f) => `${literal(`$unit.${f}::image`)}\n$0`,
   };
 
@@ -107,8 +106,7 @@ export function TemplateInsertMenu({
           {step === "menu" && (
             <>
               {item(Heading1, "Headline", () => setStep("headline"), "a unit field as a heading")}
-              {item(Text, "Text", () => setStep("text"), "a unit field")}
-              {item(TextSelect, "Selectable text", () => setStep("tokenize"), "a unit field span questions can select in")}
+              {item(Text, "Text", () => setStep("text"), "a unit field (span questions can select in it)")}
               {item(Image, "Image", () => setStep("image"), "a unit field with an image URL")}
               {item(Puzzle, "Snippet", () => setStep("snippet"), "a named piece of this layout")}
               <div className="my-1 border-t border-border" />
@@ -120,7 +118,7 @@ export function TemplateInsertMenu({
               {item(Paintbrush, "Style…", () => setStep("style"), "colours, size, a box")}
             </>
           )}
-          {(step === "headline" || step === "text" || step === "tokenize" || step === "image") && (
+          {(step === "headline" || step === "text" || step === "image") && (
             <>
               {back("Which field?")}
               {list(fields, "This job's units have no fields yet: upload units first.", (f) => insert(fieldSnippet[step](f)))}
