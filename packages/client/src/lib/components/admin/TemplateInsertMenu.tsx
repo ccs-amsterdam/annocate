@@ -102,7 +102,7 @@ export function TemplateInsertMenu({
         Insert <ChevronDown className="ml-1 h-3.5 w-3.5" />
       </Button>
       {step && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-80 w-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 max-h-80 w-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
           {step === "menu" && (
             <>
               {item(Heading1, "Headline", () => setStep("headline"), "a unit field as a heading")}

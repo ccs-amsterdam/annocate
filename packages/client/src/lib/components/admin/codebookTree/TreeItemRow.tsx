@@ -1,10 +1,11 @@
 import { createElement } from "react";
-import { AlertCircle, CornerDownLeft } from "lucide-react";
+import { AlertCircle, CornerDownLeft, Layers, LayoutTemplate } from "lucide-react";
+import { useLoopTab } from "../codebookEditor/loopTab";
 import { cn } from "cn";
 import { useCodebookTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu, type AddOption } from "./AddItemMenu";
-import { TreeRow } from "./TreeRow";
+import { ActionButton, TreeRow } from "./TreeRow";
 import { getItemKey, insertableTypesAt, type TreeNode } from "./utils";
 import {
   parseSimpleCondition,
@@ -58,6 +59,7 @@ function moveLabel(label: string): string {
 export function TreeItemRow({ item }: { item: TreeNode }) {
   const tree = useCodebookTree();
   const key = getItemKey(item);
+  const [loopTab, setLoopTab] = useLoopTab();
   const ticked = tree.isChecked(key);
   const inTicked = ticked && !tree.checked.has(key);
   const positions = tree.readOnly ? [] : tree.addPositions(key);
@@ -116,6 +118,29 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
       >
         <ItemLabel item={item} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
       </button>
+      {item.type === "unit_loop" && (
+        // Open the loop on a tab of its form: also marks loops in the tree.
+        <span className="flex shrink-0 items-center gap-0.5">
+          <ActionButton
+            icon={LayoutTemplate}
+            title="Layout: how a unit is shown"
+            className={cn(tree.selected === key && loopTab === "layout" && "bg-muted text-foreground")}
+            onClick={() => {
+              setLoopTab("layout");
+              tree.select(key);
+            }}
+          />
+          <ActionButton
+            icon={Layers}
+            title="Units: which units coders get"
+            className={cn(tree.selected === key && loopTab === "units" && "bg-muted text-foreground")}
+            onClick={() => {
+              setLoopTab("units");
+              tree.select(key);
+            }}
+          />
+        </span>
+      )}
     </TreeRow>
   );
 }

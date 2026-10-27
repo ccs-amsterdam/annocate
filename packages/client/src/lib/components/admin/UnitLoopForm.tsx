@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useLoopTab, type LoopTab } from "./codebookEditor/loopTab";
 import { TemplateCodeEditor, type TemplateEditorApi } from "./jsonEditor/TemplateCodeEditor";
 import { ConditionDialog, TemplateInsertMenu } from "./TemplateInsertMenu";
 import { ConditionEditor } from "./ConditionEditor";
@@ -89,10 +90,10 @@ function withoutWhen(branch: UnitBranch): UnitBranch {
   return next;
 }
 
-type LoopTab = "units" | "layout";
 
 /**
- * Edits a unit_loop, in two tabs: which units coders get (contracts
+ * Edits a unit_loop, in two tabs: how a unit is shown (the template and
+ * its constants), and which units coders get (contracts
  * unitLoop.ts: per branch a mode and an optional overlap set; with
  * branches, per branch a condition on coder-level questions; the order),
  * and how a unit is shown (the template and its constants).
@@ -116,10 +117,10 @@ export function UnitLoopForm({
   readOnly?: boolean;
   onChange: (loop: UnitLoopItem) => void;
 }) {
-  const [tab, setTab] = useState<LoopTab>("units");
+  const [tab, setTab] = useLoopTab();
   const tabs: { value: LoopTab; label: string; issues: CodebookValidationIssue[] }[] = [
-    { value: "units", label: "Units", issues: [...issuesAt(validationIssues, "units"), ...issuesAt(validationIssues, "order")] },
     { value: "layout", label: "Layout", issues: issuesAt(validationIssues, "layout") },
+    { value: "units", label: "Units", issues: [...issuesAt(validationIssues, "units"), ...issuesAt(validationIssues, "order")] },
   ];
   return (
     <div className="flex flex-col gap-4">

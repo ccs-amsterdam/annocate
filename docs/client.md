@@ -473,7 +473,9 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     revision they were based on, so the conflict check still applies) or
     to discard them.
 
-  Unit loops have two tabs (`UnitLoopForm.tsx`). **Units**: per branch
+  Unit loops have two tabs (`UnitLoopForm.tsx`), Layout first; a loop's
+  row in the tree has a button for each, which opens the loop on it
+  (`codebookEditor/loopTab.ts`). **Units**: per branch
   which units coders get (All units, Units shared among coders, One set per
   coder, The invitation's units; `architecture.md` §6.1) with that mode's
   settings, an optional overlap set, and the loop's order. A unitset field
