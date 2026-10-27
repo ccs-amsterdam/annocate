@@ -2,6 +2,9 @@
 @import '@fontsource-variable/geist' layer(base);
 @import 'tailwindcss';
 
+/* `dark:` follows the `dark` class on <html> (context/theme.ts), not only the system setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-border: var(--border);
   --color-input: var(--input);
@@ -137,42 +140,47 @@
     --sidebar-ring: oklch(0.708 0 0)
   }
   .dark {
-    /* Ported from old/src/app/globals.css [data-dark="on"] block. */
-    --background: hsl(0 0% 14%);
+    /* Dark grey with a hint of blue, the same teal; borders and muted
+       surfaces a few steps lighter than the background. */
+    --background: hsl(220 10% 10%);
 
-    --foreground: hsl(222.2 84% 100%);
+    --foreground: hsl(210 20% 94%);
 
-    --card: hsl(0 0% 20%);
+    --card: hsl(220 10% 14%);
 
-    --card-foreground: hsl(222.2 84% 90%);
+    --card-foreground: hsl(210 20% 94%);
 
-    --popover: hsl(0 0% 14%);
+    --popover: hsl(220 10% 15%);
 
-    --popover-foreground: hsl(222.2 84% 90%);
+    --popover-foreground: hsl(210 20% 94%);
 
     --primary: hsl(174 50% 45%);
 
-    --primary-foreground: hsl(222.2 47.4% 0%);
+    --primary-foreground: hsl(220 20% 8%);
 
-    --secondary: hsl(0 0% 11.1%);
+    --primary-light: hsl(174 50% 60%);
 
-    --secondary-foreground: hsl(0 0% 90.2%);
+    --primary-dark: hsl(174 30% 75%);
 
-    --muted: hsl(0 0% 50%);
+    --secondary: hsl(39 45% 30%);
 
-    --muted-foreground: hsl(0.4 16.3% 46.9%);
+    --secondary-foreground: hsl(39 100% 92%);
 
-    --accent: hsl(0 0% 11.1%);
+    --muted: hsl(220 8% 22%);
 
-    --accent-foreground: hsl(0 0% 90.2%);
+    --muted-foreground: hsl(215 12% 66%);
 
-    --destructive: hsl(0 84.2% 60.2%);
+    --accent: hsl(174 25% 18%);
 
-    --border: hsl(214.3 31.8% 91.4%);
+    --accent-foreground: hsl(174 40% 90%);
 
-    --input: hsl(214.3 31.8% 91.4%);
+    --destructive: hsl(0 72% 58%);
 
-    --ring: hsl(222.2 84% 4.9%);
+    --border: hsl(220 8% 25%);
+
+    --input: hsl(220 8% 30%);
+
+    --ring: hsl(174 60% 50%);
 
     --chart-1: oklch(0.87 0 0);
 

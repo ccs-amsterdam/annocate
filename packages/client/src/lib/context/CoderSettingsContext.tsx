@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
+import { useTheme } from "./theme";
 
 export interface CoderSettingsContextValue {
   theme: "light" | "dark";
@@ -24,31 +25,14 @@ export function useCoderSettings(): CoderSettingsContextValue {
 }
 
 export function CoderSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    const saved = localStorage.getItem("annocate_theme");
-    if (saved === "dark" || saved === "light") return saved;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
+  // Shared with the researcher UI (theme.ts).
+  const [theme, setTheme] = useTheme();
 
   const [showShortcuts, setShowShortcutsState] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     const saved = localStorage.getItem("annocate_show_shortcuts");
     return saved !== "false";
   });
-
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("annocate_theme", theme);
-  }, [theme]);
-
-  function setTheme(t: "light" | "dark") {
-    setThemeState(t);
-  }
 
   function setShowShortcuts(s: boolean) {
     setShowShortcutsState(s);

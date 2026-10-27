@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AuthOptions } from "@annotinder/contracts";
+import type { AuthOptions, MeResponse } from "@annotinder/contracts";
 import { JobRunner } from "./lib/components/JobRunner";
 import { AdminApp } from "./lib/components/admin/AdminApp";
 import { ResearcherGate } from "./lib/components/admin/account/ResearcherGate";
 import { AccountMenu } from "./lib/components/admin/account/AccountMenu";
 import { HttpResearcherApi } from "./lib/api/httpResearcherApi";
 import { LayoutDashboard, PenTool } from "lucide-react";
+import { useTheme } from "./lib/context/theme";
 
 // Standalone dev-app shell: runs the annotinder-client against a local
 // server (the seed demo job's invite secret by default). Real deployments
@@ -29,30 +30,32 @@ function devInviteUrl(invite: { jobId: number; secret: string }): string {
   return `${window.location.origin}${window.location.pathname}?deployment=${invite.jobId}&invite=${invite.secret}`;
 }
 
-/** The researcher UI: behind a login if the server has one, else with development headers. */
-function ResearcherView() {
-  const [options, setOptions] = useState<AuthOptions | null>(null);
+/**
+ * Who is using the researcher UI: a logged-in researcher (session cookie),
+ * the development user (a server without login but with development auth),
+ * or nobody yet (`me` null).
+ */
+function useResearcher() {
+  const [state, setState] = useState<{ options: AuthOptions; me: MeResponse | null } | null>(null);
   useEffect(() => {
-    sessionApi.getAuthOptions().then(setOptions, () => setOptions({ login: false, devAuth: false }));
+    void (async () => {
+      const options = await sessionApi.getAuthOptions().catch(() => ({ login: false, devAuth: false }));
+      const api = !options.login && options.devAuth ? devApi : sessionApi;
+      const me = await api.getMe().catch(() => null);
+      setState({ options, me });
+    })();
   }, []);
-  if (!options) return null;
+  const dev = state !== null && !state.options.login && state.options.devAuth;
+  return { state, dev, api: dev ? devApi : sessionApi };
+}
 
+/** The researcher UI: behind a login if the server has one, else with development headers. */
+function ResearcherView({ dev }: { dev: boolean }) {
   const admin = (api: HttpResearcherApi) => (
     <AdminApp client={api} baseUrl={SERVER_URL} inviteUrl={devInviteUrl} coderApiUrl={CODER_API_URL} />
   );
-  if (!options.login && options.devAuth) return admin(devApi);
-  return (
-    <ResearcherGate client={sessionApi}>
-      {(me) => (
-        <div className="flex h-full flex-col">
-          <div className="flex justify-end border-b border-border px-4 py-1">
-            <AccountMenu client={sessionApi} me={me} />
-          </div>
-          <div className="flex-1 overflow-auto">{admin(sessionApi)}</div>
-        </div>
-      )}
-    </ResearcherGate>
-  );
+  if (dev) return admin(devApi);
+  return <ResearcherGate client={sessionApi}>{() => admin(sessionApi)}</ResearcherGate>;
 }
 
 function App() {
@@ -77,12 +80,15 @@ function App() {
     setParams(next);
   }, []);
   const [view, setView] = useState<View>(params.has("invite") || params.has("transfer") ? "annotate" : "admin");
+  const researcher = useResearcher();
+  // The researcher UI follows the theme too (the coder UI applies it itself).
+  useTheme();
 
   return (
     <div className="flex h-screen flex-col overflow-clip bg-background text-foreground">
       {/* Dev Shell Navbar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-1 items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
               A
@@ -122,12 +128,23 @@ function App() {
             Annotate
           </button>
         </div>
+
+        <div className="flex flex-1 justify-end">
+          {researcher.state && (
+            <AccountMenu
+              client={researcher.api}
+              me={researcher.state.me}
+              dev={researcher.dev}
+              canLogIn={researcher.state.options.login}
+            />
+          )}
+        </div>
       </header>
 
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
         {view === "admin" ? (
-          <ResearcherView />
+          researcher.state && <ResearcherView dev={researcher.dev} />
         ) : (
           <JobRunner
             baseUrl={`${CODER_API_URL}/d/${deploymentId}`}

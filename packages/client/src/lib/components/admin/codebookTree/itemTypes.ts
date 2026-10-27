@@ -39,7 +39,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     description: "Loop over units in a unitset",
     icon: Repeat,
     color: "text-primary",
-    blockClass: "bg-black/5 mt-2",
+    blockClass: "bg-foreground/5 mt-2",
   },
   condition: {
     label: "Condition",
