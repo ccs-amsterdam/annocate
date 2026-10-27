@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { FieldBadge } from "./FieldBadge";
 import { UploadUnits } from "./UploadUnits";
 import { SplitUnitsets } from "./SplitUnitsets";
+import { HelpButton } from "../../../help/HelpButton";
 
 const PAGE_SIZE = 50;
 
@@ -56,7 +57,9 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-medium">Units</h2>
+          <h2 className="flex items-center gap-1.5 text-lg font-medium">
+            Units <HelpButton topic="uploading-units" label="Help: units" />
+          </h2>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {fields.length === 0 ? (
               "No units yet: upload a CSV to start. Its columns become the units' fields."

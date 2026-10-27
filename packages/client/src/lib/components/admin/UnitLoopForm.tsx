@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Plus, Split, Trash2, X } from "lucide-react";
 import { cn } from "cn";
 import {
@@ -24,6 +24,7 @@ import { ConditionDialog, TemplateInsertMenu } from "./TemplateInsertMenu";
 import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
+import { HelpButton } from "../../help/HelpButton";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -158,12 +159,15 @@ export function UnitLoopForm({
   );
 }
 
-/** A titled part of a tab, with a line of help. */
-function Section({ title, help, children }: { title: string; help?: string; children: ReactNode }) {
+/** A titled part of a tab, with a line of help and a help topic. */
+function Section({ title, help, topic, children }: { title: string; help?: string; topic?: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
       <div>
-        <h3 className="text-xs font-semibold">{title}</h3>
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold">
+          {title}
+          {topic && <HelpButton topic={topic} label={`Help: ${title}`} />}
+        </h3>
         {help && <p className="text-[11px] text-muted-foreground">{help}</p>}
       </div>
       {children}
@@ -227,7 +231,7 @@ function UnitsTab({
       </datalist>
 
       {multi ? (
-        <Section title="Coder groups" help="The first group a coder is in decides their units (and keeps deciding them).">
+        <Section title="Coder groups" help="The first group a coder is in decides their units (and keeps deciding them)." topic="coder-groups">
           {branches.map((branch, b) => (
             <div key={b} className="flex flex-col gap-3 rounded-md border border-border p-3">
               <div className="flex items-center justify-between">
@@ -262,7 +266,7 @@ function UnitsTab({
         editor(0)
       )}
 
-      <Section title="Order">
+      <Section title="Order" topic="unit-distribution#order">
         <select
           className={`${selectClass} w-fit`}
           value={loop.order ?? "sequential"}
@@ -336,10 +340,7 @@ function LayoutTab({
           />
         </div>
       )}
-      <Section
-        title="Template"
-        help="Markdown. Values: $unit.<field>, $var.<question>.label or {{ script }}, shown as text unless a suffix says ::markdown, ::image or ::html. Snippets: [[name]]. Blocks (close with :::): ::: if / else / from <question>, ::: style <css>, ::: text|markdown|html|image <name>."
-      >
+      <Section title="Template" topic="layout-templates">
         <div
           className={cn(
             "overflow-hidden rounded-md border",
@@ -366,7 +367,7 @@ function LayoutTab({
         />
       </Section>
 
-      <Section title="Colours" help="Styled content may only look right in light or dark colours.">
+      <Section title="Colours" topic="colours-and-styles#light-or-dark">
         <select
           className={`${selectClass} w-fit`}
           value={layout.colorScheme ?? ""}
@@ -382,10 +383,7 @@ function LayoutTab({
         </select>
       </Section>
 
-      <Section
-        title="Snippets"
-        help="Named pieces of the template, put in with [[name]] as if you typed them there, anywhere (also in a condition or a script): markdown, blocks and values all work. Handy for longer texts and long conditions."
-      >
+      <Section title="Snippets" topic="snippets">
         {snippets.map(([name, value], i) => (
           <div key={i} className="flex flex-col gap-1 rounded-md border border-border p-2">
             <div className="flex items-center gap-2">
@@ -456,11 +454,15 @@ function BranchEditor({
   onChange: (branch: UnitBranch) => void;
 }) {
   const mode = MODES.find((m) => m.value === branch.mode)!;
+  const modeId = useId();
   return (
     <div className="flex flex-col gap-3">
-      <label className={labelClass}>
-        Who codes which units
-        <select className={`${selectClass} w-fit`} value={branch.mode} onChange={(e) => onChange(switchMode(branch, e.target.value as UnitMode))}>
+      <div className={labelClass}>
+        <span className="flex items-center gap-1.5">
+          <label htmlFor={modeId}>Who codes which units</label>
+          <HelpButton topic="unit-distribution" label="Help: unit distribution" />
+        </span>
+        <select id={modeId} className={`${selectClass} w-fit`} value={branch.mode} onChange={(e) => onChange(switchMode(branch, e.target.value as UnitMode))}>
           {MODES.map((m) => (
             <option key={m.value} value={m.value}>
               {m.label}
@@ -468,7 +470,7 @@ function BranchEditor({
           ))}
         </select>
         <span className="text-[11px] font-normal text-muted-foreground">{mode.help}</span>
-      </label>
+      </div>
 
       {(branch.mode === "all" || branch.mode === "shared") && (
         <label className={labelClass}>
@@ -641,6 +643,7 @@ function OverlapEditor({
           onChange={(e) => onChange(e.target.checked ? { unitset: "overlap" } : undefined)}
         />
         Overlap: a set every coder codes too
+        <HelpButton topic="overlap" label="Help: overlap" />
       </label>
       {overlap && (
         <div className="flex flex-wrap items-end gap-3 pl-6">

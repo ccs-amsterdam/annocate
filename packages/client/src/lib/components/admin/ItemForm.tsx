@@ -9,6 +9,7 @@ import {
   type EndItem,
 } from "@annotinder/contracts";
 import { UnitLoopForm } from "./UnitLoopForm";
+import { HelpButton } from "../../help/HelpButton";
 import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
@@ -25,6 +26,19 @@ import {
 
 export const ITEM_TYPE_OPTIONS_TOP: CodebookItem["type"][] = ["question", "unit_loop", "condition", "end"];
 export const ITEM_TYPE_OPTIONS_IN_LOOP: CodebookItem["type"][] = ["question", "condition", "end"];
+
+/** The help topic for each answer type. */
+const TYPE_HELP: Record<AnyVariableType["type"], string> = {
+  nominal: "nominal-and-ordinal",
+  ordinal: "nominal-and-ordinal",
+  numeric: "numeric",
+  scale: "scale",
+  annotinder: "swipe",
+  confirm: "confirm",
+  auto: "auto",
+  span: "span",
+  relation: "relation",
+};
 
 export function defaultItemForType(type: CodebookItem["type"], name: string): CodebookItem {
   switch (type) {
@@ -94,7 +108,10 @@ export function ItemForm({
       {item.type === "condition" || item.type === "unit_loop" ? (
         // Conditions and unit loops have no name: an optional label shows in the tree (and for loops in exports).
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-foreground">Label (optional)</label>
+          <span className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-foreground">Label (optional)</label>
+            <HelpButton topic={item.type === "condition" ? "conditions" : "unit-loops"} label="Help" />
+          </span>
           <Input
             value={item.label ?? ""}
             onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
@@ -103,7 +120,10 @@ export function ItemForm({
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-foreground">Item Name</label>
+          <span className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-foreground">Item Name</label>
+            <HelpButton topic={item.type === "end" ? "end-items" : "questions"} label="Help" />
+          </span>
           <Input
             value={item.name}
             onChange={(e) => onChange({ ...item, name: e.target.value })}
@@ -118,7 +138,10 @@ export function ItemForm({
       {item.type === "question" && (
         <>
           <div className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-1.5">
             <label className="text-xs font-semibold text-foreground">Answer Type</label>
+            <HelpButton topic={TYPE_HELP[item.variable.type]} label="Help: this answer type" />
+          </span>
             <select
               className="h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold"
               value={item.variable.type}
@@ -169,7 +192,10 @@ export function ItemForm({
 
       {item.type === "condition" && (
         <div className="flex flex-col gap-1.5 border-t border-border/60 pt-4">
-          <label className="text-xs font-semibold text-foreground">Show the items in this condition if</label>
+          <span className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-foreground">Show the items in this condition if</label>
+            <HelpButton topic="conditions" label="Help: conditions" />
+          </span>
           <ConditionEditor
             condition={(item as { condition: Condition }).condition ?? { script: "true" }}
             onChange={(condition) => onChange({ ...item, condition } as CodebookItem)}
@@ -196,7 +222,10 @@ function EndItemFields({
   return (
     <div className="flex flex-col gap-3 border-t border-border/60 pt-4">
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">Outcome</label>
+        <span className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-foreground">Outcome</label>
+            <HelpButton topic="end-items" label="Help: ending a session" />
+          </span>
         <select
           className="h-9 rounded-md border border-input bg-background px-3 text-xs"
           value={item.outcome}
@@ -244,7 +273,10 @@ function ShowFieldSelect({
   const fields = [...new Set([...loopFields, ...(field ? [field] : [])])];
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold text-foreground">Show field (optional)</label>
+      <span className="flex items-center gap-1.5">
+        <label className="text-xs font-semibold text-foreground">Show field (optional)</label>
+        <HelpButton topic="typed-blocks" label="Help: names in the layout" />
+      </span>
       <select
         className="h-9 w-fit rounded-md border border-input bg-background px-3 text-xs"
         value={field ?? ""}

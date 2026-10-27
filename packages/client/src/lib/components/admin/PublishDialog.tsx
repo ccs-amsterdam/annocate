@@ -4,6 +4,7 @@ import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { diffCodebooks, summarizeChanges, valueChanges, type CodebookChange } from "../../codebook/diff";
+import { HelpButton } from "../../help/HelpButton";
 
 interface PublishDialogProps {
   /** The version to publish; the dialog is closed when null. */
@@ -129,7 +130,9 @@ export function PublishDialog({ codebook, versionNumber, live, liveNumber, onPub
               </section>
 
               <section>
-                <h4 className="mb-1.5 font-semibold text-foreground">What happens</h4>
+                <h4 className="mb-1.5 flex items-center gap-1.5 font-semibold text-foreground">
+                  What happens <HelpButton topic="changing-a-live-codebook" label="Help: changing a live codebook" />
+                </h4>
                 <ul className="list-disc space-y-1 pl-5 text-foreground/80">
                   <li>
                     {liveNumber !== null

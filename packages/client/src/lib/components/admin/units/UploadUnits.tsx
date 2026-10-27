@@ -7,6 +7,7 @@ import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldBadge } from "./FieldBadge";
+import { HelpButton } from "../../../help/HelpButton";
 
 const BATCH = 200; // the most units per POST /units
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
@@ -223,7 +224,9 @@ function Section({ children, onCancel }: { children: ReactNode; onCancel: () => 
   return (
     <section className="flex flex-col gap-4 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Upload units from CSV</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          Upload units from CSV <HelpButton topic="uploading-units" label="Help: uploading units" />
+        </h3>
         <Button size="sm" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>

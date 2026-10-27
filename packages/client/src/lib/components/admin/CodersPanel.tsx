@@ -2,6 +2,7 @@ import type { CoderProgress } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCodersQuery } from "../../admin/queries";
 import { formatWhen } from "../../admin/format";
+import { HelpButton } from "../../help/HelpButton";
 
 /**
  * Coder progress (docs/client.md §7): who started, through which
@@ -16,7 +17,9 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-lg font-medium">Coders</h2>
+      <h2 className="flex items-center gap-1.5 text-lg font-medium">
+        Coders <HelpButton topic="coders-and-progress" label="Help: following progress" />
+      </h2>
       <p className="text-xs text-muted-foreground">
         Finished units count, per loop of the live codebook, the units where a coder answered every question of the
         loop.

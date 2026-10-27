@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { History, Info, CircleDot, FilePen, Clock, Eye, RotateCcw, Trash2, AlertCircle } from "lucide-react";
 import type { CodebookVersions } from "../../codebook/versions";
+import { HelpButton } from "../../help/HelpButton";
 
 export interface CodebookVersionsViewProps {
   codebooks: CodebookMeta[];
@@ -22,6 +23,7 @@ export function CodebookVersionsView({ codebooks, versions, openId, onView, onRe
       <h2 className="flex shrink-0 items-center gap-2 pr-8 text-lg font-bold text-foreground">
         <History className="h-5 w-5 text-primary" />
         Codebook versions
+        <HelpButton topic="previewing-and-publishing" label="Help: preview, save and publish" />
       </h2>
 
       <div className="mt-3 shrink-0 rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs leading-relaxed text-foreground">

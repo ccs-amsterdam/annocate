@@ -35,7 +35,7 @@ interface RefContext {
   loop: string | null;
   /** Questions answered before this point. */
   available: ReadonlySet<string>;
-  /** The snippets of the loop around this point (`$snippet.<name>` in its templates). */
+  /** The snippets of the loop around this point (`[[name]]` in its templates). */
   snippets?: Readonly<Record<string, string>>;
   /** The question whose text this is (it can't refer to itself). */
   self?: string;
@@ -53,7 +53,7 @@ interface RefContext {
  * 2. Enforces unique names across all items in the tree
  * 3. Enforces that span variable references in relations exist in preceding items
  * 4. Enforces structural rules (unit_loop cannot be nested, etc.)
- * 5. Checks every reference (`$var`, `$unit`, `$snippet`) in conditions,
+ * 5. Checks every reference (`$var`, `$unit`; snippets put in first) in conditions,
  *    branch `when`, unitset names, the layout template and question texts:
  *    it must exist, be available at that point (asked before, not in
  *    another loop), and fit the question's type. Agreement rules must refer

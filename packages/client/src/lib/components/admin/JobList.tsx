@@ -5,6 +5,7 @@ import { useCreateJobMutation, useDeleteJobMutation, useJobsQuery } from "../../
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, FolderOpen, Trash2, Calendar, Archive } from "lucide-react";
+import { HelpButton } from "../../help/HelpButton";
 
 interface JobListProps {
   client: ResearcherApi;
@@ -68,7 +69,10 @@ export function JobList({ client, onSelectJob }: JobListProps) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Jobs</h1>
           <p className="text-sm text-muted-foreground">
-            Manage annotation jobs, codebooks, units, and coders.
+            Manage annotation jobs, codebooks, units, and coders.{" "}
+            <HelpButton topic="overview" className="align-middle">
+              New here? Read the guide
+            </HelpButton>
           </p>
         </div>
         <Button

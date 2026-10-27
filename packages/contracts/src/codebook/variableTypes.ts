@@ -12,7 +12,7 @@ import {
 export const VariableBaseSchema = z.object({
   question: z
     .string()
-    .describe("The question shown to the annotator: a markdown template with $var references and {{ }} (in a loop also $unit and $snippet)."),
+    .describe("The question shown to the annotator: a markdown template with $var references and {{ }} (in a loop also $unit and [[snippets]])."),
   questionStyle: z.record(z.string(), z.string()).optional(),
   instruction: z.string().optional().describe("Extra instructions for this variable; a markdown template like `question`."),
   instructionStyle: z.record(z.string(), z.string()).optional(),

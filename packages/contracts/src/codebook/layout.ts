@@ -15,19 +15,20 @@ export const UnitLayoutSchema = z.object({
   template: z
     .string()
     .describe(
-      "Markdown template for the unit. Insert values with `$unit.<field>`, `$var.<q>.value` " +
-        "or `{{ js }}` (evaluated in the QuickJS sandbox over $unit and $var), and snippets with `$snippet.<name>`; values optionally followed " +
-        "by `::text` (default: literal text), `::markdown`, `::image` or `::html` (shown in a sandbox). A field a span " +
-        "question selects in is shown as plain `$unit.<field>`. `\\$` is a literal `$` (docs/client.md §3).",
+      "Markdown template for the unit. Insert values with `$unit.<field>`, `$var.<q>.label` " +
+        "or `{{ js }}` (evaluated in the QuickJS sandbox over $unit and $var), and snippets with `[[name]]`; values optionally followed " +
+        "by `::text` (default: literal text), `::markdown`, `::image` or `::html` (shown in a sandbox). Blocks: `::: if`, `::: from`, " +
+        "`::: style`, `::: text|markdown|html|image [name]`, closed with `:::`. A field a span question selects in is shown as " +
+        "plain `$unit.<field>` or a named `::: text` block. `\\$` is a literal `$` (docs/client.md §3).",
     ),
   /**
-   * Named pieces of the template (docs/client.md §3, "Snippets"), inserted
-   * with `$snippet.<name>` as if typed there (snippets.ts).
+   * Named pieces of the template (docs/client.md §3, "Snippets"), put in
+   * with `[[name]]` as if typed there (snippets.ts).
    */
   snippets: z
     .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "A snippet name is letters, digits and _"), z.string())
     .optional()
-    .describe("Named pieces of the template, inserted with $snippet.<name> as if typed there"),
+    .describe("Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)"),
   style: z.record(z.string(), z.string()).optional().describe("Optional inline CSS for the layout's root container"),
   colorScheme: z
     .enum(["light", "dark"])

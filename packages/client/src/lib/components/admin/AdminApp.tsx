@@ -14,8 +14,10 @@ import { JobOverview } from "./overview/JobOverview";
 import { JobPreview } from "./JobPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive, FilePen, Download } from "lucide-react";
+import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive, FilePen, Download, CircleHelp } from "lucide-react";
 import { clearBackup, readBackup, type CodebookBackup } from "../../codebook/localBackup";
+import { HelpDialog } from "../../help/HelpDialog";
+import { openHelp } from "../../help/helpStore";
 
 const TABS = [
   { id: "Overview", label: "Overview", icon: LayoutDashboard },
@@ -28,6 +30,17 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+/** The help topic the Help button opens on each tab. */
+const TAB_HELP: Record<TabId, string> = {
+  Overview: "overview",
+  Codebook: "codebook-editor",
+  Units: "uploading-units",
+  Invitations: "invitations",
+  Coders: "invitations",
+  Results: "results",
+  Preview: "previewing-and-publishing",
+};
 
 const defaultQueryClient = new QueryClient();
 
@@ -58,6 +71,7 @@ export function AdminApp({
         inviteUrl={inviteUrl}
         coderApiUrl={coderApiUrl}
       />
+      <HelpDialog />
     </QueryClientProvider>
   );
 }
@@ -236,6 +250,10 @@ function JobAdminView({
           </div>
 
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => openHelp(TAB_HELP[tab])} className="gap-1.5 text-xs text-muted-foreground">
+              <CircleHelp className="h-3.5 w-3.5" />
+              Help
+            </Button>
             <Button
               variant={tab === "Preview" ? "default" : "outline"}
               size="sm"

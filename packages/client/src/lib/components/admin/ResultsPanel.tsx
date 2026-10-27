@@ -15,6 +15,7 @@ import {
   variablesTable,
 } from "../../admin/exportData";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "../../help/HelpButton";
 
 /** Every row of a paged researcher API list. */
 async function allPages<T>(
@@ -106,7 +107,9 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5">
         <div>
-          <h2 className="text-lg font-medium">Download data</h2>
+          <h2 className="flex items-center gap-1.5 text-lg font-medium">
+            Download data <HelpButton topic="results" label="Help: results" />
+          </h2>
           <p className="text-sm text-muted-foreground">
             {coders.data ? `${coders.data.length} coders, ${finished} units coded.` : "Loading…"}
           </p>

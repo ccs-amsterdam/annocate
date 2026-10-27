@@ -5,6 +5,7 @@ import { useCreateInviteMutation, useCreateUnitsetMutation, useUnitsQuery, useUn
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { HelpButton } from "../../help/HelpButton";
 
 /** `name`, or `name (2)`, `name (3)`, ... if it is taken. */
 function unique(name: string, taken: Set<string>): string {
@@ -68,7 +69,9 @@ export function DivideUnits({ client, onDone }: { client: ResearcherApi; onDone:
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
-      <h3 className="font-semibold">Divide units over coders</h3>
+      <h3 className="flex items-center gap-1.5 font-semibold">
+        Divide units over coders <HelpButton topic="invitations" label="Help: invitations" />
+      </h3>
       <div className="flex flex-wrap items-start gap-4">
         <label className="flex flex-col gap-1 text-xs font-semibold">
           Units

@@ -4,6 +4,7 @@ import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCreateUnitsetMutation } from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HelpButton } from "../../../help/HelpButton";
 
 /**
  * Splits units (all, or one unitset) into `<prefix>_1..n` plus an optional
@@ -51,8 +52,9 @@ export function SplitUnitsets({
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
-      <h3 className="font-semibold">
+      <h3 className="flex items-center gap-1.5 font-semibold">
         Split {source ? <span className="font-mono">{source}</span> : "all units"} ({unitIds.length}) into unitsets
+        <HelpButton topic="unitsets" label="Help: unitsets" />
       </h3>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">

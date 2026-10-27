@@ -523,7 +523,23 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   the names the layout shows.
   The text stays the source of truth. The layout's `style` and `meta` are
   only in the JSON views.
-  Forms show few tips (instruction buttons may come later).
+  Forms show few tips: longer explanations are in the help (below).
+- **Help** (`lib/help/`): tutorials and explanations for researchers, one
+  markdown file per topic in `help/topics/` (front matter: `title`,
+  `section`, `order`, `summary`), loaded with `import.meta.glob`. One
+  `HelpDialog`, mounted by `AdminApp`, laid out after the Tailwind CSS docs:
+  a topic menu with search, the topics by section, the topic, and its
+  headings ("On this page"); its content loads with the first opening.
+  `openHelp("topic")` or `openHelp("topic#heading")` opens it, as do the
+  small `HelpButton`s next to form sections and the header's Help button
+  (a topic per tab). Topics link to each other with relative links
+  (`snippets.md#names`), so they also read on GitHub. A code block in the
+  language `example` is a live template example (`help/example.ts`: unit
+  data, answers the reader can switch, snippets, the loop's questions for
+  `::: from`), editable, rendered with the real `renderTemplate` and
+  `UnitFields`; `template` code blocks get template highlighting. A test
+  checks the front matter, links and anchors, the topics the UI opens, and
+  that every example is a valid template (as a codebook) and renders.
 - **Versions and publishing** (as in Qualtrics or REDCap: edit a draft,
   publish it), derived from `GET /codebook` and `GET /deployment`
   (`codebook/versions.ts`):

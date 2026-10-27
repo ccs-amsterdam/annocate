@@ -18,6 +18,7 @@ import { ScaleItemsEditor } from "./ScaleItemsEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "../../help/HelpButton";
 
 
 /** Just the shared `question`/`instruction` fields -- kept as a plain (non-union-derived) shape so
@@ -578,7 +579,10 @@ function SpanFieldsPicker({
   const names = [...new Set([...(layoutFields ?? []), ...value])];
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium">Select in</label>
+      <span className="flex items-center gap-1.5">
+        <label className="text-sm font-medium">Select in</label>
+        <HelpButton topic="span" label="Help: selecting text" />
+      </span>
       {layoutFields ? (
         names.length === 0 ? (
           <p className="text-xs text-muted-foreground">

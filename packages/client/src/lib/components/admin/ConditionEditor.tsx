@@ -30,6 +30,7 @@ import {
 } from "../../codebook/conditionRules";
 import { SegmentedToggle } from "./codebookEditor/SegmentedToggle";
 import { IssueList } from "./IssueList";
+import { HelpButton } from "../../help/HelpButton";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 
@@ -336,6 +337,9 @@ function ScriptEditor({
           (lists: <code>[]</code>), and every helper is false for them. Prefer the helpers: validation checks their
           values.
         </p>
+        <HelpButton topic="scripts" className="mt-1">
+          More about scripts
+        </HelpButton>
       </details>
     </div>
   );

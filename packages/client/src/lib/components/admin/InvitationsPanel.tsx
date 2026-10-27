@@ -17,6 +17,7 @@ import { DivideUnits } from "./DivideUnits";
 import { formatWhen } from "../../admin/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HelpButton } from "../../help/HelpButton";
 
 type InviteUrl = (invite: CoderInviteResponse) => string;
 
@@ -66,7 +67,9 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
       )}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">Invitations</h2>
+        <h2 className="flex items-center gap-1.5 text-lg font-medium">
+          Invitations <HelpButton topic="invitations" label="Help: invitations" />
+        </h2>
         <p className="text-xs text-muted-foreground">
           Revoking an invitation stops new coders from joining with it; coders who already started keep working.
           Invitations that were used can't be deleted, because coders and their answers refer to them.
