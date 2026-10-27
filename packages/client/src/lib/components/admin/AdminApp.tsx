@@ -37,7 +37,7 @@ const TAB_HELP: Record<TabId, string> = {
   Codebook: "codebook-editor",
   Units: "uploading-units",
   Invitations: "invitations",
-  Coders: "invitations",
+  Coders: "coders-and-progress",
   Results: "results",
   Preview: "previewing-and-publishing",
 };

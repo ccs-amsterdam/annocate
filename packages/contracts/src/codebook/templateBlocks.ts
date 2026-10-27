@@ -190,6 +190,9 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
       case "style": {
         const parsed = parseInlineCss(fence.arg);
         for (const message of parsed.errors) error(fence, message);
+        // Styles are markdown: only a markdown block's content can have them.
+        const display = stack.find((o) => o.kind === "display")?.node as DisplayNode | undefined;
+        if (display && display.kind !== "markdown") error(fence, `A ::: style block can't be inside a ::: ${display.kind} block (it can be inside ::: markdown)`);
         const node: Extract<TemplateNode, { type: "style" }> = {
           type: "style",
           css: fence.arg,

@@ -123,7 +123,9 @@ function LiveExample({ data }: { data: HelpExampleData }) {
 
       <div className="border-t border-border bg-background p-4">
         <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">What the coder sees</div>
-        {result === null ? null : "error" in result ? (
+        {result === null ? (
+          <p className="text-xs text-muted-foreground">Rendering…</p>
+        ) : "error" in result ? (
           <p className="text-xs text-destructive">{result.error}</p>
         ) : (
           <UnitFields layout={{ template }} rendered={result.rendered} />

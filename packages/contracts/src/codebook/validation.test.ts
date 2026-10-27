@@ -340,6 +340,11 @@ describe("reference validation", () => {
     expect(messages(loop("::: markdown\n::: html\nx\n:::\n:::"))).toEqual(["A ::: html block can't be inside a ::: markdown block"]);
     expect(messages(loop("::: text a\nx\n:::\n::: text a\ny\n:::"))).toEqual(["Two blocks are named 'a': names must be unique"]);
     expect(messages(loop("{{ $unit.text::markdown }}"))).toEqual([expect.stringContaining("A suffix goes after the }}")]);
+    // Styles are markdown: only in a markdown block
+    expect(messages(loop("::: markdown\n:::: style color: red\nx\n::::\n:::"))).toEqual([]);
+    expect(messages(loop("::: text t\n:::: style color: red\nx\n::::\n:::"))).toEqual([
+      "A ::: style block can't be inside a ::: text block (it can be inside ::: markdown)",
+    ]);
   });
 
   it("checks templates with their snippets put in: anywhere, without suffix, not including themselves", () => {
@@ -353,6 +358,12 @@ describe("reference validation", () => {
     ]);
     expect(messages(loop("[[banner]]", { banner: "[[inner]]", inner: "[[banner]]" }))).toEqual([
       "[[banner]]: the snippet includes itself (banner → inner → banner)",
+    ]);
+    // Not in condition items (their scripts aren't the layout's text) or end items (shown outside the layout)
+    const withSnippet = (child: InLoopItem) => [group, unitLoop("l", [questionVar("q"), child], "x", { cond: "$var.group.is('a')" })];
+    expect(messages(withSnippet(inLoopCondition("c", [questionVar("r")], { script: "[[cond]]" })))).toEqual([expect.stringContaining("Snippets ([[name]]) can only be used")]);
+    expect(messages(withSnippet({ type: "end", name: "e", outcome: "complete", message: "[[cond]]" } as InLoopItem))).toEqual([
+      expect.stringContaining("Snippets ([[name]]) can only be used"),
     ]);
   });
 
@@ -370,9 +381,9 @@ describe("reference validation", () => {
     const loop = (template: string) => [group, unitLoop("l", [questionVar("sentiment", select(["pos", "neg"])), questionVar("topics")], template)];
     const ok = "::: if $var.group.is('a')\n$unit.text\n::: else\nB\n:::\n::: from topics\nYou said $var.sentiment.label\n:::";
     expect(messages(loop(ok))).toEqual([]);
-    expect(messages(loop("You said $var.sentiment.label"))).toEqual(["$var.sentiment.label: 'sentiment' is asked after this point"]);
+    expect(messages(loop("You said $var.sentiment.label"))).toEqual(["$var.sentiment.label: 'sentiment' is answered in this loop; use it inside ::: from topics"]);
     expect(messages(loop("::: from sentiment\n$var.sentiment.label\n:::"))).toEqual([
-      "$var.sentiment.label: 'sentiment' is asked after this point",
+      "$var.sentiment.label: 'sentiment' is answered in this loop; use it inside ::: from topics",
     ]);
     expect(messages(loop("::: from nope\nx\n:::"))).toEqual(["::: from nope: 'nope' is not a question of this loop"]);
     expect(messages(loop("::: if $var.group.is('c')\nx\n:::"))).toEqual([expect.stringContaining('"c"')]);

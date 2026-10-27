@@ -422,11 +422,13 @@ and `created` / `updated`.
 
 - **Paging**: rows come in the order they were first written (by `id`).
   `limit` rows per page (default 1000, at most 10000); pass `next` as
-  `after` for the next page, until `next` is null. A page never changes once
-  read, also while coders keep coding, so a script can keep `next` and
-  fetch only what is new later.
+  `after` for the next page, until `next` is null. New answers come after
+  the rows already read, so a script can keep `next` and fetch what is new
+  later. A coder who changes an answer updates its row in place (same `id`,
+  a later `updated`): to catch edits, read everything again.
 - **Live values only**, unless `retired=true`: then also values that were
-  reset or replaced, with `retiredAt`.
+  reset (by a researcher), with `retiredAt`. A coder's earlier answer that
+  they changed themselves is not kept.
 - Coder-level answers (outside unit loops) are not rows here; they come
   with the coders ([listCoders](#listcoders)).
 

@@ -127,7 +127,7 @@ export function ItemForm({
           <Input
             value={item.name}
             onChange={(e) => onChange({ ...item, name: e.target.value })}
-            placeholder="e.g., sentiment, age, loop_1"
+            placeholder="e.g. sentiment, age"
             className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
           />
           {nameError && <p className="text-xs text-destructive">{nameError}</p>}
@@ -275,7 +275,7 @@ function ShowFieldSelect({
     <div className="flex flex-col gap-1.5">
       <span className="flex items-center gap-1.5">
         <label className="text-xs font-semibold text-foreground">Show field (optional)</label>
-        <HelpButton topic="typed-blocks" label="Help: names in the layout" />
+        <HelpButton topic="typed-blocks#names" label="Help: names in the layout" />
       </span>
       <select
         className="h-9 w-fit rounded-md border border-input bg-background px-3 text-xs"

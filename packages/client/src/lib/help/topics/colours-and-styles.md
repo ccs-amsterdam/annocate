@@ -78,9 +78,8 @@ weather, the response of the authorities, or both.
 $unit.text
 ```
 
-Inside a style block, paragraphs follow each other without space between
-them. To space them, add `display: flex; flex-direction: column; gap: 0.75em`
-to the style.
+Inside a style block, paragraphs are spaced as in the rest of the unit. For
+more or less space between them, set `gap`, e.g. `gap: 0.5em`.
 
 ### Side by side
 

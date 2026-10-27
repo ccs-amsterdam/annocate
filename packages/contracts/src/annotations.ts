@@ -22,7 +22,7 @@ export const AnnotationsQuerySchema = z.object({
 export type AnnotationsQuery = z.input<typeof AnnotationsQuerySchema>;
 
 export const AnnotationRowSchema = z.object({
-  /** Row id: increases with every write, so pages are stable while coders keep coding. */
+  /** Row id: in the order rows were first written, so new answers come after pages already read (a changed answer keeps its row: see `updated`). */
   id: z.number().int().positive(),
   unitId: IdSchema,
   /** The unit's external id (the researcher's own id). */

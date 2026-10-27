@@ -150,8 +150,8 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          CSV files (UTF-8). Scripts (R, Python) can get the same data, and more detail (e.g. answers that were changed or
-          reset), from the API with an API key (account menu).
+          CSV files (UTF-8). Scripts (R, Python) can get the same data, and more detail (e.g. span positions, and answers a
+          researcher reset), from the API with an API key (account menu).
         </p>
       </section>
     </div>

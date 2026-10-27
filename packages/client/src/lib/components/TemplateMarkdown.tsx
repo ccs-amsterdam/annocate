@@ -23,7 +23,9 @@ export function TemplateMarkdown({ rendered, components }: { rendered: RenderedT
     },
     // A `::: style` block (docs/client.md §3, "Blocks")
     "template-style": ({ index, children }: { index?: string; children?: ReactNode }) => (
-      <div style={rendered.styles?.[Number(index)] as CSSProperties | undefined}>{children}</div>
+      <div className="flex flex-col gap-4" style={rendered.styles?.[Number(index)] as CSSProperties | undefined}>
+        {children}
+      </div>
     ),
   } as Components;
   return (
@@ -40,7 +42,9 @@ const INLINE_MARKDOWN: Components = { p: ({ children }) => <>{children}</> };
 function styleComponents(styles: Record<string, string>[] | undefined): Components {
   return {
     "template-style": ({ index, children }: { index?: string; children?: ReactNode }) => (
-      <div style={styles?.[Number(index)] as CSSProperties | undefined}>{children}</div>
+      <div className="flex flex-col gap-4" style={styles?.[Number(index)] as CSSProperties | undefined}>
+        {children}
+      </div>
     ),
   } as Components;
 }

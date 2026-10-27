@@ -45,7 +45,7 @@ function QuestionFields({
         <Textarea
           value={value.question}
           onChange={(e) => onChange({ question: e.target.value })}
-          placeholder="Markdown/QuickJS-templated question text"
+          placeholder="The question coders see (markdown; values like $var.name.label work)"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -170,7 +170,7 @@ export function VariableTypeForm({
           {v.source === "url_param" && (
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium">URL parameter name</label>
-              <Input value={v.urlParam ?? ""} onChange={(e) => onChange({ ...v, urlParam: e.target.value })} />
+              <Input value={v.urlParam ?? ""} onChange={(e) => onChange({ ...v, urlParam: e.target.value || undefined })} />
             </div>
           )}
           {v.source !== "url_param" && (

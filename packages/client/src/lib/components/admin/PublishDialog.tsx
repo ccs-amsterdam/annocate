@@ -136,7 +136,7 @@ export function PublishDialog({ codebook, versionNumber, live, liveNumber, onPub
                 <ul className="list-disc space-y-1 pl-5 text-foreground/80">
                   <li>
                     {liveNumber !== null
-                      ? `Coders who are working now switch to v${versionNumber} at their next unit; new coders start with it.`
+                      ? `Coders who are working now switch to v${versionNumber} when they next save an answer; new coders start with it.`
                       : `Coders start with v${versionNumber}.`}
                   </li>
                   {liveNumber !== null && (

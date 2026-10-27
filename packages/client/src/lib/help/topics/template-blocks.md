@@ -202,7 +202,8 @@ Anything that should show in every stage goes outside the block.
 
 Outside a `::: from` block, the layout can't use the answers to the loop's
 own questions: the layout is shown before any of them is answered.
-AnnoTinder reports this as *"'sentiment' is asked after this point"*. Inside
+AnnoTinder reports this as *"'sentiment' is answered in this loop; use it
+inside ::: from topics"* (naming the question after it). Inside
 a `::: from` block, the questions *before* its question can be used, in
 values and in conditions:
 

@@ -134,7 +134,14 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       return issue(ctx.path, `${text}: branches and unitset names can only use coder-level questions from before the loop`), null;
     }
     if (where !== null && where !== ctx.loop) return issue(ctx.path, `${text}: '${name}' is a question of another unit loop (${loopTitles.get(where)})`), null;
-    if (!ctx.available.has(name)) return issue(ctx.path, `${text}: '${name}' is asked after this point`), null;
+    if (!ctx.available.has(name)) {
+      // In a layout, the loop's own answers exist from their question on: `::: from` says from where.
+      const next = ctx.loopOrder?.[ctx.loopOrder.indexOf(name) + 1];
+      if (ctx.loopOrder?.includes(name)) {
+        return issue(ctx.path, `${text}: '${name}' is answered in this loop; use it inside ${next ? `::: from ${next}` : "a ::: from block of a later question"}`), null;
+      }
+      return issue(ctx.path, `${text}: '${name}' is asked after this point`), null;
+    }
     const shape = referenceShape(questions, ref);
     if (!shape.ok) issue(ctx.path, shape.reason);
     else if (shape.warning) issue(ctx.path, shape.warning, true);
@@ -162,6 +169,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     if (!condition || typeof condition !== "object") return;
     const path = [...ctx.path, "script"];
     if (!condition.script?.trim()) issue(path, "The script is empty");
+    if (usesSnippets(condition.script ?? "")) issue(path, "Snippets ([[name]]) can only be used in a unit loop's layout and its questions' texts; in a layout, `::: if [[name]]` works");
     checkScript(condition.script ?? "", { ...ctx, path });
     const simple = parseSimpleCondition(condition.script ?? "");
     if (simple) for (const call of simpleConditionCalls(simple)) checkCall(call, { ...ctx, path });
@@ -344,8 +352,8 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
       } else {
-        if (!/^[a-zA-Z0-9_.-]+$/.test(item.name)) {
-          issue([...itemPath, "name"], `Name '${item.name}' contains invalid characters (letters, numbers, _, -, . only)`);
+        if (!/^[a-zA-Z0-9_]+$/.test(item.name)) {
+          issue([...itemPath, "name"], `Name '${item.name}' contains invalid characters (letters, numbers and _ only)`);
         }
         if (seenNames.has(item.name)) issue([...itemPath, "name"], `Duplicate name '${item.name}'`);
         else seenNames.set(item.name, itemPath);
@@ -405,8 +413,9 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       } else if (item.type === "end") {
         const end = item as { message?: unknown; redirectUrl?: unknown };
         const ctx = { loop: loop?.name ?? null, available, snippets: loop?.snippets };
-        checkTemplate(end.message, { ...ctx, path: [...itemPath, "message"] }, "text");
-        checkTemplate(end.redirectUrl, { ...ctx, path: [...itemPath, "redirectUrl"] }, "url");
+        // An end item's texts are shown outside the loop's layout: no snippets.
+        checkTemplate(end.message, { ...ctx, snippets: undefined, path: [...itemPath, "message"] }, "text");
+        checkTemplate(end.redirectUrl, { ...ctx, snippets: undefined, path: [...itemPath, "redirectUrl"] }, "url");
         if (typeof end.redirectUrl === "string" && !/^https?:\/\//.test(end.redirectUrl)) {
           issue([...itemPath, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
         }

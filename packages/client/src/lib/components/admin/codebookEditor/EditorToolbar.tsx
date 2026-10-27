@@ -145,7 +145,7 @@ export function EditorToolbar({
                 ? "Fix the codebook's issues before publishing"
                 : !canPublish
                   ? "This version is already live"
-                  : "Make this version live: coders switch to it at their next unit"
+                  : "Make this version live: coders switch to it when they next save an answer"
             }
             className="flex items-center gap-1.5"
           >

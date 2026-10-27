@@ -14,7 +14,7 @@ describe("TemplateMarkdown blocks", () => {
     );
     const html = renderToStaticMarkup(<TemplateMarkdown rendered={rendered} />);
     expect(html).toBe(
-      '<div style="color:red"><h1><span class="whitespace-pre-wrap" data-field="unit.headline">News</span></h1><div style="font-size:120%"><p>some <strong>text</strong></p></div></div>\n<p>after</p>',
+      '<div class="flex flex-col gap-4" style="color:red"><h1><span class="whitespace-pre-wrap" data-field="unit.headline">News</span></h1><div class="flex flex-col gap-4" style="font-size:120%"><p>some <strong>text</strong></p></div></div>\n<p>after</p>',
     );
   });
 
@@ -27,7 +27,7 @@ describe("TemplateMarkdown blocks", () => {
   it("renders the blocks of a snippet", async () => {
     const snippets = { banner: "::: style color: blue; font-size: 90%\n> **Experiment group.** A banner.\n:::" };
     const html = renderToStaticMarkup(<TemplateMarkdown rendered={await renderTemplate("[[banner]]", scope, undefined, "t", { snippets })} />);
-    expect(html).toContain('<div style="color:blue;font-size:90%"><blockquote>');
+    expect(html).toContain('<div class="flex flex-col gap-4" style="color:blue;font-size:90%"><blockquote>');
     expect(html).toContain("<strong>Experiment group.</strong>");
     expect(html).not.toContain(":::");
   });

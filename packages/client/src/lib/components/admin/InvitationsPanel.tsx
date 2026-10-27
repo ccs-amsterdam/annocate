@@ -41,7 +41,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
   const withoutUnits = (invitesQuery.data ?? []).filter((i) => !i.revokedAt && i.unitsetId == null);
   const linkOf = (invite: CoderInviteResponse) => {
     const url = inviteUrl ? inviteUrl(invite) : `${baseUrl}/invite/${invite.secret}`;
-    return invite.participantFromUrl ? `${url}&participant=<id>` : url;
+    return invite.participantFromUrl ? `${url}${url.includes("?") ? "&" : "?"}participant=<id>` : url;
   };
 
   return (

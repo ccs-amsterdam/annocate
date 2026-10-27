@@ -16,5 +16,5 @@ export function getChildren(item: TreeNode): TreeNode[] | null {
 
 /** Item types that can be created at a position (no loops in a loop). */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
-  return positionInLoop(items, position) ? ["question", "condition"] : ["question", "unit_loop", "condition"];
+  return positionInLoop(items, position) ? ["question", "condition", "end"] : ["question", "unit_loop", "condition", "end"];
 }
