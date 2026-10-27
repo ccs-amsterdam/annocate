@@ -69,7 +69,7 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
     for (const item of list) {
       if (item.type === "condition") visit(item.children);
       if (item.type !== "unit_loop") continue;
-      check(item.name, templateReferences(item.layout?.template ?? "").references);
+      check(itemTitle(item), templateReferences(item.layout?.template ?? "").references);
       walk(item.children, new Set(Object.keys(item.layout?.constants ?? {})));
     }
   };

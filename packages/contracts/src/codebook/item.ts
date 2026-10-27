@@ -127,8 +127,10 @@ export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
  *
  * The legacy `unitset` + `randomizeUnits` shape is migrated on parse.
  */
-const UnitLoopObjectSchema = ItemBaseSchema.extend({
+const UnitLoopObjectSchema = z.object({
   type: z.literal("unit_loop"),
+  /** Shown in the editor and in exports; the loop has no name (it is identified by its position, see `unitLoops`). */
+  label: z.string().optional().describe("Shown in the editor and in exports"),
   ...UnitLoopDistributionShape,
   layout: UnitLayoutSchema,
   children: z.array(InLoopItemSchema).min(1, "A unit_loop must have at least one child item"),
@@ -185,5 +187,32 @@ export type CodebookItem = TopLevelItem | InLoopItem;
 
 /** An item's name; conditions have none. */
 export function itemName(item: CodebookItem): string | undefined {
-  return item.type === "condition" ? undefined : item.name;
+  return item.type === "condition" || item.type === "unit_loop" ? undefined : item.name;
+}
+
+/**
+ * The unit loops of a codebook in document order, with their key: their
+ * position (`"1"`, `"2"`, ...). The key identifies a loop within one
+ * codebook version (the coder API's `/loop/:loop`, progress, distribution
+ * state); a coder's routing is stored by branch (`branchFingerprint`), so
+ * reordering or relabelling loops moves nobody.
+ */
+export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitLoopItem }[] {
+  const loops: { key: string; loop: UnitLoopItem }[] = [];
+  const walk = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    for (const raw of list) {
+      const item = raw as Partial<CodebookItem> | null;
+      if (!item || typeof item !== "object") continue;
+      if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
+      else if (item.type === "condition") walk(item.children);
+    }
+  };
+  walk(items);
+  return loops;
+}
+
+/** How a loop is called in the editor, progress and exports: its label, or "Unit loop <key>". */
+export function loopTitle(loop: { label?: string }, key: string): string {
+  return loop.label?.trim() || `Unit loop ${key}`;
 }

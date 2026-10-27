@@ -344,10 +344,12 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     which are items of their own), or as a preview. The tree shows
     questions with the icon of their answer type, unit loops with their
     unitsets (or "n branches"), and conditions by their condition, or by
-    their optional `label`. Conditions have no name: nothing refers to
-    them (names of questions are variables, of unit loops and end items
-    what results and the server use; until 2026-10-27 every item had one,
-    and old condition names are dropped on parse).
+    their optional `label`. Conditions and unit loops have no name
+    (names of questions are variables, of end items the stored way a
+    session ended): a loop is identified by its position and shows its
+    label, or "Unit loop <n>" (`architecture.md` §6.1). Until 2026-10-27
+    every item had a name; old condition names are dropped on parse, old
+    loop names become labels.
     Adding and moving use the same places: a row's + inserts above it, a
     loop or condition's list-end button adds to the end of its children,
     and one row at the bottom adds to the end of the codebook. In move

@@ -11,7 +11,7 @@ import type {
   EndItem,
   ReferenceScope,
 } from "@annotinder/contracts";
-import { branchUnitsets, buildScope, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
+import { branchUnitsets, buildScope, loopTitle, unitLoops, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
@@ -165,6 +165,7 @@ function getQuestionLabel(item: CodebookItem): string {
       return q.trim().split("\n")[0];
     }
   }
+  if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   return itemName(item) ?? "";
 }
 
@@ -196,6 +197,8 @@ function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
  */
 export class JobManager {
   private items: TopLevelItem[] = [];
+  /** Each unit loop's key (its position, contracts `unitLoops`): how the coder API and progress refer to it. */
+  private loopKeys = new Map<UnitLoopItem, string>();
   private coderApi: CoderApi;
   private listeners: Set<JobManagerListener> = new Set();
   private expressionCache = new ExpressionCache();
@@ -282,6 +285,7 @@ export class JobManager {
       this.publish({ phase: "loading", error: null, errorCode: null });
       const session: SessionResponse = await this.coderApi.getSession();
       this.items = session.codebook.items as TopLevelItem[];
+      this.loopKeys = new Map(unitLoops(this.items).map(({ key, loop }) => [loop, key]));
       this.questions = collectQuestions(this.items).questions;
       // Coder-level variables so far, including server-assigned `auto`
       // variables (condition, slot, ...), so conditions can use them.
@@ -314,8 +318,13 @@ export class JobManager {
     }
   }
 
+  /** A loop's key (`loopKeys`). */
+  private keyOf(loop: UnitLoopItem): string {
+    return this.loopKeys.get(loop) ?? "";
+  }
+
   private history(loop: UnitLoopItem | null = this.activeLoop): LoopHistory {
-    const name = loop?.name ?? "";
+    const name = loop ? this.keyOf(loop) : "";
     let history = this.histories.get(name);
     if (!history) {
       const done = this.progress.get(name)?.doneUnitIds ?? [];
@@ -342,7 +351,7 @@ export class JobManager {
     const loop = this.activeLoop!;
     const entry = this.unitHistory[index];
     if (!entry.unit) {
-      const unit = await this.coderApi.getLoopUnit(loop.name, entry.unitId);
+      const unit = await this.coderApi.getLoopUnit(this.keyOf(loop), entry.unitId);
       entry.unit = unit;
       entry.answers = { ...(unit.variables ?? {}) };
     }
@@ -481,7 +490,7 @@ export class JobManager {
       const nextUnit = await this.fetchNextUnit(this.activeLoop);
       if (!nextUnit) break;
       // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
-    const carried = this.carryOver?.loop === this.activeLoop.name && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
+    const carried = this.carryOver?.loop === this.keyOf(this.activeLoop) && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
     this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     }
 
@@ -583,7 +592,7 @@ export class JobManager {
    */
   private async reloadAfterPublish(): Promise<void> {
     if (this.activeLoop && this.currentUnit) {
-      this.carryOver = { loop: this.activeLoop.name, unitId: this.currentUnit.id, answers: { ...this.unitVariableValues } };
+      this.carryOver = { loop: this.keyOf(this.activeLoop), unitId: this.currentUnit.id, answers: { ...this.unitVariableValues } };
     }
     this.starting = null;
     this.userVariableValues = {};
@@ -654,7 +663,7 @@ export class JobManager {
     try {
       const scope = buildScope(this.questions, this.unitVisible, unit.data, loop.layout.constants);
       const [template, texts] = await Promise.all([
-        renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${loop.name}`),
+        renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`),
         this.questionTexts(step, scope),
       ]);
       this.publish({
@@ -693,7 +702,7 @@ export class JobManager {
   private async chooseBranch(loop: UnitLoopItem): Promise<BranchChoice | null> {
     const scope = buildScope(this.questions, this.coderVisible);
     for (const [i, branch] of loop.units.entries()) {
-      if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${loop.name}:${i}`))) {
+      if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${this.keyOf(loop)}:${i}`))) {
         continue;
       }
       // The server picks the set where the template is null (`sets` and `invitation` mode): sent as "".
@@ -701,7 +710,7 @@ export class JobManager {
       const unitsets = templates.map((t) => (t === null ? "" : fillUnitsetName(t, scope)));
       const missing = templates.find((t, s) => t !== null && unitsets[s] === null);
       if (missing) {
-        throw new Error(`Unit loop '${loop.name}': no unitset '${missing}' for this coder (an answer it uses is missing)`);
+        throw new Error(`${loopTitle(loop, this.keyOf(loop))}: no unitset '${missing}' for this coder (an answer it uses is missing)`);
       }
       return { branch: i, unitsets: unitsets as string[] };
     }
@@ -717,7 +726,7 @@ export class JobManager {
   private async fetchNextUnit(loop: UnitLoopItem): Promise<CoderUnitResponse | null> {
     const choice = await this.chooseBranch(loop);
     try {
-      return await this.coderApi.getNextUnit(loop.name, choice ?? undefined);
+      return await this.coderApi.getNextUnit(this.keyOf(loop), choice ?? undefined);
     } catch (err) {
       if (choice === null && errorCodeOf(err) === "branch_required") return null;
       throw err;
@@ -807,7 +816,7 @@ export class JobManager {
         const value = this.unitVisible[name];
         doneValues[name] = value ? { ...value, done: true } : { done: true, skip: true };
       }
-      await this.coderApi.postUnitVariables(this.currentUnit.id, doneValues, this.activeLoop.name);
+      await this.coderApi.postUnitVariables(this.currentUnit.id, doneValues, this.keyOf(this.activeLoop));
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }
@@ -844,7 +853,7 @@ export class JobManager {
     }
 
     // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
-    const carried = this.carryOver?.loop === this.activeLoop.name && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
+    const carried = this.carryOver?.loop === this.keyOf(this.activeLoop) && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
     this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     await this.openEntry(this.unitHistory.length - 1);
 
@@ -878,7 +887,7 @@ export class JobManager {
       if (step.type === "unit_loop") {
         const history = this.history(step);
         unitCount = history.entries.length;
-        totalUnits = this.progress.get(step.name)?.totalUnits ?? undefined;
+        totalUnits = this.progress.get(this.keyOf(step))?.totalUnits ?? undefined;
         if (isCurrent && this.activeLoop) {
           currentUnitIndex = history.index >= 0 ? history.index : 0;
           units = history.entries.map((h, hIdx) => ({
@@ -903,7 +912,7 @@ export class JobManager {
 
       return {
         index: idx,
-        name: itemName(step) ?? "",
+        name: step.type === "unit_loop" ? this.keyOf(step) : (itemName(step) ?? ""),
         type: step.type as NavigationPhase["type"],
         label: getQuestionLabel(step),
         isCurrent,

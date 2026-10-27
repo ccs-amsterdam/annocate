@@ -19,7 +19,7 @@ function confirm(name: string): UserVariableItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[], unitset = "__all__"): UnitLoopItem {
-  return { name, type: "unit_loop", units: [{ mode: "all", unitset }], layout: { template: "" }, children };
+  return { label: name, type: "unit_loop", units: [{ mode: "all", unitset }], layout: { template: "" }, children };
 }
 
 function unitVar(name: string): UnitVariableItem {
@@ -150,7 +150,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
   it("asks the server for the next unit by loop name", async () => {
     let unitsServed = 0;
     const getNextUnit = vi.fn(async (loop: string) => {
-      expect(loop).toBe("loop_all_units");
+      expect(loop).toBe("1");
       unitsServed += 1;
       return unitsServed === 1 ? unit(10) : null;
     });
@@ -162,7 +162,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     });
     const manager = new JobManager(server);
     await manager.start();
-    expect(getNextUnit).toHaveBeenCalledWith("loop_all_units", { branch: 0, unitsets: ["__all__"] });
+    expect(getNextUnit).toHaveBeenCalledWith("1", { branch: 0, unitsets: ["__all__"] });
     expect(manager.getSnapshot().phase).toBe("unit_variable");
     expect(manager.getSnapshot().currentUnit?.id).toBe(10);
   });
@@ -315,7 +315,7 @@ describe("resuming a session", () => {
       getSession: vi.fn(async () => ({
         ...session(opts.items ?? [confirm("consent"), unitLoop("main", [select("q1", ["a", "b"]), select("q2", ["x", "y"])])]),
         variables: opts.variables ?? { consent: { done: true, skip: false } },
-        progress: [{ unitset: "main", doneUnitIds: [10, 11], totalUnits: 5 }],
+        progress: [{ unitset: "1", doneUnitIds: [10, 11], totalUnits: 5 }],
       }) as SessionResponse),
       getNextUnit: vi.fn(async () => {
         if (served) return null;
@@ -341,7 +341,7 @@ describe("resuming a session", () => {
     expect(snap.navigation.canGoBack).toBe(true);
 
     await manager.goBack(); // to the last question of unit 11, loaded on demand
-    expect(getLoopUnit).toHaveBeenCalledWith("main", 11);
+    expect(getLoopUnit).toHaveBeenCalledWith("1", 11);
     expect(manager.getSnapshot().currentUnit?.id).toBe(11);
     expect(itemName(manager.getSnapshot().currentItem!)).toBe("q2");
   });
@@ -385,7 +385,7 @@ describe("submitting a finished unit", () => {
     expect(postUnitVariables).toHaveBeenCalledWith(
       5,
       { q1: { done: true, skip: false }, q2: { done: true, skip: true } },
-      "main",
+      "1",
     );
   });
 });
@@ -399,7 +399,7 @@ describe("choosing a unit loop branch", () => {
   };
   const loop = {
     type: "unit_loop",
-    name: "main",
+    label: "main",
     units: [
       { when: { script: `$var.role.is("expert")` }, mode: "all", unitset: "hard" },
       { when: { script: "$var.slot.value === '2'" }, mode: "all", unitset: "part_$var.slot.value", overlap: { unitset: "overlap" } },
@@ -423,16 +423,16 @@ describe("choosing a unit loop branch", () => {
 
   it("sends the first matching branch and its filled-in unitset names", async () => {
     const { getNextUnit } = await start({ slot: code("2"), role: code("student") });
-    expect(getNextUnit).toHaveBeenCalledWith("main", { branch: 1, unitsets: ["part_2", "overlap"] });
+    expect(getNextUnit).toHaveBeenCalledWith("1", { branch: 1, unitsets: ["part_2", "overlap"] });
     // In `sets` mode the server picks the set: sent empty.
     const sets = await start({ slot: code("3"), role: code("student") });
-    expect(sets.getNextUnit).toHaveBeenCalledWith("main", { branch: 2, unitsets: ["", "overlap"] });
+    expect(sets.getNextUnit).toHaveBeenCalledWith("1", { branch: 2, unitsets: ["", "overlap"] });
 
     const expert = await start({ slot: code("2"), role: code("expert") });
-    expect(expert.getNextUnit).toHaveBeenCalledWith("main", { branch: 0, unitsets: ["hard"] });
+    expect(expert.getNextUnit).toHaveBeenCalledWith("1", { branch: 0, unitsets: ["hard"] });
 
     const other = await start({ slot: code("1"), role: code("student") });
-    expect(other.getNextUnit).toHaveBeenCalledWith("main", { branch: 3, unitsets: ["fallback"] });
+    expect(other.getNextUnit).toHaveBeenCalledWith("1", { branch: 3, unitsets: ["fallback"] });
   });
 
   it("treats branch_required as no units when no branch matches", async () => {
@@ -446,7 +446,7 @@ describe("choosing a unit loop branch", () => {
     });
     const manager = new JobManager(server);
     await manager.start();
-    expect(getNextUnit).toHaveBeenCalledWith("main", undefined);
+    expect(getNextUnit).toHaveBeenCalledWith("1", undefined);
     expect(manager.getSnapshot().phase).toBe("finished");
   });
 });

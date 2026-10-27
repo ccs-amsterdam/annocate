@@ -6,7 +6,7 @@ import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
 import { getChildren, getItemKey, insertableTypesIn, insertableTypesNextTo, type TreeNode } from "./utils";
-import { parseSimpleCondition } from "@annotinder/contracts";
+import { loopTitle, parseSimpleCondition, unitLoops, type UnitLoopItem } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
 import { loopUnitsSummary } from "../../../codebook/tree";
@@ -173,7 +173,7 @@ function ItemLabel({
         </span>
       ) : (
         <span className={cn("truncate px-1.5 py-0.5 text-foreground", selected ? "font-semibold" : "font-medium")}>
-          {itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
+          {item.type === "unit_loop" ? <LoopTitle loop={item} /> : itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
         </span>
       )}
       {item.type === "unit_loop" && (
@@ -214,4 +214,11 @@ function ItemIcon({ item }: { item: TreeNode }) {
       {createElement(itemIcon(item), { className: `h-4 w-4 ${ITEM_TYPES[item.type].color}` })}
     </span>
   );
+}
+
+/** A loop's label, or "Unit loop <n>" by its position (contracts `loopTitle`). */
+function LoopTitle({ loop }: { loop: UnitLoopItem }) {
+  const { items } = useCodebookTree();
+  const key = unitLoops(items).find((l) => l.loop === loop)?.key ?? "";
+  return <>{loopTitle(loop, key)}</>;
 }

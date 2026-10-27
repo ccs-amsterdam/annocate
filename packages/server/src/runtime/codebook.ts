@@ -1,4 +1,5 @@
 import {
+  unitLoops,
   validateVariables,
   type AnyVariableType,
   type CodebookItem,
@@ -14,25 +15,18 @@ export type VariableType = AnyVariableType;
 export { validateVariables };
 
 export interface LoopInfo {
+  /** The loop's position in the codebook (contracts `unitLoops`): how the coder API and distribution state refer to it. */
+  key: string;
   loop: UnitLoopItem;
   variables: Map<string, VariableType>;
 }
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
-  const loops: LoopInfo[] = [];
-  const walk = (list: TopLevelItem[]) => {
-    for (const item of list) {
-      if (item.type === "unit_loop") {
-        const variables = new Map<string, VariableType>();
-        collectQuestions(item.children as CodebookItem[], variables);
-        loops.push({ loop: item, variables });
-      } else if (item.type === "condition") {
-        walk(item.children);
-      }
-    }
-  };
-  walk(items);
-  return loops;
+  return unitLoops(items).map(({ key, loop }) => {
+    const variables = new Map<string, VariableType>();
+    collectQuestions(loop.children as CodebookItem[], variables);
+    return { key, loop, variables };
+  });
 }
 
 /** The questions the `shared` branches of a loop compare for agreement: what distribution needs to know of finished codings. */
@@ -69,7 +63,7 @@ export function finishedLoops(variables: Record<string, VariableValue>, loops: I
 export function codingsSignature(loops: Iterable<LoopInfo>): string {
   return JSON.stringify(
     [...loops]
-      .map((info) => [info.loop.name, [...info.variables.keys()].sort(), needsAllCodings(info), loopAgreementVariables(info).sort()])
+      .map((info) => [info.key, [...info.variables.keys()].sort(), needsAllCodings(info), loopAgreementVariables(info).sort()])
       .sort(),
   );
 }

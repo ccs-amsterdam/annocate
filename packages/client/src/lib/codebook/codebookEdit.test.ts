@@ -114,7 +114,7 @@ describe("codebookEdit", () => {
     it("prevents moving span question to root end (outside loop)", () => {
       const loop: TopLevelItem = {
         type: "unit_loop",
-        name: "loop",
+        ...{ _key: "loop" },
         units: [{ mode: "all", unitset: "test" }],
         layout: { template: "" },
         children: [
@@ -133,7 +133,7 @@ describe("codebookEdit", () => {
   describe("canMoveItemTo question restrictions", () => {
     const loop: TopLevelItem = {
       type: "unit_loop",
-      name: "loop",
+      ...{ _key: "loop" },
       units: [{ mode: "all", unitset: "test" }],
       layout: { template: "" },
       children: [
@@ -159,7 +159,7 @@ describe("codebookEdit", () => {
     it("prevents moving question with span outside loop", () => {
       const spanLoop: TopLevelItem = {
         type: "unit_loop",
-        name: "loop",
+        ...{ _key: "loop" },
         units: [{ mode: "all", unitset: "test" }],
         layout: { template: "" },
         children: [

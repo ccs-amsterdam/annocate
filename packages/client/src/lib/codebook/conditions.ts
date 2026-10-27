@@ -89,10 +89,12 @@ export function readableCondition(condition: SimpleCondition, nested = false): s
 }
 
 /**
- * How an item is called in the editor: its name, and for a condition (which
- * has none) its label, or else its condition.
+ * How an item is called in the editor: its name; for a condition (which has
+ * none) its label, or else its condition; for a unit loop its label, or
+ * "Unit loop".
  */
 export function itemTitle(item: CodebookItem): string {
   if (item.type === "condition") return item.label?.trim() || `if ${describeCondition(item.condition)}`;
+  if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   return item.name;
 }

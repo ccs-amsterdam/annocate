@@ -12,7 +12,7 @@ describe("CodebookTreeView", () => {
     },
     {
       type: "unit_loop",
-      name: "main_loop",
+      label: "main_loop",
       units: [{ mode: "all", unitset: "main" }],
       layout: { template: "text" },
       children: [

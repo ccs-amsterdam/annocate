@@ -58,7 +58,7 @@ describe("codebook routes", () => {
     const validItems: CodebookItem[] = [
       {
         type: "unit_loop",
-        name: "loop",
+        label: "loop",
         units: [{ mode: "all", unitset: "main" }],
         layout: { template: "" },
         children: [{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],

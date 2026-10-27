@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CodebookItemsSchema } from "./codebook.js";
 import { migrateCodebookItems } from "./migrate.js";
-import { migrateLegacyUnitLoop } from "./unitLoop.js";
+import { branchFingerprint, migrateLegacyUnitLoop } from "./unitLoop.js";
+import { loopTitle, unitLoops } from "./item.js";
 
 const q = (name: string, variable: object) => ({ type: "question", name, variable });
 
@@ -119,5 +120,27 @@ describe("migrateCodebookItems", () => {
     ]);
     // Current branches are left alone.
     expect(loop([{ mode: "invitation" }]).units).toEqual([{ mode: "invitation" }]);
+  });
+});
+
+describe("unit loop identity", () => {
+  it("turns a loop's name into its label, keys loops by position, and fingerprints branches by what they hand out", () => {
+    const loop = migrateLegacyUnitLoop({ type: "unit_loop", name: "main", units: [{ mode: "all", unitset: "a" }] }) as Record<string, unknown>;
+    expect(loop.label).toBe("main");
+    expect(loop).not.toHaveProperty("name");
+
+    const items = [
+      { type: "unit_loop", units: [] },
+      { type: "condition", children: [{ type: "unit_loop", label: "second", units: [] }] },
+    ];
+    expect(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)])).toEqual([
+      ["1", "Unit loop 1"],
+      ["2", "second"],
+    ]);
+
+    const a = branchFingerprint({ mode: "sets", unitsets: ["s1", "s2"] });
+    expect(branchFingerprint({ mode: "sets", unitsets: ["s1", "s2"], when: { script: "true" } })).toBe(a);
+    expect(branchFingerprint({ mode: "sets", unitsets: ["s1", "s3"] })).not.toBe(a);
+    expect(branchFingerprint({ mode: "all", unitset: "a", overlap: { unitset: "o" } })).not.toBe(branchFingerprint({ mode: "all", unitset: "a" }));
   });
 });

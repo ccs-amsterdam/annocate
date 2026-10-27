@@ -1,7 +1,7 @@
 import type { TopLevelItem } from "@annotinder/contracts";
 
 // What the visual editor needs of items edited as text (the JSON views):
-// a known type, a name (except conditions), and for questions a variable with a type. Everything
+// a known type, a name (except conditions and unit loops), and for questions a variable with a type. Everything
 // else is left to validation, whose messages the editor shows.
 
 const ITEM_TYPES = ["question", "user_variable", "unit_variable", "unit_loop", "condition", "end"];
@@ -12,7 +12,7 @@ export function itemShapeError(raw: unknown, { children }: { children: boolean }
   const item = raw as Record<string, unknown>;
   const label = typeof item.name === "string" && item.name ? `'${item.name}'` : "An item";
   if (typeof item.type !== "string" || !ITEM_TYPES.includes(item.type)) return `${label}: type must be one of ${ITEM_TYPES.join(", ")}`;
-  if (item.type !== "condition" && typeof item.name !== "string") return `${label} needs a name`;
+  if (item.type !== "condition" && item.type !== "unit_loop" && typeof item.name !== "string") return `${label} needs a name`;
   const isQuestion = item.type === "question" || item.type === "user_variable" || item.type === "unit_variable";
   const variable = item.variable as { type?: unknown } | undefined;
   if (isQuestion && (!variable || typeof variable !== "object" || typeof variable.type !== "string")) {
@@ -44,17 +44,20 @@ export function itemsShapeError(raw: unknown): string | null {
 /**
  * Gives items that come without editor keys (e.g. from text) the keys of the
  * items with the same name in `previous`, so they stay the same items:
- * selected, and compared with the last save. Conditions have no name: they
- * match the condition at the same place (the nth condition in the same
- * parent).
+ * selected, and compared with the last save. Conditions and unit loops have
+ * no name: they match the one at the same place (the nth condition, or
+ * loop, in the same parent).
  */
+type Unnamed = "condition" | "unit_loop";
+const unnamed = (type: unknown): type is Unnamed => type === "condition" || type === "unit_loop";
+
 export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLevelItem[] {
   const keys = new Map<string, string>();
   const index = (list: unknown[], parent: string) => {
-    let conditions = 0;
+    const counts = { condition: 0, unit_loop: 0 };
     for (const raw of list) {
       const item = raw as Record<string, unknown>;
-      const id = item.type === "condition" ? `${parent}/condition ${conditions++}` : typeof item.name === "string" ? item.name : null;
+      const id = unnamed(item.type) ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}` : typeof item.name === "string" ? item.name : null;
       const key = typeof item._key === "string" ? item._key : undefined;
       if (id && key && !keys.has(id)) keys.set(id, key);
       if (Array.isArray(item.children)) index(item.children, key ?? "?");
@@ -64,10 +67,10 @@ export function carryKeys(next: TopLevelItem[], previous: TopLevelItem[]): TopLe
 
   const used = new Set<string>();
   const walk = (list: unknown[], parent: string): unknown[] => {
-    let conditions = 0;
+    const counts = { condition: 0, unit_loop: 0 };
     return list.map((raw) => {
       const item = { ...(raw as Record<string, unknown>) };
-      const id = item.type === "condition" ? `${parent}/condition ${conditions++}` : typeof item.name === "string" ? item.name : null;
+      const id = unnamed(item.type) ? `${parent}/${String(item.type)} ${counts[item.type as Unnamed]++}` : typeof item.name === "string" ? item.name : null;
       const key = id ? keys.get(id) : undefined;
       if (!item._key && key && !used.has(key)) {
         item._key = key;

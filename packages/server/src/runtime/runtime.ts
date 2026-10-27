@@ -1,6 +1,8 @@
 import {
   SET_ACTIVITY_MS,
+  branchFingerprint,
   branchUnitsets,
+  loopTitle,
   sharedDefaults,
   unitsetHasReferences,
   unitsetMatchesSource,
@@ -137,7 +139,7 @@ export class DeploymentRuntime {
   private unitsets = new Map<string, number[]>();
   /** Units that no longer exist. */
   private removedUnits = new Set<number>();
-  /** loop name -> finished codings in that loop. */
+  /** loop key -> finished codings in that loop. */
   private codings = new Map<string, Codings>();
   /** `codingsSignature` of the spec the codings were derived under. */
   private codingsBasis = "";
@@ -219,7 +221,7 @@ export class DeploymentRuntime {
     this.spec = spec;
     this.specCheckedAt = this.options.now();
     const items = spec.codebook.items as TopLevelItem[];
-    this.loops = new Map(collectLoops(items).map((l) => [l.loop.name, l]));
+    this.loops = new Map(collectLoops(items).map((l) => [l.key, l]));
     this.coderVariableTypes = collectCoderVariables(items);
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
@@ -240,7 +242,7 @@ export class DeploymentRuntime {
     try {
       const rows = await this.store.listFinished({
         loops: dynamicLoops.map((info) => ({
-          loop: info.loop.name,
+          loop: info.key,
           variables: [...info.variables.keys()],
           values: loopAgreementVariables(info),
         })),
@@ -309,7 +311,7 @@ export class DeploymentRuntime {
   /** Records a unit as finished in every loop these answers finish it in. */
   private recordFinished(coderId: number, unitId: number, variables: Record<string, VariableValue>, at = this.options.now()): void {
     for (const info of finishedLoops(variables, this.loops.values())) {
-      this.codingsFor(info.loop.name).record(coderId, unitId, agreementKeys(variables, info), at);
+      this.codingsFor(info.key).record(coderId, unitId, agreementKeys(variables, info), at);
     }
     this.pendingCodings?.push([coderId, variables, unitId]);
   }
@@ -454,11 +456,11 @@ export class DeploymentRuntime {
       codebook: this.spec.codebook,
       version: this.spec.version,
       progress: [...this.loops.values()].map((info) => {
-        const routed = this.assignedPools(coder, info.loop.name);
+        const routed = this.assignedPools(coder, info.key);
         const pools = DeploymentRuntime.poolsOf(routed);
         return {
-          unitset: info.loop.name,
-          doneUnitIds: this.codingsFor(info.loop.name).doneBy(coder.coderId).filter((id) => pools.some((p) => p.has(id))),
+          unitset: info.key,
+          doneUnitIds: this.codingsFor(info.key).doneBy(coder.coderId).filter((id) => pools.some((p) => p.has(id))),
           totalUnits: this.expectedUnits(routed),
         };
       }),
@@ -537,18 +539,19 @@ export class DeploymentRuntime {
     return templates.every((t, i) => t === null || unitsetMatchesSource(t, names[i]));
   }
 
-  /** The pools of the first branch that fits the stored `names`, if the codebook still has one. */
-  private poolsFor(info: LoopInfo, names: string[]): Routed | null {
-    const branch = info.loop.units.find((b) => DeploymentRuntime.fits(b, names));
-    return branch ? this.routed(info.loop.name, branch, names) : null;
-  }
-
-  /** Where the coder is already routed in a loop (no new routing). */
+  /**
+   * Where the coder is already routed in a loop (no new routing): the first
+   * branch with a stored routing (by `branchFingerprint`) whose unitsets
+   * still fit it.
+   */
   private assignedPools(coder: Coder, loop: string): Routed | null {
     const info = this.loops.get(loop);
-    const assignment = coder.assignments[loop];
-    if (!info || !assignment) return null;
-    return this.poolsFor(info, assignment.unitsets);
+    if (!info) return null;
+    for (const branch of info.loop.units) {
+      const assignment = coder.assignments[branchFingerprint(branch)];
+      if (assignment && DeploymentRuntime.fits(branch, assignment.unitsets)) return this.routed(info.key, branch, assignment.unitsets);
+    }
+    return null;
   }
 
   /** The pools of a routing, own set first. */
@@ -571,8 +574,8 @@ export class DeploymentRuntime {
    */
   private async route(coder: Coder, info: LoopInfo, choice: BranchChoice): Promise<Routed | null> {
     const loop = info.loop;
-    const stored = coder.assignments[loop.name];
-    const existing = stored && this.poolsFor(info, stored.unitsets);
+    const title = loopTitle(loop, info.key);
+    const existing = this.assignedPools(coder, info.key);
     if (existing) return existing;
 
     let branchIndex = choice.branch;
@@ -580,19 +583,19 @@ export class DeploymentRuntime {
     if (branchIndex === undefined) {
       const only = loop.units.length === 1 ? loop.units[0] : undefined;
       if (!only || only.when || branchUnitsets(only).some((t) => t !== null && unitsetHasReferences(t))) {
-        throw new HttpError(409, `Unit loop '${loop.name}': the client must choose a branch`, "branch_required");
+        throw new HttpError(409, `${title}: the client must choose a branch`, "branch_required");
       }
       branchIndex = 0;
       names = branchUnitsets(only).map((t) => t ?? "");
     }
     const branch = loop.units[branchIndex];
-    if (!branch) throw new HttpError(400, `Unit loop '${loop.name}' has no branch ${branchIndex}`);
+    if (!branch) throw new HttpError(400, `${title} has no branch ${branchIndex}`);
     const templates = branchUnitsets(branch);
     if (names.length !== templates.length || templates.some((t, i) => t !== null && !unitsetMatchesSource(t, names[i]))) {
-      throw new HttpError(400, `Unit loop '${loop.name}': unitsets [${names.join(", ")}] don't fit branch ${branchIndex}`);
+      throw new HttpError(400, `${title}: unitsets [${names.join(", ")}] don't fit branch ${branchIndex}`);
     }
     names = [...names];
-    if (branch.mode === "sets") names[0] = this.leastCodedSet(loop.name, branch.unitsets);
+    if (branch.mode === "sets") names[0] = this.leastCodedSet(info.key, branch.unitsets);
     if (branch.mode === "invitation") {
       const own = await this.store.inviteUnitset(coder.inviteId ?? "first");
       if (own === null) return null;
@@ -600,14 +603,14 @@ export class DeploymentRuntime {
     }
     const missing = names.find((name) => !this.unitsets.has(name));
     if (missing !== undefined) {
-      throw new HttpError(409, `Unit loop '${loop.name}': unitset '${missing}' does not exist for this coder`);
+      throw new HttpError(409, `${title}: unitset '${missing}' does not exist for this coder`);
     }
 
     const at = this.options.now();
-    coder.assignments = { ...coder.assignments, [loop.name]: { unitsets: names, at } };
+    coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: { unitsets: names, at } };
     await this.saveCoder(coder);
-    if (branch.mode === "sets") this.setCoders(loop.name).set(coder.coderId, { set: names[0], at });
-    return this.routed(loop.name, branch, names);
+    if (branch.mode === "sets") this.setCoders(info.key).set(coder.coderId, { set: names[0], at });
+    return this.routed(info.key, branch, names);
   }
 
   private setCoders(loop: string): Map<number, { set: string; at: number }> {
@@ -642,9 +645,9 @@ export class DeploymentRuntime {
     if (loops.length === 0) return;
     for (const coder of await this.store.listCoders()) {
       for (const info of loops) {
-        const assignment = coder.assignments[info.loop.name];
-        const routed = assignment && this.poolsFor(info, assignment.unitsets);
-        if (routed?.branch.mode === "sets") this.setCoders(info.loop.name).set(coder.coderId, { set: assignment.unitsets[0], at: assignment.at });
+        const routed = this.assignedPools(coder, info.key);
+        const assignment = routed && coder.assignments[branchFingerprint(routed.branch)];
+        if (routed?.branch.mode === "sets" && assignment) this.setCoders(info.key).set(coder.coderId, { set: assignment.unitsets[0], at: assignment.at });
       }
     }
   }
@@ -724,8 +727,8 @@ export class DeploymentRuntime {
     this.assertOpen(coder);
     const loops = [...this.loops.values()].filter(
       (info) =>
-        (loopName === undefined || info.loop.name === loopName) &&
-        DeploymentRuntime.poolsOf(this.assignedPools(coder, info.loop.name)).some((p) => p.canSubmit(coder.coderId, unitId)),
+        (loopName === undefined || info.key === loopName) &&
+        DeploymentRuntime.poolsOf(this.assignedPools(coder, info.key)).some((p) => p.canSubmit(coder.coderId, unitId)),
     );
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
 
@@ -771,7 +774,7 @@ export class DeploymentRuntime {
     const [rows, allCoders] = await Promise.all([
       this.store.listFinished({
         loops: [...this.loops.values()].map((info) => ({
-          loop: info.loop.name,
+          loop: info.key,
           variables: [...info.variables.keys()],
           values: loopAgreementVariables(info),
         })),
@@ -788,16 +791,16 @@ export class DeploymentRuntime {
 
     const sources: DeploymentStatus["sources"] = [];
     for (const [loop] of this.loops) {
-      const routed = allCoders.filter((c) => c.assignments[loop]);
+      const routed = allCoders.filter((c) => this.assignedPools(c, loop) !== null);
       const seen = new Set<UnitPool>();
       for (const coder of routed) {
         for (const pool of DeploymentRuntime.poolsOf(this.assignedPools(coder, loop))) {
           if (seen.has(pool)) continue;
           seen.add(pool);
-          const coders = routed.filter((c) => c.assignments[loop].unitsets.includes(pool.unitset)).map((c) => c.coderId);
+          const coders = routed.filter((c) => DeploymentRuntime.poolsOf(this.assignedPools(c, loop)).includes(pool)).map((c) => c.coderId);
           const counted = new UnitPool(pool.unitset, [...pool.unitIds], pool.rule, finished.get(loop) ?? new Codings());
           sources.push({
-            loop,
+            loop: loopTitle(this.loops.get(loop)!.loop, loop),
             unitset: pool.unitset,
             ...counted.status(now, coders),
             leasedUnits: pool.status(now, coders).leasedUnits,

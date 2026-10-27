@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import {
+  loopTitle,
+  unitLoops,
   ALL_UNITS_UNITSET,
   CodebookItemsSchema,
   type CodebookItem,
@@ -46,21 +48,22 @@ export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWri
   return { ...(await getDeployment(sql, jobId))!, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-/** Loop name -> names of its questions (through conditions), from a stored codebook. */
+/**
+ * Loop title (contracts `loopTitle`, made unique) -> names of its questions
+ * (through conditions), from a stored codebook. Titles are for people:
+ * progress per loop and warnings.
+ */
 export async function loopVariables(sql: Sql, jobId: number, codebookId: number): Promise<Map<string, string[]>> {
   const row = await one<{ items: unknown }>(sql, "SELECT items FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, codebookId]);
   const loops = new Map<string, string[]>();
   const parsed = row ? CodebookItemsSchema.safeParse(row.items) : null;
   if (!parsed?.success) return loops;
   const questions = (items: CodebookItem[]): string[] =>
-    items.flatMap((i) => (i.type === "condition" ? questions(i.children as CodebookItem[]) : [i.name]));
-  const walk = (items: CodebookItem[]) => {
-    for (const item of items) {
-      if (item.type === "unit_loop") loops.set(item.name, questions(item.children as CodebookItem[]));
-      else if (item.type === "condition") walk(item.children as CodebookItem[]);
-    }
-  };
-  walk(parsed.data);
+    items.flatMap((i) => (i.type === "condition" ? questions(i.children as CodebookItem[]) : "variable" in i ? [i.name] : []));
+  for (const { key, loop } of unitLoops(parsed.data)) {
+    const title = loopTitle(loop, key);
+    loops.set(loops.has(title) ? `${title} (${key})` : title, questions(loop.children as CodebookItem[]));
+  }
   return loops;
 }
 
@@ -70,7 +73,7 @@ async function reopenWarnings(sql: Sql, jobId: number, previousCodebookId: numbe
   const after = await loopVariables(sql, jobId, codebookId);
   const warnings: string[] = [];
   for (const [loop, variables] of after) {
-    // The same loop in the previous version: same name, or else the one sharing most questions.
+    // The same loop in the previous version: same title, or else the one sharing most questions.
     const previous =
       before.get(loop) ??
       [...before.values()].sort(

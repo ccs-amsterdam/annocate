@@ -7,7 +7,7 @@ const question = (name: string, question = "?") =>
 const loop = (name: string, children: unknown[]) =>
   ({
     type: "unit_loop",
-    name,
+    label: name,
     units: [{ mode: "all", unitset: "main" }],
     layout: { template: "text" },
     children,

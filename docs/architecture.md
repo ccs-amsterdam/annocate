@@ -191,7 +191,7 @@ set:
 
 ```yaml
 type: unit_loop
-name: main
+label: News items        # optional: shown in the editor, progress and exports
 order: random            # sequential (default, unitset order) | random: each coder their own order
 units:
   - when:                                # a condition on coder-level questions
@@ -278,11 +278,23 @@ convenience for the researcher, not access control; `sets` and
 balanced, invite) itself stays on the server, so a coder can't change their
 stored group; only which units they ask for.
 
-**Routing is sticky.** The resolved unitset names are stored per coder
-and loop, with when (`assignments`, e.g. `{ main: { unitsets: ["part_2",
-"gold"], at: … } }`), and later choices are ignored. A coder who later
-changes an answer used in `when` keeps their units, as long as the codebook
-still has a branch that produces the same names.
+**Routing is sticky.** The resolved unitset names are stored per coder by
+the branch's fingerprint (`branchFingerprint`: a hash of its mode, unitset
+or sets, and overlap), with when (`assignments`, e.g. `{ "all-1k3x9":
+{ unitsets: ["part_2", "gold"], at: … } }`), and later choices are ignored.
+A coder who later changes an answer used in `when` keeps their units, as
+long as the codebook still has a branch with that fingerprint whose
+unitsets fit. So relabelling, moving or reordering loops moves nobody;
+changing which units a branch hands out routes its coders again. Two loops
+whose branches hand out the same units share the routing (the same set in
+both).
+
+**Loops have no name.** Within one codebook version a loop is identified by
+its position (`unitLoops`: `"1"`, `"2"`, ...): the coder API's
+`/loop/:loop/...`, progress per loop, and the runtime's queues and leases.
+All of that is rebuilt when a version is published. Answers and "finished"
+don't depend on it either: they are keyed by the loop's questions (§8.2).
+The optional `label` is for people: the editor, progress and exports.
 
 The example "1000 units, until 5 coders agree, max 100 per coder" is:
 

@@ -164,7 +164,7 @@ export async function seed(db: Sql): Promise<void> {
     },
     {
       type: "unit_loop",
-      name: "main_loop",
+      label: "main_loop",
       units: [{ mode: "all", unitset: "main" }],
       layout: {
         template:

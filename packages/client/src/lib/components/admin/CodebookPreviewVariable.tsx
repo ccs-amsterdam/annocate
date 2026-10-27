@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { CodebookItem, UnitData, UnitLayout, VariableValue } from "@annotinder/contracts";
+import { itemName, type CodebookItem, type UnitData, type UnitLayout, type VariableValue } from "@annotinder/contracts";
 import { renderTemplate, type RenderedTemplate } from "../../codebook/renderTemplate";
 import { describeCondition } from "../../codebook/conditions";
 import { Question } from "../Question";
@@ -70,7 +70,7 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
               </span>
               {spanVariable ? (
                 <SpanAnnotationProvider
-                  key={item.name}
+                  key={itemName(item)}
                   column={spanVariable.column}
                   options={spanVariable.options}
                   initialSpans={[]}

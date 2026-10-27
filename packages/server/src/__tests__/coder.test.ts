@@ -99,7 +99,7 @@ function coder(name: string, invite: string | null = "demo-secret", app = () => 
     send(name, path, init, device.invite ? { "x-invite-secret": device.invite } : {}, app);
   return {
     session: async () => (await call("/session")).json() as Promise<SessionResponse>,
-    next: async (loop = "main_loop", branch?: { branch: number; unitsets: string[] }) => {
+    next: async (loop = "1", branch?: { branch: number; unitsets: string[] }) => {
       const res = await call(`/loop/${loop}/next${branchQuery(branch)}`);
       expect(res.status).toBe(200);
       return res.json() as Promise<CoderUnitResponse | null>;
@@ -158,7 +158,7 @@ describe("coder flow", () => {
     expect((await dbAnnotations())[0].variables.sentiment.values).toEqual([{ value: "positive" }]);
 
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect((await c.session()).progress).toEqual([{ unitset: "main_loop", doneUnitIds: [first!.id], totalUnits: 3 }]);
+    expect((await c.session()).progress).toEqual([{ unitset: "1", doneUnitIds: [first!.id], totalUnits: 3 }]);
   });
 
   it("rejects invalid annotations without writing them", async () => {
@@ -323,6 +323,24 @@ describe("one set per coder", () => {
     clock += 25 * 60 * 60 * 1000;
     expect((await coder("d").next())!.externalId).toBe("unit-2");
   });
+
+  it("keeps a coder's set when the loop is moved or relabelled, not when its sets change", async () => {
+    await createUnitset("s1", ["unit-1"]);
+    await createUnitset("s2", ["unit-2"]);
+    await redeploy({ units: [{ mode: "sets", unitsets: ["s1", "s2"] }] });
+    expect((await coder("a").next())!.externalId).toBe("unit-1");
+    expect((await coder("b").next())!.externalId).toBe("unit-2");
+
+    // Another loop in front: this one is loop 2 now, and has another label. b still has s2.
+    const warmUp = { type: "question", name: "warm_up", variable: { type: "confirm", question: "?" } };
+    const before = { type: "unit_loop", label: "warm-up", layout: { template: "" }, units: [{ mode: "all", unitset: "s1" }], children: [warmUp] };
+    await redeploy({ label: "renamed", units: [{ mode: "sets", unitsets: ["s1", "s2"] }] }, [before]);
+    expect((await coder("b").next("2"))!.externalId).toBe("unit-2");
+
+    // Other sets: a new routing.
+    await redeploy({ units: [{ mode: "sets", unitsets: ["s1"] }] });
+    expect((await coder("b").next())!.externalId).toBe("unit-1");
+  });
 });
 
 describe("the invitation's units", () => {
@@ -381,16 +399,16 @@ describe("routing coders to unitsets", () => {
     const alice = coder("alice", await invite({ slot: "2" }));
     expect((await alice.session()).variables.slot.values).toEqual([{ value: "2" }]);
     // the client fills in the unitset names; without them the server can't route
-    const required = await alice.call("/loop/main_loop/next");
+    const required = await alice.call("/loop/1/next");
     expect(required.status).toBe(409);
     expect(await required.json()).toMatchObject({ code: "branch_required" });
-    expect((await alice.next("main_loop", part(2)))!.id).toBe(u2);
+    expect((await alice.next("1", part(2)))!.id).toBe(u2);
 
     // no preset: balanced fallback -> slot 1 (slot 2 already has alice)
     const general = await invite();
     const bob = coder("bob", general);
     expect((await bob.session()).variables.slot.values).toEqual([{ value: "1" }]);
-    const bobUnit = await bob.next("main_loop", part(1));
+    const bobUnit = await bob.next("1", part(1));
     expect(bobUnit!.id).toBe(u1);
     await bob.submit(bobUnit!.id, sentiment("neutral"));
     expect((await bob.next())!.id).toBe(u3); // then the overlap set
@@ -428,10 +446,10 @@ describe("routing coders to unitsets", () => {
 
     const carol = coder("carol", await invite({ slot: "1" }));
     // names that don't fit the branch, or don't exist, are refused
-    expect((await carol.call(`/loop/main_loop/next${branchQuery({ branch: 0, unitsets: ["main", "overlap"] })}`)).status).toBe(400);
-    expect((await carol.call(`/loop/main_loop/next${branchQuery({ branch: 1, unitsets: ["part_1", "overlap"] })}`)).status).toBe(400);
-    expect((await carol.call(`/loop/main_loop/next${branchQuery(part(3))}`)).status).toBe(409);
-    const first = await carol.next("main_loop", part(1));
+    expect((await carol.call(`/loop/1/next${branchQuery({ branch: 0, unitsets: ["main", "overlap"] })}`)).status).toBe(400);
+    expect((await carol.call(`/loop/1/next${branchQuery({ branch: 1, unitsets: ["part_1", "overlap"] })}`)).status).toBe(400);
+    expect((await carol.call(`/loop/1/next${branchQuery(part(3))}`)).status).toBe(409);
+    const first = await carol.next("1", part(1));
     const tamper = await carol.call("/variables/coder", {
       method: "POST",
       body: JSON.stringify({ variables: { slot: { done: true, values: [{ value: "2" }] } } }),
@@ -443,10 +461,10 @@ describe("routing coders to unitsets", () => {
     server = restart();
     const again = coder("carol", null);
     expect((await again.next())!.id).toBe(first!.id);
-    expect((await again.next("main_loop", part(2)))!.id).toBe(first!.id);
+    expect((await again.next("1", part(2)))!.id).toBe(first!.id);
     const { coderId } = await again.session();
     const [stored] = await db.query<{ assignments: unknown }>("SELECT assignments FROM coders WHERE id = $1", [coderId]);
-    expect(stored.assignments).toEqual({ main_loop: { unitsets: ["part_1", "overlap"], at: expect.any(Number) } });
+    expect(Object.values(stored.assignments as object)).toEqual([{ unitsets: ["part_1", "overlap"], at: expect.any(Number) }]);
   });
 
   it("route by the branch the client chose", async () => {
@@ -467,13 +485,13 @@ describe("routing coders to unitsets", () => {
       body: JSON.stringify({ variables: { leaning: { done: true, values: [{ value: "left" }] } } }),
     });
     // the client evaluated `when` and chose branch 0
-    const unit = await lefty.next("main_loop", { branch: 0, unitsets: ["left_units"] });
+    const unit = await lefty.next("1", { branch: 0, unitsets: ["left_units"] });
     await lefty.submit(unit!.id, sentiment("neutral"));
     expect(await lefty.next()).toBeNull(); // only the one unit in left_units
 
     const other = coder("other");
-    expect((await other.call("/loop/main_loop/next")).status).toBe(409); // two branches: the client must choose
-    expect((await other.next("main_loop", { branch: 1, unitsets: ["main"] }))!.externalId).toBe("unit-1");
+    expect((await other.call("/loop/1/next")).status).toBe(409); // two branches: the client must choose
+    expect((await other.next("1", { branch: 1, unitsets: ["main"] }))!.externalId).toBe("unit-1");
   });
 });
 
@@ -610,12 +628,12 @@ describe("resuming and codebook updates", () => {
     const c = coder("res");
     const first = await c.next();
     await c.submit(first!.id, demo("positive"));
-    const again = await c.call(`/loop/main_loop/units/${first!.id}`);
+    const again = await c.call(`/loop/1/units/${first!.id}`);
     expect(again.status).toBe(200);
     expect(((await again.json()) as CoderUnitResponse).variables.sentiment.values).toEqual([{ value: "positive" }]);
 
     const unit3 = (await unitByExternalId("unit-3")).id;
-    expect((await c.call(`/loop/main_loop/units/${unit3}`)).status).toBe(404);
+    expect((await c.call(`/loop/1/units/${unit3}`)).status).toBe(404);
   });
 
   it("keeps answers to questions a codebook update removed, and tags the codebook version", async () => {
@@ -778,14 +796,15 @@ describe("finished units follow the current codebook", () => {
     };
     await redeploy(fixedMain, [second]);
     const c = coder("two");
-    const unit = await c.next("main_loop");
-    expect((await c.submit(unit!.id, sentiment("neutral"), "main_loop")).status).toBe(204);
+    // Loops are numbered by position: second_loop (first in the codebook) is 1, main_loop 2.
+    const unit = await c.next("2");
+    expect((await c.submit(unit!.id, sentiment("neutral"), "2")).status).toBe(204);
 
     // finished in main_loop, not in second_loop
-    expect((await c.next("main_loop"))!.id).not.toBe(unit!.id);
-    expect((await c.next("second_loop"))!.id).toBe(unit!.id);
+    expect((await c.next("2"))!.id).not.toBe(unit!.id);
+    expect((await c.next("1"))!.id).toBe(unit!.id);
     const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.unitset, p.doneUnitIds]));
-    expect(progress).toEqual({ second_loop: [], main_loop: [unit!.id] });
+    expect(progress).toEqual({ 1: [], 2: [unit!.id] });
   });
 });
 
@@ -804,7 +823,7 @@ describe("memory", () => {
     await c.submit(unit.id, demo("neutral"));
     await db.query("UPDATE units SET data = $1 WHERE id = $2", [JSON.stringify({ text: "fixed" }), unit.id]);
 
-    const back = async () => ((await (await c.call(`/loop/main_loop/units/${unit.id}`)).json()) as CoderUnitResponse).data;
+    const back = async () => ((await (await c.call(`/loop/1/units/${unit.id}`)).json()) as CoderUnitResponse).data;
     expect(await back()).toEqual(unit.data); // cached: no change, no fetch
     expect((await refresh({ units: [unit.id] })).status).toBe(200);
     expect(await back()).toEqual({ text: "fixed" });
@@ -815,7 +834,7 @@ describe("memory", () => {
     const c = coder("budget");
     const unit = (await c.next())!;
     await c.submit(unit.id, demo("neutral"));
-    expect((await c.call(`/loop/main_loop/units/${unit.id}`)).status).toBe(200);
+    expect((await c.call(`/loop/1/units/${unit.id}`)).status).toBe(200);
     expect(count(UNITS)).toBe(2); // nothing fits, so fetched again
     expect((await status()).memory?.unitBytes).toBe(0);
   });
@@ -946,7 +965,7 @@ describe("researcher preview", () => {
     const before = await coders();
     const { deploymentId, token } = await openPreview();
     const call = previewer(deploymentId, token);
-    const unit = (await (await call("/loop/main_loop/next")).json()) as CoderUnitResponse;
+    const unit = (await (await call("/loop/1/next")).json()) as CoderUnitResponse;
     const submit = await call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("neutral") }) });
     expect(submit.status).toBe(204);
     expect(((await (await call("/session")).json()) as SessionResponse).progress[0].doneUnitIds).toEqual([unit.id]);
@@ -1005,7 +1024,7 @@ describe("end items", () => {
     expect(end.status).toBe(204);
     expect((await c.session()).ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
 
-    const next = await c.call("/loop/main_loop/next");
+    const next = await c.call("/loop/1/next");
     expect(next.status).toBe(409);
     expect(await next.json()).toMatchObject({ code: "session_ended" });
     const answers = await c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables: {} }) });

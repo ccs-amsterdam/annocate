@@ -22,18 +22,18 @@ interface Located {
 
 /**
  * Identity -> item and container, for every item in the tree. Items are
- * identified by name; conditions have none, so by place: the nth condition
- * in their container.
+ * identified by name; conditions and unit loops have none, so by place:
+ * the nth condition (or loop) in their container.
  */
 function locate(
   items: (TopLevelItem | InLoopItem)[],
   container: { id: string; title: string } | null = null,
   out = new Map<string, Located>(),
 ) {
-  let conditions = 0;
+  const counts = { condition: 0, unit_loop: 0 };
   for (const item of items) {
     const parentId = container?.id ?? "";
-    const id = item.type === "condition" ? `${parentId}/condition ${conditions++}` : item.name;
+    const id = item.type === "condition" || item.type === "unit_loop" ? `${parentId}/${item.type} ${counts[item.type]++}` : item.name;
     out.set(id, { item, parent: container?.title ?? null, parentId });
     if ("children" in item && Array.isArray(item.children)) locate(item.children, { id, title: itemTitle(item) }, out);
   }

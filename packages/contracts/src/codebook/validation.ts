@@ -1,4 +1,4 @@
-import { TopLevelItemSchema, type CodebookItem } from "./item.js";
+import { TopLevelItemSchema, loopTitle, unitLoops, type CodebookItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { migrateCodebookItems } from "./migrate.js";
@@ -104,6 +104,9 @@ function flattenUnions(issues: readonly RawIssue[], prefix: (string | number)[] 
 export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   const issues: CodebookValidationIssue[] = [];
   const { questions, loopOf } = collectQuestions(items);
+  /** Loop key -> how messages call it. */
+  const loopTitles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)]));
+  let loopCount = 0;
   const seenNames = new Map<string, Path>();
   const spanVariables = new Set<string>();
   /** Coder-level questions seen so far. */
@@ -132,7 +135,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     if (ctx.branch && where !== null) {
       return issue(ctx.path, `${text}: branches and unitset names can only use coder-level questions from before the loop`), null;
     }
-    if (where !== null && where !== ctx.loop) return issue(ctx.path, `${text}: '${name}' is a question of unit loop '${where}'`), null;
+    if (where !== null && where !== ctx.loop) return issue(ctx.path, `${text}: '${name}' is a question of another unit loop (${loopTitles.get(where)})`), null;
     if (!ctx.available.has(name)) return issue(ctx.path, `${text}: '${name}' is asked after this point`), null;
     const shape = referenceShape(questions, ref);
     if (!shape.ok) issue(ctx.path, shape.reason);
@@ -254,8 +257,8 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       const available = loop ? new Set([...coderAvailable, ...loopAvailable]) : coderAvailable;
 
       // Check name validity and uniqueness (conditions have no name)
-      if (item.type === "condition") {
-        // Nothing refers to a condition.
+      if (item.type === "condition" || item.type === "unit_loop") {
+        // Nothing refers to them by name (a loop is identified by its position).
       } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
       } else {
@@ -291,13 +294,14 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
 
       // Check structural rules
       if (item.type === "unit_loop") {
-        if (loop) issue([...itemPath, "type"], `unit_loop '${item.name}' cannot be nested inside another unit_loop`);
-        const constants = checkLoop(item, itemPath, item.name ?? "");
+        const key = String(++loopCount);
+        if (loop) issue([...itemPath, "type"], "A unit loop cannot be inside another unit loop");
+        const constants = checkLoop(item, itemPath, key);
         if (!item.children || item.children.length === 0) {
-          issue([...itemPath, "children"], `unit_loop '${item.name}' must have at least one child item`);
+          issue([...itemPath, "children"], "A unit loop must have at least one item");
         } else if (!loop) {
           loopAvailable = new Set();
-          walk(item.children, [...itemPath, "children"], { name: item.name ?? "", constants });
+          walk(item.children, [...itemPath, "children"], { name: key, constants });
           loopAvailable = new Set();
         }
       } else if (item.type === "condition") {
@@ -375,19 +379,20 @@ export function codebookErrors(items: unknown[]): CodebookValidationIssue[] {
   return validateCodebookItems(items).filter((i) => !i.warning);
 }
 
-/** Every question in the tree (name -> type), and the loop it is in (null: coder-level). */
+/** Every question in the tree (name -> type), and the key of the loop it is in (`unitLoops`; null: coder-level). */
 export function collectQuestions(items: unknown): {
   questions: Map<string, AnyVariableType>;
   loopOf: Map<string, string | null>;
 } {
   const questions = new Map<string, AnyVariableType>();
   const loopOf = new Map<string, string | null>();
+  let loops = 0;
   const walk = (list: unknown, loop: string | null) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
       const item = raw as RawItem | null;
       if (!item || typeof item !== "object") continue;
-      if (item.type === "unit_loop") walk(item.children, item.name ?? "");
+      if (item.type === "unit_loop") walk(item.children, String(++loops));
       else if (item.type === "condition") walk(item.children, loop);
       else if (item.name && "variable" in item && item.variable && !questions.has(item.name)) {
         questions.set(item.name, item.variable as AnyVariableType);

@@ -163,6 +163,21 @@ export function branchUnitsets(branch: UnitBranch): (string | null)[] {
   return branch.overlap ? [own, branch.overlap.unitset] : [own];
 }
 
+/**
+ * What a coder's routing in a loop is stored by: which units a branch hands
+ * out (its mode, unitset or sets, and overlap), not where the loop is or
+ * what it is called. A coder keeps their routing as long as a branch with
+ * the same fingerprint exists; changing these settings routes them again.
+ * (Two loops whose branches hand out the same units share it.)
+ */
+export function branchFingerprint(branch: UnitBranch): string {
+  const what = JSON.stringify([branch.mode, ...branchUnitsets(branch), branch.mode === "sets" ? branch.unitsets : null]);
+  // FNV-1a, 32 bits: short keys for the stored routing.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < what.length; i++) h = Math.imul(h ^ what.charCodeAt(i), 0x01000193);
+  return `${branch.mode}-${(h >>> 0).toString(36)}`;
+}
+
 /** Every unitset name (or name template) a branch refers to, e.g. to tell whether a unitset is in use. */
 export function branchUnitsetNames(branch: UnitBranch): string[] {
   const own = branch.mode === "sets" ? branch.unitsets : branch.mode === "invitation" ? [] : [branch.unitset];
@@ -214,7 +229,8 @@ function migrateBranch(raw: Raw, order: unknown, maxUnits: unknown): Raw {
 }
 
 /**
- * Converts older loop shapes, so stored codebooks keep parsing:
+ * Converts older loop shapes, so stored codebooks keep parsing (and a
+ * loop's former `name` becomes its `label`):
  * - before 2026-10: `unitset` + `randomizeUnits`;
  * - 2026-10 to 27: branches with `sources` (fixed or dynamic), and a
  *   loop-level `maxUnits`. A branch becomes `shared` if it had a dynamic
@@ -223,7 +239,9 @@ function migrateBranch(raw: Raw, order: unknown, maxUnits: unknown): Raw {
  */
 export function migrateLegacyUnitLoop(raw: unknown): unknown {
   if (!isObject(raw) || raw.type !== "unit_loop") return raw;
-  const { unitset, randomizeUnits, maxUnits, ...rest } = raw;
+  const { unitset, randomizeUnits, maxUnits, name, ...rest } = raw;
+  // Until 2026-10-27 loops had a required name; it is their label now.
+  if (typeof name === "string" && name && rest.label === undefined) rest.label = name;
   let units = rest.units;
   if (!Array.isArray(units)) {
     units = [{ sources: [{ unitset: typeof unitset === "string" && unitset !== "" ? unitset : ALL_UNITS_UNITSET }] }];

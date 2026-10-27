@@ -64,6 +64,10 @@ use.
 
 `GET /loop/:loop/next?branch=<i>&unitsets=<name>&unitsets=<name>` → `CoderUnitResponseSchema | null`
 
+`:loop` is the loop's position in the codebook version the coder runs
+(contracts `unitLoops`: `1`, `2`, ...); loops have no name. The same goes for
+`loop` in `POST /variables/unit` and `unitset` in the session's `progress`.
+
 The server picks the coder's next unit from the coder's branch: their own
 units (a set, or a shared queue with leases) and the overlap. `null`: the coder is
 done with the loop. 409 while the job is paused (`active: false`).

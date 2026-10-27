@@ -54,7 +54,6 @@ export function defaultItemForType(
     case "unit_loop":
       return {
         type: "unit_loop",
-        name,
         units: [{ mode: "all", unitset: ALL_UNITS_UNITSET }],
         layout: { template: "" },
         children: [
@@ -106,14 +105,14 @@ export function ItemForm({
 
   return (
     <div className="flex flex-col gap-4">
-      {item.type === "condition" ? (
-        // Conditions have no name: the tree shows their condition, or this label.
+      {item.type === "condition" || item.type === "unit_loop" ? (
+        // Conditions and unit loops have no name: an optional label shows in the tree (and for loops in exports).
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-foreground">Label (optional)</label>
           <Input
             value={item.label ?? ""}
             onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
-            placeholder="Shown in the tree instead of the condition, e.g. Too young"
+            placeholder={item.type === "condition" ? "Shown in the tree instead of the condition, e.g. Too young" : "e.g. News items"}
           />
         </div>
       ) : (

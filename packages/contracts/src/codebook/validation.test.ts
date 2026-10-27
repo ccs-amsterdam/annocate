@@ -17,7 +17,7 @@ function questionVar(name: string, variable: object = confirmVariable): TopLevel
   return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
 }
 function unitLoop(name: string, children: InLoopItem[], template = "", constants?: Record<string, string>): TopLevelItem {
-  return { type: "unit_loop", name, units: [{ mode: "all", unitset: "__all__" }], layout: { template, constants }, children };
+  return { type: "unit_loop", label: name, units: [{ mode: "all", unitset: "__all__" }], layout: { template, constants }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "condition", label: name, condition, children };
@@ -42,7 +42,7 @@ describe("validateCodebookItems", () => {
 
   it("migrates the legacy unitset/randomizeUnits loop shape", () => {
     const legacy = (extra: object) => [
-      { type: "unit_loop", name: "loop", layout: { template: "" }, children: [unitVar("q1")], ...extra },
+      { type: "unit_loop", label: "loop", layout: { template: "" }, children: [unitVar("q1")], ...extra },
     ];
     expect(validateCodebookItems(legacy({ randomizeUnits: true }))).toEqual([]);
     expect(CodebookItemsSchema.parse(legacy({ randomizeUnits: true }))[0]).toMatchObject({
@@ -60,7 +60,7 @@ describe("validateCodebookItems", () => {
   it("checks that loop branches refer to preceding coder variables", () => {
     const slot = questionVar("slot", { type: "auto", source: "invite", options: [{ value: "1" }, { value: "2" }] });
     const loop = (units: unknown): TopLevelItem =>
-      ({ type: "unit_loop", name: "loop", units, layout: { template: "" }, children: [questionVar("q1", select(["a", "b"])), questionVar("c1")] }) as TopLevelItem;
+      ({ type: "unit_loop", label: "loop", units, layout: { template: "" }, children: [questionVar("q1", select(["a", "b"])), questionVar("c1")] }) as TopLevelItem;
 
     const valid: TopLevelItem[] = [
       slot,
@@ -125,7 +125,7 @@ describe("validateCodebookItems", () => {
 
   it("checks the settings of each mode", () => {
     const loop = (branch: object) => [
-      { type: "unit_loop", name: "loop", units: [branch], layout: { template: "" }, children: [questionVar("q1", select(["a", "b"]))] },
+      { type: "unit_loop", label: "loop", units: [branch], layout: { template: "" }, children: [questionVar("q1", select(["a", "b"]))] },
     ];
     expect(messages(loop({ mode: "shared", unitset: "a", until: { coders: 3 }, maxCoders: 2 }))).toEqual([
       "Max coders must be at least the number of coders (or agreeing coders) a unit needs",
@@ -314,7 +314,7 @@ describe("reference validation", () => {
       questionVar("after", { ...confirmVariable, question: "$unit.headline and $const.x" }),
     ];
     expect(messages(items)).toEqual([
-      "$var.qa.answered: 'qa' is a question of unit loop 'a'",
+      "$var.qa.answered: 'qa' is a question of another unit loop (a)",
       "$unit.headline can only be used inside a unit loop",
       "$const.x can only be used inside a unit loop",
     ]);
