@@ -61,7 +61,7 @@ export function CodebookTreeView({
 }: CodebookTreeViewProps) {
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const [moving, setMoving] = useState(false);
-  const [preview, setPreview] = useState<TreePosition | null>(null);
+  const [preview, setPreview] = useState<TreePosition[]>([]);
 
   // Ticked items that still exist (undo can remove them), not inside another ticked one.
   const ticked = topmostSelected(items, checked);
@@ -98,7 +98,7 @@ export function CodebookTreeView({
 
     addPositions: (key) => addPositions(items, key),
     addAt: (position, type) => {
-      setPreview(null);
+      setPreview([]);
       onAdd(position, type);
     },
 
@@ -106,6 +106,7 @@ export function CodebookTreeView({
     canMoveTo: (position) => canMoveAllTo(items, ticked, position) && moveChanges(items, ticked, position),
     moveTo: (position) => {
       onMove(ticked, position);
+      setPreview([]);
       clear();
     },
 

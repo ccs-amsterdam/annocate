@@ -17,8 +17,11 @@ export interface AddOption {
 interface AddItemMenuProps {
   options: AddOption[];
   onAdd: (position: TreePosition, type: ItemType) => void;
-  /** The position the menu points at (hovered or chosen), to show where the item goes; null when closed. */
-  onPreview?: (position: TreePosition | null) => void;
+  /**
+   * The positions to show as lines: while hovering the button or with the
+   * menu open, all of its places; the one an option points at, alone.
+   */
+  onPreview?: (positions: TreePosition[]) => void;
   /** Render as a "+ label" button instead of an icon in the row's action column. */
   label?: string;
   /** Tooltip of the icon button. */
@@ -60,11 +63,15 @@ export function AddItemMenu({
   const single = options.length === 1;
   const current = single ? 0 : chosen;
   const pointed = hovered ?? current;
-  // Open: the place pointed at; a single place also while hovering the button.
+  // The place pointed at, else (hovering the button or open) all places.
   const previewed =
-    open && pointed !== null ? options[pointed]?.position : single && triggerHovered ? options[0].position : null;
+    open && pointed !== null
+      ? [options[pointed].position]
+      : open || triggerHovered
+        ? options.map((o) => o.position)
+        : [];
   useEffect(() => {
-    onPreview?.(previewed ?? null);
+    onPreview?.(previewed);
     // Positions are new objects every render: compare by which option is pointed at.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pointed, triggerHovered]);

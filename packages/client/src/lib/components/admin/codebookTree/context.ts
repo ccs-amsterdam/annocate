@@ -30,9 +30,9 @@ export interface CodebookTreeState {
   canMoveTo: (position: TreePosition) => boolean;
   moveTo: (position: TreePosition) => void;
 
-  /** The position an add menu points at (an insertion line). */
-  preview: TreePosition | null;
-  setPreview: (position: TreePosition | null) => void;
+  /** The positions an add or move button points at (insertion lines). */
+  preview: TreePosition[];
+  setPreview: (positions: TreePosition[]) => void;
 
   getIssue: (item: CodebookItem) => string | null;
   /** Whether the item has unsaved changes. */
@@ -50,8 +50,7 @@ export function useCodebookTree(): CodebookTreeState {
 }
 
 /** Whether two positions are the same place. */
-export function samePosition(a: TreePosition | null, b: TreePosition): boolean {
-  if (a === null) return false;
+export function samePosition(a: TreePosition, b: TreePosition): boolean {
   if ("into" in a) return "into" in b && a.into === b.into;
   if ("before" in a) return "before" in b && a.before === b.before;
   return "after" in b && a.after === b.after;

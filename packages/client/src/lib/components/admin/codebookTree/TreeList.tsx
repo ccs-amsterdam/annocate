@@ -32,9 +32,11 @@ export function TreeList({ nodes, parent }: TreeListProps) {
 function TreeNodeView({ item }: { item: TreeNode }) {
   const children = getChildren(item);
   const after: TreePosition = { after: getItemKey(item) };
+  const before: TreePosition = { before: getItemKey(item) };
   if (!children) {
     return (
       <>
+        <PreviewLine position={before} />
         <TreeItemRow item={item} />
         <PreviewLine position={after} />
       </>
@@ -42,6 +44,7 @@ function TreeNodeView({ item }: { item: TreeNode }) {
   }
   return (
     <>
+      <PreviewLine position={before} />
       <div className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES[item.type].blockClass)}>
         <TreeItemRow item={item} />
         <div className="pl-6">
@@ -53,10 +56,10 @@ function TreeNodeView({ item }: { item: TreeNode }) {
   );
 }
 
-/** Where the open add menu will put the new item. */
+/** Where an add or move button will put items. */
 function PreviewLine({ position }: { position: TreePosition }) {
   const { preview } = useCodebookTree();
-  if (!samePosition(preview, position)) return null;
+  if (!preview.some((p) => samePosition(p, position))) return null;
   return (
     <div className="relative h-0">
       <InsertionLine />
