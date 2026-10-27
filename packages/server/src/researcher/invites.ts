@@ -20,11 +20,14 @@ export function invites(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const secret = randomBytes(16).toString("hex");
-    const { label, auth, emails, maxUses, variables, participantId, participantFromUrl } = parsed.data;
+    const { label, auth, emails, maxUses, variables, participantId, participantFromUrl, unitsetId } = parsed.data;
+    if (unitsetId != null && !(await one(db, "SELECT 1 FROM unitsets WHERE job_id = $1 AND id = $2", [c.get("jobId"), unitsetId]))) {
+      return c.json({ error: "Unitset not found" }, 400);
+    }
     const row = await one<InviteRow>(
       db,
-      `INSERT INTO invites (job_id, label, auth, secret, emails, max_uses, variables, participant_id, participant_from_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO invites (job_id, label, auth, secret, emails, max_uses, variables, participant_id, participant_from_url, unitset_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
       [
         c.get("jobId"),
         label,
@@ -35,6 +38,7 @@ export function invites(server: Server): Hono<Env> {
         JSON.stringify(variables ?? {}),
         participantId ?? null,
         participantFromUrl ?? false,
+        unitsetId ?? null,
       ],
     );
     return c.json(toInviteResponse(row!), 201);

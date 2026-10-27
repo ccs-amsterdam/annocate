@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { IdSchema } from "../common.js";
 import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema } from "../job.js";
 import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
@@ -133,6 +134,13 @@ export const researcherEndpoints = {
     response: CoderInviteResponseSchema,
   },
   deleteInvite: { method: "DELETE", path: "/job/:jobId/invites/:id", request: z.void(), response: z.void() },
+  /** Sets the unitset of an invite (`unitsetId`, null for none). Coders already routed keep their units. */
+  setInviteUnitset: {
+    method: "PUT",
+    path: "/job/:jobId/invites/:id/unitset",
+    request: z.object({ unitsetId: IdSchema.nullable() }),
+    response: CoderInviteResponseSchema,
+  },
   getOverview: { method: "GET", path: "/job/:jobId/overview", request: z.void(), response: JobOverviewSchema },
 
   // Deploying a job: which codebook coders get (docs/architecture.md).

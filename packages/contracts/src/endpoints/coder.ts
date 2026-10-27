@@ -12,8 +12,9 @@ import {
 /**
  * Query of `GET /loop/:loop/next`: the branch of the loop's `units` the client
  * chose (the first whose `when` matches, evaluated on the client) and its
- * unitset names with `$var` references filled in, one per source (repeat
- * `unitsets`). Required the first time a coder enters a loop, unless the loop
+ * unitset names with `$var` references filled in, in the order of
+ * `branchUnitsets` (repeat `unitsets`; an empty one where the server picks
+ * the set: `sets` and `invitation` mode). Required the first time a coder enters a loop, unless the loop
  * has a single unconditional branch without references (409
  * `branch_required` otherwise). Ignored once the coder is routed: routing
  * is sticky.

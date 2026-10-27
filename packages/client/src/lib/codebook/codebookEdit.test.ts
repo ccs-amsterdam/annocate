@@ -115,7 +115,7 @@ describe("codebookEdit", () => {
       const loop: TopLevelItem = {
         type: "unit_loop",
         name: "loop",
-        units: [{ sources: [{ unitset: "test" }] }],
+        units: [{ mode: "all", unitset: "test" }],
         layout: { template: "" },
         children: [
           {
@@ -134,7 +134,7 @@ describe("codebookEdit", () => {
     const loop: TopLevelItem = {
       type: "unit_loop",
       name: "loop",
-      units: [{ sources: [{ unitset: "test" }] }],
+      units: [{ mode: "all", unitset: "test" }],
       layout: { template: "" },
       children: [
         {
@@ -160,7 +160,7 @@ describe("codebookEdit", () => {
       const spanLoop: TopLevelItem = {
         type: "unit_loop",
         name: "loop",
-        units: [{ sources: [{ unitset: "test" }] }],
+        units: [{ mode: "all", unitset: "test" }],
         layout: { template: "" },
         children: [
           {

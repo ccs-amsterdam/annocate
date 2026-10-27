@@ -2,7 +2,7 @@ import { TopLevelItemSchema, type CodebookItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { migrateCodebookItems } from "./migrate.js";
-import { supportsAgreement, type UnitBranch } from "./unitLoop.js";
+import { supportsAgreement, unitsetHasReferences, type UnitBranch } from "./unitLoop.js";
 import {
   METHOD_TEXT,
   describeQuestion,
@@ -94,7 +94,7 @@ function flattenUnions(issues: readonly RawIssue[], prefix: (string | number)[] 
   return issues.flatMap((issue) => {
     const path = [...prefix, ...issue.path.filter((p): p is string | number => typeof p !== "symbol")];
     if (issue.code !== "invalid_union" || !issue.errors?.length) return [{ path, message: issue.message }];
-    const matching = issue.errors.filter((branch) => !branch.some((e) => e.path.length === 1 && e.path[0] === "type"));
+    const matching = issue.errors.filter((branch) => !branch.some((e) => e.path.length === 1 && (e.path[0] === "type" || e.path[0] === "mode")));
     if (matching.length === 0) return [{ path, message: issue.message }];
     const best = matching.reduce((a, b) => (b.length < a.length ? b : a));
     return flattenUnions(best, path);
@@ -199,21 +199,30 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     const loop = item as { units?: UnitBranch[]; children?: unknown; layout?: { template?: unknown; constants?: Record<string, string> } };
     const loopQuestions = questionNames(loop.children);
     const branchCtx = (path: Path): RefContext => ({ path, loop: null, available: coderAvailable, branch: true });
-    (Array.isArray(loop.units) ? loop.units : []).forEach((branch, b) => {
-      checkCondition(branch?.when, branchCtx([...itemPath, "units", b, "when"]));
-      (branch?.sources ?? []).forEach((source, i) => {
-        const path = [...itemPath, "units", b, "sources", i];
-        checkTemplate(source?.unitset, branchCtx([...path, "unitset"]), "unitset");
-        const agreement = source?.dynamic?.agreement?.variable;
-        if (agreement && !loopQuestions.has(agreement)) {
-          issue([...path, "dynamic", "agreement", "variable"], `Agreement variable '${agreement}' is not a question in this loop`);
-        } else if (agreement && !supportsAgreement(questions.get(agreement)!)) {
+    (Array.isArray(loop.units) ? loop.units : []).forEach((raw, b) => {
+      const branch = raw as Partial<UnitBranch> & { unitset?: unknown; unitsets?: unknown; until?: { on?: unknown } };
+      const path = [...itemPath, "units", b];
+      checkCondition(branch?.when, branchCtx([...path, "when"]));
+      if (branch?.mode === "all" || branch?.mode === "shared") checkTemplate(branch.unitset, branchCtx([...path, "unitset"]), "unitset");
+      if (branch?.overlap) checkTemplate(branch.overlap.unitset, branchCtx([...path, "overlap", "unitset"]), "unitset");
+      if (branch?.mode === "sets" && Array.isArray(branch.unitsets)) {
+        branch.unitsets.forEach((name, i) => {
+          if (typeof name === "string" && unitsetHasReferences(name)) {
+            issue([...path, "unitsets", i], `"${name}": the sets to choose from are plain unitset names, without $var references`);
+          }
+        });
+      }
+      const agreement = branch?.mode === "shared" ? branch.until?.on : undefined;
+      if (typeof agreement === "string") {
+        const at = [...path, "until", "on"];
+        if (!loopQuestions.has(agreement)) issue(at, `Agreement question '${agreement}' is not a question in this loop`);
+        else if (!supportsAgreement(questions.get(agreement)!)) {
           issue(
-            [...path, "dynamic", "agreement", "variable"],
+            at,
             `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "${agreement}" is ${describeQuestion(questions.get(agreement)!)}`,
           );
         }
-      });
+      }
     });
 
     const constants = new Set(Object.keys(loop.layout?.constants ?? {}));

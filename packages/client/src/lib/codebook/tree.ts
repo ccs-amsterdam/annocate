@@ -98,12 +98,21 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
-/** What a unit loop goes over, for the codebook tree: its unitsets, or the number of branches. */
+/** What a unit loop goes over, for the codebook tree: its unitset(s) and mode, or the number of branches. */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
   const branches = Array.isArray(loop.units) ? loop.units : [];
-  if (branches.length > 1) return `${branches.length} branches`;
-  const sets = (branches[0]?.sources ?? []).map((s) => (s.unitset === ALL_UNITS_UNITSET ? "all units" : s.unitset));
-  return sets.length ? sets.join(", ") : "";
+  if (branches.length !== 1) return branches.length > 1 ? `${branches.length} branches` : "";
+  const branch = branches[0];
+  const name = (unitset: string) => (unitset === ALL_UNITS_UNITSET ? "all units" : unitset);
+  const own =
+    branch.mode === "all"
+      ? name(branch.unitset)
+      : branch.mode === "shared"
+        ? `${name(branch.unitset)}, shared`
+        : branch.mode === "sets"
+          ? `one of ${branch.unitsets.length} sets`
+          : "the invitation's units";
+  return branch.overlap ? `${own} + ${name(branch.overlap.unitset)}` : own;
 }
 
 /**

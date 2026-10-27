@@ -1,14 +1,17 @@
-import { dynamicSourceDefaults, seededShuffle, type DynamicSource } from "@annotinder/contracts";
+import { seededShuffle, sharedDefaults } from "@annotinder/contracts";
 
-// Pure, in-memory unit distribution. All state is derived from the db
-// server's annotations (`Codings`) except dynamic-source leases, which are
+// Pure, in-memory unit distribution. All state is derived from the
+// annotations (`Codings`) except the leases of shared queues, which are
 // deliberately ephemeral: losing them on a restart only means an abandoned
 // unit returns to the queue early.
 
+/** A shared queue's rule (contracts `sharedDefaults`). */
+export type SharedRule = ReturnType<typeof sharedDefaults>;
+
 /**
  * A finished coding as far as distribution cares: agreement variable ->
- * `agreementKey` of the coder's answer. Only the agreement variables of
- * dynamic sources are kept (often none), not the full answers.
+ * `agreementKey` of the coder's answer. Only the agreement questions of
+ * shared queues are kept (often none), not the full answers.
  */
 export type AgreementKeys = Record<string, string | null>;
 
@@ -16,12 +19,21 @@ export type AgreementKeys = Record<string, string | null>;
 export class Codings {
   private byUnit = new Map<number, Map<number, AgreementKeys>>();
   private byCoder = new Map<number, number[]>();
+  /** coderId -> when they last finished a unit (ms). */
+  private lastAt = new Map<number, number>();
 
-  record(coderId: number, unitId: number, keys: AgreementKeys): void {
+  /** `at`: when the coder finished it (ms). */
+  record(coderId: number, unitId: number, keys: AgreementKeys, at = 0): void {
     let unit = this.byUnit.get(unitId);
     if (!unit) this.byUnit.set(unitId, (unit = new Map()));
     if (!unit.has(coderId)) this.byCoder.set(coderId, [...this.doneBy(coderId), unitId]);
     unit.set(coderId, keys);
+    if (at > (this.lastAt.get(coderId) ?? 0)) this.lastAt.set(coderId, at);
+  }
+
+  /** When the coder last finished a unit here (ms), 0 if never. */
+  lastFinished(coderId: number): number {
+    return this.lastAt.get(coderId) ?? 0;
   }
 
   forUnit(unitId: number): Map<number, AgreementKeys> {
@@ -36,6 +48,7 @@ export class Codings {
   forget(coderId: number): void {
     for (const unitId of this.doneBy(coderId)) this.byUnit.get(unitId)?.delete(coderId);
     this.byCoder.delete(coderId);
+    this.lastAt.delete(coderId);
   }
 
   /** Unit ids the coder finished, in the order they finished them. */
@@ -45,14 +58,14 @@ export class Codings {
 }
 
 /**
- * One source of one unit_loop: a unitset, handed out either `fixed` (every
- * routed coder gets every unit) or `dynamic` (a shared queue with
- * saturation rules, see contracts unitLoop.ts).
+ * One unitset of one unit_loop branch, handed out either `fixed` (every
+ * routed coder gets every unit: `all`, `sets` and `invitation` mode, and
+ * overlaps) or `dynamic` (a shared queue with saturation rules: `shared`
+ * mode, see contracts unitLoop.ts).
  */
 export class UnitPool {
   private units: number[];
   private unitSet: Set<number>;
-  private rule: ReturnType<typeof dynamicSourceDefaults> | null;
   /** unitId -> coderId -> lease expiry (ms). Dynamic only. */
   private leases = new Map<number, Map<number, number>>();
   /** coderId -> leased unitId. Dynamic only; at most one per coder per pool. */
@@ -61,12 +74,12 @@ export class UnitPool {
   constructor(
     readonly unitset: string,
     unitIds: number[],
-    readonly dynamic: DynamicSource | undefined,
+    /** The shared queue's rule; null: fixed. */
+    readonly rule: SharedRule | null,
     private codings: Codings,
   ) {
     this.units = unitIds;
     this.unitSet = new Set(unitIds);
-    this.rule = dynamic ? dynamicSourceDefaults(dynamic) : null;
   }
 
   get mode(): "fixed" | "dynamic" {
@@ -205,53 +218,49 @@ export class UnitPool {
   }
 }
 
+/** Where a branch's overlap units go among the coder's own units (contracts OverlapSchema). */
+export interface OverlapPlacement {
+  pool: UnitPool;
+  placement: "before" | "after" | "spread";
+}
+
 /**
- * Picks the next unit for a coder in one unit_loop, given the pools their
- * branch routed them to. Returns null when the coder is done with the loop.
+ * Picks the next unit for a coder in one unit_loop, from their own pool
+ * (`main`) and the branch's overlap. Returns null when the coder is done
+ * with the loop. `maxUnits` caps the coder's own units (shared queues), not
+ * the overlap.
+ *
+ * Spread: the overlap units are placed evenly among the units the coder is
+ * expected to get (`maxUnits`, else the size of their set). If they run out
+ * of own units sooner, the overlap units left come at the end.
  */
 export function pickNext(
-  sources: UnitPool[],
+  main: UnitPool,
+  overlap: OverlapPlacement | null,
   coderId: number,
   codings: Codings,
   options: { order: "sequential" | "random"; maxUnits?: number; seed: number; now: number },
 ): { pool: UnitPool; unitId: number } | null {
   // Resume a unit leased to this coder (they reloaded, or went back and forth).
-  for (const pool of sources) {
-    const held = pool.heldLease(coderId);
-    if (held !== undefined) return { pool, unitId: held };
-  }
+  const held = main.heldLease(coderId);
+  if (held !== undefined) return { pool: main, unitId: held };
 
-  const done = codings.doneBy(coderId).filter((id) => sources.some((p) => p.has(id)));
-  if (options.maxUnits !== undefined && done.length >= options.maxUnits) return null;
+  const done = codings.doneBy(coderId);
+  const doneOverlap = overlap ? done.filter((id) => overlap.pool.has(id)).length : 0;
+  const doneOwn = done.filter((id) => main.has(id) && !overlap?.pool.has(id)).length;
+  const shuffleSeed = options.order === "random" ? options.seed + coderId : null;
+  const own = options.maxUnits !== undefined && doneOwn >= options.maxUnits ? [] : main.candidates(coderId, options.now, shuffleSeed);
+  const extra = overlap ? overlap.pool.candidates(coderId, options.now, shuffleSeed) : [];
+  const pick = (pool: UnitPool, ids: number[]) => ({ pool, unitId: ids[0] });
 
-  const random = options.order === "random";
-  const shuffleSeed = random ? options.seed + coderId : null;
-  const perSource = sources
-    .map((pool) => ({ pool, candidates: pool.candidates(coderId, options.now, shuffleSeed) }))
-    .filter((s) => s.candidates.length > 0);
-  if (perSource.length === 0) return null;
+  if (!overlap || extra.length === 0) return own.length > 0 ? pick(main, own) : null;
+  if (own.length === 0) return pick(overlap.pool, extra);
+  if (overlap.placement === "before") return pick(overlap.pool, extra);
+  if (overlap.placement === "after") return pick(main, own);
 
-  let chosen = perSource[0];
-  if (random && perSource.length > 1) {
-    // Interleave sources in proportion to what's left in each, deterministic
-    // per coder and step so a reload before submitting picks the same source.
-    const total = perSource.reduce((n, s) => n + s.candidates.length, 0);
-    let r = Math.floor(random01(options.seed + coderId * 7919 + done.length) * total);
-    for (const s of perSource) {
-      if (r < s.candidates.length) {
-        chosen = s;
-        break;
-      }
-      r -= s.candidates.length;
-    }
-  }
-  return { pool: chosen.pool, unitId: chosen.candidates[0] };
-}
-
-/** One deterministic draw in [0, 1) for a seed (Mulberry32 step). */
-function random01(seed: number): number {
-  let t = (seed + 0x6d2b79f5) | 0;
-  t = Math.imul(t ^ (t >>> 15), 1 | t);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  // Spread: the N own units are cut into M + 1 equal parts, and overlap unit
+  // j (0-based) follows part j, i.e. comes after round((j + 1) * N / (M + 1)) own units.
+  const expected = options.maxUnits ?? main.size;
+  const due = Math.round(((doneOverlap + 1) * expected) / (overlap.pool.size + 1));
+  return doneOwn >= due ? pick(overlap.pool, extra) : pick(main, own);
 }

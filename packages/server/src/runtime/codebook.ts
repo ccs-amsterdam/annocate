@@ -35,21 +35,22 @@ export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   return loops;
 }
 
-/** The agreement variables of all dynamic sources: what distribution needs to know of finished codings. */
-/** Agreement variables the dynamic sources of a loop compare on. */
+/** The questions the `shared` branches of a loop compare for agreement: what distribution needs to know of finished codings. */
 export function loopAgreementVariables(info: LoopInfo): string[] {
   const variables = new Set<string>();
   for (const branch of info.loop.units) {
-    for (const source of branch.sources) {
-      const variable = source.dynamic?.agreement?.variable;
-      if (variable) variables.add(variable);
-    }
+    if (branch.mode === "shared" && "agree" in branch.until) variables.add(branch.until.on);
   }
   return [...variables];
 }
 
-export function hasDynamicSources(info: LoopInfo): boolean {
-  return info.loop.units.some((b) => b.sources.some((s) => s.dynamic));
+/**
+ * Whether distributing a loop's units depends on every coder's codings
+ * (loaded for all coders, not only active ones): shared queues, and sets
+ * (which count the coders who finished a set).
+ */
+export function needsAllCodings(info: LoopInfo): boolean {
+  return info.loop.units.some((b) => b.mode === "shared" || b.mode === "sets");
 }
 
 /**
@@ -68,7 +69,7 @@ export function finishedLoops(variables: Record<string, VariableValue>, loops: I
 export function codingsSignature(loops: Iterable<LoopInfo>): string {
   return JSON.stringify(
     [...loops]
-      .map((info) => [info.loop.name, [...info.variables.keys()].sort(), hasDynamicSources(info), loopAgreementVariables(info).sort()])
+      .map((info) => [info.loop.name, [...info.variables.keys()].sort(), needsAllCodings(info), loopAgreementVariables(info).sort()])
       .sort(),
   );
 }

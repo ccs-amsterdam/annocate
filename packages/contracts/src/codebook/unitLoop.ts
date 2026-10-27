@@ -24,96 +24,214 @@ export function supportsAgreement(variable: AnyVariableType): boolean {
 /** Unitset name meaning "every unit in the job". */
 export const ALL_UNITS_UNITSET = "__all__";
 
+/** How long a coder of a `sets` branch keeps their set without finishing it or being active (ms). */
+export const SET_ACTIVITY_MS = 24 * 60 * 60 * 1000;
+
 /**
- * A dynamic source draws from a queue shared by all coders, until units are
- * saturated. A unit is complete once `minCoders` coders finished it and, if
- * `agreement` is set, `agreement.minAgree` of them gave the same answer -- or,
- * regardless, once `maxCoders` coders finished it.
+ * A set every coder of the branch codes in full besides their own units,
+ * e.g. for intercoder reliability (and later gold questions): `before`
+ * their units (default), `after` them, or `spread` evenly through them.
+ * Spreading needs to know how many units a coder gets: in `shared` mode
+ * that is `maxUnits` (required there for `spread`). If a coder gets fewer
+ * units, the overlap units left come at the end.
  */
-export const DynamicSourceSchema = z
-  .object({
-    /** Default 1. */
-    minCoders: z.number().int().min(1).optional(),
-    maxCoders: z.number().int().min(1).optional(),
-    agreement: z
-      .object({
-        /** A question inside this unit_loop; its answer is compared across coders. */
-        variable: SafeNameSchema,
-        minAgree: z.number().int().min(2),
-      })
-      .optional(),
-    /**
-     * `cover`: prefer the least-coded units (every unit gets coded before any
-     * is saturated). `saturate`: prefer units closest to completion
-     * (finished units arrive quickly). Default `cover`.
-     */
-    priority: z.enum(["cover", "saturate"]).optional(),
-    /** A unit handed to a coder is reserved for them this long (default 900), then returns to the queue. */
-    leaseSeconds: z.number().int().positive().optional(),
-  })
-  .refine((d) => !d.agreement || d.maxCoders !== undefined, {
-    message: "maxCoders is required with an agreement rule (otherwise a unit nobody agrees on is coded forever)",
-    path: ["maxCoders"],
-  })
-  .refine((d) => d.maxCoders === undefined || d.maxCoders >= Math.max(d.minCoders ?? 1, d.agreement?.minAgree ?? 0), {
-    message: "maxCoders must be at least minCoders and agreement.minAgree",
-    path: ["maxCoders"],
-  });
-export type DynamicSource = z.infer<typeof DynamicSourceSchema>;
-
-/** A dynamic source with its defaults filled in. */
-export function dynamicSourceDefaults(d: DynamicSource) {
-  return { ...d, minCoders: d.minCoders ?? 1, priority: d.priority ?? "cover", leaseSeconds: d.leaseSeconds ?? 900 };
-}
-
-export const UnitSourceSchema = z.object({
-  /**
-   * Unitset name, or `__all__` for every unit in the job. May contain
-   * `$var` references to coder-level questions, filled in with the coder's
-   * answer as text (e.g. `part_$var.slot.code`).
-   */
+export const OverlapSchema = z.object({
+  /** Unitset name; may contain `$var` references, like a branch's `unitset`. */
   unitset: z.string().min(1),
-  /** Absent: fixed (the coder gets every unit of the set). Present: dynamic. */
-  dynamic: DynamicSourceSchema.optional(),
+  placement: z.enum(["before", "after", "spread"]).optional(),
 });
-export type UnitSource = z.infer<typeof UnitSourceSchema>;
+export type Overlap = z.infer<typeof OverlapSchema>;
 
-export const UnitBranchSchema = z.object({
+const branchBase = {
   /**
    * Absent = always matches. The first matching branch wins. Evaluated by
    * the client, which tells the server the branch it chose.
    */
   when: ConditionSchema.optional(),
-  sources: z.array(UnitSourceSchema).min(1, "A branch needs at least one unit source"),
+  overlap: OverlapSchema.optional(),
+};
+
+/**
+ * `all`: every coder of the branch codes every unit of the set. The
+ * unitset name may contain `$var` references to coder-level questions,
+ * filled in with the coder's answer as text (e.g. `part_$var.slot.value`).
+ */
+export const AllUnitsBranchSchema = z.object({
+  ...branchBase,
+  mode: z.literal("all"),
+  unitset: z.string().min(1),
 });
+
+/**
+ * `shared`: the units are shared among coders: a queue that hands each unit
+ * out until it is done, either when `until.coders` coders coded it, or when
+ * `until.agree` coders gave the same answer to the question `until.on` --
+ * and in any case once `maxCoders` coded it.
+ */
+export const SharedBranchSchema = z
+  .object({
+    ...branchBase,
+    mode: z.literal("shared"),
+    unitset: z.string().min(1),
+    until: z.union([
+      z.object({ coders: z.number().int().min(1) }),
+      z.object({
+        agree: z.number().int().min(2),
+        /** A question inside this unit_loop with one categorical answer (`supportsAgreement`). */
+        on: SafeNameSchema,
+      }),
+    ]),
+    /** A unit is never handed out to more coders than this. Required with `agree`. */
+    maxCoders: z.number().int().min(1).optional(),
+    /** At most this many units per coder (besides the overlap). */
+    maxUnits: z.number().int().positive().optional(),
+    /**
+     * `cover`: prefer the least-coded units (every unit gets coded before any
+     * is done). `saturate`: prefer units closest to done (done units arrive
+     * quickly). Default `cover`.
+     */
+    priority: z.enum(["cover", "saturate"]).optional(),
+    /** A unit handed to a coder is reserved for them this long (default 900), then returns to the queue. */
+    leaseSeconds: z.number().int().positive().optional(),
+  })
+  .refine((b) => !("agree" in b.until) || b.maxCoders !== undefined, {
+    message: "Max coders is required when coding until coders agree (otherwise a unit nobody agrees on is coded forever)",
+    path: ["maxCoders"],
+  })
+  .refine((b) => b.maxCoders === undefined || b.maxCoders >= ("agree" in b.until ? b.until.agree : b.until.coders), {
+    message: "Max coders must be at least the number of coders (or agreeing coders) a unit needs",
+    path: ["maxCoders"],
+  })
+  .refine((b) => b.overlap?.placement !== "spread" || b.maxUnits !== undefined, {
+    message: "Spreading the overlap units needs max units per coder (to know where to put them)",
+    path: ["overlap", "placement"],
+  });
+export type SharedBranch = z.infer<typeof SharedBranchSchema>;
+
+/** A shared branch's settings with their defaults filled in. */
+export function sharedDefaults(b: SharedBranch) {
+  return {
+    minCoders: "agree" in b.until ? b.until.agree : b.until.coders,
+    agreement: "agree" in b.until ? { variable: b.until.on, minAgree: b.until.agree } : undefined,
+    maxCoders: b.maxCoders,
+    priority: b.priority ?? "cover",
+    leaseSeconds: b.leaseSeconds ?? 900,
+  };
+}
+
+/**
+ * `sets`: each coder gets one of these unitsets, the one with the fewest
+ * coders so far. A coder counts for their set while they haven't finished
+ * it only if they were active in the last 24 hours (`SET_ACTIVITY_MS`), so
+ * sets of coders who dropped out are handed out again.
+ */
+export const SetsBranchSchema = z.object({
+  ...branchBase,
+  mode: z.literal("sets"),
+  unitsets: z.array(z.string().min(1)).min(1, "Choose at least one unitset"),
+});
+
+/**
+ * `invitation`: each coder gets the unitset of the invitation they joined
+ * with (set on the invitation, e.g. by dividing units over coders). The
+ * codebook doesn't say who gets what, so it can be shared without that.
+ */
+export const InvitationBranchSchema = z.object({
+  ...branchBase,
+  mode: z.literal("invitation"),
+});
+
+export const UnitBranchSchema = z.union([AllUnitsBranchSchema, SharedBranchSchema, SetsBranchSchema, InvitationBranchSchema]);
 export type UnitBranch = z.infer<typeof UnitBranchSchema>;
+export type UnitMode = UnitBranch["mode"];
 
 /** Loop-level distribution settings, shared by `unit_loop` items. */
 export const UnitLoopDistributionShape = {
   /** First matching branch is used for a coder (and sticks, even if their answers change later). */
   units: z.array(UnitBranchSchema).min(1, "A unit_loop needs at least one branch"),
-  /**
-   * `random`: per-coder shuffle, with units of all sources interleaved.
-   * `sequential` (default): source by source, in unitset order.
-   */
+  /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: unitset order. */
   order: z.enum(["sequential", "random"]).optional(),
-  /** Max units per coder for this loop, across all sources. */
-  maxUnits: z.number().int().positive().optional(),
 };
 
 /**
- * Converts the pre-2026-10 loop shape (`unitset` + `randomizeUnits`) into
- * `units`/`order`, so stored codebooks keep parsing.
+ * The unitset name templates of a branch, in the order the client fills
+ * them in and the server stores them: its own unitset (null in `sets` and
+ * `invitation` mode: the server picks it), then the overlap's, if any.
+ */
+export function branchUnitsets(branch: UnitBranch): (string | null)[] {
+  const own = branch.mode === "all" || branch.mode === "shared" ? branch.unitset : null;
+  return branch.overlap ? [own, branch.overlap.unitset] : [own];
+}
+
+/** Every unitset name (or name template) a branch refers to, e.g. to tell whether a unitset is in use. */
+export function branchUnitsetNames(branch: UnitBranch): string[] {
+  const own = branch.mode === "sets" ? branch.unitsets : branch.mode === "invitation" ? [] : [branch.unitset];
+  return branch.overlap ? [...own, branch.overlap.unitset] : own;
+}
+
+type Raw = Record<string, unknown>;
+const isObject = (v: unknown): v is Raw => !!v && typeof v === "object" && !Array.isArray(v);
+
+/** An old (2026-10) branch source: a unitset, fixed or with a dynamic queue. */
+interface OldSource {
+  unitset?: string;
+  dynamic?: {
+    minCoders?: number;
+    maxCoders?: number;
+    agreement?: { variable: string; minAgree: number };
+    priority?: "cover" | "saturate";
+    leaseSeconds?: number;
+  };
+}
+
+/** An old branch (`sources`) in the current shape, given the loop's old `order` and `maxUnits`. */
+function migrateBranch(raw: Raw, order: unknown, maxUnits: unknown): Raw {
+  const { sources, ...rest } = raw;
+  const list = (Array.isArray(sources) ? sources : []).filter(isObject) as OldSource[];
+  const unitset = (s: OldSource | undefined) => (typeof s?.unitset === "string" && s.unitset ? s.unitset : ALL_UNITS_UNITSET);
+  const dynamicAt = list.findIndex((s) => s.dynamic);
+  const main = dynamicAt === -1 ? list[0] : list[dynamicAt];
+  const other = list.find((s) => s !== main && !s.dynamic);
+  const branch: Raw = { ...rest };
+  if (main?.dynamic) {
+    const d = main.dynamic;
+    branch.mode = "shared";
+    branch.unitset = unitset(main);
+    branch.until = d.agreement ? { agree: d.agreement.minAgree, on: d.agreement.variable } : { coders: d.minCoders ?? 1 };
+    for (const key of ["maxCoders", "priority", "leaseSeconds"] as const) if (d[key] !== undefined) branch[key] = d[key];
+    if (typeof maxUnits === "number") branch.maxUnits = maxUnits;
+  } else {
+    branch.mode = "all";
+    branch.unitset = unitset(main);
+  }
+  if (other) {
+    // Sources came in order (random: mixed); the overlap is the other fixed source.
+    const before = list.indexOf(other) < list.indexOf(main!);
+    const spread = order === "random" && (branch.mode === "all" || branch.maxUnits !== undefined);
+    branch.overlap = { unitset: unitset(other), placement: spread ? "spread" : before ? "before" : "after" };
+  }
+  return branch;
+}
+
+/**
+ * Converts older loop shapes, so stored codebooks keep parsing:
+ * - before 2026-10: `unitset` + `randomizeUnits`;
+ * - 2026-10 to 27: branches with `sources` (fixed or dynamic), and a
+ *   loop-level `maxUnits`. A branch becomes `shared` if it had a dynamic
+ *   source, else `all`; a second (fixed) source becomes its overlap.
+ *   Further sources are dropped.
  */
 export function migrateLegacyUnitLoop(raw: unknown): unknown {
-  if (!raw || typeof raw !== "object") return raw;
-  const item = raw as Record<string, unknown>;
-  if (item.type !== "unit_loop" || "units" in item) return raw;
-  const { unitset, randomizeUnits, ...rest } = item;
+  if (!isObject(raw) || raw.type !== "unit_loop") return raw;
+  const { unitset, randomizeUnits, maxUnits, ...rest } = raw;
+  let units = rest.units;
+  if (!Array.isArray(units)) {
+    units = [{ sources: [{ unitset: typeof unitset === "string" && unitset !== "" ? unitset : ALL_UNITS_UNITSET }] }];
+    if (randomizeUnits) rest.order = "random";
+  }
   return {
     ...rest,
-    units: [{ sources: [{ unitset: typeof unitset === "string" && unitset !== "" ? unitset : ALL_UNITS_UNITSET }] }],
-    ...(randomizeUnits ? { order: "random" } : {}),
+    units: (units as unknown[]).map((b) => (isObject(b) && "sources" in b && !("mode" in b) ? migrateBranch(b, rest.order, maxUnits) : b)),
   };
 }
 

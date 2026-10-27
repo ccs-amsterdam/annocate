@@ -6,7 +6,7 @@ const loop = {
   _key: "k1",
   type: "unit_loop",
   name: "loop",
-  units: [{ sources: [{ unitset: "__all__" }] }],
+  units: [{ mode: "all", unitset: "__all__" }],
   layout: { template: "$unit.text" },
   children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }],
 } as unknown as CodebookItem;

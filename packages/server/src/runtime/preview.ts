@@ -43,6 +43,8 @@ export class PreviewStore implements Store {
 
   getDeployment: Store["getDeployment"] = () => this.db.getDeployment();
   getUnits: Store["getUnits"] = (ids) => this.db.getUnits(ids);
+  /** Preview coders have no invite: they get the units of the first invite that has some. */
+  inviteUnitset: Store["inviteUnitset"] = () => this.db.inviteUnitset("first");
 
   async listCoders(): Promise<StoredCoder[]> {
     return [...this.coders.values()];
@@ -55,7 +57,14 @@ export class PreviewStore implements Store {
       request.inviteSecret !== undefined &&
       verifyPreviewToken(this.secret, this.jobId, request.inviteSecret, this.now());
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
-    const coder: Coder = { coderId: this.coders.size + 1, variables: {}, assignments: {}, ended: null, created: new Date(this.now()) };
+    const coder: Coder = {
+      coderId: this.coders.size + 1,
+      variables: {},
+      assignments: {},
+      ended: null,
+      inviteId: null,
+      created: new Date(this.now()),
+    };
     this.coders.set(request.coderKey, coder);
     return coder;
   }

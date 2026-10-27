@@ -165,7 +165,7 @@ export async function seed(db: Sql): Promise<void> {
     {
       type: "unit_loop",
       name: "main_loop",
-      units: [{ sources: [{ unitset: "main" }] }],
+      units: [{ mode: "all", unitset: "main" }],
       layout: {
         template:
           "{{ $var.group.is('experiment') ? $const.experiment_banner : $const.control_banner }}::markdown\n\n" +

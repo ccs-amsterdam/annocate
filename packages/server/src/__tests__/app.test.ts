@@ -59,7 +59,7 @@ describe("codebook routes", () => {
       {
         type: "unit_loop",
         name: "loop",
-        units: [{ sources: [{ unitset: "main" }] }],
+        units: [{ mode: "all", unitset: "main" }],
         layout: { template: "" },
         children: [{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
       },
@@ -284,7 +284,7 @@ describe("invites, coder progress and overview", () => {
             {
               type: "unit_loop",
               name: "l",
-              units: [{ sources: [{ unitset: "main" }] }],
+              units: [{ mode: "all", unitset: "main" }],
               layout: { template: "" },
               children: [question("q1"), question("q2")],
             },

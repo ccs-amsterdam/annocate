@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CodebookItemsSchema } from "./codebook.js";
 import { migrateCodebookItems } from "./migrate.js";
+import { migrateLegacyUnitLoop } from "./unitLoop.js";
 
 const q = (name: string, variable: object) => ({ type: "question", name, variable });
 
@@ -91,5 +92,32 @@ describe("migrateCodebookItems", () => {
     ];
     const items = CodebookItemsSchema.parse(old) as { units?: { when?: { script: string } }[] }[];
     expect(items[1].units![0].when).toEqual({ script: `$var.slot.is("1")` });
+  });
+
+  it("migrates loops with sources to modes", () => {
+    const loop = (units: unknown[], extra: object = {}) =>
+      migrateLegacyUnitLoop({ type: "unit_loop", name: "l", units, layout: { template: "" }, children: [], ...extra }) as { units: unknown[] };
+    const dynamic = { unitset: "pool", dynamic: { minCoders: 2, maxCoders: 3, priority: "saturate" } };
+    expect(loop([{ sources: [{ unitset: "a" }] }]).units).toEqual([{ mode: "all", unitset: "a" }]);
+    expect(loop([{ when: { script: "true" }, sources: [{ unitset: "overlap" }, dynamic] }], { maxUnits: 20 }).units).toEqual([
+      {
+        when: { script: "true" },
+        mode: "shared",
+        unitset: "pool",
+        until: { coders: 2 },
+        maxCoders: 3,
+        priority: "saturate",
+        maxUnits: 20,
+        overlap: { unitset: "overlap", placement: "before" },
+      },
+    ]);
+    const agree = { unitset: "pool", dynamic: { maxCoders: 3, agreement: { variable: "q", minAgree: 2 } } };
+    expect(loop([{ sources: [agree] }]).units).toEqual([{ mode: "shared", unitset: "pool", until: { agree: 2, on: "q" }, maxCoders: 3 }]);
+    // Two fixed sources, mixed: the second is the overlap, spread through the first.
+    expect(loop([{ sources: [{ unitset: "part_$var.p.value" }, { unitset: "o" }] }], { order: "random" }).units).toEqual([
+      { mode: "all", unitset: "part_$var.p.value", overlap: { unitset: "o", placement: "spread" } },
+    ]);
+    // Current branches are left alone.
+    expect(loop([{ mode: "invitation" }]).units).toEqual([{ mode: "invitation" }]);
   });
 });

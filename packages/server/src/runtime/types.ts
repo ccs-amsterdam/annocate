@@ -29,12 +29,20 @@ export interface Unit {
 }
 
 /**
- * unit_loop name -> the unitset names (placeholders resolved) this coder was
- * routed to, in source order. Stored so routing is sticky: a coder keeps
- * their units even if later answers or a codebook update would route them
- * differently.
+ * Where a coder was routed in one unit_loop: the unitset names (references
+ * filled in, chosen sets resolved) in the order of contracts
+ * `branchUnitsets`, i.e. their own set, then the overlap. Stored so routing
+ * is sticky: a coder keeps their units even if later answers or a codebook
+ * update would route them differently.
  */
-export type CoderAssignments = Record<string, string[]>;
+export interface LoopAssignment {
+  unitsets: string[];
+  /** When the coder was routed (ms); for `sets` mode, which counts recently active coders. */
+  at: number;
+}
+
+/** unit_loop name -> where the coder was routed. */
+export type CoderAssignments = Record<string, LoopAssignment>;
 
 /** A coder as the runtime sees it. No email or other identifying data. */
 export interface Coder {
@@ -44,6 +52,8 @@ export interface Coder {
   assignments: CoderAssignments;
   /** Set once the coder reached an `end` item: the session is over. */
   ended: SessionEnd | null;
+  /** The invite the coder joined with (for `invitation` mode loops). */
+  inviteId: number | null;
 }
 
 /** The coder for a session (docs/coder-identity.md). */

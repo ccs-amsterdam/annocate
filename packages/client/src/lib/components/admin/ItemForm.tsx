@@ -55,7 +55,7 @@ export function defaultItemForType(
       return {
         type: "unit_loop",
         name,
-        units: [{ sources: [{ unitset: ALL_UNITS_UNITSET }] }],
+        units: [{ mode: "all", unitset: ALL_UNITS_UNITSET }],
         layout: { template: "" },
         children: [
           {

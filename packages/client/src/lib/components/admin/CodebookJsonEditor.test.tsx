@@ -10,7 +10,7 @@ describe("CodebookJsonEditor", () => {
     {
       type: "unit_loop",
       name: "loop",
-      units: [{ sources: [{ unitset: "__all__" }] }],
+      units: [{ mode: "all", unitset: "__all__" }],
       layout: { template: "# $unit.headline\n\n$unit.text::tokenize", constants: { intro: "Hi" } },
       children: [{ type: "question", name: "q", variable: { type: "nominal", question: "Long enough question text to break the line?", options: [{ value: "a" }] } }],
     },

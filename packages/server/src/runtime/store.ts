@@ -36,6 +36,12 @@ export interface Store {
   /** One coder's live annotations per unit, ordered by first write. */
   listAnnotations(coderId: number): Promise<CoderAnnotation[]>;
   putAnnotation(write: AnnotationWrite): Promise<void>;
+  /**
+   * The name of the unitset of an invite (for `invitation` mode loops), or
+   * null if it has none. `"first"`: of the first invite that has one (previews,
+   * whose coders have no invite).
+   */
+  inviteUnitset(inviteId: number | "first"): Promise<string | null>;
 }
 
 /** A job's data in the database. */
@@ -80,6 +86,16 @@ export class DbStore implements Store {
 
   async listFinished(request: FinishedRequest): Promise<Finished[]> {
     return request.loops.length === 0 ? [] : listFinished(this.sql, this.jobId, request);
+  }
+
+  async inviteUnitset(inviteId: number | "first"): Promise<string | null> {
+    const row = await one<{ name: string }>(
+      this.sql,
+      `SELECT u.name FROM invites i JOIN unitsets u ON u.id = i.unitset_id
+       WHERE i.job_id = $1 AND ($2::int IS NULL OR i.id = $2) ORDER BY i.id LIMIT 1`,
+      [this.jobId, inviteId === "first" ? null : inviteId],
+    );
+    return row?.name ?? null;
   }
 
   async listAnnotations(coderId: number): Promise<CoderAnnotation[]> {

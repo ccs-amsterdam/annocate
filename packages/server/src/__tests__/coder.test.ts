@@ -263,11 +263,11 @@ async function invite(variables?: Record<string, string>, extra: object = {}) {
   return ((await res.json()) as { secret: string }).secret;
 }
 
-describe("dynamic sources", () => {
+describe("shared queues", () => {
   it("pick up a redeploy and code each unit until coders agree", async () => {
     await coder("warmup").session(); // the server has the old version loaded
     await redeploy({
-      units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 3, agreement: { variable: "sentiment", minAgree: 2 }, priority: "saturate" } }] }],
+      units: [{ mode: "shared", unitset: "main", until: { agree: 2, on: "sentiment" }, maxCoders: 3, priority: "saturate" }],
     });
 
     const answers: Record<string, string> = { a: "positive", b: "negative", c: "positive" };
@@ -293,7 +293,7 @@ describe("dynamic sources", () => {
   });
 
   it("refuse annotations for units that were not handed to the coder", async () => {
-    await redeploy({ units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 1 } }] }] });
+    await redeploy({ units: [{ mode: "shared", unitset: "main", until: { coders: 1 }, maxCoders: 1 }] });
     const a = coder("a");
     const b = coder("b");
     const unitA = await a.next();
@@ -302,9 +302,72 @@ describe("dynamic sources", () => {
   });
 });
 
+describe("one set per coder", () => {
+  it("gives each coder the set with the fewest coders, counting dropouts only for 24 hours", async () => {
+    let clock = Date.parse("2026-11-01T12:00:00Z");
+    server = restart({ now: () => clock });
+    await createUnitset("s1", ["unit-1"]);
+    await createUnitset("s2", ["unit-2"]);
+    await redeploy({ units: [{ mode: "sets", unitsets: ["s1", "s2"] }] });
+
+    const a = coder("a");
+    const unitA = await a.next();
+    expect(unitA!.externalId).toBe("unit-1");
+    expect((await a.submit(unitA!.id, sentiment("positive"))).status).toBe(204); // a finished s1
+    expect((await coder("b").next())!.externalId).toBe("unit-2"); // b starts s2, and stops
+
+    // An hour later both sets have a coder: the first set again.
+    clock += 60 * 60 * 1000;
+    expect((await coder("c").next())!.externalId).toBe("unit-1");
+    // A day later b counts no longer, but a (who finished) and c (still active) do.
+    clock += 25 * 60 * 60 * 1000;
+    expect((await coder("d").next())!.externalId).toBe("unit-2");
+  });
+});
+
+describe("the invitation's units", () => {
+  async function unitsetId(name: string, externalIds: string[]) {
+    await createUnitset(name, externalIds);
+    const sets = (await (await server.request("/job/1/unitsets", { headers: adminHeaders })).json()) as { id: number; name: string }[];
+    return sets.find((u) => u.name === name)!.id;
+  }
+
+  it("gives coders the unitset of their invite, plus the overlap", async () => {
+    const anna = await unitsetId("anna", ["unit-3"]);
+    await createUnitset("o", ["unit-1"]);
+    const secret = await invite(undefined, { unitsetId: anna });
+    await redeploy({ units: [{ mode: "invitation", overlap: { unitset: "o", placement: "before" } }] });
+
+    const c = coder("anna", secret);
+    const first = await c.next();
+    expect(first!.externalId).toBe("unit-1");
+    await c.submit(first!.id, sentiment("positive"));
+    const second = await c.next();
+    expect(second!.externalId).toBe("unit-3");
+    await c.submit(second!.id, sentiment("positive"));
+    expect(await c.next()).toBeNull();
+
+    // The demo invite has no units: its coders get none, until it has some.
+    const other = coder("other");
+    expect(await other.next()).toBeNull();
+    const [demoInvite] = await db.query<{ id: number }>("SELECT id FROM invites WHERE secret = 'demo-secret'");
+    const set = await server.request(`/job/1/invites/${demoInvite.id}/unitset`, {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ unitsetId: anna }),
+    });
+    expect(set.status).toBe(200);
+    expect((await other.next())!.externalId).toBe("unit-1");
+
+    // A unitset an invite uses can't be deleted.
+    const del = await server.request(`/job/1/unitsets/${anna}`, { method: "DELETE", headers: adminHeaders });
+    expect(del.status).toBe(409);
+  });
+});
+
 describe("routing coders to unitsets", () => {
   const slot = { type: "question", name: "slot", variable: { type: "auto", source: "invite", options: [{ value: "1" }, { value: "2" }], fallback: "balanced" } };
-  const routedLoop = { units: [{ sources: [{ unitset: "part_$var.slot.value" }, { unitset: "overlap" }] }] };
+  const routedLoop = { units: [{ mode: "all", unitset: "part_$var.slot.value", overlap: { unitset: "overlap", placement: "after" } }] };
   const part = (n: number) => ({ branch: 0, unitsets: [`part_${n}`, "overlap"] });
 
   it("route invited coders by their preset slot, and balance the rest", async () => {
@@ -383,7 +446,7 @@ describe("routing coders to unitsets", () => {
     expect((await again.next("main_loop", part(2)))!.id).toBe(first!.id);
     const { coderId } = await again.session();
     const [stored] = await db.query<{ assignments: unknown }>("SELECT assignments FROM coders WHERE id = $1", [coderId]);
-    expect(stored.assignments).toEqual({ main_loop: ["part_1", "overlap"] });
+    expect(stored.assignments).toEqual({ main_loop: { unitsets: ["part_1", "overlap"], at: expect.any(Number) } });
   });
 
   it("route by the branch the client chose", async () => {
@@ -392,8 +455,8 @@ describe("routing coders to unitsets", () => {
     await redeploy(
       {
         units: [
-          { when: { script: `$var.leaning.is("left")` }, sources: [{ unitset: "left_units" }] },
-          { sources: [{ unitset: "main" }] },
+          { when: { script: `$var.leaning.is("left")` }, mode: "all", unitset: "left_units" },
+          { mode: "all", unitset: "main" },
         ],
       },
       [leaning],
@@ -526,7 +589,7 @@ describe("resuming and codebook updates", () => {
     const withVersion = (v: number) => ({ headers: { "x-annotinder-version": String(v) } });
     const answers = JSON.stringify({ unitId: unit!.id, variables: demo("neutral") });
 
-    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
+    await redeploy({ units: [{ mode: "all", unitset: "main" }] }); // v2: only `sentiment`
     const stale = await c.call("/variables/unit", { method: "POST", body: answers, ...withVersion(version) });
     expect(stale.status).toBe(409);
     expect(await stale.json()).toMatchObject({ code: "codebook_changed" });
@@ -561,7 +624,7 @@ describe("resuming and codebook updates", () => {
     const unit = await c.next();
     await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
 
-    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
+    await redeploy({ units: [{ mode: "all", unitset: "main" }] }); // v2: only `sentiment`
     expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(204);
 
     const [stored] = await dbAnnotations();
@@ -574,14 +637,14 @@ describe("resuming and codebook updates", () => {
 
 describe("rebuilding from the database", () => {
   const agreeing = {
-    units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 3, agreement: { variable: "sentiment", minAgree: 2 } } }] }],
+    units: [{ mode: "shared", unitset: "main", until: { agree: 2, on: "sentiment" }, maxCoders: 3 }],
   };
   const status = async () =>
     (await (await server.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
 
   it("keeps saturation the same across a restart with an agreement rule", async () => {
     await redeploy({
-      units: [{ sources: [{ unitset: "main", dynamic: { maxCoders: 3, agreement: { variable: "sentiment", minAgree: 2 }, priority: "saturate" } }] }],
+      units: [{ mode: "shared", unitset: "main", until: { agree: 2, on: "sentiment" }, maxCoders: 3, priority: "saturate" }],
     });
     // two codings that disagree: the unit still needs a third coder
     const a = coder("a");
@@ -614,7 +677,7 @@ describe("rebuilding from the database", () => {
     const c = coder("upd");
     const unit = await c.next();
     await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
-    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }); // v2: only `sentiment`
+    await redeploy({ units: [{ mode: "all", unitset: "main" }] }); // v2: only `sentiment`
 
     server = restart();
     const again = coder("upd", null);
@@ -627,13 +690,13 @@ describe("rebuilding from the database", () => {
       storeCalls.filter((call) => call === "listFinished" || call === "listAnnotations");
 
     // v2 changes the loop's questions (demo had six): finished units must be re-derived
-    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
+    await redeploy({ units: [{ mode: "all", unitset: "main" }] });
     const c = coder("re");
     await c.submit((await c.next())!.id, sentiment("neutral"));
     storeCalls = [];
 
     // v3, same loop: nothing re-downloaded
-    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] });
+    await redeploy({ units: [{ mode: "all", unitset: "main" }] });
     expect((await c.next())?.externalId).toBe("unit-2");
     expect(reloads()).toEqual([]);
 
@@ -663,7 +726,7 @@ describe("finished units follow the current codebook", () => {
     name: "relevance",
     variable: { type: "nominal", question: "?", options: [{ value: "yes" }, { value: "no" }] },
   };
-  const fixedMain = { units: [{ sources: [{ unitset: "main" }] }] };
+  const fixedMain = { units: [{ mode: "all", unitset: "main" }] };
 
   it("reopens finished units when a loop gains a question, and warns on deploy", async () => {
     expect((await redeploy(fixedMain)).warnings).toBeUndefined();
@@ -710,7 +773,7 @@ describe("finished units follow the current codebook", () => {
       type: "unit_loop",
       name: "second_loop",
       layout: { template: "" },
-      units: [{ sources: [{ unitset: "main" }] }],
+      units: [{ mode: "all", unitset: "main" }],
       children: [relevance],
     };
     await redeploy(fixedMain, [second]);
@@ -759,7 +822,7 @@ describe("memory", () => {
 
   it("drops coders who are done first when over budget, and rebuilds them on return", async () => {
     await createUnitset("one", ["unit-1"]);
-    await redeploy({ units: [{ sources: [{ unitset: "one" }] }] });
+    await redeploy({ units: [{ mode: "all", unitset: "one" }] });
     const measure = coder("measure");
     await measure.submit((await measure.next())!.id, sentiment("neutral"));
     const perCoder = (await status()).memory!.coderBytes;
@@ -840,7 +903,7 @@ describe("researcher preview", () => {
       headers: adminHeaders,
       body: JSON.stringify({
         note,
-        items: [{ type: "unit_loop", name: "main_loop", layout: { template: "" }, children: [sentimentQuestion], units: [{ sources: [{ unitset: "main" }] }] }],
+        items: [{ type: "unit_loop", name: "main_loop", layout: { template: "" }, children: [sentimentQuestion], units: [{ mode: "all", unitset: "main" }] }],
       }),
     });
     expect(res.status).toBe(201);
@@ -914,7 +977,7 @@ describe("url_param auto variables", () => {
   const sourceOf = async (res: Response) => ((await res.json()) as SessionResponse).variables.source?.values?.[0]?.value;
 
   it("are stored when the coder starts, and kept without the URL", async () => {
-    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }, [source()]);
+    await redeploy({ units: [{ mode: "all", unitset: "main" }] }, [source()]);
     expect(await sourceOf(await fromUrl("p", "src=panelA&other=x"))).toBe("panelA");
     // a later visit without the parameter, even after a restart
     server = restart();
@@ -928,7 +991,7 @@ describe("url_param auto variables", () => {
   });
 
   it("ignore values outside the options, and are filled in when they come later", async () => {
-    await redeploy({ units: [{ sources: [{ unitset: "main" }] }] }, [source(["a", "b"])]);
+    await redeploy({ units: [{ mode: "all", unitset: "main" }] }, [source(["a", "b"])]);
     expect(await sourceOf(await fromUrl("q", "src=zzz"))).toBeUndefined();
     expect(await sourceOf(await fromUrl("q", "src=b"))).toBe("b");
   });

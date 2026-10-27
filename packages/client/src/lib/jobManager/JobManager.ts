@@ -11,7 +11,7 @@ import type {
   EndItem,
   ReferenceScope,
 } from "@annotinder/contracts";
-import { buildScope, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
+import { branchUnitsets, buildScope, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
@@ -696,10 +696,12 @@ export class JobManager {
       if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${loop.name}:${i}`))) {
         continue;
       }
-      const unitsets = branch.sources.map((source) => fillUnitsetName(source.unitset, scope));
-      const missing = branch.sources.find((_, s) => unitsets[s] === null);
+      // The server picks the set where the template is null (`sets` and `invitation` mode): sent as "".
+      const templates = branchUnitsets(branch);
+      const unitsets = templates.map((t) => (t === null ? "" : fillUnitsetName(t, scope)));
+      const missing = templates.find((t, s) => t !== null && unitsets[s] === null);
       if (missing) {
-        throw new Error(`Unit loop '${loop.name}': no unitset '${missing.unitset}' for this coder (an answer it uses is missing)`);
+        throw new Error(`Unit loop '${loop.name}': no unitset '${missing}' for this coder (an answer it uses is missing)`);
       }
       return { branch: i, unitsets: unitsets as string[] };
     }

@@ -13,9 +13,10 @@ export const UnitsetProgressSchema = z.object({
   unitset: z.string(),
   doneUnitIds: z.array(IdSchema),
   /**
-   * How many units this coder will get in the loop, if known: fixed sources
-   * (capped by `maxUnits`). Null when it depends on other coders (dynamic
-   * sources without `maxUnits`) or the coder isn't routed yet.
+   * How many units this coder will get in the loop, if known: the size of
+   * their set plus the overlap, or in `shared` mode `maxUnits` plus the
+   * overlap. Null when it depends on other coders (`shared` without
+   * `maxUnits`) or the coder isn't routed yet.
    */
   totalUnits: z.number().int().nonnegative().nullable().optional(),
 });

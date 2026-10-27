@@ -37,7 +37,7 @@ function unitVar(name: string): UnitVariableItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[], unitset = "main"): UnitLoopItem {
-  return { name, type: "unit_loop", units: [{ sources: [{ unitset }] }], layout: { template: "" }, children };
+  return { name, type: "unit_loop", units: [{ mode: "all", unitset }], layout: { template: "" }, children };
 }
 
 const answered: VariableValue = { done: true, skip: false };
@@ -123,7 +123,7 @@ describe("tree utilities", () => {
 
   it("itemAtPath follows only children", () => {
     // items[3] is the loop; its first child is "sentiment".
-    expect(id(itemAtPath(items, [3, "units", 0, "sources", 0, "unitset"])!)).toBe("main_loop");
+    expect(id(itemAtPath(items, [3, "units", 0, "unitset"])!)).toBe("main_loop");
     expect(id(itemAtPath(items, [3, "children", 0, "variable", "question"])!)).toBe("sentiment");
     expect(id(itemAtPath(items, [3, "children", 1, "children", 0])!)).toBe("followup");
     expect(itemAtPath(items, ["x"])).toBeNull();

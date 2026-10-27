@@ -72,6 +72,12 @@ export const CoderInviteWriteSchema = z.object({
    * they are.
    */
   variables: z.record(SafeNameSchema, z.string()).optional(),
+  /**
+   * The unitset coders of this invite code in unit loops with
+   * `mode: "invitation"` (e.g. made by dividing units over coders). Null:
+   * none, so they get no units there.
+   */
+  unitsetId: IdSchema.nullable().optional(),
 });
 export type CoderInviteWrite = z.infer<typeof CoderInviteWriteSchema>;
 

@@ -15,6 +15,7 @@ export interface InviteRow {
   participant_from_url: boolean;
   created: Date;
   revoked_at: Date | null;
+  unitset_id: number | null;
 }
 
 export function toInviteResponse(row: InviteRow): CoderInviteResponse {
@@ -32,5 +33,6 @@ export function toInviteResponse(row: InviteRow): CoderInviteResponse {
     ...(row.participant_from_url ? { participantFromUrl: true } : {}),
     created: row.created,
     revokedAt: row.revoked_at,
+    unitsetId: row.unitset_id,
   };
 }

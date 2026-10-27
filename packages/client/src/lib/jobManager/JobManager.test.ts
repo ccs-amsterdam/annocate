@@ -19,7 +19,7 @@ function confirm(name: string): UserVariableItem {
 }
 
 function unitLoop(name: string, children: InLoopItem[], unitset = "__all__"): UnitLoopItem {
-  return { name, type: "unit_loop", units: [{ sources: [{ unitset }] }], layout: { template: "" }, children };
+  return { name, type: "unit_loop", units: [{ mode: "all", unitset }], layout: { template: "" }, children };
 }
 
 function unitVar(name: string): UnitVariableItem {
@@ -401,9 +401,10 @@ describe("choosing a unit loop branch", () => {
     type: "unit_loop",
     name: "main",
     units: [
-      { when: { script: `$var.role.is("expert")` }, sources: [{ unitset: "hard" }] },
-      { when: { script: "$var.slot.value === '2'" }, sources: [{ unitset: "part_$var.slot.value" }, { unitset: "overlap" }] },
-      { sources: [{ unitset: "fallback" }] },
+      { when: { script: `$var.role.is("expert")` }, mode: "all", unitset: "hard" },
+      { when: { script: "$var.slot.value === '2'" }, mode: "all", unitset: "part_$var.slot.value", overlap: { unitset: "overlap" } },
+      { when: { script: "$var.slot.value === '3'" }, mode: "sets", unitsets: ["s1", "s2"], overlap: { unitset: "overlap" } },
+      { mode: "all", unitset: "fallback" },
     ],
     layout: { template: "" },
     children: [unitVar("q1")],
@@ -423,12 +424,15 @@ describe("choosing a unit loop branch", () => {
   it("sends the first matching branch and its filled-in unitset names", async () => {
     const { getNextUnit } = await start({ slot: code("2"), role: code("student") });
     expect(getNextUnit).toHaveBeenCalledWith("main", { branch: 1, unitsets: ["part_2", "overlap"] });
+    // In `sets` mode the server picks the set: sent empty.
+    const sets = await start({ slot: code("3"), role: code("student") });
+    expect(sets.getNextUnit).toHaveBeenCalledWith("main", { branch: 2, unitsets: ["", "overlap"] });
 
     const expert = await start({ slot: code("2"), role: code("expert") });
     expect(expert.getNextUnit).toHaveBeenCalledWith("main", { branch: 0, unitsets: ["hard"] });
 
     const other = await start({ slot: code("1"), role: code("student") });
-    expect(other.getNextUnit).toHaveBeenCalledWith("main", { branch: 2, unitsets: ["fallback"] });
+    expect(other.getNextUnit).toHaveBeenCalledWith("main", { branch: 3, unitsets: ["fallback"] });
   });
 
   it("treats branch_required as no units when no branch matches", async () => {
@@ -454,7 +458,7 @@ describe("rendering templates", () => {
       {
         type: "unit_loop",
         name: "main",
-        units: [{ sources: [{ unitset: "__all__" }] }],
+        units: [{ mode: "all", unitset: "__all__" }],
         layout: { template: "# $unit.title\n\n$const.intro", constants: { intro: "Hello" } },
         children: [
           { type: "question", name: "q1", variable: { type: "confirm", question: "As a $var.role.value, is **$unit.title** news?" } },

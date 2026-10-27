@@ -17,7 +17,7 @@ function questionVar(name: string, variable: object = confirmVariable): TopLevel
   return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
 }
 function unitLoop(name: string, children: InLoopItem[], template = "", constants?: Record<string, string>): TopLevelItem {
-  return { type: "unit_loop", name, units: [{ sources: [{ unitset: "__all__" }] }], layout: { template, constants }, children };
+  return { type: "unit_loop", name, units: [{ mode: "all", unitset: "__all__" }], layout: { template, constants }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "condition", label: name, condition, children };
@@ -46,14 +46,14 @@ describe("validateCodebookItems", () => {
     ];
     expect(validateCodebookItems(legacy({ randomizeUnits: true }))).toEqual([]);
     expect(CodebookItemsSchema.parse(legacy({ randomizeUnits: true }))[0]).toMatchObject({
-      units: [{ sources: [{ unitset: "__all__" }] }],
+      units: [{ mode: "all", unitset: "__all__" }],
       order: "random",
     });
     expect(CodebookItemsSchema.parse(legacy({ unitset: "" }))[0]).toMatchObject({
-      units: [{ sources: [{ unitset: "__all__" }] }],
+      units: [{ mode: "all", unitset: "__all__" }],
     });
     const parsed = CodebookItemsSchema.parse(legacy({ unitset: "main" }))[0];
-    expect(parsed).toMatchObject({ units: [{ sources: [{ unitset: "main" }] }] });
+    expect(parsed).toMatchObject({ units: [{ mode: "all", unitset: "main" }] });
     expect(parsed).not.toHaveProperty("unitset");
   });
 
@@ -67,12 +67,15 @@ describe("validateCodebookItems", () => {
       loop([
         {
           when: { script: `$var.slot.isAny("1", "2")` },
-          sources: [{ unitset: "part_$var.slot.value" }, { unitset: "overlap" }],
+          mode: "all",
+          unitset: "part_$var.slot.value",
+          overlap: { unitset: "overlap" },
         },
         {
-          sources: [
-            { unitset: "pool", dynamic: { minCoders: 2, maxCoders: 4, agreement: { variable: "q1", minAgree: 2 } } },
-          ],
+          mode: "shared",
+          unitset: "pool",
+          until: { agree: 2, on: "q1" },
+          maxCoders: 4,
         },
       ]),
     ];
@@ -81,27 +84,27 @@ describe("validateCodebookItems", () => {
 
     const when = (value: string) => ({ script: `$var.slot.is("${value}")` });
     // variable defined after the loop
-    expect(messages([loop([{ when: when("1"), sources: [{ unitset: "a" }] }]), slot])).toEqual([
+    expect(messages([loop([{ when: when("1"), mode: "all", unitset: "a" }]), slot])).toEqual([
       "$var.slot.is: 'slot' is asked after this point",
     ]);
-    expect(messages([slot, loop([{ when: when("3"), sources: [{ unitset: "a" }] }])])).toEqual([
+    expect(messages([slot, loop([{ when: when("3"), mode: "all", unitset: "a" }])])).toEqual([
       `"3" is not an answer option of "slot" ("1", "2")`,
     ]);
-    expect(messages([slot, loop([{ sources: [{ unitset: "part_$var.group.value" }] }])])).toEqual([
+    expect(messages([slot, loop([{ mode: "all", unitset: "part_$var.group.value" }])])).toEqual([
       "$var.group.value: 'group' is not a question",
     ]);
     // a question of the loop itself, or $unit, can't route
     expect(
-      messages([slot, loop([{ when: { script: "$var.q1.answered" }, sources: [{ unitset: "a" }] }])]),
+      messages([slot, loop([{ when: { script: "$var.q1.answered" }, mode: "all", unitset: "a" }])]),
     ).toEqual(["$var.q1.answered: branches and unitset names can only use coder-level questions from before the loop"]);
-    expect(messages([slot, loop([{ when: { script: "$unit.x > 1" }, sources: [{ unitset: "a" }] }])])).toEqual([
+    expect(messages([slot, loop([{ when: { script: "$unit.x > 1" }, mode: "all", unitset: "a" }])])).toEqual([
       "$unit.x: branches and unitset names can only use coder-level $var references",
     ]);
     expect(
-      messages([slot, loop([{ sources: [{ unitset: "a", dynamic: { maxCoders: 3, agreement: { variable: "nope", minAgree: 2 } } }] }])]),
-    ).toEqual(["Agreement variable 'nope' is not a question in this loop"]);
+      messages([slot, loop([{ mode: "shared", unitset: "a", until: { agree: 2, on: "nope" }, maxCoders: 3 }])]),
+    ).toEqual(["Agreement question 'nope' is not a question in this loop"]);
     expect(
-      messages([slot, loop([{ sources: [{ unitset: "a", dynamic: { maxCoders: 3, agreement: { variable: "c1", minAgree: 2 } } }] }])]),
+      messages([slot, loop([{ mode: "shared", unitset: "a", until: { agree: 2, on: "c1" }, maxCoders: 3 }])]),
     ).toEqual([
       `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
     ]);
@@ -112,12 +115,30 @@ describe("validateCodebookItems", () => {
       {
         type: "unit_loop",
         name: "loop",
-        units: [{ sources: [{ unitset: "a", dynamic: { agreement: { variable: "q1", minAgree: 2 } } }] }],
+        units: [{ mode: "shared", unitset: "a", until: { agree: 2, on: "q1" } }],
         layout: { template: "" },
         children: [unitVar("q1")],
       },
     ];
-    expect(() => CodebookItemsSchema.parse(items)).toThrow(/maxCoders/);
+    expect(() => CodebookItemsSchema.parse(items)).toThrow(/Max coders is required/);
+  });
+
+  it("checks the settings of each mode", () => {
+    const loop = (branch: object) => [
+      { type: "unit_loop", name: "loop", units: [branch], layout: { template: "" }, children: [questionVar("q1", select(["a", "b"]))] },
+    ];
+    expect(messages(loop({ mode: "shared", unitset: "a", until: { coders: 3 }, maxCoders: 2 }))).toEqual([
+      "Max coders must be at least the number of coders (or agreeing coders) a unit needs",
+    ]);
+    expect(messages(loop({ mode: "shared", unitset: "a", until: { coders: 1 }, overlap: { unitset: "o", placement: "spread" } }))).toEqual([
+      "Spreading the overlap units needs max units per coder (to know where to put them)",
+    ]);
+    expect(messages(loop({ mode: "shared", unitset: "a", until: { coders: 1 }, maxUnits: 10, overlap: { unitset: "o", placement: "spread" } }))).toEqual([]);
+    expect(messages(loop({ mode: "sets", unitsets: [] }))).toEqual(["Choose at least one unitset"]);
+    expect(messages(loop({ mode: "sets", unitsets: ["a", "b_$var.x.value"] }))).toEqual([
+      `"b_$var.x.value": the sets to choose from are plain unitset names, without $var references`,
+    ]);
+    expect(messages(loop({ mode: "invitation", overlap: { unitset: "o" } }))).toEqual([]);
   });
 
   it("allows user_variable and condition items outside a unit_loop", () => {

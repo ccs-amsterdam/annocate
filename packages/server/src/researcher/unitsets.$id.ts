@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import {
   UnitsetWriteSchema,
+  branchUnitsetNames,
+  migrateCodebookItems,
   unitsetMatchesSource,
   type UnitLoopItem,
 } from "@annotinder/contracts";
@@ -10,19 +12,19 @@ import { requireJobUser } from "./auth.js";
 import { toUnitsetResponse, type UnitsetRow } from "../shared/unitsets.js";
 
 /**
- * True if any codebook in this job has a unit_loop source that refers to
- * `unitsetName` (directly, or via a `{placeholder}` pattern like `part_{slot}`).
+ * True if any codebook in this job has a unit_loop that refers to
+ * `unitsetName` (directly, or via a `$var` pattern like `part_$var.slot.value`).
  */
 async function isReferencedByCodebook(sql: Sql, jobId: number, unitsetName: string): Promise<boolean> {
   const rows = await sql.query<{ items: unknown }>("SELECT items FROM codebooks WHERE job_id = $1", [jobId]);
   const references = (items: { type: string; units?: UnitLoopItem["units"]; children?: unknown[] }[]): boolean =>
     items.some((item) => {
       if (item.type === "unit_loop") {
-        return (item.units ?? []).some((b) => b.sources.some((s) => unitsetMatchesSource(s.unitset, unitsetName)));
+        return (item.units ?? []).some((b) => branchUnitsetNames(b).some((name) => unitsetMatchesSource(name, unitsetName)));
       }
       return item.type === "condition" && references((item.children ?? []) as typeof items);
     });
-  return rows.some((row) => references(row.items as Parameters<typeof references>[0]));
+  return rows.some((row) => references(migrateCodebookItems(row.items) as Parameters<typeof references>[0]));
 }
 
 export function unitset(server: Server): Hono<Env> {
@@ -57,6 +59,8 @@ export function unitset(server: Server): Hono<Env> {
     if (await isReferencedByCodebook(db, jobId, existing.name)) {
       return c.json({ error: "Unitset is referenced by a codebook unit_loop and cannot be deleted" }, 409);
     }
+    const invite = await one<{ label: string }>(db, "SELECT label FROM invites WHERE job_id = $1 AND unitset_id = $2 LIMIT 1", [jobId, id]);
+    if (invite) return c.json({ error: `Unitset is the units of invitation "${invite.label}" and cannot be deleted` }, 409);
 
     await db.query("DELETE FROM unitsets WHERE job_id = $1 AND id = $2", [jobId, id]);
     return c.body(null, 204);
