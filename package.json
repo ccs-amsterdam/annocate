@@ -12,7 +12,7 @@
     "dev:contracts": "pnpm --filter @annotinder/contracts run dev",
     "dev:client": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/client run dev",
     "dev:server": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/server run dev",
-    "reset-db": "pnpm --filter @annotinder/server run db:reset",
+    "reset-db": "pnpm --filter @annotinder/contracts build && pnpm --filter @annotinder/server run db:reset",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
