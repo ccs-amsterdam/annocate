@@ -7,8 +7,11 @@ export const UnitResponseSchema = z.object({
   id: IdSchema,
   externalId: z.string(),
   data: UnitDataSchema,
-  /** Once true (any coder has recorded variables, or it's used by a deployed codebook), the unit's `data` can no longer change. */
-  immutable: z.boolean(),
+  /**
+   * A coder answered about this unit. It can still be replaced (with
+   * `overwriteCoded`): what coders saw is kept as unit versions.
+   */
+  coded: z.boolean(),
 });
 export type UnitResponse = z.infer<typeof UnitResponseSchema>;
 
@@ -25,6 +28,8 @@ export const UnitMetaSchema = z.object({
   externalId: z.string(),
   /** A content hash, so a client can detect whether a cached copy is stale. */
   hash: z.string(),
+  /** A coder answered about this unit (see `UnitResponseSchema`). */
+  coded: z.boolean(),
 });
 export type UnitMeta = z.infer<typeof UnitMetaSchema>;
 
@@ -36,7 +41,13 @@ export type UnitCreate = z.infer<typeof UnitCreateSchema>;
 
 /** Body for `POST /units` -- bulk create. */
 export const UnitsCreateBodySchema = z.object({
+  /** Replace units with the same external id (not coded ones, unless `overwriteCoded`). */
   overwrite: z.boolean().optional(),
+  /**
+   * Also replace units that were coded. Their answers stay, pointing to the
+   * unit version their coder saw; spans may no longer fit the new text.
+   */
+  overwriteCoded: z.boolean().optional(),
   units: z.array(UnitCreateSchema).max(200),
 });
 export type UnitsCreateBody = z.infer<typeof UnitsCreateBodySchema>;
@@ -49,6 +60,7 @@ export type UnitsCreateBody = z.infer<typeof UnitsCreateBodySchema>;
 export const CoderUnitResponseSchema = z.object({
   id: IdSchema,
   externalId: z.string(),
+  /** Only the fields the codebook uses (`shownUnitFields`). */
   data: UnitDataSchema,
   variables: z.record(z.string(), VariableValueSchema),
 });

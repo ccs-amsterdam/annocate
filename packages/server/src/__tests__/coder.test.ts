@@ -13,7 +13,6 @@ import { seed } from "../seed.js";
 import { createApp } from "../app.js";
 import type { RuntimeOptions } from "../runtime/runtime.js";
 import { DbStore, type Store } from "../runtime/store.js";
-import { unitHash } from "../shared/units.js";
 
 // End-to-end: client -> server -> database, through the app's fetch handler
 // (no sockets). A new app on the same database is a restart.
@@ -883,35 +882,54 @@ describe("memory", () => {
   });
 });
 
-describe("unit hashes", () => {
-  const shownHashes = () =>
-    db.query<{ unitId: number; unitHash: string | null }>(
-      `SELECT DISTINCT unit_id AS "unitId", unit_hash AS "unitHash" FROM annotation_values WHERE retired_at IS NULL`,
-    );
+describe("unit versions", () => {
+  const versionOf = async (unitId: number) =>
+    (
+      await db.query<{ data: UnitData }>(
+        `SELECT v.data FROM annotation_values a JOIN unit_versions v ON v.id = a.unit_version_id
+         WHERE a.unit_id = $1 AND a.retired_at IS NULL LIMIT 1`,
+        [unitId],
+      )
+    )[0]?.data;
+  const upload = (units: object[], extra: object) =>
+    server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, ...extra }) });
 
-  it("record which content a coder saw, when the unit changed after it was served", async () => {
+  it("records the version of a unit each coder saw, also when it changed after it was served", async () => {
     const c = coder("hash");
     const first = (await c.next())!;
     await c.submit(first.id, demo("neutral"));
-    expect(await shownHashes()).toEqual([{ unitId: first.id, unitHash: null }]); // current content
+    expect(await versionOf(first.id)).toEqual(first.data);
 
     const second = (await c.next())!;
     const [before] = await db.query<{ externalId: string; data: UnitData }>(`SELECT external_id AS "externalId", data FROM units WHERE id = $1`, [second.id]);
-    // The researcher overwrites it while the coder has it open (allowed: not annotated yet).
-    const res = await server.request("/job/1/units", {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({
-        overwrite: true,
-        // Same fields (the job's), new text
-        units: [{ externalId: before.externalId, data: { ...before.data, text: "edited" } }],
-      }),
-    });
-    expect(res.status).toBe(201); // recorded, not refused
-    expect((await c.submit(second.id, demo("neutral"))).status).toBe(204); // recorded, not refused
+    // The researcher replaces it while the coder has it open (not coded yet).
+    expect((await upload([{ externalId: before.externalId, data: { ...before.data, text: "edited" } }], { overwrite: true })).status).toBe(201);
+    expect((await c.submit(second.id, demo("neutral"))).status).toBe(204);
+    expect((await versionOf(second.id))?.text).toBe(before.data.text);
+  });
 
-    const shown = unitHash(before.externalId, before.data);
-    expect((await shownHashes()).find((r) => r.unitId === second.id)?.unitHash).toBe(shown);
+  it("replaces a coded unit only when asked to; its answers keep the version their coder saw", async () => {
+    const a = coder("a");
+    const unit = (await a.next())!;
+    await a.submit(unit.id, demo("neutral"));
+    const [row] = await db.query<{ externalId: string; data: UnitData }>(`SELECT external_id AS "externalId", data FROM units WHERE id = $1`, [unit.id]);
+    const edited = [{ externalId: row.externalId, data: { ...row.data, text: "edited" } }];
+
+    expect((await upload(edited, { overwrite: true })).status).toBe(409);
+    expect((await upload(edited, { overwrite: true, overwriteCoded: true })).status).toBe(201);
+    // The next coder sees the new text; the first answer still has the old one.
+    expect((await coder("b").next())!.data.text).toBe("edited");
+    expect((await versionOf(unit.id))?.text).toBe(row.data.text);
+
+    const page = (await (await server.request("/job/1/unit-versions", { headers: adminHeaders })).json()) as { versions: { unitId: number; data: UnitData }[] };
+    expect(page.versions.filter((v) => v.unitId === unit.id).map((v) => v.data.text)).toEqual([row.data.text, "edited"]);
+  });
+
+  it("sends coders only the unit fields the codebook uses", async () => {
+    await upload([{ externalId: "secret", data: { headline: "h", text: "t" } }], {});
+    await redeploy({ layout: { template: "$unit.headline" } });
+    const unit = (await coder("c").next())!;
+    expect(Object.keys(unit.data)).toEqual(["headline"]);
   });
 });
 

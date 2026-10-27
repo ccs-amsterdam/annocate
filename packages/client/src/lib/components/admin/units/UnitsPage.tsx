@@ -307,8 +307,8 @@ function UnitTable({
                 <FieldCell key={f.name} field={f} value={unit.data[f.name]} />
               ))}
               <td className="p-2 text-right">
-                {unit.immutable ? (
-                  <span title="Coded: can't be changed or deleted">
+                {unit.coded ? (
+                  <span title="Coded: it can't be deleted; replacing it (by uploading it again) keeps what coders saw">
                     <Lock className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
                   </span>
                 ) : (

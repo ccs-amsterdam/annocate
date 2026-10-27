@@ -1,4 +1,4 @@
-import type { VariableValue } from "@annotinder/contracts";
+import type { UnitData, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
@@ -42,6 +42,11 @@ export interface Store {
    * whose coders have no invite).
    */
   inviteUnitset(inviteId: number | "first"): Promise<string | null>;
+  /**
+   * The id of a unit version (a unit as shown: its shown fields), stored
+   * the first time it is shown (docs/architecture.md §8.4).
+   */
+  unitVersion(unitId: number, hash: string, data: UnitData): Promise<number>;
 }
 
 /** A job's data in the database. */
@@ -88,6 +93,17 @@ export class DbStore implements Store {
     return request.loops.length === 0 ? [] : listFinished(this.sql, this.jobId, request);
   }
 
+  async unitVersion(unitId: number, hash: string, data: UnitData): Promise<number> {
+    // Inserted once; a second insert (e.g. after a restart) returns the same row.
+    const row = await one<{ id: number }>(
+      this.sql,
+      `INSERT INTO unit_versions (job_id, unit_id, hash, data) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (unit_id, hash) DO UPDATE SET hash = excluded.hash RETURNING id`,
+      [this.jobId, unitId, hash, JSON.stringify(data)],
+    );
+    return row!.id;
+  }
+
   async inviteUnitset(inviteId: number | "first"): Promise<string | null> {
     const row = await one<{ name: string }>(
       this.sql,
@@ -120,26 +136,24 @@ export class DbStore implements Store {
   /**
    * Upserts a live value per given variable; variables not given are left
    * alone (so values from older codebook versions stay). `created` is kept
-   * on update. Also marks the unit immutable.
+   * on update. Also marks the unit coded.
    */
   async putAnnotation(write: AnnotationWrite): Promise<void> {
     const { jobId } = this;
     await this.sql.transaction(async (tx) => {
       const unit = await one<UnitRow>(tx, "SELECT * FROM units WHERE job_id = $1 AND id = $2", [jobId, write.unitId]);
       if (!unit) throw new HttpError(404, "Unit not found");
-      // Record what the coder was shown only if it isn't the current content.
-      const stale = write.unitHash !== undefined && write.unitHash !== unitHash(unit.external_id, unit.data);
       for (const [variable, value] of Object.entries(write.variables)) {
         await tx.query(
-          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_hash, created, updated)
+          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, created, updated)
            VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
            ON CONFLICT (unit_id, coder_id, variable) WHERE retired_at IS NULL
-           DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, unit_hash = excluded.unit_hash,
+           DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, unit_version_id = excluded.unit_version_id,
              updated = excluded.updated`,
-          [jobId, write.unitId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, stale ? write.unitHash : null],
+          [jobId, write.unitId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, write.unitVersionId ?? null],
         );
       }
-      if (!unit.immutable) await tx.query("UPDATE units SET immutable = true WHERE id = $1", [write.unitId]);
+      if (!unit.coded) await tx.query("UPDATE units SET coded = true WHERE id = $1", [write.unitId]);
     });
   }
 }

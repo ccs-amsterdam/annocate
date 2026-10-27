@@ -8,7 +8,7 @@ import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
 import { ApiKeyCreatedSchema, ApiKeyResponseSchema, ApiKeyWriteSchema, AuthOptionsSchema, MeResponseSchema } from "../account.js";
-import { AnnotationPageSchema, AnnotationsQuerySchema } from "../annotations.js";
+import { AnnotationPageSchema, AnnotationsQuerySchema, UnitVersionPageSchema, UnitVersionsQuerySchema } from "../annotations.js";
 import {
   DeploymentWriteSchema,
   DeploymentResponseSchema,
@@ -181,6 +181,14 @@ export const researcherEndpoints = {
     query: AnnotationsQuerySchema,
     request: z.void(),
     response: AnnotationPageSchema,
+  },
+  /** Units as coders saw them, a page at a time (oldest first). */
+  listUnitVersions: {
+    method: "GET",
+    path: "/job/:jobId/unit-versions",
+    query: UnitVersionsQuerySchema,
+    request: z.void(),
+    response: UnitVersionPageSchema,
   },
   resetAnnotations: {
     method: "POST",

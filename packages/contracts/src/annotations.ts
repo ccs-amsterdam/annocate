@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema } from "./common.js";
+import { IdSchema, UnitDataSchema } from "./common.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 // Downloading annotations (researcher API `GET /job/:jobId/annotations`):
@@ -33,8 +33,8 @@ export const AnnotationRowSchema = z.object({
   value: VariableValueSchema,
   /** The codebook version the coder answered under. */
   codebookId: IdSchema.nullable(),
-  /** Set when the coder saw other content than the unit has now (a content hash). */
-  unitHash: z.string().nullable(),
+  /** The unit as the coder saw it (`listUnitVersions`); null for answers from before versions were kept. */
+  unitVersionId: IdSchema.nullable(),
   created: z.coerce.date(),
   updated: z.coerce.date(),
   /** Only with `retired=true`: when the value was replaced or reset; null if live. */
@@ -48,3 +48,35 @@ export const AnnotationPageSchema = z.object({
   next: z.number().int().nonnegative().nullable(),
 });
 export type AnnotationPage = z.infer<typeof AnnotationPageSchema>;
+
+/**
+ * A unit as coders saw it (docs/architecture.md §8.4): its external id and
+ * the fields the codebook showed (`shownUnitFields`), kept once per version.
+ * A unit replaced after it was coded has several; every answer points to
+ * the one its coder saw (`unitVersionId`).
+ */
+export const UnitVersionSchema = z.object({
+  id: IdSchema,
+  unitId: IdSchema,
+  externalId: z.string(),
+  /** Of the external id and `data`. */
+  hash: z.string(),
+  data: UnitDataSchema,
+  /** When it was first shown. */
+  created: z.coerce.date(),
+});
+export type UnitVersion = z.infer<typeof UnitVersionSchema>;
+
+/** Query of `GET /job/:jobId/unit-versions`: pages, like annotations. */
+export const UnitVersionsQuerySchema = z.object({
+  after: z.coerce.number().int().nonnegative().optional(),
+  limit: z.coerce.number().int().min(1).max(10000).default(1000),
+});
+export type UnitVersionsQuery = z.input<typeof UnitVersionsQuerySchema>;
+
+export const UnitVersionPageSchema = z.object({
+  versions: z.array(UnitVersionSchema),
+  /** Pass as `after` for the next page; null when this was the last page. */
+  next: z.number().int().nonnegative().nullable(),
+});
+export type UnitVersionPage = z.infer<typeof UnitVersionPageSchema>;

@@ -1,5 +1,7 @@
 import {
   SET_ACTIVITY_MS,
+  shownUnitFields,
+  type UnitData,
   branchFingerprint,
   branchUnitsets,
   loopTitle,
@@ -15,6 +17,7 @@ import {
   type VariableValue,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
+import { unitHash } from "../shared/units.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement, type SharedRule } from "./distribution.js";
 import type { Store } from "./store.js";
 import type { Coder, DeploymentSpec, ResolveCoderRequest, Unit } from "./types.js";
@@ -101,8 +104,8 @@ interface WorkspaceEntry {
   bytes: number;
   /** Loops where the coder was told there are no more units. All of them: the coder is done, evicted first. */
   exhausted: Set<string>;
-  /** unitId -> hash of the content last shown to the coder, sent along with their annotation. */
-  served: Map<number, string>;
+  /** unitId -> the unit version last shown to the coder, stored with their answers. */
+  served: Map<number, number>;
 }
 
 /** Rough size of one `served` entry. */
@@ -147,6 +150,10 @@ export class DeploymentRuntime {
   private pendingCodings: [coderId: number, variables: Record<string, VariableValue>, unitId: number][] | null = null;
   /** `<loop>/<unitset>/<shared rule>` -> pool, created when the first coder is routed to it. */
   private pools = new Map<string, UnitPool>();
+  /** The unit fields the codebook shows (`shownUnitFields`): all coders get. */
+  private shownFields: string[] = [];
+  /** unitId -> the unit as shown under this codebook, and its version (`shownVersion`). */
+  private shown = new Map<number, { content: string; data: UnitData; versionId: number }>();
   /** Loops with `sets` branches: coderId -> their set and when they were routed, for every coder. */
   private setAssignments = new Map<string, Map<number, { set: string; at: number }>>();
   /**
@@ -225,6 +232,8 @@ export class DeploymentRuntime {
     this.coderVariableTypes = collectCoderVariables(items);
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
+    this.shownFields = shownUnitFields(items);
+    this.shown.clear();
     this.pools.clear();
     this.removedUnits.clear();
   }
@@ -685,11 +694,11 @@ export class DeploymentRuntime {
         continue;
       }
       next.pool.take(coder.coderId, next.unitId, this.options.now());
-      this.markServed(coder.coderId, unit);
+      const shown = await this.markServed(coder.coderId, unit);
       return {
         id: unit.id,
         externalId: unit.externalId,
-        data: unit.data,
+        data: shown.data,
         variables: own.get(unit.id) ?? {},
       };
     }
@@ -709,8 +718,8 @@ export class DeploymentRuntime {
     }
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
-    this.markServed(coder.coderId, unit);
-    return { id: unit.id, externalId: unit.externalId, data: unit.data, variables: own ?? {} };
+    const shown = await this.markServed(coder.coderId, unit);
+    return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: own ?? {} };
   }
 
   /**
@@ -741,10 +750,14 @@ export class DeploymentRuntime {
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
 
     // Values of other variables (e.g. questions an update removed) are left
-    // alone, so they stay as data. What the coder saw: normally the unit's
-    // current hash, unless it changed after it was served (recorded, not refused).
-    const unitHash = this.workspaces.get(coder.coderId)?.served.get(unitId) ?? this.units.get(unitId)?.unit.hash;
-    await this.store.putAnnotation({ unitId, coderId: coder.coderId, variables, codebookId: this.spec.codebook.id, unitHash });
+    // alone, so they stay as data. With them: the unit version the coder
+    // saw (which may be older than the unit's content now).
+    let unitVersionId = this.workspaces.get(coder.coderId)?.served.get(unitId);
+    if (unitVersionId === undefined) {
+      const unit = (await this.getUnits([unitId])).get(unitId);
+      unitVersionId = unit && (await this.shownVersion(unit)).versionId;
+    }
+    await this.store.putAnnotation({ unitId, coderId: coder.coderId, variables, codebookId: this.spec.codebook.id, unitVersionId });
     const own = await this.workspace(coder.coderId);
     const previous = own.get(unitId);
     const merged = { ...previous, ...variables };
@@ -825,14 +838,33 @@ export class DeploymentRuntime {
     };
   }
 
-  private markServed(coderId: number, unit: Unit): void {
+  /**
+   * A unit as coders see it under this codebook (docs/architecture.md
+   * §8.4): only the fields it uses (`shownUnitFields`), and the id of that
+   * unit version, stored the first time it is shown. Both are remembered
+   * until the unit or the codebook changes.
+   */
+  private async shownVersion(unit: Unit): Promise<{ data: UnitData; versionId: number }> {
+    const cached = this.shown.get(unit.id);
+    if (cached && cached.content === unit.hash) return cached;
+    const data: UnitData = Object.fromEntries(this.shownFields.filter((f) => f in unit.data).map((f) => [f, unit.data[f]]));
+    const versionId = await this.store.unitVersion(unit.id, unitHash(unit.externalId, data), data);
+    const entry = { content: unit.hash, data, versionId };
+    this.shown.set(unit.id, entry);
+    return entry;
+  }
+
+  /** Records which version of a unit the coder was shown; returns it. */
+  private async markServed(coderId: number, unit: Unit): Promise<{ data: UnitData; versionId: number }> {
+    const shown = await this.shownVersion(unit);
     const entry = this.workspaces.get(coderId);
-    if (!entry) return;
+    if (!entry) return shown;
     if (!entry.served.has(unit.id)) {
       entry.bytes += SERVED_BYTES;
       this.workspaceBytes += SERVED_BYTES;
     }
-    entry.served.set(unit.id, unit.hash);
+    entry.served.set(unit.id, shown.versionId);
+    return shown;
   }
 
   /** Drops unit content from the cache: all of it, or these units. */
@@ -841,6 +873,7 @@ export class DeploymentRuntime {
   }
 
   private dropUnit(id: number): void {
+    this.shown.delete(id);
     const entry = this.units.get(id);
     if (!entry) return;
     this.units.delete(id);

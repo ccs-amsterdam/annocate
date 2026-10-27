@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { AnnotationsQuerySchema, type AnnotationRow } from "@annotinder/contracts";
+import { AnnotationsQuerySchema, UnitVersionsQuerySchema, type AnnotationRow, type UnitVersion } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 
@@ -19,7 +19,7 @@ export function annotations(server: Server): Hono<Env> {
     const rows = await db.query<AnnotationRow & { retiredAt: Date | null }>(
       `SELECT a.id, a.unit_id AS "unitId", u.external_id AS "externalId", a.coder_id AS "coderId",
          c.participant_id AS "participantId", a.variable, a.value, a.codebook_id AS "codebookId",
-         a.unit_hash AS "unitHash", a.created, a.updated, a.retired_at AS "retiredAt"
+         a.unit_version_id AS "unitVersionId", a.created, a.updated, a.retired_at AS "retiredAt"
        FROM annotation_values a
        JOIN units u ON u.id = a.unit_id
        LEFT JOIN coders c ON c.id = a.coder_id
@@ -33,6 +33,21 @@ export function annotations(server: Server): Hono<Env> {
       return out;
     });
     return c.json({ annotations: page, next: rows.length > limit ? page[page.length - 1].id : null });
+  });
+
+  // Units as coders saw them (contracts UnitVersionSchema), oldest first.
+  app.get("/job/:jobId/unit-versions", requireJobUser(server, "READ"), async (c) => {
+    const parsed = UnitVersionsQuerySchema.safeParse(c.req.query());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const { after, limit } = parsed.data;
+    const rows = await db.query<UnitVersion>(
+      `SELECT v.id, v.unit_id AS "unitId", u.external_id AS "externalId", v.hash, v.data, v.created
+       FROM unit_versions v JOIN units u ON u.id = v.unit_id
+       WHERE v.job_id = $1 AND v.id > $2 ORDER BY v.id LIMIT $3`,
+      [c.get("jobId"), after ?? 0, limit + 1],
+    );
+    const page = rows.slice(0, limit);
+    return c.json({ versions: page, next: rows.length > limit ? page[page.length - 1].id : null });
   });
 
   return app;

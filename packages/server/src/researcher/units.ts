@@ -23,7 +23,7 @@ export function units(server: Server): Hono<Env> {
     const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");
-    const { units, overwrite } = parsed.data;
+    const { units, overwrite, overwriteCoded } = parsed.data;
 
     const firstUpload = (await unitCount(db, jobId)) === 0;
     const known: UnitField[] = firstUpload ? [] : await getUnitFields(db, jobId);
@@ -46,8 +46,13 @@ export function units(server: Server): Hono<Env> {
     for (const unit of units) {
       const row = existing.get(unit.externalId);
       if (!row) continue;
-      if (row.immutable) return c.json({ error: `Unit '${unit.externalId}' is immutable and cannot be overwritten` }, 409);
-      if (!overwrite) {
+      if (row.coded && !overwriteCoded) {
+        return c.json(
+          { error: `Unit '${unit.externalId}' was coded; replacing it needs overwriteCoded: true (its answers keep the version their coders saw)` },
+          409,
+        );
+      }
+      if (!overwrite && !overwriteCoded) {
         return c.json({ error: `Unit '${unit.externalId}' already exists (set overwrite: true to replace)` }, 409);
       }
     }
@@ -69,6 +74,9 @@ export function units(server: Server): Hono<Env> {
       }
       return result;
     });
+    // Coders get the new content from now on (the runtime caches units).
+    const replaced = units.flatMap((u) => existing.get(u.externalId)?.id ?? []);
+    if (replaced.length > 0) await server.deployments.refresh(jobId, replaced);
     return c.json(created, 201);
   });
 

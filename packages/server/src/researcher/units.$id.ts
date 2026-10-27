@@ -21,10 +21,11 @@ export function unit(server: Server): Hono<Env> {
     const id = Number(c.req.param("id"));
     const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Unit not found" }, 404);
-    if (existing.immutable) return c.json({ error: "Unit is immutable and cannot be deleted" }, 409);
+    // Its answers would lose their unit; replace it instead (a new version).
+    if (existing.coded) return c.json({ error: "Unit has answers and cannot be deleted" }, 409);
 
     await db.transaction(async (tx) => {
-      await tx.query("DELETE FROM units WHERE job_id = $1 AND id = $2 AND NOT immutable", [jobId, id]);
+      await tx.query("DELETE FROM units WHERE job_id = $1 AND id = $2 AND NOT coded", [jobId, id]);
       // No units left: the next upload sets the fields anew
       if ((await unitCount(tx, jobId)) === 0) await setUnitFields(tx, jobId, []);
     });

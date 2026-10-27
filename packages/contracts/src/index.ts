@@ -16,6 +16,7 @@ export * from "./codebook/answerLayout.js";
 export * from "./codebook/migrate.js";
 export * from "./codebook/unitLoop.js";
 export * from "./codebook/item.js";
+export * from "./codebook/shownFields.js";
 export * from "./codebook/validation.js";
 export * from "./codebook/answers.js";
 export * from "./codebook/codebook.js";

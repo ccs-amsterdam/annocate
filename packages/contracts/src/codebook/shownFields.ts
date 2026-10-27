@@ -1,0 +1,43 @@
+import { unitLoops, type CodebookItem } from "./item.js";
+import { extractReferences, templateReferences, type Reference } from "./references.js";
+
+/**
+ * The unit fields a codebook shows or uses (docs/architecture.md §8.4): every
+ * `$unit.<field>` in a loop's layout, question texts, conditions and end
+ * messages, the layout's meta fields, and the columns of span questions
+ * (unless they name a layout constant). Coders are sent only these fields,
+ * and a unit version is a unit as it looks with them. References are
+ * always literal (validation refuses `$unit[...]`), so the list is complete.
+ */
+export function shownUnitFields(items: readonly unknown[]): string[] {
+  const fields = new Set<string>();
+  const add = (refs: Reference[]) => refs.forEach((r) => r.ns === "unit" && fields.add(r.path[0]));
+  const text = (source: unknown) => typeof source === "string" && add(templateReferences(source).references);
+  const script = (source: unknown) => typeof source === "string" && add(extractReferences(source).references);
+
+  for (const { loop } of unitLoops(items)) {
+    const constants = new Set(Object.keys(loop.layout?.constants ?? {}));
+    text(loop.layout?.template);
+    for (const meta of loop.layout?.meta ?? []) fields.add(meta.column);
+    const walk = (list: unknown) => {
+      if (!Array.isArray(list)) return;
+      for (const raw of list) {
+        const item = raw as Partial<CodebookItem> | null;
+        if (!item || typeof item !== "object") continue;
+        if (item.type === "condition") {
+          script(item.condition?.script);
+          walk(item.children);
+        } else if (item.type === "end") {
+          text(item.message);
+        } else if ("variable" in item && item.variable) {
+          const variable = item.variable as { question?: unknown; instruction?: unknown; type?: string; column?: string };
+          text(variable.question);
+          text(variable.instruction);
+          if (variable.type === "span" && variable.column && !constants.has(variable.column)) fields.add(variable.column);
+        }
+      }
+    };
+    walk(loop.children);
+  }
+  return [...fields];
+}

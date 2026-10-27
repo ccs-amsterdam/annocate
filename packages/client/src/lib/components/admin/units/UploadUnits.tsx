@@ -2,7 +2,7 @@ import { useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { UnitField, UnitFieldType } from "@annotinder/contracts";
 import { AlertCircle, Check, FileUp, Wand2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCreateUnitsMutation } from "../../../admin/queries";
+import { useCreateUnitsMutation, useUnitsQuery } from "../../../admin/queries";
 import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv, type ColumnMapping } from "../../../admin/csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ interface Csv {
  */
 export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherApi; jobFields: UnitField[]; onDone: () => void }) {
   const createUnits = useCreateUnitsMutation(client);
+  const existingUnits = useUnitsQuery(client).data ?? [];
+  const [overwriteCoded, setOverwriteCoded] = useState(false);
   const [csv, setCsv] = useState<Csv | null>(null);
   const [idColumn, setIdColumn] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping[]>([]);
@@ -60,6 +62,10 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
   }
 
   const result = csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields);
+  // Units that already exist (by id), and which of those were coded.
+  const byId = new Map(existingUnits.map((u) => [u.externalId, u]));
+  const replaced = result.units.filter((u) => byId.has(u.externalId));
+  const coded = replaced.filter((u) => byId.get(u.externalId)!.coded);
   const problems = mappingProblems(csv.rows, mapping, jobFields);
   const mapped = new Set(mapping.map((m) => m.field).filter(Boolean));
   const unmappedFields = jobFields.filter((f) => !mapped.has(f.name));
@@ -68,7 +74,7 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
   async function upload() {
     for (let i = 0; i < result.units.length; i += BATCH) {
       setProgress(i);
-      await createUnits.mutateAsync({ overwrite, units: result.units.slice(i, i + BATCH) });
+      await createUnits.mutateAsync({ overwrite, overwriteCoded: overwrite && overwriteCoded, units: result.units.slice(i, i + BATCH) });
     }
     setProgress(null);
     onDone();
@@ -173,12 +179,38 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
         </div>
       )}
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
-        Replace existing units with the same id (only units nobody has coded yet)
-      </label>
+      {replaced.length > 0 && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
+          Replace the {replaced.length} unit{replaced.length === 1 ? "" : "s"} that already exist{replaced.length === 1 ? "s" : ""} (same id)
+        </label>
+      )}
+      {overwrite && coded.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-md border border-amber-500 bg-amber-500/10 p-3 text-sm">
+          <p className="flex gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <span>
+              {coded.length} of them {coded.length === 1 ? "was" : "were"} already coded. Replacing a coded unit harms
+              provenance: later coders see other content than earlier ones. Earlier answers keep the version their coder
+              saw (it is in the data download), but span annotations may no longer fit the new text.
+            </span>
+          </p>
+          <label className="flex items-center gap-2 pl-6">
+            <input type="checkbox" checked={overwriteCoded} onChange={(e) => setOverwriteCoded(e.target.checked)} />
+            Also replace the {coded.length} coded unit{coded.length === 1 ? "" : "s"}
+          </label>
+        </div>
+      )}
       <div className="flex items-center gap-3">
-        <Button onClick={() => void upload()} disabled={result.errors.length > 0 || createUnits.isPending}>
+        <Button
+          onClick={() => void upload()}
+          disabled={
+            result.errors.length > 0 ||
+            createUnits.isPending ||
+            (replaced.length > 0 && !overwrite) ||
+            (overwrite && coded.length > 0 && !overwriteCoded)
+          }
+        >
           {progress !== null ? `Uploading ${progress} / ${result.units.length}...` : `Upload ${result.units.length} units`}
         </Button>
         {createUnits.isError && <p className="text-sm text-destructive">{createUnits.error.message}</p>}

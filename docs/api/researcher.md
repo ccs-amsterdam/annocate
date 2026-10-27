@@ -99,6 +99,7 @@ response checked against its contract schema.
 | [resetAnnotations](#resetannotations) | `POST /job/:jobId/annotations/reset` | ADMIN | `ResetAnnotationsSchema` | `{ retired }` |
 | **Annotations** | | | | |
 | [listAnnotations](#listannotations) | `GET /job/:jobId/annotations` | READ | query `AnnotationsQuerySchema` | `AnnotationPageSchema` |
+| [listUnitVersions](#listunitversions) | `GET /job/:jobId/unit-versions` | READ | query `UnitVersionsQuerySchema` | `UnitVersionPageSchema` |
 
 ## Account
 
@@ -275,13 +276,16 @@ an unknown set).
 call, all or nothing. Every unit's data must fit the job's fields (400 with
 the first problem, e.g. `Unit 'u3': Field 'n' is number, got text`); the
 first upload sets them, later ones may add fields. An existing external id is a 409, unless
-`overwrite: true`; an immutable unit (one that has answers) can't be
-overwritten either way. A changed unit gets a new content hash.
+`overwrite: true`; a unit that was coded (`coded`) also needs
+`overwriteCoded: true`. Its answers keep the unit version their coder saw
+([listUnitVersions](#listunitversions)); spans may no longer fit the new
+text. A changed unit gets a new content hash, and coders get the new
+content from then on.
 
 ### deleteUnit
 
-`DELETE /job/:jobId/units/:id` → 204. 409 once immutable. Deleting the last
-unit resets the fields.
+`DELETE /job/:jobId/units/:id` → 204. 409 once coded (replace it
+instead). Deleting the last unit resets the fields.
 
 ### listUnitsets
 
@@ -414,7 +418,8 @@ Implementation: [`researcher/annotations.ts`](../../packages/server/src/research
 `GET /job/:jobId/annotations?after=&limit=&retired=` → `AnnotationPageSchema`:
 one row per unit, coder and variable (`value` is a `VariableValue`), with
 the unit's `externalId`, the coder's `participantId`, the codebook version
-it was answered under, and `created` / `updated`.
+it was answered under, the unit version the coder saw (`unitVersionId`),
+and `created` / `updated`.
 
 - **Paging**: rows come in the order they were first written (by `id`).
   `limit` rows per page (default 1000, at most 10000); pass `next` as
@@ -425,4 +430,12 @@ it was answered under, and `created` / `updated`.
   reset or replaced, with `retiredAt`.
 - Coder-level answers (outside unit loops) are not rows here; they come
   with the coders ([listCoders](#listcoders)).
+
+### listUnitVersions
+
+`GET /job/:jobId/unit-versions?after=&limit=` → `UnitVersionPageSchema`:
+units as coders saw them (`architecture.md` §8.4), one row per version:
+the unit's id and `externalId`, a `hash`, the `data` shown (only the
+fields the codebook used), and when it was first shown. Paged like
+annotations. Join answers on `unitVersionId`.
 

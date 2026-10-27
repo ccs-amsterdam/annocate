@@ -17,7 +17,8 @@ export interface UnitRow {
   job_id: number;
   external_id: string;
   data: UnitData;
-  immutable: boolean;
+  /** A coder answered about it. */
+  coded: boolean;
 }
 
 /** The job's unit fields (contracts unitFields.ts), set by the first upload. */
@@ -30,11 +31,11 @@ export async function unitCount(sql: Sql, jobId: number): Promise<number> {
 }
 
 export function toUnitResponse(row: UnitRow): UnitResponse {
-  return { id: row.id, externalId: row.external_id, data: row.data, immutable: row.immutable };
+  return { id: row.id, externalId: row.external_id, data: row.data, coded: row.coded };
 }
 
 export function toUnitMeta(row: UnitRow): UnitMeta {
-  return { id: row.id, externalId: row.external_id, hash: unitHash(row.external_id, row.data) };
+  return { id: row.id, externalId: row.external_id, hash: unitHash(row.external_id, row.data), coded: row.coded };
 }
 
 export async function setUnitFields(sql: Sql, jobId: number, fields: UnitField[]): Promise<void> {

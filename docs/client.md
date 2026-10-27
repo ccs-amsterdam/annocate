@@ -464,7 +464,7 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   new names add fields. A preview shows the first units as stored; a paged table with a column per field and unitset
   badges; pick a set to see its units in order; make a set from selected
   units, or split units into parts (done client-side with `splitUnits`).
-  Units are immutable once used. The codebook editor warns about `$unit.x`
+  A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The codebook editor warns about `$unit.x`
   references to fields that don't exist (`codebook/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
   codebook versions (open them in the editor), unit/coder/invitation counts,

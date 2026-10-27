@@ -12,7 +12,7 @@ const row = (unitId: number, coderId: number, variable: string, value: Annotatio
   variable,
   value,
   codebookId: 2,
-  unitHash: null,
+  unitVersionId: null,
   created: new Date(at.getTime() + minutes * 60_000),
   updated: new Date(at.getTime() + minutes * 60_000),
 });

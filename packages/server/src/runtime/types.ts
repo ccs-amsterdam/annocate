@@ -134,6 +134,6 @@ export interface AnnotationWrite {
   variables: Record<string, VariableValue>;
   /** The deployed codebook the coder answered under. */
   codebookId?: number;
-  /** `hash` of the unit content the coder was shown. */
-  unitHash?: string;
+  /** The unit version the coder saw (`Store.unitVersion`). */
+  unitVersionId?: number;
 }

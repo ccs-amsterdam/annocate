@@ -104,7 +104,7 @@ development, Vite proxies the server's paths.
 
    | Held | Released when |
    | --- | --- |
-   | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose; otherwise units are not re-read, since they shouldn't change once coding started. If one does, annotations say so: each write carries `unitHash`, the hash of the content the coder was shown |
+   | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose, as does replacing units; otherwise units are not re-read. What a coder saw is kept as a unit version (§8.4) |
    | A coder's record and annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without shared queues or sets go with them, and are rebuilt when they return |
    | Distribution state (spec, dynamic-loop codings, `balanced` counts, leases) | Not released while the deployment is loaded: it is bounded by units x coders per unit, and distribution needs it |
    | The deployment as a whole | Unused for `deploymentIdleMs` (6 h), or when the job is deleted |
@@ -424,6 +424,31 @@ How it works:
   analysis. It bumps the deployment's `annotationEpoch`, so the runtime
   reloads.
 
+### 8.4 Unit versions: what coders saw
+
+Coders get only the unit fields the codebook uses (`shownUnitFields`:
+`$unit` references in loop layouts, question texts, conditions and end
+messages, layout meta fields, span columns), which keeps other columns
+(e.g. metadata) from coders and responses small. A unit as shown, its
+external id and those fields, is a **unit version**: a row of
+`unit_versions` (`id`, `unit_id`, a `hash` of the shown content, the
+`data`), stored the first time it is shown. Every answer points to the
+version its coder saw (`annotation_values.unit_version_id`), and to the
+codebook version it was given under (`codebook_id`); both are foreign
+keys.
+
+- The runtime remembers each unit's shown data and version id (per unit
+  content and codebook), so serving a unit costs no hashing or database
+  write after the first time.
+- A unit can be replaced after it was coded, with a warning
+  (`overwriteCoded` on `POST /units`): later coders see the new
+  content, a new version; earlier answers keep theirs. So it is visible
+  which answers are about which content, and spans can always be read
+  against the text they were made on.
+- Editing a field the codebook doesn't use makes no new version; a
+  codebook that starts using another field does (coders then see more).
+- Units with answers can't be deleted (their answers would lose them).
+
 ### 8.3 Open: choosing what reopens
 
 With "finished = all current questions answered", adding a question always
@@ -492,13 +517,11 @@ Roughly in order:
    field's type.
 5. **Limits.** Rate and resource limits, and quotas per account (e.g. a
    course hands out a number of jobs per student).
-6. **Hashes.** A codebook content hash, and a unit hash over the fields the
-   codebook uses (after unit preprocessing) instead of the full data. Until
-   then `unitHash` is provisional.
-7. **Keeping history.** When units are updated after being coded, keep a
-   copy of the old version; keep older versions of annotations. (Today an
-   annotation written with an old `codebookId` after a reset is stored as
-   is.)
+6. **Unit preprocessing.** Unit versions (§8.4) hold the fields as shown;
+   preprocessing (e.g. tokenizing once on the server) would be part of it.
+7. **Keeping history.** Unit versions are kept (§8.4); older versions of
+   annotations are kept as retired rows. (An annotation written with an
+   old `codebookId` after a reset is stored as is.)
 8. **Sessions.** For coders: a device id across jobs versus today's session
    key per job; reopening anonymous invites on the same device. For
    researchers: a list of active sessions, logging out everywhere, logging

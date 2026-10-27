@@ -43,6 +43,13 @@ export class PreviewStore implements Store {
 
   getDeployment: Store["getDeployment"] = () => this.db.getDeployment();
   getUnits: Store["getUnits"] = (ids) => this.db.getUnits(ids);
+  /** Previews keep their unit versions in memory, like their answers. */
+  private versions = new Map<string, number>();
+  unitVersion: Store["unitVersion"] = async (unitId, hash) => {
+    const key = `${unitId}/${hash}`;
+    if (!this.versions.has(key)) this.versions.set(key, this.versions.size + 1);
+    return this.versions.get(key)!;
+  };
   /** Preview coders have no invite: they get the units of the first invite that has some. */
   inviteUnitset: Store["inviteUnitset"] = () => this.db.inviteUnitset("first");
 
