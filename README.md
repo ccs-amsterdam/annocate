@@ -15,6 +15,8 @@ docs live in `docs/`:
   (researchers; coders planned).
 - `docs/client.md`: client design decisions (layout, question types and
   answers, references and conditions, admin UI).
+- `docs/plan-examples.md`: plan, not built: example jobs for learning
+  AnnoTinder, and later templates and a library of reusable flows.
 - `packages/contracts/CONTRACTS.md`: the contracts package (schemas, design
   notes).
 
