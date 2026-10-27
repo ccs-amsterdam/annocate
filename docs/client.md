@@ -462,8 +462,15 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
   as its own language (markdown with references, suffixes and `{{ }}`
   highlighted) with completions after `$` (unit fields, the loop's
-  constants, questions) and `::`; and the constants (name, text). The
-  layout's `style` and `meta` are only in the JSON views.
+  constants, questions), `::` and `:::` (block keywords, `from`'s
+  questions); and the constants (name, text), and the optional colour
+  scheme. Above every `::: if` line a code lens shows the condition in
+  words, and "edit" opens the rules editor (`ConditionDialog`) for it. An
+  Insert menu (`TemplateInsertMenu.tsx`) writes the text for a unit field
+  (as headline, text, selectable text or image), "Show if…" (the rules
+  editor), "Show from…" and a few styles; blocks wrap the selected text.
+  The text stays the source of truth. The layout's `style` and `meta` are
+  only in the JSON views.
   Forms show few tips (instruction buttons may come later).
 - **Versions and publishing** (as in Qualtrics or REDCap: edit a draft,
   publish it), derived from `GET /codebook` and `GET /deployment`

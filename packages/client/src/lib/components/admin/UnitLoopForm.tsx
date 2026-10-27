@@ -18,7 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { TemplateCodeEditor } from "./jsonEditor/TemplateCodeEditor";
+import { TemplateCodeEditor, type TemplateEditorApi } from "./jsonEditor/TemplateCodeEditor";
+import { ConditionDialog, TemplateInsertMenu } from "./TemplateInsertMenu";
 import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
@@ -29,6 +30,11 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 /** The names of a loop's questions, in order (through conditions). */
 function questionNames(items: CodebookItem[]): string[] {
   return items.flatMap((i) => (i.type === "condition" ? questionNames(i.children as CodebookItem[]) : "name" in i ? [i.name] : []));
+}
+
+/** A loop's questions with their answer types (through conditions). */
+function questionsOf(items: CodebookItem[]): { name: string; variable: AnyVariableType }[] {
+  return items.flatMap((i) => (i.type === "condition" ? questionsOf(i.children as CodebookItem[]) : "variable" in i ? [{ name: i.name, variable: i.variable }] : []));
 }
 
 /** The loop's questions an agreement rule can compare (contracts `supportsAgreement`). */
@@ -141,7 +147,7 @@ export function UnitLoopForm({
         <LayoutTab
           loop={loop}
           unitFields={unitFields}
-          questions={coderQuestions.map((q) => q.name)}
+          coderQuestions={coderQuestions}
           issues={issuesAt(validationIssues, "layout")}
           readOnly={readOnly}
           onChange={onChange}
@@ -283,14 +289,14 @@ function UnitsTab({
 function LayoutTab({
   loop,
   unitFields,
-  questions,
+  coderQuestions,
   issues,
   readOnly,
   onChange,
 }: {
   loop: UnitLoopItem;
   unitFields: string[];
-  questions: string[];
+  coderQuestions: { name: string; variable: AnyVariableType }[];
   issues: CodebookValidationIssue[];
   readOnly: boolean;
   onChange: (loop: UnitLoopItem) => void;
@@ -298,12 +304,16 @@ function LayoutTab({
   const layout = loop.layout ?? { template: "" };
   const constants = Object.entries(layout.constants ?? {});
   const loopQuestions = questionNames(loop.children as CodebookItem[]);
+  // `::: if` in the layout may use coder-level questions, and (inside `::: from`) the loop's own.
+  const conditionQuestions = [...coderQuestions, ...questionsOf(loop.children as CodebookItem[])];
   const names = {
     fields: unitFields,
     constants: constants.map(([n]) => n),
-    questions: [...questions, ...loopQuestions],
+    questions: conditionQuestions.map((q) => q.name),
     loopQuestions,
   };
+  const [editor, setEditor] = useState<TemplateEditorApi | null>(null);
+  const [editing, setEditing] = useState<{ condition: { script: string }; apply: (script: string) => void } | null>(null);
   const setLayout = (next: Partial<UnitLayout>) => onChange({ ...loop, layout: { ...layout, ...next } });
   const setConstants = (entries: [string, string][]) => {
     const next = { ...layout };
@@ -314,6 +324,17 @@ function LayoutTab({
 
   return (
     <div className="flex flex-col gap-5">
+      {!readOnly && (
+        <div className="-mb-3 flex justify-end">
+          <TemplateInsertMenu
+            editor={editor}
+            fields={unitFields}
+            loopQuestions={loopQuestions}
+            questions={conditionQuestions}
+            constants={names.constants}
+          />
+        </div>
+      )}
       <Section
         title="Template"
         help="Markdown. Insert values with $unit.<field>, $const.<name> or $var.<question>.value (type $ for suggestions). Show parts conditionally with ::: if, ::: else, ::: from <question>, or style them with ::: style <css>; close them with :::."
@@ -324,9 +345,25 @@ function LayoutTab({
             issues.some((i) => !i.warning && !i.path.includes("constants")) ? "border-destructive" : "border-input",
           )}
         >
-          <TemplateCodeEditor value={layout.template} names={names} readOnly={readOnly} onChange={(template) => setLayout({ template })} />
+          <TemplateCodeEditor
+            value={layout.template}
+            names={names}
+            readOnly={readOnly}
+            onChange={(template) => setLayout({ template })}
+            onReady={setEditor}
+            onEditCondition={(script, apply) => setEditing({ condition: { script }, apply })}
+          />
         </div>
         <IssueList issues={issues} />
+        <ConditionDialog
+          condition={editing?.condition ?? null}
+          questions={conditionQuestions}
+          constants={names.constants}
+          title="Edit condition"
+          action="Apply"
+          onClose={() => setEditing(null)}
+          onDone={(script) => editing?.apply(script)}
+        />
       </Section>
 
       <Section title="Colours" help="Styled content may only look right in light or dark colours.">

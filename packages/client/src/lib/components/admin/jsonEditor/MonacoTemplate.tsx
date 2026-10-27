@@ -1,5 +1,6 @@
-import { useEffect } from "react";
-import Editor from "@monaco-editor/react";
+import { useEffect, useRef } from "react";
+import Editor, { type OnMount } from "@monaco-editor/react";
+import { describeCondition } from "../../../codebook/conditions";
 import { editorTheme, monaco, SCROLLBAR } from "./monacoSetup";
 import { useTheme } from "../../../context/theme";
 
@@ -15,6 +16,15 @@ export interface TemplateNames {
   loopQuestions: string[];
 }
 
+/** What the Insert menu (TemplateInsertMenu) can do with the editor. */
+export interface TemplateEditorApi {
+  /**
+   * Inserts a snippet (Monaco snippet syntax: `$0` is where the cursor
+   * ends up, `${TM_SELECTED_TEXT}` the selection it wraps) at the cursor.
+   */
+  insertSnippet: (snippet: string) => void;
+}
+
 export interface MonacoTemplateProps {
   value: string;
   onChange: (value: string) => void;
@@ -22,6 +32,12 @@ export interface MonacoTemplateProps {
   readOnly?: boolean;
   /** Editor height in pixels. */
   height?: number;
+  onReady?: (api: TemplateEditorApi) => void;
+  /**
+   * "Edit" on the line above a `::: if` fence: edit its condition (e.g. as
+   * rules); `apply` puts the new script on the fence.
+   */
+  onEditCondition?: (script: string, apply: (script: string) => void) => void;
 }
 
 // The names of the template being edited (one editor is open at a time).
@@ -123,12 +139,63 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
   },
 });
 
+// Above each `::: if` / `::: else if` fence: its condition in words, and
+// "edit" (the rules editor, MonacoTemplate's onEditCondition).
+const IF_FENCE = /^(\s{0,3}:{3,}\s*(?:else\s+if|if)\s+)(.*?)\s*$/;
+let editCondition: ((line: number, script: string) => void) | null = null;
+const EDIT_CONDITION = "annotinder.editCondition";
+monaco.editor.registerCommand(EDIT_CONDITION, (_accessor, line: number, script: string) => editCondition?.(line, script));
+monaco.languages.registerCodeLensProvider(LANGUAGE, {
+  provideCodeLenses(model) {
+    const lenses = [];
+    for (let line = 1; line <= model.getLineCount(); line++) {
+      const match = IF_FENCE.exec(model.getLineContent(line));
+      if (!match || !match[2]) continue;
+      lenses.push({
+        range: new monaco.Range(line, 1, line, 1),
+        command: { id: EDIT_CONDITION, title: `if ${describeCondition({ script: match[2] })}  ·  edit`, arguments: [line, match[2]] },
+      });
+    }
+    return { lenses, dispose: () => undefined };
+  },
+});
+
 /** A unit template editor: markdown, with completions for references. */
-export default function MonacoTemplate({ value, onChange, names, readOnly, height = 240 }: MonacoTemplateProps) {
+export default function MonacoTemplate({ value, onChange, names, readOnly, height = 240, onReady, onEditCondition }: MonacoTemplateProps) {
   const [theme] = useTheme();
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   useEffect(() => {
     current = names;
   }, [names]);
+  useEffect(() => {
+    editCondition = (line, script) =>
+      onEditCondition?.(script, (next) => {
+        const editor = editorRef.current;
+        const model = editor?.getModel();
+        const match = model && IF_FENCE.exec(model.getLineContent(line));
+        if (!editor || !model || !match) return;
+        const range = new monaco.Range(line, match[1].length + 1, line, model.getLineMaxColumn(line));
+        editor.executeEdits("edit-condition", [{ range, text: next }]);
+      });
+    return () => {
+      editCondition = null;
+    };
+  }, [onEditCondition]);
+
+  const handleMount: OnMount = (editor) => {
+    editorRef.current = editor;
+    onReady?.({
+      insertSnippet: (snippet) => {
+        editor.focus();
+        // A block fence starts on its own line.
+        const selection = editor.getSelection();
+        if (snippet.startsWith(":::") && selection && selection.startColumn > 1) snippet = `\n${snippet}`;
+        const controller = editor.getContribution("snippetController2") as { insert: (s: string) => void } | null;
+        if (controller) controller.insert(snippet);
+        else editor.trigger("insert", "type", { text: snippet });
+      },
+    });
+  };
   return (
     <Editor
       height={height}
@@ -136,11 +203,13 @@ export default function MonacoTemplate({ value, onChange, names, readOnly, heigh
       path="template.md"
       value={value}
       onChange={(v) => onChange(v ?? "")}
+      onMount={handleMount}
       theme={editorTheme(theme === "dark")}
       options={{
         readOnly,
         minimap: { enabled: false },
         scrollbar: SCROLLBAR,
+        codeLens: true,
         fontSize: 13,
         lineNumbers: "off",
         glyphMargin: false,
