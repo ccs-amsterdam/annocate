@@ -8,12 +8,13 @@ import { CodebookManager } from "./CodebookManager";
 import type { SaveFn } from "./CodebookEditor";
 import { UnitsPage } from "./units/UnitsPage";
 import { CodersPanel } from "./CodersPanel";
+import { ResultsPanel } from "./ResultsPanel";
 import { InvitationsPanel } from "./InvitationsPanel";
 import { JobOverview } from "./overview/JobOverview";
 import { JobPreview } from "./JobPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive, FilePen } from "lucide-react";
+import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive, FilePen, Download } from "lucide-react";
 import { clearBackup, readBackup, type CodebookBackup } from "../../codebook/localBackup";
 
 const TABS = [
@@ -22,6 +23,7 @@ const TABS = [
   { id: "Units", label: "Units", icon: Layers },
   { id: "Invitations", label: "Invitations", icon: Link2 },
   { id: "Coders", label: "Coders", icon: Users },
+  { id: "Results", label: "Results", icon: Download },
   { id: "Preview", label: "Preview", icon: Play },
 ] as const;
 
@@ -299,6 +301,7 @@ function JobAdminView({
         {tab === "Units" && <UnitsPage client={client} />}
         {tab === "Invitations" && <InvitationsPanel client={client} baseUrl={baseUrl} inviteUrl={inviteUrl} />}
         {tab === "Coders" && <CodersPanel client={client} />}
+        {tab === "Results" && <ResultsPanel client={client} />}
         {tab === "Preview" && <JobPreview client={client} coderApiUrl={coderApiUrl} />}
       </main>
 

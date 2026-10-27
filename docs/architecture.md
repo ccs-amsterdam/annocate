@@ -474,8 +474,8 @@ Roughly in order:
 3. **Local coding from R and Python** (`compositions.md`): the runtime in
    the browser, R or Python as the host; then the R and Python packages.
    (Not a standalone local app or binaries: see "Not planned" there.)
-4. **Researcher API follow-ups.** A webhook that posts new annotations; a
-   download button in the researcher UI; per coder whether they are done
+4. **Researcher API follow-ups.** A webhook that posts new annotations;
+   per coder whether they are done
    (only the runtime knows how many units a coder gets); changing a unit
    field's type.
 5. **Limits.** Rate and resource limits, and quotas per account (e.g. a

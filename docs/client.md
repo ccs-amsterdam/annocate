@@ -326,7 +326,7 @@ pass with per-slot memoization:
 ## 7. Admin UI
 
 `components/admin/AdminApp.tsx` is a tabbed shell: Overview, Codebook,
-Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
+Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 - **Login**: `account/ResearcherGate.tsx` shows its children to a logged-in
@@ -480,6 +480,15 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 - **Coders**: per coder the invitation, started, last active, answers,
   finished units per loop of the live codebook, and how the session ended
   at an `end` item, if it did (`ended`).
+- **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): downloads the
+  data as CSV, built in the browser from the researcher API
+  (`GET /annotations`, all pages, and `GET /coders`): annotations, a row
+  per unit and coder with a column per question (a scale a column per
+  item), and coders, a row per coder with their coder-level answers, how
+  their session ended and units finished per loop. Columns follow the live
+  codebook's order. Answers are stored values, not labels; several are
+  joined with "; ", spans written as "label: text", skipped questions
+  empty. UTF-8 with a byte order mark, so spreadsheet programs read it.
 - **Preview** runs the job's latest codebook (deployed or not) as
   deployment `<jobId>.preview`, with a token from
   `POST /job/:jobId/deployment/preview`. Coders and answers stay in the
