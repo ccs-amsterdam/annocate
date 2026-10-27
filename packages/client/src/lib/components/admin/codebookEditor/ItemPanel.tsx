@@ -6,7 +6,7 @@ import {
   type TopLevelItem,
   type UnitLoopItem,
 } from "@annotinder/contracts";
-import { AlertTriangle, Edit3, Eye } from "lucide-react";
+import { AlertTriangle, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useUnitsetsQuery } from "../../../admin/queries";
 import { findParent, flattenTree, isInsideUnitLoop, itemAtPath, itemPath } from "../../../codebook/tree";
@@ -14,12 +14,13 @@ import { ItemForm } from "../ItemForm";
 import { CodebookPreviewVariable } from "../CodebookPreviewVariable";
 import { getItemKey } from "../codebookTree/utils";
 import { SegmentedToggle } from "./SegmentedToggle";
+import { ItemYamlEditor } from "./ItemYamlEditor";
 import type { CodebookDraft } from "./useCodebookDraft";
 import type { UnitFieldWarning } from "../../../codebook/unitFieldRefs";
 
-type ItemPane = "edit" | "preview";
+type ItemPane = "edit" | "yaml" | "preview";
 
-/** Right column of the visual editor: the selected item's form, or a live preview of it. */
+/** Right column of the visual editor: the selected item's form, its YAML, or a live preview of it. */
 export function ItemPanel({
   client,
   draft,
@@ -52,13 +53,14 @@ export function ItemPanel({
               onChange={setPane}
               variant="primary"
               options={[
-                { value: "edit", label: "Edit", icon: Edit3 },
-                { value: "preview", label: "Live Preview", icon: Eye },
+                { value: "edit", label: "Form", icon: Edit3 },
+                { value: "yaml", label: "YAML", icon: Code2 },
+                { value: "preview", label: "Preview", icon: Eye },
               ]}
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className={`flex-1 p-4 ${pane === "yaml" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
             {itemWarnings.length > 0 && (
               <ul className="mb-3 space-y-1 rounded-md bg-amber-500/10 p-2 text-xs text-foreground">
                 {itemWarnings.map((w) => (
@@ -71,6 +73,14 @@ export function ItemPanel({
             )}
             {pane === "preview" ? (
               <CodebookPreviewVariable item={item} parentLoop={enclosingLoop(draft.items, item)} />
+            ) : pane === "yaml" ? (
+              <ItemYamlEditor
+                key={getItemKey(item)}
+                item={item}
+                readOnly={readOnly}
+                issues={issuesOfItem(item, draft.validationIssues, draft.cleanItems)}
+                onChange={(next) => draft.update(getItemKey(item), next)}
+              />
             ) : (
               <ItemEditForm client={client} draft={draft} item={item} readOnly={readOnly} />
             )}

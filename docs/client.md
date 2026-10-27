@@ -338,7 +338,10 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 
 - **Codebook editor**: edits the whole document in memory (tree view and
   YAML), validated client-side with the contract's `validateCodebookItems`,
-  then saved as a whole. The toolbar counts errors and warnings; each opens
+  then saved as a whole. In the tree view the selected item opens as a
+  form, as YAML (`codebookEditor/ItemYamlEditor.tsx`: the item without its
+  children, which are items of their own; applied on every edit that
+  parses to an item, with validation messages below), or as a preview. The toolbar counts errors and warnings; each opens
   a list in which a click opens the item concerned. Unit loops have a
   distribution editor (`UnitLoopForm.tsx`): normally just the unitsets;
   "Different units per coder" turns on branches, where every branch but
