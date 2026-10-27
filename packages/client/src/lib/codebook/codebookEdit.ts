@@ -205,13 +205,7 @@ export function canMoveItemTo(
       isInsideUnitLoop(items, keyOf(targetParent) || itemName(targetParent) || ""));
 
   // Check item type constraints:
-  if (sourceItem.type === "user_variable") {
-    // User variables cannot be inside loops
-    if (isTargetInLoop) return false;
-  } else if (sourceItem.type === "unit_variable") {
-    // Unit variables must be inside a loop
-    if (!isTargetInLoop) return false;
-  } else if (sourceItem.type === "question") {
+  if (sourceItem.type === "question") {
     if (isTargetInLoop) {
       if (sourceItem.variable?.type === "auto") return false;
     } else {
@@ -226,14 +220,10 @@ export function canMoveItemTo(
       childrenOf(sourceItem),
     );
     const hasInLoopOnly = sourceDescendants.some(
-      (d) =>
-        d.type === "unit_variable" ||
-        (d.type === "question" &&
-          (d.variable?.type === "span" || d.variable?.type === "relation")),
+      (d) => d.type === "question" && (d.variable?.type === "span" || d.variable?.type === "relation"),
     );
     const hasTopOnly = sourceDescendants.some(
       (d) =>
-        d.type === "user_variable" ||
         d.type === "unit_loop" ||
         (d.type === "question" && d.variable?.type === "auto"),
     );
@@ -252,7 +242,6 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
   if (lastRoot === sourceItem) {
     return false;
   }
-  if (sourceItem.type === "unit_variable") return false;
   if (
     sourceItem.type === "question" &&
     (sourceItem.variable?.type === "span" || sourceItem.variable?.type === "relation")
@@ -263,10 +252,7 @@ export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string
     const descendants = flattenTree(childrenOf(sourceItem));
     if (
       descendants.some(
-        (d) =>
-          d.type === "unit_variable" ||
-          (d.type === "question" &&
-            (d.variable?.type === "span" || d.variable?.type === "relation")),
+        (d) => d.type === "question" && (d.variable?.type === "span" || d.variable?.type === "relation"),
       )
     ) {
       return false;

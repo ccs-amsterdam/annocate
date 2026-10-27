@@ -5,7 +5,7 @@ import { itemFromJson, itemToJson } from "./ItemJsonEditor";
 const loop = {
   _key: "k1",
   type: "unit_loop",
-  name: "loop",
+  label: "loop",
   units: [{ mode: "all", unitset: "__all__" }],
   layout: { template: "$unit.text" },
   children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }],
@@ -14,15 +14,15 @@ const loop = {
 describe("item JSON", () => {
   it("shows the item without its key and children, compactly", () => {
     const json = itemToJson(loop);
-    expect(json).toContain('"name": "loop"');
+    expect(json).toContain('"label": "loop"');
     expect(json).toContain('"layout": { "template": "$unit.text" }');
     expect(json).not.toContain("_key");
     expect(json).not.toContain("children");
   });
 
   it("applies edits, keeping the key and children", () => {
-    const result = itemFromJson(itemToJson(loop).replace('"name": "loop"', '"name": "main"'), loop);
-    expect(result).toEqual({ item: { ...loop, name: "main" } });
+    const result = itemFromJson(itemToJson(loop).replace('"label": "loop"', '"label": "main"'), loop);
+    expect(result).toEqual({ item: { ...loop, label: "main" } });
   });
 
   it("refuses JSON that isn't an item", () => {

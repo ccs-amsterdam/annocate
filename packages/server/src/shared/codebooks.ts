@@ -1,4 +1,4 @@
-import { codebookErrors, migrateCodebookItems, type CodebookMeta, type CodebookResponse, type TopLevelItem } from "@annotinder/contracts";
+import { codebookErrors, type CodebookMeta, type CodebookResponse, type TopLevelItem } from "@annotinder/contracts";
 
 /** A row of `codebooks`. */
 export interface CodebookRow {
@@ -13,10 +13,9 @@ export interface CodebookRow {
   immutable: boolean;
 }
 
-/** A stored codebook's items; codebooks stored in an older shape are migrated (contracts migrate.ts). */
+/** A stored codebook's items. */
 export function codebookItems(row: Pick<CodebookRow, "items">): TopLevelItem[] {
-  const items = migrateCodebookItems(row.items);
-  return (Array.isArray(items) ? items : []) as TopLevelItem[];
+  return (Array.isArray(row.items) ? row.items : []) as TopLevelItem[];
 }
 
 /** Whether the items pass validation, as required to publish or preview them. */

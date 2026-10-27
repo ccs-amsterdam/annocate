@@ -3,8 +3,7 @@ import { codeRanges } from "./references.js";
 // Snippets (docs/client.md §3, "Snippets"): named pieces of a unit loop's
 // template (`layout.snippets`), inserted with `$snippet.<name>` as if they
 // were typed there, before anything else is read: markdown, blocks and
-// `$unit`/`$var` values in them all work. They replace the old constants
-// (`$const.<name>`, migrated by `migrateConstants`).
+// `$unit`/`$var` values in them all work.
 
 const SNIPPET_REF = /\\?\$snippet\.([A-Za-z_][A-Za-z0-9_]*)/g;
 
@@ -50,11 +49,4 @@ export function expandSnippets(
     }
   }
   return { source: out + source.slice(last), errors: [...new Set(errors)] };
-}
-
-const CONST_VALUE = /\{\{\s*\$const\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}(?:::(?:text|markdown|tokenize))?|\$const\.([A-Za-z_][A-Za-z0-9_]*)(?:::(?:text|markdown|tokenize))?/g;
-
-/** A template's `$const.x` values (bare, or alone in `{{ }}`) as `$snippet.x`; other uses (in scripts) stay, and validation reports them. */
-export function constantsToSnippets(template: string): string {
-  return template.replace(CONST_VALUE, (_, a: string | undefined, b: string | undefined) => `$snippet.${a ?? b}`);
 }

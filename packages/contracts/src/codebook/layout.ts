@@ -22,8 +22,7 @@ export const UnitLayoutSchema = z.object({
     ),
   /**
    * Named pieces of the template (docs/client.md §3, "Snippets"), inserted
-   * with `$snippet.<name>` as if typed there (snippets.ts). They replaced
-   * constants (`constants`, migrated on parse).
+   * with `$snippet.<name>` as if typed there (snippets.ts).
    */
   snippets: z
     .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "A snippet name is letters, digits and _"), z.string())

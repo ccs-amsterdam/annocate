@@ -5,7 +5,7 @@ import { Question } from "./Question";
 import { SwipeCard, SwipeProvider } from "./SwipeCard";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 
-type QuestionItem = Extract<CodebookItem, { type: "user_variable" | "unit_variable" }>;
+type QuestionItem = Extract<CodebookItem, { type: "question" }>;
 
 describe("Question dispatcher", () => {
   const onAnswer = vi.fn();
@@ -13,7 +13,7 @@ describe("Question dispatcher", () => {
   it("renders confirm", () => {
     const item: QuestionItem = {
       name: "confirm_q",
-      type: "user_variable",
+      type: "question",
       variable: { type: "confirm", question: "Do you agree?" },
     };
     const html = renderToStaticMarkup(<Question item={item} onAnswer={onAnswer} />);
@@ -24,7 +24,7 @@ describe("Question dispatcher", () => {
   it("renders categorical questions as option buttons", () => {
     const item: QuestionItem = {
       name: "code_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "nominal",
         question: "Pick a code",
@@ -40,7 +40,7 @@ describe("Question dispatcher", () => {
   it("renders long lists as a dropdown", () => {
     const item: QuestionItem = {
       name: "search_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "nominal",
         question: "Search topic",
@@ -55,7 +55,7 @@ describe("Question dispatcher", () => {
   it("renders an ordinal question in the order of its options", () => {
     const item: QuestionItem = {
       name: "ord_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "ordinal",
         question: "Rate sentiment",
@@ -69,7 +69,7 @@ describe("Question dispatcher", () => {
   it("renders numeric questions by their range", () => {
     const numeric = (extra: object): QuestionItem => ({
       name: "n",
-      type: "unit_variable",
+      type: "question",
       variable: { type: "numeric", question: "How many?", ...extra },
     });
     expect(renderToStaticMarkup(<Question item={numeric({ min: 0, max: 10 })} onAnswer={onAnswer} />)).toContain(">10</button>");
@@ -80,7 +80,7 @@ describe("Question dispatcher", () => {
   it("renders scale items as rows of values, showing the label only for the selected value", () => {
     const item: QuestionItem = {
       name: "interest",
-      type: "user_variable",
+      type: "question",
       variable: {
         type: "scale",
         question: "How interested are you?",
@@ -100,7 +100,7 @@ describe("Question dispatcher", () => {
   it("renders a scale as a grid", () => {
     const item: QuestionItem = {
       name: "interest",
-      type: "user_variable",
+      type: "question",
       variable: {
         type: "scale",
         layout: "grid",
@@ -117,7 +117,7 @@ describe("Question dispatcher", () => {
   it("renders annotinder (swipe): 1st option left, 2nd right, 3rd up (in the middle)", () => {
     const item: QuestionItem = {
       name: "swipe_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "annotinder",
         question: "Relevant?",
@@ -151,7 +151,7 @@ describe("Question dispatcher", () => {
   it("renders span (wrapped in SpanAnnotationProvider, as JobRunner does)", () => {
     const item: QuestionItem = {
       name: "span_q",
-      type: "unit_variable",
+      type: "question",
       variable: { type: "span", question: "Select spans", fields: ["text"], options: [{ value: "actor" }] },
     };
     const html = renderToStaticMarkup(
@@ -167,7 +167,7 @@ describe("Question dispatcher", () => {
   it("hides question text when viewing all labeled spans", () => {
     const item: QuestionItem = {
       name: "span_q",
-      type: "unit_variable",
+      type: "question",
       variable: { type: "span", question: "Select spans", fields: ["text"], options: [{ value: "actor" }] },
     };
     const initialSpans = [
@@ -192,7 +192,7 @@ describe("Question dispatcher", () => {
   it("renders normal span answer form with a button to view labeled spans instead of full list by default", () => {
     const item: QuestionItem = {
       name: "span_q",
-      type: "unit_variable",
+      type: "question",
       variable: { type: "span", question: "Select spans", fields: ["text"], options: [{ value: "actor" }] },
     };
     const initialSpans = [
@@ -213,7 +213,7 @@ describe("Question dispatcher", () => {
   it("renders span in single-label manage mode when clicking an existing word showing menu first", () => {
     const item: QuestionItem = {
       name: "span_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "span",
         question: "Select spans",
@@ -249,7 +249,7 @@ describe("Question dispatcher", () => {
   it("renders SpanEditLabel when a specific targetSpanId is selected", () => {
     const item: QuestionItem = {
       name: "span_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "span",
         question: "Select spans",
@@ -288,7 +288,7 @@ describe("Question dispatcher", () => {
   it("renders span in multi-label manage mode showing menu to choose label to edit", () => {
     const item: QuestionItem = {
       name: "span_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "span",
         question: "Select spans",
@@ -325,7 +325,7 @@ describe("Question dispatcher", () => {
   it("renders span in create mode showing selected span text and code choice buttons", () => {
     const item: QuestionItem = {
       name: "span_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "span",
         question: "Select spans",
@@ -350,7 +350,7 @@ describe("Question dispatcher", () => {
   it("renders relation, given prior span answers via unitVariables", () => {
     const item: QuestionItem = {
       name: "rel_q",
-      type: "unit_variable",
+      type: "question",
       variable: {
         type: "relation",
         question: "Link actors to issues",

@@ -63,7 +63,7 @@ monaco.languages.setMonarchTokensProvider(LANGUAGE, {
       [/\\\$/, ""],
       [/\{\{/, { token: "delimiter.expression", next: "@expression" }],
       [/\$(unit|snippet|var)(\.\w+)*/, "variable.reference"],
-      [/::(text|markdown|image|tokenize|html)\b/, "keyword.suffix"],
+      [/::(text|markdown|image|html)\b/, "keyword.suffix"],
       [/^#{1,6}\s.*$/, "keyword.heading"],
       [/\*\*[^*]+\*\*/, "strong"],
       [/[^\\${:#*]+/, ""],

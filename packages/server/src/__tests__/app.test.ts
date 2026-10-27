@@ -61,7 +61,7 @@ describe("codebook routes", () => {
         label: "loop",
         units: [{ mode: "all", unitset: "main" }],
         layout: { template: "" },
-        children: [{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
+        children: [{ type: "question", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
       },
     ];
     const post = (items: unknown) =>
@@ -69,8 +69,8 @@ describe("codebook routes", () => {
     const publish = (codebookId: number) =>
       app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId }) });
 
-    // Work in progress: an item in the wrong place
-    const bad = await post([{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "?" } }]);
+    // Work in progress: a span question outside a loop
+    const bad = await post([{ type: "question", name: "q1", variable: { type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] } }]);
     expect(bad.status).toBe(201);
     const draft = await json(bad);
     expect(draft).toMatchObject({ valid: false, revision: 1, updatedBy: "dev@localhost", immutable: false });
@@ -104,17 +104,6 @@ describe("codebook routes", () => {
     // Overwrite on purpose: without a revision, or with the current one
     expect((await json(await put(2))).revision).toBe(3);
     expect((await json(await put(undefined))).revision).toBe(4);
-  });
-
-  it("serves codebooks stored in the old shape migrated", async () => {
-    const job = await createJob();
-    const old = [{ type: "question", name: "q", variable: { type: "select_code", question: "?", codes: [{ code: "a" }] } }];
-    const [{ id }] = await db.query<{ id: number }>("INSERT INTO codebooks (job_id, items) VALUES ($1, $2) RETURNING id", [
-      job.id,
-      JSON.stringify(old),
-    ]);
-    const codebook = await json(await app.request(`/job/${job.id}/codebook/${id}`, { headers: adminHeaders }));
-    expect(codebook.items[0].variable).toEqual({ type: "nominal", question: "?", options: [{ value: "a" }] });
   });
 });
 
@@ -292,7 +281,7 @@ describe("invites, coder progress and overview", () => {
           items: [
             {
               type: "unit_loop",
-              name: "l",
+              label: "l",
               units: [{ mode: "all", unitset: "main" }],
               layout: { template: "" },
               children: [question("q1"), question("q2")],

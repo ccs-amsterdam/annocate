@@ -55,10 +55,10 @@ export function CodebookPreviewVariable({
 }: CodebookPreviewVariableProps) {
   const [answerState, setAnswerState] = useState<{ value: VariableValue } | null>(null);
 
-  const isVariable = item.type === "question" || item.type === "user_variable" || item.type === "unit_variable";
+  const isVariable = item.type === "question";
   const isLoop = item.type === "unit_loop";
   const isCondition = item.type === "condition";
-  const inLoop = isLoop || item.type === "unit_variable" || (isVariable && !!parentLoop);
+  const inLoop = isLoop || (isVariable && !!parentLoop);
   const isAuto = isVariable && item.variable.type === "auto";
 
   const spanVariable = isVariable && inLoop && item.variable.type === "span" ? item.variable : null;

@@ -15,7 +15,7 @@ import { X, ArrowLeft, ChevronRight, List } from "lucide-react";
 type SpanVariable = Extract<QuestionVariable, { type: "span" }>;
 
 /**
- * Answer field for `span` unit_variables (docs/client.md §4):
+ * Answer field for `span` questions (docs/client.md §4):
  * Coordinates the ambient span annotation state with the question flow.
  *
  * Requirements implemented:

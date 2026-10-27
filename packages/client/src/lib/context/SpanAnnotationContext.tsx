@@ -24,7 +24,7 @@ export interface PendingSpan {
  * question flow, not a separate "annotation mode").
  *
  * `JobRunner` mounts one `SpanAnnotationProvider` wrapping both `UnitFields`
- * and the answer form whenever the current step is a `span` unit_variable.
+ * and the answer form whenever the current step is a `span` question.
  */
 export interface SpanAnnotationState {
   /** The unit fields the current span question selects in. */

@@ -1,29 +1,25 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
 import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
-import { migrateCodebookItems } from "./migrate.js";
 import { semanticIssues } from "./validation.js";
 
-/** A codebook's items; old codebooks are migrated on parse (migrate.ts). */
-export const CodebookItemsSchema = z.preprocess(
-  migrateCodebookItems,
-  z
-    .array(TopLevelItemSchema)
-    .min(1, "A codebook needs at least one item")
-    .superRefine((items, ctx) => {
-      // The item schemas report their own issues; add the rest.
-      for (const issue of semanticIssues(items).filter((i) => !i.warning)) {
-        ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
-      }
-    }),
-);
+/** A codebook's items. */
+export const CodebookItemsSchema = z
+  .array(TopLevelItemSchema)
+  .min(1, "A codebook needs at least one item")
+  .superRefine((items, ctx) => {
+    // The item schemas report their own issues; add the rest.
+    for (const issue of semanticIssues(items).filter((i) => !i.warning)) {
+      ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
+    }
+  });
 
 /**
- * A draft's items: any list, migrated from older shapes. Drafts may be
+ * A draft's items: any list. Drafts may be
  * saved while they don't pass validation (work in progress); a codebook is
  * only checked in full (`CodebookItemsSchema`) to publish or preview it.
  */
-export const DraftItemsSchema = z.preprocess(migrateCodebookItems, z.array(z.unknown()).max(10_000));
+export const DraftItemsSchema = z.array(z.unknown()).max(10_000);
 
 /**
  * Body for `POST /codebook` and `PUT /codebook/:id` -- always the full document.

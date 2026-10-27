@@ -88,16 +88,15 @@ templates with the same syntax.
     questions can't select in it, it doesn't follow the app's fonts or
     dark mode, and HTML that loads images or styles from the web shows
     without them.
-- **Selectable text**: a span question's `fields` (one or more; until
-  2026-10-28 a single `column`, migrated) are unit fields that the layout
+- **Selectable text**: a span question's `fields` (one or more) are unit
+  fields that the layout
   shows as plain text (`$unit.x` or `{{$unit.x}}`; validation
   enforces it), so span offsets always point into one stable string, never
   rendered output. Every such field (all span questions of the loop) is
   rendered as `SelectableText` during every question of the unit, looking
   the same whether or not the question on screen selects in it, so the
   layout doesn't shift; only that question's span question can select.
-  `::tokenize` (until 2026-10-28 the way to mark such a field) is read as
-  `::text`. Image fields may later work the same way for image questions.
+  Image fields may later work the same way for image questions.
 - `$unit.text` is the same as `{{$unit.text}}`, and `$unit.text::markdown`
   as `{{$unit.text}}::markdown`. `\$` is a literal `$`; references inside
   code spans and fences stay literal. Values become text predictably:
@@ -156,7 +155,7 @@ templates with the same syntax.
 - **Field markers**: the element of every bare `$unit.<field>` value has
   `data-field="<field>"` (an attribute, not an `id`: a field may be used
   twice, and ids could clash with the app's). A question's optional
-  `field` (in the form: "Show field"; a span question uses its `column`)
+  `field` (in the form: "Show field"; a span question uses its first field)
   makes `UnitFields` scroll that field into view and highlight it briefly
   when the question comes up. Validation checks the layout shows it.
 - **Snippets** (`layout.snippets`, contracts `snippets.ts`): named pieces
@@ -166,10 +165,7 @@ templates with the same syntax.
   is an error). They work in the layout and in the loop's question texts,
   not in scripts or `{{ }}` (they are text, not values). Values (`$unit`,
   `$var`) are always text unless a suffix says otherwise; a snippet is part
-  of the template, hence the different name. Snippets replaced the
-  constants (`$const.<name>`, until 2026-10-28): `constants` become
-  snippets on parse, and `$const.x` (bare or alone in `{{ }}`, with any
-  suffix) becomes `$snippet.x`; other uses of `$const` are reported.
+  of the template, hence the different name.
 - `$unit` and snippets only exist inside a unit loop; outside, texts can
   only use `$var`.
 
@@ -218,12 +214,6 @@ The answer types follow the measurement levels researchers know: nominal,
 ordinal, numeric (interval and ratio look the same to a coder, so they are
 one type). Nominal and ordinal share their answer form
 (`CategoricalAnswerField`) and layouts.
-
-Codebooks in the shape before 2026-10 (`select_code`, `search_code`,
-`scale` without items, `codes`, rules conditions, and the short-lived
-`categorical` with a `level`) are migrated on parse
-(`contracts/src/codebook/migrate.ts`), also when the server serves a stored
-one; `screenOut` on codes is dropped (use an `end` item).
 
 ### Layout: fixed and compact
 
@@ -379,7 +369,7 @@ inside the condition's own children, not in another loop); the property or
 method fits its type; `$unit` and `$snippet` only inside a loop (unknown
 snippets are an error; unknown `$unit` fields are a warning in the editor, once the
 job has units); branch `when`, unitset names and end item redirect URLs
-only use coder-level `$var` refs from before the loop; span columns shown
+only use coder-level `$var` refs from before the loop; span fields shown
 as plain text, as described in §3. In simple conditions the helper arguments are checked too:
 their number, and that they are values of the question's options (numeric:
 numbers within its range). In advanced scripts references are checked,
@@ -433,9 +423,7 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     session ended): a loop is identified by its position and shows its
     label, or "Unit loop" (with its unitsets next to it; messages and
     exports, which have no tree, say "Unit loop <n>", `architecture.md`
-    §6.1). New loops and conditions start empty. Until 2026-10-27
-    every item had a name; old condition names are dropped on parse, old
-    loop names become labels.
+    §6.1). New loops and conditions start empty.
     Adding: a row's + (on hover) adds an item below it: after an item, at
     the top of a loop or condition's children. Only the end of a container
     is ambiguous (after its last item, or inside an empty container, is

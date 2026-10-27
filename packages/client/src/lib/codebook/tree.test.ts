@@ -4,8 +4,8 @@ import {
   type CodebookItem,
   type TopLevelItem,
   type InLoopItem,
-  type UserVariableItem,
-  type UnitVariableItem,
+  type TopLevelQuestionItem,
+  type InLoopQuestionItem,
   type UnitLoopItem,
   type VariableValue,
   type Condition,
@@ -16,8 +16,8 @@ import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTr
 /** Items by name; conditions (which have none) by their editor key. */
 const id = (item: CodebookItem) => itemName(item) ?? keyOf(item);
 
-function confirm(name: string): UserVariableItem {
-  return { name, type: "user_variable", variable: { type: "confirm", question: "?" } };
+function confirm(name: string): TopLevelQuestionItem {
+  return { name, type: "question", variable: { type: "confirm", question: "?" } };
 }
 
 function topCondition(name: string, condition: Condition, children: TopLevelItem[]): TopLevelItem {
@@ -28,10 +28,10 @@ function inLoopCondition(name: string, condition: Condition, children: InLoopIte
   return { _key: name, type: "condition", condition, children } as InLoopItem;
 }
 
-function unitVar(name: string): UnitVariableItem {
+function unitVar(name: string): InLoopQuestionItem {
   return {
     name,
-    type: "unit_variable",
+    type: "question",
     variable: { type: "nominal", question: "?", options: [{ value: "A" }, { value: "B" }] },
   };
 }
@@ -75,7 +75,7 @@ describe("tree utilities", () => {
   });
 
   it("findItem finds items by unique name", () => {
-    expect(findItem(items, "sentiment")?.type).toBe("unit_variable");
+    expect(findItem(items, "sentiment")?.type).toBe("question");
     expect(findItem(items, "unknown")).toBeNull();
   });
 

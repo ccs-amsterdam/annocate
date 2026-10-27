@@ -9,9 +9,9 @@ describe("CodebookJsonEditor", () => {
     { type: "question", name: "consent", variable: { type: "confirm", question: "Do you agree?" } },
     {
       type: "unit_loop",
-      name: "loop",
+      label: "loop",
       units: [{ mode: "all", unitset: "__all__" }],
-      layout: { template: "# $unit.headline\n\n$unit.text::tokenize", constants: { intro: "Hi" } },
+      layout: { template: "# $unit.headline\n\n$unit.text", snippets: { intro: "Hi" } },
       children: [{ type: "question", name: "q", variable: { type: "nominal", question: "Long enough question text to break the line?", options: [{ value: "a" }] } }],
     },
   ] as unknown as TopLevelItem[];

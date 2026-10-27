@@ -4,8 +4,8 @@ import type {
   CoderUnitResponse,
   SessionResponse,
   VariableValue,
-  UserVariableItem,
-  UnitVariableItem,
+  TopLevelQuestionItem,
+  InLoopQuestionItem,
   UnitLoopItem,
 } from "@annotinder/contracts";
 import { itemName } from "@annotinder/contracts";
@@ -14,18 +14,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { CoderApi } from "../api/httpCoderApi";
 import { JobManager } from "./JobManager";
 
-function confirm(name: string): UserVariableItem {
-  return { name, type: "user_variable", variable: { type: "confirm", question: "?" } };
+function confirm(name: string): TopLevelQuestionItem {
+  return { name, type: "question", variable: { type: "confirm", question: "?" } };
 }
 
 function unitLoop(name: string, children: InLoopItem[], unitset = "__all__"): UnitLoopItem {
   return { label: name, type: "unit_loop", units: [{ mode: "all", unitset }], layout: { template: "" }, children };
 }
 
-function unitVar(name: string): UnitVariableItem {
+function unitVar(name: string): InLoopQuestionItem {
   return {
     name,
-    type: "unit_variable",
+    type: "question",
     variable: { type: "nominal", question: "?", options: [{ value: "A" }, { value: "B" }] },
   };
 }
@@ -68,7 +68,7 @@ function makeFlakyServer(overrides: Partial<CoderApi> = {}): CoderApi & { calls:
 }
 
 describe("JobManager error-handling, rollback, and retry contract", () => {
-  it("a failed user_variable answer can be retried and still advances correctly afterwards", async () => {
+  it("a failed coder-level answer can be retried and still advances correctly afterwards", async () => {
     let failNext = true;
     const postCoderVariables = vi.fn(async (vars: Record<string, VariableValue>) => {
       void vars;
@@ -100,7 +100,7 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     expect(manager.getSnapshot().phase).toBe("user_variable");
   });
 
-  it("a failed unit_variable answer can be retried and still advances correctly afterwards", async () => {
+  it("a failed unit answer can be retried and still advances correctly afterwards", async () => {
     let failNext = true;
     const postUnitVariables = vi.fn(async () => {
       if (failNext) {
@@ -457,7 +457,7 @@ describe("rendering templates", () => {
       { type: "question", name: "role", variable: { type: "nominal", question: "Role?", options: [{ value: "student" }] } },
       {
         type: "unit_loop",
-        name: "main",
+        label: "main",
         units: [{ mode: "all", unitset: "__all__" }],
         layout: { template: "# $unit.title\n\n$snippet.intro $unit.title", snippets: { intro: "Hello" } },
         children: [

@@ -80,7 +80,7 @@ export function VariableTypeForm({
 }: {
   variable: AnyVariableType;
   onChange: (next: AnyVariableType) => void;
-  /** Sibling `unit_variable` names in the same codebook, for `relation`'s from/to variable pickers. */
+  /** The loop's question names, for `relation`'s from/to question pickers. */
   unitVariableNames?: string[];
   /** In a loop: the unit fields its layout shows (what a span question can select in). */
   layoutFields?: string[];

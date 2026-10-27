@@ -153,7 +153,7 @@ function variableNames(items: TopLevelItem[]) {
   const inLoop = (i: CodebookItem) => isInsideUnitLoop(items, getItemKey(i));
   return {
     unitVariableNames: all
-      .filter((i) => i.type === "unit_variable" || (i.type === "question" && inLoop(i)))
+      .filter((i) => i.type === "question" && inLoop(i))
       .flatMap((i) => itemName(i) ?? []),
   };
 }

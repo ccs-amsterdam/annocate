@@ -124,11 +124,11 @@ export function prepareTemplate(source: string): { markdown: string; expressions
 }
 
 function toValue(expression: TemplateExpression, value: unknown, selectable: readonly string[] = []): TemplateValue {
-  // `{{$unit.x}}` is the same as `$unit.x`; `::tokenize` is the old spelling of `::text`
+  // `{{$unit.x}}` is the same as `$unit.x`
   const only = expression.references.length === 1 ? expression.references[0] : undefined;
   const ref = expression.ref ?? (only && expression.script === referenceText(only) ? only : undefined);
   const field = ref?.ns === "unit" ? ref.path[0] : undefined;
-  const suffix = expression.suffix === "tokenize" ? "text" : expression.suffix;
+  const suffix = expression.suffix;
   return {
     suffix,
     text: outputText(value),

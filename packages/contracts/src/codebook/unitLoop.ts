@@ -1,4 +1,3 @@
-import { constantsToSnippets } from "./snippets.js";
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { ConditionSchema } from "./condition.js";
@@ -183,103 +182,6 @@ export function branchFingerprint(branch: UnitBranch): string {
 export function branchUnitsetNames(branch: UnitBranch): string[] {
   const own = branch.mode === "sets" ? branch.unitsets : branch.mode === "invitation" ? [] : [branch.unitset];
   return branch.overlap ? [...own, branch.overlap.unitset] : own;
-}
-
-type Raw = Record<string, unknown>;
-const isObject = (v: unknown): v is Raw => !!v && typeof v === "object" && !Array.isArray(v);
-
-/** An old (2026-10) branch source: a unitset, fixed or with a dynamic queue. */
-interface OldSource {
-  unitset?: string;
-  dynamic?: {
-    minCoders?: number;
-    maxCoders?: number;
-    agreement?: { variable: string; minAgree: number };
-    priority?: "cover" | "saturate";
-    leaseSeconds?: number;
-  };
-}
-
-/** An old branch (`sources`) in the current shape, given the loop's old `order` and `maxUnits`. */
-function migrateBranch(raw: Raw, order: unknown, maxUnits: unknown): Raw {
-  const { sources, ...rest } = raw;
-  const list = (Array.isArray(sources) ? sources : []).filter(isObject) as OldSource[];
-  const unitset = (s: OldSource | undefined) => (typeof s?.unitset === "string" && s.unitset ? s.unitset : ALL_UNITS_UNITSET);
-  const dynamicAt = list.findIndex((s) => s.dynamic);
-  const main = dynamicAt === -1 ? list[0] : list[dynamicAt];
-  const other = list.find((s) => s !== main && !s.dynamic);
-  const branch: Raw = { ...rest };
-  if (main?.dynamic) {
-    const d = main.dynamic;
-    branch.mode = "shared";
-    branch.unitset = unitset(main);
-    branch.until = d.agreement ? { agree: d.agreement.minAgree, on: d.agreement.variable } : { coders: d.minCoders ?? 1 };
-    for (const key of ["maxCoders", "priority", "leaseSeconds"] as const) if (d[key] !== undefined) branch[key] = d[key];
-    if (typeof maxUnits === "number") branch.maxUnits = maxUnits;
-  } else {
-    branch.mode = "all";
-    branch.unitset = unitset(main);
-  }
-  if (other) {
-    // Sources came in order (random: mixed); the overlap is the other fixed source.
-    const before = list.indexOf(other) < list.indexOf(main!);
-    const spread = order === "random" && (branch.mode === "all" || branch.maxUnits !== undefined);
-    branch.overlap = { unitset: unitset(other), placement: spread ? "spread" : before ? "before" : "after" };
-  }
-  return branch;
-}
-
-/**
- * Converts older loop shapes, so stored codebooks keep parsing (and a
- * loop's former `name` becomes its `label`):
- * - before 2026-10: `unitset` + `randomizeUnits`;
- * - 2026-10 to 27: branches with `sources` (fixed or dynamic), and a
- *   loop-level `maxUnits`. A branch becomes `shared` if it had a dynamic
- *   source, else `all`; a second (fixed) source becomes its overlap.
- *   Further sources are dropped.
- */
-export function migrateLegacyUnitLoop(raw: unknown): unknown {
-  if (!isObject(raw) || raw.type !== "unit_loop") return raw;
-  const { unitset, randomizeUnits, maxUnits, name, ...rest } = raw;
-  // Until 2026-10-27 loops had a required name; it is their label now.
-  if (typeof name === "string" && name && rest.label === undefined) rest.label = name;
-  let units = rest.units;
-  if (!Array.isArray(units)) {
-    units = [{ sources: [{ unitset: typeof unitset === "string" && unitset !== "" ? unitset : ALL_UNITS_UNITSET }] }];
-    if (randomizeUnits) rest.order = "random";
-  }
-  return migrateConstants({
-    ...rest,
-    units: (units as unknown[]).map((b) => (isObject(b) && "sources" in b && !("mode" in b) ? migrateBranch(b, rest.order, maxUnits) : b)),
-  });
-}
-
-/**
- * Until 2026-10-28 a layout had `constants`, shown as `$const.<name>`; they
- * are snippets now (snippets.ts): `layout.snippets`, and `$snippet.<name>`
- * in the template and the loop's question texts.
- */
-function migrateConstants(loop: Raw): Raw {
-  const layout = loop.layout;
-  if (!isObject(layout) || !isObject(layout.constants)) return loop;
-  const { constants, ...restLayout } = layout;
-  const rewrite = (text: unknown) => (typeof text === "string" ? constantsToSnippets(text) : text);
-  const children = (list: unknown): unknown =>
-    Array.isArray(list)
-      ? list.map((child) => {
-          if (!isObject(child)) return child;
-          const next: Raw = { ...child };
-          if (isObject(child.variable)) next.variable = { ...child.variable, question: rewrite(child.variable.question), instruction: rewrite(child.variable.instruction) };
-          if (Array.isArray(child.children)) next.children = children(child.children);
-          for (const key of ["question", "instruction"]) if (isObject(next.variable) && next.variable[key] === undefined) delete next.variable[key];
-          return next;
-        })
-      : list;
-  return {
-    ...loop,
-    layout: { ...restLayout, template: rewrite(restLayout.template), snippets: { ...(constants as Record<string, unknown>), ...(isObject(restLayout.snippets) ? restLayout.snippets : {}) } },
-    children: children(loop.children),
-  };
 }
 
 /** The `$var` references in a unitset name (`part_$var.slot.code`). */

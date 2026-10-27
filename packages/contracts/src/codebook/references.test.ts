@@ -25,7 +25,6 @@ describe("extractReferences", () => {
       "$var.interest.items.tech.value",
     ]);
     expect(refs("$var.topics.values.includes('a')")).toEqual(["$var.topics.values"]);
-    expect(errors("$const.intro")).toEqual(["Constants are now snippets: use $snippet.<name> in the template"]);
   });
 
   it("reads helper calls", () => {
@@ -49,7 +48,7 @@ describe("extractReferences", () => {
     expect(errors("$unit.x['y']")).toEqual(["Names in $unit.x[...] must be literal, not computed"]);
     expect(errors("$var.q.items")).toHaveLength(1);
     expect(errors("$var.q.code")).toEqual([
-      "$var.q.code: unknown property (.code is now .value, or .values for several answers); use .value, .label, .values, .labels, .texts, .answered, .items or a method",
+      "$var.q.code: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
     ]);
   });
 

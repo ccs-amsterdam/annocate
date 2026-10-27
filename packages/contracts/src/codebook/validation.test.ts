@@ -1,17 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { TopLevelItem, InLoopItem, UserVariableItem, UnitVariableItem, TopLevelQuestionItem, InLoopQuestionItem } from "./item.js";
+import type { TopLevelItem, InLoopItem, TopLevelQuestionItem, InLoopQuestionItem } from "./item.js";
 import { availableQuestions, validateCodebookItems } from "./validation.js";
 import { CodebookItemsSchema } from "./codebook.js";
 import type { Condition } from "./condition.js";
 
 const confirmVariable = { type: "confirm" as const, question: "Confirm?" };
 
-function userVar(name: string): UserVariableItem {
-  return { type: "user_variable", name, variable: confirmVariable };
-}
-function unitVar(name: string): UnitVariableItem {
-  return { type: "unit_variable", name, variable: confirmVariable };
-}
 /** A question usable at the top level and in loops; `variable` is unchecked test data. */
 function questionVar(name: string, variable: object = confirmVariable): TopLevelQuestionItem & InLoopQuestionItem {
   return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
@@ -35,26 +29,9 @@ const messages = (items: unknown[]) => validateCodebookItems(items).map((i) => i
 
 describe("validateCodebookItems", () => {
   it("accepts a minimal valid tree codebook", () => {
-    const items: TopLevelItem[] = [unitLoop("loop", [unitVar("q1")])];
+    const items: TopLevelItem[] = [unitLoop("loop", [questionVar("q1")])];
     expect(validateCodebookItems(items)).toEqual([]);
     expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
-  });
-
-  it("migrates the legacy unitset/randomizeUnits loop shape", () => {
-    const legacy = (extra: object) => [
-      { type: "unit_loop", label: "loop", layout: { template: "" }, children: [unitVar("q1")], ...extra },
-    ];
-    expect(validateCodebookItems(legacy({ randomizeUnits: true }))).toEqual([]);
-    expect(CodebookItemsSchema.parse(legacy({ randomizeUnits: true }))[0]).toMatchObject({
-      units: [{ mode: "all", unitset: "__all__" }],
-      order: "random",
-    });
-    expect(CodebookItemsSchema.parse(legacy({ unitset: "" }))[0]).toMatchObject({
-      units: [{ mode: "all", unitset: "__all__" }],
-    });
-    const parsed = CodebookItemsSchema.parse(legacy({ unitset: "main" }))[0];
-    expect(parsed).toMatchObject({ units: [{ mode: "all", unitset: "main" }] });
-    expect(parsed).not.toHaveProperty("unitset");
   });
 
   it("checks that loop branches refer to preceding coder variables", () => {
@@ -114,10 +91,10 @@ describe("validateCodebookItems", () => {
     const items = [
       {
         type: "unit_loop",
-        name: "loop",
+        label: "loop",
         units: [{ mode: "shared", unitset: "a", until: { agree: 2, on: "q1" } }],
         layout: { template: "" },
-        children: [unitVar("q1")],
+        children: [questionVar("q1")],
       },
     ];
     expect(() => CodebookItemsSchema.parse(items)).toThrow(/Max coders is required/);
@@ -141,17 +118,17 @@ describe("validateCodebookItems", () => {
     expect(messages(loop({ mode: "invitation", overlap: { unitset: "o" } }))).toEqual([]);
   });
 
-  it("allows user_variable and condition items outside a unit_loop", () => {
+  it("allows questions and condition items outside a unit_loop", () => {
     const items: TopLevelItem[] = [
-      userVar("consent"),
-      topCondition("gate", [userVar("followup")]),
-      unitLoop("loop", [unitVar("q1")]),
+      questionVar("consent"),
+      topCondition("gate", [questionVar("followup")]),
+      unitLoop("loop", [questionVar("q1")]),
     ];
     expect(validateCodebookItems(items)).toEqual([]);
     expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
   });
 
-  it("allows unified 'question' items both inside and outside a unit_loop", () => {
+  it("allows questions both inside and outside a unit_loop", () => {
     const items: TopLevelItem[] = [
       questionVar("consent", confirmVariable),
       unitLoop("loop", [
@@ -159,10 +136,10 @@ describe("validateCodebookItems", () => {
         questionVar("spans", {
           type: "span",
           question: "Highlight spans",
-          column: "text",
+          fields: ["text"],
           options: [{ value: "tag" }],
         }),
-      ], "$unit.text::tokenize"),
+      ], "$unit.text"),
     ];
     expect(validateCodebookItems(items)).toEqual([]);
     expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
@@ -173,7 +150,7 @@ describe("validateCodebookItems", () => {
       questionVar("bad_span", {
         type: "span",
         question: "Bad",
-        column: "text",
+        fields: ["text"],
         options: [{ value: "tag" }],
       }),
       unitLoop("loop", [questionVar("q1")]),
@@ -183,9 +160,9 @@ describe("validateCodebookItems", () => {
     expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
 
-  it("allows condition items nested inside a unit_loop, wrapping unit_variable", () => {
+  it("allows condition items nested inside a unit_loop", () => {
     const items: TopLevelItem[] = [
-      unitLoop("loop", [inLoopCondition("gate", [unitVar("q1")])]),
+      unitLoop("loop", [inLoopCondition("gate", [questionVar("q1")])]),
     ];
     expect(validateCodebookItems(items)).toEqual([]);
     expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
@@ -193,8 +170,8 @@ describe("validateCodebookItems", () => {
 
   it("rejects duplicate names across the entire tree", () => {
     const items: TopLevelItem[] = [
-      userVar("dup_name"),
-      unitLoop("loop", [unitVar("dup_name")]),
+      questionVar("dup_name"),
+      unitLoop("loop", [questionVar("dup_name")]),
     ];
     const issues = validateCodebookItems(items);
     expect(issues.some((i) => i.message.includes("Duplicate name 'dup_name'"))).toBe(true);
@@ -205,31 +182,11 @@ describe("validateCodebookItems", () => {
     const items = [
       {
         type: "unit_loop",
-        name: "empty_loop",
-        unitset: "main",
+        label: "empty_loop",
+        units: [{ mode: "all", unitset: "main" }],
         layout: { template: "" },
         children: [],
       },
-    ];
-    expect(() => CodebookItemsSchema.parse(items)).toThrow();
-  });
-
-  it("rejects user_variable nested inside a unit_loop via schema", () => {
-    const items = [
-      {
-        type: "unit_loop",
-        name: "loop",
-        unitset: "main",
-        layout: { template: "" },
-        children: [{ type: "user_variable", name: "bad", variable: confirmVariable }],
-      },
-    ];
-    expect(() => CodebookItemsSchema.parse(items)).toThrow();
-  });
-
-  it("rejects unit_variable outside a unit_loop via schema", () => {
-    const items = [
-      { type: "unit_variable", name: "bad", variable: confirmVariable },
     ];
     expect(() => CodebookItemsSchema.parse(items)).toThrow();
   });
@@ -238,16 +195,16 @@ describe("validateCodebookItems", () => {
     const items = [
       {
         type: "unit_loop",
-        name: "outer",
-        unitset: "main",
+        label: "outer",
+        units: [{ mode: "all", unitset: "main" }],
         layout: { template: "" },
         children: [
           {
             type: "unit_loop",
-            name: "inner",
-            unitset: "main",
+            label: "inner",
+            units: [{ mode: "all", unitset: "main" }],
             layout: { template: "" },
-            children: [unitVar("q1")],
+            children: [questionVar("q1")],
           },
         ],
       },
@@ -256,11 +213,11 @@ describe("validateCodebookItems", () => {
   });
 
   it("detects empty and invalid names via validateCodebookItems", () => {
-    const emptyNameItems: TopLevelItem[] = [userVar("")];
+    const emptyNameItems: TopLevelItem[] = [questionVar("")];
     const emptyIssues = validateCodebookItems(emptyNameItems);
     expect(emptyIssues.some((i) => i.message.includes("cannot be empty"))).toBe(true);
 
-    const invalidNameItems: TopLevelItem[] = [userVar("invalid name with spaces!")];
+    const invalidNameItems: TopLevelItem[] = [questionVar("invalid name with spaces!")];
     const invalidIssues = validateCodebookItems(invalidNameItems);
     expect(invalidIssues.some((i) => i.message.includes("contains invalid characters"))).toBe(true);
   });
@@ -355,20 +312,19 @@ describe("reference validation", () => {
     expect(check(`$var.role.is("prof") || $unit.x`)).toEqual(["$unit.x can only be used inside a unit loop"]);
   });
 
-  it("flags old .code references", () => {
+  it("flags unknown properties", () => {
     expect(messages([role, topCondition("x", [questionVar("q")], { script: "$var.role.code === 'a'" })])).toEqual([
-      "$var.role.code: unknown property (.code is now .value, or .values for several answers); use .value, .label, .values, .labels, .texts, .answered, .items or a method",
+      "$var.role.code: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
     ]);
   });
 
-  it("requires span columns to be shown as plain text in the layout (::tokenize is the old spelling)", () => {
+  it("requires span fields to be shown as plain text in the layout", () => {
     const span = questionVar("s", { type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] });
     expect(messages([unitLoop("l", [span], "$unit.text::markdown")])).toEqual([
       "Span question 's' selects text in 'text', but the layout doesn't show it as plain $unit.text",
     ]);
     expect(messages([unitLoop("l", [span], "# $unit.headline\n\n$unit.text")])).toEqual([]);
     expect(messages([unitLoop("l", [span], "{{$unit.text}}")])).toEqual([]);
-    expect(messages([unitLoop("l", [span], "$unit.text::tokenize")])).toEqual([]);
     const both = questionVar("s", { type: "span", question: "?", fields: ["headline", "text"], options: [{ value: "x" }] });
     expect(messages([unitLoop("l", [both], "# $unit.headline\n\n$unit.text")])).toEqual([]);
     expect(messages([unitLoop("l", [both], "# $unit.headline::markdown\n\n$unit.text")])).toEqual([

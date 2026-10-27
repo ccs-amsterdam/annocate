@@ -212,8 +212,7 @@ immutable), oldest first: the position is the version number.
 `POST /job/:jobId/codebook` → `CodebookResponseSchema` (201). A new version.
 The body is always the full document, with an optional `note` (what
 changed). A draft may be saved while it doesn't pass validation (work in
-progress): `items` only has to be a list (`DraftItemsSchema`, migrated from
-older shapes). The response says whether it is `valid`
+progress): `items` only has to be a list (`DraftItemsSchema`). The response says whether it is `valid`
 (`CodebookItemsSchema`: nesting rules, unique names, references), which
 publishing and previewing require. Codebooks also have `updated`,
 `updatedBy` (the email of who saved last) and `revision`.

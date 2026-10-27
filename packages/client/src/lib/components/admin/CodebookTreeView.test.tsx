@@ -8,7 +8,7 @@ describe("CodebookTreeView", () => {
   // As in the editor: every item has a key (a loop has no name).
   const dummyItems: TopLevelItem[] = ensureKeys([
     {
-      type: "user_variable",
+      type: "question",
       name: "consent",
       variable: { type: "confirm", question: "Do you agree?" },
     },
@@ -19,7 +19,7 @@ describe("CodebookTreeView", () => {
       layout: { template: "text" },
       children: [
         {
-          type: "unit_variable",
+          type: "question",
           name: "sentiment",
           variable: { type: "confirm", question: "Sentiment?" },
         },

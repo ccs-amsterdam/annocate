@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import {
   UnitsetWriteSchema,
   branchUnitsetNames,
-  migrateCodebookItems,
   unitsetMatchesSource,
   type UnitLoopItem,
 } from "@annotinder/contracts";
@@ -24,7 +23,7 @@ async function isReferencedByCodebook(sql: Sql, jobId: number, unitsetName: stri
       }
       return item.type === "condition" && references((item.children ?? []) as typeof items);
     });
-  return rows.some((row) => references(migrateCodebookItems(row.items) as Parameters<typeof references>[0]));
+  return rows.some((row) => Array.isArray(row.items) && references(row.items as Parameters<typeof references>[0]));
 }
 
 export function unitset(server: Server): Hono<Env> {

@@ -34,18 +34,6 @@ export function defaultItemForType(type: CodebookItem["type"], name: string): Co
         name,
         variable: defaultVariableForAnyType("confirm"),
       } as CodebookItem;
-    case "user_variable":
-      return {
-        type: "user_variable",
-        name,
-        variable: defaultVariableForAnyType("confirm"),
-      } as CodebookItem;
-    case "unit_variable":
-      return {
-        type: "unit_variable",
-        name,
-        variable: defaultVariableForAnyType("confirm"),
-      } as CodebookItem;
     case "unit_loop":
       // Like a condition, a new loop starts empty: its questions are added in the tree.
       return {
@@ -127,7 +115,7 @@ export function ItemForm({
       )}
 
       {/* Item-specific fields */}
-      {(item.type === "question" || item.type === "user_variable" || item.type === "unit_variable") && (
+      {item.type === "question" && (
         <>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-foreground">Answer Type</label>

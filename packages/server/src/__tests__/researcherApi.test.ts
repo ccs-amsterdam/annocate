@@ -63,7 +63,7 @@ async function setUpJob(key: string): Promise<{ jobId: number; unitIds: number[]
   const codebook = (
     await call(key, "createCodebook", { jobId: job.id }, {
       items: [
-        { type: "unit_loop", name: "loop", units: [{ mode: "all", unitset: "__all__" }], layout: { template: "" }, children: [question("q")] },
+        { type: "unit_loop", label: "loop", units: [{ mode: "all", unitset: "__all__" }], layout: { template: "" }, children: [question("q")] },
       ],
     })
   ).data;

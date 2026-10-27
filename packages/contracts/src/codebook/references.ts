@@ -20,8 +20,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 export type ReferenceNamespace = "unit" | "var";
 
 /** How a template value is output (`$ref::markdown`); `text` is the default. */
-/** `tokenize` is the old spelling of `text` (span questions now select in any plain `$unit.<field>`). */
-export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "tokenize", "html"] as const;
+export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "html"] as const;
 export type OutputSuffix = (typeof OUTPUT_SUFFIXES)[number];
 
 /** `$var.<q>` properties. */
@@ -81,9 +80,8 @@ function readReference(
   // In a script, `a$var` and `x.$var` are ordinary identifiers; in a template, `part_$var.slot.value` is a reference.
   if (!template && at > 0 && (IDENT_CHAR.test(source[at - 1]) || source[at - 1] === ".")) return null;
   const startsWith = (n: string) => source.startsWith(n, at + 1) && !IDENT_CHAR.test(source[at + 1 + n.length] ?? "");
-  // Constants became snippets (snippets.ts); snippets are template text, not values.
+  // Snippets (snippets.ts) are template text, not values.
   for (const [n, message] of [
-    ["const", "Constants are now snippets: use $snippet.<name> in the template"],
     [
       "snippet",
       template
@@ -130,8 +128,7 @@ function readReference(
         return name;
       }
       if (!allowed.includes(name)) {
-        const hint = name === "code" ? " (.code is now .value, or .values for several answers)" : name === "text" ? " (.text is now .texts)" : "";
-        return { error: `${label}.${name}: unknown property${hint}; use ${allowed.map((p) => `.${p}`).join(", ")} or a method` };
+        return { error: `${label}.${name}: unknown property; use ${allowed.map((p) => `.${p}`).join(", ")} or a method` };
       }
       return name;
     };
@@ -304,7 +301,7 @@ export function templateFences(source: string): TemplateFence[] {
  * Splits a template (the unit layout, a question or instruction text, a
  * unitset name) into literal text and expressions. Syntax: `$unit.x`,
  * `$var.q.value` or `{{ js }}`, each with an optional
- * `::text|markdown|image|html` suffix (`::tokenize`: the old spelling of `::text`). `\$` is a literal `$`; references
+ * `::text|markdown|image|html` suffix. `\$` is a literal `$`; references
  * inside markdown code spans and fences stay literal. Block fence lines
  * (`::: if ...`) are left out: `parseTemplateBlocks` reads them.
  */

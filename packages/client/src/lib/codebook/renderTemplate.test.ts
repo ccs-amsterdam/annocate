@@ -39,8 +39,8 @@ describe("renderTemplate", () => {
     expect(bare).toEqual(braced);
   });
 
-  it("marks the fields span questions select in as selectable (::tokenize is the old spelling of ::text)", async () => {
-    const rendered = await renderTemplate("$unit.body::tokenize\n\n$unit.title", scope({ body: "a b", title: "T" }), undefined, "t", {
+  it("marks the fields span questions select in as selectable", async () => {
+    const rendered = await renderTemplate("$unit.body\n\n$unit.title", scope({ body: "a b", title: "T" }), undefined, "t", {
       selectable: ["body"],
     });
     expect(rendered.values).toEqual([

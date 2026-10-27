@@ -245,11 +245,6 @@ The pools behind this are internal (`server/src/runtime/distribution.ts`):
 a branch is a pool for the coder's own units (a queue in `shared` mode,
 else fixed) and a fixed pool for the overlap.
 
-Older loop shapes (a loop-level `unitset`; branches with `sources`, each
-fixed or `dynamic`, and a loop-level `maxUnits`) are migrated on parse: a
-branch with a dynamic source becomes `shared`, otherwise `all`, and a
-second (fixed) source becomes its overlap.
-
 **`when`.** The same condition as a `condition` item (a script,
 `client.md` "References and conditions"), on coder-level questions from
 before the loop. Unitset names (in `all` and `shared` mode, and of the
@@ -428,7 +423,7 @@ How it works:
 
 Coders get only the unit fields the codebook uses (`shownUnitFields`:
 `$unit` references in loop layouts, question texts, conditions and end
-messages, layout meta fields, span columns), which keeps other columns
+messages, layout meta fields, span fields), which keeps other columns
 (e.g. metadata) from coders and responses small. A unit as shown, its
 external id and those fields, is a **unit version**: a row of
 `unit_versions` (`id`, `unit_id`, a `hash` of the shown content, the
@@ -466,7 +461,7 @@ Other open points:
 
 | Where | What |
 | --- | --- |
-| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, unitset references, migration of older shapes |
+| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, unitset references |
 | `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |

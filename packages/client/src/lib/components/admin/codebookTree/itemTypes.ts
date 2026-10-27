@@ -54,19 +54,6 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: LogOut,
     color: "text-destructive",
   },
-  // Legacy variable types render like questions
-  unit_variable: {
-    label: "Unit variable",
-    description: "",
-    icon: HelpCircle,
-    color: "text-blue-500",
-  },
-  user_variable: {
-    label: "User variable",
-    description: "",
-    icon: HelpCircle,
-    color: "text-blue-500",
-  },
 };
 
 /** Questions are shown with the icon of their answer type. */

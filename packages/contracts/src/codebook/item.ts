@@ -3,7 +3,7 @@ import { SafeNameSchema } from "../common.js";
 import { ConditionSchema, type Condition } from "./condition.js";
 import { UnitLayoutSchema } from "./layout.js";
 import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "./references.js";
-import { UnitLoopDistributionShape, migrateLegacyUnitLoop } from "./unitLoop.js";
+import { UnitLoopDistributionShape } from "./unitLoop.js";
 import { UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 
 const ItemBaseSchema = z.object({
@@ -26,12 +26,6 @@ export const TopLevelQuestionItemSchema = ItemBaseSchema.extend({
 });
 export type TopLevelQuestionItem = z.infer<typeof TopLevelQuestionItemSchema>;
 
-export const LegacyUserVariableItemSchema = ItemBaseSchema.extend({
-  type: z.literal("user_variable"),
-  variable: UserVariableTypeSchema,
-});
-export type LegacyUserVariableItem = z.infer<typeof LegacyUserVariableItemSchema>;
-
 /**
  * A question item appearing inside a unit_loop.
  * Results in a stored per-unit, per-coder variable value.
@@ -41,12 +35,6 @@ export const InLoopQuestionItemSchema = ItemBaseSchema.extend({
   variable: UnitVariableTypeSchema,
 });
 export type InLoopQuestionItem = z.infer<typeof InLoopQuestionItemSchema>;
-
-export const LegacyUnitVariableItemSchema = ItemBaseSchema.extend({
-  type: z.literal("unit_variable"),
-  variable: UnitVariableTypeSchema,
-});
-export type LegacyUnitVariableItem = z.infer<typeof LegacyUnitVariableItemSchema>;
 
 /**
  * Ends the coder's session when the coder reaches it, usually inside a
@@ -78,16 +66,10 @@ export function fillRedirectUrl(url: string, scope: ReferenceScope): string {
  * General Question item schema anywhere in the tree.
  */
 export const QuestionItemSchema = ItemBaseSchema.extend({
-  type: z.union([z.literal("question"), z.literal("user_variable"), z.literal("unit_variable")]),
+  type: z.literal("question"),
   variable: UnitVariableTypeSchema,
 });
 export type QuestionItem = z.infer<typeof QuestionItemSchema>;
-
-// Backwards-compatible aliases
-export const UserVariableItemSchema = TopLevelQuestionItemSchema;
-export type UserVariableItem = TopLevelQuestionItem | LegacyUserVariableItem;
-export const UnitVariableItemSchema = InLoopQuestionItemSchema;
-export type UnitVariableItem = InLoopQuestionItem | LegacyUnitVariableItem;
 
 /**
  * Items that can appear inside a unit_loop:
@@ -97,7 +79,6 @@ export type UnitVariableItem = InLoopQuestionItem | LegacyUnitVariableItem;
  */
 export type InLoopItem =
   | InLoopQuestionItem
-  | LegacyUnitVariableItem
   | EndItem
   | {
       type: "condition";
@@ -110,24 +91,21 @@ export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "c
   z.object({
     type: z.literal("condition"),
     label: ConditionLabelSchema,
-    condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit/$const"),
+    condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
     children: z.array(InLoopItemSchema).min(1, "Condition must have at least one child item"),
   })
 );
 
 export const InLoopItemSchema: z.ZodType<InLoopItem> = z.lazy(() =>
-  z.union([InLoopQuestionItemSchema, LegacyUnitVariableItemSchema, EndItemSchema, InLoopConditionItemSchema])
+  z.union([InLoopQuestionItemSchema, EndItemSchema, InLoopConditionItemSchema])
 );
 
 /**
  * A `for unit in ...` loop. Which units a coder gets is described by `units`
- * (branches of fixed/dynamic unitset sources, see unitLoop.ts), `order` and
- * `maxUnits`. Children can ONLY be in-loop items (question or in-loop
+ * (branches, see unitLoop.ts) and `order`. Children can ONLY be in-loop items (question or in-loop
  * condition). Nested unit loops are strictly disallowed.
- *
- * The legacy `unitset` + `randomizeUnits` shape is migrated on parse.
  */
-const UnitLoopObjectSchema = z.object({
+export const UnitLoopItemSchema = z.object({
   type: z.literal("unit_loop"),
   /** Shown in the editor and in exports; the loop has no name (it is identified by its position, see `unitLoops`). */
   label: z.string().optional().describe("Shown in the editor and in exports"),
@@ -135,7 +113,6 @@ const UnitLoopObjectSchema = z.object({
   layout: UnitLayoutSchema,
   children: z.array(InLoopItemSchema).min(1, "A unit_loop must have at least one child item"),
 });
-export const UnitLoopItemSchema = z.preprocess(migrateLegacyUnitLoop, UnitLoopObjectSchema);
 export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
 
 /**
@@ -146,7 +123,6 @@ export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
  */
 export type TopLevelItem =
   | TopLevelQuestionItem
-  | LegacyUserVariableItem
   | UnitLoopItem
   | EndItem
   | {
@@ -160,7 +136,7 @@ export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type
   z.object({
     type: z.literal("condition"),
     label: ConditionLabelSchema,
-    condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit/$const"),
+    condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit"),
     children: z.array(TopLevelItemSchema).min(1, "Condition must have at least one child item"),
   })
 );
@@ -168,7 +144,6 @@ export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type
 export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
   z.union([
     TopLevelQuestionItemSchema,
-    LegacyUserVariableItemSchema,
     UnitLoopItemSchema,
     EndItemSchema,
     TopLevelConditionItemSchema,

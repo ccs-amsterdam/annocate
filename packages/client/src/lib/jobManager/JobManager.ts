@@ -44,7 +44,7 @@ export interface NavigationUnitQuestion {
 export interface NavigationPhase {
   index: number;
   name: string;
-  type: "user_variable" | "unit_loop" | "condition" | "question" | "end";
+  type: "unit_loop" | "condition" | "question" | "end";
   label: string;
   isCurrent: boolean;
   isCompleted: boolean;
@@ -173,7 +173,7 @@ function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
   const result: NavigationUnitQuestion[] = [];
   function walk(subItems: InLoopItem[]) {
     for (const sub of subItems) {
-      if (sub.type === "unit_variable" || sub.type === "question") {
+      if (sub.type === "question") {
         result.push({
           index: result.length,
           name: sub.name,
@@ -558,12 +558,12 @@ export class JobManager {
 
   async answer(value: VariableValue): Promise<void> {
     const item = this.snapshot.currentItem;
-    if (!item || (item.type !== "user_variable" && item.type !== "unit_variable" && item.type !== "question")) return;
+    if (!item || item.type !== "question") return;
 
     this.lastFailedOperation = () => this.answer(value);
 
     try {
-      const isUnit = item.type === "unit_variable" || (item.type === "question" && this.activeLoop !== null);
+      const isUnit = this.activeLoop !== null;
       if (!isUnit) {
         this.userVariableValues[item.name] = value;
         await this.coderApi.postCoderVariables(this.userVariableValues);

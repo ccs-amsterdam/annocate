@@ -1,7 +1,6 @@
 import { TopLevelItemSchema, loopTitle, unitLoops, type CodebookItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
-import { migrateCodebookItems } from "./migrate.js";
 import { supportsAgreement, unitsetHasReferences, type UnitBranch } from "./unitLoop.js";
 import { expandSnippets } from "./snippets.js";
 import { parseTemplateBlocks, type FromStage, type TemplateNode } from "./templateBlocks.js";
@@ -62,10 +61,8 @@ interface RefContext {
  *
  * In simple conditions (condition.ts) the helper arguments are checked too.
  * Script syntax isn't checked here (no JS engine); the admin editor does that.
- * Old codebooks are migrated first (migrate.ts).
  */
-export function validateCodebookItems(rawItems: unknown[]): CodebookValidationIssue[] {
-  const items = migrateCodebookItems(rawItems) as unknown[];
+export function validateCodebookItems(items: unknown[]): CodebookValidationIssue[] {
   return [...schemaIssues(items), ...semanticIssues(items)];
 }
 
@@ -250,11 +247,10 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         if (kind === "unitset" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
         if (kind === "url" && ref.ns !== "var") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var references`);
       }
-      // A unit field shown as plain text (`$unit.x`, or `{{$unit.x}}`; `::tokenize` is
-      // the old spelling) is what span questions can select in.
+      // A unit field shown as plain text (`$unit.x`, or `{{$unit.x}}`) is what span questions can select in.
       const only = segment.references.length === 1 ? segment.references[0] : undefined;
       const ref = segment.ref ?? (only && segment.script === referenceText(only) ? only : undefined);
-      if (kind === "layout" && ref?.ns === "unit" && (segment.suffix === "text" || segment.suffix === "tokenize")) {
+      if (kind === "layout" && ref?.ns === "unit" && segment.suffix === "text") {
         selectable.add(ref.path[0]);
       }
     }
@@ -329,7 +325,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       if (!rawItem || typeof rawItem !== "object") return;
       const item = rawItem as RawItem;
       const itemPath = [...currentPath, index];
-      const isQuestion = item.type === "question" || item.type === "unit_variable" || item.type === "user_variable";
+      const isQuestion = item.type === "question";
       const available = loop ? new Set([...coderAvailable, ...loopAvailable]) : coderAvailable;
 
       // Check name validity and uniqueness (conditions have no name)
@@ -410,10 +406,6 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         } else if (loop && item.variable?.type === "auto") {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`);
         }
-      } else if (item.type === "user_variable") {
-        if (loop) issue([...itemPath, "type"], `user_variable '${item.name}' cannot be nested inside a unit_loop (use unit_variable instead)`);
-      } else if (item.type === "unit_variable") {
-        if (!loop) issue([...itemPath, "type"], `unit_variable '${item.name}' must be nested inside a unit_loop`);
       }
     });
   }

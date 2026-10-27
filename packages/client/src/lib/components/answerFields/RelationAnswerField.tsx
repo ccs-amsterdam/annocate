@@ -8,7 +8,7 @@ import { X, ArrowRight } from "lucide-react";
 type RelationVariable = Extract<QuestionVariable, { type: "relation" }>;
 
 /** The spans available as one endpoint of a relation: this unit's spans
- * submitted so far for `opts.variable` (a sibling `span` unit_variable),
+ * submitted so far for `opts.variable` (a span question of the same loop),
  * optionally filtered to just the values listed in `opts.values`. */
 function endpointSpans(unitVariables: Record<string, VariableValue> | undefined, opts: RelationOptions): SpanAnswer[] {
   const spans = unitVariables?.[opts.variable]?.spans ?? [];
@@ -23,8 +23,8 @@ function spanLabel(span: SpanAnswer | undefined): string {
 }
 
 /**
- * Answer field for `relation` unit_variables (docs/client.md §4):
- * links two already-created spans (from sibling `span` unit_variables named
+ * Answer field for `relation` questions (docs/client.md §4):
+ * links two already-created spans (from `span` questions of the same loop named
  * in `variable.from`/`variable.to`) with a relation type (an option).
  */
 export function RelationAnswerField({ variable, unitVariables, onAnswer }: AnswerFieldProps<RelationVariable>) {

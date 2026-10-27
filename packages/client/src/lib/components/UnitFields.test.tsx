@@ -25,10 +25,10 @@ describe("UnitFields", () => {
     expect(html).not.toContain("<strong>");
   });
 
-  it("renders ::markdown, ::image and ::tokenize values, and snippets", async () => {
+  it("renders ::markdown and ::image values, and snippets", async () => {
     const props = await render(
       {
-        template: "Intro with $snippet.note inline.\n\n$unit.body::tokenize\n\n$unit.photo::image\n\n$snippet.note",
+        template: "Intro with $snippet.note inline.\n\n$unit.body\n\n$unit.photo::image\n\n$snippet.note",
         snippets: { note: "A **bold** note." },
       },
       { body: "The article body.", photo: "https://example.com/a.png" },

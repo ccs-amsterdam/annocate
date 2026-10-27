@@ -285,7 +285,7 @@ function JobRunnerContent({
     return <SessionEnd ending={snapshot.ending} preview={preview} onFinished={onFinished} />;
   }
 
-  if (!snapshot.currentItem || (snapshot.currentItem.type !== "user_variable" && snapshot.currentItem.type !== "unit_variable" && snapshot.currentItem.type !== "question")) {
+  if (!snapshot.currentItem || snapshot.currentItem.type !== "question") {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <p className="text-sm text-muted-foreground">Unexpected session state.</p>
@@ -294,7 +294,7 @@ function JobRunnerContent({
   }
 
   const item = snapshot.currentItem;
-  const isUnitVar = item.type === "unit_variable" || (item.type === "question" && snapshot.phase === "unit_variable");
+  const isUnitVar = snapshot.phase === "unit_variable";
   const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate);
   const spanVariable = isUnitVar && item.variable.type === "span" ? item.variable : null;
 

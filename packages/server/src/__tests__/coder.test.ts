@@ -228,7 +228,8 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
         ...extraItems,
         {
           type: "unit_loop",
-          name: "main_loop",
+          label: "main_loop",
+          units: [{ mode: "all", unitset: "__all__" }],
           layout: { template: "" },
           children: [sentimentQuestion],
           ...loop,
@@ -788,7 +789,7 @@ describe("finished units follow the current codebook", () => {
   it("tracks a unit separately in each loop it appears in", async () => {
     const second = {
       type: "unit_loop",
-      name: "second_loop",
+      label: "second_loop",
       layout: { template: "" },
       units: [{ mode: "all", unitset: "main" }],
       children: [relevance],
@@ -940,7 +941,7 @@ describe("researcher preview", () => {
       headers: adminHeaders,
       body: JSON.stringify({
         note,
-        items: [{ type: "unit_loop", name: "main_loop", layout: { template: "" }, children: [sentimentQuestion], units: [{ mode: "all", unitset: "main" }] }],
+        items: [{ type: "unit_loop", label: "main_loop", layout: { template: "" }, children: [sentimentQuestion], units: [{ mode: "all", unitset: "main" }] }],
       }),
     });
     expect(res.status).toBe(201);
