@@ -163,7 +163,7 @@ export function staticTemplate(source: string): RenderedTemplate {
     markdown,
     values: expressions.map((e) => ({
       ...toValue(e, source.slice(e.start, e.end)),
-      suffix: e.suffix === "image" ? "text" : e.suffix,
+      suffix: e.suffix === "image" || e.suffix === "html" ? "text" : e.suffix,
     })),
   };
 }

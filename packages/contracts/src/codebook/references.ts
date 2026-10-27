@@ -21,7 +21,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 export type ReferenceNamespace = "unit" | "var" | "const";
 
 /** How a template value is output (`$ref::markdown`); `text` is the default. */
-export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "tokenize"] as const;
+export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "tokenize", "html"] as const;
 export type OutputSuffix = (typeof OUTPUT_SUFFIXES)[number];
 
 /** `$var.<q>` properties. */
@@ -141,7 +141,7 @@ function readReference(
       pos += 2 + name.length;
     } else if (name) {
       pos += 2 + name.length;
-      return fail(`Unknown output '::${name}' (use ::text, ::markdown, ::image or ::tokenize)`);
+      return fail(`Unknown output '::${name}' (use ::text, ::markdown, ::image, ::tokenize or ::html)`);
     }
   }
   return { ref: { ns, path, ...(call ? { call } : {}), suffix, start: at, end: pos }, end: pos };
@@ -331,7 +331,7 @@ export function parseTemplate(source: string): ParsedTemplate {
       const match = /^::([A-Za-z]+)/.exec(source.slice(end));
       if (match) {
         if ((OUTPUT_SUFFIXES as readonly string[]).includes(match[1])) suffix = match[1] as OutputSuffix;
-        else errors.push({ message: `Unknown output '::${match[1]}' (use ::text, ::markdown, ::image or ::tokenize)`, start: end, end: end + match[0].length });
+        else errors.push({ message: `Unknown output '::${match[1]}' (use ::text, ::markdown, ::image, ::tokenize or ::html)`, start: end, end: end + match[0].length });
         end += match[0].length;
       }
       const extracted = extractReferences(script, i + 2);

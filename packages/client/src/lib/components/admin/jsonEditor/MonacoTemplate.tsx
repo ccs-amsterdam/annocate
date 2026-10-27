@@ -48,6 +48,7 @@ const SUFFIXES = [
   ["markdown", "the value as markdown"],
   ["image", "the value is an image URL"],
   ["tokenize", "selectable text, for span questions (only on a bare $unit.x / $const.x)"],
+  ["html", "the value as HTML, in a sandbox (no scripts, nothing loaded from elsewhere)"],
 ] as const;
 
 // The template language: markdown, with references (`$unit.x`,
@@ -63,7 +64,7 @@ monaco.languages.setMonarchTokensProvider(LANGUAGE, {
       [/\\\$/, ""],
       [/\{\{/, { token: "delimiter.expression", next: "@expression" }],
       [/\$(unit|const|var)(\.\w+)*/, "variable.reference"],
-      [/::(text|markdown|image|tokenize)\b/, "keyword.suffix"],
+      [/::(text|markdown|image|tokenize|html)\b/, "keyword.suffix"],
       [/^#{1,6}\s.*$/, "keyword.heading"],
       [/\*\*[^*]+\*\*/, "strong"],
       [/[^\\${:#*]+/, ""],

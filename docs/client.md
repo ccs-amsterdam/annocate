@@ -74,6 +74,18 @@ templates with the same syntax.
     the markdown parser, so `**x**` in unit data shows as `**x**`.
   - `::markdown`: the value rendered as markdown.
   - `::image`: the value is an image URL.
+  - `::html`: the value as HTML, in a sandboxed iframe
+    (`components/SandboxedHtml.tsx`), for prepared material such as a
+    table, a formatted article or a score card, also from unit data the
+    researcher didn't write. The frame has `sandbox="allow-scripts"`
+    without `allow-same-origin` (an opaque origin: it can't read the app,
+    its storage or cookies; no forms, popups or top navigation) and a
+    Content Security Policy that allows no requests (images and fonts only
+    as `data:`, inline CSS) and no scripts but one of ours, by its hash,
+    which reports the content's height so the frame fits it. Limits: span
+    questions can't select in it, it doesn't follow the app's fonts or
+    dark mode, and HTML that loads images or styles from the web shows
+    without them.
   - `::tokenize`: text that span questions can annotate. Only on a bare
     `$unit.x` or `$const.x` in the layout (validation enforces it), so span
     offsets always point into one stable string, never rendered output.

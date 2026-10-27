@@ -17,7 +17,7 @@ export const UnitLayoutSchema = z.object({
     .describe(
       "Markdown template for the unit. Insert values with `$unit.<field>`, `$const.<name>`, `$var.<q>.value` " +
         "or `{{ js }}` (evaluated in the QuickJS sandbox over $unit, $var and $const), each optionally followed " +
-        "by `::text` (default: literal text), `::markdown`, `::image` or `::tokenize` (only on a bare " +
+        "by `::text` (default: literal text), `::markdown`, `::image`, `::html` (shown in a sandbox) or `::tokenize` (only on a bare " +
         "`$unit.x` / `$const.x`: selectable text for span questions). `\\$` is a literal `$` (docs/client.md §3).",
     ),
   /**

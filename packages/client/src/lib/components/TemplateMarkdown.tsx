@@ -5,13 +5,15 @@ import type { RenderedTemplate, TemplateValue } from "../codebook/renderTemplate
 import { remarkTemplateValues } from "../codebook/templateValues";
 import { useSpanAnnotation } from "../context/SpanAnnotationContext";
 import { SelectableText } from "./SelectableText";
+import { SandboxedHtml } from "./SandboxedHtml";
 
 /**
  * Renders a template (docs/client.md §3): the unit layout, or a question or
  * instruction text. The markdown is rendered with `react-markdown` (no raw
  * HTML), and each value by its suffix: `text` as a React text node (never
  * parsed as markdown), `markdown` as nested markdown, `image` as an image,
- * `tokenize` as text a span question can select in.
+ * `tokenize` as text a span question can select in, `html` in a sandboxed
+ * iframe.
  */
 export function TemplateMarkdown({ rendered, components }: { rendered: RenderedTemplate; components?: Components }) {
   const allComponents = {
@@ -53,6 +55,13 @@ function TemplateValueView({ value, block }: { value: TemplateValue; block: bool
   switch (value.suffix) {
     case "image":
       return value.text ? <img src={value.text} alt={value.name ?? ""} className="max-w-full" {...field} /> : null;
+    case "html":
+      // Researchers' or units' own HTML, in a sandbox (SandboxedHtml.tsx)
+      return value.text ? (
+        <div {...field}>
+          <SandboxedHtml html={value.text} title={value.field ?? "HTML content"} />
+        </div>
+      ) : null;
     case "markdown":
       return wrap(
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={block ? undefined : INLINE_MARKDOWN}>
