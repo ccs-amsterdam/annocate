@@ -101,7 +101,7 @@ $unit.text
 
 Conditions can be written as rules, or as a short script for anything else.
 The helpers (`is`, `isAny`, `gt`, `between`, ...) are listed in
-[Conditions](conditions.md), and what you can refer to in
+[Helper methods](conditions.md#helper-methods), and what you can refer to in
 [Referring to answers and unit data](references.md). A condition that can't
 be evaluated (for instance a script with an error) counts as not holding.
 
