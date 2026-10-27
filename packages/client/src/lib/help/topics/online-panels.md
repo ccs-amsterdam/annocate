@@ -30,7 +30,7 @@ Make an invitation for the panel (see [Invitations](invitations.md)):
 - **Label**: e.g. *Prolific pilot*, so you can tell batches apart in the
   results.
 - **Participant id from URL**: the copied link ends in
-  `&participant=<id>`. In the link you give the panel, replace `<id>` with
+  `participant=<id>`. In the link you give the panel, replace `<id>` with
   the panel's placeholder for the participant id, which the panel fills in
   for each participant. On Prolific that is `{{%PROLIFIC_PID%}}`; other
   panels have their own (check their documentation).
@@ -84,7 +84,7 @@ Unit loop                 10 news articles
 End: done                 complete → panel's completion link
 ```
 
-Put the panel's link in **Redirect to**, with `$var` references where the
+Put the panel's link in **Redirect to (optional)**, with `$var` references where the
 panel wants values:
 
 ```text

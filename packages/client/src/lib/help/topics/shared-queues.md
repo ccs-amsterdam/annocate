@@ -98,8 +98,8 @@ moment. The coder then finishes the loop. Near the end of a study this is
 normal; the reserved units come back if their coders don't finish them.
 
 The 15 minutes can be changed in the codebook's JSON view, as
-`leaseSeconds` on the branch (default `900`), for instance for units that
-take long to code.
+`leaseSeconds` in the loop's `units` (one entry per coder group; default `900`), for instance
+for units that take long to code.
 
 ## What this means for analysis
 

@@ -87,12 +87,8 @@ The app follows each coder's choice of light or dark mode. Usually that is
 fine: text is readable either way. For material that only looks right in
 one, such as a mock news site, colour-coded text or images on a white
 background, fix it in the loop's **Layout** tab under **Colours**:
-
-| Colours | The unit is shown |
-| --- | --- |
-| **Follow the coder's light or dark mode** | In the coder's mode (the default) |
-| **Always light** | Light, with its own light background |
-| **Always dark** | Dark, with its own dark background |
+**Always light** or **Always dark** instead of the default **Follow the
+coder's light or dark mode**.
 
 In experiments with stimulus material, fix the colours: then every
 participant sees the stimulus the same way. The rest of the app (questions,

@@ -165,6 +165,7 @@ problems with the item they are in. Common messages:
 | --- | --- |
 | `'topc' is not a question` | A typo, or the question was renamed or deleted |
 | `'topic' is asked after this point` | Move the question before the place that uses it |
+| `'sentiment' is answered in this loop; use it inside ::: from topics` | In a loop's layout, use the loop's own answers inside a `::: from` block of a later question |
 | `a question can't refer to itself` | Refer to the answer from a later question instead |
 | `'tone' is a question of another unit loop` | Loop answers can only be used in their own loop |
 | `$unit.text can only be used inside a unit loop` | There is no unit outside a loop |

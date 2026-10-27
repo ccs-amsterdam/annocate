@@ -78,7 +78,9 @@ units** of the job (its placeholder says *All units*). The units then come
 in the order they were uploaded. In the codebook's JSON this is written as
 `__all__`.
 
-Unlike your own unitsets, *all units* grows when you upload more units.
+Unlike your own unitsets, *all units* grows when you upload more units,
+also while coding runs: coders get the new units without a new codebook
+version.
 
 ## Sets are lists, not rules
 
@@ -97,9 +99,10 @@ part of the codebook. See
 The order of a set is the order coders get its units in, unless the loop
 uses random order (see [Order](unit-distribution.md#order)).
 
-> Make your unitsets before you publish the codebook that uses them, and
-> check them in the preview. A coder routed to a set that doesn't exist gets
-> an error instead of units.
+> Make your unitsets before coders reach the loop that uses them, and check
+> them in the preview. A coder routed to a set that doesn't exist gets an
+> error instead of units. A set you make after publishing is used right
+> away: you don't need to publish the codebook again.
 
 ## Deleting a set
 

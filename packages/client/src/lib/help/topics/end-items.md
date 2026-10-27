@@ -34,8 +34,9 @@ End: done                 complete, back to the panel
 
 ## Adding an end item
 
-Add an item of the type **End** in the codebook tree, at the point where the
-session should end. It has these fields:
+Click the **+** in the codebook tree where the session should end, and
+choose **End** (see [Adding items](codebook-editor.md#adding-items)). It has
+these fields:
 
 | Field | What it does |
 | --- | --- |
@@ -71,7 +72,9 @@ coder is sent on automatically after three seconds.
 The message is a template, like a question text: markdown, references and
 `{{ }}` all work, e.g.
 *"Thank you! Your completion code is **C1234**."* An end item inside a unit
-loop can also use the unit's data.
+loop can also use the unit's data. [Snippets](snippets.md) don't work in end
+items, also not inside a loop: the message is shown outside the loop's
+layout.
 
 After the end, the session is closed: the coder can't go back or answer
 anything more, and opening the link again on the same device shows the same
@@ -133,7 +136,7 @@ ends the session after saving the current unit's answers.
 ### Back to the panel
 
 At the end of the codebook, an end item **Complete** with the panel's
-completion link as **Redirect to**, and inside each screening condition one
+completion link as **Redirect to (optional)**, and inside each screening condition one
 **Screened out** with the panel's screenout link.
 
 ## Where end items can go

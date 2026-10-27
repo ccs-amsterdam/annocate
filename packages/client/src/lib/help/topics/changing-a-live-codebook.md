@@ -26,7 +26,7 @@ Two rules explain most of it:
 | Change | Units coders already finished | The unit a coder has open, and units still to come |
 | --- | --- | --- |
 | **Question added** to a loop | Unfinished again: coders get them back, with their earlier answers, and only answer what is new | The new question is asked |
-| **Question added** outside a loop | (not about units) Coders are asked it the next time their session loads, before they continue | Asked |
+| **Question added** outside a loop | (not about units) Coders are asked it once they switch to the new version, before they continue | Asked |
 | **Question removed** | Their answers stay in the data (and in the download), but the question is no longer asked | Not asked |
 | **Option value** removed or changed | Stay finished. Answers with the old value stay in the data, but no longer fit the question: a coder who goes back to such a unit must answer it again | Only the current options |
 | **Option label** changed | Nothing changes: answers hold values, not labels | Coders see the new label |
@@ -34,7 +34,11 @@ Two rules explain most of it:
 | **Question renamed** | As removing the old question and adding a new one: units are unfinished again | Asked under the new name |
 | **Question text, instruction or layout** changed | Stay finished | Coders see the new text |
 | **Conditions or order** changed | Stay finished | Follow the new codebook |
-| **Distribution** changed (the loop's **Units** tab) | Coders keep the units they were given, as long as the loop still hands out those units in the same way; otherwise they are routed again (see [Different units for different coders](coder-groups.md)) | The new rules apply |
+| **Distribution** changed (the loop's **Units** tab) | Coders keep the units they were given, as long as the loop still hands out those units in the same way; otherwise they are routed again (see [Different units for different coders](coder-groups.md#routing-is-sticky)) | The new rules apply |
+
+Units and unitsets are not part of the codebook: units you upload and sets
+you make while coding runs are handed out right away, without a new version
+(see [Unitsets](unitsets.md)).
 
 The publish dialog warns about removed option values and changed answer
 types, before you publish. After publishing, it warns if a loop gained
@@ -76,8 +80,8 @@ The download keeps every answer that counts (see
 
 ## What coders who are working see
 
-Coders don't need to reload. The next time their answers are saved, they
-switch to the new version and continue where they were, on the same unit,
+Coders don't need to reload. When they next save an answer, they switch to
+the new version and continue where they were, on the same unit,
 with their answers to it as far as they still fit. See
 [What coders experience when you publish](previewing-and-publishing.md#what-coders-experience-when-you-publish).
 

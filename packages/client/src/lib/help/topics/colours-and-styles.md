@@ -37,6 +37,9 @@ $unit.text
 Style blocks work everywhere blocks do: inside `::: if` and `::: from`
 blocks, around them, inside [snippets](snippets.md), and in question texts.
 See [Showing parts conditionally](template-blocks.md) for how blocks nest.
+A style block can be inside a `::: markdown` block, but not inside a
+`::: text`, `::: html` or `::: image` block (see
+[Typed blocks and names](typed-blocks.md#rules)).
 
 ### Useful properties
 

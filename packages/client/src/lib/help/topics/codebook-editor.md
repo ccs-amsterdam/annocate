@@ -27,8 +27,9 @@ From top to bottom, the tab has:
 The tree shows every item, indented under the loop or condition it is in.
 Its icon shows what it is: a question has the icon of its answer type
 (hover over an icon to see the type), a loop a circular arrow, a condition
-a branch. A loop shows its label (or *Unit loop*) and which units it hands
-out (*all units*, *part_1, shared*, *2 branches*, ...); a condition shows
+a branch, an end item an exit arrow. A loop shows its label (or *Unit loop*)
+and which units it hands out (*all units*, *part_1, shared*, or *2 branches*
+for a loop with two [coder groups](coder-groups.md), ...); a condition shows
 its condition in words (*if age < 18*), or its label if you gave it one.
 
 Click an item to open it on the right. A loop's row has two extra buttons
@@ -44,7 +45,8 @@ Two marks can appear after an item:
 Hover over a row and click the **+** at its right. A new item goes **below
 that row**: after the item, or for a loop or condition, at the top of what
 is inside it. Then choose the type: **Question**, **Unit Loop** (only
-outside loops: loops can't be nested) or **Condition**.
+outside loops: loops can't be nested), **Condition** or **End** (an
+[end item](end-items.md)).
 
 Below the last item of a loop or condition, "below" could mean two places:
 still inside, or after the loop. Then the menu first asks **Where?**, for
@@ -57,8 +59,9 @@ will go.
 In an empty codebook, click **Add item** above the tree.
 
 New questions are called `question_1`, `question_2`, ... and start as
-**Confirm** questions; rename them and choose the answer type. New loops
-and conditions start empty: add their items with their own **+**.
+**Confirm** questions; rename them and choose the answer type. New end
+items are called `end_1`, ... and start as **Screened out (not eligible)**.
+New loops and conditions start empty: add their items with their own **+**.
 
 > To put an item at the very top of the codebook, add it below the first
 > item and then move it to the top (below).

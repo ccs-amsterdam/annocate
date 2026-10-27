@@ -146,10 +146,9 @@ earlier answer.
 - **Inside a unit loop**, a skipped question is stored as *skipped* with the
   unit's other answers, and is empty in the results. A unit is finished when
   every question of the loop is answered or skipped.
-- **Outside a loop**, a skipped question is simply not asked, and is empty in
-  the results. (If the coder answered it before going back and changing an
-  earlier answer, that earlier answer is kept in the data. Check the
-  condition when you analyse such questions.)
+- **Outside a loop**, a skipped question is not asked, and is empty in the
+  results. If the coder answered it before going back and changing an
+  earlier answer so that it is now hidden, it is stored as skipped too.
 
 Conditions are checked again whenever the coder moves on, so going back and
 changing an answer can show or skip later questions.

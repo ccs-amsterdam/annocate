@@ -34,6 +34,8 @@ questions that come **before** the relation question. Anything else is
 reported as an error, such as *Relation 'from' refers to 'tone' which is
 not a preceding span variable*.
 
+The **Edit mode** box has no effect yet.
+
 Relations have a direction: *A criticizes B* is not *B criticizes A*. Name
 the options so that the direction is clear, and read them as
 *from ... to*.
@@ -63,9 +65,8 @@ click **Done**, which counts them. **Skip** goes on without relations; it
 is stored as skipped, not as *no relations*.
 
 If coders notice that a span is missing, they can go back to the span
-question, add it, and come forward again. Coming back to a relation
-question starts with an empty list, though: relations made before have to
-be linked again.
+question, add it, and come forward again. The relations they made before
+are still there, except those whose spans they deleted.
 
 > Linking spans is demanding work. Pilot a relation question carefully,
 > keep the number of relation types small, and give examples in the

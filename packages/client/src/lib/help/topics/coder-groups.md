@@ -117,8 +117,8 @@ unitsets, and remembers them. After that:
 
 - a coder who goes back and changes an answer that a condition uses keeps
   the units they got;
-- editing a condition, reordering the groups, or renaming the loop moves
-  nobody;
+- editing a condition, reordering the groups, or changing the loop's label
+  moves nobody;
 - changing *which units* a group hands out (its mode, unitset or overlap)
   and publishing that routes its coders again the next time they ask for a
   unit. The units they finished stay finished.

@@ -73,8 +73,9 @@ answered: they are stored as skipped.
 
 Because "finished" follows the current codebook, adding a question to a loop
 reopens the units coders already finished. Coders get those units back first,
-with their earlier answers, and only answer the new question. The publish
-dialog tells you how many finished codings this affects. Removing a question,
+with their earlier answers, and only answer the new question. After you
+publish, the publish dialog tells you how many finished codings this
+affects. Removing a question,
 or changing conditions or order, leaves finished units finished.
 
 This is a choice with a trade-off: your data stays complete (every finished

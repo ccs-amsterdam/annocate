@@ -56,7 +56,7 @@ out units (see [Handing out units](unit-distribution.md)):
   keeps the bar from filling up, so read it together with the Coders tab.
 
 A unitset appears here once the first coder was given units from it; a loop
-over all units of the job shows the name `__all__`. Progress is counted for
+over all units of the job shows *all units*. Progress is counted for
 the live codebook version.
 
 ## The Coders tab
@@ -77,9 +77,9 @@ if it has none: give loops a label to make this table easier to read.
 
 Coders who only answered questions outside unit loops (for example
 screened out after a few background questions) show no answers and no
-last activity here. How each session ended (screened out or complete, at
-an [end item](end-items.md)) is in the `ended` column of `coders.csv` in
-the results.
+last activity here. **Ended** says how a session ended at an
+[end item](end-items.md): *Complete* or *Screened out* (hover it to see which
+end item); `coders.csv` in the results has the same in its `ended` column.
 
 ## What counts as finished
 

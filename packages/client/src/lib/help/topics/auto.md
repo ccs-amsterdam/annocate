@@ -74,7 +74,8 @@ link where the value falls back to balanced.
 Online panels add the participant's id to the link they send people to,
 such as `...?PROLIFIC_PID=5f3a...`. Fill in the name of that parameter under
 **URL parameter name** (here `PROLIFIC_PID`) and the auto question stores
-its value. Use it in the redirect URL of an [end item](end-items.md) to send
+its value. Left empty, the parameter has the question's own name: an auto
+question `pid` then reads `...?pid=...`. Use it in the redirect URL of an [end item](end-items.md) to send
 participants back with their id, or to link your data to the panel's. See
 [Online panels and crowd coding](online-panels.md).
 

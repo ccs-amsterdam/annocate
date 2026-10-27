@@ -66,7 +66,10 @@ Snippets also work in the texts of the loop's questions and instructions, so
 a long instruction can be shared by several questions.
 
 They don't work outside a loop (*Snippets ([[name]]) can only be used in a
-unit loop's layout and its questions' texts*), and not in condition items.
+unit loop's layout and its questions' texts*), and not in condition items or
+end items, also not inside a loop: the editor reports the same message. For a
+condition you need in several places, use it in the layout as
+`::: if [[name]]`.
 In code (between backticks) `[[name]]` stays as it is.
 
 ## A snippet is text, not a value

@@ -94,7 +94,7 @@ login can't be used.
 To run the study, a coder's browser gets:
 
 - **The whole codebook**, including all questions, conditions and option
-  values, also of other groups' branches. Anyone who knows where to look
+  values, also of other coder groups. Anyone who knows where to look
   could read it. Don't put anything in the codebook that participants must
   not see, such as the hypothesis in a condition's label.
 - **The unit fields the codebook uses**, also fields used only in a condition

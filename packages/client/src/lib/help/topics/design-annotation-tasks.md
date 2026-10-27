@@ -127,8 +127,10 @@ button to go on.
 
 1. **Preview** the codebook yourself, on your real units, at phone and desktop
    size. Nothing is stored. See [Preview, save and publish](previewing-and-publishing.md).
-2. **Pilot** with two or three coders on the same 30 to 50 units: an
-   [overlap set](overlap.md) that every coder codes. Talk through the
+2. **Pilot** with two or three coders on the same 30 to 50 units: a pilot
+   set that every coder codes in full (**All units** of that set, see
+   [Intercoder reliability designs](overlap.md#intercoder-reliability-designs)).
+   Talk through the
    disagreements and revise the definitions, not just the answers.
 3. **Test reliability on new units**, not the pilot units: coders have
    discussed those. Content analysis textbooks recommend a reliability sample

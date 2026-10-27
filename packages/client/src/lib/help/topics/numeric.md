@@ -31,8 +31,8 @@ usually the better choice.
 | **Two decimals** | 0, 0.01, 0.02, ... |
 | **Custom** | Any step you type, e.g. 5 for 0, 5, 10, ... or 0.5 for halves |
 
-Steps count from the minimum: with a minimum of 1 and steps of 2, coders
-can give 1, 3, 5, and so on. The minimum must be below the maximum.
+Steps count from the minimum (or from 0 without one): with a minimum of 1
+and steps of 2, coders can give 1, 3, 5, and so on. The minimum must be below the maximum.
 
 A new numeric question starts with a range of 0 to 10.
 

@@ -49,7 +49,7 @@ other data you have on the same people.
 - **Fixed participant id**: everyone who uses this link gets the id you type
   in. Use it for personal links, one per coder.
 - **Participant id from URL**: the id is taken from the link itself. The
-  copied link ends in `&participant=<id>`: replace `<id>` with each coder's
+  copied link ends in `participant=<id>`: replace `<id>` with each coder's
   id, or let a panel fill it in (see
   [Online panels and crowd coding](online-panels.md)). A coder who opens the
   link without an id starts without one.
@@ -128,6 +128,9 @@ fixed participant id, and their unitset as its units. Then set the unit loop
 to **The invitation's units**, with the overlap set as its overlap. Send
 each coder their own link.
 
+You can also do this while coding runs, for coders who join later: new sets
+and invitations work right away, without publishing the codebook again.
+
 ## Max uses
 
 **Max uses** limits how many coders can start with a link. Once that many
@@ -154,8 +157,9 @@ only once (max uses 1).
 
 ### Revoking and deleting
 
-- **Revoke** stops new coders from joining with the link. Coders who already
-  started keep working, also when they come back later. A revoked link can't
+- **Revoke** stops new sessions with the link, also new sessions of a
+  participant id that already has one. Coders who already started keep
+  working, also when they come back later on the same device. A revoked link can't
   be copied anymore.
 - An invitation that nobody used yet can be **deleted** (the bin icon).
   Once it was used it can only be revoked: coders and their answers keep

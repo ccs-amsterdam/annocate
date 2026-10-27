@@ -12,7 +12,8 @@ job. Each row becomes a unit, and the columns you choose become its
 `$unit.headline`.
 
 A small file is enough to start: you can upload more units at any time, and
-add new columns later.
+add new columns later. Loops over all units of the job hand out new units
+right away, also while coding runs, without publishing the codebook again.
 
 ## Preparing the file
 
