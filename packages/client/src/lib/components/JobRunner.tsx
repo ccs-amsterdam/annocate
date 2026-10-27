@@ -319,6 +319,8 @@ function JobRunnerContent({
 
   // A swipe question: the unit (or the question card) is the card to swipe.
   const swipeVariable = item.variable.type === "annotinder" ? item.variable : null;
+  // The unit field to scroll to when this question comes up (docs/client.md §3, "Field markers").
+  const focusField = ("field" in item.variable ? item.variable.field : undefined) ?? spanVariable?.column;
   const withSwipe = (content: ReactNode) =>
     swipeVariable ? (
       <SwipeProvider options={swipeVariable.options} onAnswer={(option) => handleAnswer(buildValues([{ value: option.value }]))}>
@@ -567,10 +569,10 @@ function JobRunnerContent({
                 >
                   {swipeVariable ? (
                     <SwipeCard key={variableKey} className="rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5">
-                      <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} />
+                      <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} focusField={focusField} />
                     </SwipeCard>
                   ) : (
-                    <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} />
+                    <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} focusField={focusField} />
                   )}
                 </div>
               </div>

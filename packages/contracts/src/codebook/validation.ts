@@ -281,8 +281,19 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, constants, loopOrder: [...loopQuestions] },
       "layout",
     );
+    // The unit fields the layout shows (as `$unit.<field>`): what a question's `field` can point at.
+    const shownFields = new Set(
+      typeof loop.layout?.template === "string"
+        ? parseTemplate(loop.layout.template).segments.flatMap((seg) =>
+            seg.type === "expression" ? seg.references.filter((r) => r.ns === "unit").map((r) => r.path[0]) : [],
+          )
+        : [],
+    );
     forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {
-      const variable = q.variable as { type?: string; column?: string } | undefined;
+      const variable = q.variable as { type?: string; column?: string; field?: unknown } | undefined;
+      if (typeof variable?.field === "string" && !shownFields.has(variable.field)) {
+        issue([...path, "variable", "field"], `Field '${variable.field}' is not shown in the layout (as $unit.${variable.field})`);
+      }
       if (variable?.type === "span" && variable.column && !tokenized.has(variable.column)) {
         issue(
           [...path, "variable", "column"],
@@ -328,6 +339,9 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
           }
         }
         if (variable?.type === "span" && item.name) spanVariables.add(item.name);
+        if (!loop && (item.variable as { field?: unknown } | undefined)?.field !== undefined) {
+          issue([...itemPath, "variable", "field"], "A field to show only works for questions in a unit loop");
+        }
 
         for (const field of ["question", "instruction"] as const) {
           checkTemplate(

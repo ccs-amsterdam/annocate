@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   availableQuestions,
   itemName,
+  parseTemplate,
   type CodebookItem,
   type TopLevelItem,
   type UnitLoopItem,
@@ -132,6 +133,7 @@ function ItemEditForm({
         availableQuestions={available}
         loopConstants={loop ? Object.keys(loop.layout?.constants ?? {}) : null}
         unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
+        loopFields={loop ? layoutFields(loop.layout?.template ?? "") : undefined}
         readOnly={readOnly}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
@@ -150,6 +152,14 @@ function variableNames(items: TopLevelItem[]) {
       .filter((i) => i.type === "unit_variable" || (i.type === "question" && inLoop(i)))
       .flatMap((i) => itemName(i) ?? []),
   };
+}
+
+/** The unit fields a layout shows (as `$unit.<field>`), in order. */
+function layoutFields(template: string): string[] {
+  const fields = parseTemplate(template).segments.flatMap((s) =>
+    s.type === "expression" ? s.references.filter((r) => r.ns === "unit").map((r) => r.path[0]) : [],
+  );
+  return [...new Set(fields)];
 }
 
 /** The unit loop the item is in (through conditions), if any. */

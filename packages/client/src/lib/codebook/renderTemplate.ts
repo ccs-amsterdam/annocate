@@ -2,6 +2,7 @@ import {
   outputText,
   parseTemplate,
   parseTemplateBlocks,
+  referenceText,
   type TemplateNode,
   type OutputSuffix,
   type ReferenceScope,
@@ -20,6 +21,8 @@ export interface TemplateValue {
   name?: string;
   /** Stands alone on its line: rendered as a block. */
   block: boolean;
+  /** For a bare `$unit.<field>`: the field, marked on the element (`data-field`) so a question can scroll to it. */
+  field?: string;
 }
 
 /**
@@ -121,7 +124,11 @@ export function prepareTemplate(source: string): { markdown: string; expressions
 
 function toValue(expression: TemplateExpression, value: unknown): TemplateValue {
   const name = expression.suffix === "tokenize" && expression.ref ? expression.ref.path[0] : undefined;
-  return { suffix: expression.suffix, text: outputText(value), name, block: expression.alone };
+  // `{{$unit.x}}` is the same as `$unit.x`
+  const only = expression.references.length === 1 ? expression.references[0] : undefined;
+  const ref = expression.ref ?? (only && expression.script === referenceText(only) ? only : undefined);
+  const field = ref?.ns === "unit" ? ref.path[0] : undefined;
+  return { suffix: expression.suffix, text: outputText(value), name, block: expression.alone, ...(field ? { field } : {}) };
 }
 
 /**

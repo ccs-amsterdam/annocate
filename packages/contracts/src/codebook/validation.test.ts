@@ -373,6 +373,13 @@ describe("reference validation", () => {
     expect(messages([unitLoop("l", [span], "$const.text::tokenize", { text: "a b c" })])).toEqual([]);
   });
 
+  it("checks a question's field to show: shown in the layout, only in a loop", () => {
+    const q = (field: string) => questionVar("q", { ...confirmVariable, field });
+    expect(messages([unitLoop("l", [q("text")], "# $unit.headline\n\n$unit.text")])).toEqual([]);
+    expect(messages([unitLoop("l", [q("body")], "$unit.text")])).toEqual(["Field 'body' is not shown in the layout (as $unit.body)"]);
+    expect(messages([q("text")])).toEqual(["A field to show only works for questions in a unit loop"]);
+  });
+
   it("checks blocks: conditions, from stages (which make earlier loop answers available) and their structure", () => {
     const group = questionVar("group", select(["a", "b"]));
     const loop = (template: string) => [group, unitLoop("l", [questionVar("sentiment", select(["pos", "neg"])), questionVar("topics")], template)];

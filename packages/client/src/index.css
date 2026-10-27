@@ -277,3 +277,25 @@
     scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent) transparent;
   }
 }
+
+/* A unit field a question points at (UnitFields `focusField`): a short highlight. */
+.field-focus {
+  animation: fieldFocus 1.6s ease-out;
+  border-radius: 4px;
+}
+@keyframes fieldFocus {
+  0%,
+  30% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 55%, transparent);
+    background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-focus {
+    animation: none;
+  }
+}

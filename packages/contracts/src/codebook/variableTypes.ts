@@ -20,6 +20,10 @@ export const VariableBaseSchema = z.object({
     .boolean()
     .optional()
     .describe("If true, the instruction is automatically shown the first time this variable appears."),
+  field: z
+    .string()
+    .optional()
+    .describe("In a unit loop: the unit field to scroll to and highlight when this question comes up (shown in the layout as $unit.<field>). Span questions use their column."),
 });
 
 export const NOMINAL_LAYOUTS = ["auto", "flex", "row", "grid", "dropdown"] as const;

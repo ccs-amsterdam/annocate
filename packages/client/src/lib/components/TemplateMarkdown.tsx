@@ -37,12 +37,22 @@ const INLINE_MARKDOWN: Components = { p: ({ children }) => <>{children}</> };
 
 function TemplateValueView({ value, block }: { value: TemplateValue; block: boolean }) {
   const annotation = useSpanAnnotation();
+  // A unit field's element is marked (data-field), so a question can scroll to it (UnitFields).
+  const field = value.field ? { "data-field": value.field } : {};
   const wrap = (content: ReactNode, pre = true) =>
-    block ? <div className={pre ? "whitespace-pre-wrap" : undefined}>{content}</div> : <span className={pre ? "whitespace-pre-wrap" : undefined}>{content}</span>;
+    block ? (
+      <div className={pre ? "whitespace-pre-wrap" : undefined} {...field}>
+        {content}
+      </div>
+    ) : (
+      <span className={pre ? "whitespace-pre-wrap" : undefined} {...field}>
+        {content}
+      </span>
+    );
 
   switch (value.suffix) {
     case "image":
-      return value.text ? <img src={value.text} alt={value.name ?? ""} className="max-w-full" /> : null;
+      return value.text ? <img src={value.text} alt={value.name ?? ""} className="max-w-full" {...field} /> : null;
     case "markdown":
       return wrap(
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={block ? undefined : INLINE_MARKDOWN}>

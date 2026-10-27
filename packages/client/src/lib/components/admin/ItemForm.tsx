@@ -72,6 +72,7 @@ export function ItemForm({
   availableQuestions = [],
   loopConstants = null,
   unitFields = [],
+  loopFields,
   readOnly = false,
   validationIssues = [],
   isInsideLoop = false,
@@ -86,6 +87,8 @@ export function ItemForm({
   loopConstants?: string[] | null;
   /** The job's unit fields (completions in a loop's template). */
   unitFields?: string[];
+  /** For a question in a loop: the unit fields its layout shows (what "Show field" can point at). */
+  loopFields?: string[];
   readOnly?: boolean;
   validationIssues?: CodebookValidationIssue[];
   isInsideLoop?: boolean;
@@ -147,6 +150,13 @@ export function ItemForm({
             unitVariableNames={unitVariableNames}
             onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
           />
+          {isInsideLoop && loopFields && (
+            <ShowFieldSelect
+              variable={item.variable}
+              loopFields={loopFields}
+              onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
+            />
+          )}
           {/* Reference problems in the question and instruction texts, and others about the answer type */}
           <IssueList issues={issuesAt(validationIssues, "variable")} />
         </>
@@ -227,6 +237,42 @@ function EndItemFields({
         />
         <IssueList issues={issuesAt(issues, "redirectUrl")} />
       </div>
+    </div>
+  );
+}
+
+/** "Show field": the unit field to scroll to when the question comes up (docs/client.md §3, "Field markers"). */
+function ShowFieldSelect({
+  variable,
+  loopFields,
+  onChange,
+}: {
+  variable: AnyVariableType;
+  loopFields: string[];
+  onChange: (variable: AnyVariableType) => void;
+}) {
+  const field = "field" in variable ? variable.field : undefined;
+  const fields = [...new Set([...loopFields, ...(field ? [field] : [])])];
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold text-foreground">Show field (optional)</label>
+      <select
+        className="h-9 w-fit rounded-md border border-input bg-background px-3 text-xs"
+        value={field ?? ""}
+        onChange={(e) => {
+          const next = { ...variable, field: e.target.value } as AnyVariableType & { field?: string };
+          if (!next.field) delete next.field;
+          onChange(next);
+        }}
+      >
+        <option value="">{variable.type === "span" ? `Its text (${variable.column || "none"})` : "None"}</option>
+        {fields.map((f) => (
+          <option key={f} value={f}>
+            {f}
+          </option>
+        ))}
+      </select>
+      <p className="text-[11px] text-muted-foreground">When this question comes up, the unit scrolls to this field and highlights it.</p>
     </div>
   );
 }

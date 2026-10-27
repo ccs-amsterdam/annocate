@@ -126,6 +126,12 @@ templates with the same syntax.
   sits between two marker paragraphs that `remarkTemplateValues` turns
   into a `<template-style>` element. `JobManager` passes the question on
   screen and the loop's question order for `from`.
+- **Field markers**: the element of every bare `$unit.<field>` value has
+  `data-field="<field>"` (an attribute, not an `id`: a field may be used
+  twice, and ids could clash with the app's). A question's optional
+  `field` (in the form: "Show field"; a span question uses its `column`)
+  makes `UnitFields` scroll that field into view and highlight it briefly
+  when the question comes up. Validation checks the layout shows it.
 - **`constants`**: named strings versioned with the codebook. Used for
   annotatable text that isn't a unit column, and for longer texts used in
   blocks (e.g. a banner per experimental group).

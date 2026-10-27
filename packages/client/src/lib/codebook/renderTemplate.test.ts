@@ -42,7 +42,7 @@ describe("renderTemplate", () => {
 
   it("names the field of a ::tokenize value", async () => {
     const rendered = await renderTemplate("$unit.body::tokenize", scope({ body: "a b" }));
-    expect(rendered.values).toEqual([{ suffix: "tokenize", text: "a b", name: "body", block: true }]);
+    expect(rendered.values).toEqual([{ suffix: "tokenize", text: "a b", name: "body", block: true, field: "body" }]);
   });
 
   it("uses an ExpressionCache, still returning correct results", async () => {
