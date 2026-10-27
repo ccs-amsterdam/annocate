@@ -1,6 +1,7 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import {
   ALL_UNITS_UNITSET,
+  supportsAgreement,
   type AnyVariableType,
   type CodebookItem,
   type CodebookValidationIssue,
@@ -18,8 +19,12 @@ import { issuesAt } from "./issues";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 
-function questionNames(items: CodebookItem[]): string[] {
-  return items.flatMap((i) => (i.type === "condition" ? questionNames(i.children as CodebookItem[]) : [i.name]));
+/** The loop's questions an agreement rule can compare (contracts `supportsAgreement`). */
+function agreementQuestions(items: CodebookItem[]): string[] {
+  return items.flatMap((i) => {
+    if (i.type === "condition") return agreementQuestions(i.children as CodebookItem[]);
+    return "variable" in i && supportsAgreement(i.variable) ? [i.name] : [];
+  });
 }
 
 /**
@@ -42,7 +47,7 @@ export function UnitLoopForm({
   onChange: (loop: UnitLoopItem) => void;
 }) {
   const branches = loop.units ?? [{ sources: [{ unitset: ALL_UNITS_UNITSET }] }];
-  const loopQuestions = questionNames(loop.children as CodebookItem[]);
+  const loopQuestions = agreementQuestions(loop.children as CodebookItem[]);
   const setBranches = (units: UnitBranch[]) => onChange({ ...loop, units });
   const setBranch = (b: number, branch: UnitBranch) => setBranches(branches.map((x, i) => (i === b ? branch : x)));
   const issues = issuesAt(validationIssues, "units");
@@ -77,7 +82,6 @@ export function UnitLoopForm({
   return (
     <div className="flex flex-col gap-3">
       <datalist id="unitset-names">
-        <option value={ALL_UNITS_UNITSET}>All units</option>
         {unitsets.map((u) => (
           <option key={u.id} value={u.name} />
         ))}
@@ -184,7 +188,13 @@ function SourcesEditor({
           onRemove={sources.length > 1 ? () => onChange(sources.filter((_, i) => i !== s)) : undefined}
         />
       ))}
-      <Button type="button" variant="ghost" size="sm" className="self-start text-xs" onClick={() => onChange([...sources, { unitset: "" }])}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="self-start text-xs"
+        onClick={() => onChange([...sources, { unitset: ALL_UNITS_UNITSET }])}
+      >
         <Plus className="h-3.5 w-3.5" /> Unitset
       </Button>
     </div>
@@ -209,13 +219,27 @@ function SourceEditor({
   return (
     <div className="flex flex-col gap-2 rounded border border-border/60 bg-muted/20 p-2">
       <div className="flex items-center gap-2">
-        <Input
-          list="unitset-names"
-          className="h-8 text-xs"
-          placeholder="unitset"
-          value={source.unitset}
-          onChange={(e) => onChange({ ...source, unitset: e.target.value })}
-        />
+        {/* Empty means every unit of the job (stored as __all__); the list shows the unitsets while it is empty. */}
+        <div className="relative flex-1">
+          <Input
+            list="unitset-names"
+            className="h-8 pr-7 text-xs"
+            placeholder="All units"
+            value={source.unitset === ALL_UNITS_UNITSET ? "" : source.unitset}
+            onChange={(e) => onChange({ ...source, unitset: e.target.value || ALL_UNITS_UNITSET })}
+          />
+          {source.unitset !== ALL_UNITS_UNITSET && (
+            <button
+              type="button"
+              title="Use all units"
+              aria-label="Use all units"
+              onClick={() => onChange({ ...source, unitset: ALL_UNITS_UNITSET })}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
         <select
           className={selectClass}
           value={dynamic ? "dynamic" : "fixed"}

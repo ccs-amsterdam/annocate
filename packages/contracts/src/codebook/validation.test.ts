@@ -60,7 +60,7 @@ describe("validateCodebookItems", () => {
   it("checks that loop branches refer to preceding coder variables", () => {
     const slot = questionVar("slot", { type: "auto", source: "invite", options: [{ value: "1" }, { value: "2" }] });
     const loop = (units: unknown): TopLevelItem =>
-      ({ type: "unit_loop", name: "loop", units, layout: { template: "" }, children: [questionVar("q1")] }) as TopLevelItem;
+      ({ type: "unit_loop", name: "loop", units, layout: { template: "" }, children: [questionVar("q1", select(["a", "b"])), questionVar("c1")] }) as TopLevelItem;
 
     const valid: TopLevelItem[] = [
       slot,
@@ -100,6 +100,11 @@ describe("validateCodebookItems", () => {
     expect(
       messages([slot, loop([{ sources: [{ unitset: "a", dynamic: { maxCoders: 3, agreement: { variable: "nope", minAgree: 2 } } }] }])]),
     ).toEqual(["Agreement variable 'nope' is not a question in this loop"]);
+    expect(
+      messages([slot, loop([{ sources: [{ unitset: "a", dynamic: { maxCoders: 3, agreement: { variable: "c1", minAgree: 2 } } }] }])]),
+    ).toEqual([
+      `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
+    ]);
   });
 
   it("requires maxCoders with an agreement rule", () => {

@@ -28,6 +28,10 @@ An example consists of:
 - a title, a category, a short description of what it shows, and what to
   try (e.g. "open the invite link in a private window").
 
+Unitsets in an example must each show something: a set that holds every
+unit is the same as "All units" (the default) and only confuses. The current
+demo has one (`main`); the example made from it drops it.
+
 Examples live as files in the repository (`packages/server/examples/<id>/`),
 reviewed and versioned with the code. Units are texts written for the
 examples, so there are no copyright questions.

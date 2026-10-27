@@ -77,17 +77,23 @@ export function itemPath(items: (TopLevelItem | InLoopItem)[], identifier: strin
   return null;
 }
 
-/** The item a validation issue's path points into (following its numeric segments), if any. */
+/**
+ * The item a validation issue's path points into, if any: the path starts
+ * with an item index, and goes deeper only through `children` (so
+ * `[1, "units", 0, ...]` is about item 1 itself, not its first child).
+ */
 export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string | number)[]): CodebookItem | null {
-  let current: unknown = items;
+  let list: unknown = items;
   let found: CodebookItem | null = null;
-  for (const segment of path) {
-    if (typeof segment !== "number") continue;
-    if (Array.isArray(current)) current = current[segment];
-    else if (current && typeof current === "object" && "children" in current && Array.isArray(current.children)) {
-      current = current.children[segment];
-    } else break;
-    if (current && typeof current === "object" && "type" in current) found = current as CodebookItem;
+  for (let i = 0; i < path.length; i++) {
+    const index = path[i];
+    if (typeof index !== "number" || !Array.isArray(list)) break;
+    const item = list[index] as unknown;
+    if (!item || typeof item !== "object" || !("type" in item)) break;
+    found = item as CodebookItem;
+    if (path[i + 1] !== "children") break;
+    list = (item as { children?: unknown }).children;
+    i++;
   }
   return found;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyHelper, buildScope, type AnyVariableType, type HelperMethod } from "@annotinder/contracts";
-import { evaluateCondition } from "./conditions";
+import { describeCondition, evaluateCondition } from "./conditions";
 import { evaluateScript, scriptSyntaxError } from "./expression";
 
 const questions = new Map<string, AnyVariableType>([
@@ -80,5 +80,20 @@ describe("scriptSyntaxError", () => {
     expect(await scriptSyntaxError("$var.a.value === 'x'")).toBeNull();
     expect(await scriptSyntaxError("while (true) {}")).not.toBeNull();
     expect(await scriptSyntaxError("$var.a.value ===")).not.toBeNull();
+  });
+});
+
+describe("describeCondition", () => {
+  it("reads simple conditions in words, and shows other scripts as they are", () => {
+    const read = (script: string) => describeCondition({ script });
+    expect(read(`$var.group.is("experiment")`)).toBe(`group is "experiment"`);
+    expect(read(`$var.age.lt(16)`)).toBe("age < 16");
+    expect(read(`$var.age.between(18, 65) && !$var.consent.answered`)).toBe("age between 18 and 65 and consent is not answered");
+    expect(read(`!$var.role.isAny("a", "b") || ($var.topics.count() >= 2 && $var.interest.items.tech.gte(4))`)).toBe(
+      `role is none of "a", "b" or (topics count ≥ 2 and interest › tech ≥ 4)`,
+    );
+    expect(read(`!($var.a.is("x") || $var.b.answered)`)).toBe(`not (a is "x" or b is answered)`);
+    expect(read("true")).toBe("always");
+    expect(read(`$var.role.value === "x"`)).toBe(`$var.role.value === "x"`);
   });
 });

@@ -6,6 +6,7 @@ import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
 import { getItemKey, insertableTypesNextTo, type TreeNode } from "./utils";
+import { parseSimpleCondition } from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
 import { loopUnitsSummary } from "../../../codebook/tree";
@@ -114,7 +115,14 @@ function ItemLabel({
       <ItemIcon item={item} />
       {item.type === "condition" && !item.label?.trim() ? (
         // Conditions have no name: shown by their condition, unless they have a label.
-        <span className="truncate px-1.5 py-0.5 font-mono text-xs text-foreground/80">if {describeCondition(item.condition)}</span>
+        <span
+          className={cn(
+            "truncate px-1.5 py-0.5 font-medium text-foreground",
+            parseSimpleCondition(item.condition.script) ? "text-sm" : "font-mono text-xs",
+          )}
+        >
+          if {describeCondition(item.condition)}
+        </span>
       ) : (
         <span className={cn("truncate px-1.5 py-0.5 text-foreground", selected ? "font-semibold" : "font-medium")}>
           {itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}

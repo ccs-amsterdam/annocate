@@ -2,9 +2,10 @@ import { TopLevelItemSchema, type CodebookItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { migrateCodebookItems } from "./migrate.js";
-import type { UnitBranch } from "./unitLoop.js";
+import { supportsAgreement, type UnitBranch } from "./unitLoop.js";
 import {
   METHOD_TEXT,
+  describeQuestion,
   questionValues,
   extractReferences,
   parseTemplate,
@@ -206,6 +207,11 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         const agreement = source?.dynamic?.agreement?.variable;
         if (agreement && !loopQuestions.has(agreement)) {
           issue([...path, "dynamic", "agreement", "variable"], `Agreement variable '${agreement}' is not a question in this loop`);
+        } else if (agreement && !supportsAgreement(questions.get(agreement)!)) {
+          issue(
+            [...path, "dynamic", "agreement", "variable"],
+            `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "${agreement}" is ${describeQuestion(questions.get(agreement)!)}`,
+          );
         }
       });
     });

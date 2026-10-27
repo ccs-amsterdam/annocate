@@ -11,7 +11,7 @@ import {
   type Condition,
 } from "@annotinder/contracts";
 import { describe, expect, it } from "vitest";
-import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "./tree";
+import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTree, isInsideUnitLoop, itemAtPath, keyOf } from "./tree";
 
 /** Items by name; conditions (which have none) by their editor key. */
 const id = (item: CodebookItem) => itemName(item) ?? keyOf(item);
@@ -119,5 +119,13 @@ describe("tree utilities", () => {
       expect(await names({ sentiment: code("A") }, 1)).toEqual(["sentiment", "followup"]);
       expect(await names({ sentiment: code("B") }, 2)).toEqual(["sentiment", "long"]);
     });
+  });
+
+  it("itemAtPath follows only children", () => {
+    // items[3] is the loop; its first child is "sentiment".
+    expect(id(itemAtPath(items, [3, "units", 0, "sources", 0, "unitset"])!)).toBe("main_loop");
+    expect(id(itemAtPath(items, [3, "children", 0, "variable", "question"])!)).toBe("sentiment");
+    expect(id(itemAtPath(items, [3, "children", 1, "children", 0])!)).toBe("followup");
+    expect(itemAtPath(items, ["x"])).toBeNull();
   });
 });

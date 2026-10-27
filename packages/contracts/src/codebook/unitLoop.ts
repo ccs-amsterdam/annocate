@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { ConditionSchema } from "./condition.js";
+import type { AnyVariableType } from "./variableTypes.js";
 import { outputText, parseTemplate, referenceValue, type ReferenceScope, type Reference } from "./references.js";
 
 // How a unit_loop gets its units (docs/architecture.md §6). The codebook
@@ -9,6 +10,16 @@ import { outputText, parseTemplate, referenceValue, type ReferenceScope, type Re
 // coder has which variable value (e.g. via an invitation), lives outside the
 // codebook, so a codebook can be shared and reproduced without revealing
 // either.
+
+/**
+ * Whether coders' answers to a question can be compared for an agreement
+ * rule: one categorical answer (nominal without `multiple`, ordinal, or a
+ * swipe). For numbers, several answers or scale items "the same answer" is
+ * less obvious; not supported until someone needs it.
+ */
+export function supportsAgreement(variable: AnyVariableType): boolean {
+  return (variable.type === "nominal" && !variable.multiple) || variable.type === "ordinal" || variable.type === "annotinder";
+}
 
 /** Unitset name meaning "every unit in the job". */
 export const ALL_UNITS_UNITSET = "__all__";
