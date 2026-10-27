@@ -59,6 +59,33 @@ describe("renderTemplate", () => {
   });
 });
 
+describe("renderTemplate blocks", () => {
+  const strip = (markdown: string) => markdown.replace(/\uE000\d+\uE001/g, "#").replace(/\s+/g, " ").trim();
+
+  it("shows the first if branch whose condition holds, else the else", async () => {
+    const template = "::: if $var.role.is('teacher')\nT\n::: else if $var.role.is('student')\nS $unit.a\n::: else\nE\n:::\nend";
+    const rendered = await renderTemplate(template, scope({ a: "x" }));
+    expect(strip(rendered.markdown)).toBe("S # end");
+    expect(rendered.values.map((v) => v.text)).toEqual(["x"]);
+  });
+
+  it("shows the last from stage whose question is reached", async () => {
+    const template = "top\n::: from b\nB\n::: from c\nC\n:::";
+    const at = (current: string) => renderTemplate(template, scope({}), undefined, "t", { current, order: ["a", "b", "c"] });
+    expect(strip((await at("a")).markdown)).toBe("top");
+    expect(strip((await at("b")).markdown)).toBe("top B");
+    expect(strip((await at("c")).markdown)).toBe("top C");
+    expect(strip((await renderTemplate(template, scope({}))).markdown)).toBe("top");
+  });
+
+  it("puts style blocks between marker paragraphs, with their styles", async () => {
+    const rendered = await renderTemplate("::: style color: red; font-weight: bold\nHi\n:::", scope({}));
+    expect(rendered.styles).toEqual([{ color: "red", fontWeight: "bold" }]);
+    expect(rendered.markdown).toContain("\uE0100\uE011\n\nHi\n");
+    expect(rendered.markdown).toContain("\uE012");
+  });
+});
+
 describe("staticTemplate", () => {
   it("shows each value's source", () => {
     expect(staticTemplate("Hi $var.role.value").values.map((v) => v.text)).toEqual(["$var.role.value"]);

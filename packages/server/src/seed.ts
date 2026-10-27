@@ -168,9 +168,13 @@ export async function seed(db: Sql): Promise<void> {
       units: [{ mode: "all", unitset: "main" }],
       layout: {
         template:
-          "{{ $var.group.is('experiment') ? $const.experiment_banner : $const.control_banner }}::markdown\n\n" +
-          "{{ $var.experience.is(1) ? $const.beginner_tip : '' }}::markdown\n\n" +
-          "# $unit.headline\n\n$unit.text::tokenize",
+          // Blocks (docs/client.md §3): a banner per experimental group, a
+          // tip for beginners in a style, and from the topics question on a
+          // reminder of the earlier answer.
+          "::: if $var.group.is('experiment')\n$const.experiment_banner::markdown\n::: else\n$const.control_banner::markdown\n:::\n\n" +
+          ":::: if $var.experience.is(1)\n::: style color: var(--muted-foreground); font-size: 90%\n$const.beginner_tip::markdown\n:::\n::::\n\n" +
+          "# $unit.headline\n\n$unit.text::tokenize\n\n" +
+          ":::: from topics\n::: style margin-top: 1em; font-size: 90%; opacity: 0.8\nYou rated the tone of this article as **$var.sentiment.label**.\n:::\n::::",
         constants: {
           control_banner:
             "> **Control group.** This banner comes from the unit layout. It depends on the group you were randomly assigned to.",

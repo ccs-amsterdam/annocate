@@ -15,7 +15,7 @@ import { branchUnitsets, buildScope, loopTitle, unitLoops, collectQuestions, fil
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
-import { computeLoopSteps, computeTopLevelSteps, type StepContext } from "../codebook/tree";
+import { computeLoopSteps, computeTopLevelSteps, flattenTree, type StepContext } from "../codebook/tree";
 import { renderTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
 import type { QuestionTexts } from "../components/Question";
 
@@ -663,7 +663,10 @@ export class JobManager {
     try {
       const scope = buildScope(this.questions, this.unitVisible, unit.data, loop.layout.constants);
       const [template, texts] = await Promise.all([
-        renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`),
+        renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`, {
+          current: step && "name" in step ? step.name : null,
+          order: loopQuestionNames(loop),
+        }),
         this.questionTexts(step, scope),
       ]);
       this.publish({
@@ -942,4 +945,9 @@ export class JobManager {
     this.snapshot = { ...this.snapshot, navigation: this.buildNavigation() };
     for (const listener of this.listeners) listener();
   }
+}
+
+/** A loop's questions in codebook order (through conditions), for `::: from` blocks in its layout. */
+function loopQuestionNames(loop: UnitLoopItem): string[] {
+  return flattenTree(loop.children).flatMap((item) => (item.type === "condition" ? [] : (itemName(item) ?? [])));
 }

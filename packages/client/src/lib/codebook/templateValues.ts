@@ -1,5 +1,5 @@
 import type { Nodes, Parent, Root, RootContent } from "mdast";
-import { PLACEHOLDER, type TemplateValue } from "./renderTemplate";
+import { PLACEHOLDER, STYLE_CLOSE, STYLE_OPEN, type TemplateValue } from "./renderTemplate";
 
 /**
  * A remark plugin (docs/client.md §3) that turns the placeholders of a
@@ -7,7 +7,8 @@ import { PLACEHOLDER, type TemplateValue } from "./renderTemplate";
  * elements, which `TemplateMarkdown` renders by the value's type. A
  * paragraph holding only a block value becomes that value. Placeholders in
  * link and image URLs, titles and alt texts are filled in with the value's
- * text.
+ * text. The content between the marker paragraphs of a `::: style` block
+ * becomes a `<template-style index=N>` element.
  */
 export function remarkTemplateValues(values: TemplateValue[]) {
   const fill = (s: string) => s.replace(PLACEHOLDER, (_, i: string) => values[Number(i)]?.text ?? "");
@@ -49,8 +50,36 @@ export function remarkTemplateValues(values: TemplateValue[]) {
       transform(child);
       children.push(child);
     }
-    parent.children = children;
+    parent.children = groupStyles(children);
   };
 
   return (tree: Root) => transform(tree);
+}
+
+/** The text of a paragraph that is only text (a marker), else null. */
+function markerOf(node: RootContent): string | null {
+  return node.type === "paragraph" && node.children.length === 1 && node.children[0].type === "text" ? node.children[0].value.trim() : null;
+}
+
+/** Groups the nodes between style marker paragraphs into `template-style` elements (nested blocks nest). */
+function groupStyles(nodes: RootContent[]): RootContent[] {
+  const root: RootContent[] = [];
+  const stack: { index: number; children: RootContent[] }[] = [{ index: -1, children: root }];
+  const close = () => {
+    const frame = stack.pop()!;
+    stack[stack.length - 1].children.push({
+      type: "templateStyle",
+      data: { hName: "template-style", hProperties: { index: String(frame.index) } },
+      children: frame.children,
+    } as unknown as RootContent);
+  };
+  for (const node of nodes) {
+    const marker = markerOf(node);
+    const open = marker === null ? null : STYLE_OPEN.exec(marker);
+    if (open) stack.push({ index: Number(open[1]), children: [] });
+    else if (marker === STYLE_CLOSE && stack.length > 1) close();
+    else stack[stack.length - 1].children.push(node);
+  }
+  while (stack.length > 1) close();
+  return root;
 }

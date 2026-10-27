@@ -11,6 +11,8 @@ export interface TemplateNames {
   constants: string[];
   /** Questions the template may use (`$var.<q>.value`). */
   questions: string[];
+  /** The loop's questions, for `::: from`. */
+  loopQuestions: string[];
 }
 
 export interface MonacoTemplateProps {
@@ -23,7 +25,7 @@ export interface MonacoTemplateProps {
 }
 
 // The names of the template being edited (one editor is open at a time).
-let current: TemplateNames = { fields: [], constants: [], questions: [] };
+let current: TemplateNames = { fields: [], constants: [], questions: [], loopQuestions: [] };
 
 const SUFFIXES = [
   ["text", "literal text (default)"],
@@ -40,6 +42,8 @@ monaco.languages.register({ id: LANGUAGE });
 monaco.languages.setMonarchTokensProvider(LANGUAGE, {
   tokenizer: {
     root: [
+      // Block fences (`::: if ...`); the rest of the line is highlighted as usual.
+      [/^\s{0,3}:{3,}\s*(else\s+if|if|else|from|style)?/, "keyword.fence"],
       [/\\\$/, ""],
       [/\{\{/, { token: "delimiter.expression", next: "@expression" }],
       [/\$(unit|const|var)(\.\w+)*/, "variable.reference"],
@@ -58,10 +62,18 @@ monaco.languages.setMonarchTokensProvider(LANGUAGE, {
   },
 });
 
+const FENCES = [
+  ["if ", "show this part only if a condition holds"],
+  ["else if ", "else, if another condition holds"],
+  ["else", "else"],
+  ["from ", "show this part from a question of the loop on"],
+  ["style ", "this part with CSS, e.g. color: darkred; font-size: 120%"],
+] as const;
+
 // Completions: after `$` the kinds of references, after
 // `$unit.`, `$const.` or `$var.` the names, after `::` the suffixes.
 monaco.languages.registerCompletionItemProvider(LANGUAGE, {
-  triggerCharacters: ["$", ".", ":"],
+  triggerCharacters: ["$", ".", ":", " "],
   provideCompletionItems(model, position) {
     const before = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
     const word = model.getWordUntilPosition(position);
@@ -73,6 +85,18 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
       insertText,
       range,
     });
+    if (/^\s{0,3}:{3,}\s*from\s+\w*$/.test(before)) {
+      return { suggestions: current.loopQuestions.map((n) => item(n, "question of this loop", monaco.languages.CompletionItemKind.Variable)) };
+    }
+    if (/^\s{0,3}:{3,}\s*\w*$/.test(before)) {
+      return {
+        suggestions: FENCES.map(([keyword, detail]) => ({
+          ...item(keyword.trim(), detail, monaco.languages.CompletionItemKind.Keyword, keyword),
+          ...(keyword === "from " ? { command: { id: "editor.action.triggerSuggest", title: "questions" } } : {}),
+        })),
+      };
+    }
+    if (before.endsWith(" ")) return { suggestions: [] };
     const ref = /\$(unit|const|var)\.\w*$/.exec(before);
     if (ref) {
       const names =

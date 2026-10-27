@@ -10,6 +10,7 @@ export * from "./common.js";
 export * from "./codebook/options.js";
 export * from "./codebook/variableTypes.js";
 export * from "./codebook/references.js";
+export * from "./codebook/templateBlocks.js";
 export * from "./codebook/condition.js";
 export * from "./codebook/layout.js";
 export * from "./codebook/answerLayout.js";

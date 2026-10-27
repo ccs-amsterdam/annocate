@@ -92,10 +92,43 @@ templates with the same syntax.
   markdown, an `<img>`, or `SelectableText`. Placeholders in link and image
   URLs are filled in with the value's text. (Not `remark-directive`: it
   turns ordinary text like `10:30` or `note:this` into directives.)
+- **Blocks** (contracts `templateBlocks.ts`): lines starting with `:::`,
+  as Pandoc's fenced divs, show part of a template conditionally or
+  styled:
+
+  ```
+  ::: if $var.group.is('experiment')      :::: from topics
+  $const.experiment_banner::markdown      ::: style font-size: 90%
+  ::: else if <script>                    You rated it $var.sentiment.label
+  ...                                     :::
+  ::: else                                ::::
+  $const.control_banner::markdown
+  :::
+  ```
+
+  - `if` / `else if` / `else`: the first branch whose condition holds (the
+    same scripts as condition items) shows.
+  - `from <question>`: shows from that question of the loop on (also when
+    it is skipped); consecutive `from` fences form a chain of which the
+    last reached stage shows, so a layout can change as the coder goes
+    through the unit's questions. Only in a loop's layout. Inside a stage
+    the loop's questions before its question can be used (validation).
+  - `style <css>`: the content in a `<div>` with that inline CSS (a React
+    style object: per property, so it can't add selectors or run code;
+    `position: fixed/sticky` is refused so text stays in the unit area).
+    Researchers are trusted with how their job looks.
+  - A bare `:::` closes the innermost block and must have as many colons
+    as its opening fence, so nested blocks use more colons outside.
+    Fence lines are not text; fences in code stay literal.
+
+  Rendering (`renderTemplate`): conditions are evaluated (cached, like
+  values), the chosen text is put together, and a style block's content
+  sits between two marker paragraphs that `remarkTemplateValues` turns
+  into a `<template-style>` element. `JobManager` passes the question on
+  screen and the loop's question order for `from`.
 - **`constants`**: named strings versioned with the codebook. Used for
-  annotatable text that isn't a unit column, and for conditional content
-  (e.g. per experimental group:
-  `{{ $var.group.is('a') ? $const.intro_a : $const.intro_b }}::markdown`).
+  annotatable text that isn't a unit column, and for longer texts used in
+  blocks (e.g. a banner per experimental group).
 - `$unit` and `$const` only exist inside a unit loop; outside, texts can
   only use `$var`.
 

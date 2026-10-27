@@ -3,6 +3,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { migrateCodebookItems } from "./migrate.js";
 import { supportsAgreement, unitsetHasReferences, type UnitBranch } from "./unitLoop.js";
+import { parseTemplateBlocks, type FromStage, type TemplateNode } from "./templateBlocks.js";
 import {
   METHOD_TEXT,
   describeQuestion,
@@ -42,6 +43,8 @@ interface RefContext {
   inside?: ReadonlySet<string>;
   /** Checking a branch `when` or unitset name: only coder-level `$var` refs from before the loop. */
   branch?: boolean;
+  /** In a loop's layout: the loop's questions in order (`::: from` stages make the ones before them available). */
+  loopOrder?: string[];
 }
 
 /**
@@ -175,23 +178,67 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     if (typeof source !== "string") return tokenized;
     const parsed = parseTemplate(source);
     refErrors(parsed.errors, ctx.path);
+
+    // Blocks: their conditions, and `from` stages, which make the loop's
+    // questions before their question available inside them.
+    const blocks = parseTemplateBlocks(source);
+    refErrors(blocks.errors, ctx.path);
+    if (blocks.hasBlocks && (kind === "unitset" || kind === "url")) issue(ctx.path, "Blocks (:::) can't be used here");
+    const stages: FromStage[] = [];
+    const conditions: { script: string; at: number }[] = [];
+    const walkBlocks = (nodes: TemplateNode[]) => {
+      for (const node of nodes) {
+        if (node.type === "if") {
+          for (const b of node.branches) {
+            if (b.script) conditions.push({ script: b.script, at: b.start });
+            walkBlocks(b.body);
+          }
+        } else if (node.type === "from") {
+          for (const stage of node.stages) {
+            stages.push(stage);
+            walkBlocks(stage.body);
+          }
+        } else if (node.type === "style") walkBlocks(node.body);
+      }
+    };
+    walkBlocks(blocks.nodes);
+    for (const stage of stages) {
+      if (kind !== "layout") issue(ctx.path, "::: from only works in a unit layout");
+      else if (!ctx.loopOrder?.includes(stage.question)) issue(ctx.path, `::: from ${stage.question}: '${stage.question}' is not a question of this loop`);
+    }
+    /** The context at a place in the template: inside `from` stages, the loop's questions before theirs are available too. */
+    const ctxAt = (at: number): RefContext => {
+      const order = ctx.loopOrder ?? [];
+      const before = stages
+        .filter((stage) => at >= stage.bodyStart && at < stage.bodyEnd && order.includes(stage.question))
+        .flatMap((stage) => order.slice(0, order.indexOf(stage.question)));
+      return before.length ? { ...ctx, available: new Set([...ctx.available, ...before]) } : ctx;
+    };
+    for (const { script, at } of conditions) {
+      const here = ctxAt(at);
+      checkScript(script, here);
+      const simple = parseSimpleCondition(script);
+      if (simple) for (const call of simpleConditionCalls(simple)) checkCall(call, here);
+    }
+
     for (const segment of parsed.segments) {
       if (segment.type !== "expression") continue;
+      const here = ctxAt(segment.start);
       if (kind === "unitset" || kind === "url") {
         const what = kind === "url" ? "Redirect URLs" : "Unitset names";
-        if (!segment.ref) issue(ctx.path, `${what} can only use $var references, not {{ }}`);
-        else if (segment.ref.suffix) issue(ctx.path, `${what} can't use ::${segment.ref.suffix}`);
+        if (!segment.ref) issue(here.path, `${what} can only use $var references, not {{ }}`);
+        else if (segment.ref.suffix) issue(here.path, `${what} can't use ::${segment.ref.suffix}`);
       } else {
-        refErrors(extractReferences(segment.script).errors, ctx.path);
+        refErrors(extractReferences(segment.script).errors, here.path);
       }
       for (const ref of segment.references) {
-        const shape = checkRef(ref, ctx);
-        if (kind === "unitset" && shape?.ok && shape.array) issue(ctx.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
-        if (kind === "url" && ref.ns !== "var") issue(ctx.path, `${referenceText(ref)}: redirect URLs can only use $var references`);
+        const shape = checkRef(ref, here);
+        if (kind === "unitset" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
+        if (kind === "url" && ref.ns !== "var") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var references`);
       }
       if (segment.suffix === "tokenize") {
-        if (kind !== "layout") issue(ctx.path, "::tokenize can only be used in the unit layout");
-        else if (!segment.ref || segment.ref.ns === "var") issue(ctx.path, "::tokenize only works on a bare $unit.<field> or $const.<name>");
+        if (kind !== "layout") issue(here.path, "::tokenize can only be used in the unit layout");
+        else if (!segment.ref || segment.ref.ns === "var") issue(here.path, "::tokenize only works on a bare $unit.<field> or $const.<name>");
         else tokenized.add(segment.ref.path[0]);
       }
     }
@@ -231,7 +278,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     const constants = new Set(Object.keys(loop.layout?.constants ?? {}));
     const tokenized = checkTemplate(
       loop.layout?.template,
-      { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, constants },
+      { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, constants, loopOrder: [...loopQuestions] },
       "layout",
     );
     forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {

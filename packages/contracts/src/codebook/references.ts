@@ -240,12 +240,56 @@ export interface ParsedTemplate {
   errors: ReferenceError[];
 }
 
+/** The kinds of block fence lines: `::: if <script>`, `::: else if <script>`, `::: else`, `::: from <question>`, `::: style <css>`, `:::` (closes). */
+export type FenceKeyword = "if" | "else if" | "else" | "from" | "style" | "close";
+
+/** A block fence line in a template (docs/client.md §3, "Blocks"). */
+export interface TemplateFence {
+  keyword: FenceKeyword | null;
+  /** The number of colons: a block is closed by a fence with as many. */
+  colons: number;
+  /** What follows the keyword (a script, a question, CSS), trimmed. */
+  arg: string;
+  /** Where `arg` starts in the source. */
+  argStart: number;
+  /** The line, from its start to after its newline. */
+  start: number;
+  end: number;
+}
+
+const FENCE_LINE = /^ {0,3}(:{3,})[ \t]*(.*?)[ \t]*$/gm;
+const FENCE_KEYWORD = /^(else\s+if|if|else|from|style)\b\s*/;
+
+/** The block fence lines of a template: lines starting with `:::` (outside code). */
+export function templateFences(source: string): TemplateFence[] {
+  if (!source.includes(":::")) return [];
+  const code = codeRanges(source);
+  const fences: TemplateFence[] = [];
+  for (const m of source.matchAll(FENCE_LINE)) {
+    const start = m.index;
+    if (code.some(([s, e]) => start >= s && start < e)) continue;
+    let end = start + m[0].length;
+    if (source[end] === "\n") end++;
+    const rest = m[2];
+    const afterColons = m[0].indexOf(m[1]) + m[1].length;
+    const tail = m[0].slice(afterColons);
+    const restStart = start + afterColons + (tail.length - tail.trimStart().length);
+    const kw = FENCE_KEYWORD.exec(rest);
+    const keyword: FenceKeyword | null =
+      rest === "" ? "close" : kw ? (/^else\s+if$/.test(kw[1]) ? "else if" : (kw[1] as FenceKeyword)) : null;
+    const argOffset = kw ? kw[0].length : 0;
+    fences.push({ keyword, colons: m[1].length, arg: rest.slice(argOffset).trim(), argStart: restStart + argOffset, start, end });
+  }
+  return fences;
+}
+
 /**
  * Splits a template (the unit layout, a question or instruction text, a
  * unitset name) into literal text and expressions. Syntax: `$unit.x`,
  * `$var.q.value`, `$const.y` or `{{ js }}`, each with an optional
  * `::text|markdown|image|tokenize` suffix. `\$` is a literal `$`; references
- * inside markdown code spans and fences stay literal.
+ * inside markdown code spans and fences stay literal. Block fence lines
+ * (`::: if ...`) are left out: `parseTemplateBlocks` reads them.
  */
 export function parseTemplate(source: string): ParsedTemplate {
   const segments: TemplateSegment[] = [];
@@ -254,6 +298,8 @@ export function parseTemplate(source: string): ParsedTemplate {
   let i = 0;
   const literal = new Set<number>();
   for (const [s, e] of codeRanges(source)) for (let k = s; k < e; k++) literal.add(k);
+  // Block fence lines aren't text (their scripts are parsed with the blocks: templateBlocks.ts).
+  const fenceAt = new Map(templateFences(source).map((f) => [f.start, f.end]));
 
   const push = (expr: Omit<TemplateExpression, "type" | "alone">) => {
     if (text) segments.push({ type: "text", text });
@@ -263,7 +309,9 @@ export function parseTemplate(source: string): ParsedTemplate {
 
   while (i < source.length) {
     const c = source[i];
-    if (literal.has(i)) {
+    if (fenceAt.has(i)) {
+      i = fenceAt.get(i)!;
+    } else if (literal.has(i)) {
       text += c;
       i++;
     } else if (c === "\\" && source[i + 1] === "$") {
@@ -332,7 +380,7 @@ function aloneOnLine(source: string, start: number, end: number): boolean {
 }
 
 /** [start, end) ranges of markdown code fences and inline code spans. */
-function codeRanges(source: string): [number, number][] {
+export function codeRanges(source: string): [number, number][] {
   const ranges: [number, number][] = [];
   // Fences: a line starting with ``` or ~~~ up to a closing fence (or the end)
   const fence = /^ {0,3}(`{3,}|~{3,})[^\n]*$/gm;

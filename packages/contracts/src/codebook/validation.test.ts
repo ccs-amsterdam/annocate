@@ -372,6 +372,23 @@ describe("reference validation", () => {
     ]);
     expect(messages([unitLoop("l", [span], "$const.text::tokenize", { text: "a b c" })])).toEqual([]);
   });
+
+  it("checks blocks: conditions, from stages (which make earlier loop answers available) and their structure", () => {
+    const group = questionVar("group", select(["a", "b"]));
+    const loop = (template: string) => [group, unitLoop("l", [questionVar("sentiment", select(["pos", "neg"])), questionVar("topics")], template)];
+    const ok = "::: if $var.group.is('a')\n$unit.text\n::: else\nB\n:::\n::: from topics\nYou said $var.sentiment.label\n:::";
+    expect(messages(loop(ok))).toEqual([]);
+    expect(messages(loop("You said $var.sentiment.label"))).toEqual(["$var.sentiment.label: 'sentiment' is asked after this point"]);
+    expect(messages(loop("::: from sentiment\n$var.sentiment.label\n:::"))).toEqual([
+      "$var.sentiment.label: 'sentiment' is asked after this point",
+    ]);
+    expect(messages(loop("::: from nope\nx\n:::"))).toEqual(["::: from nope: 'nope' is not a question of this loop"]);
+    expect(messages(loop("::: if $var.group.is('c')\nx\n:::"))).toEqual([expect.stringContaining('"c"')]);
+    expect(messages(loop("::: if $var.group.is('a')\nx"))).toEqual(["::: if is not closed (end it with :::)"]);
+    expect(messages([group, questionVar("q", { ...confirmVariable, question: "::: from group\nx\n:::" })])).toEqual([
+      "::: from only works in a unit layout",
+    ]);
+  });
 });
 
 describe("question types", () => {

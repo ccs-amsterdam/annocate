@@ -26,6 +26,11 @@ import { issuesAt } from "./issues";
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
+/** The names of a loop's questions, in order (through conditions). */
+function questionNames(items: CodebookItem[]): string[] {
+  return items.flatMap((i) => (i.type === "condition" ? questionNames(i.children as CodebookItem[]) : "name" in i ? [i.name] : []));
+}
+
 /** The loop's questions an agreement rule can compare (contracts `supportsAgreement`). */
 function agreementQuestions(items: CodebookItem[]): string[] {
   return items.flatMap((i) => {
@@ -292,7 +297,13 @@ function LayoutTab({
 }) {
   const layout = loop.layout ?? { template: "" };
   const constants = Object.entries(layout.constants ?? {});
-  const names = { fields: unitFields, constants: constants.map(([n]) => n), questions };
+  const loopQuestions = questionNames(loop.children as CodebookItem[]);
+  const names = {
+    fields: unitFields,
+    constants: constants.map(([n]) => n),
+    questions: [...questions, ...loopQuestions],
+    loopQuestions,
+  };
   const setLayout = (next: Partial<UnitLayout>) => onChange({ ...loop, layout: { ...layout, ...next } });
   const setConstants = (entries: [string, string][]) => {
     const next = { ...layout };
@@ -305,7 +316,7 @@ function LayoutTab({
     <div className="flex flex-col gap-5">
       <Section
         title="Template"
-        help="Markdown. Insert values with $unit.<field>, $const.<name> or $var.<question>.value; type $ for suggestions."
+        help="Markdown. Insert values with $unit.<field>, $const.<name> or $var.<question>.value (type $ for suggestions). Show parts conditionally with ::: if, ::: else, ::: from <question>, or style them with ::: style <css>; close them with :::."
       >
         <div
           className={cn(

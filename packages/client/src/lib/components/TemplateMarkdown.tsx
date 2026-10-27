@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { RenderedTemplate, TemplateValue } from "../codebook/renderTemplate";
@@ -20,6 +20,10 @@ export function TemplateMarkdown({ rendered, components }: { rendered: RenderedT
       const value = rendered.values[Number(index)];
       return value ? <TemplateValueView value={value} block={block === "true"} /> : null;
     },
+    // A `::: style` block (docs/client.md §3, "Blocks")
+    "template-style": ({ index, children }: { index?: string; children?: ReactNode }) => (
+      <div style={rendered.styles?.[Number(index)] as CSSProperties | undefined}>{children}</div>
+    ),
   } as Components;
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm, [remarkTemplateValues, rendered.values]]} components={allComponents}>
