@@ -92,7 +92,8 @@ every value at once.
 > follow the order of the options. Moving an option, or adding one anywhere
 > but at the end, renumbers the options after it: an answer stored as `3` then
 > means something else, although no value disappeared. The publish dialog
-> can't detect this. Add new options at the end, or make a new question.
+> warns when an option ends up with another value (*the value 3 was "Agree"
+> and is now "Neutral"*). Add new options at the end, or make a new question.
 
 ## The publish warnings
 
@@ -103,6 +104,7 @@ warns about value changes before you confirm:
 | --- | --- |
 | *'topic' no longer has the value "eco": earlier answers with it no longer fit.* | An option's value was changed or the option was removed |
 | *'tone' changed from nominal to ordinal: earlier answers no longer fit.* | The question's type changed |
+| *'tone': the value 3 was "Agree" and is now "Neutral": earlier answers 3 will read as "Neutral".* | An option moved to another value, e.g. ordinal options renumbered after a move |
 
 After publishing, AnnoTinder may also tell you that a loop *gained questions*:
 coders get the units they finished back, to answer only the new questions.

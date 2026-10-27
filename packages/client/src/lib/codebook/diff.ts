@@ -1,4 +1,4 @@
-import { collectQuestions, questionValues, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
+import { collectQuestions, optionLabel, questionValues, type AnyVariableType, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
 import { itemTitle } from "./conditions";
 
 export type CodebookChangeKind = "added" | "removed" | "changed" | "moved";
@@ -114,6 +114,21 @@ export function valueChanges(before: (TopLevelItem | InLoopItem)[], after: (TopL
       const list = removed.map((v) => JSON.stringify(v)).join(", ");
       warnings.push(`'${name}' no longer has the value${removed.length === 1 ? "" : "s"} ${list}: earlier answers with ${removed.length === 1 ? "it" : "them"} no longer fit.`);
     }
+    // An option that moved to another value (ordinal options renumbered when moved, or a
+    // nominal value edited): the earlier answers with its old value now mean another option.
+    const labelsBefore = labels(prev);
+    const labelsNow = labels(variable);
+    for (const [value, label] of labelsBefore) {
+      const now = labelsNow.get(value);
+      if (now === undefined || now === label || ![...labelsNow.values()].includes(label)) continue;
+      warnings.push(`'${name}': the value ${JSON.stringify(value)} was "${label}" and is now "${now}": earlier answers ${JSON.stringify(value)} will read as "${now}".`);
+    }
   }
   return warnings;
+}
+
+/** A question's options: value -> label. */
+function labels(variable: AnyVariableType): Map<unknown, string> {
+  const options = "options" in variable && Array.isArray(variable.options) ? variable.options : [];
+  return new Map(options.map((o) => [o.value, optionLabel(o)]));
 }

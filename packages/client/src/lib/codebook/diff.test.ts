@@ -65,4 +65,15 @@ describe("valueChanges", () => {
       `'q' changed from nominal to ordinal: earlier answers no longer fit.`,
     ]);
   });
+
+  it("warns when an option moved to another value, not when it was only relabelled", () => {
+    const scale = (labels: string[]) => q({ type: "ordinal", question: "?", options: labels.map((label, i) => ({ value: i + 1, label })) });
+    const before = scale(["Disagree", "Neutral", "Agree"]);
+    expect(valueChanges(before, scale(["Disagree", "Neutral", "Fully agree"]))).toEqual([]);
+    // "Agree" moved up: renumbered
+    expect(valueChanges(before, scale(["Disagree", "Agree", "Neutral"]))).toEqual([
+      `'q': the value 2 was "Neutral" and is now "Agree": earlier answers 2 will read as "Agree".`,
+      `'q': the value 3 was "Agree" and is now "Neutral": earlier answers 3 will read as "Neutral".`,
+    ]);
+  });
 });
