@@ -131,7 +131,7 @@ describe("referenceShape", () => {
     expect(shape("$var.edu.gte(1)")).toMatchObject({ ok: true, method: { name: "gte", kind: "ordinal" } });
     expect(shape("$var.topics.count()")).toMatchObject({ ok: true, type: "number" });
     expect(shape("$var.interest.items.tech.lt(3)")).toMatchObject({ ok: true, method: { kind: "ordinal" } });
-    expect(shape("$var.role.gte(1)")).toEqual({ ok: false, reason: "$var.role.gte(): 'role' (single) has no .gte(); use .is(), .isAny()" });
+    expect(shape("$var.role.gte(1)")).toEqual({ ok: false, reason: `"role" is a nominal question, which does not support "greater than or equal to" comparisons; use "is" or "is one of"` });
     expect(shape("$var.topics.is('x')").ok).toBe(false);
     expect(shape("$var.interest.is(1)").ok).toBe(false);
   });
@@ -144,7 +144,7 @@ describe("referenceShape", () => {
     expect(shape("$var.ents.value").ok).toBe(false);
     expect(shape("$var.topics.value")).toEqual({
       ok: false,
-      reason: "$var.topics.value: 'topics' (multiple) has no .value; use .values, .labels, .answered",
+      reason: `$var.topics.value: "topics" is a nominal question with multiple answers, which has no .value; use .values, .labels or .answered`,
     });
     expect(shape("$var.nope.value").ok).toBe(false);
   });

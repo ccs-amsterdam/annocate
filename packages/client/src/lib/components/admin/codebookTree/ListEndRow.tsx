@@ -5,6 +5,7 @@ import { AddItemMenu } from "./AddItemMenu";
 import { TreeRow } from "./TreeRow";
 import { getItemKey, insertableTypesIn, type TreeNode } from "./utils";
 import { LucideListEnd } from "lucide-react";
+import { itemTitle } from "../../../codebook/conditions";
 
 interface ListEndRowProps {
   /** Container whose child list this row closes; null for the codebook root. */
@@ -31,7 +32,8 @@ export function ListEndRow({ parent }: ListEndRowProps) {
 function AddAtEndRow({ parent }: ListEndRowProps) {
   const tree = useCodebookTree();
   const parentKey = parent ? getItemKey(parent) : null;
-  const containerName = parent ? parent.name || "container" : "codebook";
+  // A condition is called by what it is: its title is a whole condition.
+  const containerName = !parent ? "codebook" : parent.type === "condition" ? "condition" : itemTitle(parent) || "container";
 
   return (
     <TreeRow size={"normal"}>

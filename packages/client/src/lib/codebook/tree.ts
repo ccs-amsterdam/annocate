@@ -1,5 +1,7 @@
 import {
+  ALL_UNITS_UNITSET,
   buildScope,
+  itemName,
   type AnyVariableType,
   type CodebookItem,
   type TopLevelItem,
@@ -36,7 +38,7 @@ export function keyOf(item: CodebookItem | TopLevelItem | InLoopItem): string | 
 /** Finds an item anywhere in the tree by its unique name or _key. */
 export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: string): CodebookItem | null {
   for (const item of items) {
-    if (keyOf(item) === identifier || item.name === identifier) return item;
+    if (keyOf(item) === identifier || itemName(item) === identifier) return item;
     if ("children" in item && Array.isArray(item.children)) {
       const found = findItem(item.children, identifier);
       if (found) return found;
@@ -52,7 +54,7 @@ export function findParent(
 ): (UnitLoopItem | ConditionItem) | null {
   for (const item of items) {
     if ("children" in item && Array.isArray(item.children)) {
-      if (item.children.some((child) => keyOf(child) === identifier || child.name === identifier)) {
+      if (item.children.some((child) => keyOf(child) === identifier || itemName(child) === identifier)) {
         return item as UnitLoopItem | ConditionItem;
       }
       const found = findParent(item.children, identifier);
@@ -66,7 +68,7 @@ export function findParent(
 export function itemPath(items: (TopLevelItem | InLoopItem)[], identifier: string): (string | number)[] | null {
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if ((item as { _key?: string })._key === identifier || item.name === identifier) return [i];
+    if (keyOf(item) === identifier || itemName(item) === identifier) return [i];
     if ("children" in item && Array.isArray(item.children)) {
       const inner = itemPath(item.children, identifier);
       if (inner) return [i, "children", ...inner];
@@ -90,6 +92,25 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
+/** What a unit loop goes over, for the codebook tree: its unitsets, or the number of branches. */
+export function loopUnitsSummary(loop: UnitLoopItem): string {
+  const branches = Array.isArray(loop.units) ? loop.units : [];
+  if (branches.length > 1) return `${branches.length} branches`;
+  const sets = (branches[0]?.sources ?? []).map((s) => (s.unitset === ALL_UNITS_UNITSET ? "all units" : s.unitset));
+  return sets.length ? sets.join(", ") : "";
+}
+
+/**
+ * Whether a validation issue is about an item of `items`: its path points
+ * into the item, or (without a path to an item) its message names it.
+ */
+export function issueIsAbout(items: (TopLevelItem | InLoopItem)[], issue: { path: (string | number)[]; message: string }, item: CodebookItem): boolean {
+  const at = itemAtPath(items, issue.path);
+  if (at) return at === item || (keyOf(at) !== undefined && keyOf(at) === keyOf(item));
+  const name = itemName(item);
+  return Boolean(name) && issue.message.includes(`'${name}'`);
+}
+
 /**
  * Returns true if an item with `name` or `_key` is inside a unit_loop (either directly
  * or through one or more nested conditions).
@@ -98,7 +119,7 @@ export function isInsideUnitLoop(items: TopLevelItem[], identifier: string): boo
   let parent = findParent(items, identifier);
   while (parent) {
     if (parent.type === "unit_loop") return true;
-    parent = findParent(items, keyOf(parent) || parent.name);
+    parent = findParent(items, keyOf(parent) || itemName(parent) || "");
   }
   return false;
 }
@@ -137,7 +158,7 @@ async function walkSteps(
   for (const node of nodes) {
     if (node.type === "condition") {
       const scope = buildScope(ctx.questions, visible, unit?.data, unit?.constants);
-      if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.name}`)) {
+      if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition.script}`)) {
         if (await walkSteps(node.children, answers, visible, ctx, unit, steps)) return true;
       }
     } else if (node.type === "unit_loop") {

@@ -464,13 +464,60 @@ function valueType(kind: QuestionKind): ReferenceValueType {
   return kind === "ordinal" || kind === "numeric" || kind === "scale" ? "number" : "string";
 }
 
-function methodShape(label: string, name: string, method: string, kind: QuestionKind, values?: OptionValue[]): ReferenceShape {
+/** What a helper method does, in words (for messages and the condition editor). */
+export const METHOD_TEXT: Record<HelperMethod, string> = {
+  is: "is",
+  isAny: "is one of",
+  gt: "greater than",
+  gte: "greater than or equal to",
+  lt: "lower than",
+  lte: "lower than or equal to",
+  eq: "equals",
+  between: "between",
+  has: "has",
+  hasAny: "has any of",
+  hasAll: "has all of",
+  count: "count",
+};
+
+/** A question's type in words, for messages: "a nominal question". */
+export function describeQuestion(variable: AnyVariableType): string {
+  switch (variable.type) {
+    case "nominal":
+      return variable.multiple ? "a nominal question with multiple answers" : "a nominal question";
+    case "annotinder":
+      return "a swipe question";
+    case "auto":
+      return "an automatic assignment";
+    case "scale":
+      return "a scale";
+    case "ordinal":
+    case "numeric":
+    case "confirm":
+    case "span":
+    case "relation":
+      return `${variable.type === "ordinal" ? "an" : "a"} ${variable.type} question`;
+    default:
+      return "a question";
+  }
+}
+
+/** `"a", "b" or "c"`. */
+export function orList(words: string[]): string {
+  return words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} or ${words[words.length - 1]}`;
+}
+
+const ORDER_METHODS: readonly string[] = ["gt", "gte", "lt", "lte", "between"];
+
+/** Why a question (or scale item, `subject`) can't take a helper method, in words. */
+function methodShape(subject: string, description: string, method: string, kind: QuestionKind, values?: OptionValue[]): ReferenceShape {
   if (!(KIND_METHODS[kind] as readonly string[]).includes(method)) {
-    const available = KIND_METHODS[kind];
-    return {
-      ok: false,
-      reason: `${label}(): '${name}' (${kind}) has no .${method}()${available.length ? `; use ${available.map((m) => `.${m}()`).join(", ")}` : ""}`,
-    };
+    const available = KIND_METHODS[kind].map((m) => `"${METHOD_TEXT[m]}"`);
+    const what = (METHOD_TEXT as Record<string, string>)[method];
+    const unsupported = what ? `"${what}"${ORDER_METHODS.includes(method) ? " comparisons" : ""}` : `.${method}()`;
+    const use =
+      kind === "scale" ? "; compare its items instead" : available.length ? `; use ${orList(available)}` : `; only "is answered" works`;
+    return { ok: false, reason: `${subject} is ${description}, which does not support ${unsupported}${use}` };
   }
   return { ok: true, array: false, type: method === "count" ? "number" : "boolean", values, method: { name: method as HelperMethod, kind } };
 }
@@ -485,14 +532,14 @@ function varShape(name: string, variable: AnyVariableType, rest: string[], call:
     if (variable.type !== "scale") return { ok: false, reason: `${label}: '${name}' has no items (only scales do)` };
     const [, item, itemProperty] = rest;
     if (!variable.items.some((i) => i.name === item)) return { ok: false, reason: `${label}: '${item}' is not an item of '${name}'` };
-    if (call) return methodShape(label, `${name}.items.${item}`, itemProperty, "ordinal", values);
+    if (call) return methodShape(`"${name} › ${item}"`, "a scale item", itemProperty, "ordinal", values);
     return { ok: true, array: false, type: itemProperty === "label" ? "string" : "number", values: itemProperty === "value" ? values : undefined };
   }
-  if (call) return methodShape(label, name, property, kind, values);
+  if (call) return methodShape(`"${name}"`, describeQuestion(variable), property, kind, values);
   if (property === "answered") return { ok: true, array: false, type: "boolean" };
   if (!KIND_PROPERTIES[kind].includes(property)) {
     const available = [...KIND_PROPERTIES[kind].map((p) => (p === "items" ? ".items.<item>" : `.${p}`)), ".answered"];
-    return { ok: false, reason: `${label}: '${name}' (${kind}) has no .${property}; use ${available.join(", ")}` };
+    return { ok: false, reason: `${label}: "${name}" is ${describeQuestion(variable)}, which has no .${property}; use ${orList(available)}` };
   }
   const array = property === "values" || property === "labels" || property === "texts";
   if (property === "value" || property === "values") return { ok: true, array, type: valueType(kind), values };

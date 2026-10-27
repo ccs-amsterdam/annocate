@@ -1,4 +1,10 @@
-import { evaluateSimpleCondition, parseSimpleCondition, type Condition, type ReferenceScope } from "@annotinder/contracts";
+import {
+  evaluateSimpleCondition,
+  parseSimpleCondition,
+  type CodebookItem,
+  type Condition,
+  type ReferenceScope,
+} from "@annotinder/contracts";
 import { evaluateScript } from "./expression";
 import type { ExpressionCache } from "./expressionCache";
 
@@ -25,4 +31,13 @@ export async function evaluateCondition(
 export function describeCondition(condition: Condition | undefined): string {
   if (!condition) return "(none)";
   return condition.script.trim() || "(empty script)";
+}
+
+/**
+ * How an item is called in the editor: its name, and for a condition (which
+ * has none) its label, or else its condition.
+ */
+export function itemTitle(item: CodebookItem): string {
+  if (item.type === "condition") return item.label?.trim() || `if ${describeCondition(item.condition)}`;
+  return item.name;
 }

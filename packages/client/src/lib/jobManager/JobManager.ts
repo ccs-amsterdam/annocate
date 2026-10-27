@@ -11,7 +11,7 @@ import type {
   EndItem,
   ReferenceScope,
 } from "@annotinder/contracts";
-import { buildScope, collectQuestions, fillRedirectUrl, fillUnitsetName, validateAnswer } from "@annotinder/contracts";
+import { buildScope, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
@@ -165,7 +165,7 @@ function getQuestionLabel(item: CodebookItem): string {
       return q.trim().split("\n")[0];
     }
   }
-  return item.name;
+  return itemName(item) ?? "";
 }
 
 function extractUnitQuestions(items: InLoopItem[]): NavigationUnitQuestion[] {
@@ -380,7 +380,7 @@ export class JobManager {
     }
     if (this.loopIndex < this.loopSteps.length - 1) {
       const currentItem = this.loopSteps[this.loopIndex];
-      if (currentItem && this.unitVariableValues[currentItem.name] !== undefined) return true;
+      if (currentItem && this.unitVariableValues[itemName(currentItem) ?? ""] !== undefined) return true;
     }
     if (this.unitHistoryIndex < this.unitHistory.length - 1) return true;
     if (this.topIndex < this.maxReachedTopIndex) return true;
@@ -499,7 +499,7 @@ export class JobManager {
     if (!allowAhead) {
       const hasUnansweredEarlier = this.loopSteps
         .slice(0, stepIndex)
-        .some((q) => this.unitVariableValues[q.name] === undefined);
+        .some((q) => this.unitVariableValues[itemName(q) ?? ""] === undefined);
       if (hasUnansweredEarlier && stepIndex > this.loopIndex) return;
     }
     this.syncCurrentUnitAnswers();
@@ -849,7 +849,7 @@ export class JobManager {
     await this.refreshLoopSteps();
     // Start at the first question without a (still valid) answer: the unit
     // may be partly done (reload mid-unit, or the codebook gained a question).
-    const firstOpen = this.loopSteps.findIndex((step) => this.unitVariableValues[step.name] === undefined);
+    const firstOpen = this.loopSteps.findIndex((step) => this.unitVariableValues[itemName(step) ?? ""] === undefined);
     this.loopIndex = firstOpen === -1 ? Math.max(0, this.loopSteps.length - 1) : firstOpen;
     const firstStep = this.loopSteps[this.loopIndex];
     if (!firstStep) {
@@ -901,7 +901,7 @@ export class JobManager {
 
       return {
         index: idx,
-        name: step.name,
+        name: itemName(step) ?? "",
         type: step.type as NavigationPhase["type"],
         label: getQuestionLabel(step),
         isCurrent,

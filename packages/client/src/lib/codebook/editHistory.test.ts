@@ -32,7 +32,7 @@ describe("edit history", () => {
 describe("changes since the last save", () => {
   const saved = [
     { _key: "a", type: "question", name: "q1", variable: { type: "nominal", question: "?", options: [{ value: "x" }], layout: "row" } },
-    { _key: "c", type: "condition", name: "c", condition: { script: "true" }, children: [{ _key: "b", type: "question", name: "q2", variable: { type: "confirm", question: "?" } }] },
+    { _key: "c", type: "condition", condition: { script: "true" }, children: [{ _key: "b", type: "question", name: "q2", variable: { type: "confirm", question: "?" } }] },
   ] as unknown as TopLevelItem[];
 
   it("marks new and changed items, not their parents", () => {

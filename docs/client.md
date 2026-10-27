@@ -341,7 +341,13 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   whole with Save. Views:
   - **Visual**: the item tree, and the selected item as a form, as JSON
     (`codebookEditor/ItemJsonEditor.tsx`: the item without its children,
-    which are items of their own), or as a preview.
+    which are items of their own), or as a preview. The tree shows
+    questions with the icon of their answer type, unit loops with their
+    unitsets (or "n branches"), and conditions by their condition, or by
+    their optional `label`. Conditions have no name: nothing refers to
+    them (names of questions are variables, of unit loops and end items
+    what results and the server use; until 2026-10-27 every item had one,
+    and old condition names are dropped on parse).
   - **JSON**: the whole codebook (`CodebookJsonEditor.tsx`). JSON rather
     than YAML: the structure is explicit (no indentation to get right in a
     browser), and the editor (Monaco, bundled and loaded only with the
@@ -352,7 +358,8 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
     and puts keys in reading order (`name`, `type`, `value`, `label` first,
     `children` last).
   - Both JSON views apply an edit as soon as it parses to items the tree
-    can show (`codebook/itemShape.ts`; items keep their identity by name);
+    can show (`codebook/itemShape.ts`; items keep their identity by name,
+    conditions by place);
     until then "Not applied" says why. Validation shows the rest, as for
     the forms.
 
@@ -426,8 +433,13 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   "and" or all by "or" (`codebook/conditionRules.ts`): per row a question
   (or scale item) available at that point (`availableQuestions`), an
   operator that fits its type (is, is one of, ≥, has any of, count ≥, is
-  answered, ...) and its values as toggles or number inputs. Other scripts
-  open in script mode, with a cheat sheet of references and helpers and a
+  answered, ...) and its values as toggles or number inputs. A row that
+  doesn't fit its question (any more: the question is gone, changed type
+  or lost an option) stays a row and is written back unchanged; its
+  invalid parts are marked and it says why in words (`rowProblems`, with
+  the messages of validation: `"age" is a nominal question, which does
+  not support "lower than" comparisons; use "is" or "is one of"`). Other
+  scripts open in script mode, with a cheat sheet of references and helpers and a
   QuickJS syntax check. Validation messages (errors red, warnings amber)
   show under the condition, template and question fields; only errors
   block saving.

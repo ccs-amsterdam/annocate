@@ -151,7 +151,7 @@ export function migrateCondition(raw: unknown, questions: Questions): unknown {
 
 /**
  * Migrates a codebook's items (the whole tree): question variables, rules
- * conditions, and the legacy unit loop shape. Returns the input unchanged if
+ * conditions, condition names, and the legacy unit loop shape. Returns the input unchanged if
  * it isn't an array.
  */
 export function migrateCodebookItems(items: unknown): unknown {
@@ -175,7 +175,11 @@ export function migrateCodebookItems(items: unknown): unknown {
     return list.map((raw) => {
       if (!isObject(raw)) return raw;
       let item = raw;
-      if (item.type === "condition") item = { ...item, condition: migrateCondition(item.condition, questions) };
+      if (item.type === "condition") {
+        // Conditions had a required name until 2026-10-27; they are shown by their condition (or a `label`) now.
+        item = { ...item, condition: migrateCondition(item.condition, questions) };
+        delete item.name;
+      }
       if (item.type === "unit_loop" && Array.isArray(item.units)) {
         item = {
           ...item,

@@ -68,7 +68,6 @@ export function defaultItemForType(
     case "condition":
       return {
         type: "condition",
-        name,
         condition: { script: "true" },
         children: [],
       } as CodebookItem;
@@ -107,17 +106,28 @@ export function ItemForm({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Item Name */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">Item Name</label>
-        <Input
-          value={item.name}
-          onChange={(e) => onChange({ ...item, name: e.target.value })}
-          placeholder="e.g., sentiment, age, loop_1"
-          className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
-        />
-        {nameError && <p className="text-xs text-destructive">{nameError}</p>}
-      </div>
+      {item.type === "condition" ? (
+        // Conditions have no name: the tree shows their condition, or this label.
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-foreground">Label (optional)</label>
+          <Input
+            value={item.label ?? ""}
+            onChange={(e) => onChange({ ...item, label: e.target.value || undefined })}
+            placeholder="Shown in the tree instead of the condition, e.g. Too young"
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-foreground">Item Name</label>
+          <Input
+            value={item.name}
+            onChange={(e) => onChange({ ...item, name: e.target.value })}
+            placeholder="e.g., sentiment, age, loop_1"
+            className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
+          />
+          {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+        </div>
+      )}
 
       {/* Item-specific fields */}
       {(item.type === "question" || item.type === "user_variable" || item.type === "unit_variable") && (

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CodebookValidationIssue, TopLevelItem } from "@annotinder/contracts";
 import { canMoveItemTo, canMoveToRootEnd, type MoveTargetPosition } from "../../codebook/codebookEdit";
-import { itemAtPath } from "../../codebook/tree";
+import { issueIsAbout } from "../../codebook/tree";
 import { CodebookTreeProvider, type CodebookTreeState } from "./codebookTree/context";
 import { TreeList } from "./codebookTree/TreeList";
 import { getItemKey, type ItemType } from "./codebookTree/utils";
@@ -95,11 +95,7 @@ export function CodebookTreeView({
 
     isChanged: (item) => changed?.has(getItemKey(item)) ?? false,
 
-    getIssue: (item) =>
-      validationIssues.find((issue) => {
-        const at = itemAtPath(items, issue.path);
-        return at ? at.name === item.name : Boolean(item.name) && issue.message.includes(`'${item.name}'`);
-      })?.message ?? null,
+    getIssue: (item) => validationIssues.find((issue) => issueIsAbout(items, issue, item))?.message ?? null,
   };
 
   return (

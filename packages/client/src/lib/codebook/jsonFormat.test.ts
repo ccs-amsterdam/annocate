@@ -31,9 +31,9 @@ describe("formatJson", () => {
   });
 
   it("puts keys in reading order, children last", () => {
-    const stored = { children: [], type: "condition", name: "c", condition: { script: "true" } };
+    const stored = { children: [], label: "c", type: "condition", condition: { script: "true" } };
     expect(formatJson(stored)).toBe(
-      ["{", '  "name": "c",', '  "type": "condition",', '  "condition": { "script": "true" },', '  "children": []', "}"].join("\n"),
+      ["{", '  "type": "condition",', '  "label": "c",', '  "condition": { "script": "true" },', '  "children": []', "}"].join("\n"),
     );
     expect(formatJson({ color: "red", label: "Neg", value: "neg" })).toBe('{ "value": "neg", "label": "Neg", "color": "red" }');
   });

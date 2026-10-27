@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseSimpleCondition, type AnyVariableType } from "@annotinder/contracts";
-import { conditionToRows, defaultRow, rowsToScript, ruleTargets } from "./conditionRules";
+import { conditionToRows, defaultRow, rowProblems, rowsToScript, ruleTargets } from "./conditionRules";
 
 const targets = ruleTargets([
   { name: "role", variable: { type: "nominal", question: "?", options: [{ value: "a" }, { value: "b" }] } },
@@ -37,10 +37,30 @@ describe("condition rules", () => {
     }
   });
 
-  it("leaves nested conditions and unknown questions to the script editor", () => {
+  it("leaves nested conditions to the script editor", () => {
     expect(roundTrip(`$var.role.is("a") && ($var.age.gt(1) || $var.age.lt(0))`)).toBeNull();
-    expect(roundTrip(`$var.other.is("a")`)).toBeNull();
     expect(roundTrip("false")).toBeNull();
+  });
+
+  it("keeps rows that don't fit their question, with their problems", () => {
+    const problems = (script: string) => {
+      const rows = conditionToRows(parseSimpleCondition(script)!, targets)!;
+      return rows.rows.map((row) => rowProblems(row, targets));
+    };
+    // Written back unchanged.
+    for (const script of [`$var.role.lt(16) && $var.role.is("c")`, `$var.other.is("a")`, `!$var.gone.answered`]) {
+      expect(roundTrip(script)).toBe(script);
+    }
+    expect(problems(`$var.role.lt(16) && $var.role.is("c") && $var.role.is("a")`)).toEqual([
+      [`"role" is a nominal question, which does not support "lower than" comparisons; use "is" or "is one of"`],
+      [`"c" is not an answer option of "role" ("a", "b")`],
+      [],
+    ]);
+    expect(problems(`$var.other.is("a")`)).toEqual([[`"other" is not a question asked before this point`]]);
+    expect(problems(`$var.battery.items.art.is(1)`)).toEqual([[`"battery › art": "art" is not an item of "battery", a scale`]]);
+    expect(problems(`$var.topics.count() > 1`)).toEqual([
+      [`"topics": "count >" can't be edited as a rule; choose another, or edit the script`],
+    ]);
   });
 
   it("starts a row with the target's first operator and value", () => {

@@ -20,10 +20,10 @@ function unitLoop(name: string, children: InLoopItem[], template = "", constants
   return { type: "unit_loop", name, units: [{ sources: [{ unitset: "__all__" }] }], layout: { template, constants }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
-  return { type: "condition", name, condition, children };
+  return { type: "condition", label: name, condition, children };
 }
 function inLoopCondition(name: string, children: InLoopItem[], condition: Condition = { script: "true" }): InLoopItem {
-  return { type: "condition", name, condition, children };
+  return { type: "condition", label: name, condition, children };
 }
 const select = (values: string[], extra: object = {}) => ({
   type: "nominal",
@@ -85,7 +85,7 @@ describe("validateCodebookItems", () => {
       "$var.slot.is: 'slot' is asked after this point",
     ]);
     expect(messages([slot, loop([{ when: when("3"), sources: [{ unitset: "a" }] }])])).toEqual([
-      `$var.slot.is(...): "3" is not a value of 'slot' ("1", "2")`,
+      `"3" is not an answer option of "slot" ("1", "2")`,
     ]);
     expect(messages([slot, loop([{ sources: [{ unitset: "part_$var.group.value" }] }])])).toEqual([
       "$var.group.value: 'group' is not a question",
@@ -300,14 +300,14 @@ describe("reference validation", () => {
   it("checks that the property or method fits the question type", () => {
     const check = (script: string) =>
       messages([role, topics, interest, questionVar("c", confirmVariable), topCondition("x", [questionVar("q")], { script })]);
-    expect(check("$var.role.texts")).toEqual(["$var.role.texts: 'role' (single) has no .texts; use .value, .label, .answered"]);
+    expect(check("$var.role.texts")).toEqual([`$var.role.texts: "role" is a nominal question, which has no .texts; use .value, .label or .answered`]);
     expect(check("$var.interest.value")).toEqual([
-      "$var.interest.value: 'interest' (scale) has no .value; use .values, .items.<item>, .answered",
+      `$var.interest.value: "interest" is a scale, which has no .value; use .values, .items.<item> or .answered`,
     ]);
     expect(check("$var.interest.items.food.value")).toEqual(["$var.interest.items.food.value: 'food' is not an item of 'interest'"]);
-    expect(check("$var.c.value")).toEqual(["$var.c.value: 'c' (confirm) has no .value; use .answered"]);
+    expect(check("$var.c.value")).toEqual([`$var.c.value: "c" is a confirm question, which has no .value; use .answered`]);
     expect(check("$var.topics.is('a')")).toEqual([
-      "$var.topics.is(): 'topics' (multiple) has no .is(); use .has(), .hasAny(), .hasAll(), .count()",
+      `"topics" is a nominal question with multiple answers, which does not support "is"; use "has", "has any of", "has all of" or "count"`,
     ]);
     expect(check("$var[name].value")).toEqual(["Names after $var must be literal ($var.name), not computed ($var[...])"]);
     expect(check("Object.keys($var)")).toEqual(["$var must be followed by a name ($var.name)"]);
@@ -316,14 +316,14 @@ describe("reference validation", () => {
   it("checks the arguments of helpers in simple conditions", () => {
     const check = (script: string) => messages([role, topics, edu, age, interest, topCondition("x", [questionVar("q")], { script })]);
     expect(check(`$var.role.isAny("student", "prof")`)).toEqual([
-      `$var.role.isAny(...): "prof" is not a value of 'role' ("student", "researcher")`,
+      `"prof" is not an answer option of "role" ("student", "researcher")`,
     ]);
-    expect(check(`$var.edu.gte("2")`)).toEqual([`$var.edu.gte(...): "2" is not a value of 'edu' (1, 2, 3)`]);
-    expect(check(`$var.edu.gte(4)`)).toEqual([`$var.edu.gte(...): 4 is not a value of 'edu' (1, 2, 3)`]);
-    expect(check(`$var.age.between(18)`)).toEqual([`$var.age.between(...) takes 2 arguments`]);
-    expect(check(`$var.age.gt(200)`)).toEqual([`$var.age.gt(...): 200 is outside the range of 'age'`]);
-    expect(check(`$var.topics.hasAll()`)).toEqual([`$var.topics.hasAll(...) takes at least 1 arguments`]);
-    expect(check(`$var.interest.items.tech.is(3)`)).toEqual([`$var.interest.items.tech.is(...): 3 is not a value of 'interest' (1, 5)`]);
+    expect(check(`$var.edu.gte("2")`)).toEqual([`"2" is not an answer option of "edu" (1, 2, 3)`]);
+    expect(check(`$var.edu.gte(4)`)).toEqual([`4 is not an answer option of "edu" (1, 2, 3)`]);
+    expect(check(`$var.age.between(18)`)).toEqual([`"between" needs 2 values`]);
+    expect(check(`$var.age.gt(200)`)).toEqual([`200 is outside the range of "age" (0 to 120)`]);
+    expect(check(`$var.topics.hasAll()`)).toEqual([`"has all of" needs at least 1 value`]);
+    expect(check(`$var.interest.items.tech.is(3)`)).toEqual([`3 is not an answer option of "interest › tech" (1, 5)`]);
     expect(check(`$var.topics.count() > 1 && $var.age.between(18, 65)`)).toEqual([]);
     // Advanced scripts: references are checked, values not.
     expect(check(`$var.role.is("prof") || $unit.x`)).toEqual(["$unit.x can only be used inside a unit loop"]);

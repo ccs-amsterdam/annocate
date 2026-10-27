@@ -4,6 +4,8 @@ import { parseSimpleCondition, simpleConditionCalls, type Condition, type Simple
 import { migrateCodebookItems } from "./migrate.js";
 import type { UnitBranch } from "./unitLoop.js";
 import {
+  METHOD_TEXT,
+  questionValues,
   extractReferences,
   parseTemplate,
   referenceShape,
@@ -21,6 +23,8 @@ export interface CodebookValidationIssue {
 }
 
 type Path = (string | number)[];
+/** An item as stored: any field may be missing; conditions have no name. */
+type RawItem = Partial<CodebookItem> & { name?: string };
 
 /** Where references are checked, and what they may refer to there. */
 interface RefContext {
@@ -149,29 +153,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     const path = call.item ? [call.question, "items", call.item, call.method] : [call.question, call.method];
     const shape = variable && referenceShape(questions, { ns: "var", path, call: true });
     if (!variable || !shape?.ok) return;
-    const text = `$var.${path.join(".")}(...)`;
-    const arity: Record<string, [number, number]> = { count: [0, 0], between: [2, 2], isAny: [1, Infinity], hasAny: [1, Infinity], hasAll: [1, Infinity] };
-    const [min, max] = arity[call.method] ?? [1, 1];
-    if (call.args.length < min || call.args.length > max) {
-      const n = min === max ? `${min}` : `at least ${min}`;
-      issue(ctx.path, `${text} takes ${n} argument${min === 1 && max === 1 ? "" : "s"}`);
-      return;
-    }
-    if (variable.type === "numeric") {
-      for (const arg of call.args) {
-        if (typeof arg !== "number") issue(ctx.path, `${text}: ${JSON.stringify(arg)} is not a number`);
-        else if ((variable.min !== undefined && arg < variable.min) || (variable.max !== undefined && arg > variable.max)) {
-          issue(ctx.path, `${text}: ${arg} is outside the range of '${call.question}'`);
-        }
-      }
-      return;
-    }
-    if (!shape.values) return;
-    for (const arg of call.args) {
-      if (!shape.values.includes(arg)) {
-        issue(ctx.path, `${text}: ${JSON.stringify(arg)} is not a value of '${call.question}' (${shape.values.map((v) => JSON.stringify(v)).join(", ")})`);
-      }
-    }
+    for (const problem of callArgumentProblems(variable, call)) issue(ctx.path, problem);
   }
 
   function checkCondition(condition: Condition | undefined, ctx: RefContext) {
@@ -212,7 +194,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     return tokenized;
   }
 
-  function checkLoop(item: Partial<CodebookItem>, itemPath: Path, loopName: string) {
+  function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
     const loop = item as { units?: UnitBranch[]; children?: unknown; layout?: { template?: unknown; constants?: Record<string, string> } };
     const loopQuestions = questionNames(loop.children);
     const branchCtx = (path: Path): RefContext => ({ path, loop: null, available: coderAvailable, branch: true });
@@ -251,13 +233,15 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
 
     itemList.forEach((rawItem, index) => {
       if (!rawItem || typeof rawItem !== "object") return;
-      const item = rawItem as Partial<CodebookItem>;
+      const item = rawItem as RawItem;
       const itemPath = [...currentPath, index];
       const isQuestion = item.type === "question" || item.type === "unit_variable" || item.type === "user_variable";
       const available = loop ? new Set([...coderAvailable, ...loopAvailable]) : coderAvailable;
 
-      // Check name validity and uniqueness
-      if (!item.name || item.name.trim() === "") {
+      // Check name validity and uniqueness (conditions have no name)
+      if (item.type === "condition") {
+        // Nothing refers to a condition.
+      } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
       } else {
         if (!/^[a-zA-Z0-9_.-]+$/.test(item.name)) {
@@ -310,7 +294,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
           inside: questionNames(item.children),
         });
         if (!item.children || item.children.length === 0) {
-          issue([...itemPath, "children"], `condition '${item.name}' must have at least one child item`);
+          issue([...itemPath, "children"], "A condition must have at least one child item");
         } else {
           walk(item.children, [...itemPath, "children"], loop);
         }
@@ -340,6 +324,37 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   return issues;
 }
 
+/**
+ * What is wrong with the arguments of a helper call on this question (whose
+ * method fits it): their number, and that they are its values (numeric: in
+ * its range). Used by validation and the condition editor's rules.
+ */
+export function callArgumentProblems(variable: AnyVariableType, call: Pick<SimpleCall, "question" | "item" | "method" | "args">): string[] {
+  const subject = call.item ? `"${call.question} › ${call.item}"` : `"${call.question}"`;
+  const arity: Record<string, [number, number]> = { count: [0, 0], between: [2, 2], isAny: [1, Infinity], hasAny: [1, Infinity], hasAll: [1, Infinity] };
+  const [min, max] = arity[call.method] ?? [1, 1];
+  if (call.args.length < min || call.args.length > max) {
+    if (max === 0) return [`"${METHOD_TEXT[call.method]}" takes no values`];
+    const n = min === max ? `${min}` : `at least ${min}`;
+    return [`"${METHOD_TEXT[call.method]}" needs ${n} value${max > 1 && min > 1 ? "s" : ""}`];
+  }
+  if (variable.type === "numeric") {
+    const range = variable.min !== undefined && variable.max !== undefined ? ` (${variable.min} to ${variable.max})` : "";
+    return call.args.flatMap((arg) => {
+      if (typeof arg !== "number") return [`${JSON.stringify(arg)} is not a number, and ${subject} is numeric`];
+      if ((variable.min !== undefined && arg < variable.min) || (variable.max !== undefined && arg > variable.max)) {
+        return [`${arg} is outside the range of ${subject}${range}`];
+      }
+      return [];
+    });
+  }
+  const values = questionValues(variable);
+  if (!values) return [];
+  return call.args
+    .filter((arg) => !values.includes(arg))
+    .map((arg) => `${JSON.stringify(arg)} is not an answer option of ${subject} (${values.map((v) => JSON.stringify(v)).join(", ")})`);
+}
+
 /** Validation errors only (warnings left out): what blocks saving a codebook. */
 export function codebookErrors(items: unknown[]): CodebookValidationIssue[] {
   return validateCodebookItems(items).filter((i) => !i.warning);
@@ -355,7 +370,7 @@ export function collectQuestions(items: unknown): {
   const walk = (list: unknown, loop: string | null) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
-      const item = raw as Partial<CodebookItem> | null;
+      const item = raw as RawItem | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "unit_loop") walk(item.children, item.name ?? "");
       else if (item.type === "condition") walk(item.children, loop);
@@ -383,7 +398,7 @@ export function availableQuestions(items: unknown[], at: Path): { name: string; 
   const walk = (list: unknown, path: Path): void => {
     if (!Array.isArray(list)) return;
     for (let i = 0; i < list.length && !found; i++) {
-      const item = list[i] as Partial<CodebookItem> | null;
+      const item = list[i] as RawItem | null;
       const itemPath = [...path, i];
       if (JSON.stringify(itemPath) === target) {
         found = true;
@@ -411,12 +426,12 @@ function questionNames(list: unknown, into = new Set<string>()): Set<string> {
   return into;
 }
 
-function forEachQuestion(list: unknown, path: Path, visit: (item: Partial<CodebookItem> & { variable?: unknown }, path: Path) => void) {
+function forEachQuestion(list: unknown, path: Path, visit: (item: RawItem & { variable?: unknown }, path: Path) => void) {
   if (!Array.isArray(list)) return;
   list.forEach((raw, i) => {
-    const child = raw as Partial<CodebookItem> | null;
+    const child = raw as RawItem | null;
     if (!child || typeof child !== "object") return;
     if (child.type === "condition") forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
-    else if (child.type !== "unit_loop") visit(child as Partial<CodebookItem> & { variable?: unknown }, [...path, i]);
+    else if (child.type !== "unit_loop") visit(child as RawItem & { variable?: unknown }, [...path, i]);
   });
 }

@@ -7,6 +7,7 @@ import {
   type TopLevelItem,
   type UnitField,
 } from "@annotinder/contracts";
+import { itemTitle } from "./conditions";
 
 export interface UnitFieldWarning {
   /** The item that refers to the field (the loop itself for its layout). */
@@ -47,7 +48,7 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
   const walk = (children: InLoopItem[], constants: Set<string>) => {
     for (const child of children) {
       if (child.type === "condition") {
-        check(child.name, conditionReferences(child.condition));
+        check(itemTitle(child), conditionReferences(child.condition));
         walk(child.children, constants);
         continue;
       }

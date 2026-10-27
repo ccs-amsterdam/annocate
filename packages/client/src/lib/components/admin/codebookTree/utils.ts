@@ -1,4 +1,4 @@
-import type { CodebookItem, InLoopItem, TopLevelItem } from "@annotinder/contracts";
+import { itemName, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
 import { isInsideUnitLoop } from "../../../codebook/tree";
 
 export type TreeNode = TopLevelItem | InLoopItem;
@@ -6,7 +6,7 @@ export type ItemType = CodebookItem["type"];
 
 /** Stable identifier of an item: the client-side `_key`, falling back to its name. */
 export function getItemKey(item: CodebookItem): string {
-  return (item as { _key?: string })._key || item.name;
+  return (item as { _key?: string })._key || itemName(item) || "";
 }
 
 export function getChildren(item: TreeNode): TreeNode[] | null {

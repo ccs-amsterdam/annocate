@@ -1,12 +1,14 @@
-import { useState, type MouseEvent } from "react";
+import { createElement, useState, type MouseEvent } from "react";
 import { AlertCircle, Move, Trash2, X } from "lucide-react";
 import { cn } from "cn";
 import { useCodebookTree } from "./context";
-import { ITEM_TYPES } from "./itemTypes";
+import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
-import { getItemKey, insertableTypesNextTo, type ItemType, type TreeNode } from "./utils";
-import { describeCondition } from "../../../codebook/conditions";
+import { getItemKey, insertableTypesNextTo, type TreeNode } from "./utils";
+import { describeCondition, itemTitle } from "../../../codebook/conditions";
+import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
+import { loopUnitsSummary } from "../../../codebook/tree";
 
 interface TreeItemRowProps {
   item: TreeNode;
@@ -27,7 +29,7 @@ function EditItemRow({ item }: TreeItemRowProps) {
   const actions = !tree.readOnly && (
     <>
       <AddItemMenu
-        title={`Insert above ${item.name || "item"}`}
+        title={`Insert above ${itemTitle(item) || "item"}`}
         allowedTypes={insertableTypesNextTo(tree.items, item)}
         onAdd={(type) => tree.insertBefore(key, type)}
         onActiveChange={setInsertPreview}
@@ -109,14 +111,17 @@ function ItemLabel({
 }) {
   return (
     <>
-      <ItemIcon type={item.type} />
-      <span
-        className={cn("truncate px-1.5 py-0.5 text-foreground", selected ? "font-semibold" : "font-medium")}
-      >
-        {item.name || <em className="font-normal text-muted-foreground">(unnamed)</em>}
-      </span>
-      {item.type === "condition" && (
-        <span className="truncate font-mono text-xs text-muted-foreground/80">if {describeCondition(item.condition)}:</span>
+      <ItemIcon item={item} />
+      {item.type === "condition" && !item.label?.trim() ? (
+        // Conditions have no name: shown by their condition, unless they have a label.
+        <span className="truncate px-1.5 py-0.5 font-mono text-xs text-foreground/80">if {describeCondition(item.condition)}</span>
+      ) : (
+        <span className={cn("truncate px-1.5 py-0.5 text-foreground", selected ? "font-semibold" : "font-medium")}>
+          {itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
+        </span>
+      )}
+      {item.type === "unit_loop" && (
+        <span className="truncate text-xs text-muted-foreground">{loopUnitsSummary(item)}</span>
       )}
       {changed && (
         <span title="Unsaved changes" aria-label="Unsaved changes" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
@@ -146,7 +151,11 @@ function MovingBadge({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-function ItemIcon({ type }: { type: ItemType }) {
-  const { icon: Icon, color } = ITEM_TYPES[type];
-  return <Icon className={`h-4 w-4 shrink-0 ${color}`} />;
+function ItemIcon({ item }: { item: TreeNode }) {
+  const title = "variable" in item && item.variable ? VARIABLE_TYPE_LABELS[item.variable.type] : ITEM_TYPES[item.type].label;
+  return (
+    <span title={title} className="shrink-0">
+      {createElement(itemIcon(item), { className: `h-4 w-4 ${ITEM_TYPES[item.type].color}` })}
+    </span>
+  );
 }

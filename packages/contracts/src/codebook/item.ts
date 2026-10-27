@@ -11,6 +11,12 @@ const ItemBaseSchema = z.object({
 });
 
 /**
+ * Conditions have no name (nothing refers to them): the editor shows their
+ * condition, or this label if the researcher gives one.
+ */
+const ConditionLabelSchema = z.string().optional().describe("Shown in the editor instead of the condition");
+
+/**
  * A question item appearing at the top level of a codebook.
  * Results in a stored coder-level (non-unit) variable value.
  */
@@ -95,14 +101,15 @@ export type InLoopItem =
   | EndItem
   | {
       type: "condition";
-      name: string;
+      label?: string;
       condition: Condition;
       children: InLoopItem[];
     };
 
 export const InLoopConditionItemSchema: z.ZodType<Extract<InLoopItem, { type: "condition" }>> = z.lazy(() =>
-  ItemBaseSchema.extend({
+  z.object({
     type: z.literal("condition"),
+    label: ConditionLabelSchema,
     condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit/$const"),
     children: z.array(InLoopItemSchema).min(1, "Condition must have at least one child item"),
   })
@@ -142,14 +149,15 @@ export type TopLevelItem =
   | EndItem
   | {
       type: "condition";
-      name: string;
+      label?: string;
       condition: Condition;
       children: TopLevelItem[];
     };
 
 export const TopLevelConditionItemSchema: z.ZodType<Extract<TopLevelItem, { type: "condition" }>> = z.lazy(() =>
-  ItemBaseSchema.extend({
+  z.object({
     type: z.literal("condition"),
+    label: ConditionLabelSchema,
     condition: ConditionSchema.describe("A script over earlier answers ($var), and in a loop $unit/$const"),
     children: z.array(TopLevelItemSchema).min(1, "Condition must have at least one child item"),
   })
@@ -174,3 +182,8 @@ export type ConditionItem = Extract<TopLevelItem | InLoopItem, { type: "conditio
  * Any codebook item anywhere in the tree.
  */
 export type CodebookItem = TopLevelItem | InLoopItem;
+
+/** An item's name; conditions have none. */
+export function itemName(item: CodebookItem): string | undefined {
+  return item.type === "condition" ? undefined : item.name;
+}

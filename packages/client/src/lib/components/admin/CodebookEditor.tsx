@@ -7,6 +7,7 @@ import { CodebookJsonEditor } from "./CodebookJsonEditor";
 import { useCodebookDraft } from "./codebookEditor/useCodebookDraft";
 import { EditorToolbar, type ChangedItem, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
 import { findItem, flattenTree, itemAtPath, keyOf } from "../../codebook/tree";
+import { itemTitle } from "../../codebook/conditions";
 import type { CodebookBackup } from "../../codebook/localBackup";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -86,7 +87,7 @@ export function CodebookEditor({
     () =>
       draft.validationErrors.map((issue) => ({
         message: issue.message,
-        item: itemAtPath(draft.items, issue.path)?.name ?? null,
+        item: ((at) => (at ? itemTitle(at) : null))(itemAtPath(draft.items, issue.path)),
         target: { path: issue.path },
       })),
     [draft.validationErrors, draft.items],
@@ -100,7 +101,7 @@ export function CodebookEditor({
     () =>
       flattenTree(draft.items).flatMap((item) => {
         const key = keyOf(item);
-        return key && draft.changed.has(key) ? [{ key, name: item.name, isNew: !findItem(draft.savedItems, key) }] : [];
+        return key && draft.changed.has(key) ? [{ key, name: itemTitle(item), isNew: !findItem(draft.savedItems, key) }] : [];
       }),
     [draft.items, draft.changed, draft.savedItems],
   );
@@ -110,7 +111,7 @@ export function CodebookEditor({
     const target = issue.target;
     const item = !target ? null : "path" in target ? itemAtPath(draft.items, target.path) : findItem(draft.items, target.name);
     if (!item) return;
-    draft.select(keyOf(item) ?? item.name);
+    draft.select(keyOf(item) ?? itemTitle(item));
     setView("tree");
   }
 

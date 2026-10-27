@@ -74,6 +74,8 @@ describe("migrateCodebookItems", () => {
     );
     expect(items[5].condition!.script).toBe(`$unit.source === "nyt"`);
     expect(items[6].condition!.script).toBe("true");
+    // Conditions lost their name.
+    expect(items.filter((i) => "name" in i && (i as { type?: string }).type === "condition")).toEqual([]);
   });
 
   it("migrates branch conditions in legacy-shaped loops too", () => {

@@ -19,6 +19,8 @@ import {
   conditionToRows,
   defaultRow,
   findTarget,
+  rawOperatorLabel,
+  rowProblems,
   rowsToScript,
   ruleOperators,
   ruleTargets,
@@ -66,7 +68,9 @@ export function ConditionEditor({ condition, onChange, questions, loop, issues =
           value={shown}
           onChange={(next) => {
             if (next === "rules" && !rules) {
-              window.alert("This script isn't a list of simple rules; edit it as a script, or clear it to start over.");
+              window.alert(
+                "This script can't be shown as rules: rules are a list of comparisons joined by all \"and\" or all \"or\". Edit it as a script, or clear it to start over.",
+              );
               return;
             }
             setMode(next);
@@ -94,7 +98,8 @@ export function ConditionEditor({ condition, onChange, questions, loop, issues =
         <ScriptEditor script={condition.script} onChange={(script) => onChange({ script })} questions={questions} loop={loop} />
       )}
 
-      <IssueList issues={issues} />
+      {/* In the rules, each row shows its own problems. */}
+      {!(shown === "rules" && rules?.rows.some((row) => rowProblems(row, targets).length > 0)) && <IssueList issues={issues} />}
     </div>
   );
 }
@@ -149,6 +154,9 @@ function RuleRowEditor({
   const operators = target ? ruleOperators(target.kind) : [];
   const operator = operators.find((o) => o.key === row.operator);
   const options = target?.options ?? [];
+  const problems = rowProblems(row, targets);
+  const isOption = (value: OptionValue) => options.some((o) => o.value === value);
+  const invalid = "border-destructive text-destructive";
 
   const setOperator = (key: string) => {
     const next = operators.find((o) => o.key === key)!;
@@ -161,13 +169,20 @@ function RuleRowEditor({
   };
 
   let argsInput = null;
-  if (operator?.args === "one" && options.length) {
+  if (!operator) {
+    // No operator fits: show the values as they are; choosing an operator fixes the row.
+    argsInput = row.args.length > 0 && <span className="font-mono text-destructive">{row.args.map((a) => JSON.stringify(a)).join(", ")}</span>;
+  } else if (operator.args === "one" && options.length) {
+    const current = row.args[0];
     argsInput = (
       <select
-        className={selectClass}
-        value={JSON.stringify(row.args[0] ?? null)}
+        className={`${selectClass} ${current !== undefined && !isOption(current) ? invalid : ""}`}
+        value={JSON.stringify(current ?? null)}
         onChange={(e) => onChange({ ...row, args: [JSON.parse(e.target.value) as OptionValue] })}
       >
+        {current !== undefined && !isOption(current) && (
+          <option value={JSON.stringify(current)}>{JSON.stringify(current)} (not an option)</option>
+        )}
         {options.map((o) => (
           <option key={String(o.value)} value={JSON.stringify(o.value)}>
             {optionLabel(o)}
@@ -175,11 +190,24 @@ function RuleRowEditor({
         ))}
       </select>
     );
-  } else if (operator?.args === "several") {
+  } else if (operator.args === "several") {
     const toggle = (value: OptionValue) =>
       onChange({ ...row, args: row.args.includes(value) ? row.args.filter((v) => v !== value) : [...row.args, value] });
     argsInput = (
       <div className="flex flex-wrap gap-1">
+        {row.args
+          .filter((v) => !isOption(v))
+          .map((v) => (
+            <button
+              key={`invalid-${JSON.stringify(v)}`}
+              type="button"
+              title="Not an option: click to remove"
+              onClick={() => toggle(v)}
+              className="rounded border border-destructive px-1.5 py-0.5 text-[11px] text-destructive line-through"
+            >
+              {JSON.stringify(v)}
+            </button>
+          ))}
         {options.map((o) => (
           <button
             key={String(o.value)}
@@ -194,7 +222,7 @@ function RuleRowEditor({
         ))}
       </div>
     );
-  } else if (operator?.args === "number" || operator?.args === "range") {
+  } else if (operator.args === "number" || operator.args === "range") {
     const n = operator.args === "range" ? 2 : 1;
     argsInput = (
       <div className="flex items-center gap-1">
@@ -216,24 +244,26 @@ function RuleRowEditor({
   }
 
   return (
+    <div className="flex flex-col gap-0.5">
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <span className="w-6 text-muted-foreground">{label}</span>
       <select
-        className={`${selectClass} font-mono`}
+        className={`${selectClass} font-mono ${target ? "" : invalid}`}
         value={targetKey(row)}
         onChange={(e) => {
           const next = targets.find((t) => targetKey(t) === e.target.value);
           if (next) onChange(defaultRow(next));
         }}
       >
-        {!target && <option value={targetKey(row)}>{targetKey(row)}</option>}
+        {!target && <option value={targetKey(row)}>{targetKey(row)} (not available)</option>}
         {targets.map((t) => (
           <option key={targetKey(t)} value={targetKey(t)}>
             {t.label}
           </option>
         ))}
       </select>
-      <select className={selectClass} value={row.operator} onChange={(e) => setOperator(e.target.value)}>
+      <select className={`${selectClass} ${operator ? "" : invalid}`} value={row.operator} onChange={(e) => setOperator(e.target.value)}>
+        {!operator && <option value="">{rawOperatorLabel(row)}</option>}
         {operators.map((o) => (
           <option key={o.key} value={o.key}>
             {o.label}
@@ -244,6 +274,12 @@ function RuleRowEditor({
       <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label="Remove rule">
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
+    </div>
+    {problems.map((problem) => (
+      <p key={problem} className="pl-8 text-xs text-destructive">
+        {problem}
+      </p>
+    ))}
     </div>
   );
 }

@@ -12,7 +12,6 @@ const items = [
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },
       {
         type: "condition",
-        name: "c",
         condition: { script: "$unit.source === 'x'" },
         children: [{ type: "question", name: "q2", variable: { type: "confirm", question: "'$unit.quoted' $unit.body" } }],
       },
@@ -30,7 +29,7 @@ describe("unknownUnitFields", () => {
     ];
     expect(unknownUnitFields(items, fields).map((w) => [w.item, w.field])).toEqual([
       ["q1", "topic"],
-      ["c", "source"],
+      ["if $unit.source === 'x'", "source"],
       ["q2", "quoted"],
       ["spans2", "text"],
     ]);

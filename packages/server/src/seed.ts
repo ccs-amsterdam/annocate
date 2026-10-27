@@ -72,7 +72,6 @@ export async function seed(db: Sql): Promise<void> {
     },
     {
       type: "condition",
-      name: "too_young",
       condition: { script: "$var.age.lt(16)" },
       children: [
         {
@@ -122,7 +121,6 @@ export async function seed(db: Sql): Promise<void> {
     },
     {
       type: "condition",
-      name: "experiment_only",
       condition: { script: `$var.group.is("experiment")` },
       children: [
         {
@@ -249,7 +247,6 @@ export async function seed(db: Sql): Promise<void> {
         },
         {
           type: "condition",
-          name: "experts_only",
           condition: { script: "$var.experience.is(3)" },
           children: [
             {
@@ -275,7 +272,6 @@ export async function seed(db: Sql): Promise<void> {
         },
         {
           type: "condition",
-          name: "tech_fans",
           condition: { script: "$var.interest.items.technology.gte(4)" },
           children: [
             {

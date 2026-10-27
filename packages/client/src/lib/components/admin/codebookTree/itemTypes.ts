@@ -1,5 +1,22 @@
-import { GitBranch, HelpCircle, LogOut, Repeat, type LucideIcon } from "lucide-react";
-import type { ItemType } from "./utils";
+import {
+  ArrowLeftRight,
+  CircleCheck,
+  GitBranch,
+  Grid3x3,
+  Hash,
+  Highlighter,
+  HelpCircle,
+  ListOrdered,
+  LogOut,
+  Repeat,
+  Shuffle,
+  Spline,
+  Tag,
+  Tags,
+  type LucideIcon,
+} from "lucide-react";
+import type { AnyVariableType } from "@annotinder/contracts";
+import type { ItemType, TreeNode } from "./utils";
 
 interface ItemTypeInfo {
   label: string;
@@ -51,3 +68,25 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     color: "text-blue-500",
   },
 };
+
+/** Questions are shown with the icon of their answer type. */
+const ANSWER_TYPE_ICONS: Record<AnyVariableType["type"], LucideIcon> = {
+  nominal: Tag,
+  ordinal: ListOrdered,
+  numeric: Hash,
+  scale: Grid3x3,
+  annotinder: ArrowLeftRight,
+  confirm: CircleCheck,
+  auto: Shuffle,
+  span: Highlighter,
+  relation: Spline,
+};
+
+/** The icon of an item: its type's, or for a question its answer type's. */
+export function itemIcon(item: TreeNode): LucideIcon {
+  if ("variable" in item && item.variable) {
+    if (item.variable.type === "nominal" && item.variable.multiple) return Tags;
+    return ANSWER_TYPE_ICONS[item.variable.type] ?? ITEM_TYPES[item.type].icon;
+  }
+  return ITEM_TYPES[item.type].icon;
+}

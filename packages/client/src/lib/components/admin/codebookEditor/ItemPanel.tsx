@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import {
   availableQuestions,
+  itemName,
   type CodebookItem,
-  type CodebookValidationIssue,
   type TopLevelItem,
   type UnitLoopItem,
 } from "@annotinder/contracts";
 import { AlertTriangle, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useUnitsetsQuery } from "../../../admin/queries";
-import { findParent, flattenTree, isInsideUnitLoop, itemAtPath, itemPath } from "../../../codebook/tree";
+import { findParent, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
+import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
 import { CodebookPreviewVariable } from "../CodebookPreviewVariable";
 import { getItemKey } from "../codebookTree/utils";
@@ -34,7 +35,7 @@ export function ItemPanel({
 }) {
   const [pane, setPane] = useState<ItemPane>("edit");
   const item = draft.selectedItem;
-  const itemWarnings = item ? warnings.filter((w) => w.item === item.name) : [];
+  const itemWarnings = item ? warnings.filter((w) => w.item === itemTitle(item)) : [];
 
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs">
@@ -78,7 +79,7 @@ export function ItemPanel({
                 key={getItemKey(item)}
                 item={item}
                 readOnly={readOnly}
-                issues={issuesOfItem(item, draft.validationIssues, draft.cleanItems)}
+                issues={draft.validationIssues.filter((issue) => issueIsAbout(draft.items, issue, item))}
                 onChange={(next) => draft.update(getItemKey(item), next)}
               />
             ) : (
@@ -115,8 +116,8 @@ function ItemEditForm({
   const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
   const loop = enclosingLoop(items, item);
   const itemIssues = useMemo(
-    () => issuesOfItem(item, validationIssues, cleanItems),
-    [item, validationIssues, cleanItems],
+    () => validationIssues.filter((issue) => issueIsAbout(items, issue, item)),
+    [item, validationIssues, items],
   );
 
   return (
@@ -144,7 +145,7 @@ function variableNames(items: TopLevelItem[]) {
   return {
     unitVariableNames: all
       .filter((i) => i.type === "unit_variable" || (i.type === "question" && inLoop(i)))
-      .map((i) => i.name),
+      .flatMap((i) => itemName(i) ?? []),
   };
 }
 
@@ -158,11 +159,4 @@ function enclosingLoop(items: TopLevelItem[], item: CodebookItem): UnitLoopItem 
   return undefined;
 }
 
-/** Validation issues about this item: pointing at it by path, or (without a path to an item) mentioning it by name. */
-function issuesOfItem(item: CodebookItem, issues: CodebookValidationIssue[], cleanItems: TopLevelItem[]) {
-  return issues.filter((issue) => {
-    const at = itemAtPath(cleanItems, issue.path);
-    if (at) return at.name === item.name;
-    return Boolean(item.name) && issue.message.includes(`'${item.name}'`);
-  });
-}
+

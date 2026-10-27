@@ -13,10 +13,11 @@ import {
   outdentItem,
   updateItem,
 } from "./codebookEdit";
-import { flattenTree } from "./tree";
+import { flattenTree, keyOf } from "./tree";
 
-function cond(name: string, children: CodebookItem[] = []): TopLevelItem {
-  return { type: "condition", name, condition: { script: "true" }, children: children as TopLevelItem[] };
+/** A condition; it has no name, so the tests identify it by its editor key. */
+function cond(key: string, children: CodebookItem[] = []): TopLevelItem {
+  return { _key: key, type: "condition", condition: { script: "true" }, children: children as TopLevelItem[] } as TopLevelItem;
 }
 
 describe("codebookEdit", () => {
@@ -24,13 +25,13 @@ describe("codebookEdit", () => {
     it("appends a new root item when parent is null", () => {
       const items: TopLevelItem[] = [cond("a")];
       const next = insertItem(items, null, cond("b"));
-      expect(next.map((i) => i.name)).toEqual(["a", "b"]);
+      expect(next.map(keyOf)).toEqual(["a", "b"]);
     });
 
     it("appends a child under an existing parent", () => {
       const items: TopLevelItem[] = [cond("a")];
       const next = insertItem(items, "a", cond("child"));
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["a", "child"]);
+      expect(flattenTree(next).map(keyOf)).toEqual(["a", "child"]);
     });
   });
 
@@ -38,19 +39,19 @@ describe("codebookEdit", () => {
     it("inserts an item before the specified root item", () => {
       const items: TopLevelItem[] = [cond("b"), cond("c")];
       const next = insertItemBefore(items, "b", cond("a"));
-      expect(next.map((i) => i.name)).toEqual(["a", "b", "c"]);
+      expect(next.map(keyOf)).toEqual(["a", "b", "c"]);
     });
 
     it("inserts an item before a middle item", () => {
       const items: TopLevelItem[] = [cond("a"), cond("c")];
       const next = insertItemBefore(items, "c", cond("b"));
-      expect(next.map((i) => i.name)).toEqual(["a", "b", "c"]);
+      expect(next.map(keyOf)).toEqual(["a", "b", "c"]);
     });
 
     it("inserts an item before a nested child item", () => {
       const items: TopLevelItem[] = [cond("p", [cond("child2")])];
       const next = insertItemBefore(items, "child2", cond("child1"));
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["p", "child1", "child2"]);
+      expect(flattenTree(next).map(keyOf)).toEqual(["p", "child1", "child2"]);
     });
   });
 
@@ -58,7 +59,7 @@ describe("codebookEdit", () => {
     it("removes a root item", () => {
       const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
       const next = deleteItem(items, "b");
-      expect(next.map((i) => i.name)).toEqual(["a", "c"]);
+      expect(next.map(keyOf)).toEqual(["a", "c"]);
     });
 
     it("removes a nested item and all its descendants", () => {
@@ -67,7 +68,7 @@ describe("codebookEdit", () => {
         cond("b"),
       ];
       const next = deleteItem(items, "a1");
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["a", "a2", "b"]);
+      expect(flattenTree(next).map(keyOf)).toEqual(["a", "a2", "b"]);
     });
   });
 
@@ -75,20 +76,20 @@ describe("codebookEdit", () => {
     it("moves an item before another item", () => {
       const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
       const next = moveItemTo(items, "c", "a", "before");
-      expect(next.map((i) => i.name)).toEqual(["c", "a", "b"]);
+      expect(next.map(keyOf)).toEqual(["c", "a", "b"]);
     });
 
     it("moves an item after another item", () => {
       const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
       const next = moveItemTo(items, "a", "b", "after");
-      expect(next.map((i) => i.name)).toEqual(["b", "a", "c"]);
+      expect(next.map(keyOf)).toEqual(["b", "a", "c"]);
     });
 
     it("moves an item to become a child", () => {
       const items: TopLevelItem[] = [cond("a"), cond("b")];
       const next = moveItemTo(items, "b", "a", "inside");
       expect(next).toHaveLength(1);
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["a", "b"]);
+      expect(flattenTree(next).map(keyOf)).toEqual(["a", "b"]);
     });
   });
 
@@ -99,7 +100,7 @@ describe("codebookEdit", () => {
       expect(canMoveToRootEnd(items, "b")).toBe(false);
 
       const next = moveToRootEnd(items, "a");
-      expect(next.map((i) => i.name)).toEqual(["b", "a"]);
+      expect(next.map(keyOf)).toEqual(["b", "a"]);
     });
 
     it("allows moving nested item to root end", () => {
@@ -107,7 +108,7 @@ describe("codebookEdit", () => {
       expect(canMoveToRootEnd(items, "nested")).toBe(true);
 
       const next = moveToRootEnd(items, "nested");
-      expect(next.map((i) => i.name)).toEqual(["loop", "after", "nested"]);
+      expect(next.map(keyOf)).toEqual(["loop", "after", "nested"]);
     });
 
     it("prevents moving span question to root end (outside loop)", () => {
@@ -184,16 +185,16 @@ describe("codebookEdit", () => {
     it("moves an item up and down among siblings", () => {
       const items: TopLevelItem[] = [cond("a"), cond("b"), cond("c")];
       const up = moveItem(items, "b", "up");
-      expect(up.map((i) => i.name)).toEqual(["b", "a", "c"]);
+      expect(up.map(keyOf)).toEqual(["b", "a", "c"]);
 
       const down = moveItem(items, "b", "down");
-      expect(down.map((i) => i.name)).toEqual(["a", "c", "b"]);
+      expect(down.map(keyOf)).toEqual(["a", "c", "b"]);
     });
 
     it("moves nested siblings within a parent", () => {
       const items: TopLevelItem[] = [cond("root", [cond("c1"), cond("c2"), cond("c3")])];
       const next = moveItem(items, "c2", "up");
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["root", "c2", "c1", "c3"]);
+      expect(flattenTree(next).map(keyOf)).toEqual(["root", "c2", "c1", "c3"]);
     });
   });
 
@@ -202,14 +203,14 @@ describe("codebookEdit", () => {
       const items: TopLevelItem[] = [cond("p1"), cond("p2")];
       const next = indentItem(items, "p2");
       expect(next).toHaveLength(1);
-      expect(next[0].name).toBe("p1");
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["p1", "p2"]);
+      expect(keyOf(next[0])).toBe("p1");
+      expect(flattenTree(next).map(keyOf)).toEqual(["p1", "p2"]);
     });
 
     it("outdents a nested item to become sibling after its parent", () => {
       const items: TopLevelItem[] = [cond("p1", [cond("child")]), cond("other")];
       const next = outdentItem(items, "child");
-      expect(next.map((i) => i.name)).toEqual(["p1", "child", "other"]);
+      expect(next.map(keyOf)).toEqual(["p1", "child", "other"]);
     });
   });
 
@@ -218,10 +219,11 @@ describe("codebookEdit", () => {
       const items: TopLevelItem[] = [cond("p1", [cond("child")])];
       const next = updateItem(items, "p1", {
         type: "condition",
-        name: "p1_renamed",
+        label: "relabeled",
         condition: { script: "$var.x.value > 1" },
       } as unknown as TopLevelItem);
-      expect(flattenTree(next).map((i) => i.name)).toEqual(["p1_renamed", "child"]);
+      expect(flattenTree(next).map(keyOf)).toEqual(["p1", "child"]);
+      expect(next[0]).toMatchObject({ label: "relabeled", condition: { script: "$var.x.value > 1" } });
     });
   });
 });

@@ -1,9 +1,10 @@
-import type {
-  CodebookItem,
-  TopLevelItem,
-  InLoopItem,
-  UnitLoopItem,
-  ConditionItem,
+import {
+  itemName,
+  type CodebookItem,
+  type TopLevelItem,
+  type InLoopItem,
+  type UnitLoopItem,
+  type ConditionItem,
 } from "@annotinder/contracts";
 import { findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "./tree";
 
@@ -11,11 +12,12 @@ export type MoveTargetPosition = "before" | "after" | "inside";
 
 /**
  * An item as the tree edits below handle it: any codebook item, with the
- * editor's `_key` (stable identity while names are edited) and children.
+ * editor's `_key` (stable identity while names are edited; conditions have
+ * no name) and children.
  */
 interface Node {
   _key?: string;
-  name: string;
+  name?: string;
   type: string;
   children?: Node[];
 }
@@ -60,7 +62,7 @@ export function getUniqueItemName(
   items: (TopLevelItem | InLoopItem)[],
   prefix = "item",
 ): string {
-  const existingNames = new Set(flattenTree(items).map((i) => i.name));
+  const existingNames = new Set(flattenTree(items).map(itemName));
   let counter = 1;
   while (existingNames.has(`${prefix}_${counter}`)) {
     counter += 1;
@@ -179,7 +181,7 @@ export function canMoveItemTo(
   // Cannot move into own descendants
   if (childrenOf(sourceItem).length > 0) {
     const descendants = flattenTree(childrenOf(sourceItem));
-    if (descendants.some((d) => d.name === targetItem.name || (targetKey && keyOf(d) === targetKey))) {
+    if (descendants.some((d) => d === targetItem || (targetKey && keyOf(d) === targetKey))) {
       return false;
     }
   }
@@ -194,13 +196,13 @@ export function canMoveItemTo(
     targetParent = targetItem as UnitLoopItem | ConditionItem;
   } else {
     // Destination parent is target's parent
-    targetParent = findParent(items, targetKey || targetItem.name);
+    targetParent = findParent(items, targetKey || itemName(targetItem) || "");
   }
 
   const isTargetInLoop =
     targetParent !== null &&
     (targetParent.type === "unit_loop" ||
-      isInsideUnitLoop(items, keyOf(targetParent) || targetParent.name));
+      isInsideUnitLoop(items, keyOf(targetParent) || itemName(targetParent) || ""));
 
   // Check item type constraints:
   if (sourceItem.type === "user_variable") {
@@ -246,9 +248,8 @@ export function canMoveItemTo(
 export function canMoveToRootEnd(items: TopLevelItem[], sourceIdentifier: string): boolean {
   const sourceItem = findItem(items, sourceIdentifier);
   if (!sourceItem) return false;
-  const sourceKey = keyOf(sourceItem) || sourceItem.name;
   const lastRoot = items[items.length - 1];
-  if (lastRoot && (keyOf(lastRoot) === sourceKey || lastRoot.name === sourceKey)) {
+  if (lastRoot === sourceItem) {
     return false;
   }
   if (sourceItem.type === "unit_variable") return false;
@@ -306,7 +307,7 @@ export function moveItemTo(
   // Cannot move into own descendants
   if (childrenOf(sourceItem).length > 0) {
     const descendants = flattenTree(childrenOf(sourceItem));
-    if (descendants.some((d) => d.name === targetItem.name || (targetKey && keyOf(d) === targetKey))) {
+    if (descendants.some((d) => d === targetItem || (targetKey && keyOf(d) === targetKey))) {
       return items;
     }
   }
@@ -467,8 +468,8 @@ export function outdentItem(items: TopLevelItem[], identifier: string): TopLevel
 
   return moveItemTo(
     items,
-    keyOf(item) || item.name,
-    keyOf(parent) || parent.name,
+    keyOf(item) || itemName(item) || "",
+    keyOf(parent) || itemName(parent) || "",
     "after",
   );
 }

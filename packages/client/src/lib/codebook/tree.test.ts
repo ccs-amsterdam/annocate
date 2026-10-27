@@ -1,5 +1,7 @@
 import {
   collectQuestions,
+  itemName,
+  type CodebookItem,
   type TopLevelItem,
   type InLoopItem,
   type UserVariableItem,
@@ -9,18 +11,21 @@ import {
   type Condition,
 } from "@annotinder/contracts";
 import { describe, expect, it } from "vitest";
-import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTree, isInsideUnitLoop } from "./tree";
+import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTree, isInsideUnitLoop, keyOf } from "./tree";
+
+/** Items by name; conditions (which have none) by their editor key. */
+const id = (item: CodebookItem) => itemName(item) ?? keyOf(item);
 
 function confirm(name: string): UserVariableItem {
   return { name, type: "user_variable", variable: { type: "confirm", question: "?" } };
 }
 
 function topCondition(name: string, condition: Condition, children: TopLevelItem[]): TopLevelItem {
-  return { name, type: "condition", condition, children };
+  return { _key: name, type: "condition", condition, children } as TopLevelItem;
 }
 
 function inLoopCondition(name: string, condition: Condition, children: InLoopItem[]): InLoopItem {
-  return { name, type: "condition", condition, children };
+  return { _key: name, type: "condition", condition, children } as InLoopItem;
 }
 
 function unitVar(name: string): UnitVariableItem {
@@ -54,7 +59,7 @@ describe("tree utilities", () => {
   const ctx = { questions: collectQuestions(items).questions };
 
   it("flattenTree returns all items in document order", () => {
-    expect(flattenTree(items).map((i) => i.name)).toEqual([
+    expect(flattenTree(items).map(id)).toEqual([
       "consent",
       "gate",
       "gated_question",
@@ -75,8 +80,8 @@ describe("tree utilities", () => {
   });
 
   it("findParent finds the parent item", () => {
-    expect(findParent(items, "gated_question")?.name).toBe("gate");
-    expect(findParent(items, "followup")?.name).toBe("inner_gate");
+    expect(id(findParent(items, "gated_question")!)).toBe("gate");
+    expect(id(findParent(items, "followup")!)).toBe("inner_gate");
     expect(findParent(items, "consent")).toBeNull();
   });
 
@@ -90,19 +95,19 @@ describe("tree utilities", () => {
   describe("computeTopLevelSteps", () => {
     it("excludes a condition's children when false, does not descend into unit_loop", async () => {
       const { steps } = await computeTopLevelSteps(items, {}, ctx);
-      expect(steps.map((i) => i.name)).toEqual(["consent", "main_loop"]);
+      expect(steps.map(id)).toEqual(["consent", "main_loop"]);
     });
 
     it("includes a condition's children when true", async () => {
       const { steps } = await computeTopLevelSteps(items, { consent: answered }, ctx);
-      expect(steps.map((i) => i.name)).toEqual(["consent", "gated_question", "main_loop"]);
+      expect(steps.map(id)).toEqual(["consent", "gated_question", "main_loop"]);
     });
 
     it("treats answers of hidden questions as unanswered", async () => {
       // gated_question was answered, but consent is now skipped: gate hides it, so `second` doesn't show either
       const answers = { consent: { done: true, skip: true }, gated_question: answered };
       const { steps, visible } = await computeTopLevelSteps(items, answers, ctx);
-      expect(steps.map((i) => i.name)).toEqual(["consent", "main_loop"]);
+      expect(steps.map(id)).toEqual(["consent", "main_loop"]);
       expect(Object.keys(visible)).toEqual(["consent"]);
     });
   });
@@ -110,7 +115,7 @@ describe("tree utilities", () => {
   describe("computeLoopSteps", () => {
     it("gates nested conditions within the loop using per-unit values and unit data", async () => {
       const names = async (unitAnswers: Record<string, VariableValue>, n: number) =>
-        (await computeLoopSteps(loopNode, {}, unitAnswers, { n }, ctx)).steps.map((i) => i.name);
+        (await computeLoopSteps(loopNode, {}, unitAnswers, { n }, ctx)).steps.map(id);
       expect(await names({ sentiment: code("A") }, 1)).toEqual(["sentiment", "followup"]);
       expect(await names({ sentiment: code("B") }, 2)).toEqual(["sentiment", "long"]);
     });

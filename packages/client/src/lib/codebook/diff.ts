@@ -1,9 +1,11 @@
 import { collectQuestions, questionValues, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
+import { itemTitle } from "./conditions";
 
 export type CodebookChangeKind = "added" | "removed" | "changed" | "moved";
 
 export interface CodebookChange {
   kind: CodebookChangeKind;
+  /** The item's name, or for a condition its label or condition (`itemTitle`). */
   name: string;
   type: CodebookItem["type"];
   /** Name of the containing loop or condition; null at the top level. */
@@ -12,14 +14,28 @@ export interface CodebookChange {
 
 interface Located {
   item: CodebookItem;
+  /** The container's title (`itemTitle`); null at the top level. */
   parent: string | null;
+  /** The container's identity ("" at the top level). */
+  parentId: string;
 }
 
-/** Item name -> item and container, for every item in the tree. */
-function locate(items: (TopLevelItem | InLoopItem)[], parent: string | null = null, out = new Map<string, Located>()) {
+/**
+ * Identity -> item and container, for every item in the tree. Items are
+ * identified by name; conditions have none, so by place: the nth condition
+ * in their container.
+ */
+function locate(
+  items: (TopLevelItem | InLoopItem)[],
+  container: { id: string; title: string } | null = null,
+  out = new Map<string, Located>(),
+) {
+  let conditions = 0;
   for (const item of items) {
-    out.set(item.name, { item, parent });
-    if ("children" in item && Array.isArray(item.children)) locate(item.children, item.name, out);
+    const parentId = container?.id ?? "";
+    const id = item.type === "condition" ? `${parentId}/condition ${conditions++}` : item.name;
+    out.set(id, { item, parent: container?.title ?? null, parentId });
+    if ("children" in item && Array.isArray(item.children)) locate(item.children, { id, title: itemTitle(item) }, out);
   }
   return out;
 }
@@ -33,7 +49,7 @@ function ownContent(item: CodebookItem): string {
 
 /**
  * What changed between two codebooks, item by item (items are matched by
- * name, which is unique in a codebook). In document order: removed items in
+ * name, which is unique in a codebook; conditions by place). In document order: removed items in
  * the order of `before`, then the rest in the order of `after`.
  */
 export function diffCodebooks(
@@ -44,13 +60,14 @@ export function diffCodebooks(
   const now = locate(after);
   const changes: CodebookChange[] = [];
 
-  for (const [name, { item, parent }] of old) {
-    if (!now.has(name)) changes.push({ kind: "removed", name, type: item.type, parent });
+  for (const [id, { item, parent }] of old) {
+    if (!now.has(id)) changes.push({ kind: "removed", name: itemTitle(item), type: item.type, parent });
   }
-  for (const [name, { item, parent }] of now) {
-    const prev = old.get(name);
+  for (const [id, { item, parent, parentId }] of now) {
+    const prev = old.get(id);
+    const name = itemTitle(item);
     if (!prev) changes.push({ kind: "added", name, type: item.type, parent });
-    else if (prev.parent !== parent) changes.push({ kind: "moved", name, type: item.type, parent });
+    else if (prev.parentId !== parentId) changes.push({ kind: "moved", name, type: item.type, parent });
     else if (ownContent(prev.item) !== ownContent(item)) changes.push({ kind: "changed", name, type: item.type, parent });
   }
   return changes;
