@@ -58,6 +58,12 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
   }
+
+  /* Thin scrollbars in the primary colour, everywhere (Monaco's: monacoSetup.ts). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
+  }
 }
 
 /* Phase 4/5 will port the ShadCN CSS variable theme (colors, radii, etc.)

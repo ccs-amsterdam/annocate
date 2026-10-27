@@ -124,8 +124,7 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
 
   function createItem(type: ItemType) {
     const name = getUniqueItemName(items, type);
-    const childName = getUniqueItemName(items, `${name}_q`);
-    return { ...defaultItemForType(type, name, childName), _key: generateKey() };
+    return { ...defaultItemForType(type, name), _key: generateKey() };
   }
 
   function insertAt(position: TreePosition, type: ItemType) {

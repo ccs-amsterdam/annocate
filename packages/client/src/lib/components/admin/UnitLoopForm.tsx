@@ -1,4 +1,6 @@
-import { Plus, Trash2, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Plus, Split, Trash2, X } from "lucide-react";
+import { cn } from "cn";
 import {
   ALL_UNITS_UNITSET,
   supportsAgreement,
@@ -8,12 +10,15 @@ import {
   type Overlap,
   type SharedBranch,
   type UnitBranch,
+  type UnitLayout,
   type UnitLoopItem,
   type UnitMode,
   type UnitsetResponse,
 } from "@annotinder/contracts";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { TemplateCodeEditor } from "./jsonEditor/TemplateCodeEditor";
 import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
@@ -73,13 +78,89 @@ function withoutWhen(branch: UnitBranch): UnitBranch {
   return next;
 }
 
+type LoopTab = "units" | "layout";
+
 /**
- * Edits how a unit_loop distributes units (contracts unitLoop.ts): per
- * branch a mode (all units, shared, one set per coder, the invitation's
- * units) and an optional overlap set; with branches, per branch a
- * condition on coder-level questions.
+ * Edits a unit_loop, in two tabs: which units coders get (contracts
+ * unitLoop.ts: per branch a mode and an optional overlap set; with
+ * branches, per branch a condition on coder-level questions; the order),
+ * and how a unit is shown (the template and its constants).
  */
 export function UnitLoopForm({
+  loop,
+  unitsets,
+  unitFields,
+  coderQuestions,
+  validationIssues,
+  readOnly = false,
+  onChange,
+}: {
+  loop: UnitLoopItem;
+  unitsets: UnitsetResponse[];
+  /** The job's unit fields, for completions in the template. */
+  unitFields: string[];
+  /** Coder-level questions before the loop: what branch conditions and unitset names may use. */
+  coderQuestions: { name: string; variable: AnyVariableType }[];
+  validationIssues: CodebookValidationIssue[];
+  readOnly?: boolean;
+  onChange: (loop: UnitLoopItem) => void;
+}) {
+  const [tab, setTab] = useState<LoopTab>("units");
+  const tabs: { value: LoopTab; label: string; issues: CodebookValidationIssue[] }[] = [
+    { value: "units", label: "Units", issues: [...issuesAt(validationIssues, "units"), ...issuesAt(validationIssues, "order")] },
+    { value: "layout", label: "Layout", issues: issuesAt(validationIssues, "layout") },
+  ];
+  return (
+    <div className="flex flex-col gap-4">
+      <div role="tablist" className="flex gap-1 border-b border-border">
+        {tabs.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.value}
+            onClick={() => setTab(t.value)}
+            className={cn(
+              "-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-semibold transition-colors",
+              tab === t.value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+            {t.issues.some((i) => !i.warning) && <span className="h-1.5 w-1.5 rounded-full bg-destructive" title="Has problems" />}
+          </button>
+        ))}
+      </div>
+      {tab === "units" ? (
+        <UnitsTab loop={loop} unitsets={unitsets} coderQuestions={coderQuestions} validationIssues={validationIssues} onChange={onChange} />
+      ) : (
+        <LayoutTab
+          loop={loop}
+          unitFields={unitFields}
+          questions={coderQuestions.map((q) => q.name)}
+          issues={issuesAt(validationIssues, "layout")}
+          readOnly={readOnly}
+          onChange={onChange}
+        />
+      )}
+    </div>
+  );
+}
+
+/** A titled part of a tab, with a line of help. */
+function Section({ title, help, children }: { title: string; help?: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div>
+        <h3 className="text-xs font-semibold">{title}</h3>
+        {help && <p className="text-[11px] text-muted-foreground">{help}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Which units coders get: the branch (or branches), and the order. */
+function UnitsTab({
   loop,
   unitsets,
   coderQuestions,
@@ -88,7 +169,6 @@ export function UnitLoopForm({
 }: {
   loop: UnitLoopItem;
   unitsets: UnitsetResponse[];
-  /** Coder-level questions before the loop: what branch conditions and unitset names may use. */
   coderQuestions: { name: string; variable: AnyVariableType }[];
   validationIssues: CodebookValidationIssue[];
   onChange: (loop: UnitLoopItem) => void;
@@ -105,14 +185,7 @@ export function UnitLoopForm({
   const hasOtherwise = branches[branches.length - 1].when === undefined;
   const branchLabel = (b: number) => (branches[b].when === undefined ? "Otherwise" : b === 0 ? "If" : "Else if");
 
-  const toggleBranches = (on: boolean) => {
-    if (on) {
-      setBranches([{ ...defaultBranch(), when: { script: "true" } }, ...branches]);
-      return;
-    }
-    if (branches.length > 1 && !confirm("Keep only the last branch's units, and drop the other branches?")) return;
-    setBranches([withoutWhen(branches[branches.length - 1])]);
-  };
+  const startBranches = () => setBranches([{ ...defaultBranch(), when: { script: "true" } }, ...branches]);
   const addBranch = () => {
     const added: UnitBranch = { ...defaultBranch(), when: { script: "true" } };
     setBranches(hasOtherwise ? [...branches.slice(0, -1), added, branches[branches.length - 1]] : [...branches, added]);
@@ -134,37 +207,20 @@ export function UnitLoopForm({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-5">
       <datalist id="unitset-names">
         {unitsets.map((u) => (
           <option key={u.id} value={u.name} />
         ))}
       </datalist>
 
-      <label className={labelClass}>
-        Order
-        <select
-          className={`${selectClass} w-fit`}
-          value={loop.order ?? "sequential"}
-          onChange={(e) => onChange({ ...loop, order: e.target.value as UnitLoopItem["order"] })}
-        >
-          <option value="sequential">In unitset order</option>
-          <option value="random">Random (each coder their own order)</option>
-        </select>
-      </label>
-
-      <label className="flex items-center gap-2 text-xs font-semibold">
-        <input type="checkbox" checked={multi} onChange={(e) => toggleBranches(e.target.checked)} />
-        Different units per coder group (branches)
-      </label>
-
       {multi ? (
-        <>
+        <Section title="Coder groups" help="The first group a coder is in decides their units (and keeps deciding them).">
           {branches.map((branch, b) => (
-            <div key={b} className="flex flex-col gap-2 rounded-md border border-border p-3">
+            <div key={b} className="flex flex-col gap-3 rounded-md border border-border p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">{branchLabel(b)}</span>
-                <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeBranch(b)} aria-label="Remove branch">
+                <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeBranch(b)} aria-label="Remove group">
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -181,7 +237,7 @@ export function UnitLoopForm({
           ))}
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={addBranch}>
-              <Plus className="h-3.5 w-3.5" /> Branch
+              <Plus className="h-3.5 w-3.5" /> Group
             </Button>
             {!hasOtherwise && (
               <Button type="button" variant="outline" size="sm" onClick={() => setBranches([...branches, defaultBranch()])}>
@@ -189,10 +245,129 @@ export function UnitLoopForm({
               </Button>
             )}
           </div>
-        </>
+        </Section>
       ) : (
         editor(0)
       )}
+
+      <Section title="Order">
+        <select
+          className={`${selectClass} w-fit`}
+          value={loop.order ?? "sequential"}
+          onChange={(e) => onChange({ ...loop, order: e.target.value as UnitLoopItem["order"] })}
+        >
+          <option value="sequential">In unitset order</option>
+          <option value="random">Random (each coder their own order)</option>
+        </select>
+      </Section>
+
+      {!multi && (
+        <button
+          type="button"
+          onClick={startBranches}
+          className="flex w-fit cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <Split className="h-3.5 w-3.5" /> Different units for different coder groups…
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** How a unit is shown: the markdown template, and the constants it can use. */
+function LayoutTab({
+  loop,
+  unitFields,
+  questions,
+  issues,
+  readOnly,
+  onChange,
+}: {
+  loop: UnitLoopItem;
+  unitFields: string[];
+  questions: string[];
+  issues: CodebookValidationIssue[];
+  readOnly: boolean;
+  onChange: (loop: UnitLoopItem) => void;
+}) {
+  const layout = loop.layout ?? { template: "" };
+  const constants = Object.entries(layout.constants ?? {});
+  const names = { fields: unitFields, constants: constants.map(([n]) => n), questions };
+  const setLayout = (next: Partial<UnitLayout>) => onChange({ ...loop, layout: { ...layout, ...next } });
+  const setConstants = (entries: [string, string][]) => {
+    const next = { ...layout };
+    if (entries.length === 0) delete next.constants;
+    else next.constants = Object.fromEntries(entries);
+    onChange({ ...loop, layout: next });
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Section
+        title="Template"
+        help="Markdown. Insert values with $unit.<field>, $const.<name> or $var.<question>.value; type $ for suggestions."
+      >
+        <div
+          className={cn(
+            "overflow-hidden rounded-md border",
+            issues.some((i) => !i.warning && !i.path.includes("constants")) ? "border-destructive" : "border-input",
+          )}
+        >
+          <TemplateCodeEditor value={layout.template} names={names} readOnly={readOnly} onChange={(template) => setLayout({ template })} />
+        </div>
+        <IssueList issues={issues} />
+      </Section>
+
+      <Section
+        title="Constants"
+        help="Texts the template uses as $const.<name>, e.g. an introduction per experimental condition. They are part of the codebook version."
+      >
+        {constants.map(([name, value], i) => (
+          <div key={i} className="flex items-start gap-2">
+            <Input
+              aria-label="Constant name"
+              className="h-8 w-40 font-mono text-xs"
+              value={name}
+              placeholder="name"
+              onChange={(e) => {
+                const renamed = e.target.value;
+                // A name another constant has would merge them: not taken.
+                if (constants.some(([n], j) => j !== i && n === renamed)) return;
+                setConstants(constants.map((c, j) => (j === i ? [renamed, c[1]] : c)));
+              }}
+            />
+            <Textarea
+              aria-label={`Value of ${name}`}
+              className="field-sizing-content max-h-40 min-h-8 flex-1 text-xs"
+              rows={1}
+              value={value}
+              onChange={(e) => setConstants(constants.map((c, j) => (j === i ? [c[0], e.target.value] : c)))}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Remove ${name}`}
+              onClick={() => setConstants(constants.filter((_, j) => j !== i))}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-fit"
+          onClick={() => {
+            let n = constants.length + 1;
+            while (constants.some(([c]) => c === `const_${n}`)) n++;
+            setConstants([...constants, [`const_${n}`, ""]]);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Constant
+        </Button>
+      </Section>
     </div>
   );
 }
@@ -215,7 +390,7 @@ function BranchEditor({
   return (
     <div className="flex flex-col gap-3">
       <label className={labelClass}>
-        Units
+        Who codes which units
         <select className={`${selectClass} w-fit`} value={branch.mode} onChange={(e) => onChange(switchMode(branch, e.target.value as UnitMode))}>
           {MODES.map((m) => (
             <option key={m.value} value={m.value}>

@@ -26,12 +26,7 @@ import {
 export const ITEM_TYPE_OPTIONS_TOP: CodebookItem["type"][] = ["question", "unit_loop", "condition", "end"];
 export const ITEM_TYPE_OPTIONS_IN_LOOP: CodebookItem["type"][] = ["question", "condition", "end"];
 
-export function defaultItemForType(
-  type: CodebookItem["type"],
-  name: string,
-  childName?: string,
-): CodebookItem {
-  const qName = childName || `${name}_q1`;
+export function defaultItemForType(type: CodebookItem["type"], name: string): CodebookItem {
   switch (type) {
     case "question":
       return {
@@ -52,17 +47,12 @@ export function defaultItemForType(
         variable: defaultVariableForAnyType("confirm"),
       } as CodebookItem;
     case "unit_loop":
+      // Like a condition, a new loop starts empty: its questions are added in the tree.
       return {
         type: "unit_loop",
         units: [{ mode: "all", unitset: ALL_UNITS_UNITSET }],
         layout: { template: "" },
-        children: [
-          {
-            type: "question",
-            name: qName,
-            variable: defaultVariableForAnyType("confirm"),
-          },
-        ],
+        children: [],
       } as CodebookItem;
     case "condition":
       return {
@@ -81,6 +71,8 @@ export function ItemForm({
   unitVariableNames = [],
   availableQuestions = [],
   loopConstants = null,
+  unitFields = [],
+  readOnly = false,
   validationIssues = [],
   isInsideLoop = false,
   onChange,
@@ -92,6 +84,9 @@ export function ItemForm({
   availableQuestions?: { name: string; variable: AnyVariableType }[];
   /** The layout constants of the enclosing unit loop, if the item is inside one. */
   loopConstants?: string[] | null;
+  /** The job's unit fields (completions in a loop's template). */
+  unitFields?: string[];
+  readOnly?: boolean;
   validationIssues?: CodebookValidationIssue[];
   isInsideLoop?: boolean;
   onChange: (updated: CodebookItem) => void;
@@ -158,32 +153,15 @@ export function ItemForm({
       )}
 
       {item.type === "unit_loop" && (
-        <div className="flex flex-col gap-4 border-t border-border/60 pt-4">
-          <UnitLoopForm
-            loop={item as UnitLoopItem}
-            unitsets={unitsets}
-            coderQuestions={availableQuestions}
-            validationIssues={validationIssues}
-            onChange={(loop) => onChange(loop)}
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-foreground">Template</label>
-            <Textarea
-              value={(item as UnitLoopItem).layout?.template ?? ""}
-              onChange={(e) =>
-                onChange({
-                  ...item,
-                  layout: { ...(item as UnitLoopItem).layout, template: e.target.value },
-                } as CodebookItem)
-              }
-              rows={4}
-              placeholder={"# $unit.headline\n\n$unit.text::tokenize"}
-              className={`font-mono text-xs ${issuesAt(validationIssues, "layout").some((i) => !i.warning) ? "border-destructive" : ""}`}
-            />
-            <IssueList issues={issuesAt(validationIssues, "layout")} />
-          </div>
-        </div>
+        <UnitLoopForm
+          loop={item as UnitLoopItem}
+          unitsets={unitsets}
+          unitFields={unitFields}
+          coderQuestions={availableQuestions}
+          validationIssues={validationIssues}
+          readOnly={readOnly}
+          onChange={(loop) => onChange(loop)}
+        />
       )}
 
       {item.type === "end" && (

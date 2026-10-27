@@ -8,7 +8,7 @@ import {
 } from "@annotinder/contracts";
 import { AlertTriangle, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useUnitsetsQuery } from "../../../admin/queries";
+import { useUnitFieldsQuery, useUnitsetsQuery } from "../../../admin/queries";
 import { findParent, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
@@ -108,6 +108,7 @@ function ItemEditForm({
   readOnly: boolean;
 }) {
   const unitsetsQuery = useUnitsetsQuery(client);
+  const unitFieldsQuery = useUnitFieldsQuery(client);
   const { items, cleanItems, validationIssues } = draft;
   const key = getItemKey(item);
 
@@ -130,6 +131,8 @@ function ItemEditForm({
         unitVariableNames={unitVariableNames}
         availableQuestions={available}
         loopConstants={loop ? Object.keys(loop.layout?.constants ?? {}) : null}
+        unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
+        readOnly={readOnly}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
         onChange={(next) => draft.update(key, next)}

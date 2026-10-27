@@ -347,7 +347,9 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     their optional `label`. Conditions and unit loops have no name
     (names of questions are variables, of end items the stored way a
     session ended): a loop is identified by its position and shows its
-    label, or "Unit loop <n>" (`architecture.md` §6.1). Until 2026-10-27
+    label, or "Unit loop" (with its unitsets next to it; messages and
+    exports, which have no tree, say "Unit loop <n>", `architecture.md`
+    §6.1). New loops and conditions start empty. Until 2026-10-27
     every item had a name; old condition names are dropped on parse, old
     loop names become labels.
     Adding: a row's + (on hover) adds an item below it: after an item, at
@@ -404,13 +406,18 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     revision they were based on, so the conflict check still applies) or
     to discard them.
 
-  Unit loops have a distribution editor (`UnitLoopForm.tsx`): per branch
+  Unit loops have two tabs (`UnitLoopForm.tsx`). **Units**: per branch
   which units coders get (All units, Units shared among coders, One set per
   coder, The invitation's units; `architecture.md` §6.1) with that mode's
-  settings, and an optional overlap set. A unitset field is empty for all
-  units. "Different units per coder group" turns on branches, where every
-  branch but the last has a condition ("if", "else if") and the last is
-  "otherwise".
+  settings, an optional overlap set, and the loop's order. A unitset field
+  is empty for all units. "Different units for different coder groups"
+  turns on branches, where every branch but the last has a condition
+  ("if", "else if") and the last is "otherwise". **Layout**: the template,
+  in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
+  as its own language (markdown with references, suffixes and `{{ }}`
+  highlighted) with completions after `$` (unit fields, the loop's
+  constants, questions) and `::`; and the constants (name, text). The
+  layout's `style` and `meta` are only in the JSON views.
   Forms show few tips (instruction buttons may come later).
 - **Versions and publishing** (as in Qualtrics or REDCap: edit a draft,
   publish it), derived from `GET /codebook` and `GET /deployment`
