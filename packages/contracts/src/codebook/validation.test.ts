@@ -373,6 +373,14 @@ describe("reference validation", () => {
     expect(messages([unitLoop("l", [span], "$const.text::tokenize", { text: "a b c" })])).toEqual([]);
   });
 
+  it("checks blocks in constants", () => {
+    const group = questionVar("group", select(["a", "b"]));
+    const loop = (constant: string) => [group, unitLoop("l", [questionVar("q")], "$const.banner::markdown", { banner: constant })];
+    expect(messages(loop("::: style color: blue\n> **Hi**\n:::"))).toEqual([]);
+    expect(messages(loop("::: if $var.group.is('c')\nx\n:::"))).toEqual([expect.stringContaining('"c"')]);
+    expect(messages(loop("::: style color: blue\nx"))).toEqual(["::: style is not closed (end it with :::)"]);
+  });
+
   it("checks a question's field to show: shown in the layout, only in a loop", () => {
     const q = (field: string) => questionVar("q", { ...confirmVariable, field });
     expect(messages([unitLoop("l", [q("text")], "# $unit.headline\n\n$unit.text")])).toEqual([]);

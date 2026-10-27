@@ -153,7 +153,11 @@ templates with the same syntax.
   when the question comes up. Validation checks the layout shows it.
 - **`constants`**: named strings versioned with the codebook. Used for
   annotatable text that isn't a unit column, and for longer texts used in
-  blocks (e.g. a banner per experimental group).
+  blocks (e.g. a banner per experimental group). A constant shown as
+  `$const.x::markdown` can have blocks of its own (`::: style`, `::: if`,
+  `::: from`), evaluated like the layout's and validated with the loop;
+  its `$` references are not filled in (it stays one string, as for
+  `::tokenize`). Unit data is never read for blocks.
 - `$unit` and `$const` only exist inside a unit loop; outside, texts can
   only use `$var`.
 

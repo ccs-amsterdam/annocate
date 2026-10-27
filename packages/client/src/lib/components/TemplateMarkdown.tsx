@@ -20,7 +20,7 @@ export function TemplateMarkdown({ rendered, components }: { rendered: RenderedT
     ...components,
     "template-value": ({ index, block }: { index?: string; block?: string }) => {
       const value = rendered.values[Number(index)];
-      return value ? <TemplateValueView value={value} block={block === "true"} /> : null;
+      return value ? <TemplateValueView value={value} block={block === "true"} styles={rendered.styles} /> : null;
     },
     // A `::: style` block (docs/client.md §3, "Blocks")
     "template-style": ({ index, children }: { index?: string; children?: ReactNode }) => (
@@ -37,7 +37,16 @@ export function TemplateMarkdown({ rendered, components }: { rendered: RenderedT
 /** Inline markdown values can't contain paragraphs (they're inside one). */
 const INLINE_MARKDOWN: Components = { p: ({ children }) => <>{children}</> };
 
-function TemplateValueView({ value, block }: { value: TemplateValue; block: boolean }) {
+/** `::: style` blocks in a markdown value (a constant's own blocks: renderTemplate). */
+function styleComponents(styles: Record<string, string>[] | undefined): Components {
+  return {
+    "template-style": ({ index, children }: { index?: string; children?: ReactNode }) => (
+      <div style={styles?.[Number(index)] as CSSProperties | undefined}>{children}</div>
+    ),
+  } as Components;
+}
+
+function TemplateValueView({ value, block, styles }: { value: TemplateValue; block: boolean; styles?: Record<string, string>[] }) {
   const annotation = useSpanAnnotation();
   // A unit field's element is marked (data-field), so a question can scroll to it (UnitFields).
   const field = value.field ? { "data-field": value.field } : {};
@@ -64,7 +73,10 @@ function TemplateValueView({ value, block }: { value: TemplateValue; block: bool
       ) : null;
     case "markdown":
       return wrap(
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={block ? undefined : INLINE_MARKDOWN}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, [remarkTemplateValues, []]]}
+          components={{ ...styleComponents(styles), ...(block ? {} : INLINE_MARKDOWN) }}
+        >
           {value.text}
         </ReactMarkdown>,
         false,

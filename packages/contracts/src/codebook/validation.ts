@@ -10,6 +10,7 @@ import {
   questionValues,
   extractReferences,
   parseTemplate,
+  templateFences,
   referenceShape,
   referenceText,
   type Reference,
@@ -172,13 +173,12 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     if (simple) for (const call of simpleConditionCalls(simple)) checkCall(call, { ...ctx, path });
   }
 
-  /** Checks a template; returns the names it tokenizes. */
-  function checkTemplate(source: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): Set<string> {
-    const tokenized = new Set<string>();
-    if (typeof source !== "string") return tokenized;
-    const parsed = parseTemplate(source);
-    refErrors(parsed.errors, ctx.path);
-
+  /**
+   * Checks a template's blocks (their structure and conditions; `from`
+   * stages only in a layout). Returns the context at a place in it: inside
+   * `from` stages, the loop's questions before theirs are available too.
+   */
+  function checkBlocks(source: string, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): (at: number) => RefContext {
     // Blocks: their conditions, and `from` stages, which make the loop's
     // questions before their question available inside them.
     const blocks = parseTemplateBlocks(source);
@@ -206,7 +206,6 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       if (kind !== "layout") issue(ctx.path, "::: from only works in a unit layout");
       else if (!ctx.loopOrder?.includes(stage.question)) issue(ctx.path, `::: from ${stage.question}: '${stage.question}' is not a question of this loop`);
     }
-    /** The context at a place in the template: inside `from` stages, the loop's questions before theirs are available too. */
     const ctxAt = (at: number): RefContext => {
       const order = ctx.loopOrder ?? [];
       const before = stages
@@ -220,6 +219,17 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       const simple = parseSimpleCondition(script);
       if (simple) for (const call of simpleConditionCalls(simple)) checkCall(call, here);
     }
+    return ctxAt;
+  }
+
+  /** Checks a template; returns the names it tokenizes. */
+  function checkTemplate(source: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): Set<string> {
+    const tokenized = new Set<string>();
+    if (typeof source !== "string") return tokenized;
+    const parsed = parseTemplate(source);
+    refErrors(parsed.errors, ctx.path);
+
+    const ctxAt = checkBlocks(source, ctx, kind);
 
     for (const segment of parsed.segments) {
       if (segment.type !== "expression") continue;
@@ -281,6 +291,17 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, constants, loopOrder: [...loopQuestions] },
       "layout",
     );
+    // Constants shown as $const.x::markdown may have blocks too (checked on their own).
+    for (const [name, value] of Object.entries(loop.layout?.constants ?? {})) {
+      if (typeof value === "string" && templateFences(value).length > 0) {
+        checkBlocks(
+          value,
+          { path: [...itemPath, "layout", "constants", name], loop: loopName, available: coderAvailable, constants, loopOrder: [...loopQuestions] },
+          "layout",
+        );
+      }
+    }
+
     // The unit fields the layout shows (as `$unit.<field>`): what a question's `field` can point at.
     const shownFields = new Set(
       typeof loop.layout?.template === "string"
