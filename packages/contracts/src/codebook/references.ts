@@ -80,21 +80,6 @@ function readReference(
   // In a script, `a$var` and `x.$var` are ordinary identifiers; in a template, `part_$var.slot.value` is a reference.
   if (!template && at > 0 && (IDENT_CHAR.test(source[at - 1]) || source[at - 1] === ".")) return null;
   const startsWith = (n: string) => source.startsWith(n, at + 1) && !IDENT_CHAR.test(source[at + 1 + n.length] ?? "");
-  // Snippets (snippets.ts) are template text, not values.
-  for (const [n, message] of [
-    [
-      "snippet",
-      template
-        ? "Snippets can only be used in a unit loop's layout and its questions' texts"
-        : "$snippet can only be used in a template's text, not in a script or {{ }}",
-    ],
-  ] as const) {
-    if (startsWith(n)) {
-      let end = at + 1 + n.length;
-      while (end < source.length && (NAME.test(source[end]) || source[end] === ".")) end++;
-      return { error: { message, start: at, end }, end };
-    }
-  }
   const ns = NAMESPACES.find(startsWith);
   if (!ns) return null;
   let pos = at + 1 + ns.length;
@@ -255,7 +240,7 @@ export interface ParsedTemplate {
 }
 
 /** The kinds of block fence lines: `::: if <script>`, `::: else if <script>`, `::: else`, `::: from <question>`, `::: style <css>`, `:::` (closes). */
-export type FenceKeyword = "if" | "else if" | "else" | "from" | "style" | "close";
+export type FenceKeyword = "if" | "else if" | "else" | "from" | "style" | "text" | "markdown" | "html" | "image" | "close";
 
 /** A block fence line in a template (docs/client.md §3, "Blocks"). */
 export interface TemplateFence {
@@ -272,7 +257,7 @@ export interface TemplateFence {
 }
 
 const FENCE_LINE = /^ {0,3}(:{3,})[ \t]*(.*?)[ \t]*$/gm;
-const FENCE_KEYWORD = /^(else\s+if|if|else|from|style)\b\s*/;
+const FENCE_KEYWORD = /^(else\s+if|if|else|from|style|text|markdown|html|image)\b\s*/;
 
 /** The block fence lines of a template: lines starting with `:::` (outside code). */
 export function templateFences(source: string): TemplateFence[] {

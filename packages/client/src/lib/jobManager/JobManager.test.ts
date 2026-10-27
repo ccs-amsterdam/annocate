@@ -459,7 +459,7 @@ describe("rendering templates", () => {
         type: "unit_loop",
         label: "main",
         units: [{ mode: "all", unitset: "__all__" }],
-        layout: { template: "# $unit.title\n\n$snippet.intro $unit.title", snippets: { intro: "Hello" } },
+        layout: { template: "# $unit.title\n\n[[intro]] $unit.title", snippets: { intro: "Hello" } },
         children: [
           { type: "question", name: "q1", variable: { type: "confirm", question: "As a $var.role.value, is **$unit.title** news?" } },
         ],

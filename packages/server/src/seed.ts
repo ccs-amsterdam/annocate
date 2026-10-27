@@ -171,8 +171,8 @@ export async function seed(db: Sql): Promise<void> {
           // Blocks and snippets (docs/client.md §3): a banner per experimental
           // group, a tip for beginners (a snippet with its own style), and
           // from the topics question on a reminder of the earlier answer.
-          "::: if $var.group.is('experiment')\n$snippet.experiment_banner\n::: else\n$snippet.control_banner\n:::\n\n" +
-          "::: if $var.experience.is(1)\n$snippet.beginner_tip\n:::\n\n" +
+          "::: if $var.group.is('experiment')\n[[experiment_banner]]\n::: else\n[[control_banner]]\n:::\n\n" +
+          "::: if $var.experience.is(1)\n[[beginner_tip]]\n:::\n\n" +
           "# $unit.headline\n\n$unit.text\n\n" +
           ":::: from topics\n::: style margin-top: 1em; font-size: 90%; opacity: 0.8\nYou rated the tone of this article as **$var.sentiment.label**.\n:::\n::::",
         snippets: {
@@ -240,7 +240,7 @@ export async function seed(db: Sql): Promise<void> {
             question: "Label the people, organisations, features and products in the headline and the text.",
             instruction:
               "A span question: select words in the headline or the text and give them a label. You can label as many spans as you like.",
-            fields: ["headline", "text"],
+            fields: ["unit.headline", "unit.text"],
             options: [
               { value: "person", label: "Person", color: "#2563eb" },
               { value: "organisation", label: "Organisation", color: "#7c3aed" },

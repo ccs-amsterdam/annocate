@@ -23,7 +23,10 @@ export const VariableBaseSchema = z.object({
   field: z
     .string()
     .optional()
-    .describe("In a unit loop: the unit field to scroll to and highlight when this question comes up (shown in the layout as $unit.<field>). Span questions use their column."),
+    .describe(
+      "In a unit loop: what to scroll to and highlight when this question comes up, by name: `unit.<field>`, `var.<question>` " +
+        "or a named ::: block (docs/client.md §3). Span questions use their first field.",
+    ),
 });
 
 export const NOMINAL_LAYOUTS = ["auto", "flex", "row", "grid", "dropdown"] as const;
@@ -157,10 +160,10 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
   type: z.literal("span"),
   fields: z
     .array(z.string().min(1))
-    .min(1, "Choose a unit field to select in")
+    .min(1, "Choose what to select in")
     .describe(
-      "The unit fields to select spans in (each span records its field): the loop's layout shows each as plain " +
-        "`$unit.<field>` (selectable for the whole unit, docs/client.md §3)",
+      "What to select spans in (each span records it), by name: `unit.<field>` for a unit field the layout shows as " +
+        "plain `$unit.<field>`, or the name of a `::: text <name>` block (docs/client.md §3)",
     ),
   options: NominalOptionsSchema,
   editMode: z.boolean().optional(),

@@ -136,7 +136,7 @@ describe("validateCodebookItems", () => {
         questionVar("spans", {
           type: "span",
           question: "Highlight spans",
-          fields: ["text"],
+          fields: ["unit.text"],
           options: [{ value: "tag" }],
         }),
       ], "$unit.text"),
@@ -150,7 +150,7 @@ describe("validateCodebookItems", () => {
       questionVar("bad_span", {
         type: "span",
         question: "Bad",
-        fields: ["text"],
+        fields: ["unit.text"],
         options: [{ value: "tag" }],
       }),
       unitLoop("loop", [questionVar("q1")]),
@@ -241,11 +241,11 @@ describe("reference validation", () => {
       unitLoop(
         "loop",
         [
-          questionVar("rel", select(["yes", "no"], { question: "Is $snippet.subject in **$unit.headline**?" })),
+          questionVar("rel", select(["yes", "no"], { question: "Is [[subject]] in **$unit.headline**?" })),
           inLoopCondition("c2", [questionVar("q2")], { script: "$var.rel.value === 'yes' && $var.why.answered && $unit.n > 3" }),
           questionVar("q3", { ...confirmVariable, question: "{{ $var.q2.answered ? 'again' : '' }}" }),
         ],
-        "# $unit.headline\n\n$snippet.subject\n\n{{ $var.role.value }}",
+        "# $unit.headline\n\n[[subject]]\n\n{{ $var.role.value }}",
         { subject: "politics" },
       ),
     ];
@@ -264,19 +264,19 @@ describe("reference validation", () => {
     ]);
   });
 
-  it("rejects refs into another loop, and $unit/$snippet outside a loop", () => {
+  it("rejects refs into another loop, and $unit and snippets outside a loop", () => {
     const items = [
       unitLoop("a", [questionVar("qa")]),
       unitLoop("b", [inLoopCondition("c", [questionVar("qb")], { script: "$var.qa.answered" })]),
-      questionVar("after", { ...confirmVariable, question: "$unit.headline and $snippet.x" }),
+      questionVar("after", { ...confirmVariable, question: "$unit.headline and [[x]]" }),
     ];
     expect(messages(items)).toEqual([
       "$var.qa.answered: 'qa' is a question of another unit loop (a)",
-      "Snippets can only be used in a unit loop's layout and its questions' texts",
+      "Snippets ([[name]]) can only be used in a unit loop's layout and its questions' texts",
       "$unit.headline can only be used inside a unit loop",
     ]);
-    expect(messages([unitLoop("l", [questionVar("q")], "$snippet.nope")])).toEqual([
-      "$snippet.nope: there is no snippet 'nope' in this loop's layout",
+    expect(messages([unitLoop("l", [questionVar("q")], "[[nope]]")])).toEqual([
+      "[[nope]]: there is no snippet 'nope' in this loop's layout",
     ]);
   });
 
@@ -318,38 +318,52 @@ describe("reference validation", () => {
     ]);
   });
 
-  it("requires span fields to be shown as plain text in the layout", () => {
-    const span = questionVar("s", { type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] });
-    expect(messages([unitLoop("l", [span], "$unit.text::markdown")])).toEqual([
-      "Span question 's' selects text in 'text', but the layout doesn't show it as plain $unit.text",
+  it("requires span fields to be unit fields shown as plain text, or named ::: text blocks", () => {
+    const span = (...fields: string[]) => questionVar("s", { type: "span", question: "?", fields, options: [{ value: "x" }] });
+    expect(messages([unitLoop("l", [span("unit.text")], "$unit.text::markdown")])).toEqual([
+      "Span question 's' selects text in 'unit.text', but the layout doesn't show it as plain $unit.text",
     ]);
-    expect(messages([unitLoop("l", [span], "# $unit.headline\n\n$unit.text")])).toEqual([]);
-    expect(messages([unitLoop("l", [span], "{{$unit.text}}")])).toEqual([]);
-    const both = questionVar("s", { type: "span", question: "?", fields: ["headline", "text"], options: [{ value: "x" }] });
-    expect(messages([unitLoop("l", [both], "# $unit.headline\n\n$unit.text")])).toEqual([]);
-    expect(messages([unitLoop("l", [both], "# $unit.headline::markdown\n\n$unit.text")])).toEqual([
-      "Span question 's' selects text in 'headline', but the layout doesn't show it as plain $unit.headline",
+    expect(messages([unitLoop("l", [span("unit.headline", "unit.text")], "# $unit.headline\n\n{{$unit.text}}")])).toEqual([]);
+    const dynamic = "::: text summary\n{{ $unit.text.slice(0, 100) }}\n:::";
+    expect(messages([unitLoop("l", [span("summary")], dynamic)])).toEqual([]);
+    expect(messages([unitLoop("l", [span("summary")], "::: markdown summary\n$unit.text\n:::")])).toEqual([
+      "Span question 's' selects text in 'summary', but the layout has no ::: text block named 'summary'",
     ]);
   });
 
+  it("checks typed blocks: no suffixes inside, no nesting, unique names; and suffixes outside {{ }}", () => {
+    const loop = (template: string) => [unitLoop("l", [questionVar("q")], template)];
+    expect(messages(loop("::: markdown intro\nHi **$unit.name**\n:::\n::: html\n<b>{{ $unit.n * 2 }}</b>\n:::"))).toEqual([]);
+    expect(messages(loop("::: markdown\n$unit.photo::image\n:::"))).toEqual([
+      "Inside a ::: markdown block values are put in as they are: leave out ::image",
+    ]);
+    expect(messages(loop("::: markdown\n::: html\nx\n:::\n:::"))).toEqual(["A ::: html block can't be inside a ::: markdown block"]);
+    expect(messages(loop("::: text a\nx\n:::\n::: text a\ny\n:::"))).toEqual(["Two blocks are named 'a': names must be unique"]);
+    expect(messages(loop("{{ $unit.text::markdown }}"))).toEqual([expect.stringContaining("A suffix goes after the }}")]);
+  });
 
-  it("checks templates with their snippets put in, and snippets that include themselves", () => {
+  it("checks templates with their snippets put in: anywhere, without suffix, not including themselves", () => {
     const group = questionVar("group", select(["a", "b"]));
-    const loop = (snippets: Record<string, string>) => [group, unitLoop("l", [questionVar("q")], "$snippet.banner\n\n$unit.text", snippets)];
-    expect(messages(loop({ banner: "::: style color: blue\n> **Hi** $unit.headline\n:::" }))).toEqual([]);
-    expect(messages(loop({ banner: "::: if $var.group.is('c')\nx\n:::" }))).toEqual([expect.stringContaining('"c"')]);
-    expect(messages(loop({ banner: "::: style color: blue\nx" }))).toEqual(["::: style is not closed (end it with :::)"]);
-    expect(messages(loop({ banner: "$snippet.inner", inner: "$snippet.banner" }))).toEqual([
-      "$snippet.banner: the snippet includes itself (banner → inner → banner)",
+    const loop = (template: string, snippets: Record<string, string>) => [group, unitLoop("l", [questionVar("q")], template, snippets)];
+    expect(messages(loop("[[banner]]\n\n$unit.text", { banner: "::: style color: blue\n> **Hi** $unit.headline\n:::" }))).toEqual([]);
+    expect(messages(loop("::: if [[cond]]\nx\n:::\n{{ [[n]] + 1 }}", { cond: "$var.group.is('a')", n: "$unit.n" }))).toEqual([]);
+    expect(messages(loop("[[banner]]", { banner: "::: if $var.group.is('c')\nx\n:::" }))).toEqual([expect.stringContaining('"c"')]);
+    expect(messages(loop("[[banner]]::markdown", { banner: "x" }))).toEqual([
+      "[[banner]]::markdown: a snippet takes no suffix (it is pasted into the template as it is)",
+    ]);
+    expect(messages(loop("[[banner]]", { banner: "[[inner]]", inner: "[[banner]]" }))).toEqual([
+      "[[banner]]: the snippet includes itself (banner → inner → banner)",
     ]);
   });
 
-  it("checks a question's field to show: shown in the layout, only in a loop", () => {
+  it("checks a question's field to show: a name the layout shows, only in a loop", () => {
     const q = (field: string) => questionVar("q", { ...confirmVariable, field });
-    expect(messages([unitLoop("l", [q("text")], "# $unit.headline\n\n$unit.text")])).toEqual([]);
-    expect(messages([unitLoop("l", [q("body")], "$unit.text")])).toEqual(["Field 'body' is not shown in the layout (as $unit.body)"]);
-    expect(messages([q("text")])).toEqual(["A field to show only works for questions in a unit loop"]);
+    expect(messages([unitLoop("l", [q("unit.text")], "# $unit.headline\n\n$unit.text::markdown")])).toEqual([]);
+    expect(messages([unitLoop("l", [q("intro")], "::: markdown intro\nhi\n:::")])).toEqual([]);
+    expect(messages([unitLoop("l", [q("unit.body")], "$unit.text")])).toEqual(["'unit.body' is not shown in the layout (as $unit.body)"]);
+    expect(messages([q("unit.text")])).toEqual(["A field to show only works for questions in a unit loop"]);
   });
+
 
   it("checks blocks: conditions, from stages (which make earlier loop answers available) and their structure", () => {
     const group = questionVar("group", select(["a", "b"]));

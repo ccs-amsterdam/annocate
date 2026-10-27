@@ -3,7 +3,8 @@ import {
   parseTemplate,
   expandSnippets,
   parseTemplateBlocks,
-  referenceText,
+  valueName,
+  type DisplayKind,
   type TemplateNode,
   type OutputSuffix,
   type ReferenceScope,
@@ -53,11 +54,24 @@ export const STYLE_OPEN = /^\uE010(\d+)\uE011$/;
 export const STYLE_CLOSE = "\uE012";
 const styleOpen = (i: number) => `\uE010${i}\uE011`;
 
+/** A typed block that shows (`::: markdown intro`), its content with the blocks inside it chosen. */
+interface ShownDisplay {
+  kind: DisplayKind;
+  name?: string;
+  content: string;
+  start: number;
+}
+
+/** A marker paragraph for a typed block, replaced by a value placeholder once the values are known. */
+const DISPLAY_MARK = /\uE020(\d+)\uE021/g;
+const displayMark = (i: number) => `\uE020${i}\uE021`;
+
 /**
  * The text of the blocks that show (docs/client.md §3, "Blocks"): of an
  * `if` the first branch whose condition holds, of a `from` chain the last
  * stage whose question is reached; a `style` block's content between
- * marker paragraphs.
+ * marker paragraphs; a typed block as a marker paragraph (its content goes
+ * to `displays`).
  */
 async function selectBlocks(
   source: string,
@@ -65,6 +79,7 @@ async function selectBlocks(
   holds: (script: string, at: number) => Promise<boolean>,
   progress: TemplateProgress | undefined,
   styles: Record<string, string>[],
+  displays: ShownDisplay[],
 ): Promise<string> {
   let out = "";
   for (const node of nodes) {
@@ -72,7 +87,7 @@ async function selectBlocks(
     else if (node.type === "if") {
       for (const branch of node.branches) {
         if (branch.script === null || (await holds(branch.script, branch.start))) {
-          out += await selectBlocks(source, branch.body, holds, progress, styles);
+          out += await selectBlocks(source, branch.body, holds, progress, styles, displays);
           break;
         }
       }
@@ -83,10 +98,14 @@ async function selectBlocks(
         return at >= 0 && index >= 0 && index <= at;
       });
       const stage = reached[reached.length - 1];
-      if (stage) out += await selectBlocks(source, stage.body, holds, progress, styles);
+      if (stage) out += await selectBlocks(source, stage.body, holds, progress, styles, displays);
+    } else if (node.type === "display") {
+      const content = await selectBlocks(source, node.body, holds, progress, styles, displays);
+      const index = displays.push({ kind: node.kind, name: node.name, content, start: node.start }) - 1;
+      out += `\n\n${displayMark(index)}\n\n`;
     } else {
       const index = styles.push(node.style) - 1;
-      const body = await selectBlocks(source, node.body, holds, progress, styles);
+      const body = await selectBlocks(source, node.body, holds, progress, styles, displays);
       out += `\n\n${styleOpen(index)}\n\n${body}\n\n${STYLE_CLOSE}\n\n`;
     }
   }
@@ -124,10 +143,8 @@ export function prepareTemplate(source: string): { markdown: string; expressions
 }
 
 function toValue(expression: TemplateExpression, value: unknown, selectable: readonly string[] = []): TemplateValue {
-  // `{{$unit.x}}` is the same as `$unit.x`
-  const only = expression.references.length === 1 ? expression.references[0] : undefined;
-  const ref = expression.ref ?? (only && expression.script === referenceText(only) ? only : undefined);
-  const field = ref?.ns === "unit" ? ref.path[0] : undefined;
+  // `unit.<field>` or `var.<question>` (`{{$unit.x}}` is the same as `$unit.x`); scripts have no name
+  const field = valueName(expression);
   const suffix = expression.suffix;
   return {
     suffix,
@@ -136,6 +153,25 @@ function toValue(expression: TemplateExpression, value: unknown, selectable: rea
     ...(field ? { field } : {}),
     ...(field && suffix === "text" && selectable.includes(field) ? { selectable: true } : {}),
   };
+}
+
+/**
+ * A typed block's content with its values put in as they are (a suffix is
+ * the short form of a block around one value, so inside a block there is
+ * none); `\$` stays an escape only in markdown.
+ */
+async function displayContent(
+  display: ShownDisplay,
+  evaluate: (key: string, script: string) => Promise<unknown>,
+): Promise<string> {
+  let out = "";
+  // Without the line break before the closing fence
+  const segments = parseTemplate(display.content.replace(/\n$/, "")).segments;
+  for (const [j, segment] of segments.entries()) {
+    if (segment.type === "text") out += display.kind === "markdown" ? segment.text : segment.text.replace(/\\\$/g, "$");
+    else out += outputText(await evaluate(`display:${display.start}:${j}`, segment.script));
+  }
+  return out;
 }
 
 /**
@@ -155,7 +191,7 @@ export async function renderTemplate(
   }: {
     progress?: TemplateProgress;
     snippets?: Record<string, string>;
-    /** The unit fields span questions of the loop select in (shown as selectable text). */
+    /** The names span questions of the loop select in (`unit.<field>`, ::: text blocks): shown as selectable text. */
     selectable?: readonly string[];
   } = {},
 ): Promise<RenderedTemplate> {
@@ -163,15 +199,28 @@ export async function renderTemplate(
   source = expandSnippets(source, snippets).source;
   const blocks = parseTemplateBlocks(source);
   const styles: Record<string, string>[] = [];
+  const displays: ShownDisplay[] = [];
   if (blocks.hasBlocks) {
     const holds = (script: string, at: number) => evaluateCondition({ script }, scope, cache, `${keyPrefix}:if:${at}`);
-    source = await selectBlocks(source, blocks.nodes, holds, progress, styles);
+    source = await selectBlocks(source, blocks.nodes, holds, progress, styles, displays);
   }
-  const { markdown, expressions } = prepareTemplate(source);
-  const results = await Promise.all(
-    expressions.map((e, i) => (cache ? cache.evaluate(`${keyPrefix}:${i}`, e.script, scope) : evaluateScript(e.script, scope))),
-  );
-  const values = expressions.map((e, i) => toValue(e, results[i], selectable));
+  const evaluate = (key: string, script: string) =>
+    cache ? cache.evaluate(`${keyPrefix}:${key}`, script, scope) : evaluateScript(script, scope);
+  const prepared = prepareTemplate(source);
+  const results = await Promise.all(prepared.expressions.map((e, i) => evaluate(String(i), e.script)));
+  const values = prepared.expressions.map((e, i) => toValue(e, results[i], selectable));
+  // Typed blocks: one value each, after the template's own (their marker becomes its placeholder).
+  const first = values.length;
+  for (const display of displays) {
+    values.push({
+      suffix: display.kind,
+      text: await displayContent(display, evaluate),
+      block: true,
+      ...(display.name ? { field: display.name } : {}),
+      ...(display.name && display.kind === "text" && selectable?.includes(display.name) ? { selectable: true } : {}),
+    });
+  }
+  const markdown = prepared.markdown.replace(DISPLAY_MARK, (_, i: string) => placeholder(first + Number(i)));
   return { markdown, values, styles };
 }
 

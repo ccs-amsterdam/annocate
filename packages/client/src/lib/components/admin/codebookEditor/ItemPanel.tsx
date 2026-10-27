@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import {
   availableQuestions,
   itemName,
-  parseTemplate,
+  templateNames,
   expandSnippets,
   type CodebookItem,
   type TopLevelItem,
@@ -137,7 +137,7 @@ function ItemEditForm({
         availableQuestions={available}
         inLoop={!!loop}
         unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
-        loopFields={loop ? layoutFields(expandSnippets(loop.layout?.template ?? "", loop.layout?.snippets).source) : undefined}
+        loopNames={loop ? templateNames(expandSnippets(loop.layout?.template ?? "", loop.layout?.snippets).source) : undefined}
         readOnly={readOnly}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
@@ -156,14 +156,6 @@ function variableNames(items: TopLevelItem[]) {
       .filter((i) => i.type === "question" && inLoop(i))
       .flatMap((i) => itemName(i) ?? []),
   };
-}
-
-/** The unit fields a layout shows (as `$unit.<field>`), in order. */
-function layoutFields(template: string): string[] {
-  const fields = parseTemplate(template).segments.flatMap((s) =>
-    s.type === "expression" ? s.references.filter((r) => r.ns === "unit").map((r) => r.path[0]) : [],
-  );
-  return [...new Set(fields)];
 }
 
 /** The preview's own column on wide screens (CodebookEditor). */

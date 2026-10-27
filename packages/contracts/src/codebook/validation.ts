@@ -2,8 +2,8 @@ import { TopLevelItemSchema, loopTitle, unitLoops, type CodebookItem } from "./i
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { supportsAgreement, unitsetHasReferences, type UnitBranch } from "./unitLoop.js";
-import { expandSnippets } from "./snippets.js";
-import { parseTemplateBlocks, type FromStage, type TemplateNode } from "./templateBlocks.js";
+import { expandSnippets, usesSnippets } from "./snippets.js";
+import { parseTemplateBlocks, templateNames, type DisplayNode, type FromStage, type TemplateNode } from "./templateBlocks.js";
 import {
   METHOD_TEXT,
   describeQuestion,
@@ -192,7 +192,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
             stages.push(stage);
             walkBlocks(stage.body);
           }
-        } else if (node.type === "style") walkBlocks(node.body);
+        } else if (node.type === "style" || node.type === "display") walkBlocks(node.body);
       }
     };
     walkBlocks(blocks.nodes);
@@ -216,21 +216,31 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     return ctxAt;
   }
 
-  /** Checks a template; returns the unit fields it shows as plain text (what span questions can select in). */
-  function checkTemplate(raw: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): Set<string> {
-    const selectable = new Set<string>();
-    if (typeof raw !== "string") return selectable;
+  /**
+   * Checks a template. Returns its names (templateNames): what a question's
+   * `field` can point at, and what span questions can select in.
+   */
+  function checkTemplate(
+    raw: unknown,
+    ctx: RefContext,
+    kind: "layout" | "text" | "unitset" | "url",
+  ): { shown: Set<string>; selectable: Set<string> } {
+    const empty = { shown: new Set<string>(), selectable: new Set<string>() };
+    if (typeof raw !== "string") return empty;
     // In a loop, snippets are put in first: the template is checked as it will be shown.
     let source = raw;
     if (ctx.snippets) {
       const expanded = expandSnippets(source, ctx.snippets);
       expanded.errors.forEach((e) => issue(ctx.path, e));
       source = expanded.source;
+    } else if (usesSnippets(source)) {
+      issue(ctx.path, "Snippets ([[name]]) can only be used in a unit loop's layout and its questions' texts");
     }
     const parsed = parseTemplate(source);
     refErrors(parsed.errors, ctx.path);
 
     const ctxAt = checkBlocks(source, ctx, kind);
+    const displays = displayBlocks(source);
 
     for (const segment of parsed.segments) {
       if (segment.type !== "expression") continue;
@@ -241,20 +251,26 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         else if (segment.ref.suffix) issue(here.path, `${what} can't use ::${segment.ref.suffix}`);
       } else {
         refErrors(extractReferences(segment.script).errors, here.path);
+        // `{{ $unit.text::markdown }}`: the suffix goes after the braces.
+        const inside = /::(text|markdown|image|html)\b/.exec(segment.script);
+        if (!segment.ref && inside) issue(here.path, `A suffix goes after the }}: {{ ... }}::${inside[1]}`);
+        const display = displays.find((d) => segment.start >= d.bodyStart && segment.start < d.bodyEnd);
+        if (display && segment.suffix !== "text") {
+          issue(here.path, `Inside a ::: ${display.kind} block values are put in as they are: leave out ::${segment.suffix}`);
+        }
       }
       for (const ref of segment.references) {
         const shape = checkRef(ref, here);
         if (kind === "unitset" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
         if (kind === "url" && ref.ns !== "var") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var references`);
       }
-      // A unit field shown as plain text (`$unit.x`, or `{{$unit.x}}`) is what span questions can select in.
-      const only = segment.references.length === 1 ? segment.references[0] : undefined;
-      const ref = segment.ref ?? (only && segment.script === referenceText(only) ? only : undefined);
-      if (kind === "layout" && ref?.ns === "unit" && segment.suffix === "text") {
-        selectable.add(ref.path[0]);
-      }
     }
-    return selectable;
+    const named = displays.flatMap((d) => (d.name ? [d.name] : []));
+    for (const name of new Set(named.filter((n, i) => named.indexOf(n) !== i))) {
+      issue(ctx.path, `Two blocks are named '${name}': names must be unique`);
+    }
+    const names = templateNames(source);
+    return { shown: new Set(names.shown), selectable: new Set(names.selectable) };
   }
 
   function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
@@ -288,31 +304,25 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     });
 
     const snippets = loop.layout?.snippets ?? {};
-    const selectable = checkTemplate(
+    const names = checkTemplate(
       loop.layout?.template,
       { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, snippets, loopOrder: [...loopQuestions] },
       "layout",
     );
-    // The unit fields the layout shows (as `$unit.<field>`): what a question's `field` can point at.
-    const shownFields = new Set(
-      typeof loop.layout?.template === "string"
-        ? parseTemplate(expandSnippets(loop.layout.template, snippets).source).segments.flatMap((seg) =>
-            seg.type === "expression" ? seg.references.filter((r) => r.ns === "unit").map((r) => r.path[0]) : [],
-          )
-        : [],
-    );
+    const nameHint = (name: string) => (name.startsWith("unit.") ? ` (as $${name})` : name.startsWith("var.") ? "" : ` (as a ::: block named '${name}')`);
     forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {
       const variable = q.variable as { type?: string; fields?: unknown; field?: unknown } | undefined;
-      if (typeof variable?.field === "string" && !shownFields.has(variable.field)) {
-        issue([...path, "variable", "field"], `Field '${variable.field}' is not shown in the layout (as $unit.${variable.field})`);
+      if (typeof variable?.field === "string" && !names.shown.has(variable.field)) {
+        issue([...path, "variable", "field"], `'${variable.field}' is not shown in the layout${nameHint(variable.field)}`);
       }
       for (const field of variable?.type === "span" && Array.isArray(variable.fields) ? variable.fields : []) {
-        if (typeof field === "string" && !selectable.has(field)) {
-          issue(
-            [...path, "variable", "fields"],
-            `Span question '${q.name}' selects text in '${field}', but the layout doesn't show it as plain $unit.${field}`,
-          );
-        }
+        if (typeof field !== "string" || names.selectable.has(field)) continue;
+        issue(
+          [...path, "variable", "fields"],
+          field.startsWith("unit.")
+            ? `Span question '${q.name}' selects text in '${field}', but the layout doesn't show it as plain $${field}`
+            : `Span question '${q.name}' selects text in '${field}', but the layout has no ::: text block named '${field}'`,
+        );
       }
     });
     return snippets;
@@ -525,4 +535,19 @@ function forEachQuestion(list: unknown, path: Path, visit: (item: RawItem & { va
     if (child.type === "condition") forEachQuestion((child as { children?: unknown }).children, [...path, i, "children"], visit);
     else if (child.type !== "unit_loop") visit(child as RawItem & { variable?: unknown }, [...path, i]);
   });
+}
+
+/** The typed blocks of a template (`::: text|markdown|html|image`), anywhere in it. */
+function displayBlocks(source: string): DisplayNode[] {
+  const found: DisplayNode[] = [];
+  const walk = (nodes: TemplateNode[]) => {
+    for (const node of nodes) {
+      if (node.type === "if") node.branches.forEach((b) => walk(b.body));
+      else if (node.type === "from") node.stages.forEach((st) => walk(st.body));
+      else if (node.type === "style") walk(node.body);
+      else if (node.type === "display") found.push(node);
+    }
+  };
+  walk(parseTemplateBlocks(source).nodes);
+  return found;
 }

@@ -338,7 +338,7 @@ function LayoutTab({
       )}
       <Section
         title="Template"
-        help="Markdown. Insert values with $unit.<field> or $var.<question>.value, and snippets with $snippet.<name> (type $ for suggestions). Show parts conditionally with ::: if, ::: else, ::: from <question>, or style them with ::: style <css>; close them with :::."
+        help="Markdown. Values: $unit.<field>, $var.<question>.label or {{ script }}, shown as text unless a suffix says ::markdown, ::image or ::html. Snippets: [[name]]. Blocks (close with :::): ::: if / else / from <question>, ::: style <css>, ::: text|markdown|html|image <name>."
       >
         <div
           className={cn(
@@ -384,12 +384,12 @@ function LayoutTab({
 
       <Section
         title="Snippets"
-        help="Named pieces of the template, put in with $snippet.<name> as if you typed them there: markdown, blocks and $unit values all work. Handy for longer texts, e.g. an introduction per experimental group."
+        help="Named pieces of the template, put in with [[name]] as if you typed them there, anywhere (also in a condition or a script): markdown, blocks and values all work. Handy for longer texts and long conditions."
       >
         {snippets.map(([name, value], i) => (
           <div key={i} className="flex flex-col gap-1 rounded-md border border-border p-2">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground">$snippet.</span>
+              <span className="font-mono text-xs text-muted-foreground">[[</span>
               <Input
                 aria-label="Snippet name"
                 className="h-7 w-48 font-mono text-xs"
@@ -402,6 +402,7 @@ function LayoutTab({
                   setSnippets(snippets.map((c, j) => (j === i ? [renamed, c[1]] : c)));
                 }}
               />
+              <span className="font-mono text-xs text-muted-foreground">]]</span>
               <Button
                 type="button"
                 variant="ghost"

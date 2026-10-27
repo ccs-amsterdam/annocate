@@ -60,7 +60,7 @@ export function ItemForm({
   availableQuestions = [],
   inLoop = false,
   unitFields = [],
-  loopFields,
+  loopNames,
   readOnly = false,
   validationIssues = [],
   isInsideLoop = false,
@@ -75,8 +75,8 @@ export function ItemForm({
   inLoop?: boolean;
   /** The job's unit fields (completions in a loop's template). */
   unitFields?: string[];
-  /** For a question in a loop: the unit fields its layout shows (what "Show field" can point at). */
-  loopFields?: string[];
+  /** For a question in a loop: the names its layout shows ("Show field"), and what span questions can select in. */
+  loopNames?: { shown: string[]; selectable: string[] };
   readOnly?: boolean;
   validationIssues?: CodebookValidationIssue[];
   isInsideLoop?: boolean;
@@ -136,13 +136,13 @@ export function ItemForm({
           <VariableTypeForm
             variable={item.variable}
             unitVariableNames={unitVariableNames}
-            layoutFields={isInsideLoop ? loopFields : undefined}
+            layoutFields={isInsideLoop ? loopNames?.selectable : undefined}
             onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
           />
-          {isInsideLoop && loopFields && (
+          {isInsideLoop && loopNames && (
             <ShowFieldSelect
               variable={item.variable}
-              loopFields={loopFields}
+              loopFields={loopNames.shown}
               onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
             />
           )}
@@ -230,7 +230,7 @@ function EndItemFields({
   );
 }
 
-/** "Show field": the unit field to scroll to when the question comes up (docs/client.md §3, "Field markers"). */
+/** "Show field": what to scroll to when the question comes up, by name (docs/client.md §3, "Names"). */
 function ShowFieldSelect({
   variable,
   loopFields,

@@ -41,11 +41,11 @@ describe("renderTemplate", () => {
 
   it("marks the fields span questions select in as selectable", async () => {
     const rendered = await renderTemplate("$unit.body\n\n$unit.title", scope({ body: "a b", title: "T" }), undefined, "t", {
-      selectable: ["body"],
+      selectable: ["unit.body"],
     });
     expect(rendered.values).toEqual([
-      { suffix: "text", text: "a b", block: true, field: "body", selectable: true },
-      { suffix: "text", text: "T", block: true, field: "title" },
+      { suffix: "text", text: "a b", block: true, field: "unit.body", selectable: true },
+      { suffix: "text", text: "T", block: true, field: "unit.title" },
     ]);
   });
 
@@ -92,8 +92,8 @@ describe("renderTemplate blocks", () => {
 
 describe("renderTemplate snippets", () => {
   it("puts snippets in as if typed: markdown, blocks and values all work", async () => {
-    const snippets = { banner: "::: if $var.role.is('student')\n**Hi** $unit.name\n:::", outer: "$snippet.banner\nmore" };
-    const rendered = await renderTemplate("$snippet.outer", scope({ name: "Ann" }), undefined, "t", { snippets });
+    const snippets = { banner: "::: if $var.role.is('student')\n**Hi** $unit.name\n:::", outer: "[[banner]]\nmore" };
+    const rendered = await renderTemplate("[[outer]]", scope({ name: "Ann" }), undefined, "t", { snippets });
     expect(rendered.markdown.replace(/\uE000\d+\uE001/g, "#").trim()).toBe("**Hi** #\nmore");
     expect(rendered.values.map((v) => v.text)).toEqual(["Ann"]);
   });

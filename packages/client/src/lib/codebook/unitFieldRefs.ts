@@ -63,7 +63,10 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
       check(child.name, text(variable.question));
       check(child.name, text(variable.instruction));
       if (variable.type === "span") {
-        for (const field of variable.fields.filter((f) => !known.has(f))) warn(child.name, field, `${child.name}: '${field}' is not a unit field`);
+        // Span fields are names: `unit.<field>` (checked here) or a ::: text block's
+        for (const name of variable.fields.filter((f) => f.startsWith("unit.") && !known.has(f.slice(5)))) {
+          warn(child.name, name.slice(5), `${child.name}: '${name.slice(5)}' is not a unit field`);
+        }
       }
     }
   };

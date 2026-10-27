@@ -28,7 +28,7 @@ describe("UnitFields", () => {
   it("renders ::markdown and ::image values, and snippets", async () => {
     const props = await render(
       {
-        template: "Intro with $snippet.note inline.\n\n$unit.body\n\n$unit.photo::image\n\n$snippet.note",
+        template: "Intro with [[note]] inline.\n\n$unit.body\n\n$unit.photo::image\n\n[[note]]",
         snippets: { note: "A **bold** note." },
       },
       { body: "The article body.", photo: "https://example.com/a.png" },
@@ -43,17 +43,17 @@ describe("UnitFields", () => {
   it("shows a span question's field as the same selectable text during every question, selecting only during its own", async () => {
     const scope: ReferenceScope = { $unit: { body: "Some words here" }, $var: {} };
     const layout = { template: "$unit.body" };
-    const rendered = await renderTemplate(layout.template, scope, undefined, "t", { selectable: ["body"] });
+    const rendered = await renderTemplate(layout.template, scope, undefined, "t", { selectable: ["unit.body"] });
     const during = (column: string) =>
       renderToStaticMarkup(
         <SpanAnnotationProvider fields={[column]} options={[{ value: "x" }]} initialSpans={[]}>
           <UnitFields layout={layout} rendered={rendered} />
         </SpanAnnotationProvider>,
       );
-    expect(during("body")).toContain(`tabindex="0"`);
+    expect(during("unit.body")).toContain(`tabindex="0"`);
     expect(during("")).not.toContain("tabindex");
     // The same element either way: nothing shifts between questions
-    expect(during("").replace(/ tabindex="0"/g, "")).toBe(during("body").replace(/ tabindex="0"/g, ""));
+    expect(during("").replace(/ tabindex="0"/g, "")).toBe(during("unit.body").replace(/ tabindex="0"/g, ""));
   });
 
   it("fills in values in link URLs, and doesn't eat colons in text", async () => {

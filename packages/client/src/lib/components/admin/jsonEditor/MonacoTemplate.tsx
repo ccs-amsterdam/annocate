@@ -51,27 +51,29 @@ const SUFFIXES = [
 ] as const;
 
 // The template language: markdown, with references (`$unit.x`,
-// `$snippet.x`, `$var.q.value`), their `::suffix` and `{{ js }}` expressions
-// marked, so they stand out (and nothing looks like an error).
+// `$var.q.value`), their `::suffix`, `{{ js }}` expressions and snippets
+// (`[[name]]`) marked, so they stand out (and nothing looks like an error).
 const LANGUAGE = "unit-template";
 monaco.languages.register({ id: LANGUAGE });
 monaco.languages.setMonarchTokensProvider(LANGUAGE, {
   tokenizer: {
     root: [
       // Block fences (`::: if ...`); the rest of the line is highlighted as usual.
-      [/^\s{0,3}:{3,}\s*(else\s+if|if|else|from|style)?/, "keyword.fence"],
+      [/^\s{0,3}:{3,}\s*(else\s+if|if|else|from|style|text|markdown|html|image)?/, "keyword.fence"],
+      [/\[\[\w+\]\]/, "snippet"],
       [/\\\$/, ""],
       [/\{\{/, { token: "delimiter.expression", next: "@expression" }],
-      [/\$(unit|snippet|var)(\.\w+)*/, "variable.reference"],
+      [/\$(unit|var)(\.\w+)*/, "variable.reference"],
       [/::(text|markdown|image|html)\b/, "keyword.suffix"],
       [/^#{1,6}\s.*$/, "keyword.heading"],
       [/\*\*[^*]+\*\*/, "strong"],
-      [/[^\\${:#*]+/, ""],
+      [/[^\\${:#*[]+/, ""],
       [/./, ""],
     ],
     expression: [
       [/\}\}/, { token: "delimiter.expression", next: "@pop" }],
-      [/\$(unit|snippet|var)(\.\w+)*/, "variable.reference"],
+      [/\[\[\w+\]\]/, "snippet"],
+      [/\$(unit|var)(\.\w+)*/, "variable.reference"],
       [/'[^']*'|"[^"]*"/, "string"],
       [/./, "expression"],
     ],
@@ -84,12 +86,16 @@ const FENCES = [
   ["else", "else"],
   ["from ", "show this part from a question of the loop on"],
   ["style ", "this part with CSS, e.g. color: darkred; font-size: 120%"],
+  ["text ", "this part as plain text (with a name: span questions can select in it)"],
+  ["markdown ", "this part, values put in as they are, as markdown (optionally with a name)"],
+  ["html ", "this part as HTML, in a sandbox (optionally with a name)"],
+  ["image ", "this part is an image address (optionally with a name)"],
 ] as const;
 
-// Completions: after `$` the kinds of references, after
-// `$unit.`, `$snippet.` or `$var.` the names, after `::` the suffixes.
+// Completions: after `$` the kinds of references, after `$unit.` or
+// `$var.` the names, after `::` the suffixes, after `[[` the snippets.
 monaco.languages.registerCompletionItemProvider(LANGUAGE, {
-  triggerCharacters: ["$", ".", ":", " "],
+  triggerCharacters: ["$", ".", ":", " ", "["],
   provideCompletionItems(model, position) {
     const before = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
     const word = model.getWordUntilPosition(position);
@@ -113,14 +119,15 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
       };
     }
     if (before.endsWith(" ")) return { suggestions: [] };
-    const ref = /\$(unit|snippet|var)\.\w*$/.exec(before);
+    if (/\[\[\w*$/.test(before)) {
+      return { suggestions: current.snippets.map((n) => item(n, "snippet", monaco.languages.CompletionItemKind.Snippet, `${n}]]`)) };
+    }
+    const ref = /\$(unit|var)\.\w*$/.exec(before);
     if (ref) {
       const names =
         ref[1] === "unit"
           ? current.fields.map((n) => item(n, "unit field"))
-          : ref[1] === "snippet"
-            ? current.snippets.map((n) => item(n, "snippet", monaco.languages.CompletionItemKind.Snippet))
-            : current.questions.map((n) => item(`${n}.value`, "answer", monaco.languages.CompletionItemKind.Variable));
+          : current.questions.map((n) => item(`${n}.value`, "answer", monaco.languages.CompletionItemKind.Variable));
       return { suggestions: names };
     }
     if (/\$[\w.]+::\w*$/.test(before)) {
@@ -130,7 +137,6 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
       return {
         suggestions: [
           item("unit.", "a field of the unit", monaco.languages.CompletionItemKind.Module),
-          item("snippet.", "a snippet of this loop", monaco.languages.CompletionItemKind.Module),
           item("var.", "an earlier answer", monaco.languages.CompletionItemKind.Module),
         ].map((s) => ({ ...s, command: { id: "editor.action.triggerSuggest", title: "names" } })),
       };

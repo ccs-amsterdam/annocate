@@ -82,7 +82,7 @@ export function VariableTypeForm({
   onChange: (next: AnyVariableType) => void;
   /** The loop's question names, for `relation`'s from/to question pickers. */
   unitVariableNames?: string[];
-  /** In a loop: the unit fields its layout shows (what a span question can select in). */
+  /** In a loop: what span questions can select in (`unit.<field>` shown as plain text, ::: text blocks). */
   layoutFields?: string[];
 }) {
   switch (variable.type) {
@@ -561,9 +561,9 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
 }
 
 /**
- * The unit fields a span question selects in: the fields the loop's layout
- * shows, to switch on and off (each span records its field). Without the
- * layout's fields (outside a loop): names separated by commas.
+ * What a span question selects in: the names the loop's layout shows as
+ * selectable text, to switch on and off (each span records its name).
+ * Without the layout's names (outside a loop): names separated by commas.
  */
 function SpanFieldsPicker({
   value,
@@ -578,10 +578,12 @@ function SpanFieldsPicker({
   const names = [...new Set([...(layoutFields ?? []), ...value])];
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium">Unit fields to select in</label>
+      <label className="text-sm font-medium">Select in</label>
       {layoutFields ? (
         names.length === 0 ? (
-          <p className="text-xs text-muted-foreground">The layout shows no unit fields yet: add them as $unit.&lt;field&gt; in the loop&apos;s layout.</p>
+          <p className="text-xs text-muted-foreground">
+            The layout has nothing to select in yet: show a unit field as plain $unit.&lt;field&gt;, or add a ::: text block with a name.
+          </p>
         ) : (
           <div className="flex flex-wrap gap-1">
             {names.map((name) => {
@@ -591,7 +593,7 @@ function SpanFieldsPicker({
                   key={name}
                   type="button"
                   onClick={() => toggle(name)}
-                  title={shown ? undefined : "The layout doesn't show this field as $unit." + name}
+                  title={shown ? undefined : "The layout doesn't show this as plain text"}
                   className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${
                     !shown
                       ? "border-destructive text-destructive"
@@ -610,11 +612,11 @@ function SpanFieldsPicker({
         <Input
           value={value.join(", ")}
           onChange={(e) => onChange(e.target.value.split(",").map((f) => f.trim()).filter(Boolean))}
-          placeholder="text, headline"
+          placeholder="unit.text, unit.headline"
         />
       )}
       <p className="text-[11px] text-muted-foreground">
-        Spans record the field they are in, so one question can annotate e.g. the headline and the text.
+        Spans record where they are, so one question can annotate e.g. the headline and the text.
       </p>
     </div>
   );

@@ -70,7 +70,7 @@ describe("codebook routes", () => {
       app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId }) });
 
     // Work in progress: a span question outside a loop
-    const bad = await post([{ type: "question", name: "q1", variable: { type: "span", question: "?", fields: ["text"], options: [{ value: "x" }] } }]);
+    const bad = await post([{ type: "question", name: "q1", variable: { type: "span", question: "?", fields: ["unit.text"], options: [{ value: "x" }] } }]);
     expect(bad.status).toBe(201);
     const draft = await json(bad);
     expect(draft).toMatchObject({ valid: false, revision: 1, updatedBy: "dev@localhost", immutable: false });

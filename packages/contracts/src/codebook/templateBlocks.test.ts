@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTemplateBlocks, parseInlineCss } from "./templateBlocks.js";
+import { parseTemplateBlocks, parseInlineCss, templateNames } from "./templateBlocks.js";
 import { parseTemplate } from "./references.js";
 
 const text = (source: string, node: { start: number; end: number }) => source.slice(node.start, node.end);
@@ -51,5 +51,23 @@ describe("template blocks", () => {
     expect(parseInlineCss("color: darkred; font-size: 120%; --x: 1").style).toEqual({ color: "darkred", fontSize: "120%", "--x": "1" });
     expect(parseInlineCss("position: fixed").errors[0]).toMatch(/isn't allowed/);
     expect(parseInlineCss("bold").errors[0]).toMatch(/not a CSS declaration/);
+  });
+
+  it("parses typed blocks with an optional name", () => {
+    const { nodes, errors } = parseTemplateBlocks("::: markdown intro\nHi\n:::\n::: html\n<b>x</b>\n:::\n::: text bad.name\n:::");
+    expect(nodes.filter((n) => n.type === "display").map((n) => n.type === "display" && [n.kind, n.name])).toEqual([
+      ["markdown", "intro"],
+      ["html", undefined],
+      ["text", "bad.name"],
+    ]);
+    expect(errors.map((e) => e.message)).toEqual([expect.stringContaining("a name is letters, digits and _")]);
+  });
+
+  it("names unit fields, answers and named blocks; selectable: plain unit fields and ::: text blocks", () => {
+    const names = templateNames(
+      "# $unit.headline\n\n$unit.text::markdown\n\n$var.q.label\n\n{{ $unit.n * 2 }}\n\n::: text summary\n$unit.inner\n:::\n::: html scores\nx\n:::",
+    );
+    expect(names.shown.sort()).toEqual(["scores", "summary", "unit.headline", "unit.text", "var.q"]);
+    expect(names.selectable.sort()).toEqual(["summary", "unit.headline"]);
   });
 });

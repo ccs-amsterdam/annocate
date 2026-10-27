@@ -53,6 +53,7 @@ export function editorTheme(dark: boolean): string {
       { token: "delimiter.expression", foreground: dark ? "d7ba7d" : "b5651d" },
       { token: "expression", foreground: dark ? "d7ba7d" : "b5651d" },
       { token: "keyword.heading", fontStyle: "bold" },
+      { token: "snippet", foreground: dark ? "4ec9b0" : "267f99", fontStyle: "italic" },
       { token: "keyword.fence", foreground: dark ? "c586c0" : "8a2be2", fontStyle: "bold" },
       { token: "strong", fontStyle: "bold" },
     ],

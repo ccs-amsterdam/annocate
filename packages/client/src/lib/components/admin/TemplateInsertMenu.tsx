@@ -116,6 +116,7 @@ export function TemplateInsertMenu({
               }, "only when a condition holds")}
               {item(Eye, "Show from…", () => setStep("from"), "from a question of the loop on")}
               {item(Paintbrush, "Style…", () => setStep("style"), "colours, size, a box")}
+              {item(Code2, "HTML block", () => insert(block("::: html")), "your own HTML, shown in a sandbox")}
             </>
           )}
           {(step === "headline" || step === "text" || step === "image") && (
@@ -127,7 +128,7 @@ export function TemplateInsertMenu({
           {step === "snippet" && (
             <>
               {back("Which snippet?")}
-              {list(snippets, "This loop has no snippets yet: add them below the template.", (n) => insert(`${literal(`$snippet.${n}`)}\n$0`))}
+              {list(snippets, "This loop has no snippets yet: add them below the template.", (n) => insert(`${literal(`[[${n}]]`)}\n$0`))}
             </>
           )}
           {step === "from" && (

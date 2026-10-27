@@ -69,12 +69,17 @@ templates with the same syntax.
   (`.template-markdown` in index.css).
   Raw HTML is not supported (no `rehype-raw`), so templates are XSS-safe by
   construction. Root styling uses `style`, a React style object.
-- **Values**: `$unit.<field>`, `$var.<q>.label` (all
-  references, see "References and conditions") or `{{ js }}`, each with an
-  optional suffix:
+A template is read in two steps: first the **text is put together**
+(snippets pasted in, blocks chosen), then the **values are filled in**.
+
+- **Values**: `$unit.<field>`, `$var.<q>.label` (all references, see
+  "References and conditions") or `{{ js }}`. A suffix after the value
+  says how to show it; it goes after the slot, never inside `{{ }}`
+  (`{{ $unit.text.replaceAll("a", "**a**") }}::markdown`):
   - `::text` (default): the value as literal text. It never goes through
     the markdown parser, so `**x**` in unit data shows as `**x**`.
-  - `::markdown`: the value rendered as markdown.
+  - `::markdown`: the value rendered as markdown (only markdown: no blocks
+    or values in it, so validation sees everything).
   - `::image`: the value is an image URL.
   - `::html`: the value as HTML, in a sandboxed iframe
     (`components/SandboxedHtml.tsx`), for prepared material such as a
@@ -84,18 +89,36 @@ templates with the same syntax.
     its storage or cookies; no forms, popups or top navigation) and a
     Content Security Policy that allows no requests (images and fonts only
     as `data:`, inline CSS) and no scripts but one of ours, by its hash,
-    which reports the content's height so the frame fits it. Limits: span
-    questions can't select in it, it doesn't follow the app's fonts or
-    dark mode, and HTML that loads images or styles from the web shows
-    without them.
-- **Selectable text**: a span question's `fields` (one or more) are unit
-  fields that the layout
-  shows as plain text (`$unit.x` or `{{$unit.x}}`; validation
-  enforces it), so span offsets always point into one stable string, never
-  rendered output. Every such field (all span questions of the loop) is
-  rendered as `SelectableText` during every question of the unit, looking
-  the same whether or not the question on screen selects in it, so the
-  layout doesn't shift; only that question's span question can select.
+    which reports the content's height so the frame fits it. Limits: it
+    doesn't follow the app's fonts or dark mode, and HTML that loads
+    images or styles from the web shows without them.
+
+  A suffix is the short form of a **typed block** around the value (below).
+- **Typed blocks**: `::: text|markdown|html|image [name]` … `:::`. The
+  content, with its values put in as they are (no suffixes inside), shown
+  as one thing of that kind: `::: markdown intro` with
+  `Hello **$var.name.label**, [[instructions]]` is markdown; `::: html`
+  with `<b>{{ $unit.likes * 2 }}</b>` is HTML in the sandbox. Typed blocks
+  can't be nested in each other (`if`/`from` inside them can).
+- **Names** (`templateNames` in contracts): a value of a unit field is
+  named `unit.<field>`, of an answer `var.<question>`, a typed block by its
+  own name (letters, digits and `_`, unique in the layout); scripts have
+  none (put one in a named block). The element is marked with
+  `data-field="<name>"` (an attribute, not an `id`: a field may be shown
+  twice, and ids could clash with the app's). A question's optional
+  `field` (in the form: "Show field"; a span question uses its first one)
+  makes `UnitFields` scroll it into view and highlight it briefly when the
+  question comes up. Validation checks the layout shows the name.
+- **Selectable text**: a span question's `fields` (one or more) are
+  names of plain text in the layout: `unit.<field>` shown as plain
+  `$unit.x` (or `{{$unit.x}}`), or a named `::: text` block (e.g. text a
+  script makes; possible, though a fixed text is better for analysis).
+  Validation enforces it, so span offsets always point into one string,
+  never rendered markdown. Every such name (all span questions of the
+  loop) is rendered as `SelectableText` during every question of the unit,
+  looking the same whether or not the question on screen selects in it,
+  so the layout doesn't shift; only that question's span question can
+  select. Each span stores the name it is in.
   Image fields may later work the same way for image questions.
 - `$unit.text` is the same as `{{$unit.text}}`, and `$unit.text::markdown`
   as `{{$unit.text}}::markdown`. `\$` is a literal `$`; references inside
@@ -117,11 +140,11 @@ templates with the same syntax.
 
   ```
   ::: if $var.group.is('experiment')      :::: from topics
-  $snippet.experiment_banner             ::: style font-size: 90%
-  ::: else if <script>                    You rated it $var.sentiment.label
+  [[experiment_banner]]                  ::: style font-size: 90%
+  ::: else if [[other_condition]]         You rated it $var.sentiment.label
   ...                                     :::
   ::: else                                ::::
-  $snippet.control_banner
+  [[control_banner]]
   :::
   ```
 
@@ -140,11 +163,15 @@ templates with the same syntax.
     as its opening fence, so nested blocks use more colons outside.
     Fence lines are not text; fences in code stay literal.
 
+  - `text|markdown|html|image [name]`: typed blocks (above).
+
   Rendering (`renderTemplate`): conditions are evaluated (cached, like
-  values), the chosen text is put together, and a style block's content
+  values), the chosen text is put together, a style block's content
   sits between two marker paragraphs that `remarkTemplateValues` turns
-  into a `<template-style>` element. `JobManager` passes the question on
-  screen and the loop's question order for `from`.
+  into a `<template-style>` element, and a typed block becomes one value
+  (its content's values put in as they are) after the template's own.
+  `JobManager` passes the question on screen and the loop's question
+  order for `from`.
 - **`colorScheme`** (optional, `light` or `dark`): the unit is always
   shown in those colours (with its own background), whatever the coder
   chose; for styled content that only looks right in one. The rest of the
@@ -152,20 +179,15 @@ templates with the same syntax.
   `dark` class: the theme variables are defined for `:root, .light` and
   `.dark`, and Tailwind's `dark:` variant doesn't apply inside `.light`
   (index.css).
-- **Field markers**: the element of every bare `$unit.<field>` value has
-  `data-field="<field>"` (an attribute, not an `id`: a field may be used
-  twice, and ids could clash with the app's). A question's optional
-  `field` (in the form: "Show field"; a span question uses its first field)
-  makes `UnitFields` scroll that field into view and highlight it briefly
-  when the question comes up. Validation checks the layout shows it.
 - **Snippets** (`layout.snippets`, contracts `snippets.ts`): named pieces
-  of a loop's template, put in with `$snippet.<name>` as if typed there,
-  before anything else is read: markdown, blocks and `$unit`/`$var` values
-  in them all work, and snippets can use snippets (one that includes itself
-  is an error). They work in the layout and in the loop's question texts,
-  not in scripts or `{{ }}` (they are text, not values). Values (`$unit`,
-  `$var`) are always text unless a suffix says otherwise; a snippet is part
-  of the template, hence the different name.
+  of a loop's template, written `[[name]]` and pasted in as text before
+  anything else is read, wherever they stand: a line, a block's fence
+  (`::: if [[condition]]`), inside `{{ }}`. Markdown, blocks and values in
+  them all work, and snippets can use snippets (one that includes itself
+  is an error). They work in the layout and in the loop's question texts.
+  A snippet takes no suffix: it is template text, not a value. Names (of
+  snippets and references) must be written out literally, not built from
+  pieces (as with Tailwind's class names).
 - `$unit` and snippets only exist inside a unit loop; outside, texts can
   only use `$var`.
 
@@ -366,7 +388,7 @@ condition:
 order and checks every reference in scripts, templates and texts: the
 question exists and comes before this point (not the question itself, not
 inside the condition's own children, not in another loop); the property or
-method fits its type; `$unit` and `$snippet` only inside a loop (unknown
+method fits its type; `$unit` and snippets (`[[name]]`) only inside a loop (unknown
 snippets are an error; unknown `$unit` fields are a warning in the editor, once the
 job has units); branch `when`, unitset names and end item redirect URLs
 only use coder-level `$var` refs from before the loop; span fields shown
@@ -488,15 +510,17 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   turns on branches, where every branch but the last has a condition
   ("if", "else if") and the last is "otherwise". **Layout**: the template,
   in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
-  as its own language (markdown with references, suffixes and `{{ }}`
-  highlighted) with completions after `$` (unit fields, the loop's
-  snippets, questions), `::` and `:::` (block keywords, `from`'s
-  questions); the snippets (name, text), and the optional colour
+  as its own language (markdown with references, suffixes, `{{ }}` and
+  `[[snippets]]` highlighted) with completions after `$` (unit fields,
+  questions), `[[` (the loop's snippets), `::` and `:::` (block keywords,
+  `from`'s questions); the snippets (name, text), and the optional colour
   scheme. Above every `::: if` line a code lens shows the condition in
   words, and "edit" opens the rules editor (`ConditionDialog`) for it. An
   Insert menu (`TemplateInsertMenu.tsx`) writes the text for a unit field
   (as headline, text or image), a snippet, "Show if…" (the rules
-  editor), "Show from…" and a few styles; blocks wrap the selected text.
+  editor), "Show from…", a few styles and an HTML block; blocks wrap the
+  selected text. "Show field" and a span question's fields are chosen from
+  the names the layout shows.
   The text stays the source of truth. The layout's `style` and `meta` are
   only in the JSON views.
   Forms show few tips (instruction buttons may come later).
