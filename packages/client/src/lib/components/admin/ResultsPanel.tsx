@@ -1,60 +1,100 @@
 import { useState } from "react";
-import type { AnnotationRow, TopLevelItem } from "@annotinder/contracts";
-import { Download, Users, FileSpreadsheet } from "lucide-react";
+import { strToU8, zipSync } from "fflate";
+import type { AnnotationRow, TopLevelItem, UnitVersion } from "@annotinder/contracts";
+import { Download, FileArchive } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodebookQuery, useCodersQuery, useDeploymentQuery, useJobQuery } from "../../admin/queries";
-import { annotationsTable, codersTable, questionOrder, toCsv, type Table } from "../../admin/exportData";
+import { useCodersQuery, useDeploymentQuery, useJobQuery } from "../../admin/queries";
+import {
+  Labels,
+  annotationsTable,
+  codersTable,
+  questionOrder,
+  readme,
+  toCsv,
+  unitsTable,
+  variablesTable,
+} from "../../admin/exportData";
 import { Button } from "@/components/ui/button";
 
-/** Saves a table as a CSV file. */
-function download(table: Table, filename: string) {
-  const url = URL.createObjectURL(new Blob([toCsv(table)], { type: "text/csv;charset=utf-8" }));
-  const link = Object.assign(document.createElement("a"), { href: url, download: filename });
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-/** Every live annotation row, page by page. */
-async function allAnnotations(client: ResearcherApi, onProgress: (n: number) => void): Promise<AnnotationRow[]> {
-  const rows: AnnotationRow[] = [];
+/** Every row of a paged researcher API list. */
+async function allPages<T>(
+  fetchPage: (after: number | undefined) => Promise<{ rows: T[]; next: number | null }>,
+  onProgress: (n: number) => void,
+): Promise<T[]> {
+  const rows: T[] = [];
   let after: number | undefined;
   for (;;) {
-    const page = await client.listAnnotations({ after, limit: 10000 });
-    rows.push(...page.annotations);
+    const page = await fetchPage(after);
+    rows.push(...page.rows);
     onProgress(rows.length);
     if (page.next === null) return rows;
     after = page.next;
   }
 }
 
+/** Saves bytes as a file. */
+function save(bytes: Uint8Array, filename: string, type: string) {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: filename });
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 /**
- * Downloading the job's data (docs/client.md §7, "Results"): the
- * annotations (a row per unit and coder) and the coders (a row per coder)
- * as CSV files, columns in the order of the live codebook.
+ * Downloading the job's data (docs/client.md §7, "Results"): one zip with
+ * the annotations, coders, the unit versions coded and the codebook's
+ * variables as CSV files, and a README, built in the browser from the
+ * researcher API.
  */
 export function ResultsPanel({ client }: { client: ResearcherApi }) {
   const coders = useCodersQuery(client);
   const job = useJobQuery(client).data;
   const deployment = useDeploymentQuery(client).data;
-  const codebook = useCodebookQuery(client, deployment?.codebookId ?? null).data;
+  const [withLabels, setWithLabels] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const order = questionOrder(codebook?.items as TopLevelItem[] | undefined);
-  const base = (job?.name ?? `job-${client.jobId}`).replace(/[^\w-]+/g, "_");
-  const date = new Date().toISOString().slice(0, 10);
   const finished = (coders.data ?? []).reduce((n, c) => n + Object.values(c.finished).reduce((a, b) => a + b, 0), 0);
+  const name = job?.name ?? `job ${client.jobId}`;
 
-  async function run(what: "annotations" | "coders") {
+  async function download() {
     setError(null);
-    setBusy("Loading…");
+    setBusy("Loading coders…");
     try {
-      const list = await coders.refetch().then((r) => r.data ?? []);
-      if (what === "coders") download(codersTable(list, order), `${base}_coders_${date}.csv`);
-      else {
-        const rows = await allAnnotations(client, (n) => setBusy(`Loading answers: ${n}…`));
-        download(annotationsTable(rows, list, order), `${base}_annotations_${date}.csv`);
-      }
+      const coderList = (await coders.refetch()).data ?? [];
+      const annotations = await allPages<AnnotationRow>(
+        async (after) => {
+          const page = await client.listAnnotations({ after, limit: 10000 });
+          return { rows: page.annotations, next: page.next };
+        },
+        (n) => setBusy(`Loading answers: ${n}…`),
+      );
+      const versions = await allPages<UnitVersion>(
+        async (after) => {
+          const page = await client.listUnitVersions({ after, limit: 10000 });
+          return { rows: page.versions, next: page.next };
+        },
+        (n) => setBusy(`Loading units: ${n}…`),
+      );
+      // The codebook versions answers were given under, and the live one.
+      setBusy("Loading codebooks…");
+      const ids = new Set(annotations.flatMap((a) => (a.codebookId === null ? [] : [a.codebookId])));
+      if (deployment) ids.add(deployment.codebookId);
+      const codebooks = new Map<number, TopLevelItem[]>();
+      for (const id of ids) codebooks.set(id, (await client.getCodebook(id)).items as TopLevelItem[]);
+
+      const liveId = deployment?.codebookId ?? null;
+      const order = questionOrder(liveId === null ? undefined : codebooks.get(liveId));
+      const labels = withLabels ? new Labels(codebooks, liveId) : undefined;
+      const now = new Date();
+      const zip = zipSync({
+        "README.txt": strToU8(readme(name, now, withLabels)),
+        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels))),
+        "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels))),
+        "units.csv": strToU8(toCsv(unitsTable(versions, annotations))),
+        "variables.csv": strToU8(toCsv(variablesTable(codebooks))),
+      });
+      save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -72,58 +112,45 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <DownloadCard
-            icon={FileSpreadsheet}
-            title="Annotations"
-            description="A row per unit and coder: the unit id, the coder, when they answered, and a column per question (a scale: a column per item)."
-            disabled={busy !== null}
-            onClick={() => void run("annotations")}
-          />
-          <DownloadCard
-            icon={Users}
-            title="Coders"
-            description="A row per coder: invitation, participant id, started, how their session ended, units finished, and their answers outside unit loops."
-            disabled={busy !== null}
-            onClick={() => void run("coders")}
-          />
+        <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+          <div className="flex items-center gap-2 font-medium">
+            <FileArchive className="h-4 w-4 text-primary" /> All data (zip)
+          </div>
+          <ul className="list-disc pl-5 text-xs text-muted-foreground">
+            <li>
+              <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per item)
+            </li>
+            <li>
+              <strong>coders.csv</strong>: a row per coder: invitation, participant id, how their session ended, and their
+              answers outside unit loops
+            </li>
+            <li>
+              <strong>units.csv</strong>: the units as coders saw them, a row per version (a unit replaced after it was
+              coded has several)
+            </li>
+            <li>
+              <strong>variables.csv</strong>: per codebook version, each question&apos;s options and labels
+            </li>
+            <li>
+              <strong>README.txt</strong>: what the columns mean
+            </li>
+          </ul>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={withLabels} onChange={(e) => setWithLabels(e.target.checked)} />
+            Add label columns (the label each coder saw, next to the stored value)
+          </label>
+          <Button className="self-start" disabled={busy !== null} onClick={() => void download()}>
+            <Download className="mr-1 h-4 w-4" /> Download zip
+          </Button>
+          {busy && <p className="text-sm text-muted-foreground">{busy}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        {busy && <p className="text-sm text-muted-foreground">{busy}</p>}
-        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <p className="text-xs text-muted-foreground">
-          CSV files (UTF-8). Answers are the stored values, not the labels shown to coders; several answers are separated
-          by &quot;; &quot;, spans are written as &quot;label: text&quot;, and questions a condition skipped are empty.
-          Join the two files on <code>coder_id</code>. Scripts (R, Python) can get the same data, and more detail, from the
-          API with an API key (account menu).
+          CSV files (UTF-8). Scripts (R, Python) can get the same data, and more detail (e.g. answers that were changed or
+          reset), from the API with an API key (account menu).
         </p>
       </section>
-    </div>
-  );
-}
-
-function DownloadCard({
-  icon: Icon,
-  title,
-  description,
-  disabled,
-  onClick,
-}: {
-  icon: typeof Download;
-  title: string;
-  description: string;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
-      <div className="flex items-center gap-2 font-medium">
-        <Icon className="h-4 w-4 text-primary" /> {title}
-      </div>
-      <p className="flex-1 text-xs text-muted-foreground">{description}</p>
-      <Button variant="outline" className="self-start" disabled={disabled} onClick={onClick}>
-        <Download className="mr-1 h-4 w-4" /> Download CSV
-      </Button>
     </div>
   );
 }

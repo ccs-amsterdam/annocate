@@ -36,6 +36,7 @@
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.3.0",
+    "fflate": "^0.8.2",
     "lucide-react": "^1.47.0",
     "monaco-editor": "0.56.0",
     "quickjs-emscripten-core": "^0.32.0",

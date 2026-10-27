@@ -25,6 +25,8 @@ import {
   type ApiKeyResponse,
   type ApiKeyCreated,
   type AnnotationPage,
+  type UnitVersionPage,
+  type UnitVersionsQuery,
   type AnnotationsQuery,
   type AuthOptions,
 } from "@annotinder/contracts";
@@ -126,6 +128,8 @@ export interface ResearcherApi {
 
   /** One page of annotations; pass `next` as `after` for the following page. */
   listAnnotations(query?: AnnotationsQuery): Promise<AnnotationPage>;
+  /** Units as coders saw them, a page at a time. */
+  listUnitVersions(query?: UnitVersionsQuery): Promise<UnitVersionPage>;
 }
 
 export interface HttpResearcherApiConfig {
@@ -224,6 +228,13 @@ export class HttpResearcherApi implements ResearcherApi {
     const params = new URLSearchParams();
     for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, String(value));
     const path = researcherEndpoints.listAnnotations.path.replace(":jobId", String(this.requireJobId()));
+    return this.request(params.size ? `${path}?${params}` : path);
+  }
+
+  async listUnitVersions(query: UnitVersionsQuery = {}): Promise<UnitVersionPage> {
+    const params = new URLSearchParams();
+    for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, String(value));
+    const path = researcherEndpoints.listUnitVersions.path.replace(":jobId", String(this.requireJobId()));
     return this.request(params.size ? `${path}?${params}` : path);
   }
 

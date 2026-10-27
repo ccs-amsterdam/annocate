@@ -40,6 +40,7 @@ const stubClient: ResearcherApi = {
   putDeployment: () => new Promise(() => {}),
   createPreview: () => new Promise(() => {}),
   listAnnotations: () => new Promise(() => {}),
+  listUnitVersions: () => new Promise(() => {}),
   getMe: () => new Promise(() => {}),
   listApiKeys: () => new Promise(() => {}),
   createApiKey: () => new Promise(() => {}),
