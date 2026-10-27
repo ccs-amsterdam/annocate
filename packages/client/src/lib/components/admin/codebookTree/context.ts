@@ -28,6 +28,8 @@ export interface CodebookTreeState {
   moveToEnd: (parentKey: string | null) => void;
 
   getIssue: (item: CodebookItem) => string | null;
+  /** Whether the item has unsaved changes. */
+  isChanged: (item: CodebookItem) => boolean;
 }
 
 const CodebookTreeContext = createContext<CodebookTreeState | null>(null);

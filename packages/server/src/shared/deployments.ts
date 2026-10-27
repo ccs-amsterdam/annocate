@@ -7,7 +7,8 @@ import {
   type DeploymentWrite,
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
-import { toCodebookResponse, type CodebookRow } from "./codebooks.js";
+import { codebookItems, itemsValid, toCodebookResponse, type CodebookRow } from "./codebooks.js";
+import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
 
@@ -110,6 +111,7 @@ export async function getDeploymentSpec(sql: Sql, jobId: number): Promise<Deploy
 export async function getPreviewSpec(sql: Sql, jobId: number): Promise<DeploymentSpec | null> {
   const codebook = await one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
   if (!codebook) return null;
+  if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest codebook has issues: fix them to preview it", "codebook_invalid");
   const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0 });
   const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.unitsets])).digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };

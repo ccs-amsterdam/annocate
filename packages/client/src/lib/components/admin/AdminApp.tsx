@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CoderInviteResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
@@ -13,7 +13,8 @@ import { JobOverview } from "./overview/JobOverview";
 import { JobPreview } from "./JobPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive } from "lucide-react";
+import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive, FilePen } from "lucide-react";
+import { clearBackup, readBackup, type CodebookBackup } from "../../codebook/localBackup";
 
 const TABS = [
   { id: "Overview", label: "Overview", icon: LayoutDashboard },
@@ -74,6 +75,26 @@ function AdminAppInner({
 }) {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? null);
   const [tab, setTab] = useState<TabId>("Overview");
+  // Unsaved codebook edits from an earlier session (localBackup.ts), read once
+  const [backup, setBackup] = useState(() => readBackup());
+  const [restore, setRestore] = useState<CodebookBackup | null>(null);
+  const banner = backup && (
+    <BackupBanner
+      client={client}
+      backup={backup}
+      onContinue={() => {
+        setSelectedJobId(backup.jobId);
+        setTab("Codebook");
+        setRestore(backup);
+        setBackup(null);
+      }}
+      onDiscard={() => {
+        if (!confirm("Throw away these unsaved codebook changes?")) return;
+        clearBackup();
+        setBackup(null);
+      }}
+    />
+  );
 
   // If a job is selected, create a client scoped to that job
   const jobClient = useMemo(() => {
@@ -84,6 +105,7 @@ function AdminAppInner({
   if (selectedJobId === null || !jobClient) {
     return (
       <div className="flex-1 overflow-auto p-4 sm:p-6">
+        {banner}
         <JobList client={client} onSelectJob={(id) => setSelectedJobId(id)} />
       </div>
     );
@@ -91,6 +113,8 @@ function AdminAppInner({
 
   return (
     <JobAdminView
+      banner={banner}
+      restore={restore && restore.jobId === selectedJobId ? restore : null}
       client={jobClient}
       rootClient={client}
       baseUrl={baseUrl}
@@ -105,6 +129,8 @@ function AdminAppInner({
 }
 
 function JobAdminView({
+  banner,
+  restore,
   client,
   rootClient,
   baseUrl,
@@ -115,6 +141,10 @@ function JobAdminView({
   onBackToJobs,
   onSwitchJob,
 }: {
+  /** Offers unsaved codebook edits from an earlier session, if any. */
+  banner: ReactNode;
+  /** Those edits, once the researcher chose to continue with them. */
+  restore: CodebookBackup | null;
   client: ResearcherApi;
   rootClient: ResearcherApi;
   baseUrl: string;
@@ -242,6 +272,7 @@ function JobAdminView({
 
       {/* Main Tab Content */}
       <main className="flex-1 overflow-auto p-4 sm:p-6">
+        {banner}
         {tab === "Overview" && (
           <JobOverview
             client={client}
@@ -255,8 +286,9 @@ function JobAdminView({
         )}
         {tab === "Codebook" && (
           <CodebookManager
-            key={codebookTarget?.n ?? 0}
+            key={`${codebookTarget?.n ?? 0}:${restore?.at ?? ""}`}
             initialVersionId={codebookTarget?.id ?? null}
+            restore={restore}
             client={client}
             onDirtyChange={setIsCodebookDirty}
             registerSave={(save) => {
@@ -280,6 +312,7 @@ function JobAdminView({
           setSaveError(null);
         }}
         onDiscard={() => {
+          clearBackup();
           setIsCodebookDirty(false);
           const nav = pendingNav;
           setPendingNav(null);
@@ -288,6 +321,44 @@ function JobAdminView({
         }}
         onSave={saveAndNavigate}
       />
+    </div>
+  );
+}
+
+/** Offers unsaved codebook edits from an earlier session (the browser was closed): continue with them, or throw them away. */
+function BackupBanner({
+  client,
+  backup,
+  onContinue,
+  onDiscard,
+}: {
+  client: ResearcherApi;
+  backup: CodebookBackup;
+  onContinue: () => void;
+  onDiscard: () => void;
+}) {
+  const jobs = useJobsQuery(client);
+  const job = jobs.data?.find((j) => j.id === backup.jobId);
+  const when = new Date(backup.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500 bg-amber-500/10 px-4 py-3 text-sm">
+      <div className="flex items-start gap-2.5">
+        <FilePen className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div>
+          <p className="font-semibold text-foreground">You have unsaved codebook changes</p>
+          <p className="text-muted-foreground">
+            In {job ? `"${job.name}"` : `job #${backup.jobId}`}, from {when}. They were kept in this browser.
+          </p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" onClick={onDiscard}>
+          Discard
+        </Button>
+        <Button size="sm" onClick={onContinue}>
+          Continue editing
+        </Button>
+      </div>
     </div>
   );
 }

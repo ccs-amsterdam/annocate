@@ -11,12 +11,20 @@ describe("CodebookVersionsDialog", () => {
       note: "Initial Codebook",
       created: new Date("2026-09-01T10:00:00Z"),
       immutable: true,
+      updated: new Date(),
+      updatedBy: null,
+      revision: 1,
+      valid: true,
     },
     {
       id: 2,
       note: null,
       created: new Date("2026-09-15T14:30:00Z"),
       immutable: false,
+      updated: new Date(),
+      updatedBy: null,
+      revision: 1,
+      valid: true,
     },
   ];
 

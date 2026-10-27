@@ -4,7 +4,7 @@ import { canMoveItemTo, canMoveToRootEnd, type MoveTargetPosition } from "../../
 import { itemAtPath } from "../../codebook/tree";
 import { CodebookTreeProvider, type CodebookTreeState } from "./codebookTree/context";
 import { TreeList } from "./codebookTree/TreeList";
-import type { ItemType } from "./codebookTree/utils";
+import { getItemKey, type ItemType } from "./codebookTree/utils";
 
 interface CodebookTreeViewProps {
   items: TopLevelItem[];
@@ -16,6 +16,8 @@ interface CodebookTreeViewProps {
   onMoveItem: (source: string, target: string, position: MoveTargetPosition) => void;
   onMoveToRootEnd: (source: string) => void;
   validationIssues?: CodebookValidationIssue[];
+  /** Keys of items with unsaved changes (marked in the tree). */
+  changed?: ReadonlySet<string>;
   /** Immutable codebook: items can be selected, but not added, moved or deleted. */
   readOnly?: boolean;
 }
@@ -44,6 +46,7 @@ export function CodebookTreeView({
   onMoveItem,
   onMoveToRootEnd,
   validationIssues = [],
+  changed,
   readOnly = false,
 }: CodebookTreeViewProps) {
   const [movingKey, setMovingKey] = useState<string | null>(null);
@@ -89,6 +92,8 @@ export function CodebookTreeView({
       }
       cancelMove();
     },
+
+    isChanged: (item) => changed?.has(getItemKey(item)) ?? false,
 
     getIssue: (item) =>
       validationIssues.find((issue) => {

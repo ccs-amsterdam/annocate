@@ -18,11 +18,11 @@ export function codebooks(server: Server): Hono<Env> {
     const parsed = CodebookWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const row = await one<CodebookRow>(db, "INSERT INTO codebooks (job_id, note, items) VALUES ($1, $2, $3) RETURNING *", [
-      c.get("jobId"),
-      parsed.data.note ?? null,
-      JSON.stringify(parsed.data.items),
-    ]);
+    const row = await one<CodebookRow>(
+      db,
+      "INSERT INTO codebooks (job_id, note, items, updated_by) VALUES ($1, $2, $3, $4) RETURNING *",
+      [c.get("jobId"), parsed.data.note ?? null, JSON.stringify(parsed.data.items), c.get("jobUser")?.email ?? null],
+    );
     return c.json(toCodebookResponse(row!), 201);
   });
 

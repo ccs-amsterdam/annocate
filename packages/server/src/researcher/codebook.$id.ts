@@ -1,9 +1,20 @@
 import { Hono } from "hono";
-import { CodebookWriteSchema } from "@annotinder/contracts";
+import { CodebookWriteSchema, type CodebookConflict } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { toCodebookResponse, type CodebookRow } from "../shared/codebooks.js";
+
+/** The 409 for a save based on an older revision (contracts `CodebookConflictSchema`). */
+function conflict(row: CodebookRow): CodebookConflict {
+  return {
+    error: `${row.updated_by ?? "Someone"} saved this draft since you opened it`,
+    code: "codebook_conflict",
+    updated: row.updated,
+    updatedBy: row.updated_by,
+    revision: row.revision,
+  };
+}
 
 export function codebook(server: Server): Hono<Env> {
   const { db } = server;
@@ -27,13 +38,22 @@ export function codebook(server: Server): Hono<Env> {
     const parsed = CodebookWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
+    // Saved by someone else since the edits started: don't overwrite their work.
+    const { revision } = parsed.data;
+    if (revision !== undefined && revision !== existing.revision) return c.json(conflict(existing), 409);
+
     const row = await one<CodebookRow>(
       db,
-      "UPDATE codebooks SET note = $1, items = $2 WHERE job_id = $3 AND id = $4 AND NOT immutable RETURNING *",
-      [parsed.data.note ?? null, JSON.stringify(parsed.data.items), jobId, id],
+      `UPDATE codebooks SET note = $1, items = $2, updated = now(), updated_by = $3, revision = revision + 1
+       WHERE job_id = $4 AND id = $5 AND NOT immutable AND ($6::int IS NULL OR revision = $6) RETURNING *`,
+      [parsed.data.note ?? null, JSON.stringify(parsed.data.items), c.get("jobUser")?.email ?? null, jobId, id, revision ?? null],
     );
-    // Deployed meanwhile.
-    if (!row) return c.json({ error: "Codebook is immutable and cannot be edited" }, 409);
+    if (!row) {
+      // Deployed or saved by someone else meanwhile.
+      const now = await get(jobId, id);
+      if (now && !now.immutable) return c.json(conflict(now), 409);
+      return c.json({ error: "Codebook is immutable and cannot be edited" }, 409);
+    }
     return c.json(toCodebookResponse(row));
   });
 

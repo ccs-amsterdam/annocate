@@ -74,6 +74,8 @@ export const CoderErrorCodeSchema = z.enum([
   "branch_required",
   /** The coder reached an `end` item: no more units or answers. */
   "session_ended",
+  /** Preview only: the latest codebook has issues, so it can't run. */
+  "codebook_invalid",
 ]);
 export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
 

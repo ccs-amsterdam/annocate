@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  CodebookConflictSchema,
   validateCodebookItems,
+  type CodebookConflict,
   type CodebookItem,
   type CodebookResponse,
   type TopLevelItem,
@@ -21,6 +23,12 @@ import {
   type MoveTargetPosition,
 } from "../../../codebook/codebookEdit";
 import { findItem } from "../../../codebook/tree";
+import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../codebook/editHistory";
+import { ResearcherApiError } from "../../../api/httpResearcherApi";
+import { clearBackup, writeBackup, type CodebookBackup } from "../../../codebook/localBackup";
+
+/** Unsaved edits are copied to the browser's storage this long after the last change. */
+const BACKUP_DELAY_MS = 1000;
 import { defaultItemForType } from "../ItemForm";
 import type { ItemType } from "../codebookTree/utils";
 
@@ -30,37 +38,90 @@ interface UseCodebookDraftOptions {
   codebook?: CodebookResponse | null;
   readOnly: boolean;
   onSaved: (codebook: CodebookResponse) => void;
+  /** Unsaved edits of this version from an earlier session (localBackup.ts), to continue with. */
+  restore?: CodebookBackup | null;
 }
 
 /**
  * The editor's in-memory copy of a codebook version: its items (with
  * client-side `_key`s), the selected item, validation, unsaved-change
- * tracking and saving.
+ * tracking (per item, with revert), undo/redo, and saving (with a check
+ * that nobody else saved meanwhile).
  *
  * State is initialised from `codebook` once: mount the editor with a `key`
  * per version (CodebookManager does) to start over for another version.
  */
-export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCodebookDraftOptions) {
-  const [items, setItems] = useState<TopLevelItem[]>(() => ensureKeys((codebook?.items ?? []) as TopLevelItem[]));
-  const [selected, setSelected] = useState<string | null>(null);
-  // The items as last saved (serialized), to tell whether there are unsaved changes
-  const [savedSerialized, setSavedSerialized] = useState(() =>
-    JSON.stringify(stripKeys((codebook?.items ?? []) as TopLevelItem[])),
+export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore }: UseCodebookDraftOptions) {
+  const [items, setItemsState] = useState<TopLevelItem[]>(() =>
+    restore ? ensureKeys(restore.items) : ensureKeys((codebook?.items ?? []) as TopLevelItem[]),
   );
+  const [selected, setSelected] = useState<string | null>(null);
+  // The items as last saved (with the same keys), to tell what changed and to revert to
+  const [saved, setSaved] = useState<TopLevelItem[]>(() => (restore ? ensureKeys(restore.saved) : items));
+  // The saved revision the edits are based on (contracts CodebookWriteSchema `revision`)
+  const [revision, setRevision] = useState<number | undefined>(restore ? restore.revision : codebook?.revision);
+  const [history, setHistory] = useState(() => emptyHistory<TopLevelItem[]>());
+  const [conflict, setConflict] = useState<CodebookConflict | null>(null);
 
   const createCodebook = useCreateCodebookMutation(client);
   const updateCodebook = useUpdateCodebookMutation(client);
 
   const cleanItems = useMemo(() => stripKeys(items), [items]);
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
-  // Errors and warnings; only errors block saving (warnings show next to the item).
+  const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
+  // Errors and warnings. Drafts can be saved with errors; publishing needs none.
   const validationIssues = useMemo(() => validateCodebookItems(cleanItems), [cleanItems]);
   const validationErrors = useMemo(() => validationIssues.filter((i) => !i.warning), [validationIssues]);
   const dirty = serialized !== savedSerialized;
-  const canSave = !readOnly && items.length > 0 && validationErrors.length === 0;
+  const valid = items.length > 0 && validationErrors.length === 0;
+  const canSave = !readOnly && dirty;
+  const changed = useMemo(() => changedKeys(items, saved), [items, saved]);
   const selectedItem = selected ? findItem(items, selected) : null;
 
   useWarnBeforeUnload(dirty);
+
+  // A copy of unsaved edits in the browser, in case it closes (localBackup.ts)
+  const backupOf = useMemo(() => ({ jobId: client.jobId ?? 0, codebookId: codebook?.id ?? null }), [client.jobId, codebook?.id]);
+  useEffect(() => {
+    if (readOnly) return;
+    if (!dirty) {
+      clearBackup(backupOf);
+      return;
+    }
+    const timer = setTimeout(() => writeBackup({ ...backupOf, revision, items, saved, at: Date.now() }), BACKUP_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [readOnly, dirty, backupOf, revision, items, saved]);
+
+  /** Every edit goes through here: it becomes an undo step (see editHistory.ts). */
+  function setItems(next: TopLevelItem[]) {
+    if (readOnly) return;
+    setHistory((h) => recordChange(h, items, Date.now()));
+    setItemsState(next);
+  }
+
+  function undoChange() {
+    const step = undo(history, items);
+    if (!step) return;
+    setHistory(step.history);
+    setItemsState(step.value);
+  }
+
+  function redoChange() {
+    const step = redo(history, items);
+    if (!step) return;
+    setHistory(step.history);
+    setItemsState(step.value);
+  }
+
+  /** One item back as it was last saved (removed, if it is new). */
+  function revert(key: string) {
+    setItems(revertItem(items, saved, key));
+  }
+
+  /** Every unsaved change undone (itself an undo step). */
+  function revertAll() {
+    setItems(saved);
+  }
 
   function createItem(type: ItemType) {
     const name = getUniqueItemName(items, type);
@@ -95,7 +156,6 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCod
   }
 
   function update(key: string, next: CodebookItem) {
-    if (readOnly) return;
     // Keep the client-side key, so the item stays selected
     setItems(updateItem(items, key, Object.assign({}, next, { _key: key })));
   }
@@ -104,21 +164,36 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCod
     setItems(ensureKeys(next));
   }
 
-  async function save(): Promise<CodebookResponse> {
+  /**
+   * Saves the draft (even with validation errors). A save based on an older
+   * revision than the server has is refused (someone else saved): then
+   * `conflict` is set, and `save({ overwrite: true })` saves anyway.
+   */
+  async function save({ overwrite = false }: { overwrite?: boolean } = {}): Promise<CodebookResponse> {
     if (readOnly) throw new Error("This version is read only");
-    if (!canSave) throw new Error("Fix the codebook's issues before saving");
-    const sent = serialized;
-    // A frozen (live) version is never overwritten: its changes become a new draft
-    const saved =
-      codebook && !codebook.immutable
-        ? await updateCodebook.mutateAsync({
-            id: codebook.id,
-            body: { note: codebook.note ?? undefined, items: cleanItems },
-          })
-        : await createCodebook.mutateAsync({ items: cleanItems });
-    setSavedSerialized(sent);
-    onSaved(saved);
-    return saved;
+    const sent = items;
+    try {
+      // A frozen (live) version is never overwritten: its changes become a new draft
+      const result =
+        codebook && !codebook.immutable
+          ? await updateCodebook.mutateAsync({
+              id: codebook.id,
+              body: { note: codebook.note ?? undefined, items: cleanItems, revision: overwrite ? undefined : revision },
+            })
+          : await createCodebook.mutateAsync({ items: cleanItems });
+      setSaved(sent);
+      setRevision(result.revision);
+      clearBackup(backupOf);
+      setConflict(null);
+      onSaved(result);
+      return result;
+    } catch (err) {
+      if (err instanceof ResearcherApiError && err.code === "codebook_conflict") {
+        setConflict(CodebookConflictSchema.parse(err.body));
+        throw new Error("Someone else saved this draft meanwhile", { cause: err });
+      }
+      throw err;
+    }
   }
 
   return {
@@ -129,9 +204,18 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCod
     validationIssues,
     validationErrors,
     dirty,
+    valid,
     canSave,
+    /** The items as last saved. */
+    savedItems: saved,
+    /** Keys of items that are new or changed since the last save. */
+    changed,
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0,
+    conflict,
+    dismissConflict: () => setConflict(null),
     saving: createCodebook.isPending || updateCodebook.isPending,
-    saveError: createCodebook.error ?? updateCodebook.error,
+    saveError: conflict ? null : (createCodebook.error ?? updateCodebook.error),
     select: setSelected,
     insertBefore,
     insertAtEnd,
@@ -140,6 +224,10 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved }: UseCod
     moveToEnd,
     update,
     replaceAll,
+    undo: undoChange,
+    redo: redoChange,
+    revert,
+    revertAll,
     save,
   };
 }

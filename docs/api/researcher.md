@@ -208,17 +208,27 @@ immutable), oldest first: the position is the version number.
 ### createCodebook
 
 `POST /job/:jobId/codebook` → `CodebookResponseSchema` (201). A new version.
-Validate `items` with `CodebookItemsSchema` (nesting rules, unique names);
-the body is always the full document, with an optional `note` (what changed).
+The body is always the full document, with an optional `note` (what
+changed). A draft may be saved while it doesn't pass validation (work in
+progress): `items` only has to be a list (`DraftItemsSchema`, migrated from
+older shapes). The response says whether it is `valid`
+(`CodebookItemsSchema`: nesting rules, unique names, references), which
+publishing and previewing require. Codebooks also have `updated`,
+`updatedBy` (the email of who saved last) and `revision`.
 
 ### updateCodebook
 
 `PUT /job/:jobId/codebook/:id` → `CodebookResponseSchema`. Full replace of
-items and note. 409 once `immutable` (published).
+items and note; bumps `revision`. 409 once `immutable` (published). With
+`revision` (the revision the edits are based on): 409
+`CodebookConflictSchema` (`code: "codebook_conflict"`, who saved when) if
+someone saved since, instead of overwriting their work. Without it, the
+save overwrites.
 
 ### deleteCodebook
 
-`DELETE /job/:jobId/codebook/:id` → 204. Discards a draft. 409 once `immutable`.
+`DELETE /job/:jobId/codebook/:id` → 204. Deletes a draft (for everyone; the
+editor offers this only in the versions dialog). 409 once `immutable`.
 
 ## Units and unitsets
 
@@ -345,8 +355,10 @@ codebook id, `active`, `version`; null if never published.
 `PUT /job/:jobId/deployment` → `DeploymentResponseSchema`. Publish a
 codebook version (or pause/resume with `active`):
 
-1. store it, bump `version`, and make the codebook immutable;
-2. have a loaded runtime re-read the deployment.
+1. check that the codebook passes validation (400 with `issues` if not:
+   drafts may be saved with issues, coders only get valid codebooks);
+2. store it, bump `version`, and make the codebook immutable;
+3. have a loaded runtime re-read the deployment.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again.
@@ -370,7 +382,8 @@ drops cached unit content, e.g. after fixing a unit's text.
 the latest codebook (published or not), as deployment `<jobId>.preview`:
 the real units, but coders and answers kept in memory only. The token (an
 HMAC with the server's secret, valid 12 hours) is used like an invite
-secret.
+secret. A latest codebook with validation issues can't be previewed: the
+preview's coder API answers 409 `codebook_invalid`.
 
 ### resetAnnotations
 

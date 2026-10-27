@@ -34,8 +34,16 @@ export class ResearcherApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** The parsed JSON error body (`{ error, code?, ... }`), if there was one. */
+    readonly body?: unknown,
   ) {
     super(message);
+  }
+
+  /** The machine-readable `code` of the error body, e.g. `codebook_conflict`. */
+  get code(): string | undefined {
+    const code = (this.body as { code?: unknown } | undefined)?.code;
+    return typeof code === "string" ? code : undefined;
   }
 }
 
@@ -169,7 +177,13 @@ export class HttpResearcherApi implements ResearcherApi {
     const res = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers: this.headers(), credentials: "same-origin" });
     if (!res.ok) {
       const body = await res.text();
-      throw new ResearcherApiError(res.status, `Request to ${path} failed (${res.status}): ${body}`);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        parsed = undefined;
+      }
+      throw new ResearcherApiError(res.status, `Request to ${path} failed (${res.status}): ${body}`, parsed);
     }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;

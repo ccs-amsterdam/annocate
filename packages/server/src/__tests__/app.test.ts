@@ -53,43 +53,57 @@ describe("job routes", () => {
 });
 
 describe("codebook routes", () => {
-  it("rejects invalid nesting and accepts a valid codebook", async () => {
+  it("saves drafts with issues, but only publishes valid codebooks", async () => {
     const job = await createJob();
-
     const validItems: CodebookItem[] = [
       {
         type: "unit_loop",
         name: "loop",
         units: [{ sources: [{ unitset: "main" }] }],
         layout: { template: "" },
-        children: [
-          {
-            type: "unit_variable",
-            name: "q1",
-            variable: { type: "confirm", question: "Confirm?" },
-          },
-        ],
+        children: [{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
       },
     ];
+    const post = (items: unknown) =>
+      app.request(`/job/${job.id}/codebook`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ items }) });
+    const publish = (codebookId: number) =>
+      app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId }) });
 
-    const badRes = await app.request(`/job/${job.id}/codebook`, {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({
-        name: "Bad",
-        items: [{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "?" } }],
-      }),
-    });
-    expect(badRes.status).toBe(400);
+    // Work in progress: an item in the wrong place
+    const bad = await post([{ type: "unit_variable", name: "q1", variable: { type: "confirm", question: "?" } }]);
+    expect(bad.status).toBe(201);
+    const draft = await json(bad);
+    expect(draft).toMatchObject({ valid: false, revision: 1, updatedBy: "dev@localhost", immutable: false });
+    const refused = await publish(draft.id);
+    expect(refused.status).toBe(400);
+    expect((await json(refused)).issues.length).toBeGreaterThan(0);
 
-    const goodRes = await app.request(`/job/${job.id}/codebook`, {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({ name: "Good", items: validItems }),
-    });
-    expect(goodRes.status).toBe(201);
-    const codebook = await json(goodRes);
-    expect(codebook.immutable).toBe(false);
+    expect((await post("not a list")).status).toBe(400);
+
+    const good = await json(await post(validItems));
+    expect(good.valid).toBe(true);
+    expect((await publish(good.id)).status).toBe(200);
+  });
+
+  it("refuses a save based on an older revision", async () => {
+    const job = await createJob();
+    const items = [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }];
+    const draft = await json(
+      await app.request(`/job/${job.id}/codebook`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ items }) }),
+    );
+    const put = (revision: number | undefined, headers = adminHeaders) =>
+      app.request(`/job/${job.id}/codebook/${draft.id}`, { method: "PUT", headers, body: JSON.stringify({ items, revision }) });
+
+    // Jane saves first (revision 1 -> 2)
+    const jane = { ...adminHeaders, "x-dev-email": "jane@uni.nl" };
+    expect((await json(await put(1, jane))).revision).toBe(2);
+    // Our edits were based on revision 1
+    const stale = await put(1);
+    expect(stale.status).toBe(409);
+    expect(await json(stale)).toMatchObject({ code: "codebook_conflict", updatedBy: "jane@uni.nl", revision: 2 });
+    // Overwrite on purpose: without a revision, or with the current one
+    expect((await json(await put(2))).revision).toBe(3);
+    expect((await json(await put(undefined))).revision).toBe(4);
   });
 
   it("serves codebooks stored in the old shape migrated", async () => {

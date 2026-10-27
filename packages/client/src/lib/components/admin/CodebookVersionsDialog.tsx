@@ -1,7 +1,7 @@
 import type { CodebookMeta } from "@annotinder/contracts";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { History, Info, CircleDot, FilePen, Clock, Eye, RotateCcw } from "lucide-react";
+import { History, Info, CircleDot, FilePen, Clock, Eye, RotateCcw, Trash2, AlertCircle } from "lucide-react";
 import type { CodebookVersions } from "../../codebook/versions";
 
 export interface CodebookVersionsViewProps {
@@ -11,10 +11,12 @@ export interface CodebookVersionsViewProps {
   openId: number | null;
   onView: (id: number) => void;
   onRestore: (id: number) => void;
+  /** Deletes the draft (asks for confirmation). */
+  onDeleteDraft?: (id: number) => void;
   onClose?: () => void;
 }
 
-export function CodebookVersionsView({ codebooks, versions, openId, onView, onRestore, onClose }: CodebookVersionsViewProps) {
+export function CodebookVersionsView({ codebooks, versions, openId, onView, onRestore, onDeleteDraft, onClose }: CodebookVersionsViewProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <h2 className="flex shrink-0 items-center gap-2 pr-8 text-lg font-bold text-foreground">
@@ -84,11 +86,34 @@ export function CodebookVersionsView({ codebooks, versions, openId, onView, onRe
                     {cb.note && <p className="text-sm text-foreground/80">{cb.note}</p>}
                     <div className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
                       <Clock className="h-3.5 w-3.5 shrink-0" />
-                      <span>Created {formattedDate}</span>
+                      <span>
+                        {status === "draft"
+                          ? `Saved ${new Date(cb.updated).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}${cb.updatedBy ? ` by ${cb.updatedBy}` : ""}`
+                          : `Created ${formattedDate}`}
+                      </span>
                     </div>
+                    {!cb.valid && (
+                      <div className="flex items-center gap-1.5 text-xs text-destructive">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        Has issues: fix them before publishing
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2">
+                    {status === "draft" && onDeleteDraft && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDeleteDraft(cb.id)}
+                        title="Delete this draft for everyone: the saved changes in it are lost"
+                        className="h-8 border-destructive/40 text-xs font-medium text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
+                        Delete draft
+                      </Button>
+                    )}
                     {status !== "draft" && (
                       <Button
                         type="button"

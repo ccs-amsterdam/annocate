@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { DeploymentWriteSchema } from "@annotinder/contracts";
+import { DeploymentWriteSchema, codebookErrors } from "@annotinder/contracts";
+import { codebookItems, type CodebookRow } from "../shared/codebooks.js";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -16,8 +17,12 @@ export function deployment(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
     const jobId = c.get("jobId");
-    if (!(await one(db, "SELECT 1 FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, parsed.data.codebookId]))) {
-      return c.json({ error: "Codebook not found" }, 404);
+    const codebook = await one<CodebookRow>(db, "SELECT * FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, parsed.data.codebookId]);
+    if (!codebook) return c.json({ error: "Codebook not found" }, 404);
+    // Drafts may be saved with issues; coders only ever get a valid codebook.
+    const errors = codebookErrors(codebookItems(codebook));
+    if (errors.length > 0 || codebookItems(codebook).length === 0) {
+      return c.json({ error: "Fix the codebook's issues before publishing it", issues: errors }, 400);
     }
     const deployed = await db.transaction((tx) => putDeployment(tx, jobId, parsed.data));
     await server.deployments.refresh(jobId);

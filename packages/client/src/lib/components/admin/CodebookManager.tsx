@@ -17,6 +17,7 @@ import { CodebookVersionsDialog } from "./CodebookVersionsDialog";
 import { PublishDialog } from "./PublishDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Loader2 } from "lucide-react";
+import { clearBackup, type CodebookBackup } from "../../codebook/localBackup";
 
 interface CodebookManagerProps {
   client: ResearcherApi;
@@ -26,6 +27,8 @@ interface CodebookManagerProps {
   registerSave?: (save: SaveFn | null) => void;
   /** Version to open first (e.g. from the overview); null opens the current version. */
   initialVersionId?: number | null;
+  /** Unsaved edits from an earlier session to continue with (localBackup.ts): opens their version. */
+  restore?: CodebookBackup | null;
 }
 
 /**
@@ -37,14 +40,16 @@ interface CodebookManagerProps {
  * version, if not yet published), and everything else is read-only history.
  * Publishing makes the draft live, which also freezes it.
  */
-export function CodebookManager({ client, onDirtyChange, registerSave, initialVersionId = null }: CodebookManagerProps) {
+export function CodebookManager({ client, onDirtyChange, registerSave, initialVersionId = null, restore = null }: CodebookManagerProps) {
   const codebooksQuery = useCodebooksQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const codebooks = codebooksQuery.data ?? [];
   const versions = describeVersions(codebooks, deploymentQuery.data?.codebookId ?? null);
 
   // The version shown in the editor; null follows the current version (draft, else latest)
-  const [selectedId, setSelectedId] = useState<number | null>(initialVersionId);
+  const [selectedId, setSelectedId] = useState<number | null>(restore ? restore.codebookId : initialVersionId);
+  // The backup is used by the first editor only: later ones start from what is saved
+  const [pendingRestore, setPendingRestore] = useState(restore);
   const openId = selectedId ?? versions.currentId;
   const openQuery = useCodebookQuery(client, openId);
   const liveQuery = useCodebookQuery(client, versions.liveId);
@@ -132,15 +137,22 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
     });
   }
 
-  async function discardDraft() {
+  /** Deletes the draft: its saved changes are gone, for everyone. Only from the versions dialog. */
+  async function deleteDraft() {
     if (versions.draftId === null) return;
-    if (!confirm(`Discard draft v${draftNumber} and all its changes?`)) return;
+    const message =
+      `Delete draft v${draftNumber}? Everything saved in it since v${liveNumber ?? draftNumber} is deleted, ` +
+      `for everyone who edits this codebook. This can't be undone.` +
+      (isDirty && openId === versions.draftId ? " Your unsaved changes are lost too." : "");
+    if (!confirm(message)) return;
     try {
       await deleteCodebook.mutateAsync(versions.draftId);
     } catch (e) {
-      alert(`Could not discard the draft: ${e instanceof Error ? e.message : String(e)}`);
+      alert(`Could not delete the draft: ${e instanceof Error ? e.message : String(e)}`);
       return;
     }
+    setVersionsDialogOpen(false);
+    clearBackup();
     setIsDirty(false);
     setSelectedId(null);
     setEditorEpoch((n) => n + 1);
@@ -173,7 +185,6 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
               openNumber={openNumber}
               liveNumber={liveNumber}
               draftNumber={draftNumber}
-              onDiscardDraft={versions.draftId !== null && openId === versions.draftId ? discardDraft : undefined}
               onRestore={openId !== null ? () => restoreVersion(openId) : undefined}
               onBackToCurrent={() => viewVersion(versions.currentId ?? -1)}
             />
@@ -185,6 +196,13 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
             setSelectedId(saved.id);
           }}
           onPublish={setToPublish}
+          restore={pendingRestore && pendingRestore.codebookId === openId ? pendingRestore : null}
+          onRestored={() => setPendingRestore(null)}
+          onReload={async () => {
+            await openQuery.refetch();
+            setIsDirty(false);
+            setEditorEpoch((n) => n + 1);
+          }}
         />
       </div>
 
@@ -196,6 +214,7 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
         openId={openId}
         onView={viewVersion}
         onRestore={restoreVersion}
+        onDeleteDraft={() => void deleteDraft()}
       />
 
       <PublishDialog
@@ -224,6 +243,7 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
           setPendingError(null);
         }}
         onDiscard={() => {
+          clearBackup();
           setIsDirty(false);
           const action = pendingAction;
           setPendingAction(null);

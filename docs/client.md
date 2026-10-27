@@ -338,7 +338,30 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 
 - **Codebook editor**: edits the whole document in memory (tree view and
   YAML), validated client-side with the contract's `validateCodebookItems`,
-  then saved as a whole. In the tree view the selected item opens as a
+  then saved as a whole with Save. Unsaved edits are the researcher's own;
+  the saved draft is shared with co-editors; publishing gives a version to
+  coders. So:
+  - **Save** works while the codebook has issues (work in progress);
+    publishing and previewing need a valid codebook.
+  - A save carries the `revision` it is based on. If someone else saved
+    meanwhile, a dialog says who and when, and offers "Save mine over
+    theirs" or "Discard mine, load theirs".
+  - **Undo/redo** buttons (`codebook/editHistory.ts`): the last 100 steps,
+    kept in memory as whole snapshots (cheap: unchanged items are shared).
+    Changes less than a second apart are one step, so typing a word is one
+    step, and occasionally two quick edits are too.
+  - Items with unsaved changes have a dot in the tree. **Revert** opens a
+    menu: the selected item back to the last save (a new item is removed),
+    or all unsaved changes; both can be undone.
+  - A draft is deleted only from the versions dialog ("Delete draft", with
+    a confirm), so it isn't mistaken for dropping unsaved changes.
+  - **Backup**: unsaved edits are copied to the browser's localStorage a
+    second after each change (`codebook/localBackup.ts`; one backup, the
+    codebook being edited; none if it doesn't fit), and cleared when they
+    are saved or discarded. After the browser was closed, a banner anywhere
+    in the researcher area offers to continue editing them (with the
+    revision they were based on, so the conflict check still applies) or
+    to discard them. In the tree view the selected item opens as a
   form, as YAML (`codebookEditor/ItemYamlEditor.tsx`: the item without its
   children, which are items of their own; applied on every edit that
   parses to an item, with validation messages below), or as a preview. The toolbar counts errors and warnings; each opens
@@ -427,8 +450,9 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 
 ## 9. Known gaps
 
-- Admin UI: last write wins when two people edit the same codebook (no
-  ETag); codebook errors are shown as raw messages, not per field.
+- Admin UI: no notice that someone else is editing the same codebook (a
+  conflict shows only when saving); codebook errors are shown as raw
+  messages, not per field.
 - Spans: no re-editing mode (`editMode` in the schema is unused); no
   "click a span to pick it" for relations; no per-field inline styling
   directives; no image-region annotation.

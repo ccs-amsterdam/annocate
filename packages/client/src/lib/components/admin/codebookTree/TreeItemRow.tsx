@@ -53,7 +53,7 @@ function EditItemRow({ item }: TreeItemRowProps) {
         onClick={() => tree.select(key)}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 text-left"
       >
-        <ItemLabel item={item} selected={tree.selected === key} issue={tree.getIssue(item)} />
+        <ItemLabel item={item} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
       </button>
     </TreeRow>
   );
@@ -96,7 +96,17 @@ function MoveItemRow({ item }: TreeItemRowProps) {
   );
 }
 
-function ItemLabel({ item, selected = false, issue }: { item: TreeNode; selected?: boolean; issue: string | null }) {
+function ItemLabel({
+  item,
+  selected = false,
+  issue,
+  changed = false,
+}: {
+  item: TreeNode;
+  selected?: boolean;
+  issue: string | null;
+  changed?: boolean;
+}) {
   return (
     <>
       <ItemIcon type={item.type} />
@@ -107,6 +117,9 @@ function ItemLabel({ item, selected = false, issue }: { item: TreeNode; selected
       </span>
       {item.type === "condition" && (
         <span className="truncate font-mono text-xs text-muted-foreground/80">if {describeCondition(item.condition)}:</span>
+      )}
+      {changed && (
+        <span title="Unsaved changes" aria-label="Unsaved changes" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
       )}
       {issue && (
         <span title={issue} className="shrink-0 text-destructive">

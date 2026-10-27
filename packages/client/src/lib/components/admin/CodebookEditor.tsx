@@ -7,6 +7,9 @@ import { CodebookYamlEditor } from "./CodebookYamlEditor";
 import { useCodebookDraft } from "./codebookEditor/useCodebookDraft";
 import { EditorToolbar, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
 import { findItem, itemAtPath, keyOf } from "../../codebook/tree";
+import type { CodebookBackup } from "../../codebook/localBackup";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TreePanel } from "./codebookEditor/TreePanel";
 import { ItemPanel } from "./codebookEditor/ItemPanel";
 
@@ -36,6 +39,12 @@ interface CodebookEditorProps {
   onOpenVersions?: () => void;
   /** Receives the editor's save function (and null on unmount). */
   registerSave?: (save: SaveFn | null) => void;
+  /** Loads the saved version again, dropping the editor's state (after a save conflict). */
+  onReload?: () => void;
+  /** Unsaved edits of this version from an earlier session, to continue with. */
+  restore?: CodebookBackup | null;
+  /** Called once the editor started from `restore` (it is used once). */
+  onRestored?: () => void;
 }
 
 /**
@@ -59,9 +68,12 @@ export function CodebookEditor({
   onDirtyChange,
   onOpenVersions,
   registerSave,
+  onReload,
+  restore,
+  onRestored,
 }: CodebookEditorProps) {
   const readOnly = mode === "history";
-  const draft = useCodebookDraft({ client, codebook, readOnly, onSaved });
+  const draft = useCodebookDraft({ client, codebook, readOnly, onSaved, restore });
   const [view, setView] = useState<EditorView>("tree");
   const unitFieldsQuery = useUnitFieldsQuery(client);
   // Warnings, not errors: units may still be uploaded after the codebook is written
@@ -93,6 +105,13 @@ export function CodebookEditor({
     setView("tree");
   }
 
+  const restored = Boolean(restore);
+  useEffect(() => {
+    if (restored) onRestored?.();
+    // Only on mount: the draft took the backup as its initial state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { dirty } = draft;
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -121,15 +140,53 @@ export function CodebookEditor({
         onOpenIssue={openIssue}
         dirty={dirty}
         canSave={draft.canSave}
+        valid={draft.valid}
+        canUndo={draft.canUndo}
+        canRedo={draft.canRedo}
+        onUndo={draft.undo}
+        onRedo={draft.redo}
+        changedItem={
+          draft.selected && draft.changed.has(draft.selected) && draft.selectedItem
+            ? { name: draft.selectedItem.name, isNew: !findItem(draft.savedItems, draft.selected) }
+            : null
+        }
+        onRevertItem={() => draft.selected && draft.revert(draft.selected)}
+        onRevertAll={draft.revertAll}
         saving={draft.saving}
-        onSave={() => void draft.save()}
-        onPublish={onPublish && (() => void publish())}
+        onSave={() => void draft.save().catch(() => {})}
+        onPublish={onPublish && (() => void publish().catch(() => {}))}
         onOpenVersions={onOpenVersions}
       />
 
       {banner}
 
       {draft.saveError && <p className="text-sm text-destructive">{draft.saveError.message}</p>}
+
+      <Dialog open={draft.conflict !== null} onOpenChange={(open) => !open && draft.dismissConflict()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Someone else saved this draft</DialogTitle>
+            <DialogDescription>
+              {draft.conflict?.updatedBy ?? "Someone"} saved it at{" "}
+              {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing. Saving
+              yours replaces their changes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            {onReload && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (confirm("Throw away your unsaved changes and load the saved draft?")) onReload();
+                }}
+              >
+                Discard mine, load theirs
+              </Button>
+            )}
+            <Button onClick={() => void draft.save({ overwrite: true }).catch(() => {})}>Save mine over theirs</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {view === "yaml" ? (
         <div className="flex-1 overflow-hidden">

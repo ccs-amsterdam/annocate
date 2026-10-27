@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, ChevronDown, Code2, History, Rocket, Sliders, type LucideIcon } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronDown, Code2, History, Redo2, Rocket, RotateCcw, Sliders, Undo2, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -28,6 +28,16 @@ interface EditorToolbarProps {
   onOpenIssue: (issue: EditorIssue) => void;
   dirty: boolean;
   canSave: boolean;
+  /** Whether the codebook passes validation (required to publish). */
+  valid: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  /** The selected item, if it has unsaved changes (for "revert this item"). */
+  changedItem: { name: string; isNew: boolean } | null;
+  onRevertItem: () => void;
+  onRevertAll: () => void;
   saving: boolean;
   onSave: () => void;
   /** Omit to hide the Publish button. */
@@ -45,13 +55,21 @@ export function EditorToolbar({
   onOpenIssue,
   dirty,
   canSave,
+  valid,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  changedItem,
+  onRevertItem,
+  onRevertAll,
   saving,
   onSave,
   onPublish,
   onOpenVersions,
 }: EditorToolbarProps) {
   const readOnly = mode === "history";
-  const canPublish = canSave && (dirty || mode === "draft");
+  const canPublish = !readOnly && valid && (dirty || mode === "draft");
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3">
@@ -76,6 +94,18 @@ export function EditorToolbar({
       </div>
 
       <div className="flex items-center gap-2">
+        {!readOnly && (
+          <div className="flex items-center">
+            <Button type="button" variant="ghost" size="icon-sm" onClick={onUndo} disabled={!canUndo} title="Undo" aria-label="Undo">
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon-sm" onClick={onRedo} disabled={!canRedo} title="Redo" aria-label="Redo">
+              <Redo2 className="h-4 w-4" />
+            </Button>
+            <RevertMenu dirty={dirty} changedItem={changedItem} onRevertItem={onRevertItem} onRevertAll={onRevertAll} />
+          </div>
+        )}
+
         {onOpenVersions && (
           <Button type="button" variant="outline" size="sm" onClick={onOpenVersions} className="flex items-center gap-1.5">
             <History className="h-3.5 w-3.5" />
@@ -89,14 +119,14 @@ export function EditorToolbar({
             size="sm"
             variant={onPublish ? "outline" : "default"}
             onClick={onSave}
-            disabled={!dirty || saving || !canSave}
+            disabled={saving || !canSave}
             title={
-              errors.length > 0
-                ? "Fix validation issues before saving"
-                : !dirty
-                  ? "No changes to save"
-                  : mode === "live"
-                    ? "Save your changes as a new draft. Coders keep using the live version until you publish."
+              !dirty
+                ? "No changes to save"
+                : mode === "live"
+                  ? "Save your changes as a new draft. Coders keep using the live version until you publish."
+                  : errors.length > 0
+                    ? "Saves the draft as it is; fix the issues before publishing"
                     : undefined
             }
           >
@@ -111,8 +141,8 @@ export function EditorToolbar({
             onClick={onPublish}
             disabled={!canPublish || saving}
             title={
-              !canSave
-                ? "Fix validation issues before publishing"
+              !valid
+                ? "Fix the codebook's issues before publishing"
                 : !canPublish
                   ? "This version is already live"
                   : "Make this version live: coders switch to it at their next unit"
@@ -173,6 +203,66 @@ function IssuesMenu({
             </li>
           ))}
         </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * Going back to the last save: one item, or everything. In a menu with a
+ * short explanation, since "revert" alone is easy to misread.
+ */
+function RevertMenu({
+  dirty,
+  changedItem,
+  onRevertItem,
+  onRevertAll,
+}: {
+  dirty: boolean;
+  changedItem: { name: string; isNew: boolean } | null;
+  onRevertItem: () => void;
+  onRevertAll: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const choose = (action: () => void) => {
+    setOpen(false);
+    action();
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" disabled={!dirty} className="gap-1 text-xs" title="Go back to the last save">
+          <RotateCcw className="h-3.5 w-3.5" />
+          Revert
+          <ChevronDown className="h-3 w-3" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-1">
+        <button
+          type="button"
+          disabled={!changedItem}
+          onClick={() => choose(onRevertItem)}
+          className="flex w-full flex-col items-start gap-0.5 rounded px-2 py-1.5 text-left text-xs hover:bg-muted disabled:opacity-50 disabled:hover:bg-transparent"
+        >
+          <span className="font-semibold text-foreground">
+            {changedItem ? `Revert ${changedItem.name}` : "Revert the selected item"}
+          </span>
+          <span className="text-muted-foreground">
+            {changedItem?.isNew
+              ? "This item is new since the last save: it is removed."
+              : changedItem
+                ? "Back to how it was at the last save. Other items keep their changes."
+                : "The selected item has no unsaved changes."}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => choose(onRevertAll)}
+          className="flex w-full flex-col items-start gap-0.5 rounded px-2 py-1.5 text-left text-xs hover:bg-muted"
+        >
+          <span className="font-semibold text-foreground">Revert all unsaved changes</span>
+          <span className="text-muted-foreground">The whole codebook back to the last save. You can still undo this.</span>
+        </button>
       </PopoverContent>
     </Popover>
   );

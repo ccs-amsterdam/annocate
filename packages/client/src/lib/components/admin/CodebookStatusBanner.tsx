@@ -12,7 +12,6 @@ interface CodebookStatusBannerProps {
   liveNumber: number | null;
   /** Version number of the draft, if there is one. */
   draftNumber: number | null;
-  onDiscardDraft?: () => void;
   onRestore?: () => void;
   onBackToCurrent?: () => void;
 }
@@ -26,7 +25,6 @@ export function CodebookStatusBanner({
   openNumber,
   liveNumber,
   draftNumber,
-  onDiscardDraft,
   onRestore,
   onBackToCurrent,
 }: CodebookStatusBannerProps) {
@@ -85,13 +83,6 @@ export function CodebookStatusBanner({
       tone="draft"
       icon={FilePen}
       title={`Draft v${openNumber}: not live yet`}
-      actions={
-        onDiscardDraft && (
-          <Button size="sm" variant="outline" onClick={onDiscardDraft}>
-            Discard draft
-          </Button>
-        )
-      }
     >
       {liveNumber !== null
         ? `Coders are using v${liveNumber} until you publish this draft.`
