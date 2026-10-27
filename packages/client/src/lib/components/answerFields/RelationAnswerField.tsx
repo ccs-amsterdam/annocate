@@ -27,11 +27,14 @@ function spanLabel(span: SpanAnswer | undefined): string {
  * links two already-created spans (from `span` questions of the same loop named
  * in `variable.from`/`variable.to`) with a relation type (an option).
  */
-export function RelationAnswerField({ variable, unitVariables, onAnswer }: AnswerFieldProps<RelationVariable>) {
+export function RelationAnswerField({ variable, unitVariables, initialValue, onAnswer }: AnswerFieldProps<RelationVariable>) {
   const fromSpans = endpointSpans(unitVariables, variable.from);
   const toSpans = endpointSpans(unitVariables, variable.to);
 
-  const [relations, setRelations] = useState<RelationAnswer[]>([]);
+  // Back at this question: the relations given before, as far as their spans still exist.
+  const [relations, setRelations] = useState<RelationAnswer[]>(() =>
+    (initialValue?.relations ?? []).filter((r) => fromSpans.some((s) => s.id === r.fromId) && toSpans.some((s) => s.id === r.toId)),
+  );
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
   const [code, setCode] = useState(variable.options[0]?.value ?? "");

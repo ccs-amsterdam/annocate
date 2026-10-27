@@ -305,6 +305,8 @@ function JobRunnerContent({
 
   const questionElement = (
     <Question
+      // A fresh answer field per question and unit, starting from that answer
+      key={`${snapshot.currentUnit?.id ?? ""}/${item.name}`}
       item={item}
       onAnswer={handleAnswer}
       initialValue={
