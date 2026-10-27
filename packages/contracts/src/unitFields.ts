@@ -18,6 +18,40 @@ export const UnitFieldSchema = z.object({
 });
 export type UnitField = z.infer<typeof UnitFieldSchema>;
 
+/**
+ * What a new field may be called: letters, digits and underscores, not
+ * starting with a digit, so codebooks can refer to it as `$unit.<name>`.
+ * (Fields of older jobs may have other names.)
+ */
+export const UNIT_FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** Why a name can't be a new field's name, or null if it can. */
+export function unitFieldNameError(name: string): string | null {
+  if (name.length > 64) return "at most 64 characters";
+  if (!UNIT_FIELD_NAME.test(name)) return "only letters, digits and _, not starting with a digit";
+  return null;
+}
+
+/**
+ * A valid field name for a column header: other characters become `_`
+ * (accents dropped), lowercase; `field` if nothing is left, `_` in front of
+ * a leading digit; and `_2`, `_3`, ... if `taken` has it.
+ */
+export function toUnitFieldName(header: string, taken: ReadonlySet<string> = new Set()): string {
+  let name = header
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60);
+  if (name === "") name = "field";
+  if (/^[0-9]/.test(name)) name = `_${name}`;
+  let unique = name;
+  for (let n = 2; taken.has(unique); n++) unique = `${name}_${n}`;
+  return unique;
+}
+
 /** The type of a stored value; null for an empty value (fits every type). */
 export function typeOfValue(value: UnitDataValue): UnitFieldType | null {
   if (value === null) return null;
@@ -44,6 +78,22 @@ export function fieldsOfUnits(units: UnitData[]): { fields: UnitField[] } | { er
     }
   }
   return { fields: [...types].map(([name, type]) => ({ name, type: type ?? "text" })) };
+}
+
+/**
+ * The fields a later upload adds: keys that aren't fields yet, typed by
+ * their values (as `fieldsOfUnits`), each with a valid name. Units already
+ * stored have no value for them (as if empty).
+ */
+export function addedFields(units: UnitData[], fields: UnitField[]): { fields: UnitField[] } | { error: string } {
+  const known = new Set(fields.map((f) => f.name));
+  const added = fieldsOfUnits(units.map((data) => Object.fromEntries(Object.entries(data).filter(([name]) => !known.has(name)))));
+  if ("error" in added) return added;
+  for (const field of added.fields) {
+    const problem = unitFieldNameError(field.name);
+    if (problem) return { error: `Field name '${field.name}': ${problem}` };
+  }
+  return added;
 }
 
 /** Why a unit's data doesn't fit the job's fields, or null if it does: the same fields, with fitting values. */

@@ -136,7 +136,7 @@ describe("units: fields and pages", () => {
       { name: "t", type: "text" },
     ]);
 
-    // wrong type, missing or unknown field: nothing is stored
+    // wrong type, or a missing field: nothing is stored
     const bad = await upload(job.id, [
       { externalId: "u2", data: { n: 2, t: "b" } },
       { externalId: "u3", data: { n: "3", t: "c" } },
@@ -144,11 +144,20 @@ describe("units: fields and pages", () => {
     expect(bad.status).toBe(400);
     expect((await json(bad)).error).toMatch(/u3.*'n' is number/);
     expect((await upload(job.id, [{ externalId: "u2", data: { n: 2 } }])).status).toBe(400);
-    expect((await upload(job.id, [{ externalId: "u2", data: { n: 2, t: "b", x: 1 } }])).status).toBe(400);
+    // a new field needs a valid name
+    expect((await json(await upload(job.id, [{ externalId: "u2", data: { n: 2, t: "b", "a b": 1 } }]))).error).toMatch(/'a b'/);
     expect(await json(await app.request(`/job/${job.id}/units`, { headers: adminHeaders }))).toHaveLength(1);
 
     // empty values fit any type
     expect((await upload(job.id, [{ externalId: "u2", data: { n: null, t: "b" } }])).status).toBe(201);
+
+    // a later upload may add fields; the units already stored have no value for them
+    expect((await upload(job.id, [{ externalId: "u3", data: { n: 3, t: "c", ok: true } }])).status).toBe(201);
+    expect(await json(await app.request(`/job/${job.id}/units/fields`, { headers: adminHeaders }))).toEqual([
+      { name: "n", type: "number" },
+      { name: "t", type: "text" },
+      { name: "ok", type: "boolean" },
+    ]);
   });
 
   it("resets the fields when all units are deleted", async () => {

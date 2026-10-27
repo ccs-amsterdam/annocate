@@ -1,46 +1,71 @@
-import { useRef, useState } from "react";
-import type { UnitField } from "@annotinder/contracts";
-import { AlertCircle } from "lucide-react";
+import { useRef, useState, type DragEvent, type ReactNode } from "react";
+import type { UnitField, UnitFieldType } from "@annotinder/contracts";
+import { AlertCircle, Check, FileUp, Wand2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCreateUnitsMutation } from "../../../admin/queries";
-import { csvToUnits, parseCsv } from "../../../admin/csv";
+import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv, type ColumnMapping } from "../../../admin/csv";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FieldBadge } from "./FieldBadge";
 
 const BATCH = 200; // the most units per POST /units
+const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
+
+interface Csv {
+  name: string;
+  headers: string[];
+  rows: string[][];
+}
 
 /**
- * Uploading units from a CSV: pick the id column, see the fields and the
- * first rows as they will be stored (typed), then upload. The first upload
- * sets the job's fields (types inferred); later uploads must match them.
+ * Uploading units from a CSV (docs/client.md §7, "Units"): choose a file,
+ * then per column whether and as which field it is uploaded, and its type.
+ * Columns named like a field of the job are linked to it (and keep its
+ * type); "Use column names" gives every other column its own (valid) name.
+ * Values are checked against the types before anything is uploaded.
  */
-export function UploadUnits({
-  client,
-  jobFields,
-  onDone,
-}: {
-  client: ResearcherApi;
-  jobFields: UnitField[];
-  onDone: () => void;
-}) {
+export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherApi; jobFields: UnitField[]; onDone: () => void }) {
   const createUnits = useCreateUnitsMutation(client);
-  const [csv, setCsv] = useState<{ name: string; headers: string[]; rows: string[][] } | null>(null);
-  const [idColumn, setIdColumn] = useState("");
+  const [csv, setCsv] = useState<Csv | null>(null);
+  const [idColumn, setIdColumn] = useState(0);
+  const [mapping, setMapping] = useState<ColumnMapping[]>([]);
   const [overwrite, setOverwrite] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  const result = csv && idColumn ? csvToUnits(csv.headers, csv.rows, idColumn, jobFields) : null;
-  const firstUpload = jobFields.length === 0;
+  const [fileError, setFileError] = useState<string | null>(null);
 
   async function handleFile(file: File) {
+    setFileError(null);
     const parsed = parseCsv(await file.text());
+    if (parsed.headers.length === 0 || parsed.rows.length === 0) {
+      setFileError(`${file.name} has no rows: a CSV needs a header row and at least one row of units.`);
+      return;
+    }
     setCsv({ name: file.name, ...parsed });
-    setIdColumn(parsed.headers.find((h) => /^(id|externalid|external_id)$/i.test(h)) ?? parsed.headers[0] ?? "");
+    const id = parsed.headers.findIndex((h) => /^(id|externalid|external_id)$/i.test(h.trim()));
+    setIdColumn(Math.max(0, id));
+    setMapping(initialMapping(parsed.headers, parsed.rows, jobFields));
   }
 
+  if (!csv) {
+    return (
+      <Section onCancel={onDone}>
+        <FilePicker onFile={(f) => void handleFile(f)} />
+        {fileError && <p className="text-sm text-destructive">{fileError}</p>}
+        <p className="text-xs text-muted-foreground">
+          A CSV file with a header row: one column with a unique id per unit, and the columns to code (e.g. a headline
+          and a text).
+        </p>
+      </Section>
+    );
+  }
+
+  const result = csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields);
+  const problems = mappingProblems(csv.rows, mapping, jobFields);
+  const mapped = new Set(mapping.map((m) => m.field).filter(Boolean));
+  const unmappedFields = jobFields.filter((f) => !mapped.has(f.name));
+  const setColumn = (i: number, next: Partial<ColumnMapping>) => setMapping(mapping.map((m, j) => (j === i ? { ...m, ...next } : m)));
+
   async function upload() {
-    if (!result) return;
     for (let i = 0; i < result.units.length; i += BATCH) {
       setProgress(i);
       await createUnits.mutateAsync({ overwrite, units: result.units.slice(i, i + BATCH) });
@@ -50,91 +75,243 @@ export function UploadUnits({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border p-4">
+    <Section onCancel={onDone}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        <span className="flex items-center gap-1.5">
+          <FileUp className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">{csv.name}</span>
+          <span className="text-muted-foreground">({csv.rows.length} rows)</span>
+        </span>
+        <Button size="sm" variant="ghost" onClick={() => setCsv(null)}>
+          Choose another file
+        </Button>
+        <label className="flex items-center gap-2">
+          <span className="text-muted-foreground">Unit id column</span>
+          <select className={selectClass} value={idColumn} onChange={(e) => setIdColumn(Number(e.target.value))}>
+            {csv.headers.map((h, i) => (
+              <option key={i} value={i}>
+                {h}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-medium">Columns to upload</h4>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" onClick={() => setMapping(assignAllColumns(csv.headers, csv.rows, mapping, jobFields, idColumn))}>
+              <Wand2 className="mr-1 h-3.5 w-3.5" /> Use column names
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setMapping(mapping.map((m) => ({ ...m, field: "" })))}>
+              Clear
+            </Button>
+          </div>
+        </div>
+        <datalist id="unit-field-names">
+          {jobFields.map((f) => (
+            <option key={f.name} value={f.name} />
+          ))}
+        </datalist>
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b bg-muted/50 text-left text-muted-foreground">
+                <th className="p-1.5 font-medium">Column</th>
+                <th className="p-1.5 font-medium">Values</th>
+                <th className="p-1.5 font-medium">Upload as field</th>
+                <th className="p-1.5 font-medium">Type</th>
+                <th className="p-1.5 font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {mapping.map((m, i) => (
+                <ColumnRow
+                  key={m.column}
+                  header={csv.headers[m.column]}
+                  samples={csv.rows.slice(0, 3).map((r) => r[m.column] ?? "")}
+                  mapping={m}
+                  existing={jobFields.find((f) => f.name === m.field)}
+                  isId={m.column === idColumn}
+                  problem={problems[i]}
+                  onChange={(next) => setColumn(i, next)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {unmappedFields.length > 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            No column is uploaded as {unmappedFields.map((f) => f.name).join(", ")}: these units get empty values there.
+          </p>
+        )}
+        <p className="text-[11px] text-muted-foreground">
+          Field names: letters, digits and _, so a codebook can show them as <code>$unit.name</code>. A column named like a
+          field of this job is uploaded as that field, with its type.
+        </p>
+      </div>
+
+      {result.errors.length > 0 ? (
+        <ul className="space-y-1 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
+          {result.errors.map((e) => (
+            <li key={e} className="flex gap-1.5">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {e}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 text-sm">
+            <span className="text-muted-foreground">Fields:</span>
+            {result.fields.map((f) => (
+              <FieldBadge key={f.name} field={f} />
+            ))}
+          </div>
+          <PreviewRows fields={result.fields} units={result.units.slice(0, 5)} />
+        </div>
+      )}
+
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
+        Replace existing units with the same id (only units nobody has coded yet)
+      </label>
+      <div className="flex items-center gap-3">
+        <Button onClick={() => void upload()} disabled={result.errors.length > 0 || createUnits.isPending}>
+          {progress !== null ? `Uploading ${progress} / ${result.units.length}...` : `Upload ${result.units.length} units`}
+        </Button>
+        {createUnits.isError && <p className="text-sm text-destructive">{createUnits.error.message}</p>}
+      </div>
+    </Section>
+  );
+}
+
+function Section({ children, onCancel }: { children: ReactNode; onCancel: () => void }) {
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Upload units from CSV</h3>
-        <Button size="sm" variant="ghost" onClick={onDone}>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
       </div>
+      {children}
+    </section>
+  );
+}
+
+/** A drop zone with a button: the browser's file input stays hidden. */
+function FilePicker({ onFile }: { onFile: (file: File) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+  const drop = (e: DragEvent) => {
+    e.preventDefault();
+    setOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) onFile(file);
+  };
+  return (
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={drop}
+      className={`flex flex-col items-center gap-2 rounded-lg border-2 border-dashed p-8 text-sm transition-colors ${
+        over ? "border-primary bg-primary/5" : "border-border"
+      }`}
+    >
+      <FileUp className="h-6 w-6 text-muted-foreground" />
+      <Button onClick={() => input.current?.click()}>Choose a CSV file</Button>
+      <span className="text-xs text-muted-foreground">or drop it here</span>
       <input
-        ref={fileInput}
+        ref={input}
         type="file"
         accept=".csv,text/csv"
-        className="text-sm"
+        className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) void handleFile(file);
+          if (file) onFile(file);
+          e.target.value = "";
         }}
       />
+    </div>
+  );
+}
 
-      {csv && (
-        <>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">
-              {csv.rows.length} rows. Id column:
+const TYPES: UnitFieldType[] = ["text", "number", "boolean"];
+
+function ColumnRow({
+  header,
+  samples,
+  mapping,
+  existing,
+  isId,
+  problem,
+  onChange,
+}: {
+  header: string;
+  samples: string[];
+  mapping: ColumnMapping;
+  /** The job's field this column is uploaded as, if it exists. */
+  existing: UnitField | undefined;
+  isId: boolean;
+  problem: string | null;
+  onChange: (next: Partial<ColumnMapping>) => void;
+}) {
+  const uploaded = mapping.field !== "";
+  return (
+    <tr className={`border-b align-top last:border-0 ${uploaded ? "" : "text-muted-foreground"}`}>
+      <td className="p-1.5 font-medium">
+        {header}
+        {isId && <span className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-normal">id</span>}
+      </td>
+      <td className="max-w-56 p-1.5">
+        <span className="line-clamp-2 break-all">{samples.filter(Boolean).join(" · ") || "(empty)"}</span>
+      </td>
+      <td className="p-1.5">
+        <Input
+          list="unit-field-names"
+          className="h-8 w-44 text-xs"
+          placeholder="not uploaded"
+          value={mapping.field}
+          onChange={(e) => onChange({ field: e.target.value.trim() })}
+        />
+      </td>
+      <td className="p-1.5">
+        {existing ? (
+          <span className="inline-flex h-8 items-center gap-1 text-muted-foreground" title="A field of this job keeps its type">
+            {existing.type} <span className="text-[10px]">(existing field)</span>
+          </span>
+        ) : (
+          <select
+            className={selectClass}
+            value={mapping.type}
+            disabled={!uploaded}
+            onChange={(e) => onChange({ type: e.target.value as UnitFieldType })}
+          >
+            {TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        )}
+      </td>
+      <td className="p-1.5">
+        {uploaded &&
+          (problem ? (
+            <span className="flex items-start gap-1 text-destructive">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {problem}
             </span>
-            <select
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-              value={idColumn}
-              onChange={(e) => setIdColumn(e.target.value)}
-            >
-              {csv.headers.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {result && (
-            <>
-              <div className="text-sm">
-                <span className="text-muted-foreground">
-                  {firstUpload ? "Fields (types inferred from the values): " : "Fields: "}
-                </span>
-                <span className="inline-flex flex-wrap gap-1.5 align-middle">
-                  {result.fields.map((f) => (
-                    <FieldBadge key={f.name} field={f} />
-                  ))}
-                </span>
-                {firstUpload && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    The first upload sets the job&apos;s fields; later uploads must have the same columns.
-                  </p>
-                )}
-              </div>
-
-              {result.errors.length > 0 ? (
-                <ul className="space-y-1 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
-                  {result.errors.map((e) => (
-                    <li key={e} className="flex gap-1.5">
-                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      {e}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <PreviewRows fields={result.fields} units={result.units.slice(0, 5)} />
-              )}
-
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
-                Replace existing units with the same id (only units nobody has coded yet)
-              </label>
-              <div className="flex items-center gap-3">
-                <Button onClick={() => void upload()} disabled={result.errors.length > 0 || createUnits.isPending}>
-                  {progress !== null
-                    ? `Uploading ${progress} / ${result.units.length}...`
-                    : `Upload ${result.units.length} units`}
-                </Button>
-                {createUnits.isError && <p className="text-sm text-destructive">{createUnits.error.message}</p>}
-              </div>
-            </>
-          )}
-        </>
-      )}
-    </section>
+          ) : (
+            <Check className="mt-1.5 h-3.5 w-3.5 text-primary" aria-label="OK" />
+          ))}
+      </td>
+    </tr>
   );
 }
 
@@ -158,7 +335,11 @@ function PreviewRows({ fields, units }: { fields: UnitField[]; units: ReturnType
               <td className="p-1.5 font-mono">{u.externalId}</td>
               {fields.map((f) => (
                 <td key={f.name} className="max-w-48 truncate p-1.5">
-                  {u.data[f.name] === null ? <span className="text-muted-foreground">empty</span> : String(u.data[f.name])}
+                  {u.data[f.name] === null || u.data[f.name] === undefined ? (
+                    <span className="text-muted-foreground">empty</span>
+                  ) : (
+                    String(u.data[f.name])
+                  )}
                 </td>
               ))}
             </tr>

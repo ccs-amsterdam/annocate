@@ -239,10 +239,13 @@ Implementation: [`researcher/units*.ts`](../../packages/server/src/researcher/),
 **Unit fields.** All units of a job have the same fields, each `text`,
 `number` or `boolean`; values are stored typed (`42`, not `"42"`), and `null`
 is an empty value of any type. The first upload sets the fields
-(`fieldsOfUnits` in `unitFields.ts`); later uploads must have exactly those
-fields with fitting values (`checkUnitData`). Deleting all units resets them.
-Clients infer the types of CSV columns (`inferFieldType`) and send typed
-values.
+(`fieldsOfUnits` in `unitFields.ts`). A later upload must give every
+existing field a fitting value (`checkUnitData`; `null` for empty) and may
+add fields (`addedFields`): they are appended, and units already stored
+have no value for them. New field names are letters, digits and `_`, not
+starting with a digit (`UNIT_FIELD_NAME`), so codebooks can refer to them
+as `$unit.<name>`. Deleting all units resets the fields. Clients infer the
+types of CSV columns (`inferFieldType`) and send typed values.
 
 ### listUnits
 
@@ -271,7 +274,7 @@ an unknown set).
 `POST /job/:jobId/units` → `UnitResponseSchema[]` (201). Up to 200 per
 call, all or nothing. Every unit's data must fit the job's fields (400 with
 the first problem, e.g. `Unit 'u3': Field 'n' is number, got text`); the
-first upload sets them. An existing external id is a 409, unless
+first upload sets them, later ones may add fields. An existing external id is a 409, unless
 `overwrite: true`; an immutable unit (one that has answers) can't be
 overwritten either way. A changed unit gets a new content hash.
 

@@ -451,9 +451,15 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   QuickJS syntax check. Validation messages (errors red, warnings amber)
   show under the condition, template and question fields; only errors
   block saving.
-- **Units** (`units/`): units and unitsets on one page. CSV upload with a
-  small built-in parser (`admin/csv.ts`) that infers field types and shows
-  them before uploading; a paged table with a column per field and unitset
+- **Units** (`units/`): units and unitsets on one page. CSV upload
+  (`UploadUnits.tsx`, with a small built-in parser, `admin/csv.ts`): choose
+  or drop a file, pick the id column, then per column whether it is
+  uploaded and as which field, and its type (inferred from the values;
+  checked before uploading, with the values that don't fit). A column named
+  like a field of the job is linked to it and keeps its type; "Use column
+  names" gives every other column its own name, made valid
+  (`toUnitFieldName`). Fields of the job that no column gives are empty, and
+  new names add fields. A preview shows the first units as stored; a paged table with a column per field and unitset
   badges; pick a set to see its units in order; make a set from selected
   units, or split units into parts (done client-side with `splitUnits`).
   Units are immutable once used. The codebook editor warns about `$unit.x`

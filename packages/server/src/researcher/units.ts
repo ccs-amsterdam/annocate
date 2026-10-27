@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { UnitsCreateBodySchema, checkUnitData, fieldsOfUnits, type UnitField, type UnitResponse } from "@annotinder/contracts";
+import { UnitsCreateBodySchema, addedFields, checkUnitData, type UnitField, type UnitResponse } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -14,21 +14,25 @@ export function units(server: Server): Hono<Env> {
     return c.json(rows.map(toUnitMeta));
   });
 
-  // All or nothing: every unit must fit the job's fields (set by the first
-  // upload), and existing units may only be replaced with `overwrite`.
+  // All or nothing: every unit must fit the job's fields, and existing units
+  // may only be replaced with `overwrite`. The first upload sets the fields
+  // (types from the values); a later one may add fields (units already
+  // stored have no value for them), but must give every existing field
+  // (null for empty).
   app.post("/job/:jobId/units", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");
     const { units, overwrite } = parsed.data;
 
-    let fields: UnitField[] = await getUnitFields(db, jobId);
     const firstUpload = (await unitCount(db, jobId)) === 0;
-    if (firstUpload) {
-      const inferred = fieldsOfUnits(units.map((u) => u.data));
-      if ("error" in inferred) return c.json({ error: inferred.error }, 400);
-      fields = inferred.fields;
-    }
+    const known: UnitField[] = firstUpload ? [] : await getUnitFields(db, jobId);
+    const added = addedFields(
+      units.map((u) => u.data),
+      known,
+    );
+    if ("error" in added) return c.json({ error: added.error }, 400);
+    const fields = [...known, ...added.fields];
     for (const unit of units) {
       const problem = checkUnitData(unit.data, fields);
       if (problem) return c.json({ error: `Unit '${unit.externalId}': ${problem}` }, 400);
@@ -49,7 +53,7 @@ export function units(server: Server): Hono<Env> {
     }
 
     const created = await db.transaction(async (tx) => {
-      if (firstUpload) await setUnitFields(tx, jobId, fields);
+      if (added.fields.length > 0 || firstUpload) await setUnitFields(tx, jobId, fields);
       const result: UnitResponse[] = [];
       for (const unit of units) {
         const data = JSON.stringify(unit.data);
