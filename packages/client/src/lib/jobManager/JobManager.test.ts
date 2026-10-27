@@ -459,7 +459,7 @@ describe("rendering templates", () => {
         type: "unit_loop",
         name: "main",
         units: [{ mode: "all", unitset: "__all__" }],
-        layout: { template: "# $unit.title\n\n$const.intro", constants: { intro: "Hello" } },
+        layout: { template: "# $unit.title\n\n$snippet.intro $unit.title", snippets: { intro: "Hello" } },
         children: [
           { type: "question", name: "q1", variable: { type: "confirm", question: "As a $var.role.value, is **$unit.title** news?" } },
         ],
@@ -473,7 +473,8 @@ describe("rendering templates", () => {
     const manager = new JobManager(server);
     await manager.start();
     const snap = manager.getSnapshot();
-    expect(snap.currentUnitTemplate?.values.map((v) => v.text)).toEqual(["*Big*", "Hello"]);
+    expect(snap.currentUnitTemplate?.values.map((v) => v.text)).toEqual(["*Big*", "*Big*"]);
+    expect(snap.currentUnitTemplate?.markdown).toContain("Hello");
     expect(snap.currentTexts?.question?.values.map((v) => v.text)).toEqual(["student", "*Big*"]);
   });
 });

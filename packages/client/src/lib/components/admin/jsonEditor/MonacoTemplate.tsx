@@ -8,8 +8,8 @@ import { useTheme } from "../../../context/theme";
 export interface TemplateNames {
   /** The job's unit fields. */
   fields: string[];
-  /** The loop's constants. */
-  constants: string[];
+  /** The loop's snippets. */
+  snippets: string[];
   /** Questions the template may use (`$var.<q>.value`). */
   questions: string[];
   /** The loop's questions, for `::: from`. */
@@ -41,7 +41,7 @@ export interface MonacoTemplateProps {
 }
 
 // The names of the template being edited (one editor is open at a time).
-let current: TemplateNames = { fields: [], constants: [], questions: [], loopQuestions: [] };
+let current: TemplateNames = { fields: [], snippets: [], questions: [], loopQuestions: [] };
 
 const SUFFIXES = [
   ["text", "literal text (default)"],
@@ -52,7 +52,7 @@ const SUFFIXES = [
 ] as const;
 
 // The template language: markdown, with references (`$unit.x`,
-// `$const.x`, `$var.q.value`), their `::suffix` and `{{ js }}` expressions
+// `$snippet.x`, `$var.q.value`), their `::suffix` and `{{ js }}` expressions
 // marked, so they stand out (and nothing looks like an error).
 const LANGUAGE = "unit-template";
 monaco.languages.register({ id: LANGUAGE });
@@ -63,7 +63,7 @@ monaco.languages.setMonarchTokensProvider(LANGUAGE, {
       [/^\s{0,3}:{3,}\s*(else\s+if|if|else|from|style)?/, "keyword.fence"],
       [/\\\$/, ""],
       [/\{\{/, { token: "delimiter.expression", next: "@expression" }],
-      [/\$(unit|const|var)(\.\w+)*/, "variable.reference"],
+      [/\$(unit|snippet|var)(\.\w+)*/, "variable.reference"],
       [/::(text|markdown|image|tokenize|html)\b/, "keyword.suffix"],
       [/^#{1,6}\s.*$/, "keyword.heading"],
       [/\*\*[^*]+\*\*/, "strong"],
@@ -72,7 +72,7 @@ monaco.languages.setMonarchTokensProvider(LANGUAGE, {
     ],
     expression: [
       [/\}\}/, { token: "delimiter.expression", next: "@pop" }],
-      [/\$(unit|const|var)(\.\w+)*/, "variable.reference"],
+      [/\$(unit|snippet|var)(\.\w+)*/, "variable.reference"],
       [/'[^']*'|"[^"]*"/, "string"],
       [/./, "expression"],
     ],
@@ -88,7 +88,7 @@ const FENCES = [
 ] as const;
 
 // Completions: after `$` the kinds of references, after
-// `$unit.`, `$const.` or `$var.` the names, after `::` the suffixes.
+// `$unit.`, `$snippet.` or `$var.` the names, after `::` the suffixes.
 monaco.languages.registerCompletionItemProvider(LANGUAGE, {
   triggerCharacters: ["$", ".", ":", " "],
   provideCompletionItems(model, position) {
@@ -114,13 +114,13 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
       };
     }
     if (before.endsWith(" ")) return { suggestions: [] };
-    const ref = /\$(unit|const|var)\.\w*$/.exec(before);
+    const ref = /\$(unit|snippet|var)\.\w*$/.exec(before);
     if (ref) {
       const names =
         ref[1] === "unit"
           ? current.fields.map((n) => item(n, "unit field"))
-          : ref[1] === "const"
-            ? current.constants.map((n) => item(n, "constant", monaco.languages.CompletionItemKind.Constant))
+          : ref[1] === "snippet"
+            ? current.snippets.map((n) => item(n, "snippet", monaco.languages.CompletionItemKind.Snippet))
             : current.questions.map((n) => item(`${n}.value`, "answer", monaco.languages.CompletionItemKind.Variable));
       return { suggestions: names };
     }
@@ -131,7 +131,7 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
       return {
         suggestions: [
           item("unit.", "a field of the unit", monaco.languages.CompletionItemKind.Module),
-          item("const.", "a constant of this loop", monaco.languages.CompletionItemKind.Module),
+          item("snippet.", "a snippet of this loop", monaco.languages.CompletionItemKind.Module),
           item("var.", "an earlier answer", monaco.languages.CompletionItemKind.Module),
         ].map((s) => ({ ...s, command: { id: "editor.action.triggerSuggest", title: "names" } })),
       };

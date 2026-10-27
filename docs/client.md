@@ -60,14 +60,14 @@ Status: current (2026-10-26). Server-side design lives in
 ## 3. Unit layout and texts
 
 A unit's layout is **one markdown template** (`UnitLayoutSchema`:
-`template`, `style?`, `constants?`, `meta?`). It replaced the old app's
+`template`, `snippets?`, `style?`, `colorScheme?`, `meta?`). It replaced the old app's
 typed field arrays and grid arrangement. Question and instruction texts are
 templates with the same syntax.
 
 - Rendering: `react-markdown` + `remark-gfm` (`components/TemplateMarkdown.tsx`).
   Raw HTML is not supported (no `rehype-raw`), so templates are XSS-safe by
   construction. Root styling uses `style`, a React style object.
-- **Values**: `$unit.<field>`, `$const.<name>`, `$var.<q>.label` (all
+- **Values**: `$unit.<field>`, `$var.<q>.label` (all
   references, see "References and conditions") or `{{ js }}`, each with an
   optional suffix:
   - `::text` (default): the value as literal text. It never goes through
@@ -110,11 +110,11 @@ templates with the same syntax.
 
   ```
   ::: if $var.group.is('experiment')      :::: from topics
-  $const.experiment_banner::markdown      ::: style font-size: 90%
+  $snippet.experiment_banner             ::: style font-size: 90%
   ::: else if <script>                    You rated it $var.sentiment.label
   ...                                     :::
   ::: else                                ::::
-  $const.control_banner::markdown
+  $snippet.control_banner
   :::
   ```
 
@@ -151,14 +151,18 @@ templates with the same syntax.
   `field` (in the form: "Show field"; a span question uses its `column`)
   makes `UnitFields` scroll that field into view and highlight it briefly
   when the question comes up. Validation checks the layout shows it.
-- **`constants`**: named strings versioned with the codebook. Used for
-  annotatable text that isn't a unit column, and for longer texts used in
-  blocks (e.g. a banner per experimental group). A constant shown as
-  `$const.x::markdown` can have blocks of its own (`::: style`, `::: if`,
-  `::: from`), evaluated like the layout's and validated with the loop;
-  its `$` references are not filled in (it stays one string, as for
-  `::tokenize`). Unit data is never read for blocks.
-- `$unit` and `$const` only exist inside a unit loop; outside, texts can
+- **Snippets** (`layout.snippets`, contracts `snippets.ts`): named pieces
+  of a loop's template, put in with `$snippet.<name>` as if typed there,
+  before anything else is read: markdown, blocks and `$unit`/`$var` values
+  in them all work, and snippets can use snippets (one that includes itself
+  is an error). They work in the layout and in the loop's question texts,
+  not in scripts or `{{ }}` (they are text, not values). Values (`$unit`,
+  `$var`) are always text unless a suffix says otherwise; a snippet is part
+  of the template, hence the different name. Snippets replaced the
+  constants (`$const.<name>`, until 2026-10-28): `constants` become
+  snippets on parse, and `$const.x` (bare or alone in `{{ }}`, with any
+  suffix) becomes `$snippet.x`; other uses of `$const` are reported.
+- `$unit` and snippets only exist inside a unit loop; outside, texts can
   only use `$var`.
 
 ## 4. Questions and answers
@@ -284,7 +288,7 @@ answers (409 `session_ended`), and a reload shows the ending again.
 Script conditions and `{{...}}` template values are plain JavaScript
 expressions, run in **QuickJS** (`quickjs-emscripten-core` with the single
 `@jitl/quickjs-wasmfile-release-sync` variant, to keep the bundle small).
-The only names in scope are `$unit`, `$var` and `$const`. Each evaluation
+The only names in scope are `$unit` and `$var`. Each evaluation
 has a 100 ms interrupt deadline (`EXPRESSION_DEADLINE_MS`) and a 1 MB
 memory limit. A script that is a single reference is looked up without
 QuickJS. A script that fails counts as false (conditions) or empty
@@ -308,7 +312,6 @@ instruction texts, conditions and unitset names
 | Reference | Meaning | Questions |
 | --- | --- | --- |
 | `$unit.<field>` | unit data column (inside a unit loop) | |
-| `$const.<name>` | layout constant (inside a unit loop) | |
 | `$var.<q>.value`, `.label` | the answer; `null` when unanswered | single nominal, ordinal, numeric, swipe, auto |
 | `$var.<q>.values`, `.labels` | the answers; `[]` when unanswered | nominal with `multiple`, span, relation |
 | `$var.<q>.texts` | the selected texts | span |
@@ -359,8 +362,8 @@ condition:
 order and checks every reference in scripts, templates and texts: the
 question exists and comes before this point (not the question itself, not
 inside the condition's own children, not in another loop); the property or
-method fits its type; `$unit`/`$const` only inside a loop (unknown `$const`
-is an error; unknown `$unit` fields are a warning in the editor, once the
+method fits its type; `$unit` and `$snippet` only inside a loop (unknown
+snippets are an error; unknown `$unit` fields are a warning in the editor, once the
 job has units); branch `when`, unitset names and end item redirect URLs
 only use coder-level `$var` refs from before the loop; `::tokenize` as
 described in §3. In simple conditions the helper arguments are checked too:
@@ -485,12 +488,12 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
   as its own language (markdown with references, suffixes and `{{ }}`
   highlighted) with completions after `$` (unit fields, the loop's
-  constants, questions), `::` and `:::` (block keywords, `from`'s
-  questions); and the constants (name, text), and the optional colour
+  snippets, questions), `::` and `:::` (block keywords, `from`'s
+  questions); the snippets (name, text), and the optional colour
   scheme. Above every `::: if` line a code lens shows the condition in
   words, and "edit" opens the rules editor (`ConditionDialog`) for it. An
   Insert menu (`TemplateInsertMenu.tsx`) writes the text for a unit field
-  (as headline, text, selectable text or image), "Show if…" (the rules
+  (as headline, text, selectable text or image), a snippet, "Show if…" (the rules
   editor), "Show from…" and a few styles; blocks wrap the selected text.
   The text stays the source of truth. The layout's `style` and `meta` are
   only in the JSON views.

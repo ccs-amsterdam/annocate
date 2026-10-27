@@ -1,4 +1,4 @@
-import { extractReferences, templateFences, type Reference, type ReferenceError, type TemplateFence } from "./references.js";
+import { extractReferences, templateFences, templateReferences, type Reference, type ReferenceError, type TemplateFence } from "./references.js";
 
 // Blocks in a template (docs/client.md §3, "Blocks"): fenced lines, as
 // Pandoc's fenced divs, that show part of a template only if a condition
@@ -203,4 +203,22 @@ export function parseInlineCss(css: string): { style: Record<string, string>; er
   }
   if (Object.keys(style).length === 0 && errors.length === 0) errors.push("::: style needs CSS, e.g. ::: style color: darkred; font-size: 120%");
   return { style, errors };
+}
+
+/** Every reference in a template: in its values and in its blocks' conditions. */
+export function allTemplateReferences(source: string): Reference[] {
+  const refs = [...templateReferences(source).references];
+  const walk = (nodes: TemplateNode[]) => {
+    for (const node of nodes) {
+      if (node.type === "if") {
+        for (const branch of node.branches) {
+          refs.push(...branch.references);
+          walk(branch.body);
+        }
+      } else if (node.type === "from") node.stages.forEach((stage) => walk(stage.body));
+      else if (node.type === "style") walk(node.body);
+    }
+  };
+  walk(parseTemplateBlocks(source).nodes);
+  return refs;
 }

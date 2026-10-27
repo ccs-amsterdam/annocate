@@ -15,21 +15,20 @@ export const UnitLayoutSchema = z.object({
   template: z
     .string()
     .describe(
-      "Markdown template for the unit. Insert values with `$unit.<field>`, `$const.<name>`, `$var.<q>.value` " +
-        "or `{{ js }}` (evaluated in the QuickJS sandbox over $unit, $var and $const), each optionally followed " +
-        "by `::text` (default: literal text), `::markdown`, `::image`, `::html` (shown in a sandbox) or `::tokenize` (only on a bare " +
-        "`$unit.x` / `$const.x`: selectable text for span questions). `\\$` is a literal `$` (docs/client.md §3).",
+      "Markdown template for the unit. Insert values with `$unit.<field>`, `$var.<q>.value` " +
+        "or `{{ js }}` (evaluated in the QuickJS sandbox over $unit and $var), and snippets with `$snippet.<name>`; values optionally followed " +
+        "by `::text` (default: literal text), `::markdown`, `::image` or `::html` (shown in a sandbox). A field a span " +
+        "question selects in is shown as plain `$unit.<field>`. `\\$` is a literal `$` (docs/client.md §3).",
     ),
   /**
-   * Named string constants (docs/client.md §3), versioned alongside the
-   * codebook/layout rather than per-unit data -- e.g. per-experimental-
-   * condition intro text. Referenced as `$const.<name>`. Only a bare
-   * `$unit.x::tokenize` / `$const.x::tokenize` can be tokenized, so span
-   * offsets always point into ONE stable, versioned string (a data column
-   * or a constant, never a composed/rendered blob) and stay meaningful
-   * without replaying a particular rendering.
+   * Named pieces of the template (docs/client.md §3, "Snippets"), inserted
+   * with `$snippet.<name>` as if typed there (snippets.ts). They replaced
+   * constants (`constants`, migrated on parse).
    */
-  constants: z.record(z.string(), z.string()).optional(),
+  snippets: z
+    .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "A snippet name is letters, digits and _"), z.string())
+    .optional()
+    .describe("Named pieces of the template, inserted with $snippet.<name> as if typed there"),
   style: z.record(z.string(), z.string()).optional().describe("Optional inline CSS for the layout's root container"),
   colorScheme: z
     .enum(["light", "dark"])

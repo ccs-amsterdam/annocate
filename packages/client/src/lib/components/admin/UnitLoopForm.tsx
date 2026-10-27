@@ -93,10 +93,10 @@ function withoutWhen(branch: UnitBranch): UnitBranch {
 
 /**
  * Edits a unit_loop, in two tabs: how a unit is shown (the template and
- * its constants), and which units coders get (contracts
+ * its snippets), and which units coders get (contracts
  * unitLoop.ts: per branch a mode and an optional overlap set; with
  * branches, per branch a condition on coder-level questions; the order),
- * and how a unit is shown (the template and its constants).
+ * and how a unit is shown (the template and its snippets).
  */
 export function UnitLoopForm({
   loop,
@@ -286,7 +286,7 @@ function UnitsTab({
   );
 }
 
-/** How a unit is shown: the markdown template, and the constants it can use. */
+/** How a unit is shown: the markdown template, and its snippets. */
 function LayoutTab({
   loop,
   unitFields,
@@ -303,23 +303,23 @@ function LayoutTab({
   onChange: (loop: UnitLoopItem) => void;
 }) {
   const layout = loop.layout ?? { template: "" };
-  const constants = Object.entries(layout.constants ?? {});
+  const snippets = Object.entries(layout.snippets ?? {});
   const loopQuestions = questionNames(loop.children as CodebookItem[]);
   // `::: if` in the layout may use coder-level questions, and (inside `::: from`) the loop's own.
   const conditionQuestions = [...coderQuestions, ...questionsOf(loop.children as CodebookItem[])];
   const names = {
     fields: unitFields,
-    constants: constants.map(([n]) => n),
+    snippets: snippets.map(([n]) => n),
     questions: conditionQuestions.map((q) => q.name),
     loopQuestions,
   };
   const [editor, setEditor] = useState<TemplateEditorApi | null>(null);
   const [editing, setEditing] = useState<{ condition: { script: string }; apply: (script: string) => void } | null>(null);
   const setLayout = (next: Partial<UnitLayout>) => onChange({ ...loop, layout: { ...layout, ...next } });
-  const setConstants = (entries: [string, string][]) => {
+  const setSnippets = (entries: [string, string][]) => {
     const next = { ...layout };
-    if (entries.length === 0) delete next.constants;
-    else next.constants = Object.fromEntries(entries);
+    if (entries.length === 0) delete next.snippets;
+    else next.snippets = Object.fromEntries(entries);
     onChange({ ...loop, layout: next });
   };
 
@@ -332,18 +332,18 @@ function LayoutTab({
             fields={unitFields}
             loopQuestions={loopQuestions}
             questions={conditionQuestions}
-            constants={names.constants}
+            snippets={names.snippets}
           />
         </div>
       )}
       <Section
         title="Template"
-        help="Markdown. Insert values with $unit.<field>, $const.<name> or $var.<question>.value (type $ for suggestions). Show parts conditionally with ::: if, ::: else, ::: from <question>, or style them with ::: style <css>; close them with :::."
+        help="Markdown. Insert values with $unit.<field> or $var.<question>.value, and snippets with $snippet.<name> (type $ for suggestions). Show parts conditionally with ::: if, ::: else, ::: from <question>, or style them with ::: style <css>; close them with :::."
       >
         <div
           className={cn(
             "overflow-hidden rounded-md border",
-            issues.some((i) => !i.warning && !i.path.includes("constants")) ? "border-destructive" : "border-input",
+            issues.some((i) => !i.warning && !i.path.includes("snippets")) ? "border-destructive" : "border-input",
           )}
         >
           <TemplateCodeEditor
@@ -359,7 +359,6 @@ function LayoutTab({
         <ConditionDialog
           condition={editing?.condition ?? null}
           questions={conditionQuestions}
-          constants={names.constants}
           title="Edit condition"
           action="Apply"
           onClose={() => setEditing(null)}
@@ -384,39 +383,43 @@ function LayoutTab({
       </Section>
 
       <Section
-        title="Constants"
-        help="Texts the template uses as $const.<name>, e.g. an introduction per experimental condition. They are part of the codebook version."
+        title="Snippets"
+        help="Named pieces of the template, put in with $snippet.<name> as if you typed them there: markdown, blocks and $unit values all work. Handy for longer texts, e.g. an introduction per experimental group."
       >
-        {constants.map(([name, value], i) => (
-          <div key={i} className="flex items-start gap-2">
-            <Input
-              aria-label="Constant name"
-              className="h-8 w-40 font-mono text-xs"
-              value={name}
-              placeholder="name"
-              onChange={(e) => {
-                const renamed = e.target.value;
-                // A name another constant has would merge them: not taken.
-                if (constants.some(([n], j) => j !== i && n === renamed)) return;
-                setConstants(constants.map((c, j) => (j === i ? [renamed, c[1]] : c)));
-              }}
-            />
+        {snippets.map(([name, value], i) => (
+          <div key={i} className="flex flex-col gap-1 rounded-md border border-border p-2">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground">$snippet.</span>
+              <Input
+                aria-label="Snippet name"
+                className="h-7 w-48 font-mono text-xs"
+                value={name}
+                placeholder="name"
+                onChange={(e) => {
+                  const renamed = e.target.value;
+                  // A name another snippet has would merge them: not taken.
+                  if (snippets.some(([n], j) => j !== i && n === renamed)) return;
+                  setSnippets(snippets.map((c, j) => (j === i ? [renamed, c[1]] : c)));
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="ml-auto"
+                aria-label={`Remove ${name}`}
+                onClick={() => setSnippets(snippets.filter((_, j) => j !== i))}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
             <Textarea
-              aria-label={`Value of ${name}`}
-              className="field-sizing-content max-h-40 min-h-8 flex-1 text-xs"
-              rows={1}
+              aria-label={`Text of ${name}`}
+              className="field-sizing-content max-h-60 min-h-12 font-mono text-xs"
+              rows={2}
               value={value}
-              onChange={(e) => setConstants(constants.map((c, j) => (j === i ? [c[0], e.target.value] : c)))}
+              onChange={(e) => setSnippets(snippets.map((c, j) => (j === i ? [c[0], e.target.value] : c)))}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Remove ${name}`}
-              onClick={() => setConstants(constants.filter((_, j) => j !== i))}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
           </div>
         ))}
         <Button
@@ -425,12 +428,12 @@ function LayoutTab({
           size="sm"
           className="w-fit"
           onClick={() => {
-            let n = constants.length + 1;
-            while (constants.some(([c]) => c === `const_${n}`)) n++;
-            setConstants([...constants, [`const_${n}`, ""]]);
+            let n = snippets.length + 1;
+            while (snippets.some(([c]) => c === `snippet_${n}`)) n++;
+            setSnippets([...snippets, [`snippet_${n}`, ""]]);
           }}
         >
-          <Plus className="h-3.5 w-3.5" /> Constant
+          <Plus className="h-3.5 w-3.5" /> Snippet
         </Button>
       </Section>
     </div>

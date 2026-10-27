@@ -3,7 +3,7 @@ import type { ReferenceScope } from "@annotinder/contracts";
 import * as expressionModule from "./expression";
 import { ExpressionCache } from "./expressionCache";
 
-const scope = (unit: Record<string, unknown>): ReferenceScope => ({ $unit: unit, $var: {}, $const: {} });
+const scope = (unit: Record<string, unknown>): ReferenceScope => ({ $unit: unit, $var: {} });
 
 describe("ExpressionCache", () => {
   beforeEach(() => {

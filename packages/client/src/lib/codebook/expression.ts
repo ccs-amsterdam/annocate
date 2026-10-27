@@ -29,14 +29,14 @@ export const EXPRESSION_DEADLINE_MS = 100;
 const HELPER_SETUP = `$var = ${HELPER_PRELUDE}($var);`;
 
 /**
- * Evaluates a codebook script against `{ $unit, $var, $const }` (the only
+ * Evaluates a codebook script against `{ $unit, $var }` (the only
  * names in scope), with the helper methods on `$var`. A script that is just
  * one reference is looked up directly, without starting QuickJS.
  */
 export async function evaluateScript(script: string, scope: ReferenceScope): Promise<unknown> {
   const single = parseReference(script);
   if ("ref" in single) return referenceValue(scope, single.ref);
-  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var, $const: scope.$const }, HELPER_SETUP);
+  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var }, HELPER_SETUP);
 }
 
 /** A syntax error in a script, or null if it parses (it isn't run). For the admin editor. */
@@ -59,7 +59,7 @@ export async function scriptSyntaxError(script: string): Promise<string | null> 
 
 /**
  * Evaluates `expression` (a JS expression) against a map of currently-known
- * values (unit data columns, layout constants, and/or variable values --
+ * values (unit data columns and/or variable values --
  * callers decide what's in scope), returning the raw (JSON-round-tripped)
  * result. Returns `undefined` and logs on any evaluation error (invalid
  * syntax, thrown error, timeout, OOM) rather than throwing, since a bad

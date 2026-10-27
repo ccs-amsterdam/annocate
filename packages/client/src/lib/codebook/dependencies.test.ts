@@ -5,7 +5,6 @@ import { extractDependencies } from "./dependencies";
 const scope: ReferenceScope = {
   $unit: { text: "hi", n: 3 },
   $var: { role: { answered: true, value: "a", label: "A" } },
-  $const: {},
 };
 
 describe("extractDependencies", () => {

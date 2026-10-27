@@ -40,8 +40,8 @@ export interface ConditionEditorProps {
   onChange: (condition: Condition) => void;
   /** The questions a reference may use here (contracts `availableQuestions`). */
   questions: { name: string; variable: AnyVariableType }[];
-  /** Inside a unit loop: `$unit` fields and these `$const` constants can be used too. */
-  loop?: { constants: string[] } | null;
+  /** Inside a unit loop: `$unit` fields can be used too. */
+  loop?: boolean;
   /** Validation issues of this condition (errors and warnings). */
   issues?: CodebookValidationIssue[];
 }
@@ -293,13 +293,10 @@ function ScriptEditor({
   script: string;
   onChange: (script: string) => void;
   questions: { name: string; variable: AnyVariableType }[];
-  loop?: { constants: string[] } | null;
+  loop?: boolean;
 }) {
   const syntaxError = useSyntaxError(script);
-  const references = [
-    ...referenceOptions(questions).map((o) => o.ref),
-    ...(loop ? loop.constants.map((c) => `$const.${c}`) : []),
-  ];
+  const references = referenceOptions(questions).map((o) => o.ref);
   const helpers = questions.flatMap(({ name, variable }) => {
     // Scales: the helpers are on the items.
     const scale = variable.type === "scale";

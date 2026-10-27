@@ -1,3 +1,4 @@
+import { constantsToSnippets } from "./snippets.js";
 import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { ConditionSchema } from "./condition.js";
@@ -247,9 +248,37 @@ export function migrateLegacyUnitLoop(raw: unknown): unknown {
     units = [{ sources: [{ unitset: typeof unitset === "string" && unitset !== "" ? unitset : ALL_UNITS_UNITSET }] }];
     if (randomizeUnits) rest.order = "random";
   }
-  return {
+  return migrateConstants({
     ...rest,
     units: (units as unknown[]).map((b) => (isObject(b) && "sources" in b && !("mode" in b) ? migrateBranch(b, rest.order, maxUnits) : b)),
+  });
+}
+
+/**
+ * Until 2026-10-28 a layout had `constants`, shown as `$const.<name>`; they
+ * are snippets now (snippets.ts): `layout.snippets`, and `$snippet.<name>`
+ * in the template and the loop's question texts.
+ */
+function migrateConstants(loop: Raw): Raw {
+  const layout = loop.layout;
+  if (!isObject(layout) || !isObject(layout.constants)) return loop;
+  const { constants, ...restLayout } = layout;
+  const rewrite = (text: unknown) => (typeof text === "string" ? constantsToSnippets(text) : text);
+  const children = (list: unknown): unknown =>
+    Array.isArray(list)
+      ? list.map((child) => {
+          if (!isObject(child)) return child;
+          const next: Raw = { ...child };
+          if (isObject(child.variable)) next.variable = { ...child.variable, question: rewrite(child.variable.question), instruction: rewrite(child.variable.instruction) };
+          if (Array.isArray(child.children)) next.children = children(child.children);
+          for (const key of ["question", "instruction"]) if (isObject(next.variable) && next.variable[key] === undefined) delete next.variable[key];
+          return next;
+        })
+      : list;
+  return {
+    ...loop,
+    layout: { ...restLayout, template: rewrite(restLayout.template), snippets: { ...(constants as Record<string, unknown>), ...(isObject(restLayout.snippets) ? restLayout.snippets : {}) } },
+    children: children(loop.children),
   };
 }
 

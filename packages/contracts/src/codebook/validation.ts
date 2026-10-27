@@ -3,6 +3,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { migrateCodebookItems } from "./migrate.js";
 import { supportsAgreement, unitsetHasReferences, type UnitBranch } from "./unitLoop.js";
+import { expandSnippets } from "./snippets.js";
 import { parseTemplateBlocks, type FromStage, type TemplateNode } from "./templateBlocks.js";
 import {
   METHOD_TEXT,
@@ -10,7 +11,6 @@ import {
   questionValues,
   extractReferences,
   parseTemplate,
-  templateFences,
   referenceShape,
   referenceText,
   type Reference,
@@ -36,8 +36,8 @@ interface RefContext {
   loop: string | null;
   /** Questions answered before this point. */
   available: ReadonlySet<string>;
-  /** The layout constants of the loop around this point. */
-  constants?: ReadonlySet<string>;
+  /** The snippets of the loop around this point (`$snippet.<name>` in its templates). */
+  snippets?: Readonly<Record<string, string>>;
   /** The question whose text this is (it can't refer to itself). */
   self?: string;
   /** Questions inside the condition being checked. */
@@ -126,9 +126,6 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     if (ref.ns !== "var") {
       if (ctx.branch) return issue(ctx.path, `${text}: branches and unitset names can only use coder-level $var references`), null;
       if (ctx.loop === null) return issue(ctx.path, `${text} can only be used inside a unit loop`), null;
-      if (ref.ns === "const" && !ctx.constants?.has(ref.path[0])) {
-        return issue(ctx.path, `${text}: '${ref.path[0]}' is not a constant of this loop's layout`), null;
-      }
       return referenceShape(questions, ref);
     }
     const name = ref.path[0];
@@ -223,9 +220,16 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   }
 
   /** Checks a template; returns the names it tokenizes. */
-  function checkTemplate(source: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): Set<string> {
+  function checkTemplate(raw: unknown, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): Set<string> {
     const tokenized = new Set<string>();
-    if (typeof source !== "string") return tokenized;
+    if (typeof raw !== "string") return tokenized;
+    // In a loop, snippets are put in first: the template is checked as it will be shown.
+    let source = raw;
+    if (ctx.snippets) {
+      const expanded = expandSnippets(source, ctx.snippets);
+      expanded.errors.forEach((e) => issue(ctx.path, e));
+      source = expanded.source;
+    }
     const parsed = parseTemplate(source);
     refErrors(parsed.errors, ctx.path);
 
@@ -256,7 +260,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   }
 
   function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
-    const loop = item as { units?: UnitBranch[]; children?: unknown; layout?: { template?: unknown; constants?: Record<string, string> } };
+    const loop = item as { units?: UnitBranch[]; children?: unknown; layout?: { template?: unknown; snippets?: Record<string, string> } };
     const loopQuestions = questionNames(loop.children);
     const branchCtx = (path: Path): RefContext => ({ path, loop: null, available: coderAvailable, branch: true });
     (Array.isArray(loop.units) ? loop.units : []).forEach((raw, b) => {
@@ -285,27 +289,16 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       }
     });
 
-    const constants = new Set(Object.keys(loop.layout?.constants ?? {}));
+    const snippets = loop.layout?.snippets ?? {};
     const tokenized = checkTemplate(
       loop.layout?.template,
-      { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, constants, loopOrder: [...loopQuestions] },
+      { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, snippets, loopOrder: [...loopQuestions] },
       "layout",
     );
-    // Constants shown as $const.x::markdown may have blocks too (checked on their own).
-    for (const [name, value] of Object.entries(loop.layout?.constants ?? {})) {
-      if (typeof value === "string" && templateFences(value).length > 0) {
-        checkBlocks(
-          value,
-          { path: [...itemPath, "layout", "constants", name], loop: loopName, available: coderAvailable, constants, loopOrder: [...loopQuestions] },
-          "layout",
-        );
-      }
-    }
-
     // The unit fields the layout shows (as `$unit.<field>`): what a question's `field` can point at.
     const shownFields = new Set(
       typeof loop.layout?.template === "string"
-        ? parseTemplate(loop.layout.template).segments.flatMap((seg) =>
+        ? parseTemplate(expandSnippets(loop.layout.template, snippets).source).segments.flatMap((seg) =>
             seg.type === "expression" ? seg.references.filter((r) => r.ns === "unit").map((r) => r.path[0]) : [],
           )
         : [],
@@ -322,10 +315,10 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         );
       }
     });
-    return constants;
+    return snippets;
   }
 
-  function walk(itemList: unknown[], currentPath: Path, loop: { name: string; constants: Set<string> } | null) {
+  function walk(itemList: unknown[], currentPath: Path, loop: { name: string; snippets: Record<string, string> } | null) {
     if (!Array.isArray(itemList)) return;
 
     itemList.forEach((rawItem, index) => {
@@ -367,7 +360,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         for (const field of ["question", "instruction"] as const) {
           checkTemplate(
             variable?.[field],
-            { path: [...itemPath, "variable", field], loop: loop?.name ?? null, available, constants: loop?.constants, self: item.name },
+            { path: [...itemPath, "variable", field], loop: loop?.name ?? null, available, snippets: loop?.snippets, self: item.name },
             "text",
           );
         }
@@ -378,12 +371,12 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       if (item.type === "unit_loop") {
         const key = String(++loopCount);
         if (loop) issue([...itemPath, "type"], "A unit loop cannot be inside another unit loop");
-        const constants = checkLoop(item, itemPath, key);
+        const snippets = checkLoop(item, itemPath, key);
         if (!item.children || item.children.length === 0) {
           issue([...itemPath, "children"], "A unit loop must have at least one item");
         } else if (!loop) {
           loopAvailable = new Set();
-          walk(item.children, [...itemPath, "children"], { name: key, constants });
+          walk(item.children, [...itemPath, "children"], { name: key, snippets });
           loopAvailable = new Set();
         }
       } else if (item.type === "condition") {
@@ -391,7 +384,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
           path: [...itemPath, "condition"],
           loop: loop?.name ?? null,
           available,
-          constants: loop?.constants,
+          snippets: loop?.snippets,
           inside: questionNames(item.children),
         });
         if (!item.children || item.children.length === 0) {
@@ -401,7 +394,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         }
       } else if (item.type === "end") {
         const end = item as { message?: unknown; redirectUrl?: unknown };
-        const ctx = { loop: loop?.name ?? null, available, constants: loop?.constants };
+        const ctx = { loop: loop?.name ?? null, available, snippets: loop?.snippets };
         checkTemplate(end.message, { ...ctx, path: [...itemPath, "message"] }, "text");
         checkTemplate(end.redirectUrl, { ...ctx, path: [...itemPath, "redirectUrl"] }, "url");
         if (typeof end.redirectUrl === "string" && !/^https?:\/\//.test(end.redirectUrl)) {

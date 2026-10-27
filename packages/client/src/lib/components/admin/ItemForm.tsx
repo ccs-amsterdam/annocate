@@ -70,7 +70,7 @@ export function ItemForm({
   unitsets,
   unitVariableNames = [],
   availableQuestions = [],
-  loopConstants = null,
+  inLoop = false,
   unitFields = [],
   loopFields,
   readOnly = false,
@@ -83,8 +83,8 @@ export function ItemForm({
   unitVariableNames?: string[];
   /** Questions references may use at this item (contracts `availableQuestions`): for conditions and branches. */
   availableQuestions?: { name: string; variable: AnyVariableType }[];
-  /** The layout constants of the enclosing unit loop, if the item is inside one. */
-  loopConstants?: string[] | null;
+  /** The item is inside a unit loop (conditions may use `$unit`). */
+  inLoop?: boolean;
   /** The job's unit fields (completions in a loop's template). */
   unitFields?: string[];
   /** For a question in a loop: the unit fields its layout shows (what "Show field" can point at). */
@@ -185,7 +185,7 @@ export function ItemForm({
             condition={(item as { condition: Condition }).condition ?? { script: "true" }}
             onChange={(condition) => onChange({ ...item, condition } as CodebookItem)}
             questions={availableQuestions}
-            loop={loopConstants ? { constants: loopConstants } : null}
+            loop={inLoop}
             issues={issuesAt(validationIssues, "condition")}
           />
         </div>

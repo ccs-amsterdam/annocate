@@ -19,7 +19,7 @@ describe("SandboxedHtml", () => {
   });
 
   it("renders ::html values in an iframe sandboxed without same-origin", async () => {
-    const scope: ReferenceScope = { $unit: { body: "<p>Article</p>" }, $var: {}, $const: {} };
+    const scope: ReferenceScope = { $unit: { body: "<p>Article</p>" }, $var: {} };
     const html = renderToStaticMarkup(<TemplateMarkdown rendered={await renderTemplate("$unit.body::html", scope)} />);
     expect(html).toContain('sandbox="allow-scripts"');
     expect(html).toContain('data-field="body"');

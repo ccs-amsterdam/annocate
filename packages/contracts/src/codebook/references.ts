@@ -6,7 +6,6 @@ import type { AnyVariableType } from "./variableTypes.js";
 // (docs/client.md "References and conditions"). The name says the shape:
 //
 //   $unit.<field>                       a unit data column (inside a unit loop)
-//   $const.<name>                       a layout constant (inside a unit loop)
 //   $var.<q>.value / .label             one answer (null when unanswered)
 //   $var.<q>.values / .labels           several answers ([] when unanswered)
 //   $var.<q>.texts                      the selected texts (span questions)
@@ -18,7 +17,7 @@ import type { AnyVariableType } from "./variableTypes.js";
 // checked without running anything. All functions here are pure, shared by
 // the client runtime, codebook validation and the admin editor.
 
-export type ReferenceNamespace = "unit" | "var" | "const";
+export type ReferenceNamespace = "unit" | "var";
 
 /** How a template value is output (`$ref::markdown`); `text` is the default. */
 export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "tokenize", "html"] as const;
@@ -60,7 +59,7 @@ export interface ExtractedReferences {
 
 const NAME = /[A-Za-z0-9_]/;
 const IDENT_CHAR = /[A-Za-z0-9_$]/;
-const NAMESPACES: ReferenceNamespace[] = ["unit", "var", "const"];
+const NAMESPACES: ReferenceNamespace[] = ["unit", "var"];
 
 /** The source text of a reference, e.g. `$var.role.value`. */
 export function referenceText(ref: Pick<Reference, "ns" | "path">): string {
@@ -80,7 +79,24 @@ function readReference(
 ): { ref?: Reference; error?: ReferenceError; end: number } | null {
   // In a script, `a$var` and `x.$var` are ordinary identifiers; in a template, `part_$var.slot.value` is a reference.
   if (!template && at > 0 && (IDENT_CHAR.test(source[at - 1]) || source[at - 1] === ".")) return null;
-  const ns = NAMESPACES.find((n) => source.startsWith(n, at + 1) && !IDENT_CHAR.test(source[at + 1 + n.length] ?? ""));
+  const startsWith = (n: string) => source.startsWith(n, at + 1) && !IDENT_CHAR.test(source[at + 1 + n.length] ?? "");
+  // Constants became snippets (snippets.ts); snippets are template text, not values.
+  for (const [n, message] of [
+    ["const", "Constants are now snippets: use $snippet.<name> in the template"],
+    [
+      "snippet",
+      template
+        ? "Snippets can only be used in a unit loop's layout and its questions' texts"
+        : "$snippet can only be used in a template's text, not in a script or {{ }}",
+    ],
+  ] as const) {
+    if (startsWith(n)) {
+      let end = at + 1 + n.length;
+      while (end < source.length && (NAME.test(source[end]) || source[end] === ".")) end++;
+      return { error: { message, start: at, end }, end };
+    }
+  }
+  const ns = NAMESPACES.find(startsWith);
   if (!ns) return null;
   let pos = at + 1 + ns.length;
 
@@ -286,7 +302,7 @@ export function templateFences(source: string): TemplateFence[] {
 /**
  * Splits a template (the unit layout, a question or instruction text, a
  * unitset name) into literal text and expressions. Syntax: `$unit.x`,
- * `$var.q.value`, `$const.y` or `{{ js }}`, each with an optional
+ * `$var.q.value` or `{{ js }}`, each with an optional
  * `::text|markdown|image|tokenize` suffix. `\$` is a literal `$`; references
  * inside markdown code spans and fences stay literal. Block fence lines
  * (`::: if ...`) are left out: `parseTemplateBlocks` reads them.
@@ -501,7 +517,6 @@ export function referenceShape(
   ref: Pick<Reference, "ns" | "path" | "call">,
 ): ReferenceShape {
   if (ref.ns === "unit") return { ok: true, array: false, type: "any" };
-  if (ref.ns === "const") return { ok: true, array: false, type: "string" };
   const [name, ...rest] = ref.path;
   const variable = questions.get(name);
   if (!variable) return { ok: false, reason: `'${name}' is not a question` };
@@ -646,11 +661,10 @@ export interface VarScopeEntry {
 export interface ReferenceScope {
   $unit: Record<string, unknown>;
   $var: Record<string, VarScopeEntry>;
-  $const: Record<string, unknown>;
 }
 
 /**
- * The `{ $unit, $var, $const }` object scripts and conditions are evaluated
+ * The `{ $unit, $var }` object scripts and conditions are evaluated
  * against. Every question in `questions` is present (null, or `[]` for
  * lists, when unanswered), so scripts don't throw on later questions. Helper
  * methods are not in here (the scope is plain data): simple conditions apply
@@ -660,11 +674,10 @@ export function buildScope(
   questions: ReadonlyMap<string, AnyVariableType>,
   answers: Record<string, VariableValue | undefined>,
   unit?: Record<string, unknown> | null,
-  constants?: Record<string, unknown> | null,
 ): ReferenceScope {
   const $var: Record<string, VarScopeEntry> = {};
   for (const [name, variable] of questions) $var[name] = varEntry(variable, answers[name]);
-  return { $unit: { ...(unit ?? {}) }, $var, $const: { ...(constants ?? {}) } };
+  return { $unit: { ...(unit ?? {}) }, $var };
 }
 
 /** The label of a value: the option's label, a numeric break-point label, or the value as text. */
@@ -737,9 +750,9 @@ export function referenceValue(scope: ReferenceScope, ref: Pick<Reference, "ns" 
 /** Parses a string that is exactly one reference (as in a condition rule's `ref`). */
 export function parseReference(text: string): { ref: Reference } | { error: string } {
   const trimmed = text.trim();
-  if (!trimmed.startsWith("$")) return { error: `'${text}' is not a reference ($unit.x, $var.q.value, $const.y)` };
+  if (!trimmed.startsWith("$")) return { error: `'${text}' is not a reference ($unit.x, $var.q.value)` };
   const read = readReference(trimmed, 0, false);
-  if (!read) return { error: `'${text}' is not a reference ($unit.x, $var.q.value, $const.y)` };
+  if (!read) return { error: `'${text}' is not a reference ($unit.x, $var.q.value)` };
   if (read.error) return { error: read.error.message };
   if (read.end !== trimmed.length || read.ref?.call) return { error: `'${text}' must be a single reference` };
   return { ref: read.ref! };

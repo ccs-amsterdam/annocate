@@ -7,7 +7,7 @@ const items = [
     type: "unit_loop",
     name: "loop",
     units: [{ mode: "all", unitset: "main" }],
-    layout: { template: "# {{$unit.headline}}\n\n$unit.body::tokenize", constants: { note: "x" } },
+    layout: { template: "# {{$unit.headline}}\n\n$unit.body::tokenize" },
     children: [
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },
       {
@@ -31,6 +31,7 @@ describe("unknownUnitFields", () => {
       ["q1", "topic"],
       ["if $unit.source === 'x'", "source"],
       ["q2", "quoted"],
+      ["spans", "note"],
       ["spans2", "text"],
     ]);
   });

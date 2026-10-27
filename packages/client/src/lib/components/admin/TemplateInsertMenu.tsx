@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, Code2, Eye, GitBranch, Heading1, Image, Paintbrush, Text, TextSelect } from "lucide-react";
+import { ChevronDown, ChevronLeft, Code2, Eye, GitBranch, Heading1, Image, Paintbrush, Puzzle, Text, TextSelect } from "lucide-react";
 import type { AnyVariableType, Condition } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,7 +19,7 @@ const STYLES: { label: string; css: string }[] = [
   { label: "Custom CSS…", css: "property: value" },
 ];
 
-type Step = "menu" | "headline" | "text" | "tokenize" | "image" | "from" | "style";
+type Step = "menu" | "headline" | "text" | "tokenize" | "image" | "snippet" | "from" | "style";
 
 /**
  * "Insert" above the unit template: unit fields (as headline, text,
@@ -33,14 +33,15 @@ export function TemplateInsertMenu({
   fields,
   loopQuestions,
   questions,
-  constants,
+  snippets,
 }: {
   editor: TemplateEditorApi | null;
   fields: string[];
   loopQuestions: string[];
   /** Questions a `::: if` may use. */
   questions: { name: string; variable: AnyVariableType }[];
-  constants: string[];
+  /** The loop's snippets. */
+  snippets: string[];
 }) {
   const [step, setStep] = useState<Step | null>(null);
   const [condition, setCondition] = useState<Condition | null>(null);
@@ -109,6 +110,7 @@ export function TemplateInsertMenu({
               {item(Text, "Text", () => setStep("text"), "a unit field")}
               {item(TextSelect, "Selectable text", () => setStep("tokenize"), "a unit field span questions can select in")}
               {item(Image, "Image", () => setStep("image"), "a unit field with an image URL")}
+              {item(Puzzle, "Snippet", () => setStep("snippet"), "a named piece of this layout")}
               <div className="my-1 border-t border-border" />
               {item(GitBranch, "Show if…", () => {
                 setStep(null);
@@ -122,6 +124,12 @@ export function TemplateInsertMenu({
             <>
               {back("Which field?")}
               {list(fields, "This job's units have no fields yet: upload units first.", (f) => insert(fieldSnippet[step](f)))}
+            </>
+          )}
+          {step === "snippet" && (
+            <>
+              {back("Which snippet?")}
+              {list(snippets, "This loop has no snippets yet: add them below the template.", (n) => insert(`${literal(`$snippet.${n}`)}\n$0`))}
             </>
           )}
           {step === "from" && (
@@ -142,7 +150,6 @@ export function TemplateInsertMenu({
       <ConditionDialog
         condition={condition}
         questions={questions}
-        constants={constants}
         title="Show if…"
         action="Insert"
         onClose={() => setCondition(null)}
@@ -156,7 +163,6 @@ export function TemplateInsertMenu({
 export function ConditionDialog({
   condition,
   questions,
-  constants,
   title,
   action,
   onClose,
@@ -165,7 +171,6 @@ export function ConditionDialog({
   /** The condition being edited; null: closed. */
   condition: Condition | null;
   questions: { name: string; variable: AnyVariableType }[];
-  constants: string[];
   title: string;
   action: string;
   onClose: () => void;
@@ -184,7 +189,7 @@ export function ConditionDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <ConditionEditor condition={draft} onChange={setDraft} questions={questions} loop={{ constants }} />
+        <ConditionEditor condition={draft} onChange={setDraft} questions={questions} loop />
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Cancel

@@ -177,8 +177,8 @@ function useRenderedLayout(
   const key = JSON.stringify([layout, unit, answers, progress]);
   useEffect(() => {
     let cancelled = false;
-    const scope = buildScope(questions ?? new Map(), answers ?? {}, unit, layout.constants);
-    renderTemplate(layout.template, scope, undefined, "preview", progress).then(
+    const scope = buildScope(questions ?? new Map(), answers ?? {}, unit);
+    renderTemplate(layout.template, scope, undefined, "preview", { progress, snippets: layout.snippets }).then(
       (result) => !cancelled && setRendered(result),
       () => undefined,
     );

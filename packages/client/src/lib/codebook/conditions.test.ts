@@ -21,14 +21,13 @@ const scope = buildScope(
     battery: { done: true, skip: false, values: [{ item: "x", value: 5 }] },
   },
   { count: 20, source: "nyt" },
-  { mode: "x" },
 );
 
 describe("evaluateCondition", () => {
-  it("evaluates scripts over $unit, $var and $const", async () => {
+  it("evaluates scripts over $unit and $var", async () => {
     expect(await evaluateCondition({ script: "$unit.count >= 18 && $var.role.value === 'student'" }, scope)).toBe(true);
     expect(await evaluateCondition({ script: "$var.topics.values.includes('c')" }, scope)).toBe(false);
-    expect(await evaluateCondition({ script: "$const.mode === 'x' // a comment" }, scope)).toBe(true);
+    expect(await evaluateCondition({ script: "$unit.source === 'nyt' // a comment" }, scope)).toBe(true);
   });
 
   it("evaluates simple conditions without a JS engine, and scripts with the same helpers", async () => {

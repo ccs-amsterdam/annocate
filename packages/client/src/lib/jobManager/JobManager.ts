@@ -643,13 +643,17 @@ export class JobManager {
     this.unitVisible = visible;
   }
 
-  /** A question's texts with their values filled in. */
-  private async questionTexts(item: CodebookItem | undefined, scope: ReferenceScope): Promise<QuestionTexts | null> {
+  /** A question's texts with their values filled in (in a loop, its snippets too). */
+  private async questionTexts(
+    item: CodebookItem | undefined,
+    scope: ReferenceScope,
+    snippets?: Record<string, string>,
+  ): Promise<QuestionTexts | null> {
     if (!item || !("variable" in item) || !("question" in item.variable)) return null;
     const { question, instruction } = item.variable;
     const [q, i] = await Promise.all([
-      question ? renderTemplate(question, scope, this.expressionCache, `question:${item.name}`) : undefined,
-      instruction ? renderTemplate(instruction, scope, this.expressionCache, `instruction:${item.name}`) : undefined,
+      question ? renderTemplate(question, scope, this.expressionCache, `question:${item.name}`, { snippets }) : undefined,
+      instruction ? renderTemplate(instruction, scope, this.expressionCache, `instruction:${item.name}`, { snippets }) : undefined,
     ]);
     return { question: q, instruction: i };
   }
@@ -661,13 +665,14 @@ export class JobManager {
     if (!loop || !unit) return;
     const step = this.loopSteps[this.loopIndex];
     try {
-      const scope = buildScope(this.questions, this.unitVisible, unit.data, loop.layout.constants);
+      const scope = buildScope(this.questions, this.unitVisible, unit.data);
+      const snippets = loop.layout.snippets;
       const [template, texts] = await Promise.all([
         renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`, {
-          current: step && "name" in step ? step.name : null,
-          order: loopQuestionNames(loop),
+          progress: { current: step && "name" in step ? step.name : null, order: loopQuestionNames(loop) },
+          snippets,
         }),
-        this.questionTexts(step, scope),
+        this.questionTexts(step, scope, snippets),
       ]);
       this.publish({
         phase: "unit_variable",
@@ -825,7 +830,7 @@ export class JobManager {
       }
       // An `end` item in the loop: the unit is saved, then the session ends.
       if (next?.type === "end") {
-        const scope = buildScope(this.questions, this.unitVisible, this.currentUnit.data, this.activeLoop.layout.constants);
+        const scope = buildScope(this.questions, this.unitVisible, this.currentUnit.data);
         await this.reachEnd(next, scope);
         return;
       }

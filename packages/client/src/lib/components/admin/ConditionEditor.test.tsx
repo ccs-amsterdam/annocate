@@ -43,10 +43,9 @@ describe("ConditionEditor", () => {
 
   it("shows a script editor with a reference cheat sheet in script mode", () => {
     const html = renderToStaticMarkup(
-      <ConditionEditor condition={{ script: "$var.role.value === 'expert'" }} onChange={() => {}} questions={questions} loop={{ constants: ["intro"] }} />,
+      <ConditionEditor condition={{ script: "$var.role.value === 'expert'" }} onChange={() => {}} questions={questions} loop />,
     );
     expect(html).toContain("<textarea");
-    expect(html).toContain("$const.intro");
     expect(html).toContain("$var.role.is(…)");
     expect(html).toContain("$unit.&lt;field&gt;");
   });

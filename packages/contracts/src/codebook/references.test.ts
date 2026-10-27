@@ -24,7 +24,8 @@ describe("extractReferences", () => {
       "$var.role.value",
       "$var.interest.items.tech.value",
     ]);
-    expect(refs("$var.topics.values.includes('a') && $const.intro")).toEqual(["$var.topics.values", "$const.intro"]);
+    expect(refs("$var.topics.values.includes('a')")).toEqual(["$var.topics.values"]);
+    expect(errors("$const.intro")).toEqual(["Constants are now snippets: use $snippet.<name> in the template"]);
   });
 
   it("reads helper calls", () => {
@@ -206,7 +207,6 @@ describe("buildScope", () => {
         slot: { done: true, skip: true, values: [{ value: "1" }] },
       },
       { text: "Ann" },
-      { intro: "hi" },
     );
     expect(scope.$var.role).toEqual({ answered: true, value: "student", label: "Student" });
     expect(scope.$var.topics.values).toEqual(["x", "y"]);
@@ -216,7 +216,6 @@ describe("buildScope", () => {
     expect(scope.$var.ents).toEqual({ answered: true, values: ["PER"], labels: ["Person"], texts: ["Ann"] });
     expect(scope.$var.slot).toEqual({ answered: false, value: null, label: null });
     expect(scope.$unit.text).toBe("Ann");
-    expect(scope.$const.intro).toBe("hi");
   });
 });
 

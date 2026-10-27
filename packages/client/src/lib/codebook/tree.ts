@@ -167,12 +167,12 @@ async function walkSteps(
   answers: Record<string, VariableValue>,
   visible: Record<string, VariableValue>,
   ctx: StepContext,
-  unit: { data: UnitData; constants?: Record<string, string> } | null,
+  unit: { data: UnitData } | null,
   steps: CodebookItem[],
 ): Promise<boolean> {
   for (const node of nodes) {
     if (node.type === "condition") {
-      const scope = buildScope(ctx.questions, visible, unit?.data, unit?.constants);
+      const scope = buildScope(ctx.questions, visible, unit?.data);
       if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition.script}`)) {
         if (await walkSteps(node.children, answers, visible, ctx, unit, steps)) return true;
       }
@@ -216,7 +216,7 @@ export async function computeLoopSteps(
 ): Promise<Steps> {
   const steps: CodebookItem[] = [];
   const visible: Record<string, VariableValue> = { ...coderAnswers };
-  await walkSteps(loop.children, unitAnswers, visible, ctx, { data: unit, constants: loop.layout.constants }, steps);
+  await walkSteps(loop.children, unitAnswers, visible, ctx, { data: unit }, steps);
   return { steps, visible };
 }
 

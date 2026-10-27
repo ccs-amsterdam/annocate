@@ -16,8 +16,8 @@ function unitVar(name: string): UnitVariableItem {
 function questionVar(name: string, variable: object = confirmVariable): TopLevelQuestionItem & InLoopQuestionItem {
   return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
 }
-function unitLoop(name: string, children: InLoopItem[], template = "", constants?: Record<string, string>): TopLevelItem {
-  return { type: "unit_loop", label: name, units: [{ mode: "all", unitset: "__all__" }], layout: { template, constants }, children };
+function unitLoop(name: string, children: InLoopItem[], template = "", snippets?: Record<string, string>): TopLevelItem {
+  return { type: "unit_loop", label: name, units: [{ mode: "all", unitset: "__all__" }], layout: { template, snippets }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "condition", label: name, condition, children };
@@ -284,11 +284,11 @@ describe("reference validation", () => {
       unitLoop(
         "loop",
         [
-          questionVar("rel", select(["yes", "no"], { question: "Is $const.subject in **$unit.headline**?" })),
+          questionVar("rel", select(["yes", "no"], { question: "Is $snippet.subject in **$unit.headline**?" })),
           inLoopCondition("c2", [questionVar("q2")], { script: "$var.rel.value === 'yes' && $var.why.answered && $unit.n > 3" }),
           questionVar("q3", { ...confirmVariable, question: "{{ $var.q2.answered ? 'again' : '' }}" }),
         ],
-        "# $unit.headline\n\n$const.subject::markdown\n\n{{ $var.role.value }}",
+        "# $unit.headline\n\n$snippet.subject\n\n{{ $var.role.value }}",
         { subject: "politics" },
       ),
     ];
@@ -307,19 +307,19 @@ describe("reference validation", () => {
     ]);
   });
 
-  it("rejects refs into another loop, and $unit/$const outside a loop", () => {
+  it("rejects refs into another loop, and $unit/$snippet outside a loop", () => {
     const items = [
       unitLoop("a", [questionVar("qa")]),
       unitLoop("b", [inLoopCondition("c", [questionVar("qb")], { script: "$var.qa.answered" })]),
-      questionVar("after", { ...confirmVariable, question: "$unit.headline and $const.x" }),
+      questionVar("after", { ...confirmVariable, question: "$unit.headline and $snippet.x" }),
     ];
     expect(messages(items)).toEqual([
       "$var.qa.answered: 'qa' is a question of another unit loop (a)",
+      "Snippets can only be used in a unit loop's layout and its questions' texts",
       "$unit.headline can only be used inside a unit loop",
-      "$const.x can only be used inside a unit loop",
     ]);
-    expect(messages([unitLoop("l", [questionVar("q")], "$const.nope")])).toEqual([
-      "$const.nope: 'nope' is not a constant of this loop's layout",
+    expect(messages([unitLoop("l", [questionVar("q")], "$snippet.nope")])).toEqual([
+      "$snippet.nope: there is no snippet 'nope' in this loop's layout",
     ]);
   });
 
@@ -370,15 +370,17 @@ describe("reference validation", () => {
     expect(messages([unitLoop("l", [questionVar("q", { ...confirmVariable, question: "$unit.text::tokenize" })], "$unit.text")])).toEqual([
       "::tokenize can only be used in the unit layout",
     ]);
-    expect(messages([unitLoop("l", [span], "$const.text::tokenize", { text: "a b c" })])).toEqual([]);
   });
 
-  it("checks blocks in constants", () => {
+  it("checks templates with their snippets put in, and snippets that include themselves", () => {
     const group = questionVar("group", select(["a", "b"]));
-    const loop = (constant: string) => [group, unitLoop("l", [questionVar("q")], "$const.banner::markdown", { banner: constant })];
-    expect(messages(loop("::: style color: blue\n> **Hi**\n:::"))).toEqual([]);
-    expect(messages(loop("::: if $var.group.is('c')\nx\n:::"))).toEqual([expect.stringContaining('"c"')]);
-    expect(messages(loop("::: style color: blue\nx"))).toEqual(["::: style is not closed (end it with :::)"]);
+    const loop = (snippets: Record<string, string>) => [group, unitLoop("l", [questionVar("q")], "$snippet.banner\n\n$unit.text", snippets)];
+    expect(messages(loop({ banner: "::: style color: blue\n> **Hi** $unit.headline\n:::" }))).toEqual([]);
+    expect(messages(loop({ banner: "::: if $var.group.is('c')\nx\n:::" }))).toEqual([expect.stringContaining('"c"')]);
+    expect(messages(loop({ banner: "::: style color: blue\nx" }))).toEqual(["::: style is not closed (end it with :::)"]);
+    expect(messages(loop({ banner: "$snippet.inner", inner: "$snippet.banner" }))).toEqual([
+      "$snippet.banner: the snippet includes itself (banner → inner → banner)",
+    ]);
   });
 
   it("checks a question's field to show: shown in the layout, only in a loop", () => {

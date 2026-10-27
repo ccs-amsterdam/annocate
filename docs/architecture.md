@@ -467,7 +467,7 @@ Other open points:
 | Where | What |
 | --- | --- |
 | `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, unitset references, migration of older shapes |
-| `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var`/`$const` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
+| `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |
 | `contracts/src/endpoints/` | The two API registries: researcher, coder ([docs/api](api/README.md)) |

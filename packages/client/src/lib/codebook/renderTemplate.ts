@@ -1,6 +1,7 @@
 import {
   outputText,
   parseTemplate,
+  expandSnippets,
   parseTemplateBlocks,
   referenceText,
   type TemplateNode,
@@ -122,13 +123,6 @@ export function prepareTemplate(source: string): { markdown: string; expressions
   return { markdown, expressions };
 }
 
-/** The constant a value shows (`$const.x`, or `{{$const.x}}`), if it is just one. */
-function constantOf(expression: TemplateExpression): string | undefined {
-  const only = expression.references.length === 1 ? expression.references[0] : undefined;
-  const ref = expression.ref ?? (only && expression.script === referenceText(only) ? only : undefined);
-  return ref?.ns === "const" && ref.path.length === 1 ? ref.path[0] : undefined;
-}
-
 function toValue(expression: TemplateExpression, value: unknown): TemplateValue {
   const name = expression.suffix === "tokenize" && expression.ref ? expression.ref.path[0] : undefined;
   // `{{$unit.x}}` is the same as `$unit.x`
@@ -148,8 +142,10 @@ export async function renderTemplate(
   scope: ReferenceScope,
   cache?: ExpressionCache,
   keyPrefix = "template",
-  progress?: TemplateProgress,
+  { progress, snippets }: { progress?: TemplateProgress; snippets?: Record<string, string> } = {},
 ): Promise<RenderedTemplate> {
+  // Snippets first: as if typed into the template (contracts snippets.ts).
+  source = expandSnippets(source, snippets).source;
   const blocks = parseTemplateBlocks(source);
   const styles: Record<string, string>[] = [];
   if (blocks.hasBlocks) {
@@ -161,20 +157,6 @@ export async function renderTemplate(
     expressions.map((e, i) => (cache ? cache.evaluate(`${keyPrefix}:${i}`, e.script, scope) : evaluateScript(e.script, scope))),
   );
   const values = expressions.map((e, i) => toValue(e, results[i]));
-  // A constant shown as markdown may have blocks of its own: written by the
-  // researcher, like the layout (unit data is never read for blocks).
-  await Promise.all(
-    expressions.map(async (e, i) => {
-      const name = e.suffix === "markdown" ? constantOf(e) : undefined;
-      const text = values[i].text;
-      if (name === undefined || !text.includes(":::")) return;
-      const constBlocks = parseTemplateBlocks(text);
-      if (!constBlocks.hasBlocks) return;
-      const holds = (script: string, at: number) =>
-        evaluateCondition({ script }, scope, cache, `${keyPrefix}:const:${name}:if:${at}`);
-      values[i] = { ...values[i], text: await selectBlocks(text, constBlocks.nodes, holds, progress, styles) };
-    }),
-  );
   return { markdown, values, styles };
 }
 

@@ -3,10 +3,9 @@ import type { ReferenceScope } from "@annotinder/contracts";
 import { ExpressionCache } from "./expressionCache";
 import { prepareTemplate, renderTemplate, staticTemplate } from "./renderTemplate";
 
-const scope = (unit: Record<string, unknown>, constants: Record<string, unknown> = {}): ReferenceScope => ({
+const scope = (unit: Record<string, unknown>): ReferenceScope => ({
   $unit: unit,
   $var: { role: { answered: true, value: "student", label: "Student" }, topics: { answered: true, values: ["a", "b"], labels: ["A", "B"] } },
-  $const: constants,
 });
 
 describe("prepareTemplate", () => {
@@ -27,10 +26,10 @@ describe("prepareTemplate", () => {
 describe("renderTemplate", () => {
   it("evaluates refs and {{ }} against the scope", async () => {
     const rendered = await renderTemplate(
-      "# $unit.headline: {{ $unit.n * 2 }}, $var.role.label, $var.topics.values, $const.intro, {{ null }}",
-      scope({ headline: "Hi", n: 21 }, { intro: "welcome" }),
+      "# $unit.headline: {{ $unit.n * 2 }}, $var.role.label, $var.topics.values, {{ null }}",
+      scope({ headline: "Hi", n: 21 }),
     );
-    expect(rendered.values.map((v) => v.text)).toEqual(["Hi", "42", "Student", "a, b", "welcome", ""]);
+    expect(rendered.values.map((v) => v.text)).toEqual(["Hi", "42", "Student", "a, b", ""]);
   });
 
   it("treats $ref and {{$ref}} the same", async () => {
@@ -71,7 +70,7 @@ describe("renderTemplate blocks", () => {
 
   it("shows the last from stage whose question is reached", async () => {
     const template = "top\n::: from b\nB\n::: from c\nC\n:::";
-    const at = (current: string) => renderTemplate(template, scope({}), undefined, "t", { current, order: ["a", "b", "c"] });
+    const at = (current: string) => renderTemplate(template, scope({}), undefined, "t", { progress: { current, order: ["a", "b", "c"] } });
     expect(strip((await at("a")).markdown)).toBe("top");
     expect(strip((await at("b")).markdown)).toBe("top B");
     expect(strip((await at("c")).markdown)).toBe("top C");
@@ -83,6 +82,15 @@ describe("renderTemplate blocks", () => {
     expect(rendered.styles).toEqual([{ color: "red", fontWeight: "bold" }]);
     expect(rendered.markdown).toContain("\uE0100\uE011\n\nHi\n");
     expect(rendered.markdown).toContain("\uE012");
+  });
+});
+
+describe("renderTemplate snippets", () => {
+  it("puts snippets in as if typed: markdown, blocks and values all work", async () => {
+    const snippets = { banner: "::: if $var.role.is('student')\n**Hi** $unit.name\n:::", outer: "$snippet.banner\nmore" };
+    const rendered = await renderTemplate("$snippet.outer", scope({ name: "Ann" }), undefined, "t", { snippets });
+    expect(rendered.markdown.replace(/\uE000\d+\uE001/g, "#").trim()).toBe("**Hi** #\nmore");
+    expect(rendered.values.map((v) => v.text)).toEqual(["Ann"]);
   });
 });
 

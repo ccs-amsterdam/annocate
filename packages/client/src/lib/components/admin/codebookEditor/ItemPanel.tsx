@@ -3,6 +3,7 @@ import {
   availableQuestions,
   itemName,
   parseTemplate,
+  expandSnippets,
   type CodebookItem,
   type TopLevelItem,
 } from "@annotinder/contracts";
@@ -134,9 +135,9 @@ function ItemEditForm({
         unitsets={unitsetsQuery.data ?? []}
         unitVariableNames={unitVariableNames}
         availableQuestions={available}
-        loopConstants={loop ? Object.keys(loop.layout?.constants ?? {}) : null}
+        inLoop={!!loop}
         unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
-        loopFields={loop ? layoutFields(loop.layout?.template ?? "") : undefined}
+        loopFields={loop ? layoutFields(expandSnippets(loop.layout?.template ?? "", loop.layout?.snippets).source) : undefined}
         readOnly={readOnly}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}

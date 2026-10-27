@@ -11,8 +11,8 @@ import { UnitFields } from "./UnitFields";
  * by its suffix. Uses `renderToStaticMarkup` (no DOM needed).
  */
 async function render(layout: UnitLayout, unit: Record<string, unknown>) {
-  const scope: ReferenceScope = { $unit: unit, $var: {}, $const: layout.constants ?? {} };
-  return { layout, rendered: await renderTemplate(layout.template, scope) };
+  const scope: ReferenceScope = { $unit: unit, $var: {} };
+  return { layout, rendered: await renderTemplate(layout.template, scope, undefined, "t", { snippets: layout.snippets }) };
 }
 
 describe("UnitFields", () => {
@@ -25,19 +25,19 @@ describe("UnitFields", () => {
     expect(html).not.toContain("<strong>");
   });
 
-  it("renders ::markdown, ::image and ::tokenize values, and constants", async () => {
+  it("renders ::markdown, ::image and ::tokenize values, and snippets", async () => {
     const props = await render(
       {
-        template: "Intro with $const.note::markdown inline.\n\n$unit.body::tokenize\n\n$unit.photo::image\n\n$const.note::markdown",
-        constants: { note: "A **bold** note." },
+        template: "Intro with $snippet.note inline.\n\n$unit.body::tokenize\n\n$unit.photo::image\n\n$snippet.note",
+        snippets: { note: "A **bold** note." },
       },
       { body: "The article body.", photo: "https://example.com/a.png" },
     );
     const html = renderToStaticMarkup(<UnitFields {...props} />);
-    expect(html).toContain("<p>Intro with <span>A <strong>bold</strong> note.</span> inline.</p>");
+    expect(html).toContain("<p>Intro with A <strong>bold</strong> note. inline.</p>");
     expect(html).toContain("The article body.");
     expect(html).toContain('src="https://example.com/a.png"');
-    expect(html).toContain("<div><p>A <strong>bold</strong> note.</p></div>");
+    expect(html).toContain("<p>A <strong>bold</strong> note.</p>");
   });
 
   it("makes the tokenized field selectable for the span question that targets it", async () => {

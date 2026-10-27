@@ -144,3 +144,16 @@ describe("unit loop identity", () => {
     expect(branchFingerprint({ mode: "all", unitset: "a", overlap: { unitset: "o" } })).not.toBe(branchFingerprint({ mode: "all", unitset: "a" }));
   });
 });
+
+describe("constants become snippets", () => {
+  it("moves layout constants to snippets, and $const values in the template and question texts to $snippet", () => {
+    const loop = migrateLegacyUnitLoop({
+      type: "unit_loop",
+      units: [{ mode: "all", unitset: "__all__" }],
+      layout: { template: "$const.intro::markdown\n{{ $const.note }}\n$unit.text", constants: { intro: "**Hi**", note: "n" } },
+      children: [{ type: "question", name: "q", variable: { type: "confirm", question: "About $const.intro" } }],
+    }) as { layout: Record<string, unknown>; children: { variable: { question: string } }[] };
+    expect(loop.layout).toEqual({ template: "$snippet.intro\n$snippet.note\n$unit.text", snippets: { intro: "**Hi**", note: "n" } });
+    expect(loop.children[0].variable.question).toBe("About $snippet.intro");
+  });
+});

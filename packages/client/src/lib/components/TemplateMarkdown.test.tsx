@@ -4,7 +4,7 @@ import type { ReferenceScope } from "@annotinder/contracts";
 import { renderTemplate } from "../codebook/renderTemplate";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 
-const scope: ReferenceScope = { $unit: { headline: "News" }, $var: {}, $const: {} };
+const scope: ReferenceScope = { $unit: { headline: "News" }, $var: {} };
 
 describe("TemplateMarkdown blocks", () => {
   it("renders a style block as a styled element around its markdown, nested blocks nested", async () => {
@@ -24,13 +24,12 @@ describe("TemplateMarkdown blocks", () => {
     expect(html.match(/data-field="headline"/g)).toHaveLength(3);
   });
 
-  it("renders blocks inside a constant shown as markdown", async () => {
-    const banner = "::: style color: blue; font-size: 90%\n> **Experiment group.** A banner.\n:::";
-    const scope2: ReferenceScope = { $unit: {}, $var: { group: { answered: true, value: "a", label: "A" } }, $const: { banner, tip: "::: if $var.group.is('b')\nB\n::: else\nnot B\n:::" } };
-    const html = renderToStaticMarkup(<TemplateMarkdown rendered={await renderTemplate("$const.banner::markdown\n\n$const.tip::markdown", scope2)} />);
+  it("renders the blocks of a snippet", async () => {
+    const snippets = { banner: "::: style color: blue; font-size: 90%\n> **Experiment group.** A banner.\n:::" };
+    const html = renderToStaticMarkup(<TemplateMarkdown rendered={await renderTemplate("$snippet.banner", scope, undefined, "t", { snippets })} />);
     expect(html).toContain('<div style="color:blue;font-size:90%"><blockquote>');
     expect(html).toContain("<strong>Experiment group.</strong>");
-    expect(html).toContain("not B");
     expect(html).not.toContain(":::");
   });
+
 });

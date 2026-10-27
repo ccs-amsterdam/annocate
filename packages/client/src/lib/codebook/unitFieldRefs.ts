@@ -1,4 +1,6 @@
 import {
+  allTemplateReferences,
+  expandSnippets,
   extractReferences,
   templateReferences,
   type Condition,
@@ -23,8 +25,8 @@ function conditionReferences(condition: Condition | undefined): Reference[] {
 
 /**
  * References to unit fields that don't exist: `$unit.x` anywhere in a unit
- * loop (layout template, conditions, question texts), and the `column` of
- * span questions (which may also name a layout constant). Warnings, not
+ * loop (layout template with its snippets, conditions, question texts), and
+ * the `column` of span questions. Warnings, not
  * errors: units may still be uploaded after the codebook is written.
  * Nothing to check while the job has no units (`fields` empty).
  */
@@ -45,11 +47,12 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
     }
   };
 
-  const walk = (children: InLoopItem[], constants: Set<string>) => {
+  const walk = (children: InLoopItem[], snippets: Record<string, string> | undefined) => {
+    const text = (source: string | undefined) => templateReferences(expandSnippets(source ?? "", snippets).source).references;
     for (const child of children) {
       if (child.type === "condition") {
         check(itemTitle(child), conditionReferences(child.condition));
-        walk(child.children, constants);
+        walk(child.children, snippets);
         continue;
       }
       if (child.type === "end") {
@@ -57,9 +60,9 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
         continue;
       }
       const variable = child.variable;
-      check(child.name, templateReferences(variable.question ?? "").references);
-      check(child.name, templateReferences(variable.instruction ?? "").references);
-      if (variable.type === "span" && !known.has(variable.column) && !constants.has(variable.column)) {
+      check(child.name, text(variable.question));
+      check(child.name, text(variable.instruction));
+      if (variable.type === "span" && !known.has(variable.column)) {
         warn(child.name, variable.column, `${child.name}: column '${variable.column}' is not a unit field`);
       }
     }
@@ -69,8 +72,8 @@ export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): U
     for (const item of list) {
       if (item.type === "condition") visit(item.children);
       if (item.type !== "unit_loop") continue;
-      check(itemTitle(item), templateReferences(item.layout?.template ?? "").references);
-      walk(item.children, new Set(Object.keys(item.layout?.constants ?? {})));
+      check(itemTitle(item), allTemplateReferences(expandSnippets(item.layout?.template ?? "", item.layout?.snippets).source));
+      walk(item.children, item.layout?.snippets);
     }
   };
   visit(items);
