@@ -1,6 +1,14 @@
-import { useEffect, useState } from "react";
-import { itemName, type CodebookItem, type UnitData, type UnitLayout, type VariableValue } from "@annotinder/contracts";
-import { renderTemplate, type RenderedTemplate } from "../../codebook/renderTemplate";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  buildScope,
+  itemName,
+  type AnyVariableType,
+  type CodebookItem,
+  type UnitData,
+  type UnitLayout,
+  type VariableValue,
+} from "@annotinder/contracts";
+import { renderTemplate, type RenderedTemplate, type TemplateProgress } from "../../codebook/renderTemplate";
 import { describeCondition } from "../../codebook/conditions";
 import { Question } from "../Question";
 import { UnitFields } from "../UnitFields";
@@ -19,6 +27,15 @@ const MOCK_UNIT_DATA: UnitData = {
 interface CodebookPreviewVariableProps {
   item: CodebookItem;
   parentLoop?: Extract<CodebookItem, { type: "unit_loop" }> | null;
+  /** The unit to show (default: a made-up one). */
+  unitData?: UnitData;
+  /** Answers to use in the layout's references and blocks, with the questions they answer. */
+  questions?: ReadonlyMap<string, AnyVariableType>;
+  answers?: Record<string, VariableValue>;
+  /** The question on screen, for `::: from` blocks. */
+  progress?: TemplateProgress;
+  /** Shown under the header (ItemPreview: unit, question on screen, answers). */
+  controls?: ReactNode;
 }
 
 /**
@@ -26,7 +43,15 @@ interface CodebookPreviewVariableProps {
  * Displays real-time updates as the author edits the item's question prompt,
  * options, scale items, codes, colors, or unit layout.
  */
-export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVariableProps) {
+export function CodebookPreviewVariable({
+  item,
+  parentLoop,
+  unitData = MOCK_UNIT_DATA,
+  questions,
+  answers,
+  progress,
+  controls,
+}: CodebookPreviewVariableProps) {
   const [answerState, setAnswerState] = useState<{ value: VariableValue } | null>(null);
 
   const isVariable = item.type === "question" || item.type === "user_variable" || item.type === "unit_variable";
@@ -42,7 +67,7 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
     : parentLoop?.layout ?? {
         template: "# $unit.headline\n\n$unit.text::tokenize",
       };
-  const rendered = useRenderedLayout(layout);
+  const rendered = useRenderedLayout(layout, unitData, questions, answers, progress);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -50,7 +75,7 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
       <div className="flex items-center justify-between border-b border-border/80 bg-muted/40 px-3.5 py-2">
         <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
           <Smartphone className="h-3.5 w-3.5 text-primary" />
-          <span>Live Variable Preview</span>
+          <span>Preview</span>
         </div>
         {answerState && (
           <span className="rounded bg-primary/15 px-2 py-0.5 text-[10px] font-mono text-primary font-medium">
@@ -59,15 +84,14 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
         )}
       </div>
 
+      {controls}
+
       {/* Simulated Device Screen */}
       <div className="flex-1 overflow-y-auto bg-background/50 p-4">
         <div className="mx-auto flex max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-md">
           {/* Mock Document Area (if unit variable or loop) */}
           {inLoop && (
             <div className="border-b border-border/60 bg-background p-4 text-sm">
-              <span className="mb-2 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Mock Unit Document
-              </span>
               {spanVariable ? (
                 <SpanAnnotationProvider
                   key={itemName(item)}
@@ -138,19 +162,26 @@ export function CodebookPreviewVariable({ item, parentLoop }: CodebookPreviewVar
 }
 
 /**
- * The layout with its values evaluated against the mock unit, like
- * JobManager does for a real unit. Answers aren't known here, so values
- * that use them render as empty.
+ * The layout with its values evaluated against the unit (and the preview
+ * answers), like JobManager does while coding. Values using answers that
+ * aren't set render as empty.
  */
-function useRenderedLayout(layout: UnitLayout): RenderedTemplate {
+function useRenderedLayout(
+  layout: UnitLayout,
+  unit: UnitData,
+  questions: ReadonlyMap<string, AnyVariableType> | undefined,
+  answers: Record<string, VariableValue> | undefined,
+  progress: TemplateProgress | undefined,
+): RenderedTemplate {
   const [rendered, setRendered] = useState<RenderedTemplate>({ markdown: "", values: [] });
-  const key = JSON.stringify(layout);
+  const key = JSON.stringify([layout, unit, answers, progress]);
   useEffect(() => {
     let cancelled = false;
-    const scope = { $unit: MOCK_UNIT_DATA, $var: {}, $const: layout.constants ?? {} };
-    renderTemplate(layout.template, scope).then((result) => {
-      if (!cancelled) setRendered(result);
-    });
+    const scope = buildScope(questions ?? new Map(), answers ?? {}, unit, layout.constants);
+    renderTemplate(layout.template, scope, undefined, "preview", progress).then(
+      (result) => !cancelled && setRendered(result),
+      () => undefined,
+    );
     return () => {
       cancelled = true;
     };

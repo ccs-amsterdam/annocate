@@ -219,3 +219,13 @@ export async function computeLoopSteps(
   await walkSteps(loop.children, unitAnswers, visible, ctx, { data: unit, constants: loop.layout.constants }, steps);
   return { steps, visible };
 }
+
+/** The unit loop the item is in (through conditions), if any. */
+export function enclosingLoop(items: TopLevelItem[], item: CodebookItem): UnitLoopItem | undefined {
+  let parent = findParent(items, keyOf(item) || itemName(item) || "");
+  while (parent) {
+    if (parent.type === "unit_loop") return parent as UnitLoopItem;
+    parent = findParent(items, keyOf(parent) || itemName(parent) || "");
+  }
+  return undefined;
+}

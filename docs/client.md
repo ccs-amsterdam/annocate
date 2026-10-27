@@ -387,7 +387,12 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   whole with Save. Views:
   - **Visual**: the item tree, and the selected item as a form, as JSON
     (`codebookEditor/ItemJsonEditor.tsx`: the item without its children,
-    which are items of their own), or as a preview. The tree shows
+    which are items of their own), or as a preview. On screens at least
+    1500px wide the preview is a third column next to the form
+    (`PreviewPanel`) instead of a pane. The preview (`ItemPreview.tsx`)
+    shows a loop with the job's units (one at a time), a picker for the
+    question on screen (for `::: from`), and answer pickers for the
+    questions with options the layout uses (for `::: if` and values). The tree shows
     questions with the icon of their answer type, unit loops with their
     unitsets (or "n branches"), and conditions by their condition, or by
     their optional `label`. Conditions and unit loops have no name

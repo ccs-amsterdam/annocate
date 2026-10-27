@@ -10,9 +10,11 @@ import { findItem, flattenTree, itemAtPath, keyOf } from "../../codebook/tree";
 import { itemTitle } from "../../codebook/conditions";
 import type { CodebookBackup } from "../../codebook/localBackup";
 import { Button } from "@/components/ui/button";
+import { cn } from "cn";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TreePanel } from "./codebookEditor/TreePanel";
-import { ItemPanel } from "./codebookEditor/ItemPanel";
+import { ItemPanel, PreviewPanel } from "./codebookEditor/ItemPanel";
 
 /**
  * How the opened version can be edited (docs/client.md §7):
@@ -58,7 +60,11 @@ interface CodebookEditorProps {
  * - EditorToolbar     issue count, Visual/JSON toggle, Versions/Save/Publish
  * - TreePanel         the item tree (left)
  * - ItemPanel         the selected item's form or preview (right)
+ * - PreviewPanel      on wide screens, the live preview in a third column
  */
+/** Wide enough for the tree, the form and the preview side by side. */
+const WIDE_SCREEN = "(min-width: 1500px)";
+
 export function CodebookEditor({
   client,
   codebook,
@@ -75,6 +81,7 @@ export function CodebookEditor({
 }: CodebookEditorProps) {
   const readOnly = mode === "history";
   const draft = useCodebookDraft({ client, codebook, readOnly, onSaved, restore });
+  const wide = useMediaQuery(WIDE_SCREEN);
   const [view, setView] = useState<EditorView>("tree");
   const unitFieldsQuery = useUnitFieldsQuery(client);
   // Warnings, not errors: units may still be uploaded after the codebook is written
@@ -199,9 +206,10 @@ export function CodebookEditor({
           <CodebookJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
         </div>
       ) : (
-        <div className="grid flex-1 grid-cols-2 gap-4 overflow-hidden">
+        <div className={cn("grid flex-1 gap-4 overflow-hidden", wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2")}>
           <TreePanel draft={draft} readOnly={readOnly} />
-          <ItemPanel client={client} draft={draft} readOnly={readOnly} warnings={warnings} />
+          <ItemPanel client={client} draft={draft} readOnly={readOnly} warnings={warnings} previewBeside={wide} />
+          {wide && <PreviewPanel client={client} draft={draft} />}
         </div>
       )}
     </div>

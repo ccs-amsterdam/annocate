@@ -5,15 +5,14 @@ import {
   parseTemplate,
   type CodebookItem,
   type TopLevelItem,
-  type UnitLoopItem,
 } from "@annotinder/contracts";
 import { AlertTriangle, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useUnitFieldsQuery, useUnitsetsQuery } from "../../../admin/queries";
-import { findParent, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
+import { enclosingLoop, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
-import { CodebookPreviewVariable } from "../CodebookPreviewVariable";
+import { ItemPreview } from "./ItemPreview";
 import { getItemKey } from "../codebookTree/utils";
 import { SegmentedToggle } from "./SegmentedToggle";
 import { ItemJsonEditor } from "./ItemJsonEditor";
@@ -28,13 +27,17 @@ export function ItemPanel({
   draft,
   readOnly,
   warnings,
+  previewBeside = false,
 }: {
   client: ResearcherApi;
   draft: CodebookDraft;
   readOnly: boolean;
   warnings: UnitFieldWarning[];
+  /** The preview has its own column (wide screens): no Preview pane here. */
+  previewBeside?: boolean;
 }) {
-  const [pane, setPane] = useState<ItemPane>("edit");
+  const [chosenPane, setPane] = useState<ItemPane>("edit");
+  const pane: ItemPane = previewBeside && chosenPane === "preview" ? "edit" : chosenPane;
   const item = draft.selectedItem;
   const itemWarnings = item ? warnings.filter((w) => w.item === itemTitle(item)) : [];
 
@@ -57,7 +60,7 @@ export function ItemPanel({
               options={[
                 { value: "edit", label: "Form", icon: Edit3 },
                 { value: "json", label: "JSON", icon: Code2 },
-                { value: "preview", label: "Preview", icon: Eye },
+                ...(previewBeside ? [] : [{ value: "preview" as const, label: "Preview", icon: Eye }]),
               ]}
             />
           </div>
@@ -74,7 +77,7 @@ export function ItemPanel({
               </ul>
             )}
             {pane === "preview" ? (
-              <CodebookPreviewVariable item={item} parentLoop={enclosingLoop(draft.items, item)} />
+              <ItemPreview key={getItemKey(item)} client={client} draft={draft} item={item} />
             ) : pane === "json" ? (
               <ItemJsonEditor
                 key={getItemKey(item)}
@@ -162,14 +165,18 @@ function layoutFields(template: string): string[] {
   return [...new Set(fields)];
 }
 
-/** The unit loop the item is in (through conditions), if any. */
-function enclosingLoop(items: TopLevelItem[], item: CodebookItem): UnitLoopItem | undefined {
-  let parent = findParent(items, getItemKey(item));
-  while (parent) {
-    if (parent.type === "unit_loop") return parent as UnitLoopItem;
-    parent = findParent(items, getItemKey(parent));
-  }
-  return undefined;
+/** The preview's own column on wide screens (CodebookEditor). */
+export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: CodebookDraft }) {
+  const item = draft.selectedItem;
+  return (
+    <div className="flex flex-col overflow-hidden">
+      {item ? (
+        <ItemPreview key={getItemKey(item)} client={client} draft={draft} item={item} />
+      ) : (
+        <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Select an item to preview it.
+        </div>
+      )}
+    </div>
+  );
 }
-
-
