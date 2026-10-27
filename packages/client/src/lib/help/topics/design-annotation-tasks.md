@@ -142,7 +142,9 @@ button to go on.
 AnnoTinder doesn't compute reliability. Download the results and compute
 Krippendorff's alpha (or another coefficient that fits your measurement
 level) per question, for example with the `irr` or `tidycomm` package in R.
-Report it per question, not one number for the whole codebook.
+Report it per question, not one number for the whole codebook. For ways to
+set up the overlap, see
+[Intercoder reliability designs](overlap.md#intercoder-reliability-designs).
 
 You can keep improving the codebook while coding runs, but each change makes
 the data harder to interpret. See
@@ -178,7 +180,8 @@ trained experts for many untrained coders, whose judgements are combined.
   majority. Keep the individual answers: they let you estimate uncertainty
   per unit.
 - **Gold units.** Units with a known answer, coded by everyone (an
-  [overlap set](overlap.md)), let you compare coders with experts. AnnoTinder
+  overlap set, see [Gold units](overlap.md#gold-units)), let you compare
+  coders with experts. AnnoTinder
   doesn't score them for you: compare them in your analysis.
 - **Attention checks and screening.** A question with an obvious answer plus
   a condition and an [end item](end-items.md) screens out coders who don't

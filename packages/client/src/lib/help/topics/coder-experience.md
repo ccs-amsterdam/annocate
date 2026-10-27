@@ -47,7 +47,7 @@ From left to right:
 | Menu (three lines) | Opens the **Navigation** list: all steps of the job, with a tick for the ones done |
 | Position, e.g. `2` or `4.1` | Where the coder is: the 2nd step, or the 1st question of the loop that is the 4th step |
 | **<** and **>** | Go back and forward |
-| Two screens icon | **Continue on another device** (below) |
+| Monitor-and-phone icon | **Continue on another device** (below) |
 | Gear | **Settings**: light or dark, and keyboard shortcut badges |
 
 In the **Navigation** list, steps outside loops are listed by the first
@@ -96,8 +96,8 @@ new session starts empty: it doesn't include the earlier answers.
 
 ## Continuing on another device
 
-On the device where they started, coders click the two-screens icon in the
-top bar (**Continue on another device**). It shows a QR code and a link.
+On the device where they started, coders click the monitor-and-phone icon
+in the top bar (**Continue on another device**). It shows a QR code and a link.
 Scanning or opening it on the other device continues the same session
 there. The link works once, for 15 minutes; after that, coders make a new
 one. Both devices can then continue the session.

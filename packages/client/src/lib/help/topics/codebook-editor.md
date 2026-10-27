@@ -176,9 +176,8 @@ AnnoTinder doesn't show who else is editing right now. If someone saved the
 draft while you were editing, your save is stopped and a dialog says who
 saved it and when:
 
-- **Save mine over theirs** saves your version; their changes are lost
-  (they can still be found in the version history only if they were
-  published).
+- **Save mine over theirs** saves your version in place of theirs: the
+  changes they saved are lost.
 - **Discard mine, load theirs** throws away your unsaved changes and opens
   the saved draft.
 

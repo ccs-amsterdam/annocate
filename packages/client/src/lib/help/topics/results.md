@@ -168,5 +168,5 @@ d = (annotations
 ## More detail with scripts
 
 The download has the answers as they are now. Scripts can get the same data
-from the API, including answers that were later changed or reset, with the
-time of each change. See [Scripts and the researcher API](researcher-api.md).
+from the API, also only what is new since the last download, and answers
+that were reset. See [Scripts and the researcher API](researcher-api.md).

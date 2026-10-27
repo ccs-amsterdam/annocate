@@ -82,8 +82,8 @@ then code the job as a coder would, with the job's real units:
 - An end item's redirect is shown, but not followed.
 - In a loop with **The invitation's units**, the preview gives you the
   units of the first invitation that has units.
-- Assigned variables (random, balanced) are drawn for the preview as for a
-  coder, so you may need a few previews to see each group.
+- Assigned variables (random, balanced) are drawn for you as for any
+  coder.
 
 The preview needs a saved codebook with at least one item and uploaded
 units. If the latest version has issues, the preview says so: fix them,

@@ -47,6 +47,7 @@ export function unitset(server: Server): Hono<Env> {
       jobId,
       id,
     ]);
+    await server.deployments.refresh(jobId);
     return c.json(toUnitsetResponse(row!));
   });
 
@@ -62,6 +63,7 @@ export function unitset(server: Server): Hono<Env> {
     if (invite) return c.json({ error: `Unitset is the units of invitation "${invite.label}" and cannot be deleted` }, 409);
 
     await db.query("DELETE FROM unitsets WHERE job_id = $1 AND id = $2", [jobId, id]);
+    await server.deployments.refresh(jobId);
     return c.body(null, 204);
   });
 

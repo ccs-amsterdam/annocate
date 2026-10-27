@@ -23,6 +23,8 @@ export function unitsets(server: Server): Hono<Env> {
       parsed.data.name,
       parsed.data.unitIds,
     ]);
+    // A running job hands out the new set from now on, without a new codebook version.
+    await server.deployments.refresh(c.get("jobId"));
     return c.json(toUnitsetResponse(row!), 201);
   });
 

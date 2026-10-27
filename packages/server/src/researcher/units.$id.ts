@@ -29,6 +29,7 @@ export function unit(server: Server): Hono<Env> {
       // No units left: the next upload sets the fields anew
       if ((await unitCount(tx, jobId)) === 0) await setUnitFields(tx, jobId, []);
     });
+    await server.deployments.refresh(jobId);
     return c.body(null, 204);
   });
 

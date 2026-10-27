@@ -383,6 +383,33 @@ describe("the invitation's units", () => {
   });
 });
 
+describe("units and unitsets made after publishing", () => {
+  it("are handed out without a new codebook version", async () => {
+    await redeploy({ units: [{ mode: "invitation" }] });
+    // "Divide units over coders" after publishing: a new set, on a new invite
+    const set = await createUnitset("late", ["unit-2"]);
+    const late = coder("late", await invite(undefined, { unitsetId: (await db.query<{ id: number }>("SELECT id FROM unitsets WHERE name = 'late'"))[0].id }));
+    expect((await late.next())!.id).toBe(set[0]);
+
+    // New units join "all units"
+    await redeploy({});
+    const c = coder("all");
+    const seen: string[] = [];
+    for (let u = await c.next(); u; u = await c.next()) {
+      seen.push(u.externalId);
+      await c.submit(u.id, sentiment("positive"));
+    }
+    const [{ data: before }] = await db.query<{ data: Record<string, unknown> }>("SELECT data FROM units WHERE job_id = 1 LIMIT 1");
+    const upload = await server.request("/job/1/units", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ units: [{ externalId: "unit-new", data: { ...before, text: "New" } }] }),
+    });
+    expect(upload.status, await upload.clone().text()).toBe(201);
+    expect((await c.next())!.externalId).toBe("unit-new");
+  });
+});
+
 describe("routing coders to unitsets", () => {
   const slot = { type: "question", name: "slot", variable: { type: "auto", source: "invite", options: [{ value: "1" }, { value: "2" }], fallback: "balanced" } };
   const routedLoop = { units: [{ mode: "all", unitset: "part_$var.slot.value", overlap: { unitset: "overlap", placement: "after" } }] };

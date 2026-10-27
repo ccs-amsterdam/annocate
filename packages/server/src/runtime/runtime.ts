@@ -207,6 +207,7 @@ export class DeploymentRuntime {
         const spec = await this.store.getDeployment();
         if (spec.version === this.spec.version && spec.annotationEpoch === this.spec.annotationEpoch) {
           this.specCheckedAt = this.options.now();
+          this.applyUnitsets(spec);
           return;
         }
         const epochChanged = spec.annotationEpoch !== this.spec.annotationEpoch;
@@ -222,6 +223,20 @@ export class DeploymentRuntime {
       }
     })();
     await this.refreshing;
+  }
+
+  /**
+   * Unitsets (and all units) change without a new codebook version: units
+   * uploaded, sets made or edited after publishing. Pools of a changed set
+   * start again from it (their leases are dropped: disposable, §3).
+   */
+  private applyUnitsets(spec: DeploymentSpec): void {
+    const next = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
+    const changed = new Set([...next.keys(), ...this.unitsets.keys()].filter((name) => next.get(name)?.join() !== this.unitsets.get(name)?.join()));
+    this.spec = { ...this.spec, unitsets: spec.unitsets };
+    if (changed.size === 0) return;
+    this.unitsets = next;
+    for (const [key, pool] of this.pools) if (changed.has(pool.unitset)) this.pools.delete(key);
   }
 
   private applySpec(spec: DeploymentSpec): void {

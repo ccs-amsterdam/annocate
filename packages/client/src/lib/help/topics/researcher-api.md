@@ -76,8 +76,9 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/j
 | Units as coders saw them, a page at a time | `GET /job/<id>/unit-versions` |
 
 What you may do depends on your role in the job, as on the pages: reading
-needs any role, changing units, codebooks and invitations needs a role that
-may edit, and publishing needs the job's admin role.
+units, codebooks and answers needs any role; changing them, and seeing
+invitations and coders, needs a role that may edit; publishing needs the
+job's admin role.
 
 A codebook is the same JSON as in the codebook editor's JSON view: write it
 in the editor, copy it, and a script can save it to another job.
@@ -199,11 +200,14 @@ saw (`unitVersionId`), and when it was first written and last changed
 
 Two things the download on the **Results** tab doesn't have:
 
-- **Only what is new.** Pages never change once read, also while coders keep
-  coding. Keep the last `next` (or the last row's `id`) and pass it as
-  `after` next time to get only the rows written since.
-- **Earlier answers.** With `retired=true`, the rows also include answers
-  that were later replaced or reset, with `retiredAt`: when that happened.
+- **Only what is new.** Rows come in the order they were first written, and
+  new rows always get a higher `id`. Keep the `id` of the last row you got,
+  and pass it as `after` next time to get only the rows written since. An
+  answer a coder changes later (by going back) keeps its row, with a later
+  `updated`: to be sure you have every change, download everything again.
+- **Answers that were reset.** With `retired=true`, the rows also include
+  answers that no longer count because they were reset, with `retiredAt`:
+  when that happened.
 
 Answers outside unit loops come with the coders, from
 `GET /job/<id>/coders`: each coder's `variables`, in the same form.
