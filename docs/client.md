@@ -336,9 +336,28 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   (`docs/coder-identity.md` §7). The dev shell (`App.tsx`) uses them when
   the server has login, and development headers when it doesn't.
 
-- **Codebook editor**: edits the whole document in memory (tree view and
-  YAML), validated client-side with the contract's `validateCodebookItems`,
-  then saved as a whole with Save. Unsaved edits are the researcher's own;
+- **Codebook editor**: edits the whole document in memory, validated
+  client-side with the contract's `validateCodebookItems`, and saved as a
+  whole with Save. Views:
+  - **Visual**: the item tree, and the selected item as a form, as JSON
+    (`codebookEditor/ItemJsonEditor.tsx`: the item without its children,
+    which are items of their own), or as a preview.
+  - **JSON**: the whole codebook (`CodebookJsonEditor.tsx`). JSON rather
+    than YAML: the structure is explicit (no indentation to get right in a
+    browser), and the editor (Monaco, bundled and loaded only with the
+    editor: `jsonEditor/`) completes and checks it against the codebook's
+    JSON Schema (contracts `codebookItemsJsonSchema`), with the schemas'
+    descriptions on hover. Formatting (`codebook/jsonFormat.ts`) keeps small
+    objects on one line (an option: `{ "value": "neg", "label": "Negative" }`)
+    and puts keys in reading order (`name`, `type`, `value`, `label` first,
+    `children` last).
+  - Both JSON views apply an edit as soon as it parses to items the tree
+    can show (`codebook/itemShape.ts`; items keep their identity by name);
+    until then "Not applied" says why. Validation shows the rest, as for
+    the forms.
+
+  The toolbar counts errors and warnings; each opens a list in which a
+  click opens the item concerned. Unsaved edits are the researcher's own;
   the saved draft is shared with co-editors; publishing gives a version to
   coders. So:
   - **Save** works while the codebook has issues (work in progress);
@@ -361,12 +380,9 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
     are saved or discarded. After the browser was closed, a banner anywhere
     in the researcher area offers to continue editing them (with the
     revision they were based on, so the conflict check still applies) or
-    to discard them. In the tree view the selected item opens as a
-  form, as YAML (`codebookEditor/ItemYamlEditor.tsx`: the item without its
-  children, which are items of their own; applied on every edit that
-  parses to an item, with validation messages below), or as a preview. The toolbar counts errors and warnings; each opens
-  a list in which a click opens the item concerned. Unit loops have a
-  distribution editor (`UnitLoopForm.tsx`): normally just the unitsets;
+    to discard them.
+
+  Unit loops have a distribution editor (`UnitLoopForm.tsx`): normally just the unitsets;
   "Different units per coder" turns on branches, where every branch but
   the last has a condition ("if", "else if") and the last is "otherwise".
   Forms show few tips (instruction buttons may come later).

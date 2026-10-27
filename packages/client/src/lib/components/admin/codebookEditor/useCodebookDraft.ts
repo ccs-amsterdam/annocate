@@ -23,6 +23,7 @@ import {
   type MoveTargetPosition,
 } from "../../../codebook/codebookEdit";
 import { findItem } from "../../../codebook/tree";
+import { carryKeys } from "../../../codebook/itemShape";
 import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../codebook/editHistory";
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
 import { clearBackup, writeBackup, type CodebookBackup } from "../../../codebook/localBackup";
@@ -160,8 +161,9 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
     setItems(updateItem(items, key, Object.assign({}, next, { _key: key })));
   }
 
+  /** All items replaced (the JSON view): items keep their keys by name, so they stay the same items. */
   function replaceAll(next: TopLevelItem[]) {
-    setItems(ensureKeys(next));
+    setItems(ensureKeys(carryKeys(next, items)));
   }
 
   /**

@@ -19,6 +19,7 @@ export * from "./codebook/item.js";
 export * from "./codebook/validation.js";
 export * from "./codebook/answers.js";
 export * from "./codebook/codebook.js";
+export * from "./codebook/jsonSchema.js";
 
 export * from "./unit.js";
 export * from "./unitFields.js";

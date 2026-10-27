@@ -9,7 +9,7 @@ interface SegmentedToggleProps<T extends string> {
   variant?: "muted" | "primary";
 }
 
-/** A small row of mutually exclusive buttons, e.g. Visual | YAML. */
+/** A small row of mutually exclusive buttons, e.g. Visual | JSON. */
 export function SegmentedToggle<T extends string>({ value, options, onChange, variant = "muted" }: SegmentedToggleProps<T>) {
   return (
     <div

@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SegmentedToggle } from "./SegmentedToggle";
 import type { CodebookEditorMode } from "../CodebookEditor";
 
-export type EditorView = "tree" | "yaml";
+export type EditorView = "tree" | "json";
 
 /** An issue as the toolbar lists it: the message, and the item it is about (if known). */
 export interface EditorIssue {
@@ -88,7 +88,7 @@ export function EditorToolbar({
           onChange={onViewChange}
           options={[
             { value: "tree", label: "Visual", icon: Sliders },
-            { value: "yaml", label: "YAML", icon: Code2 },
+            { value: "json", label: "JSON", icon: Code2 },
           ]}
         />
       </div>

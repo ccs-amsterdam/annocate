@@ -14,13 +14,13 @@ import { ItemForm } from "../ItemForm";
 import { CodebookPreviewVariable } from "../CodebookPreviewVariable";
 import { getItemKey } from "../codebookTree/utils";
 import { SegmentedToggle } from "./SegmentedToggle";
-import { ItemYamlEditor } from "./ItemYamlEditor";
+import { ItemJsonEditor } from "./ItemJsonEditor";
 import type { CodebookDraft } from "./useCodebookDraft";
 import type { UnitFieldWarning } from "../../../codebook/unitFieldRefs";
 
-type ItemPane = "edit" | "yaml" | "preview";
+type ItemPane = "edit" | "json" | "preview";
 
-/** Right column of the visual editor: the selected item's form, its YAML, or a live preview of it. */
+/** Right column of the visual editor: the selected item's form, its JSON, or a live preview of it. */
 export function ItemPanel({
   client,
   draft,
@@ -54,13 +54,13 @@ export function ItemPanel({
               variant="primary"
               options={[
                 { value: "edit", label: "Form", icon: Edit3 },
-                { value: "yaml", label: "YAML", icon: Code2 },
+                { value: "json", label: "JSON", icon: Code2 },
                 { value: "preview", label: "Preview", icon: Eye },
               ]}
             />
           </div>
 
-          <div className={`flex-1 p-4 ${pane === "yaml" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
+          <div className={`flex-1 p-4 ${pane === "json" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
             {itemWarnings.length > 0 && (
               <ul className="mb-3 space-y-1 rounded-md bg-amber-500/10 p-2 text-xs text-foreground">
                 {itemWarnings.map((w) => (
@@ -73,8 +73,8 @@ export function ItemPanel({
             )}
             {pane === "preview" ? (
               <CodebookPreviewVariable item={item} parentLoop={enclosingLoop(draft.items, item)} />
-            ) : pane === "yaml" ? (
-              <ItemYamlEditor
+            ) : pane === "json" ? (
+              <ItemJsonEditor
                 key={getItemKey(item)}
                 item={item}
                 readOnly={readOnly}

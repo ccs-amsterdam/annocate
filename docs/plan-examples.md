@@ -18,7 +18,7 @@ special afterwards; it is a starting point, like a template.
 
 An example consists of:
 
-- a codebook (YAML, the same shape the editor exports);
+- a codebook (JSON, the same shape the editor shows);
 - units, with their fields (a CSV or JSON file), and unitsets (by name, or a
   split: parts plus an overlap set, as `splitUnits` does);
 - invitations (e.g. one open link);

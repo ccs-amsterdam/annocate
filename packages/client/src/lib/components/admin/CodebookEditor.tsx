@@ -3,7 +3,7 @@ import type { CodebookResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../codebook/unitFieldRefs";
-import { CodebookYamlEditor } from "./CodebookYamlEditor";
+import { CodebookJsonEditor } from "./CodebookJsonEditor";
 import { useCodebookDraft } from "./codebookEditor/useCodebookDraft";
 import { EditorToolbar, type ChangedItem, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
 import { findItem, flattenTree, itemAtPath, keyOf } from "../../codebook/tree";
@@ -54,7 +54,7 @@ interface CodebookEditorProps {
  *
  * Parts (see ./codebookEditor):
  * - useCodebookDraft  items, selection, validation, unsaved changes, saving
- * - EditorToolbar     issue count, Visual/YAML toggle, Versions/Save/Publish
+ * - EditorToolbar     issue count, Visual/JSON toggle, Versions/Save/Publish
  * - TreePanel         the item tree (left)
  * - ItemPanel         the selected item's form or preview (right)
  */
@@ -193,9 +193,9 @@ export function CodebookEditor({
         </DialogContent>
       </Dialog>
 
-      {view === "yaml" ? (
+      {view === "json" ? (
         <div className="flex-1 overflow-hidden">
-          <CodebookYamlEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
+          <CodebookJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
         </div>
       ) : (
         <div className="grid flex-1 grid-cols-2 gap-4 overflow-hidden">
