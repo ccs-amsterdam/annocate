@@ -113,6 +113,7 @@ function ItemEditForm({
     // Disables the form's native controls; draft.update also ignores changes when read only
     <fieldset disabled={readOnly} className="contents">
       <ItemForm
+        key={draft.selected ?? undefined}
         item={item}
         unitsets={unitsetsQuery.data ?? []}
         unitVariableNames={unitVariableNames}

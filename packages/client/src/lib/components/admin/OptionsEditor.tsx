@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, X } from "lucide-react";
 import { SWIPE_DIRECTIONS, valueFromLabel, type Option } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
@@ -20,17 +21,24 @@ export interface OptionsEditorProps<T extends Option> {
 /**
  * The options of a question (docs/client.md §7): a label the coder sees and
  * the value that is stored. For nominal questions the value follows the
- * label (`Human interest` -> `human_interest`) until it is edited by hand;
- * for ordinal ones values are numbers rising in option order.
+ * label (`Human interest` -> `human_interest`) until it is edited by hand.
+ * Ordinal values are 1..n in option order, renumbered when options are
+ * added, removed or moved; with "Custom values" they are set by hand (any
+ * numbers rising in order). Custom isn't stored: options that aren't 1..n
+ * open as custom.
  */
 export function OptionsEditor<T extends Option>({ options, onChange, level = "nominal", max, swipe, extra }: OptionsEditorProps<T>) {
   const ordinal = level === "ordinal";
+  const [custom, setCustom] = useState(() => ordinal && !isSequence(options));
+  const auto = ordinal && !custom;
+  /** Changes to the list of options: renumbered while values follow the order. */
+  const commit = (next: T[]) => onChange(auto ? renumber(next) : next);
   const update = (index: number, patch: Partial<T>) => onChange(options.map((o, i) => (i === index ? { ...o, ...patch } : o)));
   const move = (index: number, by: number) => {
     const next = [...options];
     const [moved] = next.splice(index, 1);
     next.splice(index + by, 0, moved);
-    onChange(next);
+    commit(next);
   };
 
   const setLabel = (index: number, label: string) => {
@@ -46,7 +54,7 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
   const add = () => {
     const last = options[options.length - 1]?.value;
     const value = ordinal ? (typeof last === "number" ? last + 1 : 1) : "";
-    onChange([...options, { value } as T]);
+    commit([...options, { value } as T]);
   };
 
   const rising = options.every((o, i) => i === 0 || (typeof o.value === "number" && o.value > (options[i - 1].value as number)));
@@ -56,15 +64,18 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">Options</label>
         {ordinal && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-xs"
-            onClick={() => onChange(options.map((o, i) => ({ ...o, value: i + 1 })))}
-          >
-            Renumber 1..{options.length}
-          </Button>
+          <label className="flex items-center gap-1.5 text-xs">
+            <input
+              type="checkbox"
+              checked={custom}
+              onChange={(e) => {
+                setCustom(e.target.checked);
+                // Back to values that follow the order.
+                if (!e.target.checked) onChange(renumber(options));
+              }}
+            />
+            Custom values
+          </label>
         )}
       </div>
       <div className="grid grid-cols-[auto_1fr_8rem_5.5rem_auto] items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -90,10 +101,13 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
                 placeholder="value"
                 type={ordinal ? "number" : "text"}
                 value={String(option.value)}
+                readOnly={auto}
+                tabIndex={auto ? -1 : undefined}
+                title={auto ? "Follows the order of the options (check Custom values to set it)" : undefined}
                 onChange={(e) =>
                   update(i, { value: ordinal ? (e.target.value === "" ? 0 : Number(e.target.value)) : e.target.value } as Partial<T>)
                 }
-                className="h-8 font-mono text-xs"
+                className={`h-8 font-mono text-xs ${auto ? "bg-muted/40 text-muted-foreground" : ""}`}
               />
               <Input
                 placeholder="color"
@@ -120,7 +134,7 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => onChange(options.filter((_, j) => j !== i))}
+                  onClick={() => commit(options.filter((_, j) => j !== i))}
                   aria-label="Remove option"
                 >
                   <X className="size-3.5" />
@@ -130,9 +144,7 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
           );
         })}
       </div>
-      {ordinal && !rising && (
-        <p className="text-[11px] text-destructive">Ordinal values must rise in the order of the options: renumber them.</p>
-      )}
+      {ordinal && !rising && <p className="text-[11px] text-destructive">Ordinal values must rise in the order of the options.</p>}
       {(!max || options.length < max) && (
         <Button type="button" variant="outline" size="sm" onClick={add} className="self-start">
           + Add option
@@ -140,4 +152,13 @@ export function OptionsEditor<T extends Option>({ options, onChange, level = "no
       )}
     </div>
   );
+}
+
+/** Whether ordinal values are 1..n in option order. */
+function isSequence(options: Option[]): boolean {
+  return options.every((o, i) => o.value === i + 1);
+}
+
+function renumber<T extends Option>(options: T[]): T[] {
+  return options.map((o, i) => ({ ...o, value: i + 1 }));
 }

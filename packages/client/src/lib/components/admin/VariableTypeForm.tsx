@@ -120,7 +120,6 @@ export function VariableTypeForm({
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <OptionsEditor swipe max={3} options={v.options} onChange={(options) => onChange({ ...v, options })} />
-          <p className="text-[11px] text-muted-foreground">Coders swipe left for the first option, right for the second, up for the third.</p>
         </>
       );
     }
@@ -144,10 +143,6 @@ export function VariableTypeForm({
               <option value="invite">Set by invitation</option>
               <option value="url_param">URL parameter</option>
             </select>
-            <p className="text-[11px] text-muted-foreground">
-              Assigned once when a coder starts, never asked. Use it in conditions, or to route coders to
-              unitsets in a unit loop.
-            </p>
           </div>
           {v.source === "invite" && (
             <div className="flex flex-col gap-1">
@@ -410,11 +405,8 @@ function CategoricalFields({ variable: v, onChange }: { variable: CategoricalTyp
           <option value="nominal">Nominal: categories, values are terms (text)</option>
           <option value="ordinal">Ordinal: ordered, values are numbers rising in order</option>
         </select>
-        <p className="text-[11px] text-muted-foreground">
-          Switching converts the values: to ordinal they become 1..n, to nominal they are derived from the labels.
-        </p>
       </div>
-      <OptionsEditor level={ordinal ? "ordinal" : "nominal"} options={v.options} onChange={(options) => onChange({ ...v, options })} />
+      <OptionsEditor key={ordinal ? "ordinal" : "nominal"} level={ordinal ? "ordinal" : "nominal"} options={v.options} onChange={(options) => onChange({ ...v, options })} />
       {!ordinal && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={!!v.multiple} onChange={(e) => onChange({ ...v, multiple: e.target.checked || undefined })} />
@@ -496,7 +488,6 @@ function NumericFields({ variable: v, onChange }: { variable: NumericType; onCha
       </div>
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium">Labels (optional)</label>
-        <p className="text-[11px] text-muted-foreground">Text at points of the range, e.g. 0 &quot;cold&quot;, 100 &quot;warm&quot;.</p>
         {labels.map((l, i) => (
           <div key={i} className="flex items-center gap-2">
             <Input

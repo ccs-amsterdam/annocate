@@ -5,7 +5,8 @@ import { useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../codebook/unitFieldRefs";
 import { CodebookYamlEditor } from "./CodebookYamlEditor";
 import { useCodebookDraft } from "./codebookEditor/useCodebookDraft";
-import { EditorToolbar, type EditorView } from "./codebookEditor/EditorToolbar";
+import { EditorToolbar, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
+import { findItem, itemAtPath, keyOf } from "../../codebook/tree";
 import { TreePanel } from "./codebookEditor/TreePanel";
 import { ItemPanel } from "./codebookEditor/ItemPanel";
 
@@ -69,6 +70,29 @@ export function CodebookEditor({
     [draft.cleanItems, unitFieldsQuery.data],
   );
 
+  const errors = useMemo<EditorIssue[]>(
+    () =>
+      draft.validationErrors.map((issue) => ({
+        message: issue.message,
+        item: itemAtPath(draft.items, issue.path)?.name ?? null,
+        target: { path: issue.path },
+      })),
+    [draft.validationErrors, draft.items],
+  );
+  const warningIssues = useMemo<EditorIssue[]>(
+    () => warnings.map((w) => ({ message: w.message, item: w.item, target: { name: w.item } })),
+    [warnings],
+  );
+
+  /** Opens the item an issue is about, in the visual editor. */
+  function openIssue(issue: EditorIssue) {
+    const target = issue.target;
+    const item = !target ? null : "path" in target ? itemAtPath(draft.items, target.path) : findItem(draft.items, target.name);
+    if (!item) return;
+    draft.select(keyOf(item) ?? item.name);
+    setView("tree");
+  }
+
   const { dirty } = draft;
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -92,8 +116,9 @@ export function CodebookEditor({
         mode={mode}
         view={view}
         onViewChange={setView}
-        validationIssues={draft.validationErrors}
-        warnings={warnings.map((w) => w.message)}
+        errors={errors}
+        warnings={warningIssues}
+        onOpenIssue={openIssue}
         dirty={dirty}
         canSave={draft.canSave}
         saving={draft.saving}

@@ -23,9 +23,9 @@ function questionNames(items: CodebookItem[]): string[] {
 }
 
 /**
- * Edits how a unit_loop distributes units (contracts unitLoop.ts): branches
- * with an optional `when` condition on coder-level questions, each with one
- * or more fixed or dynamic unitset sources.
+ * Edits how a unit_loop distributes units (contracts unitLoop.ts): its
+ * unitsets (fixed or dynamic sources), or with branches, per branch a
+ * condition on coder-level questions and its unitsets.
  */
 export function UnitLoopForm({
   loop,
@@ -46,6 +46,33 @@ export function UnitLoopForm({
   const setBranches = (units: UnitBranch[]) => onChange({ ...loop, units });
   const setBranch = (b: number, branch: UnitBranch) => setBranches(branches.map((x, i) => (i === b ? branch : x)));
   const issues = issuesAt(validationIssues, "units");
+
+  // One branch without a condition: just the unitsets. Several: every
+  // branch but the last has a condition ("if", "else if"); the last is
+  // "otherwise" (an older codebook may lack it: then coders matching no
+  // branch get no units).
+  const multi = branches.length > 1 || branches[0].when !== undefined;
+  const hasOtherwise = branches[branches.length - 1].when === undefined;
+  const branchLabel = (b: number) => (branches[b].when === undefined ? "Otherwise" : b === 0 ? "If" : "Else if");
+
+  const toggleBranches = (on: boolean) => {
+    if (on) {
+      setBranches([{ when: { script: "true" }, sources: [{ unitset: ALL_UNITS_UNITSET }] }, ...branches]);
+      return;
+    }
+    const last = branches[branches.length - 1];
+    if (branches.length > 1 && !confirm("Keep only the last branch's units, and drop the other branches?")) return;
+    setBranches([{ sources: last.sources }]);
+  };
+  const addBranch = () => {
+    const added: UnitBranch = { when: { script: "true" }, sources: [{ unitset: ALL_UNITS_UNITSET }] };
+    setBranches(hasOtherwise ? [...branches.slice(0, -1), added, branches[branches.length - 1]] : [...branches, added]);
+  };
+  const removeBranch = (b: number) => {
+    const rest = branches.filter((_, i) => i !== b);
+    // Back to one branch: it has no condition.
+    setBranches(rest.length === 1 ? [{ sources: rest[0].sources }] : rest);
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -81,98 +108,85 @@ export function UnitLoopForm({
         </label>
       </div>
 
-      <p className="text-[11px] text-muted-foreground">
-        Each coder gets the units of the first branch whose condition matches (checked in the coder&apos;s browser). A
-        unitset name can use an earlier answer, e.g. <code>part_$var.slot.code</code>.
-      </p>
+      <label className="flex items-center gap-2 text-xs font-semibold">
+        <input type="checkbox" checked={multi} onChange={(e) => toggleBranches(e.target.checked)} />
+        Different units per coder (branches)
+      </label>
 
-      {branches.map((branch, b) => (
-        <div key={b} className="flex flex-col gap-2 rounded-md border border-border p-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold">
-              Branch {b + 1}
-              {branch.when ? "" : " (always)"}
-            </span>
-            {branches.length > 1 && (
+      {multi ? (
+        <>
+          {branches.map((branch, b) => (
+            <div key={b} className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold">{branchLabel(b)}</span>
+                <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeBranch(b)} aria-label="Remove branch">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {branch.when && (
+                <ConditionEditor
+                  condition={branch.when}
+                  onChange={(when) => setBranch(b, { ...branch, when })}
+                  questions={coderQuestions}
+                  issues={issuesAt(validationIssues, "units", b, "when")}
+                />
+              )}
+              <SourcesEditor sources={branch.sources} loopQuestions={loopQuestions} onChange={(sources) => setBranch(b, { ...branch, sources })} />
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={addBranch}>
+              <Plus className="h-3.5 w-3.5" /> Branch
+            </Button>
+            {!hasOtherwise && (
               <Button
                 type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setBranches(branches.filter((_, i) => i !== b))}
+                variant="outline"
+                size="sm"
+                onClick={() => setBranches([...branches, { sources: [{ unitset: ALL_UNITS_UNITSET }] }])}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Plus className="h-3.5 w-3.5" /> Otherwise
               </Button>
             )}
           </div>
-
-          {branch.when ? (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-muted-foreground">Only for coders where</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setBranch(b, { sources: branch.sources })}
-                >
-                  Always
-                </Button>
-              </div>
-              <ConditionEditor
-                condition={branch.when}
-                onChange={(when) => setBranch(b, { ...branch, when })}
-                questions={coderQuestions}
-                issues={issuesAt(validationIssues, "units", b, "when")}
-              />
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="self-start text-xs"
-              onClick={() => setBranch(b, { ...branch, when: { script: "true" } })}
-            >
-              <Plus className="h-3.5 w-3.5" /> Condition
-            </Button>
-          )}
-
-          {branch.sources.map((source, s) => (
-            <SourceEditor
-              key={s}
-              source={source}
-              loopQuestions={loopQuestions}
-              onChange={(next) => setBranch(b, { ...branch, sources: branch.sources.map((x, i) => (i === s ? next : x)) })}
-              onRemove={
-                branch.sources.length > 1
-                  ? () => setBranch(b, { ...branch, sources: branch.sources.filter((_, i) => i !== s) })
-                  : undefined
-              }
-            />
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="self-start"
-            onClick={() => setBranch(b, { ...branch, sources: [...branch.sources, { unitset: "" }] })}
-          >
-            <Plus className="h-3.5 w-3.5" /> Source
-          </Button>
-        </div>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="self-start"
-        onClick={() => setBranches([...branches, { sources: [{ unitset: ALL_UNITS_UNITSET }] }])}
-      >
-        <Plus className="h-3.5 w-3.5" /> Branch
-      </Button>
+        </>
+      ) : (
+        <SourcesEditor
+          sources={branches[0].sources}
+          loopQuestions={loopQuestions}
+          onChange={(sources) => setBranches([{ sources }])}
+        />
+      )}
 
       <IssueList issues={issues.filter((issue) => !issue.path.includes("when"))} />
+    </div>
+  );
+}
+
+/** A branch's unit sources: a unitset each, fixed or dynamic. */
+function SourcesEditor({
+  sources,
+  loopQuestions,
+  onChange,
+}: {
+  sources: UnitSource[];
+  loopQuestions: string[];
+  onChange: (sources: UnitSource[]) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {sources.map((source, s) => (
+        <SourceEditor
+          key={s}
+          source={source}
+          loopQuestions={loopQuestions}
+          onChange={(next) => onChange(sources.map((x, i) => (i === s ? next : x)))}
+          onRemove={sources.length > 1 ? () => onChange(sources.filter((_, i) => i !== s)) : undefined}
+        />
+      ))}
+      <Button type="button" variant="ghost" size="sm" className="self-start text-xs" onClick={() => onChange([...sources, { unitset: "" }])}>
+        <Plus className="h-3.5 w-3.5" /> Unitset
+      </Button>
     </div>
   );
 }

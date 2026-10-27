@@ -15,9 +15,6 @@ export function ScaleItemsEditor({ items, onChange }: { items: ScaleItem[]; onCh
   return (
     <div className="flex flex-col gap-2">
       <label className="text-sm font-medium">Items</label>
-      <p className="text-[11px] text-muted-foreground">
-        Rated on the same options. The name is stored with the answer; the label is shown to coders.
-      </p>
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-2">
           <Input placeholder="name" value={item.name} onChange={(e) => update(i, { name: e.target.value })} className="w-32" />

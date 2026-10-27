@@ -115,13 +115,7 @@ export function ItemForm({
           placeholder="e.g., sentiment, age, loop_1"
           className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
         />
-        {nameError ? (
-          <p className="text-xs text-destructive">{nameError}</p>
-        ) : (
-          <p className="text-[11px] text-muted-foreground">
-            Must start with a letter or underscore, containing only letters, numbers, and underscores.
-          </p>
-        )}
+        {nameError && <p className="text-xs text-destructive">{nameError}</p>}
       </div>
 
       {/* Item-specific fields */}
@@ -182,11 +176,6 @@ export function ItemForm({
               className={`font-mono text-xs ${issuesAt(validationIssues, "layout").some((i) => !i.warning) ? "border-destructive" : ""}`}
             />
             <IssueList issues={issuesAt(validationIssues, "layout")} />
-            <p className="text-[11px] text-muted-foreground">
-              Markdown. Insert values with <code>$unit.field</code>, <code>$const.name</code>, <code>$var.question.code</code>{" "}
-              or <code>{"{{ js }}"}</code>. Values are plain text; add <code>::markdown</code>, <code>::image</code> or{" "}
-              <code>::tokenize</code> (for span questions) to show them differently.
-            </p>
           </div>
         </div>
       )}
@@ -223,9 +212,6 @@ function EndItemFields({
 }) {
   return (
     <div className="flex flex-col gap-3 border-t border-border/60 pt-4">
-      <p className="text-[11px] text-muted-foreground">
-        Reaching this item ends the coder&apos;s session. Put it inside a condition to end it only for some coders.
-      </p>
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-semibold text-foreground">Outcome</label>
         <select
@@ -256,9 +242,6 @@ function EndItemFields({
           className="font-mono text-xs"
         />
         <IssueList issues={issuesAt(issues, "redirectUrl")} />
-        <p className="text-[11px] text-muted-foreground">
-          E.g. a panel company&apos;s return link. <code>$var</code> references are filled in, URL-encoded.
-        </p>
       </div>
     </div>
   );

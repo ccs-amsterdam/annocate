@@ -103,7 +103,6 @@ function RulesEditor({ rules, targets, onChange }: { rules: RuleRows; targets: R
   const setRow = (i: number, row: RuleRow) => onChange({ ...rules, rows: rules.rows.map((r, j) => (j === i ? row : r)) });
   return (
     <div className="flex flex-col gap-1.5">
-      {rules.rows.length === 0 && <p className="text-[11px] text-muted-foreground">No rules: always holds.</p>}
       {rules.rows.map((row, i) => (
         <RuleRowEditor
           key={i}

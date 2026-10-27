@@ -329,8 +329,12 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
 
 - **Codebook editor**: edits the whole document in memory (tree view and
   YAML), validated client-side with the contract's `validateCodebookItems`,
-  then saved as a whole. Unit loops have a distribution editor
-  (`UnitLoopForm.tsx`).
+  then saved as a whole. The toolbar counts errors and warnings; each opens
+  a list in which a click opens the item concerned. Unit loops have a
+  distribution editor (`UnitLoopForm.tsx`): normally just the unitsets;
+  "Different units per coder" turns on branches, where every branch but
+  the last has a condition ("if", "else if") and the last is "otherwise".
+  Forms show few tips (instruction buttons may come later).
 - **Versions and publishing** (as in Qualtrics or REDCap: edit a draft,
   publish it), derived from `GET /codebook` and `GET /deployment`
   (`codebook/versions.ts`):
@@ -355,7 +359,9 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   question's level changes (earlier answers no longer fit).
   Questions are edited per type (`VariableTypeForm.tsx`): the options
   editor (`OptionsEditor.tsx`: label, value, colour, order; nominal values
-  follow the label until edited, ordinal values can be renumbered 1..n;
+  follow the label until edited; ordinal values are 1..n in option order
+  and renumbered when options move, unless "Custom values" is on, which
+  isn't stored: options that aren't 1..n open with it on;
   swipe options show their direction), the level, `multiple`, a layout
   select whose `auto` entry names what auto picks, and for numeric
   questions the range, step presets and break-point labels.

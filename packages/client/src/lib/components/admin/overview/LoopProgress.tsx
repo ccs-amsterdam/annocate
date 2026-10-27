@@ -1,13 +1,13 @@
 import type { DeploymentStatus } from "@annotinder/contracts";
 
 /**
- * Progress per unitset of each loop: complete
+ * Progress per unitset of each loop (once coders are routed to it): complete
  * units (every routed coder finished them, or the saturation rule was met
  * for dynamic sources) out of all units.
  */
 export function LoopProgress({ status }: { status: DeploymentStatus }) {
   if (status.sources.length === 0) {
-    return <p className="text-sm text-muted-foreground">The live codebook has no unit loops.</p>;
+    return <p className="text-sm text-muted-foreground">No coder has reached a unit loop yet.</p>;
   }
   return (
     <ul className="space-y-3">
