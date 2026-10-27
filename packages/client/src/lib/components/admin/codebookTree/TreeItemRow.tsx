@@ -93,8 +93,8 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
       actions={action}
       dimActions={!tree.moving}
       className={cn(
-        tree.selected === key ? "font-bold hover:text-foreground" : "font-thin hover:bg-muted/10",
-        ticked && "bg-primary/10",
+        tree.selected === key ? "" : "font-thin hover:bg-muted/10",
+        ticked && "",
         tree.moving && ticked && "ring-1 ring-primary/40",
       )}
     >
@@ -107,15 +107,17 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
           disabled={inTicked || tree.moving}
           onChange={() => tree.toggleChecked(key)}
           className={cn(
-            "h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary transition-opacity disabled:cursor-default",
-            tree.checked.size === 0 && "opacity-0 group-hover:opacity-60 focus-visible:opacity-100",
+            "h-3.5 w-3.5 mr-px shrink-0 cursor-pointer accent-primary transition-opacity disabled:cursor-default",
+            tree.checked.size === 0 && "opacity-0  group-hover:opacity-60 focus-visible:opacity-100",
           )}
         />
       )}
       <button
         type="button"
         onClick={() => tree.select(key)}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 text-left"
+        className={cn("flex min-w-0 pl-1 flex-1 rounded  cursor-pointer items-center gap-1 text-left",
+
+          tree.selected === key ? "bg-muted" : "")}
       >
         <ItemLabel item={item} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
       </button>
@@ -141,14 +143,14 @@ function ItemLabel({
         // Conditions have no name: shown by their condition, unless they have a label.
         <span
           className={cn(
-            "truncate px-1.5 py-0.5 font-medium text-foreground",
+            "truncate px-1.5 py-0.5 font-medium text-secondary-dark/90",
             parseSimpleCondition(item.condition.script) ? "text-sm" : "font-mono text-xs",
           )}
         >
           if {describeCondition(item.condition)}
         </span>
       ) : (
-        <span className={cn("truncate px-1.5 py-0.5 text-foreground", selected ? "font-semibold" : "font-medium")}>
+        <span className={cn("truncate px-1.5 py-0.5", selected ? "font-semibold" : "font-medium")}>
           {item.type === "unit_loop" ? <LoopTitle loop={item} /> : itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
         </span>
       )}

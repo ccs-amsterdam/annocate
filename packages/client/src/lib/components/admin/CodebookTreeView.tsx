@@ -140,14 +140,14 @@ export function CodebookTreeView({
             </>
           ) : ticked.length > 0 ? (
             <>
-              <span className="font-medium text-foreground">{count} selected</span>
-              <Button size="sm" variant="outline" className="h-7" onClick={() => setMoving(true)}>
+              <span className="px-2 font-medium text-foreground">{count} selected</span>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setMoving(true)}>
                 <Move className="mr-1 h-3.5 w-3.5" /> Move
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-destructive hover:text-destructive"
+                className="h-7 text-destructive hover:text-destructive text-xs"
                 onClick={() => onDelete(ticked) && clear()}
               >
                 <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete

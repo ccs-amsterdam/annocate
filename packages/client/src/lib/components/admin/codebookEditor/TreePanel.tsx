@@ -5,7 +5,7 @@ import type { CodebookDraft } from "./useCodebookDraft";
 /** Left column of the visual editor: the item tree. */
 export function TreePanel({ draft, readOnly }: { draft: CodebookDraft; readOnly: boolean }) {
   return (
-    <div className="flex flex-col gap-2 overflow-auto rounded-xl border border-border bg-card p-3 shadow-xs">
+    <div className="flex flex-col gap-2 overflow-auto rounded-xl border border-border bg-card px-1 pt-3 shadow-xs">
       <div className="flex items-center justify-between border-b border-border/60 pb-2">
         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Codebook Items ({flattenTree(draft.items).length})

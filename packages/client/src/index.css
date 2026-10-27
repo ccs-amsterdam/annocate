@@ -14,9 +14,11 @@
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-dark: var(--primary-dark);
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-dark: var(--secondary-dark);
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground, hsl(0 0% 100%));
@@ -89,11 +91,13 @@
 
     --primary-light: hsl(174 50% 35%);
 
-    --primary-dark: hsl(174 30% 20%);
+    --primary-dark: hsl(174 50% 30%);
 
     --secondary: hsl(39 100% 80%);
 
     --secondary-foreground: hsl(222.2 47.4% 10%);
+
+    --secondary-dark: hsl(39 90% 45%);
 
     --muted: hsl(174 20% 80%);
 
@@ -160,11 +164,13 @@
 
     --primary-light: hsl(174 50% 60%);
 
-    --primary-dark: hsl(174 30% 75%);
+    --primary-dark: hsl(174 50% 50%);
 
     --secondary: hsl(39 45% 30%);
 
     --secondary-foreground: hsl(39 100% 92%);
+
+    --secondary-dark: hsl(39 100% 80%);
 
     --muted: hsl(220 8% 22%);
 
