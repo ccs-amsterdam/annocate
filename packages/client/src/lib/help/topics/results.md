@@ -37,7 +37,7 @@ A row for every unit a coder coded, in the order they coded them.
 | `participant_id` | The coder's participant id, if they have one (e.g. from a panel) |
 | `invitation` | The label of the invitation the coder came in with |
 | `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer |
-| `codebook_id` | The codebook version the answers were given under: see `variables.csv` |
+| `codebook_id` | The codebook version the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
 | one column per question | The answers |
 
 The question columns are in the order of the codebook, named after the

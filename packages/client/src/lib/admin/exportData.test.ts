@@ -105,6 +105,9 @@ describe("data download", () => {
       ["pos", "Positive"],
       ["pos; neg", "Good; neg"],
     ]);
+    // One unit, answered partly under each version: each answer with its own version's labels
+    const mixed = annotationsTable([{ ...row(1, 1, "other", { done: true, skip: false, values: [{ value: "x" }] }, -1), codebookId: 2 }, old], [coder(1)], [], labels);
+    expect(mixed.rows[0][mixed.headers.indexOf("sentiment_label")]).toBe("Positive");
 
     expect(variablesTable(new Map([[2, version("Good")]])).rows).toEqual([
       ["2", "Unit loop 1", "sentiment", "nominal", "?", "pos", "Good"],

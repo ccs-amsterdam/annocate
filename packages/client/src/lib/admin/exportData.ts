@@ -136,12 +136,14 @@ export function questionOrder(items: TopLevelItem[] | undefined): string[] {
  */
 export function annotationsTable(annotations: AnnotationRow[], coders: CoderProgress[], order: string[] = [], labels?: Labels): Table {
   const coderById = new Map(coders.map((c) => [c.id, c]));
-  const byUnitCoder = new Map<string, { first: AnnotationRow; last: Date; values: Map<string, VariableValue> }>();
+  // Per answer also the codebook version it was given under: its labels are the ones its coder saw.
+  const byUnitCoder = new Map<string, { first: AnnotationRow; last: Date; values: Map<string, VariableValue>; codebooks: Map<string, number | null> }>();
   for (const a of annotations) {
     const key = `${a.unitId}/${a.coderId}`;
     let row = byUnitCoder.get(key);
-    if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), values: new Map() }));
+    if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), values: new Map(), codebooks: new Map() }));
     row.values.set(a.variable, a.value);
+    row.codebooks.set(a.variable, a.codebookId);
     if (new Date(a.updated) > row.last) row.last = new Date(a.updated);
   }
   const columns = answerColumns(
@@ -161,7 +163,7 @@ export function annotationsTable(annotations: AnnotationRow[], coders: CoderProg
       "codebook_id",
       ...columns.map(header),
     ],
-    rows: [...byUnitCoder.values()].map(({ first, last, values }) => [
+    rows: [...byUnitCoder.values()].map(({ first, last, values, codebooks }) => [
       first.externalId,
       first.unitVersionId === null ? "" : String(first.unitVersionId),
       String(first.coderId),
@@ -170,7 +172,7 @@ export function annotationsTable(annotations: AnnotationRow[], coders: CoderProg
       time(first.created),
       time(last),
       first.codebookId === null ? "" : String(first.codebookId),
-      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, first.codebookId)),
+      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.codebookId)),
     ]),
   };
 }
