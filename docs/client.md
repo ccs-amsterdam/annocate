@@ -350,10 +350,14 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     label, or "Unit loop <n>" (`architecture.md` §6.1). Until 2026-10-27
     every item had a name; old condition names are dropped on parse, old
     loop names become labels.
-    Adding and moving use the same places: a row's + inserts above it, a
-    loop or condition's list-end button adds to the end of its children,
-    and one row at the bottom adds to the end of the codebook. In move
-    mode those buttons become "move here" buttons.
+    Adding: a row's + (on hover) adds an item below it. Where "below" is
+    ambiguous (the last item of a loop or condition: inside or after it,
+    possibly for several levels; an empty container: inside or after it)
+    its menu asks where first (`addPositions` in `codebook/codebookEdit.ts`).
+    Moving and deleting work on ticked items (a container brings its
+    children), from the toolbar above the tree: Delete asks once; Move
+    shows a "move here" slot at every place all ticked items may go (and
+    where it changes something), and they move there in order.
   - **JSON**: the whole codebook (`CodebookJsonEditor.tsx`). JSON rather
     than YAML: the structure is explicit (no indentation to get right in a
     browser), and the editor (Monaco, bundled and loaded only with the

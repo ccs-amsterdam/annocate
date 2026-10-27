@@ -1,9 +1,10 @@
+import { Fragment } from "react";
 import { cn } from "cn";
+import type { TreePosition } from "../../../codebook/codebookEdit";
 import { TreeItemRow } from "./TreeItemRow";
-import { ListEndRow } from "./ListEndRow";
 import { ITEM_TYPES } from "./itemTypes";
 import { InsertionLine } from "./TreeRow";
-import { useCodebookTree } from "./context";
+import { samePosition, useCodebookTree } from "./context";
 import { getChildren, getItemKey, type TreeNode } from "./utils";
 
 interface TreeListProps {
@@ -13,38 +14,80 @@ interface TreeListProps {
 }
 
 /**
- * Renders a list of items (recursing into children). The codebook's list
- * ends with a ListEndRow; a container's list ends at the container's own
- * "add to the end" button, on its row.
+ * Renders a list of items (recursing into children). While moving, a
+ * "move here" slot shows at every place the ticked items may go: before
+ * each item and at the end of each list.
  */
 export function TreeList({ nodes, parent }: TreeListProps) {
+  const end: TreePosition = { into: parent === null ? null : getItemKey(parent) };
   return (
     <div className="flex flex-col">
       {nodes.map((node) => (
-        <TreeNodeView key={getItemKey(node)} item={node} />
+        <Fragment key={getItemKey(node)}>
+          <MoveSlot position={{ before: getItemKey(node) }} />
+          <TreeNodeView item={node} />
+        </Fragment>
       ))}
-      {parent === null && <ListEndRow />}
+      <MoveSlot position={end} />
+      <PreviewLine position={end} />
     </div>
   );
 }
 
 /**
- * Containers render as a tinted block holding their own row, their children and
- * their end row. The block's left border doubles as the indent guide.
+ * Containers render as a tinted block holding their own row and their
+ * children. The block's left border doubles as the indent guide.
  */
 function TreeNodeView({ item }: { item: TreeNode }) {
-  const { endPreview } = useCodebookTree();
   const children = getChildren(item);
-  if (!children) return <TreeItemRow item={item} />;
-
+  const after: TreePosition = { after: getItemKey(item) };
+  if (!children) {
+    return (
+      <>
+        <TreeItemRow item={item} />
+        <PreviewLine position={after} />
+      </>
+    );
+  }
   return (
-    <div className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES[item.type].blockClass)}>
-      <TreeItemRow item={item} />
-      <div className="pl-6">
-        <TreeList nodes={children} parent={item} />
-        {/* Where "add to the end" / "move to the end" of this container goes. */}
-        <div className="relative h-0">{endPreview === getItemKey(item) && <InsertionLine />}</div>
+    <>
+      <div className={cn("my-0.5 rounded-md pb-1", ITEM_TYPES[item.type].blockClass)}>
+        <TreeItemRow item={item} />
+        <div className="pl-6">
+          <TreeList nodes={children} parent={item} />
+        </div>
       </div>
+      <PreviewLine position={after} />
+    </>
+  );
+}
+
+/** Where the open add menu will put the new item. */
+function PreviewLine({ position }: { position: TreePosition }) {
+  const { preview } = useCodebookTree();
+  if (!samePosition(preview, position)) return null;
+  return (
+    <div className="relative h-0">
+      <InsertionLine />
     </div>
+  );
+}
+
+/** A place the ticked items can move to (only while moving, only where they may go). */
+function MoveSlot({ position }: { position: TreePosition }) {
+  const tree = useCodebookTree();
+  if (!tree.moving || !tree.canMoveTo(position)) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => tree.moveTo(position)}
+      className="group/slot flex h-5 w-full cursor-pointer items-center gap-2 px-2"
+    >
+      <span className="h-px flex-1 border-t border-dashed border-primary/40 group-hover/slot:border-solid group-hover/slot:border-primary" />
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/60 group-hover/slot:text-primary">
+        Move here
+      </span>
+      <span className="h-px flex-1 border-t border-dashed border-primary/40 group-hover/slot:border-solid group-hover/slot:border-primary" />
+    </button>
   );
 }

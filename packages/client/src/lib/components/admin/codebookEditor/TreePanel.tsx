@@ -14,7 +14,7 @@ export function TreePanel({ draft, readOnly }: { draft: CodebookDraft; readOnly:
 
       {draft.items.length === 0 && (
         <p className="p-4 text-center text-sm text-muted-foreground">
-          {readOnly ? "This version has no items." : "No items yet. Add an item below to get started."}
+          {readOnly ? "This version has no items." : "No items yet."}
         </p>
       )}
 
@@ -23,11 +23,9 @@ export function TreePanel({ draft, readOnly }: { draft: CodebookDraft; readOnly:
           items={draft.items}
           selected={draft.selected}
           onSelect={draft.select}
-          onInsertBefore={draft.insertBefore}
-          onInsertAtEnd={draft.insertAtEnd}
+          onAdd={draft.insertAt}
           onDelete={draft.remove}
-          onMoveItem={draft.move}
-          onMoveToRootEnd={draft.moveToEnd}
+          onMove={draft.move}
           validationIssues={draft.validationErrors}
           changed={draft.changed}
           readOnly={readOnly}

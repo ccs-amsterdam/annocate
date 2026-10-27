@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import type { TopLevelItem, CodebookItem } from "@annotinder/contracts";
 import {
+  addPositions,
+  canMoveAllTo,
   canMoveItemTo,
+  insertAt,
+  moveAllTo,
+  moveChanges,
+  topmostSelected,
   canMoveToRootEnd,
   deleteItem,
   indentItem,
@@ -224,6 +230,52 @@ describe("codebookEdit", () => {
       } as unknown as TopLevelItem);
       expect(flattenTree(next).map(keyOf)).toEqual(["p1", "child"]);
       expect(next[0]).toMatchObject({ label: "relabeled", condition: { script: "$var.x.value > 1" } });
+    });
+  });
+
+  describe("positions, selections and moving several items", () => {
+    function q(name: string): CodebookItem {
+      return { type: "question", name, variable: { type: "confirm", question: "?" } } as CodebookItem;
+    }
+    // a, loop[ c[ x ] ], b
+    const tree = (): TopLevelItem[] => [
+      q("a") as TopLevelItem,
+      { _key: "loop", type: "unit_loop", units: [{ mode: "all", unitset: "all" }], layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
+      q("b") as TopLevelItem,
+      cond("empty"),
+    ];
+    const order = (items: TopLevelItem[]) => flattenTree(items).map((i) => keyOf(i) ?? (i as { name?: string }).name);
+
+    it("adds after an item; asks where for the last item of containers and empty containers", () => {
+      expect(addPositions(tree(), "a")).toEqual([{ after: "a" }]);
+      expect(addPositions(tree(), "x")).toEqual([{ after: "x" }, { after: "c" }, { after: "loop" }]);
+      expect(addPositions(tree(), "empty")).toEqual([{ into: "empty" }, { after: "empty" }]);
+    });
+
+    it("inserts after an item", () => {
+      expect(order(insertAt(tree(), { after: "c" }, q("new")))).toEqual(["a", "loop", "c", "x", "new", "b", "empty"]);
+    });
+
+    it("keeps the topmost ticked items in codebook order", () => {
+      expect(topmostSelected(tree(), new Set(["b", "x", "loop"]))).toEqual(["loop", "b"]);
+    });
+
+    it("moves several items together, in order", () => {
+      expect(order(moveAllTo(tree(), ["a", "b"], { into: "empty" }))).toEqual(["loop", "c", "x", "empty", "a", "b"]);
+      expect(order(moveAllTo(tree(), ["b", "empty"], { before: "a" }))).toEqual(["b", "empty", "a", "loop", "c", "x"]);
+      expect(order(moveAllTo(tree(), ["a"], { into: null }))).toEqual(["loop", "c", "x", "b", "empty", "a"]);
+    });
+
+    it("does not move items into themselves or a loop into a loop", () => {
+      expect(canMoveAllTo(tree(), ["loop"], { into: "c" })).toBe(false);
+      expect(canMoveAllTo(tree(), ["c"], { before: "x" })).toBe(false);
+      expect(canMoveAllTo(tree(), ["a", "b"], { into: "c" })).toBe(true);
+      expect(canMoveAllTo(tree(), [], { into: null })).toBe(false);
+    });
+
+    it("knows a move right after the items themselves changes nothing", () => {
+      expect(moveChanges(tree(), ["a"], { before: "loop" })).toBe(false);
+      expect(moveChanges(tree(), ["a"], { before: "b" })).toBe(true);
     });
   });
 });

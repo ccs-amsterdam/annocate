@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CodebookTreeView } from "./CodebookTreeView";
 import type { TopLevelItem } from "@annotinder/contracts";
+import { ensureKeys } from "../../codebook/codebookEdit";
 
 describe("CodebookTreeView", () => {
-  const dummyItems: TopLevelItem[] = [
+  // As in the editor: every item has a key (a loop has no name).
+  const dummyItems: TopLevelItem[] = ensureKeys([
     {
       type: "user_variable",
       name: "consent",
@@ -23,37 +25,33 @@ describe("CodebookTreeView", () => {
         },
       ],
     },
-  ];
+  ] as TopLevelItem[]);
 
-  it("renders tree items with Move button and icons without throwing", () => {
-    const onSelect = vi.fn();
-    const onInsertBefore = vi.fn();
-    const onInsertAtEnd = vi.fn();
-    const onDelete = vi.fn();
-    const onMoveItem = vi.fn();
-    const onMoveToRootEnd = vi.fn();
-
+  it("renders the items, with a + and a tick box per row", () => {
     const html = renderToStaticMarkup(
       <CodebookTreeView
         items={dummyItems}
         selected="consent"
-        onSelect={onSelect}
-        onInsertBefore={onInsertBefore}
-        onInsertAtEnd={onInsertAtEnd}
-        onDelete={onDelete}
-        onMoveItem={onMoveItem}
-        onMoveToRootEnd={onMoveToRootEnd}
+        onSelect={vi.fn()}
+        onAdd={vi.fn()}
+        onDelete={vi.fn()}
+        onMove={vi.fn()}
       />,
     );
 
     expect(html).toContain("consent");
     expect(html).toContain("main_loop");
     expect(html).toContain("sentiment");
-    expect(html).toContain("Insert above consent");
-    expect(html).toContain("Move item");
-    expect(html).toContain("Add to the end of the codebook");
-    // A container adds to the end of its children from its own row: no end row per list.
-    expect(html).toContain("Add to the end of main_loop");
-    expect(html.match(/add item/g)).toHaveLength(1);
+    expect(html.match(/Add an item below/g)).toHaveLength(3);
+    expect(html).toContain('aria-label="Select consent"');
+    expect(html).toContain("tick items to move or delete");
+  });
+
+  it("has no actions on a read-only codebook", () => {
+    const html = renderToStaticMarkup(
+      <CodebookTreeView items={dummyItems} selected={null} onSelect={vi.fn()} onAdd={vi.fn()} onDelete={vi.fn()} onMove={vi.fn()} readOnly />,
+    );
+    expect(html).not.toContain("Add an item below");
+    expect(html).not.toContain("checkbox");
   });
 });

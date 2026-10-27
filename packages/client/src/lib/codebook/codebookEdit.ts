@@ -503,3 +503,137 @@ export function updateItem(
 
   return asItems(updateInNodes(asNodes(items)));
 }
+
+/**
+ * A place in the tree: right before or after an item, or at the end of a
+ * container's children (`into: null`: the end of the codebook).
+ */
+export type TreePosition = { before: string } | { after: string } | { into: string | null };
+
+const idOf = (item: CodebookItem | TopLevelItem | InLoopItem) => keyOf(item) || itemName(item) || "";
+
+/**
+ * Where a row's "add" can put a new item: after it, and where that is
+ * ambiguous, the other places that are "below this row" too: inside an
+ * empty container, and after each container the item is the last child of
+ * (the last question of a condition in a loop: after the question, after
+ * the condition, after the loop).
+ */
+export function addPositions(items: TopLevelItem[], key: string): TreePosition[] {
+  const item = findItem(items, key);
+  if (!item) return [];
+  const positions: TreePosition[] = [];
+  if ("children" in item && Array.isArray(item.children) && item.children.length === 0) positions.push({ into: key });
+  positions.push({ after: key });
+  for (let parent = findParent(items, key), child = key; parent; parent = findParent(items, child)) {
+    const last = parent.children[parent.children.length - 1];
+    if (!last || idOf(last) !== child) break;
+    child = idOf(parent);
+    positions.push({ after: child });
+  }
+  return positions;
+}
+
+/** Whether new items at a position are inside a unit loop. */
+export function positionInLoop(items: TopLevelItem[], position: TreePosition): boolean {
+  if ("into" in position) {
+    if (position.into === null) return false;
+    const container = findItem(items, position.into);
+    return container?.type === "unit_loop" || isInsideUnitLoop(items, position.into);
+  }
+  return isInsideUnitLoop(items, "before" in position ? position.before : position.after);
+}
+
+/** A new item inserted at a position. */
+export function insertAt(items: TopLevelItem[], position: TreePosition, newItem: CodebookItem): TopLevelItem[] {
+  if ("into" in position) return insertItem(items, position.into, newItem);
+  if ("before" in position) return insertItemBefore(items, position.before, newItem);
+  const target = position.after;
+  function insertInNodes(nodes: Node[]): Node[] {
+    const idx = nodes.findIndex((n) => n._key === target || n.name === target);
+    if (idx !== -1) return [...nodes.slice(0, idx + 1), ...asNodes([newItem]), ...nodes.slice(idx + 1)];
+    return nodes.map((node) => (hasChildren(node) ? { ...node, children: insertInNodes(node.children) } : node));
+  }
+  return asItems(insertInNodes(asNodes(items)));
+}
+
+/**
+ * The items of a selection that are not inside another selected item (a
+ * selected container brings its children), in codebook order.
+ */
+export function topmostSelected(items: TopLevelItem[], keys: ReadonlySet<string>): string[] {
+  const result: string[] = [];
+  const walk = (nodes: (TopLevelItem | InLoopItem)[]) => {
+    for (const node of nodes) {
+      if (keys.has(idOf(node))) result.push(idOf(node));
+      else walk(childrenOf(node));
+    }
+  };
+  walk(items);
+  return result;
+}
+
+/** Whether an item is selected itself or is inside a selected item. */
+export function isInSelection(items: TopLevelItem[], keys: ReadonlySet<string>, key: string): boolean {
+  for (let k: string | null = key; k; ) {
+    if (keys.has(k)) return true;
+    const parent = findParent(items, k);
+    k = parent ? idOf(parent) : null;
+  }
+  return false;
+}
+
+/**
+ * Whether all of `sources` (topmost selected items) can move to a position:
+ * the position is not in or right at one of them, and each may be there
+ * (a loop not in a loop, span questions only in a loop, ...).
+ */
+export function canMoveAllTo(items: TopLevelItem[], sources: string[], position: TreePosition): boolean {
+  if (sources.length === 0) return false;
+  const selection = new Set(sources);
+  if ("into" in position) {
+    if (position.into === null) {
+      const last = items[items.length - 1];
+      return sources.every((s) => canMoveToRootEnd(items, s) || (last && idOf(last) === s));
+    }
+    if (isInSelection(items, selection, position.into)) return false;
+    return sources.every((s) => canMoveItemTo(items, s, position.into as string, "inside"));
+  }
+  const target = "before" in position ? position.before : position.after;
+  if (isInSelection(items, selection, target)) return false;
+  const side = "before" in position ? "before" : "after";
+  return sources.every((s) => canMoveItemTo(items, s, target, side));
+}
+
+/** The order and nesting of the items, by key: what a move changes. */
+function shape(items: (TopLevelItem | InLoopItem)[]): string {
+  return items.map((i) => `${idOf(i)}(${shape(childrenOf(i))})`).join(",");
+}
+
+/** Whether moving items to a position changes anything (right after themselves it does not). */
+export function moveChanges(items: TopLevelItem[], sources: string[], position: TreePosition): boolean {
+  return shape(moveAllTo(items, sources, position)) !== shape(items);
+}
+
+/** Items (topmost selected, in codebook order) moved to a position, keeping their order. */
+export function moveAllTo(items: TopLevelItem[], sources: string[], position: TreePosition): TopLevelItem[] {
+  if ("into" in position) {
+    return sources.reduce(
+      (acc, s) => (position.into === null ? moveToRootEnd(acc, s) : moveItemTo(acc, s, position.into, "inside")),
+      items,
+    );
+  }
+  if ("before" in position) return sources.reduce((acc, s) => moveItemTo(acc, s, position.before, "before"), items);
+  // After a target: each next one after the one moved before it.
+  let after = position.after;
+  return sources.reduce((acc, s) => {
+    const next = moveItemTo(acc, s, after, "after");
+    after = s;
+    return next;
+  }, items);
+}
+
+/** Items (and what is inside them) deleted. */
+export function deleteItems(items: TopLevelItem[], keys: string[]): TopLevelItem[] {
+  return keys.reduce(deleteItem, items);
+}

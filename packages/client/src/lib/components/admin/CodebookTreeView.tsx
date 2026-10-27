@@ -1,20 +1,29 @@
 import { useEffect, useState } from "react";
+import { Move, Trash2, X } from "lucide-react";
 import type { CodebookValidationIssue, TopLevelItem } from "@annotinder/contracts";
-import { canMoveItemTo, canMoveToRootEnd, type MoveTargetPosition } from "../../codebook/codebookEdit";
+import {
+  addPositions,
+  canMoveAllTo,
+  isInSelection,
+  moveChanges,
+  topmostSelected,
+  type TreePosition,
+} from "../../codebook/codebookEdit";
 import { issueIsAbout } from "../../codebook/tree";
+import { Button } from "@/components/ui/button";
 import { CodebookTreeProvider, type CodebookTreeState } from "./codebookTree/context";
 import { TreeList } from "./codebookTree/TreeList";
-import { getItemKey, type ItemType } from "./codebookTree/utils";
+import { AddItemMenu } from "./codebookTree/AddItemMenu";
+import { getItemKey, insertableTypesAt, type ItemType } from "./codebookTree/utils";
 
 interface CodebookTreeViewProps {
   items: TopLevelItem[];
   selected: string | null;
   onSelect: (identifier: string) => void;
-  onInsertBefore: (targetIdentifier: string, type: ItemType) => void;
-  onInsertAtEnd: (parentIdentifier: string | null, type: ItemType) => void;
-  onDelete: (identifier: string) => void;
-  onMoveItem: (source: string, target: string, position: MoveTargetPosition) => void;
-  onMoveToRootEnd: (source: string) => void;
+  onAdd: (position: TreePosition, type: ItemType) => void;
+  /** Deletes items (asking first); returns whether they were deleted. */
+  onDelete: (keys: string[]) => boolean;
+  onMove: (keys: string[], position: TreePosition) => void;
   validationIssues?: CodebookValidationIssue[];
   /** Keys of items with unsaved changes (marked in the tree). */
   changed?: ReadonlySet<string>;
@@ -25,89 +34,131 @@ interface CodebookTreeViewProps {
 /**
  * Hierarchical view of the codebook items.
  *
- * Every list has N items and N+1 positions. Each item row's + targets the
- * position *above* itself; a loop or condition's list-end button the
- * position after its last child; the codebook's end row the position after
- * its last item. In move mode the same buttons, at the same places, become
- * the move targets.
+ * - Adding: each row has a + (on hover) that adds below it. Where "below"
+ *   is ambiguous (the last item of a loop: inside or after the loop; an
+ *   empty loop or condition: inside or after it) its menu asks where first.
+ * - Moving and deleting: tick items (a container brings its children),
+ *   then Move or Delete in the toolbar. Move shows a "move here" slot at
+ *   every place all ticked items may go.
  *
  * Components (see ./codebookTree):
- * - TreeList     recursive list of items (the codebook's closed by a ListEndRow)
- * - TreeItemRow  an item row (EditItemRow / MoveItemRow)
- * - ListEndRow   "add item" / "Move to the end" row of the codebook
+ * - TreeList     recursive list of items, with the move slots
+ * - TreeItemRow  an item row: tick box, item, +
  * - TreeRow      shared fixed-height row layout + insertion line
- * - AddItemMenu  "+" button with item type menu
+ * - AddItemMenu  "+" button: where (if ambiguous), then item type
  */
 export function CodebookTreeView({
   items,
   selected,
   onSelect,
-  onInsertBefore,
-  onInsertAtEnd,
+  onAdd,
   onDelete,
-  onMoveItem,
-  onMoveToRootEnd,
+  onMove,
   validationIssues = [],
   changed,
   readOnly = false,
 }: CodebookTreeViewProps) {
-  const [movingKey, setMovingKey] = useState<string | null>(null);
-  const [endPreview, setEndPreview] = useState<string | null>(null);
-  const cancelMove = () => setMovingKey(null);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  const [moving, setMoving] = useState(false);
+  const [preview, setPreview] = useState<TreePosition | null>(null);
+
+  // Ticked items that still exist (undo can remove them), not inside another ticked one.
+  const ticked = topmostSelected(items, checked);
+  const clear = () => {
+    setChecked(new Set());
+    setMoving(false);
+  };
 
   useEffect(() => {
-    if (movingKey === null) return;
+    if (!moving && checked.size === 0) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setMovingKey(null);
+      if (e.key !== "Escape") return;
+      if (moving) setMoving(false);
+      else setChecked(new Set());
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [movingKey]);
+  }, [moving, checked.size]);
 
   const state: CodebookTreeState = {
     items,
     selected,
-    movingKey,
     readOnly,
-
     select: onSelect,
-    remove: onDelete,
-    insertBefore: onInsertBefore,
-    insertAtEnd: onInsertAtEnd,
 
-    startMove: setMovingKey,
-    cancelMove,
-    canMoveBefore: (targetKey) =>
-      movingKey !== null && canMoveItemTo(items, movingKey, targetKey, "before"),
-    moveBefore: (targetKey) => {
-      if (movingKey !== null) onMoveItem(movingKey, targetKey, "before");
-      cancelMove();
+    checked,
+    toggleChecked: (key) => {
+      const next = new Set(checked);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      setChecked(next);
     },
-    canMoveToEnd: (parentKey) => {
-      if (movingKey === null) return false;
-      if (parentKey === null) return canMoveToRootEnd(items, movingKey);
-      return canMoveItemTo(items, movingKey, parentKey, "inside");
-    },
-    moveToEnd: (parentKey) => {
-      if (movingKey !== null) {
-        if (parentKey === null) onMoveToRootEnd(movingKey);
-        else onMoveItem(movingKey, parentKey, "inside");
-      }
-      cancelMove();
+    isChecked: (key) => isInSelection(items, checked, key),
+
+    addPositions: (key) => addPositions(items, key),
+    addAt: (position, type) => {
+      setPreview(null);
+      onAdd(position, type);
     },
 
-    endPreview,
-    setEndPreview,
+    moving,
+    canMoveTo: (position) => canMoveAllTo(items, ticked, position) && moveChanges(items, ticked, position),
+    moveTo: (position) => {
+      onMove(ticked, position);
+      clear();
+    },
+
+    preview,
+    setPreview,
 
     isChanged: (item) => changed?.has(getItemKey(item)) ?? false,
-
     getIssue: (item) => validationIssues.find((issue) => issueIsAbout(items, issue, item))?.message ?? null,
   };
 
+  const end: TreePosition = { into: null };
+  const count = ticked.length === 1 ? "1 item" : `${ticked.length} items`;
+
   return (
     <CodebookTreeProvider value={state}>
-      {/* In move mode, clicking anywhere that isn't a target cancels the move */}
-      <div className="flex flex-col p-1 pb-3" onClick={movingKey !== null ? cancelMove : undefined}>
+      {!readOnly && (
+        <div className="sticky top-0 z-10 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
+          {moving ? (
+            <>
+              <span className="font-medium text-primary">Click &ldquo;Move here&rdquo; where {count} should go</span>
+              <Button size="sm" variant="ghost" className="ml-auto h-7" onClick={() => setMoving(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : ticked.length > 0 ? (
+            <>
+              <span className="font-medium text-foreground">{count} selected</span>
+              <Button size="sm" variant="outline" className="h-7" onClick={() => setMoving(true)}>
+                <Move className="mr-1 h-3.5 w-3.5" /> Move
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-destructive hover:text-destructive"
+                onClick={() => onDelete(ticked) && clear()}
+              >
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+              </Button>
+              <Button size="sm" variant="ghost" className="ml-auto h-7" title="Clear selection (Esc)" onClick={clear}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          ) : items.length > 0 ? (
+            <span>Hover an item to add one below it, or tick items to move or delete them.</span>
+          ) : (
+            <AddItemMenu
+              label="Add item"
+              options={[{ position: end, label: "First item", types: insertableTypesAt(items, end) }]}
+              onAdd={state.addAt}
+            />
+          )}
+        </div>
+      )}
+      <div className="flex flex-col p-1 pb-3">
         <TreeList nodes={items} parent={null} />
       </div>
     </CodebookTreeProvider>

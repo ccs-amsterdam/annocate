@@ -1,87 +1,135 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { LucideListEnd, Plus, type LucideIcon } from "lucide-react";
+import { ChevronLeft, CornerDownRight, Plus } from "lucide-react";
 import { cn } from "cn";
+import type { TreePosition } from "../../../codebook/codebookEdit";
 import { ActionButton } from "./TreeRow";
 import { ITEM_TYPES } from "./itemTypes";
 import type { ItemType } from "./utils";
 
-interface AddItemMenuProps {
-  /** Used as tooltip and menu header, e.g. "Insert above question_1". */
-  title: string;
-  allowedTypes: ItemType[];
-  onAdd: (type: ItemType) => void;
-  /**
-   * Called with true while the user is hovering the + button or has the menu
-   * open, so the row can preview where the item will be inserted.
-   */
-  onActiveChange?: (active: boolean) => void;
-  /**
-   * Render as a small inline "+ label" button (opening its menu to the right)
-   * instead of an icon in the row's action column.
-   */
-  label?: string;
-  /** The action-column button's icon (default +). */
-  icon?: LucideIcon;
+/** A place a new item can go, with the item types allowed there. */
+export interface AddOption {
+  position: TreePosition;
+  /** E.g. "After topic", "Inside Unit loop 1". */
+  label: string;
+  types: ItemType[];
 }
 
-/** A "+" button that opens a menu for picking the type of the new item. */
-export function AddItemMenu({ title, allowedTypes, onAdd, onActiveChange, label, icon = Plus }: AddItemMenuProps) {
+interface AddItemMenuProps {
+  options: AddOption[];
+  onAdd: (position: TreePosition, type: ItemType) => void;
+  /** The position the menu points at (hovered or chosen), to show where the item goes; null when closed. */
+  onPreview?: (position: TreePosition | null) => void;
+  /** Render as a "+ label" button instead of an icon in the row's action column. */
+  label?: string;
+  /** Tooltip of the icon button. */
+  title?: string;
+}
+
+/**
+ * A "+" button that opens a menu for the new item: where it goes (only
+ * when there is more than one place: the last item of a loop can add
+ * inside or after the loop), then its type.
+ */
+export function AddItemMenu({ options, onAdd, onPreview, label, title = "Add an item below" }: AddItemMenuProps) {
   const [open, setOpen] = useState(false);
-  const [hovered, setHovered] = useState(false);
+  const [chosen, setChosen] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const active = open || hovered;
+  const single = options.length === 1;
+  const current = single ? 0 : chosen;
+  const pointed = hovered ?? current;
+  const previewed = open && pointed !== null ? options[pointed]?.position : null;
   useEffect(() => {
-    onActiveChange?.(active);
-  }, [active, onActiveChange]);
+    onPreview?.(previewed ?? null);
+    // Positions are new objects every render: compare by identity of the option.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pointed]);
 
-  useCloseOnOutsideClick(containerRef, open, () => setOpen(false));
-
-  function handleSelect(type: ItemType) {
+  function close() {
     setOpen(false);
-    onAdd(type);
+    setChosen(null);
+    setHovered(null);
   }
+  useCloseOnOutsideClick(containerRef, open, close);
 
-  const triggerProps = {
-    title,
-    onClick: () => setOpen((o) => !o),
-    onMouseEnter: () => setHovered(true),
-    onMouseLeave: () => setHovered(false),
-  };
+  if (options.length === 0) return null;
+  const option = current === null ? null : options[current];
 
   return (
-    <div ref={containerRef} className={`relative ${label === undefined ? "" : "w-full flex"}`}>
+    <div ref={containerRef} className="relative">
       {label === undefined ? (
-
-        <ActionButton icon={icon} {...triggerProps} />
+        <ActionButton icon={Plus} title={title} onClick={() => (open ? close() : setOpen(true))} />
       ) : (
         <button
           type="button"
-          className={cn(
-            "flex cursor-pointer items-center gap-2.5 rounded leading-4 text-muted-foreground/60 transition-colors hover:text-foreground",
-            open && "text-foreground",
-          )}
-          {...triggerProps}
+          onClick={() => (open ? close() : setOpen(true))}
+          className="flex cursor-pointer items-center gap-1.5 rounded px-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <LucideListEnd className="h-4 w-4 m-auto" />
-          {label}
+          <Plus className="h-4 w-4" /> {label}
         </button>
       )}
       {open && (
         <div
           className={cn(
-            "absolute top-full z-50 mt-1 min-w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95",
+            "absolute top-full z-50 mt-1 min-w-56 max-w-80 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95",
             label === undefined ? "right-0" : "left-0",
           )}
         >
-          <div className="truncate px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {title}
-          </div>
-          {allowedTypes.map((type) => (
-            <TypeOption key={type} type={type} onClick={() => handleSelect(type)} />
-          ))}
+          {option === null ? (
+            <>
+              <MenuHeader>Where?</MenuHeader>
+              {options.map((o, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setChosen(i)}
+                  onMouseEnter={() => setHovered(i)}
+                  onMouseLeave={() => setHovered(null)}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium hover:bg-muted"
+                >
+                  <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-primary" style={{ marginLeft: `${i * 6}px` }} />
+                  <span className="truncate">{o.label}</span>
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1">
+                {!single && (
+                  <button
+                    type="button"
+                    title="Back"
+                    onClick={() => setChosen(null)}
+                    className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <MenuHeader>{option.label}</MenuHeader>
+              </div>
+              {option.types.map((type) => (
+                <TypeOption
+                  key={type}
+                  type={type}
+                  onClick={() => {
+                    close();
+                    onAdd(option.position, type);
+                  }}
+                />
+              ))}
+            </>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function MenuHeader({ children }: { children: string }) {
+  return (
+    <div className="truncate px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      {children}
     </div>
   );
 }
@@ -103,11 +151,7 @@ function TypeOption({ type, onClick }: { type: ItemType; onClick: () => void }) 
   );
 }
 
-function useCloseOnOutsideClick(
-  ref: RefObject<HTMLElement | null>,
-  enabled: boolean,
-  onClose: () => void,
-) {
+function useCloseOnOutsideClick(ref: RefObject<HTMLElement | null>, enabled: boolean, onClose: () => void) {
   useEffect(() => {
     if (!enabled) return;
 

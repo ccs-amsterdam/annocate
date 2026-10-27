@@ -1,5 +1,5 @@
 import { itemName, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
-import { isInsideUnitLoop } from "../../../codebook/tree";
+import { positionInLoop, type TreePosition } from "../../../codebook/codebookEdit";
 
 export type TreeNode = TopLevelItem | InLoopItem;
 export type ItemType = CodebookItem["type"];
@@ -14,16 +14,7 @@ export function getChildren(item: TreeNode): TreeNode[] | null {
   return null;
 }
 
-/** Item types that can be created inside the given container (null = codebook root). */
-export function insertableTypesIn(items: TopLevelItem[], container: TreeNode | null): ItemType[] {
-  const inLoop =
-    container !== null &&
-    (container.type === "unit_loop" || isInsideUnitLoop(items, getItemKey(container)));
-  return inLoop ? ["question", "condition"] : ["question", "unit_loop", "condition"];
-}
-
-/** Item types that can be created as a sibling of the given item. */
-export function insertableTypesNextTo(items: TopLevelItem[], item: TreeNode): ItemType[] {
-  const inLoop = isInsideUnitLoop(items, getItemKey(item));
-  return inLoop ? ["question", "condition"] : ["question", "unit_loop", "condition"];
+/** Item types that can be created at a position (no loops in a loop). */
+export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
+  return positionInLoop(items, position) ? ["question", "condition"] : ["question", "unit_loop", "condition"];
 }

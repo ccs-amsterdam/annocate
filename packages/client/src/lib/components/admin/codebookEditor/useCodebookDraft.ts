@@ -10,17 +10,15 @@ import {
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCreateCodebookMutation, useUpdateCodebookMutation } from "../../../admin/queries";
 import {
-  deleteItem,
+  deleteItems,
   ensureKeys,
   generateKey,
   getUniqueItemName,
-  insertItem,
-  insertItemBefore,
-  moveItemTo,
-  moveToRootEnd,
+  insertAt as insertAtPosition,
+  moveAllTo,
   stripKeys,
   updateItem,
-  type MoveTargetPosition,
+  type TreePosition,
 } from "../../../codebook/codebookEdit";
 import { findItem } from "../../../codebook/tree";
 import { carryKeys } from "../../../codebook/itemShape";
@@ -130,30 +128,26 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
     return { ...defaultItemForType(type, name, childName), _key: generateKey() };
   }
 
-  function insertBefore(targetKey: string, type: ItemType) {
+  function insertAt(position: TreePosition, type: ItemType) {
     const item = createItem(type);
-    setItems(ensureKeys(insertItemBefore(items, targetKey, item)));
+    setItems(ensureKeys(insertAtPosition(items, position, item)));
     setSelected(item._key);
   }
 
-  function insertAtEnd(parentKey: string | null, type: ItemType) {
-    const item = createItem(type);
-    setItems(ensureKeys(insertItem(items, parentKey, item)));
-    setSelected(item._key);
+  /** Items (and what is inside them) deleted, after asking. */
+  function remove(keys: string[]): boolean {
+    if (keys.length === 0) return false;
+    const what = keys.length === 1 ? "this item" : `these ${keys.length} items`;
+    if (!confirm(`Delete ${what} and everything inside?`)) return false;
+    const next = deleteItems(items, keys);
+    setItems(next);
+    if (selected !== null && !findItem(next, selected)) setSelected(null);
+    return true;
   }
 
-  function remove(key: string) {
-    if (!confirm("Delete this item and all of its children?")) return;
-    setItems(deleteItem(items, key));
-    if (selected === key) setSelected(null);
-  }
-
-  function move(source: string, target: string, position: MoveTargetPosition) {
-    setItems(moveItemTo(items, source, target, position));
-  }
-
-  function moveToEnd(source: string) {
-    setItems(moveToRootEnd(items, source));
+  /** Items (topmost selected, in codebook order) moved to a position. */
+  function move(keys: string[], position: TreePosition) {
+    setItems(moveAllTo(items, keys, position));
   }
 
   function update(key: string, next: CodebookItem) {
@@ -219,11 +213,9 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
     saving: createCodebook.isPending || updateCodebook.isPending,
     saveError: conflict ? null : (createCodebook.error ?? updateCodebook.error),
     select: setSelected,
-    insertBefore,
-    insertAtEnd,
+    insertAt,
     remove,
     move,
-    moveToEnd,
     update,
     replaceAll,
     undo: undoChange,

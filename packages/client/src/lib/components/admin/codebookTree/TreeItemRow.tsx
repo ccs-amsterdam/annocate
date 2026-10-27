@@ -1,80 +1,89 @@
-import { createElement, useState } from "react";
-import { AlertCircle, ArrowUpToLine, ListEnd, Move, Trash2, X } from "lucide-react";
+import { createElement } from "react";
+import { AlertCircle } from "lucide-react";
 import { cn } from "cn";
 import { useCodebookTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
-import { AddItemMenu } from "./AddItemMenu";
-import { ActionButton, TreeRow } from "./TreeRow";
-import { getChildren, getItemKey, insertableTypesIn, insertableTypesNextTo, type TreeNode } from "./utils";
-import { loopTitle, parseSimpleCondition, unitLoops, type UnitLoopItem } from "@annotinder/contracts";
+import { AddItemMenu, type AddOption } from "./AddItemMenu";
+import { TreeRow } from "./TreeRow";
+import { getItemKey, insertableTypesAt, type TreeNode } from "./utils";
+import {
+  loopTitle,
+  parseSimpleCondition,
+  unitLoops,
+  type TopLevelItem,
+  type UnitLoopItem,
+} from "@annotinder/contracts";
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
+import type { TreePosition } from "../../../codebook/codebookEdit";
 import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
-import { loopUnitsSummary } from "../../../codebook/tree";
+import { findItem, loopUnitsSummary } from "../../../codebook/tree";
 
-interface TreeItemRowProps {
-  item: TreeNode;
+/** How an item is called in menus: its title, a condition by its condition, a loop by its position. */
+export function rowTitle(items: TopLevelItem[], item: TreeNode): string {
+  if (item.type === "condition" && !item.label?.trim()) return `if ${describeCondition(item.condition)}`;
+  if (item.type === "unit_loop") {
+    const key = unitLoops(items).find((l) => l.loop === item)?.key ?? "";
+    return loopTitle(item, key);
+  }
+  return itemTitle(item) || "(unnamed)";
 }
 
-export function TreeItemRow({ item }: TreeItemRowProps) {
-  const { movingKey } = useCodebookTree();
-  if (movingKey === null) return <EditItemRow item={item} />;
-  return <MoveItemRow item={item} />;
-}
-
-/** How a container is called in "add to the end of ...": a condition's title is a whole condition. */
-function containerName(item: TreeNode): string {
-  return item.type === "condition" ? "this condition" : itemTitle(item) || "this container";
+/** How a position is called in the add menu. */
+export function positionLabel(items: TopLevelItem[], position: TreePosition): string {
+  if ("into" in position) {
+    if (position.into === null) return "At the end of the codebook";
+    const container = findItem(items, position.into);
+    return `Inside ${container ? rowTitle(items, container as TreeNode) : "it"}`;
+  }
+  const key = "before" in position ? position.before : position.after;
+  const item = findItem(items, key);
+  return `${"before" in position ? "Before" : "After"} ${item ? rowTitle(items, item as TreeNode) : "it"}`;
 }
 
 /**
- * Normal mode: click to select; actions to insert above, move and delete.
- * Loops and conditions also add to the end of their children (the only
- * place a row's "insert above" can't reach).
+ * An item row: a tick box (for moving and deleting several items, shown
+ * on hover or while items are ticked), the item (click: open it), and a +
+ * to add an item below it (shown on hover).
  */
-function EditItemRow({ item }: TreeItemRowProps) {
+export function TreeItemRow({ item }: { item: TreeNode }) {
   const tree = useCodebookTree();
   const key = getItemKey(item);
-  const [insertPreview, setInsertPreview] = useState(false);
-  const [endActive, setEndActive] = useState(false);
-  const isContainer = getChildren(item) !== null;
+  const ticked = tree.isChecked(key);
+  const inTicked = ticked && !tree.checked.has(key);
+  const editable = !tree.readOnly && !tree.moving;
 
-  const actions = !tree.readOnly && (
-    <>
-      {isContainer && (
-        <AddItemMenu
-          icon={ListEnd}
-          title={`Add to the end of ${containerName(item)}`}
-          allowedTypes={insertableTypesIn(tree.items, item)}
-          onAdd={(type) => tree.insertAtEnd(key, type)}
-          onActiveChange={(active) => {
-            setEndActive(active);
-            if (active) tree.setEndPreview(key);
-            else if (tree.endPreview === key) tree.setEndPreview(null);
-          }}
-        />
-      )}
-      <AddItemMenu
-        title={`Insert above ${itemTitle(item) || "item"}`}
-        allowedTypes={insertableTypesNextTo(tree.items, item)}
-        onAdd={(type) => tree.insertBefore(key, type)}
-        onActiveChange={setInsertPreview}
-      />
-      <ActionButton icon={Move} title="Move item" onClick={() => tree.startMove(key)} />
-      <ActionButton icon={Trash2} title="Delete item" destructive onClick={() => tree.remove(key)} />
-    </>
-  );
+  const options: AddOption[] = editable
+    ? tree.addPositions(key).map((position) => ({
+        position,
+        label: positionLabel(tree.items, position),
+        types: insertableTypesAt(tree.items, position),
+      }))
+    : [];
 
   return (
     <TreeRow
-
-      actions={actions}
-      dimActions={!insertPreview && !endActive}
-      showInsertionLine={insertPreview}
+      actions={editable && <AddItemMenu options={options} onAdd={tree.addAt} onPreview={tree.setPreview} />}
+      dimActions
       className={cn(
-        "",
         tree.selected === key ? "font-bold hover:text-foreground" : "font-thin hover:bg-muted/10",
+        ticked && "bg-primary/10",
+        tree.moving && ticked && "ring-1 ring-primary/40",
       )}
     >
+      {!tree.readOnly && (
+        <input
+          type="checkbox"
+          aria-label={`Select ${rowTitle(tree.items, item)}`}
+          title={inTicked ? "Selected with the item it is in" : "Select to move or delete"}
+          checked={ticked}
+          disabled={inTicked || tree.moving}
+          onChange={() => tree.toggleChecked(key)}
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary transition-opacity disabled:cursor-default",
+            tree.checked.size === 0 && "opacity-0 group-hover:opacity-60 focus-visible:opacity-100",
+          )}
+        />
+      )}
       <button
         type="button"
         onClick={() => tree.select(key)}
@@ -82,67 +91,6 @@ function EditItemRow({ item }: TreeItemRowProps) {
       >
         <ItemLabel item={item} selected={tree.selected === key} issue={tree.getIssue(item)} changed={tree.isChanged(item)} />
       </button>
-    </TreeRow>
-  );
-}
-
-/**
- * Move mode: the add buttons become move buttons, at the same places: "move
- * above this item" and, on loops and conditions, "move to the end of its
- * children". Clicking anything else cancels the move.
- */
-function MoveItemRow({ item }: TreeItemRowProps) {
-  const tree = useCodebookTree();
-  const key = getItemKey(item);
-  const isMovingItem = tree.movingKey === key;
-  const canAbove = tree.canMoveBefore(key);
-  const canEnd = getChildren(item) !== null && tree.canMoveToEnd(key);
-  const [abovePreview, setAbovePreview] = useState(false);
-
-  const actions = isMovingItem ? (
-    <MovingBadge onCancel={tree.cancelMove} />
-  ) : (
-    <>
-      {canEnd && (
-        <ActionButton
-          icon={ListEnd}
-          title={`Move to the end of ${containerName(item)}`}
-          className="text-primary"
-          onMouseEnter={() => tree.setEndPreview(key)}
-          onMouseLeave={() => tree.endPreview === key && tree.setEndPreview(null)}
-          onClick={(e) => {
-            e.stopPropagation();
-            tree.setEndPreview(null);
-            tree.moveToEnd(key);
-          }}
-        />
-      )}
-      {canAbove && (
-        <ActionButton
-          icon={ArrowUpToLine}
-          title={`Move above ${itemTitle(item) || "item"}`}
-          className="text-primary"
-          onMouseEnter={() => setAbovePreview(true)}
-          onMouseLeave={() => setAbovePreview(false)}
-          onClick={(e) => {
-            e.stopPropagation();
-            tree.moveBefore(key);
-          }}
-        />
-      )}
-    </>
-  );
-
-  return (
-    <TreeRow
-      showInsertionLine={abovePreview}
-      actions={actions}
-      className={cn(
-        isMovingItem && "bg-primary/10 ring-1 ring-primary/40",
-        !isMovingItem && !canAbove && !canEnd && "select-none opacity-40",
-      )}
-    >
-      <ItemLabel item={item} issue={tree.getIssue(item)} />
     </TreeRow>
   );
 }
@@ -187,22 +135,6 @@ function ItemLabel({
           <AlertCircle className="h-3.5 w-3.5" />
         </span>
       )}
-    </>
-  );
-}
-
-function MovingBadge({ onCancel }: { onCancel: () => void }) {
-  return (
-    <>
-      <span className="rounded bg-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">Moving...</span>
-      <ActionButton
-        icon={X}
-        title="Cancel move"
-        onClick={(e) => {
-          e.stopPropagation();
-          onCancel();
-        }}
-      />
     </>
   );
 }
