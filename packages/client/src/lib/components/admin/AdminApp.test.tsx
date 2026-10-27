@@ -33,6 +33,7 @@ const stubClient: ResearcherApi = {
   createInvite: () => new Promise(() => {}),
   revokeInvite: () => new Promise(() => {}),
   deleteInvite: () => new Promise(() => {}),
+  setInviteUnitset: () => new Promise(() => {}),
   getOverview: () => new Promise(() => {}),
   getDeploymentStatus: () => new Promise(() => {}),
   getDeployment: () => new Promise(() => {}),

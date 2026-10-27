@@ -1,13 +1,19 @@
 import { useState } from "react";
-import type { CoderInviteResponse, CoderInviteWrite } from "@annotinder/contracts";
-import { Ban, Check, Copy, Trash2 } from "lucide-react";
+import type { CoderInviteResponse, CoderInviteWrite, TopLevelItem, UnitsetResponse } from "@annotinder/contracts";
+import { AlertTriangle, Ban, Check, Copy, Split, Trash2 } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
+  useCodebookQuery,
   useCreateInviteMutation,
   useDeleteInviteMutation,
+  useDeploymentQuery,
   useInvitesQuery,
   useRevokeInviteMutation,
+  useSetInviteUnitsetMutation,
+  useUnitsetsQuery,
 } from "../../admin/queries";
+import { flattenTree } from "../../codebook/tree";
+import { DivideUnits } from "./DivideUnits";
 import { formatWhen } from "../../admin/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +34,10 @@ interface InvitationsPanelProps {
  */
 export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPanelProps) {
   const invitesQuery = useInvitesQuery(client);
+  const unitsets = useUnitsetsQuery(client).data ?? [];
+  const [dividing, setDividing] = useState(false);
+  const usesInvitationUnits = useLiveCodebookUsesInvitationUnits(client);
+  const withoutUnits = (invitesQuery.data ?? []).filter((i) => !i.revokedAt && i.unitsetId == null);
   const linkOf = (invite: CoderInviteResponse) => {
     const url = inviteUrl ? inviteUrl(invite) : `${baseUrl}/invite/${invite.secret}`;
     return invite.participantFromUrl ? `${url}&participant=<id>` : url;
@@ -35,7 +45,25 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
 
   return (
     <div className="flex flex-col gap-6">
-      <CreateInviteForm client={client} />
+      {dividing ? (
+        <DivideUnits client={client} onDone={() => setDividing(false)} />
+      ) : (
+        <div className="flex flex-col gap-2">
+          <CreateInviteForm client={client} unitsets={unitsets} />
+          <Button variant="outline" className="self-start" onClick={() => setDividing(true)}>
+            <Split className="mr-1 h-4 w-4" /> Divide units over coders…
+          </Button>
+        </div>
+      )}
+
+      {usesInvitationUnits && withoutUnits.length > 0 && (
+        <p className="flex items-start gap-2 rounded-md border border-amber-500 bg-amber-500/10 p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          The live codebook gives coders the units of their invitation, but{" "}
+          {withoutUnits.map((i) => `"${i.label}"`).join(", ")} {withoutUnits.length === 1 ? "has" : "have"} none: coders
+          joining with {withoutUnits.length === 1 ? "it" : "them"} get no units there. Choose units below.
+        </p>
+      )}
 
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-medium">Invitations</h2>
@@ -58,6 +86,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
                   <th className="p-2 font-medium">Link</th>
                   <th className="p-2 font-medium">Participant id</th>
                   <th className="p-2 font-medium">Presets</th>
+                  <th className="p-2 font-medium">Units</th>
                   <th className="p-2 font-medium">Uses</th>
                   <th className="p-2 font-medium">Status</th>
                   <th className="p-2 font-medium">Created</th>
@@ -66,7 +95,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
               </thead>
               <tbody>
                 {invitesQuery.data!.map((invite) => (
-                  <InviteRow key={invite.id} client={client} invite={invite} link={linkOf(invite)} />
+                  <InviteRow key={invite.id} client={client} invite={invite} link={linkOf(invite)} unitsets={unitsets} />
                 ))}
               </tbody>
             </table>
@@ -91,12 +120,23 @@ const STATUS_STYLE: Record<InviteStatus, string> = {
   revoked: "bg-destructive/10 text-destructive",
 };
 
-function InviteRow({ client, invite, link }: { client: ResearcherApi; invite: CoderInviteResponse; link: string }) {
+function InviteRow({
+  client,
+  invite,
+  link,
+  unitsets,
+}: {
+  client: ResearcherApi;
+  invite: CoderInviteResponse;
+  link: string;
+  unitsets: UnitsetResponse[];
+}) {
   const revoke = useRevokeInviteMutation(client);
   const remove = useDeleteInviteMutation(client);
+  const setUnitset = useSetInviteUnitsetMutation(client);
   const status = statusOf(invite);
   const presets = Object.entries(invite.variables ?? {});
-  const error = revoke.error ?? remove.error;
+  const error = revoke.error ?? remove.error ?? setUnitset.error;
 
   return (
     <tr className="border-b align-top last:border-0">
@@ -109,6 +149,14 @@ function InviteRow({ client, invite, link }: { client: ResearcherApi; invite: Co
       </td>
       <td className="p-2 font-mono text-xs text-muted-foreground">
         {presets.length > 0 ? presets.map(([k, v]) => `${k}=${v}`).join(", ") : "–"}
+      </td>
+      <td className="p-2">
+        <UnitsetSelect
+          unitsets={unitsets}
+          value={invite.unitsetId ?? null}
+          disabled={setUnitset.isPending}
+          onChange={(unitsetId) => setUnitset.mutate({ id: invite.id, unitsetId })}
+        />
       </td>
       <td className="p-2 tabular-nums">
         {invite.uses}
@@ -174,8 +222,47 @@ function CopyLink({ link, disabled }: { link: string; disabled: boolean }) {
   );
 }
 
-function CreateInviteForm({ client }: { client: ResearcherApi }) {
+/** The units an invitation's coders get in loops with "the invitation's units". */
+function UnitsetSelect({
+  unitsets,
+  value,
+  disabled,
+  onChange,
+}: {
+  unitsets: UnitsetResponse[];
+  value: number | null;
+  disabled?: boolean;
+  onChange: (unitsetId: number | null) => void;
+}) {
+  return (
+    <select
+      className="h-8 max-w-40 rounded-md border border-input bg-background px-2 text-xs"
+      value={value ?? ""}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+    >
+      <option value="">–</option>
+      {unitsets.map((u) => (
+        <option key={u.id} value={u.id}>
+          {u.name} ({u.unitIds.length})
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Whether the live codebook has a unit loop with "the invitation's units". */
+function useLiveCodebookUsesInvitationUnits(client: ResearcherApi): boolean {
+  const deployment = useDeploymentQuery(client).data;
+  const codebook = useCodebookQuery(client, deployment?.codebookId ?? null).data;
+  return flattenTree((codebook?.items ?? []) as TopLevelItem[]).some(
+    (item) => item.type === "unit_loop" && item.units.some((b) => b.mode === "invitation"),
+  );
+}
+
+function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitsets: UnitsetResponse[] }) {
   const createInvite = useCreateInviteMutation(client);
+  const [unitsetId, setUnitsetId] = useState<number | null>(null);
   const [label, setLabel] = useState("");
   const [auth, setAuth] = useState<CoderInviteWrite["auth"]>("none");
   const [participant, setParticipant] = useState<"none" | "fixed" | "url">("none");
@@ -191,7 +278,9 @@ function CreateInviteForm({ client }: { client: ResearcherApi }) {
       participantFromUrl: participant === "url" || undefined,
       variables: parsePresets(presets),
       maxUses: maxUses === "" ? undefined : Number(maxUses),
+      unitsetId,
     });
+    setUnitsetId(null);
     setLabel("");
     setParticipantId("");
     setPresets("");
@@ -244,11 +333,16 @@ function CreateInviteForm({ client }: { client: ResearcherApi }) {
           value={maxUses}
           onChange={(e) => setMaxUses(e.target.value)}
         />
+        <label className="flex items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
+          Units
+          <UnitsetSelect unitsets={unitsets} value={unitsetId} onChange={setUnitsetId} />
+        </label>
       </div>
       <p className="text-[11px] text-muted-foreground">
         Presets set the codebook&apos;s auto variables with source &quot;Set by invitation&quot; for everyone using
-        this link. Use one link per coder (e.g. with a fixed participant id) to give specific coders specific
-        unitsets. Without login, work stays on the device it was started on; coders can move it with &quot;Continue
+        this link. Units are what its coders get in unit loops with &quot;The invitation&apos;s units&quot;: use one
+        link per coder (e.g. with a fixed participant id) to give specific coders specific units, or divide units over
+        coders below. Without login, work stays on the device it was started on; coders can move it with &quot;Continue
         on another device&quot;. A participant id is a label, never a way back into a session.
       </p>
       {createInvite.isError && <p className="text-sm text-destructive">{createInvite.error.message}</p>}

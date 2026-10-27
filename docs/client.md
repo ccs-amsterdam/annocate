@@ -389,9 +389,13 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
     revision they were based on, so the conflict check still applies) or
     to discard them.
 
-  Unit loops have a distribution editor (`UnitLoopForm.tsx`): normally just the unitsets;
-  "Different units per coder" turns on branches, where every branch but
-  the last has a condition ("if", "else if") and the last is "otherwise".
+  Unit loops have a distribution editor (`UnitLoopForm.tsx`): per branch
+  which units coders get (All units, Units shared among coders, One set per
+  coder, The invitation's units; `architecture.md` §6.1) with that mode's
+  settings, and an optional overlap set. A unitset field is empty for all
+  units. "Different units per coder group" turns on branches, where every
+  branch but the last has a condition ("if", "else if") and the last is
+  "otherwise".
   Forms show few tips (instruction buttons may come later).
 - **Versions and publishing** (as in Qualtrics or REDCap: edit a draft,
   publish it), derived from `GET /codebook` and `GET /deployment`
@@ -455,8 +459,14 @@ Units, Invitations, Coders, Preview. It uses a `ResearcherApi`
   answers per day (`GET /overview`), progress per loop
   (`GET /deployment/status`), and the job settings (rename, archive, delete).
 - **Invitations**: create links (login requirement, participant id, preset
-  variables, max uses) and a table of all of them with uses and status;
-  revoke (no new coders), or delete while unused.
+  variables, max uses, units) and a table of all of them with uses, units
+  and status; revoke (no new coders), or delete while unused. An
+  invitation's units are what its coders get in loops with "The
+  invitation's units" (it warns about invitations without units when the
+  live codebook has such a loop). "Divide units over coders"
+  (`DivideUnits.tsx`) splits all units or a unitset into one part per named
+  coder plus an overlap set, and makes a personal invitation per coder with
+  their part.
 - **Coders**: per coder the invitation, started, last active, answers,
   finished units per loop of the live codebook, and how the session ended
   at an `end` item, if it did (`ended`).

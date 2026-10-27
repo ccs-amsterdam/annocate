@@ -57,7 +57,8 @@ and a page per API, with a section per endpoint.
 
 - resolves coders and serves the session and codebook;
 - decides which unit a coder gets next, following the codebook's unit
-  loops (fixed sets or a shared queue with leases, stopping rules and caps);
+  loops (all units of a set, a shared queue with leases and stopping
+  rules, one set per coder, or the invitation's set; plus an overlap);
 - validates annotations against the codebook;
 - writes them to the database;
 - caches unit content and the coder's own annotations.
@@ -81,8 +82,8 @@ development, Vite proxies the server's paths.
    a rebuild doesn't need every annotation in memory:
    - **Distribution state**, loaded eagerly by `DeploymentRuntime.load()`:
      the deployment spec and the bulk `listFinished` query, for two things
-     only: **loops with dynamic sources** (which coder finished which unit
-     there, plus the agreement variables' values; fixed sources need no
+     only: **loops with shared queues or sets** (which coder finished which
+     unit there, plus the agreement questions' values; other loops need no
      global state, a coder's own finished units are enough), and
      **`balanced` auto variables** (coder-level rows: which coder has which
      option).
@@ -93,7 +94,7 @@ development, Vite proxies the server's paths.
      grows with active coders, not with all coders of a job.
 
    A codebook redeploy keeps the derived codings if the loops' questions,
-   dynamic sources and agreement variables are unchanged. Otherwise, or
+   shared queues, sets and agreement questions are unchanged. Otherwise, or
    after a researcher reset (`annotationEpoch`), it rebuilds them.
    Researcher status is computed on demand (finished units for every loop,
    all coders for routing), not held in memory.
@@ -104,7 +105,7 @@ development, Vite proxies the server's paths.
    | Held | Released when |
    | --- | --- |
    | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose; otherwise units are not re-read, since they shouldn't change once coding started. If one does, annotations say so: each write carries `unitHash`, the hash of the content the coder was shown |
-   | A coder's record and annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without dynamic sources go with them, and are rebuilt when they return |
+   | A coder's record and annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without shared queues or sets go with them, and are rebuilt when they return |
    | Distribution state (spec, dynamic-loop codings, `balanced` counts, leases) | Not released while the deployment is loaded: it is bounded by units x coders per unit, and distribution needs it |
    | The deployment as a whole | Unused for `deploymentIdleMs` (6 h), or when the job is deleted |
 
@@ -149,7 +150,7 @@ loads the session again (`api/coder.md`).
    assigned variables).
 3. **`GET /loop/:loop/next`.** On the first call for a loop, the runtime
    routes the coder to a branch (§6) and stores that. It then picks a unit
-   and, for a dynamic source, leases it, and serves the unit content from
+   and, in a shared queue, leases it, and serves the unit content from
    its cache. On a cache miss it reads the unit plus the next few prefetch
    candidates in one query. If a unit no longer exists, it is dropped from
    the queue and the next one is tried.
@@ -179,80 +180,107 @@ There are three layers:
 | --- | --- | --- |
 | Codebook | questions, conditions, `unit_loop` distribution; refers to unitsets by name and to coders only via coder-level variables | yes |
 | Unitsets | name -> ordered list of unit ids (e.g. `part_1`..`part_5`, `part_overlap`) | data, not process |
-| Invitations | links with access rules and preset values for codebook variables | no (stored on the server only) |
+| Invitations | links with access rules, preset values for codebook variables, and a unitset (for loops with "the invitation's units") | no (stored on the server only) |
 
 ### 6.1 Unit loops
 
-Defined in `contracts/src/codebook/unitLoop.ts`:
+Defined in `contracts/src/codebook/unitLoop.ts`. A loop has branches (the
+first whose `when` matches is used; no match = no units). Each branch has a
+**mode**, which says which units a coder gets, and an optional **overlap**
+set:
 
 ```yaml
 type: unit_loop
 name: main
-order: random            # sequential (default) | random: per-coder shuffle, sources interleaved
-maxUnits: 100            # per coder, across all sources of the branch
-units:                   # first matching branch wins; no match = no units
-  - when:                                  # a condition on coder-level questions
+order: random            # sequential (default, unitset order) | random: each coder their own order
+units:
+  - when:                                # a condition on coder-level questions
       script: $var.group.is("treatment")
-    sources:
-      - { unitset: "part_$var.slot.value" } # fixed: coder gets every unit of their part
-      - { unitset: part_overlap }          # fixed: everyone also gets the overlap units
-  - sources:
-      - unitset: pool
-        dynamic: { maxCoders: 1 }          # one coder per unit, coders unknown in advance
-      - unitset: reliability
-        dynamic: { minCoders: 3, maxCoders: 5, agreement: { variable: sentiment, minAgree: 3 }, priority: saturate }
+    mode: all                            # every coder codes every unit of the set
+    unitset: part_$var.slot.value
+  - mode: shared                         # a queue: each unit until N coders coded it, or N agree
+    unitset: __all__
+    until: { agree: 3, on: sentiment }   # or { coders: 1 }
+    maxCoders: 5
+    maxUnits: 100                        # per coder
+    overlap: { unitset: gold, placement: spread }
 ```
 
-**Sources.** A unitset is just an ordered list of ids. Whether its units
-are handed out *fixed* or *dynamic* is a property of the source, so the same
-unitset can be used both ways.
+**Modes:**
 
-- **Fixed.** The coder gets every unit of the set.
-- **Dynamic.** A queue shared by all coders routed to it:
-  - A unit is **complete** once `minCoders` (default 1) coders finished it
-    and, with `agreement`, `minAgree` of them gave the same answer. It is
-    also complete, regardless, once `maxCoders` coders finished it.
-    `maxCoders` is required with an agreement rule, so a unit nobody agrees
-    on isn't coded forever.
+- **`all`**: every coder of the branch codes every unit of `unitset`.
+- **`shared`**: a queue shared by all coders of the branch:
+  - A unit is **done** once `until.coders` coders finished it, or once
+    `until.agree` of them gave the same answer to `until.on` (a question of
+    the loop with one categorical answer: nominal without `multiple`,
+    ordinal, swipe). It is also done, regardless, once `maxCoders` coders
+    finished it. `maxCoders` is required with `agree`, so a unit nobody
+    agrees on isn't coded forever.
+  - `maxUnits` caps the units per coder (besides the overlap).
   - **Open slots** are codings still needed, capped by `maxCoders`, minus
     active leases. This prevents over-assignment while coders are working.
   - **Leases** last `leaseSeconds` (default 900). An expired lease frees the
     slot. A coder asking for "next" while holding a lease gets the same unit
     again, so a reload is safe.
-  - **`priority`:**
-    - `cover` (default) prefers least-coded units;
-    - `saturate` prefers units closest to completion.
+  - **`priority`:** `cover` (default) prefers least-coded units;
+    `saturate` prefers units closest to done.
+- **`sets`**: each coder gets one of `unitsets`, the one with the fewest
+  coders so far (the first of those). A coder counts for their set if they
+  finished it, or were routed or finished a unit in the last 24 hours
+  (`SET_ACTIVITY_MS`): the set of a coder who dropped out is handed out
+  again.
+- **`invitation`**: each coder gets the unitset of the invitation they
+  joined with (§7). The codebook doesn't say who gets what. An invitation
+  without one gives no units (the researcher UI warns); a preview uses the
+  first invitation that has one.
+
+**Overlap.** A set every coder of the branch codes in full besides their
+own units, e.g. for intercoder reliability (and later gold questions):
+`before` their units (default), `after` them, or `spread` evenly through
+them. Spreading needs to know how many units a coder gets: their set's
+size, or in `shared` mode `maxUnits` (required there for `spread`). If a
+coder runs out of own units sooner, the overlap units left come at the end.
+
+The pools behind this are internal (`server/src/runtime/distribution.ts`):
+a branch is a pool for the coder's own units (a queue in `shared` mode,
+else fixed) and a fixed pool for the overlap.
+
+Older loop shapes (a loop-level `unitset`; branches with `sources`, each
+fixed or `dynamic`, and a loop-level `maxUnits`) are migrated on parse: a
+branch with a dynamic source becomes `shared`, otherwise `all`, and a
+second (fixed) source becomes its overlap.
 
 **`when`.** The same condition as a `condition` item (a script,
 `client.md` "References and conditions"), on coder-level questions from
-before the loop. Unitset names can contain `$var` references, filled in
-with the coder's answer as text. Codebook validation checks both.
+before the loop. Unitset names (in `all` and `shared` mode, and of the
+overlap) can contain `$var` references, filled in with the coder's answer
+as text. Codebook validation checks both.
 
 **The client chooses the branch.** When it enters a loop, the client
 evaluates the branches in order, takes the first that matches, fills in its
-unitset names, and asks `GET /loop/:loop/next?branch=<i>&unitsets=<names>`.
-The runtime checks that the branch exists, that the names fit that
-branch's sources (`unitsetMatchesSource`) and that the unitsets exist, and
-stores them. A loop with a single unconditional branch without references
-routes without the parameters; any other loop answers 409
-`branch_required` until the client chooses. If no branch matches, the
-coder has no units in the loop. This way the server never needs the
-answers a branch depends on, which is what end-to-end encryption needs
-(`encryption.md`, "Routing on answers").
+unitset names (`branchUnitsets`: its own set, then the overlap; empty where
+the server picks: `sets` and `invitation` mode), and asks
+`GET /loop/:loop/next?branch=<i>&unitsets=<names>`. The runtime checks that
+the branch exists, that the names fit it (`unitsetMatchesSource`), picks the
+set where it is empty, checks that the unitsets exist, and stores them. A
+loop with a single unconditional branch without references routes without
+the parameters; any other loop answers 409 `branch_required` until the
+client chooses. This way the server never needs the answers a branch
+depends on, which is what end-to-end encryption needs (`encryption.md`,
+"Routing on answers").
 
 *Trust trade-off.* A coder can choose their own branch, by sending another
-branch index, or other unitset names that fit a branch's sources (e.g.
-`part_3` instead of `part_2`). The server only guarantees that a coder gets
-units of a unitset the codebook could route *someone* to. Routing is a
-convenience for the researcher, not access control. `auto` assignment
-(random, balanced, invite) itself stays on the server, so a coder can't
-change their stored group; only which units they ask for. If a study needs
-the routing enforced, a strict mode could later check the filled-in names
-against server-held `auto` values (only possible for unencrypted ones).
+branch index, or other unitset names that fit a branch (e.g. `part_3`
+instead of `part_2`). The server only guarantees that a coder gets units of
+a unitset the codebook could route *someone* to. Routing by `$var` is a
+convenience for the researcher, not access control; `sets` and
+`invitation` mode are decided by the server. `auto` assignment (random,
+balanced, invite) itself stays on the server, so a coder can't change their
+stored group; only which units they ask for.
 
 **Routing is sticky.** The resolved unitset names are stored per coder
-and loop (`assignments`, e.g. `{ main: ["part_2",
-"part_overlap"] }`), and later choices are ignored. A coder who later
+and loop, with when (`assignments`, e.g. `{ main: { unitsets: ["part_2",
+"gold"], at: … } }`), and later choices are ignored. A coder who later
 changes an answer used in `when` keeps their units, as long as the codebook
 still has a branch that produces the same names.
 
@@ -260,9 +288,8 @@ The example "1000 units, until 5 coders agree, max 100 per coder" is:
 
 ```yaml
 order: random
-maxUnits: 100
 units:
-  - sources: [ { unitset: __all__, dynamic: { maxCoders: 10, agreement: { variable: sentiment, minAgree: 5 } } } ]
+  - { mode: shared, unitset: __all__, until: { agree: 5, on: sentiment }, maxCoders: 10, maxUnits: 100 }
 ```
 
 ### 6.2 Unitsets are explicit
@@ -277,7 +304,10 @@ makes them easy to create (in the client, then stored with
   `<prefix>_overlap`;
 - split the rest into `<prefix>_1..n`.
 
-The splitting logic is a pure function, `splitUnits` in contracts.
+The splitting logic is a pure function, `splitUnits` in contracts. The
+Invitations page's "Divide units over coders" uses it too: one part per
+named coder plus an overlap set, and a personal invitation per coder whose
+unitset is their part (for loops with `mode: invitation`).
 
 ## 7. Coder variables and invitations
 
@@ -285,8 +315,9 @@ The splitting logic is a pure function, `splitUnits` in contracts.
 The client skips them as steps.
 
 - `random`: weighted draw from `options` (server).
-- `balanced`: the option fewest coders have so far (server). This
-  spreads unknown coders evenly over `part_$var.slot.value`. The counts come from a
+- `balanced`: the option fewest coders have so far (server), e.g. to
+  spread coders over experimental groups. (To spread coders over sets of
+  units, use a loop in `sets` mode.) The counts come from a
   coder-level `listFinished` query on load, then are kept in memory.
 - `invite`: the value preset on the coder's invitation. If the invitation
   doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
@@ -325,8 +356,8 @@ continues where they left off:
 - **Top-level questions** that already have an answer that fits the current
   codebook are skipped. They stay reachable by navigating back.
 - **Unit loops.** `GET /session` returns, per loop, the finished unit ids
-  in order and `totalUnits` (known for fixed sources; `null` when it depends
-  on other coders). The client rebuilds the loop's history from those ids,
+  in order and `totalUnits` (their set plus the overlap, or in a shared
+  queue `maxUnits` plus the overlap; `null` when it depends on other coders). The client rebuilds the loop's history from those ids,
   so the coder sees e.g. "unit 31 of 100" and can go back. Units are loaded
   only when the coder navigates to them, via
   `GET /loop/:loop/units/:unitId`. That endpoint only serves units the coder
@@ -391,14 +422,14 @@ off until a real case asks for it.
 
 Other open points:
 
-- `totalUnits` is unknown for dynamic sources without `maxUnits`; the client
+- `totalUnits` is unknown in a shared queue without `maxUnits`; the client
   then counts the units seen so far.
 
 ## 9. Code map
 
 | Where | What |
 | --- | --- |
-| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches, fixed/dynamic sources, `when`, unitset references, legacy migration |
+| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, unitset references, migration of older shapes |
 | `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var`/`$const` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
 | `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |
@@ -415,9 +446,9 @@ Other open points:
 | `server/src/runtime/types.ts` | The runtime's internal types (spec, coder, annotations, finished rows) |
 | `server/src/runtime/session.ts` | Coder session cookies, CSRF header |
 | `server/src/runtime/preview.ts` | Researcher previews: preview tokens, `PreviewStore` with in-memory coders and answers |
-| `server/src/runtime/distribution.ts` | `UnitPool` (fixed/dynamic source), `pickNext` (per-loop picking), `Codings` |
+| `server/src/runtime/distribution.ts` | `UnitPool` (fixed, or a shared queue), `pickNext` (own units and overlap), `Codings` |
 | `server/src/runtime/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
-| `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches and sources |
+| `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches, modes and overlap |
 
 Tests (`server/src/__tests__/`) run through the app's fetch handler on
 PGlite (or a Postgres server with `TEST_DATABASE_URL`): `coder.test.ts`

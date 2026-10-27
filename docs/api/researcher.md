@@ -88,6 +88,7 @@ response checked against its contract schema.
 | [createInvite](#createinvite) | `POST /job/:jobId/invites` | WRITE | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` |
 | [revokeInvite](#revokeinvite) | `POST /job/:jobId/invites/:id/revoke` | WRITE | – | `CoderInviteResponseSchema` |
 | [deleteInvite](#deleteinvite) | `DELETE /job/:jobId/invites/:id` | WRITE | – | – |
+| [setInviteUnitset](#setinviteunitset) | `PUT /job/:jobId/invites/:id/unitset` | WRITE | `{ unitsetId }` | `CoderInviteResponseSchema` |
 | [listCoders](#listcoders) | `GET /job/:jobId/coders` | WRITE | – | `CoderProgressSchema[]` |
 | **Publishing** | | | | |
 | [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
@@ -316,7 +317,8 @@ See [`docs/coder-identity.md`](../coder-identity.md) for what invitations do.
 
 `POST /job/:jobId/invites` → `CoderInviteResponseSchema` (201). Generates
 the `secret` for the link. `variables` presets the codebook's `auto`
-variables with `source: "invite"` for coders who use it.
+variables with `source: "invite"` for coders who use it; `unitsetId` is the
+unitset its coders get in loops with `mode: "invitation"`.
 
 ### revokeInvite
 
@@ -327,6 +329,13 @@ coders from this invite; coders who already started keep working.
 
 `DELETE /job/:jobId/invites/:id` → 204, only while unused: 409 once a coder
 came in through it, since coders refer to their invite.
+
+### setInviteUnitset
+
+`PUT /job/:jobId/invites/:id/unitset` (`{ unitsetId: number | null }`) →
+`CoderInviteResponseSchema`. The unitset the invite's coders get in loops
+with `mode: "invitation"`; null for none. Coders already routed keep their
+units. A unitset an invite uses can't be deleted (409).
 
 ### listCoders
 

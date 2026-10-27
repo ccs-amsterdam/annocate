@@ -91,8 +91,9 @@ export function SplitUnitsets({
         </label>
       </div>
       <p className="text-muted-foreground">
-        Creates {sets.map((s) => `${s.name} (${s.unitIds.length})`).join(", ")}. Units are shuffled first. Route coders
-        to a part in a unit loop with e.g. <code>{`${prefix}_$var.slot.code`}</code>.
+        Creates {sets.map((s) => `${s.name} (${s.unitIds.length})`).join(", ")}. Units are shuffled first. To give each
+        coder a part, use them in a unit loop with <em>One set per coder</em> (all starting with <code>{prefix}_</code>),
+        or give each coder&apos;s invitation a part (Invitations: divide units over coders).
       </p>
       {taken && <p className="text-destructive">A unitset named {taken.name} already exists: pick another prefix.</p>}
       {error && <p className="text-destructive">{error}</p>}

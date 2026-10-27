@@ -244,6 +244,10 @@ export function useDeleteInviteMutation(client: ResearcherApi) {
   return useInviteMutation(client, (id: number) => client.deleteInvite(id));
 }
 
+export function useSetInviteUnitsetMutation(client: ResearcherApi) {
+  return useInviteMutation(client, ({ id, unitsetId }: { id: number; unitsetId: number | null }) => client.setInviteUnitset(id, unitsetId));
+}
+
 export function useOverviewQuery(client: ResearcherApi): UseQueryResult<JobOverview> {
   return useQuery({ queryKey: keys.overview(client.jobId), queryFn: () => client.getOverview(), refetchInterval: 30_000 });
 }

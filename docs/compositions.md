@@ -93,8 +93,8 @@ Either way the link carries a random token (`#<token>`) that R checks, so
 other web pages can't write to the port.
 
 **Limits:** one coder per R session: each browser runs its own runtime, so
-there is no shared queue across coders (dynamic sources only make sense for
-one coder). Teams use a server (self-hosted or annotinder.com).
+there is no shared queue across coders (shared queues and sets only make sense with
+more coders). Teams use a server (self-hosted or annotinder.com).
 
 
 ## Not planned

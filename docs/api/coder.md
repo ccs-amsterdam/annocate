@@ -64,15 +64,16 @@ use.
 
 `GET /loop/:loop/next?branch=<i>&unitsets=<name>&unitsets=<name>` → `CoderUnitResponseSchema | null`
 
-The server picks the coder's next unit from the sources of the coder's
-branch (fixed sets, or a shared queue with leases). `null`: the coder is
+The server picks the coder's next unit from the coder's branch: their own
+units (a set, or a shared queue with leases) and the overlap. `null`: the coder is
 done with the loop. 409 while the job is paused (`active: false`).
 
 The client chooses the branch (`NextUnitQuerySchema`): the index of the
 first branch in the loop's `units` whose `when` holds, and its unitset
-names with `$var` references filled in, one per source. The server
-checks them (400 if the names don't fit that branch's sources, 409 if a
-unitset doesn't exist) and stores the routing; afterwards the parameters
+names with `$var` references filled in (`branchUnitsets`: its own set, then
+the overlap; empty where the server picks the set, in `sets` and
+`invitation` mode). The server checks them (400 if the names don't fit that
+branch, 409 if a unitset doesn't exist) and stores the routing; afterwards the parameters
 are ignored (routing is sticky, `architecture.md` §6.1). Without them, a
 loop with a single unconditional branch without references routes by
 itself; other loops answer 409 with code `branch_required`.

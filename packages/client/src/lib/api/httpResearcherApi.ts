@@ -108,6 +108,8 @@ export interface ResearcherApi {
   revokeInvite(id: number): Promise<CoderInviteResponse>;
   /** Only while unused: rejected once coders came in through it. */
   deleteInvite(id: number): Promise<void>;
+  /** The unitset the invite's coders get in loops with "the invitation's units" (null: none). */
+  setInviteUnitset(id: number, unitsetId: number | null): Promise<CoderInviteResponse>;
 
   /** Counts and activity for the job's overview page. */
   getOverview(): Promise<JobOverview>;
@@ -400,6 +402,13 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async deleteInvite(id: number): Promise<void> {
     return this.request(this.jobPath(researcherEndpoints.deleteInvite.path, id), { method: "DELETE" });
+  }
+
+  async setInviteUnitset(id: number, unitsetId: number | null): Promise<CoderInviteResponse> {
+    return this.request(this.jobPath(researcherEndpoints.setInviteUnitset.path, id), {
+      method: "PUT",
+      body: JSON.stringify({ unitsetId }),
+    });
   }
 
   async getOverview(): Promise<JobOverview> {

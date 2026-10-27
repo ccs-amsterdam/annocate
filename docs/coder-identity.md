@@ -135,7 +135,7 @@ log in twice.
   stored in the database (server memory isn't durable), one per
   session, revocable from the device that has the session. Should it be
   single use (each redeem makes a new one)?
-- **Duplicate work across sessions of one participant.** Dynamic sources
+- **Duplicate work across sessions of one participant.** Shared queues
   count codings per coder, so two sessions of one person can code the same
   unit. Possible later: optionally treat sessions with the same participant
   id as one person for distribution.
