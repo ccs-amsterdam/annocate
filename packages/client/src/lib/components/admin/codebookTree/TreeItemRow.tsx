@@ -16,7 +16,7 @@ import {
 import { describeCondition, itemTitle } from "../../../codebook/conditions";
 import type { TreePosition } from "../../../codebook/codebookEdit";
 import { VARIABLE_TYPE_LABELS } from "../VariableTypeForm";
-import { findItem, loopUnitsSummary } from "../../../codebook/tree";
+import { findItem, findParent, loopUnitsSummary } from "../../../codebook/tree";
 
 /** How an item is called in menus: its title, a condition by its condition, a loop by its position. */
 export function rowTitle(items: TopLevelItem[], item: TreeNode): string {
@@ -35,15 +35,29 @@ export function positionLabel(items: TopLevelItem[], position: TreePosition): st
     const container = findItem(items, position.into);
     return `Inside ${container ? rowTitle(items, container as TreeNode) : "it"}`;
   }
+  if ("before" in position) {
+    // Before the first item of a container: the top of the container.
+    const parent = findParent(items, position.before);
+    if (parent && parent.children[0] && getItemKey(parent.children[0]) === position.before) {
+      return `At the top of ${rowTitle(items, parent)}`;
+    }
+  }
   const key = "before" in position ? position.before : position.after;
   const item = findItem(items, key);
   return `${"before" in position ? "Before" : "After"} ${item ? rowTitle(items, item as TreeNode) : "it"}`;
 }
 
+/** A position's label as a move: "Move after x", "Move to the top of y", "Move into z". */
+function moveLabel(label: string): string {
+  const rest = label.replace(/^At the top of/, "to the top of").replace(/^Inside/, "into");
+  return `Move ${rest[0].toLowerCase()}${rest.slice(1)}`;
+}
+
 /**
  * An item row: a tick box (for moving and deleting several items, shown
  * on hover or while items are ticked), the item (click: open it), and a +
- * to add an item below it (shown on hover). While moving, the + becomes
+ * to add an item below it (shown on hover): after it, or for a loop or
+ * condition at the top of its children. While moving, the + becomes
  * "move below this item", at the same place: rows never shift.
  */
 export function TreeItemRow({ item }: { item: TreeNode }) {
@@ -65,7 +79,7 @@ export function TreeItemRow({ item }: { item: TreeNode }) {
       icon={CornerDownLeft}
       title="Move below this item"
       className="text-primary"
-      options={options.map((o) => ({ ...o, label: `Move ${o.label[0].toLowerCase()}${o.label.slice(1)}` }))}
+      options={options.map((o) => ({ ...o, label: moveLabel(o.label) }))}
       onAdd={() => undefined}
       onPick={tree.moveTo}
       onPreview={tree.setPreview}

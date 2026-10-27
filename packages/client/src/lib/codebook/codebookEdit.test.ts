@@ -246,8 +246,9 @@ describe("codebookEdit", () => {
     ];
     const order = (items: TopLevelItem[]) => flattenTree(items).map((i) => keyOf(i) ?? (i as { name?: string }).name);
 
-    it("adds after an item; asks where for the last item of containers and empty containers", () => {
+    it("adds below a row: after an item, at the top of a container; asks where at the end of containers", () => {
       expect(addPositions(tree(), "a")).toEqual([{ after: "a" }]);
+      expect(addPositions(tree(), "loop")).toEqual([{ before: "c" }]);
       expect(addPositions(tree(), "x")).toEqual([{ after: "x" }, { after: "c" }, { after: "loop" }]);
       expect(addPositions(tree(), "empty")).toEqual([{ into: "empty" }, { after: "empty" }]);
     });

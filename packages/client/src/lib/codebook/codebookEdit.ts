@@ -513,18 +513,22 @@ export type TreePosition = { before: string } | { after: string } | { into: stri
 const idOf = (item: CodebookItem | TopLevelItem | InLoopItem) => keyOf(item) || itemName(item) || "";
 
 /**
- * Where a row's "add" can put a new item: after it, and where that is
- * ambiguous, the other places that are "below this row" too: inside an
- * empty container, and after each container the item is the last child of
- * (the last question of a condition in a loop: after the question, after
- * the condition, after the loop).
+ * Where a row's "add" (or "move below") can put an item: below the row.
+ * For a container that is the top of its children; for any other item it
+ * is after it. That is ambiguous only at the end of a container: after its
+ * last item (or inside an empty container) is also after the container,
+ * and after each container that one is the last item of, so those places
+ * follow, from the innermost out.
  */
 export function addPositions(items: TopLevelItem[], key: string): TreePosition[] {
   const item = findItem(items, key);
   if (!item) return [];
-  const positions: TreePosition[] = [];
-  if ("children" in item && Array.isArray(item.children) && item.children.length === 0) positions.push({ into: key });
-  positions.push({ after: key });
+  if ("children" in item && Array.isArray(item.children)) {
+    const first = item.children[0];
+    if (first) return [{ before: idOf(first) }];
+  }
+  const positions: TreePosition[] =
+    "children" in item && Array.isArray(item.children) ? [{ into: key }, { after: key }] : [{ after: key }];
   for (let parent = findParent(items, key), child = key; parent; parent = findParent(items, child)) {
     const last = parent.children[parent.children.length - 1];
     if (!last || idOf(last) !== child) break;

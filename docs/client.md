@@ -350,10 +350,12 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
     label, or "Unit loop <n>" (`architecture.md` §6.1). Until 2026-10-27
     every item had a name; old condition names are dropped on parse, old
     loop names become labels.
-    Adding: a row's + (on hover) adds an item below it. Where "below" is
-    ambiguous (the last item of a loop or condition: inside or after it,
-    possibly for several levels; an empty container: inside or after it)
-    its menu asks where first (`addPositions` in `codebook/codebookEdit.ts`).
+    Adding: a row's + (on hover) adds an item below it: after an item, at
+    the top of a loop or condition's children. Only the end of a container
+    is ambiguous (after its last item, or inside an empty container, is
+    also after the container, and so on outwards): there the menu asks
+    where first, each place a level further out marked with one more
+    "outdent" icon (`addPositions` in `codebook/codebookEdit.ts`).
     Moving and deleting work on ticked items (a container brings its
     children), from the toolbar above the tree: Delete asks once. Move
     turns each row's + into "move below this item", at the same place (the

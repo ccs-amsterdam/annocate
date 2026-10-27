@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { ChevronLeft, CornerDownRight, Plus, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ListIndentDecrease, Plus, type LucideIcon } from "lucide-react";
 import { cn } from "cn";
 import type { TreePosition } from "../../../codebook/codebookEdit";
 import { ActionButton } from "./TreeRow";
@@ -77,6 +77,7 @@ export function AddItemMenu({
   useCloseOnOutsideClick(containerRef, open, close);
 
   if (options.length === 0) return null;
+  const Icon = icon;
   const option = current === null ? null : options[current];
 
   function toggle() {
@@ -136,7 +137,14 @@ export function AddItemMenu({
                   onMouseLeave={() => setHovered(null)}
                   className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium hover:bg-muted"
                 >
-                  <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-primary" style={{ marginLeft: `${i * 6}px` }} />
+                  {/* The first place is below the row; each next one a level further out. */}
+                  <span className="flex shrink-0 text-primary">
+                    {i === 0 ? (
+                      <Icon className="h-3.5 w-3.5" />
+                    ) : (
+                      Array.from({ length: i }, (_, n) => <ListIndentDecrease key={n} className="h-3.5 w-3.5" />)
+                    )}
+                  </span>
                   <span className="truncate">{o.label}</span>
                 </button>
               ))}
