@@ -67,8 +67,9 @@ Use it with sets made by **Split units into parts** (see
 [Unitsets](unitsets.md)): for example 4 parts of 225 articles for 4 student
 assistants, without having to say who gets which part.
 
-> **All starting with…** also ticks a set such as `part_overlap`. Untick the
-> overlap set: it belongs under **Overlap**, not among the coders' sets.
+> **All starting with…** ticks every set with that start, except one ending
+> in `_overlap` (such as `part_overlap`): that one belongs under **Overlap**,
+> not among the coders' sets.
 
 ### The invitation's units
 

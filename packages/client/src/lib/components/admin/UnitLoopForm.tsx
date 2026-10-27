@@ -513,7 +513,9 @@ function SharedSettings({ branch, agreeable, onChange }: { branch: SharedBranch;
             value={needed}
             onChange={(e) => {
               const n = Number(e.target.value) || 1;
-              onChange({ ...branch, until: agree && "on" in branch.until ? { agree: n, on: branch.until.on } : { coders: n } });
+              // Max coders can't be below the number needed: it follows upwards.
+              const maxCoders = branch.maxCoders !== undefined && branch.maxCoders < n ? n : branch.maxCoders;
+              onChange({ ...branch, maxCoders, until: agree && "on" in branch.until ? { agree: n, on: branch.until.on } : { coders: n } });
             }}
           />
           <select
@@ -586,7 +588,9 @@ function SetsPicker({ value, unitsets, onChange }: { value: string[]; unitsets: 
   const addPrefix = () => {
     const prefix = window.prompt("Add all unitsets whose name starts with:");
     if (!prefix) return;
-    onChange([...value, ...unitsets.map((u) => u.name).filter((n) => n.startsWith(prefix) && !value.includes(n))]);
+    // Not the overlap set "Split into parts" makes next to the parts (`<prefix>_overlap`): it is for the overlap, below.
+    const added = unitsets.map((u) => u.name).filter((n) => n.startsWith(prefix) && !n.endsWith("_overlap") && !value.includes(n));
+    onChange([...value, ...added]);
   };
   return (
     <div className={labelClass}>
