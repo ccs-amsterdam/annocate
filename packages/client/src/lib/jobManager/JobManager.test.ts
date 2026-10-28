@@ -11,7 +11,7 @@ import type {
 import { itemName } from "@annotinder/contracts";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CoderApi } from "../api/httpCoderApi";
+import { CoderApiError, type BranchChoice, type CoderApi } from "../api/httpCoderApi";
 import { JobManager } from "./JobManager";
 import { QuestionTimer } from "./timing";
 
@@ -42,17 +42,20 @@ function unit(id: number): CoderUnitResponse {
   return { id, data: {}, variables: {} } as CoderUnitResponse;
 }
 
+/** A stub "next unit": each call hands out at most one unit (as a batch of one); null when done. */
+type NextUnit = (loop: string, branch?: BranchChoice) => Promise<CoderUnitResponse | null>;
+
 /** A stub CoderApi whose methods can be individually made to reject once, then succeed. */
-function makeFlakyServer(overrides: Partial<CoderApi> = {}): CoderApi & { calls: Record<string, number> } {
+function makeFlakyServer({ getNextUnit, ...overrides }: Partial<CoderApi> & { getNextUnit?: NextUnit } = {}): CoderApi & { calls: Record<string, number> } {
   const calls: Record<string, number> = {};
   const base: CoderApi = {
     getSession: vi.fn(async () => {
       calls.getSession = (calls.getSession ?? 0) + 1;
       return session([confirm("consent")]);
     }),
-    getNextUnit: vi.fn(async () => {
+    getNextUnits: vi.fn(async () => {
       calls.getNextUnit = (calls.getNextUnit ?? 0) + 1;
-      return null;
+      return [];
     }),
     getLoopUnit: vi.fn(async (_loop: string, id: number) => unit(id)),
     postUnitVariables: vi.fn(async () => {
@@ -70,7 +73,13 @@ function makeFlakyServer(overrides: Partial<CoderApi> = {}): CoderApi & { calls:
     }),
     reopenSession: vi.fn(async () => {}),
   };
-  return Object.assign(base, overrides, { calls });
+  const batches = getNextUnit
+    ? { getNextUnits: vi.fn(async (loop: string, branch?: BranchChoice) => {
+          const unit = await getNextUnit(loop, branch);
+          return unit ? [unit] : [];
+        }) }
+    : {};
+  return Object.assign(base, overrides, batches, { calls });
 }
 
 describe("JobManager error-handling, rollback, and retry contract", () => {
@@ -439,7 +448,7 @@ describe("submitting a finished unit", () => {
       postUnitVariables,
     });
     let now = 0;
-    const manager = new JobManager(server, new QuestionTimer(() => now));
+    const manager = new JobManager(server, { timer: new QuestionTimer(() => now) });
     await manager.start();
     now = 2500;
     await manager.answer({ done: true, skip: false });
@@ -599,7 +608,7 @@ describe("a new codebook version while coding", () => {
     expect(manager.getSnapshot().currentUnit?.id).toBe(1);
     expect(itemName(manager.getSnapshot().currentItem!)).toBe("q3");
     expect(manager.getSnapshot().currentUnitVariables).toMatchObject({ q1: a, q2: a });
-    expect(unitsServed).toBe(2);
+    expect(unitsServed).toBeGreaterThanOrEqual(2); // served again after the reload
 
     await manager.answer(a); // q3
     expect(posted).toHaveLength(1);
@@ -737,5 +746,41 @@ describe("frozen answers", () => {
     expect(manager.getSnapshot().currentFrozen).toBe(true);
     await manager.answer({ done: true, skip: false, values: [{ value: "B" }] });
     expect(manager.getSnapshot().userVariableValues.role.values).toEqual([{ value: "A" }]);
+  });
+});
+
+describe("saving in the background", () => {
+  it("goes on at once, tries again without a connection, and saves everything before the session ends", async () => {
+    let release: () => void = () => {};
+    const attempts: number[] = [];
+    let unitsServed = 0;
+    const postUnitVariables = vi.fn(async (unitId: number) => {
+      attempts.push(unitId);
+      if (attempts.length === 1) throw new CoderApiError("Bad gateway", 502); // no connection to the server: tried again
+      if (unitId === 2) await new Promise<void>((resolve) => (release = resolve)); // slow
+    });
+    const endSession = vi.fn(async () => ({ reopen: null }));
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([unitLoop("main", [unitVar("q1")])])),
+      getNextUnits: vi.fn(async (_loop: string, _branch?: BranchChoice, count?: number) => {
+        expect(count).toBe(5); // a batch
+        unitsServed += 1;
+        return unitsServed === 1 ? [unit(1), unit(2)] : [];
+      }),
+      postUnitVariables,
+      endSession,
+    });
+    const manager = new JobManager(server, { retryMs: () => 0 });
+    await manager.start();
+    await manager.answer({ done: true, skip: false, values: [{ value: "A" }] });
+    expect(manager.getSnapshot().currentUnit?.id).toBe(2); // from the batch, without waiting
+    const ending = manager.answer({ done: true, skip: false, values: [{ value: "B" }] });
+    await vi.waitFor(() => expect(attempts).toEqual([1, 1, 2]));
+    expect(manager.getSnapshot().unsaved).toBe(1);
+    expect(endSession).not.toHaveBeenCalled(); // waits for unit 2 to be saved
+    release();
+    await ending;
+    expect(endSession).toHaveBeenCalled();
+    expect(manager.getSnapshot()).toMatchObject({ phase: "finished", unsaved: 0, retrying: false });
   });
 });

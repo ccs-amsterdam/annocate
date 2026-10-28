@@ -112,11 +112,11 @@ export function coderApi(server: Server): Hono {
   });
 
   session.get("/loop/:loop/next", async (c) => {
-    const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), unitsets: c.req.queries("unitsets") });
-    if (!query.success) return c.json({ error: "Invalid branch or unitsets" }, 400);
-    const { branch, unitsets } = query.data;
+    const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), unitsets: c.req.queries("unitsets"), count: c.req.query("count") });
+    if (!query.success) return c.json({ error: "Invalid branch, unitsets or count" }, 400);
+    const { branch, unitsets, count } = query.data;
     const names = unitsets === undefined ? [] : Array.isArray(unitsets) ? unitsets : [unitsets];
-    return c.json(await c.get("runtime").nextUnit(c.get("coder"), c.req.param("loop"), { branch, unitsets: names }));
+    return c.json({ units: await c.get("runtime").nextUnits(c.get("coder"), c.req.param("loop"), { branch, unitsets: names }, count) });
   });
 
   session.get("/loop/:loop/units/:unitId", async (c) =>

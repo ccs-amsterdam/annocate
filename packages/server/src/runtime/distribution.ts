@@ -68,8 +68,8 @@ export class UnitPool {
   private unitSet: Set<number>;
   /** unitId -> coderId -> lease expiry (ms). Dynamic only. */
   private leases = new Map<number, Map<number, number>>();
-  /** coderId -> leased unitId. Dynamic only; at most one per coder per pool. */
-  private coderLease = new Map<number, number>();
+  /** coderId -> the units leased to them, in the order handed out. Dynamic only; a coder holds up to a batch. */
+  private coderLeases = new Map<number, number[]>();
 
   constructor(
     readonly unitset: string,
@@ -101,7 +101,7 @@ export class UnitPool {
   removeUnit(unitId: number): void {
     if (!this.unitSet.delete(unitId)) return;
     this.units = this.units.filter((id) => id !== unitId);
-    for (const coderId of this.leases.get(unitId)?.keys() ?? []) this.coderLease.delete(coderId);
+    for (const coderId of this.leases.get(unitId)?.keys() ?? []) this.dropLease(coderId, unitId);
     this.leases.delete(unitId);
   }
 
@@ -140,36 +140,44 @@ export class UnitPool {
       let unitLeases = this.leases.get(unitId);
       if (!unitLeases) this.leases.set(unitId, (unitLeases = new Map()));
       unitLeases.set(coderId, expires);
-      this.coderLease.set(coderId, unitId);
+      this.addLease(coderId, unitId);
     }
   }
 
-  /** Marks a unit as handed out to this coder (leases it, for dynamic pools). */
+  /** Marks a unit as handed out to this coder (leases it, for dynamic pools; a lease held already is renewed). */
   take(coderId: number, unitId: number, now: number): void {
     if (!this.rule) return;
-    const previous = this.coderLease.get(coderId);
-    if (previous !== undefined) this.leases.get(previous)?.delete(coderId);
     let unitLeases = this.leases.get(unitId);
     if (!unitLeases) this.leases.set(unitId, (unitLeases = new Map()));
     unitLeases.set(coderId, now + this.rule.leaseSeconds * 1000);
-    this.coderLease.set(coderId, unitId);
+    this.addLease(coderId, unitId);
   }
 
   /**
-   * A unit leased to this coder that they haven't finished (and that the
-   * `until` rule doesn't consider done), if any. A unit others filled up to
-   * `maxCoders` meanwhile stays theirs: at worst one coding too many (and a
-   * coder may reach past `maxCoders` anyway, `Reach`).
+   * The first unit leased to this coder that they haven't finished (and that
+   * the `until` rule doesn't consider done), if any. A unit others filled up
+   * to `maxCoders` meanwhile stays theirs: at worst one coding too many (and
+   * a coder may reach past `maxCoders` anyway, `Reach`). Leases of units
+   * that are done are dropped on the way.
    */
   heldLease(coderId: number): number | undefined {
-    const unitId = this.coderLease.get(coderId);
-    if (unitId === undefined) return undefined;
-    if (this.codings.has(coderId, unitId) || this.isSaturated(unitId)) {
-      this.coderLease.delete(coderId);
+    for (const unitId of [...(this.coderLeases.get(coderId) ?? [])]) {
+      if (!this.codings.has(coderId, unitId) && !this.isSaturated(unitId)) return unitId;
+      this.dropLease(coderId, unitId);
       this.leases.get(unitId)?.delete(coderId);
-      return undefined;
     }
-    return unitId;
+    return undefined;
+  }
+
+  private addLease(coderId: number, unitId: number): void {
+    const held = this.coderLeases.get(coderId) ?? [];
+    if (!held.includes(unitId)) this.coderLeases.set(coderId, [...held, unitId]);
+  }
+
+  private dropLease(coderId: number, unitId: number): void {
+    const held = (this.coderLeases.get(coderId) ?? []).filter((id) => id !== unitId);
+    if (held.length > 0) this.coderLeases.set(coderId, held);
+    else this.coderLeases.delete(coderId);
   }
 
   /** Whether the coder may submit an annotation for this unit (as far as this pool is concerned). */
@@ -178,7 +186,7 @@ export class UnitPool {
     if (!this.rule) return true;
     // Own earlier coding (editing after going back), or leased to this coder.
     // An expired lease is still honoured: worst case one coding too many.
-    return this.codings.has(coderId, unitId) || this.coderLease.get(coderId) === unitId;
+    return this.codings.has(coderId, unitId) || (this.coderLeases.get(coderId) ?? []).includes(unitId);
   }
 
   isComplete(unitId: number): boolean {

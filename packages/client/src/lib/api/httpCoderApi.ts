@@ -6,6 +6,7 @@ import {
   type EndUnit,
   type SessionResponse,
   type CoderUnitResponse,
+  type NextUnitsResponse,
   type TransferResponse,
   type VariableValue,
 } from "@annotinder/contracts";
@@ -50,7 +51,7 @@ export interface CoderApi {
    * Next unit for a unit_loop; which unit is decided by the server. `null` = the coder is done with the loop.
    * `branch`: the branch of the loop the client chose, with its filled-in unitset names (contracts NextUnitQuerySchema).
    */
-  getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null>;
+  getNextUnits(loop: string, branch?: BranchChoice, count?: number): Promise<CoderUnitResponse[]>;
   /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
   getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
   /** A finished unit: answers to every question of the loop (`skip` for hidden ones), with how long each took. */
@@ -148,14 +149,14 @@ export class HttpCoderApi implements CoderApi {
     return session;
   }
 
-  async getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null> {
-    const query = new URLSearchParams();
+  async getNextUnits(loop: string, branch?: BranchChoice, count = 1): Promise<CoderUnitResponse[]> {
+    const query = new URLSearchParams({ count: String(count) });
     if (branch) {
       query.set("branch", String(branch.branch));
       for (const name of branch.unitsets) query.append("unitsets", name);
     }
-    const path = coderEndpoints.getNextUnit.path.replace(":loop", encodeURIComponent(loop));
-    return this.request(branch ? `${path}?${query}` : path);
+    const path = coderEndpoints.getNextUnits.path.replace(":loop", encodeURIComponent(loop));
+    return (await this.request<NextUnitsResponse>(`${path}?${query}`)).units;
   }
 
   async getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse> {

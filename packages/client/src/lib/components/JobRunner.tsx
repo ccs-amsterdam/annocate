@@ -38,6 +38,7 @@ import {
   Moon,
   MonitorSmartphone,
   Copy,
+  CloudOff,
 } from "lucide-react";
 
 export interface JobRunnerProps {
@@ -204,6 +205,15 @@ function JobRunnerContent({
     }
     prevPositionRef.current = currentPos;
   }, [currentPos]);
+
+  // Answers are saved in the background: leaving the page before they are asks first.
+  const unsaved = snapshot.unsaved > 0;
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
 
   const currentUnitId = snapshot.currentUnit?.id ?? snapshot.navigation.currentUnitIndex ?? "none";
   const prevUnitIdRef = useRef<number | string | null>(currentUnitId);
@@ -609,6 +619,12 @@ function JobRunnerContent({
 
         {/* Right Section: Coder Settings Menu */}
         <div className="flex items-center gap-1 shrink-0">
+          {snapshot.retrying && (
+            <span className="flex items-center gap-1 text-xs" role="status" title="Your answers are kept and saved as soon as the connection is back.">
+              <CloudOff className="h-4 w-4" />
+              <span className="hidden sm:inline">Not saved yet: no connection</span>
+            </span>
+          )}
           {!preview && (
             <TransferMenu
               coderApi={coderApi}

@@ -82,6 +82,13 @@ Answers are saved on the server as the coder goes:
 - the answers to a **unit** together, when the coder answers its last
   question.
 
+Saving happens in the background: coders go on to the next question or
+unit at once, and units are fetched a few at a time, so nobody waits for
+the server. Without a connection, answers are kept in the page and saved
+when it is back; the top bar says so. Closing the page while answers
+aren't saved yet asks first, and the session only ends once everything is
+saved.
+
 Coders can close the page whenever they like. When they open the link
 again, in the same browser, they continue where they left off, also the
 next day or weeks later: questions they answered are skipped, and in a loop

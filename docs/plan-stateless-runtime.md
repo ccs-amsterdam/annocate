@@ -248,18 +248,22 @@ Each step its own commit, with tests passing and the system working.
    a pick reads the loop's codings and leases (not a per-unit summary
    table): simpler, and enough for jobs of thousands of units; the summary
    is the next step if a queue gets very large.
-5. **Batches and optimistic saving** (contracts, server, client).
+5. **Batches and optimistic saving** (done): `GET /loop/:loop/next?count=k`
+   (unfinished ones first, so asking again is safe; leases renewed), a unit
+   queue per loop in the client refilled in the background, and an outbox
+   that saves in order, retries without a connection, and keeps unsaved
+   unit answers over a new codebook version.
 6. **The runtime package**: runtime and `MemoryStore` out of
    `packages/server`, runnable outside Node.
 7. **Docs**: `architecture.md` §3 and §10, `api/coder.md`, `compositions.md`.
 8. **Local hosts** (later, separate): the V8 spike, then the R package.
 
-Steps 1–4 are done; the server runs any number of processes against one
+Steps 1–5 are done; the server runs any number of processes against one
 database (previews aside, §10).
 
 ## 10. Open points
 
-- Batch size: fixed, or by unit size?
+- Batch size: fixed at 5 now; by unit size if units get large.
 - Running several processes in the hosted setup (Docker Compose replicas
   behind the existing proxy).
 - Previews keep their coders and answers in the memory of one process

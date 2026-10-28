@@ -78,7 +78,7 @@ export interface Store {
   replaceCodings(basis: string, codings: Coding[]): Promise<void>;
   /** The leases of a loop (all coders'), or one coder's (all loops). Also expired ones. */
   listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]>;
-  /** Stores a lease: the coder's one lease in that queue. */
+  /** Stores a lease (a coder holds up to a batch per queue), or renews it. */
   putLease(lease: Lease): Promise<void>;
   /** The values coders have for a coder-level question (for `balanced` assignment). */
   coderValuesOf(variable: string): Promise<VariableValue[]>;
@@ -318,7 +318,7 @@ export class DbStore implements Store {
   async putLease(lease: Lease): Promise<void> {
     await this.sql.query(
       `INSERT INTO unit_leases (job_id, loop_key, unitset, coder_id, unit_id, expires) VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (job_id, loop_key, unitset, coder_id) DO UPDATE SET unit_id = excluded.unit_id, expires = excluded.expires`,
+       ON CONFLICT (job_id, loop_key, unitset, coder_id, unit_id) DO UPDATE SET expires = excluded.expires`,
       [this.jobId, lease.loop, lease.unitset, lease.coderId, lease.unitId, lease.expires],
     );
   }

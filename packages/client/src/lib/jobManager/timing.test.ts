@@ -22,11 +22,7 @@ describe("QuestionTimer", () => {
     now = 10_500;
     timer.answered("c:age", false);
     timer.leave();
-    const again = timer.take("c:");
-    expect(again).toEqual({ age: { firstMs: 2000, totalMs: 2500, hiddenMs: 4000, edits: 1 } });
-    // Not sent after all: next time again
-    timer.unsent("c:", Object.keys(again));
-    expect(timer.take("c:")).toEqual(again);
+    expect(timer.take("c:")).toEqual({ age: { firstMs: 2000, totalMs: 2500, hiddenMs: 4000, edits: 1 } });
   });
 
   it("keeps questions apart by key, and leaves out waiting time", () => {

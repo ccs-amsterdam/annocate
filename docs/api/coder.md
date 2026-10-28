@@ -16,7 +16,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 | Endpoint | | Request | Response |
 |---|---|---|---|
 | [getSession](#getsession) | `GET /session` | – | `SessionResponseSchema` |
-| [getNextUnit](#getnextunit) | `GET /loop/:loop/next?branch=&unitsets=` | – | `CoderUnitResponseSchema \| null` |
+| [getNextUnits](#getnextunits) | `GET /loop/:loop/next?count=&branch=&unitsets=` | – | `NextUnitsResponseSchema` |
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
 | [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | – |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
@@ -74,17 +74,22 @@ units in a loop that depends on them (contracts `loopDependencies`).
 Assigns the coder's `auto` variables they don't have yet (from the page's
 URL parameters, `x-url-params`, for `url_param` ones).
 
-### getNextUnit
+### getNextUnits
 
-`GET /loop/:loop/next?branch=<i>&unitsets=<name>&unitsets=<name>` → `CoderUnitResponseSchema | null`
+`GET /loop/:loop/next?count=<k>&branch=<i>&unitsets=<name>&unitsets=<name>` → `NextUnitsResponseSchema` (`{ units }`)
 
 `:loop` is the loop's position in the codebook version the coder runs
 (contracts `unitLoops`: `1`, `2`, ...); loops have no name. The same goes for
 `loop` in `POST /variables/unit` and `unitset` in the session's `progress`.
 
-The server picks the coder's next unit from the coder's branch: their own
-units (a set, or a shared queue with leases) and the overlap. `null`: the coder is
-done with the loop. 409 while the job is paused (`active: false`).
+The server picks the coder's next `count` units (default 1, at most
+`MAX_UNIT_BATCH`, 20) from the coder's branch: their own units (a set, or a
+shared queue with leases) and the overlap, in order. The ones they haven't
+finished come first, so asking again returns the same ones until they are
+answered: the client asks for a batch and again before it runs out. In a
+shared queue each is leased to the coder (a lease they hold is renewed).
+Empty: the coder is done with the loop. 409 while the job is paused
+(`active: false`).
 
 The client chooses the branch (`NextUnitQuerySchema`): the index of the
 first branch in the loop's `units` whose `when` holds, and its unitset

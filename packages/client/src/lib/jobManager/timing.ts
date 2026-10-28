@@ -77,11 +77,6 @@ export class QuestionTimer {
     return out;
   }
 
-  /** Timings `take` returned that didn't reach the server: sent again next time. */
-  unsent(prefix: string, names: string[]): void {
-    for (const name of names) this.entry(prefix + name).dirty = true;
-  }
-
   /** The page was hidden or shown again. */
   visibility(hidden: boolean): void {
     if (hidden === this.hidden) return;

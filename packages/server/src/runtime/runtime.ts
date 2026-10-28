@@ -596,28 +596,34 @@ export class DeploymentRuntime {
   // --- units ------------------------------------------------------------------
 
   /**
-   * The coder's next unit in a loop, or null when they are done with it. In
-   * a shared queue it is picked under the queue's lock, counting every
-   * coder's codings and leases, and leased to the coder.
+   * The coder's next `count` units in a loop, in order (a batch: the client
+   * asks again before it runs out); none when they are done with it. Units
+   * they haven't finished: asked again, the same ones come first. In a
+   * shared queue they are picked under the queue's lock, counting every
+   * coder's codings and leases, and leased to the coder (a lease they hold
+   * already is renewed).
    */
-  async nextUnit(coder: Coder, loopName: string, choice: BranchChoice = { unitsets: [] }): Promise<CoderUnitResponse | null> {
+  async nextUnits(coder: Coder, loopName: string, choice: BranchChoice = { unitsets: [] }, count = 1): Promise<CoderUnitResponse[]> {
     this.assertOpen(coder);
     if (!this.spec.active) throw new HttpError(409, "This job is not active");
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
     const route = await this.route(coder, info, choice);
-    if (!route) return null;
-    const unit =
+    if (!route) return [];
+    const units =
       route.branch.mode === "shared"
-        ? await this.store.locked(`queue/${info.key}/${route.names[0]}`, (store) => this.pick(store, coder, info, route))
-        : await this.pick(this.store, coder, info, route);
-    if (!unit) return null;
-    const [shown, answers] = await Promise.all([this.markServed(coder.coderId, unit), this.store.unitAnswers(coder.coderId, unit.id)]);
-    return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: answers };
+        ? await this.store.locked(`queue/${info.key}/${route.names[0]}`, (store) => this.pick(store, coder, info, route, count))
+        : await this.pick(this.store, coder, info, route, count);
+    return Promise.all(
+      units.map(async (unit) => {
+        const [shown, answers] = await Promise.all([this.markServed(coder.coderId, unit), this.store.unitAnswers(coder.coderId, unit.id)]);
+        return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: answers };
+      }),
+    );
   }
 
-  /** Picks the coder's next unit (and leases it, in a shared queue); skips units that no longer exist. */
-  private async pick(store: Store, coder: Coder, info: LoopInfo, route: Route): Promise<Unit | null> {
+  /** Picks the coder's next units (and leases them, in a shared queue); skips units that no longer exist. */
+  private async pick(store: Store, coder: Coder, info: LoopInfo, route: Route, count: number): Promise<Unit[]> {
     const shared = route.branch.mode === "shared";
     // A shared queue counts every coder; otherwise only the coder's own codings matter.
     const [rows, leases] = await Promise.all([
@@ -626,7 +632,8 @@ export class DeploymentRuntime {
     ]);
     const codings = DeploymentRuntime.codingsOf(rows);
     const { main, overlap } = this.pools(route, codings, leases);
-    for (;;) {
+    const picked: Unit[] = [];
+    while (picked.length < count) {
       const now = this.options.now();
       const next = pickNext(main, overlap, coder.coderId, codings, {
         order: info.loop.order ?? "sequential",
@@ -635,7 +642,7 @@ export class DeploymentRuntime {
         seed: this.spec.jobId * 1000,
         now,
       });
-      if (!next) return null;
+      if (!next) break;
       const unit = (await this.getUnits([next.unitId], store)).get(next.unitId);
       if (!unit) {
         // Deleted since the spec was read: skip it.
@@ -648,8 +655,11 @@ export class DeploymentRuntime {
         const expires = new Date(now + next.pool.rule.leaseSeconds * 1000);
         await store.putLease({ loop: info.key, unitset: next.pool.unitset, coderId: coder.coderId, unitId: next.unitId, expires });
       }
-      return unit;
+      // As if finished, for the rest of this batch: the next pick moves on (and counts it for `maxUnits` and the overlap's place).
+      codings.record(coder.coderId, next.unitId, {}, now);
+      picked.push(unit);
     }
+    return picked;
   }
 
   /**

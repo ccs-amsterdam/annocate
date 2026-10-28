@@ -38,7 +38,7 @@ describe("HttpCoderApi", () => {
     const { HttpCoderApi } = await import("../api/httpCoderApi");
     const api = new HttpCoderApi({ baseUrl: "/d/42" });
     await api.getSession();
-    await api.getNextUnit("loop");
+    await api.getNextUnits("loop");
     const headers = (call: number) => (fetch.mock.calls[call] as unknown as [string, RequestInit])[1].headers;
     expect(headers(0)).not.toHaveProperty("x-annotinder-version");
     expect(headers(1)).toMatchObject({ "x-annotinder-version": "3" });

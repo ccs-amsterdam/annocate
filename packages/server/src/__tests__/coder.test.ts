@@ -104,7 +104,12 @@ function coder(name: string, invite: string | null = "demo-secret", app = () => 
     next: async (loop = "1", branch?: { branch: number; unitsets: string[] }) => {
       const res = await call(`/loop/${loop}/next${branchQuery(branch)}`);
       expect(res.status).toBe(200);
-      return res.json() as Promise<CoderUnitResponse | null>;
+      return ((await res.json()) as { units: CoderUnitResponse[] }).units[0] ?? null;
+    },
+    batch: async (count: number, loop = "1") => {
+      const res = await call(`/loop/${loop}/next?count=${count}`);
+      expect(res.status).toBe(200);
+      return ((await res.json()) as { units: CoderUnitResponse[] }).units;
     },
     submit: (unitId: number, variables: Record<string, Partial<VariableValue>>, loop?: string) =>
       call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId, loop, variables }) }),
@@ -631,7 +636,7 @@ describe("quitting and deleting a coder's data", () => {
     await redeploy({});
     const secret = await invite(undefined, { participantParam: { param: "participant" } });
     const link = { "x-invite-secret": secret, "x-url-params": "participant=P77" };
-    const unit = (await (await send("quitter", "/loop/1/next", {}, link)).json()) as CoderUnitResponse;
+    const unit = ((await (await send("quitter", "/loop/1/next", {}, link)).json()) as { units: CoderUnitResponse[] }).units[0];
     expect((await send("quitter", "/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("positive") }) }, link)).status).toBe(204);
 
     const quit = await send("quitter", "/quit", { method: "POST", body: JSON.stringify({ requestDeletion: true }) }, link);
@@ -1138,6 +1143,29 @@ describe("state in the database, not in memory", () => {
     expect(await db.query("SELECT count(*)::int AS n FROM unit_leases")).toEqual([{ n: 2 }]);
   });
 
+  it("hands out units in batches: the same unfinished ones first, then the next", async () => {
+    const c = coder("batcher");
+    const first = await c.batch(2);
+    expect(first.map((u) => u.externalId)).toEqual(["unit-1", "unit-2"]);
+    expect((await c.batch(2)).map((u) => u.externalId)).toEqual(["unit-1", "unit-2"]); // asked again: the same
+    await c.submit(first[0].id, demo("neutral"));
+    expect((await c.batch(2)).map((u) => u.externalId)).toEqual(["unit-2", "unit-3"]);
+  });
+
+  it("leases a batch of a shared queue: other coders get what is left first", async () => {
+    await createUnitset("queue", ["unit-1", "unit-2", "unit-3"]);
+    await redeploy({ units: [{ mode: "shared", unitset: "queue", until: { coders: 1 }, maxCoders: 1 }] });
+    const a = coder("a-batch");
+    const b = coder("b-batch");
+    const held = await a.batch(2);
+    expect(held).toHaveLength(2);
+    // the other coder gets what is left first (leased units are taken)
+    expect((await b.next())!.externalId).toBe("unit-3");
+    // a submits from the batch, in any order
+    expect((await a.submit(held[1].id, sentiment("positive"))).status).toBe(204);
+    expect((await a.submit(held[0].id, sentiment("positive"))).status).toBe(204);
+  });
+
   it("forgets idle deployments, and reads them again when used", async () => {
     let now = Date.now();
     server = restart({ now: () => now });
@@ -1251,7 +1279,7 @@ describe("researcher preview", () => {
     const before = await coders();
     const { deploymentId, token } = await openPreview();
     const call = previewer(deploymentId, token);
-    const unit = (await (await call("/loop/1/next")).json()) as CoderUnitResponse;
+    const unit = ((await (await call("/loop/1/next")).json()) as { units: CoderUnitResponse[] }).units[0];
     const submit = await call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("neutral") }) });
     expect(submit.status).toBe(204);
     expect(((await (await call("/session")).json()) as SessionResponse).progress[0].doneUnitIds).toEqual([unit.id]);

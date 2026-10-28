@@ -8,7 +8,6 @@ import type {
   UnitLoopItem,
   UnitLayout,
   VariableValue,
-  AnswerTiming,
   CoderUnitResponse,
   SessionResponse,
   AnyVariableType,
@@ -103,6 +102,10 @@ export interface JobManagerSnapshot {
   canLogIn: boolean;
   /** With phase `finished`: whether the coder can go back (`reopen()`); `until` null: always. */
   reopen: Reopen;
+  /** Answers not saved on the server yet (they are sent in the background, `save`). */
+  unsaved: number;
+  /** Saving failed for lack of a connection (or a server hiccup): it is tried again. */
+  retrying: boolean;
   navigation: JobManagerNavigation;
 }
 
@@ -172,6 +175,26 @@ function findEnd(items: (TopLevelItem | InLoopItem)[], name: string): EndItem | 
     }
   }
   return null;
+}
+
+/** Answers waiting to be saved (`JobManager.save`). */
+interface OutboxItem {
+  /** What it saves: a newer item with the same key replaces one still waiting. */
+  key: string;
+  send: () => Promise<void>;
+  /** A unit's answers, to put back after a new codebook version (`carryOver`). */
+  unit?: { loop: string; unitId: number; answers: Record<string, VariableValue> };
+}
+
+/** Units fetched at once, and how few may be left before more are fetched (`fetchNextUnit`). */
+const UNIT_BATCH = 5;
+const UNIT_REFILL = 2;
+
+/** A failure that may go away by itself: no connection, or the server or a proxy had a problem. Tried again. */
+function isTransient(err: unknown): boolean {
+  if (err instanceof TypeError) return true; // fetch: network error
+  const status = (err as { status?: unknown } | null)?.status;
+  return typeof status === "number" && (status >= 500 || status === 408 || status === 429);
 }
 
 function errorCodeOf(err: unknown): string | null {
@@ -250,11 +273,27 @@ export class JobManager {
   private lastFailedOperation: (() => Promise<void>) | null = null;
   private starting: Promise<void> | null = null;
   /**
-   * After a new codebook version: the unit the coder was working on and its
-   * answers not yet saved, put back when the reloaded session returns to
-   * that unit (`reloadAfterPublish`).
+   * After a new codebook version: answers to units that weren't saved yet
+   * (the unit the coder was working on, and finished units still waiting to
+   * be saved), by `<loop>/<unitId>`: put back when the reloaded session
+   * serves the unit again (`reloadAfterPublish`).
    */
-  private carryOver: { loop: string; unitId: number; answers: Record<string, VariableValue> } | null = null;
+  private carryOver = new Map<string, Record<string, VariableValue>>();
+  /** Per loop key: units fetched ahead (a batch), not shown yet (`fetchNextUnit`). */
+  private unitQueues = new Map<string, { units: CoderUnitResponse[]; filling: Promise<void> | null }>();
+  /**
+   * Answers still to be saved, in order: sent in the background, so the
+   * coder never waits for the server (`save`). A unit's carries its answers,
+   * to put them back after a new codebook version.
+   */
+  private outbox: OutboxItem[] = [];
+  private draining: Promise<void> | null = null;
+  /** Saving failed (not for lack of a connection): nothing more is sent until it is dealt with (`retry`, a reload). */
+  private saveError: unknown = null;
+  /** Operations running (`guarded`): a failed save is reported when they are done. */
+  private busy = 0;
+  private readonly timer: QuestionTimer;
+  private readonly retryMs: (attempt: number) => number;
 
   private snapshot: JobManagerSnapshot = {
     phase: "loading",
@@ -274,6 +313,8 @@ export class JobManager {
     login: null,
     canLogIn: false,
     reopen: null,
+    unsaved: 0,
+    retrying: false,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -286,10 +327,16 @@ export class JobManager {
 
   constructor(
     coderApi: CoderApi,
-    /** How long the coder takes per question (sent with the answers). */
-    private readonly timer: QuestionTimer = new QuestionTimer(),
+    options: {
+      /** How long the coder takes per question (sent with the answers). */
+      timer?: QuestionTimer;
+      /** How long to wait before saving again after a failed attempt (the attempt counts from 1). */
+      retryMs?: (attempt: number) => number;
+    } = {},
   ) {
     this.coderApi = coderApi;
+    this.timer = options.timer ?? new QuestionTimer();
+    this.retryMs = options.retryMs ?? ((attempt) => Math.min(30_000, 1000 * 2 ** (attempt - 1)));
   }
 
   getSnapshot(): JobManagerSnapshot {
@@ -541,7 +588,7 @@ export class JobManager {
       const nextUnit = await this.fetchNextUnit(this.activeLoop);
       if (!nextUnit) break;
       // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
-    const carried = this.carryOver?.loop === this.keyOf(this.activeLoop) && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
+    const carried = this.takeCarryOver(this.activeLoop, nextUnit.id);
     this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     }
 
@@ -623,7 +670,8 @@ export class JobManager {
         // A frozen answer stays as it is (the server ignores another one).
         if (!this.frozen.has(item.name)) this.userVariableValues[item.name] = value;
         const values = await this.postedCoderValues();
-        await this.withTimings("c:", (timings) => this.coderApi.postCoderVariables(values, timings));
+        const timings = this.timer.take("c:");
+        this.save({ key: "coder", send: () => this.coderApi.postCoderVariables(values, timings) });
         await this.advanceTop();
       } else {
         this.unitVariableValues[item.name] = value;
@@ -638,15 +686,79 @@ export class JobManager {
     return this.currentUnit ? `u:${this.currentUnit.id}:${name}` : null;
   }
 
-  /** Posts with the timings under `prefix` not sent yet; if the post fails, they stay unsent. */
-  private async withTimings(prefix: string, post: (timings: Record<string, AnswerTiming>) => Promise<void>): Promise<void> {
-    const timings = this.timer.take(prefix);
-    try {
-      await post(timings);
-    } catch (err) {
-      this.timer.unsent(prefix, Object.keys(timings));
-      throw err;
+  /**
+   * Saves in the background: the coder goes on at once. Posts go out one at
+   * a time, in order; a newer one for the same answers (`OutboxItem.key`)
+   * replaces one still waiting. A failure for lack of a connection (or a
+   * server hiccup) is tried again, later and later; another failure stops
+   * saving until it is dealt with (`reportSaveError`).
+   */
+  private save(item: OutboxItem): void {
+    const waiting = this.outbox.findIndex((other, i) => other.key === item.key && !(i === 0 && this.draining));
+    if (waiting >= 0) this.outbox[waiting] = item;
+    else this.outbox.push(item);
+    this.publish({ unsaved: this.outbox.length });
+    if (this.saveError === null) this.drain().catch(() => this.reportSaveError());
+  }
+
+  /** Waits until everything is saved (e.g. before the session ends); throws if saving failed. */
+  private async flush(): Promise<void> {
+    while (this.outbox.length > 0) await this.drain();
+  }
+
+  private drain(): Promise<void> {
+    if (this.saveError !== null) return Promise.reject(this.saveError);
+    this.draining ??= (async () => {
+      let attempt = 0;
+      try {
+        while (this.outbox.length > 0) {
+          try {
+            await this.outbox[0].send();
+            this.outbox.shift();
+            attempt = 0;
+            this.publish({ unsaved: this.outbox.length, retrying: false });
+          } catch (err) {
+            if (!isTransient(err)) {
+              this.saveError = err;
+              throw err;
+            }
+            attempt += 1;
+            this.publish({ retrying: true });
+            await new Promise((resolve) => setTimeout(resolve, this.retryMs(attempt)));
+          }
+        }
+      } finally {
+        this.draining = null;
+      }
+    })();
+    return this.draining;
+  }
+
+  /**
+   * Saving failed in the background. While the coder's last action is still
+   * being handled, that action meets the error itself (`guarded`).
+   * Otherwise: a new codebook version loads the session again
+   * (`reloadAfterPublish`; unsaved answers to units are put back when those
+   * come again); another error shows, and `retry()` saves again.
+   */
+  private reportSaveError(): void {
+    const err = this.saveError;
+    if (err === null || this.busy > 0 || this.snapshot.phase === "error") return;
+    if (errorCodeOf(err) === "codebook_changed") {
+      void this.guarded(() => this.reloadAfterPublish());
+      return;
     }
+    this.lastFailedOperation = async () => {
+      await this.flush();
+      await this.republish();
+    };
+    this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err), retrying: false });
+  }
+
+  /** Shows the current question again (after an error). */
+  private async republish(): Promise<void> {
+    if (this.activeLoop && this.currentUnit) await this.publishLoopStep();
+    else if (!this.activeLoop && this.topSteps[this.topIndex]?.type === "question") await this.publishTopStep(this.topSteps[this.topIndex]);
   }
 
   /**
@@ -656,6 +768,7 @@ export class JobManager {
    */
   private async guarded(operation: () => Promise<void>): Promise<void> {
     this.lastFailedOperation = operation;
+    this.busy += 1;
     try {
       await operation();
       // (An operation that handles its own failure, like start(), sets its own retry.)
@@ -667,21 +780,28 @@ export class JobManager {
         return;
       }
       this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
+    } finally {
+      this.busy -= 1;
     }
+    // A save that failed in the background meanwhile
+    this.reportSaveError();
   }
 
   /**
    * A new codebook version was published while the coder was working (the
    * server answered `codebook_changed`): load the session again, as after a
    * reload, so the coder continues where they were under the new version.
-   * Answers to the current unit that weren't saved yet are kept, if they
-   * still fit; coder-level answers are saved one by one, so at most the
-   * last one is asked again.
+   * Answers to units that weren't saved yet are kept, if they still fit;
+   * coder-level answers not saved yet are asked again.
    */
   private async reloadAfterPublish(): Promise<void> {
-    if (this.activeLoop && this.currentUnit) {
-      this.carryOver = { loop: this.keyOf(this.activeLoop), unitId: this.currentUnit.id, answers: { ...this.unitVariableValues } };
-    }
+    // Unsaved answers to units come back with their units; unsaved coder-level answers are asked again.
+    for (const { unit } of this.outbox) if (unit) this.carryOver.set(`${unit.loop}/${unit.unitId}`, unit.answers);
+    this.outbox = [];
+    this.saveError = null;
+    if (this.activeLoop && this.currentUnit) this.carryOver.set(`${this.keyOf(this.activeLoop)}/${this.currentUnit.id}`, { ...this.unitVariableValues });
+    this.unitQueues.clear();
+    this.publish({ unsaved: 0, retrying: false });
     this.starting = null;
     this.userVariableValues = {};
     this.unitVariableValues = {};
@@ -689,7 +809,6 @@ export class JobManager {
     this.currentUnit = null;
     this.expressionCache = new ExpressionCache();
     await this.start();
-    this.carryOver = null;
   }
 
   async submitAnswer(value: VariableValue): Promise<void> {
@@ -699,6 +818,8 @@ export class JobManager {
   async retry(): Promise<void> {
     const op = this.lastFailedOperation;
     if (!op) return;
+    // Saving is tried again too.
+    this.saveError = null;
     await this.guarded(op);
   }
 
@@ -827,14 +948,60 @@ export class JobManager {
    * branch matches and the coder wasn't routed before, the coder has no
    * units in this loop.
    */
+  /**
+   * The coder's next unit in a loop, or null when they are done with it.
+   * Units come in batches (`UNIT_BATCH`), fetched again in the background
+   * before the batch runs out, so the coder doesn't wait.
+   */
   private async fetchNextUnit(loop: UnitLoopItem): Promise<CoderUnitResponse | null> {
-    const choice = await this.chooseBranch(loop);
-    try {
-      return await this.coderApi.getNextUnit(this.keyOf(loop), choice ?? undefined);
-    } catch (err) {
-      if (choice === null && errorCodeOf(err) === "branch_required") return null;
-      throw err;
+    const queue = this.unitQueue(loop);
+    if (queue.units.length === 0) await this.fillQueue(loop);
+    // Units answered but not saved yet came back (the server doesn't know
+    // they are done): once saved, it knows what is next.
+    if (queue.units.length === 0 && this.outbox.some((item) => item.unit?.loop === this.keyOf(loop))) {
+      await this.flush();
+      await this.fillQueue(loop);
     }
+    const unit = queue.units.shift() ?? null;
+    if (unit && queue.units.length < UNIT_REFILL) this.fillQueue(loop).catch(() => {}); // tried again when needed
+    return unit;
+  }
+
+  private unitQueue(loop: UnitLoopItem): { units: CoderUnitResponse[]; filling: Promise<void> | null } {
+    const key = this.keyOf(loop);
+    let queue = this.unitQueues.get(key);
+    if (!queue) this.unitQueues.set(key, (queue = { units: [], filling: null }));
+    return queue;
+  }
+
+  /** Asks the server for the coder's next units; adds those the coder doesn't have yet. */
+  private fillQueue(loop: UnitLoopItem): Promise<void> {
+    const queue = this.unitQueue(loop);
+    queue.filling ??= (async () => {
+      try {
+        const choice = await this.chooseBranch(loop);
+        let units: CoderUnitResponse[];
+        try {
+          units = await this.coderApi.getNextUnits(this.keyOf(loop), choice ?? undefined, UNIT_BATCH);
+        } catch (err) {
+          if (choice === null && errorCodeOf(err) === "branch_required") return;
+          throw err;
+        }
+        const known = new Set([...this.history(loop).entries.map((e) => e.unitId), ...queue.units.map((u) => u.id)]);
+        queue.units.push(...units.filter((u) => !known.has(u.id)));
+      } finally {
+        queue.filling = null;
+      }
+    })();
+    return queue.filling;
+  }
+
+  /** Answers to a unit kept over a new codebook version (`carryOver`), once. */
+  private takeCarryOver(loop: UnitLoopItem, unitId: number): Record<string, VariableValue> {
+    const key = `${this.keyOf(loop)}/${unitId}`;
+    const answers = this.carryOver.get(key) ?? {};
+    this.carryOver.delete(key);
+    return answers;
   }
 
   /**
@@ -842,6 +1009,8 @@ export class JobManager {
    * without one the end of the job: tells the server, and shows the ending.
    */
   private async reachEnd(item: EndItem | null, scope: ReferenceScope, unit?: EndUnit): Promise<void> {
+    // Everything is saved before the session ends (the server accepts nothing after).
+    await this.flush();
     const ended = await this.coderApi.endSession(item?.name, unit);
     this.publish({ reopen: ended?.reopen ?? null });
     await this.publishEnding(item, scope);
@@ -879,6 +1048,7 @@ export class JobManager {
    */
   async quit(requestDeletion: boolean): Promise<void> {
     await this.guarded(async () => {
+      await this.flush();
       await this.coderApi.quitSession(requestDeletion);
       if (requestDeletion) this.publish({ deletionRequested: true });
       if (this.snapshot.phase !== "finished") await this.publishEnding(null, this.scope(this.coderVisible), true);
@@ -983,7 +1153,12 @@ export class JobManager {
       }
       const { id } = this.currentUnit;
       const loopKey = this.keyOf(this.activeLoop);
-      await this.withTimings(`u:${id}:`, (timings) => this.coderApi.postUnitVariables(id, doneValues, loopKey, timings));
+      const timings = this.timer.take(`u:${id}:`);
+      this.save({
+        key: `unit:${loopKey}/${id}`,
+        send: () => this.coderApi.postUnitVariables(id, doneValues, loopKey, timings),
+        unit: { loop: loopKey, unitId: id, answers: doneValues },
+      });
       for (const name of this.dependencies.get(loopKey) ?? []) if (name in this.userVariableValues) this.frozen.add(name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
@@ -1021,7 +1196,7 @@ export class JobManager {
     }
 
     // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
-    const carried = this.carryOver?.loop === this.keyOf(this.activeLoop) && this.carryOver.unitId === nextUnit.id ? this.carryOver.answers : {};
+    const carried = this.takeCarryOver(this.activeLoop, nextUnit.id);
     this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     await this.openEntry(this.unitHistory.length - 1);
 

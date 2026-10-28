@@ -137,14 +137,18 @@ loads the session again (`api/coder.md`).
 2. **`GET /session`.** Assigns any missing server-side `auto` variables
    (§7), then returns the codebook, per-loop progress, and the coder's
    variables (so client-side conditions can use assigned variables).
-3. **`GET /loop/:loop/next`.** On the first call for a loop, the runtime
-   routes the coder to a branch (§6) and stores that. It then picks a unit
-   and, in a shared queue, leases it, reads the unit, and records the
-   version shown (`unit_serves`). If a unit no longer exists, it is dropped
-   from the queue and the next one is tried.
+3. **`GET /loop/:loop/next?count=k`.** On the first call for a loop, the
+   runtime routes the coder to a branch (§6) and stores that. It then picks
+   the coder's next k units (unfinished ones first) and, in a shared queue,
+   leases them, reads them, and records the versions shown (`unit_serves`).
+   A unit that no longer exists is skipped. The client asks for a batch (5)
+   and again in the background before it runs out.
 4. **`POST /variables/unit`.** The runtime checks that the unit was assigned
-   to this coder, validates the variables, writes them to the database, and
-   updates the queue.
+   to this coder, validates the variables, and writes them (and the
+   codings they finish) to the database. The client sends answers in the
+   background, one post at a time, in order (`JobManager.save`): the coder
+   goes on at once. A failure for lack of a connection is tried again; the
+   end of the session waits until everything is saved.
 
 **Researcher preview.** `POST /job/:jobId/deployment/preview` returns
 deployment id `<jobId>.preview` and a token signed with the server's secret

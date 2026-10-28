@@ -11,6 +11,9 @@ import {
   RedeemTransferResponseSchema,
 } from "../session.js";
 
+/** The most units handed out (and, in a shared queue, leased) to a coder at once. */
+export const MAX_UNIT_BATCH = 20;
+
 /**
  * Query of `GET /loop/:loop/next`: the branch of the loop's `units` the client
  * chose (the first whose `when` matches, evaluated on the client) and its
@@ -24,7 +27,13 @@ import {
 export const NextUnitQuerySchema = z.object({
   branch: z.coerce.number().int().min(0).optional(),
   unitsets: z.union([z.string(), z.array(z.string())]).optional(),
+  /** How many of the coder's next units (a batch): the client asks again before it runs out. */
+  count: z.coerce.number().int().min(1).max(MAX_UNIT_BATCH).default(1),
 });
+
+/** The coder's next units in a loop, in order; empty when they are done with it. */
+export const NextUnitsResponseSchema = z.object({ units: z.array(CoderUnitResponseSchema) });
+export type NextUnitsResponse = z.infer<typeof NextUnitsResponseSchema>;
 export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
 
 /**
@@ -35,12 +44,12 @@ export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
  */
 export const coderEndpoints = {
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
-  getNextUnit: {
+  getNextUnits: {
     method: "GET",
     path: "/loop/:loop/next",
     query: NextUnitQuerySchema,
     request: z.void(),
-    response: CoderUnitResponseSchema.nullable(),
+    response: NextUnitsResponseSchema,
   },
   /** A unit the coder already has in this loop (finished or in progress), e.g. to go back to it after resuming. */
   getLoopUnit: {

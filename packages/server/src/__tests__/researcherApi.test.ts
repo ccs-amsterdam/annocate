@@ -88,7 +88,7 @@ async function code(jobId: number, invite: string, answer: string): Promise<void
     return res;
   };
   for (;;) {
-    const unit = (await (await send("/loop/1/next")).json()) as { id: number } | null;
+    const unit = ((await (await send("/loop/1/next")).json()) as { units: { id: number }[] }).units[0];
     if (!unit) return;
     const variables = { q: { done: true, values: [{ value: answer }] } };
     expect((await send("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, loop: "1", variables }) })).status).toBe(204);
