@@ -3,6 +3,8 @@ import {
   type JobWrite,
   type JobResponse,
   type JobUser,
+  type DeleteCoders,
+  type DeleteCodersResponse,
   type CodebookMeta,
   type CodebookResponse,
   type CodebookWrite,
@@ -104,6 +106,10 @@ export interface ResearcherApi {
   deleteUnitset(id: number): Promise<void>;
 
   listCoders(): Promise<CoderProgress[]>;
+  /** Deletes coders and all their answers for good, by id, participant id or email (ADMIN). */
+  deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse>;
+  /** Declines a coder's request to delete their answers (ADMIN). */
+  declineDeletion(coderId: number): Promise<void>;
   listInvites(): Promise<CoderInviteResponse[]>;
   createInvite(body: CoderInviteWrite): Promise<CoderInviteResponse>;
   /** No new coders from this invite; coders who already started keep working. */
@@ -392,6 +398,15 @@ export class HttpResearcherApi implements ResearcherApi {
   async listCoders(): Promise<CoderProgress[]> {
     const jobId = this.requireJobId();
     return this.request(researcherEndpoints.listCoders.path.replace(":jobId", String(jobId)));
+  }
+
+  async deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse> {
+    const jobId = this.requireJobId();
+    return this.request(researcherEndpoints.deleteCoders.path.replace(":jobId", String(jobId)), { method: "POST", body: JSON.stringify(select) });
+  }
+
+  async declineDeletion(coderId: number): Promise<void> {
+    await this.request(this.jobPath(researcherEndpoints.declineDeletion.path, coderId), { method: "POST" });
   }
 
   private jobPath(path: string, id?: number): string {

@@ -60,6 +60,9 @@ function makeFlakyServer(overrides: Partial<CoderApi> = {}): CoderApi & { calls:
     postCoderVariables: vi.fn(async () => {
       calls.postCoderVariables = (calls.postCoderVariables ?? 0) + 1;
     }),
+    quitSession: vi.fn(async () => {
+      calls.quitSession = (calls.quitSession ?? 0) + 1;
+    }),
     endSession: vi.fn(async () => {
       calls.endSession = (calls.endSession ?? 0) + 1;
     }),
@@ -179,6 +182,26 @@ describe("JobManager error-handling, rollback, and retry contract", () => {
     const questions = manager.getSnapshot().navigation.phases[0].questions!;
     expect(questions.map((q) => [q.name, q.isCurrent])).toEqual([["q1", false], ["q3", true]]);
     expect(questions[1].label).toBe("Is … about …?");
+  });
+
+  it("quits: the session ends; asking for deletion works also after the end", async () => {
+    const quitSession = vi.fn(async () => {});
+    const server = makeFlakyServer({ getSession: vi.fn(async () => session([confirm("a"), confirm("b")])), quitSession });
+    const manager = new JobManager(server);
+    await manager.start();
+    await manager.quit(false);
+    expect(manager.getSnapshot()).toMatchObject({ phase: "finished", quit: true, deletionRequested: false });
+    await manager.quit(true);
+    expect(quitSession).toHaveBeenLastCalledWith(true);
+    expect(manager.getSnapshot()).toMatchObject({ phase: "finished", quit: true, deletionRequested: true });
+
+    // Reloaded: the ending again, with the request
+    const reloaded = makeFlakyServer({
+      getSession: vi.fn(async () => ({ ...session([confirm("a")]), ended: { outcome: "quit", at: new Date() }, deletionRequest: { at: new Date() } }) as SessionResponse),
+    });
+    const again = new JobManager(reloaded);
+    await again.start();
+    expect(again.getSnapshot()).toMatchObject({ phase: "finished", quit: true, deletionRequested: true, ending: null });
   });
 
   it("asks the server for the next unit by loop name", async () => {

@@ -1,4 +1,4 @@
-import type { UnitData, VariableValue } from "@annotinder/contracts";
+import type { DeletionRequest, UnitData, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
@@ -32,6 +32,8 @@ export interface Store {
   /** The coder for a coder key, created from an invite on first use (docs/coder-identity.md). */
   resolveCoder(request: ResolveCoderRequest): Promise<Coder>;
   putCoder(coderId: number, write: CoderWrite): Promise<void>;
+  /** Records the coder's request to delete their answers (a new request replaces a declined one). */
+  requestDeletion(coderId: number, request: DeletionRequest): Promise<void>;
   listFinished(request: FinishedRequest): Promise<Finished[]>;
   /** One coder's live annotations per unit, ordered by first write. */
   listAnnotations(coderId: number): Promise<CoderAnnotation[]>;
@@ -87,6 +89,10 @@ export class DbStore implements Store {
       coderId,
     ]);
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
+  }
+
+  async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
+    await this.sql.query("UPDATE coders SET deletion_request = $1 WHERE job_id = $2 AND id = $3", [JSON.stringify(request), this.jobId, coderId]);
   }
 
   async listFinished(request: FinishedRequest): Promise<Finished[]> {

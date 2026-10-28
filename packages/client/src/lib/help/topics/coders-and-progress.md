@@ -77,9 +77,59 @@ if it has none: give loops a label to make this table easier to read.
 
 Coders who only answered questions outside unit loops (for example
 screened out after a few background questions) show no answers and no
-last activity here. **Ended** says how a session ended at an
-[end item](end-items.md): *Complete* or *Screened out* (hover it to see which
-end item); `coders.csv` in the results has the same in its `ended` column.
+last activity here. **Ended** says how a session ended: *Complete* or
+*Screened out* at an [end item](end-items.md) (hover it to see which), or
+*Quit* when the coder stopped for good; `coders.csv` in the results has the
+same in its `ended` column.
+
+## Deleting a coder's data
+
+Participants may withdraw from a study, and data protection laws (such as
+the GDPR) can give them the right to have their data deleted. AnnoTinder
+supports this in two ways.
+
+### When a coder asks
+
+Coders can't delete their own answers, but they can **ask**. In the coding
+screen, the door icon at the top has **Quit and ask to delete my answers**
+(and the last screen has **Ask to delete my answers**). The coder confirms by
+typing a word, and their session ends.
+
+The request appears at the top of the **Coders** tab. You decide:
+
+- **Delete their data**: deletes the coder and their answers (see below).
+- **Decline**: the answers stay. The request stays on record as declined,
+  so you can account for it.
+
+It is a request, not an automatic deletion, on purpose. You may already have
+downloaded the answers, so deleting them in AnnoTinder alone wouldn't honour
+the request; you are the one who knows where the data went. And with paid
+participants (an online panel), an automatic deletion would let someone
+finish a task, get paid, and take their work back. Check your study's
+consent text and your institution's rules: research data can be exempt from
+deletion in some cases, and declining may need a reason.
+
+Anonymous coders can't prove who they are. A request comes from the
+session itself, so it needs no proof. A coder who writes to you instead
+can only be found if they give their participant id (or email, once
+coders can log in).
+
+### Deleting a coder yourself
+
+Click the bin icon in a coder's row, or **Delete a coder's data…** to find
+coders by participant id or email (one per line; a participant id that
+started on two devices has two sessions, and both are found). After
+confirming, AnnoTinder deletes for good:
+
+- the coder (their session, participant id, answers outside loops and group
+  assignments);
+- all their answers in unit loops, also answers a researcher reset earlier;
+- their request to delete, if they made one.
+
+Copies you downloaded before are not affected: delete those yourself. Units
+the coder coded are handed out again where the distribution needs more
+codings (for instance in a shared queue). The unit versions they saw stay,
+because they hold your units' content, not the coder's.
 
 ## What counts as finished
 

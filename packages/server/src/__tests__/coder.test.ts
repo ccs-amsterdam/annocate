@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
+  CoderProgress,
   CoderUnitResponse,
   DeploymentResponse,
   DeploymentStatus,
@@ -568,6 +569,38 @@ describe("sessions", () => {
     const res = await send("nobody", "/session", {}, { "x-invite-secret": "wrong" });
     expect(res.status).toBe(401);
     expect(res.headers.getSetCookie()).toEqual([]);
+  });
+});
+
+describe("quitting and deleting a coder's data", () => {
+  it("lets a coder quit and ask for deletion; the researcher declines or deletes", async () => {
+    await redeploy({});
+    const secret = await invite(undefined, { participantFromUrl: true });
+    const link = { "x-invite-secret": secret, "x-participant-id": "P77" };
+    const unit = (await (await send("quitter", "/loop/1/next", {}, link)).json()) as CoderUnitResponse;
+    expect((await send("quitter", "/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("positive") }) }, link)).status).toBe(204);
+
+    const quit = await send("quitter", "/quit", { method: "POST", body: JSON.stringify({ requestDeletion: true }) }, link);
+    expect(quit.status).toBe(204);
+    const session = (await (await send("quitter", "/session", {}, link)).json()) as SessionResponse;
+    expect(session.ended).toMatchObject({ outcome: "quit" });
+    expect(session.deletionRequest).toMatchObject({ at: expect.any(String) });
+    expect((await send("quitter", "/loop/1/next", {}, link)).status).toBe(409);
+
+    const listed = async () =>
+      ((await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[]).find((c) => c.participantId === "P77");
+    const before = (await listed())!;
+    expect(before.deletionRequest).toMatchObject({ at: expect.any(String) });
+    expect((await server.request(`/job/1/coders/${before.id}/deletion-request/decline`, { method: "POST", headers: adminHeaders })).status).toBe(204);
+    expect((await listed())!.deletionRequest).toMatchObject({ declinedAt: expect.any(String) });
+
+    const del = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ participantIds: ["P77"] }) });
+    expect(await del.json()).toEqual({ coderIds: [before.id], answers: 1 });
+    expect(await listed()).toBeUndefined();
+    expect((await db.query("SELECT 1 FROM annotation_values WHERE coder_id = $1", [before.id])).length).toBe(0);
+    // Nothing matches: nothing deleted
+    const none = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });
+    expect(await none.json()).toEqual({ coderIds: [], answers: 0 });
   });
 });
 

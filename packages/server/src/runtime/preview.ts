@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { VariableValue } from "@annotinder/contracts";
+import type { DeletionRequest, VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
 import type { Coder as StoredCoder, CoderAnnotation, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest } from "./types.js";
@@ -69,6 +69,7 @@ export class PreviewStore implements Store {
       variables: {},
       assignments: {},
       ended: null,
+      deletionRequest: null,
       inviteId: null,
       created: new Date(this.now()),
     };
@@ -82,6 +83,11 @@ export class PreviewStore implements Store {
     coder.variables = body.variables;
     coder.assignments = body.assignments;
     coder.ended = body.ended;
+  }
+
+  async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
+    const coder = [...this.coders.values()].find((c) => c.coderId === coderId);
+    if (coder) coder.deletionRequest = request;
   }
 
   async listAnnotations(coderId: number): Promise<CoderAnnotation[]> {

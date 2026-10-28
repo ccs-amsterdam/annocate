@@ -82,6 +82,10 @@ export interface JobManagerSnapshot {
   errorCode: string | null;
   /** With phase `finished`: the `end` item that ended the session, if one did. */
   ending: SessionEnding | null;
+  /** With phase `finished`: the coder quit (`quit`). */
+  quit: boolean;
+  /** The coder asked for their answers to be deleted (`quit(true)`, also after the session ended). */
+  deletionRequested: boolean;
   navigation: JobManagerNavigation;
 }
 
@@ -239,6 +243,8 @@ export class JobManager {
     error: null,
     errorCode: null,
     ending: null,
+    quit: false,
+    deletionRequested: false,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -288,11 +294,12 @@ export class JobManager {
       this.maxReachedTopIndex = 0;
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.unitset, p]));
+      if (session.deletionRequest && !session.deletionRequest.declinedAt) this.publish({ deletionRequested: true });
       if (session.ended) {
-        // The coder reached an `end` item before: show it again.
-        const item = findEnd(this.items, session.ended.item);
+        // The coder reached an `end` item before, or quit: show the ending again.
+        const item = session.ended.item ? findEnd(this.items, session.ended.item) : null;
         await this.refreshTopSteps();
-        await this.publishEnding(item, buildScope(this.questions, this.coderVisible));
+        await this.publishEnding(item, buildScope(this.questions, this.coderVisible), session.ended.outcome === "quit");
         return;
       }
       // Resume where the coder left off: skip answered questions and
@@ -766,8 +773,22 @@ export class JobManager {
     await this.publishEnding(item, scope);
   }
 
+  /**
+   * The coder quits: the session ends for good (answers given so far are
+   * kept); with `requestDeletion` they ask the researcher to delete their
+   * answers, which also works after the session ended. Answers to a unit
+   * that weren't saved yet are dropped.
+   */
+  async quit(requestDeletion: boolean): Promise<void> {
+    await this.guarded(async () => {
+      await this.coderApi.quitSession(requestDeletion);
+      if (requestDeletion) this.publish({ deletionRequested: true });
+      if (this.snapshot.phase !== "finished") await this.publishEnding(null, buildScope(this.questions, this.coderVisible), true);
+    });
+  }
+
   /** Publishes the finished phase; with an `end` item, its message and redirect. */
-  private async publishEnding(item: EndItem | null, scope: ReferenceScope): Promise<void> {
+  private async publishEnding(item: EndItem | null, scope: ReferenceScope, quit = false): Promise<void> {
     const ending: SessionEnding | null = item && {
       item,
       message: item.message ? await renderTemplate(item.message, scope, this.expressionCache, `end:${item.name}`) : null,
@@ -784,6 +805,7 @@ export class JobManager {
       currentTexts: null,
       currentUnitVariables: null,
       ending,
+      quit,
     });
   }
 

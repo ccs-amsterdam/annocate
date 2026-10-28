@@ -129,9 +129,10 @@ preview ends.
 - **Delete Job** (in the job's settings on the **Overview** tab) deletes the
   job with everything in it: units, codebooks, invitations, coders and
   answers.
-- AnnoTinder can't delete a single coder's answers from the researcher
-  interface yet. If a participant withdraws, exclude their participant id
-  in your analysis, and keep a note of it.
+- **Deleting a coder's data** (on the **Coders** tab) deletes one coder,
+  found by participant id or email, with all their answers. Coders can ask
+  for it themselves, from the coding screen; you decide on such requests
+  (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)).
 
 Download the results before deleting a job, and delete jobs you no longer
 need: data that isn't stored can't leak.

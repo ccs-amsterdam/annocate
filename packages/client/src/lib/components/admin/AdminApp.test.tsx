@@ -29,6 +29,8 @@ const stubClient: ResearcherApi = {
   updateUnitset: () => new Promise(() => {}),
   deleteUnitset: () => new Promise(() => {}),
   listCoders: () => new Promise(() => {}),
+  deleteCoders: () => new Promise(() => {}),
+  declineDeletion: () => new Promise(() => {}),
   listInvites: () => new Promise(() => {}),
   createInvite: () => new Promise(() => {}),
   revokeInvite: () => new Promise(() => {}),

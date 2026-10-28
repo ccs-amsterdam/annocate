@@ -21,13 +21,34 @@ export const UnitsetProgressSchema = z.object({
   totalUnits: z.number().int().nonnegative().nullable().optional(),
 });
 
-/** How a session ended: the `end` item the coder reached, and its outcome. */
+/**
+ * How a session ended: at an `end` item (its name and outcome, screened out
+ * or complete), or because the coder quit (`quit`, no item).
+ */
 export const SessionEndSchema = z.object({
-  item: z.string(),
-  outcome: z.enum(["screenout", "complete"]),
+  item: z.string().optional(),
+  outcome: z.enum(["screenout", "complete", "quit"]),
   at: z.coerce.date(),
 });
 export type SessionEnd = z.infer<typeof SessionEndSchema>;
+
+/**
+ * A coder's request to delete their answers (`POST /quit` with
+ * `requestDeletion`). The researcher decides: they delete the coder's data
+ * (and the request with it) or decline it. Not deleted automatically: the
+ * researcher may already hold the data elsewhere, and a request could
+ * otherwise undo paid panel work at once.
+ */
+export const DeletionRequestSchema = z.object({
+  at: z.coerce.date(),
+  /** Set when the researcher declined it. */
+  declinedAt: z.coerce.date().nullable().optional(),
+});
+export type DeletionRequest = z.infer<typeof DeletionRequestSchema>;
+
+/** Body for `POST /quit`: the coder stops for good, optionally asking for their answers to be deleted. */
+export const QuitSessionSchema = z.object({ requestDeletion: z.boolean().default(false) });
+export type QuitSession = z.infer<typeof QuitSessionSchema>;
 
 /** Body for `POST /end`: the `end` item the coder reached. */
 export const EndSessionSchema = z.object({ item: z.string().min(1) });
@@ -53,8 +74,10 @@ export const SessionResponseSchema = z.object({
    * the client can use them.
    */
   variables: z.record(z.string(), VariableValueSchema).default({}),
-  /** Set once the coder reached an `end` item (`POST /end`): the session is over. */
+  /** Set once the coder reached an `end` item (`POST /end`) or quit (`POST /quit`): the session is over. */
   ended: SessionEndSchema.nullable().optional(),
+  /** Set once the coder asked for their answers to be deleted. */
+  deletionRequest: DeletionRequestSchema.nullable().optional(),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
@@ -73,7 +96,7 @@ export const CoderErrorCodeSchema = z.enum([
   "codebook_changed",
   /** `GET /loop/:loop/next` needs the client's branch choice (`branch` + `unitsets`), see NextUnitQuerySchema. */
   "branch_required",
-  /** The coder reached an `end` item: no more units or answers. */
+  /** The coder reached an `end` item or quit: no more units or answers. */
   "session_ended",
   /** Preview only: the latest codebook has issues, so it can't run. */
   "codebook_invalid",

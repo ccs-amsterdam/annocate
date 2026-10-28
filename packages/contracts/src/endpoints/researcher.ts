@@ -5,7 +5,7 @@ import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from 
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema } from "../unitFields.js";
 import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
-import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema } from "../coder.js";
+import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
 import { ApiKeyCreatedSchema, ApiKeyResponseSchema, ApiKeyWriteSchema, AuthOptionsSchema, MeResponseSchema } from "../account.js";
 import { AnnotationPageSchema, AnnotationsQuerySchema, UnitVersionPageSchema, UnitVersionsQuerySchema } from "../annotations.js";
@@ -115,6 +115,20 @@ export const researcherEndpoints = {
   deleteUnitset: { method: "DELETE", path: "/job/:jobId/unitsets/:id", request: z.void(), response: z.void() },
 
   listCoders: { method: "GET", path: "/job/:jobId/coders", request: z.void(), response: z.array(CoderProgressSchema) },
+  /** Deletes coders and all their answers for good (e.g. a participant withdrew), by id, participant id or email (ADMIN). */
+  deleteCoders: {
+    method: "POST",
+    path: "/job/:jobId/coders/delete",
+    request: DeleteCodersSchema,
+    response: DeleteCodersResponseSchema,
+  },
+  /** Declines a coder's request to delete their answers; the request stays on record as declined (ADMIN). */
+  declineDeletion: {
+    method: "POST",
+    path: "/job/:jobId/coders/:id/deletion-request/decline",
+    request: z.void(),
+    response: z.void(),
+  },
   listInvites: {
     method: "GET",
     path: "/job/:jobId/invites",

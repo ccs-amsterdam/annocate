@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IdSchema, SafeNameSchema } from "./common.js";
-import { SessionEndSchema } from "./session.js";
+import { DeletionRequestSchema, SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
@@ -35,10 +35,35 @@ export const CoderProgressSchema = z.object({
   finished: z.record(z.string(), z.number().int().nonnegative()),
   /** Coder-level values: answers outside unit loops, and `auto` variables (invite presets, random, URL). */
   variables: z.record(z.string(), VariableValueSchema),
-  /** Set if the coder's session ended at an `end` item (screened out or complete). */
+  /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */
   ended: SessionEndSchema.nullable(),
+  /** Set if the coder asked for their answers to be deleted (open until the researcher deletes them or declines). */
+  deletionRequest: DeletionRequestSchema.nullable(),
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
+
+/**
+ * Body for `POST /job/:jobId/coders/delete`: which coders' data to delete,
+ * by id, participant id or email (any combination; at least one). Deletes
+ * the coders and all their answers, also reset ones, for good.
+ */
+export const DeleteCodersSchema = z
+  .object({
+    coderIds: z.array(z.number().int().positive()).optional(),
+    participantIds: z.array(z.string().min(1)).optional(),
+    emails: z.array(z.string().min(1)).optional(),
+  })
+  .refine((d) => (d.coderIds?.length ?? 0) + (d.participantIds?.length ?? 0) + (d.emails?.length ?? 0) > 0, {
+    message: "Name at least one coder id, participant id or email",
+  });
+export type DeleteCoders = z.infer<typeof DeleteCodersSchema>;
+
+/** Response of `POST /job/:jobId/coders/delete`: the coders deleted, and how many answers they had. */
+export const DeleteCodersResponseSchema = z.object({
+  coderIds: z.array(z.number().int().positive()),
+  answers: z.number().int().nonnegative(),
+});
+export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
 
 /**
  * An invitation link (docs/coder-identity.md §3). Two independent settings:

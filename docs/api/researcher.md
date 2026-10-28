@@ -90,6 +90,8 @@ response checked against its contract schema.
 | [deleteInvite](#deleteinvite) | `DELETE /job/:jobId/invites/:id` | WRITE | – | – |
 | [setInviteUnitset](#setinviteunitset) | `PUT /job/:jobId/invites/:id/unitset` | WRITE | `{ unitsetId }` | `CoderInviteResponseSchema` |
 | [listCoders](#listcoders) | `GET /job/:jobId/coders` | WRITE | – | `CoderProgressSchema[]` |
+| [deleteCoders](#deletecoders) | `POST /job/:jobId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
+| [declineDeletion](#declinedeletion) | `POST /job/:jobId/coders/:id/deletion-request/decline` | ADMIN | – | – |
 | **Publishing** | | | | |
 | [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
 | [putDeployment](#putdeployment) | `PUT /job/:jobId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
@@ -349,9 +351,25 @@ units. A unitset an invite uses can't be deleted (409).
 participant id, started, last active, live answers, finished units per
 loop of the live codebook, and `variables`: their coder-level values
 (answers outside unit loops, and `auto` variables such as invite presets,
-random or balanced conditions and URL parameters), and `ended`: how the
-session ended at an `end` item (item, outcome `screenout` or `complete`,
-time), or null.
+random or balanced conditions and URL parameters), `ended`: how the
+session ended (at an `end` item: item, outcome `screenout` or `complete`;
+or outcome `quit`; and the time), or null, and `deletionRequest`: the
+coder's request to delete their answers (`at`, `declinedAt` once
+declined), or null.
+
+### deleteCoders
+
+`POST /job/:jobId/coders/delete` (`DeleteCodersSchema`: `{ coderIds?,
+participantIds?, emails? }`, at least one) → `{ coderIds, answers }`. ADMIN.
+Deletes the matching coders of the job and all their answers, also reset
+ones, for good (a participant withdrew; docs/coder-identity.md §8). Units
+nobody has answers for any more can be deleted again; unit versions stay.
+
+### declineDeletion
+
+`POST /job/:jobId/coders/:id/deletion-request/decline` → 204 (404 without a
+request). ADMIN. Marks the coder's request to delete their answers as
+declined; it stays on record.
 
 ## Publishing
 

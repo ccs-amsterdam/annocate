@@ -1,4 +1,4 @@
-import type { CoderProgress, JobOverview, SessionEnd, VariableValue } from "@annotinder/contracts";
+import type { CoderProgress, DeletionRequest, JobOverview, SessionEnd, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { getDeployment, loopVariables } from "./deployments.js";
 
@@ -40,9 +40,10 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     inviteLabel: string | null;
     variables: Record<string, VariableValue>;
     ended: SessionEnd | null;
+    deletionRequest: DeletionRequest | null;
   }>(
     `SELECT c.id, c.email, c.participant_id AS "participantId", c.invite_id AS "inviteId", c.created, i.label AS "inviteLabel",
-       c.variables, c.ended
+       c.variables, c.ended, c.deletion_request AS "deletionRequest"
      FROM coders c LEFT JOIN invites i ON i.id = c.invite_id
      WHERE c.job_id = $1 ORDER BY c.id`,
     [jobId],
@@ -70,6 +71,7 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     finished: Object.fromEntries([...finished].map(([loop, perCoder]) => [loop, perCoder.get(c.id) ?? 0])),
     variables: c.variables,
     ended: c.ended,
+    deletionRequest: c.deletionRequest,
   }));
 }
 

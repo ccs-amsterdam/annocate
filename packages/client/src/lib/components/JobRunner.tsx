@@ -15,6 +15,7 @@ import { Question } from "./Question";
 import { UnitFields } from "./UnitFields";
 import { DockedAnswerPane } from "./DockedAnswerPane";
 import { SessionEnd } from "./SessionEnd";
+import { QuitMenu } from "./QuitMenu";
 import { SwipeCard, SwipeProvider } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
 import { Button } from "@/components/ui/button";
@@ -284,7 +285,16 @@ function JobRunnerContent({
   }
 
   if (snapshot.phase === "finished") {
-    return <SessionEnd ending={snapshot.ending} preview={preview} onFinished={onFinished} />;
+    return (
+      <SessionEnd
+        ending={snapshot.ending}
+        quit={snapshot.quit}
+        deletionRequested={snapshot.deletionRequested}
+        onRequestDeletion={() => manager.quit(true)}
+        preview={preview}
+        onFinished={onFinished}
+      />
+    );
   }
 
   if (!snapshot.currentItem || snapshot.currentItem.type !== "question") {
@@ -548,6 +558,7 @@ function JobRunnerContent({
         <div className="flex items-center gap-1 shrink-0">
           {!preview && <TransferMenu coderApi={coderApi} transferUrl={transferUrl ?? defaultTransferUrl} />}
           <CoderSettingsMenu />
+          <QuitMenu onQuit={(requestDeletion) => manager.quit(requestDeletion)} canTransfer={!preview && !!coderApi.createTransfer} />
         </div>
       </header>
 

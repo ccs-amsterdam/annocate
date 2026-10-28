@@ -184,3 +184,44 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
 - **Not built:** a list of active sessions, logging out everywhere, logout
   at the provider (`architecture.md` §10).
 
+
+## 8. Quitting, and deleting a coder's data (implemented, 2026-10-28)
+
+Coders can always leave; their data can be deleted; nothing is deleted by
+accident or as a way to undo paid work.
+
+**Coder side** (the door icon in the coding screen, `QuitMenu.tsx`):
+
+- *Stop for now*: nothing changes on the server. The dialog explains how to
+  continue: the same link on the same device and browser (§4), or a
+  transfer link first.
+- *Quit this job*: `POST /quit` ends the session (`ended: { outcome:
+  "quit", at }`, no item); answers so far are kept.
+- *Quit and ask to delete my answers*: `POST /quit { requestDeletion: true
+  }` also records `coders.deletion_request = { at }`. The coder types a
+  word to confirm. It works after the session ended too (the end screen
+  offers it), and isn't offered in previews.
+
+A request, not a deletion: AnnoTinder can't know whether the researcher
+already holds the data elsewhere, and immediate deletion would let a paid
+participant finish, get paid and withdraw the work. The request needs no
+proof of identity: it comes from the session itself. Coders without a
+participant id or login can't be identified otherwise.
+
+**Researcher side** (Coders tab): open requests are listed first, with
+*Delete their data* or *Decline* (`POST /job/:jobId/coders/:id/deletion-request/decline`:
+`declinedAt` is added; the request stays on record). Any coder's data can
+be deleted (`POST /job/:jobId/coders/delete { coderIds?, participantIds?,
+emails? }`, ADMIN): the coders rows (session key, participant id, coder-level
+answers, routing, the request) and all their `annotation_values`, also
+retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
+The deployment's runtime is dropped and loads again (it caches coders,
+codings and routing). A deleted coder's browser later starts a new session
+from its invite.
+
+The export has `ended` = `quit` and a `deletion_requested` column (`open` or
+`declined`).
+
+Open: what GDPR requires for anonymous participants (no identifier at all)
+is for the researcher's protocol; AnnoTinder offers the request from the
+session and deletion by participant id or email.

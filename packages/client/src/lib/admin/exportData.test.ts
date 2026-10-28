@@ -26,6 +26,7 @@ const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress =>
   finished: { main: 1 },
   variables: {},
   ended: null,
+  deletionRequest: null,
   ...extra,
 });
 
@@ -86,8 +87,8 @@ describe("data download", () => {
         ended: { item: "done", outcome: "complete", at },
       }),
     ]);
-    expect(table.headers).toEqual(["coder_id", "participant_id", "invitation", "started", "last_active", "ended", "ended_at", "finished_main", "age"]);
-    expect(table.rows[0]).toEqual(["1", "p1", "Open link", at.toISOString(), at.toISOString(), "complete", at.toISOString(), "1", "42"]);
+    expect(table.headers).toEqual(["coder_id", "participant_id", "invitation", "started", "last_active", "ended", "ended_at", "deletion_requested", "finished_main", "age"]);
+    expect(table.rows[0]).toEqual(["1", "p1", "Open link", at.toISOString(), at.toISOString(), "complete", at.toISOString(), "", "1", "42"]);
   });
 
   it("quotes CSV cells that need it", () => {

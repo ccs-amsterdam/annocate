@@ -1,5 +1,5 @@
 import { Hono, type Context } from "hono";
-import { EndSessionSchema, NextUnitQuerySchema, PostCoderVariablesSchema, PostUnitVariablesSchema, RedeemTransferSchema } from "@annotinder/contracts";
+import { EndSessionSchema, QuitSessionSchema, NextUnitQuerySchema, PostCoderVariablesSchema, PostUnitVariablesSchema, RedeemTransferSchema } from "@annotinder/contracts";
 import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
 import { dbCoderKey, newSessionKey, readSession, requireClientHeader, sessionCookieName, writeSession } from "./runtime/session.js";
@@ -96,6 +96,12 @@ export function coderApi(server: Server): Hono {
   session.post("/end", async (c) => {
     const body = await parseBody(c, EndSessionSchema);
     await c.get("runtime").endSession(c.get("coder"), body.item);
+    return c.body(null, 204);
+  });
+
+  session.post("/quit", async (c) => {
+    const body = await parseBody(c, QuitSessionSchema);
+    await c.get("runtime").quitSession(c.get("coder"), body.requestDeletion);
     return c.body(null, 204);
   });
 

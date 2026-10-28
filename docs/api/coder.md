@@ -114,6 +114,15 @@ if the codebook has no such end item). Afterwards units and answers are
 refused with 409 `session_ended`; `GET /session` returns `ended`, so the
 client shows the ending again. Ending an ended session changes nothing.
 
+### quitSession
+
+`POST /quit` (`QuitSessionSchema`: `{ requestDeletion }`) → 204
+
+The coder quits: if the session hadn't ended, it ends with outcome `quit`
+(no item). With `requestDeletion` the coder also asks for their answers to
+be deleted (also after the session ended): `GET /session` then returns
+`deletionRequest`. The researcher decides on it (docs/coder-identity.md §8).
+
 ### createTransfer
 
 `POST /transfer` → `TransferResponseSchema`

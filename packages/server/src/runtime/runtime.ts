@@ -490,6 +490,7 @@ export class DeploymentRuntime {
       }),
       variables: coder.variables,
       ended: coder.ended,
+      deletionRequest: coder.deletionRequest,
     };
   }
 
@@ -504,6 +505,23 @@ export class DeploymentRuntime {
     if (!end) throw new HttpError(400, `No end item '${item}'`);
     coder.ended = { item, outcome: end.outcome, at: new Date(this.options.now()) };
     await this.saveCoder(coder);
+  }
+
+  /**
+   * The coder quits: the session ends (if it hadn't: an ending at an `end`
+   * item stays). With `requestDeletion` they ask for their answers to be
+   * deleted, also after the session ended; the researcher decides.
+   */
+  async quitSession(coder: Coder, requestDeletion: boolean): Promise<void> {
+    const at = new Date(this.options.now());
+    if (!coder.ended) {
+      coder.ended = { outcome: "quit", at };
+      await this.saveCoder(coder);
+    }
+    if (requestDeletion) {
+      coder.deletionRequest = { at };
+      await this.store.requestDeletion(coder.coderId, coder.deletionRequest);
+    }
   }
 
   private assertOpen(coder: Coder): void {

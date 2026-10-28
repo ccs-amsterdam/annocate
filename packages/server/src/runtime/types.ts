@@ -1,4 +1,4 @@
-import type { CodebookResponse, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
+import type { CodebookResponse, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
 // part of any API: coders get what the coder API (contracts
@@ -50,8 +50,10 @@ export interface Coder {
   /** Coder-level variables, including values preset by their invitation. */
   variables: Record<string, VariableValue>;
   assignments: CoderAssignments;
-  /** Set once the coder reached an `end` item: the session is over. */
+  /** Set once the coder reached an `end` item or quit: the session is over. */
   ended: SessionEnd | null;
+  /** Set once the coder asked for their answers to be deleted (`Store.requestDeletion`; not part of `CoderWrite`). */
+  deletionRequest: DeletionRequest | null;
   /** The invite the coder joined with (for `invitation` mode loops). */
   inviteId: number | null;
 }

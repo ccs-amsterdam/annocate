@@ -250,6 +250,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       "last_active",
       "ended",
       "ended_at",
+      "deletion_requested",
       ...loops.map((l) => `finished_${l}`),
       ...columns.map(header),
     ],
@@ -261,6 +262,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       time(c.lastActive),
       c.ended?.outcome ?? "",
       time(c.ended?.at),
+      c.deletionRequest ? (c.deletionRequest.declinedAt ? "declined" : "open") : "",
       ...loops.map((l) => String(c.finished[l] ?? 0)),
       ...columns.map((col) => cellOf(c.variables[col.variable], col, labels, null)),
     ]),
@@ -325,8 +327,10 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  Each answer column is followed by a _label column: the label
                  in the codebook version the answer was given under.` : ""}
 coders.csv       A row per coder: invitation, participant id, started, last
-                 active, how their session ended, units finished per loop,
-                 and their answers outside unit loops.
+                 active, how their session ended (complete, screenout or
+                 quit), whether they asked for their answers to be deleted
+                 (open or declined), units finished per loop, and their
+                 answers outside unit loops.
 units.csv        The units as coders saw them (only the fields the codebook
                  used), a row per version: a unit replaced after it was coded
                  has a row per version. Join annotations on unit_version_id.

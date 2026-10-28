@@ -152,9 +152,24 @@ The text can be as long as you need, with headings and lists. See
 [Confirm](confirm.md). Coders can always go back to it from the
 **Navigation** menu.
 
+## Stopping
+
+The door icon at the top right offers three ways out:
+
+- **Stop for now** explains how to continue later: open the same link on the
+  same device and browser, or first use **Continue on another device**.
+  Nothing is lost: answers are saved as the coder goes.
+- **Quit this job** ends the session for good, after a confirmation. The
+  answers so far are kept.
+- **Quit and ask to delete my answers** ends the session and asks you, the
+  researcher, to delete the coder's answers. The coder confirms by typing a
+  word. You decide on the request on the **Coders** tab (see
+  [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)).
+
 ## The end
 
 When coders finish the last item, they see **Job Complete!** with a thank
-you. An [end item](end-items.md) can end the session earlier, with your own
+you. The last screen also has **Ask to delete my answers**, for coders who
+want to withdraw after finishing. An [end item](end-items.md) can end the session earlier, with your own
 message and, for online panels, a redirect back to the panel after a few
 seconds. A coder who opens the link again later sees the same ending.

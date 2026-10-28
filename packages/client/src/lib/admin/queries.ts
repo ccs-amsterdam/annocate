@@ -6,6 +6,7 @@ import type {
   CoderInviteWrite,
   CoderInviteResponse,
   CoderProgress,
+  DeleteCoders,
   DeploymentResponse,
   DeploymentStatus,
   JobOverview,
@@ -217,6 +218,16 @@ export function useDeleteUnitsetMutation(client: ResearcherApi): UseMutationResu
 
 export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgress[]> {
   return useQuery({ queryKey: keys.coders(client.jobId), queryFn: () => client.listCoders(), refetchInterval: 10_000 });
+}
+
+/** Delete coders' data, or decline a deletion request; both refresh the coder list (and the counts on the overview). */
+export function useCoderDeletionMutations(client: ResearcherApi) {
+  const queryClient = useQueryClient();
+  const onSuccess = () => queryClient.invalidateQueries({ queryKey: keys.job(client.jobId) });
+  return {
+    remove: useMutation({ mutationFn: (select: DeleteCoders) => client.deleteCoders(select), onSuccess }),
+    decline: useMutation({ mutationFn: (coderId: number) => client.declineDeletion(coderId), onSuccess }),
+  };
 }
 
 export function useInvitesQuery(client: ResearcherApi): UseQueryResult<CoderInviteResponse[]> {
