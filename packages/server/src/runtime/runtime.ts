@@ -555,6 +555,7 @@ export class DeploymentRuntime {
     this.assertOpen(coder);
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
+    await this.store.checkAnswers(variables);
 
     const merged = { ...variables };
     for (const [name] of this.autoVariables) {
@@ -804,6 +805,7 @@ export class DeploymentRuntime {
     }
     const errors = validateVariables(info.variables, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
+    await this.store.checkAnswers(variables);
 
     // Values of other variables (e.g. questions an update removed) are left
     // alone, so they stay as data. With them: the unit version the coder

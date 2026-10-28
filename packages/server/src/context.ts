@@ -15,6 +15,10 @@ export interface Server {
   login: { oidc: Oidc; publicUrl: string } | null;
   /** Signs short-lived cookies and preview tokens. */
   secret: string;
+  /** Emails that are admins on this server (`ANNOTINDER_ADMINS`), lowercased; admins can make more. */
+  admins: readonly string[];
+  /** Researcher access needs a login with a second factor (`ANNOTINDER_REQUIRE_MFA`); coding never does. */
+  requireMfa: boolean;
 }
 
 /** Hono context variables, set by the auth middleware. */

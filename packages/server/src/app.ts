@@ -1,5 +1,6 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
+import { bodyLimit } from "hono/body-limit";
 import type { Sql } from "./db.js";
 import { CONTRACTS_VERSION } from "@annotinder/contracts";
 import type { Env, Server } from "./context.js";
@@ -11,6 +12,7 @@ import { HttpError } from "./shared/http.js";
 import { annotationsReset } from "./researcher/annotations.reset.js";
 import { annotations } from "./researcher/annotations.js";
 import { me } from "./researcher/me.js";
+import { admin } from "./researcher/admin.js";
 import { login } from "./researcher/login.js";
 import { Oidc, type OidcOptions } from "./oidc.js";
 import { codebook } from "./researcher/codebook.$id.js";
@@ -51,6 +53,10 @@ export interface AppOptions {
    * `https://annotinder.com`; the provider redirects to `<publicUrl>/auth/callback`.
    */
   login?: { oidc: OidcOptions; publicUrl: string };
+  /** Emails that are admins (docs/accounts.md). */
+  admins?: string[];
+  /** Researcher access needs a login with a second factor. */
+  requireMfa?: boolean;
 }
 
 /**
@@ -66,6 +72,8 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     devAuth: options.devAuth ?? false,
     login: options.login ? { oidc: new Oidc(options.login.oidc), publicUrl: options.login.publicUrl.replace(/\/$/, "") } : null,
     secret,
+    admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
+    requireMfa: options.requireMfa ?? false,
   };
 
   const app = new Hono<Env>();
@@ -81,15 +89,25 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   });
   app.get("/", (c) => c.json({ ok: true, service: "annotinder", contractsVersion: CONTRACTS_VERSION }));
 
+  // Request bodies: a coder sends one unit's answers at a time; a researcher
+  // may upload all units at once (each unit is also checked against the
+  // server's unit size, shared/limits.ts).
+  const tooLarge = (c: Context) => c.json({ error: "The request is too large", code: "request_too_large" }, 413);
+  app.use("/d/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge }));
+  app.use("/job/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
+  app.use("/admin/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
+  app.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
+
   // Coder API (coder.ts): same origin as the client, no CORS.
   app.route("/d/:deployment", coderApi(server));
 
   // Researcher API (researcher/): full paths, API keys (researcher/auth.ts).
   // CORS, so a client on another origin (e.g. the Vite dev server) can call it.
   // Cookies are same-origin only: CORS here is for API keys.
-  for (const path of ["/job", "/job/*", "/me", "/me/*"]) app.use(path, cors());
+  for (const path of ["/job", "/job/*", "/me", "/me/*", "/admin/*"]) app.use(path, cors());
   app.route("/", login(server));
   app.route("/", me(server));
+  app.route("/", admin(server));
   // Order matters: units/fields and units/page before units/:id.
   app.route("/", jobs(server));
   app.route("/", job(server));

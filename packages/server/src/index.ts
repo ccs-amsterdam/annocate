@@ -9,8 +9,9 @@ import { createApp } from "./app.js";
 // ANNOTINDER_SECRET (signs preview tokens; random per process if not set);
 // ANNOTINDER_DEV_AUTH=1 (accept development auth headers: local only);
 // researcher login: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
-// ANNOTINDER_PUBLIC_URL (where browsers reach the server), and optionally
-// OIDC_REQUIRE_MFA=1.
+// ANNOTINDER_PUBLIC_URL (where browsers reach the server);
+// ANNOTINDER_ADMINS (comma-separated emails: the server's first admins);
+// ANNOTINDER_REQUIRE_MFA=1 (researcher access needs a second factor; recommended).
 
 const port = Number(process.env.PORT ?? 8787);
 const db = await openDatabase();
@@ -26,7 +27,6 @@ const login =
           issuer: OIDC_ISSUER,
           clientId: OIDC_CLIENT_ID,
           clientSecret: OIDC_CLIENT_SECRET,
-          requireMfa: process.env.OIDC_REQUIRE_MFA === "1",
         },
         publicUrl: ANNOTINDER_PUBLIC_URL ?? `http://localhost:${port}`,
       }
@@ -34,11 +34,14 @@ const login =
 if (login && !process.env.ANNOTINDER_SECRET) {
   console.warn("ANNOTINDER_SECRET is not set: logins in progress and previews end with a restart");
 }
-const app = createApp(db, { secret: process.env.ANNOTINDER_SECRET, devAuth, login });
+const admins = (process.env.ANNOTINDER_ADMINS ?? "").split(",");
+const requireMfa = process.env.ANNOTINDER_REQUIRE_MFA === "1";
+const app = createApp(db, { secret: process.env.ANNOTINDER_SECRET, devAuth, login, admins, requireMfa });
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);
   console.log(login ? `  researcher login: ${login.oidc.issuer}, callback ${login.publicUrl}/auth/callback` : "  researcher login: not configured (OIDC_ISSUER)");
+  console.log(`  admins: ${admins.filter((a) => a.trim()).join(", ") || "none named (ANNOTINDER_ADMINS)"}; second factor for researchers: ${requireMfa ? "required" : "not required"}`);
   if (devAuth) console.warn("  development auth headers accepted (ANNOTINDER_DEV_AUTH=1): never on a reachable server");
 });
 

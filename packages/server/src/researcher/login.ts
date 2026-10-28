@@ -2,8 +2,9 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, getSignedCookie, setCookie, setSignedCookie } from "hono/cookie";
 import type { LoginError } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
+import { one } from "../db.js";
 import type { LoginState } from "../oidc.js";
-import { ensureUser } from "../shared/accounts.js";
+import { applyRegistration, ensureUser } from "../shared/accounts.js";
 import { createSession, deleteSession, SESSION_TTL_MS } from "../shared/sessions.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
 
@@ -71,8 +72,9 @@ export function login(server: Server): Hono<Env> {
     const result = await oidc.finish(callbackUrl, state);
     if ("error" in result) return back(state.returnTo, result.error);
 
-    const user = await ensureUser(server.db, result.email);
-    setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id), {
+    const user = await applyRegistration(server.db, await ensureUser(server.db, result.email), server.admins);
+    if (await one(server.db, "SELECT 1 FROM users WHERE id = $1 AND blocked_at IS NOT NULL", [user.id])) return back(state.returnTo, "blocked");
+    setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id, result.mfa), {
       path: "/",
       httpOnly: true,
       sameSite: "Lax",

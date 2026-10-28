@@ -19,7 +19,10 @@ beforeEach(async () => {
 });
 
 async function keyFor(email: string): Promise<string> {
-  return (await createApiKey(db, (await ensureUser(db, email)).id, "test")).key;
+  // Researchers: they create jobs in these tests.
+  const user = await ensureUser(db, email);
+  await db.query("UPDATE users SET role = 'researcher' WHERE id = $1", [user.id]);
+  return (await createApiKey(db, user.id, "test")).key;
 }
 
 type Endpoint = (typeof researcherEndpoints)[ResearcherEndpointName];
@@ -100,7 +103,7 @@ describe("authentication", () => {
     expect(res.status).toBe(401);
 
     const key = await keyFor("Researcher@Uni.nl");
-    expect((await call(key, "getMe")).data).toEqual({ email: "researcher@uni.nl" });
+    expect((await call(key, "getMe")).data).toMatchObject({ email: "researcher@uni.nl", role: "researcher", researcherRequest: null });
   });
 
   it("manages a researcher's own keys; a revoked key stops working", async () => {

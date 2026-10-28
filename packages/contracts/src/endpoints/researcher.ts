@@ -7,7 +7,15 @@ import { UnitFieldSchema } from "../unitFields.js";
 import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema, CoderDeletionSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
-import { ApiKeyCreatedSchema, ApiKeyResponseSchema, ApiKeyWriteSchema, AuthOptionsSchema, MeResponseSchema } from "../account.js";
+import {
+  ApiKeyCreatedSchema,
+  ApiKeyResponseSchema,
+  ApiKeyWriteSchema,
+  AuthOptionsSchema,
+  MeResponseSchema,
+  RedeemResearcherInviteSchema,
+  ResearcherRequestWriteSchema,
+} from "../account.js";
 import { AnnotationPageSchema, AnnotationsQuerySchema, UnitVersionPageSchema, UnitVersionsQuerySchema } from "../annotations.js";
 import {
   DeploymentWriteSchema,
@@ -37,6 +45,10 @@ export const researcherEndpoints = {
   getAuthOptions: { method: "GET", path: "/auth/options", request: z.void(), response: AuthOptionsSchema },
   logout: { method: "POST", path: "/auth/logout", request: z.void(), response: z.void() },
   getMe: { method: "GET", path: "/me", request: z.void(), response: MeResponseSchema },
+  /** Ask an admin to become a researcher (when the server takes requests). */
+  requestResearcher: { method: "POST", path: "/me/researcher-request", request: ResearcherRequestWriteSchema, response: MeResponseSchema },
+  /** Become a researcher with an invite link's secret. */
+  redeemResearcherInvite: { method: "POST", path: "/me/researcher-invite", request: RedeemResearcherInviteSchema, response: MeResponseSchema },
   listApiKeys: { method: "GET", path: "/me/keys", request: z.void(), response: z.array(ApiKeyResponseSchema) },
   createApiKey: { method: "POST", path: "/me/keys", request: ApiKeyWriteSchema, response: ApiKeyCreatedSchema },
   revokeApiKey: { method: "POST", path: "/me/keys/:id/revoke", request: z.void(), response: ApiKeyResponseSchema },

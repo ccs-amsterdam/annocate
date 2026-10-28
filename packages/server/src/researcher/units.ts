@@ -3,6 +3,7 @@ import { UnitsCreateBodySchema, addedFields, checkUnitData, type UnitField, type
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
+import { checkUnitUpload } from "../shared/limits.js";
 import { getUnitFields, setUnitFields, toUnitMeta, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
 
 export function units(server: Server): Hono<Env> {
@@ -43,6 +44,7 @@ export function units(server: Server): Hono<Env> {
       units.map((u) => u.externalId),
     ]);
     const existing = new Map(existingRows.map((row) => [row.external_id, row]));
+    await checkUnitUpload(db, jobId, units, new Set(units.filter((u) => !existing.has(u.externalId)).map((u) => u.externalId)).size);
     for (const unit of units) {
       const row = existing.get(unit.externalId);
       if (!row) continue;

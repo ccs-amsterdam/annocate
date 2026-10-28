@@ -646,6 +646,20 @@ describe("quitting and deleting a coder's data", () => {
   });
 });
 
+describe("limits", () => {
+  it("a job past its owner's limit on coders takes no new ones; existing coders go on", async () => {
+    const first = coder("first");
+    await first.session();
+    const owner = await ensureUser(db, "owner@uni.nl");
+    await db.query("UPDATE users SET limits = $1 WHERE id = $2", [JSON.stringify({ codersPerJob: 1 }), owner.id]);
+    await db.query("UPDATE jobs SET owner_id = $1 WHERE id = 1", [owner.id]);
+    const refused = await coder("second").call("/session");
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({ code: "job_full" });
+    expect((await first.call("/session")).status).toBe(200);
+  });
+});
+
 describe("coder login", () => {
   /** A device logged in as this email (the researcher login's session cookie). */
   async function loggedIn(device: string, email: string) {

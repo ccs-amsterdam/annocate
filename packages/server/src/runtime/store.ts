@@ -5,6 +5,8 @@ import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
 import { sessionFromUrl, type InviteRow } from "../shared/invites.js";
+import { getSettings } from "../shared/accounts.js";
+import { checkAnswerSize, checkNewCoder, jobLimits } from "../shared/limits.js";
 import { unitHash, type UnitRow } from "../shared/units.js";
 import type {
   AnnotationWrite,
@@ -38,6 +40,8 @@ export interface Store {
   /** One coder's live annotations per unit, ordered by first write. */
   listAnnotations(coderId: number): Promise<CoderAnnotation[]>;
   putAnnotation(write: AnnotationWrite): Promise<void>;
+  /** Refuses answers that are too large, or that would take the job past its limit on answers (shared/limits.ts). */
+  checkAnswers(variables: Record<string, VariableValue>): Promise<void>;
   /**
    * The name of the unitset of an invite (for `invitation` mode loops), or
    * null if it has none. `"first"`: of the first invite that has one (previews,
@@ -61,6 +65,9 @@ export class DbStore implements Store {
   ) {}
 
   async getDeployment(): Promise<DeploymentSpec> {
+    if (await one(this.sql, "SELECT 1 FROM jobs WHERE id = $1 AND suspended_at IS NOT NULL", [this.jobId])) {
+      throw new HttpError(403, "This job isn't available", "job_suspended");
+    }
     const spec = this.preview ? await getPreviewSpec(this.sql, this.jobId) : await getDeploymentSpec(this.sql, this.jobId);
     if (!spec) throw new HttpError(404, this.preview ? "Job has no codebook" : "Job is not deployed");
     return spec;
@@ -78,6 +85,29 @@ export class DbStore implements Store {
 
   async resolveCoder(request: ResolveCoderRequest): Promise<Coder> {
     return toCoder(await this.sql.transaction((tx) => findOrCreateCoder(tx, this.jobId, request)));
+  }
+
+  /** The answer size and the job's answer limit, and its answers so far: read again at most once a minute. */
+  private answerRules: { at: number; answerBytes: number; max: number | null; count: number } | null = null;
+
+  async checkAnswers(variables: Record<string, VariableValue>): Promise<void> {
+    const now = Date.now();
+    if (!this.answerRules || now - this.answerRules.at > 60_000) {
+      const { answerBytes } = await getSettings(this.sql);
+      const { limits } = await jobLimits(this.sql, this.jobId);
+      const max = limits.answersPerJob ?? null;
+      const count =
+        max === null ? 0 : (await one<{ n: number }>(this.sql, "SELECT count(*)::int AS n FROM annotation_values WHERE job_id = $1", [this.jobId]))!.n;
+      this.answerRules = { at: now, answerBytes, max, count };
+    }
+    const rules = this.answerRules;
+    for (const [name, value] of Object.entries(variables)) checkAnswerSize(name, value, rules.answerBytes);
+    const added = Object.keys(variables).length;
+    // Counts rewritten answers too, until the next read: a little early at worst.
+    if (rules.max !== null && rules.count + added > rules.max) {
+      throw new HttpError(403, "This job has reached its limit on answers", "job_full");
+    }
+    rules.count += added;
   }
 
   async putCoder(coderId: number, write: CoderWrite): Promise<void> {
@@ -200,6 +230,7 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   if (knownParticipant && !request.newSession && !login) {
     throw new HttpError(409, "This participant already has a session on another device", "participant_has_session");
   }
+  await checkNewCoder(sql, jobId);
   // A new session of a known participant is the same person: it doesn't use up the invite.
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.

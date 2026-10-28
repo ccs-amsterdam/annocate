@@ -3,3 +3,4 @@
 //  - coder API:     called by the client's annotator (coders)
 export * from "./researcher.js";
 export * from "./coder.js";
+export * from "./admin.js";

@@ -12,8 +12,6 @@ export interface OidcOptions {
   issuer: string;
   clientId: string;
   clientSecret: string;
-  /** Require a second factor (the ID token's `amr` claim). Off by default: 2FA is recommended, not enforced. */
-  requireMfa?: boolean;
   /** Tests: how to reach the provider; also allows plain http. */
   fetch?: typeof fetch;
 }
@@ -29,7 +27,8 @@ export interface LoginState {
   returnTo: string;
 }
 
-export type LoginResult = { email: string } | { error: "email_unverified" | "mfa_required" | "login_failed" };
+/** `mfa`: the login used a second factor (the ID token's `amr` claim). */
+export type LoginResult = { email: string; mfa: boolean } | { error: "email_unverified" | "login_failed" };
 
 export class Oidc {
   private config: Promise<client.Configuration> | null = null;
@@ -85,10 +84,7 @@ export class Oidc {
       return { error: "login_failed" };
     }
     if (!claims || typeof claims.email !== "string" || claims.email_verified !== true) return { error: "email_unverified" };
-    if (this.options.requireMfa) {
-      const amr = Array.isArray(claims.amr) ? claims.amr : [];
-      if (!amr.some((method) => SECOND_FACTORS.has(String(method)))) return { error: "mfa_required" };
-    }
-    return { email: claims.email };
+    const amr = Array.isArray(claims.amr) ? claims.amr : [];
+    return { email: claims.email, mfa: amr.some((method) => SECOND_FACTORS.has(String(method))) };
   }
 }

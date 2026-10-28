@@ -33,6 +33,7 @@ export * from "./session.js";
 export * from "./deployment.js";
 export * from "./overview.js";
 export * from "./account.js";
+export * from "./admin.js";
 export * from "./annotations.js";
 
 export * from "./endpoints/index.js";

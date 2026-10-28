@@ -13,13 +13,15 @@ let db: Sql;
 let issuer: ReturnType<typeof mockIssuer>;
 let app: ReturnType<typeof createApp>;
 
-function newApp(requireMfa = false) {
+function newApp(requireMfa = false, admins: string[] = []) {
   return createApp(db, {
     secret: "test-secret",
     login: {
-      oidc: { issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, requireMfa, fetch: issuer.fetch },
+      oidc: { issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, fetch: issuer.fetch },
       publicUrl: PUBLIC_URL,
     },
+    requireMfa,
+    admins,
   });
 }
 
@@ -82,10 +84,11 @@ describe("researcher login", () => {
   });
 
   it("starts a session for the verified email, and returns to the page the researcher came from", async () => {
+    await db.query("INSERT INTO domain_rules (domain, researcher) VALUES ('uni.nl', true)");
     const b = browser();
     expect(await b.logIn(verified)).toBe("/jobs?x=1");
     expect(b.cookies.has("annotinder_session")).toBe(true);
-    expect(await (await b.api("/me")).json()).toEqual({ email: "jane@uni.nl" });
+    expect(await (await b.api("/me")).json()).toMatchObject({ email: "jane@uni.nl", role: "researcher" });
 
     // Their jobs: the same user as an API key for the same address.
     expect((await b.api("/job", { method: "POST", body: JSON.stringify({ name: "Mine" }) })).status).toBe(201);
@@ -111,12 +114,52 @@ describe("researcher login", () => {
     expect(b.cookies.has("annotinder_session")).toBe(false);
   });
 
-  it("requires a second factor only when the server says so", async () => {
-    app = newApp(true);
+  it("requires a second factor for researcher access only when the server says so", async () => {
+    app = newApp(true, ["jane@uni.nl"]);
     const b = browser();
-    expect(await b.logIn({ ...verified, amr: ["pwd"] })).toContain("loginError=mfa_required");
+    // Logged in, but without a second factor: only GET /me (and coding)
+    expect(await b.logIn({ ...verified, amr: ["pwd"] })).toBe("/jobs?x=1");
+    expect(await (await b.api("/me")).json()).toMatchObject({ role: "admin", mfaRequired: true });
+    const job = await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) });
+    expect(job.status).toBe(403);
+    expect(await job.json()).toMatchObject({ code: "mfa_required" });
+    expect((await b.api("/me/keys")).status).toBe(403);
+
     expect(await b.logIn({ ...verified, amr: ["pwd", "otp"] })).toBe("/jobs?x=1");
-    expect((await b.api("/me")).status).toBe(200);
+    expect(await (await b.api("/me")).json()).toMatchObject({ mfaRequired: false });
+    expect((await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
+  });
+
+  it("makes users, researchers (open registration, domains) and admins (named by the server)", async () => {
+    const role = async (email: string) => {
+      const b = browser();
+      await b.logIn({ ...verified, email });
+      return ((await (await b.api("/me")).json()) as { role: string }).role;
+    };
+    app = newApp(false, ["boss@uni.nl"]);
+    expect(await role("anyone@gmail.com")).toBe("user");
+    expect(await role("boss@uni.nl")).toBe("admin");
+    await db.query("INSERT INTO domain_rules (domain, researcher) VALUES ('*.uni.nl', true)");
+    expect(await role("jane@dept.uni.nl")).toBe("researcher");
+    expect(await role("jane@uni.nl.evil.com")).toBe("user");
+    await db.query(`UPDATE server_settings SET registration = '{"open": true, "requests": true}'`);
+    expect(await role("anyone@gmail.com")).toBe("researcher");
+
+    // A user can't create jobs
+    await db.query(`UPDATE server_settings SET registration = '{"open": false, "requests": true}'`);
+    const b = browser();
+    await b.logIn({ ...verified, email: "student@gmail.com" });
+    const res = await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "researcher_required" });
+  });
+
+  it("refuses blocked users, and ends their sessions", async () => {
+    const b = browser();
+    await b.logIn(verified);
+    await db.query("UPDATE users SET blocked_at = now()");
+    expect((await b.api("/me")).status).toBe(401);
+    expect(await b.logIn(verified)).toContain("loginError=blocked");
   });
 
   it("refuses callbacks it didn't start, replayed codes and foreign return addresses", async () => {

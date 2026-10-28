@@ -11,6 +11,8 @@ export type JobWrite = z.infer<typeof JobWriteSchema>;
 export const JobResponseSchema = JobWriteSchema.extend({
   id: IdSchema,
   created: z.coerce.date(),
+  /** Set when a server admin suspended the job: no coding and no changes (reading and deleting data still work). */
+  suspendedAt: z.coerce.date().nullable().optional(),
 });
 export type JobResponse = z.infer<typeof JobResponseSchema>;
 

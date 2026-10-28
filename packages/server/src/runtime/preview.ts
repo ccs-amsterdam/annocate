@@ -79,6 +79,9 @@ export class PreviewStore implements Store {
     return coder;
   }
 
+  /** Previews keep nothing: no limits. */
+  async checkAnswers(): Promise<void> {}
+
   async putCoder(coderId: number, body: CoderWrite): Promise<void> {
     const coder = [...this.coders.values()].find((c) => c.coderId === coderId);
     if (!coder) throw new HttpError(404, "Coder not found");
