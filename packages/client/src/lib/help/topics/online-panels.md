@@ -29,11 +29,17 @@ Make an invitation for the panel (see [Invitations](invitations.md)):
 
 - **Label**: e.g. *Prolific pilot*, so you can tell batches apart in the
   results.
-- **Participant id from URL**: the copied link ends in
-  `participant=<id>`. In the link you give the panel, replace `<id>` with
-  the panel's placeholder for the participant id, which the panel fills in
-  for each participant. On Prolific that is `{{%PROLIFIC_PID%}}`; other
-  panels have their own (check their documentation).
+- **Participant id from a URL parameter**: type the name of the parameter
+  in which the panel sends the participant's id, such as `PROLIFIC_PID`.
+  The copied link ends in `PROLIFIC_PID=<participant id>`: in the link you
+  give the panel, replace `<participant id>` with the panel's placeholder,
+  which the panel fills in for each participant. On Prolific that is
+  `{{%PROLIFIC_PID%}}`; other panels have their own (check their
+  documentation). Optionally give a **pattern** the id must fit, e.g.
+  `[0-9a-f]{24}` for Prolific's ids, so a link with a typo or a placeholder
+  that wasn't filled in doesn't start.
+- **Required URL parameters** (optional): other values the panel sends,
+  such as a study or session id (see below).
 - **Max uses** (optional): a little above the number of places in the
   study, as a safety net if the link leaks.
 
@@ -45,24 +51,36 @@ another device is told they already started (see
 
 ## Values from the link
 
-The participant id is a label for the coder; it is not something the
-codebook can use. To use a value from the link in the codebook, in a
-condition or in a return link, add an [assigned variable](auto.md) with the
-source **URL parameter** and fill in the parameter's name under **URL
-parameter name**. Then add that parameter to the link:
+Panels often send more than the participant id, for instance a study id and
+a session id, and want some of them back in the return link. Add them to the
+invitation under **Required URL parameter**: the parameter's name as the
+panel sends it (`STUDY_ID`), the name the codebook uses for it (by default
+the same; give another when the parameter's name has characters such as `-`
+or `.`), and optionally a pattern.
+
+The codebook can then use them as **session values**:
+
+| Write | Gives |
+| --- | --- |
+| `$session.participant` | The participant id |
+| `$session.STUDY_ID` | The value of the required URL parameter `STUDY_ID` (or the name you gave it) |
+
+Session values work everywhere: in texts, conditions, end items' messages
+and return links. A link that misses a required parameter, or has a value
+that doesn't fit its pattern, doesn't start: the participant sees which
+parameter is missing, so you notice a broken link in your first test. The
+values are stored when the participant starts, and are in the Coders tab's
+download (`coders.csv`, as `session.<name>`).
 
 ```text
-<your invitation link>&participant={{%PROLIFIC_PID%}}&PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}
+<your invitation link>&PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}
 ```
 
-Here an assigned variable `pid` with URL parameter name `PROLIFIC_PID`
-gets the participant's id, so `$var.pid.value` can go into a return link.
-The id is in the link twice: once as `participant` (the coder's label) and
-once as `PROLIFIC_PID` (for the codebook), because the `participant`
-parameter itself can't be read by an assigned variable.
-
-The values are stored when the participant first opens the link, so it
-doesn't matter if later visits come without them.
+Session values belong to the invitation, not the codebook: a codebook that
+uses `$session.STUDY_ID` needs an invitation that requires `STUDY_ID`. For a
+value that the *codebook* should define, so it travels with it (for example
+an experimental condition chosen by the link), use an
+[assigned variable](auto.md) with the source **URL parameter** instead.
 
 > If your invitation link already contains a `?`, add parameters with `&`
 > (as above). Test the complete link yourself before you launch.
@@ -84,11 +102,11 @@ Unit loop                 10 news articles
 End: done                 complete → panel's completion link
 ```
 
-Put the panel's link in **Redirect to (optional)**, with `$var` references where the
-panel wants values:
+Put the panel's link in **Redirect to (optional)**, with `$session` (or
+`$var`) references where the panel wants values:
 
 ```text
-https://panel.example/complete?id=$var.pid.value
+https://panel.example/complete?id=$session.participant&study=$session.STUDY_ID
 https://app.prolific.com/submissions/complete?cc=C1A2B3C4
 ```
 
@@ -153,9 +171,10 @@ own order)**.
 
 1. **Preview** the whole codebook, on a phone too: many panel participants
    use one.
-2. Publish, and open the panel link yourself with a made-up id, e.g.
-   `participant=test1&PROLIFIC_PID=test1`. Go through to the end and check
-   that you land on the panel's page with the right values.
+2. Publish, and open the panel link yourself with made-up values, e.g.
+   `PROLIFIC_PID=test1&STUDY_ID=s1` (fitting your patterns). Go through to
+   the end and check that you land on the panel's page with the right
+   values.
 3. Check the Coders tab: your test session should show the id. Test
    sessions count as real coders (they also take units from a shared
    queue), so give them recognisable ids and leave them out of the

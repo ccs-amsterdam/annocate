@@ -235,6 +235,8 @@ export function annotationsTable(
  */
 export function codersTable(coders: CoderProgress[], order: string[] = [], labels?: Labels, nested: ReadonlySet<string> = new Set()): Table {
   const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort();
+  // The URL parameters invitations required, by their $session name
+  const sessionNames = [...new Set(coders.flatMap((c) => Object.keys(c.session ?? {})))].sort();
   const columns = answerColumns(
     coders.flatMap((c) => Object.entries(c.variables)),
     order,
@@ -251,6 +253,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       "ended",
       "ended_at",
       "deletion_requested",
+      ...sessionNames.map((n) => `session.${n}`),
       ...loops.map((l) => `finished_${l}`),
       ...columns.map(header),
     ],
@@ -263,6 +266,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       c.ended?.outcome ?? "",
       time(c.ended?.at),
       c.deletionRequest ? (c.deletionRequest.declinedAt ? "declined" : "open") : "",
+      ...sessionNames.map((n) => c.session?.[n] ?? ""),
       ...loops.map((l) => String(c.finished[l] ?? 0)),
       ...columns.map((col) => cellOf(c.variables[col.variable], col, labels, null)),
     ]),
@@ -329,8 +333,9 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
 coders.csv       A row per coder: invitation, participant id, started, last
                  active, how their session ended (complete, screenout or
                  quit), whether they asked for their answers to be deleted
-                 (open or declined), units finished per loop, and their
-                 answers outside unit loops.
+                 (open or declined), the URL parameters their invitation
+                 required (session.<name>), units finished per loop, and
+                 their answers outside unit loops.
 units.csv        The units as coders saw them (only the fields the codebook
                  used), a row per version: a unit replaced after it was coded
                  has a row per version. Join annotations on unit_version_id.

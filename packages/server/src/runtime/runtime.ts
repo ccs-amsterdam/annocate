@@ -491,6 +491,7 @@ export class DeploymentRuntime {
       variables: coder.variables,
       ended: coder.ended,
       deletionRequest: coder.deletionRequest,
+      session: coder.session,
     };
   }
 

@@ -353,6 +353,7 @@ instruction texts, conditions and unitset names
 | `$var.<q>.values` | all items' values, in item order | scale |
 | `$var.<q>.items.<item>.value`, `.label` | one item | scale |
 | `$var.<q>.answered` | answered and not skipped | any |
+| `$session.participant`, `$session.<name>` | the session's participant id and the URL parameters its invitation requires (strings; empty when absent) | |
 
 Using `.value` on a multiple-answer question or `.values` on a single one
 is a validation error, and so is the old `.code`. A numeric answer's label

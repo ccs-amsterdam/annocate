@@ -559,8 +559,8 @@ describe("sessions", () => {
     expect(bare.coderId).toBe(a.coderId);
     expect(devices.get("shared")!.cookies.size).toBe(1);
 
-    const panel = await invite(undefined, { participantFromUrl: true });
-    const p1 = (await (await send("shared", "/session", {}, { "x-invite-secret": panel, "x-participant-id": "P1" })).json()) as SessionResponse;
+    const panel = await invite(undefined, { participantParam: { param: "participant" } });
+    const p1 = (await (await send("shared", "/session", {}, { "x-invite-secret": panel, "x-url-params": "participant=P1" })).json()) as SessionResponse;
     expect(p1.coderId).not.toBe(a.coderId);
     expect(devices.get("shared")!.cookies.size).toBe(2);
   });
@@ -572,11 +572,47 @@ describe("sessions", () => {
   });
 });
 
+describe("URL parameters an invite requires", () => {
+  it("start only with them (fitting their patterns), and keep them as $session values", async () => {
+    await redeploy({});
+    const secret = await invite(undefined, {
+      participantParam: { param: "PROLIFIC_PID", pattern: "[0-9a-f]{4}" },
+      urlParams: [{ param: "STUDY_ID", name: "study" }, { param: "src", pattern: "panel|mail" }],
+    });
+    const start = (device: string, params: string) => send(device, "/session", {}, { "x-invite-secret": secret, "x-url-params": params });
+
+    const missing = await start("u1", "PROLIFIC_PID=ab12&src=panel");
+    expect(missing.status).toBe(400);
+    expect(await missing.json()).toMatchObject({ code: "url_param_missing", error: expect.stringContaining("STUDY_ID") });
+    const invalid = await start("u2", "PROLIFIC_PID=xyz&STUDY_ID=s1&src=panel");
+    expect(await invalid.json()).toMatchObject({ code: "url_param_invalid" });
+    expect((await (await start("u3", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=web")).json()) as object).toMatchObject({ code: "url_param_invalid" });
+
+    const okRes = await start("u4", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=mail&other=x");
+    const ok = (await okRes.json()) as SessionResponse;
+    expect(okRes.status, JSON.stringify(ok)).toBe(200);
+    expect(ok.session).toEqual({ participant: "ab12", study: "s1", src: "mail" });
+    // The same link again (the client sends the page's parameters with every request): the same session
+    const again = (await (await start("u4", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=mail")).json()) as SessionResponse;
+    expect(again.coderId).toBe(ok.coderId);
+    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    expect(coders.find((c) => c.participantId === "ab12")?.session).toEqual({ study: "s1", src: "mail" });
+
+    // A parameter whose name isn't a valid $session name needs one
+    const bad = await server.request("/job/1/invites", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ label: "x", urlParams: [{ param: "session-id" }] }),
+    });
+    expect(bad.status).toBe(400);
+  });
+});
+
 describe("quitting and deleting a coder's data", () => {
   it("lets a coder quit and ask for deletion; the researcher declines or deletes", async () => {
     await redeploy({});
-    const secret = await invite(undefined, { participantFromUrl: true });
-    const link = { "x-invite-secret": secret, "x-participant-id": "P77" };
+    const secret = await invite(undefined, { participantParam: { param: "participant" } });
+    const link = { "x-invite-secret": secret, "x-url-params": "participant=P77" };
     const unit = (await (await send("quitter", "/loop/1/next", {}, link)).json()) as CoderUnitResponse;
     expect((await send("quitter", "/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("positive") }) }, link)).status).toBe(204);
 
@@ -626,8 +662,8 @@ describe("sessions across devices", () => {
   });
 
   it("never resumes a participant's session from a link alone", async () => {
-    const secret = await invite(undefined, { participantFromUrl: true });
-    const link = { "x-invite-secret": secret, "x-participant-id": "P123" };
+    const secret = await invite(undefined, { participantParam: { param: "participant" } });
+    const link = { "x-invite-secret": secret, "x-url-params": "participant=P123" };
 
     const first = await send("device-1", "/session", {}, link);
     expect(first.status).toBe(200);

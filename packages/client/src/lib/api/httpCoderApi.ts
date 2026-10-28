@@ -66,8 +66,6 @@ export interface HttpCoderApiConfig {
   baseUrl: string;
   /** The invite link: creates the coder on first use, and selects this link's session cookie. */
   inviteSecret?: string;
-  /** Participant id from the URL, for invites that take it from there. */
-  participantId?: string;
   /**
    * The page's other query parameters, for the codebook's `url_param` auto
    * variables. The server stores the ones it needs when the coder starts.
@@ -83,10 +81,9 @@ export interface HttpCoderApiConfig {
 /** Required on every coder API request: cross-site forms can't send it (CSRF). */
 const CLIENT_HEADERS = { "x-annotinder": "1" };
 
-function scopeHeaders(scope: { inviteSecret?: string; participantId?: string }): Record<string, string> {
+function scopeHeaders(scope: { inviteSecret?: string }): Record<string, string> {
   const headers: Record<string, string> = {};
   if (scope.inviteSecret) headers["x-invite-secret"] = scope.inviteSecret;
-  if (scope.participantId) headers["x-participant-id"] = scope.participantId;
   return headers;
 }
 

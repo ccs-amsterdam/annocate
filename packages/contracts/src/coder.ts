@@ -37,6 +37,8 @@ export const CoderProgressSchema = z.object({
   variables: z.record(z.string(), VariableValueSchema),
   /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */
   ended: SessionEndSchema.nullable(),
+  /** The session's values: the URL parameters its invitation required, by their `$session` name. */
+  session: z.record(z.string(), z.string()),
   /** Set if the coder asked for their answers to be deleted (open until the researcher deletes them or declines). */
   deletionRequest: DeletionRequestSchema.nullable(),
 });
@@ -65,10 +67,58 @@ export const DeleteCodersResponseSchema = z.object({
 });
 export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
 
+/** A URL parameter name, as it appears in links (e.g. `PROLIFIC_PID`). */
+const UrlParamNameSchema = z.string().min(1).max(64).regex(/^[A-Za-z0-9_.~-]+$/, "A URL parameter name is letters, digits, _, -, . or ~");
+
+/** A regular expression a URL parameter's value must match in full, e.g. `[0-9a-f]{24}` or `a|b|c`. */
+const UrlParamPatternSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .refine((p) => {
+    try {
+      new RegExp(p);
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Not a valid regular expression");
+
 /**
- * An invitation link (docs/coder-identity.md §3). Two independent settings:
- * whether coders must log in (`auth`), and whether coders get a participant
- * id (fixed on the invite, or from the `participant` URL param).
+ * Where the participant id comes from: a URL parameter of the coder's link
+ * (e.g. a panel's `PROLIFIC_PID`), required to start, optionally checked
+ * against a pattern. Available as `$session.participant`.
+ */
+export const ParticipantParamSchema = z.object({ param: UrlParamNameSchema, pattern: UrlParamPatternSchema.optional() });
+export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
+
+/**
+ * Another URL parameter the invite requires (e.g. a panel's study or
+ * session id), stored with the coder's session when they start and
+ * available as `$session.<name>`: `name` when given, else the parameter's
+ * own name (which must then be a valid name: letters, digits and `_`).
+ */
+export const RequiredUrlParamSchema = z
+  .object({
+    param: UrlParamNameSchema,
+    name: SafeNameSchema.optional(),
+    pattern: UrlParamPatternSchema.optional(),
+  })
+  .refine((p) => p.name !== undefined || /^[A-Za-z_][A-Za-z0-9_]*$/.test(p.param), {
+    message: "Give this parameter a name (letters, digits and _) to use it as $session.<name>",
+    path: ["name"],
+  })
+  .refine((p) => (p.name ?? p.param) !== "participant", { message: "'participant' is the participant id's name", path: ["name"] });
+export type RequiredUrlParam = z.infer<typeof RequiredUrlParamSchema>;
+
+/** The `$session` name of a required URL parameter. */
+export const urlParamName = (p: RequiredUrlParam) => p.name ?? p.param;
+
+/**
+ * An invitation link (docs/coder-identity.md §3). Independent settings:
+ * whether coders must log in (`auth`), whether coders get a participant id
+ * (fixed on the invite, or from a URL parameter), and which other URL
+ * parameters a link needs.
  */
 export const CoderInviteWriteSchema = z.object({
   label: z.string().min(1).max(128),
@@ -80,8 +130,10 @@ export const CoderInviteWriteSchema = z.object({
   auth: z.enum(["none", "optional", "required"]).default("none"),
   /** A participant id fixed on this invite (e.g. a personal link). A label, never a credential. */
   participantId: z.string().min(1).max(256).optional(),
-  /** Take the participant id from the `participant` URL param (e.g. survey/panel companies). */
-  participantFromUrl: z.boolean().optional(),
+  /** Take the participant id from a URL parameter of the link (online panels); then it is required. */
+  participantParam: ParticipantParamSchema.optional(),
+  /** Other URL parameters the link requires, stored with the session (`$session.<name>`). */
+  urlParams: z.array(RequiredUrlParamSchema).max(20).optional(),
   /**
    * Restrict the invite to these (authenticated) email addresses. Stored on
    * the server only; never part of the codebook. Not enforced yet: there is

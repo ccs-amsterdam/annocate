@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 // suffixes, scripts and snippets, like the template editor's colours.
 
 const TOKEN =
-  /(^:{3,}[^\n]*$)|(\{\{[\s\S]*?\}\})(::(?:text|markdown|image|html))?|(\$(?:unit|var)(?:\.[A-Za-z_]\w*)+)(::(?:text|markdown|image|html))?|(\[\[[A-Za-z_]\w*\]\])|(\\\$)/gm;
+  /(^:{3,}[^\n]*$)|(\{\{[\s\S]*?\}\})(::(?:text|markdown|image|html))?|(\$(?:unit|var|session)(?:\.[A-Za-z_]\w*)+)(::(?:text|markdown|image|html))?|(\[\[[A-Za-z_]\w*\]\])|(\\\$)/gm;
 
 const fence = "font-semibold text-violet-700 dark:text-violet-300";
 const value = "text-sky-700 dark:text-sky-300";

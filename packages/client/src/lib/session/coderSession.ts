@@ -1,8 +1,8 @@
 import { HttpCoderApi } from "../api/httpCoderApi";
 
 // Device-side half of docs/coder-identity.md §4. The session itself lives in
-// an httpOnly cookie the server sets (one per deployment, invite and
-// participant id), so this code never sees it: page scripts can't leak it.
+// an httpOnly cookie the server sets (one per deployment and participant
+// id, which the invite takes from a URL parameter), so this code never sees it: page scripts can't leak it.
 // A session only moves to another device through a one-time transfer link.
 // A participant id or invite link alone never resumes an earlier session.
 
@@ -11,7 +11,6 @@ export interface CoderSessionScope {
   /** Server base URL including the deployment, e.g. `/d/42` (same origin as the client). */
   baseUrl: string;
   inviteSecret?: string;
-  participantId?: string;
 }
 
 /**

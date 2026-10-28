@@ -32,7 +32,8 @@ Under **Create invitation link**:
 | Setting | What it does |
 | --- | --- |
 | **No login** | Coders start without an account (the only option that works for now) |
-| **No participant id** / **Fixed participant id** / **Participant id from URL** | Whether coders who use this link get a participant id, and where it comes from |
+| **No participant id** / **Fixed participant id** / **Participant id from a URL parameter** | Whether coders who use this link get a participant id, and where it comes from |
+| **Required URL parameter** | Other values the link must carry, e.g. a panel's study id; the codebook reads them as `$session.<name>` (see [Online panels](online-panels.md#values-from-the-link)) |
 | **Preset variables** | Values for the codebook's assigned variables, e.g. `group=experts` |
 | **Max uses** | Stop accepting new coders after this many |
 | **Units** | The unitset its coders get in loops with *The invitation's units* |
@@ -48,11 +49,16 @@ other data you have on the same people.
 - **No participant id**: coders are anonymous; the Coders tab shows a number.
 - **Fixed participant id**: everyone who uses this link gets the id you type
   in. Use it for personal links, one per coder.
-- **Participant id from URL**: the id is taken from the link itself. The
-  copied link ends in `participant=<id>`: replace `<id>` with each coder's
-  id, or let a panel fill it in (see
-  [Online panels and crowd coding](online-panels.md)). A coder who opens the
-  link without an id starts without one.
+- **Participant id from a URL parameter**: the id is taken from the link
+  itself, from the parameter you name (`participant`, or a panel's own such
+  as `PROLIFIC_PID`). The copied link ends in `participant=<participant id>`:
+  replace the placeholder with each coder's id, or let a panel fill it in
+  (see [Online panels and crowd coding](online-panels.md)). The id is
+  required: a link without it doesn't start. A **pattern** (a regular
+  expression, e.g. `[0-9]{6}` or `p1|p2|p3`) makes the id fit a format.
+
+In the codebook the participant id is `$session.participant`, for instance
+in an end item's return link.
 
 A participant id is only a label, **never a key**: anyone who has the link
 could type it in. So a participant id never gives access to earlier work.

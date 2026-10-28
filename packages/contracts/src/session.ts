@@ -78,6 +78,8 @@ export const SessionResponseSchema = z.object({
   ended: SessionEndSchema.nullable().optional(),
   /** Set once the coder asked for their answers to be deleted. */
   deletionRequest: DeletionRequestSchema.nullable().optional(),
+  /** `$session` values: `participant` (if the session has a participant id) and the URL parameters its invitation required. */
+  session: z.record(z.string(), z.string()).default({}),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
@@ -100,6 +102,10 @@ export const CoderErrorCodeSchema = z.enum([
   "session_ended",
   /** Preview only: the latest codebook has issues, so it can't run. */
   "codebook_invalid",
+  /** The invite requires a URL parameter the link doesn't have. */
+  "url_param_missing",
+  /** A URL parameter's value doesn't fit the invite's pattern. */
+  "url_param_invalid",
 ]);
 export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
 

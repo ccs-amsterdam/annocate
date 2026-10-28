@@ -4,7 +4,7 @@ import { toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
-import type { InviteRow } from "../shared/invites.js";
+import { sessionFromUrl, type InviteRow } from "../shared/invites.js";
 import { unitHash, type UnitRow } from "../shared/units.js";
 import type {
   AnnotationWrite,
@@ -178,7 +178,7 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   if (invite.revoked_at !== null) throw new HttpError(401, "This invite has been revoked");
   // A participant id is a label, never a credential: a new key for a known
   // participant gets a *new* session, and only when asked for.
-  const participantId = invite.participant_id ?? (invite.participant_from_url ? request.participantId : undefined) ?? null;
+  const { participantId, session } = sessionFromUrl(invite, request.urlParams ?? {});
   const knownParticipant =
     participantId !== null && !!(await one(sql, "SELECT 1 FROM coders WHERE job_id = $1 AND participant_id = $2", [jobId, participantId]));
   if (knownParticipant && !request.newSession) {
@@ -197,8 +197,8 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   const variables = Object.fromEntries(Object.entries(invite.variables).map(([name, value]) => [name, { done: true, skip: false, values: [{ value }] }]));
   const created = await one<CoderRow>(
     sql,
-    "INSERT INTO coders (job_id, coder_key, participant_id, variables, invite_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-    [jobId, request.coderKey, participantId, JSON.stringify(variables), invite.id],
+    "INSERT INTO coders (job_id, coder_key, participant_id, variables, invite_id, session) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    [jobId, request.coderKey, participantId, JSON.stringify(variables), invite.id, JSON.stringify(session)],
   );
   return created!;
 }

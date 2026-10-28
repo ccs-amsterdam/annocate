@@ -143,6 +143,8 @@ export interface StepContext {
   /** Every question in the codebook (contracts `collectQuestions`), so the scope has all of them. */
   questions: ReadonlyMap<string, AnyVariableType>;
   cache?: ExpressionCache;
+  /** The session's `$session` values. */
+  session?: Record<string, string>;
 }
 
 export interface Steps {
@@ -172,7 +174,7 @@ async function walkSteps(
 ): Promise<boolean> {
   for (const node of nodes) {
     if (node.type === "condition") {
-      const scope = buildScope(ctx.questions, visible, unit?.data);
+      const scope = buildScope(ctx.questions, visible, unit?.data, ctx.session);
       if (await evaluateCondition(node.condition, scope, ctx.cache, `condition:${node.condition.script}`)) {
         if (await walkSteps(node.children, answers, visible, ctx, unit, steps)) return true;
       }

@@ -120,6 +120,8 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
 
   function checkRef(ref: Reference, ctx: RefContext): ReferenceShape | null {
     const text = referenceText(ref);
+    // Session values (participant id, required URL parameters) exist everywhere; which ones depends on the invitation.
+    if (ref.ns === "session") return referenceShape(questions, ref);
     if (ref.ns !== "var") {
       if (ctx.branch) return issue(ctx.path, `${text}: branches and unitset names can only use coder-level $var references`), null;
       if (ctx.loop === null) return issue(ctx.path, `${text} can only be used inside a unit loop`), null;

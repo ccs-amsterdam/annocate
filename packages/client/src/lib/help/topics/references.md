@@ -2,7 +2,7 @@
 title: Referring to answers and unit data
 section: Codebook
 order: 3
-summary: Use a unit's data ($unit) and earlier answers ($var) in texts, layouts, conditions, unitset names and redirect links.
+summary: Use a unit's data ($unit), earlier answers ($var) and session values ($session) in texts, layouts, conditions, unitset names and redirect links.
 ---
 
 A **reference** is a name that AnnoTinder replaces with a value while the
@@ -108,17 +108,30 @@ the item `media` of the scale `trust`, and `.label` the option's label.
 `$var.trust.values` is the list of the values of all answered items, in item
 order.
 
+## The session: $session
+
+`$session` holds values of the coder's session, fixed when they start:
+
+| Reference | Gives |
+| --- | --- |
+| `$session.participant` | The participant id, if the invitation gives one |
+| `$session.<name>` | A URL parameter the invitation requires, e.g. a panel's study id |
+
+They come from the invitation, not the codebook, so the editor can't check
+the names: a session without the value gives an empty text. See
+[Online panels and crowd coding](online-panels.md#values-from-the-link).
+
 ## Where references work
 
-| Where | `$unit` | `$var` | `{{ }}` |
-| --- | --- | --- | --- |
-| A loop's layout | Yes | Yes | Yes |
-| Question and instruction texts | In a loop | Yes | Yes |
-| Conditions (condition items, `::: if`) | In a loop | Yes | Yes (a condition is a script) |
-| End item messages | In a loop | Yes | Yes |
-| End item redirect links | No | Yes | No |
-| Unitset names of a loop | No | Coder-level questions only | No |
-| Coder group conditions of a loop | No | Coder-level questions only | Yes |
+| Where | `$unit` | `$var` | `$session` | `{{ }}` |
+| --- | --- | --- | --- | --- |
+| A loop's layout | Yes | Yes | Yes | Yes |
+| Question and instruction texts | In a loop | Yes | Yes | Yes |
+| Conditions (condition items, `::: if`) | In a loop | Yes | Yes | Yes (a condition is a script) |
+| End item messages | In a loop | Yes | Yes | Yes |
+| End item redirect links | No | Yes | Yes | No |
+| Unitset names of a loop | No | Coder-level questions only | Yes | No |
+| Coder group conditions of a loop | No | Coder-level questions only | Yes | Yes |
 
 Unitset names with a reference, such as `part_$var.slot.value`, give
 different coders different units: see

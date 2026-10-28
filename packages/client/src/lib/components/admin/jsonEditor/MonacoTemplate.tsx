@@ -63,7 +63,7 @@ monaco.languages.setMonarchTokensProvider(LANGUAGE, {
       [/\[\[\w+\]\]/, "snippet"],
       [/\\\$/, ""],
       [/\{\{/, { token: "delimiter.expression", next: "@expression" }],
-      [/\$(unit|var)(\.\w+)*/, "variable.reference"],
+      [/\$(unit|var|session)(\.\w+)*/, "variable.reference"],
       [/::(text|markdown|image|html)\b/, "keyword.suffix"],
       [/^#{1,6}\s.*$/, "keyword.heading"],
       [/\*\*[^*]+\*\*/, "strong"],
@@ -73,7 +73,7 @@ monaco.languages.setMonarchTokensProvider(LANGUAGE, {
     expression: [
       [/\}\}/, { token: "delimiter.expression", next: "@pop" }],
       [/\[\[\w+\]\]/, "snippet"],
-      [/\$(unit|var)(\.\w+)*/, "variable.reference"],
+      [/\$(unit|var|session)(\.\w+)*/, "variable.reference"],
       [/'[^']*'|"[^"]*"/, "string"],
       [/./, "expression"],
     ],
@@ -122,12 +122,14 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
     if (/\[\[\w*$/.test(before)) {
       return { suggestions: current.snippets.map((n) => item(n, "snippet", monaco.languages.CompletionItemKind.Snippet, `${n}]]`)) };
     }
-    const ref = /\$(unit|var)\.\w*$/.exec(before);
+    const ref = /\$(unit|var|session)\.\w*$/.exec(before);
     if (ref) {
       const names =
         ref[1] === "unit"
           ? current.fields.map((n) => item(n, "unit field"))
-          : current.questions.map((n) => item(`${n}.value`, "answer", monaco.languages.CompletionItemKind.Variable));
+          : ref[1] === "session"
+            ? [item("participant", "the participant id, if the invitation has one")]
+            : current.questions.map((n) => item(`${n}.value`, "answer", monaco.languages.CompletionItemKind.Variable));
       return { suggestions: names };
     }
     if (/\$[\w.]+::\w*$/.test(before)) {
@@ -138,6 +140,7 @@ monaco.languages.registerCompletionItemProvider(LANGUAGE, {
         suggestions: [
           item("unit.", "a field of the unit", monaco.languages.CompletionItemKind.Module),
           item("var.", "an earlier answer", monaco.languages.CompletionItemKind.Module),
+          item("session.", "the session: participant id, URL parameters", monaco.languages.CompletionItemKind.Module),
         ].map((s) => ({ ...s, command: { id: "editor.action.triggerSuggest", title: "names" } })),
       };
     }

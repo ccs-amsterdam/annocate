@@ -70,6 +70,7 @@ export class PreviewStore implements Store {
       assignments: {},
       ended: null,
       deletionRequest: null,
+      session: {},
       inviteId: null,
       created: new Date(this.now()),
     };

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { CoderInviteResponse, CoderInviteWrite, TopLevelItem, UnitsetResponse } from "@annotinder/contracts";
-import { AlertTriangle, Ban, Check, Copy, Split, Trash2 } from "lucide-react";
+import type { CoderInviteResponse, CoderInviteWrite, ParticipantParam, RequiredUrlParam, TopLevelItem, UnitsetResponse } from "@annotinder/contracts";
+import { AlertTriangle, Ban, Check, Copy, Plus, Split, Trash2, X } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useCodebookQuery,
@@ -41,7 +41,12 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
   const withoutUnits = (invitesQuery.data ?? []).filter((i) => !i.revokedAt && i.unitsetId == null);
   const linkOf = (invite: CoderInviteResponse) => {
     const url = inviteUrl ? inviteUrl(invite) : `${baseUrl}/invite/${invite.secret}`;
-    return invite.participantFromUrl ? `${url}${url.includes("?") ? "&" : "?"}participant=<id>` : url;
+    // The parameters the link needs, with placeholders the panel (or the researcher) fills in.
+    const params = [
+      ...(invite.participantParam ? [`${invite.participantParam.param}=<participant id>`] : []),
+      ...(invite.urlParams ?? []).map((p) => `${p.param}=<${p.name ?? p.param}>`),
+    ];
+    return params.length ? `${url}${url.includes("?") ? "&" : "?"}${params.join("&")}` : url;
   };
 
   return (
@@ -148,7 +153,12 @@ function InviteRow({
         <CopyLink link={link} disabled={status === "revoked"} />
       </td>
       <td className="p-2 text-muted-foreground">
-        {invite.participantId ?? (invite.participantFromUrl ? "from URL" : "–")}
+        {invite.participantId ?? (invite.participantParam ? <span className="font-mono text-xs">?{invite.participantParam.param}</span> : "–")}
+        {invite.urlParams?.length ? (
+          <div className="font-mono text-[11px]" title="Other URL parameters the link needs ($session values)">
+            {invite.urlParams.map((p) => `?${p.param}`).join(" ")}
+          </div>
+        ) : null}
       </td>
       <td className="p-2 font-mono text-xs text-muted-foreground">
         {presets.length > 0 ? presets.map(([k, v]) => `${k}=${v}`).join(", ") : "–"}
@@ -270,6 +280,8 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
   const [auth, setAuth] = useState<CoderInviteWrite["auth"]>("none");
   const [participant, setParticipant] = useState<"none" | "fixed" | "url">("none");
   const [participantId, setParticipantId] = useState("");
+  const [participantParam, setParticipantParam] = useState<ParticipantParam>({ param: "participant" });
+  const [urlParams, setUrlParams] = useState<RequiredUrlParam[]>([]);
   const [presets, setPresets] = useState("");
   const [maxUses, setMaxUses] = useState("");
 
@@ -278,7 +290,8 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
       label,
       auth,
       participantId: participant === "fixed" && participantId ? participantId : undefined,
-      participantFromUrl: participant === "url" || undefined,
+      participantParam: participant === "url" ? withoutEmpty(participantParam) : undefined,
+      urlParams: urlParams.length ? urlParams.map(withoutEmpty) : undefined,
       variables: parsePresets(presets),
       maxUses: maxUses === "" ? undefined : Number(maxUses),
       unitsetId,
@@ -286,6 +299,7 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
     setUnitsetId(null);
     setLabel("");
     setParticipantId("");
+    setUrlParams([]);
     setPresets("");
     setMaxUses("");
   }
@@ -316,12 +330,31 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
         >
           <option value="none">No participant id</option>
           <option value="fixed">Fixed participant id</option>
-          <option value="url">Participant id from URL</option>
+          <option value="url">Participant id from a URL parameter</option>
         </select>
         {participant === "fixed" && (
           <Input placeholder="Participant id" value={participantId} onChange={(e) => setParticipantId(e.target.value)} />
         )}
+        {participant === "url" && (
+          <>
+            <Input
+              aria-label="URL parameter with the participant id"
+              className="w-48 font-mono text-xs"
+              placeholder="e.g. PROLIFIC_PID"
+              value={participantParam.param}
+              onChange={(e) => setParticipantParam({ ...participantParam, param: e.target.value.trim() })}
+            />
+            <Input
+              aria-label="Pattern the participant id must fit (optional)"
+              className="w-56 font-mono text-xs"
+              placeholder="Pattern (optional), e.g. [0-9a-f]{24}"
+              value={participantParam.pattern ?? ""}
+              onChange={(e) => setParticipantParam({ ...participantParam, pattern: e.target.value })}
+            />
+          </>
+        )}
       </div>
+      <UrlParamsEditor value={urlParams} onChange={setUrlParams} />
       <div className="flex items-center gap-2">
         <Input
           placeholder="Preset variables, e.g. slot=2, group=treatment"
@@ -346,10 +379,67 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
         this link. Units are what its coders get in unit loops with &quot;The invitation&apos;s units&quot;: use one
         link per coder (e.g. with a fixed participant id) to give specific coders specific units, or divide units over
         coders below. Without login, work stays on the device it was started on; coders can move it with &quot;Continue
-        on another device&quot;. A participant id is a label, never a way back into a session.
+        on another device&quot;. A participant id is a label, never a way back into a session. A link without the URL
+        parameters it needs (or with values that don&apos;t fit their pattern) can&apos;t start; their values are{" "}
+        <code>$session.participant</code> and <code>$session.&lt;name&gt;</code> in the codebook, e.g. in an end
+        item&apos;s redirect link.{" "}
+        <HelpButton topic="online-panels" className="align-middle">
+          Online panels
+        </HelpButton>
       </p>
       {createInvite.isError && <p className="text-sm text-destructive">{createInvite.error.message}</p>}
     </section>
+  );
+}
+
+/** Leaves out an empty pattern and name. */
+function withoutEmpty<T extends { pattern?: string; name?: string }>(p: T): T {
+  const next = { ...p };
+  if (!next.pattern?.trim()) delete next.pattern;
+  if (!next.name?.trim()) delete next.name;
+  return next;
+}
+
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** The other URL parameters a link needs: parameter, its `$session` name, and an optional pattern. */
+function UrlParamsEditor({ value, onChange }: { value: RequiredUrlParam[]; onChange: (params: RequiredUrlParam[]) => void }) {
+  const set = (i: number, p: RequiredUrlParam) => onChange(value.map((x, j) => (j === i ? p : x)));
+  return (
+    <div className="flex flex-col gap-1.5">
+      {value.map((p, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-2">
+          <Input
+            aria-label="URL parameter"
+            className="w-44 font-mono text-xs"
+            placeholder="URL parameter, e.g. STUDY_ID"
+            value={p.param}
+            onChange={(e) => set(i, { ...p, param: e.target.value.trim() })}
+          />
+          <span className="font-mono text-xs text-muted-foreground">$session.</span>
+          <Input
+            aria-label="Name in the codebook"
+            className={`w-36 font-mono text-xs ${p.param && !IDENTIFIER.test(p.param) && !p.name ? "border-destructive" : ""}`}
+            placeholder={IDENTIFIER.test(p.param) ? p.param : "name"}
+            value={p.name ?? ""}
+            onChange={(e) => set(i, { ...p, name: e.target.value.trim() })}
+          />
+          <Input
+            aria-label="Pattern (optional)"
+            className="w-48 font-mono text-xs"
+            placeholder="Pattern (optional)"
+            value={p.pattern ?? ""}
+            onChange={(e) => set(i, { ...p, pattern: e.target.value })}
+          />
+          <Button type="button" variant="ghost" size="icon-sm" aria-label="Remove parameter" onClick={() => onChange(value.filter((_, j) => j !== i))}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ))}
+      <Button type="button" variant="ghost" size="sm" className="w-fit text-xs" onClick={() => onChange([...value, { param: "" }])}>
+        <Plus className="h-3.5 w-3.5" /> Required URL parameter
+      </Button>
+    </div>
   );
 }
 

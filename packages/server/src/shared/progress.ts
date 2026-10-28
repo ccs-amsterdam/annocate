@@ -41,9 +41,10 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     variables: Record<string, VariableValue>;
     ended: SessionEnd | null;
     deletionRequest: DeletionRequest | null;
+    session: Record<string, string>;
   }>(
     `SELECT c.id, c.email, c.participant_id AS "participantId", c.invite_id AS "inviteId", c.created, i.label AS "inviteLabel",
-       c.variables, c.ended, c.deletion_request AS "deletionRequest"
+       c.variables, c.ended, c.deletion_request AS "deletionRequest", c.session
      FROM coders c LEFT JOIN invites i ON i.id = c.invite_id
      WHERE c.job_id = $1 ORDER BY c.id`,
     [jobId],
@@ -72,6 +73,7 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     variables: c.variables,
     ended: c.ended,
     deletionRequest: c.deletionRequest,
+    session: c.session,
   }));
 }
 

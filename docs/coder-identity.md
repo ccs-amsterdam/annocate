@@ -23,7 +23,7 @@ Complements `docs/architecture.md`.
 | **Coder** (`coderId`) | One annotation session in a job: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
 | **Session key** | Random secret, created by the server, that unlocks one coder without login. Kept in an httpOnly cookie, so page scripts never see it. It is a *key*, not an id: it moves with a transfer, so it isn't a device id. | the coder's browser (httpOnly cookie) |
 | **Coder key** | What the database stores to find the coder: the SHA-256 of the session key, so a database leak doesn't hand out sessions. | database |
-| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed in a personal invite, or taken from the `participant` URL parameter. Never a credential. | database (on the coder) |
+| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed in a personal invite, or taken from a URL parameter the invite names (`participantParam`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
 | **Verified identity** | A verified email address from a login (§5, §7). The only thing that lets a coder resume from another device. | database (users) |
 | **Transfer link** | One-time, short-lived link that copies a session key to another device. | server memory (15 min) |
 
@@ -40,7 +40,7 @@ Two independent settings:
 |  | `auth: "none"` | `auth: "required"` (or `"optional"`) |
 | --- | --- | --- |
 | **no participant id** | anyone with the link starts a new session | login first; the same login resumes the same coder on any device |
-| **participant id** (`participantId` fixed on the invite, or `participantFromUrl: true` + `?participant=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
+| **participant id** (`participantId` fixed on the invite, or `participantParam: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
 
 `optional` lets the coder choose: log in to be able to resume elsewhere, or
 continue anonymously. `emails` (an allowlist) and `maxUses` further
@@ -52,12 +52,26 @@ restrict an invite.
   accepted the coder (an invite, stored with the key's hash), sets it as a
   cookie: `HttpOnly`, `SameSite=Lax`, `Secure` over https,
   `Path=/d/<jobId>`, 400 days. The cookie name includes a hash of
-  the participant id (sent by the client as a header, from the URL), so a
-  shared lab computer keeps separate sessions per participant. The invite
-  isn't part of it: everything the job needs from the invite and the URL
-  (preset and `url_param` variables) is stored when the coder starts, so
-  the invite and URL details can be forgotten. The client never sees or
-  stores the key.
+  the participant id (the server reads it from the URL parameters the
+  client sends, `x-url-params`, using the invite's `participantParam`;
+  cached per invite for a minute), so a shared lab computer keeps separate
+  sessions per participant. The invite isn't part of it: everything the job
+  needs from the invite and the URL (preset and `url_param` variables, the
+  participant id and the invite's other required URL parameters) is stored
+  when the coder starts, so the invite and URL details can be forgotten.
+  The client never sees or stores the key.
+- **Required URL parameters.** An invite can require URL parameters: the
+  participant id's (`participantParam`) and others (`urlParams: [{ param,
+  name?, pattern? }]`, e.g. a panel's study and session ids). A new session
+  without one, or with a value that doesn't match its pattern (a regular
+  expression, matched in full), is refused (400 `url_param_missing` /
+  `url_param_invalid`), so a broken panel link shows at once. The values are
+  stored on the coder (`coders.session`) and are the codebook's `$session`
+  values: `$session.participant` and `$session.<name>` (`name`, else the
+  parameter's own name, which must then be a valid name). They belong to
+  the invitation, not the codebook, so validation can't check the names
+  (unknown ones are empty); codebook-level values from the URL stay
+  `url_param` auto variables.
 - **Same device later.** The cookie resumes the same coder, whatever link
   (or none) the coder comes back with.
 - **CSRF.** Every coder API request must carry `x-annotinder: 1`, which a

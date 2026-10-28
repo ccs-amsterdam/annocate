@@ -41,9 +41,7 @@ export interface JobRunnerProps {
   /** Server URL including the deployment, e.g. `/d/42` (same origin as the client). */
   baseUrl: string;
   inviteSecret?: string;
-  /** Participant id from the URL, for invites that take it from there. */
-  participantId?: string;
-  /** The page's other query parameters, for `url_param` auto variables (stored by the server when the coder starts). */
+  /** The page's other query parameters: the participant id and other parameters the invite requires, and `url_param` auto variables (stored by the server when the coder starts). */
   urlParams?: Record<string, string>;
   /** Token from a "Continue on another device" link: redeemed for the session's coder key. */
   transferToken?: string;
@@ -172,7 +170,6 @@ function computeGlobalPosition(nav: JobManagerNavigation): number {
 function JobRunnerContent({
   baseUrl,
   inviteSecret,
-  participantId,
   urlParams,
   newSession,
   onStartNewSession,
@@ -183,8 +180,8 @@ function JobRunnerContent({
   // By content: a new object with the same params must not restart the session.
   const urlParamsKey = JSON.stringify(urlParams ?? {});
   const coderApi = useMemo(
-    () => new HttpCoderApi({ baseUrl, inviteSecret, participantId, urlParams: JSON.parse(urlParamsKey), newSession }),
-    [baseUrl, inviteSecret, participantId, urlParamsKey, newSession],
+    () => new HttpCoderApi({ baseUrl, inviteSecret, urlParams: JSON.parse(urlParamsKey), newSession }),
+    [baseUrl, inviteSecret, urlParamsKey, newSession],
   );
   const { manager, snapshot } = useJobManager(coderApi);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -259,6 +256,18 @@ function JobRunnerContent({
         <Button type="button" variant="outline" className="mt-2" onClick={onStartNewSession}>
           Start a new session
         </Button>
+      </SessionNotice>
+    );
+  }
+
+  if (snapshot.phase === "error" && (snapshot.errorCode === "url_param_missing" || snapshot.errorCode === "url_param_invalid")) {
+    return (
+      <SessionNotice title="This link is incomplete">
+        <p>{snapshot.error}.</p>
+        <p>
+          Check that you opened the whole link you were given. If you came from a panel or another website, go back and
+          follow its link again; if that doesn&apos;t help, contact the researchers.
+        </p>
       </SessionNotice>
     );
   }
@@ -631,10 +640,10 @@ export function JobRunner(props: JobRunnerProps) {
  * the server on first visit. See docs/coder-identity.md §4.
  */
 function CoderSessionGate(props: JobRunnerProps) {
-  const { baseUrl, inviteSecret, participantId, transferToken, onTransferRedeemed, newSession = false } = props;
+  const { baseUrl, inviteSecret, transferToken, onTransferRedeemed, newSession = false } = props;
   const scope = useMemo<CoderSessionScope>(
-    () => ({ baseUrl, inviteSecret, participantId }),
-    [baseUrl, inviteSecret, participantId],
+    () => ({ baseUrl, inviteSecret }),
+    [baseUrl, inviteSecret],
   );
   const [session, setSession] = useState<{ ready: boolean; generation: number; newSession: boolean; error: string | null }>(
     () => ({ ready: !transferToken, generation: 0, newSession, error: null }),

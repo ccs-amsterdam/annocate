@@ -29,14 +29,14 @@ export const EXPRESSION_DEADLINE_MS = 100;
 const HELPER_SETUP = `$var = ${HELPER_PRELUDE}($var);`;
 
 /**
- * Evaluates a codebook script against `{ $unit, $var }` (the only
+ * Evaluates a codebook script against `{ $unit, $var, $session }` (the only
  * names in scope), with the helper methods on `$var`. A script that is just
  * one reference is looked up directly, without starting QuickJS.
  */
 export async function evaluateScript(script: string, scope: ReferenceScope): Promise<unknown> {
   const single = parseReference(script);
   if ("ref" in single) return referenceValue(scope, single.ref);
-  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var }, HELPER_SETUP);
+  return evaluateExpression(script, { $unit: scope.$unit, $var: scope.$var, $session: scope.$session ?? {} }, HELPER_SETUP);
 }
 
 /** A syntax error in a script, or null if it parses (it isn't run). For the admin editor. */
@@ -44,7 +44,7 @@ export async function scriptSyntaxError(script: string): Promise<string | null> 
   const QuickJS = await loadQuickJS();
   const vm = QuickJS.newContext();
   try {
-    const result = vm.evalCode(`(($unit, $var) => (${script}\n))`);
+    const result = vm.evalCode(`(($unit, $var, $session) => (${script}\n))`);
     if (result.error) {
       const error = vm.dump(result.error) as { message?: string } | string;
       result.error.dispose();

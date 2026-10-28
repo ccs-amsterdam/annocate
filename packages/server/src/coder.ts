@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 import { EndSessionSchema, QuitSessionSchema, NextUnitQuerySchema, PostCoderVariablesSchema, PostUnitVariablesSchema, RedeemTransferSchema } from "@annotinder/contracts";
 import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
+import { participantFromLink } from "./shared/invites.js";
 import { dbCoderKey, newSessionKey, readSession, requireClientHeader, sessionCookieName, writeSession } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 
@@ -30,7 +31,8 @@ export function coderApi(server: Server): Hono {
     const deploymentId = c.req.param("deployment")!;
     const runtime = await server.deployments.get(deploymentId);
     const sessionKey = runtime.redeemTransfer(body.token);
-    const name = await sessionCookieName(c.req.header("x-participant-id"));
+    // A transfer link carries no invite: the session's cookie for no participant id.
+    const name = await sessionCookieName(undefined);
     writeSession(c, deploymentId, name, sessionKey);
     return c.json({});
   });
@@ -53,17 +55,16 @@ export function coderApi(server: Server): Hono {
 
     // The session cookie, or a new session: no cookie yet, or the coder asked
     // for a new one (a participant id that already has a session elsewhere).
+    // A device keeps a session per participant id: the invite says which URL
+    // parameter holds it.
     const inviteSecret = c.req.header("x-invite-secret");
-    const participantId = c.req.header("x-participant-id");
+    // The page's query parameters: the participant id and other values the invite requires, and `url_param` auto variables.
+    const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const newSession = c.req.header("x-new-session") === "1";
-    const name = await sessionCookieName(participantId);
+    const name = await sessionCookieName(inviteSecret ? await participantFromLink(server.db, inviteSecret, urlParams) : undefined);
     const existing = newSession ? undefined : readSession(c, name);
     const sessionKey = existing ?? newSessionKey();
-    const coder = await runtime.resolveCoder(
-      { coderKey: await dbCoderKey(sessionKey), inviteSecret, participantId, newSession },
-      // The page's query parameters, for `url_param` auto variables.
-      Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? "")),
-    );
+    const coder = await runtime.resolveCoder({ coderKey: await dbCoderKey(sessionKey), inviteSecret, urlParams, newSession }, urlParams);
     // Only once the coder was accepted (an invite may be invalid or used up).
     if (sessionKey !== existing) writeSession(c, deploymentId, name, sessionKey);
     c.set("sessionKey", sessionKey);

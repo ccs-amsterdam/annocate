@@ -59,17 +59,16 @@ function ResearcherView({ dev }: { dev: boolean }) {
 }
 
 function App() {
-  // Coder links (docs/coder-identity.md): ?deployment=1&invite=...&participant=...
+  // Coder links (docs/coder-identity.md): ?deployment=1&invite=...&<parameters the invite requires>
   // or ?deployment=...&transfer=... from "Continue on another device".
   const [params, setParams] = useState(() => new URLSearchParams(window.location.search));
   const inviteSecret = params.get("invite") ?? "demo-secret";
   const deploymentId = params.get("deployment") ?? "1";
-  const participantId = params.get("participant") ?? undefined;
   const transferToken = params.get("transfer") ?? undefined;
-  // Everything else in the URL may feed the codebook's `url_param` auto variables.
+  // Everything else in the URL goes to the server: the participant id and other parameters the invite requires, and `url_param` auto variables.
   const urlParams = useMemo(() => {
     const rest = Object.fromEntries(params);
-    for (const own of ["invite", "deployment", "participant", "transfer", "view"]) delete rest[own];
+    for (const own of ["invite", "deployment", "transfer", "view"]) delete rest[own];
     return rest;
   }, [params]);
   const clearTransfer = useCallback(() => {
@@ -149,7 +148,6 @@ function App() {
           <JobRunner
             baseUrl={`${CODER_API_URL}/d/${deploymentId}`}
             inviteSecret={inviteSecret}
-            participantId={participantId}
             urlParams={urlParams}
             transferToken={transferToken}
             onTransferRedeemed={clearTransfer}

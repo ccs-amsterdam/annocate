@@ -13,6 +13,7 @@ export interface CoderRow {
   assignments: CoderAssignments;
   ended: SessionEnd | null;
   deletion_request: DeletionRequest | null;
+  session: Record<string, string>;
   created: Date;
 }
 
@@ -24,6 +25,7 @@ export function toCoder(row: CoderRow): Coder {
     assignments: row.assignments ?? {},
     ended: row.ended,
     deletionRequest: row.deletion_request,
+    session: { ...row.session, ...(row.participant_id ? { participant: row.participant_id } : {}) },
     inviteId: row.invite_id,
   };
 }

@@ -10,6 +10,7 @@ import type {
   AnyVariableType,
   EndItem,
   ReferenceScope,
+  UnitData,
 } from "@annotinder/contracts";
 import { branchUnitsets, buildScope, loopTitle, unitLoops, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
@@ -204,6 +205,8 @@ export class JobManager {
   private topSteps: CodebookItem[] = [];
   /** Answers of coder-level questions that are currently shown (hidden ones count as unanswered). */
   private coderVisible: Record<string, VariableValue> = {};
+  /** The session's `$session` values (participant id, URL parameters its invite required). */
+  private session: Record<string, string> = {};
   /** `coderVisible` plus the current unit's answers to questions that are currently shown. */
   private unitVisible: Record<string, VariableValue> = {};
   private topIndex = -1;
@@ -294,12 +297,13 @@ export class JobManager {
       this.maxReachedTopIndex = 0;
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.unitset, p]));
+      this.session = session.session ?? {};
       if (session.deletionRequest && !session.deletionRequest.declinedAt) this.publish({ deletionRequested: true });
       if (session.ended) {
         // The coder reached an `end` item before, or quit: show the ending again.
         const item = session.ended.item ? findEnd(this.items, session.ended.item) : null;
         await this.refreshTopSteps();
-        await this.publishEnding(item, buildScope(this.questions, this.coderVisible), session.ended.outcome === "quit");
+        await this.publishEnding(item, this.scope(this.coderVisible), session.ended.outcome === "quit");
         return;
       }
       // Resume where the coder left off: skip answered questions and
@@ -646,7 +650,12 @@ export class JobManager {
   }
 
   private get stepContext(): StepContext {
-    return { questions: this.questions, cache: this.expressionCache };
+    return { questions: this.questions, cache: this.expressionCache, session: this.session };
+  }
+
+  /** The scope for scripts and templates: answers, the unit's data, and the session's values. */
+  private scope(answers: Record<string, VariableValue>, unit?: UnitData | null): ReferenceScope {
+    return buildScope(this.questions, answers, unit, this.session);
   }
 
   private async refreshTopSteps(): Promise<void> {
@@ -690,7 +699,7 @@ export class JobManager {
     if (!loop || !unit) return;
     const step = this.loopSteps[this.loopIndex];
     try {
-      const scope = buildScope(this.questions, this.unitVisible, unit.data);
+      const scope = this.scope(this.unitVisible, unit.data);
       const snippets = loop.layout.snippets;
       const [template, texts] = await Promise.all([
         renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`, {
@@ -722,7 +731,7 @@ export class JobManager {
       currentUnit: null,
       currentUnitLayout: null,
       currentUnitTemplate: null,
-      currentTexts: await this.questionTexts(item, buildScope(this.questions, this.coderVisible)),
+      currentTexts: await this.questionTexts(item, this.scope(this.coderVisible)),
       currentUnitVariables: null,
     });
   }
@@ -734,7 +743,7 @@ export class JobManager {
    * needs the answers (docs/architecture.md §6).
    */
   private async chooseBranch(loop: UnitLoopItem): Promise<BranchChoice | null> {
-    const scope = buildScope(this.questions, this.coderVisible);
+    const scope = this.scope(this.coderVisible);
     for (const [i, branch] of loop.units.entries()) {
       if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${this.keyOf(loop)}:${i}`))) {
         continue;
@@ -783,7 +792,7 @@ export class JobManager {
     await this.guarded(async () => {
       await this.coderApi.quitSession(requestDeletion);
       if (requestDeletion) this.publish({ deletionRequested: true });
-      if (this.snapshot.phase !== "finished") await this.publishEnding(null, buildScope(this.questions, this.coderVisible), true);
+      if (this.snapshot.phase !== "finished") await this.publishEnding(null, this.scope(this.coderVisible), true);
     });
   }
 
@@ -816,12 +825,12 @@ export class JobManager {
     const next = this.topSteps[this.topIndex];
 
     if (!next) {
-      await this.publishEnding(null, buildScope(this.questions, this.coderVisible));
+      await this.publishEnding(null, this.scope(this.coderVisible));
       return;
     }
 
     if (next.type === "end") {
-      await this.reachEnd(next, buildScope(this.questions, this.coderVisible));
+      await this.reachEnd(next, this.scope(this.coderVisible));
       return;
     }
 
@@ -881,7 +890,7 @@ export class JobManager {
       }
       // An `end` item in the loop: the unit is saved, then the session ends.
       if (next?.type === "end") {
-        const scope = buildScope(this.questions, this.unitVisible, this.currentUnit.data);
+        const scope = this.scope(this.unitVisible, this.currentUnit.data);
         await this.reachEnd(next, scope);
         return;
       }

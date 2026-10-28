@@ -54,6 +54,8 @@ export interface Coder {
   ended: SessionEnd | null;
   /** Set once the coder asked for their answers to be deleted (`Store.requestDeletion`; not part of `CoderWrite`). */
   deletionRequest: DeletionRequest | null;
+  /** `$session` values: `participant` (if any) and the URL parameters the invite required. Fixed when the coder starts. */
+  session: Record<string, string>;
   /** The invite the coder joined with (for `invitation` mode loops). */
   inviteId: number | null;
 }
@@ -64,8 +66,8 @@ export interface ResolveCoderRequest {
   coderKey: string;
   /** Required the first time a coder key is seen, to create the coder from an invite. */
   inviteSecret?: string;
-  /** Participant id from the URL, for invites with `participantFromUrl` (ignored otherwise). */
-  participantId?: string;
+  /** The page's URL parameters: the participant id and other values the invite requires (`sessionFromUrl`). */
+  urlParams?: Record<string, string>;
   /**
    * The coder confirmed starting a new session although their participant
    * id already has one (on another device). Without it: 409

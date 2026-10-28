@@ -27,6 +27,7 @@ const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress =>
   variables: {},
   ended: null,
   deletionRequest: null,
+  session: {},
   ...extra,
 });
 

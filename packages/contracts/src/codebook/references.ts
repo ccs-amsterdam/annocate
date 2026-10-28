@@ -12,12 +12,14 @@ import type { AnyVariableType } from "./variableTypes.js";
 //   $var.<q>.items.<item>.value/.label  one item of a scale
 //   $var.<q>.answered                   true if answered and not skipped
 //   $var.<q>.is("x"), .gte(3), ...      helper methods (HELPER_METHODS)
+//   $session.<name>                     the session's participant id (`participant`) and
+//                                       the URL parameters its invitation requires
 //
 // Names are always literal, so what a codebook refers to (and where) can be
 // checked without running anything. All functions here are pure, shared by
 // the client runtime, codebook validation and the admin editor.
 
-export type ReferenceNamespace = "unit" | "var";
+export type ReferenceNamespace = "unit" | "var" | "session";
 
 /** How a template value is output (`$ref::markdown`); `text` is the default. */
 export const OUTPUT_SUFFIXES = ["text", "markdown", "image", "html"] as const;
@@ -59,7 +61,7 @@ export interface ExtractedReferences {
 
 const NAME = /[A-Za-z0-9_]/;
 const IDENT_CHAR = /[A-Za-z0-9_$]/;
-const NAMESPACES: ReferenceNamespace[] = ["unit", "var"];
+const NAMESPACES: ReferenceNamespace[] = ["unit", "var", "session"];
 
 /** The source text of a reference, e.g. `$var.role.value`. */
 export function referenceText(ref: Pick<Reference, "ns" | "path">): string {
@@ -500,6 +502,7 @@ export function referenceShape(
   ref: Pick<Reference, "ns" | "path" | "call">,
 ): ReferenceShape {
   if (ref.ns === "unit") return { ok: true, array: false, type: "any" };
+  if (ref.ns === "session") return { ok: true, array: false, type: "string" };
   const [name, ...rest] = ref.path;
   const variable = questions.get(name);
   if (!variable) return { ok: false, reason: `'${name}' is not a question` };
@@ -644,6 +647,8 @@ export interface VarScopeEntry {
 export interface ReferenceScope {
   $unit: Record<string, unknown>;
   $var: Record<string, VarScopeEntry>;
+  /** The session's values: its participant id and the URL parameters its invitation requires (`$session.<name>`). */
+  $session?: Record<string, string>;
 }
 
 /**
@@ -657,10 +662,11 @@ export function buildScope(
   questions: ReadonlyMap<string, AnyVariableType>,
   answers: Record<string, VariableValue | undefined>,
   unit?: Record<string, unknown> | null,
+  session?: Record<string, string>,
 ): ReferenceScope {
   const $var: Record<string, VarScopeEntry> = {};
   for (const [name, variable] of questions) $var[name] = varEntry(variable, answers[name]);
-  return { $unit: { ...(unit ?? {}) }, $var };
+  return { $unit: { ...(unit ?? {}) }, $var, $session: { ...(session ?? {}) } };
 }
 
 /** The label of a value: the option's label, a numeric break-point label, or the value as text. */
