@@ -108,13 +108,17 @@ Full replace of the coder-level answers (survey questions outside loops).
 
 ### endSession
 
-`POST /end` (`EndSessionSchema`: `{ item }`) → 204
+`POST /end` (`EndSessionSchema`: `{ item, unit? }`) → 204
 
 The coder reached this `end` item: the session is over. The server stores
 the item and its outcome from the codebook (`screenout` or `complete`; 400
-if the codebook has no such end item). Afterwards units and answers are
+if the codebook has no such end item). An end inside a unit loop names the
+unit it was reached on, `unit: { loop, id }` (400 unless the coder answered
+it; the client saves the unit first). Afterwards units and answers are
 refused with 409 `session_ended`; `GET /session` returns `ended`, so the
-client shows the ending again. Ending an ended session changes nothing.
+client shows the ending again, with that unit's data and answers
+(`getLoopUnit` still works for it), as its message may use them. Ending an
+ended session changes nothing.
 
 ### quitSession
 

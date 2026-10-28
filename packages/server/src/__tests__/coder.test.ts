@@ -1159,6 +1159,19 @@ describe("end items", () => {
     expect(coders[0].ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
   });
 
+  it("inside a unit loop: remember the unit, which stays readable to show the ending again", async () => {
+    const c = coder("ender");
+    const unit = await c.next();
+    await c.submit(unit!.id, demo("neutral"));
+    const bogus = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "screen_out_young", unit: { loop: "1", id: 999999 } }) });
+    expect(bogus.status).toBe(400);
+    const end = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "screen_out_young", unit: { loop: "1", id: unit!.id } }) });
+    expect(end.status).toBe(204);
+    expect((await c.session()).ended).toMatchObject({ unit: { loop: "1", id: unit!.id } });
+    const again = await c.call(`/loop/1/units/${unit!.id}`);
+    expect(again.status).toBe(200);
+  });
+
   it("only for end items of the codebook", async () => {
     const res = await coder("other").call("/end", { method: "POST", body: JSON.stringify({ item: "consent" }) });
     expect(res.status).toBe(400);

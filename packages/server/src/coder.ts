@@ -96,7 +96,7 @@ export function coderApi(server: Server): Hono {
 
   session.post("/end", async (c) => {
     const body = await parseBody(c, EndSessionSchema);
-    await c.get("runtime").endSession(c.get("coder"), body.item);
+    await c.get("runtime").endSession(c.get("coder"), body.item, body.unit);
     return c.body(null, 204);
   });
 

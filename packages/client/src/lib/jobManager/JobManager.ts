@@ -1,4 +1,5 @@
 import type {
+  EndUnit,
   CodebookItem,
   TopLevelItem,
   InLoopItem,
@@ -303,7 +304,7 @@ export class JobManager {
         // The coder reached an `end` item before, or quit: show the ending again.
         const item = session.ended.item ? findEnd(this.items, session.ended.item) : null;
         await this.refreshTopSteps();
-        await this.publishEnding(item, this.scope(this.coderVisible), session.ended.outcome === "quit");
+        await this.publishEnding(item, await this.endScope(session.ended.unit), session.ended.outcome === "quit");
         return;
       }
       // Resume where the coder left off: skip answered questions and
@@ -776,10 +777,26 @@ export class JobManager {
     }
   }
 
-  /** The coder reached an `end` item: tells the server, and shows the ending. */
-  private async reachEnd(item: EndItem, scope: ReferenceScope): Promise<void> {
-    await this.coderApi.endSession(item.name);
+  /** The coder reached an `end` item (inside a unit loop: on `unit`): tells the server, and shows the ending. */
+  private async reachEnd(item: EndItem, scope: ReferenceScope, unit?: EndUnit): Promise<void> {
+    await this.coderApi.endSession(item.name, unit);
     await this.publishEnding(item, scope);
+  }
+
+  /**
+   * The values an ending is shown with again, after a reload: the coder's,
+   * and for an end inside a unit loop also the unit's data and answers (as
+   * when it was reached). Without the unit (e.g. no longer in the job), the
+   * coder's only.
+   */
+  private async endScope(unit: EndUnit | undefined): Promise<ReferenceScope> {
+    if (!unit) return this.scope(this.coderVisible);
+    try {
+      const loaded = await this.coderApi.getLoopUnit(unit.loop, unit.id);
+      return this.scope({ ...this.coderVisible, ...loaded.variables }, loaded.data);
+    } catch {
+      return this.scope(this.coderVisible);
+    }
   }
 
   /**
@@ -891,7 +908,7 @@ export class JobManager {
       // An `end` item in the loop: the unit is saved, then the session ends.
       if (next?.type === "end") {
         const scope = this.scope(this.unitVisible, this.currentUnit.data);
-        await this.reachEnd(next, scope);
+        await this.reachEnd(next, scope, { loop: this.keyOf(this.activeLoop), id: this.currentUnit.id });
         return;
       }
 

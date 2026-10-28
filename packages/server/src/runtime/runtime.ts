@@ -10,6 +10,7 @@ import {
   unitsetMatchesSource,
   type CoderUnitResponse,
   type DeploymentStatus,
+  type EndUnit,
   type SessionResponse,
   type UnitBranch,
   type TransferResponse,
@@ -498,13 +499,18 @@ export class DeploymentRuntime {
   /**
    * The coder reached an `end` item: the session is over (screened out or
    * complete), and nothing more is accepted. Its outcome comes from the
-   * codebook. Reaching it again (e.g. after a reload) changes nothing.
+   * codebook. Reaching it again (e.g. after a reload) changes nothing. An
+   * end inside a unit loop names the unit (one the coder answered), so the
+   * ending can be shown again with its values.
    */
-  async endSession(coder: Coder, item: string): Promise<void> {
+  async endSession(coder: Coder, item: string, unit?: EndUnit): Promise<void> {
     if (coder.ended) return;
     const end = findEndItem(this.spec.codebook.items, item);
     if (!end) throw new HttpError(400, `No end item '${item}'`);
-    coder.ended = { item, outcome: end.outcome, at: new Date(this.options.now()) };
+    if (unit && (!this.loops.has(unit.loop) || !(await this.workspace(coder.coderId)).has(unit.id))) {
+      throw new HttpError(400, "The end's unit is not one you answered");
+    }
+    coder.ended = { item, ...(unit ? { unit } : {}), outcome: end.outcome, at: new Date(this.options.now()) };
     await this.saveCoder(coder);
   }
 

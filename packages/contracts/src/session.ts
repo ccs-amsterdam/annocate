@@ -21,12 +21,19 @@ export const UnitsetProgressSchema = z.object({
   totalUnits: z.number().int().nonnegative().nullable().optional(),
 });
 
+/** The unit an `end` item inside a unit loop was reached on: the loop's key and the unit id. */
+export const EndUnitSchema = z.object({ loop: z.string().min(1), id: IdSchema });
+export type EndUnit = z.infer<typeof EndUnitSchema>;
+
 /**
  * How a session ended: at an `end` item (its name and outcome, screened out
- * or complete), or because the coder quit (`quit`, no item).
+ * or complete), or because the coder quit (`quit`, no item). `unit`: an end
+ * inside a unit loop was reached on this unit, so the ending can be shown
+ * again with the unit's values (its message may use them).
  */
 export const SessionEndSchema = z.object({
   item: z.string().optional(),
+  unit: EndUnitSchema.optional(),
   outcome: z.enum(["screenout", "complete", "quit"]),
   at: z.coerce.date(),
 });
@@ -51,7 +58,7 @@ export const QuitSessionSchema = z.object({ requestDeletion: z.boolean().default
 export type QuitSession = z.infer<typeof QuitSessionSchema>;
 
 /** Body for `POST /end`: the `end` item the coder reached. */
-export const EndSessionSchema = z.object({ item: z.string().min(1) });
+export const EndSessionSchema = z.object({ item: z.string().min(1), unit: EndUnitSchema.optional() });
 export type EndSession = z.infer<typeof EndSessionSchema>;
 
 /** Response for `GET /session`. */

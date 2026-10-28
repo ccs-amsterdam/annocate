@@ -629,7 +629,7 @@ describe("end items", () => {
     await manager.answer({ done: true, skip: false, values: [{ value: "no" }] });
     const snap = manager.getSnapshot();
     expect(snap.phase).toBe("finished");
-    expect(server.endSession).toHaveBeenCalledWith("stop");
+    expect(server.endSession).toHaveBeenCalledWith("stop", undefined);
     expect(snap.ending?.item.outcome).toBe("screenout");
     expect(snap.ending?.message?.values.map((v) => v.text)).toEqual(["a b"]);
     expect(snap.ending?.redirectUrl).toBe("https://panel.example/end?id=a%20b");
@@ -671,7 +671,22 @@ describe("end items", () => {
     await manager.start();
     await manager.answer({ done: true, skip: false, values: [{ value: "B" }] });
     expect(posted).toEqual([{ q1: { done: true, skip: false, values: [{ value: "B" }] }, q2: { done: true, skip: true } }]);
-    expect(server.endSession).toHaveBeenCalledWith("fail");
+    expect(server.endSession).toHaveBeenCalledWith("fail", { loop: expect.any(String), id: 1 });
     expect(manager.getSnapshot().phase).toBe("finished");
+  });
+
+  it("in a loop: shows the ending again after a reload with the unit's values", async () => {
+    const loop = unitLoop("loop", [
+      unitVar("q1"),
+      { type: "condition", condition: { script: `$var.q1.is("B")` }, children: [{ type: "end", name: "fail", outcome: "screenout", message: "You chose $var.q1.value" }] },
+    ] as InLoopItem[]);
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => ({ ...session([loop]), ended: { item: "fail", outcome: "screenout" as const, at: new Date(), unit: { loop: "loop", id: 1 } } })),
+      getLoopUnit: vi.fn(async () => ({ ...unit(1), variables: { q1: { done: true, skip: false, values: [{ value: "B" }] } } })),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    expect(server.getLoopUnit).toHaveBeenCalledWith("loop", 1);
+    expect(manager.getSnapshot().ending?.message?.values.map((v) => v.text)).toEqual(["B"]);
   });
 });
