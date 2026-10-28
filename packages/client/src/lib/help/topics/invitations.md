@@ -183,14 +183,15 @@ only once (max uses 1).
 ## Login
 
 Coders log in the same way as researchers (the login your server offers;
-it isn't available on servers without one). Their session then belongs to
-their account: logging in on any device continues it. No session cookie or
-transfer link is needed.
+it isn't available on servers without one). Logging in links their email
+address to their session, once. They code as anyone does; the email is
+used again only when they continue on another device: logging in there
+continues the same session.
 
 - **Login required**: coders log in before they start.
 - **Login optional**: coders start right away, and can log in any time from
-  **Continue on another device** (the screen icon). Their session so far
-  becomes their account's.
+  **Continue on another device** (the screen icon), which links their
+  session so far.
 - **Only these email addresses**: only coders who log in with one of these
   addresses can use the link (others see that the invitation is for other
   people). A list makes login required.

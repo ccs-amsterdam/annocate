@@ -4,17 +4,18 @@ import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
 import { getCookie } from "hono/cookie";
 import { linkInfo, participantFromLink } from "./shared/invites.js";
-import { cachedUserForSession } from "./shared/sessions.js";
+import { userForSession } from "./shared/sessions.js";
+import { deviceDetails } from "./shared/devices.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
-import { dbCoderKey, newSessionKey, readSession, requireClientHeader, sessionCookieName, writeSession } from "./runtime/session.js";
+import { coderKey, newDeviceId, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 
 /** The deployment version the client's codebook belongs to (contracts SessionResponse.version). */
 const VERSION_HEADER = "x-annotinder-version";
 
 interface Env {
-  /** `sessionKey`: null for a logged-in coder (their login is the session). `canLogIn`: the link offers a login they haven't used. */
-  Variables: { runtime: DeploymentRuntime; coder: Coder; sessionKey: string | null; canLogIn: boolean };
+  /** `deviceId`: the device's row (`coder_devices`; null in previews). `canLogIn`: the link offers a login the session hasn't used. */
+  Variables: { runtime: DeploymentRuntime; coder: Coder; deviceId: number | null; canLogIn: boolean };
 }
 
 /**
@@ -28,16 +29,21 @@ interface Env {
 export function coderApi(server: Server): Hono {
   const app = new Hono();
 
-  // Redeeming a transfer link: this device gets the session's cookie.
+  // Redeeming a transfer link: this device joins the session. Its keys: for
+  // coming back without a link, and (with a participant id) with the
+  // participant's link.
   app.post("/transfer/redeem", async (c) => {
     requireClientHeader(c);
     const body = await parseBody(c, RedeemTransferSchema);
     const deploymentId = c.req.param("deployment")!;
     const runtime = await server.deployments.get(deploymentId);
-    const sessionKey = runtime.redeemTransfer(body.token);
-    // A transfer link carries no invite: the session's cookie for no participant id.
-    const name = await sessionCookieName(undefined);
-    writeSession(c, deploymentId, name, sessionKey);
+    const device = readDevice(c) ?? newDeviceId();
+    await runtime.redeemTransfer(
+      body.token,
+      async (participant) => [...new Set([await coderKey(device, deploymentId), await coderKey(device, deploymentId, participant)])],
+      deviceDetails(c.req.header("user-agent")),
+    );
+    writeDevice(c, device);
     return c.json({});
   });
 
@@ -57,39 +63,44 @@ export function coderApi(server: Server): Hono {
       throw new HttpError(409, "A new version of the codebook was published", "codebook_changed");
     }
 
-    // The session cookie, or a new session: no cookie yet, or the coder asked
-    // for a new one (a participant id that already has a session elsewhere).
-    // A device keeps a session per participant id: the invite says which URL
-    // parameter holds it.
+    // The device's session in this deployment (docs/coder-identity.md §4):
+    // its key is the hash of the device id, the deployment and the
+    // participant id the link carries (a device keeps a session per
+    // participant id). `x-new-session`: the coder asked for a new one (a
+    // participant id that already has a session elsewhere).
     const inviteSecret = c.req.header("x-invite-secret");
     // The page's query parameters: the participant id and other values the invite requires, and `url_param` auto variables.
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const newSession = c.req.header("x-new-session") === "1";
     const link = inviteSecret ? await linkInfo(server.db, inviteSecret) : null;
-    // A login (the same as researchers', docs/coder-identity.md §5) counts
-    // where the invite takes logins, and when coming back without the link.
-    // Never in previews.
-    const loginKey = getCookie(c, SESSION_COOKIE);
-    const user = loginKey && /^\d+$/.test(deploymentId) && link?.login !== "none" ? await cachedUserForSession(server.db, loginKey) : null;
-    const login = user ? { key: `login:${user.id}:${deploymentId}`, email: user.email, adopt: link !== null } : undefined;
-    const name = await sessionCookieName(participantFromLink(link, urlParams));
-    const existing = newSession ? undefined : readSession(c, name);
-    const sessionKey = existing ?? newSessionKey();
-    const coder = await runtime.resolveCoder({ coderKey: await dbCoderKey(sessionKey), inviteSecret, urlParams, newSession, login }, urlParams);
-    const viaLogin = coder.login !== null && login !== undefined;
-    // Only once the coder was accepted (an invite may be invalid or used up), and not for a login.
-    if (!viaLogin && sessionKey !== existing) writeSession(c, deploymentId, name, sessionKey);
-    c.set("sessionKey", viaLogin ? null : sessionKey);
-    c.set("canLogIn", !!server.login && link?.login === "optional" && !viaLogin);
+    const existingDevice = readDevice(c);
+    const device = existingDevice ?? newDeviceId();
+    const key = await coderKey(device, deploymentId, participantFromLink(link, urlParams));
+    // A login (the same as researchers', §5) is read only when it matters:
+    // to link a session to its email once, or to find the email's session on
+    // a new device. Never in previews.
+    const loginCookie = getCookie(c, SESSION_COOKIE);
+    const login =
+      loginCookie && /^\d+$/.test(deploymentId) && link?.login !== "none"
+        ? async () => {
+            const user = await userForSession(server.db, loginCookie);
+            return user ? { email: user.email } : null;
+          }
+        : undefined;
+    const { coder, deviceId } = await runtime.resolveCoder(
+      { coderKey: key, inviteSecret, urlParams, newSession, device: deviceDetails(c.req.header("user-agent")) },
+      urlParams,
+      { login, linkable: !!link && link.login !== "none" },
+    );
+    // Only once the coder was accepted (an invite may be invalid or used up).
+    if (device !== existingDevice) writeDevice(c, device);
+    c.set("deviceId", deviceId);
+    c.set("canLogIn", !!server.login && link?.login === "optional" && coder.email === null);
     c.set("coder", coder);
     await next();
   });
 
-  session.post("/transfer", (c) => {
-    const key = c.get("sessionKey");
-    if (key === null) throw new HttpError(400, "You are logged in: log in on the other device to continue there");
-    return c.json(c.get("runtime").createTransfer(key));
-  });
+  session.post("/transfer", (c) => c.json(c.get("runtime").createTransfer(c.get("coder"))));
 
   session.get("/session", async (c) => c.json({ ...(await c.get("runtime").session(c.get("coder"))), canLogIn: c.get("canLogIn") }));
 
@@ -107,7 +118,7 @@ export function coderApi(server: Server): Hono {
 
   session.post("/variables/unit", async (c) => {
     const body = await parseBody(c, PostUnitVariablesSchema);
-    await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop);
+    await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop, c.get("deviceId"));
     return c.body(null, 204);
   });
 

@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DeletionRequest, VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
-import type { Coder as StoredCoder, CoderAnnotation, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest } from "./types.js";
+import type { Coder as StoredCoder, CoderAnnotation, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder } from "./types.js";
 
 // Researcher previews (`<jobId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
@@ -29,7 +29,9 @@ interface Coder extends StoredCoder {
 }
 
 export class PreviewStore implements Store {
-  private coders = new Map<string, Coder>();
+  private coders = new Map<number, Coder>();
+  /** Device keys -> coder id: a device's preview session (a new one on "start over"). */
+  private devices = new Map<string, number>();
   /** `<unitId>/<coderId>` -> the coder's answers and when they were first written. */
   private annotations = new Map<string, CoderAnnotation>();
 
@@ -57,9 +59,10 @@ export class PreviewStore implements Store {
     return [...this.coders.values()];
   }
 
-  async resolveCoder(request: ResolveCoderRequest): Promise<StoredCoder> {
-    const known = this.coders.get(request.coderKey);
-    if (known) return known;
+  async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
+    const knownId = request.newSession ? undefined : this.devices.get(request.coderKey);
+    const known = knownId === undefined ? undefined : this.coders.get(knownId);
+    if (known) return { coder: known, deviceId: null };
     const valid =
       request.inviteSecret !== undefined &&
       verifyPreviewToken(this.secret, this.jobId, request.inviteSecret, this.now());
@@ -72,18 +75,24 @@ export class PreviewStore implements Store {
       deletionRequest: null,
       session: {},
       inviteId: null,
-      login: null,
+      email: null,
       created: new Date(this.now()),
     };
-    this.coders.set(request.coderKey, coder);
-    return coder;
+    this.coders.set(coder.coderId, coder);
+    this.devices.set(request.coderKey, coder.coderId);
+    return { coder, deviceId: null };
+  }
+
+  async addDevice(coderId: number, coderKey: string): Promise<number | null> {
+    this.devices.set(coderKey, coderId);
+    return null;
   }
 
   /** Previews keep nothing: no limits. */
   async checkAnswers(): Promise<void> {}
 
   async putCoder(coderId: number, body: CoderWrite): Promise<void> {
-    const coder = [...this.coders.values()].find((c) => c.coderId === coderId);
+    const coder = this.coders.get(coderId);
     if (!coder) throw new HttpError(404, "Coder not found");
     coder.variables = body.variables;
     coder.assignments = body.assignments;
@@ -91,7 +100,7 @@ export class PreviewStore implements Store {
   }
 
   async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
-    const coder = [...this.coders.values()].find((c) => c.coderId === coderId);
+    const coder = this.coders.get(coderId);
     if (coder) coder.deletionRequest = request;
   }
 

@@ -23,7 +23,8 @@ import { HttpError } from "../shared/http.js";
 import { unitHash } from "../shared/units.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement, type SharedRule } from "./distribution.js";
 import type { Store } from "./store.js";
-import type { Coder, DeploymentSpec, ResolveCoderRequest, Unit } from "./types.js";
+import type { DeviceDetails } from "../shared/devices.js";
+import type { Coder, DeploymentSpec, ResolveCoderRequest, ResolvedCoder, Unit } from "./types.js";
 import {
   agreementKey,
   singleValue,
@@ -171,14 +172,14 @@ export class DeploymentRuntime {
   private workspaceLoads = new Map<number, Promise<Workspace>>();
   /** Active coders only; evicted together with their workspace. */
   private coders = new Map<number, Coder>();
-  private coderKeys = new Map<string, number>();
+  private coderKeys = new Map<string, { coderId: number; deviceId: number | null }>();
   /** `balanced` auto variable -> coderId -> option, for every coder that has one. */
   private balanced = new Map<string, Map<number, string>>();
   /** Unit content; Map order is recency order (least recent first). */
   private units = new Map<number, { unit: Unit; bytes: number; usedAt: number }>();
   private unitBytes = 0;
   /** One-time transfer tokens -> coder key. Memory only: losing them just means making a new link. */
-  private transfers = new Map<string, { sessionKey: string; expires: number }>();
+  private transfers = new Map<string, { coderId: number; participant: string | null; expires: number }>();
   private specCheckedAt = 0;
   private loadedAt = 0;
   private refreshing: Promise<void> | null = null;
@@ -388,36 +389,47 @@ export class DeploymentRuntime {
    * `urlParams` are the page's query parameters, for `url_param` auto
    * variables: stored now, so the coder can come back without them.
    */
-  async resolveCoder(request: ResolveCoderRequest, urlParams: Record<string, string> = {}): Promise<Coder> {
-    const { login } = request;
-    // A login first; a session without login on this device may become the login's (`adopt`): the store decides.
-    const cachedBy = (key: string) => {
-      const id = this.coderKeys.get(key);
-      return id !== undefined ? this.coders.get(id) : undefined;
-    };
-    const cached = (login && cachedBy(login.key)) || (login?.adopt ? undefined : cachedBy(request.coderKey));
-    if (cached) {
+  async resolveCoder(
+    request: Omit<ResolveCoderRequest, "login">,
+    urlParams: Record<string, string> = {},
+    {
+      login,
+      linkable = false,
+    }: {
+      /** Reads the device's login, if any: only asked when it matters (below), so coding needs no login lookups. */
+      login?: () => Promise<{ email: string } | null>;
+      /** The invite takes logins: a session without an email gets linked to a login. */
+      linkable?: boolean;
+    } = {},
+  ): Promise<ResolvedCoder> {
+    const known = request.newSession ? undefined : this.coderKeys.get(request.coderKey);
+    const cached = known && this.coders.get(known.coderId);
+    // Known on this device, and nothing to link: no store, no login.
+    if (cached && (cached.email !== null || !linkable)) {
       // Their workspace may have been dropped by a reload; a URL value missed earlier is filled in.
       await Promise.all([this.workspace(cached.coderId), this.assignAutoVariables(cached, urlParams)]);
-      return cached;
+      return { coder: cached, deviceId: known.deviceId };
     }
-    // Not active (new, evicted, or the server restarted): the database has
-    // the record, including the coder-level values.
-    const stored = await this.store.resolveCoder(request);
-    const key = stored.login && login ? login.key : request.coderKey;
-    // Already active under the other key (a session that just became a login's): the same coder.
-    const active = this.coders.get(stored.coderId);
+    // A login counts where the invite takes logins, and on a device without a session (it finds the email's session).
+    const user = login && (linkable || !cached) ? await login() : null;
+    if (cached && !user) {
+      await Promise.all([this.workspace(cached.coderId), this.assignAutoVariables(cached, urlParams)]);
+      return { coder: cached, deviceId: known.deviceId };
+    }
+    // Not active (new, evicted, the server restarted, or linking): the database has the record.
+    const resolved = await this.store.resolveCoder({ ...request, ...(user ? { login: user } : {}) });
+    this.coderKeys.set(request.coderKey, { coderId: resolved.coder.coderId, deviceId: resolved.deviceId });
+    const active = this.coders.get(resolved.coder.coderId);
     if (active) {
-      active.login = stored.login;
-      for (const [k, id] of this.coderKeys) if (id === stored.coderId) this.coderKeys.delete(k);
-      this.coderKeys.set(key, stored.coderId);
-      return active;
+      active.email = resolved.coder.email;
+      await this.workspace(active.coderId);
+      return { coder: active, deviceId: resolved.deviceId };
     }
+    const stored = resolved.coder;
     this.coders.set(stored.coderId, stored);
-    this.coderKeys.set(key, stored.coderId);
     this.countBalanced(stored);
     await Promise.all([this.assignAutoVariables(stored, urlParams), this.workspace(stored.coderId)]);
-    return stored;
+    return { coder: stored, deviceId: resolved.deviceId };
   }
 
   /**
@@ -474,24 +486,30 @@ export class DeploymentRuntime {
   }
 
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
-  createTransfer(sessionKey: string): TransferResponse {
+  createTransfer(coder: Coder): TransferResponse {
     const now = this.options.now();
     for (const [token, t] of this.transfers) if (t.expires <= now) this.transfers.delete(token);
     const bytes = crypto.getRandomValues(new Uint8Array(24));
     const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     const expires = now + this.options.transferTtlMs;
-    this.transfers.set(token, { sessionKey, expires });
+    this.transfers.set(token, { coderId: coder.coderId, participant: coder.session.participant ?? null, expires });
     return { token, expiresAt: new Date(expires) };
   }
 
-  /** Exchanges a transfer token (once) for the session key, which the new device gets as its cookie. */
-  redeemTransfer(token: string): string {
+  /**
+   * Redeems a transfer token (once): the new device joins the session, with
+   * its keys for it (`keys`, from the session's participant id: coder.ts).
+   */
+  async redeemTransfer(token: string, keys: (participantId: string | null) => Promise<string[]>, device: DeviceDetails): Promise<void> {
     const transfer = this.transfers.get(token);
     this.transfers.delete(token);
     if (!transfer || transfer.expires <= this.options.now()) {
       throw new HttpError(404, "This link has expired or was already used", "transfer_invalid");
     }
-    return transfer.sessionKey;
+    for (const key of await keys(transfer.participant)) {
+      const deviceId = await this.store.addDevice(transfer.coderId, key, device);
+      this.coderKeys.set(key, { coderId: transfer.coderId, deviceId });
+    }
   }
 
   async session(coder: Coder): Promise<SessionResponse> {
@@ -517,7 +535,7 @@ export class DeploymentRuntime {
       reopen: this.reopen(coder),
       deletionRequest: coder.deletionRequest,
       session: coder.session,
-      login: coder.login,
+      login: coder.email,
     };
   }
 
@@ -848,6 +866,7 @@ export class DeploymentRuntime {
     unitId: number,
     variables: Record<string, VariableValue>,
     loopName?: string,
+    deviceId: number | null = null,
   ): Promise<void> {
     this.assertOpen(coder);
     const loops = [...this.loops.values()].filter(
@@ -874,7 +893,7 @@ export class DeploymentRuntime {
       const unit = (await this.getUnits([unitId])).get(unitId);
       unitVersionId = unit && (await this.shownVersion(unit)).versionId;
     }
-    await this.store.putAnnotation({ unitId, coderId: coder.coderId, variables, codebookId: this.spec.codebook.id, unitVersionId });
+    await this.store.putAnnotation({ unitId, coderId: coder.coderId, variables, codebookId: this.spec.codebook.id, unitVersionId, deviceId });
     const own = await this.workspace(coder.coderId);
     const previous = own.get(unitId);
     const merged = { ...previous, ...variables };
@@ -1045,7 +1064,7 @@ export class DeploymentRuntime {
     for (const id of this.coders.keys()) {
       if (!this.workspaces.has(id) && !this.workspaceLoads.has(id)) this.coders.delete(id);
     }
-    for (const [key, id] of this.coderKeys) if (!this.coders.has(id)) this.coderKeys.delete(key);
+    for (const [key, { coderId }] of this.coderKeys) if (!this.coders.has(coderId)) this.coderKeys.delete(key);
   }
 
   private async getUnits(ids: number[]): Promise<Map<number, Unit>> {

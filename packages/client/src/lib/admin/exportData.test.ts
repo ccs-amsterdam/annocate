@@ -13,6 +13,7 @@ const row = (unitId: number, coderId: number, variable: string, value: Annotatio
   value,
   codebookId: 2,
   unitVersionId: null,
+  deviceId: 7,
   created: new Date(at.getTime() + minutes * 60_000),
   updated: new Date(at.getTime() + minutes * 60_000),
 });
@@ -69,14 +70,15 @@ describe("data download", () => {
       "first_answer",
       "last_change",
       "codebook_id",
+      "device_id",
       "sentiment",
       "topic",
       "interest.tech",
     ]);
     expect(table.rows).toEqual([
-      ["u1", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:02:00.000Z", "2", "pos", "politics", ""],
-      ["u1", "", "2", "", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "neg", "", ""],
-      ["u2", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "", "", "4"],
+      ["u1", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:02:00.000Z", "2", "7", "pos", "politics", ""],
+      ["u1", "", "2", "", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "neg", "", ""],
+      ["u2", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "", "", "4"],
     ]);
   });
 

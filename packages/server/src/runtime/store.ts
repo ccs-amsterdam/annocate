@@ -1,3 +1,4 @@
+import type { DeviceDetails } from "../shared/devices.js";
 import type { DeletionRequest, UnitData, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { toCoder, type CoderRow } from "../shared/coders.js";
@@ -17,6 +18,7 @@ import type {
   Finished,
   FinishedRequest,
   ResolveCoderRequest,
+  ResolvedCoder,
   Unit,
 } from "./types.js";
 
@@ -32,7 +34,9 @@ export interface Store {
   /** All coders (for researcher status). */
   listCoders(): Promise<Coder[]>;
   /** The coder for a coder key, created from an invite on first use (docs/coder-identity.md). */
-  resolveCoder(request: ResolveCoderRequest): Promise<Coder>;
+  resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder>;
+  /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
+  addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
   putCoder(coderId: number, write: CoderWrite): Promise<void>;
   /** Records the coder's request to delete their answers (a new request replaces a postponed one). */
   requestDeletion(coderId: number, request: DeletionRequest): Promise<void>;
@@ -83,8 +87,13 @@ export class DbStore implements Store {
     return (await this.sql.query<CoderRow>("SELECT * FROM coders WHERE job_id = $1 ORDER BY id", [this.jobId])).map(toCoder);
   }
 
-  async resolveCoder(request: ResolveCoderRequest): Promise<Coder> {
-    return toCoder(await this.sql.transaction((tx) => findOrCreateCoder(tx, this.jobId, request)));
+  async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
+    const { row, deviceId } = await this.sql.transaction((tx) => findOrCreateCoder(tx, this.jobId, request));
+    return { coder: toCoder(row), deviceId };
+  }
+
+  async addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null> {
+    return addDevice(this.sql, this.jobId, coderId, coderKey, device);
   }
 
   /** The answer size and the job's answer limit, and its answers so far: read again at most once a minute. */
@@ -181,12 +190,12 @@ export class DbStore implements Store {
       if (!unit) throw new HttpError(404, "Unit not found");
       for (const [variable, value] of Object.entries(write.variables)) {
         await tx.query(
-          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, created, updated)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, device_id, created, updated)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
            ON CONFLICT (unit_id, coder_id, variable) WHERE retired_at IS NULL
            DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, unit_version_id = excluded.unit_version_id,
-             updated = excluded.updated`,
-          [jobId, write.unitId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, write.unitVersionId ?? null],
+             device_id = excluded.device_id, updated = excluded.updated`,
+          [jobId, write.unitId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, write.unitVersionId ?? null, write.deviceId ?? null],
         );
       }
       if (!unit.coded) await tx.query("UPDATE units SET coded = true WHERE id = $1", [write.unitId]);
@@ -194,21 +203,46 @@ export class DbStore implements Store {
   }
 }
 
-async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderRequest): Promise<CoderRow> {
-  const { login } = request;
-  // A login finds its session on any device.
-  if (login) {
-    const mine = await one<CoderRow>(sql, "SELECT * FROM coders WHERE coder_key = $1", [login.key]);
-    if (mine) return mine;
-  }
-  const known = await one<CoderRow>(sql, "SELECT * FROM coders WHERE coder_key = $1", [request.coderKey]);
-  if (known) {
-    if (known.job_id !== jobId) throw new HttpError(401, "Coder key belongs to a different job");
-    // Logging in on the device of a session without login: it becomes the login's.
-    if (login?.adopt && known.email === null) {
-      return (await one<CoderRow>(sql, "UPDATE coders SET coder_key = $1, email = $2 WHERE id = $3 RETURNING *", [login.key, login.email, known.id]))!;
+/** Adds a device's key to a session (or moves it there from another one); returns the device row. */
+async function addDevice(sql: Sql, jobId: number, coderId: number, coderKey: string, device: DeviceDetails = { type: null, browser: null, os: null }): Promise<number> {
+  const row = await one<{ id: number }>(
+    sql,
+    `INSERT INTO coder_devices (job_id, coder_id, key_hash, device_type, browser, os) VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (key_hash) DO UPDATE SET coder_id = excluded.coder_id RETURNING id`,
+    [jobId, coderId, coderKey, device.type, device.browser, device.os],
+  );
+  return row!.id;
+}
+
+/** The latest session in this job linked to an email (one per email: docs/coder-identity.md §5). */
+const sessionOfEmail = (sql: Sql, jobId: number, email: string) =>
+  one<CoderRow>(sql, "SELECT * FROM coders WHERE job_id = $1 AND lower(email) = lower($2) ORDER BY id DESC LIMIT 1", [jobId, email]);
+
+async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderRequest): Promise<{ row: CoderRow; deviceId: number }> {
+  const { login, coderKey, device } = request;
+  if (!request.newSession) {
+    const known = await one<CoderRow & { device_id: number }>(
+      sql,
+      "SELECT c.*, d.id AS device_id FROM coder_devices d JOIN coders c ON c.id = d.coder_id WHERE d.key_hash = $1",
+      [coderKey],
+    );
+    if (known) {
+      if (known.job_id !== jobId) throw new HttpError(401, "Coder key belongs to a different job");
+      // A login links its email to the session, once. If the email already
+      // has a session in this job, this device continues that one instead.
+      if (login && known.email === null) {
+        const other = await sessionOfEmail(sql, jobId, login.email);
+        if (other) return { row: other, deviceId: await addDevice(sql, jobId, other.id, coderKey, device) };
+        const linked = await one<CoderRow>(sql, "UPDATE coders SET email = $1 WHERE id = $2 RETURNING *", [login.email.toLowerCase(), known.id]);
+        return { row: linked!, deviceId: known.device_id };
+      }
+      return { row: known, deviceId: known.device_id };
     }
-    return known;
+  }
+  // A new device of a linked session: logging in finds it.
+  if (login && !request.newSession) {
+    const mine = await sessionOfEmail(sql, jobId, login.email);
+    if (mine) return { row: mine, deviceId: await addDevice(sql, jobId, mine.id, coderKey, device) };
   }
   if (!request.inviteSecret) throw new HttpError(401, "Unknown coder; a valid invite is needed");
   const invite = await one<InviteRow>(sql, "SELECT * FROM invites WHERE secret = $1", [request.inviteSecret]);
@@ -221,13 +255,12 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   }
   // Revoked: no new sessions, also not for a known participant (existing sessions go on).
   if (invite.revoked_at !== null) throw new HttpError(401, "This invite has been revoked");
-  // A participant id is a label, never a credential: a new key for a known
-  // participant gets a *new* session, and only when asked for.
-  // With a login, the login is who they are, and the participant id only a label.
+  // A participant id is a label, never a credential: a new device for a
+  // known participant gets a *new* session, and only when asked for.
   const { participantId, session } = sessionFromUrl(invite, request.urlParams ?? {});
   const knownParticipant =
     participantId !== null && !!(await one(sql, "SELECT 1 FROM coders WHERE job_id = $1 AND participant_id = $2", [jobId, participantId]));
-  if (knownParticipant && !request.newSession && !login) {
+  if (knownParticipant && !request.newSession) {
     throw new HttpError(409, "This participant already has a session on another device", "participant_has_session");
   }
   await checkNewCoder(sql, jobId);
@@ -244,8 +277,9 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   const variables = Object.fromEntries(Object.entries(invite.variables).map(([name, value]) => [name, { done: true, skip: false, values: [{ value }] }]));
   const created = await one<CoderRow>(
     sql,
-    "INSERT INTO coders (job_id, coder_key, email, participant_id, variables, invite_id, session) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-    [jobId, login?.key ?? request.coderKey, login?.email ?? null, participantId, JSON.stringify(variables), invite.id, JSON.stringify(session)],
+    "INSERT INTO coders (job_id, email, participant_id, variables, invite_id, session) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    [jobId, login?.email.toLowerCase() ?? null, participantId, JSON.stringify(variables), invite.id, JSON.stringify(session)],
   );
-  return created!;
+  // A new session on a device that had one (`newSession`): the device moves to the new one.
+  return { row: created!, deviceId: await addDevice(sql, jobId, created!.id, coderKey, device) };
 }

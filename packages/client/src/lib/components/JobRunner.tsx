@@ -606,7 +606,7 @@ function JobRunnerContent({
           <CoderSettingsMenu />
           <QuitMenu
             onQuit={(requestDeletion) => manager.quit(requestDeletion)}
-            canTransfer={!preview && !!coderApi.createTransfer && !snapshot.login}
+            canTransfer={!preview && !!coderApi.createTransfer}
             login={snapshot.login}
           />
         </div>
@@ -776,8 +776,8 @@ function LoginNotice() {
 
 /**
  * "Continue on another device": a one-time link + QR code for this session.
- * A logged-in coder needs none: they log in on the other device. Where the
- * invitation offers a login, it is offered here too.
+ * A coder whose session is linked to their email can also log in on the
+ * other device. Where the invitation offers a login, it is offered here too.
  */
 function TransferMenu({
   coderApi,
@@ -795,7 +795,7 @@ function TransferMenu({
   const [copied, setCopied] = useState(false);
 
   async function open(isOpen: boolean) {
-    if (!isOpen || !coderApi.createTransfer || login) return;
+    if (!isOpen || !coderApi.createTransfer) return;
     setError(null);
     setCopied(false);
     try {
@@ -820,14 +820,8 @@ function TransferMenu({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 space-y-3 p-3 shadow-lg">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Continue on another device</h4>
-        {login && (
-          <p className="text-xs text-foreground">
-            You are logged in as <strong>{login}</strong>. Open this job&apos;s link on the other device and log in there with
-            the same account: you continue where you left off.
-          </p>
-        )}
-        {!login && error && <p className="text-xs text-destructive">{error}</p>}
-        {!login && !error && !link && <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />}
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        {!error && !link && <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />}
         {link && (
           <>
             <div
@@ -855,6 +849,11 @@ function TransferMenu({
               continue your session, so don&apos;t share it.
             </p>
           </>
+        )}
+        {login && (
+          <p className="border-t pt-2.5 text-[11px] text-muted-foreground">
+            Or open this job&apos;s link on the other device and log in there as <strong>{login}</strong>.
+          </p>
         )}
         {canLogIn && (
           <div className="space-y-1.5 border-t pt-2.5">

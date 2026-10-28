@@ -140,8 +140,9 @@ loads the session again (`api/coder.md`).
 
 **Coder session.**
 
-1. **First request.** The runtime resolves the coder by coder key (a hash
-   of the session cookie's key, see `coder-identity.md` §4) and invite
+1. **First request.** The runtime resolves the coder by device key (a hash
+   of the device cookie's id, the deployment and the participant id, see
+   `coder-identity.md` §4) and invite
    secret, creating the coder if needed and copying the invite's preset
    variables. It then assigns any missing server-side `auto` variables (§7)
    and caches the coder.

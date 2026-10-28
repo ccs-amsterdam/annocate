@@ -18,6 +18,7 @@ import {
   type UnitsetResponse,
   type UnitsetWrite,
   type CoderDeletion,
+  type Device,
   type CoderProgress,
   type CoderInviteWrite,
   type CoderInviteResponse,
@@ -151,6 +152,8 @@ export interface ResearcherApi {
   listAnnotations(query?: AnnotationsQuery): Promise<AnnotationPage>;
   /** Units as coders saw them, a page at a time. */
   listUnitVersions(query?: UnitVersionsQuery): Promise<UnitVersionPage>;
+  /** The devices coders used, for the export. */
+  listDevices(): Promise<Device[]>;
 }
 
 export interface HttpResearcherApiConfig {
@@ -255,6 +258,10 @@ export class HttpResearcherApi implements ResearcherApi {
     for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, String(value));
     const path = researcherEndpoints.listAnnotations.path.replace(":jobId", String(this.requireJobId()));
     return this.request(params.size ? `${path}?${params}` : path);
+  }
+
+  async listDevices(): Promise<Device[]> {
+    return this.request(this.jobPath(researcherEndpoints.listDevices.path));
   }
 
   async listUnitVersions(query: UnitVersionsQuery = {}): Promise<UnitVersionPage> {

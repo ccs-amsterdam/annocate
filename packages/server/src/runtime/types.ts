@@ -1,3 +1,4 @@
+import type { DeviceDetails } from "../shared/devices.js";
 import type { CodebookResponse, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
@@ -60,14 +61,16 @@ export interface Coder {
   session: Record<string, string>;
   /** The invite the coder joined with (for `invitation` mode loops). */
   inviteId: number | null;
-  /** The email of the login this session belongs to (coder login, docs/coder-identity.md §5); null without. */
-  login: string | null;
+  /** The email the session is linked to (the coder logged in once, docs/coder-identity.md §5); null without. */
+  email: string | null;
 }
 
-/** The coder for a session (docs/coder-identity.md). */
+/** The coder for a device's request (docs/coder-identity.md §4). */
 export interface ResolveCoderRequest {
-  /** Hash of the session key (session.ts). */
+  /** This device's key for its session in this deployment (session.ts `coderKey`). */
   coderKey: string;
+  /** The device's details, stored when the device joins a session. */
+  device?: DeviceDetails;
   /** Required the first time a coder key is seen, to create the coder from an invite. */
   inviteSecret?: string;
   /** The page's URL parameters: the participant id and other values the invite requires (`sessionFromUrl`). */
@@ -75,17 +78,23 @@ export interface ResolveCoderRequest {
   /**
    * The coder confirmed starting a new session although their participant
    * id already has one (on another device). Without it: 409
-   * `participant_has_session`.
+   * `participant_has_session`. Also: a device that has a session starts
+   * a fresh one (previews' "start over").
    */
   newSession?: boolean;
   /**
-   * The coder is logged in, and the invite takes logins (or there is no
-   * invite: coming back). `key` is the login's coder key in this job
-   * (`login:<user>:<job>`, never a hash, so no cookie can produce it): the
-   * same on every device. `adopt`: a session started on this device
-   * without login becomes the login's (the invite takes logins).
+   * The verified email of a login, when the invite takes logins (or there
+   * is no invite: coming back on a new device). It is linked to the session
+   * once; on a device without a session it finds the email's session in this
+   * job (docs/coder-identity.md §5).
    */
-  login?: { key: string; email: string; adopt: boolean };
+  login?: { email: string };
+}
+
+/** A coder, and the device the request came from (`coder_devices`; null in previews). */
+export interface ResolvedCoder {
+  coder: Coder;
+  deviceId: number | null;
 }
 
 /** Full replace of the coder state the runtime manages. */
@@ -152,4 +161,6 @@ export interface AnnotationWrite {
   codebookId?: number;
   /** The unit version the coder saw (`Store.unitVersion`). */
   unitVersionId?: number;
+  /** The device the answers were given on (`coder_devices`). */
+  deviceId?: number | null;
 }

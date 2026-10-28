@@ -38,6 +38,7 @@ A row for every unit a coder coded, in the order they coded them.
 | `invitation` | The label of the invitation the coder came in with |
 | `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer |
 | `codebook_id` | The codebook version the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
+| `device_id` | The device the unit was (last) answered on: see `devices.csv` |
 | one column per question | The answers |
 
 The question columns are in the order of the codebook, named after the
@@ -107,6 +108,14 @@ per version, and every answer points to the version its coder saw. Join on
 about. This matters for spans: their text positions refer to the version
 they were made on.
 
+## devices.csv
+
+The devices coders used, a row per device: `device_id`, `coder_id`,
+`device_type` (phone, tablet or desktop), `browser`, `os` and `first_used`.
+A coder who continued on another device has a row for each. These are
+coarse categories, as survey tools report them, not a fingerprint of the
+device.
+
 ## variables.csv
 
 The codebook, as a table: a row per codebook version (`codebook_id`), question
@@ -173,6 +182,7 @@ d = (annotations
 | --- | --- |
 | a coder's details and background answers to their annotations | `coder_id` |
 | the unit as the coder saw it | `unit_version_id` |
+| the device an answer was given on | `device_id` in `devices.csv` |
 | the labels of a codebook version | `codebook_id` and `variable` (and `value`) in `variables.csv` |
 | your own data (metadata not shown to coders) | `unit_id`, with the id column of your own file |
 

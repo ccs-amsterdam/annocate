@@ -21,14 +21,14 @@ Complements `docs/architecture.md`.
 | Term | What it is | Where it lives |
 | --- | --- | --- |
 | **Coder** (`coderId`) | One annotation session in a job: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
-| **Session key** | Random secret, created by the server, that unlocks one coder without login. Kept in an httpOnly cookie, so page scripts never see it. It is a *key*, not an id: it moves with a transfer, so it isn't a device id. | the coder's browser (httpOnly cookie) |
-| **Coder key** | What the database stores to find the coder: the SHA-256 of the session key, so a database leak doesn't hand out sessions. | database |
+| **Device id** | Random secret the server gives a browser once, for all jobs, in an httpOnly cookie (`annotinder_device`), so page scripts never see it. Never stored by the server. | the coder's browser (httpOnly cookie) |
+| **Device key** | A device's key for its session in one job: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across jobs. A session has one per device that joined it. | database (`coder_devices`) |
 | **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed in a personal invite, or taken from a URL parameter the invite names (`participantParam`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
-| **Verified identity** | A verified email address from a login (§5, §7). The only thing that lets a coder resume from another device. | database (users) |
-| **Transfer link** | One-time, short-lived link that copies a session key to another device. | server memory (15 min) |
+| **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coders.email`) |
+| **Transfer link** | One-time, short-lived link that adds another device to the session. | server memory (15 min) |
 
-Every coder has a session key, or a verified identity once auth exists. Some
-also have a participant id; some also have a verified identity. For
+Every coder (session) has one or more device keys. Some also have a
+participant id; some also have a linked email. For
 analysis, researchers group coders by participant id or email when they want
 to merge sessions of the same person. The system itself never merges
 sessions.
@@ -56,18 +56,31 @@ confusion at a panel company over a leaked link.
 
 ## 4. Sessions without login (implemented)
 
-- **First visit.** The server creates a random session key and, once it
-  accepted the coder (an invite, stored with the key's hash), sets it as a
-  cookie: `HttpOnly`, `SameSite=Lax`, `Secure` over https,
-  `Path=/d/<jobId>`, 400 days. The cookie name includes a hash of
-  the participant id (the server reads it from the URL parameters the
-  client sends, `x-url-params`, using the invite's `participantParam`;
-  cached per invite for a minute), so a shared lab computer keeps separate
-  sessions per participant. The invite isn't part of it: everything the job
-  needs from the invite and the URL (preset and `url_param` variables, the
-  participant id and the invite's other required URL parameters) is stored
-  when the coder starts, so the invite and URL details can be forgotten.
-  The client never sees or stores the key.
+- **The device id.** A browser gets one random device id, the first time
+  an invite accepts it, in a cookie: `annotinder_device`, `HttpOnly`,
+  `SameSite=Lax`, `Secure` over https, `Path=/d`, 400 days. One cookie for
+  all jobs, so cookies don't pile up for coders who do many jobs.
+- **The session in a job.** The server derives the device's key for a job
+  on every request: SHA-256 of device id, deployment and participant id (the
+  server reads the participant id from the URL parameters the client sends,
+  `x-url-params`, using the invite's `participantParam`; cached per invite
+  for a minute). Including the participant id keeps participants apart on
+  a shared lab computer. The database stores only the key, in
+  `coder_devices` (one row per device of a session), never the device id:
+  sessions of one device in different jobs can't be linked from stored
+  data. The device id is long and random, so no secret is needed (rotating
+  `ANNOTINDER_SECRET` logs no coder out). The runtime keeps key → session
+  in memory, so the database is read once per session per server start,
+  not per answer. Everything the job needs from the invite and the URL
+  (preset and `url_param` variables, the participant id and the invite's
+  other required URL parameters) is stored when the coder starts, so the
+  invite and URL details can be forgotten.
+- **Device details.** When a device joins a session, coarse details from
+  its user agent are stored with it: device type (phone, tablet, desktop),
+  browser and operating system (`shared/devices.ts`), not the user agent
+  itself. Each answer records the device it was given on
+  (`annotation_values.device_id`); researchers get them with
+  `GET /job/:jobId/devices` and in the export (`devices.csv`).
 - **Required URL parameters.** An invite can require URL parameters: the
   participant id's (`participantParam`) and others (`urlParams: [{ param,
   name?, pattern? }]`, e.g. a panel's study and session ids). A new session
@@ -80,8 +93,9 @@ confusion at a panel company over a leaked link.
   the invitation, not the codebook, so validation can't check the names
   (unknown ones are empty); codebook-level values from the URL stay
   `url_param` auto variables.
-- **Same device later.** The cookie resumes the same coder, whatever link
-  (or none) the coder comes back with.
+- **Same device later.** The device cookie resumes the same coder, whatever
+  link (or none) the coder comes back with, as long as it carries the same
+  participant id (a participant link with another id is another session).
 - **CSRF.** Every coder API request must carry `x-annotinder: 1`, which a
   cross-site form or image can't send, and the coder API sends no CORS
   headers, so cross-origin scripts can't either. This relies on the client
@@ -92,8 +106,11 @@ confusion at a panel company over a leaked link.
      15 minutes.
   2. The client shows it as a link and a QR code.
   3. Opening the link on the new device calls
-     `POST /d/:deployment/transfer/redeem`, which sets the session cookie
-     there. Both devices can now continue the same session.
+     `POST /d/:deployment/transfer/redeem`, which adds that device to the
+     session: its keys for this job (without a participant id, as the
+     transfer link carries none, and with the session's participant id, for
+     when it comes back with the participant's link). Both devices can now
+     continue the same session.
 
   Tokens live only in server memory. That fits the "nothing that can't
   be rebuilt" rule (`architecture.md` §3): losing them means making a new
@@ -115,8 +132,8 @@ confusion at a panel company over a leaked link.
      transfer link there".
   3. The client also offers **Start a new session**. That retries with
      `x-new-session: 1` (first request only) and creates a new coder with
-     the same participant id; the server sets a new cookie. The new
-     coder cannot see the earlier annotations.
+     the same participant id, for this device. The new coder cannot see
+     the earlier annotations.
 
   New sessions of a known participant don't count toward the invite's
   `maxUses`.
@@ -128,32 +145,36 @@ confusion at a panel company over a leaked link.
 
 ## 5. Coder login (implemented, 2026-10-28)
 
-The researcher login (§7) for coders: the same provider, the same session
-(`annotinder_session`, path `/`), so a researcher trying their own link is
-logged in too. Code: `coder.ts` (the session middleware),
-`runtime/store.ts` (`findOrCreateCoder`), `shared/invites.ts` (`linkInfo`).
+The researcher login (§7) for coders: the same provider and the same
+login cookie (`annotinder_session`, path `/`). A login doesn't replace the
+coder's session: it **links an email to the session, once**. After that,
+the device key (§4) is the session as for anyone, and logging out of
+AnnoTinder doesn't affect coding. The email is used again only to continue
+on another device. Code: `coder.ts` (the session middleware),
+`DeploymentRuntime.resolveCoder`, `runtime/store.ts` (`findOrCreateCoder`).
 
-- **Where a login counts.** On invites with `auth: "optional"` or
-  `"required"`, or an `emails` list, and when coming back without a link.
-  An invite with `auth: "none"` ignores it (an anonymous session as
-  always). Never in previews.
-- **The login is the session.** A logged-in coder's coder key is
-  `login:<userId>:<jobId>`, not a hash, so no cookie can produce it, and the
-  same on every device: the server finds the session by the login, and sets
-  no session cookie. `coders.email` holds the login's email. A transfer
-  link is refused (400): the coder logs in on the other device instead.
-- **Rules.** `required` (or an `emails` list) without a login: 401
+- **When a login is read.** Only when it matters: on invites with
+  `auth: "optional"` or `"required"` (or an `emails` list) while the
+  session has no email yet, and on a device without a session in this job
+  (to find the email's session). A session with an email, or on an invite
+  without login, never looks at the login: no lookups while coding. An
+  invite with `auth: "none"` ignores a login (a researcher trying their own
+  link starts an anonymous session). Never in previews.
+- **Required.** `required` (or an `emails` list) without a login: 401
   `auth_required`; the client offers the login, which comes back to the same
-  page. A login not on the `emails` list: 403 `email_not_invited`. The
-  participant id is only a label next to the login: a known participant id
-  gives no 409.
-- **Optional login.** `GET /session` says `canLogIn` (the server offers a
-  login, the invite is `optional`, the coder isn't logged in). Logging in
-  then turns this device's session into the login's (`adopt`: its coder
-  key becomes the login's, and `email` is set), if the session has no email
-  yet. The runtime keeps the one cached coder (`DeploymentRuntime.resolveCoder`).
-- **Accounts.** Logging in creates a user (`users`) as for researchers.
-  A user without job roles sees no jobs in the researcher UI.
+  page, and the new session gets the email. A login not on the `emails`
+  list: 403 `email_not_invited`.
+- **Optional.** `GET /session` says `canLogIn` (the server offers a login,
+  the invite is `optional`, the session has no email). Logging in links the
+  email to the session on this device.
+- **Another device.** Logging in on a device without a session in this job
+  finds the email's session and adds the device to it (as a transfer link
+  does). This also works without the invite link.
+- **One session per email in a job.** If the email already has a session in
+  this job, a device that started its own and then logs in continues the
+  email's session instead (its own stays, unlinked).
+- **Accounts.** Logging in creates a user (`users`) as for researchers,
+  with the account role `user` (`accounts.md`).
 
 Possible later: a system with its own login (e.g. AmCAT) vouches for a
 coder with a short signed assertion `{ job, subject, exp }`, so coders don't
@@ -161,12 +182,13 @@ log in twice.
 
 ## 6. Open points
 
-- **Revoking a transfer.** Should "move this session" (revoke the old
-  device's key) exist next to "copy"? Probably only once there is a reason;
-  with a login, the login is the thing to use instead.
-- **Coders who are only coders.** Coder logins create researcher accounts
-  (without roles). Whether such users may create jobs is a policy question
-  for the server (today any logged-in user can).
+- **Removing a device.** A session's devices each have their own key, so a
+  device could be removed from a session (e.g. a lost phone). Not built:
+  no reason yet.
+- **"My jobs".** A list of the jobs a device or account took part in. If
+  wanted, the device's list lives in the browser only (the server can't
+  link a device's jobs, on purpose); an account's would be the sessions
+  linked to its email.
 - **A long-lived "continue later" link** (§4, "Offer the link early"):
   stored in the database (server memory isn't durable), one per
   session, revocable from the device that has the session. Should it be
@@ -253,7 +275,7 @@ the row stays marked, until the data is deleted). Declining isn't offered:
 whether research data is exempt is for the researcher's protocol, not a
 button. Any coder's data can
 be deleted (`POST /job/:jobId/coders/delete { coderIds?, participantIds?,
-emails? }`, ADMIN): the coders rows (session key, participant id, coder-level
+emails? }`, ADMIN): the coders rows (device keys, participant id, coder-level
 answers, routing, the request) and all their `annotation_values`, also
 retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
 The deployment's runtime is dropped and loads again (it caches coders,

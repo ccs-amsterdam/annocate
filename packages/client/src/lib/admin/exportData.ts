@@ -7,6 +7,7 @@ import {
   type AnyVariableType,
   type SpanAnswer,
   type CoderDeletion,
+  type Device,
   type CoderProgress,
   type OptionValue,
   type TopLevelItem,
@@ -183,14 +184,21 @@ export function annotationsTable(
 ): Table {
   const coderById = new Map(coders.map((c) => [c.id, c]));
   // Per answer also the codebook version it was given under: its labels are the ones its coder saw.
-  const byUnitCoder = new Map<string, { first: AnnotationRow; last: Date; values: Map<string, VariableValue>; codebooks: Map<string, number | null> }>();
+  // And the device of the latest answer: a unit is submitted from one device at a time.
+  const byUnitCoder = new Map<
+    string,
+    { first: AnnotationRow; last: Date; deviceId: number | null; values: Map<string, VariableValue>; codebooks: Map<string, number | null> }
+  >();
   for (const a of annotations) {
     const key = `${a.unitId}/${a.coderId}`;
     let row = byUnitCoder.get(key);
-    if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), values: new Map(), codebooks: new Map() }));
+    if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), deviceId: a.deviceId ?? null, values: new Map(), codebooks: new Map() }));
     row.values.set(a.variable, a.value);
     row.codebooks.set(a.variable, a.codebookId);
-    if (new Date(a.updated) > row.last) row.last = new Date(a.updated);
+    if (new Date(a.updated) > row.last) {
+      row.last = new Date(a.updated);
+      row.deviceId = a.deviceId ?? null;
+    }
   }
   const columns = answerColumns(
     [...byUnitCoder.values()].flatMap((r) => [...r.values]),
@@ -208,9 +216,10 @@ export function annotationsTable(
       "first_answer",
       "last_change",
       "codebook_id",
+      "device_id",
       ...columns.map(header),
     ],
-    rows: [...byUnitCoder.values()].map(({ first, last, values, codebooks }) => {
+    rows: [...byUnitCoder.values()].map(({ first, last, deviceId, values, codebooks }) => {
       // The unit's spans, by id, so relations can name them by their text
       const spans = new Map([...values.values()].flatMap((v) => (v.spans ?? []).map((s) => [s.id, s] as const)));
       return [
@@ -222,6 +231,7 @@ export function annotationsTable(
       time(first.created),
       time(last),
       first.codebookId === null ? "" : String(first.codebookId),
+      deviceId === null ? "" : String(deviceId),
       ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.codebookId, spans)),
       ];
     }),
@@ -347,6 +357,14 @@ export function variablesTable(codebooks: ReadonlyMap<number, TopLevelItem[]>): 
   return { headers: ["codebook_id", "loop", "variable", "type", "question", "value", "label"], rows };
 }
 
+/** The devices coders used (`device_id` in annotations.csv): coarse details, when each joined its session. */
+export function devicesTable(devices: Device[]): Table {
+  return {
+    headers: ["device_id", "coder_id", "device_type", "browser", "os", "first_used"],
+    rows: devices.map((d) => [String(d.id), String(d.coderId), d.type ?? "", d.browser ?? "", d.os ?? "", time(d.created)]),
+  };
+}
+
 /** The deletion log: coders whose data was deleted, so they can be deleted from earlier downloads too. */
 export function deletedCodersTable(deletions: CoderDeletion[]): Table {
   return {
@@ -386,6 +404,11 @@ units.csv        The units as coders saw them (only the fields the codebook
                  has a row per version. Join annotations on unit_version_id.
 variables.csv    Per codebook version, question and option: the question text,
                  the stored value and its label.
+devices.csv      The devices coders used: device type (phone, tablet,
+                 desktop), browser and operating system, and when each
+                 joined its coder's session (a coder who continued on
+                 another device has several). Join annotations on device_id
+                 (the device of the unit's latest answer).
 deleted_coders.csv  Coders whose data was deleted from AnnoTinder (for
                  instance a participant who withdrew), by coder_id and
                  participant_id: delete them from earlier downloads too.

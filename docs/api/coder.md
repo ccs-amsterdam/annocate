@@ -25,8 +25,10 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 
 ## Sessions and headers
 
-The session is an httpOnly cookie set by the server, so the client must be
-served from the server's origin (in development, Vite proxies to the server). The
+The session comes from an httpOnly device cookie set by the server
+(`annotinder_device`, one for all jobs; the session in a job is derived from
+it, `coder-identity.md` §4), so the client must be served from the server's
+origin (in development, Vite proxies to the server). The
 server sends no CORS headers for these paths.
 Headers:
 
@@ -36,13 +38,14 @@ Headers:
   participant id and the invite's required parameters (stored on the coder
   as `$session` values; a missing or invalid one is 400 `url_param_missing`
   / `url_param_invalid`) and `url_param` auto variables. The participant id
-  also selects the session cookie (`coder-identity.md` §4);
+  is also part of the device's key for the session (a device keeps a
+  session per participant id);
 - `x-new-session: 1` (first request only): start another session for a
   participant that already has one;
-- the login cookie (`annotinder_session`, from `/auth/login`): on invites
-  that take logins, the session is the login's, on any device
-  (`coder-identity.md` §5); 401 `auth_required` where a login is required,
-  403 `email_not_invited` for a login not on the invite's list;
+- the login cookie (`annotinder_session`, from `/auth/login`): read only to
+  link the session to its email once, or to find the email's session on a
+  new device (`coder-identity.md` §5); 401 `auth_required` where a login is
+  required, 403 `email_not_invited` for a login not on the invite's list;
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
 **New codebook versions.** `GET /session` returns the deployment's
@@ -147,12 +150,11 @@ be deleted (also after the session ended): `GET /session` then returns
 `POST /transfer` → `TransferResponseSchema`
 
 A one-time token to continue this session on another device ("Continue on
-another device"). 400 for a logged-in coder: they log in on the other
-device instead.
+another device").
 
 ### redeemTransfer
 
 `POST /transfer/redeem` (`RedeemTransferSchema`) → `RedeemTransferResponseSchema`
 
-No session needed: sets this device's session cookie to the transferred
-session. Each token works once.
+No session needed: adds this device to the transferred session (and gives
+it a device cookie if it has none). Each token works once.

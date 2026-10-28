@@ -35,6 +35,8 @@ export const AnnotationRowSchema = z.object({
   codebookId: IdSchema.nullable(),
   /** The unit as the coder saw it (`listUnitVersions`); null for answers from before versions were kept. */
   unitVersionId: IdSchema.nullable(),
+  /** The device the answer was (last) given on (`listDevices`); null in previews and for devices that were deleted. */
+  deviceId: IdSchema.nullable(),
   created: z.coerce.date(),
   updated: z.coerce.date(),
   /** Only with `retired=true`: when the value was reset; null if live. */
@@ -80,3 +82,18 @@ export const UnitVersionPageSchema = z.object({
   next: z.number().int().nonnegative().nullable(),
 });
 export type UnitVersionPage = z.infer<typeof UnitVersionPageSchema>;
+
+/**
+ * A device a coder used (`GET /job/:jobId/devices`): coarse details from the
+ * browser (docs/coder-identity.md §4), when it joined the session. A session
+ * has several when the coder continued on another device.
+ */
+export const DeviceSchema = z.object({
+  id: IdSchema,
+  coderId: IdSchema,
+  type: z.enum(["phone", "tablet", "desktop"]).nullable(),
+  browser: z.string().nullable(),
+  os: z.string().nullable(),
+  created: z.coerce.date(),
+});
+export type Device = z.infer<typeof DeviceSchema>;

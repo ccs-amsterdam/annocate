@@ -205,7 +205,7 @@ describe("annotations: finished counts and resets", () => {
     const invite = await json(
       await app.request(`/job/${job.id}/invites`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label: "x" }) }),
     );
-    const coder = await store.resolveCoder({ coderKey: "k", inviteSecret: invite.secret });
+    const { coder } = await store.resolveCoder({ coderKey: "k", inviteSecret: invite.secret });
     const put = (unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId: coder.coderId, variables });
     const finished = (variables: string[], values?: string[]) => store.listFinished({ loops: [{ loop: "l", variables, values }] });
@@ -297,7 +297,7 @@ describe("invites, coder progress and overview", () => {
     });
     const createInvite = async (label: string) =>
       json(await app.request(`/job/${job.id}/invites`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label }) }));
-    const resolve = (coderKey: string, inviteSecret: string) => store.resolveCoder({ coderKey, inviteSecret });
+    const resolve = async (coderKey: string, inviteSecret: string) => (await store.resolveCoder({ coderKey, inviteSecret })).coder;
     const put = (coderId: number, unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId, variables });
     const get = async (path: string) => json(await app.request(`/job/${job.id}${path}`, { headers: adminHeaders }));

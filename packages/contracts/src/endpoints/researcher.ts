@@ -16,7 +16,7 @@ import {
   RedeemResearcherInviteSchema,
   ResearcherRequestWriteSchema,
 } from "../account.js";
-import { AnnotationPageSchema, AnnotationsQuerySchema, UnitVersionPageSchema, UnitVersionsQuerySchema } from "../annotations.js";
+import { AnnotationPageSchema, AnnotationsQuerySchema, DeviceSchema, UnitVersionPageSchema, UnitVersionsQuerySchema } from "../annotations.js";
 import {
   DeploymentWriteSchema,
   DeploymentResponseSchema,
@@ -223,6 +223,8 @@ export const researcherEndpoints = {
     request: z.void(),
     response: UnitVersionPageSchema,
   },
+  /** The devices coders used, for the export (`deviceId` on annotations). */
+  listDevices: { method: "GET", path: "/job/:jobId/devices", request: z.void(), response: z.array(DeviceSchema) },
   resetAnnotations: {
     method: "POST",
     path: "/job/:jobId/annotations/reset",

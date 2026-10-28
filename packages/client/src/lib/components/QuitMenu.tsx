@@ -106,8 +106,8 @@ export function QuitDialog({
             <div className="space-y-2 text-sm text-foreground">
               {login ? (
                 <p>
-                  To continue later, open the same link again and log in as <strong>{login}</strong>, on this or any other
-                  device: you continue where you left off.
+                  To continue later, open the same link again: on this device, or on another one by logging in as{" "}
+                  <strong>{login}</strong>. You continue where you left off.
                 </p>
               ) : (
                 <p>

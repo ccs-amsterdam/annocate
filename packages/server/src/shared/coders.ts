@@ -5,7 +5,6 @@ import type { Coder, CoderAssignments } from "../runtime/types.js";
 export interface CoderRow {
   id: number;
   job_id: number;
-  coder_key: string;
   email: string | null;
   participant_id: string | null;
   invite_id: number | null;
@@ -17,7 +16,7 @@ export interface CoderRow {
   created: Date;
 }
 
-/** A coder as the runtime sees it: no email or other identifying data, except the coder's own login. */
+/** A coder as the runtime sees it: no identifying data, except the email the coder linked themselves. */
 export function toCoder(row: CoderRow): Coder {
   return {
     coderId: row.id,
@@ -27,6 +26,6 @@ export function toCoder(row: CoderRow): Coder {
     deletionRequest: row.deletion_request,
     session: { ...row.session, ...(row.participant_id ? { participant: row.participant_id } : {}) },
     inviteId: row.invite_id,
-    login: row.coder_key.startsWith("login:") ? row.email : null,
+    email: row.email,
   };
 }

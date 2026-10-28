@@ -2,13 +2,17 @@ import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import { HttpError } from "../shared/http.js";
 
-// Coder sessions (docs/coder-identity.md §4): the server makes a random
-// session key per job session and keeps it in an httpOnly cookie, so page
-// scripts (and XSS) never see it. The database only stores a hash of it, as
-// the coder key.
+// Coder sessions (docs/coder-identity.md §4): a browser keeps one random
+// device id in an httpOnly cookie, for every job, so page scripts (and XSS)
+// never see it. Its key for a session in a job is the hash of the device id,
+// the deployment and the participant id (a shared lab computer keeps
+// participants apart). The database stores only that hash, never the device
+// id: so nothing links one device's sessions across jobs.
 
 /** Every coder API request must carry this header: a cross-site form or image can't, so it blocks CSRF. */
 export const CLIENT_HEADER = "x-annotinder";
+
+const DEVICE_COOKIE = "annotinder_device";
 
 /** Cookies live for as long as browsers allow (400 days in Chrome). */
 const MAX_AGE_S = 400 * 24 * 60 * 60;
@@ -17,39 +21,31 @@ export function requireClientHeader(c: Context): void {
   if (c.req.header(CLIENT_HEADER) !== "1") throw new HttpError(403, `Missing ${CLIENT_HEADER} header`);
 }
 
-/**
- * The session cookie's name. The deployment is in the cookie's path; a
- * device keeps separate sessions per participant id (a shared lab computer
- * running a panel), so that is part of the name. The invite isn't: once a
- * coder started, they come back without it.
- */
-export async function sessionCookieName(participantId?: string): Promise<string> {
-  return `annotinder_${(await sha256(participantId ?? "")).slice(0, 16)}`;
+/** This browser's device id, if it has one. */
+export function readDevice(c: Context): string | undefined {
+  return getCookie(c, DEVICE_COOKIE);
 }
 
-export function newSessionKey(): string {
+export function newDeviceId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** What the database stores for a session key: a database leak doesn't hand out sessions. */
-export function dbCoderKey(sessionKey: string): Promise<string> {
-  return sha256(sessionKey);
-}
-
-export function readSession(c: Context, name: string): string | undefined {
-  return getCookie(c, name);
-}
-
-export function writeSession(c: Context, deploymentId: string, name: string, sessionKey: string): void {
-  setCookie(c, name, sessionKey, {
-    path: `/d/${deploymentId}`,
+/** Sets (or renews) the device cookie, for the whole coder API. */
+export function writeDevice(c: Context, deviceId: string): void {
+  setCookie(c, DEVICE_COOKIE, deviceId, {
+    path: "/d",
     httpOnly: true,
     sameSite: "Lax",
     // Plain http only in local development.
     secure: new URL(c.req.url).protocol === "https:",
     maxAge: MAX_AGE_S,
   });
+}
+
+/** A device's key for its session in a deployment (with this participant id, if the link carries one). */
+export function coderKey(deviceId: string, deploymentId: string, participantId?: string | null): Promise<string> {
+  return sha256(`${deviceId}\n${deploymentId}\n${participantId ?? ""}`);
 }
 
 async function sha256(text: string): Promise<string> {

@@ -9,6 +9,7 @@ import {
   annotationsTable,
   codersTable,
   deletedCodersTable,
+  devicesTable,
   nestedQuestions,
   questionOrder,
   readme,
@@ -68,6 +69,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
     try {
       const coderList = (await coders.refetch()).data ?? [];
       const deletions = await client.listCoderDeletions();
+      const devices = await client.listDevices();
       const rows = await allPages<AnnotationRow>(
         async (after) => {
           const page = await client.listAnnotations({ after, limit: 10000, ...(withReset ? { retired: "true" as const } : {}) });
@@ -99,6 +101,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "README.txt": strToU8(readme(name, now, withLabels)),
         "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested))),
         "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested))),
+        "devices.csv": strToU8(toCsv(devicesTable(devices))),
         "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions))),
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations))),
         "variables.csv": strToU8(toCsv(variablesTable(codebooks))),
@@ -135,6 +138,9 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
             <li>
               <strong>coders.csv</strong>: a row per coder: invitation, participant id, how their session ended, and their
               answers outside unit loops
+            </li>
+            <li>
+              <strong>devices.csv</strong>: the devices coders used (phone, tablet or desktop, browser, operating system)
             </li>
             <li>
               <strong>deleted_coders.csv</strong>: coders whose data was deleted; delete them from earlier downloads too

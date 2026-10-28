@@ -24,14 +24,21 @@ Everything of a job is stored on the AnnoTinder server you use:
 | **Codebooks** | Every saved and published version |
 | **Invitations** | Their settings: label, participant id, preset values, units, uses |
 | **Coders** | Per session: the invitation used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended |
+| **Devices** | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given |
 | **Answers** | Per unit and question: the answer, when it was first given and last changed, and the codebook and unit version |
 
 What AnnoTinder itself does **not** store about coders: their name, their
-email address (unless the invitation has them [log in](invitations.md#login)), their IP address, their browser or device, or
+email address (unless the invitation has them [log in](invitations.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
 URL parameters other than the ones the codebook asks for (an
 [assigned variable](auto.md) that reads a URL parameter, and the participant
 id if the invitation takes it from the URL). The web server in front of
 AnnoTinder may keep ordinary access logs; ask whoever runs it.
+
+A browser keeps one random device id (a cookie) for all jobs, but
+AnnoTinder stores only a code derived from it per job. So the stored data
+can't tell that one device took part in two jobs: an anonymous job stays
+anonymous, also next to a job where the same person gave their name or
+participant id.
 
 The server sees units and answers as they are, like any web application that
 stores them: they are not encrypted in the browser.

@@ -32,6 +32,7 @@ const stubClient: ResearcherApi = {
   deleteCoders: () => new Promise(() => {}),
   postponeDeletion: () => new Promise(() => {}),
   listCoderDeletions: () => Promise.resolve([]),
+  listDevices: () => Promise.resolve([]),
   listInvites: () => new Promise(() => {}),
   createInvite: () => new Promise(() => {}),
   revokeInvite: () => new Promise(() => {}),

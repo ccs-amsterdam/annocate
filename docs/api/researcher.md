@@ -120,6 +120,7 @@ response checked against its contract schema.
 | **Annotations** | | | | |
 | [listAnnotations](#listannotations) | `GET /job/:jobId/annotations` | READ | query `AnnotationsQuerySchema` | `AnnotationPageSchema` |
 | [listUnitVersions](#listunitversions) | `GET /job/:jobId/unit-versions` | READ | query `UnitVersionsQuerySchema` | `UnitVersionPageSchema` |
+| [listDevices](#listdevices) | `GET /job/:jobId/devices` | READ | – | `DeviceSchema[]` |
 
 ## Account
 
@@ -509,4 +510,11 @@ units as coders saw them (`architecture.md` §8.4), one row per version:
 the unit's id and `externalId`, a `hash`, the `data` shown (only the
 fields the codebook used), and when it was first shown. Paged like
 annotations. Join answers on `unitVersionId`.
+
+### listDevices
+
+`GET /job/:jobId/devices` → `DeviceSchema[]`: the devices coders used
+(`coder-identity.md` §4), each with its coder, coarse `type` (phone,
+tablet, desktop), `browser`, `os`, and when it joined the session. Answers
+carry the device they were given on (`deviceId` in `listAnnotations`).
 

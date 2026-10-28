@@ -19,7 +19,7 @@ export function annotations(server: Server): Hono<Env> {
     const rows = await db.query<AnnotationRow & { retiredAt: Date | null }>(
       `SELECT a.id, a.unit_id AS "unitId", u.external_id AS "externalId", a.coder_id AS "coderId",
          c.participant_id AS "participantId", a.variable, a.value, a.codebook_id AS "codebookId",
-         a.unit_version_id AS "unitVersionId", a.created, a.updated, a.retired_at AS "retiredAt"
+         a.unit_version_id AS "unitVersionId", a.device_id AS "deviceId", a.created, a.updated, a.retired_at AS "retiredAt"
        FROM annotation_values a
        JOIN units u ON u.id = a.unit_id
        LEFT JOIN coders c ON c.id = a.coder_id
@@ -34,6 +34,15 @@ export function annotations(server: Server): Hono<Env> {
     });
     return c.json({ annotations: page, next: rows.length > limit ? page[page.length - 1].id : null });
   });
+
+  app.get("/job/:jobId/devices", requireJobUser(server, "READ"), async (c) =>
+    c.json(
+      await db.query(
+        `SELECT id, coder_id AS "coderId", device_type AS type, browser, os, created FROM coder_devices WHERE job_id = $1 ORDER BY id`,
+        [c.get("jobId")],
+      ),
+    ),
+  );
 
   // Units as coders saw them (contracts UnitVersionSchema), oldest first.
   app.get("/job/:jobId/unit-versions", requireJobUser(server, "READ"), async (c) => {

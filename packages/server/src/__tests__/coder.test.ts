@@ -526,25 +526,42 @@ describe("routing coders to unitsets", () => {
 });
 
 describe("sessions", () => {
-  it("keeps the session in an httpOnly cookie, and stores only a hash of it", async () => {
-    const res = await send("browser", "/session", {}, { "x-invite-secret": "demo-secret" });
+  it("keeps a device id in an httpOnly cookie; stores only a per-job hash of it, with coarse device details", async () => {
+    const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+    const res = await send("browser", "/session", {}, { "x-invite-secret": "demo-secret", "user-agent": iphone });
     expect(res.status).toBe(200);
     const [set] = res.headers.getSetCookie();
-    expect(set).toMatch(/^annotinder_[0-9a-f]{16}=/);
+    expect(set).toMatch(/^annotinder_device=/);
     expect(set).toContain("HttpOnly");
     expect(set).toContain("SameSite=Lax");
-    expect(set).toContain("Path=/d/1");
+    expect(set).toContain("Path=/d");
 
-    const value = [...devices.get("browser")!.cookies.values()][0];
+    const deviceId = devices.get("browser")!.cookies.get("annotinder_device")!;
     const { coderId } = (await res.json()) as SessionResponse;
-    const [{ stored }] = await db.query<{ stored: string }>("SELECT coder_key AS stored FROM coders WHERE id = $1", [coderId]);
+    const [stored] = await db.query<{ key_hash: string; device_type: string; browser: string; os: string }>(
+      "SELECT key_hash, device_type, browser, os FROM coder_devices WHERE coder_id = $1",
+      [coderId],
+    );
     const { createHash } = await import("node:crypto");
-    expect(stored).toBe(createHash("sha256").update(value).digest("hex"));
+    expect(stored).toEqual({ key_hash: createHash("sha256").update(`${deviceId}\n1\n`).digest("hex"), device_type: "phone", browser: "Safari", os: "iOS" });
+    // The device id itself is stored nowhere
+    expect(JSON.stringify(await db.query("SELECT * FROM coders"))).not.toContain(deviceId);
 
     // the cookie continues the session; it isn't set again
     const again = await send("browser", "/session", {}, { "x-invite-secret": "demo-secret" });
     expect(((await again.json()) as SessionResponse).coderId).toBe(coderId);
     expect(again.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("records the device each answer was given on", async () => {
+    const c = coder("answerer");
+    const unit = await c.next();
+    await c.submit(unit!.id, demo("neutral"));
+    const rows = await db.query<{ device_id: number | null }>("SELECT DISTINCT device_id FROM annotation_values WHERE unit_id = $1", [unit!.id]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].device_id).not.toBeNull();
+    const listed = (await (await server.request("/job/1/devices", { headers: adminHeaders })).json()) as { id: number }[];
+    expect(listed.map((d) => d.id)).toContain(rows[0].device_id);
   });
 
   it("refuses requests without the client header (CSRF)", async () => {
@@ -559,12 +576,13 @@ describe("sessions", () => {
     const bare = (await (await send("shared", "/session")).json()) as SessionResponse; // no invite at all
     expect(b.coderId).toBe(a.coderId);
     expect(bare.coderId).toBe(a.coderId);
-    expect(devices.get("shared")!.cookies.size).toBe(1);
 
     const panel = await invite(undefined, { participantParam: { param: "participant" } });
     const p1 = (await (await send("shared", "/session", {}, { "x-invite-secret": panel, "x-url-params": "participant=P1" })).json()) as SessionResponse;
-    expect(p1.coderId).not.toBe(a.coderId);
-    expect(devices.get("shared")!.cookies.size).toBe(2);
+    const p2 = (await (await send("shared", "/session", {}, { "x-invite-secret": panel, "x-url-params": "participant=P2" })).json()) as SessionResponse;
+    expect(new Set([a.coderId, p1.coderId, p2.coderId]).size).toBe(3);
+    // One cookie for all of it
+    expect(devices.get("shared")!.cookies.size).toBe(1);
   });
 
   it("sets no cookie when the invite is refused", async () => {
@@ -671,18 +689,25 @@ describe("coder login", () => {
     return { status: res.status, body: (await res.json()) as SessionResponse & { code?: string } };
   };
 
-  it("an invite that requires login: the same session on every device, no session cookie, no transfer", async () => {
+  it("an invite that requires login: the email is linked once; another device finds the session by logging in", async () => {
     const secret = await invite(undefined, { auth: "required" });
     expect(await session("anonymous", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
 
     await loggedIn("phone", "a@example.org");
     const phone = await session("phone", secret);
     expect(phone).toMatchObject({ status: 200, body: { login: "a@example.org", canLogIn: false } });
-    expect([...devices.get("phone")!.cookies.keys()]).toEqual(["annotinder_session"]);
-    // Another device, without the link: the login finds the session
+    expect(devices.get("phone")!.cookies.has("annotinder_device")).toBe(true);
+    // After that the device cookie alone is the session: logging out doesn't matter
+    devices.get("phone")!.cookies.delete("annotinder_session");
+    expect((await session("phone", secret)).body.coderId).toBe(phone.body.coderId);
+
+    // Another device, without the link: the login finds the session, and the device joins it
     await loggedIn("laptop", "A@example.org");
     expect((await session("laptop", null)).body.coderId).toBe(phone.body.coderId);
-    expect((await send("phone", "/transfer", { method: "POST" })).status).toBe(400);
+    devices.get("laptop")!.cookies.delete("annotinder_session");
+    expect((await session("laptop", null)).body.coderId).toBe(phone.body.coderId);
+    // A transfer link works too
+    expect((await send("phone", "/transfer", { method: "POST" })).status).toBe(200);
 
     const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
     expect(coders.find((c) => c.id === phone.body.coderId)?.email).toBe("a@example.org");
@@ -697,7 +722,7 @@ describe("coder login", () => {
     expect((await session("invited", secret)).status).toBe(200);
   });
 
-  it("an optional login: a session started without it becomes the login's; invites without login ignore it", async () => {
+  it("an optional login: links the email to the session started on the device; invites without login ignore it", async () => {
     const secret = await invite(undefined, { auth: "optional" });
     const before = await session("tablet", secret);
     expect(before.body.login).toBeNull();
@@ -707,6 +732,13 @@ describe("coder login", () => {
     expect(after.body).toMatchObject({ coderId: before.body.coderId, login: "c@example.org" });
     await loggedIn("desktop", "c@example.org");
     expect((await session("desktop", secret)).body.coderId).toBe(before.body.coderId);
+
+    // One session per email in a job: a device that started its own, then logs in, continues the email's session
+    const own = await session("phone", secret);
+    expect(own.body.coderId).not.toBe(before.body.coderId);
+    const phoneUser = await ensureUser(db, "c@example.org");
+    devices.get("phone")!.cookies.set("annotinder_session", await createSession(db, phoneUser.id));
+    expect((await session("phone", secret)).body.coderId).toBe(before.body.coderId);
 
     // The demo invite takes no logins: an anonymous session as always
     await loggedIn("researcher", "c@example.org");
