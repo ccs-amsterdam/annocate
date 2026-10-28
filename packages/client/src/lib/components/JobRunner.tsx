@@ -354,7 +354,7 @@ function JobRunnerContent({
     manager.answer(val);
   };
 
-  const questionElement = (
+  const answerField = (
     <Question
       // A fresh answer field per question and unit, starting from that answer
       key={`${snapshot.currentUnit?.id ?? ""}/${item.name}`}
@@ -368,6 +368,20 @@ function JobRunnerContent({
       unitVariables={snapshot.currentUnitVariables ?? undefined}
       texts={snapshot.currentTexts}
     />
+  );
+  // A frozen answer (units were coded with it): shown, not changeable.
+  const questionElement = snapshot.currentFrozen ? (
+    <div className="flex flex-col gap-3">
+      <fieldset disabled className="pointer-events-none opacity-60" aria-readonly>
+        {answerField}
+      </fieldset>
+      <p className="px-4 text-sm text-muted-foreground">You coded units with this answer, so it can&apos;t be changed any more.</p>
+      <Button className="mx-4 w-fit" onClick={() => handleAnswer(snapshot.userVariableValues[item.name] ?? { done: true, skip: true })}>
+        Continue
+      </Button>
+    </div>
+  ) : (
+    answerField
   );
 
   // A swipe question: the unit (or the question card) is the card to swipe.

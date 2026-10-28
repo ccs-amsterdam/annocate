@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DeletionRequest, VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
-import type { Coder as StoredCoder, CoderAnnotation, CoderValuesWrite, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder } from "./types.js";
+import type { Coder as StoredCoder, CoderAnnotation, CoderValue, CoderValuesWrite, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder } from "./types.js";
 
 // Researcher previews (`<jobId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
@@ -34,6 +34,8 @@ export class PreviewStore implements Store {
   private devices = new Map<string, number>();
   /** `<unitId>/<coderId>` -> the coder's answers and when they were first written. */
   private annotations = new Map<string, CoderAnnotation>();
+  /** Coder-level answers, per coder. */
+  private values = new Map<number, Record<string, CoderValue>>();
 
   constructor(
     private db: Store,
@@ -69,7 +71,6 @@ export class PreviewStore implements Store {
     if (!valid) throw new HttpError(401, "This preview link has expired; open the preview again");
     const coder: Coder = {
       coderId: this.coders.size + 1,
-      variables: {},
       assignments: {},
       ended: null,
       deletionRequest: null,
@@ -99,8 +100,26 @@ export class PreviewStore implements Store {
   }
 
   async putCoderValues(write: CoderValuesWrite): Promise<void> {
-    const coder = this.coders.get(write.coderId);
-    if (coder) coder.variables = { ...coder.variables, ...write.values };
+    const values = this.coderAnswers(write.coderId);
+    for (const [name, value] of Object.entries(write.values)) {
+      if (values[name]?.assigned || values[name]?.frozen) continue;
+      values[name] = { value, assigned: write.assigned ?? false, frozen: false };
+    }
+  }
+
+  async coderValues(coderId: number): Promise<Record<string, CoderValue>> {
+    return { ...this.coderAnswers(coderId) };
+  }
+
+  async freezeCoderValues(coderId: number, names: string[]): Promise<void> {
+    const values = this.coderAnswers(coderId);
+    for (const name of names) if (values[name]) values[name] = { ...values[name], frozen: true };
+  }
+
+  private coderAnswers(coderId: number): Record<string, CoderValue> {
+    let values = this.values.get(coderId);
+    if (!values) this.values.set(coderId, (values = {}));
+    return values;
   }
 
   async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
@@ -135,8 +154,9 @@ export class PreviewStore implements Store {
       if (group.level === "coder") {
         for (const c of this.coders.values()) {
           if (request.coderId !== undefined && c.coderId !== request.coderId) continue;
-          if (group.variables.every((v) => v in c.variables)) {
-            rows.push({ loop: group.loop, unitId: null, coderId: c.coderId, created: c.created, ...pick(c.variables) });
+          const variables = Object.fromEntries(Object.entries(this.values.get(c.coderId) ?? {}).map(([k, v]) => [k, v.value]));
+          if (group.variables.every((v) => v in variables)) {
+            rows.push({ loop: group.loop, unitId: null, coderId: c.coderId, created: c.created, ...pick(variables) });
           }
         }
         continue;

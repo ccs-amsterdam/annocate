@@ -105,6 +105,11 @@ export const SessionResponseSchema = z.object({
    * the client can use them.
    */
   variables: z.record(z.string(), VariableValueSchema).default({}),
+  /**
+   * Coder-level answers that can't be changed any more: units were coded
+   * with them (`loopDependencies`). The server ignores new values for them.
+   */
+  frozen: z.array(z.string()).default([]),
   /** Set once the coder reached an `end` item (`POST /end`) or quit (`POST /quit`): the session is over. */
   ended: SessionEndSchema.nullable().optional(),
   /** Set once the coder asked for their answers to be deleted. */

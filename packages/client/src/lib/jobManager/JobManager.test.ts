@@ -718,3 +718,24 @@ describe("end items", () => {
     expect(manager.getSnapshot().ending?.message?.values.map((v) => v.text)).toEqual(["B"]);
   });
 });
+
+describe("frozen answers", () => {
+  it("a coder-level answer a loop depends on is frozen once a unit there is saved", async () => {
+    const role = { name: "role", type: "question", variable: { type: "nominal", question: "Role?", options: [{ value: "A" }, { value: "B" }] } } as TopLevelQuestionItem;
+    const loop = { ...unitLoop("main", [unitVar("q1")]), layout: { template: "As {{$var.role.label}}" } };
+    let served = 0;
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([role, loop])),
+      getNextUnit: vi.fn(async () => (served < 2 ? unit(++served) : null)),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    expect(manager.getSnapshot().currentFrozen).toBe(false);
+    await manager.answer({ done: true, skip: false, values: [{ value: "A" }] });
+    await manager.answer({ done: true, skip: false, values: [{ value: "A" }] }); // unit 1, saved
+    while (manager.getSnapshot().phase !== "user_variable") await manager.goBack();
+    expect(manager.getSnapshot().currentFrozen).toBe(true);
+    await manager.answer({ done: true, skip: false, values: [{ value: "B" }] });
+    expect(manager.getSnapshot().userVariableValues.role.values).toEqual([{ value: "A" }]);
+  });
+});

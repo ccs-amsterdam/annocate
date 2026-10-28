@@ -1,7 +1,7 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import type { DeletionRequest, UnitData, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
-import { coderValues, putCoderValues, toCoder, type CoderRow } from "../shared/coders.js";
+import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
@@ -13,6 +13,7 @@ import type {
   AnnotationWrite,
   Coder,
   CoderAnnotation,
+  CoderValue,
   CoderValuesWrite,
   CoderWrite,
   DeploymentSpec,
@@ -39,8 +40,12 @@ export interface Store {
   /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
   addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
   putCoder(coderId: number, write: CoderWrite): Promise<void>;
-  /** Writes coder-level values (answers outside unit loops, assigned values): answer rows without a unit. */
+  /** Writes coder-level values (answers outside unit loops, assigned values): answer rows without a unit. Assigned and frozen ones stay. */
   putCoderValues(write: CoderValuesWrite): Promise<void>;
+  /** The coder's live coder-level answers, by variable. */
+  coderValues(coderId: number): Promise<Record<string, CoderValue>>;
+  /** Freezes these coder-level answers of the coder (`CoderValue.frozen`). */
+  freezeCoderValues(coderId: number, names: string[]): Promise<void>;
   /** Records the coder's request to delete their answers (a new request replaces a postponed one). */
   requestDeletion(coderId: number, request: DeletionRequest): Promise<void>;
   listFinished(request: FinishedRequest): Promise<Finished[]>;
@@ -89,16 +94,25 @@ export class DbStore implements Store {
   }
 
   async listCoders(): Promise<Coder[]> {
-    const values = await coderValues(this.sql, this.jobId);
-    return (await this.sql.query<CoderRow>("SELECT * FROM coders WHERE job_id = $1 ORDER BY id", [this.jobId])).map((row) =>
-      toCoder(row, values.get(row.id) ?? {}),
-    );
+    return (await this.sql.query<CoderRow>("SELECT * FROM coders WHERE job_id = $1 ORDER BY id", [this.jobId])).map(toCoder);
   }
 
   async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
     const { row, deviceId } = await this.sql.transaction((tx) => findOrCreateCoder(tx, this.jobId, request));
-    const values = await coderValues(this.sql, this.jobId, row.id);
-    return { coder: toCoder(row, values.get(row.id) ?? {}), deviceId };
+    return { coder: toCoder(row), deviceId };
+  }
+
+  coderValues(coderId: number): Promise<Record<string, CoderValue>> {
+    return coderAnswers(this.sql, this.jobId, coderId);
+  }
+
+  async freezeCoderValues(coderId: number, names: string[]): Promise<void> {
+    if (names.length === 0) return;
+    await this.sql.query(
+      `UPDATE annotation_values SET frozen = true
+       WHERE job_id = $1 AND coder_id = $2 AND unit_id IS NULL AND retired_at IS NULL AND NOT frozen AND variable = ANY($3)`,
+      [this.jobId, coderId, names],
+    );
   }
 
   async putCoderValues(write: CoderValuesWrite): Promise<void> {

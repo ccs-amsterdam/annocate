@@ -16,7 +16,7 @@ import type {
   ReferenceScope,
   UnitData,
 } from "@annotinder/contracts";
-import { branchUnitsets, buildScope, loopTitle, unitLoops, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
+import { branchUnitsets, buildScope, loopDependencies, loopTitle, unitLoops, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
@@ -81,6 +81,11 @@ export interface JobManagerSnapshot {
   currentUnitTemplate: RenderedTemplate | null;
   /** The current question's texts with their values evaluated. */
   currentTexts: QuestionTexts | null;
+  /**
+   * The current (coder-level) question's answer can't change any more:
+   * units were coded with it (contracts `loopDependencies`).
+   */
+  currentFrozen: boolean;
   userVariableValues: Record<string, VariableValue>;
   currentUnitVariables: Record<string, VariableValue> | null;
   error: string | null;
@@ -207,6 +212,10 @@ export class JobManager {
   private items: TopLevelItem[] = [];
   /** Each unit loop's key (its position, contracts `unitLoops`): how the coder API and progress refer to it. */
   private loopKeys = new Map<UnitLoopItem, string>();
+  /** Coder-level answers that can't change any more (`currentFrozen`). */
+  private frozen = new Set<string>();
+  /** Per loop key, the coder-level questions it depends on (frozen once a unit there is saved). */
+  private dependencies = new Map<string, string[]>();
   private coderApi: CoderApi;
   private listeners: Set<JobManagerListener> = new Set();
   private expressionCache = new ExpressionCache();
@@ -261,6 +270,7 @@ export class JobManager {
     ending: null,
     quit: false,
     deletionRequested: false,
+    currentFrozen: false,
     login: null,
     canLogIn: false,
     reopen: null,
@@ -307,6 +317,8 @@ export class JobManager {
       const session: SessionResponse = await this.coderApi.getSession();
       this.items = session.codebook.items as TopLevelItem[];
       this.loopKeys = new Map(unitLoops(this.items).map(({ key, loop }) => [loop, key]));
+      this.dependencies = loopDependencies(this.items);
+      this.frozen = new Set(session.frozen ?? []);
       this.questions = collectQuestions(this.items).questions;
       // Coder-level variables so far, including server-assigned `auto`
       // variables (condition, slot, ...), so conditions can use them.
@@ -608,7 +620,8 @@ export class JobManager {
       if (key) this.timer.answered(key, JSON.stringify(answers[item.name]) !== JSON.stringify(value));
       this.timer.leave();
       if (this.activeLoop === null) {
-        this.userVariableValues[item.name] = value;
+        // A frozen answer stays as it is (the server ignores another one).
+        if (!this.frozen.has(item.name)) this.userVariableValues[item.name] = value;
         const values = await this.postedCoderValues();
         await this.withTimings("c:", (timings) => this.coderApi.postCoderVariables(values, timings));
         await this.advanceTop();
@@ -763,6 +776,7 @@ export class JobManager {
         currentUnitTemplate: template,
         currentTexts: texts,
         currentUnitVariables: { ...this.unitVariableValues },
+        currentFrozen: false,
       });
     } catch (err) {
       this.publish({ phase: "error", error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) });
@@ -779,6 +793,7 @@ export class JobManager {
       currentUnitTemplate: null,
       currentTexts: await this.questionTexts(item, this.scope(this.coderVisible)),
       currentUnitVariables: null,
+      currentFrozen: "name" in item && this.frozen.has(item.name),
     });
   }
 
@@ -969,6 +984,7 @@ export class JobManager {
       const { id } = this.currentUnit;
       const loopKey = this.keyOf(this.activeLoop);
       await this.withTimings(`u:${id}:`, (timings) => this.coderApi.postUnitVariables(id, doneValues, loopKey, timings));
+      for (const name of this.dependencies.get(loopKey) ?? []) if (name in this.userVariableValues) this.frozen.add(name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }

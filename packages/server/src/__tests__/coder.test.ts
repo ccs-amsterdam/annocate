@@ -702,6 +702,27 @@ describe("coder-level answers", () => {
   });
 });
 
+describe("frozen answers", () => {
+  it("an answer a unit loop depends on can't change once the coder coded a unit there", async () => {
+    const role = { type: "question", name: "role", variable: { type: "nominal", question: "Role?", options: [{ value: "student" }, { value: "expert" }] } };
+    const age = { type: "question", name: "age", variable: { type: "numeric", question: "Age?" } };
+    await redeploy({ layout: { template: "As {{$var.role.label}}:" } }, [role, age]);
+    const c = coder("freezer");
+    await c.session();
+    const value = (v: string | number) => ({ done: true, skip: false, values: [{ value: v }] });
+    const post = (variables: object) => c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables }) });
+    expect((await post({ role: value("student"), age: value(30) })).status).toBe(204);
+    expect((await c.session()).frozen).toEqual([]);
+
+    const unit = await c.next();
+    expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(204);
+    expect((await c.session()).frozen).toEqual(["role"]);
+    // A change is ignored; one the loop doesn't depend on is stored
+    expect((await post({ role: value("expert"), age: value(31) })).status).toBe(204);
+    expect((await c.session()).variables).toMatchObject({ role: value("student"), age: value(31) });
+  });
+});
+
 describe("response times", () => {
   it("store the browser's timing per answer, and when the server first handed out the unit", async () => {
     const age = { type: "question", name: "age", variable: { type: "numeric", question: "Age?" } };

@@ -5,6 +5,7 @@ import {
   type UnitData,
   branchFingerprint,
   branchUnitsets,
+  loopDependencies,
   loopTitle,
   sharedDefaults,
   unitsetHasReferences,
@@ -25,7 +26,7 @@ import { unitHash } from "../shared/units.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement, type SharedRule } from "./distribution.js";
 import type { Store } from "./store.js";
 import type { DeviceDetails } from "../shared/devices.js";
-import type { Coder, DeploymentSpec, ResolveCoderRequest, ResolvedCoder, Unit } from "./types.js";
+import type { Coder, CoderValue, DeploymentSpec, ResolveCoderRequest, ResolvedCoder, Unit } from "./types.js";
 import {
   agreementKey,
   singleValue,
@@ -41,6 +42,9 @@ import {
   type LoopInfo,
   type VariableType,
 } from "./codebook.js";
+
+/** Stored coder-level answers as plain values. */
+const plainValues = (values: Record<string, CoderValue>) => Object.fromEntries(Object.entries(values).map(([name, v]) => [name, v.value]));
 
 /** The branch of a loop the client chose (`GET /loop/:loop/next?branch=&unitsets=`), see contracts NextUnitQuerySchema. */
 export interface BranchChoice {
@@ -146,6 +150,8 @@ export class DeploymentRuntime {
   private spec!: DeploymentSpec;
   private loops = new Map<string, LoopInfo>();
   private coderVariableTypes = new Map<string, VariableType>();
+  /** Loop key -> the coder-level questions it depends on (`loopDependencies`), frozen once a coder coded a unit there. */
+  private dependencies = new Map<string, string[]>();
   private autoVariables: [string, AutoVariable][] = [];
   private unitsets = new Map<string, number[]>();
   /** Units that no longer exist. */
@@ -254,6 +260,9 @@ export class DeploymentRuntime {
     const items = spec.codebook.items as TopLevelItem[];
     this.loops = new Map(collectLoops(items).map((l) => [l.key, l]));
     this.coderVariableTypes = collectCoderVariables(items);
+    this.dependencies = new Map(
+      [...loopDependencies(items)].map(([key, names]) => [key, names.filter((name) => this.coderVariableTypes.has(name))]),
+    );
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
     this.shownFields = shownUnitFields(items);
@@ -328,10 +337,10 @@ export class DeploymentRuntime {
   }
 
   /** Records the coder's options for `balanced` variables. */
-  private countBalanced(coder: Coder): void {
-    const codes = variableValues(coder.variables);
+  private countBalanced(coderId: number, values: Record<string, CoderValue>): void {
+    const codes = variableValues(plainValues(values));
     for (const [name, byCoder] of this.balanced) {
-      if (codes[name] !== undefined) byCoder.set(coder.coderId, codes[name]);
+      if (codes[name] !== undefined) byCoder.set(coderId, codes[name]);
     }
   }
 
@@ -387,12 +396,9 @@ export class DeploymentRuntime {
   /**
    * The coder for a coder key, created on first use (from the invite, with
    * participant id / new-session confirmation, see docs/coder-identity.md).
-   * `urlParams` are the page's query parameters, for `url_param` auto
-   * variables: stored now, so the coder can come back without them.
    */
   async resolveCoder(
     request: Omit<ResolveCoderRequest, "login">,
-    urlParams: Record<string, string> = {},
     {
       login,
       linkable = false,
@@ -407,14 +413,14 @@ export class DeploymentRuntime {
     const cached = known && this.coders.get(known.coderId);
     // Known on this device, and nothing to link: no store, no login.
     if (cached && (cached.email !== null || !linkable)) {
-      // Their workspace may have been dropped by a reload; a URL value missed earlier is filled in.
-      await Promise.all([this.workspace(cached.coderId), this.assignAutoVariables(cached, urlParams)]);
+      // Their workspace may have been dropped by a reload.
+      await this.workspace(cached.coderId);
       return { coder: cached, deviceId: known.deviceId };
     }
     // A login counts where the invite takes logins, and on a device without a session (it finds the email's session).
     const user = login && (linkable || !cached) ? await login() : null;
     if (cached && !user) {
-      await Promise.all([this.workspace(cached.coderId), this.assignAutoVariables(cached, urlParams)]);
+      await this.workspace(cached.coderId);
       return { coder: cached, deviceId: known.deviceId };
     }
     // Not active (new, evicted, the server restarted, or linking): the database has the record.
@@ -428,20 +434,25 @@ export class DeploymentRuntime {
     }
     const stored = resolved.coder;
     this.coders.set(stored.coderId, stored);
-    this.countBalanced(stored);
-    await Promise.all([this.assignAutoVariables(stored, urlParams), this.workspace(stored.coderId)]);
+    await this.workspace(stored.coderId);
     return { coder: stored, deviceId: resolved.deviceId };
   }
 
   /**
    * Assigns server-side `auto` variables (random / balanced / invite
-   * fallback / URL parameter) the coder doesn't have yet. Once assigned they
-   * never change. Saved before the coder is answered.
+   * fallback / URL parameter) the coder doesn't have yet, into `values` (the
+   * coder's answers as stored). Once assigned they never change. Saved
+   * before the coder is answered. Done when the session is loaded
+   * (`session`): the client loads it before anything else, and again after
+   * a new codebook version, which may have new `auto` questions.
    */
-  private async assignAutoVariables(coder: Coder, urlParams: Record<string, string> = {}): Promise<void> {
+  private async assignAutoVariables(coder: Coder, values: Record<string, CoderValue>, urlParams: Record<string, string>): Promise<void> {
+    if (this.autoVariables.length === 0) return;
+    // Values the coder came with (invite presets) count for balancing too.
+    this.countBalanced(coder.coderId, values);
     const assigned: Record<string, VariableValue> = {};
     for (const [name, variable] of this.autoVariables) {
-      if (variableValues(coder.variables)[name] !== undefined) continue;
+      if (values[name] !== undefined) continue;
       if (variable.source === "url_param") {
         const value = urlParams[variable.urlParam ?? name];
         // A value outside the codebook's options (if it lists any) is ignored, not stored.
@@ -456,8 +467,8 @@ export class DeploymentRuntime {
       assigned[name] = singleValue(method === "random" ? this.drawWeighted(options) : this.leastUsed(name, options));
     }
     if (Object.keys(assigned).length > 0) {
-      coder.variables = { ...coder.variables, ...assigned };
-      this.countBalanced(coder);
+      for (const [name, value] of Object.entries(assigned)) values[name] = { value, assigned: true, frozen: false };
+      this.countBalanced(coder.coderId, values);
       await this.store.putCoderValues({ coderId: coder.coderId, values: assigned, assigned: true, codebookId: this.spec.codebook.id });
     }
   }
@@ -511,8 +522,15 @@ export class DeploymentRuntime {
     }
   }
 
-  async session(coder: Coder): Promise<SessionResponse> {
-    const endValues = await this.endValues(coder);
+  /**
+   * The session for the client. `urlParams`: the page's query parameters,
+   * for `url_param` auto variables (stored now, so the coder can come back
+   * without them).
+   */
+  async session(coder: Coder, urlParams: Record<string, string> = {}): Promise<SessionResponse> {
+    const values = await this.store.coderValues(coder.coderId);
+    if (!coder.ended) await this.assignAutoVariables(coder, values, urlParams);
+    const endValues = await this.endValues(coder, values);
     return {
       coderId: coder.coderId,
       jobId: this.spec.jobId,
@@ -528,7 +546,8 @@ export class DeploymentRuntime {
         };
       }),
       // A closed session: only what its end screen shows.
-      variables: this.closed(coder) ? (endValues?.variables ?? {}) : coder.variables,
+      variables: this.closed(coder) ? (endValues?.variables ?? {}) : plainValues(values),
+      frozen: this.closed(coder) ? [] : Object.keys(values).filter((name) => values[name].frozen),
       ended: coder.ended,
       endValues,
       reopen: this.reopen(coder),
@@ -586,7 +605,7 @@ export class DeploymentRuntime {
   }
 
   /** The values an ended session's end screen uses (contracts EndValues): its message's and redirect link's references. */
-  private async endValues(coder: Coder): Promise<EndValues | null> {
+  private async endValues(coder: Coder, values: Record<string, CoderValue>): Promise<EndValues | null> {
     const { ended } = coder;
     if (!ended) return null;
     const end = ended.item ? findEndItem(this.spec.codebook.items, ended.item) : null;
@@ -601,7 +620,7 @@ export class DeploymentRuntime {
       const answers = (await this.workspace(coder.coderId)).get(ended.unit.id) ?? {};
       unit = { data: pick(data, names("unit")), variables: pick(answers, vars) };
     }
-    return { variables: pick(coder.variables, vars), unit };
+    return { variables: pick(plainValues(values), vars), unit };
   }
 
   /**
@@ -627,7 +646,8 @@ export class DeploymentRuntime {
 
   /**
    * Coder-level answers: a row each (only those that changed), like unit
-   * answers. Server-assigned auto variables can't be overwritten by the client.
+   * answers. Values for `auto` questions, and for frozen answers, are
+   * ignored: those don't change.
    */
   async submitCoderVariables(
     coder: Coder,
@@ -639,15 +659,16 @@ export class DeploymentRuntime {
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
     const auto = new Set(this.autoVariables.map(([name]) => name));
+    const stored = await this.store.coderValues(coder.coderId);
+    const open = (name: string) => !auto.has(name) && !stored[name]?.assigned && !stored[name]?.frozen;
     const changed = Object.fromEntries(
-      Object.entries(variables).filter(([name, value]) => !auto.has(name) && JSON.stringify(coder.variables[name]) !== JSON.stringify(value)),
+      Object.entries(variables).filter(([name, value]) => open(name) && JSON.stringify(stored[name]?.value) !== JSON.stringify(value)),
     );
     // Timings of answered questions only (an unchanged answer: its timing alone is updated)
-    const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => !auto.has(name) && (name in changed || name in coder.variables)));
+    const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => open(name) && (name in changed || name in stored)));
     if (Object.keys(changed).length === 0 && Object.keys(timed).length === 0) return;
     await this.store.checkAnswers(changed);
     await this.store.putCoderValues({ coderId: coder.coderId, values: changed, codebookId: this.spec.codebook.id, deviceId, timings: timed });
-    coder.variables = { ...coder.variables, ...changed };
   }
 
   /** How many units the coder will get in a loop, if that doesn't depend on other coders. */
@@ -911,6 +932,8 @@ export class DeploymentRuntime {
       deviceId,
       timings: timed,
     });
+    // The coder-level answers this loop depends on can't change any more.
+    await this.store.freezeCoderValues(coder.coderId, this.dependencies.get(info.key) ?? []);
     const own = await this.workspace(coder.coderId);
     const previous = own.get(unitId);
     const merged = { ...previous, ...variables };

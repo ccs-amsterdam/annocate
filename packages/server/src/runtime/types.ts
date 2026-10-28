@@ -50,8 +50,6 @@ export type CoderAssignments = Record<string, LoopAssignment>;
 /** A coder as the runtime sees it. No email or other identifying data. */
 export interface Coder {
   coderId: number;
-  /** Coder-level variables, including values preset by their invitation. */
-  variables: Record<string, VariableValue>;
   assignments: CoderAssignments;
   /** Set once the coder reached an `end` item or quit: the session is over. */
   ended: SessionEnd | null;
@@ -101,6 +99,15 @@ export interface ResolvedCoder {
 export interface CoderWrite {
   assignments: CoderAssignments;
   ended: SessionEnd | null;
+}
+
+/** A live coder-level answer (a row without a unit). */
+export interface CoderValue {
+  value: VariableValue;
+  /** Set by the server (`auto` questions): never changed. */
+  assigned: boolean;
+  /** A unit loop the coder coded in depends on it: never changed (`loopDependencies`). */
+  frozen: boolean;
 }
 
 /** Coder-level values to write, a row each (`assigned`: by the server, not answered). */

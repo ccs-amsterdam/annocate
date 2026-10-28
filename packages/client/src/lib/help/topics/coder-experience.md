@@ -68,6 +68,12 @@ they go on through that unit's last question. Changing an answer can also
 change which questions come next, if a [condition](conditions.md) depends
 on it; a question that a condition now hides is stored as skipped.
 
+One exception: an answer outside the unit loops that a loop depends on
+(the loop's layout, questions, conditions or units refer to it, e.g. a
+role shown with every unit) can't be changed once the coder coded a unit
+in that loop. Changing it would change what those units were coded with.
+Coders see such an answer, with a note, but can't change it.
+
 ## Saving and resuming
 
 Answers are saved on the server as the coder goes:

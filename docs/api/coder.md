@@ -68,7 +68,11 @@ The codebook and its `version`, per-loop progress and the coder's
 variables (including assigned `auto` variables), and `ended` if the
 session ended at an `end` item. Creates the coder and session on first
 use. `login`: the email of the login the session belongs to, or null;
-`canLogIn`: the invite offers a login the coder hasn't used.
+`canLogIn`: the invite offers a login the coder hasn't used. `frozen`: the
+coder-level answers that can't change any more, because the coder coded
+units in a loop that depends on them (contracts `loopDependencies`).
+Assigns the coder's `auto` variables they don't have yet (from the page's
+URL parameters, `x-url-params`, for `url_param` ones).
 
 ### getNextUnit
 
@@ -117,7 +121,8 @@ coder took, as the browser measured it (`AnswerTimingSchema`,
 The coder-level answers (survey questions outside loops), all of them as
 the client has them. The server writes a row for each answer that changed
 (answer rows without a unit, like unit answers); values the server
-assigned (`auto` questions) can't be overwritten. `timings`: for the
+assigned (`auto` questions) and frozen answers (`frozen` in the session)
+are left as they are. `timings`: for the
 questions visited since the last post, how long the coder took; an
 answer that didn't change gets its timing updated.
 

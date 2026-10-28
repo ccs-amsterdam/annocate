@@ -96,7 +96,7 @@ Store (interface, narrow)                       reads and writes, leases,
   protected by the codebook (`auto` questions are dropped from what the
   browser sends) and by `assigned` rows not being overwritten. Auto values
   are assigned when the coder row is created, in the same transaction.
-- **Frozen answers** (optional, decide later): a coder-level answer used in
+- **Frozen answers** (built in step 1): a coder-level answer used in
   a unit loop (in a branch, unitset name, template or condition) is frozen
   once the coder has units in that loop: a `frozen` flag on the row, set on
   the first unit submit; the upsert skips frozen rows; the client shows
@@ -182,9 +182,26 @@ needs a "not in R" note.
   exactly right. Python: the same with an embedded engine (`mini-racer`)
   and its standard HTTP server.
 
-  To verify first (a spike): that V8 in R runs the bundle (promises,
-  `crypto` for hashing and random ids, `TextEncoder`), and how much of the
-  Hono layer runs there or is better done in R.
+  **Spike (2026-10-28, R 4.3.3, V8 package 4.4.1 on engine 10.2, Linux):
+  feasible.** The contracts (zod) and `distribution.ts` run unchanged from
+  an es2020 bundle (~500 KB minified, ~110 KB gzipped; zod's locales can
+  go); loading it takes under 0.1 s. Promises work (`await = TRUE`).
+  WebAssembly works. Validating is about 2x slower than in Node. An httpuv
+  round trip into V8 works. What it needs:
+  - Shims: R's V8 has no web APIs (`TextEncoder`, `crypto`, `btoa`,
+    timers, `URL`). `crypto.getRandomValues` and SHA-256 go through a
+    synchronous callback into R (`openssl`), ~0.3 ms per call; or a
+    pure-JS SHA-256.
+  - The runtime must be free of Node and database imports (`node:crypto`
+    in `shared/units.ts` and `preview.ts`, `db.ts`): step 6.
+  - Routing in R (httpuv), calling coarse runtime functions with JSON
+    strings: each R→JS call costs ~0.5 ms, and Hono needs `Request`,
+    `URL` and friends.
+  - Pass JSON text, not R lists (jsonlite's simplification breaks nested
+    data).
+  Not verified: CRAN's Windows and macOS builds (newer engines), Python's
+  `mini-racer`. Found on the way: a shared-queue pick reshuffles the whole
+  pool (~1 ms with 2000 units), worth fixing in step 4.
 - **Fallback**, if that spike fails: the runtime in the browser with
   `MemoryStore` over R's three endpoints, as `compositions.md` describes
   now. All features then behave as on a server for one coder; only several
@@ -210,8 +227,10 @@ and no query that scans a whole job in a coder's request.
 
 Each step its own commit, with tests passing and the system working.
 
-1. **Coder-level answers out of memory** (agreed): read on demand, written
-   when changed in SQL, auto values written with the coder row.
+1. **Coder-level answers out of memory** (done): read when needed, only
+   changed ones written; `auto` values assigned when the session is loaded;
+   frozen answers (`annotation_values.frozen`, set on a unit submit for the
+   loop's `loopDependencies`; the coding screen shows them read-only).
 2. **The rest of the per-coder state out of memory**: coder record per
    request (with the version check), units and shown versions, earlier
    answers, transfer links as a table. The spec cache by version. Remove
@@ -230,7 +249,6 @@ Steps 1–2 can go now. Step 4 is the one to review closely before building.
 
 ## 10. Open points
 
-- Frozen answers (§4): wanted, and computed or stored as a flag?
 - Batch size: fixed, or by unit size?
 - The deployment status's `memory` figures go; anything researchers relied
   on there?
