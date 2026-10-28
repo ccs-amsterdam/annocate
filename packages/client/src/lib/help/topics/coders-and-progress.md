@@ -23,11 +23,10 @@ whenever you open them; for the full data, download the results.
 | **Live version** | The codebook version coders get, with its note. Click it to open it in the codebook editor |
 | **Draft** | Your unpublished changes, if any |
 
-**Reload** has the server read the live job again, including the units'
-content. It is rarely needed: the server does this by itself after you
-publish, upload or replace units, change unitsets or reset answers. Under
-**Progress**, a line says since when the server holds the job and how much
-of it is in its memory.
+Changes reach coders right away: after you publish, upload or replace
+units, change unitsets or reset answers, coders' next request uses them.
+Under **Progress**, a line says since when the server holds the job and how
+many coders' answers it keeps in memory.
 
 ### Numbers
 

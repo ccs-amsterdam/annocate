@@ -81,12 +81,15 @@ export interface ResolveCoderRequest {
    */
   newSession?: boolean;
   /**
-   * The verified email of a login, when the invite takes logins (or there
-   * is no invite: coming back on a new device). It is linked to the session
-   * once; on a device without a session it finds the email's session in this
-   * job (docs/coder-identity.md §5).
+   * Reads the verified email of the device's login, if any. Asked only when
+   * it matters, so coding needs no login lookups: to link a session to its
+   * email, once, where the invite takes logins (`linkable`); and on a device
+   * without a session here, to find the email's session in this job
+   * (docs/coder-identity.md §5).
    */
-  login?: { email: string };
+  login?: () => Promise<{ email: string } | null>;
+  /** The invite takes logins: a session without an email gets linked to the login. */
+  linkable?: boolean;
 }
 
 /** A coder, and the device the request came from (`coder_devices`; null in previews). */
@@ -95,10 +98,12 @@ export interface ResolvedCoder {
   deviceId: number | null;
 }
 
-/** Full replace of the coder state the runtime manages (their values are answer rows: `CoderValuesWrite`). */
-export interface CoderWrite {
-  assignments: CoderAssignments;
-  ended: SessionEnd | null;
+/** A "continue on another device" link (docs/coder-identity.md §4). */
+export interface Transfer {
+  coderId: number;
+  /** The session's participant id: the new device gets a key for the participant's link too. */
+  participant: string | null;
+  expires: Date;
 }
 
 /** A live coder-level answer (a row without a unit). */

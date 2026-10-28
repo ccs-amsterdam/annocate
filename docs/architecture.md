@@ -61,7 +61,8 @@ and a page per API, with a section per endpoint.
   rules, one set per coder, or the invitation's set; plus an overlap);
 - validates annotations against the codebook;
 - writes them to the database;
-- caches unit content and the coder's own annotations.
+- keeps the deployment spec, distribution state and active coders' own
+  annotations in memory (§3).
 
 It reads and writes through a `Store` (`store.ts`): `DbStore` for the
 database, `PreviewStore` for previews.
@@ -78,8 +79,13 @@ development, Vite proxies the server's paths.
 2. **Rebuildable.** Everything the runtime holds in memory is a cache of the
    database, except dynamic-source **leases**, which are deliberately
    disposable: losing them only returns an abandoned unit to the queue
-   early. A restart loads what it needs again. The cache has two parts, so
-   a rebuild doesn't need every annotation in memory:
+   early. A restart loads what it needs again. The coder record, their
+   coder-level answers, units, the unit versions shown, and transfer links
+   are read from the database per request, not kept
+   (`plan-stateless-runtime.md`, steps 1–2). The deployment spec is re-read
+   when its stamp changes (version, epoch, `revision`, suspension: one small
+   query per request). What is cached has two parts, so a rebuild doesn't
+   need every annotation in memory:
    - **Distribution state**, loaded eagerly by `DeploymentRuntime.load()`:
      the deployment spec and the bulk `listFinished` query, for two things
      only: **loops with shared queues or sets** (which coder finished which
@@ -87,9 +93,8 @@ development, Vite proxies the server's paths.
      global state, a coder's own finished units are enough), and
      **`balanced` auto variables** (coder-level rows: which coder has which
      option).
-   - **Active coders**: the coder record (loop routing, how the session
-     ended; not their coder-level answers, which are read when needed) and
-     their workspace, i.e. their own live annotations. Loaded
+   - **Active coders**: their workspace, i.e. their own live unit
+     annotations. Loaded
      when the coder shows up; their finished units in every loop are
      derived from it. Released under a memory budget (see 3.), so memory
      grows with active coders, not with all coders of a job.
@@ -105,16 +110,16 @@ development, Vite proxies the server's paths.
 
    | Held | Released when |
    | --- | --- |
-   | Unit content | Over `unitCacheBytes` (64 MB): least recently used first. Unused for `maxIdleMs` (24 h). A researcher refresh with `units` (`"all"` or ids) drops it on purpose, as does replacing units; otherwise units are not re-read. What a coder saw is kept as a unit version (§8.4) |
-   | A coder's record and annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without shared queues or sets go with them, and are rebuilt when they return |
+   | A coder's annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without shared queues or sets go with them, and are rebuilt when they return |
    | Distribution state (spec, dynamic-loop codings, `balanced` counts, leases) | Not released while the deployment is loaded: it is bounded by units x coders per unit, and distribution needs it |
    | The deployment as a whole | Unused for `deploymentIdleMs` (6 h), or when the job is deleted |
 
    Sizes are estimated from JSON length, since JavaScript gives no memory
    pressure signal. `memory` in the deployment status shows current use.
-4. **One process.** Leases and the dynamic-loop codings live in the memory
-   of one process (`registry.ts`). Running several server processes would
-   need them in the database (§10).
+4. **One process, for now.** Leases, the dynamic-loop codings, set routing
+   and `balanced` counts live in the memory of one process (`registry.ts`),
+   and previews keep their coders in memory. Everything else already works
+   across processes. Step 4 of `plan-stateless-runtime.md` moves the rest.
 
 ## 4. Trust and hosting
 
@@ -130,9 +135,10 @@ the client, so the server stores only ciphertext (`docs/encryption.md`).
 
 **Deploy.** A researcher calls `PUT /job/:jobId/deployment` with
 `{ codebookId, active }`. The server bumps the deployment `version`, freezes
-the codebook, and has a loaded runtime re-read the deployment
-(`Deployments.refresh`). A runtime also re-checks the spec version at most
-every `specTtlMs` (60s). Coders' browsers send the version their codebook belongs
+the codebook. Every runtime checks the deployment's stamp on each request
+and re-reads it when it changed; researcher changes that don't publish
+(units, unitsets, job settings) bump `deployments.revision` for that
+(`Deployments.refresh`). Coders' browsers send the version their codebook belongs
 to; requests with an older one get 409 `codebook_changed`, and the client
 loads the session again (`api/coder.md`).
 
@@ -145,17 +151,15 @@ loads the session again (`api/coder.md`).
    of the device cookie's id, the deployment and the participant id, see
    `coder-identity.md` §4) and invite
    secret, creating the coder if needed and copying the invite's preset
-   variables. It then assigns any missing server-side `auto` variables (§7)
-   and caches the coder.
-2. **`GET /session`.** Served from the cache: the codebook, per-loop
-   progress, and the coder's variables (so client-side conditions can use
-   assigned variables).
+   variables; on every request after that, one query finds it.
+2. **`GET /session`.** Assigns any missing server-side `auto` variables
+   (§7), then returns the codebook, per-loop progress, and the coder's
+   variables (so client-side conditions can use assigned variables).
 3. **`GET /loop/:loop/next`.** On the first call for a loop, the runtime
    routes the coder to a branch (§6) and stores that. It then picks a unit
-   and, in a shared queue, leases it, and serves the unit content from
-   its cache. On a cache miss it reads the unit plus the next few prefetch
-   candidates in one query. If a unit no longer exists, it is dropped from
-   the queue and the next one is tried.
+   and, in a shared queue, leases it, reads the unit, and records the
+   version shown (`unit_serves`). If a unit no longer exists, it is dropped
+   from the queue and the next one is tried.
 4. **`POST /variables/unit`.** The runtime checks that the unit was assigned
    to this coder, validates the variables, writes them to the database, and
    updates the queue.

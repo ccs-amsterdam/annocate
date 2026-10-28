@@ -1,7 +1,6 @@
-import type { Sql } from "../db.js";
+import { one, type Sql } from "../db.js";
 import type { DeploymentStatus } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
-import { getDeployment } from "../shared/deployments.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
 import { DbStore, type Store } from "./store.js";
 import { PreviewStore, previewToken } from "./preview.js";
@@ -50,17 +49,14 @@ export class Deployments {
   }
 
   /**
-   * Re-reads a job's deployment now if it is loaded (otherwise it is read
-   * when it is first used); `units` also drops cached unit content. Returns
+   * Something coders' runtimes read changed (units, unitsets, job settings,
+   * a reset): bumps the deployment's revision, so every server process
+   * re-reads it on its next request (`DeploymentRuntime.refresh`). Returns
    * the deployment's version.
    */
-  async refresh(jobId: number, units?: number[] | "all"): Promise<number | null> {
-    const loaded = this.runtimes.get(String(jobId));
-    const runtime = loaded && (await loaded.runtime.catch(() => null));
-    if (!runtime) return (await getDeployment(this.db, jobId))?.version ?? null;
-    if (units) runtime.clearUnits(units);
-    await runtime.refresh(true);
-    return runtime.version;
+  async refresh(jobId: number): Promise<number | null> {
+    const row = await one<{ version: number }>(this.db, "UPDATE deployments SET revision = revision + 1 WHERE job_id = $1 RETURNING version", [jobId]);
+    return row?.version ?? null;
   }
 
   async status(jobId: number): Promise<DeploymentStatus> {
@@ -84,7 +80,10 @@ export class Deployments {
    * request so edits show right away, and coders and answers kept in memory.
    */
   private previewRuntime(deploymentId: string, jobId: number): DeploymentRuntime {
-    const options: RuntimeOptions = { ...this.options, specTtlMs: 0 };
-    return new DeploymentRuntime(deploymentId, this.wrapStore(new PreviewStore(new DbStore(this.db, jobId, true), this.secret, jobId, options.now)), options);
+    return new DeploymentRuntime(
+      deploymentId,
+      this.wrapStore(new PreviewStore(new DbStore(this.db, jobId, true), this.secret, jobId, this.options.now)),
+      this.options,
+    );
   }
 }

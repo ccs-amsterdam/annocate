@@ -231,10 +231,14 @@ Each step its own commit, with tests passing and the system working.
    changed ones written; `auto` values assigned when the session is loaded;
    frozen answers (`annotation_values.frozen`, set on a unit submit for the
    loop's `loopDependencies`; the coding screen shows them read-only).
-2. **The rest of the per-coder state out of memory**: coder record per
-   request (with the version check), units and shown versions, earlier
-   answers, transfer links as a table. The spec cache by version. Remove
-   eviction, budgets and `refresh` plumbing.
+2. **The rest of the per-coder state out of memory** (done): the coder
+   record per request (routing merged in SQL, so two requests can't
+   overwrite each other's), units and shown versions (`unit_serves` keeps
+   the version), transfer links as a table, the spec re-read when the
+   deployment's stamp changes (`deployments.revision`, bumped by researcher
+   changes; the refresh endpoint and the unit cache are gone). Earlier
+   unit answers (workspaces) stay in memory: distribution derives a
+   coder's finished units from them, so they go with step 4.
 3. **Sets and balanced groups** as locked count queries.
 4. **Shared queues**: `queue_units`, `unit_leases`, the locked pick, rebuild
    on deploy. Distribution tests run against PGlite; a test with two
@@ -245,7 +249,7 @@ Each step its own commit, with tests passing and the system working.
 7. **Docs**: `architecture.md` §3 and §10, `api/coder.md`, `compositions.md`.
 8. **Local hosts** (later, separate): the V8 spike, then the R package.
 
-Steps 1–2 can go now. Step 4 is the one to review closely before building.
+Steps 1–2 are done. Step 4 is the one to review closely before building.
 
 ## 10. Open points
 
@@ -254,3 +258,9 @@ Steps 1–2 can go now. Step 4 is the one to review closely before building.
   on there?
 - Running several processes in the hosted setup (Docker Compose replicas
   behind the existing proxy) once step 4 is in.
+- Previews keep their coders and answers in the memory of one process
+  (`preview.ts`). With several processes a preview needs them in the
+  database (marked as preview data, deleted when it expires), or requests
+  of one preview routed to one process.
+- The job's answer limit is counted per process between reads (once a
+  minute): with several processes a job can pass it by a little.

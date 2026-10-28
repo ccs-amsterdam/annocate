@@ -1,5 +1,5 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import type { DeletionRequest, UnitData, VariableValue } from "@annotinder/contracts";
+import type { DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
@@ -15,12 +15,13 @@ import type {
   CoderAnnotation,
   CoderValue,
   CoderValuesWrite,
-  CoderWrite,
+  CoderAssignments,
   DeploymentSpec,
   Finished,
   FinishedRequest,
   ResolveCoderRequest,
   ResolvedCoder,
+  Transfer,
   Unit,
 } from "./types.js";
 
@@ -31,6 +32,14 @@ import type {
  */
 export interface Store {
   getDeployment(): Promise<DeploymentSpec>;
+  /**
+   * What tells whether the deployment changed since it was read: its
+   * version, annotation epoch and revision (`deployments.revision`), and
+   * whether the job is suspended. Read on every request, so every server
+   * process sees a change at once. Null: no cheap check (previews), read
+   * the deployment itself.
+   */
+  deploymentStamp(): Promise<string | null>;
   /** Unit content by id; unknown ids are left out. */
   getUnits(ids: number[]): Promise<Unit[]>;
   /** All coders (for researcher status). */
@@ -39,7 +48,14 @@ export interface Store {
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder>;
   /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
   addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
-  putCoder(coderId: number, write: CoderWrite): Promise<void>;
+  /** Stores where the coder is routed in a loop: one branch's routing (`CoderAssignments`), next to the others. */
+  routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void>;
+  /** Stores how the session ended (null: reopened). */
+  setEnded(coderId: number, ended: SessionEnd | null): Promise<void>;
+  /** A "continue on another device" link (only its hash is stored). */
+  createTransfer(tokenHash: string, transfer: Transfer): Promise<void>;
+  /** Uses up a transfer link: what it was for, if it exists and hasn't expired. */
+  redeemTransfer(tokenHash: string, now: Date): Promise<Transfer | null>;
   /** Writes coder-level values (answers outside unit loops, assigned values): answer rows without a unit. Assigned and frozen ones stay. */
   putCoderValues(write: CoderValuesWrite): Promise<void>;
   /** The coder's live coder-level answers, by variable. */
@@ -52,8 +68,14 @@ export interface Store {
   /** One coder's live annotations per unit, ordered by first write. */
   listAnnotations(coderId: number): Promise<CoderAnnotation[]>;
   putAnnotation(write: AnnotationWrite): Promise<void>;
-  /** Records when a unit was first handed to the coder (once; the server's bound on their time: docs/coder-identity.md §10). */
-  recordServe(coderId: number, unitId: number): Promise<void>;
+  /**
+   * Records that a unit was handed to the coder, in this version: when it
+   * first was (the server's bound on their time: docs/coder-identity.md
+   * §10), and the version last shown (stored with their answers).
+   */
+  recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void>;
+  /** The unit version last shown to the coder (`recordServe`), if any. */
+  servedVersion(coderId: number, unitId: number): Promise<number | null>;
   /** Refuses answers that are too large, or that would take the job past its limit on answers (shared/limits.ts). */
   checkAnswers(variables: Record<string, VariableValue>): Promise<void>;
   /**
@@ -78,6 +100,17 @@ export class DbStore implements Store {
     private preview = false,
   ) {}
 
+  async deploymentStamp(): Promise<string | null> {
+    if (this.preview) return null;
+    const row = await one<{ stamp: string }>(
+      this.sql,
+      `SELECT concat_ws('/', d.version, d.annotation_epoch, d.revision, j.suspended_at IS NOT NULL) AS stamp
+       FROM jobs j LEFT JOIN deployments d ON d.job_id = j.id WHERE j.id = $1`,
+      [this.jobId],
+    );
+    return row?.stamp ?? "";
+  }
+
   async getDeployment(): Promise<DeploymentSpec> {
     if (await one(this.sql, "SELECT 1 FROM jobs WHERE id = $1 AND suspended_at IS NOT NULL", [this.jobId])) {
       throw new HttpError(403, "This job isn't available", "job_suspended");
@@ -98,7 +131,14 @@ export class DbStore implements Store {
   }
 
   async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
-    const { row, deviceId } = await this.sql.transaction((tx) => findOrCreateCoder(tx, this.jobId, request));
+    // The common case, a device that has a session here: one query.
+    const known = request.newSession ? null : await knownCoder(this.sql, this.jobId, request.coderKey);
+    const linkable = !!known && request.linkable && known.email === null;
+    if (known && !linkable) return { coder: toCoder(known), deviceId: known.device_id };
+    // The login only where it matters (read before the transaction: it is another query).
+    const login = (await request.login?.()) ?? null;
+    if (known && !login) return { coder: toCoder(known), deviceId: known.device_id };
+    const { row, deviceId } = await this.sql.transaction((tx) => findOrCreateCoder(tx, this.jobId, request, known, login));
     return { coder: toCoder(row), deviceId };
   }
 
@@ -146,14 +186,43 @@ export class DbStore implements Store {
     rules.count += added;
   }
 
-  async putCoder(coderId: number, write: CoderWrite): Promise<void> {
-    const updated = await this.sql.query("UPDATE coders SET assignments = $1, ended = $2 WHERE job_id = $3 AND id = $4 RETURNING id", [
-      JSON.stringify(write.assignments),
-      write.ended === null ? null : JSON.stringify(write.ended),
+  async routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void> {
+    // Merged into the stored routings, so routings in two loops at once don't overwrite each other.
+    const updated = await this.sql.query(
+      "UPDATE coders SET assignments = coalesce(assignments, '{}'::jsonb) || jsonb_build_object($1::text, $2::jsonb) WHERE job_id = $3 AND id = $4 RETURNING id",
+      [branch, JSON.stringify(assignment), this.jobId, coderId],
+    );
+    if (updated.length === 0) throw new HttpError(404, "Coder not found");
+  }
+
+  async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
+    const updated = await this.sql.query("UPDATE coders SET ended = $1 WHERE job_id = $2 AND id = $3 RETURNING id", [
+      ended === null ? null : JSON.stringify(ended),
       this.jobId,
       coderId,
     ]);
     if (updated.length === 0) throw new HttpError(404, "Coder not found");
+  }
+
+  async createTransfer(tokenHash: string, transfer: Transfer): Promise<void> {
+    await this.sql.query("DELETE FROM transfers WHERE expires < now()");
+    await this.sql.query("INSERT INTO transfers (token_hash, job_id, coder_id, participant, expires) VALUES ($1, $2, $3, $4, $5)", [
+      tokenHash,
+      this.jobId,
+      transfer.coderId,
+      transfer.participant,
+      transfer.expires,
+    ]);
+  }
+
+  async redeemTransfer(tokenHash: string, now: Date): Promise<Transfer | null> {
+    const row = await one<{ coder_id: number; participant: string | null; expires: Date }>(
+      this.sql,
+      "DELETE FROM transfers WHERE token_hash = $1 AND job_id = $2 RETURNING coder_id, participant, expires",
+      [tokenHash, this.jobId],
+    );
+    if (!row || row.expires <= now) return null;
+    return { coderId: row.coder_id, participant: row.participant, expires: row.expires };
   }
 
   async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {
@@ -165,7 +234,9 @@ export class DbStore implements Store {
   }
 
   async unitVersion(unitId: number, hash: string, data: UnitData): Promise<number> {
-    // Inserted once; a second insert (e.g. after a restart) returns the same row.
+    // Inserted once; usually it exists, so look first (no write per serve).
+    const found = await one<{ id: number }>(this.sql, "SELECT id FROM unit_versions WHERE unit_id = $1 AND hash = $2", [unitId, hash]);
+    if (found) return found.id;
     const row = await one<{ id: number }>(
       this.sql,
       `INSERT INTO unit_versions (job_id, unit_id, hash, data) VALUES ($1, $2, $3, $4)
@@ -238,12 +309,21 @@ export class DbStore implements Store {
     });
   }
 
-  async recordServe(coderId: number, unitId: number): Promise<void> {
-    await this.sql.query("INSERT INTO unit_serves (job_id, coder_id, unit_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING", [
-      this.jobId,
+  async recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void> {
+    await this.sql.query(
+      `INSERT INTO unit_serves (job_id, coder_id, unit_id, unit_version_id) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (coder_id, unit_id) DO UPDATE SET unit_version_id = excluded.unit_version_id
+       WHERE unit_serves.unit_version_id IS DISTINCT FROM excluded.unit_version_id`,
+      [this.jobId, coderId, unitId, unitVersionId],
+    );
+  }
+
+  async servedVersion(coderId: number, unitId: number): Promise<number | null> {
+    const row = await one<{ v: number | null }>(this.sql, "SELECT unit_version_id AS v FROM unit_serves WHERE coder_id = $1 AND unit_id = $2", [
       coderId,
       unitId,
     ]);
+    return row?.v ?? null;
   }
 }
 
@@ -262,26 +342,36 @@ async function addDevice(sql: Sql, jobId: number, coderId: number, coderKey: str
 const sessionOfEmail = (sql: Sql, jobId: number, email: string) =>
   one<CoderRow>(sql, "SELECT * FROM coders WHERE job_id = $1 AND lower(email) = lower($2) ORDER BY id DESC LIMIT 1", [jobId, email]);
 
-async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderRequest): Promise<{ row: CoderRow; deviceId: number }> {
-  const { login, coderKey, device } = request;
-  if (!request.newSession) {
-    const known = await one<CoderRow & { device_id: number }>(
-      sql,
-      "SELECT c.*, d.id AS device_id FROM coder_devices d JOIN coders c ON c.id = d.coder_id WHERE d.key_hash = $1",
-      [coderKey],
-    );
-    if (known) {
-      if (known.job_id !== jobId) throw new HttpError(401, "Coder key belongs to a different job");
-      // A login links its email to the session, once. If the email already
-      // has a session in this job, this device continues that one instead.
-      if (login && known.email === null) {
-        const other = await sessionOfEmail(sql, jobId, login.email);
-        if (other) return { row: other, deviceId: await addDevice(sql, jobId, other.id, coderKey, device) };
-        const linked = await one<CoderRow>(sql, "UPDATE coders SET email = $1 WHERE id = $2 RETURNING *", [login.email.toLowerCase(), known.id]);
-        return { row: linked!, deviceId: known.device_id };
-      }
-      return { row: known, deviceId: known.device_id };
-    }
+/** The session a device key has in this job, if any. */
+async function knownCoder(sql: Sql, jobId: number, coderKey: string): Promise<(CoderRow & { device_id: number }) | null> {
+  const known = await one<CoderRow & { device_id: number }>(
+    sql,
+    "SELECT c.*, d.id AS device_id FROM coder_devices d JOIN coders c ON c.id = d.coder_id WHERE d.key_hash = $1",
+    [coderKey],
+  );
+  if (known && known.job_id !== jobId) throw new HttpError(401, "Coder key belongs to a different job");
+  return known ?? null;
+}
+
+/**
+ * A device's session to link to a login (`known`, without an email yet), or
+ * a new device's: found by the login, or created from the invite.
+ */
+async function findOrCreateCoder(
+  sql: Sql,
+  jobId: number,
+  request: ResolveCoderRequest,
+  known: (CoderRow & { device_id: number }) | null,
+  login: { email: string } | null,
+): Promise<{ row: CoderRow; deviceId: number }> {
+  const { coderKey, device } = request;
+  if (known && login) {
+    // A login links its email to the session, once. If the email already
+    // has a session in this job, this device continues that one instead.
+    const other = await sessionOfEmail(sql, jobId, login.email);
+    if (other) return { row: other, deviceId: await addDevice(sql, jobId, other.id, coderKey, device) };
+    const linked = await one<CoderRow>(sql, "UPDATE coders SET email = $1 WHERE id = $2 RETURNING *", [login.email.toLowerCase(), known.id]);
+    return { row: linked!, deviceId: known.device_id };
   }
   // A new device of a linked session: logging in finds it.
   if (login && !request.newSession) {

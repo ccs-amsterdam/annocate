@@ -19,7 +19,6 @@ import { codebook } from "./researcher/codebook.$id.js";
 import { codebooks } from "./researcher/codebook.js";
 import { coders } from "./researcher/coders.js";
 import { deploymentPreview } from "./researcher/deployment.preview.js";
-import { deploymentRefresh } from "./researcher/deployment.refresh.js";
 import { deploymentStatus } from "./researcher/deployment.status.js";
 import { deployment } from "./researcher/deployment.js";
 import { inviteRevoke } from "./researcher/invites.$id.revoke.js";
@@ -127,7 +126,6 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   app.route("/", overview(server));
   app.route("/", deployment(server));
   app.route("/", deploymentStatus(server));
-  app.route("/", deploymentRefresh(server));
   app.route("/", deploymentPreview(server));
   app.route("/", annotationsReset(server));
   app.route("/", annotations(server));

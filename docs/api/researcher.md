@@ -114,7 +114,6 @@ response checked against its contract schema.
 | [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
 | [putDeployment](#putdeployment) | `PUT /job/:jobId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
 | [getDeploymentStatus](#getdeploymentstatus) | `GET /job/:jobId/deployment/status` | READ | – | `DeploymentStatusSchema` |
-| [refreshDeployment](#refreshdeployment) | `POST /job/:jobId/deployment/refresh` | ADMIN | `RefreshDeploymentSchema` | `{ version }` |
 | [createPreview](#createpreview) | `POST /job/:jobId/deployment/preview` | WRITE | – | `PreviewSessionSchema` |
 | [resetAnnotations](#resetannotations) | `POST /job/:jobId/annotations/reset` | ADMIN | `ResetAnnotationsSchema` | `{ retired }` |
 | **Annotations** | | | | |
@@ -453,14 +452,8 @@ questions, which makes units coders finished unfinished again.
 
 `GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: per loop
 and unitset the units complete, started and leased, codings and coders,
-plus what the runtime holds in memory. Computed on demand. 404 if not
+plus how many coders' answers the runtime holds in memory. Computed on demand. 404 if not
 published.
-
-### refreshDeployment
-
-`POST /job/:jobId/deployment/refresh` (`RefreshDeploymentSchema`) →
-`{ version }`: re-read the deployment now; `units` (`"all"` or ids) also
-drops cached unit content, e.g. after fixing a unit's text.
 
 ### createPreview
 

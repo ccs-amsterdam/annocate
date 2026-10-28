@@ -53,17 +53,6 @@ export interface BranchChoice {
 }
 
 export interface RuntimeOptions {
-  /** Re-fetch the deployment spec at most this often, in case a refresh notification was missed. */
-  specTtlMs: number;
-  /**
-   * Memory budget for cached unit content, estimated from its JSON size.
-   * Over budget, the least recently used units go first. Units shouldn't
-   * change once coding started, so they are not re-fetched otherwise; a
-   * refresh with `units` drops them on purpose.
-   */
-  unitCacheBytes: number;
-  /** Units fetched ahead of the one a coder asked for. */
-  prefetch: number;
   /** How long a "continue on another device" link stays valid. */
   transferTtlMs: number;
   /**
@@ -72,7 +61,7 @@ export interface RuntimeOptions {
    * are re-fetched when the coder returns.
    */
   workspaceCacheBytes: number;
-  /** Upper bound on keeping unused units and coder annotations, however much room is left. */
+  /** Upper bound on keeping coder annotations, however much room is left. */
   maxIdleMs: number;
   /** A loaded deployment nobody used for this long is dropped (registry.ts). */
   deploymentIdleMs: number;
@@ -81,9 +70,6 @@ export interface RuntimeOptions {
 }
 
 export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
-  specTtlMs: 60_000,
-  unitCacheBytes: 64 * 2 ** 20,
-  prefetch: 3,
   transferTtlMs: 15 * 60_000,
   workspaceCacheBytes: 32 * 2 ** 20,
   maxIdleMs: 24 * 60 * 60_000,
@@ -113,38 +99,33 @@ interface WorkspaceEntry {
   bytes: number;
   /** Loops where the coder was told there are no more units. All of them: the coder is done, evicted first. */
   exhausted: Set<string>;
-  /** unitId -> the unit version last shown to the coder, stored with their answers. */
-  served: Map<number, number>;
 }
 
 /** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
 export const REOPEN_MS = 15 * 60 * 1000;
 
-/** Rough size of one `served` entry. */
-const SERVED_BYTES = 32;
-
 /** Rough in-memory size of a JSON value: enough to compare against a budget. */
 const sizeOf = (value: unknown) => JSON.stringify(value).length;
 
 /**
- * Everything the server keeps in memory for one deployed job. All of it is a
- * cache of the database except dynamic leases, which are disposable. The
- * cache has two parts (docs/architecture.md §3):
+ * The coder runtime of one deployed job. Per request it reads the coder,
+ * their answers and units from the database (docs/plan-stateless-runtime.md);
+ * it keeps in memory only:
  *
- *  - distribution state, loaded eagerly by `load`: the spec, for loops with
- *    dynamic sources which coder finished which unit (plus agreement keys),
+ *  - the deployment spec, re-read when its stamp changes (`refresh`);
+ *  - distribution state, loaded eagerly by `load`: for loops with shared
+ *    queues or sets which coder finished which unit (plus agreement keys),
  *    and for `balanced` auto variables which coder has which option;
- *  - per active coder: the coder record (variables, assignments) and their
- *    workspace, i.e. their own live annotations, loaded when the coder shows
- *    up and evicted when they go idle. A coder's finished units in every loop
- *    are derived from the workspace.
+ *  - per active coder their workspace, i.e. their own live annotations,
+ *    loaded when the coder shows up and evicted when they go idle. A coder's
+ *    finished units in every loop are derived from the workspace.
+ *
+ * The last two move to the database in step 4 of that plan; until then this
+ * assumes one server process.
  *
  * "Finished" is always relative to the current codebook: every question of
  * the loop has a live value (docs/architecture.md §8.2). Codings are kept
  * per loop, so a unit in two loops is finished in each separately.
- *
- * One per deployment, in memory (registry.ts). This assumes one server
- * process; more would need the leases and codings in the database.
  */
 export class DeploymentRuntime {
   private spec!: DeploymentSpec;
@@ -166,8 +147,6 @@ export class DeploymentRuntime {
   private pools = new Map<string, UnitPool>();
   /** The unit fields the codebook shows (`shownUnitFields`): all coders get. */
   private shownFields: string[] = [];
-  /** unitId -> the unit as shown under this codebook, and its version (`shownVersion`). */
-  private shown = new Map<number, { content: string; data: UnitData; versionId: number }>();
   /** Loops with `sets` branches: coderId -> their set and when they were routed, for every coder. */
   private setAssignments = new Map<string, Map<number, { set: string; at: number }>>();
   /**
@@ -177,17 +156,10 @@ export class DeploymentRuntime {
   private workspaces = new Map<number, WorkspaceEntry>();
   private workspaceBytes = 0;
   private workspaceLoads = new Map<number, Promise<Workspace>>();
-  /** Active coders only; evicted together with their workspace. */
-  private coders = new Map<number, Coder>();
-  private coderKeys = new Map<string, { coderId: number; deviceId: number | null }>();
   /** `balanced` auto variable -> coderId -> option, for every coder that has one. */
   private balanced = new Map<string, Map<number, string>>();
-  /** Unit content; Map order is recency order (least recent first). */
-  private units = new Map<number, { unit: Unit; bytes: number; usedAt: number }>();
-  private unitBytes = 0;
-  /** One-time transfer tokens -> coder key. Memory only: losing them just means making a new link. */
-  private transfers = new Map<string, { coderId: number; participant: string | null; expires: number }>();
-  private specCheckedAt = 0;
+  /** The deployment's stamp when the spec was read (`Store.deploymentStamp`). */
+  private stamp: string | null = null;
   private loadedAt = 0;
   private refreshing: Promise<void> | null = null;
 
@@ -201,27 +173,32 @@ export class DeploymentRuntime {
 
   /** (Re)builds the distribution state from the database. Coder workspaces are loaded on demand. */
   async load(): Promise<void> {
+    const stamp = await this.store.deploymentStamp();
     this.applySpec(await this.store.getDeployment());
+    this.stamp = stamp;
     await Promise.all([this.loadCodings(), this.loadBalanced(), this.loadSetAssignments()]);
     this.loadedAt = this.options.now();
   }
 
   /**
-   * Re-fetches the spec, and applies it if its version changed. Finished
-   * codings are derived from annotations *and* the codebook's loops, so they
-   * are kept only if the loops' questions, dynamic sources and agreement
-   * variables are unchanged, and no annotations were reset meanwhile
-   * (`annotationEpoch`). Single-flight.
+   * Checks the deployment's stamp (one small query, every request), and if
+   * it changed re-reads the spec; applies it fully if its version changed.
+   * Finished codings are derived from annotations *and* the codebook's
+   * loops, so they are kept only if the loops' questions, dynamic sources
+   * and agreement variables are unchanged, and no annotations were reset
+   * meanwhile (`annotationEpoch`). Single-flight.
    */
-  async refresh(force = false): Promise<void> {
-    if (!force && this.options.now() - this.specCheckedAt < this.options.specTtlMs) return;
+  async refresh(): Promise<void> {
     this.refreshing ??= (async () => {
       try {
         this.evictExpired();
+        const stamp = await this.store.deploymentStamp();
+        if (stamp !== null && stamp === this.stamp) return;
         const spec = await this.store.getDeployment();
+        // Only once read: a failed read (e.g. a suspended job) is tried again next time.
+        this.stamp = stamp;
         if (spec.version === this.spec.version && spec.annotationEpoch === this.spec.annotationEpoch) {
-          this.specCheckedAt = this.options.now();
-          this.spec = { ...this.spec, keepSessionsOpen: spec.keepSessionsOpen };
+          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen };
           this.applyUnitsets(spec);
           return;
         }
@@ -256,7 +233,6 @@ export class DeploymentRuntime {
 
   private applySpec(spec: DeploymentSpec): void {
     this.spec = spec;
-    this.specCheckedAt = this.options.now();
     const items = spec.codebook.items as TopLevelItem[];
     this.loops = new Map(collectLoops(items).map((l) => [l.key, l]));
     this.coderVariableTypes = collectCoderVariables(items);
@@ -266,7 +242,6 @@ export class DeploymentRuntime {
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
     this.shownFields = shownUnitFields(items);
-    this.shown.clear();
     this.pools.clear();
     this.removedUnits.clear();
   }
@@ -378,7 +353,7 @@ export class DeploymentRuntime {
           // dynamic sources only learn them here).
           for (const a of annotations) this.recordFinished(coderId, a.unitId, a.variables, a.updated.getTime());
           const bytes = annotations.reduce((n, a) => n + sizeOf(a.variables), 0);
-          this.workspaces.set(coderId, { units, usedAt: this.options.now(), bytes, exhausted: new Set(), served: new Map() });
+          this.workspaces.set(coderId, { units, usedAt: this.options.now(), bytes, exhausted: new Set() });
           this.workspaceBytes += bytes;
           this.trimWorkspaces(coderId);
           return units;
@@ -396,46 +371,12 @@ export class DeploymentRuntime {
   /**
    * The coder for a coder key, created on first use (from the invite, with
    * participant id / new-session confirmation, see docs/coder-identity.md).
+   * Read from the database on every request: one indexed query.
    */
-  async resolveCoder(
-    request: Omit<ResolveCoderRequest, "login">,
-    {
-      login,
-      linkable = false,
-    }: {
-      /** Reads the device's login, if any: only asked when it matters (below), so coding needs no login lookups. */
-      login?: () => Promise<{ email: string } | null>;
-      /** The invite takes logins: a session without an email gets linked to a login. */
-      linkable?: boolean;
-    } = {},
-  ): Promise<ResolvedCoder> {
-    const known = request.newSession ? undefined : this.coderKeys.get(request.coderKey);
-    const cached = known && this.coders.get(known.coderId);
-    // Known on this device, and nothing to link: no store, no login.
-    if (cached && (cached.email !== null || !linkable)) {
-      // Their workspace may have been dropped by a reload.
-      await this.workspace(cached.coderId);
-      return { coder: cached, deviceId: known.deviceId };
-    }
-    // A login counts where the invite takes logins, and on a device without a session (it finds the email's session).
-    const user = login && (linkable || !cached) ? await login() : null;
-    if (cached && !user) {
-      await this.workspace(cached.coderId);
-      return { coder: cached, deviceId: known.deviceId };
-    }
-    // Not active (new, evicted, the server restarted, or linking): the database has the record.
-    const resolved = await this.store.resolveCoder({ ...request, ...(user ? { login: user } : {}) });
-    this.coderKeys.set(request.coderKey, { coderId: resolved.coder.coderId, deviceId: resolved.deviceId });
-    const active = this.coders.get(resolved.coder.coderId);
-    if (active) {
-      active.email = resolved.coder.email;
-      await this.workspace(active.coderId);
-      return { coder: active, deviceId: resolved.deviceId };
-    }
-    const stored = resolved.coder;
-    this.coders.set(stored.coderId, stored);
-    await this.workspace(stored.coderId);
-    return { coder: stored, deviceId: resolved.deviceId };
+  async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
+    const resolved = await this.store.resolveCoder(request);
+    await this.workspace(resolved.coder.coderId);
+    return resolved;
   }
 
   /**
@@ -491,19 +432,13 @@ export class DeploymentRuntime {
     return options.reduce((best, o) => (counts.get(o.value)! < counts.get(best.value)! ? o : best)).value;
   }
 
-  private async saveCoder(coder: Coder): Promise<void> {
-    await this.store.putCoder(coder.coderId, { assignments: coder.assignments, ended: coder.ended });
-  }
-
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
-  createTransfer(coder: Coder): TransferResponse {
-    const now = this.options.now();
-    for (const [token, t] of this.transfers) if (t.expires <= now) this.transfers.delete(token);
+  async createTransfer(coder: Coder): Promise<TransferResponse> {
     const bytes = crypto.getRandomValues(new Uint8Array(24));
     const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    const expires = now + this.options.transferTtlMs;
-    this.transfers.set(token, { coderId: coder.coderId, participant: coder.session.participant ?? null, expires });
-    return { token, expiresAt: new Date(expires) };
+    const expires = new Date(this.options.now() + this.options.transferTtlMs);
+    await this.store.createTransfer(await sha256(token), { coderId: coder.coderId, participant: coder.session.participant ?? null, expires });
+    return { token, expiresAt: expires };
   }
 
   /**
@@ -511,15 +446,9 @@ export class DeploymentRuntime {
    * its keys for it (`keys`, from the session's participant id: coder.ts).
    */
   async redeemTransfer(token: string, keys: (participantId: string | null) => Promise<string[]>, device: DeviceDetails): Promise<void> {
-    const transfer = this.transfers.get(token);
-    this.transfers.delete(token);
-    if (!transfer || transfer.expires <= this.options.now()) {
-      throw new HttpError(404, "This link has expired or was already used", "transfer_invalid");
-    }
-    for (const key of await keys(transfer.participant)) {
-      const deviceId = await this.store.addDevice(transfer.coderId, key, device);
-      this.coderKeys.set(key, { coderId: transfer.coderId, deviceId });
-    }
+    const transfer = await this.store.redeemTransfer(await sha256(token), new Date(this.options.now()));
+    if (!transfer) throw new HttpError(404, "This link has expired or was already used", "transfer_invalid");
+    for (const key of await keys(transfer.participant)) await this.store.addDevice(transfer.coderId, key, device);
   }
 
   /**
@@ -573,7 +502,7 @@ export class DeploymentRuntime {
       throw new HttpError(400, "The end's unit is not one you answered");
     }
     coder.ended = { ...(item ? { item } : {}), ...(unit ? { unit } : {}), outcome: end?.outcome ?? "complete", at: new Date(this.options.now()) };
-    await this.saveCoder(coder);
+    await this.store.setEnded(coder.coderId, coder.ended);
     return { reopen: this.reopen(coder) };
   }
 
@@ -596,7 +525,7 @@ export class DeploymentRuntime {
     if (!coder.ended) return;
     if (!this.reopen(coder)) throw new HttpError(409, "This session has ended", "session_closed");
     coder.ended = null;
-    await this.saveCoder(coder);
+    await this.store.setEnded(coder.coderId, null);
   }
 
   /** An ended session is closed, unless the job keeps sessions open: the coder gets only what the end screen shows. */
@@ -632,7 +561,7 @@ export class DeploymentRuntime {
     const at = new Date(this.options.now());
     if (!coder.ended) {
       coder.ended = { outcome: "quit", at };
-      await this.saveCoder(coder);
+      await this.store.setEnded(coder.coderId, coder.ended);
     }
     if (requestDeletion) {
       coder.deletionRequest = { at };
@@ -776,8 +705,9 @@ export class DeploymentRuntime {
     }
 
     const at = this.options.now();
-    coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: { unitsets: names, at } };
-    await this.saveCoder(coder);
+    const assignment = { unitsets: names, at };
+    coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: assignment };
+    await this.store.routeCoder(coder.coderId, branchFingerprint(branch), assignment);
     if (branch.mode === "sets") this.setCoders(info.key).set(coder.coderId, { set: names[0], at });
     return this.routed(info.key, branch, names);
   }
@@ -830,7 +760,6 @@ export class DeploymentRuntime {
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
     const [routed, own] = await Promise.all([this.route(coder, info, choice), this.workspace(coder.coderId)]);
     if (!routed) return null;
-    const pools = DeploymentRuntime.poolsOf(routed);
 
     for (;;) {
       const next = pickNext(routed.main, routed.overlap, coder.coderId, this.codingsFor(loopName), {
@@ -845,9 +774,7 @@ export class DeploymentRuntime {
         return null;
       }
 
-      const upcoming = pools.flatMap((p) => p.candidates(coder.coderId, this.options.now(), null)).slice(0, this.options.prefetch);
-      const units = await this.getUnits([next.unitId, ...upcoming.filter((id) => id !== next.unitId)]);
-      const unit = units.get(next.unitId);
+      const unit = (await this.getUnits([next.unitId])).get(next.unitId);
       if (!unit) {
         // It no longer exists: drop it everywhere and try the next one.
         this.removedUnits.add(next.unitId);
@@ -917,7 +844,7 @@ export class DeploymentRuntime {
     // Values of other variables (e.g. questions an update removed) are left
     // alone, so they stay as data. With them: the unit version the coder
     // saw (which may be older than the unit's content now).
-    let unitVersionId = this.workspaces.get(coder.coderId)?.served.get(unitId);
+    let unitVersionId = (await this.store.servedVersion(coder.coderId, unitId)) ?? undefined;
     if (unitVersionId === undefined) {
       const unit = (await this.getUnits([unitId])).get(unitId);
       unitVersionId = unit && (await this.shownVersion(unit)).versionId;
@@ -1006,8 +933,6 @@ export class DeploymentRuntime {
       sources,
       loadedAt: new Date(this.loadedAt),
       memory: {
-        units: this.units.size,
-        unitBytes: this.unitBytes,
         coders: this.workspaces.size,
         coderBytes: this.workspaceBytes,
       },
@@ -1017,52 +942,18 @@ export class DeploymentRuntime {
   /**
    * A unit as coders see it under this codebook (docs/architecture.md
    * §8.4): only the fields it uses (`shownUnitFields`), and the id of that
-   * unit version, stored the first time it is shown. Both are remembered
-   * until the unit or the codebook changes.
+   * unit version, stored the first time it is shown.
    */
   private async shownVersion(unit: Unit): Promise<{ data: UnitData; versionId: number }> {
-    const cached = this.shown.get(unit.id);
-    if (cached && cached.content === unit.hash) return cached;
     const data: UnitData = Object.fromEntries(this.shownFields.filter((f) => f in unit.data).map((f) => [f, unit.data[f]]));
-    const versionId = await this.store.unitVersion(unit.id, unitHash(unit.externalId, data), data);
-    const entry = { content: unit.hash, data, versionId };
-    this.shown.set(unit.id, entry);
-    return entry;
+    return { data, versionId: await this.store.unitVersion(unit.id, unitHash(unit.externalId, data), data) };
   }
 
   /** Records which version of a unit the coder was shown; returns it. */
   private async markServed(coderId: number, unit: Unit): Promise<{ data: UnitData; versionId: number }> {
     const shown = await this.shownVersion(unit);
-    const entry = this.workspaces.get(coderId);
-    if (!entry) return shown;
-    if (!entry.served.has(unit.id)) {
-      entry.bytes += SERVED_BYTES;
-      this.workspaceBytes += SERVED_BYTES;
-      await this.store.recordServe(coderId, unit.id);
-    }
-    entry.served.set(unit.id, shown.versionId);
+    await this.store.recordServe(coderId, unit.id, shown.versionId);
     return shown;
-  }
-
-  /** Drops unit content from the cache: all of it, or these units. */
-  clearUnits(ids: number[] | "all"): void {
-    for (const id of ids === "all" ? [...this.units.keys()] : ids) this.dropUnit(id);
-  }
-
-  private dropUnit(id: number): void {
-    this.shown.delete(id);
-    const entry = this.units.get(id);
-    if (!entry) return;
-    this.units.delete(id);
-    this.unitBytes -= entry.bytes;
-  }
-
-  /** Least recently used units first, until within budget. */
-  private trimUnits(): void {
-    for (const id of this.units.keys()) {
-      if (this.unitBytes <= this.options.unitCacheBytes) return;
-      this.dropUnit(id);
-    }
   }
 
   /**
@@ -1096,47 +987,21 @@ export class DeploymentRuntime {
     }
   }
 
-  /** Applies the idle limit, and drops coders whose workspace is gone. */
+  /** Applies the idle limit to workspaces. */
   private evictExpired(): void {
     const now = this.options.now();
-    for (const [id, { usedAt }] of this.units) if (now - usedAt >= this.options.maxIdleMs) this.dropUnit(id);
     for (const [id, { usedAt }] of this.workspaces) if (now - usedAt >= this.options.maxIdleMs) this.dropWorkspace(id);
-    // Coders go with their workspace; they are resolved again when they come back.
-    for (const id of this.coders.keys()) {
-      if (!this.workspaces.has(id) && !this.workspaceLoads.has(id)) this.coders.delete(id);
-    }
-    for (const [key, { coderId }] of this.coderKeys) if (!this.coders.has(coderId)) this.coderKeys.delete(key);
   }
 
   private async getUnits(ids: number[]): Promise<Map<number, Unit>> {
-    const now = this.options.now();
-    const result = new Map<number, Unit>();
-    const missing: number[] = [];
-    for (const id of ids) {
-      const cached = this.units.get(id);
-      if (!cached) {
-        missing.push(id);
-        continue;
-      }
-      cached.usedAt = now;
-      this.units.delete(id); // move to the most recent end
-      this.units.set(id, cached);
-      result.set(id, cached.unit);
-    }
-    // Only go to the database if the unit actually asked for is missing;
-    // prefetch candidates ride along with that request.
-    if (missing.includes(ids[0])) {
-      for (const unit of await this.store.getUnits(missing)) {
-        this.dropUnit(unit.id);
-        const bytes = sizeOf(unit);
-        this.units.set(unit.id, { unit, bytes, usedAt: now });
-        this.unitBytes += bytes;
-        result.set(unit.id, unit);
-      }
-      this.trimUnits();
-    }
-    return result;
+    return new Map((await this.store.getUnits(ids)).map((unit) => [unit.id, unit]));
   }
+}
+
+/** Hex SHA-256 of a text (Web Crypto: the runtime runs outside Node too). */
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function agreementKeys(variables: Record<string, VariableValue>, info: LoopInfo): AgreementKeys {

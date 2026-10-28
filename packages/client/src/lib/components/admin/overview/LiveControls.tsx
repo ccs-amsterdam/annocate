@@ -1,20 +1,17 @@
-import { Pause, Play, RefreshCw } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import type { DeploymentResponse, DeploymentStatus } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useDeploymentActiveMutation, useRefreshDeploymentMutation } from "../../../admin/queries";
+import { useDeploymentActiveMutation } from "../../../admin/queries";
 import { formatWhen } from "../../../admin/format";
 
 /**
  * Controls of the live job (docs/client.md §7, "Overview"): pause it (coders
- * get no new units; units they hold can still be finished) or resume it,
- * and reload it on the server (normally automatic: after publishing, units
- * and unitsets changing, resets).
+ * get no new units; units they hold can still be finished) or resume it.
  */
 export function LiveControls({ client, deployment }: { client: ResearcherApi; deployment: DeploymentResponse }) {
   const setActive = useDeploymentActiveMutation(client);
-  const refresh = useRefreshDeploymentMutation(client);
-  const error = setActive.error ?? refresh.error;
+  const error = setActive.error;
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="flex flex-wrap gap-2">
@@ -31,18 +28,7 @@ export function LiveControls({ client, deployment }: { client: ResearcherApi; de
           {deployment.active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           {deployment.active ? "Pause" : "Resume"}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={refresh.isPending}
-          title="Has the server read the job again now, including unit content. Normally not needed: it does so by itself after changes."
-          onClick={() => refresh.mutate({ units: "all" })}
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refresh.isPending ? "animate-spin" : ""}`} />
-          Reload
-        </Button>
       </div>
-      {refresh.isSuccess && <span className="text-xs text-muted-foreground">Reloaded.</span>}
       {error && <span className="text-xs text-destructive">{error.message}</span>}
     </div>
   );
@@ -55,7 +41,7 @@ export function RuntimeLine({ status }: { status: DeploymentStatus }) {
     <p className="mt-3 text-[11px] text-muted-foreground">
       Loaded on the server {formatWhen(status.loadedAt)}
       {status.memory &&
-        ` · in memory: ${status.memory.units} units (${mb(status.memory.unitBytes)}), ${status.memory.coders} coders (${mb(status.memory.coderBytes)})`}
+        ` · in memory: answers of ${status.memory.coders} coders (${mb(status.memory.coderBytes)})`}
     </p>
   );
 }

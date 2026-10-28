@@ -9,7 +9,6 @@ import type {
   CoderProgress,
   DeleteCoders,
   JobUser,
-  RefreshDeployment,
   ResetAnnotations,
   UnitResponse,
   DeploymentResponse,
@@ -320,15 +319,6 @@ export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationR
       queryClient.setQueryData(keys.deployment(client.jobId), deployment);
       return queryClient.invalidateQueries({ queryKey: keys.job(client.jobId) });
     },
-  });
-}
-
-/** Has the server re-read the live job now (optionally dropping its cached unit content). */
-export function useRefreshDeploymentMutation(client: ResearcherApi): UseMutationResult<{ version: number }, Error, RefreshDeployment> {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: RefreshDeployment) => client.refreshDeployment(body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.deploymentStatus(client.jobId) }),
   });
 }
 

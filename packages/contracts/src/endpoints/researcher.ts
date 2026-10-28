@@ -22,7 +22,6 @@ import {
   DeploymentResponseSchema,
   DeploymentStatusSchema,
   ResetAnnotationsSchema,
-  RefreshDeploymentSchema,
   PreviewSessionSchema,
 } from "../deployment.js";
 
@@ -194,12 +193,6 @@ export const researcherEndpoints = {
     path: "/job/:jobId/deployment/status",
     request: z.void(),
     response: DeploymentStatusSchema,
-  },
-  refreshDeployment: {
-    method: "POST",
-    path: "/job/:jobId/deployment/refresh",
-    request: RefreshDeploymentSchema,
-    response: z.object({ version: z.number().int().positive() }),
   },
   createPreview: {
     method: "POST",

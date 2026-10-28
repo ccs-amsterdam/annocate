@@ -62,28 +62,15 @@ export const DeploymentStatusSchema = z.object({
   coders: z.number().int().nonnegative(),
   sources: z.array(SourceStatusSchema),
   loadedAt: z.coerce.date(),
-  /** What the server holds in memory for this deployment (sizes estimated from JSON). */
+  /** What the server holds in memory for this deployment: coders' answers (sizes estimated from JSON). */
   memory: z
     .object({
-      units: z.number().int().nonnegative(),
-      unitBytes: z.number().int().nonnegative(),
       coders: z.number().int().nonnegative(),
       coderBytes: z.number().int().nonnegative(),
     })
     .optional(),
 });
 export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
-
-/**
- * Researcher `POST /job/:jobId/deployment/refresh`: re-read the deployment
- * now. Unit content is cached in memory and normally never re-read, since
- * units shouldn't change once coding started; `units` drops the cache for
- * all (`"all"`) or some units, so changed content is served from then on.
- */
-export const RefreshDeploymentSchema = z.object({
-  units: z.union([z.literal("all"), z.array(IdSchema)]).optional(),
-});
-export type RefreshDeployment = z.infer<typeof RefreshDeploymentSchema>;
 
 /**
  * Researcher `POST /job/:jobId/deployment/preview`: a preview of the job's

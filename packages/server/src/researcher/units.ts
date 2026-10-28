@@ -76,9 +76,8 @@ export function units(server: Server): Hono<Env> {
       }
       return result;
     });
-    // Coders get the new content, and new units in "all units", from now on (the runtime caches units).
-    const replaced = units.flatMap((u) => existing.get(u.externalId)?.id ?? []);
-    await server.deployments.refresh(jobId, replaced.length > 0 ? replaced : undefined);
+    // New units in "all units" are handed out from now on.
+    await server.deployments.refresh(jobId);
     return c.json(created, 201);
   });
 

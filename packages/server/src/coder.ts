@@ -87,10 +87,15 @@ export function coderApi(server: Server): Hono {
             return user ? { email: user.email } : null;
           }
         : undefined;
-    const { coder, deviceId } = await runtime.resolveCoder(
-      { coderKey: key, inviteSecret, urlParams, newSession, device: deviceDetails(c.req.header("user-agent")) },
-      { login, linkable: !!link && link.login !== "none" },
-    );
+    const { coder, deviceId } = await runtime.resolveCoder({
+      coderKey: key,
+      inviteSecret,
+      urlParams,
+      newSession,
+      device: deviceDetails(c.req.header("user-agent")),
+      login,
+      linkable: !!link && link.login !== "none",
+    });
     // Only once the coder was accepted (an invite may be invalid or used up).
     if (device !== existingDevice) writeDevice(c, device);
     c.set("deviceId", deviceId);
@@ -99,7 +104,7 @@ export function coderApi(server: Server): Hono {
     await next();
   });
 
-  session.post("/transfer", (c) => c.json(c.get("runtime").createTransfer(c.get("coder"))));
+  session.post("/transfer", async (c) => c.json(await c.get("runtime").createTransfer(c.get("coder"))));
 
   session.get("/session", async (c) => {
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));

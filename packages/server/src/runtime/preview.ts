@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { DeletionRequest, VariableValue } from "@annotinder/contracts";
+import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
-import type { Coder as StoredCoder, CoderAnnotation, CoderValue, CoderValuesWrite, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder } from "./types.js";
+import type { Coder as StoredCoder, CoderAnnotation, CoderValue, CoderAssignments, CoderValuesWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder, Transfer } from "./types.js";
 
 // Researcher previews (`<jobId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
@@ -64,7 +64,8 @@ export class PreviewStore implements Store {
   async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
     const knownId = request.newSession ? undefined : this.devices.get(request.coderKey);
     const known = knownId === undefined ? undefined : this.coders.get(knownId);
-    if (known) return { coder: known, deviceId: null };
+    // A copy, as from a database: changes go through the store.
+    if (known) return { coder: { ...known }, deviceId: null };
     const valid =
       request.inviteSecret !== undefined &&
       verifyPreviewToken(this.secret, this.jobId, request.inviteSecret, this.now());
@@ -81,7 +82,7 @@ export class PreviewStore implements Store {
     };
     this.coders.set(coder.coderId, coder);
     this.devices.set(request.coderKey, coder.coderId);
-    return { coder, deviceId: null };
+    return { coder: { ...coder }, deviceId: null };
   }
 
   async addDevice(coderId: number, coderKey: string): Promise<number | null> {
@@ -92,11 +93,33 @@ export class PreviewStore implements Store {
   /** Previews keep nothing: no limits. */
   async checkAnswers(): Promise<void> {}
 
-  async putCoder(coderId: number, body: CoderWrite): Promise<void> {
+  /** Previews check the latest codebook on every request. */
+  async deploymentStamp(): Promise<string | null> {
+    return null;
+  }
+
+  async routeCoder(coderId: number, branch: string, assignment: CoderAssignments[string]): Promise<void> {
     const coder = this.coders.get(coderId);
     if (!coder) throw new HttpError(404, "Coder not found");
-    coder.assignments = body.assignments;
-    coder.ended = body.ended;
+    coder.assignments = { ...coder.assignments, [branch]: assignment };
+  }
+
+  async setEnded(coderId: number, ended: SessionEnd | null): Promise<void> {
+    const coder = this.coders.get(coderId);
+    if (!coder) throw new HttpError(404, "Coder not found");
+    coder.ended = ended;
+  }
+
+  private transfers = new Map<string, Transfer>();
+
+  async createTransfer(tokenHash: string, transfer: Transfer): Promise<void> {
+    this.transfers.set(tokenHash, transfer);
+  }
+
+  async redeemTransfer(tokenHash: string, now: Date): Promise<Transfer | null> {
+    const transfer = this.transfers.get(tokenHash);
+    this.transfers.delete(tokenHash);
+    return transfer && transfer.expires > now ? transfer : null;
   }
 
   async putCoderValues(write: CoderValuesWrite): Promise<void> {
@@ -131,7 +154,16 @@ export class PreviewStore implements Store {
     return [...this.annotations.values()].filter((a) => a.coderId === coderId);
   }
 
-  async recordServe(): Promise<void> {}
+  /** unitId/coderId -> the unit version last shown. */
+  private served = new Map<string, number>();
+
+  async recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void> {
+    this.served.set(`${unitId}/${coderId}`, unitVersionId);
+  }
+
+  async servedVersion(coderId: number, unitId: number): Promise<number | null> {
+    return this.served.get(`${unitId}/${coderId}`) ?? null;
+  }
 
   async putAnnotation(w: AnnotationWrite): Promise<void> {
     const now = new Date(this.now());

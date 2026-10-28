@@ -1108,32 +1108,34 @@ describe("finished units follow the current codebook", () => {
 describe("memory", () => {
   const status = async () =>
     (await (await server.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
-  const refresh = (body: object) =>
-    server.request("/job/1/deployment/refresh", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
   const count = (call: string) => storeCalls.filter((c) => c === call).length;
-  const UNITS = "getUnits";
   const ANNOTATIONS = "listAnnotations";
 
-  it("keeps units cached until a refresh drops them", async () => {
+  it("keeps no units: a unit changed after it was served is served as it is now", async () => {
     const c = coder("units");
     const unit = (await c.next())!;
     await c.submit(unit.id, demo("neutral"));
     await db.query("UPDATE units SET data = $1 WHERE id = $2", [JSON.stringify({ text: "fixed" }), unit.id]);
-
-    const back = async () => ((await (await c.call(`/loop/1/units/${unit.id}`)).json()) as CoderUnitResponse).data;
-    expect(await back()).toEqual(unit.data); // cached: no change, no fetch
-    expect((await refresh({ units: [unit.id] })).status).toBe(200);
-    expect(await back()).toEqual({ text: "fixed" });
+    const back = ((await (await c.call(`/loop/1/units/${unit.id}`)).json()) as CoderUnitResponse).data;
+    expect(back).toEqual({ text: "fixed" });
   });
 
-  it("drops the least recently used units when over budget", async () => {
-    server = restart({ unitCacheBytes: 1 });
-    const c = coder("budget");
-    const unit = (await c.next())!;
-    await c.submit(unit.id, demo("neutral"));
-    expect((await c.call(`/loop/1/units/${unit.id}`)).status).toBe(200);
-    expect(count(UNITS)).toBe(2); // nothing fits, so fetched again
-    expect((await status()).memory?.unitBytes).toBe(0);
+  it("works across server processes: changes, sessions and transfer links are in the database", async () => {
+    const c = coder("two-servers");
+    await c.session();
+    const other = restart(); // a second process on the same database, running alongside
+    const first = server;
+    // A transfer link made on one process is redeemed on the other
+    const { token } = (await (await c.call("/transfer", { method: "POST" })).json()) as { token: string };
+    const phone = coder("phone", null, () => other);
+    expect((await phone.call("/transfer/redeem", { method: "POST", body: JSON.stringify({ token }) })).status).toBe(200);
+    expect((await phone.session()).coderId).toBe((await c.session()).coderId);
+    // Pausing the job on one process is seen at once by the other
+    server = other;
+    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { codebookId: number };
+    await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: deployment.codebookId, active: false }) });
+    server = first;
+    expect((await c.call("/loop/1/next")).status).toBe(409);
   });
 
   it("drops coders who are done first when over budget, and rebuilds them on return", async () => {
