@@ -45,7 +45,7 @@ gets an overlap unit after every 20 of their own units. If a coder runs out
 of own units sooner, the overlap units that are left come at the end.
 
 Spreading needs to know how many units a coder will get. In a shared queue
-that is **Max units per coder**, so the option needs it (the menu says
+that is **Units per coder, at most**, so the option needs it (the menu says
 *needs max units per coder* until it is set).
 
 Coders don't see which units are overlap units. With a random

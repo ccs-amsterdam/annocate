@@ -498,42 +498,92 @@ function BranchEditor({
 
 const numberOrUndefined = (v: string) => (v === "" ? undefined : Number(v));
 
+/**
+ * A shared queue's numbers as a small grid: units per coder (min, max), and
+ * coders per unit or agreement per unit (the `until` rule, and max coders).
+ */
 function SharedSettings({ branch, agreeable, onChange }: { branch: SharedBranch; agreeable: string[]; onChange: (b: UnitBranch) => void }) {
   const agree = "agree" in branch.until;
   const needed = agree && "agree" in branch.until ? branch.until.agree : "coders" in branch.until ? branch.until.coders : 1;
+  const numberInput = "h-8 w-full text-xs";
   return (
-    <div className="flex flex-wrap items-end gap-3 text-xs">
-      <label className={labelClass}>
-        Each unit is coded until
-        <div className="flex items-center gap-1.5 font-normal">
-          <Input
-            type="number"
-            min={agree ? 2 : 1}
-            className="h-8 w-16 text-xs"
-            value={needed}
-            onChange={(e) => {
-              const n = Number(e.target.value) || 1;
-              // Max coders can't be below the number needed: it follows upwards.
-              const maxCoders = branch.maxCoders !== undefined && branch.maxCoders < n ? n : branch.maxCoders;
-              onChange({ ...branch, maxCoders, until: agree && "on" in branch.until ? { agree: n, on: branch.until.on } : { coders: n } });
-            }}
-          />
-          <select
-            className={selectClass}
-            value={agree ? "agree" : "coders"}
-            onChange={(e) =>
-              onChange({
-                ...branch,
-                until: e.target.value === "agree" ? { agree: Math.max(2, needed), on: agreeable[0] ?? "" } : { coders: needed },
-                ...(e.target.value === "agree" && branch.maxCoders === undefined ? { maxCoders: Math.max(3, needed + 1) } : {}),
-              })
-            }
-          >
-            <option value="coders">coders coded it</option>
-            <option value="agree">coders agree on</option>
-          </select>
-          {agree && "on" in branch.until && (
-            <select className={selectClass} value={branch.until.on} onChange={(e) => onChange({ ...branch, until: { ...branch.until, on: e.target.value } as SharedBranch["until"] })}>
+    <div className="flex flex-col gap-3 text-xs">
+      <div className="grid grid-cols-[auto_5.5rem_5.5rem_1fr] items-center gap-x-2 gap-y-1.5">
+        <span />
+        <span className="font-semibold text-muted-foreground">at least</span>
+        <span className="font-semibold text-muted-foreground">at most</span>
+        <span />
+
+        <span className="font-semibold">Units per coder</span>
+        <Input
+          type="number"
+          min={1}
+          className={numberInput}
+          aria-label="Min units per coder"
+          title="While a coder has fewer, they also get units past the most coders per unit, as long as coders don't agree on them yet"
+          value={branch.minUnits ?? ""}
+          placeholder="none"
+          onChange={(e) => onChange({ ...branch, minUnits: numberOrUndefined(e.target.value) })}
+        />
+        <Input
+          type="number"
+          min={1}
+          className={numberInput}
+          aria-label="Max units per coder"
+          value={branch.maxUnits ?? ""}
+          placeholder="no limit"
+          onChange={(e) => onChange({ ...branch, maxUnits: numberOrUndefined(e.target.value) })}
+        />
+        <span />
+
+        <select
+          className={selectClass}
+          aria-label="Each unit is coded until"
+          value={agree ? "agree" : "coders"}
+          onChange={(e) => {
+            const n = Math.max(2, needed);
+            onChange({
+              ...branch,
+              until: e.target.value === "agree" ? { agree: n, on: agreeable[0] ?? "" } : { coders: needed },
+              // Agreement needs room for disagreement: at most is above the agreeing coders
+              ...(e.target.value === "agree" && (branch.maxCoders === undefined || branch.maxCoders < n) ? { maxCoders: Math.max(3, n + 1) } : {}),
+            });
+          }}
+        >
+          <option value="coders">Coders per unit</option>
+          <option value="agree">Agreement per unit</option>
+        </select>
+        <Input
+          type="number"
+          min={agree ? 2 : 1}
+          className={numberInput}
+          aria-label={agree ? "Coders who must agree" : "Coders per unit"}
+          value={needed}
+          onChange={(e) => {
+            const n = Number(e.target.value) || 1;
+            // Max coders can't be below the number needed: it follows upwards.
+            const maxCoders = branch.maxCoders !== undefined && branch.maxCoders < n ? n : branch.maxCoders;
+            onChange({ ...branch, maxCoders, until: agree && "on" in branch.until ? { agree: n, on: branch.until.on } : { coders: n } });
+          }}
+        />
+        <Input
+          type="number"
+          min={1}
+          className={numberInput}
+          aria-label="Max coders per unit"
+          value={branch.maxCoders ?? ""}
+          placeholder={agree ? "required" : "= at least"}
+          onChange={(e) => onChange({ ...branch, maxCoders: numberOrUndefined(e.target.value) })}
+        />
+        {agree && "on" in branch.until ? (
+          <span className="flex items-center gap-1.5">
+            agree on
+            <select
+              className={selectClass}
+              aria-label="Question coders agree on"
+              value={branch.until.on}
+              onChange={(e) => onChange({ ...branch, until: { ...branch.until, on: e.target.value } as SharedBranch["until"] })}
+            >
               {!agreeable.includes(branch.until.on) && <option value={branch.until.on}>{branch.until.on || "(choose a question)"}</option>}
               {agreeable.map((n) => (
                 <option key={n} value={n}>
@@ -541,46 +591,20 @@ function SharedSettings({ branch, agreeable, onChange }: { branch: SharedBranch;
                 </option>
               ))}
             </select>
-          )}
-        </div>
-      </label>
-      <label className={labelClass}>
-        Max coders per unit
-        <Input
-          type="number"
-          min={1}
-          className="h-8 w-24 text-xs"
-          value={branch.maxCoders ?? ""}
-          placeholder={agree ? "required" : "no limit"}
-          onChange={(e) => onChange({ ...branch, maxCoders: numberOrUndefined(e.target.value) })}
-        />
-      </label>
-      <label className={labelClass} title="While a coder has fewer, they also get units past Max coders and units others hold, as long as a unit isn't done">
-        Min units per coder
-        <Input
-          type="number"
-          min={1}
-          className="h-8 w-24 text-xs"
-          value={branch.minUnits ?? ""}
-          placeholder="none"
-          onChange={(e) => onChange({ ...branch, minUnits: numberOrUndefined(e.target.value) })}
-        />
-      </label>
-      <label className={labelClass}>
-        Max units per coder
-        <Input
-          type="number"
-          min={1}
-          className="h-8 w-24 text-xs"
-          value={branch.maxUnits ?? ""}
-          placeholder="no limit"
-          onChange={(e) => onChange({ ...branch, maxUnits: numberOrUndefined(e.target.value) })}
-        />
-      </label>
+          </span>
+        ) : (
+          <span />
+        )}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        {agree
+          ? "A unit is done once the least number of coders agree on the question, or the most coders coded it."
+          : "A unit is done once the least number of coders coded it. When no unit needs more, coders get units up to the most."}
+      </p>
       <label className={labelClass}>
         Priority
         <select
-          className={selectClass}
+          className={`${selectClass} w-fit`}
           value={branch.priority ?? "cover"}
           onChange={(e) => onChange({ ...branch, priority: e.target.value as SharedBranch["priority"] })}
         >

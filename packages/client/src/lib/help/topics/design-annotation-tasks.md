@@ -162,7 +162,7 @@ the data harder to interpret. See
 - **Limit the work per coder.** Coding quality drops after an hour or so of
   concentrated work. Coders can stop and resume later, on the same device or
   another one, so long jobs can be spread over days. For crowd coding, cap
-  the units per coder: **Max units per coder** in a
+  the units per coder: **Units per coder, at most** in a
   [shared queue](shared-queues.md), or split the units into smaller
   [unitsets](unitsets.md).
 - **Look at timing.** The download has the time each unit was first answered

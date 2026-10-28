@@ -113,7 +113,7 @@ describe("shared queues", () => {
     expect(codeAll(pool([1, 2, 3, 4], shared({ minCoders: 2 })), 1, { maxUnits: 3 })).toEqual([1, 2, 3]);
   });
 
-  it("count leases against open slots, and free them on expiry", () => {
+  it("count leases against open slots; past them only when no unit has a free slot, until full", () => {
     const { codings, pool } = setup();
     const p = pool([1, 2], shared({ leaseSeconds: 10 }));
     const next = (coder: number, now: number) => {
@@ -123,8 +123,12 @@ describe("shared queues", () => {
     };
     expect(next(1, 0)).toBe(1);
     expect(next(2, 0)).toBe(2);
-    expect(next(3, 0)).toBeNull();
-    expect(next(3, 11_000)).toBe(1); // coder 1's lease expired
+    // Both reserved, neither coded: coder 3 isn't left without work
+    expect(next(3, 0)).toBe(1);
+    // Once both are coded (one coder each, no maxCoders), they are full
+    codings.record(1, 1, answer("x"));
+    codings.record(2, 2, answer("x"));
+    expect(next(4, 0)).toBeNull();
   });
 
   it("resume a coder's own lease", () => {
@@ -165,28 +169,34 @@ describe("shared queues", () => {
     expect(pickNext(p, null, 1, saturate.codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(2);
   });
 
-  it("give a coder below minUnits units past maxCoders and others' leases, least coded first, until saturated", () => {
+  it("hand out units up to maxCoders past others' leases, least coded first, and past maxCoders below minUnits", () => {
     const { codings, pool, codeAll } = setup();
-    // One coder per unit is enough, at most 1: three coders want at least 2 units each from 3 units.
+    // One coder per unit is enough, at most 1: full once coded
     const main = pool([1, 2, 3], shared({ maxCoders: 1 }));
     expect(codeAll(main, 1, { maxUnits: 2 })).toEqual([1, 2]);
-    // Coder 2 gets the last free unit, then (min 2) a unit past maxCoders: one that isn't
-    // saturated is no longer there (minCoders 1), so nothing more.
-    expect(codeAll(main, 2, { minUnits: 2 })).toEqual([3]);
+    expect(codeAll(main, 2)).toEqual([3]);
+    // Below minUnits, past maxCoders: the least coded (all equal), in order
+    expect(codeAll(main, 3, { minUnits: 2 })).toEqual([1, 2]);
 
-    // Saturation needs 2 coders: a coder owed units gets the least-coded ones past maxCoders 2.
-    const two = pool([4, 5, 6], shared({ minCoders: 2, maxCoders: 2 }));
+    // One coder needed, up to 2: past the first coder only when no unit needs one
+    const two = pool([4, 5, 6], shared({ minCoders: 1, maxCoders: 2 }));
     codings.record(7, 4, answer("x"));
-    codings.record(8, 4, answer("x")); // unit 4 saturated
-    codings.record(7, 5, answer("x"));
-    // All units with open slots leased to others: none free for coder 1 normally
-    two.take(9, 5, 0);
-    two.take(10, 6, 0);
-    two.take(11, 6, 0);
-    const next = (minUnits?: number) => pickNext(two, null, 1, codings, { order: "sequential", seed: 0, now: 0, minUnits })?.unitId ?? null;
-    expect(next()).toBeNull();
-    // With minUnits: unit 6 (no codings, 2 leases) vs 5 (1 coding, 1 lease): equal load, first in order
-    expect(next(1)).toBe(5);
+    codings.record(8, 4, answer("x")); // unit 4 full
+    codings.record(7, 5, answer("x")); // unit 5 enough, not full
+    two.take(9, 6, 0); // unit 6 reserved
+    const next = () => pickNext(two, null, 1, codings, { order: "sequential", seed: 0, now: 0 })?.unitId ?? null;
+    // Unit 5 (1 coding) and 6 (1 lease) equally loaded: the first
+    expect(next()).toBe(5);
+
+    // Agreement: past maxCoders below minUnits only where coders don't agree yet
+    const agree = pool([10, 11], shared({ minCoders: 2, maxCoders: 2, agreement: { variable: "v", minAgree: 2 } }));
+    codings.record(7, 10, answer("a"));
+    codings.record(8, 10, answer("a")); // agreed
+    codings.record(7, 11, answer("a"));
+    codings.record(8, 11, answer("b")); // full without agreement
+    const pick = (minUnits?: number) => pickNext(agree, null, 1, codings, { order: "sequential", seed: 0, now: 0, minUnits })?.unitId ?? null;
+    expect(pick()).toBeNull();
+    expect(pick(1)).toBe(11);
   });
 
   it("with an overlap: one coder per unit plus a shared reliability set", () => {

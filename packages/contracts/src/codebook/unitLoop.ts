@@ -81,15 +81,18 @@ export const SharedBranchSchema = z
         on: SafeNameSchema,
       }),
     ]),
-    /** A unit is never handed out to more coders than this. Required with `agree`. */
+    /**
+     * A unit is never handed out to more coders than this (finished codings),
+     * except to a coder below `minUnits`. When no unit needs more coders, a
+     * coder gets a unit below it. Required with `agree`; without it, `until.coders`.
+     */
     maxCoders: z.number().int().min(1).optional(),
     /** At most this many units per coder (besides the overlap). */
     maxUnits: z.number().int().positive().optional(),
     /**
-     * At least this many units per coder (besides the overlap), as far as
-     * the unitset has units the `until` rule doesn't consider done yet:
-     * while a coder has fewer, `maxCoders` and other coders' leases don't
-     * hold them back, and they get the least-coded units ("cover").
+     * At least this many units per coder (besides the overlap): while a
+     * coder has fewer, `maxCoders` doesn't hold them back either (with
+     * `agree`: units coders don't agree on yet), least-coded units first.
      */
     minUnits: z.number().int().positive().optional(),
     /**

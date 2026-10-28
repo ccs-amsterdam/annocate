@@ -110,17 +110,21 @@ export class UnitPool {
    * view of the unitset order (shuffled for random loops). Has no side
    * effects; call `take` for the unit actually handed out.
    */
-  candidates(coderId: number, now: number, shuffleSeed: number | null, { beyondCaps = false } = {}): number[] {
+  candidates(coderId: number, now: number, shuffleSeed: number | null, { reach = "slots" }: { reach?: Reach } = {}): number[] {
     const order = shuffleSeed === null ? this.units : seededShuffle(this.units, shuffleSeed);
     const open = order.filter((id) => !this.codings.has(coderId, id));
     if (!this.rule) return open;
 
-    // A coder still owed units (`minUnits`): any unit the `until` rule doesn't
-    // consider done, past `maxCoders` and others' leases, least coded first
-    // (codings and leases), so they spread over the units.
-    if (beyondCaps) {
+    // Past the open slots (`Reach`): least coded first (codings and leases),
+    // so coders spread over the units.
+    if (reach !== "slots") {
       const load = (id: number) => this.codings.forUnit(id).size + this.activeLeases(id, now);
-      return open.filter((id) => !this.isSaturated(id)).sort((a, b) => load(a) - load(b));
+      const agreement = this.rule.agreement;
+      const left =
+        reach === "full"
+          ? (id: number) => !this.isFull(id)
+          : (id: number) => !agreement || this.topAgreement(id) < agreement.minAgree;
+      return open.filter(left).sort((a, b) => load(a) - load(b));
     }
 
     const withSlots = open.filter((id) => this.openSlots(id, now) > 0);
@@ -144,7 +148,7 @@ export class UnitPool {
    * A unit leased to this coder that they haven't finished (and that the
    * `until` rule doesn't consider done), if any. A unit others filled up to
    * `maxCoders` meanwhile stays theirs: at worst one coding too many (and a
-   * coder below `minUnits` may go past `maxCoders` anyway).
+   * coder may reach past `maxCoders` anyway, `Reach`).
    */
   heldLease(coderId: number): number | undefined {
     const unitId = this.coderLease.get(coderId);
@@ -171,6 +175,20 @@ export class UnitPool {
     const { maxCoders } = this.rule;
     if (maxCoders !== undefined && this.codings.forUnit(unitId).size >= maxCoders) return true;
     return this.isSaturated(unitId);
+  }
+
+  /**
+   * Whether no coder can get the unit any more, apart from a coder below
+   * `minUnits` (`Reach`): finished codings reached `maxCoders`, coders agree (`agree`),
+   * or, without `maxCoders`, enough coders coded it. Leases don't count.
+   */
+  isFull(unitId: number): boolean {
+    if (!this.rule) return false;
+    const { maxCoders, agreement } = this.rule;
+    const done = this.codings.forUnit(unitId).size;
+    if (maxCoders !== undefined && done >= maxCoders) return true;
+    if (agreement) return this.topAgreement(unitId) >= agreement.minAgree;
+    return maxCoders === undefined && this.isSaturated(unitId);
   }
 
   /** Whether the `until` rule considers the unit done: enough coders, or enough agreeing ones (`maxCoders` aside). */
@@ -237,6 +255,17 @@ export class UnitPool {
   }
 }
 
+/**
+ * How far a coder may reach in a shared queue. `slots`: units that need
+ * more coders than they have or are reserved for (the normal case). `full`:
+ * once there are none, any unit that isn't full (`isFull`), past other
+ * coders' leases and up to `maxCoders`, so a coder only gets nothing when
+ * every unit is full. `pastMax`: a coder below `minUnits` also goes past
+ * `maxCoders`: any unit coders don't agree on yet (`agree`), or any unit
+ * at all (`coders`).
+ */
+export type Reach = "slots" | "full" | "pastMax";
+
 /** Where a branch's overlap units go among the coder's own units (contracts OverlapSchema). */
 export interface OverlapPlacement {
   pool: UnitPool;
@@ -247,8 +276,8 @@ export interface OverlapPlacement {
  * Picks the next unit for a coder in one unit_loop, from their own pool
  * (`main`) and the branch's overlap. Returns null when the coder is done
  * with the loop. `maxUnits` caps the coder's own units (shared queues), not
- * the overlap; below `minUnits` a coder gets units past `maxCoders` and
- * other coders' leases (`UnitPool.candidates`, `beyondCaps`).
+ * the overlap. Without open slots, a coder gets any unit that isn't full;
+ * below `minUnits`, also units past `maxCoders` (`Reach`).
  *
  * Spread: the overlap units are placed evenly among the units the coder is
  * expected to get (`maxUnits`, else the size of their set). If they run out
@@ -269,9 +298,13 @@ export function pickNext(
   const doneOverlap = overlap ? done.filter((id) => overlap.pool.has(id)).length : 0;
   const doneOwn = done.filter((id) => main.has(id) && !overlap?.pool.has(id)).length;
   const shuffleSeed = options.order === "random" ? options.seed + coderId : null;
-  let own = options.maxUnits !== undefined && doneOwn >= options.maxUnits ? [] : main.candidates(coderId, options.now, shuffleSeed);
-  if (own.length === 0 && options.minUnits !== undefined && doneOwn < options.minUnits) {
-    own = main.candidates(coderId, options.now, shuffleSeed, { beyondCaps: true });
+  let own: number[] = [];
+  if (options.maxUnits === undefined || doneOwn < options.maxUnits) {
+    own = main.candidates(coderId, options.now, shuffleSeed);
+    if (own.length === 0) own = main.candidates(coderId, options.now, shuffleSeed, { reach: "full" });
+    if (own.length === 0 && options.minUnits !== undefined && doneOwn < options.minUnits) {
+      own = main.candidates(coderId, options.now, shuffleSeed, { reach: "pastMax" });
+    }
   }
   const extra = overlap ? overlap.pool.candidates(coderId, options.now, shuffleSeed) : [];
   const pick = (pool: UnitPool, ids: number[]) => ({ pool, unitId: ids[0] });

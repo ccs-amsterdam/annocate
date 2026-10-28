@@ -19,16 +19,27 @@ You set it on the loop's **Units** tab: choose **Units shared among
 coders** under **Who codes which units**, and pick the **Unitset** (empty for
 all units).
 
+## The settings
+
+The numbers sit in a small table, each with an **at least** and an **at
+most**:
+
+| | at least | at most |
+| --- | --- | --- |
+| **Units per coder** | every coder gets this many units (see [A minimum per coder](#a-minimum-per-coder)) | a coder never gets more |
+| **Coders per unit** | a unit is done once this many coders coded it | when no unit needs more coders, a unit can still go up to this many |
+| *or* **Agreement per unit** | a unit is done once this many coders agree on the question you pick | a unit is never coded by more coders, agreement or not |
+
 ## When a unit is done
 
-Under **Each unit is coded until** you choose one of two rules:
+In the second row you choose one of two rules:
 
-- **coders coded it**: the unit is done once this many coders finished it.
+- **Coders per unit**: the unit is done once *at least* coders finished it.
   `1` gives every unit one coding, the cheapest way through a large sample;
   `2` or `3` give you several codings per unit, for majority votes or
   reliability.
-- **coders agree on** a question: the unit is done once this many coders
-  gave the same answer to that question. Only questions of the loop with a
+- **Agreement per unit**, on a question: the unit is done once *at least*
+  coders gave the same answer to that question. Only questions of the loop with a
   single categorical answer can be chosen: categories (nominal, without
   multiple answers), ordinal questions and swipes. Coders who skipped the
   question (it was hidden by a condition) don't count towards agreement.
@@ -42,13 +53,13 @@ A coder who opens a unit and leaves doesn't count.
 
 ## Limits
 
-| Setting | What it does |
-| --- | --- |
-| **Max coders per unit** | A unit is never handed out to more coders than this, done or not. Required with an agreement rule, so a unit nobody agrees on isn't coded forever. It must be at least the number in the rule. |
-| **Min units per coder** | Every coder gets at least this many units from the queue, as long as it has units that aren't done yet (see [A minimum per coder](#a-minimum-per-coder)). Empty: no minimum. |
-| **Max units per coder** | A coder gets at most this many units from the queue (overlap units come on top). Empty: no limit. |
+The **at most** of the second row is the most coders a unit ever gets. With
+an agreement rule it is required, so a unit nobody agrees on isn't coded
+forever. With **Coders per unit** it may stay empty: then it is the same as
+*at least*. It can't be below *at least*.
 
-**Max units per coder** is worth setting in most studies:
+**At most units per coder** (overlap units come on top) is worth setting in
+most studies:
 
 - it limits fatigue, and keeps one enthusiastic coder from coding half the
   sample;
@@ -63,29 +74,32 @@ A rough sample size: with 1000 units, *until 3 coders coded it* and **Max
 units per coder** 50, you need at least 1000 × 3 / 50 = 60 coders who finish.
 Recruit a few more, because some will stop early.
 
+### Near the end of the queue
+
+When no unit needs more coders (every unit is done, or reserved by coders
+working on it), a coder who asks for a unit still gets one, as long as some
+unit isn't **full**: coded by *at most* coders (finished codings count, not
+reservations), or agreed on. Among those, the coder gets the units with the
+fewest codings and reservations, so extra codings are spread. A coder only
+gets nothing once every unit is full.
+
 ### A minimum per coder
 
-Without a minimum, a coder who arrives late can get few units or none: the
-units that still need codings may all be done, or reserved by other coders
-at that moment. That is a problem when every coder must do a fixed task, for
+Even so, a coder who arrives late can get few units or none, once units
+are full. That is a problem when every coder must do a fixed task, for
 instance a panel that pays for 20 units, or a design where every coder must
 code enough units to estimate their own reliability.
 
-**Min units per coder** solves this. While a coder has fewer units than the
-minimum, two limits give way:
+**At least units per coder** solves this. While a coder has fewer units,
+*at most coders per unit* gives way too: the coder may get a unit that
+already has the most coders. With an agreement rule, a unit coders agree on
+is never handed out again; with **Coders per unit**, any unit can be. The
+coder gets the units with the fewest codings first, so extra codings are
+spread over the units. With an agreement rule, a coder can still end up
+with fewer than the minimum if coders agree on every unit.
 
-- **Max coders per unit**: the coder may get a unit that already has its
-  maximum number of coders;
-- **reservations**: the coder may get a unit another coder is working on.
-
-What doesn't give way is the rule itself: a unit that is done (*until 3
-coders coded it*, or enough coders agree) is never handed out again. Among
-the units left, the coder gets those with the fewest codings and
-reservations, so extra codings are spread over the units. If every unit is
-done, a coder can still end up with fewer than the minimum.
-
-The price is some codings past **Max coders per unit**. Set the minimum
-only as high as your design needs.
+The price is codings past *at most*. Set the minimum only as high as your
+design needs.
 
 ## Priority
 
@@ -117,12 +131,9 @@ five coders at once.
 - A coder who comes back later can still finish the unit they had. So a unit
   occasionally gets one coding more than it needed.
 
-Reservations mean a coder can find no unit while there are still units left:
-when all units that still need codings are reserved by others at that
-moment. The coder then finishes the loop. Near the end of a study this is
-normal; the reserved units come back if their coders don't finish them.
-With **Min units per coder** a coder below the minimum gets such a unit
-anyway (see [A minimum per coder](#a-minimum-per-coder)).
+When all units that still need codings are reserved by others, a coder
+gets one of them anyway, or a unit that isn't full yet (see [Near the end
+of the queue](#near-the-end-of-the-queue)), rather than nothing.
 
 The 15 minutes can be changed in the codebook's JSON view, as
 `leaseSeconds` in the loop's `units` (one entry per coder group; default `900`), for instance
@@ -138,7 +149,7 @@ which every coder codes every unit:
   Krippendorff's alpha, which handles any number of coders per unit and
   missing codings.
 - **Units have different numbers of codings** with an agreement rule:
-  between the number that must agree and **Max coders per unit**. A unit with
+  between the number that must agree and *at most* coders per unit. A unit with
   more codings was harder to agree on; that is information in itself.
 - **Agreement rules make the data look more reliable than they are.** Coding
   stops as soon as coders agree, so disagreements that a third coder would

@@ -217,14 +217,17 @@ units:
     finished it. `maxCoders` is required with `agree`, so a unit nobody
     agrees on isn't coded forever.
   - `maxUnits` caps the units per coder (besides the overlap).
-  - `minUnits`: while a coder has fewer units, `maxCoders` and other
-    coders' leases don't hold them back: they get any unit the `until`
-    rule doesn't consider done (saturated), least coded first (codings
-    plus leases), so the extra codings spread over the units. This also
-    keeps a coder from passing the loop with nothing while every unit
-    still needed is leased to others.
   - **Open slots** are codings still needed, capped by `maxCoders`, minus
     active leases. This prevents over-assignment while coders are working.
+  - Without open slots, a coder gets any unit that isn't **full**
+    (`isFull`): finished codings below `maxCoders` (leases don't count;
+    without `maxCoders`, below `until.coders`) and, with `agree`, not
+    agreed on. Least coded first (codings plus leases). So a coder only
+    gets nothing when every unit is full (`Reach` in
+    `runtime/distribution.ts`).
+  - `minUnits`: while a coder has fewer units, `maxCoders` gives way too:
+    any unit not agreed on (`agree`), or any unit (`coders`), least coded
+    first.
   - **Leases** last `leaseSeconds` (default 900). An expired lease frees the
     slot. A coder asking for "next" while holding a lease gets the same unit
     again, so a reload is safe.

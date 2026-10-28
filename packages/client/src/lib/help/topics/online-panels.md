@@ -145,7 +145,7 @@ the link and read it with a **URL parameter** assigned variable instead.
 
 For crowd coding, units are usually **shared among coders**: each unit goes
 to coders until enough of them coded it (see
-[Shared queues](shared-queues.md)). With **Max units per coder**, you can
+[Shared queues](shared-queues.md)). With **Units per coder, at most**, you can
 work out how many participants you need:
 
 ```text
