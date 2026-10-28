@@ -78,11 +78,11 @@ Every relation is stored with:
 - the span it starts **from** and the span it goes **to**, by the span's
   id.
 
-Through the [researcher API](researcher-api.md) you get the full answers,
-in which every span of a span question has the id the relations refer to,
-so you can rebuild the network. In the downloaded `annotations.csv`, a
-relation's column shows each relation's value with the two span ids, but the
-span columns don't show these ids. See [Downloading results](results.md).
+In the downloaded `annotations.csv`, a relation's column shows each
+relation as `value: from → to`, with the texts of its two spans. Its `_json`
+column has the ids of the spans, which match the `id`s in the span
+question's `_json` column, so you can rebuild the network. See
+[Downloading results](results.md).
 
 ## Using the answers
 

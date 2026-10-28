@@ -113,12 +113,12 @@ For every span, AnnoTinder stores:
 
 Positions count characters in the field as it is in your data (for a named
 text block: in the block's text), so you can find the spans again in your
-own copy of the texts. The positions are not in the CSV files, but they are
-in the answers you get through the [researcher API](researcher-api.md).
+own copy of the texts.
 
 In the downloaded `annotations.csv`, a span question's column lists the spans
 as `value: text`, separated by `; `, for example
-`person: Angela Merkel; organisation: European Commission`. See
+`person: Angela Merkel; organisation: European Commission`. Its `_json`
+column has everything, including the positions. See
 [Downloading results](results.md).
 
 > If you replace a unit after it was coded, its spans still point into the

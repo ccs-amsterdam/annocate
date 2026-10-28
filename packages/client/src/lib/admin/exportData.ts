@@ -5,6 +5,7 @@ import {
   unitLoops,
   type AnnotationRow,
   type AnyVariableType,
+  type SpanAnswer,
   type CoderProgress,
   type OptionValue,
   type TopLevelItem,
@@ -25,7 +26,10 @@ import {
 // followed by a `_label` column, the label in the codebook version the
 // answer was given under (what the coder saw). A scale has a column per item
 // (`question.item`), several answers are joined with "; ", spans are
-// "value: text", and a question a condition skipped is empty.
+// "value: text", a confirm question is `true`, and a question a condition
+// skipped is empty. Answers that don't fit one cell (spans, relations,
+// several answers) also get a `_json` column with everything (span
+// positions and fields, ids).
 
 export interface Table {
   headers: string[];
@@ -36,14 +40,44 @@ export interface Table {
 type Write = (value: OptionValue) => string;
 const asIs: Write = (v) => String(v);
 
-/** The text of one answer cell (a scale item's answers go in their own columns: `item`). */
-export function answerText(value: VariableValue | undefined, item?: string, write: Write = asIs): string {
+/** A span's text (its fragments joined with " … "). */
+const spanText = (span: SpanAnswer) => span.slices.map((x) => x.text).join(" … ");
+
+/**
+ * The text of one answer cell (a scale item's answers go in their own
+ * columns: `item`). A relation names its spans by their text, found among
+ * `spans` (the spans of the same unit and coder).
+ */
+export function answerText(value: VariableValue | undefined, item?: string, write: Write = asIs, spans?: ReadonlyMap<string, SpanAnswer>): string {
   if (!value || value.skip) return "";
+  // A confirm question: answered, without a value.
+  if (!value.values && !value.spans && !value.relations) return "true";
   const parts: string[] = [];
   for (const v of value.values ?? []) if (v.item === item) parts.push(write(v.value));
-  for (const s of value.spans ?? []) parts.push(`${write(s.value)}: ${s.slices.map((x) => x.text).join(" … ")}`);
-  for (const r of value.relations ?? []) parts.push(`${write(r.value)} (${r.fromId} → ${r.toId})`);
+  for (const s of value.spans ?? []) parts.push(`${write(s.value)}: ${spanText(s)}`);
+  const end = (id: string) => {
+    const span = spans?.get(id);
+    return span ? spanText(span) : id;
+  };
+  for (const r of value.relations ?? []) parts.push(`${write(r.value)}: ${end(r.fromId)} → ${end(r.toId)}`);
   return parts.join("; ");
+}
+
+/** An answer in full, as JSON (for the `_json` columns): values, spans with their fields and positions, relations with their span ids. */
+export function answerJson(value: VariableValue | undefined): string {
+  if (!value || value.skip) return "";
+  if (value.spans) return JSON.stringify(value.spans.map(({ id, value, field, slices }) => ({ id, value, field, slices })));
+  if (value.relations) return JSON.stringify(value.relations.map(({ id, value, fromId, toId }) => ({ id, value, fromId, toId })));
+  return JSON.stringify((value.values ?? []).map((v) => v.value));
+}
+
+/** Questions whose answers don't fit one cell (spans, relations, several answers): they get a `_json` column. */
+export function nestedQuestions(items: TopLevelItem[] | undefined): Set<string> {
+  if (!items) return new Set();
+  const nested = [...collectQuestions(items).questions].filter(
+    ([, v]) => v.type === "span" || v.type === "relation" || (v.type === "nominal" && v.multiple),
+  );
+  return new Set(nested.map(([name]) => name));
 }
 
 /**
@@ -96,12 +130,16 @@ interface Column {
   variable: string;
   item?: string;
   label?: boolean;
+  json?: boolean;
 }
 
 /** The answer columns for some values: per question a column (a scale one per item), in codebook order, with label columns. */
-function answerColumns(values: Iterable<[string, VariableValue]>, order: string[], labels?: Labels): Column[] {
+function answerColumns(values: Iterable<[string, VariableValue]>, order: string[], labels?: Labels, nested: ReadonlySet<string> = new Set()): Column[] {
   const items = new Map<string, Set<string | undefined>>();
+  const json = new Set(nested);
   for (const [variable, value] of values) {
+    // Nested answers found in the data, also of questions the live codebook no longer has
+    if (value.spans || value.relations || (value.values ?? []).filter((v) => v.item === undefined).length > 1) json.add(variable);
     const set = items.get(variable) ?? new Set();
     items.set(variable, set);
     const answerItems = (value.values ?? []).map((v) => v.item);
@@ -115,14 +153,15 @@ function answerColumns(values: Iterable<[string, VariableValue]>, order: string[
     const named = [...set].filter((i): i is string => i !== undefined).sort();
     // A question without items (or never answered with one) has one column.
     const columns: Column[] = named.length > 0 ? named.map((item) => ({ variable, item })) : [{ variable }];
-    return labels?.has(variable) ? columns.flatMap((c) => [c, { ...c, label: true }]) : columns;
+    const withLabels = labels?.has(variable) ? columns.flatMap((c) => [c, { ...c, label: true }]) : columns;
+    return json.has(variable) && named.length === 0 ? [...withLabels, { variable, json: true }] : withLabels;
   });
 }
 
-const header = (c: Column) => `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : ""}`;
+const header = (c: Column) => `${c.item ? `${c.variable}.${c.item}` : c.variable}${c.label ? "_label" : c.json ? "_json" : ""}`;
 const time = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString() : "");
-const cellOf = (value: VariableValue | undefined, c: Column, labels: Labels | undefined, codebookId: number | null) =>
-  answerText(value, c.item, c.label && labels ? labels.writer(c.variable, codebookId) : asIs);
+const cellOf = (value: VariableValue | undefined, c: Column, labels: Labels | undefined, codebookId: number | null, spans?: ReadonlyMap<string, SpanAnswer>) =>
+  c.json ? answerJson(value) : answerText(value, c.item, c.label && labels ? labels.writer(c.variable, codebookId) : asIs, spans);
 
 /** Question names in codebook order (the live codebook's, if given). */
 export function questionOrder(items: TopLevelItem[] | undefined): string[] {
@@ -134,7 +173,13 @@ export function questionOrder(items: TopLevelItem[] | undefined): string[] {
  * first answered the unit), with the unit version they saw, when they first
  * and last answered it, the codebook version, and a column per question.
  */
-export function annotationsTable(annotations: AnnotationRow[], coders: CoderProgress[], order: string[] = [], labels?: Labels): Table {
+export function annotationsTable(
+  annotations: AnnotationRow[],
+  coders: CoderProgress[],
+  order: string[] = [],
+  labels?: Labels,
+  nested: ReadonlySet<string> = new Set(),
+): Table {
   const coderById = new Map(coders.map((c) => [c.id, c]));
   // Per answer also the codebook version it was given under: its labels are the ones its coder saw.
   const byUnitCoder = new Map<string, { first: AnnotationRow; last: Date; values: Map<string, VariableValue>; codebooks: Map<string, number | null> }>();
@@ -150,6 +195,7 @@ export function annotationsTable(annotations: AnnotationRow[], coders: CoderProg
     [...byUnitCoder.values()].flatMap((r) => [...r.values]),
     order,
     labels,
+    nested,
   );
   return {
     headers: [
@@ -163,7 +209,10 @@ export function annotationsTable(annotations: AnnotationRow[], coders: CoderProg
       "codebook_id",
       ...columns.map(header),
     ],
-    rows: [...byUnitCoder.values()].map(({ first, last, values, codebooks }) => [
+    rows: [...byUnitCoder.values()].map(({ first, last, values, codebooks }) => {
+      // The unit's spans, by id, so relations can name them by their text
+      const spans = new Map([...values.values()].flatMap((v) => (v.spans ?? []).map((s) => [s.id, s] as const)));
+      return [
       first.externalId,
       first.unitVersionId === null ? "" : String(first.unitVersionId),
       String(first.coderId),
@@ -172,8 +221,9 @@ export function annotationsTable(annotations: AnnotationRow[], coders: CoderProg
       time(first.created),
       time(last),
       first.codebookId === null ? "" : String(first.codebookId),
-      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.codebookId)),
-    ]),
+      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.codebookId, spans)),
+      ];
+    }),
   };
 }
 
@@ -183,12 +233,13 @@ export function annotationsTable(annotations: AnnotationRow[], coders: CoderProg
  * per loop, and their coder-level answers (survey questions, `auto` groups;
  * labels from the live codebook).
  */
-export function codersTable(coders: CoderProgress[], order: string[] = [], labels?: Labels): Table {
+export function codersTable(coders: CoderProgress[], order: string[] = [], labels?: Labels, nested: ReadonlySet<string> = new Set()): Table {
   const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort();
   const columns = answerColumns(
     coders.flatMap((c) => Object.entries(c.variables)),
     order,
     labels,
+    nested,
   );
   return {
     headers: [
@@ -283,7 +334,12 @@ variables.csv    Per codebook version, question and option: the question text,
                  the stored value and its label.
 
 Answers are the stored values; several answers are joined with "; ", spans
-are written as "value: text", and questions a condition skipped are empty.
+are written as "value: text", relations as "value: from → to" (the spans'
+texts), a confirm question as true, and questions a condition skipped are
+empty. Questions with spans, relations or several answers also have a _json
+column with the full answer: spans with their field and, per fragment, the
+offset and length in that field of the unit version (units.csv), relations
+with the ids of their spans.
 Join annotations and coders on coder_id. Times are UTC (ISO 8601).
 `;
 }

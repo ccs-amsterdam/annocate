@@ -59,5 +59,5 @@ Only that the question was answered. In references, a Confirm question has
 just `$var.<question>.answered`, which is true once the coder clicked the
 button. It has no value or label.
 
-In the results its column stays empty, both when the coder clicked the
-button and when a condition skipped the question.
+In the results its column is `true` when the coder clicked the button, and
+empty when a condition skipped the question.

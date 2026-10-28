@@ -8,6 +8,7 @@ import {
   Labels,
   annotationsTable,
   codersTable,
+  nestedQuestions,
   questionOrder,
   readme,
   toCsv,
@@ -86,12 +87,13 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
 
       const liveId = deployment?.codebookId ?? null;
       const order = questionOrder(liveId === null ? undefined : codebooks.get(liveId));
+      const nested = nestedQuestions(liveId === null ? undefined : codebooks.get(liveId));
       const labels = withLabels ? new Labels(codebooks, liveId) : undefined;
       const now = new Date();
       const zip = zipSync({
         "README.txt": strToU8(readme(name, now, withLabels)),
-        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels))),
-        "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels))),
+        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested))),
+        "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested))),
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations))),
         "variables.csv": strToU8(toCsv(variablesTable(codebooks))),
       });

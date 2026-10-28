@@ -640,7 +640,12 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   `_label` column after each answer column with options: the label in the
   codebook version the answer was given under (what the coder saw), else
   the live one. Several answers are joined with "; ", spans written as
-  "value: text", skipped questions empty. UTF-8 with a byte order mark,
+  "value: text", relations as "value: from → to" (span texts), a confirm
+  question as `true`, skipped questions empty. Questions whose answers don't
+  fit a cell (span, relation, nominal `multiple`, by the live codebook or
+  the data) also get a `_json` column with the whole answer (spans with
+  field and slice offsets, relations with span ids, a list of values).
+  UTF-8 with a byte order mark,
   so spreadsheet programs read it. Large jobs would be better served by a
   streaming download from the server (later).
 - **Preview** runs the job's latest codebook (deployed or not) as

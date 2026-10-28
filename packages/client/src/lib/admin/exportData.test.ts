@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationRow, CoderProgress, TopLevelItem } from "@annotinder/contracts";
-import { Labels, annotationsTable, answerText, codersTable, toCsv, unitsTable, variablesTable } from "./exportData";
+import { Labels, annotationsTable, answerJson, answerText, codersTable, toCsv, unitsTable, variablesTable } from "./exportData";
 
 const at = new Date("2026-11-01T10:00:00Z");
 const row = (unitId: number, coderId: number, variable: string, value: AnnotationRow["value"], minutes = 0): AnnotationRow => ({
@@ -37,6 +37,14 @@ describe("data download", () => {
     const span = { done: true, skip: false, spans: [{ id: "s1", field: "text", value: "actor", slices: [{ offset: 0, length: 4, text: "Lena" }] }] };
     expect(answerText(span)).toBe("actor: Lena");
     expect(answerText({ done: true, skip: true })).toBe("");
+    // A confirm question: answered, no value
+    expect(answerText({ done: true, skip: false })).toBe("true");
+    // Relations name their spans by text; the JSON keeps positions and ids
+    const relation = { done: true, skip: false, relations: [{ id: "r1", fromId: "s1", toId: "s9", value: "criticizes" }] };
+    expect(answerText(relation, undefined, undefined, new Map([["s1", span.spans[0]]]))).toBe("criticizes: Lena → s9");
+    expect(JSON.parse(answerJson(span))).toEqual([{ id: "s1", value: "actor", field: "text", slices: [{ offset: 0, length: 4, text: "Lena" }] }]);
+    expect(answerJson({ done: true, skip: false, values: [{ value: "a" }, { value: "b" }] })).toBe('["a","b"]');
+    expect(answerJson({ done: true, skip: true })).toBe("");
   });
 
   it("makes a row per unit and coder, a column per question in codebook order", () => {
@@ -100,10 +108,11 @@ describe("data download", () => {
     const old = { ...row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }] }), codebookId: 1 };
     const now = row(2, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }, { value: "neg" }] });
     const table = annotationsTable([old, now], [coder(1)], [], labels);
-    expect(table.headers.slice(-2)).toEqual(["sentiment", "sentiment_label"]);
-    expect(table.rows.map((r) => r.slice(-2))).toEqual([
-      ["pos", "Positive"],
-      ["pos; neg", "Good; neg"],
+    // Two answers to one question: also a _json column
+    expect(table.headers.slice(-3)).toEqual(["sentiment", "sentiment_label", "sentiment_json"]);
+    expect(table.rows.map((r) => r.slice(-3))).toEqual([
+      ["pos", "Positive", '["pos"]'],
+      ["pos; neg", "Good; neg", '["pos","neg"]'],
     ]);
     // One unit, answered partly under each version: each answer with its own version's labels
     const mixed = annotationsTable([{ ...row(1, 1, "other", { done: true, skip: false, values: [{ value: "x" }] }, -1), codebookId: 2 }, old], [coder(1)], [], labels);

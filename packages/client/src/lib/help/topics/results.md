@@ -58,10 +58,20 @@ questions. A [scale](scale.md) has a column per item, named
 - **Selected text** ([spans](span.md)) is written as `value: text`, for
   example `person: Angela Merkel`, several spans joined with `; `. A span
   with gaps has its parts joined with ` … `.
+- **Relations** are written as `value: from → to`, with the texts of the two
+  spans, for example `criticizes: Merkel → Commission`.
+- **A confirm question** (a button) is `true` once clicked.
 - **Empty** means no answer: the question was skipped because a condition
   hid it, or it wasn't in the codebook version the coder answered under (a
-  question added later). A confirm question (a button) stores no answer, so
-  its column is always empty.
+  question added later).
+- **JSON columns.** A question whose answer doesn't fit one cell (spans,
+  relations, several answers) gets a third column, `<question>_json`, with
+  the whole answer as JSON: for spans their value, the field they are in,
+  and per fragment its `offset` (the position of its first character in the
+  field of the unit version in `units.csv`, counting from 0), `length` and
+  `text`; for relations the ids of their spans (the `id` in the span
+  question's JSON); for several answers a list of values. Read it with
+  `jsonlite::fromJSON` in R or `json.loads` in Python.
 
 Values are the reason codebooks have values *and* labels: you can improve a
 label while coding runs, and the values stay comparable. See
