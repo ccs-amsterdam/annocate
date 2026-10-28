@@ -1215,7 +1215,7 @@ describe("end items", () => {
     const c = coder("young");
     expect((await c.session()).ended).toBeNull();
     const end = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "screen_out_young" }) });
-    expect(end.status).toBe(204);
+    expect(await end.json()).toEqual({ reopen: null }); // no going back after a screenout
     expect((await c.session()).ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
 
     const next = await c.call("/loop/1/next");
@@ -1229,17 +1229,56 @@ describe("end items", () => {
     expect(coders[0].ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });
   });
 
-  it("inside a unit loop: remember the unit, which stays readable to show the ending again", async () => {
+  it("inside a unit loop: remember the unit; the closed session gets only what the end screen uses", async () => {
+    // An end in the loop whose message uses a unit field and an answer
+    await redeploy({
+      layout: { template: "$unit.headline" },
+      children: [sentimentQuestion, { type: "end", name: "done_here", outcome: "complete", message: "$unit.headline: $var.sentiment.label" }],
+    });
     const c = coder("ender");
     const unit = await c.next();
-    await c.submit(unit!.id, demo("neutral"));
-    const bogus = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "screen_out_young", unit: { loop: "1", id: 999999 } }) });
+    await c.submit(unit!.id, sentiment("neutral"));
+    const bogus = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "done_here", unit: { loop: "1", id: 999999 } }) });
     expect(bogus.status).toBe(400);
-    const end = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "screen_out_young", unit: { loop: "1", id: unit!.id } }) });
-    expect(end.status).toBe(204);
-    expect((await c.session()).ended).toMatchObject({ unit: { loop: "1", id: unit!.id } });
-    const again = await c.call(`/loop/1/units/${unit!.id}`);
-    expect(again.status).toBe(200);
+    const end = await c.call("/end", { method: "POST", body: JSON.stringify({ item: "done_here", unit: { loop: "1", id: unit!.id } }) });
+    expect(await end.json()).toEqual({ reopen: { until: expect.any(String) } });
+    const session = await c.session();
+    expect(session.ended).toMatchObject({ unit: { loop: "1", id: unit!.id } });
+    expect(session.endValues).toEqual({
+      variables: {},
+      unit: { data: { headline: expect.any(String) }, variables: { sentiment: expect.anything() } },
+    });
+    expect((await c.call(`/loop/1/units/${unit!.id}`)).status).toBe(409);
+  });
+
+  it("finishing without an end item ends the session too; the coder can go back for 15 minutes", async () => {
+    let now = Date.now();
+    server = restart({ now: () => now });
+    await redeploy({}, [{ type: "question", name: "age", variable: { type: "numeric", question: "Age?" } }]);
+    const c = coder("finisher");
+    expect((await c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables: { age: { done: true, skip: false, values: [{ value: 30 }] } } }) })).status).toBe(204);
+    expect(await (await c.call("/end", { method: "POST", body: "{}" })).json()).toMatchObject({ reopen: { until: expect.any(String) } });
+    const closed = await c.session();
+    expect(closed.ended).toMatchObject({ outcome: "complete" });
+    expect(closed.variables).toEqual({}); // closed: none of their answers
+    expect((await c.call("/reopen", { method: "POST" })).status).toBe(204);
+    expect((await c.session()).variables).toMatchObject({ age: expect.anything() });
+
+    await c.call("/end", { method: "POST", body: "{}" });
+    now += 16 * 60 * 1000;
+    expect((await c.session()).reopen).toBeNull();
+    expect((await c.call("/reopen", { method: "POST" })).status).toBe(409);
+  });
+
+  it("a job can keep finished sessions open", async () => {
+    await server.request("/job/1", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ name: "Demo", keepSessionsOpen: true }) });
+    await redeploy({});
+    const c = coder("keeper");
+    const unit = await c.next();
+    await c.submit(unit!.id, sentiment("neutral"));
+    await c.call("/end", { method: "POST", body: "{}" });
+    expect((await c.session()).reopen).toEqual({ until: null });
+    expect((await c.call(`/loop/1/units/${unit!.id}`)).status).toBe(200);
   });
 
   it("only for end items of the codebook", async () => {

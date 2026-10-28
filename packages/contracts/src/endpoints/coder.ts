@@ -4,6 +4,7 @@ import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableVa
 import {
   SessionResponseSchema,
   EndSessionSchema,
+  EndSessionResponseSchema,
   QuitSessionSchema,
   TransferResponseSchema,
   RedeemTransferSchema,
@@ -56,7 +57,9 @@ export const coderEndpoints = {
     response: z.void(),
   },
   /** The coder reached an `end` item: the session is over (screened out or complete). */
-  endSession: { method: "POST", path: "/end", request: EndSessionSchema, response: z.void() },
+  endSession: { method: "POST", path: "/end", request: EndSessionSchema, response: EndSessionResponseSchema },
+  /** Goes back after finishing (within `reopenUntil`): the session is open again. */
+  reopenSession: { method: "POST", path: "/reopen", request: z.void(), response: z.void() },
   /**
    * The coder quits: the session ends (if it hadn't), and with
    * `requestDeletion` they ask for their answers to be deleted (also after

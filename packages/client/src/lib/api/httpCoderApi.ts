@@ -1,6 +1,7 @@
 import type { CoderSessionScope } from "../session/coderSession";
 import {
   coderEndpoints,
+  type EndSessionResponse,
   type EndUnit,
   type SessionResponse,
   type CoderUnitResponse,
@@ -55,8 +56,10 @@ export interface CoderApi {
   postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string): Promise<void>;
   postCoderVariables(variables: Record<string, VariableValue>): Promise<void>;
   /** The coder reached an `end` item: the session is over (screened out or complete). */
-  /** `unit`: the unit an end inside a unit loop was reached on. */
-  endSession(item: string, unit?: EndUnit): Promise<void>;
+  /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the job. */
+  endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse>;
+  /** Goes back after finishing, while the server allows it (`reopen`). */
+  reopenSession(): Promise<void>;
   /** The coder quits (the session ends, if it hadn't); with `requestDeletion` they ask for their answers to be deleted. */
   quitSession(requestDeletion: boolean): Promise<void>;
   /** A one-time token to continue this session on another device (docs/coder-identity.md). */
@@ -177,8 +180,12 @@ export class HttpCoderApi implements CoderApi {
     });
   }
 
-  async endSession(item: string, unit?: EndUnit): Promise<void> {
-    await this.request(coderEndpoints.endSession.path, { method: "POST", body: JSON.stringify({ item, unit }) });
+  async endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse> {
+    return this.request(coderEndpoints.endSession.path, { method: "POST", body: JSON.stringify({ item, unit }) });
+  }
+
+  async reopenSession(): Promise<void> {
+    await this.request(coderEndpoints.reopenSession.path, { method: "POST" });
   }
 
   async quitSession(requestDeletion: boolean): Promise<void> {

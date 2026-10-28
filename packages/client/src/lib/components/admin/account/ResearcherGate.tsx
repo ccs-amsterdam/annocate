@@ -6,7 +6,7 @@ import { LogIn, ShieldCheck } from "lucide-react";
 
 const LOGIN_ERRORS: Record<LoginError, string> = {
   email_unverified: "Your login provider did not confirm your email address. Verify it there and try again.",
-  mfa_required: "This server requires two-factor authentication. Set it up with your login provider and try again.",
+  blocked: "This account is blocked on this server. Contact its administrators if you think this is a mistake.",
   login_failed: "Logging in didn't work. Please try again.",
 };
 

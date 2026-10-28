@@ -1,5 +1,7 @@
 import type {
   EndUnit,
+  EndValues,
+  Reopen,
   CodebookItem,
   TopLevelItem,
   InLoopItem,
@@ -92,6 +94,8 @@ export interface JobManagerSnapshot {
   login: string | null;
   /** The invitation lets the coder log in, and they haven't. */
   canLogIn: boolean;
+  /** With phase `finished`: whether the coder can go back (`reopen()`); `until` null: always. */
+  reopen: Reopen;
   navigation: JobManagerNavigation;
 }
 
@@ -229,6 +233,8 @@ export class JobManager {
   private progress = new Map<string, { doneUnitIds: number[]; totalUnits?: number | null }>();
   /** True while restoring a resumed session: answered questions are skipped until one needs input. */
   private resuming = false;
+  /** Set by `reopen`: resuming stops at the last question instead of the end. */
+  private backFromEnd = false;
 
   private lastFailedOperation: (() => Promise<void>) | null = null;
   private starting: Promise<void> | null = null;
@@ -255,6 +261,7 @@ export class JobManager {
     deletionRequested: false,
     login: null,
     canLogIn: false,
+    reopen: null,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -308,10 +315,12 @@ export class JobManager {
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
       if (session.ended) {
-        // The coder reached an `end` item before, or quit: show the ending again.
+        // The coder reached an `end` item before, or quit: show the ending
+        // again, with the values the server still gives for it (endValues).
         const item = session.ended.item ? findEnd(this.items, session.ended.item) : null;
         await this.refreshTopSteps();
-        await this.publishEnding(item, await this.endScope(session.ended.unit), session.ended.outcome === "quit");
+        this.publish({ reopen: session.reopen ?? null });
+        await this.publishEnding(item, this.endScope(session.endValues ?? null), session.ended.outcome === "quit");
         return;
       }
       // Resume where the coder left off: skip answered questions and
@@ -411,8 +420,9 @@ export class JobManager {
     await this.guarded(() => this.goBackNow());
   }
 
-  private async goBackNow(): Promise<void> {
-    if (!this.canGoBack()) return;
+  /** `force`: also while loading (going back from the end, `reopen`). */
+  private async goBackNow(force = false): Promise<void> {
+    if (!force && !this.canGoBack()) return;
 
     this.syncCurrentUnitAnswers();
 
@@ -784,9 +794,13 @@ export class JobManager {
     }
   }
 
-  /** The coder reached an `end` item (inside a unit loop: on `unit`): tells the server, and shows the ending. */
-  private async reachEnd(item: EndItem, scope: ReferenceScope, unit?: EndUnit): Promise<void> {
-    await this.coderApi.endSession(item.name, unit);
+  /**
+   * The coder reached an `end` item (inside a unit loop: on `unit`), or
+   * without one the end of the job: tells the server, and shows the ending.
+   */
+  private async reachEnd(item: EndItem | null, scope: ReferenceScope, unit?: EndUnit): Promise<void> {
+    const ended = await this.coderApi.endSession(item?.name, unit);
+    this.publish({ reopen: ended?.reopen ?? null });
     await this.publishEnding(item, scope);
   }
 
@@ -796,14 +810,22 @@ export class JobManager {
    * when it was reached). Without the unit (e.g. no longer in the job), the
    * coder's only.
    */
-  private async endScope(unit: EndUnit | undefined): Promise<ReferenceScope> {
-    if (!unit) return this.scope(this.coderVisible);
-    try {
-      const loaded = await this.coderApi.getLoopUnit(unit.loop, unit.id);
-      return this.scope({ ...this.coderVisible, ...loaded.variables }, loaded.data);
-    } catch {
-      return this.scope(this.coderVisible);
-    }
+  private endScope(values: EndValues | null): ReferenceScope {
+    if (!values) return this.scope(this.coderVisible);
+    return this.scope({ ...this.coderVisible, ...values.variables, ...values.unit?.variables }, values.unit?.data as UnitData | undefined);
+  }
+
+  /**
+   * Goes back after finishing (while `reopen` allows): the server opens the
+   * session again, and the coder lands on their last question.
+   */
+  async reopen(): Promise<void> {
+    await this.guarded(async () => {
+      await this.coderApi.reopenSession();
+      this.backFromEnd = true;
+      this.starting = null;
+      await this.start();
+    });
   }
 
   /**
@@ -848,8 +870,16 @@ export class JobManager {
     this.maxReachedTopIndex = Math.max(this.maxReachedTopIndex, this.topIndex);
     const next = this.topSteps[this.topIndex];
 
+    // Back from the end (`reopen`): the last question instead of ending again.
+    if (this.backFromEnd && (!next || next.type === "end")) {
+      this.backFromEnd = false;
+      this.resuming = false;
+      await this.goBackNow(true);
+      return;
+    }
+
     if (!next) {
-      await this.publishEnding(null, this.scope(this.coderVisible));
+      await this.reachEnd(null, this.scope(this.coderVisible));
       return;
     }
 

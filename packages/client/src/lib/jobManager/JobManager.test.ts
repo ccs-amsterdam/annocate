@@ -65,7 +65,9 @@ function makeFlakyServer(overrides: Partial<CoderApi> = {}): CoderApi & { calls:
     }),
     endSession: vi.fn(async () => {
       calls.endSession = (calls.endSession ?? 0) + 1;
+      return { reopen: null };
     }),
+    reopenSession: vi.fn(async () => {}),
   };
   return Object.assign(base, overrides, { calls });
 }
@@ -635,6 +637,26 @@ describe("end items", () => {
     expect(snap.ending?.redirectUrl).toBe("https://panel.example/end?id=a%20b");
   });
 
+  it("finishing the job tells the server; going back lands on the last question", async () => {
+    const answers: Record<string, VariableValue> = {};
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => ({ ...session([confirm("one"), confirm("two")]), variables: { ...answers } })),
+      postCoderVariables: vi.fn(async (vars: Record<string, VariableValue>) => void Object.assign(answers, vars)),
+      endSession: vi.fn(async () => ({ reopen: { until: new Date(Date.now() + 60_000) } })),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    await manager.answer({ done: true, skip: false });
+    await manager.answer({ done: true, skip: false });
+    expect(server.endSession).toHaveBeenCalledWith(undefined, undefined);
+    expect(manager.getSnapshot()).toMatchObject({ phase: "finished", reopen: { until: expect.any(Date) } });
+
+    await manager.reopen();
+    expect(server.reopenSession).toHaveBeenCalled();
+    expect(manager.getSnapshot().phase).not.toBe("finished");
+    expect(itemName(manager.getSnapshot().currentItem!)).toBe("two");
+  });
+
   it("goes on when the condition doesn't hold", async () => {
     const server = makeFlakyServer({ getSession: vi.fn(async () => ({ ...session(items), variables })) });
     const manager = new JobManager(server);
@@ -681,12 +703,16 @@ describe("end items", () => {
       { type: "condition", condition: { script: `$var.q1.is("B")` }, children: [{ type: "end", name: "fail", outcome: "screenout", message: "You chose $var.q1.value" }] },
     ] as InLoopItem[]);
     const server = makeFlakyServer({
-      getSession: vi.fn(async () => ({ ...session([loop]), ended: { item: "fail", outcome: "screenout" as const, at: new Date(), unit: { loop: "loop", id: 1 } } })),
-      getLoopUnit: vi.fn(async () => ({ ...unit(1), variables: { q1: { done: true, skip: false, values: [{ value: "B" }] } } })),
+      getSession: vi.fn(async () => ({
+        ...session([loop]),
+        ended: { item: "fail", outcome: "screenout" as const, at: new Date(), unit: { loop: "loop", id: 1 } },
+        // A closed session: the server gives only what the end screen uses
+        endValues: { variables: {}, unit: { data: {}, variables: { q1: { done: true, skip: false, values: [{ value: "B" }] } } } },
+      })),
     });
     const manager = new JobManager(server);
     await manager.start();
-    expect(server.getLoopUnit).toHaveBeenCalledWith("loop", 1);
+    expect(server.getLoopUnit).not.toHaveBeenCalled();
     expect(manager.getSnapshot().ending?.message?.values.map((v) => v.text)).toEqual(["B"]);
   });
 });

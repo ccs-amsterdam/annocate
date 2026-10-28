@@ -328,6 +328,8 @@ function JobRunnerContent({
         quit={snapshot.quit}
         deletionRequested={snapshot.deletionRequested}
         onRequestDeletion={() => manager.quit(true)}
+        reopen={snapshot.reopen}
+        onReopen={() => manager.reopen()}
         preview={preview}
         onFinished={onFinished}
       />

@@ -91,7 +91,7 @@ export function coderApi(server: Server): Hono {
     return c.json(c.get("runtime").createTransfer(key));
   });
 
-  session.get("/session", (c) => c.json({ ...c.get("runtime").session(c.get("coder")), canLogIn: c.get("canLogIn") }));
+  session.get("/session", async (c) => c.json({ ...(await c.get("runtime").session(c.get("coder"))), canLogIn: c.get("canLogIn") }));
 
   session.get("/loop/:loop/next", async (c) => {
     const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), unitsets: c.req.queries("unitsets") });
@@ -113,7 +113,11 @@ export function coderApi(server: Server): Hono {
 
   session.post("/end", async (c) => {
     const body = await parseBody(c, EndSessionSchema);
-    await c.get("runtime").endSession(c.get("coder"), body.item, body.unit);
+    return c.json(await c.get("runtime").endSession(c.get("coder"), body.item, body.unit));
+  });
+
+  session.post("/reopen", async (c) => {
+    await c.get("runtime").reopenSession(c.get("coder"));
     return c.body(null, 204);
   });
 

@@ -37,10 +37,11 @@ export function jobs(server: Server): Hono<Env> {
       throw new HttpError(403, `You can own at most ${maxJobs} jobs: delete one, or ask an admin for more`, "limit_reached");
     }
     const row = await db.transaction(async (tx) => {
-      const job = await one<JobRow>(tx, "INSERT INTO jobs (name, archived, owner_id) VALUES ($1, $2, $3) RETURNING *", [
+      const job = await one<JobRow>(tx, "INSERT INTO jobs (name, archived, owner_id, keep_sessions_open) VALUES ($1, $2, $3, $4) RETURNING *", [
         parsed.data.name,
         parsed.data.archived ?? false,
         ownerId,
+        parsed.data.keepSessionsOpen ?? false,
       ]);
       // Development headers keep the bootstrap rule instead (a job without job users is open).
       if (!researcher.devRole) {

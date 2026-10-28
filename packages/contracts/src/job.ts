@@ -5,12 +5,20 @@ import { IdSchema, RoleSchema } from "./common.js";
 export const JobWriteSchema = z.object({
   name: z.string().min(1).max(256),
   archived: z.boolean().optional().default(false),
+  /**
+   * Finished sessions stay open: coders can always go back to their answers.
+   * Off by default: once a session ended, the coder gets only what its end
+   * screen shows, and can go back only within 15 minutes after finishing
+   * (docs/coder-identity.md §9). Left out: unchanged.
+   */
+  keepSessionsOpen: z.boolean().optional(),
 });
 export type JobWrite = z.infer<typeof JobWriteSchema>;
 
 export const JobResponseSchema = JobWriteSchema.extend({
   id: IdSchema,
   created: z.coerce.date(),
+  keepSessionsOpen: z.boolean(),
   /** Set when a server admin suspended the job: no coding and no changes (reading and deleting data still work). */
   suspendedAt: z.coerce.date().nullable().optional(),
 });

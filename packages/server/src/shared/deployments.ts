@@ -126,6 +126,7 @@ async function buildSpec(
   codebook: CodebookRow,
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch">,
 ): Promise<DeploymentSpec> {
+  const job = await one<{ keep_sessions_open: boolean }>(sql, "SELECT keep_sessions_open FROM jobs WHERE id = $1", [jobId]);
   const unitsets = await sql.query<{ name: string; unitIds: number[] }>(
     `SELECT name, unit_ids AS "unitIds" FROM unitsets WHERE job_id = $1 ORDER BY id`,
     [jobId],
@@ -134,6 +135,7 @@ async function buildSpec(
   return {
     jobId,
     ...meta,
+    keepSessionsOpen: job?.keep_sessions_open ?? false,
     codebook: toCodebookResponse(codebook),
     unitsets: [{ name: ALL_UNITS_UNITSET, unitIds: allUnitIds }, ...unitsets],
   };

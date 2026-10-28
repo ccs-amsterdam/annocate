@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Reopen } from "@annotinder/contracts";
 import type { SessionEnding } from "../jobManager/JobManager";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { QuitDialog } from "./QuitMenu";
@@ -17,6 +18,9 @@ interface SessionEndProps {
   deletionRequested?: boolean;
   /** Asks for deletion after the session ended; without it the option isn't offered. */
   onRequestDeletion?: () => Promise<void>;
+  /** Whether the coder can still go back to their answers (after finishing). */
+  reopen?: Reopen;
+  onReopen?: () => Promise<void>;
   /** In a preview, the redirect is shown but not followed. */
   preview?: boolean;
   onFinished?: () => void;
@@ -25,9 +29,10 @@ interface SessionEndProps {
 /**
  * The last screen: done, quit, or ended by an `end` item (screened out or
  * complete) with its message and redirect. Coders can still ask for their
- * answers to be deleted here.
+ * answers to be deleted here, and go back for a few minutes after finishing
+ * (`reopen`; afterwards the session is closed, docs/coder-identity.md §9).
  */
-export function SessionEnd({ ending, quit = false, deletionRequested = false, onRequestDeletion, preview, onFinished }: SessionEndProps) {
+export function SessionEnd({ ending, quit = false, deletionRequested = false, onRequestDeletion, reopen = null, onReopen, preview, onFinished }: SessionEndProps) {
   const redirect = ending?.redirectUrl ?? null;
   const [asking, setAsking] = useState(false);
 
@@ -67,6 +72,16 @@ export function SessionEnd({ ending, quit = false, deletionRequested = false, on
           <Button onClick={onFinished} className="mt-6">
             Done
           </Button>
+        )}
+        {reopen && onReopen && (
+          <button
+            type="button"
+            onClick={() => void onReopen()}
+            className="mt-4 cursor-pointer text-sm text-primary underline underline-offset-2 hover:text-primary/80"
+          >
+            Go back to my answers
+            {reopen.until && ` (until ${new Date(reopen.until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`}
+          </button>
         )}
         {deletionRequested ? (
           <p className="mt-6 text-xs text-muted-foreground">Your request to delete your answers was sent to the researchers.</p>

@@ -17,6 +17,8 @@ export interface DeploymentSpec {
    * researcher resets units), so it reloads what it derived from them.
    */
   annotationEpoch: number;
+  /** The job keeps finished sessions open (else they close: docs/coder-identity.md §9). */
+  keepSessionsOpen: boolean;
 }
 
 /** Unit content, for the runtime's cache. */

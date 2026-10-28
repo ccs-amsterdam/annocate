@@ -18,11 +18,13 @@ export function job(server: Server): Hono<Env> {
     const parsed = JobWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-    const row = await one<JobRow>(db, "UPDATE jobs SET name = $1, archived = $2 WHERE id = $3 RETURNING *", [
-      parsed.data.name,
-      parsed.data.archived ?? false,
-      c.get("jobId"),
-    ]);
+    const row = await one<JobRow>(
+      db,
+      "UPDATE jobs SET name = $1, archived = $2, keep_sessions_open = COALESCE($3, keep_sessions_open) WHERE id = $4 RETURNING *",
+      [parsed.data.name, parsed.data.archived ?? false, parsed.data.keepSessionsOpen ?? null, c.get("jobId")],
+    );
+    // The runtime reads whether sessions stay open with the deployment.
+    await server.deployments.refresh(c.get("jobId"));
     return c.json(toJobResponse(row!));
   });
 

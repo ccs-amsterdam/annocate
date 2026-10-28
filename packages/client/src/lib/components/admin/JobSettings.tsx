@@ -64,8 +64,9 @@ function JobEditForm({
   const deleteJob = useDeleteJobMutation(client);
   const [name, setName] = useState(job.name);
   const [archived, setArchived] = useState(job.archived);
+  const [keepOpen, setKeepOpen] = useState(job.keepSessionsOpen);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const dirty = name !== job.name || archived !== job.archived;
+  const dirty = name !== job.name || archived !== job.archived || keepOpen !== job.keepSessionsOpen;
 
   return (
     <div className="max-w-md space-y-6">
@@ -73,7 +74,7 @@ function JobEditForm({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          updateJob.mutate({ id: job.id, body: { name, archived } });
+          updateJob.mutate({ id: job.id, body: { name, archived, keepSessionsOpen: keepOpen } });
         }}
       >
         <div>
@@ -89,6 +90,22 @@ function JobEditForm({
             className="rounded border-input text-primary focus:ring-primary h-4 w-4"
           />
           <span>Archived (hide from active coding lists)</span>
+        </label>
+
+        <label className="flex items-start gap-2 text-sm text-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={keepOpen}
+            onChange={(e) => setKeepOpen(e.target.checked)}
+            className="mt-0.5 rounded border-input text-primary focus:ring-primary h-4 w-4"
+          />
+          <span>
+            Keep finished sessions open
+            <span className="block text-xs text-muted-foreground">
+              Off (recommended): once coders finish, they can go back for 15 minutes; then their answers can&apos;t be looked at
+              or changed, also not by someone who gets into their account or device later.
+            </span>
+          </span>
         </label>
 
         <div className="pt-2">

@@ -11,6 +11,8 @@ import {
   type CoderUnitResponse,
   type DeploymentStatus,
   type EndUnit,
+  type EndValues,
+  type Reopen,
   type SessionResponse,
   type UnitBranch,
   type TransferResponse,
@@ -108,6 +110,9 @@ interface WorkspaceEntry {
   /** unitId -> the unit version last shown to the coder, stored with their answers. */
   served: Map<number, number>;
 }
+
+/** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
+export const REOPEN_MS = 15 * 60 * 1000;
 
 /** Rough size of one `served` entry. */
 const SERVED_BYTES = 32;
@@ -208,6 +213,7 @@ export class DeploymentRuntime {
         const spec = await this.store.getDeployment();
         if (spec.version === this.spec.version && spec.annotationEpoch === this.spec.annotationEpoch) {
           this.specCheckedAt = this.options.now();
+          this.spec = { ...this.spec, keepSessionsOpen: spec.keepSessionsOpen };
           this.applyUnitsets(spec);
           return;
         }
@@ -488,7 +494,8 @@ export class DeploymentRuntime {
     return transfer.sessionKey;
   }
 
-  session(coder: Coder): SessionResponse {
+  async session(coder: Coder): Promise<SessionResponse> {
+    const endValues = await this.endValues(coder);
     return {
       coderId: coder.coderId,
       jobId: this.spec.jobId,
@@ -503,8 +510,11 @@ export class DeploymentRuntime {
           totalUnits: this.expectedUnits(routed),
         };
       }),
-      variables: coder.variables,
+      // A closed session: only what its end screen shows.
+      variables: this.closed(coder) ? (endValues?.variables ?? {}) : coder.variables,
       ended: coder.ended,
+      endValues,
+      reopen: this.reopen(coder),
       deletionRequest: coder.deletionRequest,
       session: coder.session,
       login: coder.login,
@@ -518,15 +528,63 @@ export class DeploymentRuntime {
    * end inside a unit loop names the unit (one the coder answered), so the
    * ending can be shown again with its values.
    */
-  async endSession(coder: Coder, item: string, unit?: EndUnit): Promise<void> {
-    if (coder.ended) return;
-    const end = findEndItem(this.spec.codebook.items, item);
-    if (!end) throw new HttpError(400, `No end item '${item}'`);
+  async endSession(coder: Coder, item?: string, unit?: EndUnit): Promise<{ reopen: Reopen }> {
+    if (coder.ended) return { reopen: this.reopen(coder) };
+    // Without an item: the coder went through the whole job.
+    const end = item === undefined ? null : findEndItem(this.spec.codebook.items, item);
+    if (item !== undefined && !end) throw new HttpError(400, `No end item '${item}'`);
     if (unit && (!this.loops.has(unit.loop) || !(await this.workspace(coder.coderId)).has(unit.id))) {
       throw new HttpError(400, "The end's unit is not one you answered");
     }
-    coder.ended = { item, ...(unit ? { unit } : {}), outcome: end.outcome, at: new Date(this.options.now()) };
+    coder.ended = { ...(item ? { item } : {}), ...(unit ? { unit } : {}), outcome: end?.outcome ?? "complete", at: new Date(this.options.now()) };
     await this.saveCoder(coder);
+    return { reopen: this.reopen(coder) };
+  }
+
+  /**
+   * Whether an ended session can be opened again: after completing it,
+   * within `REOPEN_MS` (always, if the job keeps sessions open). Not after a
+   * screenout (the answers that screened the coder out stay), quitting, or
+   * asking for deletion.
+   */
+  private reopen(coder: Coder): Reopen {
+    const { ended } = coder;
+    if (!ended || ended.outcome !== "complete" || coder.deletionRequest) return null;
+    if (this.spec.keepSessionsOpen) return { until: null };
+    const until = new Date(new Date(ended.at).getTime() + REOPEN_MS);
+    return until.getTime() > this.options.now() ? { until } : null;
+  }
+
+  /** Goes back after completing the session (`reopen`): it is open again. */
+  async reopenSession(coder: Coder): Promise<void> {
+    if (!coder.ended) return;
+    if (!this.reopen(coder)) throw new HttpError(409, "This session has ended", "session_closed");
+    coder.ended = null;
+    await this.saveCoder(coder);
+  }
+
+  /** An ended session is closed, unless the job keeps sessions open: the coder gets only what the end screen shows. */
+  private closed(coder: Coder): boolean {
+    return coder.ended !== null && !this.spec.keepSessionsOpen;
+  }
+
+  /** The values an ended session's end screen uses (contracts EndValues): its message's and redirect link's references. */
+  private async endValues(coder: Coder): Promise<EndValues | null> {
+    const { ended } = coder;
+    if (!ended) return null;
+    const end = ended.item ? findEndItem(this.spec.codebook.items, ended.item) : null;
+    const source = `${end?.message ?? ""}\n${end?.redirectUrl ?? ""}`;
+    // Every `$var.x` / `$unit.x` written anywhere in them (texts, scripts, block conditions).
+    const names = (ns: string) => new Set([...source.matchAll(new RegExp(`\\$${ns}\\.([A-Za-z0-9_]+)`, "g"))].map((m) => m[1]));
+    const pick = <T>(values: Record<string, T>, wanted: Set<string>) => Object.fromEntries(Object.entries(values).filter(([k]) => wanted.has(k)));
+    const vars = names("var");
+    let unit: EndValues["unit"] = null;
+    if (ended.unit) {
+      const data = (await this.getUnits([ended.unit.id])).get(ended.unit.id)?.data ?? {};
+      const answers = (await this.workspace(coder.coderId)).get(ended.unit.id) ?? {};
+      unit = { data: pick(data, names("unit")), variables: pick(answers, vars) };
+    }
+    return { variables: pick(coder.variables, vars), unit };
   }
 
   /**
@@ -766,6 +824,7 @@ export class DeploymentRuntime {
    * a lease on), so a resumed session can navigate back to it.
    */
   async loopUnit(coder: Coder, loopName: string, unitId: number): Promise<CoderUnitResponse> {
+    if (this.closed(coder)) throw new HttpError(409, "This session has ended", "session_closed");
     if (!this.loops.has(loopName)) throw new HttpError(404, `No unit loop '${loopName}'`);
     const own = (await this.workspace(coder.coderId)).get(unitId);
     const pools = DeploymentRuntime.poolsOf(this.assignedPools(coder, loopName));

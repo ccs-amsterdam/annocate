@@ -57,8 +57,32 @@ export type DeletionRequest = z.infer<typeof DeletionRequestSchema>;
 export const QuitSessionSchema = z.object({ requestDeletion: z.boolean().default(false) });
 export type QuitSession = z.infer<typeof QuitSessionSchema>;
 
-/** Body for `POST /end`: the `end` item the coder reached. */
-export const EndSessionSchema = z.object({ item: z.string().min(1), unit: EndUnitSchema.optional() });
+/** Body for `POST /end`: the `end` item the coder reached; without one, they finished the job. */
+export const EndSessionSchema = z.object({ item: z.string().min(1).optional(), unit: EndUnitSchema.optional() });
+
+/**
+ * Whether the coder can go back after the session ended (`POST /reopen`):
+ * null: not (screened out, quit, or the 15 minutes after finishing are
+ * over); `until` null: always (the job keeps sessions open).
+ */
+export const ReopenSchema = z.object({ until: z.coerce.date().nullable() }).nullable();
+export type Reopen = z.infer<typeof ReopenSchema>;
+
+/** Response of `POST /end`. */
+export const EndSessionResponseSchema = z.object({ reopen: ReopenSchema });
+export type EndSessionResponse = z.infer<typeof EndSessionResponseSchema>;
+
+/**
+ * What an ended session's end screen shows, after a reload: the values its
+ * message and redirect link use (`$var`, and with an end inside a unit loop
+ * the unit's `$unit` fields and answers). A session that ended gets no more
+ * than this, unless its job keeps sessions open.
+ */
+export const EndValuesSchema = z.object({
+  variables: z.record(z.string(), VariableValueSchema),
+  unit: z.object({ data: z.record(z.string(), z.unknown()), variables: z.record(z.string(), VariableValueSchema) }).nullable(),
+});
+export type EndValues = z.infer<typeof EndValuesSchema>;
 export type EndSession = z.infer<typeof EndSessionSchema>;
 
 /** Response for `GET /session`. */
@@ -91,6 +115,10 @@ export const SessionResponseSchema = z.object({
   login: z.string().nullable().optional(),
   /** The invitation lets the coder log in (`auth: "optional"`), and they haven't: offer it, to continue on other devices. */
   canLogIn: z.boolean().optional(),
+  /** With `ended`: what its end screen shows. */
+  endValues: EndValuesSchema.nullable().optional(),
+  /** With `ended`: whether the coder can go back. */
+  reopen: ReopenSchema.optional(),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
@@ -113,6 +141,8 @@ export const CoderErrorCodeSchema = z.enum([
   "branch_required",
   /** The coder reached an `end` item or quit: no more units or answers. */
   "session_ended",
+  /** The session ended and its job closes finished sessions: its answers can't be looked at again. */
+  "session_closed",
   /** Preview only: the latest codebook has issues, so it can't run. */
   "codebook_invalid",
   /** The invite requires a URL parameter the link doesn't have. */
