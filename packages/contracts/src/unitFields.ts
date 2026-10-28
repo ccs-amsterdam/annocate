@@ -13,7 +13,7 @@ export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean"]);
 export type UnitFieldType = z.infer<typeof UnitFieldTypeSchema>;
 
 export const UnitFieldSchema = z.object({
-  name: z.string().min(1).max(128),
+  name: z.string().min(1).max(64),
   type: UnitFieldTypeSchema,
 });
 export type UnitField = z.infer<typeof UnitFieldSchema>;

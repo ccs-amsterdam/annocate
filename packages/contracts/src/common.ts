@@ -9,7 +9,7 @@ import { z } from "zod";
 export const SafeNameSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(64, "A name has at most 64 characters")
   .regex(/^[a-zA-Z0-9_]+$/, "Name must be alphanumeric and underscores only");
 
 /** Numeric id, as assigned by a server implementation. */
