@@ -84,11 +84,11 @@ without one still works for coding, and `GET /me` says `mfaRequired`. The
 session records it (`sessions.mfa`); API keys count as having one, since
 making one needs it.
 
-Second factors and passkeys are the login provider's: AnnoTinder doesn't
-store them, so losing one is solved there (e.g. an Authentik admin resets
-it). Handling passkeys in AnnoTinder itself would make it responsible for
-recovery too, which ends in "prove you own the email" again: not worth the
-security-critical code while a provider does it.
+Today second factors are the login provider's: AnnoTinder doesn't store
+them, so losing one is solved there. Planned (`plan-passkeys.md`):
+AnnoTinder confirms a passkey itself, as a second layer independent of the
+provider, with recovery codes and admin resets instead of email recovery;
+and, for AmCAT and AnnoTinder on one server, an auth sidecar that both use.
 
 ## 6. Open points
 

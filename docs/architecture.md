@@ -551,8 +551,9 @@ Roughly in order:
 12. **Admin unit cache.** A client-side cache of units for the researcher
     UI (IndexedDB), compared by ids and hashes.
 
-13. **Gold checks** (`plan-gold-checks.md`) and **question loops**
-    (`plan-question-loops.md`): planned, not built.
+13. **Gold checks** (`plan-gold-checks.md`), **question loops**
+    (`plan-question-loops.md`) and **passkeys as a second layer**, with a
+    login shared with AmCAT (`plan-passkeys.md`): planned, not built.
 
 Smaller things worth an issue: a swipe-card UI for the `annotinder` answer
 type; `VariableValue` as a discriminated union; a live preview of a
