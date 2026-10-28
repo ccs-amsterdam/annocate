@@ -11,6 +11,7 @@ import {
   nestedQuestions,
   questionOrder,
   readme,
+  resetAnswersTable,
   toCsv,
   unitsTable,
   variablesTable,
@@ -53,6 +54,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
   const job = useJobQuery(client).data;
   const deployment = useDeploymentQuery(client).data;
   const [withLabels, setWithLabels] = useState(true);
+  const [withReset, setWithReset] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,9 +66,9 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
     setBusy("Loading coders…");
     try {
       const coderList = (await coders.refetch()).data ?? [];
-      const annotations = await allPages<AnnotationRow>(
+      const rows = await allPages<AnnotationRow>(
         async (after) => {
-          const page = await client.listAnnotations({ after, limit: 10000 });
+          const page = await client.listAnnotations({ after, limit: 10000, ...(withReset ? { retired: "true" as const } : {}) });
           return { rows: page.annotations, next: page.next };
         },
         (n) => setBusy(`Loading answers: ${n}…`),
@@ -78,9 +80,10 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         },
         (n) => setBusy(`Loading units: ${n}…`),
       );
+      const annotations = rows.filter((a) => !a.retiredAt);
       // The codebook versions answers were given under, and the live one.
       setBusy("Loading codebooks…");
-      const ids = new Set(annotations.flatMap((a) => (a.codebookId === null ? [] : [a.codebookId])));
+      const ids = new Set(rows.flatMap((a) => (a.codebookId === null ? [] : [a.codebookId])));
       if (deployment) ids.add(deployment.codebookId);
       const codebooks = new Map<number, TopLevelItem[]>();
       for (const id of ids) codebooks.set(id, (await client.getCodebook(id)).items as TopLevelItem[]);
@@ -96,6 +99,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested))),
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations))),
         "variables.csv": strToU8(toCsv(variablesTable(codebooks))),
+        ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels))) } : {}),
       });
       save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");
     } catch (e) {
@@ -144,6 +148,10 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
             <input type="checkbox" checked={withLabels} onChange={(e) => setWithLabels(e.target.checked)} />
             Add label columns (the label each coder saw, next to the stored value)
           </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={withReset} onChange={(e) => setWithReset(e.target.checked)} />
+            Include answers that were reset (reset_answers.csv)
+          </label>
           <Button className="self-start" disabled={busy !== null} onClick={() => void download()}>
             <Download className="mr-1 h-4 w-4" /> Download zip
           </Button>
@@ -152,8 +160,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          CSV files (UTF-8). Scripts (R, Python) can get the same data, and more detail (e.g. span positions, and answers a
-          researcher reset), from the API with an API key (account menu).
+          CSV files (UTF-8). Scripts (R, Python) can get the same data from the API with an API key (account menu).
         </p>
       </section>
     </div>

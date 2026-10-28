@@ -19,9 +19,15 @@ whenever you open them; for the full data, download the results.
 | --- | --- |
 | **Not published** | No codebook version is live yet: coders can't start |
 | **Live** | Coders can work, since the date shown |
-| **Paused** | Coders get no new units (pausing is done through the [researcher API](researcher-api.md); the editor has no button for it) |
+| **Paused** | Coders get no new units. Coders with a unit open can still finish it. **Pause** and **Resume** are next to the status |
 | **Live version** | The codebook version coders get, with its note. Click it to open it in the codebook editor |
 | **Draft** | Your unpublished changes, if any |
+
+**Reload** has the server read the live job again, including the units'
+content. It is rarely needed: the server does this by itself after you
+publish, upload or replace units, change unitsets or reset answers. Under
+**Progress**, a line says since when the server holds the job and how much
+of it is in its memory.
 
 ### Numbers
 

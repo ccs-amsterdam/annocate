@@ -7,6 +7,10 @@ import type {
   CoderInviteResponse,
   CoderProgress,
   DeleteCoders,
+  JobUser,
+  RefreshDeployment,
+  ResetAnnotations,
+  UnitResponse,
   DeploymentResponse,
   DeploymentStatus,
   JobOverview,
@@ -284,6 +288,57 @@ export function useDeploymentQuery(client: ResearcherApi): UseQueryResult<Deploy
  * active/paused state. The published version becomes read only, so the
  * codebooks are refetched too.
  */
+/** The job's users and their roles (ADMIN only: others get an error). */
+export function useJobUsersQuery(client: ResearcherApi): UseQueryResult<JobUser[]> {
+  const jobId = client.jobId!;
+  return useQuery({ queryKey: keys.jobUsers(jobId), queryFn: () => client.getJobUsers(jobId), retry: false });
+}
+
+/** Replaces the job's users (the whole list). */
+export function useJobUsersMutation(client: ResearcherApi): UseMutationResult<void, Error, JobUser[]> {
+  const queryClient = useQueryClient();
+  const jobId = client.jobId!;
+  return useMutation({
+    mutationFn: (users: JobUser[]) => client.putJobUsers(jobId, users),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.jobUsers(jobId) }),
+  });
+}
+
+/** Pauses (no new units for coders) or resumes the live job, keeping its codebook. */
+export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, { codebookId: number; active: boolean }> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => client.putDeployment(body),
+    onSuccess: (deployment) => {
+      queryClient.setQueryData(keys.deployment(client.jobId), deployment);
+      return queryClient.invalidateQueries({ queryKey: keys.job(client.jobId) });
+    },
+  });
+}
+
+/** Has the server re-read the live job now (optionally dropping its cached unit content). */
+export function useRefreshDeploymentMutation(client: ResearcherApi): UseMutationResult<{ version: number }, Error, RefreshDeployment> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RefreshDeployment) => client.refreshDeployment(body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.deploymentStatus(client.jobId) }),
+  });
+}
+
+/** Retires answers so units are coded again; refreshes everything that counts answers. */
+export function useResetAnswersMutation(client: ResearcherApi): UseMutationResult<{ retired: number }, Error, ResetAnnotations> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ResetAnnotations) => client.resetAnnotations(body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.job(client.jobId) }),
+  });
+}
+
+/** One unit with its data. */
+export function useUnitQuery(client: ResearcherApi, id: number | null): UseQueryResult<UnitResponse> {
+  return useQuery({ queryKey: [...keys.units(client.jobId), "one", id], queryFn: () => client.getUnit(id!), enabled: id !== null });
+}
+
 export function usePublishMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, number> {
   const queryClient = useQueryClient();
   return useMutation({

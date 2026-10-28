@@ -13,7 +13,7 @@ export const AnnotationsQuerySchema = z.object({
   after: z.coerce.number().int().nonnegative().optional(),
   /** Rows per page (default 1000, at most 10000). */
   limit: z.coerce.number().int().min(1).max(10000).default(1000),
-  /** Also values that were replaced or reset (with `retiredAt`). Default: live values only. */
+  /** Also values a researcher reset (with `retiredAt`). Default: live values only. */
   retired: z
     .enum(["true", "false"])
     .default("false")
@@ -37,7 +37,7 @@ export const AnnotationRowSchema = z.object({
   unitVersionId: IdSchema.nullable(),
   created: z.coerce.date(),
   updated: z.coerce.date(),
-  /** Only with `retired=true`: when the value was replaced or reset; null if live. */
+  /** Only with `retired=true`: when the value was reset; null if live. */
   retiredAt: z.coerce.date().nullable().optional(),
 });
 export type AnnotationRow = z.infer<typeof AnnotationRowSchema>;

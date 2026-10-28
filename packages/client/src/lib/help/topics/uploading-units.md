@@ -133,6 +133,11 @@ later coders see:
 Avoid replacing coded units in a running study unless you must, and note it
 in your report.
 
+## Looking at a unit
+
+Click a unit's id in the table to see all its fields in full, and whether
+it was coded.
+
 ## Deleting units
 
 Click the bin icon in a unit's row to delete it. Coded units can't be deleted

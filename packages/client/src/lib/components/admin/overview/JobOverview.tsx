@@ -13,6 +13,8 @@ import { formatWhen } from "../../../admin/format";
 import { JobSettings } from "../JobSettings";
 import { ActivityChart } from "./ActivityChart";
 import { LoopProgress } from "./LoopProgress";
+import { LiveControls, RuntimeLine } from "./LiveControls";
+import { TeamSettings } from "./TeamSettings";
 
 export type OverviewTarget = "Units" | "Invitations" | "Coders";
 
@@ -49,6 +51,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: J
       <Card title="Status">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           <LiveStatus live={deployment !== null} active={deployment?.active ?? false} since={deployment?.updated ?? null} />
+          {deployment && <LiveControls client={client} deployment={deployment} />}
           <VersionLink
             icon={CircleDot}
             label="Live version"
@@ -106,7 +109,10 @@ export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: J
           {deployment === null ? (
             <p className="text-sm text-muted-foreground">Publish a codebook version to start coding.</p>
           ) : statusQuery.data ? (
-            <LoopProgress status={statusQuery.data} />
+            <>
+              <LoopProgress status={statusQuery.data} />
+              <RuntimeLine status={statusQuery.data} />
+            </>
           ) : statusQuery.isError ? (
             <p className="text-sm text-muted-foreground">Progress can&apos;t be loaded right now.</p>
           ) : (
@@ -127,6 +133,10 @@ export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: J
           </ul>
         </Card>
       )}
+
+      <Card title="Who has access" subtitle="People who can see and work on this job">
+        <TeamSettings client={client} />
+      </Card>
 
       <Card title="Settings">
         <JobSettings client={client} onDeleted={onDeleted} />

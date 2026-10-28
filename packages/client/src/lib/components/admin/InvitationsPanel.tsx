@@ -284,6 +284,7 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
   const [urlParams, setUrlParams] = useState<RequiredUrlParam[]>([]);
   const [presets, setPresets] = useState("");
   const [maxUses, setMaxUses] = useState("");
+  const [emails, setEmails] = useState("");
 
   async function handleCreate() {
     await createInvite.mutateAsync({
@@ -293,6 +294,7 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
       participantParam: participant === "url" ? withoutEmpty(participantParam) : undefined,
       urlParams: urlParams.length ? urlParams.map(withoutEmpty) : undefined,
       variables: parsePresets(presets),
+      emails: auth !== "none" && emails.trim() ? emails.split(/[\s,;]+/).filter(Boolean) : undefined,
       maxUses: maxUses === "" ? undefined : Number(maxUses),
       unitsetId,
     });
@@ -302,6 +304,7 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
     setUrlParams([]);
     setPresets("");
     setMaxUses("");
+    setEmails("");
   }
 
   return (
@@ -322,6 +325,13 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
           {createInvite.isPending ? "Creating..." : "Create"}
         </Button>
       </div>
+      {auth !== "none" && (
+        <Input
+          placeholder="Allowed email addresses (optional), e.g. ann@uni.nl, bob@uni.nl: only these coders may log in with this link"
+          value={emails}
+          onChange={(e) => setEmails(e.target.value)}
+        />
+      )}
       <div className="flex items-center gap-2">
         <select
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"

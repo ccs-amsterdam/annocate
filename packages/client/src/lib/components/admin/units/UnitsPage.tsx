@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { UnitField, UnitResponse, UnitsetResponse } from "@annotinder/contracts";
-import { ChevronLeft, ChevronRight, Lock, Trash2, Upload, Scissors } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Pencil, RotateCcw, Trash2, Upload, Scissors } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
   useCreateUnitsetMutation,
@@ -8,9 +8,13 @@ import {
   useDeleteUnitsetMutation,
   useUnitFieldsQuery,
   useUnitPageQuery,
+  useUnitQuery,
   useUnitsetsQuery,
   useUnitsQuery,
+  useUpdateUnitsetMutation,
 } from "../../../admin/queries";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ResetAnswersDialog, type ResetScope } from "../ResetAnswersDialog";
 import { Button } from "@/components/ui/button";
 import { FieldBadge } from "./FieldBadge";
 import { UploadUnits } from "./UploadUnits";
@@ -101,7 +105,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
       )}
 
       {selected.size > 0 && (
-        <SelectionBar client={client} selected={selected} unitsets={unitsets} onClear={() => setSelected(new Set())} />
+        <SelectionBar client={client} selected={selected} unitsets={unitsets} current={currentSet} onClear={() => setSelected(new Set())} />
       )}
 
       <UnitTable
@@ -150,6 +154,7 @@ function UnitsetBar({
   onSplit: () => void;
 }) {
   const deleteUnitset = useDeleteUnitsetMutation(client);
+  const updateUnitset = useUpdateUnitsetMutation(client);
   const chip = (active: boolean) =>
     `rounded-full border px-2.5 py-1 text-xs transition-colors ${
       active ? "border-primary bg-primary/10 font-semibold text-foreground" : "border-border hover:border-primary/50"
@@ -176,6 +181,23 @@ function UnitsetBar({
               size="sm"
               variant="outline"
               className="gap-1.5"
+              disabled={updateUnitset.isPending}
+              onClick={() => {
+                const name = prompt(`Rename unitset "${current.name}" to:`, current.name)?.trim();
+                if (!name || name === current.name) return;
+                if (unitsets.some((s) => s.name === name)) return alert(`A unitset named ${name} already exists.`);
+                updateUnitset.mutate({ id: current.id, body: { name, unitIds: current.unitIds } }, { onSuccess: () => onSelect(name) });
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Rename
+            </Button>
+          )}
+          {current && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
               disabled={deleteUnitset.isPending}
               onClick={() => {
                 if (!confirm(`Delete unitset "${current.name}"? Its units stay.`)) return;
@@ -191,7 +213,14 @@ function UnitsetBar({
       {current && (
         <p className="text-xs text-muted-foreground">Showing the units of {current.name} in the set&apos;s order.</p>
       )}
+      {current && (
+        <p className="text-[11px] text-muted-foreground">
+          Renaming a set that a codebook or invitation uses changes what they hand out: codebooks name sets, so update them
+          too.
+        </p>
+      )}
       {deleteUnitset.isError && <p className="text-sm text-destructive">{deleteUnitset.error.message}</p>}
+      {updateUnitset.isError && <p className="text-sm text-destructive">{updateUnitset.error.message}</p>}
     </div>
   );
 }
@@ -200,14 +229,21 @@ function SelectionBar({
   client,
   selected,
   unitsets,
+  current,
   onClear,
 }: {
   client: ResearcherApi;
   selected: Set<number>;
   unitsets: UnitsetResponse[];
+  /** The unitset shown, if any: the selection can be removed from it. */
+  current: UnitsetResponse | null;
   onClear: () => void;
 }) {
   const createUnitset = useCreateUnitsetMutation(client);
+  const updateUnitset = useUpdateUnitsetMutation(client);
+  const [resetting, setResetting] = useState<ResetScope | null>(null);
+  const addTo = (set: UnitsetResponse) =>
+    updateUnitset.mutate({ id: set.id, body: { name: set.name, unitIds: [...set.unitIds, ...[...selected].filter((id) => !set.unitIds.includes(id))] } }, { onSuccess: onClear });
 
   function create() {
     const name = prompt(`Name for a new unitset with the ${selected.size} selected units:`)?.trim();
@@ -222,10 +258,49 @@ function SelectionBar({
       <Button size="sm" onClick={create} disabled={createUnitset.isPending}>
         New unitset from selection
       </Button>
+      {unitsets.length > 0 && (
+        <select
+          aria-label="Add the selection to a unitset"
+          className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+          value=""
+          disabled={updateUnitset.isPending}
+          onChange={(e) => {
+            const set = unitsets.find((s) => s.id === Number(e.target.value));
+            if (set) addTo(set);
+          }}
+        >
+          <option value="">Add to unitset…</option>
+          {unitsets.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      )}
+      {current && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={updateUnitset.isPending}
+          onClick={() =>
+            updateUnitset.mutate(
+              { id: current.id, body: { name: current.name, unitIds: current.unitIds.filter((id) => !selected.has(id)) } },
+              { onSuccess: onClear },
+            )
+          }
+        >
+          Remove from {current.name}
+        </Button>
+      )}
+      <Button size="sm" variant="outline" onClick={() => setResetting({ unitIds: [...selected], label: `${selected.size} unit${selected.size === 1 ? "" : "s"}` })}>
+        <RotateCcw className="h-3.5 w-3.5" /> Reset answers…
+      </Button>
       <Button size="sm" variant="ghost" onClick={onClear}>
         Clear
       </Button>
       {createUnitset.isError && <span className="text-destructive">{createUnitset.error.message}</span>}
+      {updateUnitset.isError && <span className="text-destructive">{updateUnitset.error.message}</span>}
+      <ResetAnswersDialog client={client} scope={resetting} onClose={() => setResetting(null)} />
     </div>
   );
 }
@@ -248,6 +323,7 @@ function UnitTable({
   loading: boolean;
 }) {
   const deleteUnit = useDeleteUnitMutation(client);
+  const [shown, setShown] = useState<number | null>(null);
   const allOnPage = units.length > 0 && units.every((u) => selected.has(u.id));
 
   function toggle(ids: number[], on: boolean) {
@@ -296,7 +372,11 @@ function UnitTable({
                   onChange={(e) => toggle([unit.id], e.target.checked)}
                 />
               </td>
-              <td className="p-2 font-mono text-xs">{unit.externalId}</td>
+              <td className="p-2 font-mono text-xs">
+                <button type="button" className="cursor-pointer text-left underline-offset-2 hover:underline" title="Show this unit" onClick={() => setShown(unit.id)}>
+                  {unit.externalId}
+                </button>
+              </td>
               <td className="p-2">
                 <div className="flex flex-wrap gap-1">
                   {(setsOf.get(unit.id) ?? []).map((name) => (
@@ -330,7 +410,37 @@ function UnitTable({
         </tbody>
       </table>
       {deleteUnit.isError && <p className="p-2 text-sm text-destructive">{deleteUnit.error.message}</p>}
+      <UnitDialog client={client} id={shown} fields={fields} onClose={() => setShown(null)} />
     </div>
+  );
+}
+
+/** One unit with all its fields in full. */
+function UnitDialog({ client, id, fields, onClose }: { client: ResearcherApi; id: number | null; fields: UnitField[]; onClose: () => void }) {
+  const unit = useUnitQuery(client, id).data;
+  return (
+    <Dialog open={id !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-mono">{unit?.externalId ?? "…"}</DialogTitle>
+          <DialogDescription>
+            {unit?.coded ? "Coded: replace it by uploading it again; coders' answers keep the version they saw." : "Not coded yet."}
+          </DialogDescription>
+        </DialogHeader>
+        {unit && (
+          <dl className="flex flex-col gap-3 text-sm">
+            {fields.map((f) => (
+              <div key={f.name}>
+                <dt className="font-mono text-xs text-muted-foreground">
+                  {f.name} <span className="opacity-70">({f.type})</span>
+                </dt>
+                <dd className="whitespace-pre-wrap break-words">{unit.data[f.name] === null || unit.data[f.name] === undefined ? "–" : String(unit.data[f.name])}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

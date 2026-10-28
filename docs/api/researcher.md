@@ -89,7 +89,7 @@ response checked against its contract schema.
 | [revokeInvite](#revokeinvite) | `POST /job/:jobId/invites/:id/revoke` | WRITE | – | `CoderInviteResponseSchema` |
 | [deleteInvite](#deleteinvite) | `DELETE /job/:jobId/invites/:id` | WRITE | – | – |
 | [setInviteUnitset](#setinviteunitset) | `PUT /job/:jobId/invites/:id/unitset` | WRITE | `{ unitsetId }` | `CoderInviteResponseSchema` |
-| [listCoders](#listcoders) | `GET /job/:jobId/coders` | WRITE | – | `CoderProgressSchema[]` |
+| [listCoders](#listcoders) | `GET /job/:jobId/coders` | READ | – | `CoderProgressSchema[]` |
 | [deleteCoders](#deletecoders) | `POST /job/:jobId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
 | [declineDeletion](#declinedeletion) | `POST /job/:jobId/coders/:id/deletion-request/decline` | ADMIN | – | – |
 | **Publishing** | | | | |
@@ -181,7 +181,7 @@ development role in.)
 
 ### putJobUsers
 
-`PUT /job/:id/users` → 204. Replaces the whole list.
+`PUT /job/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise).
 
 ### getOverview
 

@@ -104,6 +104,20 @@ uses random order (see [Order](unit-distribution.md#order)).
 > error instead of units. A set you make after publishing is used right
 > away: you don't need to publish the codebook again.
 
+## Changing a set
+
+Show the set, then:
+
+- **Rename** gives it another name. A codebook refers to sets by name, so
+  update the codebook (and publish) too, or the loop won't find the set.
+- To add units, select them (in **All units** or another set) and choose
+  the set under **Add to unitset…**. They are added at the end.
+- To remove units, select them while the set is shown and click **Remove
+  from** *set*.
+
+Coding that runs picks up the changed set at once. Units a coder already
+got stay theirs.
+
 ## Deleting a set
 
 Show the set and click **Delete set**. Its units stay in the job. A set can't

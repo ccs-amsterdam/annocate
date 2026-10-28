@@ -178,6 +178,10 @@ d = (annotations
 
 ## More detail with scripts
 
-The download has the answers as they are now. Scripts can get the same data
-from the API, also only what is new since the last download, and answers
-that were reset. See [Scripts and the researcher API](researcher-api.md).
+The download has the answers as they are now. With **Include answers that
+were reset** it also has `reset_answers.csv`: the answers a researcher reset
+(see [Resetting answers](changing-a-live-codebook.md#resetting-answers)), a
+row per answer with when it was given (`answered`) and reset (`reset_at`).
+
+Scripts can get the same data from the API, also only what is new since
+the last download. See [Scripts and the researcher API](researcher-api.md).

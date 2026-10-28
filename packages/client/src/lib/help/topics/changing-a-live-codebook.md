@@ -85,13 +85,25 @@ the new version and continue where they were, on the same unit,
 with their answers to it as far as they still fit. See
 [What coders experience when you publish](previewing-and-publishing.md#what-coders-experience-when-you-publish).
 
-## Coding units again
+## Resetting answers
 
-To have units coded again after a bigger change, AnnoTinder can **reset**
-answers to some questions: the answers are kept for analysis but no longer
-count, so the units are unfinished and coders get them again. This is only
-possible with the researcher API, not in the web interface (see
-[Scripts and the researcher API](researcher-api.md)).
+To have units coded again, for instance after a question changed meaning or
+a coder turned out to misunderstand it, **reset** answers to some
+questions. Reset answers are kept for analysis, but no longer count: the
+units are unfinished again, and coders get them again (the same coders too,
+who see them unanswered).
+
+Where to reset:
+
+- **Coders** tab, **Reset answers…**: the answers of all coders.
+- **Coders** tab, the reset icon in a coder's row: that coder's answers.
+- **Units** tab: select units, then **Reset answers…**: the answers to
+  those units.
+
+Then choose the questions: all questions of a loop, or some. Only answers in
+unit loops can be reset. To keep the reset answers in your download, tick
+**Include answers that were reset** on the **Results** tab
+(`reset_answers.csv`, see [Downloading results](results.md)).
 
 ## Advice
 

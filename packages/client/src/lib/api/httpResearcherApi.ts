@@ -4,6 +4,8 @@ import {
   type JobResponse,
   type JobUser,
   type DeleteCoders,
+  type RefreshDeployment,
+  type ResetAnnotations,
   type DeleteCodersResponse,
   type CodebookMeta,
   type CodebookResponse,
@@ -128,6 +130,10 @@ export interface ResearcherApi {
   putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
   /** Progress of the live job, per loop and unitset. */
   getDeploymentStatus(): Promise<DeploymentStatus>;
+  /** Re-reads the live deployment now; `units` also drops cached unit content (ADMIN). */
+  refreshDeployment(body: RefreshDeployment): Promise<{ version: number }>;
+  /** Retires live answers, so units are coded again (ADMIN). */
+  resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }>;
 
   /** A preview session of the latest codebook, run in memory. */
   createPreview(): Promise<PreviewSession>;
@@ -443,6 +449,14 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async getDeploymentStatus(): Promise<DeploymentStatus> {
     return this.request(this.jobPath(researcherEndpoints.getDeploymentStatus.path));
+  }
+
+  async refreshDeployment(body: RefreshDeployment): Promise<{ version: number }> {
+    return this.request(this.jobPath(researcherEndpoints.refreshDeployment.path), { method: "POST", body: JSON.stringify(body) });
+  }
+
+  async resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }> {
+    return this.request(this.jobPath(researcherEndpoints.resetAnnotations.path), { method: "POST", body: JSON.stringify(body) });
   }
 
   async getDeployment(): Promise<DeploymentResponse | null> {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, UserX } from "lucide-react";
+import { RotateCcw, Trash2, UserX } from "lucide-react";
 import type { CoderProgress, DeleteCoders } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCoderDeletionMutations, useCodersQuery } from "../../admin/queries";
 import { formatWhen } from "../../admin/format";
 import { HelpButton } from "../../help/HelpButton";
+import { ResetAnswersDialog, type ResetScope } from "./ResetAnswersDialog";
 
 /** How a coder is named in the UI: participant id, email or number. */
 const coderName = (c: CoderProgress) => c.participantId ?? c.email ?? `#${c.id}`;
@@ -35,6 +36,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
   const { remove, decline } = useCoderDeletionMutations(client);
   const [deleting, setDeleting] = useState<{ select: DeleteCoders; names: string[] } | null>(null);
   const [byId, setById] = useState(false);
+  const [resetting, setResetting] = useState<ResetScope | null>(null);
   const deleteCoder = (c: CoderProgress) => setDeleting({ select: { coderIds: [c.id] }, names: [coderName(c)] });
 
   return (
@@ -43,9 +45,14 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
           Coders <HelpButton topic="coders-and-progress" label="Help: following progress" />
         </h2>
-        <Button variant="outline" size="sm" onClick={() => setById(true)}>
-          <UserX className="h-3.5 w-3.5" /> Delete a coder&apos;s data…
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setResetting({ label: "" })}>
+            <RotateCcw className="h-3.5 w-3.5" /> Reset answers…
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setById(true)}>
+            <UserX className="h-3.5 w-3.5" /> Delete a coder&apos;s data…
+          </Button>
+        </div>
       </div>
 
       {requests.length > 0 && (
@@ -139,7 +146,16 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                       {coder.finished[loop] ?? 0}
                     </td>
                   ))}
-                  <td className="p-2 text-right">
+                  <td className="p-2 text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Reset ${coderName(coder)}'s answers`}
+                      title="Reset this coder's answers"
+                      onClick={() => setResetting({ coderIds: [coder.id], label: coderName(coder) })}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </Button>
                     <Button variant="ghost" size="icon-sm" aria-label={`Delete ${coderName(coder)}'s data`} title="Delete this coder's data" onClick={() => deleteCoder(coder)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -151,6 +167,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
         </div>
       )}
 
+      <ResetAnswersDialog client={client} scope={resetting} onClose={() => setResetting(null)} />
       <DeleteByIdDialog
         open={byId}
         coders={coders}

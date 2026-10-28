@@ -10,7 +10,7 @@ export function coders(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/coders", requireJobUser(server, "WRITE"), async (c) => c.json(await listCoderProgress(db, c.get("jobId"))));
+  app.get("/job/:jobId/coders", requireJobUser(server, "READ"), async (c) => c.json(await listCoderProgress(db, c.get("jobId"))));
 
   app.post("/job/:jobId/coders/delete", requireJobUser(server, "ADMIN"), async (c) => {
     const parsed = DeleteCodersSchema.safeParse(await c.req.json());

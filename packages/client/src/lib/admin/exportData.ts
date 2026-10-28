@@ -228,6 +228,31 @@ export function annotationsTable(
 }
 
 /**
+ * Answers a researcher reset (`retired=true` rows with `retiredAt`), long:
+ * a row per answer, with when it was given and reset. The live answers that
+ * replaced them, if any, are in annotations.csv.
+ */
+export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels): Table {
+  const reset = annotations.filter((a) => a.retiredAt);
+  return {
+    headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "codebook_id", "answered", "reset_at"],
+    rows: reset.map((a) => [
+      a.externalId,
+      a.unitVersionId === null ? "" : String(a.unitVersionId),
+      String(a.coderId),
+      a.participantId ?? "",
+      a.variable,
+      answerText(a.value),
+      ...(labels ? [answerText(a.value, undefined, labels.writer(a.variable, a.codebookId))] : []),
+      answerJson(a.value),
+      a.codebookId === null ? "" : String(a.codebookId),
+      time(a.updated),
+      time(a.retiredAt),
+    ]),
+  };
+}
+
+/**
  * Coders as a table: who they are (invitation, participant id), when they
  * started and were last active, how their session ended, units finished
  * per loop, and their coder-level answers (survey questions, `auto` groups;
@@ -341,6 +366,10 @@ units.csv        The units as coders saw them (only the fields the codebook
                  has a row per version. Join annotations on unit_version_id.
 variables.csv    Per codebook version, question and option: the question text,
                  the stored value and its label.
+reset_answers.csv  (if included) Answers a researcher reset, a row per
+                 answer, with when it was given (answered) and reset
+                 (reset_at). Units are coded again after a reset; the new
+                 answers are in annotations.csv.
 
 Answers are the stored values; several answers are joined with "; ", spans
 are written as "value: text", relations as "value: from → to" (the spans'

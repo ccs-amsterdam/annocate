@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationRow, CoderProgress, TopLevelItem } from "@annotinder/contracts";
-import { Labels, annotationsTable, answerJson, answerText, codersTable, toCsv, unitsTable, variablesTable } from "./exportData";
+import { Labels, annotationsTable, answerJson, answerText, codersTable, resetAnswersTable, toCsv, unitsTable, variablesTable } from "./exportData";
 
 const at = new Date("2026-11-01T10:00:00Z");
 const row = (unitId: number, coderId: number, variable: string, value: AnnotationRow["value"], minutes = 0): AnnotationRow => ({
@@ -124,6 +124,14 @@ describe("data download", () => {
       ["2", "Unit loop 1", "sentiment", "nominal", "?", "pos", "Good"],
       ["2", "Unit loop 1", "sentiment", "nominal", "?", "neg", "neg"],
     ]);
+  });
+
+  it("lists reset answers apart, with when they were given and reset", () => {
+    const live = row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "neg" }] });
+    const reset = { ...row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }] }), retiredAt: new Date(at.getTime() + 60_000) };
+    const table = resetAnswersTable([live, reset]);
+    expect(table.headers).toEqual(["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", "value_json", "codebook_id", "answered", "reset_at"]);
+    expect(table.rows).toEqual([["u1", "", "1", "p1", "sentiment", "pos", '["pos"]', "2", at.toISOString(), new Date(at.getTime() + 60_000).toISOString()]]);
   });
 
   it("lists the unit versions answers were given on", () => {

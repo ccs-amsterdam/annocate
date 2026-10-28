@@ -60,10 +60,10 @@ are:
 
 A coder who goes back to an earlier unit and changes an answer replaces their
 own previous answer: AnnoTinder keeps their latest answer, with when it was
-first given and when it was last changed. The researcher API can also
+first given and when it was last changed. You can also
 **reset** answers, for example to have units coded again: reset answers are
-not deleted but marked as no longer counting, and scripts can still download
-them.
+not deleted but marked as no longer counting, and you can still download
+them (see [Resetting answers](changing-a-live-codebook.md#resetting-answers)).
 
 ## When a unit is finished
 

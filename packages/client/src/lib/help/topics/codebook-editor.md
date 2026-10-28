@@ -171,7 +171,8 @@ It is a safety net, not a replacement for saving.
 
 ## Working with co-editors
 
-Everyone with access to the job edits the same draft. Your unsaved changes
+Everyone with access to the job (see [Working together](working-together.md))
+edits the same draft. Your unsaved changes
 are yours alone; once you save, others see them when they open the
 codebook.
 
