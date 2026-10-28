@@ -38,3 +38,27 @@ export function defaultTransferUrl(token: string): string {
   url.searchParams.set("transfer", token);
   return url.toString();
 }
+
+// Coder login (docs/coder-identity.md §5): the same login as researchers',
+// on this origin. A logged-in coder's session is found by the login on any
+// device, so it needs no cookie or transfer link.
+
+/** Where the browser goes to log in; it comes back to this page. */
+export function coderLoginUrl(): string {
+  return `/auth/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+}
+
+/** Whether this server offers login at all. */
+export async function loginAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch("/auth/options", { credentials: "same-origin" });
+    return res.ok && ((await res.json()) as { login?: boolean }).login === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Logs out (to log in with another account). */
+export async function logOut(): Promise<void> {
+  await fetch("/auth/logout", { method: "POST", headers: { "x-annotinder": "1" }, credentials: "same-origin" });
+}

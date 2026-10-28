@@ -72,6 +72,7 @@ export class PreviewStore implements Store {
       deletionRequest: null,
       session: {},
       inviteId: null,
+      login: null,
       created: new Date(this.now()),
     };
     this.coders.set(request.coderKey, coder);

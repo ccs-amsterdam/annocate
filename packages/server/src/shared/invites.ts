@@ -63,17 +63,35 @@ export function sessionFromUrl(invite: InviteRow, urlParams: Record<string, stri
   return { participantId, session };
 }
 
-/** Invites' participant URL parameter, by secret, for a minute (read on every coder request, to pick the session cookie). */
-const participantParams = new Map<string, { param: string | null; until: number }>();
+/** What the coder API needs to know about a link on every request (the session cookie, login), by secret. */
+export interface LinkInfo {
+  /** The URL parameter holding the participant id, if any. */
+  participantParam: string | null;
+  /** Whether the invite takes logins: `auth` is not "none", or it lists email addresses. */
+  login: "none" | "optional" | "required";
+}
+
+/** Links, by secret, for a minute (read on every coder request). */
+const links = new Map<string, { info: LinkInfo | null; until: number }>();
+
+/** The invite of a link, as far as `LinkInfo` goes; null for an unknown secret. */
+export async function linkInfo(sql: Sql, secret: string): Promise<LinkInfo | null> {
+  let cached = links.get(secret);
+  if (!cached || cached.until < Date.now()) {
+    const row = await one<{ participant_param: ParticipantParam | null; auth: string; emails: string[] | null }>(
+      sql,
+      "SELECT participant_param, auth, emails FROM invites WHERE secret = $1",
+      [secret],
+    );
+    const login = !row ? "none" : row.auth === "required" || row.emails?.length ? "required" : row.auth === "optional" ? "optional" : "none";
+    cached = { info: row ? { participantParam: row.participant_param?.param ?? null, login } : null, until: Date.now() + 60_000 };
+    if (links.size > 10_000) links.clear();
+    links.set(secret, cached);
+  }
+  return cached.info;
+}
 
 /** The participant id a link carries, if its invite takes one from a URL parameter. */
-export async function participantFromLink(sql: Sql, secret: string, urlParams: Record<string, string>): Promise<string | undefined> {
-  let cached = participantParams.get(secret);
-  if (!cached || cached.until < Date.now()) {
-    const row = await one<{ participant_param: ParticipantParam | null }>(sql, "SELECT participant_param FROM invites WHERE secret = $1", [secret]);
-    cached = { param: row?.participant_param?.param ?? null, until: Date.now() + 60_000 };
-    if (participantParams.size > 10_000) participantParams.clear();
-    participantParams.set(secret, cached);
-  }
-  return cached.param ? urlParams[cached.param]?.trim() || undefined : undefined;
+export function participantFromLink(link: LinkInfo | null, urlParams: Record<string, string>): string | undefined {
+  return link?.participantParam ? urlParams[link.participantParam]?.trim() || undefined : undefined;
 }

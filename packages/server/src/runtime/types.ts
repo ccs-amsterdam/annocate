@@ -58,6 +58,8 @@ export interface Coder {
   session: Record<string, string>;
   /** The invite the coder joined with (for `invitation` mode loops). */
   inviteId: number | null;
+  /** The email of the login this session belongs to (coder login, docs/coder-identity.md §5); null without. */
+  login: string | null;
 }
 
 /** The coder for a session (docs/coder-identity.md). */
@@ -74,6 +76,14 @@ export interface ResolveCoderRequest {
    * `participant_has_session`.
    */
   newSession?: boolean;
+  /**
+   * The coder is logged in, and the invite takes logins (or there is no
+   * invite: coming back). `key` is the login's coder key in this job
+   * (`login:<user>:<job>`, never a hash, so no cookie can produce it): the
+   * same on every device. `adopt`: a session started on this device
+   * without login becomes the login's (the invite takes logins).
+   */
+  login?: { key: string; email: string; adopt: boolean };
 }
 
 /** Full replace of the coder state the runtime manages. */

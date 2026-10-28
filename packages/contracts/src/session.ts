@@ -87,6 +87,10 @@ export const SessionResponseSchema = z.object({
   deletionRequest: DeletionRequestSchema.nullable().optional(),
   /** `$session` values: `participant` (if the session has a participant id) and the URL parameters its invitation required. */
   session: z.record(z.string(), z.string()).default({}),
+  /** The email of the login this session belongs to (docs/coder-identity.md §5); null without. Logged-in coders continue on any device by logging in there. */
+  login: z.string().nullable().optional(),
+  /** The invitation lets the coder log in (`auth: "optional"`), and they haven't: offer it, to continue on other devices. */
+  canLogIn: z.boolean().optional(),
 });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
@@ -97,8 +101,10 @@ export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export const CoderErrorCodeSchema = z.enum([
   /** Participant id already has a session; retry with `x-new-session: 1` to start another. */
   "participant_has_session",
-  /** The invite requires login. */
+  /** The invite requires login (also: it lists email addresses). */
   "auth_required",
+  /** The coder's login isn't one of the invite's email addresses. */
+  "email_not_invited",
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
   /** A new codebook version was published since the session was loaded: load it again. */

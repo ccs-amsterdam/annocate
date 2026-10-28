@@ -31,7 +31,8 @@ Under **Create invitation link**:
 
 | Setting | What it does |
 | --- | --- |
-| **No login** | Coders start without an account (the only option that works for now) |
+| **No login** / **Login optional** / **Login required** | Whether coders can, or must, log in (see [Login](#login)) |
+| **Only these email addresses** | With login: only coders who log in with one of these addresses (see [Login](#login)) |
 | **No participant id** / **Fixed participant id** / **Participant id from a URL parameter** | Whether coders who use this link get a participant id, and where it comes from |
 | **Required URL parameter** | Other values the link must carry, e.g. a panel's study id; the codebook reads them as `$session.<name>` (see [Online panels](online-panels.md#values-from-the-link)) |
 | **Preset variables** | Values for the codebook's assigned variables, e.g. `group=experts` |
@@ -63,15 +64,23 @@ in an end item's return link.
 A participant id is only a label, **never a key**: anyone who has the link
 could type it in. So a participant id never gives access to earlier work.
 If someone opens a link with a participant id that already has a session on
-another device, they see *"You already started on another device"*: they
-can continue on the original device, move their session with **Continue on
-another device** there, or start a new session here (which doesn't include
-their earlier answers). Both sessions then appear in the results with the
-same participant id.
+another device (or browser), they see *"This link was already used on
+another device"*. If that was them, they continue on the original device,
+or move their session with **Continue on another device** there. If they
+can't, or it was someone else (a fixed participant id on a link that was
+passed on), they can start a new session here, without the earlier answers.
+
+Two sessions with the same participant id are allowed, and kept apart: in
+the results they are two coders (two `coder_id`s) with the same
+`participant_id`. The participant id stays the same in both, so an end
+item's return link to a panel carries it either way. Deal with duplicates
+in your analysis, for instance by keeping each participant's first or most
+complete session.
 
 ## Coming back to a session
 
-Without login, a coder's work stays in the browser where they started (in a
+With login, coders continue on any device by logging in there. Without
+login, a coder's work stays in the browser where they started (in a
 cookie). Opening the link again on the same device and browser continues
 where they left off, whatever link they use. To continue on another device,
 coders open **Continue on another device** on the first device and open the
@@ -173,6 +182,23 @@ only once (max uses 1).
 
 ## Login
 
-The options **Login optional** and **Login required** are not supported yet.
-For now, all coders start without logging in, and their work stays on their
-device unless they move it with **Continue on another device**.
+Coders log in the same way as researchers (the login your server offers;
+it isn't available on servers without one). Their session then belongs to
+their account: logging in on any device continues it. No session cookie or
+transfer link is needed.
+
+- **Login required**: coders log in before they start.
+- **Login optional**: coders start right away, and can log in any time from
+  **Continue on another device** (the screen icon). Their session so far
+  becomes their account's.
+- **Only these email addresses**: only coders who log in with one of these
+  addresses can use the link (others see that the invitation is for other
+  people). A list makes login required.
+
+The coder's email address is stored with their session: it appears in the
+Coders tab and the results (`email`), and you can delete a coder's data by
+email. A participant id can come with a login too; it is then only a label
+next to the account.
+
+An invitation **without login** ignores a login: someone who happens to be
+logged in (such as you, trying your own link) starts an anonymous session.

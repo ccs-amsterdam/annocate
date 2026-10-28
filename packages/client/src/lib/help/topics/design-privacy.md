@@ -26,8 +26,8 @@ Everything of a job is stored on the AnnoTinder server you use:
 | **Coders** | Per session: the invitation used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended |
 | **Answers** | Per unit and question: the answer, when it was first given and last changed, and the codebook and unit version |
 
-What AnnoTinder itself does **not** store about coders: their name or email
-address (coders don't log in), their IP address, their browser or device, or
+What AnnoTinder itself does **not** store about coders: their name, their
+email address (unless the invitation has them [log in](invitations.md#login)), their IP address, their browser or device, or
 URL parameters other than the ones the codebook asks for (an
 [assigned variable](auto.md) that reads a URL parameter, and the participant
 id if the invitation takes it from the URL). The web server in front of
@@ -86,8 +86,9 @@ What this means for your study:
   In a lab, give every participant their own participant id (sessions are
   kept apart per participant id), or use a private window per participant.
 
-Logging in for coders isn't available yet, so invitations that require a
-login can't be used.
+With an invitation that has coders log in, their email address is stored
+with their session, so their answers can be linked to them: say so in your
+consent text.
 
 ## What coders' browsers receive
 

@@ -165,23 +165,39 @@ export class DbStore implements Store {
 }
 
 async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderRequest): Promise<CoderRow> {
+  const { login } = request;
+  // A login finds its session on any device.
+  if (login) {
+    const mine = await one<CoderRow>(sql, "SELECT * FROM coders WHERE coder_key = $1", [login.key]);
+    if (mine) return mine;
+  }
   const known = await one<CoderRow>(sql, "SELECT * FROM coders WHERE coder_key = $1", [request.coderKey]);
   if (known) {
     if (known.job_id !== jobId) throw new HttpError(401, "Coder key belongs to a different job");
+    // Logging in on the device of a session without login: it becomes the login's.
+    if (login?.adopt && known.email === null) {
+      return (await one<CoderRow>(sql, "UPDATE coders SET coder_key = $1, email = $2 WHERE id = $3 RETURNING *", [login.key, login.email, known.id]))!;
+    }
     return known;
   }
   if (!request.inviteSecret) throw new HttpError(401, "Unknown coder; a valid invite is needed");
   const invite = await one<InviteRow>(sql, "SELECT * FROM invites WHERE secret = $1", [request.inviteSecret]);
   if (!invite || invite.job_id !== jobId) throw new HttpError(401, "Invalid invite secret");
-  if (invite.auth === "required") throw new HttpError(401, "This invite requires login", "auth_required");
+  // An email list means only those people: they log in to show who they are.
+  const emails = invite.emails?.length ? invite.emails.map((e) => e.toLowerCase()) : null;
+  if ((invite.auth === "required" || emails) && !login) throw new HttpError(401, "This invite requires login", "auth_required");
+  if (emails && login && !emails.includes(login.email.toLowerCase())) {
+    throw new HttpError(403, "This invitation is for other email addresses", "email_not_invited");
+  }
   // Revoked: no new sessions, also not for a known participant (existing sessions go on).
   if (invite.revoked_at !== null) throw new HttpError(401, "This invite has been revoked");
   // A participant id is a label, never a credential: a new key for a known
   // participant gets a *new* session, and only when asked for.
+  // With a login, the login is who they are, and the participant id only a label.
   const { participantId, session } = sessionFromUrl(invite, request.urlParams ?? {});
   const knownParticipant =
     participantId !== null && !!(await one(sql, "SELECT 1 FROM coders WHERE job_id = $1 AND participant_id = $2", [jobId, participantId]));
-  if (knownParticipant && !request.newSession) {
+  if (knownParticipant && !request.newSession && !login) {
     throw new HttpError(409, "This participant already has a session on another device", "participant_has_session");
   }
   // A new session of a known participant is the same person: it doesn't use up the invite.
@@ -197,8 +213,8 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
   const variables = Object.fromEntries(Object.entries(invite.variables).map(([name, value]) => [name, { done: true, skip: false, values: [{ value }] }]));
   const created = await one<CoderRow>(
     sql,
-    "INSERT INTO coders (job_id, coder_key, participant_id, variables, invite_id, session) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-    [jobId, request.coderKey, participantId, JSON.stringify(variables), invite.id, JSON.stringify(session)],
+    "INSERT INTO coders (job_id, coder_key, email, participant_id, variables, invite_id, session) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+    [jobId, login?.key ?? request.coderKey, login?.email ?? null, participantId, JSON.stringify(variables), invite.id, JSON.stringify(session)],
   );
   return created!;
 }

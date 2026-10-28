@@ -2,7 +2,10 @@ import { Hono, type Context } from "hono";
 import { EndSessionSchema, QuitSessionSchema, NextUnitQuerySchema, PostCoderVariablesSchema, PostUnitVariablesSchema, RedeemTransferSchema } from "@annotinder/contracts";
 import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
-import { participantFromLink } from "./shared/invites.js";
+import { getCookie } from "hono/cookie";
+import { linkInfo, participantFromLink } from "./shared/invites.js";
+import { userForSession } from "./shared/sessions.js";
+import { SESSION_COOKIE } from "./researcher/login.js";
 import { dbCoderKey, newSessionKey, readSession, requireClientHeader, sessionCookieName, writeSession } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 
@@ -10,7 +13,8 @@ import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 const VERSION_HEADER = "x-annotinder-version";
 
 interface Env {
-  Variables: { runtime: DeploymentRuntime; coder: Coder; sessionKey: string };
+  /** `sessionKey`: null for a logged-in coder (their login is the session). `canLogIn`: the link offers a login they haven't used. */
+  Variables: { runtime: DeploymentRuntime; coder: Coder; sessionKey: string | null; canLogIn: boolean };
 }
 
 /**
@@ -61,20 +65,33 @@ export function coderApi(server: Server): Hono {
     // The page's query parameters: the participant id and other values the invite requires, and `url_param` auto variables.
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const newSession = c.req.header("x-new-session") === "1";
-    const name = await sessionCookieName(inviteSecret ? await participantFromLink(server.db, inviteSecret, urlParams) : undefined);
+    const link = inviteSecret ? await linkInfo(server.db, inviteSecret) : null;
+    // A login (the same as researchers', docs/coder-identity.md §5) counts
+    // where the invite takes logins, and when coming back without the link.
+    // Never in previews.
+    const loginKey = getCookie(c, SESSION_COOKIE);
+    const user = loginKey && /^\d+$/.test(deploymentId) && link?.login !== "none" ? await userForSession(server.db, loginKey) : null;
+    const login = user ? { key: `login:${user.id}:${deploymentId}`, email: user.email, adopt: link !== null } : undefined;
+    const name = await sessionCookieName(participantFromLink(link, urlParams));
     const existing = newSession ? undefined : readSession(c, name);
     const sessionKey = existing ?? newSessionKey();
-    const coder = await runtime.resolveCoder({ coderKey: await dbCoderKey(sessionKey), inviteSecret, urlParams, newSession }, urlParams);
-    // Only once the coder was accepted (an invite may be invalid or used up).
-    if (sessionKey !== existing) writeSession(c, deploymentId, name, sessionKey);
-    c.set("sessionKey", sessionKey);
+    const coder = await runtime.resolveCoder({ coderKey: await dbCoderKey(sessionKey), inviteSecret, urlParams, newSession, login }, urlParams);
+    const viaLogin = coder.login !== null && login !== undefined;
+    // Only once the coder was accepted (an invite may be invalid or used up), and not for a login.
+    if (!viaLogin && sessionKey !== existing) writeSession(c, deploymentId, name, sessionKey);
+    c.set("sessionKey", viaLogin ? null : sessionKey);
+    c.set("canLogIn", !!server.login && link?.login === "optional" && !viaLogin);
     c.set("coder", coder);
     await next();
   });
 
-  session.post("/transfer", (c) => c.json(c.get("runtime").createTransfer(c.get("sessionKey"))));
+  session.post("/transfer", (c) => {
+    const key = c.get("sessionKey");
+    if (key === null) throw new HttpError(400, "You are logged in: log in on the other device to continue there");
+    return c.json(c.get("runtime").createTransfer(key));
+  });
 
-  session.get("/session", (c) => c.json(c.get("runtime").session(c.get("coder"))));
+  session.get("/session", (c) => c.json({ ...c.get("runtime").session(c.get("coder")), canLogIn: c.get("canLogIn") }));
 
   session.get("/loop/:loop/next", async (c) => {
     const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), unitsets: c.req.queries("unitsets") });

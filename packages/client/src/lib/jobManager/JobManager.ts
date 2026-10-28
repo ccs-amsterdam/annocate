@@ -88,6 +88,10 @@ export interface JobManagerSnapshot {
   quit: boolean;
   /** The coder asked for their answers to be deleted (`quit(true)`, also after the session ended). */
   deletionRequested: boolean;
+  /** The email the coder is logged in with (their session is found by it on any device); null without. */
+  login: string | null;
+  /** The invitation lets the coder log in, and they haven't. */
+  canLogIn: boolean;
   navigation: JobManagerNavigation;
 }
 
@@ -249,6 +253,8 @@ export class JobManager {
     ending: null,
     quit: false,
     deletionRequested: false,
+    login: null,
+    canLogIn: false,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -300,6 +306,7 @@ export class JobManager {
       this.progress = new Map(session.progress.map((p) => [p.unitset, p]));
       this.session = session.session ?? {};
       if (session.deletionRequest) this.publish({ deletionRequested: true });
+      this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });
       if (session.ended) {
         // The coder reached an `end` item before, or quit: show the ending again.
         const item = session.ended.item ? findEnd(this.items, session.ended.item) : null;

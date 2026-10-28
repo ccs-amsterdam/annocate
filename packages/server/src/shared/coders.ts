@@ -17,7 +17,7 @@ export interface CoderRow {
   created: Date;
 }
 
-/** A coder as the runtime sees it: no email or other identifying data. */
+/** A coder as the runtime sees it: no email or other identifying data, except the coder's own login. */
 export function toCoder(row: CoderRow): Coder {
   return {
     coderId: row.id,
@@ -27,5 +27,6 @@ export function toCoder(row: CoderRow): Coder {
     deletionRequest: row.deletion_request,
     session: { ...row.session, ...(row.participant_id ? { participant: row.participant_id } : {}) },
     inviteId: row.invite_id,
+    login: row.coder_key.startsWith("login:") ? row.email : null,
   };
 }

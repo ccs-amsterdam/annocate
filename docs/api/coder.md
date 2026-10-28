@@ -39,6 +39,10 @@ Headers:
   also selects the session cookie (`coder-identity.md` §4);
 - `x-new-session: 1` (first request only): start another session for a
   participant that already has one;
+- the login cookie (`annotinder_session`, from `/auth/login`): on invites
+  that take logins, the session is the login's, on any device
+  (`coder-identity.md` §5); 401 `auth_required` where a login is required,
+  403 `email_not_invited` for a login not on the invite's list;
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
 **New codebook versions.** `GET /session` returns the deployment's
@@ -60,7 +64,8 @@ Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 The codebook and its `version`, per-loop progress and the coder's
 variables (including assigned `auto` variables), and `ended` if the
 session ended at an `end` item. Creates the coder and session on first
-use.
+use. `login`: the email of the login the session belongs to, or null;
+`canLogIn`: the invite offers a login the coder hasn't used.
 
 ### getNextUnit
 
@@ -134,7 +139,8 @@ be deleted (also after the session ended): `GET /session` then returns
 `POST /transfer` → `TransferResponseSchema`
 
 A one-time token to continue this session on another device ("Continue on
-another device").
+another device"). 400 for a logged-in coder: they log in on the other
+device instead.
 
 ### redeemTransfer
 

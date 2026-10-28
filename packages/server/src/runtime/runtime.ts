@@ -383,8 +383,13 @@ export class DeploymentRuntime {
    * variables: stored now, so the coder can come back without them.
    */
   async resolveCoder(request: ResolveCoderRequest, urlParams: Record<string, string> = {}): Promise<Coder> {
-    const known = this.coderKeys.get(request.coderKey);
-    const cached = known !== undefined ? this.coders.get(known) : undefined;
+    const { login } = request;
+    // A login first; a session without login on this device may become the login's (`adopt`): the store decides.
+    const cachedBy = (key: string) => {
+      const id = this.coderKeys.get(key);
+      return id !== undefined ? this.coders.get(id) : undefined;
+    };
+    const cached = (login && cachedBy(login.key)) || (login?.adopt ? undefined : cachedBy(request.coderKey));
     if (cached) {
       // Their workspace may have been dropped by a reload; a URL value missed earlier is filled in.
       await Promise.all([this.workspace(cached.coderId), this.assignAutoVariables(cached, urlParams)]);
@@ -392,12 +397,21 @@ export class DeploymentRuntime {
     }
     // Not active (new, evicted, or the server restarted): the database has
     // the record, including the coder-level values.
-    const coder = await this.store.resolveCoder(request);
-    this.coders.set(coder.coderId, coder);
-    this.coderKeys.set(request.coderKey, coder.coderId);
-    this.countBalanced(coder);
-    await Promise.all([this.assignAutoVariables(coder, urlParams), this.workspace(coder.coderId)]);
-    return coder;
+    const stored = await this.store.resolveCoder(request);
+    const key = stored.login && login ? login.key : request.coderKey;
+    // Already active under the other key (a session that just became a login's): the same coder.
+    const active = this.coders.get(stored.coderId);
+    if (active) {
+      active.login = stored.login;
+      for (const [k, id] of this.coderKeys) if (id === stored.coderId) this.coderKeys.delete(k);
+      this.coderKeys.set(key, stored.coderId);
+      return active;
+    }
+    this.coders.set(stored.coderId, stored);
+    this.coderKeys.set(key, stored.coderId);
+    this.countBalanced(stored);
+    await Promise.all([this.assignAutoVariables(stored, urlParams), this.workspace(stored.coderId)]);
+    return stored;
   }
 
   /**
@@ -493,6 +507,7 @@ export class DeploymentRuntime {
       ended: coder.ended,
       deletionRequest: coder.deletionRequest,
       session: coder.session,
+      login: coder.login,
     };
   }
 

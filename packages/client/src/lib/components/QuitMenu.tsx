@@ -17,7 +17,16 @@ const CONFIRM_WORD = "delete";
  * they may already hold the data, and an automatic deletion could undo paid
  * panel work. Asking takes typing a word, so it doesn't happen by accident.
  */
-export function QuitMenu({ onQuit, canTransfer }: { onQuit: (requestDeletion: boolean) => Promise<void>; canTransfer: boolean }) {
+export function QuitMenu({
+  onQuit,
+  canTransfer,
+  login = null,
+}: {
+  onQuit: (requestDeletion: boolean) => Promise<void>;
+  canTransfer: boolean;
+  /** The email the coder is logged in with: they continue anywhere by logging in. */
+  login?: string | null;
+}) {
   const [choice, setChoice] = useState<Choice | null>(null);
   return (
     <>
@@ -42,7 +51,7 @@ export function QuitMenu({ onQuit, canTransfer }: { onQuit: (requestDeletion: bo
           />
         </PopoverContent>
       </Popover>
-      <QuitDialog choice={choice} canTransfer={canTransfer} onClose={() => setChoice(null)} onQuit={onQuit} />
+      <QuitDialog choice={choice} canTransfer={canTransfer} login={login} onClose={() => setChoice(null)} onQuit={onQuit} />
     </>
   );
 }
@@ -60,11 +69,13 @@ function MenuItem({ title, detail, onClick }: { title: string; detail: string; o
 export function QuitDialog({
   choice,
   canTransfer = false,
+  login = null,
   onClose,
   onQuit,
 }: {
   choice: Choice | null;
   canTransfer?: boolean;
+  login?: string | null;
   onClose: () => void;
   onQuit: (requestDeletion: boolean) => Promise<void>;
 }) {
@@ -93,11 +104,18 @@ export function QuitDialog({
               <DialogDescription>Your answers are saved as you go. You can simply close this page.</DialogDescription>
             </DialogHeader>
             <div className="space-y-2 text-sm text-foreground">
-              <p>
-                To continue later, open the same link again <strong>on this device, in this browser</strong>: you continue where
-                you left off. Your session is kept in this browser, so it is lost if you clear its cookies or use a private
-                window.
-              </p>
+              {login ? (
+                <p>
+                  To continue later, open the same link again and log in as <strong>{login}</strong>, on this or any other
+                  device: you continue where you left off.
+                </p>
+              ) : (
+                <p>
+                  To continue later, open the same link again <strong>on this device, in this browser</strong>: you continue
+                  where you left off. Your session is kept in this browser, so it is lost if you clear its cookies or use a
+                  private window.
+                </p>
+              )}
               {canTransfer && (
                 <p>
                   To continue on another device, use <strong>Continue on another device</strong> (the screen icon at the top)

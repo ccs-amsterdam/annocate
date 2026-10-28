@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CoderInviteResponse, CoderInviteWrite, ParticipantParam, RequiredUrlParam, TopLevelItem, UnitsetResponse } from "@annotinder/contracts";
 import { AlertTriangle, Ban, Check, Copy, Plus, Split, Trash2, X } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
@@ -13,6 +13,7 @@ import {
   useUnitsetsQuery,
 } from "../../admin/queries";
 import { flattenTree } from "../../codebook/tree";
+import { loginAvailable } from "../../session/coderSession";
 import { DivideUnits } from "./DivideUnits";
 import { formatWhen } from "../../admin/format";
 import { Button } from "@/components/ui/button";
@@ -285,6 +286,11 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
   const [presets, setPresets] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [emails, setEmails] = useState("");
+  // Whether this server offers login (coders log in like researchers); null while unknown.
+  const [login, setLogin] = useState<boolean | null>(null);
+  useEffect(() => {
+    void loginAvailable().then(setLogin);
+  }, []);
 
   async function handleCreate() {
     await createInvite.mutateAsync({
@@ -318,8 +324,12 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
           onChange={(e) => setAuth(e.target.value as typeof auth)}
         >
           <option value="none">No login</option>
-          <option value="optional">Login optional (not supported yet)</option>
-          <option value="required">Login required (not supported yet)</option>
+          <option value="optional" disabled={login === false}>
+            Login optional{login === false ? " (this server has no login)" : ""}
+          </option>
+          <option value="required" disabled={login === false}>
+            Login required{login === false ? " (this server has no login)" : ""}
+          </option>
         </select>
         <Button onClick={handleCreate} disabled={!label || createInvite.isPending}>
           {createInvite.isPending ? "Creating..." : "Create"}
@@ -327,7 +337,7 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
       </div>
       {auth !== "none" && (
         <Input
-          placeholder="Allowed email addresses (optional), e.g. ann@uni.nl, bob@uni.nl: only these coders may log in with this link"
+          placeholder="Only these email addresses (optional), e.g. ann@uni.nl, bob@uni.nl: coders log in to show who they are"
           value={emails}
           onChange={(e) => setEmails(e.target.value)}
         />
@@ -389,7 +399,7 @@ function CreateInviteForm({ client, unitsets }: { client: ResearcherApi; unitset
         this link. Units are what its coders get in unit loops with &quot;The invitation&apos;s units&quot;: use one
         link per coder (e.g. with a fixed participant id) to give specific coders specific units, or divide units over
         coders below. Without login, work stays on the device it was started on; coders can move it with &quot;Continue
-        on another device&quot;. A participant id is a label, never a way back into a session. A link without the URL
+        on another device&quot;. With login, coders continue on any device by logging in there. A participant id is a label, never a way back into a session. A link without the URL
         parameters it needs (or with values that don&apos;t fit their pattern) can&apos;t start; their values are{" "}
         <code>$session.participant</code> and <code>$session.&lt;name&gt;</code> in the codebook, e.g. in an end
         item&apos;s redirect link.{" "}

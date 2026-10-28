@@ -83,7 +83,7 @@ A row per coder who started.
 
 | Column | Meaning |
 | --- | --- |
-| `coder_id`, `participant_id`, `invitation` | Who the coder is |
+| `coder_id`, `participant_id`, `email`, `invitation` | Who the coder is (`email` for coders who [logged in](invitations.md#login)) |
 | `started`, `last_active` | When they started, and when they last answered |
 | `ended`, `ended_at` | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when |
 | `deletion_requested` | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |

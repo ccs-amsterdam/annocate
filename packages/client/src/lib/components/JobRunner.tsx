@@ -3,7 +3,10 @@ import type { VariableValue } from "@annotinder/contracts";
 import { renderSVG } from "uqr";
 import { HttpCoderApi, type CoderApi } from "../api/httpCoderApi";
 import {
+  coderLoginUrl,
   defaultTransferUrl,
+  logOut,
+  loginAvailable,
   redeemTransfer,
   type CoderSessionScope,
 } from "../session/coderSession";
@@ -246,15 +249,40 @@ function JobRunnerContent({
 
   if (snapshot.phase === "error" && snapshot.errorCode === "participant_has_session") {
     return (
-      <SessionNotice title="You already started on another device">
+      <SessionNotice title="This link was already used on another device">
+        <p>Someone started with this link on another device or browser.</p>
         <p>
-          Your answers are kept on the device where you started. To continue there, open this link on that device. To
-          continue <em>here</em>, open &quot;Continue on another device&quot; (top right) on the original device and
-          scan or open the link it shows.
+          <strong>If that was you</strong>, your answers are on that device. Continue there by opening this link on it. To
+          continue <em>here</em> instead, open &quot;Continue on another device&quot; (top right) on that device and scan or
+          open the link it shows.
         </p>
-        <p>You can also start a new session here. It won&apos;t include your earlier answers.</p>
+        <p>
+          <strong>If you can&apos;t, or it wasn&apos;t you</strong>, start a new session here. It won&apos;t include the earlier
+          answers.
+        </p>
         <Button type="button" variant="outline" className="mt-2" onClick={onStartNewSession}>
           Start a new session
+        </Button>
+      </SessionNotice>
+    );
+  }
+
+  if (snapshot.phase === "error" && snapshot.errorCode === "auth_required") {
+    return <LoginNotice />;
+  }
+
+  if (snapshot.phase === "error" && snapshot.errorCode === "email_not_invited") {
+    return (
+      <SessionNotice title="This invitation is for other people">
+        <p>The researchers invited specific email addresses, and the account you are logged in with isn&apos;t one of them.</p>
+        <p>If you were invited with another email address, log in with that account.</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-2"
+          onClick={() => void logOut().then(() => window.location.assign(coderLoginUrl()))}
+        >
+          Log in with another account
         </Button>
       </SessionNotice>
     );
@@ -565,9 +593,20 @@ function JobRunnerContent({
 
         {/* Right Section: Coder Settings Menu */}
         <div className="flex items-center gap-1 shrink-0">
-          {!preview && <TransferMenu coderApi={coderApi} transferUrl={transferUrl ?? defaultTransferUrl} />}
+          {!preview && (
+            <TransferMenu
+              coderApi={coderApi}
+              transferUrl={transferUrl ?? defaultTransferUrl}
+              login={snapshot.login}
+              canLogIn={snapshot.canLogIn}
+            />
+          )}
           <CoderSettingsMenu />
-          <QuitMenu onQuit={(requestDeletion) => manager.quit(requestDeletion)} canTransfer={!preview && !!coderApi.createTransfer} />
+          <QuitMenu
+            onQuit={(requestDeletion) => manager.quit(requestDeletion)}
+            canTransfer={!preview && !!coderApi.createTransfer && !snapshot.login}
+            login={snapshot.login}
+          />
         </div>
       </header>
 
@@ -710,14 +749,51 @@ function SessionNotice({ title, children }: { title: string; children: ReactNode
   );
 }
 
-/** "Continue on another device": a one-time link + QR code for this session. */
-function TransferMenu({ coderApi, transferUrl }: { coderApi: CoderApi; transferUrl: (token: string) => string }) {
+/** An invitation that needs a login (docs/coder-identity.md §5). */
+function LoginNotice() {
+  const [available, setAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    void loginAvailable().then(setAvailable);
+  }, []);
+  return (
+    <SessionNotice title="Log in to take part">
+      <p>
+        This invitation asks you to log in first. Your answers are then kept with your account: log in again to continue
+        later, on any device.
+      </p>
+      {available === false ? (
+        <p>This server doesn&apos;t offer a login, though. Please contact the researchers.</p>
+      ) : (
+        <Button type="button" className="mt-2" disabled={available === null} onClick={() => window.location.assign(coderLoginUrl())}>
+          Log in
+        </Button>
+      )}
+    </SessionNotice>
+  );
+}
+
+/**
+ * "Continue on another device": a one-time link + QR code for this session.
+ * A logged-in coder needs none: they log in on the other device. Where the
+ * invitation offers a login, it is offered here too.
+ */
+function TransferMenu({
+  coderApi,
+  transferUrl,
+  login,
+  canLogIn,
+}: {
+  coderApi: CoderApi;
+  transferUrl: (token: string) => string;
+  login: string | null;
+  canLogIn: boolean;
+}) {
   const [link, setLink] = useState<{ url: string; expiresAt: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   async function open(isOpen: boolean) {
-    if (!isOpen || !coderApi.createTransfer) return;
+    if (!isOpen || !coderApi.createTransfer || login) return;
     setError(null);
     setCopied(false);
     try {
@@ -742,8 +818,14 @@ function TransferMenu({ coderApi, transferUrl }: { coderApi: CoderApi; transferU
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 space-y-3 p-3 shadow-lg">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Continue on another device</h4>
-        {error && <p className="text-xs text-destructive">{error}</p>}
-        {!error && !link && <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />}
+        {login && (
+          <p className="text-xs text-foreground">
+            You are logged in as <strong>{login}</strong>. Open this job&apos;s link on the other device and log in there with
+            the same account: you continue where you left off.
+          </p>
+        )}
+        {!login && error && <p className="text-xs text-destructive">{error}</p>}
+        {!login && !error && !link && <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />}
         {link && (
           <>
             <div
@@ -771,6 +853,16 @@ function TransferMenu({ coderApi, transferUrl }: { coderApi: CoderApi; transferU
               continue your session, so don&apos;t share it.
             </p>
           </>
+        )}
+        {canLogIn && (
+          <div className="space-y-1.5 border-t pt-2.5">
+            <p className="text-[11px] text-muted-foreground">
+              Or log in: your answers are then kept with your account, and you can continue on any device by logging in.
+            </p>
+            <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => window.location.assign(coderLoginUrl())}>
+              Log in
+            </Button>
+          </div>
         )}
       </PopoverContent>
     </Popover>

@@ -14,6 +14,8 @@ import { seed } from "../seed.js";
 import { createApp } from "../app.js";
 import type { RuntimeOptions } from "../runtime/runtime.js";
 import { DbStore, type Store } from "../runtime/store.js";
+import { ensureUser } from "../shared/accounts.js";
+import { createSession } from "../shared/sessions.js";
 
 // End-to-end: client -> server -> database, through the app's fetch handler
 // (no sockets). A new app on the same database is a restart.
@@ -641,6 +643,60 @@ describe("quitting and deleting a coder's data", () => {
     // Nothing matches: nothing deleted
     const none = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });
     expect(await none.json()).toEqual({ coderIds: [], answers: 0 });
+  });
+});
+
+describe("coder login", () => {
+  /** A device logged in as this email (the researcher login's session cookie). */
+  async function loggedIn(device: string, email: string) {
+    const user = await ensureUser(db, email);
+    devices.set(device, { cookies: new Map([["annotinder_session", await createSession(db, user.id)]]), invite: null });
+  }
+  const session = async (device: string, secret: string | null) => {
+    const res = await send(device, "/session", {}, secret ? { "x-invite-secret": secret } : {});
+    return { status: res.status, body: (await res.json()) as SessionResponse & { code?: string } };
+  };
+
+  it("an invite that requires login: the same session on every device, no session cookie, no transfer", async () => {
+    const secret = await invite(undefined, { auth: "required" });
+    expect(await session("anonymous", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
+
+    await loggedIn("phone", "a@example.org");
+    const phone = await session("phone", secret);
+    expect(phone).toMatchObject({ status: 200, body: { login: "a@example.org", canLogIn: false } });
+    expect([...devices.get("phone")!.cookies.keys()]).toEqual(["annotinder_session"]);
+    // Another device, without the link: the login finds the session
+    await loggedIn("laptop", "A@example.org");
+    expect((await session("laptop", null)).body.coderId).toBe(phone.body.coderId);
+    expect((await send("phone", "/transfer", { method: "POST" })).status).toBe(400);
+
+    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    expect(coders.find((c) => c.id === phone.body.coderId)?.email).toBe("a@example.org");
+  });
+
+  it("an email list: only those logins", async () => {
+    const secret = await invite(undefined, { emails: ["b@example.org"] });
+    expect(await session("nobody", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
+    await loggedIn("other", "a@example.org");
+    expect(await session("other", secret)).toMatchObject({ status: 403, body: { code: "email_not_invited" } });
+    await loggedIn("invited", "b@example.org");
+    expect((await session("invited", secret)).status).toBe(200);
+  });
+
+  it("an optional login: a session started without it becomes the login's; invites without login ignore it", async () => {
+    const secret = await invite(undefined, { auth: "optional" });
+    const before = await session("tablet", secret);
+    expect(before.body.login).toBeNull();
+    const user = await ensureUser(db, "c@example.org");
+    devices.get("tablet")!.cookies.set("annotinder_session", await createSession(db, user.id));
+    const after = await session("tablet", secret);
+    expect(after.body).toMatchObject({ coderId: before.body.coderId, login: "c@example.org" });
+    await loggedIn("desktop", "c@example.org");
+    expect((await session("desktop", secret)).body.coderId).toBe(before.body.coderId);
+
+    // The demo invite takes no logins: an anonymous session as always
+    await loggedIn("researcher", "c@example.org");
+    expect((await session("researcher", "demo-secret")).body).toMatchObject({ login: null });
   });
 });
 

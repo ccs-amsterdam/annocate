@@ -6,7 +6,8 @@ summary: The coding screen, moving back and forward, saving and resuming, contin
 ---
 
 Coders (or participants) open the link of an invitation and start right
-away: there is no account and no login. This page describes what they see
+away, without an account (unless the invitation asks them to
+[log in](invitations.md#login)). This page describes what they see
 and can do, so you can write instructions for them and know what to expect.
 The quickest way to see it for yourself is the **Preview** tab (see
 [Preview, save and publish](previewing-and-publishing.md#previewing)).

@@ -273,6 +273,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
     headers: [
       "coder_id",
       "participant_id",
+      "email",
       "invitation",
       "started",
       "last_active",
@@ -286,6 +287,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
     rows: coders.map((c) => [
       String(c.id),
       c.participantId ?? "",
+      c.email ?? "",
       c.inviteLabel ?? "",
       time(c.started),
       time(c.lastActive),
@@ -372,7 +374,8 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  question.item).${labels ? `
                  Each answer column is followed by a _label column: the label
                  in the codebook version the answer was given under.` : ""}
-coders.csv       A row per coder: invitation, participant id, started, last
+coders.csv       A row per coder: participant id, email (coders who logged
+                 in), invitation, started, last
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), the URL parameters their invitation

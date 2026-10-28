@@ -1,7 +1,7 @@
 # Identity, sessions and login
 
-Status: current (2026-10-26). Coder sessions without login (§4) and
-researcher login (§7) are implemented; coder login (§5) is planned.
+Status: current (2026-10-28). Coder sessions without login (§4),
+coder login (§5) and researcher login (§7) are implemented.
 Complements `docs/architecture.md`.
 
 ## 1. Principles
@@ -43,8 +43,16 @@ Two independent settings:
 | **participant id** (`participantId` fixed on the invite, or `participantParam: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
 
 `optional` lets the coder choose: log in to be able to resume elsewhere, or
-continue anonymously. `emails` (an allowlist) and `maxUses` further
-restrict an invite.
+continue anonymously. `emails` (an allowlist; it makes login required) and
+`maxUses` further restrict an invite.
+
+**Duplicate participant ids** are allowed: a participant who can't reach
+their first session (§4) starts another, and so does anyone else holding a
+link with a fixed participant id. Each is its own coder with the same
+`participant_id` (and `$session.participant`, so end redirects to a panel
+carry it either way); researchers deal with duplicates in analysis. The
+risk guarded against is privacy (no session is opened by a label), not
+confusion at a panel company over a leaked link.
 
 ## 4. Sessions without login (implemented)
 
@@ -118,23 +126,34 @@ restrict an invite.
 - **Anonymous links on a new device** simply start a new session. There is
   nothing to detect.
 
-## 5. Coder login (planned)
+## 5. Coder login (implemented, 2026-10-28)
 
-As researcher login (§7): the same OpenID Connect provider (which handles
-social logins and email magic links), identity by verified email, and our
-own session. For coders:
+The researcher login (§7) for coders: the same provider, the same session
+(`annotinder_session`, path `/`), so a researcher trying their own link is
+logged in too. Code: `coder.ts` (the session middleware),
+`runtime/store.ts` (`findOrCreateCoder`), `shared/invites.ts` (`linkInfo`).
 
-1. An invite with `auth: "required"` (or `"optional"`, if the coder
-   chooses) sends the coder to log in first.
-2. The server checks the invite's rules: `emails` (an allowlist), revoked,
-   `maxUses`.
-3. It finds the coder for that user in this job, or creates one, and sets
-   the coder session cookie (§4) for it. The same login on another device
-   finds the same coder: that is how logged-in coders resume anywhere.
-
-The coder record links to the user; emails are never shown to other
-coders. Until this exists, `auth: "required"` invites are refused with
-`401 { code: "auth_required" }`.
+- **Where a login counts.** On invites with `auth: "optional"` or
+  `"required"`, or an `emails` list, and when coming back without a link.
+  An invite with `auth: "none"` ignores it (an anonymous session as
+  always). Never in previews.
+- **The login is the session.** A logged-in coder's coder key is
+  `login:<userId>:<jobId>`, not a hash, so no cookie can produce it, and the
+  same on every device: the server finds the session by the login, and sets
+  no session cookie. `coders.email` holds the login's email. A transfer
+  link is refused (400): the coder logs in on the other device instead.
+- **Rules.** `required` (or an `emails` list) without a login: 401
+  `auth_required`; the client offers the login, which comes back to the same
+  page. A login not on the `emails` list: 403 `email_not_invited`. The
+  participant id is only a label next to the login: a known participant id
+  gives no 409.
+- **Optional login.** `GET /session` says `canLogIn` (the server offers a
+  login, the invite is `optional`, the coder isn't logged in). Logging in
+  then turns this device's session into the login's (`adopt`: its coder
+  key becomes the login's, and `email` is set), if the session has no email
+  yet. The runtime keeps the one cached coder (`DeploymentRuntime.resolveCoder`).
+- **Accounts.** Logging in creates a user (`users`) as for researchers.
+  A user without job roles sees no jobs in the researcher UI.
 
 Possible later: a system with its own login (e.g. AmCAT) vouches for a
 coder with a short signed assertion `{ job, subject, exp }`, so coders don't
@@ -145,6 +164,9 @@ log in twice.
 - **Revoking a transfer.** Should "move this session" (revoke the old
   device's key) exist next to "copy"? Probably only once there is a reason;
   with a login, the login is the thing to use instead.
+- **Coders who are only coders.** Coder logins create researcher accounts
+  (without roles). Whether such users may create jobs is a policy question
+  for the server (today any logged-in user can).
 - **A long-lived "continue later" link** (§4, "Offer the link early"):
   stored in the database (server memory isn't durable), one per
   session, revocable from the device that has the session. Should it be

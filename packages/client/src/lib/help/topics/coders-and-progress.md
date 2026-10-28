@@ -119,8 +119,8 @@ deletion in some cases.
 
 Anonymous coders can't prove who they are. A request comes from the
 session itself, so it needs no proof. A coder who writes to you instead
-can only be found if they give their participant id (or email, once
-coders can log in).
+can only be found if they give their participant id, or the email they
+logged in with.
 
 ### Deleting a coder yourself
 
