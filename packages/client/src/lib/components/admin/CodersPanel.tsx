@@ -226,7 +226,7 @@ function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
         <tbody>
           {deletions.map((d) => (
             <tr key={`${d.coderId}-${String(d.deletedAt)}`} className="border-b last:border-0">
-              <td className="p-1.5 font-mono text-xs">{d.coderId}</td>
+              <td className="p-1.5">#{d.coderId}</td>
               <td className="p-1.5">{d.participantId ?? d.email ?? "–"}</td>
               <td className="p-1.5 whitespace-nowrap text-muted-foreground">{d.requestedAt ? formatWhen(d.requestedAt) : "–"}</td>
               <td className="p-1.5 whitespace-nowrap">{formatWhen(d.deletedAt)}</td>
