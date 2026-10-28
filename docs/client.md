@@ -611,14 +611,21 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   new names add fields. A preview shows the first units as stored; a paged table with a column per field and unitset
   badges; pick a set to see its units in order; make a set from selected
   units, or split units into parts (done client-side with `splitUnits`).
+  Selected units can be added to a set or removed from the shown one, and
+  their answers reset; a set can be renamed. Clicking a unit's id shows it
+  in full.
   A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The codebook editor warns about `$unit.x`
   references to fields that don't exist (`codebook/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
   codebook versions (open them in the editor), unit/coder/invitation counts,
   answers per day (`GET /overview`), progress per loop
-  (`GET /deployment/status`), and the job settings (rename, archive, delete).
-- **Invitations**: create links (login requirement, participant id, preset
-  variables, max uses, units) and a table of all of them with uses, units
+  (`GET /deployment/status`) with what the runtime holds in memory, and
+  the job settings (rename, archive, delete). `LiveControls.tsx`: pause or
+  resume, and reload the runtime. `TeamSettings.tsx`: who has access and
+  their role (the list keeps at least one admin).
+- **Invitations**: create links (login requirement, participant id fixed
+  or from a URL parameter with a pattern, other required URL parameters,
+  allowed emails, preset variables, max uses, units) and a table of all of them with uses, units
   and status; revoke (no new coders), or delete while unused. An
   invitation's units are what its coders get in loops with "The
   invitation's units" (it warns about invitations without units when the
@@ -628,7 +635,10 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   their part.
 - **Coders**: per coder the invitation, started, last active, answers,
   finished units per loop of the live codebook, and how the session ended
-  at an `end` item, if it did (`ended`).
+  at an `end` item or by quitting (`ended`). Open deletion requests are
+  listed first (delete or decline). Per coder, or by participant ids or
+  emails: reset their answers (kept as reset) or delete their data
+  (`coder-identity.md` §8).
 - **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip,
   built in the browser from the researcher API (all pages of
   `GET /annotations` and `GET /unit-versions`, `GET /coders`, and the
@@ -641,7 +651,8 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   - `units.csv`: the unit versions answers were given on (`architecture.md`
     §8.4), with the fields as shown;
   - `variables.csv`: per codebook version, question and option, its label;
-  - `README.txt`: what the columns mean.
+  - `README.txt`: what the columns mean;
+  - optionally `reset_answers.csv`: answers that were reset.
 
   Answers are stored values; "Add label columns" (on by default) puts a
   `_label` column after each answer column with options: the label in the

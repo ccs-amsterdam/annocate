@@ -505,9 +505,8 @@ Roughly in order:
 2. **Publishing follow-ups.**
    - A dry run of a publish, so the reopen warnings (§8.2) show before
      confirming instead of after.
-   - Pausing a job from the UI (`active: false`), and deciding what pausing
-     means: today it stops new units (409), but coders can still submit
-     units they hold.
+   - Deciding what pausing (`active: false`, Overview → Pause) means: today
+     it stops new units (409), but coders can still submit units they hold.
    - Choosing what reopens after a codebook update (§8.3).
 3. **Local coding from R and Python** (`compositions.md`): the runtime in
    the browser, R or Python as the host; then the R and Python packages.
@@ -520,9 +519,10 @@ Roughly in order:
    course hands out a number of jobs per student).
 6. **Unit preprocessing.** Unit versions (§8.4) hold the fields as shown;
    preprocessing (e.g. tokenizing once on the server) would be part of it.
-7. **Keeping history.** Unit versions are kept (§8.4); older versions of
-   annotations are kept as retired rows. (An annotation written with an
-   old `codebookId` after a reset is stored as is.)
+7. **Keeping history.** Unit versions are kept (§8.4). Answers reset by a
+   researcher are kept as retired rows; a coder changing an answer updates
+   it in place (decided: no history of a coder's own edits for now; adding
+   it later is a new table, not a change to this one).
 8. **Sessions.** For coders: a device id across jobs versus today's session
    key per job; reopening anonymous invites on the same device. For
    researchers: a list of active sessions, logging out everywhere, logging
@@ -546,6 +546,9 @@ Roughly in order:
     `FOR UPDATE SKIP LOCKED`.
 12. **Admin unit cache.** A client-side cache of units for the researcher
     UI (IndexedDB), compared by ids and hashes.
+
+13. **Gold checks** (`plan-gold-checks.md`) and **question loops**
+    (`plan-question-loops.md`): planned, not built.
 
 Smaller things worth an issue: a swipe-card UI for the `annotinder` answer
 type; `VariableValue` as a discriminated union; a live preview of a

@@ -31,10 +31,12 @@ server sends no CORS headers for these paths.
 Headers:
 
 - `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
-- `x-invite-secret`, `x-participant-id` from the URL: create the coder on
-  first use; the participant id also selects the session cookie;
-- `x-url-params`: the page's other query parameters, for `url_param` auto
-  variables;
+- `x-invite-secret` from the URL: create the coder on first use;
+- `x-url-params`: the page's other query parameters. They hold the
+  participant id and the invite's required parameters (stored on the coder
+  as `$session` values; a missing or invalid one is 400 `url_param_missing`
+  / `url_param_invalid`) and `url_param` auto variables. The participant id
+  also selects the session cookie (`coder-identity.md` §4);
 - `x-new-session: 1` (first request only): start another session for a
   participant that already has one;
 - `x-annotinder-version`: the `version` of the loaded session (below).
