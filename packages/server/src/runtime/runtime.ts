@@ -1,4 +1,5 @@
 import {
+  type AnswerTiming,
   SET_ACTIVITY_MS,
   shownUnitFields,
   type UnitData,
@@ -628,7 +629,12 @@ export class DeploymentRuntime {
    * Coder-level answers: a row each (only those that changed), like unit
    * answers. Server-assigned auto variables can't be overwritten by the client.
    */
-  async submitCoderVariables(coder: Coder, variables: Record<string, VariableValue>, deviceId: number | null = null): Promise<void> {
+  async submitCoderVariables(
+    coder: Coder,
+    variables: Record<string, VariableValue>,
+    deviceId: number | null = null,
+    timings: Record<string, AnswerTiming> = {},
+  ): Promise<void> {
     this.assertOpen(coder);
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
@@ -636,9 +642,11 @@ export class DeploymentRuntime {
     const changed = Object.fromEntries(
       Object.entries(variables).filter(([name, value]) => !auto.has(name) && JSON.stringify(coder.variables[name]) !== JSON.stringify(value)),
     );
-    if (Object.keys(changed).length === 0) return;
+    // Timings of answered questions only (an unchanged answer: its timing alone is updated)
+    const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => !auto.has(name) && (name in changed || name in coder.variables)));
+    if (Object.keys(changed).length === 0 && Object.keys(timed).length === 0) return;
     await this.store.checkAnswers(changed);
-    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, codebookId: this.spec.codebook.id, deviceId });
+    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, codebookId: this.spec.codebook.id, deviceId, timings: timed });
     coder.variables = { ...coder.variables, ...changed };
   }
 
@@ -866,6 +874,7 @@ export class DeploymentRuntime {
     variables: Record<string, VariableValue>,
     loopName?: string,
     deviceId: number | null = null,
+    timings: Record<string, AnswerTiming> = {},
   ): Promise<void> {
     this.assertOpen(coder);
     const loops = [...this.loops.values()].filter(
@@ -892,7 +901,16 @@ export class DeploymentRuntime {
       const unit = (await this.getUnits([unitId])).get(unitId);
       unitVersionId = unit && (await this.shownVersion(unit)).versionId;
     }
-    await this.store.putAnnotation({ unitId, coderId: coder.coderId, variables, codebookId: this.spec.codebook.id, unitVersionId, deviceId });
+    const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => name in variables));
+    await this.store.putAnnotation({
+      unitId,
+      coderId: coder.coderId,
+      variables,
+      codebookId: this.spec.codebook.id,
+      unitVersionId,
+      deviceId,
+      timings: timed,
+    });
     const own = await this.workspace(coder.coderId);
     const previous = own.get(unitId);
     const merged = { ...previous, ...variables };
@@ -997,6 +1015,7 @@ export class DeploymentRuntime {
     if (!entry.served.has(unit.id)) {
       entry.bytes += SERVED_BYTES;
       this.workspaceBytes += SERVED_BYTES;
+      await this.store.recordServe(coderId, unit.id);
     }
     entry.served.set(unit.id, shown.versionId);
     return shown;

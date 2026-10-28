@@ -1,5 +1,5 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import type { CodebookResponse, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
+import type { AnswerTiming, CodebookResponse, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
 // part of any API: coders get what the coder API (contracts
@@ -110,6 +110,12 @@ export interface CoderValuesWrite {
   assigned?: boolean;
   codebookId?: number | null;
   deviceId?: number | null;
+  /**
+   * How long the coder took per question, as their browser measured it (by
+   * variable). A timing for a variable not in `values` (an answer looked at
+   * again, not changed) updates that live row's timing only.
+   */
+  timings?: Record<string, AnswerTiming>;
 }
 
 /** One coder's live values for one unit (the runtime's per-coder workspace). */
@@ -171,4 +177,6 @@ export interface AnnotationWrite {
   unitVersionId?: number;
   /** The device the answers were given on (`coder_devices`). */
   deviceId?: number | null;
+  /** How long the coder took per question, as their browser measured it (by variable). */
+  timings?: Record<string, AnswerTiming>;
 }

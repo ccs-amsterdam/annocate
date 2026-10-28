@@ -47,6 +47,8 @@ export interface Store {
   /** One coder's live annotations per unit, ordered by first write. */
   listAnnotations(coderId: number): Promise<CoderAnnotation[]>;
   putAnnotation(write: AnnotationWrite): Promise<void>;
+  /** Records when a unit was first handed to the coder (once; the server's bound on their time: docs/coder-identity.md §10). */
+  recordServe(coderId: number, unitId: number): Promise<void>;
   /** Refuses answers that are too large, or that would take the job past its limit on answers (shared/limits.ts). */
   checkAnswers(variables: Record<string, VariableValue>): Promise<void>;
   /**
@@ -200,16 +202,34 @@ export class DbStore implements Store {
       if (!unit) throw new HttpError(404, "Unit not found");
       for (const [variable, value] of Object.entries(write.variables)) {
         await tx.query(
-          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, device_id, created, updated)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+          `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, device_id, timing, created, updated)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
            ON CONFLICT (unit_id, coder_id, variable) WHERE retired_at IS NULL
            DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, unit_version_id = excluded.unit_version_id,
-             device_id = excluded.device_id, updated = excluded.updated`,
-          [jobId, write.unitId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, write.unitVersionId ?? null, write.deviceId ?? null],
+             device_id = excluded.device_id, timing = excluded.timing, updated = excluded.updated`,
+          [
+            jobId,
+            write.unitId,
+            write.coderId,
+            variable,
+            JSON.stringify(value),
+            write.codebookId ?? null,
+            write.unitVersionId ?? null,
+            write.deviceId ?? null,
+            write.timings?.[variable] ? JSON.stringify(write.timings[variable]) : null,
+          ],
         );
       }
       if (!unit.coded) await tx.query("UPDATE units SET coded = true WHERE id = $1", [write.unitId]);
     });
+  }
+
+  async recordServe(coderId: number, unitId: number): Promise<void> {
+    await this.sql.query("INSERT INTO unit_serves (job_id, coder_id, unit_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING", [
+      this.jobId,
+      coderId,
+      unitId,
+    ]);
   }
 }
 

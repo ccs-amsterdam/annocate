@@ -39,6 +39,8 @@ A row for every unit a coder coded, in the order they coded them.
 | `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer |
 | `codebook_id` | The codebook version the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
 | `device_id` | The device the unit was (last) answered on: see `devices.csv` |
+| `unit_ms_client` | Milliseconds the unit's questions were on screen, as the coder's browser measured them: see `timings.csv` |
+| `unit_ms_server` | Milliseconds from the server handing out the unit to its last answer |
 | one column per question | The answers |
 
 The question columns are in the order of the codebook, named after the
@@ -116,6 +118,28 @@ A coder who continued on another device has a row for each. These are
 coarse categories, as survey tools report them, not a fingerprint of the
 device.
 
+## timings.csv
+
+How long coders took, a row per answer, in milliseconds, as the coder's
+browser measured it:
+
+| Column | Meaning |
+| --- | --- |
+| `unit_id` | The unit (empty for questions outside unit loops) |
+| `coder_id`, `participant_id`, `variable` | The coder and the question |
+| `first_ms` | Time on screen until the first answer |
+| `total_ms` | Time on screen over all visits (going back adds to it) |
+| `hidden_ms` | Time the page was hidden meanwhile: another tab, a minimized window (not in `total_ms`) |
+| `edits` | How often the answer changed |
+| `server_ms` | The server's own measure: for a unit, from handing it out to its last answer (the same for all its questions); outside units, the time since the coder's previous answer |
+| `exceeds_server` | `true` if the browser claims more time than the server saw (for a unit: all its questions together) |
+
+A browser can be tampered with; the server can't. So use `server_ms` to
+check the browser's times: `exceeds_server` marks a manipulated (or
+broken) browser. Answers that are too fast show in both. Times include
+reading the unit, so compare within a job, not across very different
+units.
+
 ## variables.csv
 
 The codebook, as a table: a row per codebook version (`codebook_id`), question
@@ -183,6 +207,7 @@ d = (annotations
 | a coder's details and background answers to their annotations | `coder_id` |
 | the unit as the coder saw it | `unit_version_id` |
 | the device an answer was given on | `device_id` in `devices.csv` |
+| response times to the answers | `unit_id`, `coder_id` and `variable` in `timings.csv` |
 | the labels of a codebook version | `codebook_id` and `variable` (and `value`) in `variables.csv` |
 | your own data (metadata not shown to coders) | `unit_id`, with the id column of your own file |
 

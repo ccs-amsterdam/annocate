@@ -321,3 +321,30 @@ and branching use them), so hiding earlier screens would protect little;
 a login with a second factor, or no login, does more for a half-finished
 session.
 
+## 10. Response times (implemented, 2026-10-28)
+
+Always on: how long coders take per question, for analysis (e.g. reading
+time per unit) and for spotting bad faith (clicking through). Not shown in
+the UI yet; in the download (`timings.csv`, and per unit in
+`annotations.csv`). Mentioned on the privacy help page.
+
+- **The browser measures, per question** (`client/src/lib/jobManager/timing.ts`,
+  `AnswerTimingSchema`): the time until its first answer (`firstMs`), on
+  screen over all visits (`totalMs`), with the page hidden (`hiddenMs`:
+  another tab, a minimized window; apart from `totalMs`), and how often
+  the answer changed (`edits`). Waiting for the server isn't counted. Sent
+  with the answers (`timings` in `POST /variables/unit` and
+  `/variables/coder`) and stored on the answer row
+  (`annotation_values.timing`); a coder-level answer looked at again but
+  not changed gets only its timing updated.
+- **The server's bound**, since a browser can be tampered with: per coder
+  and unit, when the server first handed the unit out (`unit_serves`,
+  `servedAt` in `listAnnotations`); a unit's answers arrive together, so
+  from then to the last answer bounds the time on all its questions.
+  Coder-level answers are posted one at a time, so the time since the
+  coder's previous answer bounds each. The download flags browsers that
+  claim more time than the server saw (`exceeds_server`; 2 s leeway).
+  The bound only catches inflated times; too-fast answers show in the
+  server's times themselves.
+- Later: inspecting times per unit and question, distributions, flags for
+  likely fraud.

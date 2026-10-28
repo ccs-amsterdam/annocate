@@ -1,5 +1,6 @@
 import type { CoderSessionScope } from "../session/coderSession";
 import {
+  type AnswerTiming,
   coderEndpoints,
   type EndSessionResponse,
   type EndUnit,
@@ -52,9 +53,10 @@ export interface CoderApi {
   getNextUnit(loop: string, branch?: BranchChoice): Promise<CoderUnitResponse | null>;
   /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
   getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
-  /** A finished unit: answers to every question of the loop (`skip` for hidden ones). */
-  postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string): Promise<void>;
-  postCoderVariables(variables: Record<string, VariableValue>): Promise<void>;
+  /** A finished unit: answers to every question of the loop (`skip` for hidden ones), with how long each took. */
+  postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string, timings?: Record<string, AnswerTiming>): Promise<void>;
+  /** The coder-level answers, with how long the questions visited since the last post took. */
+  postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void>;
   /** The coder reached an `end` item: the session is over (screened out or complete). */
   /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the job. */
   endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse>;
@@ -162,10 +164,15 @@ export class HttpCoderApi implements CoderApi {
     );
   }
 
-  async postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string): Promise<void> {
+  async postUnitVariables(
+    unitId: number,
+    variables: Record<string, VariableValue>,
+    loop?: string,
+    timings?: Record<string, AnswerTiming>,
+  ): Promise<void> {
     await this.request(coderEndpoints.postUnitVariables.path, {
       method: "POST",
-      body: JSON.stringify({ unitId, loop, variables }),
+      body: JSON.stringify({ unitId, loop, variables, timings }),
     });
   }
 
@@ -173,10 +180,10 @@ export class HttpCoderApi implements CoderApi {
     return this.request(coderEndpoints.createTransfer.path, { method: "POST" });
   }
 
-  async postCoderVariables(variables: Record<string, VariableValue>): Promise<void> {
+  async postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void> {
     await this.request(coderEndpoints.postCoderVariables.path, {
       method: "POST",
-      body: JSON.stringify({ variables }),
+      body: JSON.stringify({ variables, timings }),
     });
   }
 

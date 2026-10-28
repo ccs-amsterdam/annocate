@@ -118,7 +118,7 @@ export function coderApi(server: Server): Hono {
 
   session.post("/variables/unit", async (c) => {
     const body = await parseBody(c, PostUnitVariablesSchema);
-    await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop, c.get("deviceId"));
+    await c.get("runtime").submitUnit(c.get("coder"), body.unitId, body.variables, body.loop, c.get("deviceId"), body.timings);
     return c.body(null, 204);
   });
 
@@ -140,7 +140,7 @@ export function coderApi(server: Server): Hono {
 
   session.post("/variables/coder", async (c) => {
     const body = await parseBody(c, PostCoderVariablesSchema);
-    await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables, c.get("deviceId"));
+    await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables, c.get("deviceId"), body.timings);
     return c.body(null, 204);
   });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationRow, CoderProgress, TopLevelItem } from "@annotinder/contracts";
-import { Labels, annotationsTable, answerJson, answerText, codersTable, resetAnswersTable, toCsv, unitsTable, variablesTable } from "./exportData";
+import { Labels, annotationsTable, answerJson, answerText, codersTable, resetAnswersTable, timingsTable, toCsv, unitsTable, variablesTable } from "./exportData";
 
 const at = new Date("2026-11-01T10:00:00Z");
 const row = (unitId: number, coderId: number, variable: string, value: AnnotationRow["value"], minutes = 0): AnnotationRow => ({
@@ -15,6 +15,8 @@ const row = (unitId: number, coderId: number, variable: string, value: Annotatio
   unitVersionId: null,
   deviceId: 7,
   assigned: false,
+  timing: null,
+  servedAt: null,
   created: new Date(at.getTime() + minutes * 60_000),
   updated: new Date(at.getTime() + minutes * 60_000),
 });
@@ -72,14 +74,16 @@ describe("data download", () => {
       "last_change",
       "codebook_id",
       "device_id",
+      "unit_ms_client",
+      "unit_ms_server",
       "sentiment",
       "topic",
       "interest.tech",
     ]);
     expect(table.rows).toEqual([
-      ["u1", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:02:00.000Z", "2", "7", "pos", "politics", ""],
-      ["u1", "", "2", "", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "neg", "", ""],
-      ["u2", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "", "", "4"],
+      ["u1", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:02:00.000Z", "2", "7", "", "", "pos", "politics", ""],
+      ["u1", "", "2", "", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "", "", "neg", "", ""],
+      ["u2", "", "1", "p1", "Open link", "2026-11-01T10:00:00.000Z", "2026-11-01T10:00:00.000Z", "2", "7", "", "", "", "", "4"],
     ]);
   });
 
@@ -93,6 +97,20 @@ describe("data download", () => {
     ]);
     expect(table.headers).toEqual(["coder_id", "participant_id", "email", "invitation", "started", "last_active", "ended", "ended_at", "deletion_requested", "finished_main", "age"]);
     expect(table.rows[0]).toEqual(["1", "p1", "", "Open link", at.toISOString(), at.toISOString(), "complete", at.toISOString(), "", "1", "42"]);
+  });
+
+  it("lists response times with the server's bound, and flags browsers that claim more time than the server saw", () => {
+    const value = { done: true, skip: false, values: [{ value: 1 }] };
+    const timing = (firstMs: number, totalMs: number) => ({ firstMs, totalMs, hiddenMs: 0, edits: 1 });
+    const survey = { ...row(0, 1, "age", value, 1), unitId: null, externalId: null, timing: timing(30_000, 30_000) };
+    const unit = { ...row(1, 1, "sentiment", value, 3), timing: timing(5000, 90_000), servedAt: new Date(at.getTime() + 2 * 60_000) };
+    const coders = [coder(1)];
+    expect(timingsTable([survey, unit], coders).rows).toEqual([
+      ["", "1", "p1", "age", "30000", "30000", "0", "1", "60000", "false"],
+      ["u1", "1", "p1", "sentiment", "5000", "90000", "0", "1", "60000", "true"],
+    ]);
+    const units = annotationsTable([survey, unit], coders, ["sentiment"]);
+    expect(units.rows[0].slice(9, 11)).toEqual(["90000", "60000"]);
   });
 
   it("quotes CSV cells that need it", () => {

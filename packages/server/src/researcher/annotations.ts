@@ -19,10 +19,12 @@ export function annotations(server: Server): Hono<Env> {
     const rows = await db.query<AnnotationRow & { retiredAt: Date | null }>(
       `SELECT a.id, a.unit_id AS "unitId", u.external_id AS "externalId", a.coder_id AS "coderId",
          c.participant_id AS "participantId", a.variable, a.value, a.codebook_id AS "codebookId",
-         a.unit_version_id AS "unitVersionId", a.device_id AS "deviceId", a.assigned, a.created, a.updated, a.retired_at AS "retiredAt"
+         a.unit_version_id AS "unitVersionId", a.device_id AS "deviceId", a.assigned, a.timing,
+         s.first_served AS "servedAt", a.created, a.updated, a.retired_at AS "retiredAt"
        FROM annotation_values a
        LEFT JOIN units u ON u.id = a.unit_id
        LEFT JOIN coders c ON c.id = a.coder_id
+       LEFT JOIN unit_serves s ON s.coder_id = a.coder_id AND s.unit_id = a.unit_id
        WHERE a.job_id = $1 AND a.id > $2 AND ($3 OR a.retired_at IS NULL)
        ORDER BY a.id LIMIT $4`,
       [c.get("jobId"), after ?? 0, retired, limit + 1],

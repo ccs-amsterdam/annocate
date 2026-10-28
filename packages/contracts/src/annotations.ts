@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IdSchema, UnitDataSchema } from "./common.js";
-import { VariableValueSchema } from "./variableValue.js";
+import { AnswerTimingSchema, VariableValueSchema } from "./variableValue.js";
 
 // Downloading annotations (researcher API `GET /job/:jobId/annotations`):
 // one row per answer: unit (or none, for answers outside unit loops and
@@ -41,6 +41,10 @@ export const AnnotationRowSchema = z.object({
   deviceId: IdSchema.nullable(),
   /** Set by the server, not answered: an invite preset, a random or balanced group, a URL parameter (`auto` questions). */
   assigned: z.boolean(),
+  /** How long the coder took on the question, as their browser measured it; null for assigned values and previews. */
+  timing: AnswerTimingSchema.nullable(),
+  /** Unit answers: when the server first handed the unit to this coder (the server's own bound on their time); null otherwise. */
+  servedAt: z.coerce.date().nullable(),
   created: z.coerce.date(),
   updated: z.coerce.date(),
   /** Only with `retired=true`: when the value was reset; null if live. */

@@ -702,6 +702,37 @@ describe("coder-level answers", () => {
   });
 });
 
+describe("response times", () => {
+  it("store the browser's timing per answer, and when the server first handed out the unit", async () => {
+    const age = { type: "question", name: "age", variable: { type: "numeric", question: "Age?" } };
+    await redeploy({}, [age]);
+    const c = coder("timed");
+    await c.session();
+    const timing = (ms: number) => ({ firstMs: ms, totalMs: ms + 500, hiddenMs: 0, edits: 1 });
+    const value = (v: number) => ({ done: true, skip: false, values: [{ value: v }] });
+    const post = (body: object) => c.call("/variables/coder", { method: "POST", body: JSON.stringify(body) });
+    expect((await post({ variables: { age: value(30) }, timings: { age: timing(2000) } })).status).toBe(204);
+    // Looked at again, not changed: only the timing is updated
+    expect((await post({ variables: { age: value(30) }, timings: { age: timing(3000) } })).status).toBe(204);
+
+    const unit = await c.next();
+    expect((await c.call("/variables/unit", {
+      method: "POST",
+      body: JSON.stringify({ unitId: unit!.id, variables: sentiment("positive"), timings: { sentiment: timing(4000), other: timing(1) } }),
+    })).status).toBe(204);
+
+    const page = (await (await server.request("/job/1/annotations", { headers: adminHeaders })).json()) as {
+      annotations: { unitId: number | null; variable: string; timing: unknown; servedAt: string | null }[];
+    };
+    const byVariable = Object.fromEntries(page.annotations.map((a) => [a.variable, a]));
+    expect(byVariable.age).toMatchObject({ timing: timing(3000), servedAt: null });
+    expect(byVariable.sentiment).toMatchObject({ timing: timing(4000), servedAt: expect.any(String) });
+    expect(byVariable.other).toBeUndefined();
+    // A bad timing is refused
+    expect((await post({ variables: { age: value(30) }, timings: { age: { firstMs: -1, totalMs: 0, hiddenMs: 0, edits: 0 } } })).status).toBe(400);
+  });
+});
+
 describe("limits", () => {
   it("a job past its owner's limit on coders takes no new ones; existing coders go on", async () => {
     const first = coder("first");

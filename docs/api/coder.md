@@ -106,7 +106,9 @@ answers: to go back to it, e.g. after resuming.
 One finished unit's answers: every question of the loop (`skip` for
 questions a condition hid). Validated against the codebook, then stored
 before the response; values of variables not sent (e.g. questions a
-codebook update removed) are kept.
+codebook update removed) are kept. `timings`: per question, how long the
+coder took, as the browser measured it (`AnswerTimingSchema`,
+`coder-identity.md` §10).
 
 ### postCoderVariables
 
@@ -115,7 +117,9 @@ codebook update removed) are kept.
 The coder-level answers (survey questions outside loops), all of them as
 the client has them. The server writes a row for each answer that changed
 (answer rows without a unit, like unit answers); values the server
-assigned (`auto` questions) can't be overwritten.
+assigned (`auto` questions) can't be overwritten. `timings`: for the
+questions visited since the last post, how long the coder took; an
+answer that didn't change gets its timing updated.
 
 ### endSession
 

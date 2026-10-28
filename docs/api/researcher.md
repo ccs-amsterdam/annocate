@@ -489,8 +489,10 @@ Implementation: [`researcher/annotations.ts`](../../packages/server/src/research
 one row per answer: unit, coder and variable (`value` is a
 `VariableValue`), with the unit's `externalId`, the coder's
 `participantId`, the codebook version it was answered under, the unit
-version the coder saw (`unitVersionId`), the device (`deviceId`), and
-`created` / `updated`. Answers outside unit loops (survey questions) are
+version the coder saw (`unitVersionId`), the device (`deviceId`), how
+long the coder took as their browser measured it (`timing`), for unit
+answers when the server first handed the unit to the coder (`servedAt`),
+and `created` / `updated`. Answers outside unit loops (survey questions) are
 rows too, with `unitId` null; so are values the server assigned (invite
 presets, random or balanced groups, URL parameters), marked `assigned`.
 

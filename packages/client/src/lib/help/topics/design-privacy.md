@@ -26,6 +26,7 @@ Everything of a job is stored on the AnnoTinder server you use:
 | **Coders** | Per session: the invitation used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended |
 | **Devices** | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given |
 | **Answers** | Per unit and question: the answer, when it was first given and last changed, and the codebook and unit version |
+| **Response times** | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in your participant information if it matters for your study |
 
 What AnnoTinder itself does **not** store about coders: their name, their
 email address (unless the invitation has them [log in](invitations.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or

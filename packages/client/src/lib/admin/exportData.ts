@@ -189,6 +189,7 @@ export function annotationsTable(
     string,
     { first: AnnotationRow; last: Date; deviceId: number | null; values: Map<string, VariableValue>; codebooks: Map<string, number | null> }
   >();
+  const unitTimes = unitTimings(annotations);
   // Answers outside unit loops (no unit) are in coders.csv.
   for (const a of annotations) {
     if (a.unitId === null) continue;
@@ -219,9 +220,12 @@ export function annotationsTable(
       "last_change",
       "codebook_id",
       "device_id",
+      "unit_ms_client",
+      "unit_ms_server",
       ...columns.map(header),
     ],
     rows: [...byUnitCoder.values()].map(({ first, last, deviceId, values, codebooks }) => {
+      const times = unitTimes.get(`${first.unitId}/${first.coderId}`);
       // The unit's spans, by id, so relations can name them by their text
       const spans = new Map([...values.values()].flatMap((v) => (v.spans ?? []).map((s) => [s.id, s] as const)));
       return [
@@ -234,6 +238,8 @@ export function annotationsTable(
       time(last),
       first.codebookId === null ? "" : String(first.codebookId),
       deviceId === null ? "" : String(deviceId),
+      times?.client == null ? "" : String(times.client),
+      times?.server == null ? "" : String(times.server),
       ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.codebookId, spans)),
       ];
     }),
@@ -359,6 +365,86 @@ export function variablesTable(codebooks: ReadonlyMap<number, TopLevelItem[]>): 
   return { headers: ["codebook_id", "loop", "variable", "type", "question", "value", "label"], rows };
 }
 
+/** Leeway when comparing the browser's times with the server's (clocks, network). */
+const TIMING_TOLERANCE_MS = 2000;
+
+/**
+ * Per unit and coder: the time the browser measured on its questions (on
+ * screen, summed; null without timings), and the server's bound: from
+ * handing the unit out to the last answer (null if not known).
+ */
+function unitTimings(annotations: AnnotationRow[]): Map<string, { client: number | null; hidden: number; server: number | null }> {
+  const out = new Map<string, { client: number | null; hidden: number; server: number | null }>();
+  for (const a of annotations) {
+    if (a.unitId === null) continue;
+    const key = `${a.unitId}/${a.coderId}`;
+    let t = out.get(key);
+    if (!t) out.set(key, (t = { client: null, hidden: 0, server: null }));
+    if (a.timing) {
+      t.client = (t.client ?? 0) + a.timing.totalMs;
+      t.hidden += a.timing.hiddenMs;
+    }
+    if (a.servedAt) t.server = Math.max(t.server ?? 0, new Date(a.updated).getTime() - new Date(a.servedAt).getTime());
+  }
+  return out;
+}
+
+/**
+ * Response times, a row per answer the browser timed (docs/coder-identity.md
+ * §10), with the server's bound: for an answer in a unit, the unit's (from
+ * handing it out to its last answer); for one outside units, the time since
+ * the coder's previous answer (or their start). `exceeds_server`: the
+ * browser claims more time than the server saw (unit: all its questions,
+ * hidden time included; outside units: until the first answer), a sign of
+ * a tampered client.
+ */
+export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress[]): Table {
+  const started = new Map(coders.map((c) => [c.id, c.started ? new Date(c.started).getTime() : null]));
+  const answeredAt = new Map<number, number[]>();
+  for (const a of annotations) {
+    const list = answeredAt.get(a.coderId) ?? [];
+    list.push(new Date(a.created).getTime());
+    answeredAt.set(a.coderId, list);
+  }
+  const units = unitTimings(annotations);
+  const ms = (v: number | null) => (v === null ? "" : String(Math.round(v)));
+  const rows = annotations.flatMap((a) => {
+    const t = a.timing;
+    if (!t) return [];
+    let server: number | null;
+    let exceeds: boolean | null;
+    if (a.unitId !== null) {
+      const unit = units.get(`${a.unitId}/${a.coderId}`);
+      server = unit?.server ?? null;
+      exceeds = server === null || unit?.client == null ? null : unit.client + unit.hidden > server + TIMING_TOLERANCE_MS;
+    } else {
+      const created = new Date(a.created).getTime();
+      const before = (answeredAt.get(a.coderId) ?? []).filter((v) => v < created);
+      const from = before.length > 0 ? Math.max(...before) : started.get(a.coderId) ?? null;
+      server = from === null ? null : created - from;
+      exceeds = server === null || t.firstMs === null ? null : t.firstMs > server + TIMING_TOLERANCE_MS;
+    }
+    return [
+      [
+        a.externalId ?? "",
+        String(a.coderId),
+        a.participantId ?? "",
+        a.variable,
+        ms(t.firstMs),
+        ms(t.totalMs),
+        ms(t.hiddenMs),
+        String(t.edits),
+        ms(server),
+        exceeds === null ? "" : String(exceeds),
+      ],
+    ];
+  });
+  return {
+    headers: ["unit_id", "coder_id", "participant_id", "variable", "first_ms", "total_ms", "hidden_ms", "edits", "server_ms", "exceeds_server"],
+    rows,
+  };
+}
+
 /** The devices coders used (`device_id` in annotations.csv): coarse details, when each joined its session. */
 export function devicesTable(devices: Device[]): Table {
   return {
@@ -390,7 +476,10 @@ export function readme(job: string, exported: Date, labels: boolean): string {
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  version the coder saw (unit_version_id), the coder, when they
                  first and last answered, the codebook version (codebook_id),
-                 and a column per question (a scale: a column per item,
+                 the time the coder's browser measured on the unit's
+                 questions (unit_ms_client; see timings.csv) and the time
+                 from the server handing out the unit to its last answer
+                 (unit_ms_server), and a column per question (a scale: a column per item,
                  question.item).${labels ? `
                  Each answer column is followed by a _label column: the label
                  in the codebook version the answer was given under.` : ""}
@@ -411,6 +500,17 @@ devices.csv      The devices coders used: device type (phone, tablet,
                  joined its coder's session (a coder who continued on
                  another device has several). Join annotations on device_id
                  (the device of the unit's latest answer).
+timings.csv      Response times, a row per answer: as the coder's browser
+                 measured them, in milliseconds: until the first answer
+                 (first_ms), on screen over all visits (total_ms), with the
+                 page hidden (hidden_ms; another tab, not in total_ms), and
+                 how often the answer changed (edits). A browser can be
+                 tampered with, so with the server's own bound (server_ms):
+                 for answers in units, the unit's unit_ms_server; outside
+                 units, the time since the coder's previous answer.
+                 exceeds_server is true where the browser claims more time
+                 than the server saw (a tampered client). unit_id is empty
+                 for answers outside unit loops.
 deleted_coders.csv  Coders whose data was deleted from AnnoTinder (for
                  instance a participant who withdrew), by coder_id and
                  participant_id: delete them from earlier downloads too.

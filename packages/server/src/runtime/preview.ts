@@ -112,6 +112,8 @@ export class PreviewStore implements Store {
     return [...this.annotations.values()].filter((a) => a.coderId === coderId);
   }
 
+  async recordServe(): Promise<void> {}
+
   async putAnnotation(w: AnnotationWrite): Promise<void> {
     const now = new Date(this.now());
     const key = `${w.unitId}/${w.coderId}`;

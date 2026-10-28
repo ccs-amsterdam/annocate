@@ -1,5 +1,5 @@
 import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
-import type { Coder, CoderAssignments } from "../runtime/types.js";
+import type { Coder, CoderAssignments, CoderValuesWrite } from "../runtime/types.js";
 import type { Sql } from "../db.js";
 
 /** A row of `coders`. */
@@ -50,19 +50,31 @@ export async function coderValues(sql: Sql, jobId: number, coderId?: number): Pr
   return byCoder;
 }
 
-/** Writes coder-level values: a row each, without a unit (`assigned`: by the server, not answered). */
-export async function putCoderValues(
-  sql: Sql,
-  jobId: number,
-  write: { coderId: number; values: Record<string, VariableValue>; assigned?: boolean; codebookId?: number | null; deviceId?: number | null },
-): Promise<void> {
+/**
+ * Writes coder-level values: a row each, without a unit (`assigned`: by the
+ * server, not answered), with their timings (`CoderValuesWrite.timings`).
+ */
+export async function putCoderValues(sql: Sql, jobId: number, write: CoderValuesWrite): Promise<void> {
+  const timing = (variable: string) => {
+    const t = write.timings?.[variable];
+    return t ? JSON.stringify(t) : null;
+  };
   for (const [variable, value] of Object.entries(write.values)) {
     await sql.query(
-      `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, device_id, assigned, created, updated)
-       VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, now(), now())
+      `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, device_id, assigned, timing, created, updated)
+       VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, now(), now())
        ON CONFLICT (coder_id, variable) WHERE retired_at IS NULL AND unit_id IS NULL
-       DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, device_id = excluded.device_id, updated = excluded.updated`,
-      [jobId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, write.deviceId ?? null, write.assigned ?? false],
+       DO UPDATE SET value = excluded.value, codebook_id = excluded.codebook_id, device_id = excluded.device_id,
+         timing = excluded.timing, updated = excluded.updated`,
+      [jobId, write.coderId, variable, JSON.stringify(value), write.codebookId ?? null, write.deviceId ?? null, write.assigned ?? false, timing(variable)],
+    );
+  }
+  for (const variable of Object.keys(write.timings ?? {})) {
+    if (variable in write.values) continue;
+    await sql.query(
+      `UPDATE annotation_values SET timing = $4
+       WHERE job_id = $1 AND coder_id = $2 AND variable = $3 AND unit_id IS NULL AND retired_at IS NULL AND NOT assigned`,
+      [jobId, write.coderId, variable, timing(variable)],
     );
   }
 }

@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { CoderApi } from "../api/httpCoderApi";
 import { JobManager } from "./JobManager";
+import { QuestionTimer } from "./timing";
 
 function confirm(name: string): TopLevelQuestionItem {
   return { name, type: "question", variable: { type: "confirm", question: "?" } };
@@ -437,15 +438,16 @@ describe("submitting a finished unit", () => {
       getNextUnit: vi.fn(async () => (served ? null : ((served = true), unit(5)))),
       postUnitVariables,
     });
-    const manager = new JobManager(server);
+    let now = 0;
+    const manager = new JobManager(server, new QuestionTimer(() => now));
     await manager.start();
+    now = 2500;
     await manager.answer({ done: true, skip: false });
 
-    expect(postUnitVariables).toHaveBeenCalledWith(
-      5,
-      { q1: { done: true, skip: false }, q2: { done: true, skip: true } },
-      "1",
-    );
+    // With how long the question took (only the one shown)
+    expect(postUnitVariables).toHaveBeenCalledWith(5, { q1: { done: true, skip: false }, q2: { done: true, skip: true } }, "1", {
+      q1: { firstMs: 2500, totalMs: 2500, hiddenMs: 0, edits: 1 },
+    });
   });
 });
 

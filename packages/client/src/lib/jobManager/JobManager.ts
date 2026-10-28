@@ -8,6 +8,7 @@ import type {
   UnitLoopItem,
   UnitLayout,
   VariableValue,
+  AnswerTiming,
   CoderUnitResponse,
   SessionResponse,
   AnyVariableType,
@@ -22,6 +23,7 @@ import { ExpressionCache } from "../codebook/expressionCache";
 import { computeLoopSteps, computeTopLevelSteps, flattenTree, spanColumns, type StepContext } from "../codebook/tree";
 import { renderTemplate, type RenderedTemplate } from "../codebook/renderTemplate";
 import type { QuestionTexts } from "../components/Question";
+import { QuestionTimer } from "./timing";
 
 export type JobManagerPhase =
   | "loading"
@@ -272,7 +274,11 @@ export class JobManager {
     },
   };
 
-  constructor(coderApi: CoderApi) {
+  constructor(
+    coderApi: CoderApi,
+    /** How long the coder takes per question (sent with the answers). */
+    private readonly timer: QuestionTimer = new QuestionTimer(),
+  ) {
     this.coderApi = coderApi;
   }
 
@@ -597,15 +603,37 @@ export class JobManager {
     const item = this.snapshot.currentItem;
     if (!item || item.type !== "question") return;
     await this.guarded(async () => {
+      const answers = this.activeLoop === null ? this.userVariableValues : this.unitVariableValues;
+      const key = this.timingKey(item.name);
+      if (key) this.timer.answered(key, JSON.stringify(answers[item.name]) !== JSON.stringify(value));
+      this.timer.leave();
       if (this.activeLoop === null) {
         this.userVariableValues[item.name] = value;
-        await this.coderApi.postCoderVariables(await this.postedCoderValues());
+        const values = await this.postedCoderValues();
+        await this.withTimings("c:", (timings) => this.coderApi.postCoderVariables(values, timings));
         await this.advanceTop();
       } else {
         this.unitVariableValues[item.name] = value;
         await this.advanceUnit();
       }
     });
+  }
+
+  /** The timer's key for a question on screen now (`QuestionTimer`): coder-level, or in the current unit. */
+  private timingKey(name: string): string | null {
+    if (this.activeLoop === null) return `c:${name}`;
+    return this.currentUnit ? `u:${this.currentUnit.id}:${name}` : null;
+  }
+
+  /** Posts with the timings under `prefix` not sent yet; if the post fails, they stay unsent. */
+  private async withTimings(prefix: string, post: (timings: Record<string, AnswerTiming>) => Promise<void>): Promise<void> {
+    const timings = this.timer.take(prefix);
+    try {
+      await post(timings);
+    } catch (err) {
+      this.timer.unsent(prefix, Object.keys(timings));
+      throw err;
+    }
   }
 
   /**
@@ -938,7 +966,9 @@ export class JobManager {
         const value = this.unitVisible[name];
         doneValues[name] = value ? { ...value, done: true } : { done: true, skip: true };
       }
-      await this.coderApi.postUnitVariables(this.currentUnit.id, doneValues, this.keyOf(this.activeLoop));
+      const { id } = this.currentUnit;
+      const loopKey = this.keyOf(this.activeLoop);
+      await this.withTimings(`u:${id}:`, (timings) => this.coderApi.postUnitVariables(id, doneValues, loopKey, timings));
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }
@@ -1058,6 +1088,12 @@ export class JobManager {
     // Navigation (canGoBack etc.) depends on the new phase, so set that first.
     this.snapshot = { ...this.snapshot, userVariableValues: { ...this.userVariableValues }, ...next };
     this.snapshot = { ...this.snapshot, navigation: this.buildNavigation() };
+    // The question on screen is timed while it is there
+    const { phase, currentItem, currentUnit } = this.snapshot;
+    const name = currentItem && itemName(currentItem);
+    if (phase === "user_variable" && name) this.timer.show(`c:${name}`);
+    else if (phase === "unit_variable" && name && currentUnit) this.timer.show(`u:${currentUnit.id}:${name}`);
+    else this.timer.leave();
     for (const listener of this.listeners) listener();
   }
 }
