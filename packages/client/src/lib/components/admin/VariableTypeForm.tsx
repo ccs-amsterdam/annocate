@@ -551,22 +551,24 @@ function SpanFieldsPicker({
   onChange: (fields: string[]) => void;
 }) {
   const toggle = (field: string) => onChange(value.includes(field) ? value.filter((f) => f !== field) : [...value, field]);
-  const names = [...new Set([...(layoutFields ?? []), ...value])];
+  // The layout's selectable ids are `unit.<field>`; a span question names the unit field.
+  const shownFields = layoutFields?.map((id) => id.replace(/^unit\./, ""));
+  const names = [...new Set([...(shownFields ?? []), ...value])];
   return (
     <div className="flex flex-col gap-1">
       <span className="flex items-center gap-1.5">
         <label className="text-sm font-medium">Select in</label>
         <HelpButton topic="span" label="Help: selecting text" />
       </span>
-      {layoutFields ? (
+      {shownFields ? (
         names.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            The layout has nothing to select in yet: show a unit field as plain $unit.&lt;field&gt;, or add a ::: text block with a name.
+            The layout has nothing to select in yet: show a unit field as plain text, $unit.&lt;field&gt;.
           </p>
         ) : (
           <div className="flex flex-wrap gap-1">
             {names.map((name) => {
-              const shown = layoutFields.includes(name);
+              const shown = shownFields.includes(name);
               return (
                 <button
                   key={name}
@@ -591,7 +593,7 @@ function SpanFieldsPicker({
         <Input
           value={value.join(", ")}
           onChange={(e) => onChange(e.target.value.split(",").map((f) => f.trim()).filter(Boolean))}
-          placeholder="unit.text, unit.headline"
+          placeholder="headline, text"
         />
       )}
       <p className="text-[11px] text-muted-foreground">

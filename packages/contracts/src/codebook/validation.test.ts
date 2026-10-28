@@ -136,7 +136,7 @@ describe("validateCodebookItems", () => {
         questionVar("spans", {
           type: "span",
           question: "Highlight spans",
-          fields: ["unit.text"],
+          fields: ["text"],
           options: [{ value: "tag" }],
         }),
       ], "$unit.text"),
@@ -150,7 +150,7 @@ describe("validateCodebookItems", () => {
       questionVar("bad_span", {
         type: "span",
         question: "Bad",
-        fields: ["unit.text"],
+        fields: ["text"],
         options: [{ value: "tag" }],
       }),
       unitLoop("loop", [questionVar("q1")]),
@@ -318,16 +318,15 @@ describe("reference validation", () => {
     ]);
   });
 
-  it("requires span fields to be unit fields shown as plain text, or named ::: text blocks", () => {
+  it("requires span fields to be unit fields the layout shows as plain text", () => {
     const span = (...fields: string[]) => questionVar("s", { type: "span", question: "?", fields, options: [{ value: "x" }] });
-    expect(messages([unitLoop("l", [span("unit.text")], "$unit.text::markdown")])).toEqual([
-      "Span question 's' selects text in 'unit.text', but the layout doesn't show it as plain $unit.text",
+    expect(messages([unitLoop("l", [span("text")], "$unit.text::markdown")])).toEqual([
+      "Span question 's' selects text in the unit field 'text', but the layout doesn't show it as plain text ($unit.text)",
     ]);
-    expect(messages([unitLoop("l", [span("unit.headline", "unit.text")], "# $unit.headline\n\n{{$unit.text}}")])).toEqual([]);
-    const dynamic = "::: text summary\n{{ $unit.text.slice(0, 100) }}\n:::";
-    expect(messages([unitLoop("l", [span("summary")], dynamic)])).toEqual([]);
-    expect(messages([unitLoop("l", [span("summary")], "::: markdown summary\n$unit.text\n:::")])).toEqual([
-      "Span question 's' selects text in 'summary', but the layout has no ::: text block named 'summary'",
+    expect(messages([unitLoop("l", [span("headline", "text")], "# $unit.headline\n\n{{$unit.text}}")])).toEqual([]);
+    // A text block isn't a unit field: its text isn't kept as it was shown
+    expect(messages([unitLoop("l", [span("summary")], "::: text summary\n{{ $unit.text.slice(0, 100) }}\n:::")])).toEqual([
+      "Span question 's' selects text in the unit field 'summary', but the layout doesn't show it as plain text ($unit.summary)",
     ]);
   });
 
@@ -367,12 +366,12 @@ describe("reference validation", () => {
     ]);
   });
 
-  it("checks a question's field to show: a name the layout shows, only in a loop", () => {
-    const q = (field: string) => questionVar("q", { ...confirmVariable, field });
-    expect(messages([unitLoop("l", [q("unit.text")], "# $unit.headline\n\n$unit.text::markdown")])).toEqual([]);
+  it("checks a question's focus: ids the layout shows, only in a loop", () => {
+    const q = (...focus: string[]) => questionVar("q", { ...confirmVariable, focus });
+    expect(messages([unitLoop("l", [q("unit.text", "unit.headline")], "# $unit.headline\n\n$unit.text::markdown")])).toEqual([]);
     expect(messages([unitLoop("l", [q("intro")], "::: markdown intro\nhi\n:::")])).toEqual([]);
     expect(messages([unitLoop("l", [q("unit.body")], "$unit.text")])).toEqual(["'unit.body' is not shown in the layout (as $unit.body)"]);
-    expect(messages([q("unit.text")])).toEqual(["A field to show only works for questions in a unit loop"]);
+    expect(messages([q("unit.text")])).toEqual(["Focus only works for questions in a unit loop"]);
   });
 
 

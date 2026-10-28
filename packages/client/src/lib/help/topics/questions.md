@@ -93,16 +93,17 @@ The instruction is shown under the question every time it comes up.
 Long instructions are better placed before the coding starts, for example
 as a **Confirm** question (see [Confirm](confirm.md)).
 
-## Show field
+## Focus on
 
-For a question in a unit loop, **Show field (optional)** names a part of
-the unit: when the question comes up, the unit scrolls to that part and
-highlights it briefly. Use it when units are long and each question is
-about a different part, such as the headline for one question and the last
-paragraph for the next. The list offers what the loop's layout shows, by
-name: `unit.headline` for `$unit.headline`, or a named block (see
-[Typed blocks and names](typed-blocks.md)). A span question scrolls to its
-first field unless you choose another.
+For a question in a unit loop, **Focus on (optional)** picks the parts of
+the unit the question is about: when the question comes up, the unit
+scrolls to the first and highlights it briefly, and with **Dim the rest of
+the unit** everything else fades back. Use it when units are long and each
+question is about a different part, such as the headline for one question
+and a table for the next. The list offers what the loop's layout shows, by
+id: `unit.headline` for `$unit.headline`, or a named block (see
+[Typed blocks and names](typed-blocks.md#ids)). A span question focuses on
+the fields it selects in unless you choose otherwise.
 
 ## Where a question goes
 

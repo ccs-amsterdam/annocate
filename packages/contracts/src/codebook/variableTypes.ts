@@ -16,13 +16,15 @@ export const VariableBaseSchema = z.object({
   questionStyle: z.record(z.string(), z.string()).optional(),
   instruction: z.string().optional().describe("Extra instructions for this variable; a markdown template like `question`."),
   instructionStyle: z.record(z.string(), z.string()).optional(),
-  field: z
-    .string()
+  focus: z
+    .array(z.string().min(1))
     .optional()
     .describe(
-      "In a unit loop: what to scroll to and highlight when this question comes up, by name: `unit.<field>`, `var.<question>` " +
-        "or a named ::: block (docs/client.md §3). Span questions use their first field.",
+      "In a unit loop: the parts of the layout this question is about, by id: `unit.<field>` for a unit field, `var.<question>` " +
+        "for an answer, or a named ::: block's name (docs/client.md §3). The first is scrolled to and highlighted when the " +
+        "question comes up. Default for span questions: their fields.",
     ),
+  focusDim: z.boolean().optional().describe("Dim the rest of the unit while this question is on screen, so its focus stands out."),
 });
 
 export const NOMINAL_LAYOUTS = ["auto", "flex", "row", "grid", "dropdown"] as const;
@@ -158,8 +160,8 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
     .array(z.string().min(1))
     .min(1, "Choose what to select in")
     .describe(
-      "What to select spans in (each span records it), by name: `unit.<field>` for a unit field the layout shows as " +
-        "plain `$unit.<field>`, or the name of a `::: text <name>` block (docs/client.md §3)",
+      "The unit fields to select spans in (each span records its field), e.g. [\"headline\", \"text\"]: fields the layout " +
+        "shows as plain text, `$unit.<field>` (docs/client.md §3)",
     ),
   options: NominalOptionsSchema,
   selectionMode: z.enum(["word", "character"]).optional(),

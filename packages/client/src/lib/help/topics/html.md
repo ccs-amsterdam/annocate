@@ -60,7 +60,7 @@ outside the block, where they are always shown as text.
 
 Put `::html` values and `::: html` blocks on lines of their own: each is
 shown as a frame of its own, the full width of the unit. A block can have a
-name (`::: html scores`), so that a question's **Show field** can point at it
+name (`::: html scores`), so that a question can **Focus on** it
 (see [Typed blocks and names](typed-blocks.md)).
 
 ## What the sandbox doesn't allow

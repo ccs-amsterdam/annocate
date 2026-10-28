@@ -63,11 +63,11 @@ describe("template blocks", () => {
     expect(errors.map((e) => e.message)).toEqual([expect.stringContaining("a name is letters, digits and _")]);
   });
 
-  it("names unit fields, answers and named blocks; selectable: plain unit fields and ::: text blocks", () => {
+  it("names unit fields, answers and named blocks; selectable: unit fields shown as plain text", () => {
     const names = templateNames(
       "# $unit.headline\n\n$unit.text::markdown\n\n$var.q.label\n\n{{ $unit.n * 2 }}\n\n::: text summary\n$unit.inner\n:::\n::: html scores\nx\n:::",
     );
     expect(names.shown.sort()).toEqual(["scores", "summary", "unit.headline", "unit.text", "var.q"]);
-    expect(names.selectable.sort()).toEqual(["summary", "unit.headline"]);
+    expect(names.selectable.sort()).toEqual(["unit.headline"]);
   });
 });

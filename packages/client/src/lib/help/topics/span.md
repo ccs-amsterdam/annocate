@@ -29,21 +29,16 @@ text.
 
 ### What coders can select in
 
-Coders can only select in text that the loop's layout shows **as plain
-text**, so that what they select is exactly what is in your data. There are
-two kinds:
+Coders select in **unit fields** that the loop's layout shows **as plain
+text**: `$unit.text` or `$unit.headline`, without a suffix such as
+`::markdown` and not inside a typed block (see
+[Layout templates](layout-templates.md#values)). What they select is then
+exactly what is in your data.
 
-- **A unit field shown with a plain value**, such as `$unit.text` or
-  `$unit.headline`, without a suffix such as `::markdown` (see
-  [Layout templates](layout-templates.md#values)). It is called
-  `unit.text`, `unit.headline`.
-- **A named text block**: a `::: text` block with a name, for text that is
-  put together from several parts (see [Typed blocks and names](typed-blocks.md)).
-
-**Select in** lists everything the layout shows this way; click a name to
-switch it on or off. A name in red is no longer shown as plain text in the
-layout: fix the layout, or switch the name off. If the list is empty, the
-layout has nothing to select in yet.
+**Select in** lists the unit fields the layout shows this way; click one to
+switch it on or off. A field in red is no longer shown as plain text in the
+layout: fix the layout, or switch it off. If the list is empty, the layout
+has nothing to select in yet.
 
 One question can select in several parts at once, for example in both the
 headline and the text: each span remembers where it is.
@@ -107,13 +102,12 @@ When they are done, coders click **Done**; the button counts the spans.
 For every span, AnnoTinder stores:
 
 - the **value** of its label (e.g. `person`);
-- **where** it is: the name of the part it is in (`unit.text`) and, for each
+- **where** it is: the unit field it is in (`text`) and, for each
   fragment, the position of its first character and its length;
 - the **text** that was selected.
 
-Positions count characters in the field as it is in your data (for a named
-text block: in the block's text), so you can find the spans again in your
-own copy of the texts.
+Positions count characters in the field as it is in your data, so you can
+find the spans again in your own copy of the texts.
 
 In the downloaded `annotations.csv`, a span question's column lists the spans
 as `value: text`, separated by `; `, for example

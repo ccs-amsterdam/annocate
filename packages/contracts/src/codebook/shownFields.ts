@@ -35,9 +35,9 @@ export function shownUnitFields(items: readonly unknown[]): string[] {
           const variable = item.variable as { question?: unknown; instruction?: unknown; type?: string; fields?: unknown };
           text(variable.question);
           text(variable.instruction);
-          // Span fields are names: `unit.<field>`, or a ::: text block's (whose values are counted above).
+          // Span questions select in unit fields.
           if (variable.type === "span" && Array.isArray(variable.fields)) {
-            for (const f of variable.fields) if (typeof f === "string" && f.startsWith("unit.")) fields.add(f.slice(5));
+            for (const f of variable.fields) if (typeof f === "string") fields.add(f);
           }
         }
       }

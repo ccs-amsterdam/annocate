@@ -304,6 +304,18 @@
   }
 }
 
+/* A question's focus with "dim the rest" (UnitFields `focusDim`): the parts
+   of the unit without a focused element fade back. */
+.focus-dim > * {
+  transition:
+    opacity 0.25s,
+    filter 0.25s;
+}
+.focus-dim > :not([data-focused]):not(:has([data-focused])) {
+  opacity: 0.35;
+  filter: blur(1px);
+}
+
 @layer base {
   .light {
     color-scheme: light;

@@ -71,9 +71,9 @@ can turn text italic. For plain texts, values outside a block are safer.
 ### Text blocks
 
 A `::: text` block shows its content as plain text: no markdown, line breaks
-kept. On its own that is rarely needed, since values are plain text already.
-It matters with a name: span questions can select in a named text block (see
-[Names](#names) below).
+kept. That is rarely needed, since values are plain text already; it is
+useful for text put together from several values and scripts, shown
+literally, and with a name a question can [focus on](#focus-on) it.
 
 ```example
 unit:
@@ -126,51 +126,49 @@ with values from the unit in it, for example a mock social media post. See
 The fences of a typed block always go on lines of their own: the block is
 shown as a part of its own, not inside a sentence.
 
-## Names
+## Ids
 
-AnnoTinder gives the parts of a layout **names**, so questions can refer to
+AnnoTinder gives the parts of a layout **ids**, so questions can refer to
 them:
 
-| What the layout shows | Its name |
+| What the layout shows | Its id |
 | --- | --- |
 | A unit field: `$unit.headline` (also with a suffix) | `unit.headline` |
 | An answer: `$var.topic.label` | `var.topic` |
-| A typed block with a name: `::: text article` | `article` |
-| A script: `{{ ... }}` | None (put it in a named block to name it) |
+| A typed block with a name: `::: html scores` | `scores` |
+| A script: `{{ ... }}` | None (put it in a named block to give it one) |
 
 Values inside a typed block are part of the block's content: they have no
-name of their own.
+id of their own.
 
 A block's name comes after its type: `::: markdown intro`,
-`::: html scores`. A name is letters, digits and `_`, and must be different
-from the other names in the layout (*Two blocks are named 'intro': names
-must be unique*).
+`::: html scores`. A name is letters, digits and `_` (no dots), and must be
+different from the other names in the layout (*Two blocks are named
+'intro': names must be unique*).
 
-### Show field
+### Focus on
 
-Every question in a loop has **Show field (optional)**: one of the names the
-layout shows. When the question comes up, the unit scrolls to that part and
-highlights it briefly. Use it in long units, so that coders see which part
-the question is about: the headline for the first question, a table further
-down for the next.
+Every question in a loop has **Focus on (optional)**: one or more of the ids
+the layout shows, the parts of the unit the question is about. When the
+question comes up, the unit scrolls to the first and highlights it briefly.
+With **Dim the rest of the unit**, everything else fades back while the
+question is on screen, so coders see at a glance what to look at: the
+headline for the first question, a table further down for the next.
 
-If the layout no longer shows the name, the editor reports: *'unit.title' is
+A [span question](span.md) focuses on the fields it selects in, unless you
+choose otherwise.
+
+If the layout no longer shows an id, the editor reports: *'unit.title' is
 not shown in the layout (as $unit.title)*.
 
 ### Fields span questions select in
 
-A [span question](span.md) lets coders select words in the unit. It can only
-select in parts of the layout that are **plain text**, so that what coders
-select is exactly what was in the data:
+A [span question](span.md) lets coders select words in unit fields. It can
+only select in a field the layout shows as **plain text**: `$unit.text`,
+without a suffix and not inside a typed block. What coders select is then
+exactly what is in your data, and the positions of the spans point into
+the field as it was shown (kept in `units.csv`).
 
-- a unit field shown as a plain value: `$unit.text`, without a suffix, and
-  not inside a typed block (its name `unit.text`);
-- a `::: text` block with a name, for text put together from several parts.
-
-A field shown with `::markdown` or inside a `::: markdown` block can't be
-selected in. The editor then says *Span question 'actors' selects text in
-'unit.text', but the layout doesn't show it as plain $unit.text*.
-
-> A named `::: text` block can contain anything, also text made by a script.
-> For analysis, plain unit fields are usually better: the selected spans
-> then point straight into your data.
+A field shown with `::markdown` or inside a typed block can't be selected
+in. The editor then says *Span question 'actors' selects text in the unit
+field 'text', but the layout doesn't show it as plain text ($unit.text)*.

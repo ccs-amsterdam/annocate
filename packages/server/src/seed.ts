@@ -207,7 +207,9 @@ export async function seed(db: Sql): Promise<void> {
             type: "nominal",
             question: "What is the overall tone of this article?",
             instruction:
-              "A nominal question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**.",
+              "A nominal question: pick one option. Options can have their own colours. Texts can use earlier answers: you said you are a **$var.role.label**. This question focuses on the text and dims the rest.",
+            focus: ["unit.text"],
+            focusDim: true,
             options: [
               { value: "positive", label: "Positive", color: "#4caf50" },
               { value: "neutral", label: "Neutral", color: "#9e9e9e" },
@@ -240,7 +242,7 @@ export async function seed(db: Sql): Promise<void> {
             question: "Label the people, organisations, features and products in the headline and the text.",
             instruction:
               "A span question: select words in the headline or the text and give them a label. You can label as many spans as you like.",
-            fields: ["unit.headline", "unit.text"],
+            fields: ["headline", "text"],
             options: [
               { value: "person", label: "Person", color: "#2563eb" },
               { value: "organisation", label: "Organisation", color: "#7c3aed" },

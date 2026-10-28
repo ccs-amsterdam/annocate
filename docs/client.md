@@ -106,22 +106,28 @@ A template is read in two steps: first the **text is put together**
 - **Names** (`templateNames` in contracts): a value of a unit field is
   named `unit.<field>`, of an answer `var.<question>`, a typed block by its
   own name (letters, digits and `_`, unique in the layout); scripts have
-  none (put one in a named block). The element is marked with
-  `data-field="<name>"` (an attribute, not an `id`: a field may be shown
-  twice, and ids could clash with the app's). A question's optional
-  `field` (in the form: "Show field"; a span question uses its first one)
-  makes `UnitFields` scroll it into view and highlight it briefly when the
-  question comes up. Validation checks the layout shows the name.
-- **Selectable text**: a span question's `fields` (one or more) are
-  names of plain text in the layout: `unit.<field>` shown as plain
-  `$unit.x` (or `{{$unit.x}}`), or a named `::: text` block (e.g. text a
-  script makes; possible, though a fixed text is better for analysis).
-  Validation enforces it, so span offsets always point into one string,
-  never rendered markdown. Every such name (all span questions of the
-  loop) is rendered as `SelectableText` during every question of the unit,
-  looking the same whether or not the question on screen selects in it,
-  so the layout doesn't shift; only that question's span question can
-  select. Each span stores the name it is in.
+  none (put one in a named block). These names are the layout's **ids**.
+  The element is marked with `data-field="<id>"` (an attribute, not an
+  `id`: a field may be shown twice, and ids could clash with the app's).
+- **Focus**: a question's optional `focus` (in the form: "Focus on") lists
+  ids it is about; a span question defaults to its fields. `UnitFields`
+  marks them (`data-focused`), scrolls the first into view and highlights
+  it briefly when the question comes up; with `focusDim` the layout's
+  top-level parts without a focused element fade (`.focus-dim`).
+  Validation checks the layout shows the ids. (Later, a question per span
+  could focus on a span id: see the question loops plan.)
+- **Selectable text**: a span question's `fields` (one or more) are unit
+  field names (`["headline", "text"]`) the layout shows as plain
+  `$unit.x` (or `{{$unit.x}}`). Only unit fields: their exact text is kept
+  in the unit versions, so span offsets always point into a known string
+  (provenance), never rendered markdown or a script's output. Validation
+  enforces it. Every such field (all span questions of the loop) is
+  rendered as `SelectableText` during every question of the unit, looking
+  the same whether or not the question on screen selects in it, so the
+  layout doesn't shift; only that question's span question can select.
+  Each span stores its unit field (`field: "text"`). Selecting in other
+  ids (e.g. an open answer, `var.x`) could be added later as
+  `fields: ["text", "var.x"]`.
   Image fields may later work the same way for image questions.
 - `$unit.text` is the same as `{{$unit.text}}`, and `$unit.text::markdown`
   as `{{$unit.text}}::markdown`. `\$` is a literal `$`; references inside
@@ -522,8 +528,8 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   Insert menu (`TemplateInsertMenu.tsx`) writes the text for a unit field
   (as headline, text or image), a snippet, "Show if…" (the rules
   editor), "Show from…", a few styles and an HTML block; blocks wrap the
-  selected text. "Show field" and a span question's fields are chosen from
-  the names the layout shows.
+  selected text. "Focus on" and a span question's fields are chosen from
+  the ids the layout shows.
   The text stays the source of truth. The layout's `style` and `meta` are
   only in the JSON views.
   Forms show few tips: longer explanations are in the help (below).

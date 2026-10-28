@@ -44,11 +44,11 @@ describe("TemplateMarkdown blocks", () => {
       "{{ $unit.text.slice(0, 5) }}",
       ":::",
     ].join("\n");
-    const rendered = await renderTemplate(template, s, undefined, "t", { selectable: ["summary"] });
+    const rendered = await renderTemplate(template, s, undefined, "t", { selectable: ["summary"] }); // not a unit field: never selectable
     const html = renderToStaticMarkup(<TemplateMarkdown rendered={rendered} />);
     expect(html).toContain('<div data-field="intro"><p><strong>News</strong>: about <em>climate</em></p></div>');
     expect(html).toContain("ABOUT CLIMATE");
-    expect(rendered.values.at(-1)).toEqual({ suffix: "text", text: "about", block: true, field: "summary", selectable: true });
+    expect(rendered.values.at(-1)).toEqual({ suffix: "text", text: "about", block: true, field: "summary" });
   });
 });
 

@@ -41,7 +41,7 @@ describe("renderTemplate", () => {
 
   it("marks the fields span questions select in as selectable", async () => {
     const rendered = await renderTemplate("$unit.body\n\n$unit.title", scope({ body: "a b", title: "T" }), undefined, "t", {
-      selectable: ["unit.body"],
+      selectable: ["body"],
     });
     expect(rendered.values).toEqual([
       { suffix: "text", text: "a b", block: true, field: "unit.body", selectable: true },

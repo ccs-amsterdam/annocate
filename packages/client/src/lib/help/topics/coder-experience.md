@@ -20,8 +20,8 @@ The screen has a bar at the top and the task below it.
 - The **unit** at the top, shown with the loop's layout (see
   [Layout templates](layout-templates.md)). It scrolls on its own, so a
   long article doesn't push the question off the screen. If the question
-  has a **Show field**, the unit scrolls to that part and highlights it
-  briefly when the question comes up.
+  has a **Focus on**, the unit scrolls to that part and highlights it
+  briefly when the question comes up, and may dim the rest.
 - The **question** docked at the bottom: the question text, the
   instruction under it in smaller grey text, and the answer buttons. It
   takes as much room as it needs, up to half the screen. Coders can drag

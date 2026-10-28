@@ -218,7 +218,8 @@ export function SelectableText({ text, field, inline = false }: { text: string; 
   const context = useSpanAnnotation();
   // Only the span question on screen that selects in this field can select;
   // otherwise the text looks the same, so the layout doesn't shift.
-  const own = field ?? context?.fields[0];
+  // `field` is the element's id (`unit.text`); spans record the unit field (`text`).
+  const own = field !== undefined ? field.replace(/^unit\./, "") : context?.fields[0];
   const ctx = context && own !== undefined && context.fields.includes(own) ? context : null;
   // This field's spans and pending selection (a question can select in several fields).
   const annotation = ctx && {

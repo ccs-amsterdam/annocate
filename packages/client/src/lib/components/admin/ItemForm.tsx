@@ -8,6 +8,7 @@ import {
   type CodebookValidationIssue,
   type EndItem,
 } from "@annotinder/contracts";
+import { cn } from "cn";
 import { UnitLoopForm } from "./UnitLoopForm";
 import { HelpButton } from "../../help/HelpButton";
 import { ConditionEditor } from "./ConditionEditor";
@@ -163,9 +164,9 @@ export function ItemForm({
             onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
           />
           {isInsideLoop && loopNames && (
-            <ShowFieldSelect
+            <FocusSelect
               variable={item.variable}
-              loopFields={loopNames.shown}
+              loopIds={loopNames.shown}
               onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
             />
           )}
@@ -259,41 +260,68 @@ function EndItemFields({
   );
 }
 
-/** "Show field": what to scroll to when the question comes up, by name (docs/client.md §3, "Names"). */
-function ShowFieldSelect({
+/** "Focus on": the parts of the layout the question is about, by id (docs/client.md §3, "Focus"). */
+function FocusSelect({
   variable,
-  loopFields,
+  loopIds,
   onChange,
 }: {
   variable: AnyVariableType;
-  loopFields: string[];
+  loopIds: string[];
   onChange: (variable: AnyVariableType) => void;
 }) {
-  const field = "field" in variable ? variable.field : undefined;
-  const fields = [...new Set([...loopFields, ...(field ? [field] : [])])];
+  const focus = ("focus" in variable ? variable.focus : undefined) ?? [];
+  const dim = "focusDim" in variable && variable.focusDim === true;
+  const ids = [...new Set([...loopIds, ...focus])];
+  const set = (next: { focus?: string[]; focusDim?: boolean }) => {
+    const updated = { ...variable, ...next } as AnyVariableType & { focus?: string[]; focusDim?: boolean };
+    if (!updated.focus?.length) delete updated.focus;
+    if (!updated.focusDim) delete updated.focusDim;
+    onChange(updated);
+  };
+  const toggle = (id: string) => set({ focus: focus.includes(id) ? focus.filter((f) => f !== id) : [...focus, id] });
+  const spanDefault = variable.type === "span" && focus.length === 0;
   return (
     <div className="flex flex-col gap-1.5">
       <span className="flex items-center gap-1.5">
-        <label className="text-xs font-semibold text-foreground">Show field (optional)</label>
-        <HelpButton topic="typed-blocks#names" label="Help: names in the layout" />
+        <span className="text-xs font-semibold text-foreground">Focus on (optional)</span>
+        <HelpButton topic="typed-blocks#ids" label="Help: ids in the layout" />
       </span>
-      <select
-        className="h-9 w-fit rounded-md border border-input bg-background px-3 text-xs"
-        value={field ?? ""}
-        onChange={(e) => {
-          const next = { ...variable, field: e.target.value } as AnyVariableType & { field?: string };
-          if (!next.field) delete next.field;
-          onChange(next);
-        }}
-      >
-        <option value="">{variable.type === "span" ? `Its first field (${variable.fields[0] || "none"})` : "None"}</option>
-        {fields.map((f) => (
-          <option key={f} value={f}>
-            {f}
-          </option>
-        ))}
-      </select>
-      <p className="text-[11px] text-muted-foreground">When this question comes up, the unit scrolls to this field and highlights it.</p>
+      {ids.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">The layout shows no unit fields or named blocks yet.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {ids.map((id) => {
+            const shown = loopIds.includes(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => toggle(id)}
+                aria-pressed={focus.includes(id)}
+                title={shown ? undefined : "The layout doesn't show this"}
+                className={cn(
+                  "cursor-pointer rounded border px-1.5 py-0.5 font-mono text-[11px]",
+                  !shown
+                    ? "border-destructive text-destructive"
+                    : focus.includes(id)
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border text-muted-foreground",
+                )}
+              >
+                {id}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <label className="flex w-fit items-center gap-2 text-xs">
+        <input type="checkbox" checked={dim} disabled={focus.length === 0 && !spanDefault} onChange={(e) => set({ focusDim: e.target.checked })} />
+        Dim the rest of the unit
+      </label>
+      <p className="text-[11px] text-muted-foreground">
+        {spanDefault ? "By default the fields it selects in. " : ""}When this question comes up, the unit scrolls to the first and highlights it.
+      </p>
     </div>
   );
 }

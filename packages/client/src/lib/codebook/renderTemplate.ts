@@ -151,7 +151,7 @@ function toValue(expression: TemplateExpression, value: unknown, selectable: rea
     text: outputText(value),
     block: expression.alone,
     ...(field ? { field } : {}),
-    ...(field && suffix === "text" && selectable.includes(field) ? { selectable: true } : {}),
+    ...(field?.startsWith("unit.") && suffix === "text" && selectable.includes(field.slice(5)) ? { selectable: true } : {}),
   };
 }
 
@@ -191,7 +191,7 @@ export async function renderTemplate(
   }: {
     progress?: TemplateProgress;
     snippets?: Record<string, string>;
-    /** The names span questions of the loop select in (`unit.<field>`, ::: text blocks): shown as selectable text. */
+    /** The unit fields span questions of the loop select in: shown as selectable text where shown as plain text. */
     selectable?: readonly string[];
   } = {},
 ): Promise<RenderedTemplate> {
@@ -217,7 +217,6 @@ export async function renderTemplate(
       text: await displayContent(display, evaluate),
       block: true,
       ...(display.name ? { field: display.name } : {}),
-      ...(display.name && display.kind === "text" && selectable?.includes(display.name) ? { selectable: true } : {}),
     });
   }
   const markdown = prepared.markdown.replace(DISPLAY_MARK, (_, i: string) => placeholder(first + Number(i)));

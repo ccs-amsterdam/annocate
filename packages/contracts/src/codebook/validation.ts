@@ -317,19 +317,17 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       { path: [...itemPath, "layout", "template"], loop: loopName, available: coderAvailable, snippets, loopOrder: [...loopQuestions] },
       "layout",
     );
-    const nameHint = (name: string) => (name.startsWith("unit.") ? ` (as $${name})` : name.startsWith("var.") ? "" : ` (as a ::: block named '${name}')`);
+    const idHint = (id: string) => (id.startsWith("unit.") ? ` (as $${id})` : id.startsWith("var.") ? "" : ` (as a ::: block named '${id}')`);
     forEachQuestion(loop.children, [...itemPath, "children"], (q, path) => {
-      const variable = q.variable as { type?: string; fields?: unknown; field?: unknown } | undefined;
-      if (typeof variable?.field === "string" && !names.shown.has(variable.field)) {
-        issue([...path, "variable", "field"], `'${variable.field}' is not shown in the layout${nameHint(variable.field)}`);
+      const variable = q.variable as { type?: string; fields?: unknown; focus?: unknown } | undefined;
+      for (const id of Array.isArray(variable?.focus) ? variable.focus : []) {
+        if (typeof id === "string" && !names.shown.has(id)) issue([...path, "variable", "focus"], `'${id}' is not shown in the layout${idHint(id)}`);
       }
       for (const field of variable?.type === "span" && Array.isArray(variable.fields) ? variable.fields : []) {
-        if (typeof field !== "string" || names.selectable.has(field)) continue;
+        if (typeof field !== "string" || names.selectable.has(`unit.${field}`)) continue;
         issue(
           [...path, "variable", "fields"],
-          field.startsWith("unit.")
-            ? `Span question '${q.name}' selects text in '${field}', but the layout doesn't show it as plain $${field}`
-            : `Span question '${q.name}' selects text in '${field}', but the layout has no ::: text block named '${field}'`,
+          `Span question '${q.name}' selects text in the unit field '${field}', but the layout doesn't show it as plain text ($unit.${field})`,
         );
       }
     });
@@ -371,8 +369,8 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
           }
         }
         if (variable?.type === "span" && item.name) spanVariables.add(item.name);
-        if (!loop && (item.variable as { field?: unknown } | undefined)?.field !== undefined) {
-          issue([...itemPath, "variable", "field"], "A field to show only works for questions in a unit loop");
+        if (!loop && (item.variable as { focus?: unknown } | undefined)?.focus !== undefined) {
+          issue([...itemPath, "variable", "focus"], "Focus only works for questions in a unit loop");
         }
 
         for (const field of ["question", "instruction"] as const) {

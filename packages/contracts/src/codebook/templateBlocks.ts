@@ -286,10 +286,10 @@ export function valueName(expression: TemplateExpression): string | undefined {
 }
 
 /**
- * The names a template shows (values of unit fields and answers, and named
- * typed blocks), and the ones span questions can select in: unit fields
- * shown as plain text, and named `::: text` blocks. Values inside a typed
- * block are part of its content, not elements of their own.
+ * The ids a template shows (values of unit fields and answers, and named
+ * typed blocks), and the unit fields span questions can select in: those
+ * shown as plain text (`unit.<field>`). Values inside a typed block are
+ * part of its content, not elements of their own.
  */
 export function templateNames(source: string): { shown: string[]; selectable: string[] } {
   const shown = new Set<string>();
@@ -312,10 +312,6 @@ export function templateNames(source: string): { shown: string[]; selectable: st
     shown.add(name);
     if (name.startsWith("unit.") && segment.suffix === "text") selectable.add(name);
   }
-  for (const d of displays) {
-    if (!d.name) continue;
-    shown.add(d.name);
-    if (d.kind === "text") selectable.add(d.name);
-  }
+  for (const d of displays) if (d.name) shown.add(d.name);
   return { shown: [...shown], selectable: [...selectable] };
 }
