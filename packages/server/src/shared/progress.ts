@@ -1,4 +1,4 @@
-import type { CoderProgress, DeletionRequest, JobOverview, SessionEnd, VariableValue } from "@annotinder/contracts";
+import type { CoderProgress, DeletionRequest, JobOverview, SessionEnd } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { getDeployment, loopVariables } from "./deployments.js";
 import { coderValues } from "./coders.js";
