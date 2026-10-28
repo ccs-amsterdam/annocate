@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { CoderInviteResponse } from "@annotinder/contracts";
+import type { CoderInviteResponse, MeResponse } from "@annotinder/contracts";
+import type { ServerApi } from "../../api/serverApi";
+import { ServerAdmin } from "./server/ServerAdmin";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useJobQuery, useJobsQuery } from "../../admin/queries";
 import { JobList } from "./JobList";
@@ -51,10 +53,16 @@ export function AdminApp({
   queryClient,
   inviteUrl,
   coderApiUrl,
+  server,
+  me,
 }: {
   client: ResearcherApi;
   /** The researcher API's base URL. */
   baseUrl: string;
+  /** Accounts and the server admin's page (docs/accounts.md); without it, neither is shown. */
+  server?: ServerApi;
+  /** Who is logged in: their account role and limits. */
+  me?: MeResponse | null;
   initialJobId?: number;
   queryClient?: QueryClient;
   /** Builds the link coders open for an invite (host-app specific). */
@@ -70,6 +78,8 @@ export function AdminApp({
         initialJobId={initialJobId}
         inviteUrl={inviteUrl}
         coderApiUrl={coderApiUrl}
+        server={server}
+        initialMe={me ?? null}
       />
       <HelpDialog />
     </QueryClientProvider>
@@ -82,14 +92,20 @@ function AdminAppInner({
   initialJobId,
   inviteUrl,
   coderApiUrl,
+  server,
+  initialMe,
 }: {
   client: ResearcherApi;
   baseUrl: string;
   initialJobId?: number;
   inviteUrl?: (invite: CoderInviteResponse) => string;
   coderApiUrl?: string;
+  server?: ServerApi;
+  initialMe: MeResponse | null;
 }) {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(initialJobId ?? null);
+  const [me, setMe] = useState(initialMe);
+  const [serverPage, setServerPage] = useState(false);
   const [tab, setTab] = useState<TabId>("Overview");
   // Unsaved codebook edits from an earlier session (localBackup.ts), read once
   const [backup, setBackup] = useState(() => readBackup());
@@ -122,7 +138,18 @@ function AdminAppInner({
     return (
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         {banner}
-        <JobList client={client} onSelectJob={(id) => setSelectedJobId(id)} />
+        {serverPage && server ? (
+          <ServerAdmin server={server} onBack={() => setServerPage(false)} />
+        ) : (
+          <JobList
+            client={client}
+            onSelectJob={(id) => setSelectedJobId(id)}
+            me={me}
+            server={server}
+            onMe={setMe}
+            onOpenServerAdmin={() => setServerPage(true)}
+          />
+        )}
       </div>
     );
   }

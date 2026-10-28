@@ -104,6 +104,8 @@ there. The link works once, for 15 minutes; after that, coders make a new
 one. Both devices can then continue the session.
 
 The link gives access to the session, so coders shouldn't share it.
+Coders who [logged in](invitations.md#login) need no link: they log in on
+the other device.
 
 ## Keyboard shortcuts
 
@@ -174,3 +176,15 @@ you. The last screen also has **Ask to delete my answers**, for coders who
 want to withdraw after finishing. An [end item](end-items.md) can end the session earlier, with your own
 message and, for online panels, a redirect back to the panel after a few
 seconds. A coder who opens the link again later sees the same ending.
+
+### Finished sessions are closed
+
+Once a session ended, coders can't look at or change their answers any
+more: opening the link again shows only the end screen. That way your data
+doesn't change after the fact, and someone who later gets into a coder's
+device or login doesn't see their answers. For 15 minutes after finishing
+(not after being screened out or quitting), the end screen has **Go back to
+my answers**, for a coder who notices a mistake.
+
+To let coders always return to their answers, tick **Keep finished
+sessions open** in the job settings (on the **Overview** tab).

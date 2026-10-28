@@ -51,6 +51,22 @@ export function ResearcherGate({ client, children }: { client: ResearcherApi; ch
     };
   }, [client]);
 
+  if (state.status === "in" && state.me.mfaRequired) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h1 className="font-heading text-lg font-bold">Log in with a second factor</h1>
+          <p className="text-sm text-muted-foreground">
+            This server asks for two-factor authentication to manage jobs, and your login ({state.me.email}) didn&apos;t use
+            one. Set it up with your login provider, then log out and in again. Coding works without it.
+          </p>
+          <Button variant="outline" onClick={() => void client.logout().then(() => window.location.reload())}>
+            Log out
+          </Button>
+        </div>
+      </div>
+    );
+  }
   if (state.status === "in") return <>{children(state.me)}</>;
   if (state.status === "loading") return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (state.status === "error") return <p className="p-6 text-sm text-destructive">Can't reach the server: {state.message}</p>;

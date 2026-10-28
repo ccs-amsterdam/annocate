@@ -29,17 +29,32 @@ Implementation: [`researcher/auth.ts`](../../packages/server/src/researcher/auth
 [`shared/sessions.ts`](../../packages/server/src/shared/sessions.ts).
 
 Development only: a server started with `ANNOTINDER_DEV_AUTH=1` (as `pnpm
-dev` does) also accepts `x-dev-role` / `x-dev-email` headers instead of a
-key, which the dev shell's researcher UI uses. Never on a reachable server.
+dev` does) also accepts `x-dev-role` / `x-dev-email` (and
+`x-dev-account-role`, default `admin`) headers instead of a key, which the
+dev shell's researcher UI uses. Never on a reachable server.
 
 **Roles.** A user has a role per job (job users): `READ` < `WRITE` <
 `ADMIN`. The role column below is the minimum. Whoever creates a job is its
-`ADMIN`.
+`ADMIN`, and its owner. Apart from that, each user has an **account role**
+on the server (`docs/accounts.md`): `user` (codes; works on jobs they have
+a role in), `researcher` (also creates jobs, within their limits), `admin`
+(also the [admin API](admin.md)).
 
-**Errors** are `{ error }` with a 4xx/5xx status: 400 invalid body or
-parameter, 401 no valid API key, 403 no (sufficient) role in the job, 404
-not found, 409 not allowed in this state (e.g. editing a published
-codebook).
+**Second factor.** A server with `ANNOTINDER_REQUIRE_MFA=1` answers 403
+`mfa_required` to a login that didn't use a second factor, except
+`GET /me` (which says `mfaRequired`). API keys count as having one (making
+one needs it).
+
+**Limits.** Adding units, and creating a job, can be refused with 403
+`limit_reached` (the job owner's limits), and a unit larger than the server
+allows with 413 `unit_too_large`. A job a server admin suspended refuses
+changes with 403 `job_suspended` (reading, deleting coders' data and
+deleting the job still work).
+
+**Errors** are `{ error, code? }` with a 4xx/5xx status: 400 invalid body or
+parameter, 401 no valid API key, 403 no (sufficient) role in the job (or
+account role: `researcher_required`), 404 not found, 409 not allowed in
+this state (e.g. editing a published codebook), 413 too large.
 
 **From R or Python**: everything a script needs is here: create a job,
 upload units ([createUnits](#createunits)) and a codebook, publish it,
@@ -54,6 +69,8 @@ response checked against its contract schema.
 | [getAuthOptions](#getauthoptions) | `GET /auth/options` | none | – | `AuthOptionsSchema` |
 | [logout](#logout) | `POST /auth/logout` | none | – | – |
 | [getMe](#getme) | `GET /me` | any | – | `MeResponseSchema` |
+| [requestResearcher](#requestresearcher) | `POST /me/researcher-request` | any | `ResearcherRequestWriteSchema` | `MeResponseSchema` |
+| [redeemResearcherInvite](#redeemresearcherinvite) | `POST /me/researcher-invite` | any | `RedeemResearcherInviteSchema` | `MeResponseSchema` |
 | [listApiKeys](#listapikeys) | `GET /me/keys` | any | – | `ApiKeyResponseSchema[]` |
 | [createApiKey](#createapikey) | `POST /me/keys` | any | `ApiKeyWriteSchema` | `ApiKeyCreatedSchema` |
 | [revokeApiKey](#revokeapikey) | `POST /me/keys/:id/revoke` | any | – | `ApiKeyResponseSchema` |
@@ -125,12 +142,31 @@ Logging in itself is not a JSON endpoint: the browser opens
 `GET /auth/login?returnTo=<path on this origin>`, which redirects to the
 provider; the provider redirects back to `/auth/callback`, which starts the
 session and redirects to `returnTo`. A refused login comes back with
-`?loginError=email_unverified|mfa_required|login_failed`
-(`LoginErrorSchema`).
+`?loginError=email_unverified|blocked|login_failed`
+(`LoginErrorSchema`). Logging in also applies the server's registration
+rules (`docs/accounts.md`): it can make a user a researcher or an admin.
 
 ### getMe
 
-`GET /me` → `MeResponseSchema`: the email the request is authenticated as.
+`GET /me` → `MeResponseSchema`: the email the request is authenticated as,
+their account `role`, their `limits` and `usage` (jobs they own and their
+units), an open `researcherRequest`, whether the server takes requests
+(`canRequestResearcher`), and `mfaRequired` (this login lacks a second
+factor the server requires: nothing else works until they log in with one).
+
+### requestResearcher
+
+`POST /me/researcher-request` (`{ message }`) → `MeResponseSchema`: asks
+the server's admins to become a researcher. 403 if the server takes no
+requests, 409 for researchers.
+
+### redeemResearcherInvite
+
+`POST /me/researcher-invite` (`{ secret }`) → `MeResponseSchema`: a
+researcher invite link (from an admin) makes the user a researcher, with
+its plan if they have none of their own. Works once; 404 `invite_invalid`
+for an unknown, used, revoked or expired link. The researcher UI does this
+for `?researcherInvite=<secret>` after logging in.
 
 ### listApiKeys
 
@@ -160,7 +196,9 @@ development headers: all jobs).
 
 ### createJob
 
-`POST /job` → `JobResponseSchema` (201). The creator becomes its `ADMIN`.
+`POST /job` → `JobResponseSchema` (201). Needs the account role
+`researcher` (403 `researcher_required`), within their `jobs` limit (403
+`limit_reached`). The creator owns it and becomes its `ADMIN`.
 (With development headers the job has no job users, which lets any
 development role in.)
 
@@ -170,7 +208,10 @@ development role in.)
 
 ### updateJob
 
-`PUT /job/:id` → `JobResponseSchema`. Rename, or set `archived` (hidden from active lists).
+`PUT /job/:id` → `JobResponseSchema`. Rename, set `archived` (hidden from
+active lists), or `keepSessionsOpen`: finished coder sessions stay open
+(off by default: `docs/coder-identity.md` §9). `JobResponseSchema` also has
+`suspendedAt` (a server admin suspended the job).
 
 ### deleteJob
 

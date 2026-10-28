@@ -203,10 +203,12 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   address (an institution giving an old address to someone new) inherits
   its previous owner's job roles. Job admins see who has a role and can
   remove it.
-- **Two-factor authentication is recommended, not required.** It is the
-  researcher's own responsibility; the login screen says so, especially for
-  jobs with sensitive data. A server can require it: `OIDC_REQUIRE_MFA=1`
-  refuses logins whose ID token `amr` claim names no second factor.
+- **Two-factor authentication is recommended; a server can require it.**
+  `ANNOTINDER_REQUIRE_MFA=1` requires a login whose ID token `amr` claim
+  names a second factor for managing jobs and the server; logging in and
+  coding work without (`accounts.md` §5).
+- **Account roles** (user, researcher, admin), who becomes a researcher,
+  and limits: `accounts.md`.
 - **Setting up a provider** (e.g. Authentik):
   - redirect URI `<ANNOTINDER_PUBLIC_URL>/auth/callback`, scopes `openid
     email`, a confidential client (client id and secret);
@@ -268,3 +270,32 @@ coder asked, while not yet deleted) and `deleted_coders.csv`.
 Open: what GDPR requires for anonymous participants (no identifier at all)
 is for the researcher's protocol; AnnoTinder offers the request from the
 session and deletion by participant id or email.
+
+## 9. Closing finished sessions (implemented, 2026-10-28)
+
+A session that ended (an `end` item, finishing the job, or quitting) is
+**closed** unless its job keeps sessions open (`jobs.keep_sessions_open`,
+off by default; job settings). So researchers can trust finished data
+won't change, and someone who later gets into a coder's login or device
+doesn't get their answers.
+
+- A closed session gets only what its end screen shows: `GET /session`
+  returns `endValues` (the coder-level answers, and with an end inside a
+  unit loop the unit's fields and answers, that the end message and
+  redirect link mention) and no other `variables`; `getLoopUnit` answers
+  409 `session_closed`.
+- Finishing without an `end` item also ends the session now (`POST /end`
+  without an item, outcome `complete`); before, only the client knew.
+- **Going back**: after completing (not after a screenout, quitting or
+  asking for deletion), the coder can go back for 15 minutes
+  (`REOPEN_MS`; always, if the job keeps sessions open): `POST /reopen`
+  opens the session again and the client lands on the last question.
+  `reopen` in `POST /end`'s response and in `GET /session` says whether and
+  until when.
+
+Not done, on purpose: limiting how far back coders can go *during* a
+session. Coder-level answers are needed in the browser anyway (conditions
+and branching use them), so hiding earlier screens would protect little;
+a login with a second factor, or no login, does more for a half-finished
+session.
+

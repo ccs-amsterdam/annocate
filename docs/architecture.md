@@ -518,8 +518,9 @@ Roughly in order:
    per coder whether they are done
    (only the runtime knows how many units a coder gets); changing a unit
    field's type.
-5. **Limits.** Rate and resource limits, and quotas per account (e.g. a
-   course hands out a number of jobs per student).
+5. **Limits.** Quotas per account are built (`accounts.md`: plans, domain
+   groups, per-user overrides, unit and answer sizes). Still open: rate
+   limits, and storage in bytes.
 6. **Unit preprocessing.** Unit versions (§8.4) hold the fields as shown;
    preprocessing (e.g. tokenizing once on the server) would be part of it.
 7. **Keeping history.** Unit versions are kept (§8.4). Answers reset by a

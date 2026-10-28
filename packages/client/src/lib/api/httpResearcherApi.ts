@@ -47,6 +47,12 @@ export class ResearcherApiError extends Error {
     super(message);
   }
 
+  /** The server's message (`error` of the body), else the whole message. */
+  get reason(): string {
+    const error = (this.body as { error?: unknown } | undefined)?.error;
+    return typeof error === "string" ? error : this.message;
+  }
+
   /** The machine-readable `code` of the error body, e.g. `codebook_conflict`. */
   get code(): string | undefined {
     const code = (this.body as { code?: unknown } | undefined)?.code;
@@ -192,6 +198,11 @@ export class HttpResearcherApi implements ResearcherApi {
       if (this.config.devEmail) headers["x-dev-email"] = this.config.devEmail;
     }
     return headers;
+  }
+
+  /** Any endpoint of the server (e.g. the admin API, `serverApi.ts`), with this client's authentication. */
+  call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return this.request(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {

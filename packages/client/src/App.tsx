@@ -5,6 +5,7 @@ import { AdminApp } from "./lib/components/admin/AdminApp";
 import { ResearcherGate } from "./lib/components/admin/account/ResearcherGate";
 import { AccountMenu } from "./lib/components/admin/account/AccountMenu";
 import { HttpResearcherApi } from "./lib/api/httpResearcherApi";
+import { ServerApi } from "./lib/api/serverApi";
 import { LayoutDashboard, PenTool } from "lucide-react";
 import { useTheme } from "./lib/context/theme";
 
@@ -50,12 +51,19 @@ function useResearcher() {
 }
 
 /** The researcher UI: behind a login if the server has one, else with development headers. */
-function ResearcherView({ dev }: { dev: boolean }) {
-  const admin = (api: HttpResearcherApi) => (
-    <AdminApp client={api} baseUrl={SERVER_URL} inviteUrl={devInviteUrl} coderApiUrl={CODER_API_URL} />
+function ResearcherView({ dev, me }: { dev: boolean; me: MeResponse | null }) {
+  const admin = (api: HttpResearcherApi, who: MeResponse | null) => (
+    <AdminApp
+      client={api}
+      baseUrl={SERVER_URL}
+      inviteUrl={devInviteUrl}
+      coderApiUrl={CODER_API_URL}
+      server={new ServerApi(api)}
+      me={who}
+    />
   );
-  if (dev) return admin(devApi);
-  return <ResearcherGate client={sessionApi}>{() => admin(sessionApi)}</ResearcherGate>;
+  if (dev) return admin(devApi, me);
+  return <ResearcherGate client={sessionApi}>{(who) => admin(sessionApi, who)}</ResearcherGate>;
 }
 
 function App() {
@@ -143,7 +151,7 @@ function App() {
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
         {view === "admin" ? (
-          researcher.state && <ResearcherView dev={researcher.dev} />
+          researcher.state && <ResearcherView dev={researcher.dev} me={researcher.state.me} />
         ) : (
           <JobRunner
             baseUrl={`${CODER_API_URL}/d/${deploymentId}`}

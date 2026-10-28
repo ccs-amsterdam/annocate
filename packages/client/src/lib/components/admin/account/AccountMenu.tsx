@@ -56,6 +56,7 @@ export function AccountMenu({
             {me ? (
               <>
                 <div className="truncate font-semibold">{me.email}</div>
+                <div className="text-muted-foreground">{{ user: "User", researcher: "Researcher", admin: "Admin" }[me.role]}</div>
                 {dev && <div className="text-muted-foreground">Development server: no login</div>}
               </>
             ) : (

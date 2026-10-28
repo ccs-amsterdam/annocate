@@ -26,10 +26,13 @@ Environment:
 - Researcher login (`docs/coder-identity.md` §7): `OIDC_ISSUER`,
   `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` (an OpenID Connect provider, e.g.
   Authentik), `ANNOTINDER_PUBLIC_URL` (where browsers reach the server and
-  the client; the provider redirects to `<url>/auth/callback`), and
-  optionally `OIDC_REQUIRE_MFA=1` (refuse logins without a second factor).
-  Plain http issuers only on localhost. Without these, there is no login:
-  API keys only.
+  the client; the provider redirects to `<url>/auth/callback`). Plain http
+  issuers only on localhost. Without these, there is no login: API keys
+  only.
+- Accounts (`docs/accounts.md`): `ANNOTINDER_ADMINS` (comma-separated
+  emails: the server's first admins; they set up registration and limits
+  in the UI), `ANNOTINDER_REQUIRE_MFA=1` (managing jobs needs a login with a
+  second factor; recommended).
 - `ANNOTINDER_DEV_AUTH=1`: also accept development auth headers
   (`x-dev-role`) for the researcher API, as the dev shell's researcher UI
   sends. `pnpm dev` sets it ([`src/dev.ts`](src/dev.ts)). Never on a
@@ -47,14 +50,15 @@ settings as the server (stop the server first when it runs on PGlite: only
 one process can open it):
 
 ```sh
-pnpm --filter @annotinder/server keys create --email a@uni.nl --label "R scripts"
+pnpm --filter @annotinder/server keys create --email a@uni.nl --label "R scripts" --role researcher
 pnpm --filter @annotinder/server keys list --email a@uni.nl
 pnpm --filter @annotinder/server keys revoke --email a@uni.nl --id 3
 ```
 
-The key is printed once. With it, a researcher can create jobs (and
-becomes their ADMIN), give others a role (`PUT /job/:id/users`), and make
-or revoke their own keys (`/me/keys`).
+The key is printed once. `--role` sets the user's account role: only a
+researcher can create jobs (and becomes their ADMIN), and an admin also
+the server's settings. With it, they give others a role in a job
+(`PUT /job/:id/users`), and make or revoke their own keys (`/me/keys`).
 
 ## Code
 

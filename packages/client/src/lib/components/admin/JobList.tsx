@@ -1,18 +1,26 @@
 import { useState } from "react";
-import type { JobResponse } from "@annotinder/contracts";
-import type { ResearcherApi } from "../../api/httpResearcherApi";
+import type { JobResponse, MeResponse } from "@annotinder/contracts";
+import type { ServerApi } from "../../api/serverApi";
+import { ResearcherAccess } from "./account/ResearcherAccess";
+import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import { useCreateJobMutation, useDeleteJobMutation, useJobsQuery } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FolderOpen, Trash2, Calendar, Archive } from "lucide-react";
+import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield } from "lucide-react";
 import { HelpButton } from "../../help/HelpButton";
 
 interface JobListProps {
   client: ResearcherApi;
   onSelectJob: (jobId: number) => void;
+  /** Who is logged in (null: unknown, e.g. a host app without accounts): only researchers create jobs. */
+  me?: MeResponse | null;
+  server?: ServerApi;
+  onMe?: (me: MeResponse) => void;
+  onOpenServerAdmin?: () => void;
 }
 
-export function JobList({ client, onSelectJob }: JobListProps) {
+export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenServerAdmin }: JobListProps) {
+  const canCreate = me?.role !== "user";
   const jobsQuery = useJobsQuery(client);
   const createJob = useCreateJobMutation(client);
   const deleteJob = useDeleteJobMutation(client);
@@ -75,14 +83,23 @@ export function JobList({ client, onSelectJob }: JobListProps) {
             </HelpButton>
           </p>
         </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="w-fit gap-2 shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Create new job
-        </Button>
+        <div className="flex gap-2">
+          {me?.role === "admin" && onOpenServerAdmin && (
+            <Button variant="outline" onClick={onOpenServerAdmin} className="w-fit gap-2">
+              <Shield className="h-4 w-4" />
+              Server admin
+            </Button>
+          )}
+          {canCreate && (
+            <Button onClick={() => setShowCreateModal(true)} className="w-fit gap-2 shadow-sm">
+              <Plus className="h-4 w-4" />
+              Create new job
+            </Button>
+          )}
+        </div>
       </div>
+
+      {me && server && onMe && <ResearcherAccess server={server} me={me} onMe={onMe} />}
 
       {/* Search & Filter Toolbar */}
       {jobs.length > 0 && (
@@ -108,10 +125,12 @@ export function JobList({ client, onSelectJob }: JobListProps) {
           </h3>
           <p className="mt-1 text-sm text-muted-foreground max-w-xs">
             {jobs.length === 0
-              ? "Get started by creating your first annotation job."
+              ? canCreate
+                ? "Get started by creating your first annotation job."
+                : "Jobs that researchers share with you appear here."
               : `No jobs matched the query "${search}".`}
           </p>
-          {jobs.length === 0 && (
+          {jobs.length === 0 && canCreate && (
             <Button
               onClick={() => setShowCreateModal(true)}
               variant="outline"
@@ -220,7 +239,9 @@ export function JobList({ client, onSelectJob }: JobListProps) {
               </div>
 
               {createJob.isError && (
-                <p className="text-xs text-destructive">{createJob.error.message}</p>
+                <p className="text-xs text-destructive">
+                  {createJob.error instanceof ResearcherApiError ? createJob.error.reason : createJob.error.message}
+                </p>
               )}
 
               <div className="flex justify-end gap-2 pt-2">

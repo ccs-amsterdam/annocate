@@ -21,6 +21,7 @@ server serves two APIs.
 |---|---|---|---|---|
 | **researcher API** | client: researcher UI (`ResearcherApi`); scripts (R, Python); other systems | managing jobs: codebooks, units, invitations, publishing, progress | `researcherEndpoints` | [researcher.md](researcher.md) |
 | **coder API** | client: annotator (`HttpCoderApi`, `JobManager`) | coding: session, next unit, submitting answers | `coderEndpoints` | [coder.md](coder.md) |
+| **admin API** | client: server admin page (`ServerApi`) | accounts: roles, registration, plans and limits, blocking, suspending jobs | `adminEndpoints` | [admin.md](admin.md) |
 
 The registries are in `packages/contracts/src/endpoints/`: one file per API,
 each entry `{ method, path, request, response }` with zod schemas.

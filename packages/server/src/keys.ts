@@ -5,7 +5,7 @@ import { createApiKey, ensureUser, listApiKeys, revokeApiKey } from "./shared/ac
 // Managing researchers' API keys from the server's machine, e.g. to give
 // the first researcher a key (there is no researcher login yet):
 //
-//   pnpm --filter @annotinder/server keys create --email a@uni.nl --label "R scripts"
+//   pnpm --filter @annotinder/server keys create --email a@uni.nl --label "R scripts" --role researcher
 //   pnpm --filter @annotinder/server keys list --email a@uni.nl
 //   pnpm --filter @annotinder/server keys revoke --email a@uni.nl --id 3
 //
@@ -14,17 +14,22 @@ import { createApiKey, ensureUser, listApiKeys, revokeApiKey } from "./shared/ac
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
-  options: { email: { type: "string" }, label: { type: "string" }, id: { type: "string" } },
+  options: { email: { type: "string" }, label: { type: "string" }, id: { type: "string" }, role: { type: "string" } },
 });
 const command = positionals[0];
 if (!["create", "list", "revoke"].includes(command ?? "") || !values.email) {
-  console.error("Usage: keys create|list|revoke --email <email> [--label <label>] [--id <key id>]");
+  console.error("Usage: keys create|list|revoke --email <email> [--label <label>] [--id <key id>] [--role user|researcher|admin]");
   process.exit(1);
 }
 
 const db = await openDatabase();
 try {
   const user = await ensureUser(db, values.email);
+  // The account role (docs/accounts.md): a researcher creates jobs, an admin manages the server.
+  if (values.role) {
+    if (!["user", "researcher", "admin"].includes(values.role)) throw new Error("--role is user, researcher or admin");
+    await db.query("UPDATE users SET role = $1 WHERE id = $2", [values.role, user.id]);
+  }
   console.error(`${describeDatabase()}, user ${user.email}`);
   if (command === "create") {
     const key = await createApiKey(db, user.id, values.label ?? "API key");

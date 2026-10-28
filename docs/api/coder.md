@@ -113,17 +113,25 @@ Full replace of the coder-level answers (survey questions outside loops).
 
 ### endSession
 
-`POST /end` (`EndSessionSchema`: `{ item, unit? }`) → 204
+`POST /end` (`EndSessionSchema`: `{ item?, unit? }`) → `EndSessionResponseSchema` (`{ reopen }`)
 
-The coder reached this `end` item: the session is over. The server stores
-the item and its outcome from the codebook (`screenout` or `complete`; 400
-if the codebook has no such end item). An end inside a unit loop names the
-unit it was reached on, `unit: { loop, id }` (400 unless the coder answered
-it; the client saves the unit first). Afterwards units and answers are
-refused with 409 `session_ended`; `GET /session` returns `ended`, so the
-client shows the ending again, with that unit's data and answers
-(`getLoopUnit` still works for it), as its message may use them. Ending an
-ended session changes nothing.
+The coder reached this `end` item, or (without `item`) finished the job:
+the session is over. The server stores the item and its outcome from the
+codebook (`screenout` or `complete`; without an item `complete`; 400 if the
+codebook has no such end item). An end inside a unit loop names the unit it
+was reached on, `unit: { loop, id }` (400 unless the coder answered it; the
+client saves the unit first). Afterwards units and answers are refused with
+409 `session_ended`, and the session is closed unless the job keeps
+sessions open (`coder-identity.md` §9): `GET /session` returns `ended` and
+only `endValues` (what the end screen shows), and `getLoopUnit` answers 409
+`session_closed`. `reopen`: whether, and until when, the coder can go back
+(null: not). Ending an ended session changes nothing.
+
+### reopenSession
+
+`POST /reopen` → 204: goes back after completing, while `reopen` allows (409
+`session_closed` otherwise): the session is open again, with all its
+answers.
 
 ### quitSession
 
