@@ -32,7 +32,7 @@ export interface Store {
   /** The coder for a coder key, created from an invite on first use (docs/coder-identity.md). */
   resolveCoder(request: ResolveCoderRequest): Promise<Coder>;
   putCoder(coderId: number, write: CoderWrite): Promise<void>;
-  /** Records the coder's request to delete their answers (a new request replaces a declined one). */
+  /** Records the coder's request to delete their answers (a new request replaces a postponed one). */
   requestDeletion(coderId: number, request: DeletionRequest): Promise<void>;
   listFinished(request: FinishedRequest): Promise<Finished[]>;
   /** One coder's live annotations per unit, ordered by first write. */

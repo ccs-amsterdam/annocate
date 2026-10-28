@@ -609,7 +609,7 @@ describe("URL parameters an invite requires", () => {
 });
 
 describe("quitting and deleting a coder's data", () => {
-  it("lets a coder quit and ask for deletion; the researcher declines or deletes", async () => {
+  it("lets a coder quit and ask for deletion; the researcher deletes later, then now, and the deletion is logged", async () => {
     await redeploy({});
     const secret = await invite(undefined, { participantParam: { param: "participant" } });
     const link = { "x-invite-secret": secret, "x-url-params": "participant=P77" };
@@ -627,12 +627,16 @@ describe("quitting and deleting a coder's data", () => {
       ((await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[]).find((c) => c.participantId === "P77");
     const before = (await listed())!;
     expect(before.deletionRequest).toMatchObject({ at: expect.any(String) });
-    expect((await server.request(`/job/1/coders/${before.id}/deletion-request/decline`, { method: "POST", headers: adminHeaders })).status).toBe(204);
-    expect((await listed())!.deletionRequest).toMatchObject({ declinedAt: expect.any(String) });
+    expect((await server.request(`/job/1/coders/${before.id}/deletion-request/postpone`, { method: "POST", headers: adminHeaders })).status).toBe(204);
+    expect((await listed())!.deletionRequest).toMatchObject({ postponedAt: expect.any(String) });
 
     const del = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ participantIds: ["P77"] }) });
     expect(await del.json()).toEqual({ coderIds: [before.id], answers: 1 });
     expect(await listed()).toBeUndefined();
+    const log = await (await server.request("/job/1/coders/deletions", { headers: adminHeaders })).json();
+    expect(log).toEqual([
+      expect.objectContaining({ coderId: before.id, participantId: "P77", requestedAt: expect.any(String), deletedAt: expect.any(String), answers: 1 }),
+    ]);
     expect((await db.query("SELECT 1 FROM annotation_values WHERE coder_id = $1", [before.id])).length).toBe(0);
     // Nothing matches: nothing deleted
     const none = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 import type {
   CodebookMeta,
+  CoderDeletion,
   CodebookResponse,
   CodebookWrite,
   CoderInviteWrite,
@@ -46,6 +47,7 @@ export const keys = {
   unitPages: (jobId?: number) => ["admin", "job", jobId ?? "current", "units", "page"] as const,
   unitsets: (jobId?: number) => ["admin", "job", jobId ?? "current", "unitsets"] as const,
   coders: (jobId?: number) => ["admin", "job", jobId ?? "current", "coders"] as const,
+  coderDeletions: (jobId?: number) => ["admin", "job", jobId ?? "current", "coders", "deletions"] as const,
   deployment: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment"] as const,
   deploymentStatus: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment", "status"] as const,
   invites: (jobId?: number) => ["admin", "job", jobId ?? "current", "invites"] as const,
@@ -224,13 +226,18 @@ export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgr
   return useQuery({ queryKey: keys.coders(client.jobId), queryFn: () => client.listCoders(), refetchInterval: 10_000 });
 }
 
-/** Delete coders' data, or decline a deletion request; both refresh the coder list (and the counts on the overview). */
+/** The job's deletion log: coders whose data was deleted. */
+export function useCoderDeletionsQuery(client: ResearcherApi): UseQueryResult<CoderDeletion[]> {
+  return useQuery({ queryKey: keys.coderDeletions(client.jobId), queryFn: () => client.listCoderDeletions() });
+}
+
+/** Delete coders' data, now or later (a deletion request); both refresh the coder list (and the counts on the overview). */
 export function useCoderDeletionMutations(client: ResearcherApi) {
   const queryClient = useQueryClient();
   const onSuccess = () => queryClient.invalidateQueries({ queryKey: keys.job(client.jobId) });
   return {
     remove: useMutation({ mutationFn: (select: DeleteCoders) => client.deleteCoders(select), onSuccess }),
-    decline: useMutation({ mutationFn: (coderId: number) => client.declineDeletion(coderId), onSuccess }),
+    postpone: useMutation({ mutationFn: (coderId: number) => client.postponeDeletion(coderId), onSuccess }),
   };
 }
 

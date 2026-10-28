@@ -636,7 +636,7 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
 - **Coders**: per coder the invitation, started, last active, answers,
   finished units per loop of the live codebook, and how the session ended
   at an `end` item or by quitting (`ended`). Open deletion requests are
-  listed first (delete or decline). Per coder, or by participant ids or
+  listed first (delete now or later), and deleted coders in a log. Per coder, or by participant ids or
   emails: reset their answers (kept as reset) or delete their data
   (`coder-identity.md` §8).
 - **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip,

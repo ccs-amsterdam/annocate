@@ -39,7 +39,7 @@ export const CoderProgressSchema = z.object({
   ended: SessionEndSchema.nullable(),
   /** The session's values: the URL parameters its invitation required, by their `$session` name. */
   session: z.record(z.string(), z.string()),
-  /** Set if the coder asked for their answers to be deleted (open until the researcher deletes them or declines). */
+  /** Set if the coder asked for their answers to be deleted (until the researcher deletes their data). */
   deletionRequest: DeletionRequestSchema.nullable(),
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
@@ -66,6 +66,25 @@ export const DeleteCodersResponseSchema = z.object({
   answers: z.number().int().nonnegative(),
 });
 export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
+
+/**
+ * A deleted coder, from the job's deletion log (`GET /job/:jobId/coders/deletions`).
+ * Kept after the data is gone, so researchers can delete the same coder from
+ * results they downloaded earlier: it has the identifiers those results use.
+ */
+export const CoderDeletionSchema = z.object({
+  coderId: z.number().int().positive(),
+  participantId: z.string().nullable(),
+  email: z.string().nullable(),
+  /** When the coder asked for it, if they did. */
+  requestedAt: z.coerce.date().nullable(),
+  deletedAt: z.coerce.date(),
+  /** The researcher who deleted it. */
+  deletedBy: z.string().nullable(),
+  /** How many answer rows were deleted. */
+  answers: z.number().int().nonnegative(),
+});
+export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
 /** A URL parameter name, as it appears in links (e.g. `PROLIFIC_PID`). */
 const UrlParamNameSchema = z.string().min(1).max(64).regex(/^[A-Za-z0-9_.~-]+$/, "A URL parameter name is letters, digits, _, -, . or ~");

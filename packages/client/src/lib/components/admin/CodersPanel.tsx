@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { RotateCcw, Trash2, UserX } from "lucide-react";
-import type { CoderProgress, DeleteCoders } from "@annotinder/contracts";
+import type { CoderDeletion, CoderProgress, DeleteCoders } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCoderDeletionMutations, useCodersQuery } from "../../admin/queries";
+import { useCoderDeletionMutations, useCoderDeletionsQuery, useCodersQuery } from "../../admin/queries";
 import { formatWhen } from "../../admin/format";
 import { HelpButton } from "../../help/HelpButton";
 import { ResetAnswersDialog, type ResetScope } from "./ResetAnswersDialog";
@@ -23,17 +23,21 @@ function endedText(ended: CoderProgress["ended"]): string {
  * Coder progress (docs/client.md §7): who started, through which
  * invitation, when they were last active, how their session ended, and how
  * many units they finished per loop of the live codebook. Coders' requests
- * to delete their answers come first, to delete or decline; any coder's
- * data can be deleted (also by participant id or email). Invitations are
- * on their own tab.
+ * to delete their answers come first, to delete now or later (they are
+ * then no longer brought up, but stay marked); any coder's data can be
+ * deleted (also by participant id or email). Deleted coders stay listed in
+ * the deletion log, for deleting them from earlier downloads. Invitations
+ * are on their own tab.
  */
 export function CodersPanel({ client }: { client: ResearcherApi }) {
   const codersQuery = useCodersQuery(client);
   const coders = sortByActivity(codersQuery.data ?? []);
   // Loops of the live codebook (every coder has the same keys)
   const loops = Object.keys(coders[0]?.finished ?? {});
-  const requests = coders.filter((c) => c.deletionRequest && !c.deletionRequest.declinedAt);
-  const { remove, decline } = useCoderDeletionMutations(client);
+  const requests = coders.filter((c) => c.deletionRequest && !c.deletionRequest.postponedAt);
+  const postponed = coders.filter((c) => c.deletionRequest?.postponedAt).length;
+  const deletions = useCoderDeletionsQuery(client).data ?? [];
+  const { remove, postpone } = useCoderDeletionMutations(client);
   const [deleting, setDeleting] = useState<{ select: DeleteCoders; names: string[] } | null>(null);
   const [byId, setById] = useState(false);
   const [resetting, setResetting] = useState<ResetScope | null>(null);
@@ -70,23 +74,27 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                 </span>
                 <span className="ml-auto flex gap-1">
                   <Button size="xs" variant="destructive" onClick={() => deleteCoder(c)}>
-                    Delete their data
+                    Delete now
                   </Button>
                   <Button
                     size="xs"
                     variant="outline"
-                    disabled={decline.isPending}
-                    onClick={() => {
-                      if (confirm(`Decline ${coderName(c)}'s request? Their answers stay; the request stays on record as declined.`)) decline.mutate(c.id);
-                    }}
+                    disabled={postpone.isPending}
+                    title="Stop showing this request here. It stays marked on the coder's row until you delete their data."
+                    onClick={() => postpone.mutate(c.id)}
                   >
-                    Decline
+                    Delete later
                   </Button>
                 </span>
               </li>
             ))}
           </ul>
         </section>
+      )}
+      {postponed > 0 && (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          {postponed === 1 ? "1 coder's" : `${postponed} coders'`} data still to be deleted (marked &ldquo;deletion requested&rdquo; below).
+        </p>
       )}
       <p className="text-xs text-muted-foreground">
         Finished units count, per loop of the live codebook, the units where a coder answered every question of the
@@ -136,8 +144,8 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                   >
                     {endedText(coder.ended)}
                     {coder.deletionRequest && (
-                      <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">
-                        {coder.deletionRequest.declinedAt ? "(deletion declined)" : "(asks deletion)"}
+                      <span className="ml-1 text-xs text-amber-700 dark:text-amber-400" title={`Asked ${formatWhen(coder.deletionRequest.at)}`}>
+                        (deletion requested)
                       </span>
                     )}
                   </td>
@@ -167,6 +175,8 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
         </div>
       )}
 
+      {deletions.length > 0 && <DeletionLog deletions={deletions} />}
+
       <ResetAnswersDialog client={client} scope={resetting} onClose={() => setResetting(null)} />
       <DeleteByIdDialog
         open={byId}
@@ -188,6 +198,45 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
         onConfirm={() => remove.mutate(deleting!.select, { onSuccess: () => setDeleting(null) })}
       />
     </div>
+  );
+}
+
+/**
+ * Coders whose data was deleted: kept with the ids downloaded results use,
+ * so they can be deleted there too (also in the download, deleted_coders.csv).
+ */
+function DeletionLog({ deletions }: { deletions: CoderDeletion[] }) {
+  return (
+    <details className="mt-2 rounded-lg border p-3 text-sm">
+      <summary className="cursor-pointer font-medium">
+        Deleted coders ({deletions.length})
+        <span className="ml-2 text-xs font-normal text-muted-foreground">delete them from data you downloaded earlier too</span>
+      </summary>
+      <table className="mt-2 w-full text-sm">
+        <thead>
+          <tr className="border-b text-left text-xs text-muted-foreground">
+            <th className="p-1.5 font-medium">Coder</th>
+            <th className="p-1.5 font-medium">Participant id / email</th>
+            <th className="p-1.5 font-medium">Asked</th>
+            <th className="p-1.5 font-medium">Deleted</th>
+            <th className="p-1.5 font-medium">By</th>
+            <th className="p-1.5 text-right font-medium">Answers</th>
+          </tr>
+        </thead>
+        <tbody>
+          {deletions.map((d) => (
+            <tr key={`${d.coderId}-${String(d.deletedAt)}`} className="border-b last:border-0">
+              <td className="p-1.5 font-mono text-xs">{d.coderId}</td>
+              <td className="p-1.5">{d.participantId ?? d.email ?? "–"}</td>
+              <td className="p-1.5 whitespace-nowrap text-muted-foreground">{d.requestedAt ? formatWhen(d.requestedAt) : "–"}</td>
+              <td className="p-1.5 whitespace-nowrap">{formatWhen(d.deletedAt)}</td>
+              <td className="p-1.5 text-muted-foreground">{d.deletedBy ?? "–"}</td>
+              <td className="p-1.5 text-right tabular-nums">{d.answers}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }
 
@@ -268,8 +317,9 @@ function ConfirmDeleteDialog({
         <div className="space-y-2 text-sm">
           {target && target.names.length > 1 && <p className="font-medium">{target.names.join(", ")}</p>}
           <p>
-            Deletes the coder and all their answers from AnnoTinder, also answers that were reset, and their request to delete,
-            if they made one. Copies you downloaded before are not affected: delete those yourself.
+            Deletes the coder and all their answers from AnnoTinder, also answers that were reset. Copies you downloaded
+            before are not affected: delete those yourself. The deletion is logged (Deleted coders, below, and
+            deleted_coders.csv in the download) with the coder id and participant id, so you can.
           </p>
           <p className="text-muted-foreground">Units they coded can be handed out again where the distribution needs more codings.</p>
           {error && <p className="text-destructive">{error}</p>}

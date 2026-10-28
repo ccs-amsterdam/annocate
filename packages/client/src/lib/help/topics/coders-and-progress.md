@@ -101,11 +101,13 @@ screen, the door icon at the top has **Quit and ask to delete my answers**
 (and the last screen has **Ask to delete my answers**). The coder confirms by
 typing a word, and their session ends.
 
-The request appears at the top of the **Coders** tab. You decide:
+The request appears at the top of the **Coders** tab:
 
-- **Delete their data**: deletes the coder and their answers (see below).
-- **Decline**: the answers stay. The request stays on record as declined,
-  so you can account for it.
+- **Delete now**: deletes the coder and their answers (see below).
+- **Delete later**: stops showing the request at the top, for instance
+  until you have found the data in your own copies. It stays marked
+  "deletion requested" on the coder's row, and a line above the table
+  counts the data still to delete.
 
 It is a request, not an automatic deletion, on purpose. You may already have
 downloaded the answers, so deleting them in AnnoTinder alone wouldn't honour
@@ -113,7 +115,7 @@ the request; you are the one who knows where the data went. And with paid
 participants (an online panel), an automatic deletion would let someone
 finish a task, get paid, and take their work back. Check your study's
 consent text and your institution's rules: research data can be exempt from
-deletion in some cases, and declining may need a reason.
+deletion in some cases.
 
 Anonymous coders can't prove who they are. A request comes from the
 session itself, so it needs no proof. A coder who writes to you instead
@@ -129,10 +131,13 @@ confirming, AnnoTinder deletes for good:
 
 - the coder (their session, participant id, answers outside loops and group
   assignments);
-- all their answers in unit loops, also answers a researcher reset earlier;
-- their request to delete, if they made one.
+- all their answers in unit loops, also answers a researcher reset earlier.
 
-Copies you downloaded before are not affected: delete those yourself. Units
+Copies you downloaded before are not affected: delete those yourself. To
+make that possible, each deletion is logged: **Deleted coders**, under the
+table, lists the coder id, participant id or email, when they asked, when
+and by whom it was deleted, and how many answers. The download has the same
+list, `deleted_coders.csv`. Units
 the coder coded are handed out again where the distribution needs more
 codings (for instance in a shared queue). The unit versions they saw stay,
 because they hold your units' content, not the coder's.

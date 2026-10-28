@@ -298,7 +298,7 @@ export class JobManager {
       this.histories.clear();
       this.progress = new Map(session.progress.map((p) => [p.unitset, p]));
       this.session = session.session ?? {};
-      if (session.deletionRequest && !session.deletionRequest.declinedAt) this.publish({ deletionRequested: true });
+      if (session.deletionRequest) this.publish({ deletionRequested: true });
       if (session.ended) {
         // The coder reached an `end` item before, or quit: show the ending again.
         const item = session.ended.item ? findEnd(this.items, session.ended.item) : null;

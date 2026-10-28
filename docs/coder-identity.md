@@ -223,18 +223,25 @@ proof of identity: it comes from the session itself. Coders without a
 participant id or login can't be identified otherwise.
 
 **Researcher side** (Coders tab): open requests are listed first, with
-*Delete their data* or *Decline* (`POST /job/:jobId/coders/:id/deletion-request/decline`:
-`declinedAt` is added; the request stays on record). Any coder's data can
+*Delete now* or *Delete later* (`POST /job/:jobId/coders/:id/deletion-request/postpone`:
+`postponedAt` is added; the request is no longer brought up but stays, and
+the row stays marked, until the data is deleted). Declining isn't offered:
+whether research data is exempt is for the researcher's protocol, not a
+button. Any coder's data can
 be deleted (`POST /job/:jobId/coders/delete { coderIds?, participantIds?,
 emails? }`, ADMIN): the coders rows (session key, participant id, coder-level
 answers, routing, the request) and all their `annotation_values`, also
 retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
 The deployment's runtime is dropped and loads again (it caches coders,
 codings and routing). A deleted coder's browser later starts a new session
-from its invite.
+from its invite. Every deletion is logged (`coder_deletions`: coder id,
+participant id, email, requested, deleted, by whom, answer count), so the
+researcher can delete the coder from earlier downloads too
+(`GET /job/:jobId/coders/deletions`, the Coders tab, and
+`deleted_coders.csv` in the export).
 
-The export has `ended` = `quit` and a `deletion_requested` column (`open` or
-`declined`).
+The export has `ended` = `quit`, a `deletion_requested` column (when the
+coder asked, while not yet deleted) and `deleted_coders.csv`.
 
 Open: what GDPR requires for anonymous participants (no identifier at all)
 is for the researcher's protocol; AnnoTinder offers the request from the

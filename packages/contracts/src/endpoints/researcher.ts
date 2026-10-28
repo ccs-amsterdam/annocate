@@ -5,7 +5,7 @@ import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from 
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema } from "../unitFields.js";
 import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
-import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
+import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema, CoderDeletionSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
 import { ApiKeyCreatedSchema, ApiKeyResponseSchema, ApiKeyWriteSchema, AuthOptionsSchema, MeResponseSchema } from "../account.js";
 import { AnnotationPageSchema, AnnotationsQuerySchema, UnitVersionPageSchema, UnitVersionsQuerySchema } from "../annotations.js";
@@ -122,12 +122,19 @@ export const researcherEndpoints = {
     request: DeleteCodersSchema,
     response: DeleteCodersResponseSchema,
   },
-  /** Declines a coder's request to delete their answers; the request stays on record as declined (ADMIN). */
-  declineDeletion: {
+  /** Deletes later: the coder's request to delete their answers stays, but is no longer brought up (ADMIN). */
+  postponeDeletion: {
     method: "POST",
-    path: "/job/:jobId/coders/:id/deletion-request/decline",
+    path: "/job/:jobId/coders/:id/deletion-request/postpone",
     request: z.void(),
     response: z.void(),
+  },
+  /** The job's deletion log: coders whose data was deleted, newest first. */
+  listCoderDeletions: {
+    method: "GET",
+    path: "/job/:jobId/coders/deletions",
+    request: z.void(),
+    response: z.array(CoderDeletionSchema),
   },
   listInvites: {
     method: "GET",

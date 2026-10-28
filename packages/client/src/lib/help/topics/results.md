@@ -86,7 +86,7 @@ A row per coder who started.
 | `coder_id`, `participant_id`, `invitation` | Who the coder is |
 | `started`, `last_active` | When they started, and when they last answered |
 | `ended`, `ended_at` | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when |
-| `deletion_requested` | `open` if the coder asked for their answers to be deleted and you haven't decided yet, `declined` if you declined (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
+| `deletion_requested` | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
 | `finished_<loop>` | How many units they finished in each unit loop, such as `finished_News items` |
 | one column per question | Their answers outside unit loops, and their [assigned variables](auto.md) (experimental group, URL parameters) |
 

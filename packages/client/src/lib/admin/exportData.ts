@@ -6,6 +6,7 @@ import {
   type AnnotationRow,
   type AnyVariableType,
   type SpanAnswer,
+  type CoderDeletion,
   type CoderProgress,
   type OptionValue,
   type TopLevelItem,
@@ -290,7 +291,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       time(c.lastActive),
       c.ended?.outcome ?? "",
       time(c.ended?.at),
-      c.deletionRequest ? (c.deletionRequest.declinedAt ? "declined" : "open") : "",
+      time(c.deletionRequest?.at),
       ...sessionNames.map((n) => c.session?.[n] ?? ""),
       ...loops.map((l) => String(c.finished[l] ?? 0)),
       ...columns.map((col) => cellOf(c.variables[col.variable], col, labels, null)),
@@ -344,6 +345,22 @@ export function variablesTable(codebooks: ReadonlyMap<number, TopLevelItem[]>): 
   return { headers: ["codebook_id", "loop", "variable", "type", "question", "value", "label"], rows };
 }
 
+/** The deletion log: coders whose data was deleted, so they can be deleted from earlier downloads too. */
+export function deletedCodersTable(deletions: CoderDeletion[]): Table {
+  return {
+    headers: ["coder_id", "participant_id", "email", "requested_at", "deleted_at", "deleted_by", "answers"],
+    rows: deletions.map((d) => [
+      String(d.coderId),
+      d.participantId ?? "",
+      d.email ?? "",
+      time(d.requestedAt),
+      time(d.deletedAt),
+      d.deletedBy ?? "",
+      String(d.answers),
+    ]),
+  };
+}
+
 /** What the files in the download are, for the README. */
 export function readme(job: string, exported: Date, labels: boolean): string {
   return `Data of ${job}, downloaded ${exported.toISOString()} from AnnoTinder.
@@ -357,8 +374,8 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  in the codebook version the answer was given under.` : ""}
 coders.csv       A row per coder: invitation, participant id, started, last
                  active, how their session ended (complete, screenout or
-                 quit), whether they asked for their answers to be deleted
-                 (open or declined), the URL parameters their invitation
+                 quit), when they asked for their answers to be deleted
+                 (deletion_requested; not done yet), the URL parameters their invitation
                  required (session.<name>), units finished per loop, and
                  their answers outside unit loops.
 units.csv        The units as coders saw them (only the fields the codebook
@@ -366,6 +383,9 @@ units.csv        The units as coders saw them (only the fields the codebook
                  has a row per version. Join annotations on unit_version_id.
 variables.csv    Per codebook version, question and option: the question text,
                  the stored value and its label.
+deleted_coders.csv  Coders whose data was deleted from AnnoTinder (for
+                 instance a participant who withdrew), by coder_id and
+                 participant_id: delete them from earlier downloads too.
 reset_answers.csv  (if included) Answers a researcher reset, a row per
                  answer, with when it was given (answered) and reset
                  (reset_at). Units are coded again after a reset; the new

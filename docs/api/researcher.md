@@ -91,7 +91,8 @@ response checked against its contract schema.
 | [setInviteUnitset](#setinviteunitset) | `PUT /job/:jobId/invites/:id/unitset` | WRITE | `{ unitsetId }` | `CoderInviteResponseSchema` |
 | [listCoders](#listcoders) | `GET /job/:jobId/coders` | READ | – | `CoderProgressSchema[]` |
 | [deleteCoders](#deletecoders) | `POST /job/:jobId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
-| [declineDeletion](#declinedeletion) | `POST /job/:jobId/coders/:id/deletion-request/decline` | ADMIN | – | – |
+| [postponeDeletion](#postponedeletion) | `POST /job/:jobId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
+| [listCoderDeletions](#listcoderdeletions) | `GET /job/:jobId/coders/deletions` | READ | – | `CoderDeletionSchema[]` |
 | **Publishing** | | | | |
 | [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
 | [putDeployment](#putdeployment) | `PUT /job/:jobId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
@@ -354,8 +355,8 @@ loop of the live codebook, and `variables`: their coder-level values
 random or balanced conditions and URL parameters), `ended`: how the
 session ended (at an `end` item: item, outcome `screenout` or `complete`;
 or outcome `quit`; and the time), or null, and `deletionRequest`: the
-coder's request to delete their answers (`at`, `declinedAt` once
-declined), or null.
+coder's request to delete their answers (`at`, `postponedAt` once the
+researcher chose to delete later), or null.
 
 ### deleteCoders
 
@@ -364,12 +365,22 @@ participantIds?, emails? }`, at least one) → `{ coderIds, answers }`. ADMIN.
 Deletes the matching coders of the job and all their answers, also reset
 ones, for good (a participant withdrew; docs/coder-identity.md §8). Units
 nobody has answers for any more can be deleted again; unit versions stay.
+Each deleted coder is logged (listCoderDeletions); `deletedBy` is the
+researcher's email.
 
-### declineDeletion
+### postponeDeletion
 
-`POST /job/:jobId/coders/:id/deletion-request/decline` → 204 (404 without a
-request). ADMIN. Marks the coder's request to delete their answers as
-declined; it stays on record.
+`POST /job/:jobId/coders/:id/deletion-request/postpone` → 204 (404 without a
+request). ADMIN. Delete later: sets `postponedAt` on the request, which the
+UI then no longer brings up. The request stays until the coder is deleted.
+
+### listCoderDeletions
+
+`GET /job/:jobId/coders/deletions` → `CoderDeletionSchema[]`, newest first:
+per deleted coder `coderId`, `participantId`, `email`, `requestedAt` (if
+they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
+after the data is gone, with the ids downloaded results use, so the coder
+can be deleted from those too.
 
 ## Publishing
 

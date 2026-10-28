@@ -8,6 +8,7 @@ import {
   Labels,
   annotationsTable,
   codersTable,
+  deletedCodersTable,
   nestedQuestions,
   questionOrder,
   readme,
@@ -66,6 +67,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
     setBusy("Loading coders…");
     try {
       const coderList = (await coders.refetch()).data ?? [];
+      const deletions = await client.listCoderDeletions();
       const rows = await allPages<AnnotationRow>(
         async (after) => {
           const page = await client.listAnnotations({ after, limit: 10000, ...(withReset ? { retired: "true" as const } : {}) });
@@ -97,6 +99,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "README.txt": strToU8(readme(name, now, withLabels)),
         "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested))),
         "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested))),
+        "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions))),
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations))),
         "variables.csv": strToU8(toCsv(variablesTable(codebooks))),
         ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels))) } : {}),
@@ -132,6 +135,9 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
             <li>
               <strong>coders.csv</strong>: a row per coder: invitation, participant id, how their session ended, and their
               answers outside unit loops
+            </li>
+            <li>
+              <strong>deleted_coders.csv</strong>: coders whose data was deleted; delete them from earlier downloads too
             </li>
             <li>
               <strong>units.csv</strong>: the units as coders saw them, a row per version (a unit replaced after it was

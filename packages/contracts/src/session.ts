@@ -34,15 +34,15 @@ export type SessionEnd = z.infer<typeof SessionEndSchema>;
 
 /**
  * A coder's request to delete their answers (`POST /quit` with
- * `requestDeletion`). The researcher decides: they delete the coder's data
- * (and the request with it) or decline it. Not deleted automatically: the
+ * `requestDeletion`). The researcher deletes the coder's data now, or
+ * later (the request is then no longer brought up, but stays). Not deleted automatically: the
  * researcher may already hold the data elsewhere, and a request could
  * otherwise undo paid panel work at once.
  */
 export const DeletionRequestSchema = z.object({
   at: z.coerce.date(),
-  /** Set when the researcher declined it. */
-  declinedAt: z.coerce.date().nullable().optional(),
+  /** Set when the researcher chose to delete later: the request stays, but is no longer brought up. */
+  postponedAt: z.coerce.date().nullable().optional(),
 });
 export type DeletionRequest = z.infer<typeof DeletionRequestSchema>;
 
