@@ -4,7 +4,7 @@ import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
 import { getCookie } from "hono/cookie";
 import { linkInfo, participantFromLink } from "./shared/invites.js";
-import { userForSession } from "./shared/sessions.js";
+import { cachedUserForSession } from "./shared/sessions.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
 import { dbCoderKey, newSessionKey, readSession, requireClientHeader, sessionCookieName, writeSession } from "./runtime/session.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
@@ -70,7 +70,7 @@ export function coderApi(server: Server): Hono {
     // where the invite takes logins, and when coming back without the link.
     // Never in previews.
     const loginKey = getCookie(c, SESSION_COOKIE);
-    const user = loginKey && /^\d+$/.test(deploymentId) && link?.login !== "none" ? await userForSession(server.db, loginKey) : null;
+    const user = loginKey && /^\d+$/.test(deploymentId) && link?.login !== "none" ? await cachedUserForSession(server.db, loginKey) : null;
     const login = user ? { key: `login:${user.id}:${deploymentId}`, email: user.email, adopt: link !== null } : undefined;
     const name = await sessionCookieName(participantFromLink(link, urlParams));
     const existing = newSession ? undefined : readSession(c, name);

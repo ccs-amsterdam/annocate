@@ -121,75 +121,76 @@ expiry (default 90 days, at most a year); the list shows their last use
 
 ## 4. AmCAT and AnnoTinder on one server
 
-The case: both in one Docker Compose, on one domain (e.g.
-`research.uni.nl/amcat` and `/annotinder`), and a researcher should log in
-once, and confirm a passkey once.
+The case: both in one Docker Compose, on one origin (e.g.
+`research.uni.nl/amcat` and `/annotinder`), and a researcher logs in, and
+confirms a passkey, once.
 
-### Why a shared cookie secret isn't enough
+### AmCAT is the login; AnnoTinder reads its cookie
 
-AnnoTinder's sessions aren't signed cookies: the cookie holds a random key,
-the database its hash (`sessions`), so sessions can be ended (logout,
-blocking) at once. AmCAT accepting the same cookie would need to read
-AnnoTinder's session table. And passkeys need **one** store of credentials:
-if each app keeps its own, a user enrols and confirms twice; if both read
-one table, two implementations (Python and TypeScript) of security-critical
-code share a schema. Both get fragile.
+AmCAT already does the OIDC login and keeps the result in an encrypted,
+httpOnly cookie that says who the user is (their email). On one origin
+AnnoTinder receives that cookie too. With the same key, it can decrypt it
+and trust it. AmCAT is then the "sidecar": AnnoTinder needs no login, no
+OIDC client and no passkeys of its own in that deployment.
 
-Signed, stateless cookies with a shared secret would avoid the table, but
-lose immediate revocation (a blocked user keeps access until the cookie
-expires) and still leave the passkey store problem.
+- **What the cookie must hold:** the verified email, when it expires, and
+  (for the second layer, §3) when a passkey was last confirmed (`mfaAt`).
+  If AmCAT does the passkey, AnnoTinder only reads `mfaAt`; the passkeys
+  live in AmCAT.
+- **A shared, neutral format:** the two codebases (Python and TypeScript)
+  must read the same cookie, so pin it down: e.g. a JWE with `dir` +
+  `A256GCM` (libraries on both sides), or Fernet (a small, fixed spec). The
+  key comes from the environment of both containers, with room for a
+  second (old) key during rotation.
+- **Logging in and out:** AnnoTinder's login button and logout go to
+  AmCAT's endpoints.
+- **CSRF:** unchanged: the cookie is `SameSite=Lax`, and AnnoTinder's API
+  still requires the `x-annotinder: 1` header.
 
-### Recommendation: an auth sidecar, extracted from AnnoTinder, when it's needed
+What a stateless cookie gives up, and why that is acceptable here: a
+logout or a stolen cookie can't be undone before the cookie expires. But
+AnnoTinder looks up the user's row on every researcher request anyway (for
+account and job roles), so **blocking** stays immediate: a blocked user's
+valid cookie gets them nothing. Keep the cookie's lifetime modest (days,
+renewed while in use), as AmCAT presumably does.
 
-One small Node service owns **identity**: the OIDC login, sessions,
-passkeys and recovery codes. The apps keep **authorization**: roles, job
-roles, limits.
+### Standalone AnnoTinder
 
-```
- browser ── reverse proxy ──┬── /auth/*        → auth sidecar (login, sessions, passkeys)
-                            ├── /annotinder/*  → AnnoTinder ─┐
-                            └── /amcat/*       → AmCAT ──────┤ GET http://auth/session
-                                                             │ (cookie forwarded)
-                                                 auth sidecar ┘ → { userId, email, mfaAt } | 401
-```
+The public server has no AmCAT, so AnnoTinder keeps its own login. To have
+one code path, AnnoTinder can issue the **same cookie format** itself (its
+own key) instead of its current database sessions: the rest of the server
+then only ever asks "is there a valid identity cookie, and what does it
+say?", whoever issued it. Configuration decides who issues it: AnnoTinder
+(standalone) or AmCAT (together, with the shared key; AnnoTinder's login
+routes are off).
 
-- The sidecar sets the one session cookie (path `/`, httpOnly, the CSRF
-  header rule as now).
-- The apps ask it who a request is from: an internal `GET /session` with
-  the cookie, answered with `{ email, mfaAt }`, cached for a few seconds.
-  Revocation stays immediate (up to the cache), and no secret is shared:
-  the sidecar is the only one that can read sessions.
-- One domain, one `rpID`: one passkey works for both apps, confirmed once
-  per session. Step-up (§3) is the apps asking "is `mfaAt` recent enough?"
-  and sending the user to the sidecar's passkey screen if not.
-- Each app maps the email to its own users and roles. Blocking a user is
-  per app; the sidecar can also block a login everywhere.
+Passkeys in standalone AnnoTinder follow §3 and set `mfaAt` in the cookie
+the same way AmCAT does.
 
-**Standalone AnnoTinder** (the public server) keeps the same code built in:
-the auth module (`researcher/login.ts`, `shared/sessions.ts`, the passkey
-code) is written behind this boundary from the start (`/auth/*` routes, a
-`currentUser(request)` function the rest of the server calls), so the
-sidecar is that module run on its own, not a rewrite. AmCAT then only needs
-the client side: call `GET /session`.
+### Per-request cost
 
-**How hard:** the boundary costs little now (the code is already mostly
-separate). The sidecar itself is a packaging step plus the introspection
-endpoint; AmCAT's part is a middleware that calls it. Most of the work is
-in the passkey code (§3), which is needed anyway.
+- Researcher requests: decrypting the cookie (no database), plus the user
+  and job-role lookups they need anyway.
+- Coders who didn't log in: their session (`coders.coder_key`) is held in
+  the runtime's memory after the first request: no database per answer.
+- Coders who logged in: today the login is looked up once a minute per
+  session at most (`cachedUserForSession`); with the cookie it is just
+  decrypted.
 
-### Alternatives considered
+### Not chosen
 
-- **Passkeys in each app, shared cookie secret:** two enrolments, or one
-  credential table shared across two codebases (above). No.
-- **SSO through the provider only, each app its own session:** works today
-  without any change (the provider's own session makes the second login a
-  redirect), but passkeys would be confirmed per app.
-- **The provider does the passkey:** one layer again (§1).
+- **A separate auth service** that owns sessions and passkeys for both
+  apps. Possible, but with AmCAT already doing the login, it adds a third
+  service for little gain.
+- **Passkeys in each app** with their own credentials: users would enrol
+  and confirm twice.
 
 ## 5. Open points
 
 - AnnoTinder sending email (security notices, researcher requests,
   deletion requests): through Scaleway's API, from the same sending domain.
-- Whether AmCAT adopts the same rules (enrolment, recovery codes, step-up
-  window); the sidecar makes that automatic for a shared deployment.
+- AmCAT's exact cookie format (library, key derivation, claims), so
+  AnnoTinder can read it; whether AmCAT adds `mfaAt`.
+- Whether AmCAT adopts the same passkey rules (enrolment, recovery codes,
+  step-up window).
 - Step-up: which actions, and whether 15 minutes is right.

@@ -43,3 +43,23 @@ export async function userForSession(sql: Sql, key: string): Promise<(User & { m
 export async function deleteSession(sql: Sql, key: string): Promise<void> {
   await sql.query("DELETE FROM sessions WHERE key_hash = $1", [hashKey(key)]);
 }
+
+/** Logins as the coder API last saw them, by key hash, for `LOGIN_CACHE_MS`. */
+const recentLogins = new Map<string, { user: (User & { mfa: boolean }) | null; until: number }>();
+const LOGIN_CACHE_MS = 60_000;
+
+/**
+ * `userForSession` for the coder API, which needs it on every request of a
+ * logged-in coder: answered from memory for a minute (so a block or logout
+ * reaches coding within a minute; the researcher API always checks).
+ */
+export async function cachedUserForSession(sql: Sql, key: string): Promise<(User & { mfa: boolean }) | null> {
+  const hash = hashKey(key);
+  const now = Date.now();
+  const cached = recentLogins.get(hash);
+  if (cached && cached.until > now) return cached.user;
+  const user = await userForSession(sql, key);
+  if (recentLogins.size > 10_000) recentLogins.clear();
+  recentLogins.set(hash, { user, until: now + LOGIN_CACHE_MS });
+  return user;
+}

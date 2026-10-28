@@ -88,7 +88,8 @@ Today second factors are the login provider's: AnnoTinder doesn't store
 them, so losing one is solved there. Planned (`plan-passkeys.md`):
 AnnoTinder confirms a passkey itself, as a second layer independent of the
 provider, with recovery codes and admin resets instead of email recovery;
-and, for AmCAT and AnnoTinder on one server, an auth sidecar that both use.
+and, for AmCAT and AnnoTinder on one server, AnnoTinder reading AmCAT's
+login cookie.
 
 ## 6. Open points
 
