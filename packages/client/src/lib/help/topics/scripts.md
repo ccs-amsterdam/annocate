@@ -41,7 +41,7 @@ Scripts can't be used in unitset names or redirect links: those take plain
 
 ## What a script can use
 
-A script sees two names, and nothing else:
+A script sees three names, and nothing else:
 
 - `$unit`: the current unit's fields (inside a unit loop). Numbers are
   numbers, text is text.
@@ -49,13 +49,16 @@ A script sees two names, and nothing else:
   `$var.topic.value`, `$var.topics.labels`, `$var.age.answered` (see
   [Referring to answers and unit data](references.md)). An unanswered
   question is `null` (lists: an empty list `[]`).
+- `$session`: the values the invitation link carried, such as
+  `$session.participant` (see [Online panels](online-panels.md)).
 
 The [helper methods](conditions.md#helper-methods) work in scripts too:
 `$var.age.gte(18)`, `$var.topics.has("sports")`.
 
 As everywhere, names are written out: `$var.topic.value`, not
 `$var["topic"]`. That way the editor can check that every question and
-property you use exists and is asked before the script runs.
+property you use exists and is asked before the script runs. Any other
+name starting with `$` (`$vars`, `$sesion`) is reported as a mistake.
 
 ## Examples
 
@@ -159,7 +162,7 @@ $unit.text.length > 2000 && !$var.skim.is("yes")
 
 Scripts run in a closed-off sandbox in the coder's browser:
 
-- They only see `$unit` and `$var`. They can't load anything from the
+- They only see `$unit`, `$var` and `$session`. They can't load anything from the
   internet, read or change the page, or remember anything between runs.
 - A script may run for at most 100 milliseconds and use at most 1 MB of
   memory. That is plenty for anything a codebook needs.
@@ -177,7 +180,7 @@ Scripts run in a closed-off sandbox in the coder's browser:
 
 In a condition's **Script** mode, a syntax error (such as a missing bracket)
 is shown as you type. Inside `{{ }}` in a template, the editor checks the
-references but not the JavaScript, so check the result in the live preview
+references (every `$` name) but not the rest of the JavaScript, so check the result in the live preview
 or in **Preview** before you publish. A script that shows nothing where you
 expected a value usually has a mistake in it, or uses a question that isn't
 answered yet.

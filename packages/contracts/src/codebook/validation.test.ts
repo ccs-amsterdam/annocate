@@ -252,6 +252,16 @@ describe("reference validation", () => {
     expect(validateCodebookItems(items)).toEqual([]);
   });
 
+  it("rejects unknown $names in scripts, once, but not $ in text", () => {
+    expect(messages([age, questionVar("q", { ...confirmVariable, question: "Costs $5. {{ $sesion.x + $var.age.foo }}" })])).toEqual([
+      "$sesion is unknown: values are $var, $unit and $session",
+      "$var.age.foo: unknown property; use .value, .label, .values, .labels, .texts, .answered, .items or a method",
+    ]);
+    expect(messages([topCondition("c", [questionVar("q")], { script: "$vars.age > 1 && '$x' !== ''" })])).toEqual([
+      "$vars is unknown: values are $var, $unit and $session",
+    ]);
+  });
+
   it("rejects forward references, self references and refs into a condition's own children", () => {
     expect(messages([topCondition("c", [questionVar("q")], { script: "$var.later.answered" }), role, questionVar("later")])).toEqual([
       "$var.later.answered: 'later' is asked after this point",

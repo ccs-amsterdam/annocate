@@ -83,7 +83,13 @@ function readReference(
   if (!template && at > 0 && (IDENT_CHAR.test(source[at - 1]) || source[at - 1] === ".")) return null;
   const startsWith = (n: string) => source.startsWith(n, at + 1) && !IDENT_CHAR.test(source[at + 1 + n.length] ?? "");
   const ns = NAMESPACES.find(startsWith);
-  if (!ns) return null;
+  if (!ns) {
+    // In a script, a `$name` that isn't one of ours is a typo (`$vars`, `$sesion`): it would only fail when run.
+    const name = /^[A-Za-z_]\w*/.exec(source.slice(at + 1))?.[0];
+    if (template || !name) return null;
+    const end = at + 1 + name.length;
+    return { error: { message: `$${name} is unknown: values are $var, $unit and $session`, start: at, end }, end };
+  }
   let pos = at + 1 + ns.length;
 
   const segment = () => {

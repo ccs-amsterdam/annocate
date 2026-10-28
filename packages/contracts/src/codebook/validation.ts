@@ -115,8 +115,14 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   /** Questions of the current loop seen so far. */
   let loopAvailable = new Set<string>();
 
-  const issue = (path: Path, message: string, warning = false) =>
+  const seen = new Set<string>();
+  const issue = (path: Path, message: string, warning = false) => {
+    // A reference can be checked twice (as text and as a value); say it once.
+    const key = `${path.join("/")}\u0000${message}`;
+    if (seen.has(key)) return;
+    seen.add(key);
     issues.push(warning ? { path, message, warning } : { path, message });
+  };
 
   function checkRef(ref: Reference, ctx: RefContext): ReferenceShape | null {
     const text = referenceText(ref);

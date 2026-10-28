@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ReferenceScope } from "@annotinder/contracts";
 import { ExpressionCache } from "./expressionCache";
 import { prepareTemplate, renderTemplate, staticTemplate } from "./renderTemplate";
@@ -55,6 +55,13 @@ describe("renderTemplate", () => {
     expect(await text(1)).toBe("2");
     expect(await text(1)).toBe("2");
     expect(await text(5)).toBe("6");
+  });
+
+  it("renders a script that fails or doesn't parse as nothing, and goes on", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const rendered = await renderTemplate("{{ $unit.missing.deeper }}|{{ 1 + }}|$unit.headline", scope({ headline: "Hi" }));
+    expect(rendered.values.map((v) => v.text)).toEqual(["", "", "Hi"]);
+    error.mockRestore();
   });
 
   it("renders null (an empty number or boolean cell) as nothing", async () => {
