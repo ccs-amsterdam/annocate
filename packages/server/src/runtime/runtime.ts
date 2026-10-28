@@ -438,28 +438,26 @@ export class DeploymentRuntime {
    * never change. Saved before the coder is answered.
    */
   private async assignAutoVariables(coder: Coder, urlParams: Record<string, string> = {}): Promise<void> {
-    let changed = false;
+    const assigned: Record<string, VariableValue> = {};
     for (const [name, variable] of this.autoVariables) {
       if (variableValues(coder.variables)[name] !== undefined) continue;
       if (variable.source === "url_param") {
         const value = urlParams[variable.urlParam ?? name];
         // A value outside the codebook's options (if it lists any) is ignored, not stored.
         if (value === undefined || value.length > 200 || (variable.options?.length && !variable.options.some((o) => o.value === value))) continue;
-        coder.variables = { ...coder.variables, [name]: singleValue(value) };
-        changed = true;
+        assigned[name] = singleValue(value);
         continue;
       }
       const method = variable.source === "invite" ? variable.fallback : variable.source;
       if (method !== "random" && method !== "balanced") continue;
       const options = variable.options ?? [];
       if (options.length === 0) continue;
-      const code = method === "random" ? this.drawWeighted(options) : this.leastUsed(name, options);
-      coder.variables = { ...coder.variables, [name]: singleValue(code) };
-      changed = true;
+      assigned[name] = singleValue(method === "random" ? this.drawWeighted(options) : this.leastUsed(name, options));
     }
-    if (changed) {
+    if (Object.keys(assigned).length > 0) {
+      coder.variables = { ...coder.variables, ...assigned };
       this.countBalanced(coder);
-      await this.saveCoder(coder);
+      await this.store.putCoderValues({ coderId: coder.coderId, values: assigned, assigned: true, codebookId: this.spec.codebook.id });
     }
   }
 
@@ -482,7 +480,7 @@ export class DeploymentRuntime {
   }
 
   private async saveCoder(coder: Coder): Promise<void> {
-    await this.store.putCoder(coder.coderId, { variables: coder.variables, assignments: coder.assignments, ended: coder.ended });
+    await this.store.putCoder(coder.coderId, { assignments: coder.assignments, ended: coder.ended });
   }
 
   /** A one-time token that lets another device continue this coder's session (docs/coder-identity.md §4). */
@@ -626,21 +624,22 @@ export class DeploymentRuntime {
     if (coder.ended) throw new HttpError(409, "This session has ended", "session_ended");
   }
 
-  /** Coder-level answers. Server-assigned auto variables can't be overwritten by the client. */
-  async submitCoderVariables(coder: Coder, variables: Record<string, VariableValue>): Promise<void> {
+  /**
+   * Coder-level answers: a row each (only those that changed), like unit
+   * answers. Server-assigned auto variables can't be overwritten by the client.
+   */
+  async submitCoderVariables(coder: Coder, variables: Record<string, VariableValue>, deviceId: number | null = null): Promise<void> {
     this.assertOpen(coder);
     const errors = validateVariables(this.coderVariableTypes, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
-    await this.store.checkAnswers(variables);
-
-    const merged = { ...variables };
-    for (const [name] of this.autoVariables) {
-      if (coder.variables[name]) merged[name] = coder.variables[name];
-      else delete merged[name];
-    }
-    const updated = { ...coder, variables: merged };
-    await this.saveCoder(updated);
-    coder.variables = merged;
+    const auto = new Set(this.autoVariables.map(([name]) => name));
+    const changed = Object.fromEntries(
+      Object.entries(variables).filter(([name, value]) => !auto.has(name) && JSON.stringify(coder.variables[name]) !== JSON.stringify(value)),
+    );
+    if (Object.keys(changed).length === 0) return;
+    await this.store.checkAnswers(changed);
+    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, codebookId: this.spec.codebook.id, deviceId });
+    coder.variables = { ...coder.variables, ...changed };
   }
 
   /** How many units the coder will get in a loop, if that doesn't depend on other coders. */

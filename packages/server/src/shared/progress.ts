@@ -1,6 +1,7 @@
 import type { CoderProgress, DeletionRequest, JobOverview, SessionEnd, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { getDeployment, loopVariables } from "./deployments.js";
+import { coderValues } from "./coders.js";
 
 const DAY_MS = 24 * 60 * 60_000;
 const ACTIVITY_DAYS = 30;
@@ -19,7 +20,7 @@ export async function finishedPerLoop(sql: Sql, jobId: number): Promise<Map<stri
     const rows = await sql.query<{ coderId: number; n: number }>(
       `SELECT coder_id AS "coderId", COUNT(*)::int AS n FROM (
          SELECT unit_id, coder_id FROM annotation_values
-         WHERE job_id = $1 AND retired_at IS NULL AND variable = ANY($2)
+         WHERE job_id = $1 AND unit_id IS NOT NULL AND retired_at IS NULL AND variable = ANY($2)
          GROUP BY unit_id, coder_id HAVING COUNT(DISTINCT variable) = $3
        ) finished GROUP BY coder_id`,
       [jobId, variables, variables.length],
@@ -38,13 +39,12 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     inviteId: number | null;
     created: Date;
     inviteLabel: string | null;
-    variables: Record<string, VariableValue>;
     ended: SessionEnd | null;
     deletionRequest: DeletionRequest | null;
     session: Record<string, string>;
   }>(
     `SELECT c.id, c.email, c.participant_id AS "participantId", c.invite_id AS "inviteId", c.created, i.label AS "inviteLabel",
-       c.variables, c.ended, c.deletion_request AS "deletionRequest", c.session
+       c.ended, c.deletion_request AS "deletionRequest", c.session
      FROM coders c LEFT JOIN invites i ON i.id = c.invite_id
      WHERE c.job_id = $1 ORDER BY c.id`,
     [jobId],
@@ -53,12 +53,13 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     (
       await sql.query<{ coderId: number; answers: number; lastActive: Date }>(
         `SELECT coder_id AS "coderId", COUNT(*)::int AS answers, MAX(updated) AS "lastActive" FROM annotation_values
-         WHERE job_id = $1 AND retired_at IS NULL GROUP BY coder_id`,
+         WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned GROUP BY coder_id`,
         [jobId],
       )
     ).map((r) => [r.coderId, r]),
   );
   const finished = await finishedPerLoop(sql, jobId);
+  const values = await coderValues(sql, jobId);
 
   return coders.map((c) => ({
     id: c.id,
@@ -70,7 +71,7 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,
     finished: Object.fromEntries([...finished].map(([loop, perCoder]) => [loop, perCoder.get(c.id) ?? 0])),
-    variables: c.variables,
+    variables: values.get(c.id) ?? {},
     ended: c.ended,
     deletionRequest: c.deletionRequest,
     session: c.session,
@@ -87,7 +88,7 @@ export async function jobOverview(sql: Sql, jobId: number, now = new Date()): Pr
     [jobId],
   );
   const lastActivity = (
-    await one<{ last: Date | null }>(sql, "SELECT MAX(updated) AS last FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL", [jobId])
+    await one<{ last: Date | null }>(sql, "SELECT MAX(updated) AS last FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned", [jobId])
   )!.last;
 
   let codings = 0;
@@ -98,13 +99,13 @@ export async function jobOverview(sql: Sql, jobId: number, now = new Date()): Pr
     unitsets,
     coders: {
       total: await count("SELECT COUNT(*)::int AS n FROM coders WHERE job_id = $1"),
-      started: await count("SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL"),
+      started: await count("SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned"),
       activeLastDay: await count(
-        "SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND updated >= $2",
+        "SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned AND updated >= $2",
         dayAgo,
       ),
     },
-    answers: await count("SELECT COUNT(*)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL"),
+    answers: await count("SELECT COUNT(*)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned"),
     codings,
     lastActivity,
     activity: await activityPerDay(sql, jobId, now),
@@ -117,7 +118,7 @@ async function activityPerDay(sql: Sql, jobId: number, now: Date): Promise<JobOv
   for (let i = ACTIVITY_DAYS - 1; i >= 0; i--) days.push(new Date(now.getTime() - i * DAY_MS).toISOString().slice(0, 10));
   const rows = await sql.query<{ day: string; answers: number; coders: number }>(
     `SELECT to_char(created AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, COUNT(*)::int AS answers, COUNT(DISTINCT coder_id)::int AS coders
-     FROM annotation_values WHERE job_id = $1 AND created >= $2 GROUP BY day`,
+     FROM annotation_values WHERE job_id = $1 AND NOT assigned AND created >= $2 GROUP BY day`,
     [jobId, new Date(`${days[0]}T00:00:00Z`)],
   );
   const byDay = new Map(rows.map((r) => [r.day, r]));

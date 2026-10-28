@@ -1,7 +1,7 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import type { DeletionRequest, UnitData, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
-import { toCoder, type CoderRow } from "../shared/coders.js";
+import { coderValues, putCoderValues, toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
@@ -13,6 +13,7 @@ import type {
   AnnotationWrite,
   Coder,
   CoderAnnotation,
+  CoderValuesWrite,
   CoderWrite,
   DeploymentSpec,
   Finished,
@@ -38,6 +39,8 @@ export interface Store {
   /** Adds a device to a session (a transfer link): its key now finds this coder. Returns the device's row. */
   addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null>;
   putCoder(coderId: number, write: CoderWrite): Promise<void>;
+  /** Writes coder-level values (answers outside unit loops, assigned values): answer rows without a unit. */
+  putCoderValues(write: CoderValuesWrite): Promise<void>;
   /** Records the coder's request to delete their answers (a new request replaces a postponed one). */
   requestDeletion(coderId: number, request: DeletionRequest): Promise<void>;
   listFinished(request: FinishedRequest): Promise<Finished[]>;
@@ -84,12 +87,20 @@ export class DbStore implements Store {
   }
 
   async listCoders(): Promise<Coder[]> {
-    return (await this.sql.query<CoderRow>("SELECT * FROM coders WHERE job_id = $1 ORDER BY id", [this.jobId])).map(toCoder);
+    const values = await coderValues(this.sql, this.jobId);
+    return (await this.sql.query<CoderRow>("SELECT * FROM coders WHERE job_id = $1 ORDER BY id", [this.jobId])).map((row) =>
+      toCoder(row, values.get(row.id) ?? {}),
+    );
   }
 
   async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
     const { row, deviceId } = await this.sql.transaction((tx) => findOrCreateCoder(tx, this.jobId, request));
-    return { coder: toCoder(row), deviceId };
+    const values = await coderValues(this.sql, this.jobId, row.id);
+    return { coder: toCoder(row, values.get(row.id) ?? {}), deviceId };
+  }
+
+  async putCoderValues(write: CoderValuesWrite): Promise<void> {
+    await this.sql.transaction((tx) => putCoderValues(tx, this.jobId, write));
   }
 
   async addDevice(coderId: number, coderKey: string, device: DeviceDetails): Promise<number | null> {
@@ -120,8 +131,7 @@ export class DbStore implements Store {
   }
 
   async putCoder(coderId: number, write: CoderWrite): Promise<void> {
-    const updated = await this.sql.query("UPDATE coders SET variables = $1, assignments = $2, ended = $3 WHERE job_id = $4 AND id = $5 RETURNING id", [
-      JSON.stringify(write.variables),
+    const updated = await this.sql.query("UPDATE coders SET assignments = $1, ended = $2 WHERE job_id = $3 AND id = $4 RETURNING id", [
       JSON.stringify(write.assignments),
       write.ended === null ? null : JSON.stringify(write.ended),
       this.jobId,
@@ -162,7 +172,7 @@ export class DbStore implements Store {
   async listAnnotations(coderId: number): Promise<CoderAnnotation[]> {
     const rows = await this.sql.query<{ unitId: number; coderId: number; variable: string; value: VariableValue; created: Date; updated: Date }>(
       `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, created, updated FROM annotation_values
-       WHERE job_id = $1 AND coder_id = $2 AND retired_at IS NULL ORDER BY created, id`,
+       WHERE job_id = $1 AND coder_id = $2 AND unit_id IS NOT NULL AND retired_at IS NULL ORDER BY created, id`,
       [this.jobId, coderId],
     );
     const byUnit = new Map<number, CoderAnnotation>();
@@ -272,14 +282,15 @@ async function findOrCreateCoder(sql: Sql, jobId: number, request: ResolveCoderR
     ]);
     if (used.length === 0) throw new HttpError(401, "This invite has been used up");
   }
-  // The invite's presets become the coder's values for the codebook's `auto`
-  // variables with source "invite".
-  const variables = Object.fromEntries(Object.entries(invite.variables).map(([name, value]) => [name, { done: true, skip: false, values: [{ value }] }]));
   const created = await one<CoderRow>(
     sql,
-    "INSERT INTO coders (job_id, email, participant_id, variables, invite_id, session) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-    [jobId, login?.email.toLowerCase() ?? null, participantId, JSON.stringify(variables), invite.id, JSON.stringify(session)],
+    "INSERT INTO coders (job_id, email, participant_id, invite_id, session) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+    [jobId, login?.email.toLowerCase() ?? null, participantId, invite.id, JSON.stringify(session)],
   );
+  // The invite's presets become the coder's values for the codebook's `auto`
+  // variables with source "invite".
+  const presets = Object.fromEntries(Object.entries(invite.variables).map(([name, value]) => [name, { done: true, skip: false, values: [{ value }] }]));
+  await putCoderValues(sql, jobId, { coderId: created!.id, values: presets, assigned: true });
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(sql, jobId, created!.id, coderKey, device) };
 }

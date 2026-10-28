@@ -97,11 +97,19 @@ export interface ResolvedCoder {
   deviceId: number | null;
 }
 
-/** Full replace of the coder state the runtime manages. */
+/** Full replace of the coder state the runtime manages (their values are answer rows: `CoderValuesWrite`). */
 export interface CoderWrite {
-  variables: Record<string, VariableValue>;
   assignments: CoderAssignments;
   ended: SessionEnd | null;
+}
+
+/** Coder-level values to write, a row each (`assigned`: by the server, not answered). */
+export interface CoderValuesWrite {
+  coderId: number;
+  values: Record<string, VariableValue>;
+  assigned?: boolean;
+  codebookId?: number | null;
+  deviceId?: number | null;
 }
 
 /** One coder's live values for one unit (the runtime's per-coder workspace). */

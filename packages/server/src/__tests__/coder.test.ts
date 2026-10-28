@@ -129,10 +129,11 @@ async function unitByExternalId(externalId: string): Promise<{ id: number }> {
 }
 
 /** Live annotation values per (unit, coder), as stored in the database. */
+/** Unit answers in the database, per unit and coder. */
 async function dbAnnotations() {
   const rows = await db.query<{ unitId: number; coderId: number; variable: string; value: VariableValue; codebookId: number }>(
     `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, codebook_id AS "codebookId"
-     FROM annotation_values WHERE retired_at IS NULL ORDER BY unit_id, coder_id`,
+     FROM annotation_values WHERE unit_id IS NOT NULL AND retired_at IS NULL ORDER BY unit_id, coder_id`,
   );
   const byUnit = new Map<string, { unitId: number; coderId: number; variables: Record<string, VariableValue>; codebookIds: number[] }>();
   for (const row of rows) {
@@ -661,6 +662,43 @@ describe("quitting and deleting a coder's data", () => {
     // Nothing matches: nothing deleted
     const none = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });
     expect(await none.json()).toEqual({ coderIds: [], answers: 0 });
+  });
+});
+
+describe("coder-level answers", () => {
+  it("are answer rows without a unit, one per question, assigned values marked; only changed answers are written", async () => {
+    const group = { type: "question", name: "group", variable: { type: "auto", source: "random", options: [{ value: "a" }, { value: "b" }] } };
+    const age = { type: "question", name: "age", variable: { type: "numeric", question: "Age?" } };
+    const city = { type: "question", name: "city", variable: { type: "nominal", question: "City?", options: [{ value: "Utrecht" }, { value: "Gent" }] } };
+    await redeploy({}, [group, age, city]);
+    const c = coder("surveyed");
+    await c.session();
+    const post = (variables: object) => c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables }) });
+    const value = (v: string | number) => ({ done: true, skip: false, values: [{ value: v }] });
+    expect((await post({ age: value(30), city: value("Utrecht") })).status).toBe(204);
+    expect((await post({ age: value(31), city: value("Utrecht") })).status).toBe(204);
+
+    const rows = await db.query<{ variable: string; unit_id: number | null; assigned: boolean; created: Date; updated: Date; device_id: number | null }>(
+      "SELECT variable, unit_id, assigned, created, updated, device_id FROM annotation_values WHERE unit_id IS NULL ORDER BY variable",
+    );
+    expect(rows.map((r) => [r.variable, r.assigned])).toEqual([
+      ["age", false],
+      ["city", false],
+      ["group", true],
+    ]);
+    const [ageRow, cityRow] = rows;
+    expect(ageRow.updated.getTime()).toBeGreaterThanOrEqual(cityRow.updated.getTime()); // only age was written again
+    expect(cityRow.created.getTime()).toBe(cityRow.updated.getTime());
+    expect(ageRow.device_id).not.toBeNull();
+
+    // In the download too, without a unit; and on the coder
+    const page = (await (await server.request("/job/1/annotations", { headers: adminHeaders })).json()) as { annotations: { unitId: number | null; variable: string; assigned: boolean }[] };
+    expect(page.annotations.filter((a) => a.unitId === null).map((a) => a.variable).sort()).toEqual(["age", "city", "group"]);
+    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    expect(coders[0].variables).toMatchObject({ age: value(31), city: value("Utrecht") });
+    // A reload (a restart of the runtime) reads them back
+    server = restart();
+    expect((await c.session()).variables).toMatchObject({ age: value(31) });
   });
 });
 

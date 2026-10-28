@@ -1,6 +1,7 @@
 import type { VariableValue } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import type { Finished, FinishedRequest } from "../runtime/types.js";
+import { coderValues } from "./coders.js";
 
 /**
  * What coders finished, per group of variables (usually a unit loop's
@@ -25,7 +26,7 @@ export async function listFinished(sql: Sql, jobId: number, request: FinishedReq
     const variables = [...new Set(group.variables)];
     const finished = await sql.query<{ unitId: number; coderId: number; created: Date }>(
       `SELECT unit_id AS "unitId", coder_id AS "coderId", MIN(created) AS created FROM annotation_values
-       WHERE job_id = $1 AND retired_at IS NULL AND variable = ANY($2) AND ($3::int IS NULL OR coder_id = $3)
+       WHERE job_id = $1 AND unit_id IS NOT NULL AND retired_at IS NULL AND variable = ANY($2) AND ($3::int IS NULL OR coder_id = $3)
        GROUP BY unit_id, coder_id HAVING COUNT(*) = $4
        ORDER BY created, unit_id`,
       [jobId, variables, coderId, variables.length],
@@ -37,7 +38,7 @@ export async function listFinished(sql: Sql, jobId: number, request: FinishedReq
     if (wanted.length > 0) {
       const rows = await sql.query<{ unitId: number; coderId: number; variable: string; value: VariableValue }>(
         `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value FROM annotation_values
-         WHERE job_id = $1 AND retired_at IS NULL AND variable = ANY($2) AND ($3::int IS NULL OR coder_id = $3)`,
+         WHERE job_id = $1 AND unit_id IS NOT NULL AND retired_at IS NULL AND variable = ANY($2) AND ($3::int IS NULL OR coder_id = $3)`,
         [jobId, wanted, coderId],
       );
       for (const row of rows) {
@@ -59,32 +60,28 @@ export async function listFinished(sql: Sql, jobId: number, request: FinishedReq
   return result;
 }
 
-/**
- * Coder-level groups. Coder-level values are kept on the coder
- * (`coders.variables`) rather than as annotation rows without a unit, so
- * they are filtered here.
- */
+/** Coder-level groups: the coders whose answer rows without a unit include all of the group's variables. */
 async function listFinishedCoders(
   sql: Sql,
   jobId: number,
   group: FinishedRequest["loops"][number],
   coderId: number | undefined,
 ): Promise<Finished[]> {
-  const rows = await sql.query<{ id: number; variables: Record<string, VariableValue>; created: Date }>(
-    "SELECT id, variables, created FROM coders WHERE job_id = $1 AND ($2::int IS NULL OR id = $2) ORDER BY id",
+  const coders = await sql.query<{ id: number; created: Date }>(
+    "SELECT id, created FROM coders WHERE job_id = $1 AND ($2::int IS NULL OR id = $2) ORDER BY id",
     [jobId, coderId ?? null],
   );
+  const values = await coderValues(sql, jobId, coderId);
   const result: Finished[] = [];
-  for (const row of rows) {
-    if (!group.variables.every((v) => v in row.variables)) continue;
+  for (const coder of coders) {
+    const own = values.get(coder.id) ?? {};
+    if (!group.variables.every((v) => v in own)) continue;
     result.push({
       loop: group.loop,
       unitId: null,
-      coderId: row.id,
-      created: row.created,
-      ...(group.values?.length
-        ? { values: Object.fromEntries(group.values.filter((v) => v in row.variables).map((v) => [v, row.variables[v]])) }
-        : {}),
+      coderId: coder.id,
+      created: coder.created,
+      ...(group.values?.length ? { values: Object.fromEntries(group.values.filter((v) => v in own).map((v) => [v, own[v]])) } : {}),
     });
   }
   return result;

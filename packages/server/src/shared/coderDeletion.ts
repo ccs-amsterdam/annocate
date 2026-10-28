@@ -25,12 +25,12 @@ export async function deleteCoders(sql: Sql, jobId: number, select: DeleteCoders
        FROM coders c WHERE c.job_id = $1 AND c.id = ANY($2)`,
       [jobId, ids, deletedBy],
     );
-    const removed = await tx.query<{ unitId: number }>(
+    const removed = await tx.query<{ unitId: number | null }>(
       `DELETE FROM annotation_values WHERE job_id = $1 AND coder_id = ANY($2) RETURNING unit_id AS "unitId"`,
       [jobId, ids],
     );
     await tx.query("DELETE FROM coders WHERE job_id = $1 AND id = ANY($2)", [jobId, ids]);
-    const units = [...new Set(removed.map((r) => r.unitId))];
+    const units = [...new Set(removed.flatMap((r) => (r.unitId === null ? [] : [r.unitId])))];
     await tx.query(
       `UPDATE units u SET coded = EXISTS (SELECT 1 FROM annotation_values a WHERE a.unit_id = u.id) WHERE u.job_id = $1 AND u.id = ANY($2)`,
       [jobId, units],

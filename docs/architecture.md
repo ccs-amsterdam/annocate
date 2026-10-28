@@ -87,8 +87,8 @@ development, Vite proxies the server's paths.
      global state, a coder's own finished units are enough), and
      **`balanced` auto variables** (coder-level rows: which coder has which
      option).
-   - **Active coders**: the coder record (coder-level values, loop
-     routing) and their workspace, i.e. their own live annotations. Loaded
+   - **Active coders**: the coder record (coder-level values, read from
+     their answer rows without a unit; loop routing) and their workspace, i.e. their own live annotations. Loaded
      when the coder shows up; their finished units in every loop are
      derived from it. Released under a memory budget (see 3.), so memory
      grows with active coders, not with all coders of a job.

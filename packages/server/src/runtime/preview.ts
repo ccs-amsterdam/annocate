@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DeletionRequest, VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
-import type { Coder as StoredCoder, CoderAnnotation, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder } from "./types.js";
+import type { Coder as StoredCoder, CoderAnnotation, CoderValuesWrite, CoderWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder } from "./types.js";
 
 // Researcher previews (`<jobId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
@@ -94,9 +94,13 @@ export class PreviewStore implements Store {
   async putCoder(coderId: number, body: CoderWrite): Promise<void> {
     const coder = this.coders.get(coderId);
     if (!coder) throw new HttpError(404, "Coder not found");
-    coder.variables = body.variables;
     coder.assignments = body.assignments;
     coder.ended = body.ended;
+  }
+
+  async putCoderValues(write: CoderValuesWrite): Promise<void> {
+    const coder = this.coders.get(write.coderId);
+    if (coder) coder.variables = { ...coder.variables, ...write.values };
   }
 
   async requestDeletion(coderId: number, request: DeletionRequest): Promise<void> {

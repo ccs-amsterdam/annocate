@@ -486,10 +486,13 @@ Implementation: [`researcher/annotations.ts`](../../packages/server/src/research
 ### listAnnotations
 
 `GET /job/:jobId/annotations?after=&limit=&retired=` → `AnnotationPageSchema`:
-one row per unit, coder and variable (`value` is a `VariableValue`), with
-the unit's `externalId`, the coder's `participantId`, the codebook version
-it was answered under, the unit version the coder saw (`unitVersionId`),
-and `created` / `updated`.
+one row per answer: unit, coder and variable (`value` is a
+`VariableValue`), with the unit's `externalId`, the coder's
+`participantId`, the codebook version it was answered under, the unit
+version the coder saw (`unitVersionId`), the device (`deviceId`), and
+`created` / `updated`. Answers outside unit loops (survey questions) are
+rows too, with `unitId` null; so are values the server assigned (invite
+presets, random or balanced groups, URL parameters), marked `assigned`.
 
 - **Paging**: rows come in the order they were first written (by `id`).
   `limit` rows per page (default 1000, at most 10000); pass `next` as
@@ -500,8 +503,9 @@ and `created` / `updated`.
 - **Live values only**, unless `retired=true`: then also values that were
   reset (by a researcher), with `retiredAt`. A coder's earlier answer that
   they changed themselves is not kept.
-- Coder-level answers (outside unit loops) are not rows here; they come
-  with the coders ([listCoders](#listcoders)).
+- Coder-level values (rows without a unit) also come with the coders
+  ([listCoders](#listcoders), `variables`). Resetting answers
+  ([resetAnnotations](#resetannotations)) applies to unit answers only.
 
 ### listUnitVersions
 

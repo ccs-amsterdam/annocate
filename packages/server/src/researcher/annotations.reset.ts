@@ -25,7 +25,7 @@ export function annotationsReset(server: Server): Hono<Env> {
 async function retireAnnotations(sql: Sql, jobId: number, request: ResetAnnotations): Promise<number> {
   const retired = await sql.query(
     `UPDATE annotation_values SET retired_at = now()
-     WHERE job_id = $1 AND retired_at IS NULL AND variable = ANY($2)
+     WHERE job_id = $1 AND unit_id IS NOT NULL AND retired_at IS NULL AND variable = ANY($2)
        AND ($3::int[] IS NULL OR unit_id = ANY($3)) AND ($4::int[] IS NULL OR coder_id = ANY($4))
      RETURNING id`,
     [jobId, request.variables, request.unitIds?.length ? request.unitIds : null, request.coderIds?.length ? request.coderIds : null],

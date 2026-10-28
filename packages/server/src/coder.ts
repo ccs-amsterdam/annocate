@@ -140,7 +140,7 @@ export function coderApi(server: Server): Hono {
 
   session.post("/variables/coder", async (c) => {
     const body = await parseBody(c, PostCoderVariablesSchema);
-    await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables);
+    await c.get("runtime").submitCoderVariables(c.get("coder"), body.variables, c.get("deviceId"));
     return c.body(null, 204);
   });
 

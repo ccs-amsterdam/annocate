@@ -189,7 +189,9 @@ export function annotationsTable(
     string,
     { first: AnnotationRow; last: Date; deviceId: number | null; values: Map<string, VariableValue>; codebooks: Map<string, number | null> }
   >();
+  // Answers outside unit loops (no unit) are in coders.csv.
   for (const a of annotations) {
+    if (a.unitId === null) continue;
     const key = `${a.unitId}/${a.coderId}`;
     let row = byUnitCoder.get(key);
     if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), deviceId: a.deviceId ?? null, values: new Map(), codebooks: new Map() }));
@@ -223,7 +225,7 @@ export function annotationsTable(
       // The unit's spans, by id, so relations can name them by their text
       const spans = new Map([...values.values()].flatMap((v) => (v.spans ?? []).map((s) => [s.id, s] as const)));
       return [
-      first.externalId,
+      first.externalId ?? "",
       first.unitVersionId === null ? "" : String(first.unitVersionId),
       String(first.coderId),
       first.participantId ?? "",
@@ -248,7 +250,7 @@ export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels)
   return {
     headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "codebook_id", "answered", "reset_at"],
     rows: reset.map((a) => [
-      a.externalId,
+      a.externalId ?? "",
       a.unitVersionId === null ? "" : String(a.unitVersionId),
       String(a.coderId),
       a.participantId ?? "",

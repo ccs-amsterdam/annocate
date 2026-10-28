@@ -14,6 +14,7 @@ const row = (unitId: number, coderId: number, variable: string, value: Annotatio
   codebookId: 2,
   unitVersionId: null,
   deviceId: 7,
+  assigned: false,
   created: new Date(at.getTime() + minutes * 60_000),
   updated: new Date(at.getTime() + minutes * 60_000),
 });

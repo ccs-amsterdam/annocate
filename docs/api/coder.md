@@ -112,7 +112,10 @@ codebook update removed) are kept.
 
 `POST /variables/coder` (`PostCoderVariablesSchema`) → 204
 
-Full replace of the coder-level answers (survey questions outside loops).
+The coder-level answers (survey questions outside loops), all of them as
+the client has them. The server writes a row for each answer that changed
+(answer rows without a unit, like unit answers); values the server
+assigned (`auto` questions) can't be overwritten.
 
 ### endSession
 

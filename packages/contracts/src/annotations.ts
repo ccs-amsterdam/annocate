@@ -3,9 +3,10 @@ import { IdSchema, UnitDataSchema } from "./common.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 // Downloading annotations (researcher API `GET /job/:jobId/annotations`):
-// one row per unit, coder and variable, in the order they were first
-// written, a page at a time. Coder-level answers (outside unit loops) come
-// with the coders (`GET /job/:jobId/coders`).
+// one row per answer: unit (or none, for answers outside unit loops and
+// values the server assigned), coder and variable, in the order they were
+// first written, a page at a time. Coder-level values also come with the
+// coders (`GET /job/:jobId/coders`, `variables`).
 
 /** Query of `GET /job/:jobId/annotations`. */
 export const AnnotationsQuerySchema = z.object({
@@ -24,9 +25,10 @@ export type AnnotationsQuery = z.input<typeof AnnotationsQuerySchema>;
 export const AnnotationRowSchema = z.object({
   /** Row id: in the order rows were first written, so new answers come after pages already read (a changed answer keeps its row: see `updated`). */
   id: z.number().int().positive(),
-  unitId: IdSchema,
-  /** The unit's external id (the researcher's own id). */
-  externalId: z.string(),
+  /** Null for answers outside unit loops (survey questions) and assigned values. */
+  unitId: IdSchema.nullable(),
+  /** The unit's external id (the researcher's own id); null without a unit. */
+  externalId: z.string().nullable(),
   coderId: IdSchema,
   participantId: z.string().nullable(),
   variable: z.string(),
@@ -37,6 +39,8 @@ export const AnnotationRowSchema = z.object({
   unitVersionId: IdSchema.nullable(),
   /** The device the answer was (last) given on (`listDevices`); null in previews and for devices that were deleted. */
   deviceId: IdSchema.nullable(),
+  /** Set by the server, not answered: an invite preset, a random or balanced group, a URL parameter (`auto` questions). */
+  assigned: z.boolean(),
   created: z.coerce.date(),
   updated: z.coerce.date(),
   /** Only with `retired=true`: when the value was reset; null if live. */
