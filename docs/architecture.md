@@ -217,6 +217,12 @@ units:
     finished it. `maxCoders` is required with `agree`, so a unit nobody
     agrees on isn't coded forever.
   - `maxUnits` caps the units per coder (besides the overlap).
+  - `minUnits`: while a coder has fewer units, `maxCoders` and other
+    coders' leases don't hold them back: they get any unit the `until`
+    rule doesn't consider done (saturated), least coded first (codings
+    plus leases), so the extra codings spread over the units. This also
+    keeps a coder from passing the loop with nothing while every unit
+    still needed is leased to others.
   - **Open slots** are codings still needed, capped by `maxCoders`, minus
     active leases. This prevents over-assignment while coders are working.
   - **Leases** last `leaseSeconds` (default 900). An expired lease frees the

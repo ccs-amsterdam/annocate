@@ -691,6 +691,7 @@ export class DeploymentRuntime {
       const next = pickNext(routed.main, routed.overlap, coder.coderId, this.codingsFor(loopName), {
         order: info.loop.order ?? "sequential",
         maxUnits: routed.branch.mode === "shared" ? routed.branch.maxUnits : undefined,
+        minUnits: routed.branch.mode === "shared" ? routed.branch.minUnits : undefined,
         seed: this.spec.jobId * 1000,
         now: this.options.now(),
       });

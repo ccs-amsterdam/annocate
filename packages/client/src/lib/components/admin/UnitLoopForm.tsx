@@ -555,6 +555,17 @@ function SharedSettings({ branch, agreeable, onChange }: { branch: SharedBranch;
           onChange={(e) => onChange({ ...branch, maxCoders: numberOrUndefined(e.target.value) })}
         />
       </label>
+      <label className={labelClass} title="While a coder has fewer, they also get units past Max coders and units others hold, as long as a unit isn't done">
+        Min units per coder
+        <Input
+          type="number"
+          min={1}
+          className="h-8 w-24 text-xs"
+          value={branch.minUnits ?? ""}
+          placeholder="none"
+          onChange={(e) => onChange({ ...branch, minUnits: numberOrUndefined(e.target.value) })}
+        />
+      </label>
       <label className={labelClass}>
         Max units per coder
         <Input

@@ -45,6 +45,7 @@ A coder who opens a unit and leaves doesn't count.
 | Setting | What it does |
 | --- | --- |
 | **Max coders per unit** | A unit is never handed out to more coders than this, done or not. Required with an agreement rule, so a unit nobody agrees on isn't coded forever. It must be at least the number in the rule. |
+| **Min units per coder** | Every coder gets at least this many units from the queue, as long as it has units that aren't done yet (see [A minimum per coder](#a-minimum-per-coder)). Empty: no minimum. |
 | **Max units per coder** | A coder gets at most this many units from the queue (overlap units come on top). Empty: no limit. |
 
 **Max units per coder** is worth setting in most studies:
@@ -61,6 +62,30 @@ A coder who opens a unit and leaves doesn't count.
 A rough sample size: with 1000 units, *until 3 coders coded it* and **Max
 units per coder** 50, you need at least 1000 × 3 / 50 = 60 coders who finish.
 Recruit a few more, because some will stop early.
+
+### A minimum per coder
+
+Without a minimum, a coder who arrives late can get few units or none: the
+units that still need codings may all be done, or reserved by other coders
+at that moment. That is a problem when every coder must do a fixed task, for
+instance a panel that pays for 20 units, or a design where every coder must
+code enough units to estimate their own reliability.
+
+**Min units per coder** solves this. While a coder has fewer units than the
+minimum, two limits give way:
+
+- **Max coders per unit**: the coder may get a unit that already has its
+  maximum number of coders;
+- **reservations**: the coder may get a unit another coder is working on.
+
+What doesn't give way is the rule itself: a unit that is done (*until 3
+coders coded it*, or enough coders agree) is never handed out again. Among
+the units left, the coder gets those with the fewest codings and
+reservations, so extra codings are spread over the units. If every unit is
+done, a coder can still end up with fewer than the minimum.
+
+The price is some codings past **Max coders per unit**. Set the minimum
+only as high as your design needs.
 
 ## Priority
 
@@ -96,6 +121,8 @@ Reservations mean a coder can find no unit while there are still units left:
 when all units that still need codings are reserved by others at that
 moment. The coder then finishes the loop. Near the end of a study this is
 normal; the reserved units come back if their coders don't finish them.
+With **Min units per coder** a coder below the minimum gets such a unit
+anyway (see [A minimum per coder](#a-minimum-per-coder)).
 
 The 15 minutes can be changed in the codebook's JSON view, as
 `leaseSeconds` in the loop's `units` (one entry per coder group; default `900`), for instance

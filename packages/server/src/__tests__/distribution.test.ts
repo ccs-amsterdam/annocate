@@ -19,12 +19,13 @@ function setup() {
   const codeNext = (
     main: UnitPool,
     coderId: number,
-    opts: { overlap?: OverlapPlacement; order?: "sequential" | "random"; maxUnits?: number; code?: string; now?: number } = {},
+    opts: { overlap?: OverlapPlacement; order?: "sequential" | "random"; maxUnits?: number; minUnits?: number; code?: string; now?: number } = {},
   ) => {
     const now = opts.now ?? 0;
     const next = pickNext(main, opts.overlap ?? null, coderId, codings, {
       order: opts.order ?? "sequential",
       maxUnits: opts.maxUnits,
+      minUnits: opts.minUnits,
       seed: 0,
       now,
     });
@@ -162,6 +163,30 @@ describe("shared queues", () => {
     saturate.codings.record(9, 2, answer("x"));
     const p = saturate.pool([1, 2], shared({ minCoders: 3, priority: "saturate" }));
     expect(pickNext(p, null, 1, saturate.codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(2);
+  });
+
+  it("give a coder below minUnits units past maxCoders and others' leases, least coded first, until saturated", () => {
+    const { codings, pool, codeAll } = setup();
+    // One coder per unit is enough, at most 1: three coders want at least 2 units each from 3 units.
+    const main = pool([1, 2, 3], shared({ maxCoders: 1 }));
+    expect(codeAll(main, 1, { maxUnits: 2 })).toEqual([1, 2]);
+    // Coder 2 gets the last free unit, then (min 2) a unit past maxCoders: one that isn't
+    // saturated is no longer there (minCoders 1), so nothing more.
+    expect(codeAll(main, 2, { minUnits: 2 })).toEqual([3]);
+
+    // Saturation needs 2 coders: a coder owed units gets the least-coded ones past maxCoders 2.
+    const two = pool([4, 5, 6], shared({ minCoders: 2, maxCoders: 2 }));
+    codings.record(7, 4, answer("x"));
+    codings.record(8, 4, answer("x")); // unit 4 saturated
+    codings.record(7, 5, answer("x"));
+    // All units with open slots leased to others: none free for coder 1 normally
+    two.take(9, 5, 0);
+    two.take(10, 6, 0);
+    two.take(11, 6, 0);
+    const next = (minUnits?: number) => pickNext(two, null, 1, codings, { order: "sequential", seed: 0, now: 0, minUnits })?.unitId ?? null;
+    expect(next()).toBeNull();
+    // With minUnits: unit 6 (no codings, 2 leases) vs 5 (1 coding, 1 lease): equal load, first in order
+    expect(next(1)).toBe(5);
   });
 
   it("with an overlap: one coder per unit plus a shared reliability set", () => {

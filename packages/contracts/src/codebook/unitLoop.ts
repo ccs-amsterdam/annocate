@@ -86,6 +86,13 @@ export const SharedBranchSchema = z
     /** At most this many units per coder (besides the overlap). */
     maxUnits: z.number().int().positive().optional(),
     /**
+     * At least this many units per coder (besides the overlap), as far as
+     * the unitset has units the `until` rule doesn't consider done yet:
+     * while a coder has fewer, `maxCoders` and other coders' leases don't
+     * hold them back, and they get the least-coded units ("cover").
+     */
+    minUnits: z.number().int().positive().optional(),
+    /**
      * `cover`: prefer the least-coded units (every unit gets coded before any
      * is done). `saturate`: prefer units closest to done (done units arrive
      * quickly). Default `cover`.
@@ -101,6 +108,10 @@ export const SharedBranchSchema = z
   .refine((b) => b.maxCoders === undefined || b.maxCoders >= ("agree" in b.until ? b.until.agree : b.until.coders), {
     message: "Max coders must be at least the number of coders (or agreeing coders) a unit needs",
     path: ["maxCoders"],
+  })
+  .refine((b) => b.minUnits === undefined || b.maxUnits === undefined || b.minUnits <= b.maxUnits, {
+    message: "Min units per coder can't be more than max units per coder",
+    path: ["minUnits"],
   })
   .refine((b) => b.overlap?.placement !== "spread" || b.maxUnits !== undefined, {
     message: "Spreading the overlap units needs max units per coder (to know where to put them)",

@@ -110,10 +110,18 @@ export class UnitPool {
    * view of the unitset order (shuffled for random loops). Has no side
    * effects; call `take` for the unit actually handed out.
    */
-  candidates(coderId: number, now: number, shuffleSeed: number | null): number[] {
+  candidates(coderId: number, now: number, shuffleSeed: number | null, { beyondCaps = false } = {}): number[] {
     const order = shuffleSeed === null ? this.units : seededShuffle(this.units, shuffleSeed);
     const open = order.filter((id) => !this.codings.has(coderId, id));
     if (!this.rule) return open;
+
+    // A coder still owed units (`minUnits`): any unit the `until` rule doesn't
+    // consider done, past `maxCoders` and others' leases, least coded first
+    // (codings and leases), so they spread over the units.
+    if (beyondCaps) {
+      const load = (id: number) => this.codings.forUnit(id).size + this.activeLeases(id, now);
+      return open.filter((id) => !this.isSaturated(id)).sort((a, b) => load(a) - load(b));
+    }
 
     const withSlots = open.filter((id) => this.openSlots(id, now) > 0);
     // Stable sort keeps the coder's order among equally-coded units.
@@ -132,11 +140,16 @@ export class UnitPool {
     this.coderLease.set(coderId, unitId);
   }
 
-  /** A unit leased to this coder that they haven't finished (and that isn't complete), if any. */
+  /**
+   * A unit leased to this coder that they haven't finished (and that the
+   * `until` rule doesn't consider done), if any. A unit others filled up to
+   * `maxCoders` meanwhile stays theirs: at worst one coding too many (and a
+   * coder below `minUnits` may go past `maxCoders` anyway).
+   */
   heldLease(coderId: number): number | undefined {
     const unitId = this.coderLease.get(coderId);
     if (unitId === undefined) return undefined;
-    if (this.codings.has(coderId, unitId) || this.isComplete(unitId)) {
+    if (this.codings.has(coderId, unitId) || this.isSaturated(unitId)) {
       this.coderLease.delete(coderId);
       this.leases.get(unitId)?.delete(coderId);
       return undefined;
@@ -155,10 +168,16 @@ export class UnitPool {
 
   isComplete(unitId: number): boolean {
     if (!this.rule) return false;
-    const { minCoders, maxCoders, agreement } = this.rule;
-    const done = this.codings.forUnit(unitId).size;
-    if (maxCoders !== undefined && done >= maxCoders) return true;
-    if (done < minCoders) return false;
+    const { maxCoders } = this.rule;
+    if (maxCoders !== undefined && this.codings.forUnit(unitId).size >= maxCoders) return true;
+    return this.isSaturated(unitId);
+  }
+
+  /** Whether the `until` rule considers the unit done: enough coders, or enough agreeing ones (`maxCoders` aside). */
+  isSaturated(unitId: number): boolean {
+    if (!this.rule) return false;
+    const { minCoders, agreement } = this.rule;
+    if (this.codings.forUnit(unitId).size < minCoders) return false;
     return !agreement || this.topAgreement(unitId) >= agreement.minAgree;
   }
 
@@ -228,7 +247,8 @@ export interface OverlapPlacement {
  * Picks the next unit for a coder in one unit_loop, from their own pool
  * (`main`) and the branch's overlap. Returns null when the coder is done
  * with the loop. `maxUnits` caps the coder's own units (shared queues), not
- * the overlap.
+ * the overlap; below `minUnits` a coder gets units past `maxCoders` and
+ * other coders' leases (`UnitPool.candidates`, `beyondCaps`).
  *
  * Spread: the overlap units are placed evenly among the units the coder is
  * expected to get (`maxUnits`, else the size of their set). If they run out
@@ -239,7 +259,7 @@ export function pickNext(
   overlap: OverlapPlacement | null,
   coderId: number,
   codings: Codings,
-  options: { order: "sequential" | "random"; maxUnits?: number; seed: number; now: number },
+  options: { order: "sequential" | "random"; maxUnits?: number; minUnits?: number; seed: number; now: number },
 ): { pool: UnitPool; unitId: number } | null {
   // Resume a unit leased to this coder (they reloaded, or went back and forth).
   const held = main.heldLease(coderId);
@@ -249,7 +269,10 @@ export function pickNext(
   const doneOverlap = overlap ? done.filter((id) => overlap.pool.has(id)).length : 0;
   const doneOwn = done.filter((id) => main.has(id) && !overlap?.pool.has(id)).length;
   const shuffleSeed = options.order === "random" ? options.seed + coderId : null;
-  const own = options.maxUnits !== undefined && doneOwn >= options.maxUnits ? [] : main.candidates(coderId, options.now, shuffleSeed);
+  let own = options.maxUnits !== undefined && doneOwn >= options.maxUnits ? [] : main.candidates(coderId, options.now, shuffleSeed);
+  if (own.length === 0 && options.minUnits !== undefined && doneOwn < options.minUnits) {
+    own = main.candidates(coderId, options.now, shuffleSeed, { beyondCaps: true });
+  }
   const extra = overlap ? overlap.pool.candidates(coderId, options.now, shuffleSeed) : [];
   const pick = (pool: UnitPool, ids: number[]) => ({ pool, unitId: ids[0] });
 
