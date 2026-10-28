@@ -423,7 +423,7 @@ How it works:
 
 Coders get only the unit fields the codebook uses (`shownUnitFields`:
 `$unit` references in loop layouts, question texts, conditions and end
-messages, layout meta fields, span fields), which keeps other columns
+messages, span fields), which keeps other columns
 (e.g. metadata) from coders and responses small. A unit as shown, its
 external id and those fields, is a **unit version**: a row of
 `unit_versions` (`id`, `unit_id`, a `hash` of the shown content, the

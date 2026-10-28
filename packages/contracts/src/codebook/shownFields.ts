@@ -6,7 +6,7 @@ import { allTemplateReferences } from "./templateBlocks.js";
 /**
  * The unit fields a codebook shows or uses (docs/architecture.md §8.4): every
  * `$unit.<field>` in a loop's layout (with its snippets), question texts,
- * conditions and end messages, the layout's meta fields, and the columns of
+ * conditions and end messages, and the columns of
  * span questions. Coders are sent only these fields,
  * and a unit version is a unit as it looks with them. References are
  * always literal (validation refuses `$unit[...]`), so the list is complete.
@@ -21,7 +21,6 @@ export function shownUnitFields(items: readonly unknown[]): string[] {
   for (const { loop } of unitLoops(items)) {
     snippets = loop.layout?.snippets;
     text(loop.layout?.template);
-    for (const meta of loop.layout?.meta ?? []) fields.add(meta.column);
     const walk = (list: unknown) => {
       if (!Array.isArray(list)) return;
       for (const raw of list) {

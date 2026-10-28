@@ -34,8 +34,6 @@ questions that come **before** the relation question. Anything else is
 reported as an error, such as *Relation 'from' refers to 'tone' which is
 not a preceding span variable*.
 
-The **Edit mode** box has no effect yet.
-
 Relations have a direction: *A criticizes B* is not *B criticizes A*. Name
 the options so that the direction is clear, and read them as
 *from ... to*.

@@ -6,11 +6,6 @@ import { z } from "zod";
 // references.ts); they are plain text unless a suffix says otherwise, so a
 // value is never interpreted as markdown by accident. Attached to a
 // `unit_loop` codebook item.
-export const UnitLayoutMetaFieldSchema = z.object({
-  name: z.string(),
-  column: z.string(),
-});
-
 export const UnitLayoutSchema = z.object({
   template: z
     .string()
@@ -34,7 +29,5 @@ export const UnitLayoutSchema = z.object({
     .enum(["light", "dark"])
     .optional()
     .describe("Always show the unit in light or dark colours (e.g. for styled content). Default: follow the coder's setting."),
-  /** A non-rendered "meta" field, e.g. a source link shown alongside the unit but not part of the template. */
-  meta: z.array(UnitLayoutMetaFieldSchema).optional(),
 });
 export type UnitLayout = z.infer<typeof UnitLayoutSchema>;

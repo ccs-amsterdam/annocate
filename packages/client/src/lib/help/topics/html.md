@@ -87,15 +87,16 @@ For an image from the web, show it outside the HTML, with
 The frame is as wide as the unit, and as tall as its content: it grows when
 the content does. (Very long content is cut off after 8000 pixels.)
 
-The frame is a page of its own, so the HTML doesn't get AnnoTinder's look:
+The frame is a page of its own. It starts with a plain style close to
+AnnoTinder's, which your HTML's own CSS overrides:
 
-- **Fonts**: without a `font-family`, the browser's default font is used
-  (often a serif font like Times). Set one, e.g.
-  `font-family: system-ui, sans-serif`.
-- **Light and dark**: the frame doesn't follow the coder's dark mode. Give
-  your HTML its own background and text colour, or set the loop's
-  **Colours** to **Always light** (see
-  [Light or dark](colours-and-styles.md#light-or-dark)).
+- **Fonts**: AnnoTinder's font if the coder's device has it, else the
+  device's own sans-serif font.
+- **Light and dark**: the text colour, link colour and table borders follow
+  the coder's light or dark mode (or the loop's **Colours**, see
+  [Light or dark](colours-and-styles.md#light-or-dark)), and the background
+  is transparent. HTML that sets its own colours keeps them: give it its own
+  background too, or set **Colours** to **Always light**.
 - **Width**: content wider than the unit is cut off, not scrolled. Use
   `max-width: 100%` on images and tables, and check the layout in the
   **Mobile** preview.

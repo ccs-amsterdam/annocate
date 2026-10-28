@@ -16,10 +16,6 @@ export const VariableBaseSchema = z.object({
   questionStyle: z.record(z.string(), z.string()).optional(),
   instruction: z.string().optional().describe("Extra instructions for this variable; a markdown template like `question`."),
   instructionStyle: z.record(z.string(), z.string()).optional(),
-  instructionAuto: z
-    .boolean()
-    .optional()
-    .describe("If true, the instruction is automatically shown the first time this variable appears."),
   field: z
     .string()
     .optional()
@@ -166,7 +162,6 @@ export const SpanTypeSchema = VariableBaseSchema.extend({
         "plain `$unit.<field>`, or the name of a `::: text <name>` block (docs/client.md §3)",
     ),
   options: NominalOptionsSchema,
-  editMode: z.boolean().optional(),
   selectionMode: z.enum(["word", "character"]).optional(),
   gaps: z.boolean().optional(),
 });
@@ -183,7 +178,6 @@ export const RelationTypeSchema = VariableBaseSchema.extend({
   options: NominalOptionsSchema,
   from: RelationOptionsSchema,
   to: RelationOptionsSchema,
-  editMode: z.boolean().optional(),
 });
 export type RelationType = z.infer<typeof RelationTypeSchema>;
 

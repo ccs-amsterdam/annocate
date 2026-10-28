@@ -70,8 +70,7 @@ can consist of several pieces (*fragments*), for example a quote that is
 interrupted by *"she said"*. Coders then click or select further words to
 add them to the span, and click them again to take them out.
 
-> The **Edit mode** box has no effect yet: coders can always change and
-> delete their spans.
+Coders can always change and delete their spans.
 
 ## How coders select spans
 

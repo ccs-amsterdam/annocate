@@ -89,8 +89,7 @@ Instruction:  The topic the article spends most words on. Ignore topics
               mentioned only in passing.
 ```
 
-The instruction is shown every time the question comes up; the checkbox
-**Show instruction automatically the first time** makes no difference yet.
+The instruction is shown under the question every time it comes up.
 Long instructions are better placed before the coding starts, for example
 as a **Confirm** question (see [Confirm](confirm.md)).
 

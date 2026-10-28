@@ -27,7 +27,6 @@ import { HelpButton } from "../../help/HelpButton";
 interface QuestionFieldsValue {
   question: string;
   instruction?: string;
-  instructionAuto?: boolean;
 }
 
 /** The shared `question`/`instruction` fields present on every non-`auto` variable type. */
@@ -55,14 +54,6 @@ function QuestionFields({
           onChange={(e) => onChange({ instruction: e.target.value || undefined })}
         />
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={!!value.instructionAuto}
-          onChange={(e) => onChange({ instructionAuto: e.target.checked || undefined })}
-        />
-        Show instruction automatically the first time
-      </label>
     </>
   );
 }
@@ -222,14 +213,6 @@ export function VariableTypeForm({
             />
             Allow gaps (discontinuous spans with multiple fragments)
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!!v.editMode}
-              onChange={(e) => onChange({ ...v, editMode: e.target.checked || undefined })}
-            />
-            Edit mode (allow re-editing existing spans)
-          </label>
         </>
       );
     }
@@ -271,14 +254,6 @@ export function VariableTypeForm({
               </select>
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!!v.editMode}
-              onChange={(e) => onChange({ ...v, editMode: e.target.checked || undefined })}
-            />
-            Edit mode
-          </label>
         </>
       );
     }

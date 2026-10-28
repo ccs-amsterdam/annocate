@@ -60,7 +60,7 @@ Status: current (2026-10-26). Server-side design lives in
 ## 3. Unit layout and texts
 
 A unit's layout is **one markdown template** (`UnitLayoutSchema`:
-`template`, `snippets?`, `style?`, `colorScheme?`, `meta?`). It replaced the old app's
+`template`, `snippets?`, `style?`, `colorScheme?`). It replaced the old app's
 typed field arrays and grid arrangement. Question and instruction texts are
 templates with the same syntax.
 
@@ -89,9 +89,12 @@ A template is read in two steps: first the **text is put together**
     its storage or cookies; no forms, popups or top navigation) and a
     Content Security Policy that allows no requests (images and fonts only
     as `data:`, inline CSS) and no scripts but one of ours, by its hash,
-    which reports the content's height so the frame fits it. Limits: it
-    doesn't follow the app's fonts or dark mode, and HTML that loads
-    images or styles from the web shows without them.
+    which reports the content's (body's) height so the frame fits it. A
+    default style, read from the app where the frame is shown (text and
+    link colours, border colour, light or dark, font size; the app's font
+    by name, which the frame can't load), makes plain HTML look like the
+    app; the HTML's own CSS overrides it. HTML that loads images or styles
+    from the web shows without them.
 
   A suffix is the short form of a **typed block** around the value (below).
 - **Typed blocks**: `::: text|markdown|html|image [name]` … `:::`. The
@@ -661,7 +664,7 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
 - Admin UI: no notice that someone else is editing the same codebook (a
   conflict shows only when saving); codebook errors are shown as raw
   messages, not per field.
-- Spans: no re-editing mode (`editMode` in the schema is unused); no
+- Spans: no
   "click a span to pick it" for relations; no per-field inline styling
   directives; no image-region annotation.
 - Tests are render smoke tests plus logic tests. No jsdom interaction tests
