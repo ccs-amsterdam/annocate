@@ -35,8 +35,8 @@ case.)
  │ server (TypeScript, packages/server)                                │
  │  researcher API: jobs, codebooks, units, unitsets, invitations,     │
  │    deployment, progress, results                                    │
- │  runtime (one per deployment, in memory): distribution, leases,     │
- │    validation, unit + annotation cache                              │
+ │  runtime (per deployment): distribution, leases, validation;        │
+ │    state in the database, only the deployment spec in memory        │
  │  database: the source of truth                                      │
  └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -61,8 +61,8 @@ and a page per API, with a section per endpoint.
   rules, one set per coder, or the invitation's set; plus an overlap);
 - validates annotations against the codebook;
 - writes them to the database;
-- keeps the deployment spec, distribution state and active coders' own
-  annotations in memory (§3).
+- keeps only the deployment spec in memory (§3): any number of server
+  processes can serve a job.
 
 It reads and writes through a `Store` (`store.ts`): `DbStore` for the
 database, `PreviewStore` for previews.
@@ -76,50 +76,32 @@ development, Vite proxies the server's paths.
 
 1. **Stored before acknowledged.** An answer is written to the database
    before the coder is told it was saved. There is no buffering.
-2. **Rebuildable.** Everything the runtime holds in memory is a cache of the
-   database, except dynamic-source **leases**, which are deliberately
-   disposable: losing them only returns an abandoned unit to the queue
-   early. A restart loads what it needs again. The coder record, their
-   coder-level answers, units, the unit versions shown, and transfer links
-   are read from the database per request, not kept
-   (`plan-stateless-runtime.md`, steps 1–2). The deployment spec is re-read
-   when its stamp changes (version, epoch, `revision`, suspension: one small
-   query per request). What is cached has two parts, so a rebuild doesn't
-   need every annotation in memory:
-   - **Distribution state**, loaded eagerly by `DeploymentRuntime.load()`:
-     the deployment spec and the bulk `listFinished` query, for two things
-     only: **loops with shared queues or sets** (which coder finished which
-     unit there, plus the agreement questions' values; other loops need no
-     global state, a coder's own finished units are enough), and
-     **`balanced` auto variables** (coder-level rows: which coder has which
-     option).
-   - **Active coders**: their workspace, i.e. their own live unit
-     annotations. Loaded
-     when the coder shows up; their finished units in every loop are
-     derived from it. Released under a memory budget (see 3.), so memory
-     grows with active coders, not with all coders of a job.
+2. **The database holds the state.** The runtime reads per request what it
+   works with: the coder (one indexed query by device key), their answers,
+   units and the unit versions shown, finished codings (`unit_codings`),
+   the leases of shared queues (`unit_leases`), transfer links. In memory it
+   keeps only the deployment spec, re-read when the deployment's stamp
+   changes (version, annotation epoch, `revision`, suspension: one small
+   query per request; researcher changes bump `revision`). So any number of
+   server processes can serve the same job
+   (`plan-stateless-runtime.md`).
+3. **Decisions that count other coders run under a lock.** Picking from a
+   shared queue (and leasing the unit), giving out a set (`sets` mode) and
+   a `balanced` group run in one transaction holding a database lock on
+   that queue, loop or variable (`Store.locked`, `pg_advisory_xact_lock`),
+   so two coders, on any process, never get the same slot.
+4. **Finished codings are derived, and kept in step.** A unit is finished in
+   a loop when the coder answered every question of it (§8.2):
+   `unit_codings` has a row per finished (loop, unit, coder), with the
+   answers to the loop's agreement questions, written with the answers.
+   What finishes a loop depends on the codebook, so when that changes (a
+   redeploy whose loops have other questions or agreement questions) or
+   answers are reset (`annotationEpoch`), they are derived from the answers
+   again, once (`deployments.codings_basis`; the first process to get the
+   lock does it).
 
-   A codebook redeploy keeps the derived codings if the loops' questions,
-   shared queues, sets and agreement questions are unchanged. Otherwise, or
-   after a researcher reset (`annotationEpoch`), it rebuilds them.
-   Researcher status is computed on demand (finished units for every loop,
-   all coders for routing), not held in memory.
-3. **Bounded memory.** The runtime keeps what it may release only while
-   there is room, and never longer than a fixed bound (`RuntimeOptions` in
-   `runtime.ts`, per deployment):
-
-   | Held | Released when |
-   | --- | --- |
-   | A coder's annotations | Over `workspaceCacheBytes` (32 MB): coders who were told every loop is done first, then the least recently active. Unused for `maxIdleMs`. Their finished units in loops without shared queues or sets go with them, and are rebuilt when they return |
-   | Distribution state (spec, dynamic-loop codings, `balanced` counts, leases) | Not released while the deployment is loaded: it is bounded by units x coders per unit, and distribution needs it |
-   | The deployment as a whole | Unused for `deploymentIdleMs` (6 h), or when the job is deleted |
-
-   Sizes are estimated from JSON length, since JavaScript gives no memory
-   pressure signal. `memory` in the deployment status shows current use.
-4. **One process, for now.** Leases, the dynamic-loop codings, set routing
-   and `balanced` counts live in the memory of one process (`registry.ts`),
-   and previews keep their coders in memory. Everything else already works
-   across processes. Step 4 of `plan-stateless-runtime.md` moves the rest.
+Previews are the exception: they keep their coders and answers in the
+memory of one process (`preview.ts`).
 
 ## 4. Trust and hosting
 
@@ -173,7 +155,7 @@ real units, but keeps coders and answers in memory (`preview.ts`): a
 preview stores nothing, and is gone when the server forgets the deployment.
 
 **Researcher status.** `GET /job/:jobId/deployment/status`: units complete /
-started / leased, codings, coders, and the runtime's memory use.
+started / leased, codings and coders.
 
 ## 6. Distribution: the codebook describes the process
 
@@ -339,8 +321,8 @@ The client skips them as steps.
 - `random`: weighted draw from `options` (server).
 - `balanced`: the option fewest coders have so far (server), e.g. to
   spread coders over experimental groups. (To spread coders over sets of
-  units, use a loop in `sets` mode.) The counts come from a
-  coder-level `listFinished` query on load, then are kept in memory.
+  units, use a loop in `sets` mode.) Counted in the database, under a lock
+  per variable (§3).
 - `invite`: the value preset on the coder's invitation. If the invitation
   doesn't set one, `fallback` (`random` | `balanced`) applies, or the value
   stays empty.
@@ -487,8 +469,8 @@ Other open points:
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | Researcher login with an OpenID Connect provider, users and API keys, sessions |
 | `server/src/shared/` | Database queries shared by both APIs (deployments, finished units, units, coders, ...) |
 | `server/migrations/`, `src/db.ts` | The data model (numbered SQL migrations) and the database (`Sql`: `pg` or PGlite) |
-| `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; refresh, status, preview tokens |
-| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, caches, routing, auto variables, status |
+| `server/src/runtime/registry.ts` | `Deployments`: lazily loads one runtime per deployment; failures aren't cached; revision bumps, status, preview tokens |
+| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: spec, routing, distribution under locks, auto variables, status |
 | `server/src/runtime/store.ts` | `Store`: what the runtime reads and writes; `DbStore` on the database |
 | `server/src/runtime/types.ts` | The runtime's internal types (spec, coder, annotations, finished rows) |
 | `server/src/runtime/session.ts` | Coder session cookies, CSRF header |
@@ -547,13 +529,12 @@ Roughly in order:
     have seen, would be the next step. Conditions and branch choice run on
     the client today (§6.1), which keeps client-side encryption of answers
     possible (`encryption.md`).
-11. **Scale.** On cold start the runtime loads finished codings for dynamic
-    loops only (bounded by units x `maxCoders`), and coder workspaces
-    lazily (§3). Researcher status is computed on demand: fine for
-    occasional use; aggregates kept in the database if it gets polled.
-    More than one server process needs leases and codings in the database
-    (§3.4); with Postgres, e.g. leases as rows picked with
-    `FOR UPDATE SKIP LOCKED`.
+11. **Scale.** A pick from a shared queue reads the loop's finished codings
+    and leases (bounded by units x `maxCoders`), under the queue's lock.
+    For very large queues, a per-unit summary kept up to date on submit
+    (codings, agreement, full) would let Postgres return only candidates.
+    Researcher status is computed on demand: fine for occasional use;
+    aggregates kept in the database if it gets polled.
 12. **Admin unit cache.** A client-side cache of units for the researcher
     UI (IndexedDB), compared by ids and hashes.
 

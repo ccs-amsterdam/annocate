@@ -425,8 +425,8 @@ can be deleted from those too.
 
 ## Publishing
 
-These change or read what coders get; status, refresh and preview go to the
-job's runtime in memory (`server.deployments`). Schemas:
+These change or read what coders get; status and preview go to the job's
+runtime (`server.deployments`). Schemas:
 [`contracts/src/deployment.ts`](../../packages/contracts/src/deployment.ts).
 Implementation: [`researcher/deployment*.ts`](../../packages/server/src/researcher/), [`shared/deployments.ts`](../../packages/server/src/shared/deployments.ts), [`runtime/registry.ts`](../../packages/server/src/runtime/registry.ts).
 
@@ -452,7 +452,7 @@ questions, which makes units coders finished unfinished again.
 
 `GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: per loop
 and unitset the units complete, started and leased, codings and coders,
-plus how many coders' answers the runtime holds in memory. Computed on demand. 404 if not
+computed on demand. 404 if not
 published.
 
 ### createPreview

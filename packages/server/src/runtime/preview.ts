@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
-import type { Coder as StoredCoder, CoderAnnotation, CoderValue, CoderAssignments, CoderValuesWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder, Transfer } from "./types.js";
+import type { Coder as StoredCoder, Coding, Lease, CoderValue, CoderAssignments, CoderValuesWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder, Transfer } from "./types.js";
 
 // Researcher previews (`<jobId>.preview`, contracts PreviewSessionSchema):
 // the latest codebook and the real units come from the database, but coders
@@ -33,7 +33,7 @@ export class PreviewStore implements Store {
   /** Device keys -> coder id: a device's preview session (a new one on "start over"). */
   private devices = new Map<string, number>();
   /** `<unitId>/<coderId>` -> the coder's answers and when they were first written. */
-  private annotations = new Map<string, CoderAnnotation>();
+  private annotations = new Map<string, { unitId: number; coderId: number; variables: Record<string, VariableValue>; created: Date; updated: Date }>();
   /** Coder-level answers, per coder. */
   private values = new Map<number, Record<string, CoderValue>>();
 
@@ -150,8 +150,49 @@ export class PreviewStore implements Store {
     if (coder) coder.deletionRequest = request;
   }
 
-  async listAnnotations(coderId: number): Promise<CoderAnnotation[]> {
-    return [...this.annotations.values()].filter((a) => a.coderId === coderId);
+  async unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>> {
+    return { ...this.annotations.get(`${unitId}/${coderId}`)?.variables };
+  }
+
+  /** `<loop>/<unitId>/<coderId>` -> a finished coding. */
+  private codings = new Map<string, Coding>();
+  private basis: string | null = null;
+
+  async listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]> {
+    return [...this.codings.values()]
+      .filter((c) => (filter.loop === undefined || c.loop === filter.loop) && (filter.coderId === undefined || c.coderId === filter.coderId))
+      .sort((a, b) => a.created.getTime() - b.created.getTime() || a.unitId - b.unitId);
+  }
+
+  async codingsBasis(): Promise<string | null> {
+    return this.basis;
+  }
+
+  async replaceCodings(basis: string, codings: Coding[]): Promise<void> {
+    this.codings = new Map(codings.map((c) => [`${c.loop}/${c.unitId}/${c.coderId}`, c]));
+    this.basis = basis;
+  }
+
+  /** `<loop>/<unitset>/<coderId>` -> the coder's lease in that queue. */
+  private leases = new Map<string, Lease>();
+
+  async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
+    return [...this.leases.values()].filter(
+      (l) => (filter.loop === undefined || l.loop === filter.loop) && (filter.coderId === undefined || l.coderId === filter.coderId),
+    );
+  }
+
+  async putLease(lease: Lease): Promise<void> {
+    this.leases.set(`${lease.loop}/${lease.unitset}/${lease.coderId}`, lease);
+  }
+
+  async coderValuesOf(variable: string): Promise<VariableValue[]> {
+    return [...this.values.values()].flatMap((values) => (values[variable] ? [values[variable].value] : []));
+  }
+
+  /** One process, no concurrent writers but its own: runs `fn` as it is. */
+  locked<T>(_key: string, fn: (store: Store) => Promise<T>): Promise<T> {
+    return fn(this);
   }
 
   /** unitId/coderId -> the unit version last shown. */
@@ -176,6 +217,11 @@ export class PreviewStore implements Store {
       created: existing?.created ?? now,
       updated: now,
     });
+    for (const coding of w.codings ?? []) {
+      const key = `${coding.loop}/${w.unitId}/${w.coderId}`;
+      const existing = this.codings.get(key);
+      this.codings.set(key, { loop: coding.loop, unitId: w.unitId, coderId: w.coderId, agreement: coding.agreement, created: existing?.created ?? now, updated: now });
+    }
   }
 
   async listFinished(request: FinishedRequest): Promise<Finished[]> {

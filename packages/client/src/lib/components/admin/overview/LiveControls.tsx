@@ -34,14 +34,7 @@ export function LiveControls({ client, deployment }: { client: ResearcherApi; de
   );
 }
 
-/** What the server holds in memory for the live job: a line under the progress. */
+/** Since when the server runs the live job: a line under the progress. */
 export function RuntimeLine({ status }: { status: DeploymentStatus }) {
-  const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`;
-  return (
-    <p className="mt-3 text-[11px] text-muted-foreground">
-      Loaded on the server {formatWhen(status.loadedAt)}
-      {status.memory &&
-        ` · in memory: answers of ${status.memory.coders} coders (${mb(status.memory.coderBytes)})`}
-    </p>
-  );
+  return <p className="mt-3 text-[11px] text-muted-foreground">Loaded on the server {formatWhen(status.loadedAt)}</p>;
 }

@@ -25,8 +25,7 @@ whenever you open them; for the full data, download the results.
 
 Changes reach coders right away: after you publish, upload or replace
 units, change unitsets or reset answers, coders' next request uses them.
-Under **Progress**, a line says since when the server holds the job and how
-many coders' answers it keeps in memory.
+Under **Progress**, a line says since when the server runs the job.
 
 ### Numbers
 

@@ -445,7 +445,7 @@ describe("routing coders to unitsets", () => {
     expect((await bob.next())!.id).toBe(u3); // then the overlap set
   });
 
-  it("load coders lazily, and keep balancing across a restart", async () => {
+  it("keep balancing across a restart: the counts are in the database", async () => {
     await createUnitset("part_1", ["unit-1"]);
     await createUnitset("part_2", ["unit-2"]);
     await createUnitset("overlap", ["unit-3"]);
@@ -453,12 +453,9 @@ describe("routing coders to unitsets", () => {
     const general = await invite();
     expect((await coder("first", general).session()).variables.slot.values).toEqual([{ value: "1" }]);
 
-    // a restarted server knows the counts per option, without loading all coders
-    storeCalls = [];
+    // a restarted server (or another process) counts the options in the database
     server = restart();
     expect((await coder("second", general).session()).variables.slot.values).toEqual([{ value: "2" }]);
-    expect(storeCalls).not.toContain("listCoders");
-    expect(storeCalls).toContain("listFinished");
 
     // returning coders are resolved again, and count once
     expect((await coder("first", null).session()).variables.slot.values).toEqual([{ value: "1" }]);
@@ -1000,25 +997,24 @@ describe("rebuilding from the database", () => {
     expect((await dbAnnotations())[0].variables).toHaveProperty("actors_and_issues");
   });
 
-  it("keeps codings across a redeploy that keeps the loops, and reloads when they change", async () => {
-    const reloads = () =>
-      storeCalls.filter((call) => call === "listFinished" || call === "listAnnotations");
+  it("keeps codings across a redeploy that keeps the loops, and derives them again when they change", async () => {
+    const codings = () => db.query<{ agreement: Record<string, string> }>("SELECT agreement FROM unit_codings");
 
-    // v2 changes the loop's questions (demo had six): finished units must be re-derived
+    // v2 changes the loop's questions (demo had six): finished units must be derived again
     await redeploy({ units: [{ mode: "all", unitset: "main" }] });
     const c = coder("re");
     await c.submit((await c.next())!.id, sentiment("neutral"));
-    storeCalls = [];
+    expect(await codings()).toEqual([{ agreement: {} }]);
 
-    // v3, same loop: nothing re-downloaded
+    // v3, same loop: kept
     await redeploy({ units: [{ mode: "all", unitset: "main" }] });
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect(reloads()).toEqual([]);
 
-    // v4 adds a dynamic source with an agreement rule: its finished codings are loaded
+    // v4 adds an agreement rule: the codings are derived again, with its answers (also with two processes)
     await redeploy(agreeing);
-    await c.session();
-    expect(reloads()).toContain("listFinished");
+    const other = restart();
+    await Promise.all([c.session(), coder("re", null, () => other).session()]);
+    expect(await codings()).toEqual([{ agreement: { sentiment: expect.any(String) } }]);
   });
 
   it("keeps the order of finished units when an old unit is edited", async () => {
@@ -1105,12 +1101,7 @@ describe("finished units follow the current codebook", () => {
   });
 });
 
-describe("memory", () => {
-  const status = async () =>
-    (await (await server.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
-  const count = (call: string) => storeCalls.filter((c) => c === call).length;
-  const ANNOTATIONS = "listAnnotations";
-
+describe("state in the database, not in memory", () => {
   it("keeps no units: a unit changed after it was served is served as it is now", async () => {
     const c = coder("units");
     const unit = (await c.next())!;
@@ -1138,47 +1129,24 @@ describe("memory", () => {
     expect((await c.call("/loop/1/next")).status).toBe(409);
   });
 
-  it("drops coders who are done first when over budget, and rebuilds them on return", async () => {
-    await createUnitset("one", ["unit-1"]);
-    await redeploy({ units: [{ mode: "all", unitset: "one" }] });
-    const measure = coder("measure");
-    await measure.submit((await measure.next())!.id, sentiment("neutral"));
-    const perCoder = (await status()).memory!.coderBytes;
-    expect(perCoder).toBeGreaterThan(0);
-
-    server = restart({ workspaceCacheBytes: Math.floor(perCoder * 2.5) });
-    const busy = coder("busy");
-    await busy.submit((await busy.next())!.id, sentiment("neutral")); // least recent, not done
-    const done = coder("done");
-    await done.submit((await done.next())!.id, sentiment("neutral"));
-    expect(await done.next()).toBeNull(); // every loop exhausted: done
-    const third = coder("third");
-    await third.submit((await third.next())!.id, sentiment("neutral")); // over budget
-
-    storeCalls = [];
-    await busy.session();
-    expect(count(ANNOTATIONS)).toBe(0);
-    expect(await done.next()).toBeNull(); // reloaded, and still finished
-    expect(count(ANNOTATIONS)).toBe(1);
+  it("hands out a shared queue's units once, also when two processes are asked at the same time", async () => {
+    await createUnitset("pair", ["unit-1", "unit-2"]);
+    await redeploy({ units: [{ mode: "shared", unitset: "pair", until: { coders: 1 }, maxCoders: 1 }] });
+    const other = restart();
+    const [a, b] = await Promise.all([coder("left").next(), coder("right", "demo-secret", () => other).next()]);
+    expect(new Set([a!.id, b!.id]).size).toBe(2);
+    expect(await db.query("SELECT count(*)::int AS n FROM unit_leases")).toEqual([{ n: 2 }]);
   });
 
-  it("forgets idle coders and deployments", async () => {
+  it("forgets idle deployments, and reads them again when used", async () => {
     let now = Date.now();
-    server = restart({ now: () => now, deploymentIdleMs: 1000 * 60 * 60_000 });
+    server = restart({ now: () => now });
     const c = coder("idle");
     await c.submit((await c.next())!.id, demo("neutral"));
-    storeCalls = [];
-    now += 25 * 60 * 60_000; // past maxIdleMs
-    await c.session();
-    expect(count(ANNOTATIONS)).toBe(1);
-
-    server = restart({ now: () => now });
-    await c.session();
     storeCalls = [];
     now += 7 * 60 * 60_000; // past deploymentIdleMs: loaded afresh
     await c.session();
     expect(storeCalls).toContain("getDeployment");
-    expect(count(ANNOTATIONS)).toBe(1);
   });
 });
 

@@ -12,7 +12,7 @@ import { unitHash, type UnitRow } from "../shared/units.js";
 import type {
   AnnotationWrite,
   Coder,
-  CoderAnnotation,
+  Coding,
   CoderValue,
   CoderValuesWrite,
   CoderAssignments,
@@ -20,6 +20,7 @@ import type {
   Finished,
   FinishedRequest,
   ResolveCoderRequest,
+  Lease,
   ResolvedCoder,
   Transfer,
   Unit,
@@ -65,9 +66,29 @@ export interface Store {
   /** Records the coder's request to delete their answers (a new request replaces a postponed one). */
   requestDeletion(coderId: number, request: DeletionRequest): Promise<void>;
   listFinished(request: FinishedRequest): Promise<Finished[]>;
-  /** One coder's live annotations per unit, ordered by first write. */
-  listAnnotations(coderId: number): Promise<CoderAnnotation[]>;
+  /** One coder's live answers for one unit, by variable (empty if none). */
+  unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>>;
+  /** Writes one unit's answers, and the codings they finish (`AnnotationWrite.codings`), together. */
   putAnnotation(write: AnnotationWrite): Promise<void>;
+  /** Finished codings, oldest first: in a loop, of a coder, or both. */
+  listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]>;
+  /** What the stored codings were derived under (the codebook's loops and the annotation epoch), if anything. */
+  codingsBasis(): Promise<string | null>;
+  /** Replaces all codings of the job, derived under `basis`. */
+  replaceCodings(basis: string, codings: Coding[]): Promise<void>;
+  /** The leases of a loop (all coders'), or one coder's (all loops). Also expired ones. */
+  listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]>;
+  /** Stores a lease: the coder's one lease in that queue. */
+  putLease(lease: Lease): Promise<void>;
+  /** The values coders have for a coder-level question (for `balanced` assignment). */
+  coderValuesOf(variable: string): Promise<VariableValue[]>;
+  /**
+   * Runs `fn` in one transaction holding a lock on `key` (in this job), with
+   * a store that works in that transaction. For decisions that count other
+   * coders: picking from a shared queue, giving out sets and groups. The
+   * lock is a database lock, so it holds across server processes.
+   */
+  locked<T>(key: string, fn: (store: Store) => Promise<T>): Promise<T>;
   /**
    * Records that a unit was handed to the coder, in this version: when it
    * first was (the server's bound on their time: docs/coder-identity.md
@@ -256,23 +277,65 @@ export class DbStore implements Store {
     return row?.name ?? null;
   }
 
-  async listAnnotations(coderId: number): Promise<CoderAnnotation[]> {
-    const rows = await this.sql.query<{ unitId: number; coderId: number; variable: string; value: VariableValue; created: Date; updated: Date }>(
-      `SELECT unit_id AS "unitId", coder_id AS "coderId", variable, value, created, updated FROM annotation_values
-       WHERE job_id = $1 AND coder_id = $2 AND unit_id IS NOT NULL AND retired_at IS NULL ORDER BY created, id`,
-      [this.jobId, coderId],
+  async unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>> {
+    const rows = await this.sql.query<{ variable: string; value: VariableValue }>(
+      "SELECT variable, value FROM annotation_values WHERE job_id = $1 AND coder_id = $2 AND unit_id = $3 AND retired_at IS NULL",
+      [this.jobId, coderId, unitId],
     );
-    const byUnit = new Map<number, CoderAnnotation>();
-    for (const row of rows) {
-      let annotation = byUnit.get(row.unitId);
-      if (!annotation) {
-        annotation = { unitId: row.unitId, coderId: row.coderId, variables: {}, created: row.created, updated: row.updated };
-        byUnit.set(row.unitId, annotation);
-      }
-      annotation.variables[row.variable] = row.value;
-      if (row.updated > annotation.updated) annotation.updated = row.updated;
-    }
-    return [...byUnit.values()];
+    return Object.fromEntries(rows.map((r) => [r.variable, r.value]));
+  }
+
+  async listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]> {
+    return this.sql.query<Coding>(
+      `SELECT loop_key AS loop, unit_id AS "unitId", coder_id AS "coderId", agreement, created, updated FROM unit_codings
+       WHERE job_id = $1 AND ($2::text IS NULL OR loop_key = $2) AND ($3::int IS NULL OR coder_id = $3)
+       ORDER BY created, unit_id`,
+      [this.jobId, filter.loop ?? null, filter.coderId ?? null],
+    );
+  }
+
+  async codingsBasis(): Promise<string | null> {
+    if (this.preview) return null;
+    return (await one<{ basis: string | null }>(this.sql, "SELECT codings_basis AS basis FROM deployments WHERE job_id = $1", [this.jobId]))?.basis ?? null;
+  }
+
+  async replaceCodings(basis: string, codings: Coding[]): Promise<void> {
+    await this.sql.transaction(async (tx) => {
+      await tx.query("DELETE FROM unit_codings WHERE job_id = $1", [this.jobId]);
+      for (const c of codings) await insertCoding(tx, this.jobId, c);
+      await tx.query("UPDATE deployments SET codings_basis = $1 WHERE job_id = $2", [basis, this.jobId]);
+    });
+  }
+
+  async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
+    return this.sql.query<Lease>(
+      `SELECT loop_key AS loop, unitset, coder_id AS "coderId", unit_id AS "unitId", expires FROM unit_leases
+       WHERE job_id = $1 AND ($2::text IS NULL OR loop_key = $2) AND ($3::int IS NULL OR coder_id = $3)`,
+      [this.jobId, filter.loop ?? null, filter.coderId ?? null],
+    );
+  }
+
+  async putLease(lease: Lease): Promise<void> {
+    await this.sql.query(
+      `INSERT INTO unit_leases (job_id, loop_key, unitset, coder_id, unit_id, expires) VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (job_id, loop_key, unitset, coder_id) DO UPDATE SET unit_id = excluded.unit_id, expires = excluded.expires`,
+      [this.jobId, lease.loop, lease.unitset, lease.coderId, lease.unitId, lease.expires],
+    );
+  }
+
+  async coderValuesOf(variable: string): Promise<VariableValue[]> {
+    const rows = await this.sql.query<{ value: VariableValue }>(
+      "SELECT value FROM annotation_values WHERE job_id = $1 AND unit_id IS NULL AND variable = $2 AND retired_at IS NULL",
+      [this.jobId, variable],
+    );
+    return rows.map((r) => r.value);
+  }
+
+  locked<T>(key: string, fn: (store: Store) => Promise<T>): Promise<T> {
+    return this.sql.transaction(async (tx) => {
+      await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`${this.jobId}/${key}`]);
+      return fn(new DbStore(tx, this.jobId, this.preview));
+    });
   }
 
   /**
@@ -304,6 +367,10 @@ export class DbStore implements Store {
             write.timings?.[variable] ? JSON.stringify(write.timings[variable]) : null,
           ],
         );
+      }
+      for (const coding of write.codings ?? []) {
+        const now = new Date();
+        await insertCoding(tx, jobId, { loop: coding.loop, unitId: write.unitId, coderId: write.coderId, agreement: coding.agreement, created: now, updated: now });
       }
       if (!unit.coded) await tx.query("UPDATE units SET coded = true WHERE id = $1", [write.unitId]);
     });
@@ -341,6 +408,15 @@ async function addDevice(sql: Sql, jobId: number, coderId: number, coderKey: str
 /** The latest session in this job linked to an email (one per email: docs/coder-identity.md §5). */
 const sessionOfEmail = (sql: Sql, jobId: number, email: string) =>
   one<CoderRow>(sql, "SELECT * FROM coders WHERE job_id = $1 AND lower(email) = lower($2) ORDER BY id DESC LIMIT 1", [jobId, email]);
+
+/** Stores a finished coding; one finished again keeps its first time and gets the new agreement answers. */
+async function insertCoding(sql: Sql, jobId: number, c: Coding): Promise<void> {
+  await sql.query(
+    `INSERT INTO unit_codings (job_id, loop_key, unit_id, coder_id, agreement, created, updated) VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (job_id, loop_key, unit_id, coder_id) DO UPDATE SET agreement = excluded.agreement, updated = excluded.updated`,
+    [jobId, c.loop, c.unitId, c.coderId, JSON.stringify(c.agreement), c.created, c.updated],
+  );
+}
 
 /** The session a device key has in this job, if any. */
 async function knownCoder(sql: Sql, jobId: number, coderKey: string): Promise<(CoderRow & { device_id: number }) | null> {

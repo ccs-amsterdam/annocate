@@ -619,9 +619,9 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
   codebook versions (open them in the editor), unit/coder/invitation counts,
   answers per day (`GET /overview`), progress per loop
-  (`GET /deployment/status`) with what the runtime holds in memory, and
+  (`GET /deployment/status`), and
   the job settings (rename, archive, delete). `LiveControls.tsx`: pause or
-  resume, and reload the runtime. `TeamSettings.tsx`: who has access and
+  resume. `TeamSettings.tsx`: who has access and
   their role (the list keeps at least one admin).
 - **Invitations**: create links (login requirement, participant id fixed
   or from a URL parameter with a pattern, other required URL parameters,

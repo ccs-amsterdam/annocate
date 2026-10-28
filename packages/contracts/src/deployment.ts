@@ -62,13 +62,6 @@ export const DeploymentStatusSchema = z.object({
   coders: z.number().int().nonnegative(),
   sources: z.array(SourceStatusSchema),
   loadedAt: z.coerce.date(),
-  /** What the server holds in memory for this deployment: coders' answers (sizes estimated from JSON). */
-  memory: z
-    .object({
-      coders: z.number().int().nonnegative(),
-      coderBytes: z.number().int().nonnegative(),
-    })
-    .optional(),
 });
 export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
 

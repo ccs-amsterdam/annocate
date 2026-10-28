@@ -236,28 +236,32 @@ Each step its own commit, with tests passing and the system working.
    overwrite each other's), units and shown versions (`unit_serves` keeps
    the version), transfer links as a table, the spec re-read when the
    deployment's stamp changes (`deployments.revision`, bumped by researcher
-   changes; the refresh endpoint and the unit cache are gone). Earlier
-   unit answers (workspaces) stay in memory: distribution derives a
-   coder's finished units from them, so they go with step 4.
-3. **Sets and balanced groups** as locked count queries.
-4. **Shared queues**: `queue_units`, `unit_leases`, the locked pick, rebuild
-   on deploy. Distribution tests run against PGlite; a test with two
-   runtimes on one database checks that they never hand out a slot twice.
+   changes; the refresh endpoint and the unit cache are gone).
+3. **Sets and balanced groups** (done): counted in the database under a
+   lock per loop or variable.
+4. **Shared queues** (done): finished codings as a table (`unit_codings`,
+   written with the answers, derived again when the loops change:
+   `deployments.codings_basis`), `unit_leases`, the pick under the queue's
+   lock. Workspaces are gone: a coder's earlier answers are read per unit.
+   Tests: two processes asked at the same moment hand out different units;
+   a changed loop is derived again once, also with two processes. As built,
+   a pick reads the loop's codings and leases (not a per-unit summary
+   table): simpler, and enough for jobs of thousands of units; the summary
+   is the next step if a queue gets very large.
 5. **Batches and optimistic saving** (contracts, server, client).
 6. **The runtime package**: runtime and `MemoryStore` out of
    `packages/server`, runnable outside Node.
 7. **Docs**: `architecture.md` §3 and §10, `api/coder.md`, `compositions.md`.
 8. **Local hosts** (later, separate): the V8 spike, then the R package.
 
-Steps 1–2 are done. Step 4 is the one to review closely before building.
+Steps 1–4 are done; the server runs any number of processes against one
+database (previews aside, §10).
 
 ## 10. Open points
 
 - Batch size: fixed, or by unit size?
-- The deployment status's `memory` figures go; anything researchers relied
-  on there?
 - Running several processes in the hosted setup (Docker Compose replicas
-  behind the existing proxy) once step 4 is in.
+  behind the existing proxy).
 - Previews keep their coders and answers in the memory of one process
   (`preview.ts`). With several processes a preview needs them in the
   database (marked as preview data, deleted when it expires), or requests

@@ -130,15 +130,25 @@ export interface CoderValuesWrite {
   timings?: Record<string, AnswerTiming>;
 }
 
-/** One coder's live values for one unit (the runtime's per-coder workspace). */
-export interface CoderAnnotation {
+/** A finished coding: a coder answered every question of a loop for a unit (`unit_codings`). */
+export interface Coding {
+  loop: string;
   unitId: number;
   coderId: number;
-  /** Live values only, by variable name, including ones from older codebook versions. */
-  variables: Record<string, VariableValue>;
-  /** First write of any live value for this unit: the unit's place in the coder's progress. */
+  /** The coder's answers to the loop's agreement questions (`agreementKey`), by variable. */
+  agreement: Record<string, string | null>;
+  /** When the coder first finished it (orders their progress), and last changed it. */
   created: Date;
   updated: Date;
+}
+
+/** A unit of a shared queue handed out to a coder (`unit_leases`): one per coder per queue. */
+export interface Lease {
+  loop: string;
+  unitset: string;
+  coderId: number;
+  unitId: number;
+  expires: Date;
 }
 
 /**
@@ -191,4 +201,6 @@ export interface AnnotationWrite {
   deviceId?: number | null;
   /** How long the coder took per question, as their browser measured it (by variable). */
   timings?: Record<string, AnswerTiming>;
+  /** The loops these answers finish the unit in, with the agreement answers (`Coding`). */
+  codings?: { loop: string; agreement: Record<string, string | null> }[];
 }

@@ -23,10 +23,10 @@ import {
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import { unitHash } from "../shared/units.js";
-import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement, type SharedRule } from "./distribution.js";
+import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement } from "./distribution.js";
 import type { Store } from "./store.js";
 import type { DeviceDetails } from "../shared/devices.js";
-import type { Coder, CoderValue, DeploymentSpec, ResolveCoderRequest, ResolvedCoder, Unit } from "./types.js";
+import type { Coder, CoderValue, Coding, DeploymentSpec, Lease, ResolveCoderRequest, ResolvedCoder, Unit } from "./types.js";
 import {
   agreementKey,
   singleValue,
@@ -36,9 +36,8 @@ import {
   findEndItem,
   finishedLoops,
   loopAgreementVariables,
-  needsAllCodings,
   validateVariables,
-  variableValues,
+  valueOf,
   type LoopInfo,
   type VariableType,
 } from "./codebook.js";
@@ -55,14 +54,6 @@ export interface BranchChoice {
 export interface RuntimeOptions {
   /** How long a "continue on another device" link stays valid. */
   transferTtlMs: number;
-  /**
-   * Memory budget for active coders' own annotations. Over budget, coders
-   * who finished every loop go first, then the least recently active. They
-   * are re-fetched when the coder returns.
-   */
-  workspaceCacheBytes: number;
-  /** Upper bound on keeping coder annotations, however much room is left. */
-  maxIdleMs: number;
   /** A loaded deployment nobody used for this long is dropped (registry.ts). */
   deploymentIdleMs: number;
   now: () => number;
@@ -71,8 +62,6 @@ export interface RuntimeOptions {
 
 export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
   transferTtlMs: 15 * 60_000,
-  workspaceCacheBytes: 32 * 2 ** 20,
-  maxIdleMs: 24 * 60 * 60_000,
   deploymentIdleMs: 6 * 60 * 60_000,
   now: () => Date.now(),
   random: Math.random,
@@ -80,7 +69,13 @@ export const DEFAULT_RUNTIME_OPTIONS: RuntimeOptions = {
 
 export type { Coder };
 
-/** Where a coder is routed in a loop: the branch, their own pool, and the overlap. */
+/** Where a coder is routed in a loop: the branch and its unitset names (`branchUnitsets` order: own set, overlap). */
+interface Route {
+  branch: UnitBranch;
+  names: string[];
+}
+
+/** A route's pools, with the state they were loaded with. */
 interface Routed {
   branch: UnitBranch;
   main: UnitPool;
@@ -89,43 +84,24 @@ interface Routed {
 
 type AutoVariable = Extract<VariableType, { type: "auto" }>;
 
-/** A coder's own annotations (also unfinished ones): unitId -> variables. */
-type Workspace = Map<number, Record<string, VariableValue>>;
-
-interface WorkspaceEntry {
-  units: Workspace;
-  usedAt: number;
-  /** Estimated size, for the memory budget. */
-  bytes: number;
-  /** Loops where the coder was told there are no more units. All of them: the coder is done, evicted first. */
-  exhausted: Set<string>;
-}
-
 /** How long a coder can go back after completing a session (docs/coder-identity.md §9). */
 export const REOPEN_MS = 15 * 60 * 1000;
 
-/** Rough in-memory size of a JSON value: enough to compare against a budget. */
-const sizeOf = (value: unknown) => JSON.stringify(value).length;
-
 /**
- * The coder runtime of one deployed job. Per request it reads the coder,
- * their answers and units from the database (docs/plan-stateless-runtime.md);
- * it keeps in memory only:
- *
- *  - the deployment spec, re-read when its stamp changes (`refresh`);
- *  - distribution state, loaded eagerly by `load`: for loops with shared
- *    queues or sets which coder finished which unit (plus agreement keys),
- *    and for `balanced` auto variables which coder has which option;
- *  - per active coder their workspace, i.e. their own live annotations,
- *    loaded when the coder shows up and evicted when they go idle. A coder's
- *    finished units in every loop are derived from the workspace.
- *
- * The last two move to the database in step 4 of that plan; until then this
- * assumes one server process.
+ * The coder runtime of one deployed job (docs/plan-stateless-runtime.md).
+ * Everything it works with is in the database and read per request: the
+ * coder, their answers, units, finished codings (`unit_codings`) and the
+ * leases of shared queues (`unit_leases`). Decisions that count other
+ * coders (a shared queue's next unit, a set, a balanced group) run under a
+ * database lock (`Store.locked`), so any number of server processes can
+ * serve the same job. In memory only the deployment spec, re-read when its
+ * stamp changes.
  *
  * "Finished" is always relative to the current codebook: every question of
  * the loop has a live value (docs/architecture.md §8.2). Codings are kept
- * per loop, so a unit in two loops is finished in each separately.
+ * per loop, so a unit in two loops is finished in each separately; they
+ * are rebuilt from the answers when what finishes a loop changes
+ * (`codingsBasis`).
  */
 export class DeploymentRuntime {
   private spec!: DeploymentSpec;
@@ -135,29 +111,8 @@ export class DeploymentRuntime {
   private dependencies = new Map<string, string[]>();
   private autoVariables: [string, AutoVariable][] = [];
   private unitsets = new Map<string, number[]>();
-  /** Units that no longer exist. */
-  private removedUnits = new Set<number>();
-  /** loop key -> finished codings in that loop. */
-  private codings = new Map<string, Codings>();
-  /** `codingsSignature` of the spec the codings were derived under. */
-  private codingsBasis = "";
-  /** Annotations written while `loadCodings` is fetching, replayed onto its result. */
-  private pendingCodings: [coderId: number, variables: Record<string, VariableValue>, unitId: number][] | null = null;
-  /** `<loop>/<unitset>/<shared rule>` -> pool, created when the first coder is routed to it. */
-  private pools = new Map<string, UnitPool>();
   /** The unit fields the codebook shows (`shownUnitFields`): all coders get. */
   private shownFields: string[] = [];
-  /** Loops with `sets` branches: coderId -> their set and when they were routed, for every coder. */
-  private setAssignments = new Map<string, Map<number, { set: string; at: number }>>();
-  /**
-   * coderId -> the coder's own annotations, returned with a unit and merged
-   * into on resubmit. Map order is recency order (least recent first).
-   */
-  private workspaces = new Map<number, WorkspaceEntry>();
-  private workspaceBytes = 0;
-  private workspaceLoads = new Map<number, Promise<Workspace>>();
-  /** `balanced` auto variable -> coderId -> option, for every coder that has one. */
-  private balanced = new Map<string, Map<number, string>>();
   /** The deployment's stamp when the spec was read (`Store.deploymentStamp`). */
   private stamp: string | null = null;
   private loadedAt = 0;
@@ -171,64 +126,39 @@ export class DeploymentRuntime {
 
   // --- state ------------------------------------------------------------------
 
-  /** (Re)builds the distribution state from the database. Coder workspaces are loaded on demand. */
+  /** Reads the deployment, and makes sure the finished codings fit its codebook. */
   async load(): Promise<void> {
     const stamp = await this.store.deploymentStamp();
     this.applySpec(await this.store.getDeployment());
+    await this.ensureCodings();
     this.stamp = stamp;
-    await Promise.all([this.loadCodings(), this.loadBalanced(), this.loadSetAssignments()]);
     this.loadedAt = this.options.now();
   }
 
   /**
    * Checks the deployment's stamp (one small query, every request), and if
-   * it changed re-reads the spec; applies it fully if its version changed.
-   * Finished codings are derived from annotations *and* the codebook's
-   * loops, so they are kept only if the loops' questions, dynamic sources
-   * and agreement variables are unchanged, and no annotations were reset
-   * meanwhile (`annotationEpoch`). Single-flight.
+   * it changed re-reads the spec. Single-flight.
    */
   async refresh(): Promise<void> {
     this.refreshing ??= (async () => {
       try {
-        this.evictExpired();
         const stamp = await this.store.deploymentStamp();
         if (stamp !== null && stamp === this.stamp) return;
         const spec = await this.store.getDeployment();
+        if (spec.version !== this.spec.version || spec.annotationEpoch !== this.spec.annotationEpoch) {
+          this.applySpec(spec);
+          await this.ensureCodings();
+        } else {
+          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen, unitsets: spec.unitsets };
+          this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
+        }
         // Only once read: a failed read (e.g. a suspended job) is tried again next time.
         this.stamp = stamp;
-        if (spec.version === this.spec.version && spec.annotationEpoch === this.spec.annotationEpoch) {
-          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen };
-          this.applyUnitsets(spec);
-          return;
-        }
-        const epochChanged = spec.annotationEpoch !== this.spec.annotationEpoch;
-        const balancedBefore = this.balancedVariables().join();
-        this.applySpec(spec);
-        await Promise.all([
-          epochChanged || codingsSignature(this.loops.values()) !== this.codingsBasis ? this.loadCodings() : null,
-          this.balancedVariables().join() !== balancedBefore ? this.loadBalanced() : null,
-          this.loadSetAssignments(),
-        ]);
       } finally {
         this.refreshing = null;
       }
     })();
     await this.refreshing;
-  }
-
-  /**
-   * Unitsets (and all units) change without a new codebook version: units
-   * uploaded, sets made or edited after publishing. Pools of a changed set
-   * start again from it (their leases are dropped: disposable, §3).
-   */
-  private applyUnitsets(spec: DeploymentSpec): void {
-    const next = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
-    const changed = new Set([...next.keys(), ...this.unitsets.keys()].filter((name) => next.get(name)?.join() !== this.unitsets.get(name)?.join()));
-    this.spec = { ...this.spec, unitsets: spec.unitsets };
-    if (changed.size === 0) return;
-    this.unitsets = next;
-    for (const [key, pool] of this.pools) if (changed.has(pool.unitset)) this.pools.delete(key);
   }
 
   private applySpec(spec: DeploymentSpec): void {
@@ -242,128 +172,41 @@ export class DeploymentRuntime {
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.unitsets = new Map(spec.unitsets.map((u) => [u.name, u.unitIds]));
     this.shownFields = shownUnitFields(items);
-    this.pools.clear();
-    this.removedUnits.clear();
+  }
+
+  /** What finishes a loop under this codebook (its questions and agreement questions), and the annotation epoch. */
+  private get codingsBasis(): string {
+    return `${codingsSignature(this.loops.values())}/${this.spec.annotationEpoch}`;
   }
 
   /**
-   * Rebuilds the codings: every coder's finished units for loops with
-   * shared queues or sets (global state those need), and drops the
-   * workspaces, so other loops' codings are rebuilt per coder when they
-   * show up.
+   * The stored codings (`unit_codings`) are derived from the answers under a
+   * codebook. If that changed (loops gained questions, other agreement
+   * questions) or answers were reset, they are derived again, once: the
+   * first process to get the lock does it.
    */
-  private async loadCodings(): Promise<void> {
-    const dynamicLoops = [...this.loops.values()].filter(needsAllCodings);
-    const pending: NonNullable<typeof this.pendingCodings> = [];
-    this.pendingCodings = pending;
-    try {
-      const rows = await this.store.listFinished({
-        loops: dynamicLoops.map((info) => ({
-          loop: info.key,
-          variables: [...info.variables.keys()],
-          values: loopAgreementVariables(info),
-        })),
+  private async ensureCodings(): Promise<void> {
+    const basis = this.codingsBasis;
+    if ((await this.store.codingsBasis()) === basis) return;
+    await this.store.locked("codings", async (store) => {
+      if ((await store.codingsBasis()) === basis) return;
+      const rows = await store.listFinished({
+        loops: [...this.loops.values()].map((info) => ({ loop: info.key, variables: [...info.variables.keys()], values: loopAgreementVariables(info) })),
       });
-      this.codings = new Map();
-      this.workspaces.clear();
-      this.workspaceBytes = 0;
-      for (const row of rows) {
+      const codings = rows.flatMap((row): Coding[] => {
         const info = this.loops.get(row.loop);
-        if (info && row.unitId !== null) {
-          this.codingsFor(row.loop).record(row.coderId, row.unitId, agreementKeys(row.values ?? {}, info), row.created.getTime());
-        }
-      }
-      this.pendingCodings = null; // replaying must not append to the list being replayed
-      for (const [coderId, variables, unitId] of pending) this.recordFinished(coderId, unitId, variables);
-      this.codingsBasis = codingsSignature(this.loops.values());
-      this.pools.clear(); // pools hold the Codings they were created with
-    } finally {
-      this.pendingCodings = null;
-    }
-  }
-
-  /** Auto variables assigned `balanced` (directly, or as fallback for a missing invite value). */
-  private balancedVariables(): string[] {
-    return this.autoVariables
-      .filter(([, v]) => (v.source === "invite" ? v.fallback : v.source) === "balanced")
-      .map(([name]) => name);
-  }
-
-  /**
-   * Which option every coder has, for `balanced` variables: coder-level
-   * rows from the bulk query. Kept up to date in memory as
-   * coders show up; options assigned while this loads are kept.
-   */
-  private async loadBalanced(): Promise<void> {
-    const names = this.balancedVariables();
-    if (names.length === 0) {
-      this.balanced = new Map();
-      return;
-    }
-    const rows = await this.store.listFinished({
-      loops: names.map((name) => ({ loop: name, level: "coder", variables: [name], values: [name] })),
+        if (!info || row.unitId === null) return [];
+        return [{ loop: row.loop, unitId: row.unitId, coderId: row.coderId, agreement: agreementKeys(row.values ?? {}, info), created: row.created, updated: row.created }];
+      });
+      await store.replaceCodings(basis, codings);
     });
-    const balanced = new Map(names.map((name) => [name, new Map(this.balanced.get(name))]));
-    for (const row of rows) {
-      const code = variableValues(row.values ?? {})[row.loop];
-      if (code !== undefined) balanced.get(row.loop)?.set(row.coderId, code);
-    }
-    this.balanced = balanced;
   }
 
-  /** Records the coder's options for `balanced` variables. */
-  private countBalanced(coderId: number, values: Record<string, CoderValue>): void {
-    const codes = variableValues(plainValues(values));
-    for (const [name, byCoder] of this.balanced) {
-      if (codes[name] !== undefined) byCoder.set(coderId, codes[name]);
-    }
-  }
-
-  private codingsFor(loop: string): Codings {
-    let codings = this.codings.get(loop);
-    if (!codings) this.codings.set(loop, (codings = new Codings()));
+  /** Finished codings as distribution reads them. */
+  private static codingsOf(rows: Coding[]): Codings {
+    const codings = new Codings();
+    for (const row of rows) codings.record(row.coderId, row.unitId, row.agreement, new Date(row.updated).getTime());
     return codings;
-  }
-
-  /** Records a unit as finished in every loop these answers finish it in. */
-  private recordFinished(coderId: number, unitId: number, variables: Record<string, VariableValue>, at = this.options.now()): void {
-    for (const info of finishedLoops(variables, this.loops.values())) {
-      this.codingsFor(info.key).record(coderId, unitId, agreementKeys(variables, info), at);
-    }
-    this.pendingCodings?.push([coderId, variables, unitId]);
-  }
-
-  /** The coder's own annotations, read from the database if they aren't cached. */
-  private workspace(coderId: number): Promise<Workspace> {
-    const cached = this.workspaces.get(coderId);
-    if (cached) {
-      cached.usedAt = this.options.now();
-      this.workspaces.delete(coderId); // move to the most recent end
-      this.workspaces.set(coderId, cached);
-      return Promise.resolve(cached.units);
-    }
-    let loading = this.workspaceLoads.get(coderId);
-    if (!loading) {
-      loading = (async () => {
-        try {
-          const annotations = await this.store.listAnnotations(coderId);
-          annotations.sort((a, b) => a.created.getTime() - b.created.getTime());
-          const units: Workspace = new Map(annotations.map((a) => [a.unitId, a.variables]));
-          // The coder's finished units, in order of first answer (loops without
-          // dynamic sources only learn them here).
-          for (const a of annotations) this.recordFinished(coderId, a.unitId, a.variables, a.updated.getTime());
-          const bytes = annotations.reduce((n, a) => n + sizeOf(a.variables), 0);
-          this.workspaces.set(coderId, { units, usedAt: this.options.now(), bytes, exhausted: new Set() });
-          this.workspaceBytes += bytes;
-          this.trimWorkspaces(coderId);
-          return units;
-        } finally {
-          this.workspaceLoads.delete(coderId);
-        }
-      })();
-      this.workspaceLoads.set(coderId, loading);
-    }
-    return loading;
   }
 
   // --- coders -----------------------------------------------------------------
@@ -373,10 +216,8 @@ export class DeploymentRuntime {
    * participant id / new-session confirmation, see docs/coder-identity.md).
    * Read from the database on every request: one indexed query.
    */
-  async resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
-    const resolved = await this.store.resolveCoder(request);
-    await this.workspace(resolved.coder.coderId);
-    return resolved;
+  resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
+    return this.store.resolveCoder(request);
   }
 
   /**
@@ -385,13 +226,12 @@ export class DeploymentRuntime {
    * coder's answers as stored). Once assigned they never change. Saved
    * before the coder is answered. Done when the session is loaded
    * (`session`): the client loads it before anything else, and again after
-   * a new codebook version, which may have new `auto` questions.
+   * a new codebook version, which may have new `auto` questions. A
+   * `balanced` one is chosen under a lock, counting every coder's value.
    */
   private async assignAutoVariables(coder: Coder, values: Record<string, CoderValue>, urlParams: Record<string, string>): Promise<void> {
-    if (this.autoVariables.length === 0) return;
-    // Values the coder came with (invite presets) count for balancing too.
-    this.countBalanced(coder.coderId, values);
     const assigned: Record<string, VariableValue> = {};
+    const balanced: [string, { value: string }[]][] = [];
     for (const [name, variable] of this.autoVariables) {
       if (values[name] !== undefined) continue;
       if (variable.source === "url_param") {
@@ -402,16 +242,22 @@ export class DeploymentRuntime {
         continue;
       }
       const method = variable.source === "invite" ? variable.fallback : variable.source;
-      if (method !== "random" && method !== "balanced") continue;
       const options = variable.options ?? [];
       if (options.length === 0) continue;
-      assigned[name] = singleValue(method === "random" ? this.drawWeighted(options) : this.leastUsed(name, options));
+      if (method === "random") assigned[name] = singleValue(this.drawWeighted(options));
+      if (method === "balanced") balanced.push([name, options]);
     }
-    if (Object.keys(assigned).length > 0) {
-      for (const [name, value] of Object.entries(assigned)) values[name] = { value, assigned: true, frozen: false };
-      this.countBalanced(coder.coderId, values);
-      await this.store.putCoderValues({ coderId: coder.coderId, values: assigned, assigned: true, codebookId: this.spec.codebook.id });
+    const put = (store: Store, write: Record<string, VariableValue>) =>
+      store.putCoderValues({ coderId: coder.coderId, values: write, assigned: true, codebookId: this.spec.codebook.id });
+    if (Object.keys(assigned).length > 0) await put(this.store, assigned);
+    for (const [name, options] of balanced) {
+      assigned[name] = await this.store.locked(`balanced/${name}`, async (store) => {
+        const value = singleValue(DeploymentRuntime.leastUsed(options, await store.coderValuesOf(name)));
+        await put(store, { [name]: value });
+        return value;
+      });
     }
+    for (const [name, value] of Object.entries(assigned)) values[name] = { value, assigned: true, frozen: false };
   }
 
   private drawWeighted(options: { value: string; weight?: number }[]): string {
@@ -424,10 +270,12 @@ export class DeploymentRuntime {
     return options[options.length - 1].value;
   }
 
-  private leastUsed(name: string, options: { value: string }[]): string {
+  /** The option the fewest coders have (the first of those). */
+  private static leastUsed(options: { value: string }[], taken: VariableValue[]): string {
     const counts = new Map(options.map((o) => [o.value, 0]));
-    for (const value of this.balanced.get(name)?.values() ?? []) {
-      if (counts.has(value)) counts.set(value, counts.get(value)! + 1);
+    for (const answer of taken) {
+      const value = valueOf(answer);
+      if (value !== undefined && counts.has(value)) counts.set(value, counts.get(value)! + 1);
     }
     return options.reduce((best, o) => (counts.get(o.value)! < counts.get(best.value)! ? o : best)).value;
   }
@@ -458,20 +306,20 @@ export class DeploymentRuntime {
    */
   async session(coder: Coder, urlParams: Record<string, string> = {}): Promise<SessionResponse> {
     const values = await this.store.coderValues(coder.coderId);
-    if (!coder.ended) await this.assignAutoVariables(coder, values, urlParams);
-    const endValues = await this.endValues(coder, values);
+    if (!coder.ended && this.autoVariables.length > 0) await this.assignAutoVariables(coder, values, urlParams);
+    const [endValues, codings] = await Promise.all([this.endValues(coder, values), this.store.listCodings({ coderId: coder.coderId })]);
     return {
       coderId: coder.coderId,
       jobId: this.spec.jobId,
       codebook: this.spec.codebook,
       version: this.spec.version,
       progress: [...this.loops.values()].map((info) => {
-        const routed = this.assignedPools(coder, info.key);
-        const pools = DeploymentRuntime.poolsOf(routed);
+        const route = this.assignedRoute(coder, info.key);
+        const units = this.routeUnits(route);
         return {
           unitset: info.key,
-          doneUnitIds: this.codingsFor(info.key).doneBy(coder.coderId).filter((id) => pools.some((p) => p.has(id))),
-          totalUnits: this.expectedUnits(routed),
+          doneUnitIds: codings.filter((c) => c.loop === info.key && units.has(c.unitId)).map((c) => c.unitId),
+          totalUnits: this.expectedUnits(route),
         };
       }),
       // A closed session: only what its end screen shows.
@@ -498,7 +346,7 @@ export class DeploymentRuntime {
     // Without an item: the coder went through the whole job.
     const end = item === undefined ? null : findEndItem(this.spec.codebook.items, item);
     if (item !== undefined && !end) throw new HttpError(400, `No end item '${item}'`);
-    if (unit && (!this.loops.has(unit.loop) || !(await this.workspace(coder.coderId)).has(unit.id))) {
+    if (unit && (!this.loops.has(unit.loop) || Object.keys(await this.store.unitAnswers(coder.coderId, unit.id)).length === 0)) {
       throw new HttpError(400, "The end's unit is not one you answered");
     }
     coder.ended = { ...(item ? { item } : {}), ...(unit ? { unit } : {}), outcome: end?.outcome ?? "complete", at: new Date(this.options.now()) };
@@ -545,8 +393,10 @@ export class DeploymentRuntime {
     const vars = names("var");
     let unit: EndValues["unit"] = null;
     if (ended.unit) {
-      const data = (await this.getUnits([ended.unit.id])).get(ended.unit.id)?.data ?? {};
-      const answers = (await this.workspace(coder.coderId)).get(ended.unit.id) ?? {};
+      const [data, answers] = await Promise.all([
+        this.getUnits([ended.unit.id]).then((units) => units.get(ended.unit!.id)?.data ?? {}),
+        this.store.unitAnswers(coder.coderId, ended.unit.id),
+      ]);
       unit = { data: pick(data, names("unit")), variables: pick(answers, vars) };
     }
     return { variables: pick(plainValues(values), vars), unit };
@@ -600,31 +450,34 @@ export class DeploymentRuntime {
     await this.store.putCoderValues({ coderId: coder.coderId, values: changed, codebookId: this.spec.codebook.id, deviceId, timings: timed });
   }
 
-  /** How many units the coder will get in a loop, if that doesn't depend on other coders. */
-  private expectedUnits(routed: Routed | null): number | null {
-    if (!routed) return null;
-    const { branch, main, overlap } = routed;
-    const own = branch.mode === "shared" ? (branch.maxUnits === undefined ? null : Math.min(branch.maxUnits, main.size)) : main.size;
-    return own === null ? null : own + (overlap?.pool.size ?? 0);
-  }
-
   // --- routing ----------------------------------------------------------------
 
-  private pool(loop: string, unitset: string, rule: SharedRule | null): UnitPool {
-    const key = `${loop}/${unitset}/${JSON.stringify(rule)}`;
-    let pool = this.pools.get(key);
-    if (!pool) {
-      const unitIds = (this.unitsets.get(unitset) ?? []).filter((id) => !this.removedUnits.has(id));
-      this.pools.set(key, (pool = new UnitPool(unitset, unitIds, rule, this.codingsFor(loop))));
-    }
-    return pool;
+  /** A unitset's units, as of the spec. */
+  private unitsOf(unitset: string): number[] {
+    return this.unitsets.get(unitset) ?? [];
   }
 
-  /** A branch's pools for these unitset names (in `branchUnitsets` order). */
-  private routed(loop: string, branch: UnitBranch, names: string[]): Routed {
-    const main = this.pool(loop, names[0], branch.mode === "shared" ? sharedDefaults(branch) : null);
+  /** All units of a route (own set and overlap). */
+  private routeUnits(route: Route | null): Set<number> {
+    return new Set(route ? route.names.flatMap((name) => this.unitsOf(name)) : []);
+  }
+
+  /** How many units the coder will get in a loop, if that doesn't depend on other coders. */
+  private expectedUnits(route: Route | null): number | null {
+    if (!route) return null;
+    const { branch, names } = route;
+    const size = this.unitsOf(names[0]).length;
+    const own = branch.mode === "shared" ? (branch.maxUnits === undefined ? null : Math.min(branch.maxUnits, size)) : size;
+    return own === null ? null : own + (branch.overlap ? this.unitsOf(names[1]).length : 0);
+  }
+
+  /** A route's pools, working on these codings and (shared queues) leases. */
+  private pools(route: Route, codings: Codings, leases: Lease[]): Routed {
+    const { branch, names } = route;
+    const main = new UnitPool(names[0], this.unitsOf(names[0]), branch.mode === "shared" ? sharedDefaults(branch) : null, codings);
+    main.loadLeases(leases.filter((l) => l.unitset === names[0]).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
     const overlap = branch.overlap
-      ? { pool: this.pool(loop, names[1], null), placement: branch.overlap.placement ?? ("before" as const) }
+      ? { pool: new UnitPool(names[1], this.unitsOf(names[1]), null, codings), placement: branch.overlap.placement ?? ("before" as const) }
       : null;
     return { branch, main, overlap };
   }
@@ -642,19 +495,14 @@ export class DeploymentRuntime {
    * branch with a stored routing (by `branchFingerprint`) whose unitsets
    * still fit it.
    */
-  private assignedPools(coder: Coder, loop: string): Routed | null {
+  private assignedRoute(coder: Coder, loop: string): Route | null {
     const info = this.loops.get(loop);
     if (!info) return null;
     for (const branch of info.loop.units) {
       const assignment = coder.assignments[branchFingerprint(branch)];
-      if (assignment && DeploymentRuntime.fits(branch, assignment.unitsets)) return this.routed(info.key, branch, assignment.unitsets);
+      if (assignment && DeploymentRuntime.fits(branch, assignment.unitsets)) return { branch, names: assignment.unitsets };
     }
     return null;
-  }
-
-  /** The pools of a routing, own set first. */
-  private static poolsOf(routed: Routed | null): UnitPool[] {
-    return routed ? [routed.main, ...(routed.overlap ? [routed.overlap.pool] : [])] : [];
   }
 
   /**
@@ -662,18 +510,18 @@ export class DeploymentRuntime {
    * (they may use answers the server shouldn't need, docs/encryption.md)
    * and sends the chosen branch with its filled-in unitset names; the server
    * checks that the names fit that branch and exist. It picks the coder's
-   * set itself in `sets` mode (the one with the fewest coders) and
-   * `invitation` mode (their invite's). A loop with a single unconditional
-   * branch without references routes without a choice. Sticky: stored with
-   * the coder, and reused as long as the codebook still has a branch that
-   * produces the same unitsets (so a codebook update that keeps it doesn't
-   * move coders around). Null if the coder gets no units here (an
-   * invitation without units; tried again next time).
+   * set itself in `sets` mode (the one with the fewest coders, under a
+   * lock) and `invitation` mode (their invite's). A loop with a single
+   * unconditional branch without references routes without a choice.
+   * Sticky: stored with the coder, and reused as long as the codebook still
+   * has a branch that produces the same unitsets (so a codebook update that
+   * keeps it doesn't move coders around). Null if the coder gets no units
+   * here (an invitation without units; tried again next time).
    */
-  private async route(coder: Coder, info: LoopInfo, choice: BranchChoice): Promise<Routed | null> {
+  private async route(coder: Coder, info: LoopInfo, choice: BranchChoice): Promise<Route | null> {
     const loop = info.loop;
     const title = loopTitle(loop, info.key);
-    const existing = this.assignedPools(coder, info.key);
+    const existing = this.assignedRoute(coder, info.key);
     if (existing) return existing;
 
     let branchIndex = choice.branch;
@@ -693,29 +541,32 @@ export class DeploymentRuntime {
       throw new HttpError(400, `${title}: unitsets [${names.join(", ")}] don't fit branch ${branchIndex}`);
     }
     names = [...names];
-    if (branch.mode === "sets") names[0] = this.leastCodedSet(info.key, branch.unitsets);
     if (branch.mode === "invitation") {
       const own = await this.store.inviteUnitset(coder.inviteId ?? "first");
       if (own === null) return null;
       names[0] = own;
     }
-    const missing = names.find((name) => !this.unitsets.has(name));
-    if (missing !== undefined) {
-      throw new HttpError(409, `${title}: unitset '${missing}' does not exist for this coder`);
+    const check = () => {
+      const missing = names.find((name) => !this.unitsets.has(name));
+      if (missing !== undefined) throw new HttpError(409, `${title}: unitset '${missing}' does not exist for this coder`);
+    };
+    const save = async (store: Store) => {
+      const assignment = { unitsets: names, at: this.options.now() };
+      await store.routeCoder(coder.coderId, branchFingerprint(branch), assignment);
+      coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: assignment };
+    };
+    if (branch.mode === "sets") {
+      // The set with the fewest coders, counted under a lock: coders starting at the same moment spread over the sets.
+      await this.store.locked(`sets/${info.key}`, async (store) => {
+        names[0] = await this.leastCodedSet(store, info, branch.unitsets);
+        check();
+        await save(store);
+      });
+    } else {
+      check();
+      await save(this.store);
     }
-
-    const at = this.options.now();
-    const assignment = { unitsets: names, at };
-    coder.assignments = { ...coder.assignments, [branchFingerprint(branch)]: assignment };
-    await this.store.routeCoder(coder.coderId, branchFingerprint(branch), assignment);
-    if (branch.mode === "sets") this.setCoders(info.key).set(coder.coderId, { set: names[0], at });
-    return this.routed(info.key, branch, names);
-  }
-
-  private setCoders(loop: string): Map<number, { set: string; at: number }> {
-    let coders = this.setAssignments.get(loop);
-    if (!coders) this.setAssignments.set(loop, (coders = new Map()));
-    return coders;
+    return { branch, names };
   }
 
   /**
@@ -724,71 +575,80 @@ export class DeploymentRuntime {
    * the last 24 hours (contracts SET_ACTIVITY_MS): sets of coders who
    * dropped out are handed out again.
    */
-  private leastCodedSet(loop: string, sets: string[]): string {
+  private async leastCodedSet(store: Store, info: LoopInfo, sets: string[]): Promise<string> {
+    const [coders, rows] = await Promise.all([store.listCoders(), store.listCodings({ loop: info.key })]);
+    const codings = DeploymentRuntime.codingsOf(rows);
     const now = this.options.now();
-    const codings = this.codingsFor(loop);
     const counts = new Map(sets.map((s) => [s, 0]));
-    for (const [coderId, { set, at }] of this.setCoders(loop)) {
+    for (const coder of coders) {
+      const route = this.assignedRoute(coder, info.key);
+      if (route?.branch.mode !== "sets") continue;
+      const set = route.names[0];
       if (!counts.has(set)) continue;
-      const active = now - Math.max(at, codings.lastFinished(coderId)) < SET_ACTIVITY_MS;
-      const finished = (this.unitsets.get(set) ?? []).every((id) => codings.has(coderId, id));
+      const at = coder.assignments[branchFingerprint(route.branch)].at;
+      const active = now - Math.max(at, codings.lastFinished(coder.coderId)) < SET_ACTIVITY_MS;
+      const finished = this.unitsOf(set).every((id) => codings.has(coder.coderId, id));
       if (active || finished) counts.set(set, counts.get(set)! + 1);
     }
     return sets.reduce((best, s) => (counts.get(s)! < counts.get(best)! ? s : best));
   }
 
-  /** Which coder has which set, in loops with `sets` branches (every coder, not only active ones). */
-  private async loadSetAssignments(): Promise<void> {
-    const loops = [...this.loops.values()].filter((info) => info.loop.units.some((b) => b.mode === "sets"));
-    this.setAssignments = new Map();
-    if (loops.length === 0) return;
-    for (const coder of await this.store.listCoders()) {
-      for (const info of loops) {
-        const routed = this.assignedPools(coder, info.key);
-        const assignment = routed && coder.assignments[branchFingerprint(routed.branch)];
-        if (routed?.branch.mode === "sets" && assignment) this.setCoders(info.key).set(coder.coderId, { set: assignment.unitsets[0], at: assignment.at });
-      }
-    }
-  }
-
   // --- units ------------------------------------------------------------------
 
+  /**
+   * The coder's next unit in a loop, or null when they are done with it. In
+   * a shared queue it is picked under the queue's lock, counting every
+   * coder's codings and leases, and leased to the coder.
+   */
   async nextUnit(coder: Coder, loopName: string, choice: BranchChoice = { unitsets: [] }): Promise<CoderUnitResponse | null> {
     this.assertOpen(coder);
     if (!this.spec.active) throw new HttpError(409, "This job is not active");
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
-    const [routed, own] = await Promise.all([this.route(coder, info, choice), this.workspace(coder.coderId)]);
-    if (!routed) return null;
+    const route = await this.route(coder, info, choice);
+    if (!route) return null;
+    const unit =
+      route.branch.mode === "shared"
+        ? await this.store.locked(`queue/${info.key}/${route.names[0]}`, (store) => this.pick(store, coder, info, route))
+        : await this.pick(this.store, coder, info, route);
+    if (!unit) return null;
+    const [shown, answers] = await Promise.all([this.markServed(coder.coderId, unit), this.store.unitAnswers(coder.coderId, unit.id)]);
+    return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: answers };
+  }
 
+  /** Picks the coder's next unit (and leases it, in a shared queue); skips units that no longer exist. */
+  private async pick(store: Store, coder: Coder, info: LoopInfo, route: Route): Promise<Unit | null> {
+    const shared = route.branch.mode === "shared";
+    // A shared queue counts every coder; otherwise only the coder's own codings matter.
+    const [rows, leases] = await Promise.all([
+      store.listCodings(shared ? { loop: info.key } : { loop: info.key, coderId: coder.coderId }),
+      shared ? store.listLeases({ loop: info.key }) : Promise.resolve([]),
+    ]);
+    const codings = DeploymentRuntime.codingsOf(rows);
+    const { main, overlap } = this.pools(route, codings, leases);
     for (;;) {
-      const next = pickNext(routed.main, routed.overlap, coder.coderId, this.codingsFor(loopName), {
+      const now = this.options.now();
+      const next = pickNext(main, overlap, coder.coderId, codings, {
         order: info.loop.order ?? "sequential",
-        maxUnits: routed.branch.mode === "shared" ? routed.branch.maxUnits : undefined,
-        minUnits: routed.branch.mode === "shared" ? routed.branch.minUnits : undefined,
+        maxUnits: route.branch.mode === "shared" ? route.branch.maxUnits : undefined,
+        minUnits: route.branch.mode === "shared" ? route.branch.minUnits : undefined,
         seed: this.spec.jobId * 1000,
-        now: this.options.now(),
+        now,
       });
-      if (!next) {
-        this.workspaces.get(coder.coderId)?.exhausted.add(loopName);
-        return null;
-      }
-
-      const unit = (await this.getUnits([next.unitId])).get(next.unitId);
+      if (!next) return null;
+      const unit = (await this.getUnits([next.unitId], store)).get(next.unitId);
       if (!unit) {
-        // It no longer exists: drop it everywhere and try the next one.
-        this.removedUnits.add(next.unitId);
-        for (const pool of this.pools.values()) pool.removeUnit(next.unitId);
+        // Deleted since the spec was read: skip it.
+        main.removeUnit(next.unitId);
+        overlap?.pool.removeUnit(next.unitId);
         continue;
       }
-      next.pool.take(coder.coderId, next.unitId, this.options.now());
-      const shown = await this.markServed(coder.coderId, unit);
-      return {
-        id: unit.id,
-        externalId: unit.externalId,
-        data: shown.data,
-        variables: own.get(unit.id) ?? {},
-      };
+      if (next.pool.rule) {
+        next.pool.take(coder.coderId, next.unitId, now);
+        const expires = new Date(now + next.pool.rule.leaseSeconds * 1000);
+        await store.putLease({ loop: info.key, unitset: next.pool.unitset, coderId: coder.coderId, unitId: next.unitId, expires });
+      }
+      return unit;
     }
   }
 
@@ -799,16 +659,16 @@ export class DeploymentRuntime {
   async loopUnit(coder: Coder, loopName: string, unitId: number): Promise<CoderUnitResponse> {
     if (this.closed(coder)) throw new HttpError(409, "This session has ended", "session_closed");
     if (!this.loops.has(loopName)) throw new HttpError(404, `No unit loop '${loopName}'`);
-    const own = (await this.workspace(coder.coderId)).get(unitId);
-    const pools = DeploymentRuntime.poolsOf(this.assignedPools(coder, loopName));
-    // Only units the coder has worked on (or holds right now): no peeking ahead.
-    if (!pools.some((p) => p.has(unitId) && (own !== undefined || p.heldLease(coder.coderId) === unitId))) {
-      throw new HttpError(404, "This unit is not part of your session");
-    }
+    const route = this.assignedRoute(coder, loopName);
+    const [answers, leases] = await Promise.all([this.store.unitAnswers(coder.coderId, unitId), this.store.listLeases({ coderId: coder.coderId })]);
+    const answered = Object.keys(answers).length > 0;
+    const held = leases.some((l) => l.loop === loopName && l.unitId === unitId);
+    // Only units the coder has worked on (or holds): no peeking ahead.
+    if (!this.routeUnits(route).has(unitId) || !(answered || held)) throw new HttpError(404, "This unit is not part of your session");
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
     const shown = await this.markServed(coder.coderId, unit);
-    return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: own ?? {} };
+    return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: answers };
   }
 
   /**
@@ -825,11 +685,20 @@ export class DeploymentRuntime {
     timings: Record<string, AnswerTiming> = {},
   ): Promise<void> {
     this.assertOpen(coder);
-    const loops = [...this.loops.values()].filter(
-      (info) =>
-        (loopName === undefined || info.key === loopName) &&
-        DeploymentRuntime.poolsOf(this.assignedPools(coder, info.key)).some((p) => p.canSubmit(coder.coderId, unitId)),
-    );
+    const [own, leases] = await Promise.all([this.store.listCodings({ coderId: coder.coderId }), this.store.listLeases({ coderId: coder.coderId })]);
+    // Units in the coder's route; in a shared queue only their own earlier
+    // codings (editing after going back) or the unit leased to them (an
+    // expired lease still counts: at worst one coding too many).
+    const canSubmit = (info: LoopInfo) => {
+      const route = this.assignedRoute(coder, info.key);
+      if (!route) return false;
+      const [main, overlap] = route.names;
+      if (route.branch.overlap && this.unitsOf(overlap).includes(unitId)) return true;
+      if (!this.unitsOf(main).includes(unitId)) return false;
+      if (route.branch.mode !== "shared") return true;
+      return own.some((c) => c.loop === info.key && c.unitId === unitId) || leases.some((l) => l.loop === info.key && l.unitset === main && l.unitId === unitId);
+    };
+    const loops = [...this.loops.values()].filter((info) => (loopName === undefined || info.key === loopName) && canSubmit(info));
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
 
     const info = loops.find((l) => [...l.variables.keys()].every((name) => name in variables));
@@ -849,7 +718,9 @@ export class DeploymentRuntime {
       const unit = (await this.getUnits([unitId])).get(unitId);
       unitVersionId = unit && (await this.shownVersion(unit)).versionId;
     }
-    const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => name in variables));
+    // The loops these answers (with the unit's earlier ones) finish the unit in.
+    const merged = { ...(await this.store.unitAnswers(coder.coderId, unitId)), ...variables };
+    const codings = finishedLoops(merged, this.loops.values()).map((l) => ({ loop: l.key, agreement: agreementKeys(merged, l) }));
     await this.store.putAnnotation({
       unitId,
       coderId: coder.coderId,
@@ -857,72 +728,40 @@ export class DeploymentRuntime {
       codebookId: this.spec.codebook.id,
       unitVersionId,
       deviceId,
-      timings: timed,
+      timings: Object.fromEntries(Object.entries(timings).filter(([name]) => name in variables)),
+      codings,
     });
     // The coder-level answers this loop depends on can't change any more.
     await this.store.freezeCoderValues(coder.coderId, this.dependencies.get(info.key) ?? []);
-    const own = await this.workspace(coder.coderId);
-    const previous = own.get(unitId);
-    const merged = { ...previous, ...variables };
-    own.set(unitId, merged);
-    const entry = this.workspaces.get(coder.coderId);
-    if (entry?.units === own) {
-      const delta = sizeOf(merged) - (previous ? sizeOf(previous) : 0);
-      entry.bytes += delta;
-      this.workspaceBytes += delta;
-      this.trimWorkspaces(coder.coderId);
-    }
-    this.recordFinished(coder.coderId, unitId, merged);
   }
 
   get version(): number {
     return this.spec.version;
   }
 
-  /**
-   * Progress per loop source. Computed on demand from the database (every
-   * coder's finished units in every loop, and every coder's routing), since
-   * the runtime only keeps global codings for dynamic loops and only active
-   * coders.
-   */
+  /** Progress per loop and unitset: from every coder's codings, routing and leases. */
   async status(): Promise<DeploymentStatus> {
     const now = this.options.now();
-    const [rows, allCoders] = await Promise.all([
-      this.store.listFinished({
-        loops: [...this.loops.values()].map((info) => ({
-          loop: info.key,
-          variables: [...info.variables.keys()],
-          values: loopAgreementVariables(info),
-        })),
-      }),
-      this.store.listCoders(),
-    ]);
-    const finished = new Map<string, Codings>();
-    for (const row of rows) {
-      const info = this.loops.get(row.loop);
-      if (!info || row.unitId === null) continue;
-      if (!finished.has(row.loop)) finished.set(row.loop, new Codings());
-      finished.get(row.loop)!.record(row.coderId, row.unitId, agreementKeys(row.values ?? {}, info));
-    }
-
+    const [rows, allCoders, leases] = await Promise.all([this.store.listCodings({}), this.store.listCoders(), this.store.listLeases({})]);
     const sources: DeploymentStatus["sources"] = [];
-    for (const [loop] of this.loops) {
-      const routed = allCoders.filter((c) => this.assignedPools(c, loop) !== null);
-      const seen = new Set<UnitPool>();
-      for (const coder of routed) {
-        for (const pool of DeploymentRuntime.poolsOf(this.assignedPools(coder, loop))) {
-          if (seen.has(pool)) continue;
-          seen.add(pool);
-          const coders = routed.filter((c) => DeploymentRuntime.poolsOf(this.assignedPools(c, loop)).includes(pool)).map((c) => c.coderId);
-          const counted = new UnitPool(pool.unitset, [...pool.unitIds], pool.rule, finished.get(loop) ?? new Codings());
-          sources.push({
-            loop: loopTitle(this.loops.get(loop)!.loop, loop),
-            unitset: pool.unitset,
-            ...counted.status(now, coders),
-            leasedUnits: pool.status(now, coders).leasedUnits,
-            coders: coders.length,
-          });
+    for (const [loop, info] of this.loops) {
+      const codings = DeploymentRuntime.codingsOf(rows.filter((r) => r.loop === loop));
+      const routes = allCoders.flatMap((c) => {
+        const route = this.assignedRoute(c, loop);
+        return route ? [{ coderId: c.coderId, route }] : [];
+      });
+      // One row per pool: a unitset with its rule (a shared queue, or handed out whole).
+      const pools = new Map<string, { pool: UnitPool; coders: number[] }>();
+      for (const { coderId, route } of routes) {
+        const routed = this.pools(route, codings, leases.filter((l) => l.loop === loop));
+        for (const pool of [routed.main, ...(routed.overlap ? [routed.overlap.pool] : [])]) {
+          const key = `${pool.unitset}/${JSON.stringify(pool.rule)}`;
+          if (!pools.has(key)) pools.set(key, { pool, coders: [] });
+          pools.get(key)!.coders.push(coderId);
         }
+      }
+      for (const { pool, coders } of pools.values()) {
+        sources.push({ loop: loopTitle(info.loop, loop), unitset: pool.unitset, ...pool.status(now, coders), coders: coders.length });
       }
     }
     return {
@@ -932,10 +771,6 @@ export class DeploymentRuntime {
       coders: allCoders.length,
       sources,
       loadedAt: new Date(this.loadedAt),
-      memory: {
-        coders: this.workspaces.size,
-        coderBytes: this.workspaceBytes,
-      },
     };
   }
 
@@ -956,45 +791,8 @@ export class DeploymentRuntime {
     return shown;
   }
 
-  /**
-   * Done coders first, then the least recently active, until within budget.
-   * Never the coder being served (`keep`): their codings must stay in place.
-   */
-  private trimWorkspaces(keep: number): void {
-    if (this.workspaceBytes <= this.options.workspaceCacheBytes) return;
-    const done = (w: WorkspaceEntry) => this.loops.size > 0 && [...this.loops.keys()].every((l) => w.exhausted.has(l));
-    for (const pass of [done, () => true]) {
-      for (const [id, entry] of this.workspaces) {
-        if (this.workspaceBytes <= this.options.workspaceCacheBytes) return;
-        if (id !== keep && pass(entry)) this.dropWorkspace(id);
-      }
-    }
-  }
-
-  /**
-   * Forgets a coder's annotations, and what was derived from them: their
-   * finished units in loops without dynamic sources (those keep global
-   * codings). Reloaded from the database when the coder returns.
-   */
-  private dropWorkspace(coderId: number): void {
-    const entry = this.workspaces.get(coderId);
-    if (!entry) return;
-    this.workspaces.delete(coderId);
-    this.workspaceBytes -= entry.bytes;
-    for (const [loop, codings] of this.codings) {
-      const info = this.loops.get(loop);
-      if (!info || !needsAllCodings(info)) codings.forget(coderId);
-    }
-  }
-
-  /** Applies the idle limit to workspaces. */
-  private evictExpired(): void {
-    const now = this.options.now();
-    for (const [id, { usedAt }] of this.workspaces) if (now - usedAt >= this.options.maxIdleMs) this.dropWorkspace(id);
-  }
-
-  private async getUnits(ids: number[]): Promise<Map<number, Unit>> {
-    return new Map((await this.store.getUnits(ids)).map((unit) => [unit.id, unit]));
+  private async getUnits(ids: number[], store: Store = this.store): Promise<Map<number, Unit>> {
+    return new Map((await store.getUnits(ids)).map((unit) => [unit.id, unit]));
   }
 }
 

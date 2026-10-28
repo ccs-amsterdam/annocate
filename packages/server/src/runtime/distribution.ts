@@ -1,9 +1,9 @@
 import { seededShuffle, sharedDefaults } from "@annotinder/contracts";
 
-// Pure, in-memory unit distribution. All state is derived from the
-// annotations (`Codings`) except the leases of shared queues, which are
-// deliberately ephemeral: losing them on a restart only means an abandoned
-// unit returns to the queue early.
+// Unit distribution: the rules, pure. The runtime loads the state they work
+// on from the store for each decision (finished codings, `unit_codings`, and
+// the leases of shared queues, `unit_leases`), and stores the leases it hands
+// out (docs/plan-stateless-runtime.md §6).
 
 /** A shared queue's rule (contracts `sharedDefaults`). */
 export type SharedRule = ReturnType<typeof sharedDefaults>;
@@ -131,6 +131,17 @@ export class UnitPool {
     // Stable sort keeps the coder's order among equally-coded units.
     const sign = this.rule.priority === "saturate" ? -1 : 1;
     return withSlots.sort((a, b) => sign * (this.codings.forUnit(a).size - this.codings.forUnit(b).size));
+  }
+
+  /** Leases as stored (also expired ones: an expired lease is still the coder's own unit, `heldLease`). */
+  loadLeases(leases: { coderId: number; unitId: number; expires: number }[]): void {
+    for (const { coderId, unitId, expires } of leases) {
+      if (!this.unitSet.has(unitId)) continue;
+      let unitLeases = this.leases.get(unitId);
+      if (!unitLeases) this.leases.set(unitId, (unitLeases = new Map()));
+      unitLeases.set(coderId, expires);
+      this.coderLease.set(coderId, unitId);
+    }
   }
 
   /** Marks a unit as handed out to this coder (leases it, for dynamic pools). */

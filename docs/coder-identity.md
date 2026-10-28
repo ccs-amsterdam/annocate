@@ -69,9 +69,8 @@ confusion at a panel company over a leaked link.
   `coder_devices` (one row per device of a session), never the device id:
   sessions of one device in different jobs can't be linked from stored
   data. The device id is long and random, so no secret is needed (rotating
-  `ANNOTINDER_SECRET` logs no coder out). The runtime keeps key → session
-  in memory, so the database is read once per session per server start,
-  not per answer. Everything the job needs from the invite and the URL
+  `ANNOTINDER_SECRET` logs no coder out). Each request finds the session
+  by its key: one indexed query. Everything the job needs from the invite and the URL
   (preset and `url_param` variables, the participant id and the invite's
   other required URL parameters) is stored when the coder starts, so the
   invite and URL details can be forgotten.
