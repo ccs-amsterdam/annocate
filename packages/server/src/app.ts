@@ -1,6 +1,8 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
+import { join } from "node:path";
+import { serveStatic } from "@hono/node-server/serve-static";
 import type { Sql } from "./db.js";
 import { CONTRACTS_VERSION } from "@annotinder/contracts";
 import type { Env, Server } from "./context.js";
@@ -56,6 +58,12 @@ export interface AppOptions {
   admins?: string[];
   /** Researcher access needs a login with a second factor. */
   requireMfa?: boolean;
+  /**
+   * The built client (`packages/client/dist`): served from this server, so
+   * coders and researchers reach one origin (session cookies). Without it
+   * (development) Vite serves the client and forwards API paths here.
+   */
+  clientDir?: string;
 }
 
 /**
@@ -86,7 +94,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     console.error(err);
     return c.json({ error: "Internal error" }, 500);
   });
-  app.get("/", (c) => c.json({ ok: true, service: "annotinder", contractsVersion: CONTRACTS_VERSION }));
+  app.get("/health", (c) => c.json({ ok: true, service: "annotinder", contractsVersion: CONTRACTS_VERSION }));
 
   // Request bodies: a coder sends one unit's answers at a time; a researcher
   // may upload all units at once (each unit is also checked against the
@@ -130,5 +138,20 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   app.route("/", annotationsReset(server));
   app.route("/", annotations(server));
 
+  if (options.clientDir) {
+    const root = options.clientDir;
+    // Built files have hashed names: cached for good.
+    app.use("/assets/*", async (c, next) => {
+      await next();
+      if (c.res.ok) c.header("cache-control", "public, max-age=31536000, immutable");
+    });
+    app.use("*", serveStatic({ root }));
+    // Everything else that isn't an API path is the app (it reads its state from the URL).
+    app.get("*", async (c, next) => (API_PATH.test(c.req.path) ? next() : serveStatic({ path: join(root, "index.html") })(c, next)));
+  }
+
   return app;
 }
+
+/** Paths of the server's APIs (also what Vite forwards in development: client/vite.config.ts). */
+const API_PATH = /^\/(d|job|me|auth|admin|health)(\/|$)/;

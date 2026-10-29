@@ -1,0 +1,52 @@
+# AnnoTinder with Postgres (docs/hosting.md). Settings come from `.env`
+# (copy `.env.example`). Put it behind a proxy that does TLS, or use the
+# `tls` profile (Caddy, certificates from Let's Encrypt):
+#   docker compose up -d                 # app on 127.0.0.1:8787
+#   docker compose --profile tls up -d   # plus Caddy on ports 80 and 443
+
+services:
+  app:
+    build: .
+    image: annotinder
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://annotinder:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/annotinder
+    ports:
+      - "127.0.0.1:8787:8787"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: annotinder
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: annotinder
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U annotinder"]
+      interval: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2
+    profiles: ["tls"]
+    restart: unless-stopped
+    environment:
+      ANNOTINDER_DOMAIN: ${ANNOTINDER_DOMAIN:?set ANNOTINDER_DOMAIN in .env for the tls profile}
+    command: caddy reverse-proxy --from ${ANNOTINDER_DOMAIN} --to app:8787
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddydata:/data
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddydata:

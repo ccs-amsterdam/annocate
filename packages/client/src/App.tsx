@@ -9,13 +9,11 @@ import { ServerApi } from "./lib/api/serverApi";
 import { LayoutDashboard, PenTool } from "lucide-react";
 import { useTheme } from "./lib/context/theme";
 
-// Standalone dev-app shell: runs the annotinder-client against a local
-// server (the seed demo job's invite secret by default). Real deployments
-// should import { JobRunner } / { AdminApp } (or their building blocks) into
-// a host app instead -- see docs/client.md §1
-//
-// The server is on the client's own origin (session cookies are same-origin
-// only): in dev, Vite proxies the API paths to it (vite.config.ts).
+// The app: the researcher UI, and the coding screen for coder links. The
+// server serves it (docs/hosting.md), on its own origin (session cookies are
+// same-origin only); in development Vite serves it and forwards the API
+// paths (vite.config.ts). On a development server (development auth, no
+// login) it also offers the demo job's coding screen without a link.
 const SERVER_URL = "";
 const CODER_API_URL = "";
 
@@ -26,8 +24,8 @@ const devApi = new HttpResearcherApi({ baseUrl: SERVER_URL, devRole: "ADMIN", de
 
 type View = "admin" | "annotate";
 
-/** Invite links for this dev shell. */
-function devInviteUrl(invite: { jobId: number; secret: string }): string {
+/** An invitation's link: this app, with the deployment and the invite secret. */
+function inviteLink(invite: { jobId: number; secret: string }): string {
   return `${window.location.origin}${window.location.pathname}?deployment=${invite.jobId}&invite=${invite.secret}`;
 }
 
@@ -56,7 +54,7 @@ function ResearcherView({ dev, me }: { dev: boolean; me: MeResponse | null }) {
     <AdminApp
       client={api}
       baseUrl={SERVER_URL}
-      inviteUrl={devInviteUrl}
+      inviteUrl={inviteLink}
       coderApiUrl={CODER_API_URL}
       server={new ServerApi(api)}
       me={who}
@@ -70,7 +68,7 @@ function App() {
   // Coder links (docs/coder-identity.md): ?deployment=1&invite=...&<parameters the invite requires>
   // or ?deployment=...&transfer=... from "Continue on another device".
   const [params, setParams] = useState(() => new URLSearchParams(window.location.search));
-  const inviteSecret = params.get("invite") ?? "demo-secret";
+  const coderLink = params.has("invite") || params.has("transfer");
   const deploymentId = params.get("deployment") ?? "1";
   const transferToken = params.get("transfer") ?? undefined;
   // Everything else in the URL goes to the server: the participant id and other parameters the invite requires, and `url_param` auto variables.
@@ -86,14 +84,15 @@ function App() {
     window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : ""));
     setParams(next);
   }, []);
-  const [view, setView] = useState<View>(params.has("invite") || params.has("transfer") ? "annotate" : "admin");
+  const [view, setView] = useState<View>(coderLink ? "annotate" : "admin");
   const researcher = useResearcher();
+  // Development: the demo job (seed.ts) without a link, and both views side by side.
+  const inviteSecret = params.get("invite") ?? (researcher.dev ? "demo-secret" : undefined);
   // The researcher UI follows the theme too (the coder UI applies it itself).
   useTheme();
 
   return (
     <div className="flex h-screen flex-col overflow-clip bg-background text-foreground">
-      {/* Dev Shell Navbar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-sm">
         <div className="flex flex-1 items-center gap-3">
           <div className="flex items-center gap-2">
@@ -104,37 +103,39 @@ function App() {
               Annotinder
             </span>
           </div>
-          <span className="hidden rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline">
-            dev mode
-          </span>
+          {researcher.dev && (
+            <span className="hidden rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground sm:inline">dev mode</span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
-          <button
-            type="button"
-            onClick={() => setView("admin")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-              view === "admin"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            Manage jobs
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("annotate")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-              view === "annotate"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <PenTool className="h-3.5 w-3.5" />
-            Annotate
-          </button>
-        </div>
+        {researcher.dev && (
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
+            <button
+              type="button"
+              onClick={() => setView("admin")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                view === "admin"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Manage jobs
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("annotate")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
+                view === "annotate"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <PenTool className="h-3.5 w-3.5" />
+              Annotate
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-1 justify-end">
           {researcher.state && (
@@ -150,7 +151,7 @@ function App() {
 
       {/* Main Viewport */}
       <div className="flex-1 overflow-hidden">
-        {view === "admin" ? (
+        {view === "admin" || (!coderLink && !researcher.dev) ? (
           researcher.state && <ResearcherView dev={researcher.dev} me={researcher.state.me} />
         ) : (
           <JobRunner

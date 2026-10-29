@@ -6,8 +6,11 @@ import { createApp } from "./app.js";
 
 // Node entry point. PORT (default 8787); DATABASE_URL (Postgres), or else
 // PGLITE_DIR (a local PGlite database, default .pglite in this package);
-// ANNOTINDER_SECRET (signs preview tokens; random per process if not set);
+// ANNOTINDER_SECRET (signs login state and preview tokens; random per process if not set);
+// ANNOTINDER_CLIENT_DIR (the built client, served from this server);
+// ANNOTINDER_DEMO=1 (an empty database gets the demo job: development);
 // ANNOTINDER_DEV_AUTH=1 (accept development auth headers: local only);
+// docs/hosting.md has the full list.
 // researcher login: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
 // ANNOTINDER_PUBLIC_URL (where browsers reach the server);
 // ANNOTINDER_ADMINS (comma-separated emails: the server's first admins);
@@ -15,8 +18,8 @@ import { createApp } from "./app.js";
 
 const port = Number(process.env.PORT ?? 8787);
 const db = await openDatabase();
-// Convenience for local dev: if the database has no job yet, seed a demo one.
-if (!(await one(db, "SELECT 1 FROM jobs LIMIT 1"))) await seed(db);
+// Development: an empty database gets a demo job.
+if (process.env.ANNOTINDER_DEMO === "1" && !(await one(db, "SELECT 1 FROM jobs LIMIT 1"))) await seed(db);
 
 const devAuth = process.env.ANNOTINDER_DEV_AUTH === "1";
 const { OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, ANNOTINDER_PUBLIC_URL } = process.env;
@@ -36,12 +39,14 @@ if (login && !process.env.ANNOTINDER_SECRET) {
 }
 const admins = (process.env.ANNOTINDER_ADMINS ?? "").split(",");
 const requireMfa = process.env.ANNOTINDER_REQUIRE_MFA === "1";
-const app = createApp(db, { secret: process.env.ANNOTINDER_SECRET, devAuth, login, admins, requireMfa });
+const clientDir = process.env.ANNOTINDER_CLIENT_DIR || undefined;
+const app = createApp(db, { secret: process.env.ANNOTINDER_SECRET, devAuth, login, admins, requireMfa, clientDir });
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);
   console.log(login ? `  researcher login: ${login.oidc.issuer}, callback ${login.publicUrl}/auth/callback` : "  researcher login: not configured (OIDC_ISSUER)");
   console.log(`  admins: ${admins.filter((a) => a.trim()).join(", ") || "none named (ANNOTINDER_ADMINS)"}; second factor for researchers: ${requireMfa ? "required" : "not required"}`);
+  console.log(clientDir ? `  client: ${clientDir}` : "  client: not served here (ANNOTINDER_CLIENT_DIR; in development Vite serves it)");
   if (devAuth) console.warn("  development auth headers accepted (ANNOTINDER_DEV_AUTH=1): never on a reachable server");
 });
 

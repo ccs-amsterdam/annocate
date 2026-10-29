@@ -37,8 +37,8 @@ export function writeDevice(c: Context, deviceId: string): void {
     path: "/d",
     httpOnly: true,
     sameSite: "Lax",
-    // Plain http only in local development.
-    secure: new URL(c.req.url).protocol === "https:",
+    // Plain http only in local development (behind a TLS proxy: its X-Forwarded-Proto).
+    secure: new URL(c.req.url).protocol === "https:" || c.req.header("x-forwarded-proto") === "https",
     maxAge: MAX_AGE_S,
   });
 }

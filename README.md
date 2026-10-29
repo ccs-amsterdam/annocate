@@ -42,14 +42,20 @@ pnpm dev          # runs the client (:5173) and the server (:8787)
 ```
 
 Open the client on http://localhost:5173. Vite proxies the server's paths
-(`/d`, `/job`, `/me`, `/auth`) to it: sessions are same-origin httpOnly
+(`/d`, `/job`, `/me`, `/auth`, `/admin`) to it: sessions are same-origin httpOnly
 cookies, so the client and the server share an origin. Without login
 settings, `pnpm dev` uses development auth headers for the researcher UI;
 with them (`OIDC_*`, `ANNOTINDER_PUBLIC_URL=http://localhost:5173`, see
 `packages/server/README.md`) it shows a login screen.
 
-The dev shell's "Annotate" view codes the seeded demo job (deployment `1`).
-If you have a database from before, run `pnpm reset-db` once.
+In development, an empty database gets a demo job, and the "Annotate" view
+codes it (deployment `1`). If you have a database from before, run
+`pnpm reset-db` once.
 
 Other useful root scripts: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`
 (each runs across all packages).
+
+## Hosting
+
+`docker compose up -d --build` runs AnnoTinder with Postgres, from
+`.env` (copy `.env.example`). See [`docs/hosting.md`](docs/hosting.md).

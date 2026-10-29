@@ -16,30 +16,15 @@ pnpm dev:server   # from the repo root: http://localhost:8787, seeded with a dem
 pnpm reset-db     # recreate and reseed the local database
 ```
 
-Environment:
-
-- `DATABASE_URL`: a Postgres server, e.g. `postgres://user:pass@host/annotinder`.
-  Without it, the server uses PGlite (Postgres compiled to WebAssembly, in
-  process) in `PGLITE_DIR` (default `.pglite` in this package): no Postgres
-  install needed for development. `pnpm reset-db` only resets PGlite.
-- `PORT` (8787).
-- Researcher login (`docs/coder-identity.md` §7): `OIDC_ISSUER`,
-  `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` (an OpenID Connect provider, e.g.
-  Authentik), `ANNOTINDER_PUBLIC_URL` (where browsers reach the server and
-  the client; the provider redirects to `<url>/auth/callback`). Plain http
-  issuers only on localhost. Without these, there is no login: API keys
-  only.
-- Accounts (`docs/accounts.md`): `ANNOTINDER_ADMINS` (comma-separated
-  emails: the server's first admins; they set up registration and limits
-  in the UI), `ANNOTINDER_REQUIRE_MFA=1` (managing jobs needs a login with a
-  second factor; recommended).
-- `ANNOTINDER_DEV_AUTH=1`: also accept development auth headers
-  (`x-dev-role`) for the researcher API, as the dev shell's researcher UI
-  sends. `pnpm dev` sets it ([`src/dev.ts`](src/dev.ts)). Never on a
-  reachable server.
-- `ANNOTINDER_SECRET`: signs preview tokens and the short-lived login
-  cookie; random per process if not set, so previews (and logins in
-  progress) end with a restart. Set it in production.
+Settings are environment variables: [`docs/hosting.md`](../../docs/hosting.md)
+lists them. For development: without `DATABASE_URL` the server uses PGlite
+(Postgres compiled to WebAssembly, in process) in `PGLITE_DIR` (default
+`.pglite` in this package), so no Postgres install is needed; `pnpm reset-db`
+only resets PGlite. `pnpm dev` ([`src/dev.ts`](src/dev.ts)) also sets
+`ANNOTINDER_DEV_AUTH=1` (development auth headers for the researcher UI)
+and `ANNOTINDER_DEMO=1` (a demo job in an empty database). With login
+settings (`OIDC_*`) in development, plain http issuers work on localhost
+only.
 
 ## API keys
 
