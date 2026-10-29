@@ -45,11 +45,6 @@ export interface Researcher {
   devRole?: Role;
 }
 
-export interface JobUserAuth {
-  email: string;
-  role: Role;
-}
-
 async function authenticate(c: Context, server: Server): Promise<Researcher | null> {
   const bearer = /^Bearer (.+)$/.exec(c.req.header("authorization") ?? "")?.[1];
   if (bearer) {

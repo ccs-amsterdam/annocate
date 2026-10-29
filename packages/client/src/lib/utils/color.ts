@@ -289,13 +289,6 @@ export function getStackedUnderlineStyle(spans: StackedSegmentSpan[]): CSSProper
 }
 
 /**
- * Backwards-compatible helper for multi-span styles.
- */
-export function getMultiSpanHighlightStyle(colors: (string | undefined)[]): CSSProperties {
-  return getStackedUnderlineStyle(colors.map((c) => ({ color: c })));
-}
-
-/**
  * Generates styling for a compact tag / badge representing a code.
  * White text in dark mode for maximum legibility.
  */

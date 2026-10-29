@@ -139,7 +139,6 @@ export interface ResearcherApi {
   putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
   /** Progress of the live job, per loop and unitset. */
   getDeploymentStatus(): Promise<DeploymentStatus>;
-  /** Re-reads the live deployment now; `units` also drops cached unit content (ADMIN). */
   /** Retires live answers, so units are coded again (ADMIN). */
   resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }>;
 

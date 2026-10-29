@@ -55,7 +55,7 @@ Microsoft).
 - For `ANNOTINDER_REQUIRE_MFA`, the provider must report the second factor
   in the ID token's `amr` claim (e.g. `mfa`, `otp`, `hwk`, `swk`; RFC 8176).
 
-`plan-passkeys.md` has the plan for a second factor checked by AnnoTinder
+`plans/passkeys.md` has the plan for a second factor checked by AnnoTinder
 itself.
 
 ## Backups

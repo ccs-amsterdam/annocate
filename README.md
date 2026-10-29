@@ -9,14 +9,14 @@ docs live in `docs/`:
   codebook updates.
 - `docs/compositions.md`: the products (annotinder.com, self-hosted,
   local coding from R and Python).
-- `docs/encryption.md`: (on hold) encrypting participants' answers in the
-  browser.
 - `docs/coder-identity.md`: identity, sessions, invitations and login
-  (researchers; coders planned).
+  (coders and researchers), deleting a coder's data, response times.
+- `docs/accounts.md`: account roles, becoming a researcher, limits, admins.
 - `docs/client.md`: client design decisions (layout, question types and
   answers, references and conditions, admin UI).
-- `docs/plan-examples.md`: decided, not built: example jobs for learning
-  AnnoTinder, and later templates and a library of reusable flows.
+- `docs/hosting.md`: running AnnoTinder (Docker Compose, settings, login
+  provider, backups).
+- `docs/plans/`: plans for features that are not built.
 - `packages/contracts/CONTRACTS.md`: the contracts package (schemas, design
   notes).
 
@@ -25,8 +25,8 @@ docs live in `docs/`:
 - `packages/contracts` -- the API contract (zod schemas), shared by the client
   and the server. No React/Node-specific dependencies.
 - `packages/client` -- the React + Vite client. Builds two ways:
-  - `pnpm --filter @annotinder/client build:app` -- a standalone SPA, used for
-    local development against the server.
+  - `pnpm --filter @annotinder/client build:app` -- the app, which the
+    server serves (docs/hosting.md).
   - `pnpm --filter @annotinder/client build:lib` -- an importable component/hook
     library (`@annotinder/client`), for embedding in a host app's own React tree.
 - `packages/server` -- the server (Hono + Postgres or PGlite, Node >= 22): the

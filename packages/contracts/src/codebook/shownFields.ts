@@ -66,7 +66,7 @@ export function shownUnitFields(items: readonly unknown[]): string[] {
  * Per unit loop (by key), the questions its units depend on: every `$var`
  * the loop refers to that isn't one of its own questions (so a coder-level
  * question). A coder's answers to them are frozen once they coded a unit in
- * the loop (docs/plan-stateless-runtime.md §4): changing them would change
+ * the loop (docs/architecture.md §7, "Frozen answers"): changing them would change
  * what those units were coded with.
  */
 export function loopDependencies(items: readonly unknown[]): Map<string, string[]> {

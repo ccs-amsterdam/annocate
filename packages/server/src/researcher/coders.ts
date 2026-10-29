@@ -17,8 +17,6 @@ export function coders(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");
     const result = await deleteCoders(db, jobId, parsed.data, c.get("researcher").email);
-    // The runtime holds coders, their codings and routing in memory: it loads again.
-    if (result.coderIds.length > 0) server.deployments.drop(jobId);
     return c.json(result);
   });
 

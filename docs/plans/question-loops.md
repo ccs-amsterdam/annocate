@@ -68,5 +68,5 @@ A new item type, the **question loop**, next to the unit loop:
 - Conditions inside the loop on the current value (e.g. only for actors of
   type "person"): should work with the existing condition language once
   `$var.<loop>` is in scope.
-- Distribution and gold checks (`plan-gold-checks.md`) don't need to know
+- Distribution and gold checks (`gold-checks.md`) don't need to know
   about question loops.

@@ -85,7 +85,7 @@ session records it (`sessions.mfa`); API keys count as having one, since
 making one needs it.
 
 Today second factors are the login provider's: AnnoTinder doesn't store
-them, so losing one is solved there. Planned (`plan-passkeys.md`):
+them, so losing one is solved there. Planned (`plans/passkeys.md`):
 AnnoTinder confirms a passkey itself, as a second layer independent of the
 provider, with recovery codes and admin resets instead of email recovery;
 and, for AmCAT and AnnoTinder on one server, AnnoTinder reading AmCAT's

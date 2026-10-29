@@ -22,7 +22,7 @@ export interface DeploymentSpec {
   keepSessionsOpen: boolean;
 }
 
-/** Unit content, for the runtime's cache. */
+/** A unit's content, as the runtime reads it. */
 export interface Unit {
   id: number;
   externalId: string;

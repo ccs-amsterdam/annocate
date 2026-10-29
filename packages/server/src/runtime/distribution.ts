@@ -3,7 +3,7 @@ import { seededShuffle, sharedDefaults } from "@annotinder/contracts";
 // Unit distribution: the rules, pure. The runtime loads the state they work
 // on from the store for each decision (finished codings, `unit_codings`, and
 // the leases of shared queues, `unit_leases`), and stores the leases it hands
-// out (docs/plan-stateless-runtime.md §6).
+// out (docs/architecture.md §3).
 
 /** A shared queue's rule (contracts `sharedDefaults`). */
 export type SharedRule = ReturnType<typeof sharedDefaults>;

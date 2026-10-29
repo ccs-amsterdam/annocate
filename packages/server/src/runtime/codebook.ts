@@ -95,11 +95,6 @@ export function valueOf(answer: VariableValue | undefined): string | undefined {
   return value === undefined ? undefined : String(value);
 }
 
-/** variable name -> value, for all single-valued coder variables (`auto` assignment and balancing; routing is chosen by the client). */
-export function variableValues(variables: Record<string, VariableValue>): Record<string, string | undefined> {
-  return Object.fromEntries(Object.entries(variables).map(([name, answer]) => [name, valueOf(answer)]));
-}
-
 /** A coder variable holding one value, as stored for assigned `auto` variables. */
 export function singleValue(value: string): VariableValue {
   return { done: true, skip: false, values: [{ value }] };

@@ -88,7 +88,7 @@ type AutoVariable = Extract<VariableType, { type: "auto" }>;
 export const REOPEN_MS = 15 * 60 * 1000;
 
 /**
- * The coder runtime of one deployed job (docs/plan-stateless-runtime.md).
+ * The coder runtime of one deployed job (docs/architecture.md §3).
  * Everything it works with is in the database and read per request: the
  * coder, their answers, units, finished codings (`unit_codings`) and the
  * leases of shared queues (`unit_leases`). Decisions that count other
@@ -507,7 +507,7 @@ export class DeploymentRuntime {
 
   /**
    * Routes a coder in a loop. The client evaluates the branch conditions
-   * (they may use answers the server shouldn't need, docs/encryption.md)
+   * (they may use answers the server shouldn't need, docs/plans/encryption.md)
    * and sends the chosen branch with its filled-in unitset names; the server
    * checks that the names fit that branch and exist. It picks the coder's
    * set itself in `sets` mode (the one with the fewest coders, under a

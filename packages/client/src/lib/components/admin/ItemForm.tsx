@@ -25,9 +25,6 @@ import {
   VARIABLE_TYPE_OPTIONS_UNIT,
 } from "./VariableTypeForm";
 
-export const ITEM_TYPE_OPTIONS_TOP: CodebookItem["type"][] = ["question", "unit_loop", "condition", "end"];
-export const ITEM_TYPE_OPTIONS_IN_LOOP: CodebookItem["type"][] = ["question", "condition", "end"];
-
 /** The help topic for each answer type. */
 const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   nominal: "nominal-and-ordinal",

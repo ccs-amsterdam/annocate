@@ -84,7 +84,7 @@ development, Vite proxies the server's paths.
    changes (version, annotation epoch, `revision`, suspension: one small
    query per request; researcher changes bump `revision`). So any number of
    server processes can serve the same job
-   (`plan-stateless-runtime.md`).
+   (§10 has what is left).
 3. **Decisions that count other coders run under a lock.** Picking from a
    shared queue (and leasing the unit), giving out a set (`sets` mode) and
    a `balanced` group run in one transaction holding a database lock on
@@ -111,7 +111,7 @@ that stores them. Where it runs is the researcher's choice: annotinder.com
 sensitive data.
 
 A possible hardening, not planned yet: encrypting participants' answers in
-the client, so the server stores only ciphertext (`docs/encryption.md`).
+the client, so the server stores only ciphertext (`plans/encryption.md`).
 
 ## 5. Lifecycle
 
@@ -262,7 +262,7 @@ set where it is empty, checks that the unitsets exist, and stores them. A
 loop with a single unconditional branch without references routes without
 the parameters; any other loop answers 409 `branch_required` until the
 client chooses. This way the server never needs the answers a branch
-depends on, which is what end-to-end encryption needs (`encryption.md`,
+depends on, which is what end-to-end encryption needs (`plans/encryption.md`,
 "Routing on answers").
 
 *Trust trade-off.* A coder can choose their own branch, by sending another
@@ -338,6 +338,14 @@ The client skips them as steps.
 The server refuses to let the client overwrite assigned variables.
 `POST /variables/coder` keeps the stored values.
 
+**Frozen answers.** A coder-level answer a unit loop depends on (the loop's
+layout, questions, conditions or branches refer to it: contracts
+`loopDependencies`) is frozen once the coder coded a unit in that loop:
+changing it would change what those units were coded with.
+`annotation_values.frozen` is set when a unit is submitted; later values
+for it are ignored, and the coding screen shows it read-only (`frozen` in
+the session).
+
 **Invitations** (stored on the server, never in the codebook):
 
 ```json
@@ -349,9 +357,8 @@ The server refuses to let the client overwrite assigned variables.
   learns who they are.
 - **General links.** A link with no preset relies on the variable's
   `fallback`.
-- **Enforcement today.** `maxUses` is enforced. Email restrictions are
-  stored, but need coder login before they can be enforced; until then
-  `auth: "required"` invites are refused. Participant ids and login:
+- **Enforcement.** `maxUses` is enforced; invites that require login, or
+  list email addresses, take only those logins. Participant ids and login:
   `docs/coder-identity.md`.
 
 ## 8. Resuming, and codebook updates
@@ -495,17 +502,26 @@ provider.
 
 Roughly in order:
 
-1. **Coder login** (`coder-identity.md` §5), on the researcher login's code.
-   Email-restricted invites (`auth: "required"`) need it.
+1. **Several server processes.** Built for it (§3), not run that way yet.
+   Previews keep their coders and answers in one process's memory
+   (`preview.ts`): with several processes a preview needs them in the
+   database (marked as preview data, deleted when it expires), or its
+   requests routed to one process. A job's limit on answers is counted per
+   process between reads (once a minute), so a job can pass it by a little.
+   Rough load for a large crowd job (1000 coders at once, a unit every 20 s,
+   batches of 5): ~50 submits, ~10 locked picks and ~60 coder lookups per
+   second, well within one modest Postgres; size the connection pools so
+   all processes together stay under `max_connections`.
 2. **Publishing follow-ups.**
    - A dry run of a publish, so the reopen warnings (§8.2) show before
      confirming instead of after.
    - Deciding what pausing (`active: false`, Overview → Pause) means: today
      it stops new units (409), but coders can still submit units they hold.
    - Choosing what reopens after a codebook update (§8.3).
-3. **Local coding from R and Python** (`compositions.md`): the runtime in
-   the browser, R or Python as the host; then the R and Python packages.
-   (Not a standalone local app or binaries: see "Not planned" there.)
+3. **Local coding from R and Python** (`compositions.md`): R or Python runs
+   the runtime (V8) and serves the coder API; then the R and Python
+   packages. (Not a standalone local app or binaries: see "Not planned"
+   there.)
 4. **Researcher API follow-ups.** A webhook that posts new annotations;
    per coder whether they are done
    (only the runtime knows how many units a coder gets); changing a unit
@@ -519,10 +535,8 @@ Roughly in order:
    researcher are kept as retired rows; a coder changing an answer updates
    it in place (decided: no history of a coder's own edits for now; adding
    it later is a new table, not a change to this one).
-8. **Sessions.** For coders: a device id across jobs versus today's session
-   key per job; reopening anonymous invites on the same device. For
-   researchers: a list of active sessions, logging out everywhere, logging
-   out at the provider.
+8. **Sessions.** For researchers: a list of active sessions, logging out
+   everywhere, logging out at the provider.
 9. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the
    server returns short-lived signed URLs to a blob store. This keeps the
@@ -532,7 +546,7 @@ Roughly in order:
     server-side, to reject answers to questions the coder should never
     have seen, would be the next step. Conditions and branch choice run on
     the client today (§6.1), which keeps client-side encryption of answers
-    possible (`encryption.md`).
+    possible (`plans/encryption.md`).
 11. **Scale.** A pick from a shared queue reads the loop's finished codings
     and leases (bounded by units x `maxCoders`), under the queue's lock.
     For very large queues, a per-unit summary kept up to date on submit
@@ -542,9 +556,9 @@ Roughly in order:
 12. **Admin unit cache.** A client-side cache of units for the researcher
     UI (IndexedDB), compared by ids and hashes.
 
-13. **Gold checks** (`plan-gold-checks.md`), **question loops**
-    (`plan-question-loops.md`) and **passkeys as a second layer**, with a
-    login shared with AmCAT (`plan-passkeys.md`): planned, not built.
+13. **Planned, not built** (`plans/`): gold checks, question loops, example
+    jobs, passkeys as a second layer with a login shared with AmCAT, and
+    (on hold) encrypting answers in the browser.
 
 Smaller things worth an issue: a swipe-card UI for the `annotinder` answer
 type; `VariableValue` as a discriminated union; a live preview of a

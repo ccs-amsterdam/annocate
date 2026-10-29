@@ -42,60 +42,55 @@ downloading annotations; the API is the public contract,
 
 ## Local coding from R and Python (the plan)
 
-As the old annotinder did it: R (or Python) starts a tiny server, and the
-browser does the work. This is how annotinder runs locally; there is no
-separate local app (see "Not planned" below).
+R (or Python) hosts a job on the researcher's machine, with the data in R
+objects, and coders use the normal client. It should behave exactly like a
+server, including several coders (a team on one network coding into the
+researcher's R session), so no feature needs a "not in R" note.
 
-**R's part: storage only, three endpoints**, on a random local port:
+**Proposed: R runs the server's runtime.** R's `V8` package (on CRAN)
+embeds a JavaScript engine. R loads a bundle of the runtime with a memory
+store that saves into R objects, and serves the coder API with `httpuv`
+(the same routes as the server). The client is unchanged: it talks HTTP to
+R as it would to a server. One R process holds the state, which for one
+machine is exactly right. Python: the same with an embedded engine
+(`mini-racer`) and its standard HTTP server.
 
-- `GET /job`: codebook, units and unitsets, from R objects;
-- `GET /annotations`: what has been coded so far;
-- `POST /annotations`: answers, written back into R (a data frame, a file).
+**Spike (2026-10-28, R 4.3.3, V8 package 4.4.1 on engine 10.2, Linux):
+feasible.** The contracts (zod) and `distribution.ts` run unchanged from an
+es2020 bundle (~500 KB minified, ~110 KB gzipped; zod's locales can go);
+loading takes under 0.1 s; promises (`await = TRUE`) and WebAssembly work;
+validating is about 2x slower than in Node; an httpuv round trip into V8
+works. What it needs:
 
-R needs only `httpuv` and `jsonlite`; Python only its standard library. No
-Node, no binaries.
+- The runtime in its own package, free of Node and database imports
+  (`node:crypto` in `shared/units.ts` and `preview.ts`, `db.ts`), with a
+  memory store (`preview.ts`'s `PreviewStore` is most of one).
+- Shims: R's V8 has no web APIs (`TextEncoder`, `crypto`, `btoa`, timers,
+  `URL`). Random bytes and SHA-256 through a synchronous callback into R
+  (`openssl`), ~0.3 ms per call, or a pure-JS SHA-256.
+- Routing in R (httpuv), calling coarse runtime functions with JSON text:
+  each R→JS call costs ~0.5 ms, and Hono needs `Request`, `URL` and
+  friends. Pass JSON text, not R lists (jsonlite's simplification breaks
+  nested data).
 
-**The browser runs the job**, with the server's own runtime:
+Not verified: CRAN's Windows and macOS builds (newer engines), Python's
+`mini-racer`.
 
-```
-UI (JobRunner, JobManager)          unchanged: talks to the CoderApi interface
-  ▼
-LocalCoderApi                       new: calls the runtime directly, no HTTP
-  ▼
-DeploymentRuntime                   the server's code, running in the browser
-  ▼
-RStore                              new: a Store over R's three endpoints
-```
+**Rejected:** PGlite (it runs inside one browser, so every coder would have
+their own database, and the data lives in R); distribution rules written in
+R (a second copy of the runtime); R starting Postgres or Node (an install
+most R users don't have).
 
-- `LocalCoderApi` does what `server/src/coder.ts` does, minus HTTP and
-  cookies: each `CoderApi` method calls the matching runtime method.
-- `RStore` implements `Store` (`server/src/runtime/store.ts`): the spec and
-  units from `GET /job` (kept in memory), annotations from
-  `GET /annotations` once (finished units computed in memory: one coder),
-  writes as `POST /annotations` (coder-level answers as rows without a
-  unit). There is one coder.
-- Needed first: the runtime moves out of `packages/server` into a package
-  that runs in Node and the browser.
-- No PGlite (R holds the data); QuickJS stays (the client runs conditions
-  and scripts with it, as always).
+**Fallback**, if V8 turns out not to work on some platform: the runtime in
+the browser, over three endpoints R serves (`GET /job`, `GET /annotations`,
+`POST /annotations`). Features then behave as on a server for one coder;
+several coders at once are not possible.
 
-**Where the client comes from:**
-
-- served by R from the package (`http://localhost:8403`): same origin, no
-  CORS or browser permission prompts; the package ships the built client
-  (a few MB: check against CRAN's size limit). Preferred.
-- or from annotinder.com (`https://annotinder.com/r/8403`): always the
-  latest client, but an https page calling `http://localhost` meets
-  browsers' local-network protections (Chrome asks for permission; CORS
-  headers needed).
-
-Either way the link carries a random token (`#<token>`) that R checks, so
-other web pages can't write to the port.
-
-**Limits:** one coder per R session: each browser runs its own runtime, so
-there is no shared queue across coders (shared queues and sets only make sense with
-more coders). Teams use a server (self-hosted or annotinder.com).
-
+**Where the client comes from:** served by R from the package
+(`http://localhost:8403`: same origin, no CORS or browser permission
+prompts; the package ships the built client, a few MB: check CRAN's size
+limit). The link carries a random token that R checks, so other web pages
+can't write to the port.
 
 ## Not planned
 
@@ -107,9 +102,8 @@ more coders). Teams use a server (self-hosted or annotinder.com).
 
 ## Order of work (proposal)
 
-1. Move the runtime into a package that runs in Node and the browser.
-2. The client's local mode: `LocalCoderApi` and `RStore`, against a small
-   test host.
-3. The R package: researcher API client, and the local host (three
-   endpoints, serving the client).
-4. The Python module, the same.
+1. Move the runtime into a package without Node or database imports, with
+   a memory store.
+2. The R package: researcher API client, and the local host (the runtime
+   in V8, the coder API over httpuv, serving the client).
+3. The Python module, the same.
