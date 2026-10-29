@@ -25,11 +25,8 @@ docs live in `docs/`:
 
 - `packages/contracts` -- the API contract (zod schemas), shared by the client
   and the server. No React/Node-specific dependencies.
-- `packages/client` -- the React + Vite client. Builds two ways:
-  - `pnpm --filter @annotinder/client build:app` -- the app, which the
-    server serves (docs/hosting.md).
-  - `pnpm --filter @annotinder/client build:lib` -- an importable component/hook
-    library (`@annotinder/client`), for embedding in a host app's own React tree.
+- `packages/client` -- the React + Vite client: the app the server serves
+  (`pnpm --filter @annotinder/client build`, docs/hosting.md).
 - `packages/server` -- the server (Hono + Postgres or PGlite, Node >= 22): the
   researcher API and the coder API on one database, and the runtime that
   distributes units over coders and validates their answers. See its

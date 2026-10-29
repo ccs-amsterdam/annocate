@@ -52,8 +52,7 @@ Headers:
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
 **New codebook versions.** `GET /session` returns the deployment's
-`version`, bumped on every `PUT /deployment` (a publish, or pausing or
-resuming). The client sends it back with every
+`version`, bumped when another codebook version is published. The client sends it back with every
 request. After a publish, requests with the old version (all but
 `/session` and `/transfer`) answer 409 `codebook_changed`, before anything
 is stored; the client then loads the session again and continues where it

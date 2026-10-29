@@ -12,7 +12,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter @annotinder/contracts build \
   && pnpm --filter @annotinder/server build \
-  && pnpm --filter @annotinder/client exec vite build --config vite.config.ts \
+  && pnpm --filter @annotinder/client exec vite build \
   && pnpm --filter @annotinder/server deploy --prod --legacy /out
 
 FROM node:22-slim

@@ -277,6 +277,18 @@ function JobRunnerContent({
     );
   }
 
+  if (snapshot.phase === "error" && snapshot.errorCode === "job_paused") {
+    return (
+      <SessionNotice title="This study is paused">
+        <p>The researchers paused it for a while. Anything you answered is saved, and you can continue where you left off once it goes on.</p>
+        <p>Please try again later: open your link again, or check now.</p>
+        <Button type="button" variant="outline" className="mt-2" onClick={() => manager.retry()}>
+          Check again
+        </Button>
+      </SessionNotice>
+    );
+  }
+
   if (snapshot.phase === "error" && snapshot.errorCode === "auth_required") {
     return <LoginNotice />;
   }

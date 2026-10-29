@@ -215,7 +215,7 @@ export class DeploymentRuntime {
    * Read from the database on every request: one indexed query.
    */
   resolveCoder(request: ResolveCoderRequest): Promise<ResolvedCoder> {
-    return this.store.resolveCoder(request);
+    return this.store.resolveCoder({ ...request, paused: !this.spec.active });
   }
 
   /**
@@ -603,7 +603,7 @@ export class DeploymentRuntime {
    */
   async nextUnits(coder: Coder, loopName: string, choice: BranchChoice = { unitsets: [] }, count = 1): Promise<CoderUnitResponse[]> {
     this.assertOpen(coder);
-    if (!this.spec.active) throw new HttpError(409, "This job is not active");
+    if (!this.spec.active) throw new HttpError(409, "This study is paused", "job_paused");
     const info = this.loops.get(loopName);
     if (!info) throw new HttpError(404, `No unit loop '${loopName}'`);
     const route = await this.route(coder, info, choice);

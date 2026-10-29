@@ -704,6 +704,33 @@ describe("coder-level answers", () => {
   });
 });
 
+describe("pausing a job", () => {
+  it("lets coders save what they have, gives no new units or sessions, and doesn't reload coders", async () => {
+    const c = coder("working");
+    const [first, second] = await c.batch(2);
+    const before = (await c.session()).version;
+    const deployment = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { codebookId: number };
+    const pause = (active: boolean) =>
+      server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: deployment.codebookId, active }) });
+    await pause(false);
+    expect((await c.session()).version).toBe(before); // no reload for coders
+    // What they have open is saved
+    expect((await c.submit(first.id, demo("neutral"))).status).toBe(204);
+    expect((await c.submit(second.id, demo("neutral"))).status).toBe(204);
+    // No new units, no new sessions
+    const next = await c.call("/loop/1/next");
+    expect(next.status).toBe(409);
+    expect(await next.json()).toMatchObject({ code: "job_paused" });
+    const newcomer = await coder("newcomer").call("/session");
+    expect(newcomer.status).toBe(409);
+    expect(await newcomer.json()).toMatchObject({ code: "job_paused" });
+    // Resumed: they go on
+    await pause(true);
+    expect((await c.next())?.externalId).toBe("unit-3");
+    expect((await coder("newcomer").call("/session")).status).toBe(200);
+  });
+});
+
 describe("frozen answers", () => {
   it("an answer a unit loop depends on can't change once the coder coded a unit there", async () => {
     const role = { type: "question", name: "role", variable: { type: "nominal", question: "Role?", options: [{ value: "student" }, { value: "expert" }] } };

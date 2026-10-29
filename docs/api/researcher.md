@@ -442,9 +442,14 @@ codebook version (or pause/resume with `active`):
 
 1. check that the codebook passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid codebooks);
-2. store it, bump `version`, and make the codebook immutable;
+2. store it, bump `version` if the codebook version changed (pausing and
+   resuming don't: coders don't reload), and make the codebook immutable;
 3. bump the deployment's revision, so every server process re-reads it on
    its next request.
+
+Paused (`active: false`): coders save what they have open, but get no new
+units and no new sessions (409 `job_paused`; the coding screen says the
+study is paused) until it is resumed.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again.

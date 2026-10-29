@@ -473,6 +473,7 @@ async function findOrCreateCoder(
   if (knownParticipant && !request.newSession) {
     throw new HttpError(409, "This participant already has a session on another device", "participant_has_session");
   }
+  if (request.paused) throw new HttpError(409, "This study is paused", "job_paused");
   await checkNewCoder(sql, jobId);
   // A new session of a known participant is the same person: it doesn't use up the invite.
   if (!knownParticipant) {

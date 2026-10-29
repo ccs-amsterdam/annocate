@@ -5,27 +5,20 @@ Status: current (2026-10-26). Server-side design lives in
 
 ## 1. Packaging
 
-- `packages/client` builds two ways: the app the server serves
-  (`src/App.tsx`: the researcher UI, and the coding screen for coder links;
-  on a development server without login also a dev badge and the demo
-  job's coding screen), and a component library (`@annotinder/client`,
-  `src/lib/index.ts`). Nothing in the repo uses the library build yet; a
-  host that wants the server admin page would also need `ServerApi`
-  exported.
+- `packages/client` builds the app the server serves (`src/App.tsx`: the
+  researcher UI, and the coding screen for coder links; on a development
+  server without login also a dev badge and the demo job's coding screen).
 - **Components, not routes.** `JobRunner` (coding) and `AdminApp`
-  (research management) are plain components a host app drops into its own
-  React tree. There is no router dependency. `AdminApp` brings its own
-  TanStack `QueryClientProvider` unless the host passes a `queryClient`.
-- **CSS.** `src/lib/index.ts` imports `../index.css`, so the library build
-  emits `style.css`. Its output name is pinned in `vite.lib.config.ts`
-  (`assetFileNames`), because Vite's default changed once and broke the
-  `exports["./style.css"]` path.
+  (research management) are plain components without a router dependency;
+  `AdminApp` brings its own TanStack `QueryClientProvider` unless it is
+  given a `queryClient`. So they could be embedded in another React app
+  (e.g. AmCAT) later, as a component library build; there is none now,
+  until it is clear how AmCAT embeds AnnoTinder.
 - **Hosting.** The client and the server always share an origin: coder and
   researcher sessions are httpOnly cookies (`coder-identity.md` §4, §7).
   In production the server serves the client (`docs/hosting.md`); in
   development, Vite proxies `/d`, `/job`, `/me`, `/auth` and `/admin` to
   the server. Only scripts with API keys call the server from elsewhere.
-- Not published to npm yet.
 
 ## 2. JobManager (coding runtime)
 

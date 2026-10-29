@@ -20,7 +20,7 @@ every 10); for the full data, download the results.
 | --- | --- |
 | **Not published** | No codebook version is live yet: coders can't start |
 | **Live** | Coders can work, since the date shown |
-| **Paused** | Coders get no new units: they can finish the units they already have (a few are loaded ahead), then see that the job is not active until you resume. **Pause** and **Resume** are next to the status |
+| **Paused** | Nothing new starts: no new sessions and no new units. Coders save what they have open (also units loaded ahead), then see that the study is paused, and continue where they were once you resume. **Pause** and **Resume** are next to the status |
 | **Live version** | The codebook version coders get, with its note. Click it to open it in the codebook editor |
 | **Draft** | Your unpublished changes, if any |
 

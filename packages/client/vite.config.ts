@@ -4,7 +4,6 @@ import { defineConfig } from "vite";
 
 // The app: `pnpm dev` serves it against the server, and `vite build` makes
 // the build the server serves (Dockerfile, docs/hosting.md).
-// vite.lib.config.ts builds the component library.
 export default defineConfig({
   plugins: [react()],
   resolve: {

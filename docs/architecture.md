@@ -519,8 +519,6 @@ Roughly in order:
 2. **Publishing follow-ups.**
    - A dry run of a publish, so the reopen warnings (§8.2) show before
      confirming instead of after.
-   - Deciding what pausing (`active: false`, Overview → Pause) means: today
-     it stops new units (409), but coders can still submit units they hold.
    - Choosing what reopens after a codebook update (§8.3).
 3. **Local coding from R and Python** (`compositions.md`): R or Python runs
    the runtime (V8) and serves the coder API; then the R and Python

@@ -90,6 +90,8 @@ export interface ResolveCoderRequest {
   login?: () => Promise<{ email: string } | null>;
   /** The invite takes logins: a session without an email gets linked to the login. */
   linkable?: boolean;
+  /** The job is paused: sessions that exist go on, no new ones start (409 `job_paused`). */
+  paused?: boolean;
 }
 
 /** A coder, and the device the request came from (`coder_devices`; null in previews). */

@@ -154,6 +154,8 @@ export const CoderErrorCodeSchema = z.enum([
   "url_param_missing",
   /** A URL parameter's value doesn't fit the invite's pattern. */
   "url_param_invalid",
+  /** The researchers paused the job: no new sessions or units until they resume it (what is open can be saved). */
+  "job_paused",
   /** An admin suspended the job (docs/accounts.md). */
   "job_suspended",
   /** The job reached its owner's limit on coders or answers. */

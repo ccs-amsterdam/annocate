@@ -41,7 +41,8 @@ export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWri
   await sql.query(
     `INSERT INTO deployments (job_id, codebook_id, active, version, updated) VALUES ($1, $2, $3, 1, now())
      ON CONFLICT (job_id) DO UPDATE SET codebook_id = excluded.codebook_id, active = excluded.active,
-       version = deployments.version + 1, updated = excluded.updated`,
+       version = deployments.version + (deployments.codebook_id IS DISTINCT FROM excluded.codebook_id)::int,
+       updated = excluded.updated`,
     [jobId, body.codebookId, body.active],
   );
   await sql.query("UPDATE codebooks SET immutable = true WHERE job_id = $1 AND id = $2", [jobId, body.codebookId]);
