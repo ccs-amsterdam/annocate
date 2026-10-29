@@ -124,10 +124,12 @@ minutes. During that time, it isn't handed to more coders than it still
 needs. This keeps the queue from giving the last needed coding of a unit to
 five coders at once.
 
+- A coder's browser loads a few units ahead (up to five), and each is
+  reserved for them.
 - A coder who reloads the page, or comes back within those minutes, gets the
-  same unit again.
-- A coder who leaves halfway frees the unit after 15 minutes, and it goes
-  back into the queue.
+  same units again.
+- A coder who leaves halfway frees the units they held after 15 minutes,
+  and they go back into the queue.
 - A coder who comes back later can still finish the unit they had. So a unit
   occasionally gets one coding more than it needed.
 

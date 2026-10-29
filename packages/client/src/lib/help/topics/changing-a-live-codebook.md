@@ -80,9 +80,9 @@ The download keeps every answer that counts (see
 
 ## What coders who are working see
 
-Coders don't need to reload. When they next save an answer, they switch to
-the new version and continue where they were, on the same unit,
-with their answers to it as far as they still fit. See
+Coders don't need to reload. When their browser next talks to the server,
+they switch to the new version and continue where they were, usually on
+the same unit, with their answers to it as far as they still fit. See
 [What coders experience when you publish](previewing-and-publishing.md#what-coders-experience-when-you-publish).
 
 ## Resetting answers

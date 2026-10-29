@@ -5,9 +5,13 @@ Status: current (2026-10-26). Server-side design lives in
 
 ## 1. Packaging
 
-- `packages/client` builds two ways: a standalone SPA (the dev shell,
-  `src/App.tsx`) and a component library (`@annotinder/client`,
-  `src/lib/index.ts`).
+- `packages/client` builds two ways: the app the server serves
+  (`src/App.tsx`: the researcher UI, and the coding screen for coder links;
+  on a development server without login also a dev badge and the demo
+  job's coding screen), and a component library (`@annotinder/client`,
+  `src/lib/index.ts`). Nothing in the repo uses the library build yet; a
+  host that wants the server admin page would also need `ServerApi`
+  exported.
 - **Components, not routes.** `JobRunner` (coding) and `AdminApp`
   (research management) are plain components a host app drops into its own
   React tree. There is no router dependency. `AdminApp` brings its own
@@ -18,8 +22,9 @@ Status: current (2026-10-26). Server-side design lives in
   `exports["./style.css"]` path.
 - **Hosting.** The client and the server always share an origin: coder and
   researcher sessions are httpOnly cookies (`coder-identity.md` §4, §7).
-  In development, Vite proxies `/d`, `/job`, `/me` and `/auth` to the
-  server. Only scripts with API keys call the server from elsewhere.
+  In production the server serves the client (`docs/hosting.md`); in
+  development, Vite proxies `/d`, `/job`, `/me`, `/auth` and `/admin` to
+  the server. Only scripts with API keys call the server from elsewhere.
 - Not published to npm yet.
 
 ## 2. JobManager (coding runtime)
@@ -39,23 +44,41 @@ Status: current (2026-10-26). Server-side design lives in
   evaluation is async and rendering is not.
 - It chooses the unit loop branch for the coder and tells the server
   (`architecture.md` §6.1).
+- **Units in batches.** It asks for a loop's units a few at a time
+  (`getNextUnits`, `UNIT_BATCH` 5) and keeps a queue per loop, refilled in
+  the background when 2 are left (`fetchNextUnit`, `fillQueue`).
+- **Saving in the background.** Answers go into an outbox (`save`,
+  `drain`): sent one post at a time, in order; a newer post for the same
+  answers replaces one still waiting. A failure for lack of a connection
+  (network, 5xx, 408, 429) is tried again, later and later (up to 30 s);
+  another failure stops saving and shows an error. The outbox is emptied
+  before `/end` and `/quit`. The snapshot has `unsaved` and `retrying`;
+  `JobRunner` says "Not saved yet: no connection" and asks before the page
+  is closed with unsaved answers.
+- **Frozen answers.** Coder-level answers a loop depends on (contracts
+  `loopDependencies`) are frozen once a unit in that loop is saved
+  (`session.frozen`, `currentFrozen`): shown read-only with "Continue".
+- **Response times.** `QuestionTimer` (`jobManager/timing.ts`) times each
+  question; the timings go with the posts (`coder-identity.md` §10).
 - An `end` item that is reached is the last step: it tells the server and
-  publishes the ending (§4 "End items").
+  publishes the ending (§4 "End items"). Reaching the end without one also
+  tells the server (`POST /end`).
 - Navigation: back and forward, jumping to a phase, unit or question. Unit
   history is kept **per loop**. On resume it is rebuilt from the session's
   finished unit ids, and units are loaded lazily (`architecture.md` §8.1).
 - `currentUnitVariables` on the snapshot exposes the current unit's answers
   so far. Relation questions need it to find sibling span answers.
 - **A new codebook version while coding**: the server answers 409
-  `codebook_changed` to answers given under the old version
-  (`api/coder.md`). `JobManager` then loads the session again, as after a
-  reload, and returns to the unit the coder had open with their unsaved
-  answers to it, as far as they fit the new version; a question the new
-  version added is asked. At most the last coder-level answer is asked
-  again.
+  `codebook_changed` to any request made under the old version (except
+  `/session` and `/transfer`; `api/coder.md`). `JobManager` then loads the
+  session again, as after a reload, and returns to the unit the coder had
+  open. Answers to units not yet saved (the open one, and finished ones
+  still in the outbox) are kept as far as they fit the new version; a
+  question the new version added is asked. Coder-level answers not yet
+  saved are asked again.
 - `start()` is idempotent (React StrictMode runs effects twice).
-  `retry()` re-runs the last failed operation; this is safe because writes
-  are upserts.
+  `retry()` re-runs the last failed operation and resumes saving; this is
+  safe because writes are upserts.
 
 ## 3. Unit layout and texts
 
@@ -275,7 +298,7 @@ several are confirmed with Continue.
 **Swiping** (`annotinder`, `components/SwipeCard.tsx`): in a unit loop the
 unit itself is the card; outside one, the question card. The coder drags
 it left, right or up (1st, 2nd, 3rd option); while dragging it tilts and
-shows the option for that direction. Released past 30% of its width (100+
+shows the option for that direction. Released past 30% of its width (120
 px up), or flung, it flies off and that option is the answer; otherwise it
 springs back. The answer pane keeps the question with a compact row of
 direction buttons (left, up, right), and the arrow keys work too; both fly
@@ -289,9 +312,9 @@ the buttons answer directly.
 
 - Span and relation questions are ordinary steps in the question flow, not
   a separate "annotation mode". `JobRunner` mounts a `SpanAnnotationProvider`
-  while a span question is active. The fields span questions select in
+  around every unit (keyed per unit). The fields span questions select in
   are always `SelectableText` (§3, "Selectable text"); only the active
-  question's can select.
+  span question's fields can select.
 - Spans are stored as **character offsets** (`offset`, `length`) plus the
   selected `text` (redundant, but saves analysis a re-slice), and the
   `field` they are in: one span question can select in several fields
@@ -300,9 +323,10 @@ the buttons answer directly.
   tokenization library. In word mode a selection (and a click) snaps to
   words; in character mode it is exactly what was selected, and a click
   only opens an existing span.
-- Overlapping spans are rejected when selecting. Clicking a highlighted span
-  removes it. Earlier spans of a resumed unit are passed in as
-  `initialSpans`.
+- Spans may overlap (an exact duplicate is ignored). Clicking a highlighted
+  span opens its labels, to change or delete them or add another label on
+  the same text; Backspace or Delete removes the last span. Earlier spans
+  of a resumed unit are passed in as `initialSpans`.
 - Relations link two existing spans of sibling span questions (`from`/`to`)
   with one of the relation's options, picked from dropdowns labelled with
   the span text.
@@ -316,7 +340,8 @@ company's return link, whose `$var` references are filled in URL-encoded.
 `JobManager` tells the server (`POST /end`; in a loop after saving the
 unit) and shows the ending (`SessionEnd.tsx`, redirecting after a few
 seconds). The server stores the outcome; the session then refuses units and
-answers (409 `session_ended`), and a reload shows the ending again.
+answers (409 `session_ended`), and a reload shows the ending again (a
+closed session: 409 `session_closed`, `coder-identity.md` §9).
 
 ## 5. Scripting sandbox: QuickJS
 
@@ -433,9 +458,15 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
 - **Login**: `account/ResearcherGate.tsx` shows its children to a logged-in
   researcher and a login screen otherwise (with the 2FA recommendation and
   the reason a login was refused); `account/AccountMenu.tsx` has the
-  researcher's email, their API keys and logging out
-  (`docs/coder-identity.md` §7). The dev shell (`App.tsx`) uses them when
-  the server has login, and development headers when it doesn't.
+  researcher's email, their API keys, the light/dark switch and logging out
+  (`docs/coder-identity.md` §7). The app (`App.tsx`) uses them when the
+  server has login, and development headers on a development server (no
+  login, development auth).
+- **Accounts**: `JobList` lets only researchers create jobs;
+  `account/ResearcherAccess.tsx` handles researcher invite links and
+  requests. `AdminApp`'s `server` prop (`ServerApi`) opens the server admin
+  page for admins (`server/ServerAdmin.tsx`: users, plans, registration,
+  jobs, admin log; `docs/accounts.md`).
 
 - **Codebook editor**: edits the whole document in memory, validated
   client-side with the contract's `validateCodebookItems`, and saved as a
@@ -567,8 +598,8 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   (`codebook/diff.ts`), prefills the version note (versions are numbered,
   with an optional `note`) and shows the server's warnings (e.g. a loop
   gained questions, which reopens finished units). Coders who are working
-  switch to the new version when they next save (§2), keeping the answers
-  to the unit they have open; saved answers stay linked to the version they
+  switch to the new version on their next request to the server (§2),
+  keeping their unsaved answers to units; saved answers stay linked to the version they
   were given under.
   The publish dialog also warns when option values disappear or a
   question's type changes, e.g. from nominal to ordinal (earlier answers
@@ -620,8 +651,8 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   codebook versions (open them in the editor), unit/coder/invitation counts,
   answers per day (`GET /overview`), progress per loop
   (`GET /deployment/status`), and
-  the job settings (rename, archive, delete). `LiveControls.tsx`: pause or
-  resume. `TeamSettings.tsx`: who has access and
+  the job settings (rename, archive, keep sessions open, delete).
+  `LiveControls.tsx`: pause or resume. `TeamSettings.tsx`: who has access and
   their role (the list keeps at least one admin).
 - **Invitations**: create links (login requirement, participant id fixed
   or from a URL parameter with a pattern, other required URL parameters,
@@ -641,8 +672,9 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   (`coder-identity.md` §8).
 - **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip,
   built in the browser from the researcher API (all pages of
-  `GET /annotations` and `GET /unit-versions`, `GET /coders`, and the
-  codebook versions answers were given under), with `fflate`:
+  `GET /annotations` and `GET /unit-versions`, `GET /coders`,
+  `GET /devices`, `GET /coders/deletions`, and the codebook versions
+  answers were given under), with `fflate`:
   - `annotations.csv`: a row per unit and coder (with the unit version
     they saw and the codebook version), a column per question (a scale a
     column per item), in the live codebook's order;
@@ -651,6 +683,9 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
   - `units.csv`: the unit versions answers were given on (`architecture.md`
     §8.4), with the fields as shown;
   - `variables.csv`: per codebook version, question and option, its label;
+  - `devices.csv`, `timings.csv`, `deleted_coders.csv`: devices coders
+    used, response times, and coders whose data was deleted
+    (`coder-identity.md` §4, §10, §8);
   - `README.txt`: what the columns mean;
   - optionally `reset_answers.csv`: answers that were reset.
 

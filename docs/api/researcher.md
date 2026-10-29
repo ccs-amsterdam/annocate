@@ -443,7 +443,8 @@ codebook version (or pause/resume with `active`):
 1. check that the codebook passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid codebooks);
 2. store it, bump `version`, and make the codebook immutable;
-3. have a loaded runtime re-read the deployment.
+3. bump the deployment's revision, so every server process re-reads it on
+   its next request.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again.
@@ -468,8 +469,9 @@ preview's coder API answers 409 `codebook_invalid`.
 
 `POST /job/:jobId/annotations/reset` → `{ retired }`. Retires the live values
 of these variables (optionally only some units or coders): kept for
-analysis, but they no longer count, so the units are coded again. Bump the
-deployment's `annotationEpoch` and refresh the runtime.
+analysis, but they no longer count, so the units are coded again. Bumps
+the deployment's `annotationEpoch`: runtimes re-read it and derive the
+finished codings again. Only answers to units are reset.
 
 ## Annotations
 

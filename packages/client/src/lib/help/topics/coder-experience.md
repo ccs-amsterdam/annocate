@@ -97,14 +97,14 @@ position shows how far they are (*Unit 31 / 100*).
 
 If they close the page halfway through a unit, the answers to that unit
 were not saved yet. They get the same unit again and answer it from the
-start. (In a shared queue a unit is held for a coder for 15 minutes; after
-that it may go to someone else. See
+start. (In a shared queue the units a coder has loaded, up to five, are held
+for them for 15 minutes; after that they may go to someone else. See
 [Shared queues](shared-queues.md).)
 
 A session belongs to the browser it was started in. Another browser, a
 private window, or cleared browser data means a new session, unless the
 coder moves it (below). With a participant id in the link, AnnoTinder
-notices and says **You already started on another device**, with the
+notices and says **This link was already used on another device**, with the
 choice to continue on the original device or **Start a new session**. A
 new session starts empty: it doesn't include the earlier answers.
 

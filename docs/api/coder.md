@@ -22,6 +22,9 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
 | [createTransfer](#createtransfer) | `POST /transfer` | – | `TransferResponseSchema` |
 | [redeemTransfer](#redeemtransfer) | `POST /transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` |
+| [endSession](#endsession) | `POST /end` | `EndSessionSchema` | `EndSessionResponseSchema` |
+| [reopenSession](#reopensession) | `POST /reopen` | – | – |
+| [quitSession](#quitsession) | `POST /quit` | `QuitSessionSchema` | – |
 
 ## Sessions and headers
 
@@ -49,7 +52,8 @@ Headers:
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
 **New codebook versions.** `GET /session` returns the deployment's
-`version`, bumped on every publish. The client sends it back with every
+`version`, bumped on every `PUT /deployment` (a publish, or pausing or
+resuming). The client sends it back with every
 request. After a publish, requests with the old version (all but
 `/session` and `/transfer`) answer 409 `codebook_changed`, before anything
 is stored; the client then loads the session again and continues where it

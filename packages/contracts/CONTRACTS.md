@@ -6,9 +6,10 @@ schemas, their inferred TypeScript types, and small pure helper functions
 (position parsing, codebook nesting validation) — no server or client
 runtime code, no HTTP client, no React.
 
-The server (`packages/server`) implements both APIs: the researcher API
-(jobs, codebooks, units, publishing; used by the researcher UI, R, Python
-and other systems) and the coder API (used by coders' browsers). Types the
+The server (`packages/server`) implements the three APIs: the researcher
+API (jobs, codebooks, units, publishing; used by the researcher UI, R,
+Python and other systems), the coder API (used by coders' browsers) and the
+admin API (server admins). Types the
 server uses internally (e.g. what its runtime reads from the database) live
 in the server, not here.
 
@@ -25,13 +26,12 @@ in the server, not here.
 - **Codebook as a tree.** A codebook is one JSON document: a list of
   top-level items, where `unit_loop` and `condition` items nest their
   `children`. `src/codebook/validation.ts` enforces the nesting rules:
-  - `user_variable` / `unit_loop` items may not be nested inside a
-    `unit_loop`.
-  - `unit_variable` items must be nested inside a `unit_loop` (through any
-    number of `condition` ancestors).
+  - Item types: `question`, `end`, `condition` and `unit_loop`. A question
+    inside a loop is unit-level, outside it coder-level.
   - `unit_loop` items may not be nested inside another `unit_loop`.
   - `condition` items may appear (and be nested) anywhere.
-  - `question`/`user_variable`/`unit_variable` items are always leaves.
+  - `question` and `end` items are always leaves; `span` and `relation`
+    questions only inside a loop.
   - Item names must be unique within a codebook.
   - `unit_loop` branches may only refer to coder-level variables defined
     before the loop (see `src/codebook/unitLoop.ts`).
@@ -47,8 +47,7 @@ in the server, not here.
   `ordinal`, `numeric`, `scale`, `annotinder`, `confirm`, `auto`, and in loops `span`
   and `relation` (`src/codebook/variableTypes.ts`); plus the `end` item
   (`src/codebook/item.ts`). `resolveLayout` (`src/codebook/answerLayout.ts`)
-  says how a question is laid out. Codebooks in the older shape are
-  migrated on parse (`src/codebook/migrate.ts`).
+  says how a question is laid out.
 - **References and conditions** (`docs/client.md` §5):
   `src/codebook/references.ts` (references, their shapes, scopes),
   `src/codebook/condition.ts` (conditions are scripts; helper methods;
@@ -74,22 +73,23 @@ request and response body. This output is not checked into git (see
 ## Endpoints
 
 Documented per API in [`docs/api/`](../../docs/api/README.md), with a
-section per endpoint. The registries: `src/endpoints/researcher.ts` and
-`src/endpoints/coder.ts`.
+section per endpoint. The registries: `src/endpoints/researcher.ts`,
+`src/endpoints/coder.ts` and `src/endpoints/admin.ts`.
 
 | API | Called by | Registry | Spec |
 |---|---|---|---|
 | researcher API | researcher UI, R, Python, other systems | `researcherEndpoints` | [researcher.md](../../docs/api/researcher.md) |
 | coder API | coders' browsers | `coderEndpoints` | [coder.md](../../docs/api/coder.md) |
+| admin API | the server admin page | `adminEndpoints` | [admin.md](../../docs/api/admin.md) |
 
 ## Auth
 
 Not modeled in this package: the contract never sees credentials.
 
-- **Coders**: an httpOnly session cookie the server sets, plus the
+- **Coders**: an httpOnly device cookie the server sets, plus the
   `x-annotinder: 1` header against CSRF (`docs/coder-identity.md`). The
   client never sees the session key.
-- **Researchers**: a personal API key, `authorization: Bearer <key>`
-  (`account.ts`); the role per job is in job users (`job.ts`). Development
-  servers also accept `x-dev-role` / `x-dev-email` headers. Login for the
-  web UI is still to do.
+- **Researchers**: the session cookie after login (with `x-annotinder: 1`),
+  or a personal API key, `authorization: Bearer <key>` (`account.ts`); the
+  role per job is in job users (`job.ts`). Development servers also accept
+  `x-dev-role` / `x-dev-email` headers.

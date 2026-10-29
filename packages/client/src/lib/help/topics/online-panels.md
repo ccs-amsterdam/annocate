@@ -154,10 +154,11 @@ participants ≈ units × coders per unit ÷ units per participant
 
 For 600 units, each coded by 3 participants, 20 units per participant:
 600 × 3 ÷ 20 = 90 participants. Recruit a few more for those who stop
-halfway: a unit held by someone who stops goes back to the queue after 15
-minutes.
+halfway: the units held by someone who stops (up to five) go back to the
+queue after 15 minutes.
 
-When the queue is empty, participants who arrive later get no units in that
+When every unit is full (coded by *at most* coders, or agreed on),
+participants who arrive later get no units in that
 loop and go on to the next item: with an end item **Complete** after the
 loop, they are sent back right away. Watch the **Progress** on the Overview
 tab (see [Following progress](coders-and-progress.md)) and stop recruiting

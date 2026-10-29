@@ -63,8 +63,10 @@ validating is about 2x slower than in Node; an httpuv round trip into V8
 works. What it needs:
 
 - The runtime in its own package, free of Node and database imports
-  (`node:crypto` in `shared/units.ts` and `preview.ts`, `db.ts`), with a
-  memory store (`preview.ts`'s `PreviewStore` is most of one).
+  (`node:crypto` in `shared/units.ts`, `shared/deployments.ts` and
+  `preview.ts`; the database store `runtime/store.ts` and `db.ts` stay in
+  the server), with a memory store (`preview.ts`'s `PreviewStore` is most
+  of one).
 - Shims: R's V8 has no web APIs (`TextEncoder`, `crypto`, `btoa`, timers,
   `URL`). Random bytes and SHA-256 through a synchronous callback into R
   (`openssl`), ~0.3 ms per call, or a pure-JS SHA-256.

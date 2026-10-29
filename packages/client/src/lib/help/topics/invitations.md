@@ -163,7 +163,7 @@ only once (max uses 1).
 | --- | --- |
 | **Label** | The label you gave it |
 | **Link** | **Copy link** copies the link |
-| **Participant id** | The fixed id, *from URL*, or – |
+| **Participant id** | The fixed id, `?<parameter>` for an id from the link (plus other required URL parameters), or – |
 | **Presets** | The preset variables |
 | **Units** | The invitation's unitset; you can change it here |
 | **Uses** | How many coders started with it (and the maximum) |

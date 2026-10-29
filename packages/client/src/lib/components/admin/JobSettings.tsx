@@ -8,7 +8,8 @@ import { Trash2 } from "lucide-react";
 
 /**
  * Job settings (docs/client.md §7), shown at the bottom of the overview: edit
- * the job name, toggle archived status, or delete the job.
+ * the job name, toggle archived status, keep finished sessions open, or
+ * delete the job.
  */
 export function JobSettings({
   client,

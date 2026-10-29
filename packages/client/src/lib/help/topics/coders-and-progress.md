@@ -8,8 +8,9 @@ summary: The Overview and Coders tabs - whether the job is live, how many coders
 While coders work, two tabs tell you how it goes. The **Overview** tab shows
 the job as a whole: is it live, how much has been coded, and how far each
 unit loop is. The **Coders** tab shows every coder: when they started, when
-they were last active and how many units they finished. Both are updated
-whenever you open them; for the full data, download the results.
+they were last active and how many units they finished. Both refresh
+by themselves while open (the Overview every 30 seconds, the Coders tab
+every 10); for the full data, download the results.
 
 ## The Overview tab
 
@@ -19,20 +20,20 @@ whenever you open them; for the full data, download the results.
 | --- | --- |
 | **Not published** | No codebook version is live yet: coders can't start |
 | **Live** | Coders can work, since the date shown |
-| **Paused** | Coders get no new units. Coders with a unit open can still finish it. **Pause** and **Resume** are next to the status |
+| **Paused** | Coders get no new units: they can finish the units they already have (a few are loaded ahead), then see that the job is not active until you resume. **Pause** and **Resume** are next to the status |
 | **Live version** | The codebook version coders get, with its note. Click it to open it in the codebook editor |
 | **Draft** | Your unpublished changes, if any |
 
 Changes reach coders right away: after you publish, upload or replace
-units, change unitsets or reset answers, coders' next request uses them.
-Under **Progress**, a line says since when the server runs the job.
+units, change unitsets or reset answers, coders get them with the next
+units they load (units already loaded ahead stay as they were).
 
 ### Numbers
 
 | Tile | Big number | Below it |
 | --- | --- | --- |
 | **Units** | Units in the job | The number of unitsets |
-| **Coders started** | Coders who answered at least one question in a unit loop | All coders who opened a link, and how many were active in the last 24 hours |
+| **Coders started** | Coders who answered at least one question (assigned values don't count) | All coders who opened a link, and how many were active in the last 24 hours |
 | **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was |
 | **Open invitations** | Invitations that are not revoked or used up | All invitations |
 
@@ -72,16 +73,14 @@ Every coder who opened an invitation link, most recently active first:
 | **Coder** | The participant id, or a number if they have none |
 | **Invitation** | The label of the invitation they came in with |
 | **Started** | When they first opened the link |
-| **Last active** | When they last gave an answer in a unit loop |
-| **Answers** | Their answers in unit loops: one per question per unit, including questions a condition skipped |
+| **Last active** | When they last gave an answer |
+| **Answers** | All their answers: one per question (per unit, in loops), including questions outside unit loops and questions a condition skipped |
 | **Finished in ...** | Per unit loop: the units for which they answered every question of the loop |
 
 A unit loop is called by its label, or *Unit loop 1*, *Unit loop 2*, ...
 if it has none: give loops a label to make this table easier to read.
 
-Coders who only answered questions outside unit loops (for example
-screened out after a few background questions) show no answers and no
-last activity here. **Ended** says how a session ended: *Complete* or
+**Ended** says how a session ended: *Complete* or
 *Screened out* at an [end item](end-items.md) (hover it to see which), or
 *Quit* when the coder stopped for good; `coders.csv` in the results has the
 same in its `ended` column.

@@ -41,8 +41,8 @@ yourself, with a unitset name that depends on an answer (see
 The units of the unitset form a queue that all coders draw from. Each unit
 is handed out until it is done, either when a number of coders coded it, or
 when a number of coders agree on a question, and then to no one else. Coders
-keep getting units until the queue is empty, or until they reach **Max units
-per coder**.
+keep getting units until the queue is empty, or until they reach the
+*at most* of **Units per coder**.
 
 Use it for large samples that need, say, one or two codings per unit, and
 for crowd coding, where you don't know in advance how many coders will come

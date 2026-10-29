@@ -48,7 +48,7 @@ export interface BranchChoice {
 export interface CoderApi {
   getSession(): Promise<SessionResponse>;
   /**
-   * Next unit for a unit_loop; which unit is decided by the server. `null` = the coder is done with the loop.
+   * The coder's next units in a loop (up to `count`), chosen by the server; empty when the coder is done with it.
    * `branch`: the branch of the loop the client chose, with its filled-in unitset names (contracts NextUnitQuerySchema).
    */
   getNextUnits(loop: string, branch?: BranchChoice, count?: number): Promise<CoderUnitResponse[]>;
@@ -58,7 +58,6 @@ export interface CoderApi {
   postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string, timings?: Record<string, AnswerTiming>): Promise<void>;
   /** The coder-level answers, with how long the questions visited since the last post took. */
   postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void>;
-  /** The coder reached an `end` item: the session is over (screened out or complete). */
   /** The coder reached an `end` item (`unit`: the unit an end inside a unit loop was reached on), or without one finished the job. */
   endSession(item?: string, unit?: EndUnit): Promise<EndSessionResponse>;
   /** Goes back after finishing, while the server allows it (`reopen`). */
@@ -70,18 +69,19 @@ export interface CoderApi {
 }
 
 export interface HttpCoderApiConfig {
-  /** Base URL of the job's server including the deployment, e.g. "/d/amcat.nl/42" (same origin as the client). */
+  /** Base URL of the coder API including the deployment, e.g. "/d/42" (same origin as the client). */
   baseUrl: string;
-  /** The invite link: creates the coder on first use, and selects this link's session cookie. */
+  /** The invite link: creates the coder on first use (and says which URL parameter is the participant id). */
   inviteSecret?: string;
   /**
-   * The page's other query parameters, for the codebook's `url_param` auto
-   * variables. The server stores the ones it needs when the coder starts.
+   * The page's other query parameters: the participant id, the invite's
+   * required URL parameters, and the codebook's `url_param` auto variables.
+   * The server stores the ones it needs when the coder starts.
    */
   urlParams?: Record<string, string>;
   /**
    * Start a new session although this participant already has one elsewhere.
-   * Sent with the first request only: the server then sets a new cookie.
+   * Sent with the first request only: the server moves this device to a new session.
    */
   newSession?: boolean;
 }
@@ -119,7 +119,7 @@ export class HttpCoderApi implements CoderApi {
     return headers;
   }
 
-  /** Exchanges a transfer token for this device's session cookie (set by the server). */
+  /** Redeems a transfer token: the server adds this device to the session. */
   static async redeemTransfer(scope: CoderSessionScope, token: string): Promise<void> {
     const path = coderEndpoints.redeemTransfer.path;
     const res = await fetch(`${scope.baseUrl}${path}`, {

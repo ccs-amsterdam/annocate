@@ -122,12 +122,13 @@ an invitation link can't begin.
 ## What coders experience when you publish
 
 Coders who are working keep the version they started with until their
-answers are next saved: when they finish the unit they have open, or answer
-a question outside a loop. Then AnnoTinder loads the new version, as after
-a reload, and they continue where they were:
+browser next talks to the server (an answer is saved, or more units are
+loaded). Then AnnoTinder loads the new version, as after a reload, and they
+continue where they were:
 
-- They stay on the unit they had open, with their answers to it, as far as
-  those still fit the new version. A question the new version added is
+- They continue at the first unit whose answers weren't saved yet, usually
+  the one they had open, with their answers to it as far as those still fit
+  the new version. A question the new version added is
   asked; otherwise they give their last answer once more, to save the unit.
 - Answers they gave earlier stay linked to the version they were given
   under.

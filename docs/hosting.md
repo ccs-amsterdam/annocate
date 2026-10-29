@@ -24,7 +24,8 @@ The database schema is created and updated when the server starts
 (`packages/server/migrations`). Until the first release the migrations may
 be reset: a test server's data then has to be thrown away.
 
-`GET /health` answers `{ ok: true }` when the server runs (the image's
+`GET /health` answers `{ ok: true, service, contractsVersion }` when the
+server runs (the image's
 health check uses it).
 
 ## Settings
@@ -37,7 +38,10 @@ health check uses it).
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Researcher login (below). Without them nobody can log in |
 | `ANNOTINDER_ADMINS` | Comma-separated emails that get the admin role when they log in: the server's first admins (`accounts.md`) |
 | `ANNOTINDER_REQUIRE_MFA` | `1`: researcher access needs a login with a second factor, as the provider reports it (`amr`). Recommended |
+| `POSTGRES_PASSWORD` | Compose only: the database password |
+| `ANNOTINDER_DOMAIN` | Compose `tls` profile only: the domain Caddy gets a certificate for |
 | `PORT` | Default 8787 |
+| `PGLITE_DIR` | Without `DATABASE_URL`: where the PGlite database lives (development; default `.pglite` in `packages/server`) |
 | `ANNOTINDER_CLIENT_DIR` | The built client; set in the image |
 | `ANNOTINDER_DEMO` | `1`: an empty database gets the demo job. Development only |
 | `ANNOTINDER_DEV_AUTH` | `1`: accept development auth headers. **Never on a reachable server** |
@@ -75,7 +79,8 @@ docker compose up -d --build
 
 ## Several server processes
 
-The server keeps only the codebook of each live job in memory, so several
+The server keeps only each live job's deployment (codebook, unitsets,
+settings) in memory, so several
 processes can share one database (`architecture.md` §3), e.g. compose
 replicas behind a proxy. Exceptions: researcher previews live in one
 process's memory, and a job's limit on answers is counted per process.

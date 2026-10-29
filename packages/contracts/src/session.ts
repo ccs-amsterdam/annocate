@@ -154,6 +154,14 @@ export const CoderErrorCodeSchema = z.enum([
   "url_param_missing",
   /** A URL parameter's value doesn't fit the invite's pattern. */
   "url_param_invalid",
+  /** An admin suspended the job (docs/accounts.md). */
+  "job_suspended",
+  /** The job reached its owner's limit on coders or answers. */
+  "job_full",
+  /** An answer is larger than the server allows. */
+  "answer_too_large",
+  /** The request body is larger than the server allows. */
+  "request_too_large",
 ]);
 export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
 

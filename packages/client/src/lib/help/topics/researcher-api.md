@@ -145,8 +145,9 @@ api(sprintf("job/%d/unitsets", job)) |>
 
 ## Downloading answers
 
-`GET /job/<id>/annotations` gives the answers in unit loops, one row per
-unit, coder and question, in the order they were written, a page at a time
+`GET /job/<id>/annotations` gives every answer, one row per coder,
+question and unit (`unitId` is `null` for questions outside unit loops;
+`assigned: true` marks [assigned variables](auto.md)), in the order they were written, a page at a time
 (up to `limit` rows, at most 10000). Pass the page's `next` as `after` to get
 the next page, until `next` is `null`:
 
@@ -158,7 +159,8 @@ repeat {
     req_url_query(after = after, limit = 10000) |>
     req_perform() |>
     resp_body_json()
-  annotations <- c(annotations, page$annotations)
+  # Answers in unit loops (those outside have no unit)
+  annotations <- c(annotations, Filter(\(a) !is.null(a$unitId), page$annotations))
   if (is.null(page$`next`)) break
   after <- page$`next`
 }
@@ -209,8 +211,9 @@ Two things the download on the **Results** tab doesn't have:
   answers that no longer count because they were reset, with `retiredAt`:
   when that happened.
 
-Answers outside unit loops come with the coders, from
-`GET /job/<id>/coders`: each coder's `variables`, in the same form.
+Answers outside unit loops are rows too (`unitId` `null`), and also come
+with the coders, from `GET /job/<id>/coders`: each coder's `variables`, in
+the same form.
 
 > For most analyses, the [results download](results.md) is easier: it turns
 > these rows into tables with a column per question, and adds the labels.

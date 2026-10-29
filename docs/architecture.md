@@ -95,7 +95,8 @@ development, Vite proxies the server's paths.
    `unit_codings` has a row per finished (loop, unit, coder), with the
    answers to the loop's agreement questions, written with the answers.
    What finishes a loop depends on the codebook, so when that changes (a
-   redeploy whose loops have other questions or agreement questions) or
+   redeploy whose loops have other positions, questions or agreement
+   questions: `codingsSignature`) or
    answers are reset (`annotationEpoch`), they are derived from the answers
    again, once (`deployments.codings_basis`; the first process to get the
    lock does it).
@@ -221,8 +222,8 @@ units:
     any unit not agreed on (`agree`), or any unit (`coders`), least coded
     first.
   - **Leases** last `leaseSeconds` (default 900). An expired lease frees the
-    slot. A coder asking for "next" while holding a lease gets the same unit
-    again, so a reload is safe.
+    slot. A coder asking for "next" while holding leases gets the same units
+    again (their leases renewed), so a reload is safe.
   - **`priority`:** `cover` (default) prefers least-coded units;
     `saturate` prefers units closest to done.
 - **`sets`**: each coder gets one of `unitsets`, the one with the fewest
@@ -412,11 +413,13 @@ How it works:
   in a loop when *every* question of that loop has a live value. Questions a
   condition hid are stored as `skip`. The runtime only accepts complete
   units, so a stored unit is always complete under the codebook it was
-  written with. The database query only counts (`listFinished` with the
-  loop's variable names); the codebook logic stays in the runtime. Finished units are tracked
-  per loop, so a unit in two loops is finished in each separately.
-- **Order** in a coder's progress is the first write of the unit's values
-  (`created`), so editing a finished unit doesn't move it.
+  written with. Finished codings are rows of `unit_codings`, written with
+  the answers (the runtime decides which loops a submit finishes, §3);
+  `listFinished` (a query by the loop's variable names) derives them again
+  when the codebook or the annotation epoch changes. Finished units are
+  tracked per loop, so a unit in two loops is finished in each separately.
+- **Order** in a coder's progress is when they first finished the unit
+  (`unit_codings.created`), so editing a finished unit doesn't move it.
 - **Adding a question to a loop reopens its finished units** (they lack the
   new answer). Coders get them back first, with their earlier answers, and
   answer only what's new. Deploying such a codebook returns a warning with
@@ -440,9 +443,10 @@ version its coder saw (`annotation_values.unit_version_id`), and to the
 codebook version it was given under (`codebook_id`); both are foreign
 keys.
 
-- The runtime remembers each unit's shown data and version id (per unit
-  content and codebook), so serving a unit costs no hashing or database
-  write after the first time.
+- Each serve computes the shown data and its hash and looks up the version
+  (`unit_versions`, inserted only the first time it is shown);
+  `unit_serves` records the version last shown to the coder, which is
+  stored with their answers.
 - A unit can be replaced after it was coded, with a warning
   (`overwriteCoded` on `POST /units`): later coders see the new
   content, a new version; earlier answers keep theirs. So it is visible
@@ -472,9 +476,9 @@ Other open points:
 | `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, unitset references |
 | `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/unitset.ts` | Unitsets, `splitUnits` generator |
-| `contracts/src/deployment.ts` | Deployment, status, refresh and preview schemas (researcher API) |
+| `contracts/src/deployment.ts` | Deployment, reset, status and preview schemas (researcher API) |
 | `contracts/src/endpoints/` | The two API registries: researcher, coder ([docs/api](api/README.md)) |
-| `server/src/app.ts` | Hono app: researcher API under `/job/...`, coder API under `/d/<deploymentId>` |
+| `server/src/app.ts` | Hono app: researcher API (`/job`, `/me`, `/auth`), admin API (`/admin`), coder API (`/d/<deploymentId>`), `/health`, and the built client (`ANNOTINDER_CLIENT_DIR`) |
 | `server/src/coder.ts` | The coder API routes: session cookie, coder resolution, units, answers, transfers |
 | `server/src/researcher/` | The researcher API, one file per path; `auth.ts` (sessions, API keys, dev headers), `login.ts` (`/auth/...`) |
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | Researcher login with an OpenID Connect provider, users and API keys, sessions |
@@ -540,7 +544,7 @@ Roughly in order:
 9. **Multimedia.** Images, audio and video in units should probably **not**
    flow through the JSON path. Proposal: units reference media by id; the
    server returns short-lived signed URLs to a blob store. This keeps the
-   runtime's memory and cache JSON-only.
+   runtime's memory JSON-only.
 10. **Semantic validation.** Validation checks variable names, option
     values, items, and the arguments of helpers in simple conditions. Running codebook conditions (QuickJS)
     server-side, to reject answers to questions the coder should never

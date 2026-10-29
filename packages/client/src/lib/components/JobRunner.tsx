@@ -706,9 +706,9 @@ export function JobRunner(props: JobRunnerProps) {
 
 /**
  * Gets the session ready before coding starts: redeems a transfer link (the
- * server then sets this device's session cookie), and starts a new
- * session on request. The session itself is an httpOnly cookie, created by
- * the server on first visit. See docs/coder-identity.md §4.
+ * server adds this device to the session), and starts a new session on
+ * request. The server finds the session by the device cookie, set on the
+ * first visit. See docs/coder-identity.md §4.
  */
 function CoderSessionGate(props: JobRunnerProps) {
   const { baseUrl, inviteSecret, transferToken, onTransferRedeemed, newSession = false } = props;
@@ -754,7 +754,7 @@ function CoderSessionGate(props: JobRunnerProps) {
     );
   }
 
-  // The server replaces this device's cookie on the first request.
+  // The server moves this device to a new session on the first request.
   const startNewSession = () => setSession((s) => ({ ...s, generation: s.generation + 1, newSession: true }));
 
   return (

@@ -54,8 +54,8 @@ owner's (`jobs.owner_id`); jobs without an owner have none.
 
 Checked when something is added (`shared/limits.ts`): creating a job, an
 upload with new units, a new coder (`job_full`; existing coders go on),
-answers (the job's answer rows, counted at most once a minute, so a little
-early at worst). Nothing is removed when limits shrink.
+answers (the job's answer rows, counted at most once a minute per server
+process, so the limit is approximate). Nothing is removed when limits shrink.
 
 Server-wide (`server_settings`): the largest unit (`unit_bytes`, default
 256 KB) and answer (`answer_bytes`, 64 KB), so one unit (e.g. an image as

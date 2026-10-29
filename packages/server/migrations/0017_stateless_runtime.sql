@@ -1,4 +1,4 @@
--- A server without per-coder state in memory (docs/plan-stateless-runtime.md, step 2).
+-- A server without per-coder state in memory (docs/architecture.md §3).
 
 -- Bumped whenever something the coder runtime reads changes (units,
 -- unitsets, job settings, resets; a new codebook bumps `version`): every

@@ -25,7 +25,7 @@ Complements `docs/architecture.md`.
 | **Device key** | A device's key for its session in one job: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across jobs. A session has one per device that joined it. | database (`coder_devices`) |
 | **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed in a personal invite, or taken from a URL parameter the invite names (`participantParam`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
 | **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coders.email`) |
-| **Transfer link** | One-time, short-lived link that adds another device to the session. | server memory (15 min) |
+| **Transfer link** | One-time, short-lived link that adds another device to the session. | database (`transfers`, token hash only; 15 min) |
 
 Every coder (session) has one or more device keys. Some also have a
 participant id; some also have a linked email. For
@@ -111,9 +111,8 @@ confusion at a panel company over a leaked link.
      when it comes back with the participant's link). Both devices can now
      continue the same session.
 
-  Tokens live only in server memory. That fits the "nothing that can't
-  be rebuilt" rule (`architecture.md` §3): losing them means making a new
-  link.
+  Tokens are stored as hashes in the database (`transfers`), deleted when
+  used.
 - **Offer the link early** (not built). Switching devices halfway is rare
   (panel participants finish in one sitting), so "Continue on another
   device" stays in the menu. For long jobs, the client also offers it once
@@ -189,8 +188,7 @@ log in twice.
   link a device's jobs, on purpose); an account's would be the sessions
   linked to its email.
 - **A long-lived "continue later" link** (§4, "Offer the link early"):
-  stored in the database (server memory isn't durable), one per
-  session, revocable from the device that has the session. Should it be
+  a longer-lived transfer token, one per session, revocable from the device that has the session. Should it be
   single use (each redeem makes a new one)?
 - **Duplicate work across sessions of one participant.** Shared queues
   count codings per coder, so two sessions of one person can code the same
@@ -277,8 +275,8 @@ be deleted (`POST /job/:jobId/coders/delete { coderIds?, participantIds?,
 emails? }`, ADMIN): the coders rows (device keys, participant id, coder-level
 answers, routing, the request) and all their `annotation_values`, also
 retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
-The deployment's runtime is dropped and loads again (it caches coders,
-codings and routing). A deleted coder's browser later starts a new session
+Nothing about coders is kept in memory, so nothing needs reloading. A
+deleted coder's browser later starts a new session
 from its invite. Every deletion is logged (`coder_deletions`: coder id,
 participant id, email, requested, deleted, by whom, answer count), so the
 researcher can delete the coder from earlier downloads too
@@ -340,8 +338,9 @@ the UI yet; in the download (`timings.csv`, and per unit in
   and unit, when the server first handed the unit out (`unit_serves`,
   `servedAt` in `listAnnotations`); a unit's answers arrive together, so
   from then to the last answer bounds the time on all its questions.
-  Coder-level answers are posted one at a time, so the time since the
-  coder's previous answer bounds each. The download flags browsers that
+  Coder-level answers are normally posted one at a time, so the time since
+  the coder's previous answer bounds each; when saving is delayed (no
+  connection) several arrive together and share a looser bound. The download flags browsers that
   claim more time than the server saw (`exceeds_server`; 2 s leeway).
   The bound only catches inflated times; too-fast answers show in the
   server's times themselves.

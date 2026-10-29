@@ -145,6 +145,9 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
               <strong>devices.csv</strong>: the devices coders used (phone, tablet or desktop, browser, operating system)
             </li>
             <li>
+              <strong>timings.csv</strong>: how long coders took per question, as their browser measured it, with the server&apos;s own measure
+            </li>
+            <li>
               <strong>deleted_coders.csv</strong>: coders whose data was deleted; delete them from earlier downloads too
             </li>
             <li>

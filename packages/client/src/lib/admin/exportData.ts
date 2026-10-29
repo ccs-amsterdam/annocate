@@ -22,7 +22,9 @@ import {
 // - annotations: a row per unit and coder, a column per question;
 // - coders: a row per coder, with their coder-level answers;
 // - units: the unit versions answers were given on (what coders saw);
-// - variables: per codebook version, question and option its label.
+// - variables: per codebook version, question and option its label;
+// - devices, timings, deleted coders, and optionally reset answers
+//   (ResultsPanel.tsx puts them in the zip with a README).
 //
 // Answers are the stored option values; with labels, each answer column is
 // followed by a `_label` column, the label in the codebook version the

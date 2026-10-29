@@ -75,11 +75,11 @@ you publish.
 ## Sessions live in the coder's browser
 
 Coders don't create accounts. When a coder opens an invitation, the server
-starts a **session** for them and stores a random key in their browser, as a
-cookie that only works for this job. With that key, the same browser
-continues the same session later, for up to about a year (as long as browsers
-keep cookies). The server only stores a scrambled form of the key, so even a
-copy of the database doesn't let anyone take over sessions.
+starts a **session** for them. The browser keeps one random device id (a
+cookie); for this job the server stores only a code derived from it. So the
+same browser continues the same session later, for up to about a year (as
+long as browsers keep cookies), and even a copy of the database doesn't let
+anyone take over sessions.
 
 What this means for your study:
 
@@ -109,8 +109,9 @@ To run the study, a coder's browser gets:
 - **The unit fields the codebook uses**, also fields used only in a condition
   or shown only later in the unit. Fields the codebook doesn't use are never
   sent.
-- **Only the units they are given**, one at a time. A coder can go back to
-  units they coded, but can't look ahead or browse the job's units.
+- **Only the units they are given**, a few at a time (the next ones are
+  loaded ahead). A coder can go back to units they coded, but can't browse
+  the job's units.
 
 Conditions, including which group of a loop a coder belongs to, are worked
 out in the coder's browser. The server checks that the units a coder asks

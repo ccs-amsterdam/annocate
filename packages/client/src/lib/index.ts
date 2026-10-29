@@ -5,20 +5,12 @@
 //   import { JobRunner } from "@annotinder/client";
 //   import "@annotinder/client/style.css";
 //
-// The CSS import below (Tailwind base/components/utilities + the ShadCN
-// theme variables + fonts, see ../index.css) is what makes
-// "@annotinder/client/style.css" a real, non-empty file after
-// `vite build --config vite.lib.config.ts` -- Vite extracts any CSS
-// imported (transitively) from the lib entry point into a single stylesheet
-// alongside the JS bundle. It was NOT previously imported from this file
-// (only from the standalone app's src/main.tsx), so consumers following the
-// `import "@annotinder/client/style.css"` instructions above the JS import
-// would have silently gotten a missing/empty file (docs/client.md §1 gap,
-// fixed 2026-09-18).
+// The CSS import below (Tailwind, the theme variables and fonts, see
+// ../index.css) is what makes "@annotinder/client/style.css" a real file
+// after `vite build --config vite.lib.config.ts`: Vite extracts CSS
+// imported from the entry point into one stylesheet.
 import "../index.css";
 
-// Phases 4-5 will add the full ported annotation UI, codebook editor, and
-// job management screens on top of the core plumbing exported here.
 export const ANNOTINDER_CLIENT_VERSION = "0.1.0";
 
 export * from "./api/httpCoderApi";

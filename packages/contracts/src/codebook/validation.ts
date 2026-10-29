@@ -263,7 +263,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       const here = ctxAt(segment.start);
       if (kind === "unitset" || kind === "url") {
         const what = kind === "url" ? "Redirect URLs" : "Unitset names";
-        if (!segment.ref) issue(here.path, `${what} can only use $var references, not {{ }}`);
+        if (!segment.ref) issue(here.path, `${what} can only use ${kind === "url" ? "$var and $session" : "$var"} references, not {{ }}`);
         else if (segment.ref.suffix) issue(here.path, `${what} can't use ::${segment.ref.suffix}`);
       } else {
         refErrors(extractReferences(segment.script).errors, here.path);
@@ -278,7 +278,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       for (const ref of segment.references) {
         const shape = checkRef(ref, here);
         if (kind === "unitset" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
-        if (kind === "url" && ref.ns !== "var") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var references`);
+        if (kind === "url" && ref.ns === "unit") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var and $session references`);
       }
     }
     const named = displays.flatMap((d) => (d.name ? [d.name] : []));

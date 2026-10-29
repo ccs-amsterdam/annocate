@@ -4,7 +4,8 @@ Monorepo for Annotinder: an annotation and survey tool for researchers. Design
 docs live in `docs/`:
 
 - `docs/api/`: **the APIs**: the researcher API (researcher UI, R, Python,
-  other systems) and the coder API (coders), a section per endpoint.
+  other systems), the coder API (coders) and the admin API (server
+  admins), a section per endpoint.
 - `docs/architecture.md`: the server, unit distribution, resuming and
   codebook updates.
 - `docs/compositions.md`: the products (annotinder.com, self-hosted,

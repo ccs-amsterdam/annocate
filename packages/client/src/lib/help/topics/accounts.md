@@ -34,7 +34,7 @@ A server can limit how much a researcher stores: the number of jobs you
 own, the units per job and in all your jobs, the coders per job, and the
 answers per job. Your limits come from your plan: the server's default,
 your university's (by email domain), or one an admin gave you. The jobs page
-shows what you use of them.
+shows how many jobs and units you use of your limits.
 
 Limits are checked when something is added. When a job reaches one, adding
 more is refused (a unit upload, or a new coder: coders who already started

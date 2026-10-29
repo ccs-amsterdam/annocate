@@ -458,8 +458,10 @@ describe("end items", () => {
 
   it("checks the redirect URL", () => {
     expect(messages([end({ redirectUrl: "panel.example/end" })])).toEqual(["The redirect URL must start with https:// (or http://)"]);
-    expect(messages([end({ redirectUrl: "https://x/{{ 1 }}" })])).toEqual(["Redirect URLs can only use $var references, not {{ }}"]);
+    expect(messages([end({ redirectUrl: "https://x/{{ 1 }}" })])).toEqual(["Redirect URLs can only use $var and $session references, not {{ }}"]);
     expect(() => CodebookItemsSchema.parse([end({ outcome: "done" })])).toThrow();
+    // The session's values (participant id, required URL parameters) fit a panel's return link
+    expect(messages([end({ redirectUrl: "https://panel.example/end?id=$session.participant" })])).toEqual([]);
   });
 });
 

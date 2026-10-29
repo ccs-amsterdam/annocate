@@ -101,7 +101,7 @@ came in with, `group` drawn at random. How to get a panel's participant id
 into the codebook is explained in
 [Online panels and crowd coding](online-panels.md).
 
-Only `$var` references work in a redirect link: no `$unit` and no
+Only `$var` and `$session` references work in a redirect link: no `$unit` and no
 `{{ }}`. Use `.value`, not `.label`, so that the panel gets the stored value.
 An unanswered question leaves its place in the link empty.
 

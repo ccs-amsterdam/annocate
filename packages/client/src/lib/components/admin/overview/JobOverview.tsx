@@ -13,7 +13,7 @@ import { formatWhen } from "../../../admin/format";
 import { JobSettings } from "../JobSettings";
 import { ActivityChart } from "./ActivityChart";
 import { LoopProgress } from "./LoopProgress";
-import { LiveControls, RuntimeLine } from "./LiveControls";
+import { LiveControls } from "./LiveControls";
 import { TeamSettings } from "./TeamSettings";
 
 export type OverviewTarget = "Units" | "Invitations" | "Coders";
@@ -109,10 +109,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: J
           {deployment === null ? (
             <p className="text-sm text-muted-foreground">Publish a codebook version to start coding.</p>
           ) : statusQuery.data ? (
-            <>
-              <LoopProgress status={statusQuery.data} />
-              <RuntimeLine status={statusQuery.data} />
-            </>
+            <LoopProgress status={statusQuery.data} />
           ) : statusQuery.isError ? (
             <p className="text-sm text-muted-foreground">Progress can&apos;t be loaded right now.</p>
           ) : (

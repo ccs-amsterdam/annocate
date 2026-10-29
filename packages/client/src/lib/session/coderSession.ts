@@ -1,12 +1,14 @@
 import { HttpCoderApi } from "../api/httpCoderApi";
 
-// Device-side half of docs/coder-identity.md §4. The session itself lives in
-// an httpOnly cookie the server sets (one per deployment and participant
-// id, which the invite takes from a URL parameter), so this code never sees it: page scripts can't leak it.
-// A session only moves to another device through a one-time transfer link.
-// A participant id or invite link alone never resumes an earlier session.
+// Device-side half of docs/coder-identity.md §4. The device id lives in one
+// httpOnly cookie for all jobs (`annotinder_device`), so this code never
+// sees it: page scripts can't leak it. The server derives this job's
+// session key from it, the deployment and the participant id. A session
+// only moves to another device through a one-time transfer link (or a
+// login). A participant id or invite link alone never resumes an earlier
+// session.
 
-/** Which session a page belongs to; sent along so the server picks the right cookie. */
+/** Which job and invite a page belongs to. */
 export interface CoderSessionScope {
   /** Server base URL including the deployment, e.g. `/d/42` (same origin as the client). */
   baseUrl: string;
@@ -15,7 +17,8 @@ export interface CoderSessionScope {
 
 /**
  * Redeems a transfer token (from "Continue on another device"): the server
- * sets this device's session cookie for `scope`.
+ * adds this device to the session (and gives it a device cookie if it has
+ * none).
  */
 export function redeemTransfer(scope: CoderSessionScope, token: string): Promise<void> {
   // Tokens work once, so a remount (or React StrictMode running effects
@@ -30,18 +33,23 @@ export function redeemTransfer(scope: CoderSessionScope, token: string): Promise
 
 const redemptions = new Map<string, Promise<void>>();
 
-/** Default transfer link: the current page URL with `transfer=<token>` and without invite/participant params. */
+/**
+ * Default transfer link: this page with only the deployment and
+ * `transfer=<token>` (the session has the rest; a participant id stays out
+ * of the link).
+ */
 export function defaultTransferUrl(token: string): string {
   const url = new URL(window.location.href);
-  url.searchParams.delete("invite");
-  url.searchParams.delete("participant");
+  const deployment = url.searchParams.get("deployment");
+  url.search = "";
+  if (deployment) url.searchParams.set("deployment", deployment);
   url.searchParams.set("transfer", token);
   return url.toString();
 }
 
 // Coder login (docs/coder-identity.md §5): the same login as researchers',
-// on this origin. A logged-in coder's session is found by the login on any
-// device, so it needs no cookie or transfer link.
+// on this origin. A logged-in coder continues on another device by logging
+// in there, without a transfer link.
 
 /** Where the browser goes to log in; it comes back to this page. */
 export function coderLoginUrl(): string {

@@ -3,10 +3,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
-// Library-mode build: produces the importable component/hook package
-// (see docs/client.md §1 -- "installable without node" == usable as a
-// component library inside another host React app, e.g. via
-// `import { ... } from "@annotinder/client"`).
+// Library-mode build: the importable component package, for a host React
+// app (docs/client.md §1), e.g. `import { JobRunner } from "@annotinder/client"`.
 export default defineConfig({
   plugins: [
     react(),

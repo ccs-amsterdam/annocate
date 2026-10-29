@@ -14,7 +14,7 @@ import {
   type SimpleCondition,
 } from "@annotinder/contracts";
 
-// The condition editor's rules mode (docs/client.md §5): a simple condition
+// The condition editor's rules mode (docs/client.md §5, simple conditions; §7, ConditionEditor): a simple condition
 // that is a flat list of rows joined by all `&&` or all `||`. Each row is
 // one helper call or `.answered`, possibly negated. Reading a script into
 // rows and writing rows back go through the contracts' simple-condition

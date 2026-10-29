@@ -8,6 +8,10 @@ The annotinder server: one Hono app on one database.
   [docs/api/researcher.md](../../docs/api/researcher.md).
 - the **coder API** (`/d/<deploymentId>/...`): what coders' browsers call.
   Spec: [docs/api/coder.md](../../docs/api/coder.md).
+- the **admin API** (`/admin/...`): server settings, users, plans. Spec:
+  [docs/api/admin.md](../../docs/api/admin.md).
+- login (`/auth/...`), the account (`/me`), `/health`, and the built client
+  (`ANNOTINDER_CLIENT_DIR`, [docs/hosting.md](../../docs/hosting.md)).
 
 How it works: [docs/architecture.md](../../docs/architecture.md).
 
@@ -50,11 +54,14 @@ the server's settings. With it, they give others a role in a job
 - [`src/app.ts`](src/app.ts): the app; [`src/index.ts`](src/index.ts): the
   Node entry point.
 - [`src/researcher/`](src/researcher/): the researcher API, one file per
-  path. Researcher auth is **dev only** ([`auth.ts`](src/researcher/auth.ts):
-  plain `x-dev-role` / `x-dev-email` headers).
+  path. Researcher auth ([`auth.ts`](src/researcher/auth.ts)): the session
+  cookie after login ([`login.ts`](src/researcher/login.ts),
+  [`oidc.ts`](src/oidc.ts)), API keys, and on development servers
+  `x-dev-*` headers.
 - [`src/coder.ts`](src/coder.ts): the coder API.
-- [`src/runtime/`](src/runtime/): runs deployed jobs in memory: unit
-  distribution, validation, sessions, previews. It reads and writes the
+- [`src/runtime/`](src/runtime/): runs deployed jobs: unit distribution
+  (state in `unit_codings` and `unit_leases`, under database locks),
+  validation, sessions, previews (in memory). It reads and writes the
   database through [`store.ts`](src/runtime/store.ts).
 - [`src/shared/`](src/shared/): database queries used by both.
 - [`migrations/`](migrations/): the data model, as numbered SQL files,

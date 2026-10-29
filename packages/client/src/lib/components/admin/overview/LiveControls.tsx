@@ -1,9 +1,8 @@
 import { Pause, Play } from "lucide-react";
-import type { DeploymentResponse, DeploymentStatus } from "@annotinder/contracts";
+import type { DeploymentResponse } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useDeploymentActiveMutation } from "../../../admin/queries";
-import { formatWhen } from "../../../admin/format";
 
 /**
  * Controls of the live job (docs/client.md §7, "Overview"): pause it (coders
@@ -34,7 +33,3 @@ export function LiveControls({ client, deployment }: { client: ResearcherApi; de
   );
 }
 
-/** Since when the server runs the live job: a line under the progress. */
-export function RuntimeLine({ status }: { status: DeploymentStatus }) {
-  return <p className="mt-3 text-[11px] text-muted-foreground">Loaded on the server {formatWhen(status.loadedAt)}</p>;
-}

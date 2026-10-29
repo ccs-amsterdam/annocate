@@ -61,7 +61,6 @@ export const DeploymentStatusSchema = z.object({
   active: z.boolean(),
   coders: z.number().int().nonnegative(),
   sources: z.array(SourceStatusSchema),
-  loadedAt: z.coerce.date(),
 });
 export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
 

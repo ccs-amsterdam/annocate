@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-// `::html` values (docs/client.md §3, "HTML"): shown in an iframe that
+// `::html` values (docs/client.md §3, "::html"): shown in an iframe that
 // - is sandboxed with scripts only (`allow-scripts`, no `allow-same-origin`):
 //   it has an opaque origin, so it can't read the app, its storage or its
 //   cookies; no forms, popups or navigating the app;

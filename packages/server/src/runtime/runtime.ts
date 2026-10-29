@@ -115,7 +115,6 @@ export class DeploymentRuntime {
   private shownFields: string[] = [];
   /** The deployment's stamp when the spec was read (`Store.deploymentStamp`). */
   private stamp: string | null = null;
-  private loadedAt = 0;
   private refreshing: Promise<void> | null = null;
 
   constructor(
@@ -132,7 +131,6 @@ export class DeploymentRuntime {
     this.applySpec(await this.store.getDeployment());
     await this.ensureCodings();
     this.stamp = stamp;
-    this.loadedAt = this.options.now();
   }
 
   /**
@@ -780,7 +778,6 @@ export class DeploymentRuntime {
       active: this.spec.active,
       coders: allCoders.length,
       sources,
-      loadedAt: new Date(this.loadedAt),
     };
   }
 
