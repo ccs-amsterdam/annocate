@@ -1,0 +1,491 @@
+{
+  "category": "Simple annotation",
+  "title": "Labeling actors in texts",
+  "description": "Coders select the people and organisations in short news texts and label them: span annotation. With example answers from 2 coders, one of whom missed a few actors.",
+  "tryThis": [
+    "Open the invitation link in a private window and select words in the text to label them.",
+    "Download the results: the spans come with their text, and with their positions in the _json columns."
+  ],
+  "jobName": "Labeling actors",
+  "units": [
+    {
+      "id": "text-1",
+      "data": {
+        "text": "Mayor Anna de Wit met the board of the Harbour Company on Monday to discuss the new cruise terminal."
+      }
+    },
+    {
+      "id": "text-2",
+      "data": {
+        "text": "The Green Party criticised Minister Jan Peters for cutting the budget of the National Library."
+      }
+    },
+    {
+      "id": "text-3",
+      "data": {
+        "text": "According to the Weather Office, the storm will reach the coast on Friday, police chief Sara Bos said."
+      }
+    },
+    {
+      "id": "text-4",
+      "data": {
+        "text": "Union leader Mohammed Amrani called on Riverside Steel to keep the factory open."
+      }
+    },
+    {
+      "id": "text-5",
+      "data": {
+        "text": "Professor Lisa Chen of Northbridge University presented the report to the City Council."
+      }
+    },
+    {
+      "id": "text-6",
+      "data": {
+        "text": "The football club FC Westport signed striker Tom Visser for three years."
+      }
+    }
+  ],
+  "codebook": {
+    "note": "Example: labeling actors",
+    "items": [
+      {
+        "type": "unit_loop",
+        "label": "Texts",
+        "units": [
+          {
+            "mode": "all",
+            "unitset": "__all__"
+          }
+        ],
+        "layout": {
+          "template": "$unit.text"
+        },
+        "children": [
+          {
+            "type": "question",
+            "name": "actors",
+            "variable": {
+              "type": "span",
+              "question": "Select every person and organisation mentioned in the text.",
+              "instruction": "Select the words with your mouse (or finger), then choose a label. Click a label to change or remove it.",
+              "fields": [
+                "text"
+              ],
+              "options": [
+                {
+                  "value": "person",
+                  "label": "Person",
+                  "color": "#2563eb"
+                },
+                {
+                  "value": "organisation",
+                  "label": "Organisation",
+                  "color": "#7c3aed"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "invites": [
+    {
+      "label": "Open link"
+    }
+  ],
+  "answers": [
+    {
+      "units": {
+        "text-1": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c1-text-1-0",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 6,
+                    "length": 11,
+                    "text": "Anna de Wit"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-1-1",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 39,
+                    "length": 15,
+                    "text": "Harbour Company"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-2": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c1-text-2-0",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 4,
+                    "length": 11,
+                    "text": "Green Party"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-2-1",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 36,
+                    "length": 10,
+                    "text": "Jan Peters"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-2-2",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 77,
+                    "length": 16,
+                    "text": "National Library"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-3": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c1-text-3-0",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 17,
+                    "length": 14,
+                    "text": "Weather Office"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-3-1",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 88,
+                    "length": 8,
+                    "text": "Sara Bos"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-4": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c1-text-4-0",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 13,
+                    "length": 15,
+                    "text": "Mohammed Amrani"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-4-1",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 39,
+                    "length": 15,
+                    "text": "Riverside Steel"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-5": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c1-text-5-0",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 10,
+                    "length": 9,
+                    "text": "Lisa Chen"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-5-1",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 23,
+                    "length": 22,
+                    "text": "Northbridge University"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-5-2",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 74,
+                    "length": 12,
+                    "text": "City Council"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-6": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c1-text-6-0",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 18,
+                    "length": 11,
+                    "text": "FC Westport"
+                  }
+                ]
+              },
+              {
+                "id": "c1-text-6-1",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 45,
+                    "length": 10,
+                    "text": "Tom Visser"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "units": {
+        "text-1": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c2-text-1-0",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 6,
+                    "length": 11,
+                    "text": "Anna de Wit"
+                  }
+                ]
+              },
+              {
+                "id": "c2-text-1-1",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 39,
+                    "length": 15,
+                    "text": "Harbour Company"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-2": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c2-text-2-0",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 4,
+                    "length": 11,
+                    "text": "Green Party"
+                  }
+                ]
+              },
+              {
+                "id": "c2-text-2-1",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 36,
+                    "length": 10,
+                    "text": "Jan Peters"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-3": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c2-text-3-0",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 17,
+                    "length": 14,
+                    "text": "Weather Office"
+                  }
+                ]
+              },
+              {
+                "id": "c2-text-3-1",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 88,
+                    "length": 8,
+                    "text": "Sara Bos"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-4": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c2-text-4-0",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 13,
+                    "length": 15,
+                    "text": "Mohammed Amrani"
+                  }
+                ]
+              },
+              {
+                "id": "c2-text-4-1",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 39,
+                    "length": 15,
+                    "text": "Riverside Steel"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-5": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c2-text-5-0",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 10,
+                    "length": 9,
+                    "text": "Lisa Chen"
+                  }
+                ]
+              },
+              {
+                "id": "c2-text-5-1",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 23,
+                    "length": 22,
+                    "text": "Northbridge University"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "text-6": {
+          "actors": {
+            "spans": [
+              {
+                "id": "c2-text-6-0",
+                "field": "text",
+                "value": "organisation",
+                "slices": [
+                  {
+                    "offset": 18,
+                    "length": 11,
+                    "text": "FC Westport"
+                  }
+                ]
+              },
+              {
+                "id": "c2-text-6-1",
+                "field": "text",
+                "value": "person",
+                "slices": [
+                  {
+                    "offset": 45,
+                    "length": 10,
+                    "text": "Tom Visser"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

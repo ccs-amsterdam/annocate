@@ -29,6 +29,7 @@ import { invites } from "./researcher/invites.js";
 import { job } from "./researcher/job.$id.js";
 import { jobUsers } from "./researcher/job.$id.users.js";
 import { jobs } from "./researcher/job.js";
+import { examples } from "./researcher/examples.js";
 import { overview } from "./researcher/overview.js";
 import { unit } from "./researcher/units.$id.js";
 import { unitset } from "./researcher/unitsets.$id.js";
@@ -116,6 +117,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   app.route("/", me(server));
   app.route("/", admin(server));
   // Order matters: units/fields and units/page before units/:id.
+  app.route("/", examples(server));
   app.route("/", jobs(server));
   app.route("/", job(server));
   app.route("/", jobUsers(server));
@@ -154,4 +156,4 @@ export function createApp(db: Sql, options: AppOptions = {}) {
 }
 
 /** Paths of the server's APIs (also what Vite forwards in development: client/vite.config.ts). */
-const API_PATH = /^\/(d|job|me|auth|admin|health)(\/|$)/;
+const API_PATH = /^\/(d|job|me|auth|admin|examples|health)(\/|$)/;

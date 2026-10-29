@@ -1,0 +1,293 @@
+{
+  "category": "Surveys and experiments",
+  "title": "Survey with annotations",
+  "description": "Coders first answer a few questions about themselves, then code eight headlines: the topic, and how relevant the news is to them. Survey answers and unit answers end up in the same download, linked by coder. With example answers from 2 coders.",
+  "tryThis": [
+    "Open the invitation link in a private window: survey questions first, then the headlines.",
+    "Download the results: the headlines' answers are in annotations.csv, the survey answers in coders.csv; join them on coder_id."
+  ],
+  "jobName": "Survey with annotations",
+  "units": [
+    {
+      "id": "headline-1",
+      "data": {
+        "headline": "Parliament votes to lower the voting age to sixteen"
+      }
+    },
+    {
+      "id": "headline-2",
+      "data": {
+        "headline": "New vaccine against malaria passes final trials"
+      }
+    },
+    {
+      "id": "headline-3",
+      "data": {
+        "headline": "Central bank keeps interest rates unchanged"
+      }
+    },
+    {
+      "id": "headline-4",
+      "data": {
+        "headline": "Heatwave breaks temperature records across Europe"
+      }
+    },
+    {
+      "id": "headline-5",
+      "data": {
+        "headline": "Coalition talks collapse after dispute over housing"
+      }
+    },
+    {
+      "id": "headline-6",
+      "data": {
+        "headline": "Waiting lists for mental health care grow longer"
+      }
+    },
+    {
+      "id": "headline-7",
+      "data": {
+        "headline": "Car maker announces it will stop selling petrol cars"
+      }
+    },
+    {
+      "id": "headline-8",
+      "data": {
+        "headline": "Rivers reach lowest levels in fifty years"
+      }
+    }
+  ],
+  "codebook": {
+    "note": "Example: survey with annotations",
+    "items": [
+      {
+        "type": "question",
+        "name": "consent",
+        "variable": {
+          "type": "confirm",
+          "question": "You will answer three questions about yourself, and then code eight news headlines. Ready?"
+        }
+      },
+      {
+        "type": "question",
+        "name": "age_group",
+        "variable": {
+          "type": "nominal",
+          "question": "How old are you?",
+          "options": [
+            {
+              "value": "18-29",
+              "label": "18 to 29"
+            },
+            {
+              "value": "30-49",
+              "label": "30 to 49"
+            },
+            {
+              "value": "50-64",
+              "label": "50 to 64"
+            },
+            {
+              "value": "65+",
+              "label": "65 or older"
+            }
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "interest",
+        "variable": {
+          "type": "ordinal",
+          "question": "How interested are you in politics?",
+          "options": [
+            {
+              "value": 1,
+              "label": "Not at all"
+            },
+            {
+              "value": 2,
+              "label": "A little"
+            },
+            {
+              "value": 3,
+              "label": "Quite"
+            },
+            {
+              "value": 4,
+              "label": "Very"
+            }
+          ]
+        }
+      },
+      {
+        "type": "unit_loop",
+        "label": "Headlines",
+        "units": [
+          {
+            "mode": "all",
+            "unitset": "__all__"
+          }
+        ],
+        "layout": {
+          "template": "# $unit.headline"
+        },
+        "children": [
+          {
+            "type": "question",
+            "name": "topic",
+            "variable": {
+              "type": "nominal",
+              "question": "What is this headline about?",
+              "options": [
+                {
+                  "value": "politics",
+                  "label": "Politics"
+                },
+                {
+                  "value": "economy",
+                  "label": "Economy"
+                },
+                {
+                  "value": "health",
+                  "label": "Health"
+                },
+                {
+                  "value": "environment",
+                  "label": "Environment"
+                }
+              ]
+            }
+          },
+          {
+            "type": "question",
+            "name": "relevance",
+            "variable": {
+              "type": "ordinal",
+              "question": "How relevant is this news to you personally?",
+              "options": [
+                {
+                  "value": 1,
+                  "label": "Not relevant"
+                },
+                {
+                  "value": 2,
+                  "label": "A little"
+                },
+                {
+                  "value": 3,
+                  "label": "Quite"
+                },
+                {
+                  "value": 4,
+                  "label": "Very relevant"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "type": "end",
+        "name": "done",
+        "outcome": "complete",
+        "message": "Thank you for coding the headlines!"
+      }
+    ]
+  },
+  "invites": [
+    {
+      "label": "Open link"
+    }
+  ],
+  "answers": [
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "age_group": "30-49",
+        "interest": 3
+      },
+      "units": {
+        "headline-1": {
+          "topic": "politics",
+          "relevance": 2
+        },
+        "headline-2": {
+          "topic": "health",
+          "relevance": 3
+        },
+        "headline-3": {
+          "topic": "economy",
+          "relevance": 4
+        },
+        "headline-4": {
+          "topic": "environment",
+          "relevance": 2
+        },
+        "headline-5": {
+          "topic": "politics",
+          "relevance": 3
+        },
+        "headline-6": {
+          "topic": "health",
+          "relevance": 4
+        },
+        "headline-7": {
+          "topic": "economy",
+          "relevance": 2
+        },
+        "headline-8": {
+          "topic": "environment",
+          "relevance": 3
+        }
+      }
+    },
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "age_group": "18-29",
+        "interest": 2
+      },
+      "units": {
+        "headline-1": {
+          "topic": "politics",
+          "relevance": 3
+        },
+        "headline-2": {
+          "topic": "health",
+          "relevance": 4
+        },
+        "headline-3": {
+          "topic": "economy",
+          "relevance": 2
+        },
+        "headline-4": {
+          "topic": "environment",
+          "relevance": 3
+        },
+        "headline-5": {
+          "topic": "politics",
+          "relevance": 4
+        },
+        "headline-6": {
+          "topic": "health",
+          "relevance": 2
+        },
+        "headline-7": {
+          "topic": "economy",
+          "relevance": 3
+        },
+        "headline-8": {
+          "topic": "environment",
+          "relevance": 4
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,10 @@
 # Plan: example jobs (and later templates)
 
-Status: decided, not built (2026-10-27).
+Status: §1–§5 built (2026-10-30): `packages/server/examples/<id>.json`
+(one file per example, units inline), `src/examples.ts` (loader),
+`GET /examples`, `POST /job/from-example`, the "From an example" dialog and
+the overview note. Not built: "Actors and their stance" (§2, needs a
+feature) and templates and a library (§6).
 
 ## Goal
 

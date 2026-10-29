@@ -144,7 +144,6 @@ export const CoderInviteWriteSchema = z.object({
   /**
    * `none`: no login; work stays on the device unless transferred.
    * `optional`: coders may log in to resume elsewhere. `required`: login first.
-   * (Login is not implemented yet; `required` invites are refused for now.)
    */
   auth: z.enum(["none", "optional", "required"]).default("none"),
   /** A participant id fixed on this invite (e.g. a personal link). A label, never a credential. */
@@ -154,9 +153,9 @@ export const CoderInviteWriteSchema = z.object({
   /** Other URL parameters the link requires, stored with the session (`$session.<name>`). */
   urlParams: z.array(RequiredUrlParamSchema).max(20).optional(),
   /**
-   * Restrict the invite to these (authenticated) email addresses. Stored on
-   * the server only; never part of the codebook. Not enforced yet: there is
-   * no email authentication.
+   * Restrict the invite to these email addresses: coders log in, and only
+   * these logins are let in. Stored on the server only; never part of the
+   * codebook.
    */
   emails: z.array(z.string().email()).optional(),
   /** Stop accepting new coders after this many. */

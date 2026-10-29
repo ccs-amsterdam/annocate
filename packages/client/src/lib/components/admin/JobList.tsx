@@ -6,7 +6,8 @@ import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcher
 import { useCreateJobMutation, useDeleteJobMutation, useJobsQuery } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield } from "lucide-react";
+import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield, Sparkles } from "lucide-react";
+import { ExamplesDialog } from "./ExamplesDialog";
 import { HelpButton } from "../../help/HelpButton";
 
 interface JobListProps {
@@ -27,6 +28,7 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
 
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showExamples, setShowExamples] = useState(false);
   const [newJobName, setNewJobName] = useState("");
   const [jobToDelete, setJobToDelete] = useState<JobResponse | null>(null);
 
@@ -91,6 +93,12 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
             </Button>
           )}
           {canCreate && (
+            <Button variant="outline" onClick={() => setShowExamples(true)} className="w-fit gap-2">
+              <Sparkles className="h-4 w-4" />
+              From an example
+            </Button>
+          )}
+          {canCreate && (
             <Button onClick={() => setShowCreateModal(true)} className="w-fit gap-2 shadow-sm">
               <Plus className="h-4 w-4" />
               Create new job
@@ -131,14 +139,16 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
               : `No jobs matched the query "${search}".`}
           </p>
           {jobs.length === 0 && canCreate && (
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              variant="outline"
-              className="mt-5 gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Create job
-            </Button>
+            <div className="mt-5 flex gap-2">
+              <Button onClick={() => setShowExamples(true)} variant="outline" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Start from an example
+              </Button>
+              <Button onClick={() => setShowCreateModal(true)} variant="outline" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create job
+              </Button>
+            </div>
           )}
         </div>
       ) : (
@@ -214,6 +224,17 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
             </div>
           ))}
         </div>
+      )}
+
+      {showExamples && (
+        <ExamplesDialog
+          client={client}
+          onClose={() => setShowExamples(false)}
+          onCreated={(job) => {
+            setShowExamples(false);
+            onSelectJob(job.id);
+          }}
+        />
       )}
 
       {/* Create Job Dialog Modal */}

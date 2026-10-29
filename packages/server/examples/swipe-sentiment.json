@@ -1,0 +1,338 @@
+{
+  "category": "Simple annotation",
+  "title": "Sentiment by swiping",
+  "description": "Coders swipe news headlines left (negative), right (positive) or up (neutral). The 20 units are divided over 3 coders, plus 5 overlap units every coder gets, to compare their answers. With example answers from 3 coders, who disagree on some overlap units.",
+  "tryThis": [
+    "Download the results (Results tab) to see what the example coders' answers look like.",
+    "Open the invitation link in a private window: you get one of the three sets, with the overlap units spread in between.",
+    "Look at the unit loop in the codebook (Codebook tab): it gives each coder one of the sets."
+  ],
+  "jobName": "Sentiment by swiping",
+  "units": [
+    {
+      "id": "news-01",
+      "data": {
+        "headline": "City council approves new bike lanes after years of debate"
+      }
+    },
+    {
+      "id": "news-02",
+      "data": {
+        "headline": "Local bakery wins national prize for its sourdough bread"
+      }
+    },
+    {
+      "id": "news-03",
+      "data": {
+        "headline": "Heavy storm causes power cuts in three villages"
+      }
+    },
+    {
+      "id": "news-04",
+      "data": {
+        "headline": "Hospital opens new wing for children with rare diseases"
+      }
+    },
+    {
+      "id": "news-05",
+      "data": {
+        "headline": "Train strike leaves thousands of commuters stranded"
+      }
+    },
+    {
+      "id": "news-06",
+      "data": {
+        "headline": "Volunteers clean up the beach after the summer festival"
+      }
+    },
+    {
+      "id": "news-07",
+      "data": {
+        "headline": "Factory closes, two hundred workers lose their jobs"
+      }
+    },
+    {
+      "id": "news-08",
+      "data": {
+        "headline": "Students design a solar car that crosses the country"
+      }
+    },
+    {
+      "id": "news-09",
+      "data": {
+        "headline": "Prices of groceries rise for the sixth month in a row"
+      }
+    },
+    {
+      "id": "news-10",
+      "data": {
+        "headline": "Library extends opening hours during exam weeks"
+      }
+    },
+    {
+      "id": "news-11",
+      "data": {
+        "headline": "Fire destroys historic windmill overnight"
+      }
+    },
+    {
+      "id": "news-12",
+      "data": {
+        "headline": "New park opens on the site of an old parking lot"
+      }
+    },
+    {
+      "id": "news-13",
+      "data": {
+        "headline": "Water company warns of shortages after a dry spring"
+      }
+    },
+    {
+      "id": "news-14",
+      "data": {
+        "headline": "Football club celebrates promotion with a parade"
+      }
+    },
+    {
+      "id": "news-15",
+      "data": {
+        "headline": "Report finds rising loneliness among older residents"
+      }
+    },
+    {
+      "id": "news-16",
+      "data": {
+        "headline": "Museum returns stolen paintings to their owners"
+      }
+    },
+    {
+      "id": "news-17",
+      "data": {
+        "headline": "Road works will close the main bridge for three months"
+      }
+    },
+    {
+      "id": "news-18",
+      "data": {
+        "headline": "Teenager saves neighbour from a burning house"
+      }
+    },
+    {
+      "id": "news-19",
+      "data": {
+        "headline": "Tax office apologises for thousands of wrong letters"
+      }
+    },
+    {
+      "id": "news-20",
+      "data": {
+        "headline": "Zoo welcomes the birth of two snow leopard cubs"
+      }
+    }
+  ],
+  "unitsets": [
+    {
+      "name": "part_1",
+      "units": [
+        "news-06",
+        "news-07",
+        "news-08",
+        "news-09",
+        "news-10"
+      ]
+    },
+    {
+      "name": "part_2",
+      "units": [
+        "news-11",
+        "news-12",
+        "news-13",
+        "news-14",
+        "news-15"
+      ]
+    },
+    {
+      "name": "part_3",
+      "units": [
+        "news-16",
+        "news-17",
+        "news-18",
+        "news-19",
+        "news-20"
+      ]
+    },
+    {
+      "name": "overlap",
+      "units": [
+        "news-01",
+        "news-02",
+        "news-03",
+        "news-04",
+        "news-05"
+      ]
+    }
+  ],
+  "codebook": {
+    "note": "Example: sentiment by swiping",
+    "items": [
+      {
+        "type": "unit_loop",
+        "label": "Headlines",
+        "units": [
+          {
+            "mode": "sets",
+            "unitsets": [
+              "part_1",
+              "part_2",
+              "part_3"
+            ],
+            "overlap": {
+              "unitset": "overlap",
+              "placement": "spread"
+            }
+          }
+        ],
+        "layout": {
+          "template": "# $unit.headline"
+        },
+        "children": [
+          {
+            "type": "question",
+            "name": "sentiment",
+            "variable": {
+              "type": "annotinder",
+              "question": "Is this headline good news or bad news?",
+              "instruction": "Swipe right for good news, left for bad news, up if it is neither. The arrow keys work too.",
+              "options": [
+                {
+                  "value": "negative",
+                  "label": "Bad news",
+                  "color": "#ef4444"
+                },
+                {
+                  "value": "positive",
+                  "label": "Good news",
+                  "color": "#22c55e"
+                },
+                {
+                  "value": "neutral",
+                  "label": "Neither",
+                  "color": "#9ca3af"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "invites": [
+    {
+      "label": "Open link"
+    }
+  ],
+  "answers": [
+    {
+      "units": {
+        "news-01": {
+          "sentiment": "positive"
+        },
+        "news-02": {
+          "sentiment": "positive"
+        },
+        "news-03": {
+          "sentiment": "negative"
+        },
+        "news-04": {
+          "sentiment": "positive"
+        },
+        "news-05": {
+          "sentiment": "negative"
+        },
+        "news-06": {
+          "sentiment": "positive"
+        },
+        "news-07": {
+          "sentiment": "negative"
+        },
+        "news-08": {
+          "sentiment": "positive"
+        },
+        "news-09": {
+          "sentiment": "negative"
+        },
+        "news-10": {
+          "sentiment": "positive"
+        }
+      }
+    },
+    {
+      "units": {
+        "news-01": {
+          "sentiment": "positive"
+        },
+        "news-02": {
+          "sentiment": "neutral"
+        },
+        "news-03": {
+          "sentiment": "negative"
+        },
+        "news-04": {
+          "sentiment": "positive"
+        },
+        "news-05": {
+          "sentiment": "negative"
+        },
+        "news-11": {
+          "sentiment": "negative"
+        },
+        "news-12": {
+          "sentiment": "positive"
+        },
+        "news-13": {
+          "sentiment": "negative"
+        },
+        "news-14": {
+          "sentiment": "positive"
+        },
+        "news-15": {
+          "sentiment": "negative"
+        }
+      }
+    },
+    {
+      "units": {
+        "news-01": {
+          "sentiment": "positive"
+        },
+        "news-02": {
+          "sentiment": "neutral"
+        },
+        "news-03": {
+          "sentiment": "negative"
+        },
+        "news-04": {
+          "sentiment": "neutral"
+        },
+        "news-05": {
+          "sentiment": "negative"
+        },
+        "news-16": {
+          "sentiment": "positive"
+        },
+        "news-17": {
+          "sentiment": "negative"
+        },
+        "news-18": {
+          "sentiment": "positive"
+        },
+        "news-19": {
+          "sentiment": "negative"
+        },
+        "news-20": {
+          "sentiment": "positive"
+        }
+      }
+    }
+  ]
+}

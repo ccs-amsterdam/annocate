@@ -17,7 +17,7 @@ Status: current (2026-10-26). Server-side design lives in
 - **Hosting.** The client and the server always share an origin: coder and
   researcher sessions are httpOnly cookies (`coder-identity.md` §4, §7).
   In production the server serves the client (`docs/hosting.md`); in
-  development, Vite proxies `/d`, `/job`, `/me`, `/auth` and `/admin` to
+  development, Vite proxies `/d`, `/job`, `/me`, `/auth`, `/admin` and `/examples` to
   the server. Only scripts with API keys call the server from elsewhere.
 
 ## 2. JobManager (coding runtime)

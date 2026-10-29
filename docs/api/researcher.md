@@ -77,6 +77,8 @@ response checked against its contract schema.
 | **Jobs** | | | | |
 | [listJobs](#listjobs) | `GET /job` | any | – | `JobResponseSchema[]` |
 | [createJob](#createjob) | `POST /job` | any | `JobWriteSchema` | `JobResponseSchema` |
+| [listExamples](#listexamples) | `GET /examples` | any | – | `ExampleSummarySchema[]` |
+| [createJobFromExample](#createjobfromexample) | `POST /job/from-example` | any | `JobFromExampleSchema` | `JobResponseSchema` |
 | [getJob](#getjob) | `GET /job/:id` | READ | – | `JobResponseSchema` |
 | [updateJob](#updatejob) | `PUT /job/:id` | ADMIN | `JobWriteSchema` | `JobResponseSchema` |
 | [deleteJob](#deletejob) | `DELETE /job/:id` | ADMIN | – | – |
@@ -201,6 +203,20 @@ development headers: all jobs).
 `limit_reached`). The creator owns it and becomes its `ADMIN`.
 (With development headers the job has no job users, which lets any
 development role in.)
+
+### listExamples
+
+`GET /examples` → `ExampleSummarySchema[]`: the example jobs this server
+ships (`packages/server/examples/<id>.json`): id, category, title, what it
+shows and what to try (`docs/plans/examples.md`).
+
+### createJobFromExample
+
+`POST /job/from-example` (`{ example, name? }`) → `JobResponseSchema`
+(201): a new job from an example, like `createJob` (the same role, limits
+and ownership): its units and unitsets, its codebook published, its
+invitations, and its example answers (coders named "Example coder n").
+The job's `origin` is the example's id. 404 for an unknown example.
 
 ### getJob
 

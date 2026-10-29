@@ -5,7 +5,7 @@ what exists.
 
 | Plan | Status |
 | --- | --- |
-| [examples.md](examples.md): example jobs for learning AnnoTinder, later templates and a library of reusable flows | Decided, not built |
+| [examples.md](examples.md): example jobs for learning AnnoTinder, later templates and a library of reusable flows | Examples built; templates and library not |
 | [gold-checks.md](gold-checks.md): hidden unit fields, and checking coders against known answers | Proposed; to decide after the first release |
 | [question-loops.md](question-loops.md): the same questions once per value of a list | Idea, not designed in detail |
 | [passkeys.md](passkeys.md): passkeys as a second factor checked by AnnoTinder, and a login shared with AmCAT | Proposed, not built |

@@ -1,6 +1,8 @@
 import {
   researcherEndpoints,
   type JobWrite,
+  type ExampleSummary,
+  type JobFromExample,
   type JobResponse,
   type JobUser,
   type DeleteCoders,
@@ -89,6 +91,10 @@ export interface ResearcherApi {
   listJobs(): Promise<JobResponse[]>;
   getJob(id?: number): Promise<JobResponse | null>;
   createJob(body: JobWrite): Promise<JobResponse>;
+  /** The example jobs AnnoTinder ships (docs/plans/examples.md). */
+  listExamples(): Promise<ExampleSummary[]>;
+  /** A new job from an example: units, a published codebook, an invitation and example answers. */
+  createJobFromExample(body: JobFromExample): Promise<JobResponse>;
   updateJob(id: number, body: JobWrite): Promise<JobResponse>;
   deleteJob(id: number): Promise<void>;
   getJobUsers(id: number): Promise<JobUser[]>;
@@ -288,6 +294,14 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async createJob(body: JobWrite): Promise<JobResponse> {
     return this.request(researcherEndpoints.createJob.path, { method: "POST", body: JSON.stringify(body) });
+  }
+
+  async listExamples(): Promise<ExampleSummary[]> {
+    return this.request(researcherEndpoints.listExamples.path);
+  }
+
+  async createJobFromExample(body: JobFromExample): Promise<JobResponse> {
+    return this.request(researcherEndpoints.createJobFromExample.path, { method: "POST", body: JSON.stringify(body) });
   }
 
   async updateJob(id: number, body: JobWrite): Promise<JobResponse> {

@@ -5,7 +5,8 @@
   "type": "module",
   "files": [
     "dist",
-    "migrations"
+    "migrations",
+    "examples"
   ],
   "scripts": {
     "dev": "tsx watch src/dev.ts",

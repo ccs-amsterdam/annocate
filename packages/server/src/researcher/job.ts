@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { JobWriteSchema } from "@annotinder/contracts";
-import { one } from "../db.js";
+import { one, type Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireResearcher } from "./auth.js";
 import { toJobResponse, type JobRow } from "../shared/jobs.js";
@@ -32,10 +32,7 @@ export function jobs(server: Server): Hono<Env> {
 
     const researcher = c.get("researcher");
     const ownerId = researcher.userId ?? (await ensureUser(db, researcher.email)).id;
-    const { jobs: maxJobs } = await effectiveLimits(db, ownerId);
-    if (maxJobs != null && (await usage(db, ownerId)).jobs >= maxJobs) {
-      throw new HttpError(403, `You can own at most ${maxJobs} jobs: delete one, or ask an admin for more`, "limit_reached");
-    }
+    await checkJobLimit(db, ownerId);
     const row = await db.transaction(async (tx) => {
       const job = await one<JobRow>(tx, "INSERT INTO jobs (name, archived, owner_id, keep_sessions_open) VALUES ($1, $2, $3, $4) RETURNING *", [
         parsed.data.name,
@@ -53,4 +50,12 @@ export function jobs(server: Server): Hono<Env> {
   });
 
   return app;
+}
+
+/** Refuses a new job past the owner's limit on jobs (docs/accounts.md). */
+export async function checkJobLimit(db: Sql, ownerId: number): Promise<void> {
+  const { jobs: maxJobs } = await effectiveLimits(db, ownerId);
+  if (maxJobs != null && (await usage(db, ownerId)).jobs >= maxJobs) {
+    throw new HttpError(403, `You can own at most ${maxJobs} jobs: delete one, or ask an admin for more`, "limit_reached");
+  }
 }

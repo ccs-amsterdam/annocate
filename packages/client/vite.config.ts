@@ -16,7 +16,7 @@ export default defineConfig({
     // The server is same-origin with the client (session cookies): forward
     // its paths (coder API, researcher API, admin API, login) to it.
     proxy: {
-      "^/(d|job|me|auth|admin)(/|\\?|$)": process.env.SERVER_URL ?? "http://localhost:8787",
+      "^/(d|job|me|auth|admin|examples)(/|\\?|$)": process.env.SERVER_URL ?? "http://localhost:8787",
     },
   },
 });

@@ -21,8 +21,33 @@ export const JobResponseSchema = JobWriteSchema.extend({
   keepSessionsOpen: z.boolean(),
   /** Set when a server admin suspended the job: no coding and no changes (reading and deleting data still work). */
   suspendedAt: z.coerce.date().nullable().optional(),
+  /** The example the job was made from (`ExampleSummary.id`), if any. */
+  origin: z.string().nullable().optional(),
 });
 export type JobResponse = z.infer<typeof JobResponseSchema>;
+
+/**
+ * An example job AnnoTinder ships (`GET /examples`): a codebook with units,
+ * an invitation and sometimes example answers, to try and adapt
+ * (docs/plans/examples.md).
+ */
+export const ExampleSummarySchema = z.object({
+  id: z.string(),
+  category: z.string(),
+  title: z.string(),
+  /** What it shows. */
+  description: z.string(),
+  /** What to try with the job made from it. */
+  tryThis: z.array(z.string()),
+});
+export type ExampleSummary = z.infer<typeof ExampleSummarySchema>;
+
+/** Body of `POST /job/from-example`: which example, and the new job's name (default: the example's). */
+export const JobFromExampleSchema = z.object({
+  example: z.string().min(1),
+  name: z.string().min(1).max(256).optional(),
+});
+export type JobFromExample = z.infer<typeof JobFromExampleSchema>;
 
 /**
  * A "job user" manages the job (create/edit codebooks, units, invite

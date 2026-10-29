@@ -16,6 +16,8 @@ import type {
   JobOverview,
   JobResponse,
   JobWrite,
+  ExampleSummary,
+  JobFromExample,
   UnitField,
   UnitMeta,
   UnitPage,
@@ -36,6 +38,7 @@ import type { ResearcherApi } from "../api/httpResearcherApi";
 
 export const keys = {
   jobs: ["admin", "jobs"] as const,
+  examples: ["admin", "examples"] as const,
   job: (id?: number) => ["admin", "job", id ?? "current"] as const,
   jobUsers: (id: number) => ["admin", "job", id, "users"] as const,
   codebooks: (jobId?: number) => ["admin", "job", jobId ?? "current", "codebooks"] as const,
@@ -69,6 +72,22 @@ export function useCreateJobMutation(client: ResearcherApi): UseMutationResult<J
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: JobWrite) => client.createJob(body),
+    onSuccess: (job) => {
+      queryClient.setQueryData(keys.job(job.id), job);
+      void queryClient.invalidateQueries({ queryKey: keys.jobs });
+    },
+  });
+}
+
+/** The example jobs (they don't change while the server runs). */
+export function useExamplesQuery(client: ResearcherApi, enabled = true): UseQueryResult<ExampleSummary[]> {
+  return useQuery({ queryKey: keys.examples, queryFn: () => client.listExamples(), staleTime: Infinity, enabled });
+}
+
+export function useCreateJobFromExampleMutation(client: ResearcherApi): UseMutationResult<JobResponse, Error, JobFromExample> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: JobFromExample) => client.createJobFromExample(body),
     onSuccess: (job) => {
       queryClient.setQueryData(keys.job(job.id), job);
       void queryClient.invalidateQueries({ queryKey: keys.jobs });

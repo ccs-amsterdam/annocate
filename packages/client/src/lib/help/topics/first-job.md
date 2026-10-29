@@ -22,6 +22,10 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 
 ## 1. Create a job
 
+> To look around first, click **From an example** on the **Jobs** page: it
+> makes a ready job (units, a published codebook, an invitation, and often
+> example answers) to try and change. Its overview says what to try.
+
 1. On the **Jobs** page, click **Create new job**.
 2. Give it a name under **Job Name**, for example *News pilot*, and click
    **Create Job**.

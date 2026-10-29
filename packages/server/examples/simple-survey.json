@@ -1,0 +1,269 @@
+{
+  "category": "Surveys and experiments",
+  "title": "A simple survey",
+  "description": "A short survey about news use: question types for surveys, a condition that only asks a follow-up to some respondents, and an end item that screens out respondents under 18. No units. With example answers from 3 respondents.",
+  "tryThis": [
+    "Open the invitation link in a private window, and fill in the survey once as someone under 18.",
+    "Look at the condition and the end item in the codebook (Codebook tab).",
+    "Download the results: survey answers are in coders.csv."
+  ],
+  "jobName": "A simple survey",
+  "codebook": {
+    "note": "Example: a simple survey",
+    "items": [
+      {
+        "type": "question",
+        "name": "consent",
+        "variable": {
+          "type": "confirm",
+          "question": "This short survey asks about how you follow the news. It takes about two minutes, and your answers are anonymous. Do you want to take part?"
+        }
+      },
+      {
+        "type": "question",
+        "name": "age",
+        "variable": {
+          "type": "numeric",
+          "question": "How old are you?",
+          "min": 0,
+          "max": 120,
+          "layout": "input"
+        }
+      },
+      {
+        "type": "condition",
+        "condition": {
+          "script": "$var.age.lt(18)"
+        },
+        "children": [
+          {
+            "type": "end",
+            "name": "too_young",
+            "outcome": "screenout",
+            "message": "Thank you for your interest! This survey is for people aged 18 and older."
+          }
+        ]
+      },
+      {
+        "type": "question",
+        "name": "news_frequency",
+        "variable": {
+          "type": "ordinal",
+          "question": "How often do you follow the news?",
+          "options": [
+            {
+              "value": 1,
+              "label": "Less than weekly"
+            },
+            {
+              "value": 2,
+              "label": "A few times a week"
+            },
+            {
+              "value": 3,
+              "label": "Daily"
+            },
+            {
+              "value": 4,
+              "label": "Several times a day"
+            }
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "sources",
+        "variable": {
+          "type": "nominal",
+          "multiple": true,
+          "question": "Where do you get your news? Select all that apply.",
+          "options": [
+            {
+              "value": "tv",
+              "label": "Television"
+            },
+            {
+              "value": "newspaper",
+              "label": "Newspapers"
+            },
+            {
+              "value": "websites",
+              "label": "News websites and apps"
+            },
+            {
+              "value": "social",
+              "label": "Social media"
+            },
+            {
+              "value": "radio",
+              "label": "Radio and podcasts"
+            }
+          ]
+        }
+      },
+      {
+        "type": "condition",
+        "condition": {
+          "script": "$var.sources.has('social')"
+        },
+        "children": [
+          {
+            "type": "question",
+            "name": "social_platform",
+            "variable": {
+              "type": "nominal",
+              "layout": "dropdown",
+              "question": "Which social media platform do you use most for news?",
+              "options": [
+                {
+                  "value": "facebook",
+                  "label": "Facebook"
+                },
+                {
+                  "value": "instagram",
+                  "label": "Instagram"
+                },
+                {
+                  "value": "tiktok",
+                  "label": "TikTok"
+                },
+                {
+                  "value": "x",
+                  "label": "X"
+                },
+                {
+                  "value": "youtube",
+                  "label": "YouTube"
+                },
+                {
+                  "value": "other",
+                  "label": "Another platform"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "type": "question",
+        "name": "trust",
+        "variable": {
+          "type": "scale",
+          "question": "How much do you trust news from these sources?",
+          "items": [
+            {
+              "name": "tv",
+              "label": "Television"
+            },
+            {
+              "name": "newspapers",
+              "label": "Newspapers"
+            },
+            {
+              "name": "social",
+              "label": "Social media"
+            }
+          ],
+          "options": [
+            {
+              "value": 1,
+              "label": "not at all"
+            },
+            {
+              "value": 2,
+              "label": "a little"
+            },
+            {
+              "value": 3,
+              "label": "somewhat"
+            },
+            {
+              "value": 4,
+              "label": "a lot"
+            }
+          ]
+        }
+      },
+      {
+        "type": "end",
+        "name": "done",
+        "outcome": "complete",
+        "message": "Thank you for taking part!"
+      }
+    ]
+  },
+  "invites": [
+    {
+      "label": "Open link"
+    }
+  ],
+  "answers": [
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "age": 34,
+        "news_frequency": 3,
+        "sources": [
+          "tv",
+          "websites"
+        ],
+        "social_platform": {
+          "done": true,
+          "skip": true
+        },
+        "trust": {
+          "tv": 3,
+          "newspapers": 4,
+          "social": 1
+        }
+      }
+    },
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "age": 22,
+        "news_frequency": 4,
+        "sources": [
+          "social",
+          "websites"
+        ],
+        "social_platform": "instagram",
+        "trust": {
+          "tv": 2,
+          "newspapers": 2,
+          "social": 3
+        }
+      }
+    },
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "age": 61,
+        "news_frequency": 3,
+        "sources": [
+          "tv",
+          "newspaper",
+          "radio"
+        ],
+        "social_platform": {
+          "done": true,
+          "skip": true
+        },
+        "trust": {
+          "tv": 4,
+          "newspapers": 4,
+          "social": 1
+        }
+      }
+    }
+  ]
+}

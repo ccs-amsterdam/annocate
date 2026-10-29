@@ -15,6 +15,7 @@ import { ActivityChart } from "./ActivityChart";
 import { LoopProgress } from "./LoopProgress";
 import { LiveControls } from "./LiveControls";
 import { TeamSettings } from "./TeamSettings";
+import { ExampleNotice } from "./ExampleNotice";
 
 export type OverviewTarget = "Units" | "Invitations" | "Coders";
 
@@ -48,6 +49,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: J
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      <ExampleNotice client={client} />
       <Card title="Status">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           <LiveStatus live={deployment !== null} active={deployment?.active ?? false} since={deployment?.updated ?? null} />

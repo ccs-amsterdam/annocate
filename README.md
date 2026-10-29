@@ -40,7 +40,7 @@ pnpm dev          # runs the client (:5173) and the server (:8787)
 ```
 
 Open the client on http://localhost:5173. Vite proxies the server's paths
-(`/d`, `/job`, `/me`, `/auth`, `/admin`) to it: sessions are same-origin httpOnly
+(`/d`, `/job`, `/me`, `/auth`, `/admin`, `/examples`) to it: sessions are same-origin httpOnly
 cookies, so the client and the server share an origin. Without login
 settings, `pnpm dev` uses development auth headers for the researcher UI;
 with them (`OIDC_*`, `ANNOTINDER_PUBLIC_URL=http://localhost:5173`, see

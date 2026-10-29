@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
-import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema } from "../job.js";
+import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema, ExampleSummarySchema, JobFromExampleSchema } from "../job.js";
 import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema } from "../unitFields.js";
@@ -54,6 +54,9 @@ export const researcherEndpoints = {
 
   listJobs: { method: "GET", path: "/job", request: z.void(), response: z.array(JobResponseSchema) },
   createJob: { method: "POST", path: "/job", request: JobWriteSchema, response: JobResponseSchema },
+  listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
+  /** A new job from an example: units, codebook (published), invitation and example answers. */
+  createJobFromExample: { method: "POST", path: "/job/from-example", request: JobFromExampleSchema, response: JobResponseSchema },
   getJob: { method: "GET", path: "/job/:id", request: z.void(), response: JobResponseSchema },
   updateJob: { method: "PUT", path: "/job/:id", request: JobWriteSchema, response: JobResponseSchema },
   deleteJob: { method: "DELETE", path: "/job/:id", request: z.void(), response: z.void() },

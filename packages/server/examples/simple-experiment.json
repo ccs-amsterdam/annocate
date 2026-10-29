@@ -1,0 +1,234 @@
+{
+  "category": "Surveys and experiments",
+  "title": "A simple experiment",
+  "description": "A survey experiment: each participant is randomly assigned to one of two versions of a news article (an auto question), reads it, and answers the same questions. With example answers from 4 participants.",
+  "tryThis": [
+    "Open the invitation link in a private window a few times: you get either version at random.",
+    "Look at the auto question and the article text in the codebook: the text shows a different paragraph per condition.",
+    "Download the results: the condition is a column in coders.csv, next to the answers."
+  ],
+  "jobName": "A simple experiment",
+  "codebook": {
+    "note": "Example: a simple experiment",
+    "items": [
+      {
+        "type": "question",
+        "name": "consent",
+        "variable": {
+          "type": "confirm",
+          "question": "In this short study you read a news article and answer a few questions about it. It takes about three minutes. Do you want to take part?"
+        }
+      },
+      {
+        "type": "question",
+        "name": "condition",
+        "variable": {
+          "type": "auto",
+          "source": "random",
+          "options": [
+            {
+              "value": "economic"
+            },
+            {
+              "value": "human_interest"
+            }
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "article",
+        "variable": {
+          "type": "confirm",
+          "question": "Please read this article carefully.\n\n## New wind farm planned off the coast\n\nThe government announced plans for a wind farm with forty turbines, twelve kilometres off the coast. Construction is to start in two years.\n\n::: if $var.condition.is('economic')\nThe project will cost 1.2 billion euros and is expected to create six hundred jobs in the region. Economists expect electricity prices to fall slightly once the turbines are running.\n::: else\nFisherman Kees Jansen, whose family has fished these waters for four generations, worries about his future. \"Nobody has asked us where we are supposed to go,\" he says.\n:::\n\nThe plans will be discussed in parliament next month.",
+          "instruction": "Click the button when you have read the article."
+        }
+      },
+      {
+        "type": "question",
+        "name": "support",
+        "variable": {
+          "type": "ordinal",
+          "question": "Do you support building the wind farm?",
+          "options": [
+            {
+              "value": 1,
+              "label": "Strongly oppose"
+            },
+            {
+              "value": 2,
+              "label": "Oppose"
+            },
+            {
+              "value": 3,
+              "label": "Neutral"
+            },
+            {
+              "value": 4,
+              "label": "Support"
+            },
+            {
+              "value": 5,
+              "label": "Strongly support"
+            }
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "emotions",
+        "variable": {
+          "type": "scale",
+          "question": "How did the article make you feel?",
+          "items": [
+            {
+              "name": "hopeful",
+              "label": "Hopeful"
+            },
+            {
+              "name": "worried",
+              "label": "Worried"
+            },
+            {
+              "name": "angry",
+              "label": "Angry"
+            }
+          ],
+          "options": [
+            {
+              "value": 1,
+              "label": "not at all"
+            },
+            {
+              "value": 2,
+              "label": "a little"
+            },
+            {
+              "value": 3,
+              "label": "quite"
+            },
+            {
+              "value": 4,
+              "label": "very"
+            }
+          ]
+        }
+      },
+      {
+        "type": "question",
+        "name": "manipulation_check",
+        "variable": {
+          "type": "nominal",
+          "question": "What was the article mostly about?",
+          "options": [
+            {
+              "value": "costs_jobs",
+              "label": "Costs and jobs"
+            },
+            {
+              "value": "fishermen",
+              "label": "A fisherman's worries"
+            },
+            {
+              "value": "dont_know",
+              "label": "I don't remember"
+            }
+          ]
+        }
+      },
+      {
+        "type": "end",
+        "name": "done",
+        "outcome": "complete",
+        "message": "Thank you! The article was written for this study: the wind farm is not real."
+      }
+    ]
+  },
+  "invites": [
+    {
+      "label": "Open link"
+    }
+  ],
+  "answers": [
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "condition": "economic",
+        "article": {
+          "done": true,
+          "skip": false
+        },
+        "support": 4,
+        "emotions": {
+          "hopeful": 3,
+          "worried": 1,
+          "angry": 1
+        },
+        "manipulation_check": "costs_jobs"
+      }
+    },
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "condition": "human_interest",
+        "article": {
+          "done": true,
+          "skip": false
+        },
+        "support": 2,
+        "emotions": {
+          "hopeful": 1,
+          "worried": 3,
+          "angry": 2
+        },
+        "manipulation_check": "fishermen"
+      }
+    },
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "condition": "economic",
+        "article": {
+          "done": true,
+          "skip": false
+        },
+        "support": 5,
+        "emotions": {
+          "hopeful": 4,
+          "worried": 1,
+          "angry": 1
+        },
+        "manipulation_check": "costs_jobs"
+      }
+    },
+    {
+      "variables": {
+        "consent": {
+          "done": true,
+          "skip": false
+        },
+        "condition": "human_interest",
+        "article": {
+          "done": true,
+          "skip": false
+        },
+        "support": 3,
+        "emotions": {
+          "hopeful": 2,
+          "worried": 3,
+          "angry": 1
+        },
+        "manipulation_check": "dont_know"
+      }
+    }
+  ]
+}
