@@ -1,4 +1,5 @@
-import type { RecipeInput, UnitCreate, UnitField, UnitData } from "@annotinder/contracts";
+import { seededShuffle, type RecipeInput, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import { simpleTemplate, type SimpleLayout } from "../codebook/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
 // researcher chose, and the recipe it makes. The wizard asks no question
@@ -21,14 +22,74 @@ export interface SetupExperiment {
   assign: "random" | "balanced";
 }
 
-/** Who codes what (annotation). */
+/** Units every coder codes besides their own, for checking agreement: a number of units, or a percentage of all units. */
+export type SetupOverlap = { by: "units" | "percent"; value: number } | null;
+
+/** Who codes what (annotation), each with its own settings. */
 export type SetupDistribution =
   /** Every coder codes every unit. */
   | { mode: "all" }
-  /** The units are shared out: each unit until `coders` coders coded it. */
-  | { mode: "split"; coders: number }
-  /** A set of units per condition, by a unit field holding the condition: each coder codes their condition's set. */
-  | { mode: "byCondition"; field: string };
+  /**
+   * The units in sets, each coder one set: `split` into `sets` sets, or one
+   * set per value of `column`. Handed out by an invitation link per set
+   * (`links`), or by one link giving each new coder the set with the fewest
+   * coders (`rotate`).
+   */
+  | { mode: "sets"; source: "split" | "column"; sets: number; column: string; overlap: SetupOverlap; handOut: "links" | "rotate" }
+  /**
+   * Crowd coding: a queue that hands each unit out until `until` coders coded
+   * it (`coders`) or that many gave the same answer to `on` (`agree`), and to
+   * at most `maxCoders`; per coder at least `minUnits`, at most `maxUnits`.
+   */
+  | {
+      mode: "crowd";
+      rule: "coders" | "agree";
+      until: number;
+      on: string;
+      maxCoders: number;
+      minUnits?: number;
+      maxUnits?: number;
+      overlap: SetupOverlap;
+    }
+  /** A set per experimental condition: the units whose `column` has one of the condition's values. */
+  | { mode: "groups"; column: string; values: Record<string, string[]> }
+  /** Decided later in the editor: the loop's units are not set. */
+  | { mode: "later" };
+
+export const DISTRIBUTIONS: { mode: SetupDistribution["mode"]; label: string; help: string }[] = [
+  { mode: "all", label: "Everyone codes everything", help: "Every coder codes every unit." },
+  {
+    mode: "sets",
+    label: "Assign sets",
+    help: "The units are divided into sets (or by a column), and each coder codes one set, optionally plus overlap units everyone codes. Also the classic design with a few expert coders.",
+  },
+  {
+    mode: "crowd",
+    label: "Crowd coding",
+    help: "A shared queue: each unit goes to coders until enough coded it, or enough agree, and then to no one else.",
+  },
+  {
+    mode: "groups",
+    label: "Experimental groups",
+    help: "Each condition of the experiment gets its own units, chosen by the values of a column.",
+  },
+  { mode: "later", label: "Decide later (advanced)", help: "Set who codes which units in the editor: the loop is marked to specify." },
+];
+
+/** The settings an option starts with. */
+export function defaultDistribution(mode: SetupDistribution["mode"], columns: string[] = []): SetupDistribution {
+  switch (mode) {
+    case "all":
+    case "later":
+      return { mode };
+    case "sets":
+      return { mode, source: "split", sets: 2, column: columns[0] ?? "", overlap: null, handOut: "rotate" };
+    case "crowd":
+      return { mode, rule: "coders", until: 1, on: "", maxCoders: 1, overlap: null };
+    case "groups":
+      return { mode, column: columns[0] ?? "", values: {} };
+  }
+}
 
 export interface SetupUnits {
   fields: UnitField[];
@@ -39,9 +100,9 @@ export interface SetupAnswers {
   name: string;
   parts: SetupParts;
   experiment: SetupExperiment;
-  /** Annotation: the units (null: uploaded later), the fields coders see, and who codes what. */
+  /** Annotation: the units (null: uploaded later), how a unit is shown, and who codes what. */
   units: SetupUnits | null;
-  shownFields: string[];
+  layout: SimpleLayout;
   distribution: SetupDistribution;
   order: "sequential" | "random";
   /** Question lines, as typed: before the units (or the survey's), per unit, after the units. */
@@ -53,7 +114,7 @@ export const DEFAULT_SETUP: SetupAnswers = {
   parts: { annotate: true, survey: false, experiment: false },
   experiment: { name: "condition", conditions: ["control", "treatment"], assign: "balanced" },
   units: null,
-  shownFields: [],
+  layout: { body: [] },
   distribution: { mode: "all" },
   order: "sequential",
   questions: { before: [], unit: [], after: [] },
@@ -96,8 +157,54 @@ export function parseQuestions(lines: string[]): SetupQuestion[] {
     });
 }
 
-/** The unitset of a condition (`byCondition`). */
+/** The unitset of a condition (`groups`). */
 export const conditionUnitset = (condition: string) => `condition_${condition}`;
+
+/** A unitset name from a column's value. */
+const setName = (value: string) => `set_${value.replace(/[^A-Za-z0-9_-]+/g, "_").slice(0, 64) || "empty"}`;
+
+/** A unit's value in a column, as text. */
+const valueOf = (unit: UnitCreate, column: string) => String((unit.data as UnitData)[column] ?? "");
+
+/** The distinct values of a column, in the units' order. */
+export function columnValues(units: SetupUnits | null, column: string): string[] {
+  return [...new Set((units?.units ?? []).map((u) => valueOf(u, column)))];
+}
+
+/** How many units an overlap takes of `n`. */
+export function overlapCount(overlap: SetupOverlap, n: number): number {
+  if (!overlap) return 0;
+  return Math.min(n, overlap.by === "units" ? Math.max(0, Math.round(overlap.value)) : Math.round((overlap.value / 100) * n));
+}
+
+/**
+ * The unitsets a distribution makes, and the overlap's (if any): the
+ * overlap is drawn at random (fixed seed) and taken out of the sets.
+ */
+export function distributionSets(d: SetupDistribution, units: SetupUnits | null): { sets: { name: string; units: string[] }[]; overlap: string[] } {
+  const ids = (units?.units ?? []).map((u) => u.externalId);
+  const overlapIds = "overlap" in d ? seededShuffle(ids, 1).slice(0, overlapCount(d.overlap, ids.length)) : [];
+  const inOverlap = new Set(overlapIds);
+  const rest = (units?.units ?? []).filter((u) => !inOverlap.has(u.externalId));
+  if (d.mode === "sets") {
+    if (d.source === "column") {
+      const sets = columnValues({ fields: [], units: rest }, d.column).map((value) => ({
+        name: setName(value),
+        units: rest.filter((u) => valueOf(u, d.column) === value).map((u) => u.externalId),
+      }));
+      return { sets, overlap: overlapIds };
+    }
+    const n = Math.max(1, d.sets);
+    const shuffled = seededShuffle(
+      rest.map((u) => u.externalId),
+      2,
+    );
+    const sets = Array.from({ length: n }, (_, i) => ({ name: `set_${i + 1}`, units: shuffled.filter((_, j) => j % n === i) }));
+    return { sets, overlap: overlapIds };
+  }
+  if (d.mode === "crowd") return { sets: overlapIds.length > 0 ? [{ name: "queue", units: rest.map((u) => u.externalId) }] : [], overlap: overlapIds };
+  return { sets: [], overlap: [] };
+}
 
 /** What stops the wizard at a step; empty: fine. */
 export function setupProblems(a: SetupAnswers): string[] {
@@ -124,25 +231,44 @@ export function setupProblems(a: SetupAnswers): string[] {
   if (twice.length > 0) problems.push(`Each question once: ${twice.join(", ")}`);
   if (a.parts.annotate && parseQuestions(a.questions.unit).length === 0) problems.push("Add at least one question about each unit");
   if (!a.parts.annotate && parseQuestions(a.questions.before).length === 0) problems.push("Add at least one question");
-  if (a.parts.annotate && a.distribution.mode === "byCondition") {
-    if (!a.parts.experiment) problems.push("A set of units per condition needs an experiment");
-    else if (!a.units) problems.push("A set of units per condition needs the units now");
-    else {
-      const field = a.distribution.field;
-      const values = new Set(a.units.units.map((u) => String(u.data[field] ?? "")));
-      const missing = a.experiment.conditions.filter((c) => !values.has(c));
-      const unknown = [...values].filter((v) => !a.experiment.conditions.includes(v));
-      if (missing.length > 0) problems.push(`No units for condition ${missing.join(", ")} in ${field}`);
-      if (unknown.length > 0) problems.push(`${field} has values that aren't conditions: ${unknown.slice(0, 5).join(", ")}`);
-    }
+  if (a.parts.annotate) problems.push(...distributionProblems(a));
+  return problems;
+}
+
+/** What is wrong with who codes what. */
+export function distributionProblems(a: SetupAnswers): string[] {
+  const d = a.distribution;
+  const problems: string[] = [];
+  const n = a.units?.units.length ?? 0;
+  const needsUnits = (what: string) => !a.units && problems.push(`${what} needs the units now`);
+  if ("overlap" in d && d.overlap) {
+    needsUnits("An overlap");
+    if (d.overlap.value <= 0 || (d.overlap.by === "percent" && d.overlap.value > 100)) problems.push("The overlap: a number of units, or a percentage up to 100");
+  }
+  if (d.mode === "sets") {
+    needsUnits("Assigning sets");
+    if (a.units && d.source === "split" && (d.sets < 1 || d.sets > n)) problems.push(`Between 1 and ${n} sets`);
+    if (a.units && d.source === "column" && !a.units.fields.some((f) => f.name === d.column)) problems.push("Choose the column that holds each unit's set");
+  }
+  if (d.mode === "crowd") {
+    if (d.until < 1) problems.push("Coded until: at least 1");
+    if (d.rule === "agree" && d.until < 2) problems.push("Until coders agree: at least 2 coders");
+    if (d.maxCoders < d.until) problems.push("Max coders per unit must be at least the number it is coded until");
+    if (d.rule === "agree" && !parseQuestions(a.questions.unit).some((q) => q.name === d.on)) problems.push("Choose the question coders must agree on");
+    if (d.minUnits !== undefined && d.maxUnits !== undefined && d.minUnits > d.maxUnits) problems.push("Min units per coder can't be more than max");
+  }
+  if (d.mode === "groups") {
+    if (!a.parts.experiment) problems.push("Experimental groups need an experiment");
+    needsUnits("Experimental groups");
+    const empty = a.experiment.conditions.filter((c) => c.trim() && !(d.values[c]?.length));
+    if (a.units && empty.length > 0) problems.push(`Choose the units of ${empty.join(", ")}`);
   }
   return problems;
 }
 
-/** The layout: each shown field on its own line (the editor's Layout tab refines it). */
-export function layoutTemplate(shownFields: string[]): string {
-  if (shownFields.length === 0) return "Upload units, then show their fields here: use the Insert menu above.";
-  return shownFields.map((f) => `$unit.${f}`).join("\n\n");
+/** The layout's template (the editor's Layout tab refines it). */
+export function layoutTemplate(layout: SimpleLayout): string {
+  return simpleTemplate(layout);
 }
 
 const unspecified = (q: SetupQuestion) => ({
@@ -168,28 +294,54 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
   }
   items.push(...parseQuestions(a.questions.before).map(unspecified));
   const unitsets: { name: string; units: string[] }[] = [];
+  const invites: RecipeInput["invites"] = [];
   if (a.parts.annotate) {
     const d = a.distribution;
-    const branch =
-      d.mode === "split"
-        ? { mode: "shared", unitset: "__all__", until: { coders: d.coders }, maxCoders: d.coders }
-        : d.mode === "byCondition"
-          ? { mode: "all", unitset: conditionUnitset(`$var.${a.experiment.name}.value`) }
-          : { mode: "all", unitset: "__all__" };
-    if (d.mode === "byCondition" && a.units) {
-      for (const condition of a.experiment.conditions) {
-        unitsets.push({
-          name: conditionUnitset(condition),
-          units: a.units.units.filter((u) => String((u.data as UnitData)[d.field] ?? "") === condition).map((u) => u.externalId),
-        });
-      }
+    const { sets, overlap } = distributionSets(d, a.units);
+    unitsets.push(...sets);
+    if (overlap.length > 0) unitsets.push({ name: "overlap", units: overlap });
+    const withOverlap = overlap.length > 0 ? { overlap: { unitset: "overlap" } } : {};
+    let branch: object | null;
+    switch (d.mode) {
+      case "all":
+        branch = { mode: "all", unitset: "__all__" };
+        break;
+      case "sets":
+        if (d.handOut === "links") {
+          branch = { mode: "invitation", ...withOverlap };
+          invites!.push(...sets.map((set) => ({ label: set.name.replace(/^set_/, "Set "), unitset: set.name })));
+        } else branch = { mode: "sets", unitsets: sets.map((set) => set.name), ...withOverlap };
+        break;
+      case "crowd":
+        branch = {
+          mode: "shared",
+          unitset: overlap.length > 0 ? "queue" : "__all__",
+          until: d.rule === "agree" ? { agree: d.until, on: d.on } : { coders: d.until },
+          maxCoders: d.maxCoders,
+          ...(d.minUnits !== undefined ? { minUnits: d.minUnits } : {}),
+          ...(d.maxUnits !== undefined ? { maxUnits: d.maxUnits } : {}),
+          ...withOverlap,
+        };
+        break;
+      case "groups":
+        branch = { mode: "all", unitset: conditionUnitset(`$var.${a.experiment.name}.value`) };
+        for (const condition of a.experiment.conditions.filter((c) => c.trim())) {
+          const values = d.values[condition] ?? [];
+          unitsets.push({
+            name: conditionUnitset(condition),
+            units: (a.units?.units ?? []).filter((u) => values.includes(valueOf(u, d.column))).map((u) => u.externalId),
+          });
+        }
+        break;
+      case "later":
+        branch = null;
     }
     items.push({
       type: "unit_loop",
       label: "Units",
-      units: [branch],
+      units: branch ? [branch] : [],
       ...(a.order === "random" ? { order: "random" } : {}),
-      layout: { template: layoutTemplate(a.shownFields) },
+      layout: { template: layoutTemplate(a.layout) },
       children: parseQuestions(a.questions.unit).map(unspecified),
     });
     if (lists.includes("after")) items.push(...parseQuestions(a.questions.after).map(unspecified));
@@ -199,6 +351,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
     unitsets,
     codebook: { note: "Made with the setup wizard", items },
-    invites: [{ label: "Open link" }],
+    // A link per set, or one open link
+    invites: invites.length > 0 ? invites : [{ label: "Open link" }],
   };
 }

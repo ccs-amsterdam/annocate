@@ -37,7 +37,7 @@ as creating a job. Three things share it:
 - **Templates** (later, `examples.md` §6) would be recipes a researcher
   saved, without units.
 
-## 2. Questions to specify
+## 2. Questions and loops to specify
 
 A question can exist before its answer type: `{ type: "unspecified" }`,
 with an optional question text. It saves in a draft. Validation reports
@@ -53,6 +53,23 @@ In the editor:
 
 References to such a question work as for a single answer.
 
+Likewise a unit loop can exist before its units are set (`units: []`):
+validation reports it ("Which units coders get isn't set yet"), the tree
+marks it *to specify*, and its Units tab asks how units are handed out. In
+the editor, a new question starts without an answer type and a new loop
+without units: the researcher chooses, rather than inheriting a default
+they may not notice (confirm, all units).
+
+## 2b. Layouts as a form
+
+A loop's Layout tab starts as a form: a field for the title, one for the
+byline, and the body fields (`client/src/lib/codebook/simpleLayout.ts`).
+The form writes an ordinary template (`# $unit.headline`,
+`*$unit.source*`, `$unit.text`). A template is shown as the form only if
+it has exactly that shape; otherwise it opens in the template editor
+(**Advanced**), so nothing written there is lost. "Use the simple form
+instead" replaces a template, after asking. Later: images and other roles.
+
 ## 3. The steps
 
 Start the wizard with **Guided setup** on the Jobs page. It sits next to
@@ -66,21 +83,11 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
    (default `condition`), the conditions (default `control`, `treatment`),
    and how they are assigned: balanced (default) or random. This becomes an
    `auto` question, first in the codebook.
-3. **Units** (with Annotate). Takes these, in order:
-   - **The units.** The CSV upload from the Units tab, or skip it and
-     upload later.
-   - **Fields to show.** Which fields coders see; the default is the text
-     fields. Each becomes a line of the loop's layout.
-   - **Who codes what:**
-     - every coder codes every unit (`all`);
-     - the units are shared out, each coded by N coders (`shared` until N,
-       at most N);
-     - with an experiment: **a set of units per condition**, by a field
-       holding each unit's condition. This makes a unitset per condition
-       (`condition_<value>`), and the loop routes by the condition
-       (`condition_$var.condition.value`). The field's values must be the
-       conditions. Choosing the field also stops showing it to coders.
-   - **Order:** random order per coder, or as uploaded.
+3. **Units** (with Annotate). The CSV upload from the Units tab (or skip
+   it and upload later). Then how coders see a unit: a **simple layout
+   form** with a field each for **title** and **byline**, and the **body**
+   fields. Title and byline are guessed from field names like `headline`
+   and `source`. Last, random order per coder, or as uploaded.
 4. **Questions.** Names, one per line. A line can be a name (`age`) or the
    question itself (`How old are you?`): the name is made from it
    (`how_old_are_you`) and the line becomes the question text. Where they
@@ -89,11 +96,35 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
    - **a survey or experiment alone**: one list, asked once;
    - **annotation with a survey or experiment**: three lists, before the
      units, about each unit, and after the units.
-5. **Check and create.** A summary in sentences, what comes next in the
+5. **Who codes what** (with Annotate). A dropdown, each option with its own
+   settings:
+   - **Everyone codes everything**: no settings (`all`).
+   - **Assign sets**: divide the units into N sets, or make one set per
+     value of a column. Optionally add overlap units that every coder
+     codes, as a number or a percentage, drawn at random and taken out of
+     the sets. Coders get a set in one of two ways:
+     - one link that gives each new coder the set with the fewest coders
+       (`sets`);
+     - an invitation link per set (`invitation`), for the classic design
+       with a few expert coders.
+   - **Crowd coding**: a shared queue. A unit is done when N coders coded
+     it, or when N gave the same answer to a question you choose (from the
+     unit questions; it needs options once specified). Also set max coders
+     per unit, min and max units per coder, and an optional overlap (the
+     queue is then the other units).
+   - **Experimental groups** (with an experiment): pick a column, and per
+     condition which of its values belong to it. This makes a unitset per
+     condition (`condition_<value>`), and the loop routes by the condition
+     (`condition_$var.condition.value`).
+   - **Decide later (advanced)**: the loop is made with no units set
+     (`units: []`). It is marked *to specify*, and its Units tab asks to
+     choose.
+
+6. **Check and create.** A summary in sentences, what comes next in the
    editor, and what still stops the job (no name, a question twice, no
    question about the units, conditions that don't match the units' field).
    Create makes the job: units, unitsets, the draft codebook, and an open
-   invitation link. It then opens on the Codebook tab.
+   invitation link (or one per set). It then opens on the Codebook tab.
 
 ## 4. Tests
 
@@ -104,9 +135,10 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
   the draft, units, unitsets and invitation; that only a valid codebook is
   published; that a bad recipe is refused and leaves nothing; and the limit
   on jobs.
-- `e2e/tests/wizard.spec.ts`: two runs through the wizard in a browser.
-  One is annotation with an experiment and units per condition, ending with
-  a question specified in the editor; the other is a survey alone.
+- `e2e/tests/wizard.spec.ts`: three runs through the wizard in a browser:
+  annotation with an experiment and experimental groups, ending with a
+  question specified in the editor; crowd coding with an overlap and the
+  guessed layout; and a survey alone.
 
 ## 5. Decisions taken
 
@@ -116,12 +148,15 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
   valid JSON of a known shape and the editor can show it plainly.
 - The codebook is created as a draft: publishing stays a deliberate step
   after previewing.
-- One open invitation link is always made. More kinds of links (personal,
-  panel) are in the editor's Invitations tab.
-- The experiment supports the most common case with units: a set of units
-  per condition, by a column in the CSV. Other designs (the same units with
-  different questions or layouts per condition) are made in the editor with
-  conditions on `$var.condition`.
+- One open invitation link is made, or one per set when sets are handed
+  out by link. More kinds of links (personal, panel) are in the editor's
+  Invitations tab.
+- Experimental groups pick their units by a column's values, chosen per
+  condition, rather than requiring the values to be the conditions' names.
+  Other designs (the same units with different questions or layouts per
+  condition) are made in the editor with conditions on `$var.condition`.
+- Overlap units are drawn at random with a fixed seed, so the same upload
+  gives the same sets.
 
 ## 6. Possible next steps
 

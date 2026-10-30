@@ -10,27 +10,38 @@ import { useCreateJobFromRecipeMutation } from "../../admin/queries";
 import type { CsvUnits } from "../../admin/csv";
 import {
   DEFAULT_SETUP,
+  DISTRIBUTIONS,
+  columnValues,
+  defaultDistribution,
+  distributionProblems,
+  distributionSets,
+  overlapCount,
   parseQuestions,
   questionLists,
   setupProblems,
   setupRecipe,
   type SetupAnswers,
+  type SetupDistribution,
+  type SetupOverlap,
   type SetupParts,
 } from "../../admin/setupRecipe";
+import { guessSimpleLayout } from "../../codebook/simpleLayout";
 import { CsvUnitsForm } from "./units/UploadUnits";
+import { SimpleLayoutForm } from "./SimpleLayoutForm";
 
 // The setup wizard (docs/plans/setup-wizard.md): what the job does, the
-// experiment's conditions, the units and who codes what, and the names of
-// the questions. It makes a recipe (admin/setupRecipe.ts); the job then
+// experiment's conditions, the units and how they are shown, the names of
+// the questions, and who codes what. It makes a recipe (admin/setupRecipe.ts); the job then
 // opens in the codebook editor, where the questions get their answer types.
 
-type Step = "start" | "experiment" | "units" | "questions" | "create";
+type Step = "start" | "experiment" | "units" | "questions" | "distribution" | "create";
 
 const STEP_TITLES: Record<Step, string> = {
   start: "What do you want to do?",
   experiment: "The experiment",
   units: "Units",
   questions: "Questions",
+  distribution: "Who codes what",
   create: "Check and create",
 };
 
@@ -43,22 +54,28 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
   const create = useCreateJobFromRecipeMutation(client);
   const set = (patch: Partial<SetupAnswers>) => setA((prev) => ({ ...prev, ...patch }));
 
-  // The units come from the CSV form; the fields shown default to its text fields.
+  // The units come from the CSV form; the layout starts from a guess by the text fields' names.
   const onCsv = useCallback((result: CsvUnits | null) => {
     setCsv(result);
     setA((prev) => {
       const units = result && result.errors.length === 0 ? { fields: result.fields, units: result.units } : null;
       const textFields = units ? units.fields.filter((f) => f.type === "text").map((f) => f.name) : [];
-      const distribution = prev.distribution.mode === "byCondition" && !units ? ({ mode: "all" } as const) : prev.distribution;
-      return { ...prev, units, shownFields: textFields, distribution };
+      return { ...prev, units, layout: guessSimpleLayout(textFields) };
     });
   }, []);
 
-  const steps: Step[] = ["start", ...(a.parts.experiment ? (["experiment"] as const) : []), ...(a.parts.annotate ? (["units"] as const) : []), "questions", "create"];
+  const steps: Step[] = [
+    "start",
+    ...(a.parts.experiment ? (["experiment"] as const) : []),
+    ...(a.parts.annotate ? (["units"] as const) : []),
+    "questions",
+    ...(a.parts.annotate ? (["distribution"] as const) : []),
+    "create",
+  ];
   const at = steps.indexOf(step);
   const problems = setupProblems(a);
   const startDone = a.name.trim() !== "" && (a.parts.annotate || a.parts.survey || a.parts.experiment);
-  const unitsBlocked = step === "units" && csv !== null && csv.errors.length > 0;
+  const blocked = (step === "units" && csv !== null && csv.errors.length > 0) || (step === "distribution" && distributionProblems(a).length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in">
@@ -81,6 +98,7 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
           {step === "experiment" && <ExperimentStep a={a} set={set} />}
           {step === "units" && <UnitsStep a={a} set={set} onCsv={onCsv} />}
           {step === "questions" && <QuestionsStep a={a} set={set} />}
+          {step === "distribution" && <DistributionStep a={a} set={set} />}
           {step === "create" && <CreateStep a={a} problems={problems} />}
         </div>
 
@@ -98,7 +116,7 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
               </Button>
             )}
             {step !== "create" ? (
-              <Button onClick={() => setStep(steps[at + 1])} disabled={!startDone || unitsBlocked}>
+              <Button onClick={() => setStep(steps[at + 1])} disabled={!startDone || blocked}>
                 Next
               </Button>
             ) : (
@@ -205,99 +223,219 @@ function ExperimentStep({ a, set }: StepProps) {
 }
 
 function UnitsStep({ a, set, onCsv }: StepProps & { onCsv: (result: CsvUnits | null) => void }) {
-  const d = a.distribution;
-  const fields = a.units?.fields ?? [];
-  const conditionField = d.mode === "byCondition" ? d.field : null;
-  // The field with the condition is for routing, not for coders to see.
-  const byCondition = (field: string) => set({ distribution: { mode: "byCondition", field }, shownFields: a.shownFields.filter((f) => f !== field) });
+  const fields = (a.units?.fields ?? []).filter((f) => f.type === "text").map((f) => f.name);
   return (
     <>
       <Intro>Upload the units coders work on, or skip this and upload them later on the Units tab.</Intro>
       <div className="space-y-3 rounded-lg border border-border p-3">
         <CsvUnitsForm jobFields={NO_FIELDS} onResult={onCsv} />
       </div>
-
-      {fields.length > 0 && (
-        <fieldset className="space-y-1 text-sm">
-          <legend className="text-xs font-medium text-muted-foreground">Show coders these fields</legend>
-          {fields.map((f) => (
-            <label key={f.name} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={a.shownFields.includes(f.name)}
-                onChange={(ev) =>
-                  set({ shownFields: ev.target.checked ? fields.map((x) => x.name).filter((n) => n === f.name || a.shownFields.includes(n)) : a.shownFields.filter((n) => n !== f.name) })
-                }
-              />
-              <span className="font-mono text-xs">{f.name}</span>
-              {f.name === conditionField && <span className="text-xs text-muted-foreground">(the condition)</span>}
-            </label>
-          ))}
-        </fieldset>
+      {a.units && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-medium text-foreground">How coders see a unit</h3>
+          <SimpleLayoutForm layout={a.layout} fields={fields} onChange={(layout) => set({ layout })} />
+          <p className="text-xs text-muted-foreground">The editor's Layout tab can change this, or (Advanced) write the layout as a template.</p>
+        </section>
       )}
-
-      <fieldset className="space-y-1.5 text-sm">
-        <legend className="text-xs font-medium text-muted-foreground">Who codes what</legend>
-        <label className="flex items-center gap-2">
-          <input type="radio" checked={d.mode === "all"} onChange={() => set({ distribution: { mode: "all" } })} />
-          Every coder codes every unit
-        </label>
-        <label className="flex flex-wrap items-center gap-2">
-          <input type="radio" checked={d.mode === "split"} onChange={() => set({ distribution: { mode: "split", coders: 1 } })} />
-          Share the units out: each unit coded by
-          <select
-            aria-label="Coders per unit"
-            className="h-7 rounded-md border border-input bg-background px-1 text-xs"
-            value={d.mode === "split" ? d.coders : 1}
-            onChange={(ev) => set({ distribution: { mode: "split", coders: Number(ev.target.value) } })}
-          >
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          coder{d.mode === "split" && d.coders > 1 ? "s" : ""}
-        </label>
-        {a.parts.experiment && (
-          <label className={cn("flex flex-wrap items-center gap-2", !a.units && "text-muted-foreground")}>
-            <input
-              type="radio"
-              disabled={!a.units}
-              checked={d.mode === "byCondition"}
-              onChange={() => byCondition(fields.at(-1)?.name ?? "")}
-            />
-            A set of units per condition, by the field
-            <select
-              aria-label="Field with the condition"
-              disabled={!a.units}
-              className="h-7 rounded-md border border-input bg-background px-1 text-xs"
-              value={conditionField ?? ""}
-              onChange={(ev) => byCondition(ev.target.value)}
-            >
-              {fields.map((f) => (
-                <option key={f.name} value={f.name}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-            <span className="w-full pl-6 text-xs text-muted-foreground">
-              Each participant codes the units whose {conditionField ?? "field"} is their condition ({a.experiment.conditions.filter(Boolean).join(", ")}).
-              {!a.units && " Needs the units now."}
-            </span>
-          </label>
-        )}
-        {d.mode === "split" && (
-          <p className="pl-6 text-xs text-muted-foreground">
-            More than one coder per unit lets you check how well coders agree. The editor has more options (agreement, units per coder).
-          </p>
-        )}
-      </fieldset>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={a.order === "random"} onChange={(ev) => set({ order: ev.target.checked ? "random" : "sequential" })} />
         Random order per coder (otherwise as uploaded)
       </label>
     </>
+  );
+}
+
+const numberInput = "h-7 w-16 rounded-md border border-input bg-background px-1.5 text-xs";
+const smallSelect = "h-7 rounded-md border border-input bg-background px-1 text-xs";
+
+function DistributionStep({ a, set }: StepProps) {
+  const d = a.distribution;
+  const columns = (a.units?.fields ?? []).map((f) => f.name);
+  const choose = (mode: SetupDistribution["mode"]) => set({ distribution: defaultDistribution(mode, columns) });
+  const update = (patch: Partial<SetupDistribution>) => set({ distribution: { ...d, ...patch } as SetupDistribution });
+  const options = DISTRIBUTIONS.filter((o) => o.mode !== "groups" || a.parts.experiment);
+  const problems = distributionProblems(a);
+  const { sets, overlap } = distributionSets(d, a.units);
+  return (
+    <>
+      <label className="block text-xs font-medium text-muted-foreground">
+        Who codes which units
+        <select className="mt-1 block h-9 w-full max-w-sm rounded-md border border-input bg-background px-2 text-sm" value={d.mode} onChange={(e) => choose(e.target.value as SetupDistribution["mode"])}>
+          {options.map((o) => (
+            <option key={o.mode} value={o.mode}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="text-xs text-muted-foreground">{DISTRIBUTIONS.find((o) => o.mode === d.mode)!.help}</p>
+
+      <div className="space-y-3 text-sm">
+        {d.mode === "sets" && (
+          <>
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-medium text-muted-foreground">The sets</legend>
+              <label className="flex flex-wrap items-center gap-2">
+                <input type="radio" checked={d.source === "split"} onChange={() => update({ source: "split" })} />
+                Divide the units into
+                <input aria-label="Number of sets" type="number" min={1} className={numberInput} value={d.sets} onChange={(e) => update({ sets: Number(e.target.value) })} />
+                sets
+              </label>
+              <label className={cn("flex flex-wrap items-center gap-2", columns.length === 0 && "text-muted-foreground")}>
+                <input type="radio" disabled={columns.length === 0} checked={d.source === "column"} onChange={() => update({ source: "column" })} />
+                One set per value of the column
+                <select aria-label="Column with the set" disabled={columns.length === 0} className={smallSelect} value={d.column} onChange={(e) => update({ source: "column", column: e.target.value })}>
+                  {columns.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </fieldset>
+            <OverlapInput overlap={d.overlap} units={a.units?.units.length ?? 0} onChange={(overlap) => update({ overlap })} />
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-medium text-muted-foreground">How coders get a set</legend>
+              <label className="flex items-center gap-2">
+                <input type="radio" checked={d.handOut === "rotate"} onChange={() => update({ handOut: "rotate" })} />
+                One link: each new coder gets the set with the fewest coders
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" checked={d.handOut === "links"} onChange={() => update({ handOut: "links" })} />
+                An invitation link per set: you decide who gets which (e.g. a few expert coders)
+              </label>
+            </fieldset>
+            {a.units && sets.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {sets.map((s) => `${s.name}: ${s.units.length}`).join(", ")}
+                {overlap.length > 0 && `; overlap: ${overlap.length} units every coder codes`}
+              </p>
+            )}
+          </>
+        )}
+
+        {d.mode === "crowd" && (
+          <>
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-medium text-muted-foreground">A unit is done</legend>
+              <label className="flex flex-wrap items-center gap-2">
+                <input type="radio" checked={d.rule === "coders"} onChange={() => update({ rule: "coders", until: 1, maxCoders: Math.max(1, d.maxCoders) })} />
+                when
+                <input aria-label="Coded until" type="number" min={1} className={numberInput} value={d.rule === "coders" ? d.until : 1} disabled={d.rule !== "coders"} onChange={(e) => update({ until: Number(e.target.value), maxCoders: Math.max(d.maxCoders, Number(e.target.value)) })} />
+                coders coded it
+              </label>
+              <label className="flex flex-wrap items-center gap-2">
+                <input type="radio" checked={d.rule === "agree"} onChange={() => update({ rule: "agree", until: 2, maxCoders: Math.max(3, d.maxCoders), on: d.on || (parseQuestions(a.questions.unit)[0]?.name ?? "") })} />
+                when
+                <input aria-label="Agreeing coders" type="number" min={2} className={numberInput} value={d.rule === "agree" ? d.until : 2} disabled={d.rule !== "agree"} onChange={(e) => update({ until: Number(e.target.value) })} />
+                coders gave the same answer to
+                <select aria-label="Question to agree on" disabled={d.rule !== "agree"} className={smallSelect} value={d.on} onChange={(e) => update({ on: e.target.value })}>
+                  <option value="">(choose)</option>
+                  {parseQuestions(a.questions.unit).map((q) => (
+                    <option key={q.name} value={q.name}>
+                      {q.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </fieldset>
+            <div className="grid w-fit grid-cols-[auto_auto_auto] items-center gap-x-3 gap-y-1.5 text-xs">
+              <span />
+              <span className="text-muted-foreground">min</span>
+              <span className="text-muted-foreground">max</span>
+              <span>Coders per unit</span>
+              <span className="text-muted-foreground">{d.until} (the rule)</span>
+              <input aria-label="Max coders per unit" type="number" min={d.until} className={numberInput} value={d.maxCoders} onChange={(e) => update({ maxCoders: Number(e.target.value) })} />
+              <span>Units per coder</span>
+              <input aria-label="Min units per coder" type="number" min={1} placeholder="-" className={numberInput} value={d.minUnits ?? ""} onChange={(e) => update({ minUnits: e.target.value === "" ? undefined : Number(e.target.value) })} />
+              <input aria-label="Max units per coder" type="number" min={1} placeholder="-" className={numberInput} value={d.maxUnits ?? ""} onChange={(e) => update({ maxUnits: e.target.value === "" ? undefined : Number(e.target.value) })} />
+            </div>
+            <OverlapInput overlap={d.overlap} units={a.units?.units.length ?? 0} onChange={(overlap) => update({ overlap })} />
+            {d.rule === "agree" && (
+              <p className="text-xs text-muted-foreground">The question to agree on must have options (nominal, ordinal or swipe): choose its type in the editor.</p>
+            )}
+          </>
+        )}
+
+        {d.mode === "groups" && (
+          <>
+            <label className="flex flex-wrap items-center gap-2">
+              The units of each condition, by the column
+              <select aria-label="Column for the groups" className={smallSelect} value={d.column} onChange={(e) => update({ column: e.target.value, values: {} })}>
+                {columns.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="space-y-2">
+              {a.experiment.conditions
+                .filter((c) => c.trim())
+                .map((condition) => (
+                  <fieldset key={condition} className="rounded-md border border-border p-2">
+                    <legend className="px-1 text-xs font-medium">{condition}</legend>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {columnValues(a.units, d.column).map((value) => {
+                        const chosen = d.values[condition] ?? [];
+                        return (
+                          <label key={value} className="flex items-center gap-1.5 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={chosen.includes(value)}
+                              onChange={(e) =>
+                                update({ values: { ...d.values, [condition]: e.target.checked ? [...chosen, value] : chosen.filter((v) => v !== value) } })
+                              }
+                            />
+                            {value || "(empty)"}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                ))}
+            </div>
+          </>
+        )}
+
+        {d.mode === "later" && (
+          <p className="text-xs text-muted-foreground">
+            The unit loop is made without a choice: it is marked <em>to specify</em> in the editor, where its Units tab has every
+            option (also coder groups by any question, and more).
+          </p>
+        )}
+      </div>
+
+      {problems.length > 0 && (
+        <ul className="space-y-1 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
+          {problems.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** Overlap units: none, a number, or a percentage of the units. */
+function OverlapInput({ overlap, units, onChange }: { overlap: SetupOverlap; units: number; onChange: (overlap: SetupOverlap) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={overlap !== null} onChange={(e) => onChange(e.target.checked ? { by: "percent", value: 10 } : null)} />
+        Overlap: units every coder codes (to compare coders)
+      </label>
+      {overlap && (
+        <>
+          <input aria-label="Overlap size" type="number" min={1} className={numberInput} value={overlap.value} onChange={(e) => onChange({ ...overlap, value: Number(e.target.value) })} />
+          <select aria-label="Overlap in" className={smallSelect} value={overlap.by} onChange={(e) => onChange({ ...overlap, by: e.target.value as "units" | "percent" })}>
+            <option value="percent">% of the units</option>
+            <option value="units">units</option>
+          </select>
+          {units > 0 && <span className="text-xs text-muted-foreground">({overlapCount(overlap, units)} units)</span>}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -346,6 +484,23 @@ function QuestionsStep({ a, set }: StepProps) {
   );
 }
 
+/** Who codes what, in a sentence. */
+function distributionSummary(d: SetupDistribution): string {
+  const overlap = "overlap" in d && d.overlap ? `, plus overlap units every coder codes` : "";
+  switch (d.mode) {
+    case "all":
+      return "Every coder codes every unit.";
+    case "sets":
+      return `${d.source === "split" ? `The units in ${d.sets} sets` : `A set per value of ${d.column}`}, one per coder${overlap}; ${d.handOut === "links" ? "a link per set" : "each new coder gets the set with the fewest coders"}.`;
+    case "crowd":
+      return `Crowd coding: each unit until ${d.until} coder${d.until > 1 ? "s" : ""} ${d.rule === "agree" ? `agree on ${d.on}` : "coded it"}, at most ${d.maxCoders}${overlap}.`;
+    case "groups":
+      return `Each condition codes its own units (by ${d.column}).`;
+    case "later":
+      return "Who codes which units: to set in the editor.";
+  }
+}
+
 function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
   const lists = questionLists(a.parts);
   const count = (list: "before" | "unit" | "after") => parseQuestions(a.questions[list]).length;
@@ -358,18 +513,14 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
     lines.push(lists.length > 1 ? `${count("before")} question(s) before the units.` : `${count("before")} question(s).`);
   }
   if (a.parts.annotate) {
-    lines.push(a.units ? `${a.units.units.length} units, showing ${a.shownFields.join(", ") || "no fields yet"}.` : "No units yet: upload them on the Units tab.");
-    lines.push(
-      d.mode === "all"
-        ? "Every coder codes every unit."
-        : d.mode === "split"
-          ? `The units are shared out, each coded by ${d.coders} coder${d.coders > 1 ? "s" : ""}.`
-          : `Each participant codes the units of their condition (field ${d.field}).`,
-    );
+    const shown = [a.layout.title, a.layout.byline, ...a.layout.body].filter(Boolean);
+    lines.push(a.units ? `${a.units.units.length} units, showing ${shown.join(", ") || "no fields yet"}.` : "No units yet: upload them on the Units tab.");
+    lines.push(distributionSummary(d));
     lines.push(`${count("unit")} question(s) about each unit.`);
     if (lists.includes("after") && count("after") > 0) lines.push(`${count("after")} question(s) after the units.`);
   }
-  lines.push("An open invitation link.");
+  const perSet = a.parts.annotate && d.mode === "sets" && d.handOut === "links";
+  lines.push(perSet ? "An invitation link per set." : "An open invitation link.");
   return (
     <>
       <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">

@@ -24,16 +24,21 @@ test("annotation with an experiment: a set of units per condition, questions bef
     buffer: Buffer.from("id,text,group\ns1,A neutral report.,control\ns2,A framed report.,treatment\ns3,Another framed one.,treatment\n"),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
-  await page.getByRole("radio", { name: /A set of units per condition/ }).check();
-  await page.getByLabel("Field with the condition").selectOption("group");
-  // The condition's field is no longer shown to coders
-  await expect(page.getByRole("checkbox", { name: /group/ })).not.toBeChecked();
+  // The layout: the text as body (group isn't shown)
+  await page.getByRole("checkbox", { name: "group" }).uncheck();
   await page.getByRole("button", { name: "Next" }).click();
 
   // Question names in three places
   await page.getByLabel("Questions before the units").fill("age");
   await page.getByLabel("Questions about each unit").fill("How credible is it?\ntopic");
   await page.getByLabel("Questions after the units").fill("comments");
+  await page.getByRole("button", { name: "Next" }).click();
+
+  // Who codes what: the experimental groups, by the values of group
+  await page.getByLabel("Who codes which units").selectOption({ label: "Experimental groups" });
+  await page.getByLabel("Column for the groups").selectOption("group");
+  await page.getByRole("group", { name: "control" }).getByRole("checkbox", { name: "control" }).check();
+  await page.getByRole("group", { name: "treatment" }).getByRole("checkbox", { name: "treatment" }).check();
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("3 units, showing text.")).toBeVisible();
   await page.getByRole("button", { name: "Create job" }).click();
@@ -79,4 +84,41 @@ test("a survey alone: questions by name, no units", async ({ page, request }) =>
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Opinion survey")!;
   expect(await api<unknown[]>(request, "GET", `/job/${job.id}/units`)).toEqual([]);
   expect((await api<unknown[]>(request, "GET", `/job/${job.id}/invites`)).length).toBe(1);
+});
+
+test("crowd coding with an overlap; the loop's units are set by the wizard", async ({ page, request }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Guided setup" }).click();
+  await page.getByLabel("Job name").fill("Crowd pilot");
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.locator("input[type=file]").setInputFiles({
+    name: "units.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("id,headline,text\n" + Array.from({ length: 10 }, (_, i) => `u${i},Headline ${i},Text ${i}`).join("\n") + "\n"),
+  });
+  await page.getByRole("button", { name: /Use column names/ }).click();
+  // The headline was guessed as the title
+  await expect(page.getByLabel("Title")).toHaveValue("headline");
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByLabel("Questions about each unit").fill("sentiment");
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByLabel("Who codes which units").selectOption({ label: "Crowd coding" });
+  await page.getByLabel("Coded until").fill("2");
+  await page.getByRole("checkbox", { name: /Overlap/ }).check();
+  await page.getByLabel("Overlap in").selectOption("units");
+  await page.getByLabel("Overlap size").fill("2");
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Create job" }).click();
+  await expect(page.getByText("to specify")).toHaveCount(1);
+
+  const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Crowd pilot")!;
+  const [draft] = await api<CodebookResponse[]>(request, "GET", `/job/${job.id}/codebook`);
+  const [loop] = (await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
+  expect(loop.units).toEqual([{ mode: "shared", unitset: "queue", until: { coders: 2 }, maxCoders: 2, overlap: { unitset: "overlap" } }]);
+  expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
+  const sets = await api<UnitsetResponse[]>(request, "GET", `/job/${job.id}/unitsets`);
+  expect(sets.map((s) => [s.name, s.unitIds.length])).toEqual([
+    ["queue", 8],
+    ["overlap", 2],
+  ]);
 });
