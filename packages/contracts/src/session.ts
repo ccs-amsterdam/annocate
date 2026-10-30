@@ -114,7 +114,7 @@ export const SessionResponseSchema = z.object({
   ended: SessionEndSchema.nullable().optional(),
   /** Set once the coder asked for their answers to be deleted. */
   deletionRequest: DeletionRequestSchema.nullable().optional(),
-  /** `$session` values: `participant` (if the session has a participant id) and the URL parameters its invitation required. */
+  /** `$session` values: the link and URL parameters, `participant`, `source` and `email` when the session has them. */
   session: z.record(z.string(), z.string()).default({}),
   /** The email of the login this session belongs to (docs/coder-identity.md §5); null without. Logged-in coders continue on any device by logging in there. */
   login: z.string().nullable().optional(),
@@ -136,13 +136,18 @@ export const CoderErrorCodeSchema = z.enum([
   "participant_has_session",
   /** The invite requires login (also: it lists email addresses). */
   "auth_required",
-  /** The coder's login isn't one of the invite's email addresses. */
+  /**
+   * The coder's login isn't one of the link's email addresses, or (sets by
+   * email) not one of the group's sets: "This email address has no access to this study".
+   */
   "email_not_invited",
+  /** The link is no longer part of the published design (e.g. its set was removed): no new sessions. */
+  "link_inactive",
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
   /** A new codebook version was published since the session was loaded: load it again. */
   "codebook_changed",
-  /** `GET /loop/:loop/next` needs the client's branch choice (`branch` + `unitsets`), see NextUnitQuerySchema. */
+  /** `GET /loop/:loop/next` needs the client's branch choice (`branch`), see NextUnitQuerySchema. */
   "branch_required",
   /** The coder reached an `end` item or quit: no more units or answers. */
   "session_ended",
@@ -150,9 +155,9 @@ export const CoderErrorCodeSchema = z.enum([
   "session_closed",
   /** Preview only: the latest codebook has issues, so it can't run. */
   "codebook_invalid",
-  /** The invite requires a URL parameter the link doesn't have. */
+  /** The codebook requires a URL parameter the link doesn't have. */
   "url_param_missing",
-  /** A URL parameter's value doesn't fit the invite's pattern. */
+  /** A URL parameter's value isn't one the codebook accepts (its values, pattern or length). */
   "url_param_invalid",
   /** The researchers paused the job: no new sessions or units until they resume it (what is open can be saved). */
   "job_paused",

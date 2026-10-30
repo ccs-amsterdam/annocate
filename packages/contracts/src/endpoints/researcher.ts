@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { IdSchema } from "../common.js";
 import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema, ExampleSummarySchema, JobFromExampleSchema } from "../job.js";
 import { RecipeSchema } from "../recipe.js";
 import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema } from "../unitFields.js";
-import { UnitsetWriteSchema, UnitsetResponseSchema } from "../unitset.js";
+import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema, CoderDeletionSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
 import {
@@ -29,7 +28,7 @@ import {
 /**
  * The researcher API (docs/api/researcher.md): called by the client's
  * researcher UI (`ResearcherApi`), and by scripts (R, Python) and other
- * systems. Jobs, codebooks, units, unitsets, invitations, coder progress,
+ * systems. Jobs, codebooks, units, set groups, links, coder progress,
  * deployment.
  *
  * Path params are written as `:param`. A server hosts any number of jobs;
@@ -58,7 +57,7 @@ export const researcherEndpoints = {
   listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
   /** A new job from an example: units, codebook (published), invitation and example answers. */
   createJobFromExample: { method: "POST", path: "/job/from-example", request: JobFromExampleSchema, response: JobResponseSchema },
-  /** A new job from a recipe (the setup wizard): units, unitsets, a codebook (a draft unless `publish`), invitations. */
+  /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; publishing makes its links). */
   createJobFromRecipe: { method: "POST", path: "/job/from-recipe", request: RecipeSchema, response: JobResponseSchema },
   getJob: { method: "GET", path: "/job/:id", request: z.void(), response: JobResponseSchema },
   updateJob: { method: "PUT", path: "/job/:id", request: JobWriteSchema, response: JobResponseSchema },
@@ -100,7 +99,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(UnitFieldSchema),
   },
-  /** Query: `offset`, `limit` (max 200), and `unitset` (that set's units, in its order). */
+  /** Query: `offset`, `limit` (max 200), and `group` with `set` (that set's units, in its order). */
   listUnitPage: { method: "GET", path: "/job/:jobId/units/page", request: z.void(), response: UnitPageSchema },
   getUnit: { method: "GET", path: "/job/:jobId/units/:id", request: z.void(), response: UnitResponseSchema },
   createUnits: {
@@ -111,25 +110,11 @@ export const researcherEndpoints = {
   },
   deleteUnit: { method: "DELETE", path: "/job/:jobId/units/:id", request: z.void(), response: z.void() },
 
-  listUnitsets: {
-    method: "GET",
-    path: "/job/:jobId/unitsets",
-    request: z.void(),
-    response: z.array(UnitsetResponseSchema),
-  },
-  createUnitset: {
-    method: "POST",
-    path: "/job/:jobId/unitsets",
-    request: UnitsetWriteSchema,
-    response: UnitsetResponseSchema,
-  },
-  updateUnitset: {
-    method: "PUT",
-    path: "/job/:jobId/unitsets/:id",
-    request: UnitsetWriteSchema,
-    response: UnitsetResponseSchema,
-  },
-  deleteUnitset: { method: "DELETE", path: "/job/:jobId/unitsets/:id", request: z.void(), response: z.void() },
+  /** The set groups (docs/plans/sets-and-session-parameters.md §1), each with its sets in order. */
+  listSetGroups: { method: "GET", path: "/job/:jobId/sets", request: z.void(), response: z.array(SetGroupResponseSchema) },
+  /** Makes or replaces a group (its sets). Republished links follow (link parameters with the group's sets). */
+  putSetGroup: { method: "PUT", path: "/job/:jobId/sets/:group", request: SetGroupWriteSchema, response: SetGroupResponseSchema },
+  deleteSetGroup: { method: "DELETE", path: "/job/:jobId/sets/:group", request: z.void(), response: z.void() },
 
   listCoders: { method: "GET", path: "/job/:jobId/coders", request: z.void(), response: z.array(CoderProgressSchema) },
   /** Deletes coders and all their answers for good (e.g. a participant withdrew), by id, participant id or email (ADMIN). */
@@ -159,9 +144,10 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(CoderInviteResponseSchema),
   },
-  createInvite: {
-    method: "POST",
-    path: "/job/:jobId/invites",
+  /** A link's access settings (label, login, emails, max uses, participant id). Links themselves come from the published codebook. */
+  updateInvite: {
+    method: "PUT",
+    path: "/job/:jobId/invites/:id",
     request: CoderInviteWriteSchema,
     response: CoderInviteResponseSchema,
   },
@@ -171,12 +157,11 @@ export const researcherEndpoints = {
     request: z.void(),
     response: CoderInviteResponseSchema,
   },
-  deleteInvite: { method: "DELETE", path: "/job/:jobId/invites/:id", request: z.void(), response: z.void() },
-  /** Sets the unitset of an invite (`unitsetId`, null for none). Coders already routed keep their units. */
-  setInviteUnitset: {
-    method: "PUT",
-    path: "/job/:jobId/invites/:id/unitset",
-    request: z.object({ unitsetId: IdSchema.nullable() }),
+  /** A new secret for a link (the old link stops working; coders who started keep their sessions). */
+  renewInviteSecret: {
+    method: "POST",
+    path: "/job/:jobId/invites/:id/secret",
+    request: z.void(),
     response: CoderInviteResponseSchema,
   },
   getOverview: { method: "GET", path: "/job/:jobId/overview", request: z.void(), response: JobOverviewSchema },

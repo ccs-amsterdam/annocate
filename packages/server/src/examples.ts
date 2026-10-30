@@ -55,7 +55,7 @@ const ExampleFileSchema = RecipeSchema.extend({
       }),
     )
     .default([]),
-}).refine((e) => e.publish && e.invites.length > 0, "An example publishes its codebook and has an invitation");
+}).refine((e) => e.publish, "An example publishes its codebook");
 type ExampleFile = z.infer<typeof ExampleFileSchema>;
 
 let catalogue: Map<string, ExampleFile> | null = null;

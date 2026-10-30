@@ -3,7 +3,7 @@ import { EndSessionSchema, QuitSessionSchema, NextUnitQuerySchema, PostCoderVari
 import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
 import { getCookie } from "hono/cookie";
-import { linkInfo, participantFromLink } from "./shared/invites.js";
+import { linkInfo } from "./shared/invites.js";
 import { userForSession } from "./shared/sessions.js";
 import { deviceDetails } from "./shared/devices.js";
 import { SESSION_COOKIE } from "./researcher/login.js";
@@ -71,19 +71,22 @@ export function coderApi(server: Server): Hono {
     // participant id). `x-new-session`: the coder asked for a new one (a
     // participant id that already has a session elsewhere).
     const inviteSecret = c.req.header("x-invite-secret");
-    // The page's query parameters: the participant id and other values the invite requires, and `url_param` auto variables.
+    // The page's query parameters: the participant id and the codebook's URL parameters.
     const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
     const newSession = c.req.header("x-new-session") === "1";
     const link = inviteSecret ? await linkInfo(server.db, inviteSecret) : null;
     const existingDevice = readDevice(c);
     const device = existingDevice ?? newDeviceId();
-    const key = await coderKey(device, deploymentId, participantFromLink(link, urlParams));
+    const participantParam = runtime.participantParam;
+    const key = await coderKey(device, deploymentId, participantParam ? urlParams[participantParam]?.trim() || undefined : undefined);
+    // Logins matter where the link takes them, or where sets are assigned by email.
+    const takesLogin = !!link && (link.login !== "none" || runtime.needsLogin);
     // A login (the same as researchers', §5) is read only when it matters:
     // to link a session to its email once, or to find the email's session on
     // a new device. Never in previews.
     const loginCookie = getCookie(c, SESSION_COOKIE);
     const login =
-      loginCookie && /^\d+$/.test(deploymentId) && link?.login !== "none"
+      loginCookie && /^\d+$/.test(deploymentId) && (!link || takesLogin)
         ? async () => {
             const user = await userForSession(server.db, loginCookie);
             return user ? { email: user.email } : null;
@@ -96,7 +99,7 @@ export function coderApi(server: Server): Hono {
       newSession,
       device: deviceDetails(c.req.header("user-agent")),
       login,
-      linkable: !!link && link.login !== "none",
+      linkable: takesLogin,
     });
     // Only once the coder was accepted (an invite may be invalid or used up).
     if (device !== existingDevice) writeDevice(c, device);
@@ -108,17 +111,13 @@ export function coderApi(server: Server): Hono {
 
   session.post("/transfer", async (c) => c.json(await c.get("runtime").createTransfer(c.get("coder"))));
 
-  session.get("/session", async (c) => {
-    const urlParams = Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
-    return c.json({ ...(await c.get("runtime").session(c.get("coder"), urlParams)), canLogIn: c.get("canLogIn") });
-  });
+  session.get("/session", async (c) => c.json({ ...(await c.get("runtime").session(c.get("coder"))), canLogIn: c.get("canLogIn") }));
 
   session.get("/loop/:loop/next", async (c) => {
-    const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), unitsets: c.req.queries("unitsets"), count: c.req.query("count") });
-    if (!query.success) return c.json({ error: "Invalid branch, unitsets or count" }, 400);
-    const { branch, unitsets, count } = query.data;
-    const names = unitsets === undefined ? [] : Array.isArray(unitsets) ? unitsets : [unitsets];
-    return c.json({ units: await c.get("runtime").nextUnits(c.get("coder"), c.req.param("loop"), { branch, unitsets: names }, count) });
+    const query = NextUnitQuerySchema.safeParse({ branch: c.req.query("branch"), count: c.req.query("count") });
+    if (!query.success) return c.json({ error: "Invalid branch or count" }, 400);
+    const { branch, count } = query.data;
+    return c.json({ units: await c.get("runtime").nextUnits(c.get("coder"), c.req.param("loop"), { branch }, count) });
   });
 
   session.get("/loop/:loop/units/:unitId", async (c) =>

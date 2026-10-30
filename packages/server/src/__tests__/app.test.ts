@@ -59,7 +59,7 @@ describe("codebook routes", () => {
       {
         type: "unit_loop",
         label: "loop",
-        units: [{ mode: "all", unitset: "main" }],
+        units: [{ mode: "all" }],
         layout: { template: "" },
         children: [{ type: "question", name: "q1", variable: { type: "confirm", question: "Confirm?" } }],
       },
@@ -156,15 +156,23 @@ describe("units: fields and pages", () => {
     expect((await upload(job.id, [{ externalId: "u1", data: { other: "x" } }])).status).toBe(201);
   });
 
-  it("pages units, or a unitset's units in its order", async () => {
+  it("pages units, or a set's units in its order", async () => {
     const job = await createJob();
     const units = (await json(
       await upload(job.id, Array.from({ length: 5 }, (_, i) => ({ externalId: `u${i}`, data: { i } }))),
     )) as { id: number }[];
-    await app.request(`/job/${job.id}/unitsets`, {
-      method: "POST",
+    const put = await app.request(`/job/${job.id}/sets/batch`, {
+      method: "PUT",
       headers: adminHeaders,
-      body: JSON.stringify({ name: "set", unitIds: [units[4].id, units[0].id, units[2].id] }),
+      body: JSON.stringify({ sets: [{ name: "set", unitIds: [units[4].id, units[0].id, units[2].id], ordered: true }, { name: "_overlap", unitIds: [units[1].id] }] }),
+    });
+    expect(put.status).toBe(200);
+    expect(await json(put)).toEqual({
+      name: "batch",
+      sets: [
+        { name: "_overlap", unitIds: [units[1].id], ordered: false },
+        { name: "set", unitIds: [units[4].id, units[0].id, units[2].id], ordered: true },
+      ],
     });
     const page = async (query: string) =>
       json(await app.request(`/job/${job.id}/units/page?${query}`, { headers: adminHeaders }));
@@ -172,26 +180,29 @@ describe("units: fields and pages", () => {
     const all = await page("offset=1&limit=2");
     expect(all.total).toBe(5);
     expect(all.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u1", "u2"]);
-    const set = await page("unitset=set&offset=1&limit=5");
+    const set = await page("group=batch&set=set&offset=1&limit=5");
     expect(set.total).toBe(3);
     expect(set.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u0", "u2"]);
+    expect((await json(await app.request(`/job/${job.id}/overview`, { headers: adminHeaders }))).groups).toEqual([
+      { name: "batch", sets: [{ name: "_overlap", units: 1 }, { name: "set", units: 3 }] },
+    ]);
+    // Deleted: gone (no codebook uses it)
+    expect((await app.request(`/job/${job.id}/sets/batch`, { method: "DELETE", headers: adminHeaders })).status).toBe(204);
+    expect(await json(await app.request(`/job/${job.id}/sets`, { headers: adminHeaders }))).toEqual([]);
   });
 
-  it("keeps unitsets to the job's own units", async () => {
+  it("keeps sets to the job's own units, with valid names", async () => {
     const job = await createJob();
     const other = await createJob("Other");
     const [mine] = await json(await upload(job.id, [{ externalId: "u1", data: { n: 1 } }]));
     const [theirs] = await json(await upload(other.id, [{ externalId: "u1", data: { n: 1 } }]));
-    const post = (unitIds: number[]) =>
-      app.request(`/job/${job.id}/unitsets`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ name: "set", unitIds }) });
-    expect((await post([mine.id, theirs.id])).status).toBe(400);
-    const set = await json(await post([mine.id]));
-    const put = await app.request(`/job/${job.id}/unitsets/${set.id}`, {
-      method: "PUT",
-      headers: adminHeaders,
-      body: JSON.stringify({ name: "set", unitIds: [theirs.id] }),
-    });
-    expect(put.status).toBe(400);
+    const put = (group: string, sets: object[]) =>
+      app.request(`/job/${job.id}/sets/${group}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ sets }) });
+    expect((await put("g", [{ name: "s", unitIds: [mine.id, theirs.id] }])).status).toBe(400);
+    expect((await put("g", [{ name: "_gold", unitIds: [mine.id] }])).status).toBe(400);
+    expect((await put("g", [{ name: "s", unitIds: [mine.id] }, { name: "s", unitIds: [] }])).status).toBe(400);
+    expect((await put("_g", [{ name: "s", unitIds: [mine.id] }])).status).toBe(400);
+    expect((await put("g", [{ name: "s", unitIds: [mine.id] }])).status).toBe(200);
   });
 });
 
@@ -219,10 +230,8 @@ describe("annotations: finished counts and resets", () => {
         body: JSON.stringify({ units: [{ externalId: "u1", data: {} }, { externalId: "u2", data: {} }] }),
       }),
     )) as { id: number }[];
-    const invite = await json(
-      await app.request(`/job/${job.id}/invites`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label: "x" }) }),
-    );
-    const { coder } = await store.resolveCoder({ coderKey: "k", inviteSecret: invite.secret });
+    await db.query("INSERT INTO invites (job_id, label, auth, secret) VALUES ($1, 'x', 'none', 'annotations-link')", [job.id]);
+    const { coder } = await store.resolveCoder({ coderKey: "k", inviteSecret: "annotations-link" });
     const put = (unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId: coder.coderId, variables });
     const finished = (variables: string[], values?: string[]) => store.listFinished({ loops: [{ loop: "l", variables, values }] });
@@ -276,10 +285,10 @@ describe("annotations: finished counts and resets", () => {
   });
 });
 
-describe("invites, coder progress and overview", () => {
+describe("links, coder progress and overview", () => {
   const value = (code: string): VariableValue => ({ done: true, skip: false, values: [{ value: code }] });
 
-  async function setup() {
+  async function setup(session?: object) {
     const job = await createJob();
     const store = new DbStore(db, job.id);
     const units = (await json(
@@ -290,65 +299,80 @@ describe("invites, coder progress and overview", () => {
       }),
     )) as { id: number }[];
     const question = (name: string) => ({ type: "question", name, variable: { type: "confirm", question: "?" } });
-    const codebook = await json(
-      await app.request(`/job/${job.id}/codebook`, {
-        method: "POST",
-        headers: adminHeaders,
-        body: JSON.stringify({
-          items: [
-            {
-              type: "unit_loop",
-              label: "l",
-              units: [{ mode: "all", unitset: "main" }],
-              layout: { template: "" },
-              children: [question("q1"), question("q2")],
-            },
-          ],
-        }),
-      }),
-    );
-    await app.request(`/job/${job.id}/deployment`, {
-      method: "PUT",
-      headers: adminHeaders,
-      body: JSON.stringify({ codebookId: codebook.id }),
-    });
-    const createInvite = async (label: string) =>
-      json(await app.request(`/job/${job.id}/invites`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ label }) }));
+    const loop = { type: "unit_loop", label: "l", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q1"), question("q2")] };
+    const publish = async (items: object[], confirmLinks?: boolean) => {
+      const codebook = await json(await app.request(`/job/${job.id}/codebook`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ items }) }));
+      return app.request(`/job/${job.id}/deployment`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: codebook.id, confirmLinks }) });
+    };
+    expect((await publish(session ? [session, loop] : [loop])).status).toBe(200);
     const resolve = async (coderKey: string, inviteSecret: string) => (await store.resolveCoder({ coderKey, inviteSecret })).coder;
     const put = (coderId: number, unitId: number, variables: Record<string, VariableValue>) =>
       store.putAnnotation({ unitId, coderId, variables });
     const get = async (path: string) => json(await app.request(`/job/${job.id}${path}`, { headers: adminHeaders }));
-    return { job, units, createInvite, resolve, put, get };
+    return { job, units, loop, publish, resolve, put, get };
   }
+  const batches = (values: string[]) => ({ type: "session", params: [{ name: "batch", kind: "link", values: { list: values.map((value) => ({ value })) } }] });
 
-  it("lists invites; revoked invites take no new coders, used ones can't be deleted", async () => {
-    const { job, createInvite, resolve, get } = await setup();
-    const used = await createInvite("used");
-    const unused = await createInvite("unused");
-    expect(await status(resolve("a", used.secret))).toBe(200);
-
-    const invites = await get("/invites");
-    expect(invites.map((i: { label: string; uses: number }) => [i.label, i.uses])).toEqual([
-      ["used", 1],
-      ["unused", 0],
+  it("makes a link per link parameter value; links are revoked, renewed or retired, never deleted", async () => {
+    const { job, loop, publish, resolve, get } = await setup(batches(["used", "unused"]));
+    const links = await get("/invites");
+    expect(links.map((i: { label: string; params: object }) => [i.label, i.params])).toEqual([
+      ["used", { batch: "used" }],
+      ["unused", { batch: "unused" }],
     ]);
+    const [used, unused] = links;
+    expect(await status(resolve("a", used.secret))).toBe(200);
+    expect((await get("/invites"))[0].uses).toBe(1);
 
-    const del = (id: number) => app.request(`/job/${job.id}/invites/${id}`, { method: "DELETE", headers: adminHeaders });
-    expect((await del(used.id)).status).toBe(409);
-    expect((await del(unused.id)).status).toBe(204);
-
-    const revoked = await json(
-      await app.request(`/job/${job.id}/invites/${used.id}/revoke`, { method: "POST", headers: adminHeaders }),
+    // Access settings
+    const updated = await json(
+      await app.request(`/job/${job.id}/invites/${unused.id}`, {
+        method: "PUT",
+        headers: adminHeaders,
+        body: JSON.stringify({ label: "Panel", auth: "none", maxUses: 1 }),
+      }),
     );
-    expect(revoked.revokedAt).not.toBeNull();
+    expect(updated).toMatchObject({ label: "Panel", maxUses: 1, params: { batch: "unused" } });
+    expect(await status(resolve("u1", unused.secret))).toBe(200);
+    expect(await status(resolve("u2", unused.secret))).toBe(401);
+
+    // A new secret: the old one stops working
+    const renewed = await json(await app.request(`/job/${job.id}/invites/${used.id}/secret`, { method: "POST", headers: adminHeaders }));
+    expect(renewed.secret).not.toBe(used.secret);
     expect(await status(resolve("b", used.secret))).toBe(401);
+
+    const revoked = await json(await app.request(`/job/${job.id}/invites/${used.id}/revoke`, { method: "POST", headers: adminHeaders }));
+    expect(revoked.revokedAt).not.toBeNull();
+    expect(await status(resolve("c", renewed.secret))).toBe(401);
     // coders who already started keep their access
     expect(await status(resolve("a", used.secret))).toBe(200);
+
+    // Republished with other values: "unused" is retired, "new" made; "used" keeps its row
+    expect((await publish([batches(["used", "new"]), loop])).status).toBe(200);
+    const after = await get("/invites");
+    expect(after.map((i: { params: { batch: string }; retiredAt: string | null }) => [i.params.batch, i.retiredAt === null])).toEqual([
+      ["used", true],
+      ["new", true],
+      ["unused", false],
+    ]);
+    expect(await status(resolve("d", unused.secret))).toBe(403);
+  });
+
+  it("asks to confirm many links, and refuses too many", async () => {
+    const { loop, publish } = await setup();
+    const many = (n: number) => batches(Array.from({ length: n }, (_, i) => `b${i}`));
+    const confirm = await publish([many(501), loop]);
+    expect(confirm.status).toBe(409);
+    expect(await json(confirm)).toMatchObject({ code: "confirm_links" });
+    expect((await publish([many(2001), loop], true)).status).toBe(400);
+    const ok = await publish([many(501), loop], true);
+    expect(ok.status).toBe(200);
+    expect((await json(ok)).links).toBe(501);
   });
 
   it("reports coder progress and the overview from live answers", async () => {
-    const { units, createInvite, resolve, put, get } = await setup();
-    const invite = await createInvite("batch 1");
+    const { units, resolve, put, get } = await setup(batches(["batch 1"]));
+    const [invite] = await get("/invites");
     const coderA = await resolve("a", invite.secret);
     await resolve("b", invite.secret);
     await put(coderA.coderId, units[0].id, { q1: value("x"), q2: value("y") });

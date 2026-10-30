@@ -131,45 +131,50 @@
       }
     }
   ],
-  "unitsets": [
+  "sets": [
     {
-      "name": "part_1",
-      "units": [
-        "news-06",
-        "news-07",
-        "news-08",
-        "news-09",
-        "news-10"
-      ]
-    },
-    {
-      "name": "part_2",
-      "units": [
-        "news-11",
-        "news-12",
-        "news-13",
-        "news-14",
-        "news-15"
-      ]
-    },
-    {
-      "name": "part_3",
-      "units": [
-        "news-16",
-        "news-17",
-        "news-18",
-        "news-19",
-        "news-20"
-      ]
-    },
-    {
-      "name": "overlap",
-      "units": [
-        "news-01",
-        "news-02",
-        "news-03",
-        "news-04",
-        "news-05"
+      "group": "parts",
+      "sets": [
+        {
+          "name": "s1",
+          "units": [
+            "news-06",
+            "news-07",
+            "news-08",
+            "news-09",
+            "news-10"
+          ]
+        },
+        {
+          "name": "s2",
+          "units": [
+            "news-11",
+            "news-12",
+            "news-13",
+            "news-14",
+            "news-15"
+          ]
+        },
+        {
+          "name": "s3",
+          "units": [
+            "news-16",
+            "news-17",
+            "news-18",
+            "news-19",
+            "news-20"
+          ]
+        },
+        {
+          "name": "_overlap",
+          "units": [
+            "news-01",
+            "news-02",
+            "news-03",
+            "news-04",
+            "news-05"
+          ]
+        }
       ]
     }
   ],
@@ -181,14 +186,12 @@
         "label": "Headlines",
         "units": [
           {
-            "mode": "sets",
-            "unitsets": [
-              "part_1",
-              "part_2",
-              "part_3"
-            ],
+            "mode": "assign",
+            "group": "parts",
+            "from": {
+              "draw": "balanced"
+            },
             "overlap": {
-              "unitset": "overlap",
               "placement": "spread"
             }
           }
@@ -227,11 +230,6 @@
       }
     ]
   },
-  "invites": [
-    {
-      "label": "Open link"
-    }
-  ],
   "answers": [
     {
       "units": {

@@ -6,7 +6,8 @@ import { z } from "zod";
  */
 export const JobOverviewSchema = z.object({
   units: z.number().int().nonnegative(),
-  unitsets: z.array(z.object({ name: z.string(), units: z.number().int().nonnegative() })),
+  /** The set groups, with their sets' sizes. */
+  groups: z.array(z.object({ name: z.string(), sets: z.array(z.object({ name: z.string(), units: z.number().int().nonnegative() })) })),
   coders: z.object({
     total: z.number().int().nonnegative(),
     /** Coders who gave at least one answer. */

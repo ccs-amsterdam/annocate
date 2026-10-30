@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, SafeNameSchema } from "./common.js";
+import { IdSchema } from "./common.js";
 import { DeletionRequestSchema, SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
 
@@ -86,58 +86,11 @@ export const CoderDeletionSchema = z.object({
 });
 export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
-/** A URL parameter name, as it appears in links (e.g. `PROLIFIC_PID`). */
-const UrlParamNameSchema = z.string().min(1).max(64).regex(/^[A-Za-z0-9_.~-]+$/, "A URL parameter name is letters, digits, _, -, . or ~");
-
-/** A regular expression a URL parameter's value must match in full, e.g. `[0-9a-f]{24}` or `a|b|c`. */
-const UrlParamPatternSchema = z
-  .string()
-  .min(1)
-  .max(256)
-  .refine((p) => {
-    try {
-      new RegExp(p);
-      return true;
-    } catch {
-      return false;
-    }
-  }, "Not a valid regular expression");
-
 /**
- * Where the participant id comes from: a URL parameter of the coder's link
- * (e.g. a panel's `PROLIFIC_PID`), required to start, optionally checked
- * against a pattern. Available as `$session.participant`.
- */
-export const ParticipantParamSchema = z.object({ param: UrlParamNameSchema, pattern: UrlParamPatternSchema.optional() });
-export type ParticipantParam = z.infer<typeof ParticipantParamSchema>;
-
-/**
- * Another URL parameter the invite requires (e.g. a panel's study or
- * session id), stored with the coder's session when they start and
- * available as `$session.<name>`: `name` when given, else the parameter's
- * own name (which must then be a valid name: letters, digits and `_`).
- */
-export const RequiredUrlParamSchema = z
-  .object({
-    param: UrlParamNameSchema,
-    name: SafeNameSchema.optional(),
-    pattern: UrlParamPatternSchema.optional(),
-  })
-  .refine((p) => p.name !== undefined || /^[A-Za-z_][A-Za-z0-9_]*$/.test(p.param), {
-    message: "Give this parameter a name (letters, digits and _) to use it as $session.<name>",
-    path: ["name"],
-  })
-  .refine((p) => (p.name ?? p.param) !== "participant", { message: "'participant' is the participant id's name", path: ["name"] });
-export type RequiredUrlParam = z.infer<typeof RequiredUrlParamSchema>;
-
-/** The `$session` name of a required URL parameter. */
-export const urlParamName = (p: RequiredUrlParam) => p.name ?? p.param;
-
-/**
- * An invitation link (docs/coder-identity.md §3). Independent settings:
- * whether coders must log in (`auth`), whether coders get a participant id
- * (fixed on the invite, or from a URL parameter), and which other URL
- * parameters a link needs.
+ * An invitation link (docs/coder-identity.md §3). Links are generated from
+ * the published codebook: one per combination of its link parameters
+ * (docs/plans/sets-and-session-parameters.md §4). The researcher manages
+ * who may use a link, not which links exist.
  */
 export const CoderInviteWriteSchema = z.object({
   label: z.string().min(1).max(128),
@@ -146,35 +99,18 @@ export const CoderInviteWriteSchema = z.object({
    * `optional`: coders may log in to resume elsewhere. `required`: login first.
    */
   auth: z.enum(["none", "optional", "required"]).default("none"),
-  /** A participant id fixed on this invite (e.g. a personal link). A label, never a credential. */
+  /** A participant id fixed on this link (e.g. a personal link). A label, never a credential. */
   participantId: z.string().min(1).max(256).optional(),
-  /** Take the participant id from a URL parameter of the link (online panels); then it is required. */
-  participantParam: ParticipantParamSchema.optional(),
-  /** Other URL parameters the link requires, stored with the session (`$session.<name>`). */
-  urlParams: z.array(RequiredUrlParamSchema).max(20).optional(),
   /**
-   * Restrict the invite to these email addresses: coders log in, and only
+   * Restrict the link to these email addresses: coders log in, and only
    * these logins are let in. Stored on the server only; never part of the
    * codebook.
    */
   emails: z.array(z.string().email()).optional(),
   /** Stop accepting new coders after this many. */
   maxUses: z.number().int().positive().optional(),
-  /**
-   * Preset values for the codebook's `auto` variables with `source: "invite"`
-   * (variable name -> code), e.g. `{ slot: "2" }`. This is how specific
-   * coders are routed to specific unitsets without the codebook knowing who
-   * they are.
-   */
-  variables: z.record(SafeNameSchema, z.string()).optional(),
-  /**
-   * The unitset coders of this invite code in unit loops with
-   * `mode: "invitation"` (e.g. made by dividing units over coders). Null:
-   * none, so they get no units there.
-   */
-  unitsetId: IdSchema.nullable().optional(),
 });
-export type CoderInviteWrite = z.infer<typeof CoderInviteWriteSchema>;
+export type CoderInviteWrite = z.input<typeof CoderInviteWriteSchema>;
 
 export const CoderInviteResponseSchema = CoderInviteWriteSchema.extend({
   id: IdSchema,
@@ -190,5 +126,13 @@ export const CoderInviteResponseSchema = CoderInviteWriteSchema.extend({
    * already started keep working. An invite can only be deleted while unused.
    */
   revokedAt: z.coerce.date().nullable(),
+  /** The link parameter values this link carries (`$session.<name>`). */
+  params: z.record(z.string(), z.string()),
+  /**
+   * Set when the published codebook no longer makes this link (e.g. its set
+   * was removed): no new coders ("This link is no longer active"). Cleared
+   * if the link is part of the design again.
+   */
+  retiredAt: z.coerce.date().nullable(),
 });
 export type CoderInviteResponse = z.infer<typeof CoderInviteResponseSchema>;

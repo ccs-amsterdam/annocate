@@ -1,3 +1,4 @@
+import { listSetGroups } from "./sets.js";
 import type { CoderProgress, DeletionRequest, JobOverview, SessionEnd } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { getDeployment, loopVariables } from "./deployments.js";
@@ -83,10 +84,7 @@ export async function jobOverview(sql: Sql, jobId: number, now = new Date()): Pr
   const count = async (text: string, ...args: unknown[]) => (await one<{ n: number }>(sql, text, [jobId, ...args]))!.n;
   const dayAgo = new Date(now.getTime() - DAY_MS);
 
-  const unitsets = await sql.query<{ name: string; units: number }>(
-    "SELECT name, cardinality(unit_ids) AS units FROM unitsets WHERE job_id = $1 ORDER BY id",
-    [jobId],
-  );
+  const groups = (await listSetGroups(sql, jobId)).map((g) => ({ name: g.name, sets: g.sets.map((s) => ({ name: s.name, units: s.unitIds.length })) }));
   const lastActivity = (
     await one<{ last: Date | null }>(sql, "SELECT MAX(updated) AS last FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned", [jobId])
   )!.last;
@@ -96,7 +94,7 @@ export async function jobOverview(sql: Sql, jobId: number, now = new Date()): Pr
 
   return {
     units: await count("SELECT COUNT(*)::int AS n FROM units WHERE job_id = $1"),
-    unitsets,
+    groups,
     coders: {
       total: await count("SELECT COUNT(*)::int AS n FROM coders WHERE job_id = $1"),
       started: await count("SELECT COUNT(DISTINCT coder_id)::int AS n FROM annotation_values WHERE job_id = $1 AND retired_at IS NULL AND NOT assigned"),

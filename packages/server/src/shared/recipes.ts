@@ -1,14 +1,16 @@
-import { randomBytes } from "node:crypto";
-import { CodebookItemsSchema, addedFields, checkUnitData, type Recipe, type UnitData } from "@annotinder/contracts";
+import { CodebookItemsSchema, addedFields, checkUnitData, type CodebookItem, type Recipe, type UnitData } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { putDeployment } from "./deployments.js";
 import { HttpError } from "./http.js";
 import type { JobRow } from "./jobs.js";
 import { checkUnitUpload } from "./limits.js";
+import { checkLinkCount, syncLinks } from "./invites.js";
+import { putSetGroup } from "./sets.js";
 import { setUnitFields } from "./units.js";
 
 // Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new job's
-// units, unitsets, first codebook and invitations in one document. Example
+// units, set groups and first codebook in one document; publishing it makes
+// its links (shared/invites.ts `syncLinks`). Example
 // jobs and the setup wizard both make jobs through here.
 
 export interface RecipeOptions {
@@ -27,7 +29,7 @@ export interface MadeJob {
   codebookId: number;
   /** Database ids of the recipe's units, by their ids in the recipe. */
   unitIds: Map<string, number>;
-  /** The first invitation's id, if any. */
+  /** The first link's id, if published. */
   firstInvite: number | null;
 }
 
@@ -89,16 +91,17 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
     return found;
   };
 
-  // Unitsets
-  const unitsetIds = new Map<string, number>();
-  for (const set of recipe.unitsets) {
-    if (unitsetIds.has(set.name)) throw invalid(`Unitset '${set.name}' is defined twice`);
-    const row = await one<{ id: number }>(tx, "INSERT INTO unitsets (job_id, name, unit_ids) VALUES ($1, $2, $3) RETURNING id", [
+  // Set groups
+  const groups = recipe.sets.map((g) => g.group);
+  const twice = groups.find((g, i) => groups.indexOf(g) !== i);
+  if (twice !== undefined) throw invalid(`Group '${twice}' is defined twice`);
+  for (const group of recipe.sets) {
+    await putSetGroup(
+      tx,
       job.id,
-      set.name,
-      set.units.map(unitId),
-    ]);
-    unitsetIds.set(set.name, row!.id);
+      group.group,
+      group.sets.map((set) => ({ name: set.name, unitIds: set.units.map(unitId), ordered: set.ordered })),
+    );
   }
 
   // The codebook: published, or the first draft
@@ -107,33 +110,12 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
     recipe.codebook.note ?? null,
     JSON.stringify(recipe.codebook.items),
   ]))!.id;
-  if (recipe.publish) await putDeployment(tx, job.id, { codebookId, active: true });
-
-  // Invitations
   let firstInvite: number | null = null;
-  for (const [i, invite] of recipe.invites.entries()) {
-    const { unitset, label, auth, emails, maxUses, variables, participantId, participantParam, urlParams } = invite;
-    const setId = unitset === undefined ? null : unitsetIds.get(unitset);
-    if (setId === undefined) throw invalid(`Invitation '${label}': no unitset '${unitset}'`);
-    const row = await one<{ id: number }>(
-      tx,
-      `INSERT INTO invites (job_id, label, auth, secret, emails, max_uses, variables, participant_id, participant_param, url_params, unitset_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-      [
-        job.id,
-        label,
-        auth,
-        options.secrets?.[i] ?? randomBytes(16).toString("hex"),
-        emails ? JSON.stringify(emails) : null,
-        maxUses ?? null,
-        JSON.stringify(variables ?? {}),
-        participantId ?? null,
-        participantParam ? JSON.stringify(participantParam) : null,
-        urlParams?.length ? JSON.stringify(urlParams) : null,
-        setId,
-      ],
-    );
-    firstInvite ??= row!.id;
+  if (recipe.publish) {
+    await putDeployment(tx, job.id, { codebookId, active: true });
+    await checkLinkCount(tx, job.id, recipe.codebook.items as CodebookItem[], true);
+    await syncLinks(tx, job.id, { secrets: options.secrets });
+    firstInvite = (await one<{ id: number }>(tx, "SELECT id FROM invites WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
   }
   return { job, codebookId, unitIds, firstInvite };
 }

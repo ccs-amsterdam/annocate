@@ -2,14 +2,14 @@ import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 import { ConditionSchema } from "./condition.js";
 import type { AnyVariableType } from "./variableTypes.js";
-import { outputText, parseTemplate, referenceValue, type ReferenceScope, type Reference } from "./references.js";
+import { SetGroupNameSchema, SetRefSchema } from "../sets.js";
 
-// How a unit_loop gets its units (docs/architecture.md §6). The codebook
-// describes the *process* only: it refers to unitsets by name and to coders
-// only through coder-level variables. Which units are in a unitset, and which
-// coder has which variable value (e.g. via an invitation), lives outside the
-// codebook, so a codebook can be shared and reproduced without revealing
-// either.
+// How a unit_loop gets its units (docs/architecture.md §6,
+// docs/plans/sets-and-session-parameters.md §2). The codebook describes the
+// *process* only: it refers to set groups and sets by name, and to coders
+// only through their answers and session values. Which units are in which
+// set lives with the units, so a codebook can be shared and reproduced
+// without revealing them.
 
 /**
  * Whether coders' answers to a question can be compared for an agreement
@@ -21,26 +21,27 @@ export function supportsAgreement(variable: AnyVariableType): boolean {
   return (variable.type === "nominal" && !variable.multiple) || variable.type === "ordinal" || variable.type === "annotinder";
 }
 
-/** Unitset name meaning "every unit in the job". */
+/** The key for "every unit in the job" (the server's sets are keyed `group/set`, `setKey`). */
 export const ALL_UNITS_UNITSET = "__all__";
 
-/** How long a coder of a `sets` branch keeps their set without finishing it or being active (ms). */
+/** How long a coder of an `assign` branch with a drawn set keeps their set without finishing it or being active (ms). */
 export const SET_ACTIVITY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * A set every coder of the branch codes in full besides their own units,
- * e.g. for intercoder reliability (and later gold questions): `before`
- * their units (default), `after` them, or `spread` evenly through them.
- * Spreading needs to know how many units a coder gets: in `shared` mode
- * that is `maxUnits` (required there for `spread`). If a coder gets fewer
- * units, the overlap units left come at the end.
+ * The overlap: the `_overlap` units of the branch's group, which every
+ * coder codes besides their own set, e.g. for intercoder reliability.
+ * `first` or `last` of the coder's units, `spread` evenly through them, or
+ * `disabled`. `expect`: how many overlap units the design wants (a
+ * warning when the group has fewer). `max`: use at most this many, the
+ * `first` in order or a `random` (seeded) draw.
  */
-export const OverlapSchema = z.object({
-  /** Unitset name; may contain `$var` references, like a branch's `unitset`. */
-  unitset: z.string().min(1),
-  placement: z.enum(["before", "after", "spread"]).optional(),
+export const OverlapSettingsSchema = z.object({
+  placement: z.enum(["first", "last", "spread", "disabled"]),
+  expect: z.number().int().positive().optional(),
+  max: z.number().int().positive().optional(),
+  pick: z.enum(["first", "random"]).optional(),
 });
-export type Overlap = z.infer<typeof OverlapSchema>;
+export type OverlapSettings = z.infer<typeof OverlapSettingsSchema>;
 
 const branchBase = {
   /**
@@ -48,31 +49,27 @@ const branchBase = {
    * the client, which tells the server the branch it chose.
    */
   when: ConditionSchema.optional(),
-  overlap: OverlapSchema.optional(),
 };
 
-/**
- * `all`: every coder of the branch codes every unit of the set. The
- * unitset name may contain `$var` references to coder-level questions,
- * filled in with the coder's answer as text (e.g. `part_$var.slot.value`).
- */
+/** `all`: every coder of the branch codes every unit (of the job, or of one set). */
 export const AllUnitsBranchSchema = z.object({
   ...branchBase,
   mode: z.literal("all"),
-  unitset: z.string().min(1),
+  set: SetRefSchema.optional(),
 });
 
 /**
- * `shared`: the units are shared among coders: a queue that hands each unit
- * out until it is done, either when `until.coders` coders coded it, or when
- * `until.agree` coders gave the same answer to the question `until.on` --
- * and in any case once `maxCoders` coded it.
+ * `shared`: the units (of the job, or of one set) are shared among coders:
+ * a queue that hands each unit out until it is done, either when
+ * `until.coders` coders coded it, or when `until.agree` coders gave the
+ * same answer to the question `until.on` -- and in any case once
+ * `maxCoders` coded it. With a set, the overlap is its group's `_overlap`.
  */
 export const SharedBranchSchema = z
   .object({
     ...branchBase,
     mode: z.literal("shared"),
-    unitset: z.string().min(1),
+    set: SetRefSchema.optional(),
     until: z.union([
       z.object({ coders: z.number().int().min(1) }),
       z.object({
@@ -103,6 +100,7 @@ export const SharedBranchSchema = z
     priority: z.enum(["cover", "saturate"]).optional(),
     /** A unit handed to a coder is reserved for them this long (default 900), then returns to the queue. */
     leaseSeconds: z.number().int().positive().optional(),
+    overlap: OverlapSettingsSchema.optional(),
   })
   .refine((b) => !("agree" in b.until) || b.maxCoders !== undefined, {
     message: "Max coders is required when coding until coders agree (otherwise a unit nobody agrees on is coded forever)",
@@ -115,6 +113,10 @@ export const SharedBranchSchema = z
   .refine((b) => b.minUnits === undefined || b.maxUnits === undefined || b.minUnits <= b.maxUnits, {
     message: "Min units per coder can't be more than max units per coder",
     path: ["minUnits"],
+  })
+  .refine((b) => !b.overlap || b.overlap.placement === "disabled" || b.set !== undefined, {
+    message: "An overlap needs a set: it is the _overlap units of the set's group",
+    path: ["overlap"],
   })
   .refine((b) => b.overlap?.placement !== "spread" || b.maxUnits !== undefined, {
     message: "Spreading the overlap units needs max units per coder (to know where to put them)",
@@ -133,29 +135,38 @@ export function sharedDefaults(b: SharedBranch) {
   };
 }
 
-/**
- * `sets`: each coder gets one of these unitsets, the one with the fewest
- * coders so far. A coder counts for their set while they haven't finished
- * it only if they were active in the last 24 hours (`SET_ACTIVITY_MS`), so
- * sets of coders who dropped out are handed out again.
- */
-export const SetsBranchSchema = z.object({
-  ...branchBase,
-  mode: z.literal("sets"),
-  unitsets: z.array(z.string().min(1)).min(1, "Choose at least one unitset"),
-});
+/** Session values an `assign` branch can take a set from without declaring them: the login's email, the participant id. */
+export const BUILTIN_SET_SOURCES = ["email", "participant"] as const;
 
 /**
- * `invitation`: each coder gets the unitset of the invitation they joined
- * with (set on the invitation, e.g. by dividing units over coders). The
- * codebook doesn't say who gets what, so it can be shared without that.
+ * Where an `assign` branch's set comes from: drawn here (`balanced`: the
+ * set with the fewest coders; `random`), or a session value naming the set
+ * (a set-typed link or URL parameter of the group, or `email` /
+ * `participant`).
  */
-export const InvitationBranchSchema = z.object({
-  ...branchBase,
-  mode: z.literal("invitation"),
-});
+export const SetSourceSchema = z.union([
+  z.object({ draw: z.enum(["balanced", "random"]) }),
+  z.object({ session: SafeNameSchema }),
+]);
+export type SetSource = z.infer<typeof SetSourceSchema>;
 
-export const UnitBranchSchema = z.union([AllUnitsBranchSchema, SharedBranchSchema, SetsBranchSchema, InvitationBranchSchema]);
+/**
+ * `assign`: each coder gets one set of `group` (its sets besides
+ * `_overlap`), from `from`, and the group's overlap as `overlap` says
+ * (a required, deliberate choice).
+ */
+export const AssignBranchSchema = z.object({
+  ...branchBase,
+  mode: z.literal("assign"),
+  group: SetGroupNameSchema,
+  from: SetSourceSchema,
+  overlap: z.object(OverlapSettingsSchema.shape, {
+    error: (issue) => (issue.input === undefined ? "Choose the overlap: first, last, spread, or disabled" : undefined),
+  }),
+});
+export type AssignBranch = z.infer<typeof AssignBranchSchema>;
+
+export const UnitBranchSchema = z.union([AllUnitsBranchSchema, SharedBranchSchema, AssignBranchSchema]);
 export type UnitBranch = z.infer<typeof UnitBranchSchema>;
 export type UnitMode = UnitBranch["mode"];
 
@@ -163,74 +174,36 @@ export type UnitMode = UnitBranch["mode"];
 export const UnitLoopDistributionShape = {
   /** First matching branch is used for a coder (and sticks, even if their answers change later). */
   units: z.array(UnitBranchSchema).min(1, "Which units coders get isn't set yet: choose how units are handed out"),
-  /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: unitset order. */
+  /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: the set's order. */
   order: z.enum(["sequential", "random"]).optional(),
 };
 
-/**
- * The unitset name templates of a branch, in the order the client fills
- * them in and the server stores them: its own unitset (null in `sets` and
- * `invitation` mode: the server picks it), then the overlap's, if any.
- */
-export function branchUnitsets(branch: UnitBranch): (string | null)[] {
-  const own = branch.mode === "all" || branch.mode === "shared" ? branch.unitset : null;
-  return branch.overlap ? [own, branch.overlap.unitset] : [own];
+/** The group whose `_overlap` a branch uses, if its overlap isn't disabled. */
+export function overlapGroup(branch: UnitBranch): string | null {
+  if (branch.mode === "assign") return branch.overlap.placement === "disabled" ? null : branch.group;
+  if (branch.mode === "shared" && branch.set && branch.overlap && branch.overlap.placement !== "disabled") return branch.set.group;
+  return null;
+}
+
+/** The groups a branch uses (for "is this group in use?"). */
+export function branchGroups(branch: UnitBranch): string[] {
+  if (branch.mode === "assign") return [branch.group];
+  return branch.set ? [branch.set.group] : [];
 }
 
 /**
  * What a coder's routing in a loop is stored by: which units a branch hands
- * out (its mode, unitset or sets, and overlap), not where the loop is or
- * what it is called. A coder keeps their routing as long as a branch with
- * the same fingerprint exists; changing these settings routes them again.
- * (Two loops whose branches hand out the same units share it.)
+ * out (its mode, set or group, and where the set comes from), not where the
+ * loop is or what it is called. A coder keeps their routing as long as a
+ * branch with the same fingerprint exists; changing these settings routes
+ * them again. (Two loops whose branches hand out the same units share it.)
  */
 export function branchFingerprint(branch: UnitBranch): string {
-  const what = JSON.stringify([branch.mode, ...branchUnitsets(branch), branch.mode === "sets" ? branch.unitsets : null]);
+  const what = JSON.stringify(
+    branch.mode === "assign" ? [branch.mode, branch.group, branch.from] : [branch.mode, branch.set ? [branch.set.group, branch.set.set] : null],
+  );
   // FNV-1a, 32 bits: short keys for the stored routing.
   let h = 0x811c9dc5;
   for (let i = 0; i < what.length; i++) h = Math.imul(h ^ what.charCodeAt(i), 0x01000193);
   return `${branch.mode}-${(h >>> 0).toString(36)}`;
-}
-
-/** Every unitset name (or name template) a branch refers to, e.g. to tell whether a unitset is in use. */
-export function branchUnitsetNames(branch: UnitBranch): string[] {
-  const own = branch.mode === "sets" ? branch.unitsets : branch.mode === "invitation" ? [] : [branch.unitset];
-  return branch.overlap ? [...own, branch.overlap.unitset] : own;
-}
-
-/** The `$var` references in a unitset name (`part_$var.slot.code`). */
-export function unitsetReferences(unitset: string): Reference[] {
-  return parseTemplate(unitset).segments.flatMap((s) => (s.type === "expression" ? s.references : []));
-}
-
-/** Whether a unitset name has references to fill in (the client must choose the branch). */
-export function unitsetHasReferences(unitset: string): boolean {
-  return parseTemplate(unitset).segments.some((s) => s.type === "expression");
-}
-
-/**
- * Fills in a unitset name's references from a scope; null if a value is
- * empty (the coder has no answer) or the name uses `{{ }}`.
- */
-export function fillUnitsetName(unitset: string, scope: ReferenceScope): string | null {
-  let name = "";
-  for (const segment of parseTemplate(unitset).segments) {
-    if (segment.type === "text") {
-      name += segment.text.replace(/\\\$/g, "$");
-      continue;
-    }
-    if (!segment.ref) return null;
-    const value = outputText(referenceValue(scope, segment.ref));
-    if (value === "") return null;
-    name += value;
-  }
-  return name;
-}
-
-/** Whether a unitset name could be produced by a (possibly `$var`-containing) source unitset. */
-export function unitsetMatchesSource(sourceUnitset: string, name: string): boolean {
-  const pattern = parseTemplate(sourceUnitset)
-    .segments.map((s) => (s.type === "expression" ? ".+" : s.text.replace(/\\\$/g, "$").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
-    .join("");
-  return new RegExp(`^${pattern}$`).test(name);
 }

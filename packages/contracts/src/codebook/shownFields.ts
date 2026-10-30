@@ -2,12 +2,10 @@ import { unitLoops, type CodebookItem, type UnitLoopItem } from "./item.js";
 import { extractReferences, type Reference } from "./references.js";
 import { expandSnippets } from "./snippets.js";
 import { allTemplateReferences } from "./templateBlocks.js";
-import { unitsetReferences } from "./unitLoop.js";
 
 /**
  * Every reference a unit loop makes: in its layout (with its snippets),
- * question texts, conditions and end messages, and its branches (`when`
- * and unitset names). References are always literal (validation refuses
+ * question texts, conditions and end messages, and its branches' `when`. References are always literal (validation refuses
  * `$unit[...]`), so the list is complete. Span questions' fields go to
  * `spanFields`.
  */
@@ -20,9 +18,6 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
   text(loop.layout?.template);
   for (const branch of Array.isArray(loop.units) ? loop.units : []) {
     script(branch?.when?.script);
-    for (const name of [branch?.mode === "sets" ? [] : [(branch as { unitset?: unknown }).unitset], branch?.overlap?.unitset].flat()) {
-      if (typeof name === "string") refs.push(...unitsetReferences(name));
-    }
   }
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;

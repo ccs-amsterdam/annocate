@@ -9,6 +9,11 @@ export const DeploymentWriteSchema = z.object({
   codebookId: IdSchema,
   /** Set to false to stop handing out units (coders get a 409). */
   active: z.boolean().default(true),
+  /**
+   * The researcher confirmed publishing although it makes more than
+   * `CONFIRM_LINKS` links (409 `confirm_links` otherwise). At most `MAX_LINKS`.
+   */
+  confirmLinks: z.boolean().optional(),
 });
 export type DeploymentWrite = z.infer<typeof DeploymentWriteSchema>;
 
@@ -22,6 +27,8 @@ export const DeploymentResponseSchema = DeploymentWriteSchema.extend({
    * gained questions, which reopens units coders already finished.
    */
   warnings: z.array(z.string()).optional(),
+  /** How many active links the codebook's link parameters make. */
+  links: z.number().int().nonnegative().optional(),
 });
 export type DeploymentResponse = z.infer<typeof DeploymentResponseSchema>;
 
@@ -38,7 +45,7 @@ export const ResetAnnotationsSchema = z.object({
 });
 export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 
-/** Progress of one source (unitset) of one unit_loop. */
+/** Progress of one source (a set, as `group/set`, or `__all__`) of one unit_loop. */
 export const SourceStatusSchema = z.object({
   loop: z.string(),
   unitset: z.string(),

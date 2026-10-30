@@ -5,6 +5,8 @@ import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { getDeployment, putDeployment } from "../shared/deployments.js";
+import { checkLinkCount, syncLinks } from "../shared/invites.js";
+import { setWarnings } from "../shared/sets.js";
 
 export function deployment(server: Server): Hono<Env> {
   const { db } = server;
@@ -24,7 +26,13 @@ export function deployment(server: Server): Hono<Env> {
     if (errors.length > 0 || codebookItems(codebook).length === 0) {
       return c.json({ error: "Fix the codebook's issues before publishing it", issues: errors }, 400);
     }
-    const deployed = await db.transaction((tx) => putDeployment(tx, jobId, parsed.data));
+    // Links follow the codebook's link parameters (docs/plans/sets-and-session-parameters.md §4).
+    await checkLinkCount(db, jobId, codebookItems(codebook), parsed.data.confirmLinks ?? false);
+    const deployed = await db.transaction(async (tx) => {
+      const result = await putDeployment(tx, jobId, parsed.data);
+      const warnings = [...(result.warnings ?? []), ...(await setWarnings(tx, jobId, codebookItems(codebook)))];
+      return { ...result, links: await syncLinks(tx, jobId), ...(warnings.length > 0 ? { warnings } : {}) };
+    });
     await server.deployments.refresh(jobId);
     return c.json(deployed);
   });

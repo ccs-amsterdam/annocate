@@ -4,6 +4,7 @@ import { ConditionSchema, type Condition } from "./condition.js";
 import { UnitLayoutSchema } from "./layout.js";
 import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "./references.js";
 import { UnitLoopDistributionShape } from "./unitLoop.js";
+import { SessionItemSchema, type SessionItem } from "./session.js";
 import { UserVariableTypeSchema, UnitVariableTypeSchema } from "./variableTypes.js";
 
 const ItemBaseSchema = z.object({
@@ -120,11 +121,13 @@ export type UnitLoopItem = z.infer<typeof UnitLoopItemSchema>;
  * - Question items (coder-level)
  * - Unit loops
  * - Top-level condition items (whose children can be any top-level items)
+ * - The Session item (at most one, first: `session.ts`)
  */
 export type TopLevelItem =
   | TopLevelQuestionItem
   | UnitLoopItem
   | EndItem
+  | SessionItem
   | {
       type: "condition";
       label?: string;
@@ -146,6 +149,7 @@ export const TopLevelItemSchema: z.ZodType<TopLevelItem> = z.lazy(() =>
     TopLevelQuestionItemSchema,
     UnitLoopItemSchema,
     EndItemSchema,
+    SessionItemSchema,
     TopLevelConditionItemSchema,
   ])
 );
@@ -162,7 +166,7 @@ export type CodebookItem = TopLevelItem | InLoopItem;
 
 /** An item's name; conditions have none. */
 export function itemName(item: CodebookItem): string | undefined {
-  return item.type === "condition" || item.type === "unit_loop" ? undefined : item.name;
+  return item.type === "condition" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
 }
 
 /**

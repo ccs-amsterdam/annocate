@@ -4,8 +4,8 @@ import { loopDependencies, shownUnitFields } from "./shownFields.js";
 const loop = {
   type: "unit_loop",
   units: [
-    { mode: "all", unitset: "part_{{$var.slot.value}}", when: { script: "$var.group.is('a')" } },
-    { mode: "sets", unitsets: ["x", "y"] },
+    { mode: "all", when: { script: "$var.group.is('a') && $var.slot.is('1')" } },
+    { mode: "assign", group: "parts", from: { draw: "balanced" }, overlap: { placement: "disabled" } },
   ],
   layout: { template: "{{$unit.headline}} as {{$var.role.label}}" },
   children: [

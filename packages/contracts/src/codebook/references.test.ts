@@ -10,7 +10,6 @@ import {
   referenceText,
   type TemplateExpression,
 } from "./references.js";
-import { fillUnitsetName, unitsetMatchesSource } from "./unitLoop.js";
 
 const refs = (script: string) => extractReferences(script).references.map(referenceText);
 const errors = (script: string) => extractReferences(script).errors.map((e) => e.message);
@@ -101,7 +100,7 @@ const questions = new Map<string, AnyVariableType>([
   ["interest", { type: "scale", question: "?", options: [{ value: 1, label: "low" }, { value: 5, label: "high" }], items: [{ name: "tech" }] }],
   ["age", { type: "numeric", question: "?", labels: [{ value: 18, label: "adult" }] }],
   ["ok", { type: "confirm", question: "?" }],
-  ["slot", { type: "auto", source: "invite", options: [{ value: "1" }] }],
+  ["slot", { type: "auto", source: "random", options: [{ value: "1" }] }],
   ["ents", { type: "span", question: "?", fields: ["text"], options: [{ value: "PER", label: "Person" }] }],
 ]);
 
@@ -226,16 +225,5 @@ describe("outputText", () => {
     expect(outputText(null)).toBe("");
     expect(outputText(undefined)).toBe("");
     expect(outputText({ a: 1 })).toBe('{"a":1}');
-  });
-});
-
-describe("unitset names", () => {
-  it("fills in references and matches names against sources", () => {
-    const scope = buildScope(questions, { slot: { done: true, skip: false, values: [{ value: "1" }] } });
-    expect(fillUnitsetName("part_$var.slot.value", scope)).toBe("part_1");
-    expect(fillUnitsetName("part_$var.role.value", scope)).toBeNull();
-    expect(unitsetMatchesSource("part_$var.slot.value", "part_1")).toBe(true);
-    expect(unitsetMatchesSource("part_$var.slot.value", "other_1")).toBe(false);
-    expect(unitsetMatchesSource("a.b", "axb")).toBe(false);
   });
 });

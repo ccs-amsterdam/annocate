@@ -16,6 +16,7 @@ export * from "./codebook/condition.js";
 export * from "./codebook/layout.js";
 export * from "./codebook/answerLayout.js";
 export * from "./codebook/unitLoop.js";
+export * from "./codebook/session.js";
 export * from "./codebook/item.js";
 export * from "./codebook/shownFields.js";
 export * from "./codebook/validation.js";
@@ -25,7 +26,7 @@ export * from "./codebook/jsonSchema.js";
 
 export * from "./unit.js";
 export * from "./unitFields.js";
-export * from "./unitset.js";
+export * from "./sets.js";
 export * from "./job.js";
 export * from "./recipe.js";
 export * from "./coder.js";

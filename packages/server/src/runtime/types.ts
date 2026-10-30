@@ -1,4 +1,5 @@
 import type { DeviceDetails } from "../shared/devices.js";
+import type { SessionRules } from "./sessionValues.js";
 import type { AnswerTiming, CodebookResponse, DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
 
 // What the runtime reads from and writes to the database (store.ts). Not
@@ -11,8 +12,8 @@ export interface DeploymentSpec {
   version: number;
   active: boolean;
   codebook: CodebookResponse;
-  /** All unitsets of the job, plus `__all__` (every unit id in the job). */
-  unitsets: { name: string; unitIds: number[] }[];
+  /** All sets of the job, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit id in the job). */
+  sets: { name: string; unitIds: number[] }[];
   /**
    * Bumped whenever annotations change outside the runtime (e.g. a
    * researcher resets units), so it reloads what it derived from them.
@@ -32,15 +33,14 @@ export interface Unit {
 }
 
 /**
- * Where a coder was routed in one unit_loop: the unitset names (references
- * filled in, chosen sets resolved) in the order of contracts
- * `branchUnitsets`, i.e. their own set, then the overlap. Stored so routing
- * is sticky: a coder keeps their units even if later answers or a codebook
- * update would route them differently.
+ * Where a coder was routed by one kind of branch (contracts
+ * `branchFingerprint`): their set (`group/set`, or `__all__`). Stored so
+ * routing is sticky: a coder keeps their units even if later answers or a
+ * codebook update would route them differently.
  */
 export interface LoopAssignment {
-  unitsets: string[];
-  /** When the coder was routed (ms); for `sets` mode, which counts recently active coders. */
+  set: string;
+  /** When the coder was routed (ms); for `assign` mode, which counts recently active coders. */
   at: number;
 }
 
@@ -57,7 +57,7 @@ export interface Coder {
   deletionRequest: DeletionRequest | null;
   /** `$session` values: `participant` (if any) and the URL parameters the invite required. Fixed when the coder starts. */
   session: Record<string, string>;
-  /** The invite the coder joined with (for `invitation` mode loops). */
+  /** The invite (link) the coder joined with. */
   inviteId: number | null;
   /** The email the session is linked to (the coder logged in once, docs/coder-identity.md §5); null without. */
   email: string | null;
@@ -71,8 +71,10 @@ export interface ResolveCoderRequest {
   device?: DeviceDetails;
   /** Required the first time a coder key is seen, to create the coder from an invite. */
   inviteSecret?: string;
-  /** The page's URL parameters: the participant id and other values the invite requires (`sessionFromUrl`). */
+  /** The page's URL parameters: the participant id and the codebook's URL parameters (`sessionValues`). */
   urlParams?: Record<string, string>;
+  /** What the published codebook asks of a new session (its Session item; set by the runtime). */
+  sessionRules?: SessionRules;
   /**
    * The coder confirmed starting a new session although their participant
    * id already has one (on another device). Without it: 409

@@ -66,12 +66,13 @@ async function setUpJob(key: string): Promise<{ jobId: number; unitIds: number[]
   const codebook = (
     await call(key, "createCodebook", { jobId: job.id }, {
       items: [
-        { type: "unit_loop", label: "loop", units: [{ mode: "all", unitset: "__all__" }], layout: { template: "" }, children: [question("q")] },
+        { type: "unit_loop", label: "loop", units: [{ mode: "all" }], layout: { template: "" }, children: [question("q")] },
       ],
     })
   ).data;
   expect((await call(key, "putDeployment", { jobId: job.id }, { codebookId: codebook.id })).status).toBe(200);
-  const invite = (await call(key, "createInvite", { jobId: job.id }, { label: "coders" })).data;
+  // Publishing made the job's link
+  const [invite] = (await call(key, "listInvites", { jobId: job.id })).data;
   return { jobId: job.id, unitIds: units.map((u) => u.id), invite: invite.secret };
 }
 

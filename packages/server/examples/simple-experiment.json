@@ -145,11 +145,6 @@
       }
     ]
   },
-  "invites": [
-    {
-      "label": "Open link"
-    }
-  ],
   "answers": [
     {
       "variables": {

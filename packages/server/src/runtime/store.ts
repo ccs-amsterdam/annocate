@@ -5,7 +5,8 @@ import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
 import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
-import { sessionFromUrl, type InviteRow } from "../shared/invites.js";
+import type { InviteRow } from "../shared/invites.js";
+import { sessionValues } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, jobLimits } from "../shared/limits.js";
 import { unitHash, type UnitRow } from "../shared/units.js";
@@ -99,12 +100,6 @@ export interface Store {
   servedVersion(coderId: number, unitId: number): Promise<number | null>;
   /** Refuses answers that are too large, or that would take the job past its limit on answers (shared/limits.ts). */
   checkAnswers(variables: Record<string, VariableValue>): Promise<void>;
-  /**
-   * The name of the unitset of an invite (for `invitation` mode loops), or
-   * null if it has none. `"first"`: of the first invite that has one (previews,
-   * whose coders have no invite).
-   */
-  inviteUnitset(inviteId: number | "first"): Promise<string | null>;
   /**
    * The id of a unit version (a unit as shown: its shown fields), stored
    * the first time it is shown (docs/architecture.md §8.4).
@@ -265,16 +260,6 @@ export class DbStore implements Store {
       [this.jobId, unitId, hash, JSON.stringify(data)],
     );
     return row!.id;
-  }
-
-  async inviteUnitset(inviteId: number | "first"): Promise<string | null> {
-    const row = await one<{ name: string }>(
-      this.sql,
-      `SELECT u.name FROM invites i JOIN unitsets u ON u.id = i.unitset_id
-       WHERE i.job_id = $1 AND ($2::int IS NULL OR i.id = $2) ORDER BY i.id LIMIT 1`,
-      [this.jobId, inviteId === "first" ? null : inviteId],
-    );
-    return row?.name ?? null;
   }
 
   async unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>> {
@@ -488,11 +473,17 @@ async function findOrCreateCoder(
   if (emails && login && !emails.includes(login.email.toLowerCase())) {
     throw new HttpError(403, "This invitation is for other email addresses", "email_not_invited");
   }
-  // Revoked: no new sessions, also not for a known participant (existing sessions go on).
+  // Revoked or retired: no new sessions, also not for a known participant (existing sessions go on).
   if (invite.revoked_at !== null) throw new HttpError(401, "This invite has been revoked");
+  if (invite.retired_at !== null) throw new HttpError(403, "This link is no longer active", "link_inactive");
   // A participant id is a label, never a credential: a new device for a
   // known participant gets a *new* session, and only when asked for.
-  const { participantId, session } = sessionFromUrl(invite, request.urlParams ?? {});
+  const { participantId, session } = sessionValues(
+    request.sessionRules ?? { item: null, setsOf: () => [], emailGroups: [] },
+    { params: invite.params, participantId: invite.participant_id },
+    request.urlParams ?? {},
+    login?.email ?? null,
+  );
   const knownParticipant =
     participantId !== null && !!(await one(sql, "SELECT 1 FROM coders WHERE job_id = $1 AND participant_id = $2", [jobId, participantId]));
   if (knownParticipant && !request.newSession) {
@@ -513,10 +504,6 @@ async function findOrCreateCoder(
     "INSERT INTO coders (job_id, email, participant_id, invite_id, session) VALUES ($1, $2, $3, $4, $5) RETURNING *",
     [jobId, login?.email.toLowerCase() ?? null, participantId, invite.id, JSON.stringify(session)],
   );
-  // The invite's presets become the coder's values for the codebook's `auto`
-  // variables with source "invite".
-  const presets = Object.fromEntries(Object.entries(invite.variables).map(([name, value]) => [name, { done: true, skip: false, values: [{ value }] }]));
-  await putCoderValues(sql, jobId, { coderId: created!.id, values: presets, assigned: true });
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(sql, jobId, created!.id, coderKey, device) };
 }

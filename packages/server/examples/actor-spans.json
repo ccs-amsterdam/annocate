@@ -54,8 +54,7 @@
         "label": "Texts",
         "units": [
           {
-            "mode": "all",
-            "unitset": "__all__"
+            "mode": "all"
           }
         ],
         "layout": {
@@ -90,11 +89,6 @@
       }
     ]
   },
-  "invites": [
-    {
-      "label": "Open link"
-    }
-  ],
   "answers": [
     {
       "units": {

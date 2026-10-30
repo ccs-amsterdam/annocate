@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import type { Store } from "./store.js";
+import { previewSessionValues } from "./sessionValues.js";
 import type { Coder as StoredCoder, Coding, Lease, CoderValue, CoderAssignments, CoderValuesWrite, Finished, FinishedRequest, AnnotationWrite, ResolveCoderRequest, ResolvedCoder, Transfer } from "./types.js";
 
 // Researcher previews (`<jobId>.preview`, contracts PreviewSessionSchema):
@@ -54,8 +55,6 @@ export class PreviewStore implements Store {
     if (!this.versions.has(key)) this.versions.set(key, this.versions.size + 1);
     return this.versions.get(key)!;
   };
-  /** Preview coders have no invite: they get the units of the first invite that has some. */
-  inviteUnitset: Store["inviteUnitset"] = () => this.db.inviteUnitset("first");
 
   async listCoders(): Promise<StoredCoder[]> {
     return [...this.coders.values()];
@@ -75,7 +74,7 @@ export class PreviewStore implements Store {
       assignments: {},
       ended: null,
       deletionRequest: null,
-      session: {},
+      session: request.sessionRules ? previewSessionValues(request.sessionRules, request.urlParams ?? {}) : {},
       inviteId: null,
       email: null,
       created: new Date(this.now()),

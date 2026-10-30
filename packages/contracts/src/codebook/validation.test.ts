@@ -11,7 +11,7 @@ function questionVar(name: string, variable: object = confirmVariable): TopLevel
   return { type: "question", name, variable } as TopLevelQuestionItem & InLoopQuestionItem;
 }
 function unitLoop(name: string, children: InLoopItem[], template = "", snippets?: Record<string, string>): TopLevelItem {
-  return { type: "unit_loop", label: name, units: [{ mode: "all", unitset: "__all__" }], layout: { template, snippets }, children };
+  return { type: "unit_loop", label: name, units: [{ mode: "all" }], layout: { template, snippets }, children };
 }
 function topCondition(name: string, children: TopLevelItem[], condition: Condition = { script: "true" }): TopLevelItem {
   return { type: "condition", label: name, condition, children };
@@ -43,7 +43,7 @@ describe("validateCodebookItems", () => {
   });
 
   it("checks that loop branches refer to preceding coder variables", () => {
-    const slot = questionVar("slot", { type: "auto", source: "invite", options: [{ value: "1" }, { value: "2" }] });
+    const slot = questionVar("slot", { type: "auto", source: "balanced", options: [{ value: "1" }, { value: "2" }] });
     const loop = (units: unknown): TopLevelItem =>
       ({ type: "unit_loop", label: "loop", units, layout: { template: "" }, children: [questionVar("q1", select(["a", "b"])), questionVar("c1")] }) as TopLevelItem;
 
@@ -52,16 +52,12 @@ describe("validateCodebookItems", () => {
       loop([
         {
           when: { script: `$var.slot.isAny("1", "2")` },
-          mode: "all",
-          unitset: "part_$var.slot.value",
-          overlap: { unitset: "overlap" },
+          mode: "assign",
+          group: "coders",
+          from: { draw: "balanced" },
+          overlap: { placement: "first" },
         },
-        {
-          mode: "shared",
-          unitset: "pool",
-          until: { agree: 2, on: "q1" },
-          maxCoders: 4,
-        },
+        { mode: "shared", set: { group: "pool", set: "main" }, until: { agree: 2, on: "q1" }, maxCoders: 4 },
       ]),
     ];
     expect(validateCodebookItems(valid)).toEqual([]);
@@ -69,28 +65,19 @@ describe("validateCodebookItems", () => {
 
     const when = (value: string) => ({ script: `$var.slot.is("${value}")` });
     // variable defined after the loop
-    expect(messages([loop([{ when: when("1"), mode: "all", unitset: "a" }]), slot])).toEqual([
-      "$var.slot.is: 'slot' is asked after this point",
-    ]);
-    expect(messages([slot, loop([{ when: when("3"), mode: "all", unitset: "a" }])])).toEqual([
-      `"3" is not an answer option of "slot" ("1", "2")`,
-    ]);
-    expect(messages([slot, loop([{ mode: "all", unitset: "part_$var.group.value" }])])).toEqual([
-      "$var.group.value: 'group' is not a question",
-    ]);
+    expect(messages([loop([{ when: when("1"), mode: "all" }]), slot])).toEqual(["$var.slot.is: 'slot' is asked after this point"]);
+    expect(messages([slot, loop([{ when: when("3"), mode: "all" }])])).toEqual([`"3" is not an answer option of "slot" ("1", "2")`]);
     // a question of the loop itself, or $unit, can't route
-    expect(
-      messages([slot, loop([{ when: { script: "$var.q1.answered" }, mode: "all", unitset: "a" }])]),
-    ).toEqual(["$var.q1.answered: branches and unitset names can only use coder-level questions from before the loop"]);
-    expect(messages([slot, loop([{ when: { script: "$unit.x > 1" }, mode: "all", unitset: "a" }])])).toEqual([
-      "$unit.x: branches and unitset names can only use coder-level $var references",
+    expect(messages([slot, loop([{ when: { script: "$var.q1.answered" }, mode: "all" }])])).toEqual([
+      "$var.q1.answered: branches can only use coder-level questions from before the loop",
     ]);
-    expect(
-      messages([slot, loop([{ mode: "shared", unitset: "a", until: { agree: 2, on: "nope" }, maxCoders: 3 }])]),
-    ).toEqual(["Agreement question 'nope' is not a question in this loop"]);
-    expect(
-      messages([slot, loop([{ mode: "shared", unitset: "a", until: { agree: 2, on: "c1" }, maxCoders: 3 }])]),
-    ).toEqual([
+    expect(messages([slot, loop([{ when: { script: "$unit.x > 1" }, mode: "all" }])])).toEqual([
+      "$unit.x: branches can only use coder-level $var and $session references",
+    ]);
+    expect(messages([slot, loop([{ mode: "shared", until: { agree: 2, on: "nope" }, maxCoders: 3 }])])).toEqual([
+      "Agreement question 'nope' is not a question in this loop",
+    ]);
+    expect(messages([slot, loop([{ mode: "shared", until: { agree: 2, on: "c1" }, maxCoders: 3 }])])).toEqual([
       `Agreement needs a question with one categorical answer (nominal without multiple answers, ordinal or swipe); "c1" is a confirm question`,
     ]);
   });
@@ -100,7 +87,7 @@ describe("validateCodebookItems", () => {
       {
         type: "unit_loop",
         label: "loop",
-        units: [{ mode: "shared", unitset: "a", until: { agree: 2, on: "q1" } }],
+        units: [{ mode: "shared", until: { agree: 2, on: "q1" } }],
         layout: { template: "" },
         children: [questionVar("q1")],
       },
@@ -112,20 +99,92 @@ describe("validateCodebookItems", () => {
     const loop = (branch: object) => [
       { type: "unit_loop", label: "loop", units: [branch], layout: { template: "" }, children: [questionVar("q1", select(["a", "b"]))] },
     ];
-    expect(messages(loop({ mode: "shared", unitset: "a", until: { coders: 3 }, maxCoders: 2 }))).toEqual([
+    const set = { group: "g", set: "a" };
+    expect(messages(loop({ mode: "shared", set, until: { coders: 3 }, maxCoders: 2 }))).toEqual([
       "Max coders must be at least the number of coders (or agreeing coders) a unit needs",
     ]);
-    expect(messages(loop({ mode: "shared", unitset: "a", until: { coders: 1 }, overlap: { unitset: "o", placement: "spread" } }))).toEqual([
+    expect(messages(loop({ mode: "shared", set, until: { coders: 1 }, overlap: { placement: "spread" } }))).toEqual([
       "Spreading the overlap units needs max units per coder (to know where to put them)",
     ]);
-    expect(messages(loop({ mode: "shared", unitset: "a", until: { coders: 1 }, maxUnits: 10, overlap: { unitset: "o", placement: "spread" } }))).toEqual([]);
-    expect(messages(loop({ mode: "sets", unitsets: [] }))).toEqual(["Choose at least one unitset"]);
-    expect(messages(loop({ mode: "sets", unitsets: ["a", "b_$var.x.value"] }))).toEqual([
-      `"b_$var.x.value": the sets to choose from are plain unitset names, without $var references`,
+    expect(messages(loop({ mode: "shared", set, until: { coders: 1 }, maxUnits: 10, overlap: { placement: "spread" } }))).toEqual([]);
+    expect(messages(loop({ mode: "shared", until: { coders: 1 }, overlap: { placement: "first" } }))).toEqual([
+      "An overlap needs a set: it is the _overlap units of the set's group",
     ]);
-    expect(messages(loop({ mode: "invitation", overlap: { unitset: "o" } }))).toEqual([]);
+    // Assign: the overlap is a deliberate choice; its numbers make sense
+    expect(messages(loop({ mode: "assign", group: "g", from: { draw: "random" } }))).toEqual([expect.stringMatching(/overlap/i)]);
+    expect(messages(loop({ mode: "assign", group: "g", from: { draw: "random" }, overlap: { placement: "disabled" } }))).toEqual([]);
+    expect(messages(loop({ mode: "assign", group: "g", from: { draw: "random" }, overlap: { placement: "last", expect: 20, max: 10 } }))).toEqual([
+      "At most 10 overlap units, but the design expects 20",
+    ]);
+    expect(messages(loop({ mode: "all", set: { group: "_g", set: "a" } }))).toEqual([expect.stringMatching(/group's name/)]);
+    expect(messages(loop({ mode: "all", set: { group: "g", set: "_mine" } }))).toEqual([expect.stringMatching(/reserved/)]);
   });
 
+  it("takes an assigned set from a set-typed session parameter, the email or the participant id", () => {
+    const session = (params: object[]) => ({ type: "session", params });
+    const loop = (from: object) => ({
+      type: "unit_loop",
+      units: [{ mode: "assign", group: "coders", from, overlap: { placement: "disabled" } }],
+      layout: { template: "" },
+      children: [questionVar("q1")],
+    });
+    const linkSet = { name: "set", kind: "link", values: { sets: "coders" } };
+    expect(messages([session([linkSet]), loop({ session: "set" })])).toEqual([]);
+    expect(messages([loop({ session: "email" })])).toEqual([]);
+    expect(messages([loop({ session: "participant" })])).toEqual([]);
+    expect(messages([loop({ session: "set" })])).toEqual([
+      "No session parameter 'set': declare it in the Session item, with the sets of group 'coders' as its values",
+    ]);
+    expect(messages([session([{ ...linkSet, values: { sets: "other" } }]), loop({ session: "set" })])).toEqual([
+      "Session parameter 'set' holds the sets of group 'other', not 'coders'",
+    ]);
+  });
+});
+
+describe("the Session item", () => {
+  const session = (extra: object) => ({ type: "session", params: [], ...extra });
+  const q = questionVar("q1");
+
+  it("declares $session names; others are refused", () => {
+    const text = { type: "question", name: "q", variable: { type: "confirm", question: "Hi $session.group, $session.participant, $session.source, $session.email" } };
+    const params = [{ name: "group", kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } }];
+    expect(messages([session({ params }), text])).toEqual([]);
+    expect(messages([text])).toEqual(["$session.group: no session parameter 'group' (declare it in the Session item)"]);
+  });
+
+  it("comes first, once; its parameters are named once, not built in, and link parameters list their values", () => {
+    expect(messages([q, session({})])).toEqual(["The Session item comes first in the codebook, at the top"]);
+    expect(messages([session({}), session({})])).toEqual(expect.arrayContaining(["A codebook has one Session item"]));
+    const dup = [
+      { name: "a", kind: "url", values: { open: {} } },
+      { name: "a", kind: "url", param: "b", values: { open: {} } },
+    ];
+    expect(messages([session({ params: dup })])).toEqual(["Two session parameters are named 'a'"]);
+    expect(messages([session({ params: [{ name: "source", kind: "url", values: { open: {} } }] })])).toContain(
+      "participant, source and email are built in: choose another name",
+    );
+    expect(messages([session({ params: [{ name: "x", kind: "link", values: { open: {} } }] })])).toEqual([
+      "A link parameter needs its values (a list, or a group's sets): links are made for each",
+    ]);
+    expect(messages([session({ params: [{ name: "x", kind: "url", values: { list: [{ value: "a" }] }, default: "b" }] })])).toEqual([
+      "The default 'b' is not one of the values",
+    ]);
+  });
+
+  it("checks listed combinations against the link parameters", () => {
+    const params = [
+      { name: "cond", kind: "link", values: { list: [{ value: "a" }, { value: "b" }] } },
+      { name: "set", kind: "link", values: { sets: "coders" } },
+    ];
+    expect(messages([session({ params, combinations: [{ cond: "a", set: "s1" }] })])).toEqual([]);
+    expect(messages([session({ params, combinations: [{ cond: "c" }] })])).toEqual([
+      "Combination 1 has no value for set",
+      "Combination 1: 'c' is not a value of cond",
+    ]);
+  });
+});
+
+describe("validateCodebookItems (more)", () => {
   it("allows questions and condition items outside a unit_loop", () => {
     const items: TopLevelItem[] = [
       questionVar("consent"),
@@ -451,11 +510,10 @@ describe("end items", () => {
   const end = (extra: object = {}) => ({ type: "end", name: "stop", outcome: "screenout", ...extra });
 
   it("can end the session inside a condition, with a message and a redirect", () => {
-    const pid = questionVar("pid", { type: "auto", source: "url_param", urlParam: "pid" });
     const items = [
-      pid,
+      { type: "session", params: [{ name: "pid", kind: "url", values: { open: {} } }] },
       questionVar("consent", select(["yes", "no"])),
-      topCondition("gate", [end({ message: "Thanks, $var.pid.value", redirectUrl: "https://panel.example/end?id=$var.pid.value" })] as never, {
+      topCondition("gate", [end({ message: "Thanks, $session.pid", redirectUrl: "https://panel.example/end?id=$session.pid" })] as never, {
         script: `$var.consent.is("no")`,
       }),
       unitLoop("l", [inLoopCondition("check", [end({ name: "fail", outcome: "complete" }) as never], { script: "$unit.x > 1" })]),

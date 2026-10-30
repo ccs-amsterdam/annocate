@@ -123,35 +123,22 @@ export const ConfirmTypeSchema = VariableBaseSchema.extend({
 });
 
 /**
- * An "auto" variable: assigned rather than asked. Used for experimental
- * conditions and for routing coders to unitsets (unit_loop `when` and
- * `$var` references in unitset names, see unitLoop.ts). Assigned once, on the server, when the
- * coder starts, and never changed by the coder afterwards.
+ * An "auto" variable: assigned rather than asked, e.g. an experimental
+ * condition. Assigned once, on the server, and never changed afterwards.
+ * Values a link brings (link and URL parameters) are session parameters
+ * instead (`$session`, the Session item).
  *
  * - `random`:    a (weighted) random draw from `options`
- * - `balanced`:  the option fewest coders have so far (e.g. spread coders over parts)
- * - `invite`:    the value preset on the coder's invitation; if the invitation
- *                doesn't set it, `fallback` decides (default: no value)
- * - `url_param`: the value of a query parameter of the page the coder opened
- *                (the client sends them as `x-url-params`); stored when the
- *                coder starts, so later visits don't need it. If `options`
- *                are given, other values are ignored.
+ * - `balanced`:  the option fewest coders have so far
  */
 export const AutoTypeSchema = z
   .object({
     type: z.literal("auto"),
-    source: z.enum(["random", "balanced", "invite", "url_param"]),
-    /** Required when source = "url_param": the URL query param to read the value from. */
-    urlParam: z.string().optional(),
-    /** The possible values. Required for random/balanced/invite. */
-    options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).optional(),
-    /** For source = "invite": how to assign a value when the invitation doesn't set one. */
-    fallback: z.enum(["random", "balanced"]).optional(),
+    source: z.enum(["random", "balanced"]),
+    /** The possible values. */
+    options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value"),
   })
   .superRefine((v, ctx) => {
-    if (v.source !== "url_param" && (v.options?.length ?? 0) === 0) {
-      ctx.addIssue({ code: "custom", message: "options are required for random, balanced and invite sources", path: ["options"] });
-    }
     nominalValueErrors(v.options ?? []).forEach((message) => ctx.addIssue({ code: "custom", message, path: ["options"] }));
   });
 export type AutoType = z.infer<typeof AutoTypeSchema>;

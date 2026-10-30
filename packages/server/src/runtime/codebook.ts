@@ -40,11 +40,11 @@ export function loopAgreementVariables(info: LoopInfo): string[] {
 
 /**
  * Whether distributing a loop's units depends on every coder's codings
- * (loaded for all coders, not only active ones): shared queues, and sets
- * (which count the coders who finished a set).
+ * (loaded for all coders, not only active ones): shared queues, and
+ * balanced sets (which count the coders who finished a set).
  */
 export function needsAllCodings(info: LoopInfo): boolean {
-  return info.loop.units.some((b) => b.mode === "shared" || b.mode === "sets");
+  return info.loop.units.some((b) => b.mode === "shared" || (b.mode === "assign" && "draw" in b.from && b.from.draw === "balanced"));
 }
 
 /**
@@ -74,7 +74,7 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
   const walk = (list: TopLevelItem[]) => {
     for (const item of list) {
       if (item.type === "condition") walk(item.children);
-      else if (item.type !== "unit_loop" && item.type !== "end") variables.set(item.name, item.variable);
+      else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session") variables.set(item.name, item.variable);
     }
   };
   walk(items);
@@ -84,7 +84,7 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
 function collectQuestions(items: CodebookItem[], into: Map<string, VariableType>) {
   for (const item of items) {
     if (item.type === "condition") collectQuestions(item.children as CodebookItem[], into);
-    else if (item.type !== "unit_loop" && item.type !== "end") into.set(item.name, item.variable);
+    else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session") into.set(item.name, item.variable);
   }
 }
 

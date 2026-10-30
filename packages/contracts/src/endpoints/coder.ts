@@ -15,18 +15,13 @@ import {
 export const MAX_UNIT_BATCH = 20;
 
 /**
- * Query of `GET /loop/:loop/next`: the branch of the loop's `units` the client
- * chose (the first whose `when` matches, evaluated on the client) and its
- * unitset names with `$var` references filled in, in the order of
- * `branchUnitsets` (repeat `unitsets`; an empty one where the server picks
- * the set: `sets` and `invitation` mode). Required the first time a coder enters a loop, unless the loop
- * has a single unconditional branch without references (409
- * `branch_required` otherwise). Ignored once the coder is routed: routing
- * is sticky.
+ * Query of `GET /loop/:loop/next`: the branch of the loop's `units` the
+ * client chose (by evaluating their conditions; the server decides the
+ * set). Needed only until the coder is routed in the loop; a loop with one
+ * branch without a condition needs none.
  */
 export const NextUnitQuerySchema = z.object({
   branch: z.coerce.number().int().min(0).optional(),
-  unitsets: z.union([z.string(), z.array(z.string())]).optional(),
   /** How many of the coder's next units (a batch): the client asks again before it runs out. */
   count: z.coerce.number().int().min(1).max(MAX_UNIT_BATCH).default(1),
 });

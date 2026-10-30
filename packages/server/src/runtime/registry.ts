@@ -50,7 +50,7 @@ export class Deployments {
   }
 
   /**
-   * Something coders' runtimes read changed (units, unitsets, job settings,
+   * Something coders' runtimes read changed (units, set groups, job settings,
    * a reset): bumps the deployment's revision, so every server process
    * re-reads it on its next request (`DeploymentRuntime.refresh`). Returns
    * the deployment's version.

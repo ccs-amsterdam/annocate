@@ -1,7 +1,8 @@
 import { TopLevelItemSchema, loopTitle, unitLoops, type CodebookItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
-import { supportsAgreement, unitsetHasReferences, type UnitBranch } from "./unitLoop.js";
+import { BUILTIN_SET_SOURCES, supportsAgreement, type UnitBranch } from "./unitLoop.js";
+import { sessionNames, setParameters, type SessionItem } from "./session.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import { parseTemplateBlocks, templateNames, type DisplayNode, type FromStage, type TemplateNode } from "./templateBlocks.js";
 import {
@@ -114,6 +115,9 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   const coderAvailable = new Set<string>();
   /** Questions of the current loop seen so far. */
   let loopAvailable = new Set<string>();
+  /** `$session` names (declared parameters and the built-in ones), and set-typed parameters (name -> group). */
+  const sessionNamed = new Set(sessionNames(items));
+  const setParams = setParameters(items);
 
   const seen = new Set<string>();
   const issue = (path: Path, message: string, warning = false) => {
@@ -126,10 +130,14 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
 
   function checkRef(ref: Reference, ctx: RefContext): ReferenceShape | null {
     const text = referenceText(ref);
-    // Session values (participant id, required URL parameters) exist everywhere; which ones depends on the invitation.
-    if (ref.ns === "session") return referenceShape(questions, ref);
+    // Session values exist everywhere: the Session item's parameters and the built-in ones.
+    if (ref.ns === "session") {
+      const name = ref.path[0];
+      if (!sessionNamed.has(name)) return issue(ctx.path, `${text}: no session parameter '${name}' (declare it in the Session item)`), null;
+      return referenceShape(questions, ref);
+    }
     if (ref.ns !== "var") {
-      if (ctx.branch) return issue(ctx.path, `${text}: branches and unitset names can only use coder-level $var references`), null;
+      if (ctx.branch) return issue(ctx.path, `${text}: branches can only use coder-level $var and $session references`), null;
       if (ctx.loop === null) return issue(ctx.path, `${text} can only be used inside a unit loop`), null;
       return referenceShape(questions, ref);
     }
@@ -139,7 +147,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     if (name === ctx.self) return issue(ctx.path, `${text}: a question can't refer to itself`), null;
     if (ctx.inside?.has(name)) return issue(ctx.path, `${text}: '${name}' is inside this condition`), null;
     if (ctx.branch && where !== null) {
-      return issue(ctx.path, `${text}: branches and unitset names can only use coder-level questions from before the loop`), null;
+      return issue(ctx.path, `${text}: branches can only use coder-level questions from before the loop`), null;
     }
     if (where !== null && where !== ctx.loop) return issue(ctx.path, `${text}: '${name}' is a question of another unit loop (${loopTitles.get(where)})`), null;
     if (!ctx.available.has(name)) {
@@ -294,17 +302,23 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     const loopQuestions = questionNames(loop.children);
     const branchCtx = (path: Path): RefContext => ({ path, loop: null, available: coderAvailable, branch: true });
     (Array.isArray(loop.units) ? loop.units : []).forEach((raw, b) => {
-      const branch = raw as Partial<UnitBranch> & { unitset?: unknown; unitsets?: unknown; until?: { on?: unknown } };
+      const branch = raw as Partial<UnitBranch> & { until?: { on?: unknown } };
       const path = [...itemPath, "units", b];
       checkCondition(branch?.when, branchCtx([...path, "when"]));
-      if (branch?.mode === "all" || branch?.mode === "shared") checkTemplate(branch.unitset, branchCtx([...path, "unitset"]), "unitset");
-      if (branch?.overlap) checkTemplate(branch.overlap.unitset, branchCtx([...path, "overlap", "unitset"]), "unitset");
-      if (branch?.mode === "sets" && Array.isArray(branch.unitsets)) {
-        branch.unitsets.forEach((name, i) => {
-          if (typeof name === "string" && unitsetHasReferences(name)) {
-            issue([...path, "unitsets", i], `"${name}": the sets to choose from are plain unitset names, without $var references`);
+      // A set from a session value: one the codebook declares as the sets of this group, or the email or participant id.
+      if (branch?.mode === "assign" && branch.from && "session" in branch.from) {
+        const name = branch.from.session;
+        const declared = setParams.get(name);
+        if (!(BUILTIN_SET_SOURCES as readonly string[]).includes(name)) {
+          if (declared === undefined) issue([...path, "from", "session"], `No session parameter '${name}': declare it in the Session item, with the sets of group '${branch.group}' as its values`);
+          else if (declared !== branch.group) {
+            issue([...path, "from", "session"], `Session parameter '${name}' holds the sets of group '${declared ?? "(none)"}', not '${branch.group}'`);
           }
-        });
+        }
+      }
+      const overlap = branch?.mode === "assign" || branch?.mode === "shared" ? branch.overlap : undefined;
+      if (overlap?.max !== undefined && overlap.expect !== undefined && overlap.max < overlap.expect) {
+        issue([...path, "overlap", "max"], `At most ${overlap.max} overlap units, but the design expects ${overlap.expect}`);
       }
       const agreement = branch?.mode === "shared" ? branch.until?.on : undefined;
       if (typeof agreement === "string") {
@@ -342,6 +356,44 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     return snippets;
   }
 
+  /** The Session item: first, once, top level; its parameters' names unique, combinations of its link parameters. */
+  function checkSession(item: RawItem, itemPath: Path, index: number, nested: boolean) {
+    if (nested || index !== 0) issue([...itemPath, "type"], "The Session item comes first in the codebook, at the top");
+    if (items.filter((i) => (i as { type?: unknown } | null)?.type === "session").length > 1) issue([...itemPath, "type"], "A codebook has one Session item");
+    const session = item as unknown as Partial<SessionItem>;
+    const params = Array.isArray(session.params) ? session.params : [];
+    const names = params.map((p) => p?.name);
+    names.forEach((name, i) => {
+      if (name && names.indexOf(name) !== i) issue([...itemPath, "params", i, "name"], `Two session parameters are named '${name}'`);
+    });
+    const keys = params.filter((p) => p?.kind === "url").map((p) => p.param ?? p.name);
+    if (session.participant) keys.push(session.participant.param);
+    keys.forEach((key, i) => {
+      if (keys.indexOf(key) !== i) issue([...itemPath, "params"], `Two URL parameters use the key '${key}'`);
+      if (key === "source") issue([...itemPath, "params"], "'source' is always accepted as a URL parameter (tracking): use another key");
+    });
+    params.forEach((p, i) => {
+      if (p?.kind === "url" && p.default !== undefined && p.values && "list" in p.values && !p.values.list.some((v) => v.value === p.default)) {
+        issue([...itemPath, "params", i, "default"], `The default '${p.default}' is not one of the values`);
+      }
+    });
+    const linkParams = params.filter((p) => p?.kind === "link");
+    (session.combinations ?? []).forEach((combo, c) => {
+      const comboNames = Object.keys(combo ?? {});
+      const missing = linkParams.filter((p) => !comboNames.includes(p.name)).map((p) => p.name);
+      const extra = comboNames.filter((n) => !linkParams.some((p) => p.name === n));
+      if (missing.length > 0) issue([...itemPath, "combinations", c], `Combination ${c + 1} has no value for ${missing.join(", ")}`);
+      if (extra.length > 0) issue([...itemPath, "combinations", c], `Combination ${c + 1}: ${extra.join(", ")} is not a link parameter`);
+      for (const p of linkParams) {
+        const value = combo?.[p.name];
+        if (value !== undefined && p.values && "list" in p.values && !p.values.list.some((v) => v.value === value)) {
+          issue([...itemPath, "combinations", c], `Combination ${c + 1}: '${value}' is not a value of ${p.name}`);
+        }
+      }
+    });
+    if (session.combinations && linkParams.length === 0) issue([...itemPath, "combinations"], "Combinations need link parameters");
+  }
+
   function walk(itemList: unknown[], currentPath: Path, loop: { name: string; snippets: Record<string, string> } | null) {
     if (!Array.isArray(itemList)) return;
 
@@ -351,6 +403,11 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       const itemPath = [...currentPath, index];
       const isQuestion = item.type === "question";
       const available = loop ? new Set([...coderAvailable, ...loopAvailable]) : coderAvailable;
+
+      if (item.type === "session") {
+        checkSession(item, itemPath, index, currentPath.length > 0);
+        return;
+      }
 
       // Check name validity and uniqueness (conditions have no name)
       if (item.type === "condition" || item.type === "unit_loop") {

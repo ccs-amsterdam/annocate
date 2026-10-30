@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import {
   loopTitle,
   unitLoops,
-  ALL_UNITS_UNITSET,
   CodebookItemsSchema,
   type CodebookItem,
   type DeploymentResponse,
@@ -13,6 +12,7 @@ import { codebookItems, itemsValid, toCodebookResponse, type CodebookRow } from 
 import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
+import { runtimeSets } from "./sets.js";
 
 interface DeploymentRow {
   job_id: number;
@@ -117,7 +117,7 @@ export async function getPreviewSpec(sql: Sql, jobId: number): Promise<Deploymen
   if (!codebook) return null;
   if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest codebook has issues: fix them to preview it", "codebook_invalid");
   const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0 });
-  const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.unitsets])).digest("hex");
+  const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.sets])).digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
 
@@ -128,16 +128,11 @@ async function buildSpec(
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch">,
 ): Promise<DeploymentSpec> {
   const job = await one<{ keep_sessions_open: boolean }>(sql, "SELECT keep_sessions_open FROM jobs WHERE id = $1", [jobId]);
-  const unitsets = await sql.query<{ name: string; unitIds: number[] }>(
-    `SELECT name, unit_ids AS "unitIds" FROM unitsets WHERE job_id = $1 ORDER BY id`,
-    [jobId],
-  );
-  const allUnitIds = (await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 ORDER BY id", [jobId])).map((r) => r.id);
   return {
     jobId,
     ...meta,
     keepSessionsOpen: job?.keep_sessions_open ?? false,
     codebook: toCodebookResponse(codebook),
-    unitsets: [{ name: ALL_UNITS_UNITSET, unitIds: allUnitIds }, ...unitsets],
+    sets: await runtimeSets(sql, jobId),
   };
 }
