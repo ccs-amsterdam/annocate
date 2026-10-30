@@ -6,13 +6,15 @@ import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcher
 import { useCreateJobMutation, useDeleteJobMutation, useJobsQuery } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield, Sparkles } from "lucide-react";
+import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield, Sparkles, Wand2 } from "lucide-react";
 import { ExamplesDialog } from "./ExamplesDialog";
+import { SetupWizard } from "./SetupWizard";
 import { HelpButton } from "../../help/HelpButton";
 
 interface JobListProps {
   client: ResearcherApi;
-  onSelectJob: (jobId: number) => void;
+  /** `codebook`: open the job on its Codebook tab (after the setup wizard). */
+  onSelectJob: (jobId: number, open?: "codebook") => void;
   /** Who is logged in (null: unknown, e.g. a host app without accounts): only researchers create jobs. */
   me?: MeResponse | null;
   server?: ServerApi;
@@ -29,6 +31,7 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [newJobName, setNewJobName] = useState("");
   const [jobToDelete, setJobToDelete] = useState<JobResponse | null>(null);
 
@@ -93,6 +96,12 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
             </Button>
           )}
           {canCreate && (
+            <Button variant="outline" onClick={() => setShowWizard(true)} className="w-fit gap-2">
+              <Wand2 className="h-4 w-4" />
+              Guided setup
+            </Button>
+          )}
+          {canCreate && (
             <Button variant="outline" onClick={() => setShowExamples(true)} className="w-fit gap-2">
               <Sparkles className="h-4 w-4" />
               From an example
@@ -139,7 +148,11 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
               : `No jobs matched the query "${search}".`}
           </p>
           {jobs.length === 0 && canCreate && (
-            <div className="mt-5 flex gap-2">
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Button onClick={() => setShowWizard(true)} className="gap-2">
+                <Wand2 className="h-4 w-4" />
+                Guided setup
+              </Button>
               <Button onClick={() => setShowExamples(true)} variant="outline" className="gap-2">
                 <Sparkles className="h-4 w-4" />
                 Start from an example
@@ -233,6 +246,17 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
           onCreated={(job) => {
             setShowExamples(false);
             onSelectJob(job.id);
+          }}
+        />
+      )}
+
+      {showWizard && (
+        <SetupWizard
+          client={client}
+          onClose={() => setShowWizard(false)}
+          onCreated={(job) => {
+            setShowWizard(false);
+            onSelectJob(job.id, "codebook");
           }}
         />
       )}

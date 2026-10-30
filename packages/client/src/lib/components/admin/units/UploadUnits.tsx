@@ -1,9 +1,9 @@
-import { useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { UnitField, UnitFieldType } from "@annotinder/contracts";
 import { AlertCircle, Check, FileUp, Wand2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCreateUnitsMutation, useUnitsQuery } from "../../../admin/queries";
-import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv, type ColumnMapping } from "../../../admin/csv";
+import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv, type ColumnMapping, type CsvUnits } from "../../../admin/csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FieldBadge } from "./FieldBadge";
@@ -29,12 +29,83 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
   const createUnits = useCreateUnitsMutation(client);
   const existingUnits = useUnitsQuery(client).data ?? [];
   const [overwriteCoded, setOverwriteCoded] = useState(false);
+  const [result, setResult] = useState<CsvUnits | null>(null);
+  const [overwrite, setOverwrite] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+
+  // Units that already exist (by id), and which of those were coded.
+  const byId = new Map(existingUnits.map((u) => [u.externalId, u]));
+  const replaced = result ? result.units.filter((u) => byId.has(u.externalId)) : [];
+  const coded = replaced.filter((u) => byId.get(u.externalId)!.coded);
+
+  async function upload() {
+    if (!result) return;
+    for (let i = 0; i < result.units.length; i += BATCH) {
+      setProgress(i);
+      await createUnits.mutateAsync({ overwrite, overwriteCoded: overwrite && overwriteCoded, units: result.units.slice(i, i + BATCH) });
+    }
+    setProgress(null);
+    onDone();
+  }
+
+  return (
+    <Section onCancel={onDone}>
+      <CsvUnitsForm jobFields={jobFields} onResult={setResult} />
+      {result && replaced.length > 0 && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
+          Replace the {replaced.length} unit{replaced.length === 1 ? "" : "s"} that already exist{replaced.length === 1 ? "s" : ""} (same id)
+        </label>
+      )}
+      {overwrite && coded.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-md border border-amber-500 bg-amber-500/10 p-3 text-sm">
+          <p className="flex gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <span>
+              {coded.length} of them {coded.length === 1 ? "was" : "were"} already coded. Replacing a coded unit harms
+              provenance: later coders see other content than earlier ones. Earlier answers keep the version their coder
+              saw (it is in the data download), but span annotations may no longer fit the new text.
+            </span>
+          </p>
+          <label className="flex items-center gap-2 pl-6">
+            <input type="checkbox" checked={overwriteCoded} onChange={(e) => setOverwriteCoded(e.target.checked)} />
+            Also replace the {coded.length} coded unit{coded.length === 1 ? "" : "s"}
+          </label>
+        </div>
+      )}
+      {result && (
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => void upload()}
+            disabled={
+              result.errors.length > 0 ||
+              createUnits.isPending ||
+              (replaced.length > 0 && !overwrite) ||
+              (overwrite && coded.length > 0 && !overwriteCoded)
+            }
+          >
+            {progress !== null ? `Uploading ${progress} / ${result.units.length}...` : `Upload ${result.units.length} units`}
+          </Button>
+          {createUnits.isError && <p className="text-sm text-destructive">{createUnits.error.message}</p>}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/**
+ * The CSV part of an upload: the file, the id column, and per column
+ * whether and as which field it is uploaded, with the checks and a
+ * preview. `onResult`: the units it makes (with `errors` that block them),
+ * or null without a file. Also the setup wizard's units step.
+ */
+export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; onResult: (result: CsvUnits | null) => void }) {
   const [csv, setCsv] = useState<Csv | null>(null);
   const [idColumn, setIdColumn] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping[]>([]);
-  const [overwrite, setOverwrite] = useState(false);
-  const [progress, setProgress] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const result = useMemo(() => (csv ? csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields) : null), [csv, idColumn, mapping, jobFields]);
+  useEffect(() => onResult(result), [result, onResult]);
 
   async function handleFile(file: File) {
     setFileError(null);
@@ -49,40 +120,26 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
     setMapping(initialMapping(parsed.headers, parsed.rows, jobFields));
   }
 
-  if (!csv) {
+  if (!csv || !result) {
     return (
-      <Section onCancel={onDone}>
+      <>
         <FilePicker onFile={(f) => void handleFile(f)} />
         {fileError && <p className="text-sm text-destructive">{fileError}</p>}
         <p className="text-xs text-muted-foreground">
           A CSV file with a header row: one column with a unique id per unit, and the columns to code (e.g. a headline
           and a text).
         </p>
-      </Section>
+      </>
     );
   }
 
-  const result = csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields);
-  // Units that already exist (by id), and which of those were coded.
-  const byId = new Map(existingUnits.map((u) => [u.externalId, u]));
-  const replaced = result.units.filter((u) => byId.has(u.externalId));
-  const coded = replaced.filter((u) => byId.get(u.externalId)!.coded);
   const problems = mappingProblems(csv.rows, mapping, jobFields);
   const mapped = new Set(mapping.map((m) => m.field).filter(Boolean));
   const unmappedFields = jobFields.filter((f) => !mapped.has(f.name));
   const setColumn = (i: number, next: Partial<ColumnMapping>) => setMapping(mapping.map((m, j) => (j === i ? { ...m, ...next } : m)));
 
-  async function upload() {
-    for (let i = 0; i < result.units.length; i += BATCH) {
-      setProgress(i);
-      await createUnits.mutateAsync({ overwrite, overwriteCoded: overwrite && overwriteCoded, units: result.units.slice(i, i + BATCH) });
-    }
-    setProgress(null);
-    onDone();
-  }
-
   return (
-    <Section onCancel={onDone}>
+    <>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <span className="flex items-center gap-1.5">
           <FileUp className="h-4 w-4 text-muted-foreground" />
@@ -179,44 +236,7 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
           <PreviewRows fields={result.fields} units={result.units.slice(0, 5)} />
         </div>
       )}
-
-      {replaced.length > 0 && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
-          Replace the {replaced.length} unit{replaced.length === 1 ? "" : "s"} that already exist{replaced.length === 1 ? "s" : ""} (same id)
-        </label>
-      )}
-      {overwrite && coded.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-md border border-amber-500 bg-amber-500/10 p-3 text-sm">
-          <p className="flex gap-2">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <span>
-              {coded.length} of them {coded.length === 1 ? "was" : "were"} already coded. Replacing a coded unit harms
-              provenance: later coders see other content than earlier ones. Earlier answers keep the version their coder
-              saw (it is in the data download), but span annotations may no longer fit the new text.
-            </span>
-          </p>
-          <label className="flex items-center gap-2 pl-6">
-            <input type="checkbox" checked={overwriteCoded} onChange={(e) => setOverwriteCoded(e.target.checked)} />
-            Also replace the {coded.length} coded unit{coded.length === 1 ? "" : "s"}
-          </label>
-        </div>
-      )}
-      <div className="flex items-center gap-3">
-        <Button
-          onClick={() => void upload()}
-          disabled={
-            result.errors.length > 0 ||
-            createUnits.isPending ||
-            (replaced.length > 0 && !overwrite) ||
-            (overwrite && coded.length > 0 && !overwriteCoded)
-          }
-        >
-          {progress !== null ? `Uploading ${progress} / ${result.units.length}...` : `Upload ${result.units.length} units`}
-        </Button>
-        {createUnits.isError && <p className="text-sm text-destructive">{createUnits.error.message}</p>}
-      </div>
-    </Section>
+    </>
   );
 }
 

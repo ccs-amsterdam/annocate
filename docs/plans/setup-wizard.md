@@ -1,202 +1,154 @@
 # Plan: a setup wizard for new jobs
 
-Status: proposal (2026-10-30), nothing built. Decisions marked **(to
-decide)** are open.
+Status (2026-10-30): built, §1 to §5. §6 lists possible next steps.
 
 ## Goal
 
-The codebook editor is flexible, and therefore complex: a new researcher
+The codebook editor is flexible, and therefore complex. A new researcher
 faces a tree of items, unit loops, branches, layouts and distribution modes
-before they have coded anything. The wizard is a short, guided way to a
-first working job for the common cases: "I want coders to label these
-texts", "I want a short survey", "I want a survey and then some
-annotation".
+before they have coded anything. The wizard is a short, guided way to the
+skeleton of their job: what it does, which units, who codes what, and which
+questions. It asks nothing about the questions themselves: the researcher
+names them, and specifies them in the editor.
 
 The wizard **only writes what the editor writes**: units, unitsets, a
-codebook, invitations, job settings. When it finishes, the researcher is in
-the normal editor with an ordinary job, and from then on works there. There
-is no wizard mode, no wizard-only data, and no way back into the wizard for
-an existing job (a new job can always start one). That keeps one model of a
-job, and the editor stays the place where everything can be changed.
+draft codebook, an invitation. Then the job opens in the normal editor, and
+from then on the researcher works there. There is no wizard mode, no
+wizard-only data, and no way back into the wizard for an existing job.
 
-## 1. Where it starts
+## 1. Recipes
 
-On the **Jobs** page, **Create new job** opens a choice:
+A **recipe** (`contracts/src/recipe.ts`) is everything a new job starts
+with:
 
-- **Guided setup** (the wizard), recommended for a first job;
-- **From an example** (the existing dialog, `examples.md`);
-- **Empty job** (what Create new job does now).
+- units, and unitsets by the units' ids;
+- the first codebook, as a draft, or published when it passes validation;
+- invitations.
 
-Later, **From a template** (`examples.md` §6) joins them.
+`POST /job/from-recipe` makes a job from one in a single transaction
+(`server/src/shared/recipes.ts`), with the same role, limits and ownership
+as creating a job. Three things share it:
 
-## 2. The steps
+- **Example jobs** are recipe files with a published codebook, plus their
+  catalogue text and example answers (`packages/server/examples/`).
+- **The wizard** builds a recipe in the browser
+  (`client/src/lib/admin/setupRecipe.ts`). The server knows nothing about
+  wizard steps.
+- **Templates** (later, `examples.md` §6) would be recipes a researcher
+  saved, without units.
 
-One screen per step, with Back and Next, a progress bar with the step
-names, and the job's name in the first step. Each step shows what it will
-make in plain words ("Each text is coded by 2 coders"). Nothing is saved
-until the last step (**to decide**: or save a draft job after step 1, so a
-reload doesn't lose the work; a draft job would then need a "this job is
-being set up" state in the job list. Recommendation: keep it in the
-browser's local backup, as the editor already does for unsaved changes,
-and only create the job at the end).
+## 2. Questions to specify
 
-### Step 1: What do you want to do?
+A question can exist before its answer type: `{ type: "unspecified" }`,
+with an optional question text. It saves in a draft. Validation reports
+it ("has no answer type yet: choose one"), so the codebook can't be
+previewed or published until every question has a type.
 
-Three cards:
+In the editor:
 
-- **Annotate texts or other units**: coders get units one by one and
-  answer questions about each.
-- **A survey or experiment**: participants answer questions once (no
-  units).
-- **A survey, then annotation**: first questions about the participant,
-  then units.
+- the tree marks the question **to specify**;
+- the Answer Type select asks "Choose an answer type...";
+- the form explains that the type brings what it needs (options, labels, a
+  range).
 
-The answer decides which steps follow (the survey-only path skips units
-and distribution).
+References to such a question work as for a single answer.
 
-### Step 2: Units (annotation paths)
+## 3. The steps
 
-The existing upload (CSV, id column, column names as fields, preview),
-embedded. Then: "Which field holds the text coders read?" (one field,
-required) and "Show other fields too?" (checkboxes, e.g. a headline). This
-makes the loop's layout template (`# $unit.headline` + `$unit.text`); the
-researcher refines it in the editor later.
+Start the wizard with **Guided setup** on the Jobs page. It sits next to
+**From an example** and **Create new job** (an empty job).
 
-Skippable ("I'll upload units later"): the loop then shows a placeholder
-template, and the overview checklist (§3) says units are missing.
+1. **What do you want to do?** The job's name, and three toggles:
+   **Annotate units**, **Ask questions** (a survey: questions asked once per
+   participant), **Experiment**. An experiment alone is set up as a survey
+   with an experiment.
+2. **The experiment** (with Experiment). The condition variable's name
+   (default `condition`), the conditions (default `control`, `treatment`),
+   and how they are assigned: balanced (default) or random. This becomes an
+   `auto` question, first in the codebook.
+3. **Units** (with Annotate). Takes these, in order:
+   - **The units.** The CSV upload from the Units tab, or skip it and
+     upload later.
+   - **Fields to show.** Which fields coders see; the default is the text
+     fields. Each becomes a line of the loop's layout.
+   - **Who codes what:**
+     - every coder codes every unit (`all`);
+     - the units are shared out, each coded by N coders (`shared` until N,
+       at most N);
+     - with an experiment: **a set of units per condition**, by a field
+       holding each unit's condition. This makes a unitset per condition
+       (`condition_<value>`), and the loop routes by the condition
+       (`condition_$var.condition.value`). The field's values must be the
+       conditions. Choosing the field also stops showing it to coders.
+   - **Order:** random order per coder, or as uploaded.
+4. **Questions.** Names, one per line. A line can be a name (`age`) or the
+   question itself (`How old are you?`): the name is made from it
+   (`how_old_are_you`) and the line becomes the question text. Where they
+   go:
+   - **annotation alone**: one list, the questions about each unit;
+   - **a survey or experiment alone**: one list, asked once;
+   - **annotation with a survey or experiment**: three lists, before the
+     units, about each unit, and after the units.
+5. **Check and create.** A summary in sentences, what comes next in the
+   editor, and what still stops the job (no name, a question twice, no
+   question about the units, conditions that don't match the units' field).
+   Create makes the job: units, unitsets, the draft codebook, and an open
+   invitation link. It then opens on the Codebook tab.
 
-### Step 3: Questions
+## 4. Tests
 
-One or two questions (**to decide**: allow more? Recommendation: two at
-most; more is what the editor is for, and a hint says so). For each:
+- `client/src/lib/admin/setupRecipe.test.ts`: the recipes per
+  combination. Each parses as a recipe, and its codebook's only issues are
+  the questions to specify.
+- `server/src/__tests__/examples.test.ts`: `POST /job/from-recipe`. Checks
+  the draft, units, unitsets and invitation; that only a valid codebook is
+  published; that a bad recipe is refused and leaves nothing; and the limit
+  on jobs.
+- `e2e/tests/wizard.spec.ts`: two runs through the wizard in a browser.
+  One is annotation with an experiment and units per condition, ending with
+  a question specified in the editor; the other is a survey alone.
 
-- the question text;
-- the answer type, as plain choices with a small picture, mapped to the
-  existing types:
+## 5. Decisions taken
 
-  | Choice in the wizard | Type |
-  | --- | --- |
-  | Pick one of a few options | `nominal` (buttons) |
-  | Pick several | `nominal` with `multiple` |
-  | A rating (bad ... good) | `ordinal` |
-  | A number | `numeric` |
-  | Swipe left / right (annotation only) | `annotinder` |
-  | Several statements on one scale | `scale` |
-  | Select words in the text (annotation only) | `span` |
+- No question details in the wizard: only names. The editor
+  is where questions are specified, made conditional, and so on.
+- `unspecified` is a real answer type, not a missing one, so drafts stay
+  valid JSON of a known shape and the editor can show it plainly.
+- The codebook is created as a draft: publishing stays a deliberate step
+  after previewing.
+- One open invitation link is always made. More kinds of links (personal,
+  panel) are in the editor's Invitations tab.
+- The experiment supports the most common case with units: a set of units
+  per condition, by a column in the CSV. Other designs (the same units with
+  different questions or layouts per condition) are made in the editor with
+  conditions on `$var.condition`.
 
-- the options or labels (an options editor like the item form's, with
-  sensible defaults per type: Negative / Neutral / Positive for a rating);
-- for spans: the labels.
+## 6. Possible next steps
 
-Basic settings only: required or not (**to decide** whether the wizard
-offers "skip" at all), and the layout the type chooses by default. No
-conditions, no branches, no snippets: the last step points to where those
-live in the editor.
+- **Specify questions in the wizard.** An optional step after the names
+  loops over the questions with the editor's own question form
+  (`ItemForm`), one at a time, with "Skip, do it in the editor". This reuses
+  the form as it is, so it should be little work.
+- **Parts of the wizard in existing jobs.** These steps work on an existing
+  job too, as small "start here" panels where the job is still empty:
+  - **Empty codebook:** the Codebook tab could offer the questions step,
+    making the loop and questions in the current draft. With the units
+    there, its layout comes from the units' text fields.
+  - **No units:** the Units tab already has the upload. Missing is the
+    distribution choice and the layout's fields, which only make sense
+    together with a loop. A loop whose layout shows nothing yet could offer
+    "show these fields".
 
-For the survey paths, the same step makes coder-level questions (outside a
-loop); for "survey, then annotation", it asks twice: about the participant,
-then about each unit.
-
-### Step 4: Who codes what (annotation paths)
-
-The distribution modes, phrased as questions with a picture each, each
-mapped to one loop setting:
-
-- **Every coder codes every unit** → `all`.
-- **Split the units over coders** → `shared` with `until: { coders: N }`
-  and `maxCoders: N`, asking "How many coders per unit?" (1, 2, 3).
-- **Fixed parts per coder** → the existing split wizard (`DivideUnits`,
-  parts plus an overlap set) and `sets` mode.
-- **Each coder an overlap set for reliability** (with the split): the
-  overlap, asking how many units.
-
-Defaults: "split, 1 coder per unit"; a line explains when to want 2+
-(reliability). Order: as uploaded, or random (`order`).
-
-### Step 5: Invitation
-
-- One open link (default), or personal links per email (`emails`, login
-  required), or a link for a panel (participant id from a URL parameter,
-  with presets for Prolific and similar; `participantParam`).
-- For a panel: an end screen with the panel's return link (an `end` item
-  with `redirectUrl`, filled in from the preset).
-- The maximum number of coders (`maxUses`), optional.
-
-### Step 6: Check and create
-
-A summary of everything above, in sentences, with a preview of one unit as
-coders will see it (the existing preview, with the codebook that will be
-made). **Create job** then, in one request (§4):
-
-- creates the job, units and unitsets;
-- saves the codebook as a draft (**to decide**: or publish right away.
-  Recommendation: a draft, with a clear next step "Preview, then Publish":
-  publishing is the moment coders can start, and the researcher should
-  take it knowingly);
-- creates the invitation;
-- opens the job on its **Overview** tab, with the checklist (§3).
-
-## 3. The overview checklist
-
-On the job's Overview tab (every job, not only wizard jobs), until all are
-done or the researcher hides it, a checklist of the steps to a running job,
-each linking to its tab:
-
-1. Units uploaded (n units).
-2. Codebook saved without issues.
-3. Previewed (once a preview was opened for the current draft).
-4. Published.
-5. An invitation exists.
-6. Someone started (n coders).
-
-Each item is computed from the job's state, so it is right however the
-researcher got there (wizard, example, editor, API). Item 3 needs a little
-state (when the last preview was opened, per draft revision); the others
-come from existing endpoints (overview, codebooks, deployment, invites).
-
-## 4. API
-
-One endpoint, so the job is made in one transaction:
-`POST /job/from-setup` with `{ name, units?, fields, questions,
-distribution, invite }`, or the client makes the codebook JSON itself and
-calls a generic `POST /job/from-recipe` with `{ name, units, unitsets,
-codebook, invites }`. **Recommendation: the second**: the recipe is what an
-example file already is (`examples.ts` reads exactly that, minus the
-example answers), so examples, the wizard and later templates share one
-"make a job from a recipe" path; the wizard is then client-side only (it
-builds a recipe), and nothing on the server knows about wizard steps.
-
-## 5. Relation to examples and templates
-
-- **Examples** are finished recipes with units and example answers: for
-  learning what AnnoTinder can do.
-- **The wizard** builds a recipe from the researcher's answers: for
-  starting their own job with their own units.
-- **Templates** (`examples.md` §6) are recipes a researcher saved,
-  without units: creating a job from one asks for units and to map their
-  columns to the template's fields; that is the wizard's step 2 on its own.
-
-So "recipe" becomes the common format: an example is a recipe file with
-units and answers; a template is a recipe without units; the wizard writes
-one. A possible later step: "Start from this example" in the wizard's
-first step (the example's codebook with the researcher's own units).
-
-## 6. Not in the wizard
-
-Conditions, branches, routing by unitset, `auto` variables (experimental
-conditions), snippets, HTML layouts, relations, agreement-based queues,
-question loops, closing settings. The last step lists what the editor can
-add and links to the help topics. **(to decide)** Whether "a simple
-experiment" (one `auto` variable with two conditions and a conditional
-text) is common enough to be a wizard path; recommendation: not in the
-first version, the example covers it.
-
-## 7. Order of work
-
-1. `POST /job/from-recipe`, with `examples.ts` reading examples through it.
-2. The overview checklist (useful without the wizard).
-3. The wizard: steps 1, 2, 3, 6 for "annotate texts" with `all` and
-   `shared`; then the survey paths; then step 4's sets and overlap, and
-   step 5's panel presets.
-4. An e2e test per path (`packages/e2e`): through the wizard to a coder
-   finishing the job.
+  The general form: the wizard's steps as functions from the job's state
+  to changes of it (a recipe applied to an existing job), each offered
+  where its part of the job is empty. Not yet obvious how to do this
+  without a second way to edit what the editor edits, so not built.
+- **An overview checklist** on every job's Overview tab: units uploaded,
+  codebook without issues, previewed, published, an invitation, someone
+  started. Each item is computed from the job, so it is right however the
+  job was made.
+- **Templates**: "Save as template" writes a recipe without units; making
+  a job from one runs the wizard's units step for the template's fields.
+- **More experiment designs**: conditions that change the questions or the
+  layout, not the units; offered as choices once it is clear which are
+  common.

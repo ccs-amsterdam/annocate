@@ -143,7 +143,10 @@ function AdminAppInner({
         ) : (
           <JobList
             client={client}
-            onSelectJob={(id) => setSelectedJobId(id)}
+            onSelectJob={(id, open) => {
+              setSelectedJobId(id);
+              if (open === "codebook") setTab("Codebook");
+            }}
             me={me}
             server={server}
             onMe={setMe}

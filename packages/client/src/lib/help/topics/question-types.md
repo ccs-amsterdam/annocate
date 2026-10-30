@@ -29,6 +29,11 @@ just as you would for a survey item.
 | **Span (select text)** | select words in the text and label them | the selected text and its position | named entities, quotes, arguments, frames in a sentence |
 | **Relation (link spans)** | link two selected spans with a label | pairs of spans with a label | who criticizes whom, claim and evidence |
 
+A question made with **Guided setup** starts without a type: the tree marks
+it **to specify**, and **Answer Type** says *Choose an answer type...*. The
+codebook can be saved like that, but not previewed or published until
+every question has a type.
+
 See [Categories: nominal and ordinal](nominal-and-ordinal.md),
 [Numbers](numeric.md), [Scales](scale.md), [Swipe](swipe.md),
 [Confirm](confirm.md), [Assigned variables](auto.md),

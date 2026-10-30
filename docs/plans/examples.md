@@ -3,7 +3,8 @@
 Status: §1–§5 built (2026-10-30): `packages/server/examples/<id>.json`
 (one file per example, units inline), `src/examples.ts` (loader),
 `GET /examples`, `POST /job/from-example`, the "From an example" dialog and
-the overview note. Not built: "Actors and their stance" (§2, needs a
+the overview note. Example files are recipes (`setup-wizard.md` §1) with
+a published codebook and example answers. Not built: "Actors and their stance" (§2, needs a
 feature) and templates and a library (§6).
 
 ## Goal

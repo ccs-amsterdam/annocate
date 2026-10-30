@@ -25,6 +25,12 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 > To look around first, click **From an example** on the **Jobs** page: it
 > makes a ready job (units, a published codebook, an invitation, and often
 > example answers) to try and change. Its overview says what to try.
+>
+> **Guided setup** on the same page does steps 1 to 3 below in one go: say
+> whether you annotate units, ask questions or run an experiment, upload
+> the units, choose who codes what, and name your questions. The job then
+> opens in the codebook editor, with each question marked *to specify*:
+> choose its answer type there (step 3), then continue with step 4.
 
 1. On the **Jobs** page, click **Create new job**.
 2. Give it a name under **Job Name**, for example *News pilot*, and click
