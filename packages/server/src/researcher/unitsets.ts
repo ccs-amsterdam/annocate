@@ -3,7 +3,7 @@ import { UnitsetWriteSchema } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { toUnitsetResponse, type UnitsetRow } from "../shared/unitsets.js";
+import { foreignUnitIds, toUnitsetResponse, type UnitsetRow } from "../shared/unitsets.js";
 
 export function unitsets(server: Server): Hono<Env> {
   const { db } = server;
@@ -17,6 +17,8 @@ export function unitsets(server: Server): Hono<Env> {
   app.post("/job/:jobId/unitsets", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = UnitsetWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const foreign = await foreignUnitIds(db, c.get("jobId"), parsed.data.unitIds);
+    if (foreign.length > 0) return c.json({ error: `Not units of this job: ${foreign.slice(0, 10).join(", ")}` }, 400);
 
     const row = await one<UnitsetRow>(db, "INSERT INTO unitsets (job_id, name, unit_ids) VALUES ($1, $2, $3) RETURNING *", [
       c.get("jobId"),

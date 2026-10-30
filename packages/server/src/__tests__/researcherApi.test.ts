@@ -139,11 +139,13 @@ describe("jobs and roles", () => {
     expect((await call(bob, "getJob", { id: jobId, jobId })).status).toBe(403);
     expect((await call(alice, "getJob", { id: 999, jobId: 999 })).status).toBe(404);
 
-    // Alice gives Bob read access: he can download, not publish.
+    // Alice gives Bob read access (emails don't depend on case): he can download, not publish.
     const users = [
       { email: "alice@uni.nl", role: "ADMIN" },
-      { email: "bob@uni.nl", role: "READ" },
+      { email: "Bob@Uni.nl", role: "READ" },
     ];
+    const twice = [...users, { email: "bob@uni.nl", role: "WRITE" }];
+    expect((await call(alice, "putJobUsers", { id: jobId, jobId }, { users: twice })).status).toBe(400);
     expect((await call(alice, "putJobUsers", { id: jobId, jobId }, { users })).status).toBe(204);
     expect((await call(bob, "listJobs")).data.map((j) => j.id)).toEqual([jobId]);
     expect((await call(bob, "listAnnotations", { jobId })).status).toBe(200);

@@ -41,8 +41,12 @@ export function toInviteResponse(row: InviteRow): CoderInviteResponse {
   };
 }
 
+/** The longest URL parameter value a link accepts (participant ids are short; it also bounds the pattern match). */
+const MAX_PARAM_LENGTH = 256;
+
 /** Whether a URL parameter's value fits a pattern (in full). */
-const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${pattern})$`).test(value);
+const fits = (value: string, pattern?: string) =>
+  value.length <= MAX_PARAM_LENGTH && (!pattern || new RegExp(`^(?:${pattern})$`).test(value));
 
 /**
  * A new coder's participant id and `$session` values from their link's URL

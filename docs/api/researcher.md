@@ -239,7 +239,7 @@ active lists), or `keepSessionsOpen`: finished coder sessions stay open
 
 ### putJobUsers
 
-`PUT /job/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise).
+`PUT /job/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise). Emails are stored lowercased, as accounts are; an email twice in the list is a 400.
 
 ### getOverview
 
@@ -353,7 +353,8 @@ instead). Deleting the last unit resets the fields.
 ### createUnitset
 
 `POST /job/:jobId/unitsets` → `UnitsetResponseSchema` (201). The unit ids
-in order: the order coders get them in, for loops that don't shuffle.
+in order: the order coders get them in, for loops that don't shuffle. Only
+the job's own units (400 otherwise).
 
 ### updateUnitset
 

@@ -176,6 +176,23 @@ describe("units: fields and pages", () => {
     expect(set.total).toBe(3);
     expect(set.units.map((u: { externalId: string }) => u.externalId)).toEqual(["u0", "u2"]);
   });
+
+  it("keeps unitsets to the job's own units", async () => {
+    const job = await createJob();
+    const other = await createJob("Other");
+    const [mine] = await json(await upload(job.id, [{ externalId: "u1", data: { n: 1 } }]));
+    const [theirs] = await json(await upload(other.id, [{ externalId: "u1", data: { n: 1 } }]));
+    const post = (unitIds: number[]) =>
+      app.request(`/job/${job.id}/unitsets`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ name: "set", unitIds }) });
+    expect((await post([mine.id, theirs.id])).status).toBe(400);
+    const set = await json(await post([mine.id]));
+    const put = await app.request(`/job/${job.id}/unitsets/${set.id}`, {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "set", unitIds: [theirs.id] }),
+    });
+    expect(put.status).toBe(400);
+  });
 });
 
 /** The status a store call would answer with: 200, or its HttpError's. */

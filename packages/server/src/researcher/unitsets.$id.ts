@@ -8,7 +8,7 @@ import {
 import { one, type Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { toUnitsetResponse, type UnitsetRow } from "../shared/unitsets.js";
+import { foreignUnitIds, toUnitsetResponse, type UnitsetRow } from "../shared/unitsets.js";
 
 /**
  * True if any codebook in this job has a unit_loop that refers to
@@ -40,6 +40,8 @@ export function unitset(server: Server): Hono<Env> {
 
     const parsed = UnitsetWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const foreign = await foreignUnitIds(db, c.get("jobId"), parsed.data.unitIds);
+    if (foreign.length > 0) return c.json({ error: `Not units of this job: ${foreign.slice(0, 10).join(", ")}` }, 400);
 
     const row = await one<UnitsetRow>(db, "UPDATE unitsets SET name = $1, unit_ids = $2 WHERE job_id = $3 AND id = $4 RETURNING *", [
       parsed.data.name,

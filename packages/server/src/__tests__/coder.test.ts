@@ -610,6 +610,8 @@ describe("URL parameters an invite requires", () => {
     const invalid = await start("u2", "PROLIFIC_PID=xyz&STUDY_ID=s1&src=panel");
     expect(await invalid.json()).toMatchObject({ code: "url_param_invalid" });
     expect((await (await start("u3", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=web")).json()) as object).toMatchObject({ code: "url_param_invalid" });
+    // Values are at most 256 characters, with or without a pattern
+    expect((await (await start("u5", `PROLIFIC_PID=ab12&STUDY_ID=${"s".repeat(300)}&src=mail`)).json()) as object).toMatchObject({ code: "url_param_invalid" });
 
     const okRes = await start("u4", "PROLIFIC_PID=ab12&STUDY_ID=s1&src=mail&other=x");
     const ok = (await okRes.json()) as SessionResponse;
