@@ -43,6 +43,7 @@ There are three kinds of values:
 | Write | What is filled in |
 | --- | --- |
 | `$unit.headline` | The unit's `headline` field: a column of the units you uploaded |
+| `$unit.id` | The unit's id (the column whose type was **unit id** when you uploaded) |
 | `$var.topic.label` | The coder's answer to the question `topic` (see [Referring to answers and unit data](references.md)) |
 | `{{ ... }}` | The result of a small script, for anything else (see [Scripts](scripts.md)) |
 

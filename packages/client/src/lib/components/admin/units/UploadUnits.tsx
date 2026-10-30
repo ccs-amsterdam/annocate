@@ -104,7 +104,12 @@ export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; 
   const [idColumn, setIdColumn] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
-  const result = useMemo(() => (csv ? csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields) : null), [csv, idColumn, mapping, jobFields]);
+  const result = useMemo(() => {
+    if (!csv) return null;
+    // One column is the units' ids (its type in the table)
+    if (idColumn < 0) return { fields: [], units: [], errors: ["Choose the column with each unit's id: set its type to Unit id"] };
+    return csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields);
+  }, [csv, idColumn, mapping, jobFields]);
   useEffect(() => onResult(result), [result, onResult]);
 
   async function handleFile(file: File) {
@@ -116,8 +121,9 @@ export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; 
     }
     setCsv({ name: file.name, ...parsed });
     const id = parsed.headers.findIndex((h) => /^(id|externalid|external_id)$/i.test(h.trim()));
-    setIdColumn(Math.max(0, id));
-    setMapping(initialMapping(parsed.headers, parsed.rows, jobFields));
+    const idAt = Math.max(0, id);
+    setIdColumn(idAt);
+    setMapping(initialMapping(parsed.headers, parsed.rows, jobFields).map((m) => (m.column === idAt ? { ...m, field: "" } : m)));
   }
 
   if (!csv || !result) {
@@ -149,16 +155,6 @@ export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; 
         <Button size="sm" variant="ghost" onClick={() => setCsv(null)}>
           Choose another file
         </Button>
-        <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">Unit id column</span>
-          <select className={selectClass} value={idColumn} onChange={(e) => setIdColumn(Number(e.target.value))}>
-            {csv.headers.map((h, i) => (
-              <option key={i} value={i}>
-                {h}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -200,6 +196,13 @@ export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; 
                   isId={m.column === idColumn}
                   problem={problems[i]}
                   onChange={(next) => setColumn(i, next)}
+                  onId={(isId) => {
+                    // The id column isn't also a field ($unit.id is its value in a layout)
+                    if (isId) {
+                      setIdColumn(m.column);
+                      setColumn(i, { field: "" });
+                    } else setIdColumn(-1);
+                  }}
                 />
               ))}
             </tbody>
@@ -306,6 +309,7 @@ function ColumnRow({
   isId,
   problem,
   onChange,
+  onId,
 }: {
   header: string;
   samples: string[];
@@ -315,40 +319,48 @@ function ColumnRow({
   isId: boolean;
   problem: string | null;
   onChange: (next: Partial<ColumnMapping>) => void;
+  /** This column is (or is no longer) the units' ids. */
+  onId: (isId: boolean) => void;
 }) {
   const uploaded = mapping.field !== "";
   return (
-    <tr className={`border-b align-top last:border-0 ${uploaded || isId ? "" : "text-muted-foreground"}`}>
-      <td className="p-1.5 font-medium">
-        {header}
-        {isId && <span className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-normal">id</span>}
-      </td>
+    <tr className={`border-b align-top last:border-0 ${isId ? "bg-primary/5" : uploaded ? "" : "text-muted-foreground"}`}>
+      <td className="p-1.5 font-medium">{header}</td>
       <td className="max-w-56 p-1.5">
         <span className="line-clamp-2 break-all">{samples.filter(Boolean).join(" · ") || "(empty)"}</span>
       </td>
       <td className="p-1.5">
-        <Input
-          list="unit-field-names"
-          className="h-8 w-44 text-xs"
-          // The id column is each unit's id; it can also be uploaded as a field (type a name).
-          placeholder={isId ? "the unit id" : "not uploaded"}
-          title={isId ? "Each unit's id. Type a name to also upload it as a field." : undefined}
-          value={mapping.field}
-          onChange={(e) => onChange({ field: e.target.value.trim() })}
-        />
+        {isId ? (
+          <span className="inline-flex h-8 items-center text-xs text-primary" title="In a layout: $unit.id">
+            each unit&apos;s id
+          </span>
+        ) : (
+          <Input
+            list="unit-field-names"
+            className="h-8 w-44 text-xs"
+            placeholder="not uploaded"
+            value={mapping.field}
+            onChange={(e) => onChange({ field: e.target.value.trim() })}
+          />
+        )}
       </td>
       <td className="p-1.5">
-        {existing ? (
+        {existing && !isId ? (
           <span className="inline-flex h-8 items-center gap-1 text-muted-foreground" title="A field of this job keeps its type">
             {existing.type} <span className="text-[10px]">(existing field)</span>
           </span>
         ) : (
           <select
-            className={`${selectClass} ${isId && !uploaded ? "invisible" : ""}`}
-            value={mapping.type}
-            disabled={!uploaded}
-            onChange={(e) => onChange({ type: e.target.value as UnitFieldType })}
+            aria-label={`Type of ${header}`}
+            className={`${selectClass} ${isId ? "border-primary font-semibold text-primary" : ""}`}
+            value={isId ? "id" : mapping.type}
+            onChange={(e) => {
+              if (e.target.value === "id") return onId(true);
+              if (isId) onId(false);
+              onChange({ type: e.target.value as UnitFieldType });
+            }}
           >
+            <option value="id">unit id</option>
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
@@ -358,8 +370,9 @@ function ColumnRow({
         )}
       </td>
       <td className="p-1.5">
-        {isId && !uploaded && <Check className="mt-1.5 h-3.5 w-3.5 text-primary" aria-label="OK" />}
+        {isId && <Check className="mt-1.5 h-3.5 w-3.5 text-primary" aria-label="OK" />}
         {uploaded &&
+          !isId &&
           (problem ? (
             <span className="flex items-start gap-1 text-destructive">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

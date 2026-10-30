@@ -47,9 +47,11 @@ a002,Minister resigns,Morning Post,"The minister of finance stepped down after w
 
 1. Open the **Units** tab and click **Upload CSV**.
 2. Click **Choose a CSV file**, or drop the file on the box.
-3. Check the **Unit id column**. AnnoTinder picks a column named `id`,
-   `externalid` or `external_id` if there is one, and otherwise the first
-   column.
+3. Check which column has each unit's id: its **Type** is **unit id**
+   (highlighted). AnnoTinder picks a column named `id`, `externalid` or
+   `external_id` if there is one, and otherwise the first column; set
+   another column's type to **unit id** to change it. The id isn't uploaded
+   as a field: a layout shows it as `$unit.id`.
 4. Under **Columns to upload**, choose which columns to upload, and as which
    field (see below).
 5. Check the preview of the first rows, then click **Upload … units**.

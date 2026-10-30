@@ -677,6 +677,11 @@ export function buildScope(
   return { $unit: { ...(unit ?? {}) }, $var, $session: { ...(session ?? {}) } };
 }
 
+/** A unit as `$unit`: its fields, and `id`, its id (unless it has a field called `id`). */
+export function unitScopeData(unit: { externalId: string; data: Record<string, unknown> }): Record<string, unknown> {
+  return { id: unit.externalId, ...unit.data };
+}
+
 /** The label of a value: the option's label, a numeric break-point label, or the value as text. */
 export function valueLabel(variable: AnyVariableType, value: OptionValue): string {
   if ("options" in variable && variable.options) {

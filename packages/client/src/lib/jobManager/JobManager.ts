@@ -15,7 +15,7 @@ import type {
   ReferenceScope,
   UnitData,
 } from "@annotinder/contracts";
-import { branchUnitsets, buildScope, loopDependencies, loopTitle, unitLoops, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
+import { branchUnitsets, buildScope, unitScopeData, loopDependencies, loopTitle, unitLoops, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
@@ -850,7 +850,7 @@ export class JobManager {
       this.activeLoop,
       this.coderVisible,
       this.unitVariableValues,
-      this.currentUnit.data,
+      unitScopeData(this.currentUnit) as UnitData,
       this.stepContext,
     );
     this.loopSteps = steps;
@@ -879,7 +879,7 @@ export class JobManager {
     if (!loop || !unit) return;
     const step = this.loopSteps[this.loopIndex];
     try {
-      const scope = this.scope(this.unitVisible, unit.data);
+      const scope = this.scope(this.unitVisible, unitScopeData(unit) as UnitData);
       const snippets = loop.layout.snippets;
       const [template, texts] = await Promise.all([
         renderTemplate(loop.layout.template, scope, this.expressionCache, `layout:${this.keyOf(loop)}`, {
@@ -1165,7 +1165,7 @@ export class JobManager {
       }
       // An `end` item in the loop: the unit is saved, then the session ends.
       if (next?.type === "end") {
-        const scope = this.scope(this.unitVisible, this.currentUnit.data);
+        const scope = this.scope(this.unitVisible, unitScopeData(this.currentUnit) as UnitData);
         await this.reachEnd(next, scope, { loop: this.keyOf(this.activeLoop), id: this.currentUnit.id });
         return;
       }

@@ -378,7 +378,8 @@ function LayoutTab({
   // `::: if` in the layout may use coder-level questions, and (inside `::: from`) the loop's own.
   const conditionQuestions = [...coderQuestions, ...questionsOf(loop.children as CodebookItem[])];
   const names = {
-    fields: unitFields,
+    // `$unit.id` is each unit's id (unless a field is called id)
+    fields: unitFields.includes("id") ? unitFields : [...unitFields, "id"],
     snippets: snippets.map(([n]) => n),
     questions: conditionQuestions.map((q) => q.name),
     loopQuestions,

@@ -45,7 +45,7 @@ steps below.
 
 1. Open the **Units** tab and click **Upload CSV**.
 2. Click **Choose a CSV file** and pick `articles.csv`.
-3. **Unit id column** should say `id`.
+3. The `id` column's type should be **unit id**.
 4. Click **Use column names**: the `headline` and `text` columns become the
    fields `headline` and `text`.
 5. Check the preview, then click **Upload 3 units**.
