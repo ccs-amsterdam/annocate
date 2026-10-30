@@ -9,6 +9,7 @@ const stubClient: ResearcherApi = {
   listJobs: () => new Promise(() => {}),
   listExamples: async () => [],
   createJobFromExample: () => new Promise(() => {}),
+  createJobFromRecipe: () => new Promise(() => {}),
   createJob: () => new Promise(() => {}),
   deleteJob: () => new Promise(() => {}),
   getJob: () => new Promise(() => {}),

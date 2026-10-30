@@ -79,6 +79,7 @@ response checked against its contract schema.
 | [createJob](#createjob) | `POST /job` | any | `JobWriteSchema` | `JobResponseSchema` |
 | [listExamples](#listexamples) | `GET /examples` | any | – | `ExampleSummarySchema[]` |
 | [createJobFromExample](#createjobfromexample) | `POST /job/from-example` | any | `JobFromExampleSchema` | `JobResponseSchema` |
+| [createJobFromRecipe](#createjobfromrecipe) | `POST /job/from-recipe` | any | `RecipeSchema` | `JobResponseSchema` |
 | [getJob](#getjob) | `GET /job/:id` | READ | – | `JobResponseSchema` |
 | [updateJob](#updatejob) | `PUT /job/:id` | ADMIN | `JobWriteSchema` | `JobResponseSchema` |
 | [deleteJob](#deletejob) | `DELETE /job/:id` | ADMIN | – | – |
@@ -217,6 +218,24 @@ shows and what to try (`docs/plans/examples.md`).
 and ownership): its units and unitsets, its codebook published, its
 invitations, and its example answers (coders named "Example coder n").
 The job's `origin` is the example's id. 404 for an unknown example.
+
+### createJobFromRecipe
+
+`POST /job/from-recipe` → `JobResponseSchema` (201): a new job from a
+recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
+`createJob` (the same role, limits and ownership), in one transaction:
+
+- `units` (`{ id, data }`; the first unit's fields become the job's) and
+  `unitsets` (by the units' ids);
+- `codebook` (`{ note?, items }`): the first version, saved as a draft that
+  may have issues (e.g. questions without an answer type yet). With
+  `publish: true` it is published, and must then pass validation;
+- `invites`, as `createInvite` takes them, with `unitset` by name.
+
+400 `recipe_invalid` for a unit id used twice, a unitset naming an unknown
+unit, an invitation naming an unknown unitset, or a codebook to publish
+that has issues; nothing is created then. Example jobs are recipes too
+(`packages/server/examples/`), with example answers.
 
 ### getJob
 

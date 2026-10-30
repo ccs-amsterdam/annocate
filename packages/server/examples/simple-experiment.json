@@ -7,7 +7,8 @@
     "Look at the auto question and the article text in the codebook: the text shows a different paragraph per condition.",
     "Download the results: the condition is a column in coders.csv, next to the answers."
   ],
-  "jobName": "A simple experiment",
+  "name": "A simple experiment",
+  "publish": true,
   "codebook": {
     "note": "Example: a simple experiment",
     "items": [

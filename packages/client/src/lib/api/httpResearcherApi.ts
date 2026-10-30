@@ -3,6 +3,7 @@ import {
   type JobWrite,
   type ExampleSummary,
   type JobFromExample,
+  type RecipeInput,
   type JobResponse,
   type JobUser,
   type DeleteCoders,
@@ -95,6 +96,8 @@ export interface ResearcherApi {
   listExamples(): Promise<ExampleSummary[]>;
   /** A new job from an example: units, a published codebook, an invitation and example answers. */
   createJobFromExample(body: JobFromExample): Promise<JobResponse>;
+  /** A new job from a recipe (the setup wizard): units, unitsets, a codebook (a draft unless `publish`), invitations. */
+  createJobFromRecipe(body: RecipeInput): Promise<JobResponse>;
   updateJob(id: number, body: JobWrite): Promise<JobResponse>;
   deleteJob(id: number): Promise<void>;
   getJobUsers(id: number): Promise<JobUser[]>;
@@ -302,6 +305,10 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async createJobFromExample(body: JobFromExample): Promise<JobResponse> {
     return this.request(researcherEndpoints.createJobFromExample.path, { method: "POST", body: JSON.stringify(body) });
+  }
+
+  async createJobFromRecipe(body: RecipeInput): Promise<JobResponse> {
+    return this.request(researcherEndpoints.createJobFromRecipe.path, { method: "POST", body: JSON.stringify(body) });
   }
 
   async updateJob(id: number, body: JobWrite): Promise<JobResponse> {

@@ -64,3 +64,64 @@ describe("example jobs", () => {
     expect(await second.json()).toMatchObject({ code: "limit_reached" });
   });
 });
+
+describe("jobs from a recipe", () => {
+  const units = [
+    { id: "a", data: { text: "one" } },
+    { id: "b", data: { text: "two" } },
+  ];
+  const items = [
+    { type: "question", name: "condition", variable: { type: "auto", source: "random", options: [{ value: "x" }, { value: "y" }] } },
+    {
+      type: "unit_loop",
+      units: [{ mode: "all", unitset: "units_$var.condition.value" }],
+      layout: { template: "$unit.text" },
+      children: [{ type: "question", name: "topic", variable: { type: "unspecified" } }],
+    },
+  ];
+  const recipe = {
+    name: "From the wizard",
+    units,
+    unitsets: [
+      { name: "units_x", units: ["a"] },
+      { name: "units_y", units: ["b"] },
+    ],
+    codebook: { items },
+    invites: [{ label: "Open link" }],
+  };
+  const post = (body: object) => researcher("/job/from-recipe", { method: "POST", body: JSON.stringify(body) });
+  const jobCount = async () => (await db.query<{ n: number }>("SELECT count(*)::int AS n FROM jobs"))[0].n;
+
+  it("makes the units, unitsets, a draft codebook and the invitation", async () => {
+    const res = await post(recipe);
+    expect(res.status).toBe(201);
+    const job = JobResponseSchema.parse(await res.json());
+    expect(job.name).toBe("From the wizard");
+    const sets = (await (await researcher(`/job/${job.id}/unitsets`)).json()) as { name: string; unitIds: number[] }[];
+    expect(sets.map((s) => [s.name, s.unitIds.length])).toEqual([
+      ["units_x", 1],
+      ["units_y", 1],
+    ]);
+    // A draft with a question to specify: saved, not published
+    const codebooks = (await (await researcher(`/job/${job.id}/codebook`)).json()) as { items: unknown[] }[];
+    expect(codebooks).toHaveLength(1);
+    expect(await (await researcher(`/job/${job.id}/deployment`)).json()).toBeNull();
+    expect(((await (await researcher(`/job/${job.id}/invites`)).json()) as unknown[]).length).toBe(1);
+  });
+
+  it("publishes only a valid codebook; a refused recipe leaves nothing", async () => {
+    const res = await post({ ...recipe, publish: true });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "recipe_invalid", error: expect.stringContaining("no answer type yet") });
+    expect((await post({ ...recipe, units: [...units, { id: "a", data: { text: "again" } }] })).status).toBe(400);
+    expect((await post({ ...recipe, unitsets: [{ name: "s", units: ["nope"] }] })).status).toBe(400);
+    expect(await jobCount()).toBe(0);
+  });
+
+  it("counts against the researcher's limit on jobs", async () => {
+    const plan = await db.query<{ id: number }>("INSERT INTO plans (name, limits) VALUES ('One', '{\"jobs\": 1}') RETURNING id");
+    await db.query("UPDATE users SET plan_id = $1", [plan[0].id]);
+    expect((await post(recipe)).status).toBe(201);
+    expect(await (await post(recipe)).json()).toMatchObject({ code: "limit_reached" });
+  });
+});

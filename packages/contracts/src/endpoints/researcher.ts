@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
 import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema, ExampleSummarySchema, JobFromExampleSchema } from "../job.js";
+import { RecipeSchema } from "../recipe.js";
 import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema } from "../unitFields.js";
@@ -57,6 +58,8 @@ export const researcherEndpoints = {
   listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
   /** A new job from an example: units, codebook (published), invitation and example answers. */
   createJobFromExample: { method: "POST", path: "/job/from-example", request: JobFromExampleSchema, response: JobResponseSchema },
+  /** A new job from a recipe (the setup wizard): units, unitsets, a codebook (a draft unless `publish`), invitations. */
+  createJobFromRecipe: { method: "POST", path: "/job/from-recipe", request: RecipeSchema, response: JobResponseSchema },
   getJob: { method: "GET", path: "/job/:id", request: z.void(), response: JobResponseSchema },
   updateJob: { method: "PUT", path: "/job/:id", request: JobWriteSchema, response: JobResponseSchema },
   deleteJob: { method: "DELETE", path: "/job/:id", request: z.void(), response: z.void() },

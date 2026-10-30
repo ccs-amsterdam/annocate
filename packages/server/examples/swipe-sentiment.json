@@ -7,7 +7,8 @@
     "Open the invitation link in a private window: you get one of the three sets, with the overlap units spread in between.",
     "Look at the unit loop in the codebook (Codebook tab): it gives each coder one of the sets."
   ],
-  "jobName": "Sentiment by swiping",
+  "name": "Sentiment by swiping",
+  "publish": true,
   "units": [
     {
       "id": "news-01",

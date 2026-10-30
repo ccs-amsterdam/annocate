@@ -6,7 +6,8 @@
     "Open the invitation link in a private window and select words in the text to label them.",
     "Download the results: the spans come with their text, and with their positions in the _json columns."
   ],
-  "jobName": "Labeling actors",
+  "name": "Labeling actors",
+  "publish": true,
   "units": [
     {
       "id": "text-1",

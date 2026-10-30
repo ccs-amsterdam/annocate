@@ -6,7 +6,8 @@
     "Open the invitation link in a private window: survey questions first, then the headlines.",
     "Download the results: the headlines' answers are in annotations.csv, the survey answers in coders.csv; join them on coder_id."
   ],
-  "jobName": "Survey with annotations",
+  "name": "Survey with annotations",
+  "publish": true,
   "units": [
     {
       "id": "headline-1",

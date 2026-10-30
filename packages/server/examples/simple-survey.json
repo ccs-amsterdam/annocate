@@ -7,7 +7,8 @@
     "Look at the condition and the end item in the codebook (Codebook tab).",
     "Download the results: survey answers are in coders.csv."
   ],
-  "jobName": "A simple survey",
+  "name": "A simple survey",
+  "publish": true,
   "codebook": {
     "note": "Example: a simple survey",
     "items": [

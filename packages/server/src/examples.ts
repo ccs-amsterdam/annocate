@@ -1,12 +1,9 @@
-import { randomBytes } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { z } from "zod";
 import {
-  CoderInviteWriteSchema,
   CodebookItemsSchema,
+  RecipeSchema,
   VariableValueSchema,
-  addedFields,
-  checkUnitData,
   shownUnitFields,
   validateAnswer,
   validateCodebookItems,
@@ -19,16 +16,15 @@ import {
 import { one, type Sql } from "./db.js";
 import { collectCoderVariables, collectLoops } from "./runtime/codebook.js";
 import { putCoderValues } from "./shared/coders.js";
-import { putDeployment } from "./shared/deployments.js";
 import { HttpError } from "./shared/http.js";
 import type { JobRow } from "./shared/jobs.js";
-import { checkUnitUpload } from "./shared/limits.js";
-import { setUnitFields, unitHash } from "./shared/units.js";
+import { createJobFromRecipe } from "./shared/recipes.js";
+import { unitHash } from "./shared/units.js";
 
-// Example jobs (docs/plans/examples.md): recipes that ship with AnnoTinder,
-// as files in `examples/<id>.json`. Making a job from one gives an ordinary
-// job: its units, unitsets, a published codebook, invitations, and
-// sometimes example answers, to try and adapt.
+// Example jobs (docs/plans/examples.md): recipes (shared/recipes.ts) that
+// ship with AnnoTinder, as files in `examples/<id>.json`, with a published
+// codebook and sometimes example answers. Making a job from one gives an
+// ordinary job, to try and adapt.
 
 const EXAMPLES_DIR = new URL("../examples/", import.meta.url);
 
@@ -45,20 +41,11 @@ const ShortAnswerSchema = z.union([
 ]);
 type ShortAnswer = z.infer<typeof ShortAnswerSchema>;
 
-const ExampleFileSchema = z.object({
+const ExampleFileSchema = RecipeSchema.extend({
   category: z.string(),
   title: z.string(),
   description: z.string(),
   tryThis: z.array(z.string()),
-  /** The new job's name, unless the researcher gives one. */
-  jobName: z.string(),
-  /** Units: your id, and the fields. */
-  units: z.array(z.object({ id: z.string(), data: z.record(z.string(), z.unknown()) })).default([]),
-  /** Unitsets, by the units' ids: each must show something ("all units" needs none). */
-  unitsets: z.array(z.object({ name: z.string(), units: z.array(z.string()) })).default([]),
-  codebook: z.object({ note: z.string(), items: z.array(z.unknown()) }),
-  /** Invitations; `unitset` names one of the example's unitsets (invitation mode). */
-  invites: z.array(CoderInviteWriteSchema.omit({ unitsetId: true }).extend({ unitset: z.string().optional() })).min(1),
   /** Example answers: coders (named "Example coder n" in the job) and what they answered, outside loops and per unit. */
   answers: z
     .array(
@@ -68,7 +55,7 @@ const ExampleFileSchema = z.object({
       }),
     )
     .default([]),
-});
+}).refine((e) => e.publish && e.invites.length > 0, "An example publishes its codebook and has an invitation");
 type ExampleFile = z.infer<typeof ExampleFileSchema>;
 
 let catalogue: Map<string, ExampleFile> | null = null;
@@ -112,8 +99,9 @@ export interface FromExampleOptions {
 }
 
 /**
- * Makes a job from an example, in one transaction: within the owner's
- * limits on units (the caller checks the number of jobs).
+ * Makes a job from an example (its recipe), with its example answers, in
+ * one transaction: within the owner's limits on units (the caller checks
+ * the number of jobs).
  */
 export async function createJobFromExample(db: Sql, id: string, options: FromExampleOptions): Promise<JobRow> {
   const example = examples().get(id);
@@ -123,93 +111,16 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
   if (issues.length > 0) throw new Error(`examples/${id}.json: ${issues.map((i) => i.message).join("; ")}`);
 
   return db.transaction(async (tx) => {
-    const job = (await one<JobRow>(tx, "INSERT INTO jobs (name, owner_id, origin) VALUES ($1, $2, $3) RETURNING *", [
-      options.name ?? example.jobName,
-      options.ownerId,
-      id,
-    ]))!;
-    if (options.ownerEmail) await tx.query("INSERT INTO job_users (job_id, email, role) VALUES ($1, $2, 'ADMIN')", [job.id, options.ownerEmail]);
-
-    // Units
-    const unitIds = new Map<string, number>();
-    if (example.units.length > 0) {
-      const added = addedFields(
-        example.units.map((u) => u.data as UnitData),
-        [],
-      );
-      if ("error" in added) throw new Error(`examples/${id}.json: ${added.error}`);
-      for (const unit of example.units) {
-        const problem = checkUnitData(unit.data as UnitData, added.fields);
-        if (problem) throw new Error(`examples/${id}.json, unit ${unit.id}: ${problem}`);
-      }
-      await checkUnitUpload(
-        tx,
-        job.id,
-        example.units.map((u) => ({ externalId: u.id, data: u.data })),
-        example.units.length,
-      );
-      await setUnitFields(tx, job.id, added.fields);
-      for (const unit of example.units) {
-        const row = await one<{ id: number }>(tx, "INSERT INTO units (job_id, external_id, data) VALUES ($1, $2, $3) RETURNING id", [
-          job.id,
-          unit.id,
-          JSON.stringify(unit.data),
-        ]);
-        unitIds.set(unit.id, row!.id);
-      }
-    }
+    const { job, codebookId, unitIds, firstInvite } = await createJobFromRecipe(
+      tx,
+      { ...example, name: options.name ?? example.name },
+      { ownerId: options.ownerId, ownerEmail: options.ownerEmail, origin: id, secrets: options.secrets },
+    );
     const unitId = (externalId: string) => {
       const found = unitIds.get(externalId);
       if (found === undefined) throw new Error(`examples/${id}.json: no unit '${externalId}'`);
       return found;
     };
-
-    // Unitsets
-    const unitsets = example.unitsets.map((u) => ({ name: u.name, ids: u.units.map(unitId) }));
-    const unitsetIds = new Map<string, number>();
-    for (const set of unitsets) {
-      const row = await one<{ id: number }>(tx, "INSERT INTO unitsets (job_id, name, unit_ids) VALUES ($1, $2, $3) RETURNING id", [
-        job.id,
-        set.name,
-        set.ids,
-      ]);
-      unitsetIds.set(set.name, row!.id);
-    }
-
-    // The codebook, published
-    const codebookId = (await one<{ id: number }>(tx, "INSERT INTO codebooks (job_id, note, items) VALUES ($1, $2, $3) RETURNING id", [
-      job.id,
-      example.codebook.note,
-      JSON.stringify(items),
-    ]))!.id;
-    await putDeployment(tx, job.id, { codebookId, active: true });
-
-    // Invitations
-    let firstInvite: number | null = null;
-    for (const [i, invite] of example.invites.entries()) {
-      const { unitset, label, auth, emails, maxUses, variables, participantId, participantParam, urlParams } = invite;
-      const setId = unitset === undefined ? null : unitsetIds.get(unitset);
-      if (setId === undefined) throw new Error(`examples/${id}.json: no unitset '${unitset}'`);
-      const row = await one<{ id: number }>(
-        tx,
-        `INSERT INTO invites (job_id, label, auth, secret, emails, max_uses, variables, participant_id, participant_param, url_params, unitset_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-        [
-          job.id,
-          label,
-          auth,
-          options.secrets?.[i] ?? randomBytes(16).toString("hex"),
-          emails ? JSON.stringify(emails) : null,
-          maxUses ?? null,
-          JSON.stringify(variables ?? {}),
-          participantId ?? null,
-          participantParam ? JSON.stringify(participantParam) : null,
-          urlParams?.length ? JSON.stringify(urlParams) : null,
-          setId,
-        ],
-      );
-      firstInvite ??= row!.id;
-    }
 
     // Example answers
     const coderTypes = collectCoderVariables(items);

@@ -18,6 +18,7 @@ import type {
   JobWrite,
   ExampleSummary,
   JobFromExample,
+  RecipeInput,
   UnitField,
   UnitMeta,
   UnitPage,
@@ -88,6 +89,17 @@ export function useCreateJobFromExampleMutation(client: ResearcherApi): UseMutat
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: JobFromExample) => client.createJobFromExample(body),
+    onSuccess: (job) => {
+      queryClient.setQueryData(keys.job(job.id), job);
+      void queryClient.invalidateQueries({ queryKey: keys.jobs });
+    },
+  });
+}
+
+export function useCreateJobFromRecipeMutation(client: ResearcherApi): UseMutationResult<JobResponse, Error, RecipeInput> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RecipeInput) => client.createJobFromRecipe(body),
     onSuccess: (job) => {
       queryClient.setQueryData(keys.job(job.id), job);
       void queryClient.invalidateQueries({ queryKey: keys.jobs });

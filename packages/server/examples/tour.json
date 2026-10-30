@@ -7,7 +7,8 @@
     "Open the codebook (Codebook tab) to see how each feature is set up.",
     "Code twice, as a beginner and as an expert, to see the conditions at work."
   ],
-  "jobName": "Demo: a tour of AnnoTinder",
+  "name": "Demo: a tour of AnnoTinder",
+  "publish": true,
   "units": [
     {
       "id": "unit-1",

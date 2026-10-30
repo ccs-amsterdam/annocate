@@ -27,6 +27,7 @@ export * from "./unit.js";
 export * from "./unitFields.js";
 export * from "./unitset.js";
 export * from "./job.js";
+export * from "./recipe.js";
 export * from "./coder.js";
 export * from "./variableValue.js";
 export * from "./session.js";
