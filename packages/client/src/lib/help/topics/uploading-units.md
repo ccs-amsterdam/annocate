@@ -100,6 +100,15 @@ become `7`.
 An empty cell is an empty value. In a codebook, an empty field shows
 nothing.
 
+### Sets columns
+
+A column can also say which [sets](unitsets.md) each unit is in. Give it the
+type **sets**: it isn't uploaded as a field, but makes a set group named
+after the column. Each cell names the unit's sets, such as `s1`, `s1;s2` or
+`s1#3` (third in `s1`), and `_overlap` for the group's overlap. Uploading
+such a column replaces the group's sets. See
+[A sets column in your CSV](unitsets.md#a-sets-column-in-your-csv).
+
 ## Uploading more units later
 
 All units of a job have the same fields. The first upload sets them; later
@@ -156,7 +165,7 @@ coders get that field too from then on.
 
 ## Next steps
 
-- Make [unitsets](unitsets.md) if different coders should get different
+- Make [sets](unitsets.md) if different coders should get different
   units.
 - Decide how units are [handed out](unit-distribution.md).
 - Show the fields in a [layout template](layout-templates.md).

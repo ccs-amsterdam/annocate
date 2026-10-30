@@ -6,9 +6,8 @@ summary: Auto variables give each coder a value without asking - for experimenta
 ---
 
 An **Auto (assigned, not asked)** question is never shown to coders.
-Instead, AnnoTinder gives every coder a value when they start: drawn at
-random, balanced over the options, set by their invitation link, or taken
-from the web address they opened. You then use that value like any other
+Instead, AnnoTinder gives every coder a value: drawn at random, or
+balanced over the options. You then use that value like any other
 answer: to show different material to different groups, or to give
 different coders different units.
 
@@ -18,10 +17,10 @@ Typical uses:
   participants see the article with a source cue, the other half without.
 - **Splitting the work**: coders are spread evenly over parts of your
   units.
-- **Panel ids**: the participant id from Prolific or another panel, taken
-  from the link, to send people back with the right code at the end.
-- **Groups you know in advance**: experts get a different set of units
-  than students, set per invitation.
+
+Values that come *from the link* (a panel's participant id, a condition per
+link, a group you know in advance) are not assigned variables but
+[session parameters](session-parameters.md): `$session.<name>`.
 
 ## Where it goes
 
@@ -38,12 +37,10 @@ Under **Source**, choose how the value is assigned:
 | --- | --- |
 | **Random draw** | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
 | **Balanced (option with fewest coders)** | The option that the fewest coders have so far, so groups stay as equal as possible. Ties go to the first option in the list |
-| **Set by invitation** | The value preset on the invitation link the coder used |
-| **URL parameter** | The value of a parameter in the web address the coder opened |
 
 The **Options** list the values the variable can take, each with a value
 and an optional label, as for a [nominal question](nominal-and-ordinal.md).
-Random, balanced and invitation need at least one option.
+Both need at least one option.
 
 ### Random or balanced?
 
@@ -57,41 +54,18 @@ including coders who stopped halfway. Use it when equal group sizes matter
 more than strict independence, as when spreading a small team of coders
 over parts of the units.
 
-### Set by invitation
-
-When you create an invitation, you can preset variables for everyone who
-uses that link, in the **Preset variables** box: `group=experts`, or several
-separated by commas, `group=experts, slot=2`. Use the option values of the
-auto question. See [Invitations](invitations.md).
-
-**If the invitation doesn't set it** decides what happens with a link
-without a preset: **Leave empty** (no value), **Random draw** or
-**Balanced**. A common set-up is one link per known group, plus a general
-link where the value falls back to balanced.
-
 ### URL parameter
 
-Online panels add the participant's id to the link they send people to,
-such as `...?PROLIFIC_PID=5f3a...`. Fill in the name of that parameter under
-**URL parameter name** (here `PROLIFIC_PID`) and the auto question stores
-its value. Left empty, the parameter has the question's own name: an auto
-question `pid` then reads `...?pid=...`. Use it in the redirect URL of an [end item](end-items.md) to send
-participants back with their id, or to link your data to the panel's. See
-[Online panels and crowd coding](online-panels.md).
-
-A URL parameter can carry any value, so the editor shows no options for it.
-To accept only some values (say `a` and `b` for a condition set by the
-panel), add `options` to the question in the JSON view: other values are
-then ignored.
-
-The value is read when the coder first opens the link and stored, so later
-visits don't need the parameter. If it was missing the first time, a later
-visit with the parameter fills it in.
+A value from the web address the coder opened (such as a panel's
+`PROLIFIC_PID`), or one fixed per link, is a
+[session parameter](session-parameters.md), declared in the codebook's
+Session item: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
+when the session starts, like an assigned variable, and works in the same
+places: conditions, texts, end items' return links.
 
 ## Assigned once, never changed
 
-A coder's value is assigned when they start, before the first question,
-and it never changes afterwards: not when they reload the page, come back
+A coder's value is assigned when they start, and it never changes afterwards: not when they reload the page, come back
 the next day or continue on another device, and not when you publish a new
 version of the codebook. Coders can't see or change it.
 
@@ -128,10 +102,9 @@ $unit.text
 Switch between *experiment* and *control* to see what each group sees.
 See [Showing parts conditionally](template-blocks.md).
 
-**For units**, to give each group its own units: a loop can choose units
-by a condition on the auto variable, or use it in the name of a unitset,
-such as `part_$var.slot.value`. See
-[Different units for different coders](coder-groups.md).
+**For units**, to give each group its own units: a loop can have a coder
+group per value, each with its own set (`$var.group.is("experiment")` gets
+the set `experiment`). See [Different units for different coders](coder-groups.md).
 
 In the results, auto variables are in `coders.csv`, with the coders'
 other answers outside unit loops. See [Downloading results](results.md).

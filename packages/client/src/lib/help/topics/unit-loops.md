@@ -35,7 +35,7 @@ row in the tree open the loop on one of them.
 | Tab | What you set there |
 | --- | --- |
 | **Layout** | How a unit is shown: the **Template**, the **Colours** and the **Snippets** |
-| **Units** | Which units coders get: **Who codes which units**, the **Unitset**, the **Order**, an overlap set, and groups of coders that get different units |
+| **Units** | Which units coders get: **Who codes which units**, the **Units** (all, or a set), the **Order**, the **Overlap**, and groups of coders that get different units |
 
 The template is where you write what coders see of each unit: see
 [Layout templates](layout-templates.md). The Units tab is explained in
@@ -128,7 +128,7 @@ first question of the second part of the codebook. See
 
 ## Order of units
 
-By default coders get the units in the order of the unitset. On the Units tab, **Order** can be set to
+By default coders get the units in the order of the set (for all units: the order they were uploaded). On the Units tab, **Order** can be set to
 **Random (each coder their own order)**, so that order effects average out
 over coders. See [Order](unit-distribution.md#order).
 

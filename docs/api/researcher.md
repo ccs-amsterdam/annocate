@@ -2,7 +2,7 @@
 
 Served by the **server** at `/job/...`, called by the client's **researcher
 UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
-managing jobs, codebooks, units, invitations, publishing and progress.
+managing jobs, codebooks, units and sets, links (invites), publishing and progress.
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
@@ -57,8 +57,8 @@ account role: `researcher_required`), 404 not found, 409 not allowed in
 this state (e.g. editing a published codebook), 413 too large.
 
 **From R or Python**: everything a script needs is here: create a job,
-upload units ([createUnits](#createunits)) and a codebook, publish it,
-invite coders, then download the annotations ([listAnnotations](#listannotations))
+upload units ([createUnits](#createunits)) and a codebook, publish it
+(which makes its links), send coders a link, then download the annotations ([listAnnotations](#listannotations))
 and the coders with their coder-level answers ([listCoders](#listcoders)).
 `server/src/__tests__/researcherApi.test.ts` does exactly this, with every
 response checked against its contract schema.
@@ -92,23 +92,21 @@ response checked against its contract schema.
 | [createCodebook](#createcodebook) | `POST /job/:jobId/codebook` | WRITE | `CodebookWriteSchema` | `CodebookResponseSchema` |
 | [updateCodebook](#updatecodebook) | `PUT /job/:jobId/codebook/:id` | WRITE | `CodebookWriteSchema` | `CodebookResponseSchema` |
 | [deleteCodebook](#deletecodebook) | `DELETE /job/:jobId/codebook/:id` | WRITE | – | – |
-| **Units and unitsets** | | | | |
+| **Units and sets** | | | | |
 | [listUnits](#listunits) | `GET /job/:jobId/units` | READ | – | `UnitMetaSchema[]` |
 | [getUnitFields](#getunitfields) | `GET /job/:jobId/units/fields` | READ | – | `UnitFieldSchema[]` |
 | [listUnitPage](#listunitpage) | `GET /job/:jobId/units/page` | READ | – | `UnitPageSchema` |
 | [getUnit](#getunit) | `GET /job/:jobId/units/:id` | READ | – | `UnitResponseSchema` |
 | [createUnits](#createunits) | `POST /job/:jobId/units` | WRITE | `UnitsCreateBodySchema` | `UnitResponseSchema[]` |
 | [deleteUnit](#deleteunit) | `DELETE /job/:jobId/units/:id` | WRITE | – | – |
-| [listUnitsets](#listunitsets) | `GET /job/:jobId/unitsets` | READ | – | `UnitsetResponseSchema[]` |
-| [createUnitset](#createunitset) | `POST /job/:jobId/unitsets` | WRITE | `UnitsetWriteSchema` | `UnitsetResponseSchema` |
-| [updateUnitset](#updateunitset) | `PUT /job/:jobId/unitsets/:id` | WRITE | `UnitsetWriteSchema` | `UnitsetResponseSchema` |
-| [deleteUnitset](#deleteunitset) | `DELETE /job/:jobId/unitsets/:id` | WRITE | – | – |
-| **Invitations and coders** | | | | |
+| [listSetGroups](#listsetgroups) | `GET /job/:jobId/sets` | READ | – | `SetGroupResponseSchema[]` |
+| [putSetGroup](#putsetgroup) | `PUT /job/:jobId/sets/:group` | WRITE | `SetGroupWriteSchema` | `SetGroupResponseSchema` |
+| [deleteSetGroup](#deletesetgroup) | `DELETE /job/:jobId/sets/:group` | WRITE | – | – |
+| **Links and coders** | | | | |
 | [listInvites](#listinvites) | `GET /job/:jobId/invites` | WRITE | – | `CoderInviteResponseSchema[]` |
-| [createInvite](#createinvite) | `POST /job/:jobId/invites` | WRITE | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` |
+| [updateInvite](#updateinvite) | `PUT /job/:jobId/invites/:id` | WRITE | `CoderInviteWriteSchema` | `CoderInviteResponseSchema` |
 | [revokeInvite](#revokeinvite) | `POST /job/:jobId/invites/:id/revoke` | WRITE | – | `CoderInviteResponseSchema` |
-| [deleteInvite](#deleteinvite) | `DELETE /job/:jobId/invites/:id` | WRITE | – | – |
-| [setInviteUnitset](#setinviteunitset) | `PUT /job/:jobId/invites/:id/unitset` | WRITE | `{ unitsetId }` | `CoderInviteResponseSchema` |
+| [renewInviteSecret](#newinvitesecret) | `POST /job/:jobId/invites/:id/secret` | WRITE | – | `CoderInviteResponseSchema` |
 | [listCoders](#listcoders) | `GET /job/:jobId/coders` | READ | – | `CoderProgressSchema[]` |
 | [deleteCoders](#deletecoders) | `POST /job/:jobId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
 | [postponeDeletion](#postponedeletion) | `POST /job/:jobId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
@@ -215,8 +213,8 @@ shows and what to try (`docs/plans/examples.md`).
 
 `POST /job/from-example` (`{ example, name? }`) → `JobResponseSchema`
 (201): a new job from an example, like `createJob` (the same role, limits
-and ownership): its units and unitsets, its codebook published, its
-invitations, and its example answers (coders named "Example coder n").
+and ownership): its units and sets, its codebook published (which makes
+its links), and its example answers (coders named "Example coder n").
 The job's `origin` is the example's id. 404 for an unknown example.
 
 ### createJobFromRecipe
@@ -226,15 +224,15 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 `createJob` (the same role, limits and ownership), in one transaction:
 
 - `units` (`{ id, data }`; the first unit's fields become the job's) and
-  `unitsets` (by the units' ids);
+  `sets`: set groups by the units' ids (`[{ group, sets: [{ name, units,
+  ordered? }] }]`);
 - `codebook` (`{ note?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
-  `publish: true` it is published, and must then pass validation;
-- `invites`, as `createInvite` takes them, with `unitset` by name.
+  `publish: true` it is published, and must then pass validation.
 
-400 `recipe_invalid` for a unit id used twice, a unitset naming an unknown
-unit, an invitation naming an unknown unitset, or a codebook to publish
-that has issues; nothing is created then. Example jobs are recipes too
+A recipe has no links: publishing its codebook makes them. 400
+`recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
+group defined twice, or a codebook to publish that has issues; nothing is created then. Example jobs are recipes too
 (`packages/server/examples/`), with example answers.
 
 ### getJob
@@ -263,7 +261,8 @@ active lists), or `keepSessionsOpen`: finished coder sessions stay open
 ### getOverview
 
 `GET /job/:jobId/overview` → `JobOverviewSchema`. Counts for the overview
-page: units, unitsets with sizes, coders (total, started, active in the last
+page: units, set groups with their sets' sizes (`groups: [{ name, sets:
+[{ name, units }] }]`), coders (total, started, active in the last
 24 hours), live answers, finished codings for the live codebook's loops, and
 answers per day for the last 30 days. "Finished": every question of the
 loop has a live answer.
@@ -310,10 +309,10 @@ save overwrites.
 `DELETE /job/:jobId/codebook/:id` → 204. Deletes a draft (for everyone; the
 editor offers this only in the versions dialog). 409 once `immutable`.
 
-## Units and unitsets
+## Units and sets
 
-Schemas: [`contracts/src/unit.ts`](../../packages/contracts/src/unit.ts), [`unitFields.ts`](../../packages/contracts/src/unitFields.ts), [`unitset.ts`](../../packages/contracts/src/unitset.ts).
-Implementation: [`researcher/units*.ts`](../../packages/server/src/researcher/), [`unitsets*.ts`](../../packages/server/src/researcher/).
+Schemas: [`contracts/src/unit.ts`](../../packages/contracts/src/unit.ts), [`unitFields.ts`](../../packages/contracts/src/unitFields.ts), [`sets.ts`](../../packages/contracts/src/sets.ts).
+Implementation: [`researcher/units*.ts`](../../packages/server/src/researcher/), [`sets.ts`](../../packages/server/src/researcher/sets.ts).
 
 **Unit fields.** All units of a job have the same fields, each `text`,
 `number` or `boolean`; values are stored typed (`42`, not `"42"`), and `null`
@@ -339,10 +338,10 @@ before `/units/:id`.
 
 ### listUnitPage
 
-`GET /job/:jobId/units/page?offset=0&limit=50&unitset=name` → `UnitPageSchema`:
+`GET /job/:jobId/units/page?offset=0&limit=50&group=&set=` → `UnitPageSchema`:
 a page of units with their data (`limit` at most 200) and the `total`. All
-units by id, or with `unitset` that set's units in the set's order (404 for
-an unknown set).
+units by id, or with `group` and `set` that set's units in the set's order
+(404 for an unknown set).
 
 ### getUnit
 
@@ -365,71 +364,81 @@ content from then on.
 `DELETE /job/:jobId/units/:id` → 204. 409 once coded (replace it
 instead). Deleting the last unit resets the fields.
 
-### listUnitsets
+**Sets.** Units belong to named sets within set groups (table
+`unit_sets (job_id, grp, set_name, unit_id, position)`;
+`docs/plans/sets-and-session-parameters.md` §1). A group's name is like a
+field name; set names are at most 128 characters, without `;` or `#`.
+`_overlap` is reserved: the group's overlap units. A unit can be in several
+sets of a group. Sets are not part of the unit's data (moving a unit is no
+new unit version), and a change applies to running jobs at once and syncs
+the job's links (a link per set of a group).
 
-`GET /job/:jobId/unitsets` → `UnitsetResponseSchema[]`: name and unit ids, in order.
+### listSetGroups
 
-### createUnitset
+`GET /job/:jobId/sets` → `SetGroupResponseSchema[]`: per group its sets,
+each with its unit ids in order and `ordered` (positions were given).
 
-`POST /job/:jobId/unitsets` → `UnitsetResponseSchema` (201). The unit ids
+### putSetGroup
+
+`PUT /job/:jobId/sets/:group` (`{ sets: [{ name, unitIds, ordered? }] }`)
+→ `SetGroupResponseSchema`. Makes or replaces the whole group. The unit ids
 in order: the order coders get them in, for loops that don't shuffle. Only
 the job's own units (400 otherwise).
 
-### updateUnitset
+### deleteSetGroup
 
-`PUT /job/:jobId/unitsets/:id` → `UnitsetResponseSchema`. Full replace.
+`DELETE /job/:jobId/sets/:group` → 204. 409 while the published or latest
+codebook uses the group (a loop's set, or a set-typed session parameter).
 
-### deleteUnitset
+Splitting units into sets (`s1..sN`, plus `_overlap`) is done by the client
+(`splitIntoSets` in `sets.ts`), which then writes the group with
+[putSetGroup](#putsetgroup): the server only stores sets.
 
-`DELETE /job/:jobId/unitsets/:id` → 204. 409 while a codebook's `unit_loop`
-refers to it.
-
-Splitting units into sets (`<prefix>_1..n`, plus an overlap set) is done by
-the client (`splitUnits` in `unitset.ts`), which then creates each set with
-[createUnitset](#createunitset): the server only stores unitsets.
-
-## Invitations and coders
+## Links and coders
 
 Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
-Implementation: [`researcher/invites*.ts`](../../packages/server/src/researcher/), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
-See [`docs/coder-identity.md`](../coder-identity.md) for what invitations do.
+Implementation: [`researcher/invites.ts`](../../packages/server/src/researcher/invites.ts), [`shared/invites.ts`](../../packages/server/src/shared/invites.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
+See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
+
+Links (invites) are not created by hand: publishing makes one per
+combination of the codebook's link parameter values (one if it has none),
+and set changes sync them ([putDeployment](#putdeployment)). A link no
+longer made is **retired** (`retiredAt`), never deleted: new coders get 403
+`link_inactive`, coders who started keep working. It comes back, with the
+same secret, if its combination returns.
 
 ### listInvites
 
-`GET /job/:jobId/invites` → `CoderInviteResponseSchema[]`, with `uses`,
-`created` and `revokedAt`.
+`GET /job/:jobId/invites` → `CoderInviteResponseSchema[]`, active links
+first, with `params` (the link parameter values it carries), `uses`,
+`created`, `revokedAt` and `retiredAt`.
 
-### createInvite
+### updateInvite
 
-`POST /job/:jobId/invites` → `CoderInviteResponseSchema` (201). Generates
-the `secret` for the link. `variables` presets the codebook's `auto`
-variables with `source: "invite"` for coders who use it; `unitsetId` is the
-unitset its coders get in loops with `mode: "invitation"`.
+`PUT /job/:jobId/invites/:id` (`CoderInviteWriteSchema`) →
+`CoderInviteResponseSchema`. Who may use the link: `label`, `auth`
+(`none`, `optional`, `required`), `emails`, `maxUses` and a fixed
+`participantId`. Full replace of these settings.
 
 ### revokeInvite
 
 `POST /job/:jobId/invites/:id/revoke` → `CoderInviteResponseSchema`. No new
-coders from this invite; coders who already started keep working.
+coders from this link; coders who already started keep working.
 
-### deleteInvite
+### renewInviteSecret
 
-`DELETE /job/:jobId/invites/:id` → 204, only while unused: 409 once a coder
-came in through it, since coders refer to their invite.
-
-### setInviteUnitset
-
-`PUT /job/:jobId/invites/:id/unitset` (`{ unitsetId: number | null }`) →
-`CoderInviteResponseSchema`. The unitset the invite's coders get in loops
-with `mode: "invitation"`; null for none. Coders already routed keep their
-units. A unitset an invite uses can't be deleted (409).
+`POST /job/:jobId/invites/:id/secret` → `CoderInviteResponseSchema`. A new
+secret: the old address stops working (e.g. it was shared too widely);
+coders who already started keep working.
 
 ### listCoders
 
 `GET /job/:jobId/coders` → `CoderProgressSchema[]`: per coder the invite,
 participant id, started, last active, live answers, finished units per
-loop of the live codebook, and `variables`: their coder-level values
-(answers outside unit loops, and `auto` variables such as invite presets,
-random or balanced conditions and URL parameters), `ended`: how the
+loop of the live codebook, `variables`: their coder-level values
+(answers outside unit loops, and `auto` variables: random or balanced
+conditions), `session`: their `$session` values (link and URL parameters,
+`source`), `ended`: how the
 session ended (at an `end` item: item, outcome `screenout` or `complete`;
 or outcome `quit`; and the time), or null, and `deletionRequest`: the
 coder's request to delete their answers (`at`, `postponedAt` once the
@@ -480,7 +489,12 @@ codebook version (or pause/resume with `active`):
    drafts may be saved with issues, coders only get valid codebooks);
 2. store it, bump `version` if the codebook version changed (pausing and
    resuming don't: coders don't reload), and make the codebook immutable;
-3. bump the deployment's revision, so every server process re-reads it on
+3. sync the job's links: one per combination of the codebook's link
+   parameter values; links no longer made are retired. Above 500 links this
+   needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
+   than 2000 is 400 `too_many_links`. The response's `links` is the number
+   of active links;
+4. bump the deployment's revision, so every server process re-reads it on
    its next request.
 
 Paused (`active: false`): coders save what they have open, but get no new
@@ -488,12 +502,13 @@ units and no new sessions (409 `job_paused`; the coding screen says the
 study is paused) until it is resumed.
 
 Return `warnings` the researcher should see, e.g. a loop that gained
-questions, which makes units coders finished unfinished again.
+questions, which makes units coders finished unfinished again, or a group
+with fewer overlap units than a loop expects.
 
 ### getDeploymentStatus
 
 `GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: per loop
-and unitset the units complete, started and leased, codings and coders,
+and set (`unitset`: `group/set`, or `__all__` for all units) the units complete, started and leased, codings and coders,
 computed on demand. 404 if not
 published.
 
@@ -529,8 +544,8 @@ version the coder saw (`unitVersionId`), the device (`deviceId`), how
 long the coder took as their browser measured it (`timing`), for unit
 answers when the server first handed the unit to the coder (`servedAt`),
 and `created` / `updated`. Answers outside unit loops (survey questions) are
-rows too, with `unitId` null; so are values the server assigned (invite
-presets, random or balanced groups, URL parameters), marked `assigned`.
+rows too, with `unitId` null; so are values the server assigned (random
+or balanced groups), marked `assigned`.
 
 - **Paging**: rows come in the order they were first written (by `id`).
   `limit` rows per page (default 1000, at most 10000); pass `next` as

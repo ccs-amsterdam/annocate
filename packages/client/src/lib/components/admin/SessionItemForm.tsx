@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
   CONFIRM_LINKS,
@@ -245,24 +246,7 @@ function ParamEditor({
         </Button>
       </div>
 
-      {"list" in param.values && (
-        <label className={labelClass}>
-          List (one value per line)
-          <textarea
-            className="min-h-16 rounded-md border border-input bg-background p-2 font-mono text-xs font-normal"
-            value={param.values.list.map((v) => v.value).join("\n")}
-            onChange={(e) =>
-              setValues({
-                list: e.target.value
-                  .split("\n")
-                  .map((v) => v.trim())
-                  .filter(Boolean)
-                  .map((value) => ({ value })),
-              })
-            }
-          />
-        </label>
-      )}
+      {"list" in param.values && <ListValues values={param.values.list.map((v) => v.value)} onChange={(list) => setValues({ list: list.map((value) => ({ value })) })} />}
       {"sets" in param.values && (
         <label className={labelClass}>
           Group
@@ -328,5 +312,28 @@ function ParamEditor({
       </label>
       <IssueList issues={issues} />
     </div>
+  );
+}
+
+/** A list of values, one per line (the text as typed, so empty lines can be added). */
+function ListValues({ values, onChange }: { values: string[]; onChange: (values: string[]) => void }) {
+  const [text, setText] = useState(values.join("\n"));
+  return (
+    <label className={labelClass}>
+      List (one value per line)
+      <textarea
+        className="min-h-16 rounded-md border border-input bg-background p-2 font-mono text-xs font-normal"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(
+            e.target.value
+              .split("\n")
+              .map((v) => v.trim())
+              .filter(Boolean),
+          );
+        }}
+      />
+    </label>
   );
 }

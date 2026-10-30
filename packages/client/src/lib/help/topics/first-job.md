@@ -23,8 +23,8 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 ## 1. Create a job
 
 > To look around first, choose **Create new job** → **From an example** on
-> the **Jobs** page: it makes a ready job (units, a published codebook, an
-> invitation, and often example answers) to try and change. Its overview
+> the **Jobs** page: it makes a ready job (units, a published codebook, a
+> link, and often example answers) to try and change. Its overview
 > says what to try.
 >
 > **Create new job** → **Guided setup** does steps 1 to 3 below in one go: say
@@ -120,7 +120,7 @@ Select the loop in the tree. Its form has two tabs:
   and write the template yourself. See [Layout templates](layout-templates.md).
 - **Units**: which units coders get. A new loop has none chosen yet (it is
   marked *to specify*): under **Who codes which units**, choose **Everyone codes
-  everything**, with an empty unitset: every coder gets every unit. That is what
+  everything**, with **Units** left at **All units**: every coder gets every unit. That is what
   we want here. See [Handing out units](unit-distribution.md).
 
 Try the layout right here, with your own text:
@@ -158,16 +158,18 @@ codebook: edits go into a new draft until you publish again. See
 
 ## 7. Invite coders
 
+Publishing made a link for the job: you don't create links by hand.
+
 1. Open the **Invitations** tab.
-2. Under **Create invitation link**, type a label (e.g. *Pilot coders*)
-   and click **Create**.
+2. Optionally, click the pencil icon to give the link a label (e.g. *Pilot
+   coders*).
 3. Click **Copy link** in the table and send the link to your coders.
 
 Anyone who opens the link starts their own session. See
-[Invitations](invitations.md) for personal links, limits and participant
+[Links](invitations.md) for who may use a link, limits and participant
 ids, and [What coders see](coder-experience.md) for the coder's side.
 
-> Test the job with **Preview**, not with the invitation link. Opening the
+> Test the job with **Preview**, not with the link. Opening the
 > link yourself makes you a coder of the job, and your answers end up in
 > the results.
 

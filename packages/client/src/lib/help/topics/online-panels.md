@@ -13,7 +13,7 @@ survey experiments (participants judge a few messages) and for crowd coding
 
 ## The flow
 
-1. The panel sends a participant to your **invitation link**, with the
+1. The panel sends a participant to your **link**, with the
    participant's id added to it.
 2. AnnoTinder stores the id with the coder, and if you like other values
    from the link (a study id, a condition the panel assigned).
@@ -25,23 +25,22 @@ survey experiments (participants judge a few messages) and for crowd coding
 
 ## The link for the panel
 
-Make an invitation for the panel (see [Invitations](invitations.md)):
+Panels send participants to a link with their id in it. Tell the codebook
+which URL parameter has the id: add a **Session** item to the codebook (see
+[Session parameters](session-parameters.md)) and tick **Participant id from
+a URL parameter**, with the name the panel uses, such as `PROLIFIC_PID`.
+Optionally give a **pattern** the id must fit, e.g. `[0-9a-f]{24}` for
+Prolific's ids, so a link with a typo or a placeholder that wasn't filled in
+doesn't start.
 
-- **Label**: e.g. *Prolific pilot*, so you can tell batches apart in the
-  results.
-- **Participant id from a URL parameter**: type the name of the parameter
-  in which the panel sends the participant's id, such as `PROLIFIC_PID`.
-  The copied link ends in `PROLIFIC_PID=<participant id>`: in the link you
-  give the panel, replace `<participant id>` with the panel's placeholder,
-  which the panel fills in for each participant. On Prolific that is
-  `{{%PROLIFIC_PID%}}`; other panels have their own (check their
-  documentation). Optionally give a **pattern** the id must fit, e.g.
-  `[0-9a-f]{24}` for Prolific's ids, so a link with a typo or a placeholder
-  that wasn't filled in doesn't start.
-- **Required URL parameters** (optional): other values the panel sends,
-  such as a study or session id (see below).
-- **Max uses** (optional): a little above the number of places in the
-  study, as a safety net if the link leaks.
+After publishing, the link on the **Invitations** tab ends in
+`PROLIFIC_PID=<participant id>`. In the link you give the panel, replace
+`<participant id>` with the panel's placeholder, which the panel fills in
+for each participant. On Prolific that is `{{%PROLIFIC_PID%}}`; other panels
+have their own (check their documentation). On the link itself (the pencil
+icon) you can set a **Label**, e.g. *Prolific pilot*, and **Max uses**: a
+little above the number of places in the study, as a safety net if the link
+leaks.
 
 The participant id then appears in the Coders tab and as `participant_id` in
 the results. It also keeps sessions apart: a participant who opens the link
@@ -53,37 +52,32 @@ another device is told they already started (see
 
 Panels often send more than the participant id, for instance a study id and
 a session id, and want some of them back in the return link. Add them to the
-invitation under **Required URL parameter**: the parameter's name as the
-panel sends it (`STUDY_ID`), the name the codebook uses for it (by default
-the same; give another when the parameter's name has characters such as `-`
-or `.`), and optionally a pattern.
+Session item as **URL parameters**: a name for the codebook (`study`), the
+**URL key** as the panel sends it (`STUDY_ID`), and its values (any value,
+optionally with a pattern; or a list). Without a default a URL parameter is
+required.
 
 The codebook can then use them as **session values**:
 
 | Write | Gives |
 | --- | --- |
 | `$session.participant` | The participant id |
-| `$session.STUDY_ID` | The value of the required URL parameter `STUDY_ID` (or the name you gave it) |
+| `$session.study` | The value of the URL parameter `STUDY_ID` |
+| `$session.source` | The optional `?source=` of any link |
 
 Session values work everywhere: in texts, conditions, end items' messages
 and return links. A link that misses a required parameter, or has a value
-that doesn't fit its pattern, doesn't start: the participant sees which
-parameter is missing, so you notice a broken link in your first test. The
-values are stored when the participant starts, and are in the Coders tab's
-download (`coders.csv`, as `session.<name>`).
+that doesn't fit, doesn't start: the participant sees which parameter is
+missing, so you notice a broken link in your first test. The values are
+stored when the participant starts, and are in the Coders tab's download
+(`coders.csv`, as `session.<name>`).
 
 ```text
-<your invitation link>&PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}
+<your link>&PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}
 ```
 
-Session values belong to the invitation, not the codebook: a codebook that
-uses `$session.STUDY_ID` needs an invitation that requires `STUDY_ID`. For a
-value that the *codebook* should define, so it travels with it (for example
-an experimental condition chosen by the link), use an
-[assigned variable](auto.md) with the source **URL parameter** instead.
-
-> If your invitation link already contains a `?`, add parameters with `&`
-> (as above). Test the complete link yourself before you launch.
+> If your link already contains a `?`, add parameters with `&` (as above).
+> Test the complete link yourself before you launch.
 
 ## Sending participants back
 
@@ -138,8 +132,10 @@ column of `coders.csv`, so you can check the panel's list against yours.
 For a survey experiment, give each participant a condition with an
 [assigned variable](auto.md) (**Random draw** or **Balanced**), and show
 different material with conditions or `::: if` blocks. If the panel assigns
-the condition (for example two panel studies, one per condition), pass it in
-the link and read it with a **URL parameter** assigned variable instead.
+the condition (for example two panel studies, one per condition), make the
+condition a **link parameter** with the conditions as its values: publishing
+makes a link per condition, to give each panel study its own (see
+[Session parameters](session-parameters.md)).
 
 ## How many participants?
 

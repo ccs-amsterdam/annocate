@@ -22,7 +22,7 @@ Everything of a job is stored on the AnnoTinder server you use:
 | --- | --- |
 | **Units** | The data you uploaded, and each unit as coders saw it (see [Keeping track of what coders saw](design-what-coders-saw.md)) |
 | **Codebooks** | Every saved and published version |
-| **Invitations** | Their settings: label, participant id, preset values, units, uses |
+| **Links** | Their settings: label, link parameter values, login, emails, participant id, uses |
 | **Coders** | Per session: the invitation used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended |
 | **Devices** | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given |
 | **Answers** | Per unit and question: the answer, when it was first given and last changed, and the codebook and unit version |
@@ -118,8 +118,8 @@ out in the coder's browser. The server checks that the units a coder asks
 for are ones the codebook could give *someone*. A technically skilled coder
 could therefore get the units of another group of the same loop. Routing on
 answers is meant to organise honest coders, not to keep material secret.
-Random and balanced group assignment, and values set by invitation, are
-decided on the server: coders can't change their own group.
+Random and balanced group assignment, session values from the link, and
+assigned sets are decided on the server: coders can't change their own group.
 
 > If some coders must never see some material, put it in a separate job
 > with its own invitations.

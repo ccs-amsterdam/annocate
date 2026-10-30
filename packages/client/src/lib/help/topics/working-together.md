@@ -27,12 +27,12 @@ accident.
 | Role | Can |
 | --- | --- |
 | **Read** | See the job, its coders' progress, and download the results |
-| **Write** | Also edit and save the codebook (and preview it), upload units, make unitsets and invitations |
+| **Write** | Also edit and save the codebook (and preview it), upload units, make sets and manage links |
 | **Admin** | Also publish the codebook, pause the job, reset answers, delete coders' data, rename or delete the job, and manage who has access |
 
 Give people the smallest role that lets them do their work. Coders are not
 on this list: they never log in to the job's management, they come in through
-an [invitation](invitations.md).
+a [link](invitations.md).
 
 ## Editing together
 

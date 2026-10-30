@@ -49,7 +49,7 @@ health check uses it).
 
 ## Login provider
 
-Researchers (and coders whose invitation asks for it) log in with an OpenID
+Researchers (and coders whose link asks for it) log in with an OpenID
 Connect provider: Zitadel, Authentik, Keycloak, or a hosted one (Google,
 Microsoft).
 
@@ -80,7 +80,7 @@ docker compose up -d --build
 
 ## Several server processes
 
-The server keeps only each live job's deployment (codebook, unitsets,
+The server keeps only each live job's deployment (codebook, sets,
 settings) in memory, so several
 processes can share one database (`architecture.md` §3), e.g. compose
 replicas behind a proxy. Exceptions: researcher previews live in one

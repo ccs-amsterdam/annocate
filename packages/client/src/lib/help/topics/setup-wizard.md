@@ -35,8 +35,9 @@ much more (below).
 6. **Questions**: their names, one per line; before the units, about each
    unit, and after the units.
 
-It then makes the units, unitsets, an open invitation link (or one per
-set), and a draft codebook, and opens the editor.
+It then makes the units, their [sets](unitsets.md) (a group `sets`), and a
+draft codebook, and opens the editor. Publishing the codebook makes its
+links: an open link, or a link per set.
 
 ## What to do next
 
@@ -58,8 +59,8 @@ afterwards:
 | Crowd coding until coders agree on a question; units per coder; priority | [Shared queues](shared-queues.md#when-a-unit-is-done) |
 | Different units for coders by an earlier answer | [Different units for different coders](coder-groups.md) |
 | Where the overlap comes (before, after, spread) | [Overlap](overlap.md#placement) |
-| A condition from the invitation or a URL parameter | [Assigned variables](auto.md#sources) |
-| Personal links, login, participant ids, max uses | [Invitations](invitations.md) |
+| A condition per link, or from a URL parameter | [Session parameters](session-parameters.md) |
+| Login, participant ids, max uses | [Links](invitations.md) |
 | Prolific and other online panels | [Online panels and crowd coding](online-panels.md) |
 | Layouts beyond a title, byline and body: styles, blocks, conditions, HTML | [Layout templates](layout-templates.md), [Showing parts conditionally](template-blocks.md), [HTML in a layout](html.md) |
 | Reusable pieces of a layout | [Snippets](snippets.md) |

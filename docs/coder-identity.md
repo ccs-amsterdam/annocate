@@ -7,11 +7,11 @@ Complements `docs/architecture.md`.
 ## 1. Principles
 
 - **A login provider proves who someone is; the server decides whether they
-  get in** (job roles, the invite's rules). The server keeps no passwords:
+  get in** (job roles, the link's rules). The server keeps no passwords:
   identity is a verified email address from the provider (§7).
 - **Only authentication unlocks earlier work from another device.** An id
   that comes from a link (a participant id in a survey URL, or one hidden in
-  a personal invite) is a *label*, not a credential. Anyone holding the link
+  a personal link) is a *label*, not a credential. Anyone holding the link
   could use it. So it never gives access to earlier annotations.
 - **Unauthenticated work stays on the device it was done on**, unless the
   coder explicitly moves it with a one-time transfer link.
@@ -23,7 +23,7 @@ Complements `docs/architecture.md`.
 | **Coder** (`coderId`) | One annotation session in a job: a set of answers, unit assignments and progress. Everything (annotations, routing, distribution) is keyed by `coderId`. Shown to coders as "your session". | database |
 | **Device id** | Random secret the server gives a browser once, for all jobs, in an httpOnly cookie (`annotinder_device`), so page scripts never see it. Never stored by the server. | the coder's browser (httpOnly cookie) |
 | **Device key** | A device's key for its session in one job: SHA-256 of device id, deployment and participant id. The database stores only this, so nothing links one device's sessions across jobs. A session has one per device that joined it. | database (`coder_devices`) |
-| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed in a personal invite, or taken from a URL parameter the invite names (`participantParam`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
+| **Participant id** | External label from the researcher or a panel company, e.g. a Prolific/Qualtrics participant id. It is fixed on a personal link (`participantId`), or taken from a URL parameter the codebook's Session item names (`participant: { param, pattern? }`, e.g. `PROLIFIC_PID`). Never a credential. | database (on the coder) |
 | **Linked email** | A verified email address from a login (§5), linked to the session once. Lets the coder continue on another device by logging in there. | database (`coders.email`) |
 | **Transfer link** | One-time, short-lived link that adds another device to the session. | database (`transfers`, token hash only; 15 min) |
 
@@ -33,18 +33,22 @@ analysis, researchers group coders by participant id or email when they want
 to merge sessions of the same person. The system itself never merges
 sessions.
 
-## 3. Invitations
+## 3. Links (invites)
 
-Two independent settings:
+Links are made by publishing the codebook, one per combination of its link
+parameter values (`docs/architecture.md` §7); the researcher sets who may
+use each. A link no longer part of the design is retired: new sessions get
+403 `link_inactive` ("This link is no longer active"), sessions that
+started go on. Two independent settings:
 
 |  | `auth: "none"` | `auth: "required"` (or `"optional"`) |
 | --- | --- | --- |
 | **no participant id** | anyone with the link starts a new session | login first; the same login resumes the same coder on any device |
-| **participant id** (`participantId` fixed on the invite, or `participantParam: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
+| **participant id** (`participantId` fixed on the link, or the Session item's `participant: { param, pattern? }` + `?<param>=…`) | new session, labelled with the participant id | login first; the participant id is a label next to the identity |
 
 `optional` lets the coder choose: log in to be able to resume elsewhere, or
 continue anonymously. `emails` (an allowlist; it makes login required) and
-`maxUses` further restrict an invite.
+`maxUses` further restrict a link.
 
 **Duplicate participant ids** are allowed: a participant who can't reach
 their first session (§4) starts another, and so does anyone else holding a
@@ -57,41 +61,41 @@ confusion at a panel company over a leaked link.
 ## 4. Sessions without login (implemented)
 
 - **The device id.** A browser gets one random device id, the first time
-  an invite accepts it, in a cookie: `annotinder_device`, `HttpOnly`,
+  a link accepts it, in a cookie: `annotinder_device`, `HttpOnly`,
   `SameSite=Lax`, `Secure` over https, `Path=/d`, 400 days. One cookie for
   all jobs, so cookies don't pile up for coders who do many jobs.
 - **The session in a job.** The server derives the device's key for a job
   on every request: SHA-256 of device id, deployment and participant id (the
   server reads the participant id from the URL parameters the client sends,
-  `x-url-params`, using the invite's `participantParam`; cached per invite
-  for a minute). Including the participant id keeps participants apart on
+  `x-url-params`, using the participant parameter of the codebook's Session
+  item). Including the participant id keeps participants apart on
   a shared lab computer. The database stores only the key, in
   `coder_devices` (one row per device of a session), never the device id:
   sessions of one device in different jobs can't be linked from stored
   data. The device id is long and random, so no secret is needed (rotating
   `ANNOTINDER_SECRET` logs no coder out). Each request finds the session
-  by its key: one indexed query. Everything the job needs from the invite and the URL
-  (preset and `url_param` variables, the participant id and the invite's
-  other required URL parameters) is stored when the coder starts, so the
-  invite and URL details can be forgotten.
+  by its key: one indexed query. Everything the job needs from the link and the URL
+  (the link's parameter values, the participant id, the codebook's URL
+  parameters and `source`) is stored when the coder starts, so the link and
+  URL details can be forgotten.
 - **Device details.** When a device joins a session, coarse details from
   its user agent are stored with it: device type (phone, tablet, desktop),
   browser and operating system (`shared/devices.ts`), not the user agent
   itself. Each answer records the device it was given on
   (`annotation_values.device_id`); researchers get them with
   `GET /job/:jobId/devices` and in the export (`devices.csv`).
-- **Required URL parameters.** An invite can require URL parameters: the
-  participant id's (`participantParam`) and others (`urlParams: [{ param,
-  name?, pattern? }]`, e.g. a panel's study and session ids). A new session
-  without one, or with a value that doesn't match its pattern (a regular
-  expression, matched in full), is refused (400 `url_param_missing` /
-  `url_param_invalid`), so a broken panel link shows at once. The values are
+- **Session values.** The codebook's Session item declares the link and
+  URL parameters (`architecture.md` §7): the participant id's (`participant:
+  { param, pattern? }`) and others (e.g. a panel's study and session ids).
+  A new session without a required one, or with a value that doesn't fit
+  (its list, a group's sets, or a pattern, a regular expression matched in
+  full; at most 256 characters), is refused (400 `url_param_missing` /
+  `url_param_invalid`), so a broken panel link shows at once. The values,
+  with the link's own parameter values and the optional `?source=`, are
   stored on the coder (`coders.session`) and are the codebook's `$session`
-  values: `$session.participant` and `$session.<name>` (`name`, else the
-  parameter's own name, which must then be a valid name). They belong to
-  the invitation, not the codebook, so validation can't check the names
-  (unknown ones are empty); codebook-level values from the URL stay
-  `url_param` auto variables.
+  values: `$session.participant`, `$session.source`, `$session.email` and
+  `$session.<name>`. The codebook declares them, so validation checks the
+  names.
 - **Same device later.** The device cookie resumes the same coder, whatever
   link (or none) the coder comes back with, as long as it carries the same
   participant id (a participant link with another id is another session).
@@ -133,7 +137,7 @@ confusion at a panel company over a leaked link.
      the same participant id, for this device. The new coder cannot see
      the earlier annotations.
 
-  New sessions of a known participant don't count toward the invite's
+  New sessions of a known participant don't count toward the link's
   `maxUses`.
 
   Privacy note: this tells someone holding the link that the participant
@@ -151,23 +155,27 @@ AnnoTinder doesn't affect coding. The email is used again only to continue
 on another device. Code: `coder.ts` (the session middleware),
 `DeploymentRuntime.resolveCoder`, `runtime/store.ts` (`findOrCreateCoder`).
 
-- **When a login is read.** Only when it matters: on invites with
+- **When a login is read.** Only when it matters: on links with
   `auth: "optional"` or `"required"` (or an `emails` list) while the
   session has no email yet, and on a device without a session in this job
-  (to find the email's session). A session with an email, or on an invite
-  without login, never looks at the login: no lookups while coding. An
-  invite with `auth: "none"` ignores a login (a researcher trying their own
+  (to find the email's session). A session with an email, or on a link
+  without login, never looks at the login: no lookups while coding. A
+  link with `auth: "none"` ignores a login (a researcher trying their own
   link starts an anonymous session). Never in previews.
 - **Required.** `required` (or an `emails` list) without a login: 401
   `auth_required`; the client offers the login, which comes back to the same
   page, and the new session gets the email. A login not on the `emails`
   list: 403 `email_not_invited`.
+- **Sets by email.** A codebook whose unit loop assigns sets by the login's
+  email (`from: { session: "email" }`) requires login on every link, and
+  only emails that are set names of that group can start; others get 403
+  `email_not_invited` ("This email address has no access to this study").
 - **Optional.** `GET /session` says `canLogIn` (the server offers a login,
-  the invite is `optional`, the session has no email). Logging in links the
+  the link is `optional`, the session has no email). Logging in links the
   email to the session on this device.
 - **Another device.** Logging in on a device without a session in this job
   finds the email's session and adds the device to it (as a transfer link
-  does). This also works without the invite link.
+  does). This also works without the link.
 - **One session per email in a job.** If the email already has a session in
   this job, a device that started its own and then logs in continues the
   email's session instead (its own stays, unlinked).
@@ -277,7 +285,7 @@ answers, routing, the request) and all their `annotation_values`, also
 retired ones; `units.coded` is recomputed. Unit versions stay (unit content).
 Nothing about coders is kept in memory, so nothing needs reloading. A
 deleted coder's browser later starts a new session
-from its invite. Every deletion is logged (`coder_deletions`: coder id,
+from its link. Every deletion is logged (`coder_deletions`: coder id,
 participant id, email, requested, deleted, by whom, answer count), so the
 researcher can delete the coder from earlier downloads too
 (`GET /job/:jobId/coders/deletions`, the Coders tab, and

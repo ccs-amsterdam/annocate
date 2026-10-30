@@ -80,8 +80,9 @@ then code the job as a coder would, with the job's real units:
   device under **Preset**, or type a width and height.
 - **Reset preview session** starts the preview over, as a new coder.
 - An end item's redirect is shown, but not followed.
-- In a loop with **Assign sets by invitation link**, the preview gives you the
-  units of the first invitation that has units.
+- Session values come from the preview page's URL (by parameter name), else
+  their default or first value: a loop that assigns sets by link gets the
+  first set.
 - Assigned variables (random, balanced) are drawn for you as for any
   coder.
 
@@ -116,8 +117,8 @@ list warnings from the server, for instance that a loop gained questions
 and finished units become unfinished again. See
 [Changing a codebook while coding runs](changing-a-live-codebook.md).
 
-The first publish is what lets coders start: until then, coders who open
-an invitation link can't begin.
+The first publish is what lets coders start, and it makes the job's links
+(see [Links](invitations.md)): until then, there is no link to open.
 
 ## What coders experience when you publish
 

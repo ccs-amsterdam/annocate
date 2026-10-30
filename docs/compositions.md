@@ -6,7 +6,7 @@ from R and Python, and the R and Python packages, are not.
 Annotinder has two parts:
 
 - **server** (`packages/server`): one Node program. The researcher API
-  (jobs, codebooks, units, unitsets, invites, deployments, results) and the
+  (jobs, codebooks, units, sets, links, deployments, results) and the
   coder API for coders (`/d/<jobId>`): distribution, validation, sessions.
   It owns the data, in Postgres: a Postgres server (`DATABASE_URL`), or
   PGlite (Postgres compiled to WebAssembly, in process) for tests and

@@ -23,8 +23,8 @@ Everything belongs to a **job**: one study or coding project. A job has:
 | --- | --- | --- |
 | **Codebook** | The questions coders answer, in order, and how units are shown and handed out | Codebook tab |
 | **Units** | The material to code: rows of data, each with an id and fields such as `headline` and `text` | Units tab |
-| **Unitsets** | Named lists of units, for handing out different units to different coders | Units tab |
-| **Invitations** | The links coders open to start | Invitations tab |
+| **Sets** | Named lists of units, in groups, for handing out different units to different coders | Units tab |
+| **Links** | The links coders open to start, made when you publish | Invitations tab |
 | **Coders** | Everyone who started, and how far they got | Coders tab |
 | **Results** | All answers, as a download | Results tab |
 
@@ -66,7 +66,7 @@ Thank you             the end
 3. **Preview** it: you code as a coder would, with your real units, without
    storing anything.
 4. **Publish** the codebook. Coders now get this version.
-5. **Invite coders** with a link.
+5. **Invite coders**: publishing made a link to send them.
 6. **Follow progress** on the Overview and Coders tabs, and **download the
    results** whenever you like.
 

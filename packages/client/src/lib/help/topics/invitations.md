@@ -1,43 +1,61 @@
 ---
-title: Invitations
+title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - with participant ids, preset variables, their own units and a maximum number of uses.
+summary: The links coders open to start - made from the codebook, with who may use them, participant ids and a maximum number of uses.
 ---
 
-Coders start a job by opening an **invitation link**. You make these links
-on the **Invitations** tab. One link can be shared with many coders (a link
-in an email to your student assistants, or on a crowd-coding platform), or
-you can make a personal link per coder.
+Coders start a job by opening a **link**. You find the links on the
+**Invitations** tab. One link can be shared with many coders (in an email
+to your student assistants, or on a crowd-coding platform), or each coder
+or group can get their own.
 
-An invitation can also carry information about the coders who use it: a
-participant id, values for the codebook's
-[assigned variables](auto.md) (such as an experimental group), and the
-units they should code. That way the codebook itself never needs to know
-who your coders are.
+Links are made by **publishing the codebook**: you don't create them by
+hand. A codebook without link parameters makes one link. A codebook whose
+Session item has **link parameters** makes a link per value, or per
+combination of values: a link per set of a group, per experimental
+condition, per panel. See [Session parameters](session-parameters.md).
+That way the codebook describes which links exist and what each one means,
+and the values a link carries are `$session` values in the codebook.
 
 Coders can only start once a codebook version is published (see
 [Preview, save and publish](previewing-and-publishing.md)).
 
-## Creating an invitation
+## When links change
 
-Under **Create invitation link**:
+Links follow the published codebook and the job's sets:
 
-1. Give it a **Label**, such as *Student assistants* or *Prolific batch 1*.
-   The label is for you: it appears in the Coders tab and the results.
-2. Choose the other settings you need (below). All are optional.
-3. Click **Create**. The invitation appears in the list below.
-4. Click **Copy link** in its row and send the link to your coders.
+- publishing a codebook with other link parameters makes the links it
+  needs, and **retires** links it no longer makes;
+- a link parameter with the sets of a group gets a new link as soon as the
+  group gets a new set, without publishing again; a removed set's link is
+  retired;
+- a link that comes back into the design (the same values) is the same link
+  again, with the same address.
+
+A retired link is never deleted: coders and their answers keep referring to
+the link they came in with. Opening it shows *"This link is no longer
+active"*; coders who already started with it keep working.
+
+Publishing a codebook that makes more than 500 links asks you to confirm;
+at most 2000 links are possible. List the combinations you need in the
+Session item instead of every combination.
+
+## Who may use a link
+
+The pencil icon in a link's row sets who may use it:
 
 | Setting | What it does |
 | --- | --- |
+| **Label** | For you: it appears in the Coders tab and the results |
 | **No login** / **Login optional** / **Login required** | Whether coders can, or must, log in (see [Login](#login)) |
 | **Only these email addresses** | With login: only coders who log in with one of these addresses (see [Login](#login)) |
-| **No participant id** / **Fixed participant id** / **Participant id from a URL parameter** | Whether coders who use this link get a participant id, and where it comes from |
-| **Required URL parameter** | Other values the link must carry, e.g. a panel's study id; the codebook reads them as `$session.<name>` (see [Online panels](online-panels.md#values-from-the-link)) |
-| **Preset variables** | Values for the codebook's assigned variables, e.g. `group=experts` |
 | **Max uses** | Stop accepting new coders after this many |
-| **Units** | The unitset its coders get in loops with *Assign sets by invitation link* |
+| **Fixed participant id** | Everyone who uses this link gets this participant id (a personal link) |
+
+**New link** (the key icon) gives the link a new address: the old one stops
+working, for instance when it was shared too widely. Coders who started
+keep working.
 
 ## Participant ids
 
@@ -48,15 +66,17 @@ is shown in the **Coder** column of the Coders tab and in the
 other data you have on the same people.
 
 - **No participant id**: coders are anonymous; the Coders tab shows a number.
-- **Fixed participant id**: everyone who uses this link gets the id you type
-  in. Use it for personal links, one per coder.
-- **Participant id from a URL parameter**: the id is taken from the link
-  itself, from the parameter you name (`participant`, or a panel's own such
-  as `PROLIFIC_PID`). The copied link ends in `participant=<participant id>`:
-  replace the placeholder with each coder's id, or let a panel fill it in
-  (see [Online panels and crowd coding](online-panels.md)). The id is
-  required: a link without it doesn't start. A **pattern** (a regular
-  expression, e.g. `[0-9]{6}` or `p1|p2|p3`) makes the id fit a format.
+- **Fixed participant id**: everyone who uses the link gets the id you set
+  on it. Use it for personal links.
+- **Participant id from a URL parameter**: set in the codebook's Session item
+  (see [Session parameters](session-parameters.md)). The id is taken from the
+  link itself, from the parameter you name (`participant`, or a panel's own
+  such as `PROLIFIC_PID`). The copied links end in
+  `PROLIFIC_PID=<participant id>`: replace the placeholder with each coder's
+  id, or let a panel fill it in (see
+  [Online panels and crowd coding](online-panels.md)). The id is required: a
+  link without it doesn't start. A **pattern** (a regular expression, e.g.
+  `[0-9]{6}`) makes the id fit a format.
 
 In the codebook the participant id is `$session.participant`, for instance
 in an end item's return link.
@@ -92,60 +112,6 @@ link or QR code it shows on the second (see
 > Give each person their own participant id (their sessions are then kept
 > apart), or have them use a private browser window.
 
-## Preset variables
-
-In **Preset variables**, write values for the codebook's
-[assigned variables](auto.md) whose source is **Set by invitation**:
-`group=experts`, or several separated by commas: `group=experts, slot=2`.
-Everyone who uses the link gets these values when they start. Use the option
-values of the assigned variable.
-
-Typical uses:
-
-- one link per group you know in advance (experts and students, two
-  classes, two countries), so a condition or a
-  [coder group](coder-groups.md) can treat them differently;
-- one personal link per coder with `slot=1`, `slot=2`, ..., so each coder
-  gets their own part of the units (`part_$var.slot.value`).
-
-## Units per invitation
-
-An invitation can carry its own units: choose a unitset under **Units**
-when you create it, or later in its row in the list. Its coders get these
-units in every unit loop whose units are set to **Assign sets by invitation link**
-(see [Handing out units](unit-distribution.md)). In other loops the
-invitation's units play no role.
-
-- A coder gets the invitation's units when they reach the loop, and keeps
-  them. Changing an invitation's units later only affects coders who reach
-  the loop after the change.
-- If the live codebook gives coders their invitation's units (*Assign sets by invitation link*) and an
-  invitation has none, the Invitations tab warns you: its coders get no
-  units in that loop.
-- A unitset that an invitation uses can't be deleted.
-
-### Divide units over coders
-
-To give each of a known group of coders their own units, click **Divide
-units over coders…**:
-
-1. Under **Units**, choose all units or a unitset to divide.
-2. Under **Coders, one per line**, type the coders' names (or ids).
-3. Optionally set **Overlap units (everyone codes them)**: that many units
-   are taken out first and given to every coder, for
-   [intercoder reliability](overlap.md).
-4. Click **Create 3 invitations** (the number is the number of coders).
-
-AnnoTinder shuffles the units, splits them into equal parts, and makes a
-unitset per coder (named after the coder) plus one named `overlap`, and a
-personal invitation per coder: labelled with their name, with their name as
-fixed participant id, and their unitset as its units. Then set the unit loop
-to **Assign sets by invitation link**, with the overlap set as its overlap. Send
-each coder their own link.
-
-You can also do this while coding runs, for coders who join later: new sets
-and invitations work right away, without publishing the codebook again.
-
 ## Max uses
 
 **Max uses** limits how many coders can start with a link. Once that many
@@ -157,28 +123,21 @@ above) doesn't count as a new use.
 Use it to cap a crowd-coding batch, or to make sure a personal link is used
 only once (max uses 1).
 
-## The list of invitations
+## The list of links
 
 | Column | Shows |
 | --- | --- |
-| **Label** | The label you gave it |
-| **Link** | **Copy link** copies the link |
-| **Participant id** | The fixed id, `?<parameter>` for an id from the link (plus other required URL parameters), or – |
-| **Presets** | The preset variables |
-| **Units** | The invitation's unitset; you can change it here |
+| **Label** | The label (made from the link's values; you can change it) |
+| **Values** | The link parameter values the link carries |
+| **Link** | **Copy link** copies the link, with placeholders for URL parameters it needs |
+| **Access** | Who may use it: anyone, a login, email addresses, a fixed participant id |
 | **Uses** | How many coders started with it (and the maximum) |
-| **Status** | *open*, *used up* or *revoked* |
-| **Created** | When you made it |
+| **Status** | *open*, *used up*, *revoked* or *retired* |
+| **Created** | When it was made |
 
-### Revoking and deleting
-
-- **Revoke** stops new sessions with the link, also new sessions of a
-  participant id that already has one. Coders who already started keep
-  working, also when they come back later on the same device. A revoked link can't
-  be copied anymore.
-- An invitation that nobody used yet can be **deleted** (the bin icon).
-  Once it was used it can only be revoked: coders and their answers keep
-  referring to the invitation they came in with.
+**Revoke** stops new sessions with the link, also new sessions of a
+participant id that already has one. Coders who already started keep
+working. Retired links are listed separately, below the active ones.
 
 ## Login
 
@@ -195,11 +154,16 @@ continues the same session.
 - **Only these email addresses**: only coders who log in with one of these
   addresses can use the link (others see that the invitation is for other
   people). A list makes login required.
+- **Sets assigned by email**: a unit loop can give each coder the set named
+  after their login email (see [Handing out units](unit-distribution.md)).
+  Then only the email addresses that are set names of that group can code
+  at all, with any link: coders log in, and other addresses see *"This email
+  address has no access to this study"*.
 
 The coder's email address is stored with their session: it appears in the
 Coders tab and the results (`email`), and you can delete a coder's data by
 email. A participant id can come with a login too; it is then only a label
 next to the account.
 
-An invitation **without login** ignores a login: someone who happens to be
+A link **without login** ignores a login: someone who happens to be
 logged in (such as you, trying your own link) starts an anonymous session.

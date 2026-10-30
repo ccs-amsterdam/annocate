@@ -2,7 +2,7 @@
 title: Scripts and the researcher API
 section: Results
 order: 2
-summary: Use AnnoTinder from R, Python or other scripts with an API key - upload units, make unitsets and invitations, download answers.
+summary: Use AnnoTinder from R, Python or other scripts with an API key - upload units, make sets, list links, download answers.
 ---
 
 Everything you do on the researcher pages can also be done by a script,
@@ -10,8 +10,8 @@ through AnnoTinder's **researcher API**. That is useful when you want to:
 
 - upload thousands of units straight from R or Python, or upload new units
   every day;
-- make unitsets from your own data, such as one set per newspaper;
-- create many invitations at once, for example one per participant;
+- make sets from your own data, such as one set per newspaper;
+- list the links publishing made, and set who may use them;
 - download the answers into your analysis without clicking **Download zip**,
   or fetch only what is new since your last download.
 
@@ -67,17 +67,17 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/j
 | List your jobs, create a job | `GET /job`, `POST /job` with `{ "name": ... }` |
 | Upload units (at most 200 per request) | `POST /job/<id>/units` |
 | List the job's fields | `GET /job/<id>/units/fields` |
-| List, create, replace or delete unitsets | `GET`, `POST /job/<id>/unitsets`; `PUT`, `DELETE /job/<id>/unitsets/<set id>` |
+| List set groups, replace or delete a group | `GET /job/<id>/sets`; `PUT`, `DELETE /job/<id>/sets/<group>` |
 | Save a codebook version | `POST /job/<id>/codebook` with `{ "items": [...], "note": ... }` |
-| Publish a codebook version | `PUT /job/<id>/deployment` with `{ "codebookId": ... }` |
-| List or create invitations | `GET`, `POST /job/<id>/invites` |
+| Publish a codebook version (this makes its links) | `PUT /job/<id>/deployment` with `{ "codebookId": ... }` |
+| List links, or change who may use one | `GET /job/<id>/invites`; `PUT /job/<id>/invites/<link id>` |
 | Coders, with their answers outside unit loops | `GET /job/<id>/coders` |
 | Answers in unit loops, a page at a time | `GET /job/<id>/annotations` |
 | Units as coders saw them, a page at a time | `GET /job/<id>/unit-versions` |
 
 What you may do depends on your role in the job, as on the pages: reading
 units, codebooks and answers needs any role; changing them, and seeing
-invitations and coders, needs a role that may edit; publishing needs the
+links and coders, needs a role that may edit; publishing needs the
 job's admin role.
 
 A codebook is the same JSON as in the codebook editor's JSON view: write it
@@ -131,17 +131,22 @@ for (batch in split(units, ceiling(seq_along(units) / 200))) {
 }
 ```
 
-A unitset is a name with a list of AnnoTinder's own unit ids (`id` in the
-response to the upload, or from `GET /job/<id>/units`), in the order coders
-should get them:
+A [set group](unitsets.md) is written as a whole: `PUT /job/<id>/sets/<group>`
+replaces the group's sets. Each set is a name with a list of AnnoTinder's
+own unit ids (`id` in the response to the upload, or from
+`GET /job/<id>/units`); with `"ordered": true` coders get them in that
+order:
 
 ```r
 uploaded <- api(sprintf("job/%d/units", job)) |> req_perform() |> resp_body_json()
 ids <- sapply(uploaded, \(u) u$id)
-api(sprintf("job/%d/unitsets", job)) |>
-  req_body_json(list(name = "pilot", unitIds = as.list(head(ids, 50)))) |>
+api(sprintf("job/%d/sets/pilot", job)) |>
+  req_method("PUT") |>
+  req_body_json(list(sets = list(list(name = "pilot", unitIds = as.list(head(ids, 50)))))) |>
   req_perform()
 ```
+
+A group can't be deleted while the published or latest codebook uses it.
 
 ## Downloading answers
 

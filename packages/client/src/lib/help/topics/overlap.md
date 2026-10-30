@@ -2,42 +2,44 @@
 title: Overlap: units every coder codes
 section: Units and distribution
 order: 6
-summary: An overlap set that every coder codes besides their own units - for intercoder reliability and gold units.
+summary: Overlap units that every coder codes besides their own set - for intercoder reliability and gold units.
 ---
 
-An **overlap** is a unitset that every coder codes in full, besides their
-own units. When coders divide the work (each their own part, or a shared
-queue), the overlap gives you units that *all* of them coded, so you can
-compare them: for intercoder reliability, or to check coders against units
-with a known answer.
+An **overlap** is a set of units that every coder codes in full, besides
+their own units. When coders divide the work (each their own set, or a
+shared queue), the overlap gives you units that *all* of them coded, so you
+can compare them: for intercoder reliability, or to check coders against
+units with a known answer.
 
-You turn it on per loop (or per coder group) on the loop's **Units** tab:
-tick **Overlap: a set every coder codes too**.
+The overlap of a group is its set `_overlap` (see
+[Sets and set groups](unitsets.md)). A loop that **assigns sets** of the
+group, or a **crowd coding** queue over one of its sets, can add it.
 
 ## Setting it up
 
-1. Make the overlap set. The easiest way is **Split units into parts** on
+1. Make the overlap units. The easiest way is **Split units into sets** on
    the **Units** tab with an **overlap** of, say, 10%: it sets aside a random
-   `part_overlap` set and splits the rest into parts. See
-   [Unitsets](unitsets.md).
-2. In the unit loop, tick **Overlap: a set every coder codes too**, and type
-   the set's name under **Unitset** (it starts as `overlap`).
-3. Choose where the overlap units go, under **Placed**.
+   `_overlap` set and splits the rest into sets. Or give units the set
+   `_overlap` in a sets column of your CSV.
+2. In the unit loop, choose where the overlap units go, under **Overlap**.
+   With **Assign sets** this is required, so you decide on purpose: choose
+   **Disabled** for no overlap.
+3. Optionally, **Recommended**: how many overlap units you want. Publishing
+   warns when the group has fewer. **At most** limits how many a coder gets:
+   **the first ones**, or **a random draw** (the same units for every coder,
+   so they can be compared).
 
-The overlap set should not also be part of the coders' own units: a unit in
-both is coded only once per coder. Sets made by **Split units into parts**
-and **Divide units over coders…** keep them apart.
-
-The overlap works with every mode. It is most useful with **Assign
-sets**, **Assign sets by invitation link** and **Crowd coding**; with
-**Everyone codes everything** every coder already codes the same units.
+A unit in `_overlap` is not one of a coder's own units: it comes once, as
+overlap. With the overlap **Disabled**, the `_overlap` set plays no part. The
+loop's form warns when the overlap is on but the group has no `_overlap`
+units.
 
 ## Placement
 
 | Placed | What coders get |
 | --- | --- |
-| **Before the coder's units** | First all overlap units, then their own (the default) |
-| **After the coder's units** | First their own units, then the overlap units |
+| **First** | First all overlap units, then their own |
+| **Last** | First their own units, then the overlap units |
 | **Spread through them** | The overlap units evenly spread among their own units |
 
 With **Spread through them**, a coder with 100 own units and 4 overlap units
@@ -58,12 +60,12 @@ coder too.
   overlap units are coded throughout the session, when coders are fresh and
   when they are tired, so they represent the whole coding. Coders can't tell
   which units are being compared, so they can't take extra care with them.
-- **Before the coder's units** makes the overlap a calibration round: you can
+- **First** makes the overlap a calibration round: you can
   check the first codings of every coder early, and retrain coders before
   they do the bulk of the work. But reliability measured at the start, while
   coders are still learning, may be lower (or, if they are extra careful at
   the start, higher) than later on.
-- **After the coder's units** measures coders when they are most
+- **Last** measures coders when they are most
   experienced, but also most tired, and coders who stop early never reach
   the overlap.
 
@@ -72,11 +74,11 @@ coder too.
 A common design for a content analysis with student coders:
 
 1. **Pilot**: two or three coders code the same 50 units (**Everyone codes everything**,
-   with a `pilot` unitset). Compute reliability, discuss the disagreements, improve the
+   with a `pilot` set). Compute reliability, discuss the disagreements, improve the
    codebook and the coder instructions. Repeat if needed.
-2. **Main coding**: split the sample into a part per coder, plus an overlap
-   of about 10% (and at least 50 to 100 units). Every coder codes their part
-   and the overlap, spread through it.
+2. **Main coding**: split the sample into a set per coder, plus an overlap
+   of about 10% (and at least 50 to 100 units). **Assign sets**, with the
+   overlap spread through them.
 3. **Report** the reliability on the overlap units, such as Krippendorff's
    alpha, which compares all coders on the same units.
 
@@ -93,8 +95,8 @@ coders agree, which hides disagreement.
 ## Gold units
 
 **Gold units** are units with a known answer, for example coded by the
-research team or experts. Put them in the overlap set, and every coder codes
-them. In the analysis, compare each coder's answers to the known answers to
+research team or experts. Put them in the `_overlap` set, and every coder
+codes them. In the analysis, compare each coder's answers to the known answers to
 see which coders are accurate, to exclude coders who clearly didn't do the
 task (common in crowd coding), or to train coders before the real work.
 

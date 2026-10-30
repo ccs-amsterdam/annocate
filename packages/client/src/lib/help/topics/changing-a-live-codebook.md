@@ -36,9 +36,9 @@ Two rules explain most of it:
 | **Conditions or order** changed | Stay finished | Follow the new codebook |
 | **Distribution** changed (the loop's **Units** tab) | Coders keep the units they were given, as long as the loop still hands out those units in the same way; otherwise they are routed again (see [Different units for different coders](coder-groups.md#routing-is-sticky)) | The new rules apply |
 
-Units and unitsets are not part of the codebook: units you upload and sets
+Units and sets are not part of the codebook: units you upload and sets
 you make while coding runs are handed out right away, without a new version
-(see [Unitsets](unitsets.md)).
+(see [Sets and set groups](unitsets.md)).
 
 The publish dialog warns about removed option values and changed answer
 types, before you publish. After publishing, it warns if a loop gained
@@ -52,7 +52,7 @@ the new answer, so it counts as unfinished: in the **Overview** progress,
 on the **Coders** tab, and for handing out units.
 
 - In loops where each coder has their own units (**Everyone codes everything**, **Assign
-  sets**, **Assign sets by invitation link**), these units come earlier in the
+  sets**), these units come earlier in the
   coder's order, so they come back first, before new units. The coder sees
   their earlier answers and only answers the new question.
 - In a shared queue (**Crowd coding**), they go back into the

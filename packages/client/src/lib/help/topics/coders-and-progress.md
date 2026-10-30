@@ -25,17 +25,17 @@ every 10); for the full data, download the results.
 | **Draft** | Your unpublished changes, if any |
 
 Changes reach coders right away: after you publish, upload or replace
-units, change unitsets or reset answers, coders get them with the next
+units, change sets or reset answers, coders get them with the next
 units they load (units already loaded ahead stay as they were).
 
 ### Numbers
 
 | Tile | Big number | Below it |
 | --- | --- | --- |
-| **Units** | Units in the job | The number of unitsets |
+| **Units** | Units in the job | The number of set groups |
 | **Coders started** | Coders who answered at least one question (assigned values don't count) | All coders who opened a link, and how many were active in the last 24 hours |
 | **Finished codings** | Units finished, counted per coder: a unit two coders finished counts twice | All answers given, and when the last one was |
-| **Open invitations** | Invitations that are not revoked or used up | All invitations |
+| **Active links** | Links that are not revoked, retired or used up | All links |
 
 Click a tile to go to the tab with the details.
 
@@ -48,7 +48,7 @@ came in.
 
 ### Progress
 
-Per unit loop, and per unitset within it, a bar with the number of
+Per unit loop, and per set within it, a bar with the number of
 **complete** units out of all units, and the number of coders who were
 given units from it. What *complete* means depends on how the loop hands
 out units (see [Handing out units](unit-distribution.md)):
@@ -56,22 +56,22 @@ out units (see [Handing out units](unit-distribution.md)):
 - **Crowd coding**: the unit was coded by enough coders (or
   enough agreed), so it goes to no one else. The bar reaching the end means
   the job is done.
-- **Everyone codes everything**, **Assign sets** and **Assign sets by invitation link**: every
-  coder who got this unitset finished the unit. A coder who stopped halfway
+- **Everyone codes everything** and **Assign sets**: every
+  coder who got this set finished the unit. A coder who stopped halfway
   keeps the bar from filling up, so read it together with the Coders tab.
 
-A unitset appears here once the first coder was given units from it; a loop
+A set appears here once the first coder was given units from it; a loop
 over all units of the job shows *all units*. Progress is counted for
 the live codebook version.
 
 ## The Coders tab
 
-Every coder who opened an invitation link, most recently active first:
+Every coder who opened a link, most recently active first:
 
 | Column | Shows |
 | --- | --- |
 | **Coder** | The participant id, or a number if they have none |
-| **Invitation** | The label of the invitation they came in with |
+| **Invitation** | The label of the link they came in with |
 | **Started** | When they first opened the link |
 | **Last active** | When they last gave an answer |
 | **Answers** | All their answers: one per question (per unit, in loops), including questions outside unit loops and questions a condition skipped |
@@ -152,12 +152,12 @@ that coders had finished unfinished again until they answer it (see
 When you try the job in **Preview**, you are a coder too, but nothing you
 do is stored: previews don't appear on these tabs or in the results, and
 they don't take units from shared queues. To test the real thing, use a real
-invitation link, and leave those test sessions out of your analysis.
+link, and leave those test sessions out of your analysis.
 
 ## More detail
 
 For anything these tabs don't show, download the results (see
 [Downloading results](results.md)): `coders.csv` has a row per coder with
-their invitation, participant id, start and last activity, how their
+their link, participant id, start and last activity, how their
 session ended, units finished per loop, and their answers outside loops;
 `annotations.csv` has every answer.

@@ -16,7 +16,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 | Endpoint | | Request | Response |
 |---|---|---|---|
 | [getSession](#getsession) | `GET /session` | – | `SessionResponseSchema` |
-| [getNextUnits](#getnextunits) | `GET /loop/:loop/next?count=&branch=&unitsets=` | – | `NextUnitsResponseSchema` |
+| [getNextUnits](#getnextunits) | `GET /loop/:loop/next?count=&branch=` | – | `NextUnitsResponseSchema` |
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
 | [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | – |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
@@ -36,19 +36,23 @@ server sends no CORS headers for these paths.
 Headers:
 
 - `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
-- `x-invite-secret` from the URL: create the coder on first use;
-- `x-url-params`: the page's other query parameters. They hold the
-  participant id and the invite's required parameters (stored on the coder
-  as `$session` values; a missing or invalid one is 400 `url_param_missing`
-  / `url_param_invalid`) and `url_param` auto variables. The participant id
-  is also part of the device's key for the session (a device keeps a
-  session per participant id);
+- `x-invite-secret` from the URL (the link): create the coder on first
+  use. A retired link (no longer part of the published design) is 403
+  `link_inactive` for new sessions;
+- `x-url-params`: the page's other query parameters. They hold the URL
+  parameters the codebook's Session item declares, its participant id
+  parameter, and the optional `source` (stored on the coder as `$session`
+  values, with the link's own parameter values; at most 256 characters
+  each; a missing or invalid one is 400 `url_param_missing` /
+  `url_param_invalid`). The participant id is also part of the device's key
+  for the session (a device keeps a session per participant id);
 - `x-new-session: 1` (first request only): start another session for a
   participant that already has one;
 - the login cookie (`annotinder_session`, from `/auth/login`): read only to
   link the session to its email once, or to find the email's session on a
   new device (`coder-identity.md` §5); 401 `auth_required` where a login is
-  required, 403 `email_not_invited` for a login not on the invite's list;
+  required, 403 `email_not_invited` for a login not on the link's list, or
+  (sets assigned by email) not among the group's set names;
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
 **New codebook versions.** `GET /session` returns the deployment's
@@ -74,12 +78,12 @@ use. `login`: the email of the login the session belongs to, or null;
 `canLogIn`: the invite offers a login the coder hasn't used. `frozen`: the
 coder-level answers that can't change any more, because the coder coded
 units in a loop that depends on them (contracts `loopDependencies`).
-Assigns the coder's `auto` variables they don't have yet (from the page's
-URL parameters, `x-url-params`, for `url_param` ones).
+Assigns the coder's `auto` variables they don't have yet (`random` or
+`balanced`).
 
 ### getNextUnits
 
-`GET /loop/:loop/next?count=<k>&branch=<i>&unitsets=<name>&unitsets=<name>` → `NextUnitsResponseSchema` (`{ units }`)
+`GET /loop/:loop/next?count=<k>&branch=<i>` → `NextUnitsResponseSchema` (`{ units }`)
 
 `:loop` is the loop's position in the codebook version the coder runs
 (contracts `unitLoops`: `1`, `2`, ...); loops have no name. The same goes for
@@ -95,14 +99,14 @@ Empty: the coder is done with the loop. 409 while the job is paused
 (`active: false`).
 
 The client chooses the branch (`NextUnitQuerySchema`): the index of the
-first branch in the loop's `units` whose `when` holds, and its unitset
-names with `$var` references filled in (`branchUnitsets`: its own set, then
-the overlap; empty where the server picks the set, in `sets` and
-`invitation` mode). The server checks them (400 if the names don't fit that
-branch, 409 if a unitset doesn't exist) and stores the routing; afterwards the parameters
-are ignored (routing is sticky, `architecture.md` §6.1). Without them, a
-loop with a single unconditional branch without references routes by
-itself; other loops answer 409 with code `branch_required`.
+first branch in the loop's `units` whose `when` holds. The server picks the
+set (the branch's fixed set, or in `assign` mode a drawn set or the one a
+session value names; 400 for an unknown branch, 409 if a set doesn't
+exist) and stores the routing (`{ set: "group/set", at }`); afterwards the
+parameter is ignored (routing is sticky, `architecture.md` §6.1). Without
+it, a loop with a single unconditional branch routes by itself; other loops
+answer 409 with code `branch_required`. A coder whose session value names
+no set of the group gets no units in the loop.
 
 ### getLoopUnit
 

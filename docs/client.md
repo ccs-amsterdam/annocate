@@ -248,7 +248,7 @@ as in SPSS or Stata value labels:
 | `scale` | `items` rated on the same ordinal `options` (a Likert battery) | `values: [{ item, value }]`, one per item |
 | `annotinder` | swipe a card: 2 or 3 options, in the order left, right, up | `values: [{ value }]` |
 | `confirm` | a button | nothing besides `done` |
-| `auto` | assigned, not asked (random, balanced, invite, URL parameter) | `values: [{ value }]` |
+| `auto` | assigned, not asked (random or balanced) | `values: [{ value }]` |
 | `span` | select text in the unit (loops only) | `spans: [{ id, field, value, slices }]` |
 | `relation` | link two spans (loops only) | `relations: [{ id, fromId, toId, value }]` |
 
@@ -338,6 +338,14 @@ seconds). The server stores the outcome; the session then refuses units and
 answers (409 `session_ended`), and a reload shows the ending again (a
 closed session: 409 `session_closed`, `coder-identity.md` §9).
 
+### Session item
+
+The codebook's `session` item (at most one, always first) is never shown
+to coders: it declares the session's link and URL parameters and the
+participant id's URL parameter (`architecture.md` §7). The server reads
+them when a session starts; the client only sees the values, as
+`$session.<name>`. The editor's form is `SessionItemForm.tsx`.
+
 ## 5. Scripting sandbox: QuickJS
 
 Script conditions and `{{...}}` template values are plain JavaScript
@@ -361,7 +369,7 @@ the server is only told the chosen branch (`architecture.md` §6.1).
 ### References and conditions
 
 One reference syntax is used everywhere: scripts, templates, question and
-instruction texts, conditions and unitset names
+instruction texts, conditions and redirect links
 (`contracts/src/codebook/references.ts`). The name says the shape:
 
 | Reference | Meaning | Questions |
@@ -373,7 +381,7 @@ instruction texts, conditions and unitset names
 | `$var.<q>.values` | all items' values, in item order | scale |
 | `$var.<q>.items.<item>.value`, `.label` | one item | scale |
 | `$var.<q>.answered` | answered and not skipped | any |
-| `$session.participant`, `$session.<name>` | the session's participant id and the URL parameters its invitation requires (strings; empty when absent) | |
+| `$session.participant`, `.source`, `.email`, `$session.<name>` | the session's participant id, `?source=`, login email, and the link and URL parameters the codebook's Session item declares (strings; empty when absent) | |
 
 Using `.value` on a multiple-answer question or `.values` on a single one
 is a validation error, and so is the old `.code`. A numeric answer's label
@@ -420,8 +428,9 @@ question exists and comes before this point (not the question itself, not
 inside the condition's own children, not in another loop); the property or
 method fits its type; `$unit` and snippets (`[[name]]`) only inside a loop (unknown
 snippets are an error; unknown `$unit` fields are a warning in the editor, once the
-job has units); branch `when`, unitset names and end item redirect URLs
-only use coder-level `$var` refs from before the loop; span fields shown
+job has units); branch `when` and end item redirect URLs
+only use coder-level `$var` refs from before the loop (and `$session`
+names the Session item declares, or built-in ones); span fields shown
 as plain text, as described in §3. In simple conditions the helper arguments are checked too:
 their number, and that they are values of the question's options (numeric:
 numbers within its range). In advanced scripts references are checked,
@@ -477,11 +486,11 @@ from the Preview Job button. It uses a `ResearcherApi`
     question on screen (for `::: from`), and answer pickers for the
     questions with options the layout uses (for `::: if` and values). The tree shows
     questions with the icon of their answer type, unit loops with their
-    unitsets (or "n branches"), and conditions by their condition, or by
+    set and mode (or "n coder groups"), and conditions by their condition, or by
     their optional `label`. Conditions and unit loops have no name
     (names of questions are variables, of end items the stored way a
     session ended): a loop is identified by its position and shows its
-    label, or "Unit loop" (with its unitsets next to it; messages and
+    label, or "Unit loop" (with its set next to it; messages and
     exports, which have no tree, say "Unit loop <n>", `architecture.md`
     §6.1). New loops and conditions start empty.
     Adding: a row's + (on hover) adds an item below it: after an item, at
@@ -541,10 +550,11 @@ from the Preview Job button. It uses a `ResearcherApi`
   Unit loops have two tabs (`UnitLoopForm.tsx`), Layout first; a loop's
   row in the tree has a button for each, which opens the loop on it
   (`codebookEditor/loopTab.ts`). **Units**: per branch
-  which units coders get (All units, Units shared among coders, One set per
-  coder, The invitation's units; `architecture.md` §6.1) with that mode's
-  settings, an optional overlap set, and the loop's order. A unitset field
-  is empty for all units. "Different units for different coder groups"
+  which units coders get (Everyone codes everything, Crowd coding, Assign
+  sets; `architecture.md` §6.1) with that mode's settings (All units or a
+  set; for Assign sets the group and where a coder's set comes from), the
+  overlap (the group's `_overlap` units: first, last, spread or disabled),
+  and the loop's order. "Different units for different coder groups"
   turns on branches, where every branch but the last has a condition
   ("if", "else if") and the last is "otherwise". **Layout**: the template,
   in Monaco (lazy, as the JSON editors: `jsonEditor/MonacoTemplate.tsx`)
@@ -628,40 +638,41 @@ from the Preview Job button. It uses a `ResearcherApi`
   QuickJS syntax check. Validation messages (errors red, warnings amber)
   show under the condition, template and question fields; only errors
   block saving.
-- **Units** (`units/`): units and unitsets on one page. CSV upload
+- **Units** (`units/`): units and their sets on one page. CSV upload
   (`UploadUnits.tsx`, with a small built-in parser, `admin/csv.ts`): choose
   or drop a file, pick the id column, then per column whether it is
   uploaded and as which field, and its type (inferred from the values;
-  checked before uploading, with the values that don't fit). A column named
+  checked before uploading, with the values that don't fit), or the type
+  **sets**: a set group named after the column (cells `s1`, `s1;s2`,
+  `s1#3`), which replaces that group. A column named
   like a field of the job is linked to it and keeps its type; "Use column
   names" gives every other column its own name, made valid
   (`toUnitFieldName`). Fields of the job that no column gives are empty, and
-  new names add fields. A preview shows the first units as stored; a paged table with a column per field and unitset
-  badges; pick a set to see its units in order; make a set from selected
-  units, or split units into parts (done client-side with `splitUnits`).
-  Selected units can be added to a set or removed from the shown one, and
-  their answers reset; a set can be renamed. Clicking a unit's id shows it
+  new names add fields. A preview shows the first units as stored; a paged table with a column per field and per set
+  group; pick a set of a group to see its units in order (`?group=&set=`);
+  "Split units into sets" makes a group with `s1..sN` and `_overlap` (done
+  client-side with `splitIntoSets`, `SplitIntoSets.tsx`). Selected units
+  can be put in a set or removed from the shown one, and their answers
+  reset; a group can be deleted while no codebook uses it. Clicking a unit's id shows it
   in full.
   A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The codebook editor warns about `$unit.x`
   references to fields that don't exist (`codebook/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
-  codebook versions (open them in the editor), unit/coder/invitation counts,
+  codebook versions (open them in the editor), unit/coder/link counts, set groups with their sets' sizes,
   answers per day (`GET /overview`), progress per loop
   (`GET /deployment/status`). `LiveControls.tsx`: pause or resume.
 - **Settings** (`JobSettingsPage`): `TeamSettings.tsx`, who has access and
   their role (the list keeps at least one admin), and the job settings
   (rename, archive, keep sessions open, delete).
-- **Invitations**: create links (login requirement, participant id fixed
-  or from a URL parameter with a pattern, other required URL parameters,
-  allowed emails, preset variables, max uses, units) and a table of all of them with uses, units
-  and status; revoke (no new coders), or delete while unused. An
-  invitation's units are what its coders get in loops with "The
-  invitation's units" (it warns about invitations without units when the
-  live codebook has such a loop). "Divide units over coders"
-  (`DivideUnits.tsx`) splits all units or a unitset into one part per named
-  coder plus an overlap set, and makes a personal invitation per coder with
-  their part.
-- **Coders**: per coder the invitation, started, last active, answers,
+- **Invitations** (`InvitationsPanel.tsx`): the links publishing made,
+  one per combination of the codebook's link parameter values, with their
+  values, uses and status, and the URL parameters a link takes (copied
+  with placeholders). Per link: label, login requirement, allowed emails,
+  max uses and a fixed participant id; revoke (no new coders) or a new
+  secret. Retired links are listed separately. There is no "create": the
+  codebook's Session item (`SessionItemForm.tsx`) declares the link and URL
+  parameters and the participant id's URL parameter.
+- **Coders**: per coder the link, started, last active, answers,
   finished units per loop of the live codebook, and how the session ended
   at an `end` item or by quitting (`ended`). Open deletion requests are
   listed first (delete now or later), and deleted coders in a log. Per coder, or by participant ids or

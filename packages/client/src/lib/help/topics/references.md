@@ -2,7 +2,7 @@
 title: Referring to answers and unit data
 section: Codebook
 order: 3
-summary: Use a unit's data ($unit), earlier answers ($var) and session values ($session) in texts, layouts, conditions, unitset names and redirect links.
+summary: Use a unit's data ($unit), earlier answers ($var) and session values ($session) in texts, layouts, conditions, coder groups and redirect links.
 ---
 
 A **reference** is a name that AnnoTinder replaces with a value while the
@@ -114,12 +114,14 @@ order.
 
 | Reference | Gives |
 | --- | --- |
-| `$session.participant` | The participant id, if the invitation gives one |
-| `$session.<name>` | A URL parameter the invitation requires, e.g. a panel's study id |
+| `$session.participant` | The participant id, if the link gives one |
+| `$session.source` | The `?source=` of the link, if given |
+| `$session.email` | The email the coder logged in with, if any |
+| `$session.<name>` | A link or URL parameter of the codebook's Session item, e.g. a condition per link or a panel's study id |
 
-They come from the invitation, not the codebook, so the editor can't check
-the names: a session without the value gives an empty text. See
-[Online panels and crowd coding](online-panels.md#values-from-the-link).
+The codebook's **Session** item declares the parameters, so the editor
+checks the names. A session without a value (such as `source`) gives an
+empty text. See [Session parameters](session-parameters.md).
 
 ## Where references work
 
@@ -130,11 +132,9 @@ the names: a session without the value gives an empty text. See
 | Conditions (condition items, `::: if`) | In a loop | Yes | Yes | Yes (a condition is a script) |
 | End item messages | In a loop | Yes | Yes | Yes |
 | End item redirect links | No | Yes | Yes | No |
-| Unitset names of a loop | No | Coder-level questions only | Yes | No |
 | Coder group conditions of a loop | No | Coder-level questions only | Yes | Yes |
 
-Unitset names with a reference, such as `part_$var.slot.value`, give
-different coders different units: see
+Coder group conditions give different coders different units: see
 [Different units for different coders](coder-groups.md). In redirect links
 the values are URL-encoded: see [Ending a session](end-items.md).
 

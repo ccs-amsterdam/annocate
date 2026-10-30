@@ -2,7 +2,7 @@
 title: Handing out units
 section: Units and distribution
 order: 3
-summary: Which units each coder gets - the four modes, when to use each, and the order of units.
+summary: Which units each coder gets - the three modes, when to use each, and the order of units.
 ---
 
 Every unit loop says which units its coders get. Does every coder code
@@ -11,93 +11,87 @@ part? You set this on the loop's **Units** tab in the codebook editor, under
 **Who codes which units**.
 
 The codebook describes *how* units are handed out, never *which* units go to
-*whom* by id: it refers to [unitsets](unitsets.md) by name, and to coders
-only through their answers or invitations. That keeps a codebook shareable
-and the design easy to report.
+*whom* by id: it refers to [sets and set groups](unitsets.md) by name, and
+to coders only through their answers or session values. That keeps a
+codebook shareable and the design easy to report.
 
-## The four modes
+## The three modes
 
 | Mode | Who gets what | Typical use |
 | --- | --- | --- |
-| **Everyone codes everything** | Every coder codes every unit of a unitset | Small samples, reliability tests, survey experiments |
+| **Everyone codes everything** | Every coder codes every unit (of the job, or of one set) | Small samples, reliability tests, survey experiments |
 | **Crowd coding** | One queue for all coders: each unit until enough coders coded it | Large samples, crowd coding |
-| **Assign sets** | Each coder gets one of several unitsets | Dividing a sample into fixed parts |
-| **Assign sets by invitation link** | Each coder gets the unitset of their invitation link | Named coders, each with their own part |
+| **Assign sets** | Each coder gets one set of a group | Dividing a sample into fixed parts, a part per named coder |
 
-### All units
+### Everyone codes everything
 
-Every coder codes every unit of the **Unitset** you name. Leave the field
-empty for all units of the job; type or pick a name for a unitset (the field
-suggests the job's sets).
+Every coder codes every unit under **Units**: **All units** of the job, or
+one set of a group.
 
 Use it when every unit should be coded by every coder: a reliability test
 with three coders, a pilot, or a survey experiment in which each participant
-rates the same ten messages. It is also the mode for routing coders
-yourself, with a unitset name that depends on an answer (see
-[Different units for different coders](coder-groups.md)).
+rates the same ten messages. With [coder groups](coder-groups.md), each
+group can code its own set: the treatment group one set of messages, the
+control group another.
 
-### Units shared among coders
+### Crowd coding
 
-The units of the unitset form a queue that all coders draw from. Each unit
-is handed out until it is done, either when a number of coders coded it, or
-when a number of coders agree on a question, and then to no one else. Coders
-keep getting units until the queue is empty, or until they reach the
+The units (all, or one set) form a queue that all coders draw from. Each
+unit is handed out until it is done, either when a number of coders coded
+it, or when a number of coders agree on a question, and then to no one else.
+Coders keep getting units until the queue is empty, or until they reach the
 *at most* of **Units per coder**.
 
 Use it for large samples that need, say, one or two codings per unit, and
 for crowd coding, where you don't know in advance how many coders will come
 or how much each will do. The settings are explained in
-[Shared queues](shared-queues.md).
+[Shared queues](shared-queues.md). With a set, the queue can add its group's
+[overlap](overlap.md) units for every coder.
 
-### One set per coder
+### Assign sets
 
-Each coder gets one of the unitsets you tick under **Sets**. A new coder gets
-the set with the fewest coders so far (the first of those, when there is a
-tie). **All starting with…** ticks every set whose name starts with what you
-type, such as `part_`.
+Each coder gets one set of a **Group**: for example the group `parts` with
+the sets `s1` to `s4` made by **Split units into sets** (see
+[Sets and set groups](unitsets.md)). Under **A coder's set is** you choose
+how:
 
-A coder counts for their set once they finished it, and while they are
-active: when they started it, or finished a unit of it, in the last 24 hours.
-A coder who stops halfway and doesn't come back stops counting after a day,
-so their set is handed out again. When every set has a coder, the next coder
-gets a second copy of a set, and so on: with more coders than sets, every
-set gets coded more than once.
+| Choice | A coder gets |
+| --- | --- |
+| **Drawn: the set with the fewest coders** | The set with the fewest coders so far (the first of those on a tie) |
+| **Drawn at random** | A set at random |
+| **Named by the link or URL** | The set a [session parameter](session-parameters.md) with the group's sets names: e.g. a link per set |
+| **The coder's participant id** | The set named after their participant id |
+| **The coder's login email** | The set named after their email: only those emails can code |
 
-Use it with sets made by **Split units into parts** (see
-[Unitsets](unitsets.md)): for example 4 parts of 225 articles for 4 student
-assistants, without having to say who gets which part.
+With **the fewest coders**, a coder counts for their set once they finished
+it, and while they are active: when they started it, or finished a unit of
+it, in the last 24 hours. A coder who stops halfway and doesn't come back
+stops counting after a day, so their set is handed out again. With more
+coders than sets, every set gets coded more than once.
 
-> **All starting with…** ticks every set with that start, except one ending
-> in `_overlap` (such as `part_overlap`): that one belongs under **Overlap**,
-> not among the coders' sets.
+To give each set its own link, so *you* decide who gets which set (a few
+expert coders, each their own part), add a **link parameter** with the
+group's sets to the codebook's Session item, and choose **Named by the link
+or URL**: publishing makes a link per set, and a new set gets its link right
+away. A coder whose value names no set gets no units in this loop.
 
-### The invitation's units
+With the **login email**, the group's set names are email addresses (say a
+sets column in your CSV with `alice@uni.nl`, `bob@uni.nl`): only these
+people can code, each their own set, logged in on any device. Others are
+told their email address has no access to the study.
 
-Each coder gets the unitset of the invitation link they came in with. You
-set it per invitation, under **Units** on the **Invitations** tab, or let
-**Divide units over coders…** make a set and a personal link per coder. See
-[Invitations](invitations.md).
-
-Use it when you know your coders: *Alice codes these 200 articles, Bob those*.
-Who gets what is stored with the invitations, not in the codebook. A coder
-whose invitation has no units gets no units in this loop; the
-**Invitations** tab warns about such links. A preview uses the units of the
-first invitation that has some.
+**Assign sets** also asks for the **Overlap**: the group's `_overlap` units
+every coder codes besides their set, first, last or spread through their
+units, or **Disabled**. You choose it on purpose. See [Overlap](overlap.md).
 
 ## Choosing a mode
 
-- **Everyone codes the same units?** All units.
+- **Everyone codes the same units?** Everyone codes everything.
 - **Each unit coded by a fixed number of coders, with coders coming and
-  going?** Units shared among coders.
-- **Fixed parts, handed out in turn?** One set per coder.
-- **Fixed parts for named people?** The invitation's units.
-
-The difference between the last two: with **Assign sets** AnnoTinder
-decides who gets which part, and fills the parts in turn; with
-**Assign sets by invitation link** you decide, through the links you send.
-
-Any mode can add an **overlap**: a set that every coder codes besides their
-own units, for intercoder reliability. See [Overlap](overlap.md).
+  going?** Crowd coding.
+- **Fixed parts, handed out in turn?** Assign sets, drawn.
+- **Fixed parts for people you know?** Assign sets, named by the link (or
+  by the login email).
 
 ## Order
 
@@ -105,7 +99,7 @@ Under **Order** you choose in which order a coder gets their units:
 
 | Order | What coders get |
 | --- | --- |
-| **In unitset order** | The units in the order of the unitset (for all units: the order they were uploaded). Every coder gets the same order. |
+| **In set order** | The units in the order of the set (for all units: the order they were uploaded). Every coder gets the same order. |
 | **Random (each coder their own order)** | Every coder gets the units in their own random order. |
 
 A random order is fixed per coder: after a reload, or the next day, they
@@ -119,14 +113,14 @@ Which to choose:
   can bias the results. In a random order, these order effects average out
   over units. In a survey experiment, random order is how you counterbalance
   the order of the stimuli.
-- **In unitset order** is right when the order matters: units that tell a
+- **In set order** is right when the order matters: units that tell a
   story, a thread of messages, a training set that goes from easy to hard,
   or when you want every coder to see exactly the same sequence. You set the
-  order by the order of the unitset.
+  order by the order of the set (`s1#1`, `s1#2`, ... in a sets column).
 
 In a shared queue, the queue's priority comes first (units that need
 codings), and the order decides among units that are equally far. With
-**In unitset order**, coders then work through the queue in the same order,
+**In set order**, coders then work through the queue in the same order,
 side by side; with **Random**, they spread over it.
 
 ## Coders in different groups
@@ -145,5 +139,5 @@ message. That also happens when a coder gets no units at all, for instance
 when no group matches them.
 
 > Check the distribution in the preview before you publish: a preview codes
-> with your real units and unitsets, but stores nothing, and it doesn't use
+> with your real units and sets, but stores nothing, and it doesn't use
 > up units of a shared queue.

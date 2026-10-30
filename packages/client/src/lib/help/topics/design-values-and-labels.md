@@ -26,8 +26,8 @@ that works with answers uses the value:
   to them (on by default) add the label the coder saw.
 - **Conditions**: a rule such as *topic is Politics* is stored as a
   comparison with the value, `$var.topic.is("politics")`.
-- **Assigned groups and coder routing**: `$var.group.value` in a unitset name
-  uses the value.
+- **Assigned groups and coder routing**: a coder group's condition, such as
+  `$var.group.is("treatment")`, compares the value.
 
 Labels are only what coders see, and what templates show when you write
 `$var.topic.label` (see [Referring to answers and unit data](references.md)).

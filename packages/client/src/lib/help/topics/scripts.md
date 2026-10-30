@@ -36,8 +36,8 @@ cases; copy and adapt them.
 - As the condition of a `::: if` block in a template (see
   [Showing parts conditionally](template-blocks.md)).
 
-Scripts can't be used in unitset names or redirect links: those take plain
-`$var` references only.
+Scripts can't be used in redirect links: those take plain references
+only.
 
 ## What a script can use
 
@@ -49,8 +49,8 @@ A script sees three names, and nothing else:
   `$var.topic.value`, `$var.topics.labels`, `$var.age.answered` (see
   [Referring to answers and unit data](references.md)). An unanswered
   question is `null` (lists: an empty list `[]`).
-- `$session`: the values the invitation link carried, such as
-  `$session.participant` (see [Online panels](online-panels.md)).
+- `$session`: the session's values, from its link or URL, such as
+  `$session.participant` (see [Session parameters](session-parameters.md)).
 
 The [helper methods](conditions.md#helper-methods) work in scripts too:
 `$var.age.gte(18)`, `$var.topics.has("sports")`.

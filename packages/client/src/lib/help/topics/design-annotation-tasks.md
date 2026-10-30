@@ -128,7 +128,7 @@ button to go on.
 1. **Preview** the codebook yourself, on your real units, at phone and desktop
    size. Nothing is stored. See [Preview, save and publish](previewing-and-publishing.md).
 2. **Pilot** with two or three coders on the same 30 to 50 units: a pilot
-   set that every coder codes in full (**Everyone codes everything**, with that set as unitset, see
+   set that every coder codes in full (**Everyone codes everything**, with that set, see
    [Intercoder reliability designs](overlap.md#intercoder-reliability-designs)).
    Talk through the
    disagreements and revise the definitions, not just the answers.
@@ -138,7 +138,7 @@ button to go on.
    gives a way to compute the size you need.
 4. **Keep checking during coding.** An overlap set spread through the units
    (placement **Spread through them**) shows whether coders drift apart over
-   time. **Before the coder's units** measures agreement at the start, when
+   time. Placement **First** measures agreement at the start, when
    coders are fresh but still learning.
 
 AnnoTinder doesn't compute reliability. Download the results and compute
@@ -157,14 +157,14 @@ the data harder to interpret. See
 - **Random order.** In the loop's **Order**, **Random (each coder their own
   order)** spreads order effects (learning, fatigue, anchoring on the first
   units) over all units, instead of piling them up on the units that come
-  first. Keep **In unitset order** when the order matters, for example
+  first. Keep **In set order** when the order matters, for example
   sentences of one text. See [Order](unit-distribution.md#order).
 - **Limit the work per coder.** Coding quality drops after an hour or so of
   concentrated work. Coders can stop and resume later, on the same device or
   another one, so long jobs can be spread over days. For crowd coding, cap
   the units per coder: **Units per coder, at most** in a
   [shared queue](shared-queues.md), or split the units into smaller
-  [unitsets](unitsets.md).
+  [sets](unitsets.md).
 - **Look at timing.** The download has the time each unit was first answered
   and last changed. Implausibly fast coders show up as tiny gaps between
   units.

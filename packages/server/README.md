@@ -2,8 +2,8 @@
 
 The annotinder server: one Hono app on one database.
 
-- the **researcher API** (`/job/...`): jobs, codebooks, units, unitsets,
-  invitations, publishing, progress. Used by the client's researcher UI, and
+- the **researcher API** (`/job/...`): jobs, codebooks, units, sets,
+  links (invites), publishing, progress. Used by the client's researcher UI, and
   by scripts (R, Python) and other systems (AmCAT). Spec:
   [docs/api/researcher.md](../../docs/api/researcher.md).
 - the **coder API** (`/d/<deploymentId>/...`): what coders' browsers call.

@@ -15,9 +15,8 @@ know in advance how many coders will come, or how many units each will do.
 Coders who do more simply code more units, and the queue makes sure the
 codings are spread over the units.
 
-You set it on the loop's **Units** tab: choose **Units shared among
-coders** under **Who codes which units**, and pick the **Unitset** (empty for
-all units).
+You set it on the loop's **Units** tab: choose **Crowd coding** under **Who codes which units**, and pick the
+**Units**: **All units**, or one set of a group.
 
 ## The settings
 
@@ -167,4 +166,4 @@ which every coder codes every unit:
   analysis.
 
 > Check progress on the **Overview** tab: under **Progress**, each loop and
-> unitset shows how many units are complete, and how many coders work on it.
+> set shows how many units are complete, and how many coders work on it.
