@@ -75,7 +75,7 @@ export interface LinkInfo {
   login: "none" | "optional" | "required";
 }
 
-/** Links, by secret, for a minute (read on every coder request). */
+/** Known links, by secret, for a minute (read on every coder request). */
 const links = new Map<string, { info: LinkInfo | null; until: number }>();
 
 /** The invite of a link, as far as `LinkInfo` goes; null for an unknown secret. */
@@ -88,7 +88,8 @@ export async function linkInfo(sql: Sql, secret: string): Promise<LinkInfo | nul
       [secret],
     );
     const login = !row ? "none" : row.auth === "required" || row.emails?.length ? "required" : row.auth === "optional" ? "optional" : "none";
-    cached = { info: row ? { participantParam: row.participant_param?.param ?? null, login } : null, until: Date.now() + 60_000 };
+    if (!row) return null; // not cached: anyone can send any secret
+    cached = { info: { participantParam: row.participant_param?.param ?? null, login }, until: Date.now() + 60_000 };
     if (links.size > 10_000) links.clear();
     links.set(secret, cached);
   }

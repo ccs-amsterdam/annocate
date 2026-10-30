@@ -25,7 +25,8 @@ export class Deployments {
   ) {}
 
   async get(deploymentId: string): Promise<DeploymentRuntime> {
-    const match = /^(\d+)(\.preview)?$/.exec(deploymentId);
+    // One spelling per job (no leading zeros): each id is a runtime in memory.
+    const match = /^([1-9]\d{0,9})(\.preview)?$/.exec(deploymentId);
     if (!match) throw new HttpError(404, `Unknown deployment '${deploymentId}'`);
     const now = this.options.now();
     // Idle deployments are forgotten; that includes this one, which then loads afresh.

@@ -37,6 +37,8 @@ export function coderApi(server: Server): Hono {
     const body = await parseBody(c, RedeemTransferSchema);
     const deploymentId = c.req.param("deployment")!;
     const runtime = await server.deployments.get(deploymentId);
+    // A suspended or deleted job (stamp changed in another process) takes no new devices.
+    await runtime.refresh();
     const device = readDevice(c) ?? newDeviceId();
     await runtime.redeemTransfer(
       body.token,
