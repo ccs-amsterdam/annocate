@@ -17,7 +17,8 @@ const csvRows = (csv: string) => csv.replace(/^﻿/, "").trim().split(/\r?\n/);
 
 test("a job from an example: the dialog, the overview note, and its results in the download", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "From an example" }).click();
+  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("menuitem", { name: /From an example/ }).click();
   await page.getByRole("button", { name: /Sentiment by swiping/ }).click();
   await page.getByRole("button", { name: "Create job" }).click();
   await expect(page.getByText(/Made from the example/)).toBeVisible();
@@ -34,7 +35,8 @@ test("a job from an example: the dialog, the overview note, and its results in t
 test("your first job, as the help describes it: units, a codebook, publish, invite, code", async ({ page, request, browser }) => {
   // 1. Create a job
   await page.goto("/");
-  await page.getByRole("button", { name: "Create new job" }).click();
+  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("menuitem", { name: /Empty job/ }).click();
   await page.getByPlaceholder(/Sentiment Analysis/).fill("News pilot");
   await page.getByRole("button", { name: "Create Job" }).click();
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();

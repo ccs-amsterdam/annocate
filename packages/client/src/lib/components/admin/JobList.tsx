@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { JobResponse, MeResponse } from "@annotinder/contracts";
 import type { ServerApi } from "../../api/serverApi";
 import { ResearcherAccess } from "./account/ResearcherAccess";
@@ -6,7 +6,8 @@ import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcher
 import { useCreateJobMutation, useDeleteJobMutation, useJobsQuery } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield, Sparkles, Wand2 } from "lucide-react";
+import { Plus, Search, FolderOpen, Trash2, Calendar, Archive, Shield, Sparkles, Wand2, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ExamplesDialog } from "./ExamplesDialog";
 import { SetupWizard } from "./SetupWizard";
 import { HelpButton } from "../../help/HelpButton";
@@ -88,7 +89,7 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
             </HelpButton>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {me?.role === "admin" && onOpenServerAdmin && (
             <Button variant="outline" onClick={onOpenServerAdmin} className="w-fit gap-2">
               <Shield className="h-4 w-4" />
@@ -96,22 +97,7 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
             </Button>
           )}
           {canCreate && (
-            <Button variant="outline" onClick={() => setShowWizard(true)} className="w-fit gap-2">
-              <Wand2 className="h-4 w-4" />
-              Guided setup
-            </Button>
-          )}
-          {canCreate && (
-            <Button variant="outline" onClick={() => setShowExamples(true)} className="w-fit gap-2">
-              <Sparkles className="h-4 w-4" />
-              From an example
-            </Button>
-          )}
-          {canCreate && (
-            <Button onClick={() => setShowCreateModal(true)} className="w-fit gap-2 shadow-sm">
-              <Plus className="h-4 w-4" />
-              Create new job
-            </Button>
+            <CreateJobMenu onWizard={() => setShowWizard(true)} onExample={() => setShowExamples(true)} onEmpty={() => setShowCreateModal(true)} />
           )}
         </div>
       </div>
@@ -349,5 +335,43 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
         </div>
       )}
     </div>
+  );
+}
+
+/** "Create new job": the guided setup, an example, or an empty job. */
+function CreateJobMenu({ onWizard, onExample, onEmpty }: { onWizard: () => void; onExample: () => void; onEmpty: () => void }) {
+  const [open, setOpen] = useState(false);
+  const item = (icon: ReactNode, title: string, text: string, onClick: () => void) => (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={() => {
+        setOpen(false);
+        onClick();
+      }}
+      className="flex w-full items-start gap-2.5 rounded-md p-2 text-left hover:bg-muted"
+    >
+      <span className="mt-0.5 text-primary">{icon}</span>
+      <span>
+        <span className="block text-sm font-medium text-foreground">{title}</span>
+        <span className="block text-xs text-muted-foreground">{text}</span>
+      </span>
+    </button>
+  );
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button className="w-fit gap-2 shadow-sm">
+          <Plus className="h-4 w-4" />
+          Create new job
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-1.5" role="menu">
+        {item(<Wand2 className="h-4 w-4" />, "Guided setup", "Units, who codes what and your questions, step by step.", onWizard)}
+        {item(<Sparkles className="h-4 w-4" />, "From an example", "A ready job to try and change.", onExample)}
+        {item(<Plus className="h-4 w-4" />, "Empty job", "Start from scratch in the editor.", onEmpty)}
+      </PopoverContent>
+    </Popover>
   );
 }

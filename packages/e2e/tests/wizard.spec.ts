@@ -7,7 +7,8 @@ import { api } from "./helpers";
 
 test("annotation with an experiment: a set of units per condition, questions before, per unit and after", async ({ page, request }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Guided setup" }).click();
+  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Job name").fill("Framing study");
   // Annotate is on; add the experiment
   await page.getByRole("button", { name: /Experiment/ }).click();
@@ -72,7 +73,8 @@ test("annotation with an experiment: a set of units per condition, questions bef
 
 test("a survey alone: questions by name, no units", async ({ page, request }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Guided setup" }).click();
+  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Job name").fill("Opinion survey");
   await page.getByRole("button", { name: /Annotate units/ }).click();
   await page.getByRole("button", { name: /Ask questions/ }).click();
@@ -88,7 +90,8 @@ test("a survey alone: questions by name, no units", async ({ page, request }) =>
 
 test("crowd coding with an overlap; the loop's units are set by the wizard", async ({ page, request }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Guided setup" }).click();
+  await page.getByRole("button", { name: /Create new job/ }).click();
+  await page.getByRole("menuitem", { name: /Guided setup/ }).click();
   await page.getByLabel("Job name").fill("Crowd pilot");
   await page.getByRole("button", { name: "Next" }).click();
   await page.locator("input[type=file]").setInputFiles({
