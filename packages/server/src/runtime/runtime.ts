@@ -624,40 +624,54 @@ export class DeploymentRuntime {
   private async pick(store: Store, coder: Coder, info: LoopInfo, route: Route, count: number): Promise<Unit[]> {
     const shared = route.branch.mode === "shared";
     // A shared queue counts every coder; otherwise only the coder's own codings matter.
-    const [rows, leases] = await Promise.all([
-      store.listCodings(shared ? { loop: info.key } : { loop: info.key, coderId: coder.coderId }),
-      shared ? store.listLeases({ loop: info.key }) : Promise.resolve([]),
-    ]);
+    // Leases first: finishing a unit (not under this lock) adds the coding and
+    // drops the lease, so a coding finished in between is still seen, as a coding.
+    const leases = shared ? await store.listLeases({ loop: info.key }) : [];
+    const rows = await store.listCodings(shared ? { loop: info.key } : { loop: info.key, coderId: coder.coderId });
     const codings = DeploymentRuntime.codingsOf(rows);
     const { main, overlap } = this.pools(route, codings, leases);
-    const picked: Unit[] = [];
-    while (picked.length < count) {
-      const now = this.options.now();
-      const next = pickNext(main, overlap, coder.coderId, codings, {
-        order: info.loop.order ?? "sequential",
-        maxUnits: route.branch.mode === "shared" ? route.branch.maxUnits : undefined,
-        minUnits: route.branch.mode === "shared" ? route.branch.minUnits : undefined,
-        seed: this.spec.jobId * 1000,
-        now,
-      });
-      if (!next) break;
-      const unit = (await this.getUnits([next.unitId], store)).get(next.unitId);
-      if (!unit) {
-        // Deleted since the spec was read: skip it.
-        main.removeUnit(next.unitId);
-        overlap?.pool.removeUnit(next.unitId);
-        continue;
+    // Picks ids first, then reads them in one query: a unit deleted since the
+    // spec was read is dropped from the pools and another one picked.
+    const picked: { unitId: number; pool: UnitPool }[] = [];
+    const units = new Map<number, Unit>();
+    for (;;) {
+      const wanted: typeof picked = [];
+      while (picked.length + wanted.length < count) {
+        const now = this.options.now();
+        const next = pickNext(main, overlap, coder.coderId, codings, {
+          order: info.loop.order ?? "sequential",
+          maxUnits: route.branch.mode === "shared" ? route.branch.maxUnits : undefined,
+          minUnits: route.branch.mode === "shared" ? route.branch.minUnits : undefined,
+          seed: this.spec.jobId * 1000,
+          now,
+        });
+        if (!next) break;
+        if (next.pool.rule) next.pool.take(coder.coderId, next.unitId, now);
+        // As if finished, for the rest of this batch: the next pick moves on (and counts it for `maxUnits` and the overlap's place).
+        codings.record(coder.coderId, next.unitId, {}, now);
+        wanted.push(next);
       }
-      if (next.pool.rule) {
-        next.pool.take(coder.coderId, next.unitId, now);
-        const expires = new Date(now + next.pool.rule.leaseSeconds * 1000);
-        await store.putLease({ loop: info.key, unitset: next.pool.unitset, coderId: coder.coderId, unitId: next.unitId, expires });
+      if (wanted.length === 0) break;
+      for (const [id, unit] of await this.getUnits(
+        wanted.map((w) => w.unitId),
+        store,
+      ))
+        units.set(id, unit);
+      const missing = wanted.filter((w) => !units.has(w.unitId));
+      for (const { unitId } of missing) {
+        main.removeUnit(unitId);
+        overlap?.pool.removeUnit(unitId);
       }
-      // As if finished, for the rest of this batch: the next pick moves on (and counts it for `maxUnits` and the overlap's place).
-      codings.record(coder.coderId, next.unitId, {}, now);
-      picked.push(unit);
+      picked.push(...wanted.filter((w) => units.has(w.unitId)));
+      if (missing.length === 0) break;
     }
-    return picked;
+    const now = this.options.now();
+    await store.putLeases(
+      picked
+        .filter((p) => p.pool.rule)
+        .map((p) => ({ loop: info.key, unitset: p.pool.unitset, coderId: coder.coderId, unitId: p.unitId, expires: new Date(now + p.pool.rule!.leaseSeconds * 1000) })),
+    );
+    return picked.map((p) => units.get(p.unitId)!);
   }
 
   /**
@@ -693,7 +707,9 @@ export class DeploymentRuntime {
     timings: Record<string, AnswerTiming> = {},
   ): Promise<void> {
     this.assertOpen(coder);
-    const [own, leases] = await Promise.all([this.store.listCodings({ coderId: coder.coderId }), this.store.listLeases({ coderId: coder.coderId })]);
+    // Leases first (as in `pick`): a submit of this unit finishing in between shows up as a coding.
+    const leases = await this.store.listLeases({ coderId: coder.coderId });
+    const own = await this.store.listCodings({ coderId: coder.coderId });
     // Units in the coder's route; in a shared queue only their own earlier
     // codings (editing after going back) or the unit leased to them (an
     // expired lease still counts: at worst one coding too many).

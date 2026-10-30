@@ -26,7 +26,11 @@ export class Codings {
   record(coderId: number, unitId: number, keys: AgreementKeys, at = 0): void {
     let unit = this.byUnit.get(unitId);
     if (!unit) this.byUnit.set(unitId, (unit = new Map()));
-    if (!unit.has(coderId)) this.byCoder.set(coderId, [...this.doneBy(coderId), unitId]);
+    if (!unit.has(coderId)) {
+      const done = this.byCoder.get(coderId);
+      if (done) done.push(unitId);
+      else this.byCoder.set(coderId, [unitId]);
+    }
     unit.set(coderId, keys);
     if (at > (this.lastAt.get(coderId) ?? 0)) this.lastAt.set(coderId, at);
   }
@@ -106,31 +110,41 @@ export class UnitPool {
   }
 
   /**
-   * Units this coder could get next, best first. `order` is this coder's
-   * view of the unitset order (shuffled for random loops). Has no side
-   * effects; call `take` for the unit actually handed out.
+   * The unit this coder should get next, if any. `order` is this coder's
+   * view of the unitset order (shuffled for random loops); among equally
+   * good units the first in that order wins. Has no side effects; call
+   * `take` for the unit actually handed out.
    */
-  candidates(coderId: number, now: number, shuffleSeed: number | null, { reach = "slots" }: { reach?: Reach } = {}): number[] {
+  best(coderId: number, now: number, shuffleSeed: number | null, { reach = "slots" }: { reach?: Reach } = {}): number | undefined {
     const order = shuffleSeed === null ? this.units : seededShuffle(this.units, shuffleSeed);
-    const open = order.filter((id) => !this.codings.has(coderId, id));
-    if (!this.rule) return open;
+    const rule = this.rule;
+    if (!rule) return order.find((id) => !this.codings.has(coderId, id));
 
-    // Past the open slots (`Reach`): least coded first (codings and leases),
-    // so coders spread over the units.
-    if (reach !== "slots") {
-      const load = (id: number) => this.codings.forUnit(id).size + this.activeLeases(id, now);
-      const agreement = this.rule.agreement;
-      const left =
-        reach === "full"
-          ? (id: number) => !this.isFull(id)
-          : (id: number) => !agreement || this.topAgreement(id) < agreement.minAgree;
-      return open.filter(left).sort((a, b) => load(a) - load(b));
+    // Within the open slots: least coded first (`cover`), or most coded
+    // (`saturate`). Past them (`Reach`): least coded first, counting
+    // leases, so coders spread over the units.
+    const sign = reach === "slots" && rule.priority === "saturate" ? -1 : 1;
+    const agreement = rule.agreement;
+    let found: number | undefined;
+    let lowest = Infinity;
+    for (const id of order) {
+      if (this.codings.has(coderId, id)) continue;
+      let score: number;
+      if (reach === "slots") {
+        if (this.openSlots(id, now) <= 0) continue;
+        score = sign * this.codings.forUnit(id).size;
+      } else {
+        if (reach === "full" ? this.isFull(id) : agreement && this.topAgreement(id) >= agreement.minAgree) continue;
+        score = this.codings.forUnit(id).size + this.activeLeases(id, now);
+      }
+      if (score < lowest) {
+        found = id;
+        lowest = score;
+        // Nothing beats a unit nobody has yet (least coded first).
+        if (score === 0 && sign === 1) break;
+      }
     }
-
-    const withSlots = open.filter((id) => this.openSlots(id, now) > 0);
-    // Stable sort keeps the coder's order among equally-coded units.
-    const sign = this.rule.priority === "saturate" ? -1 : 1;
-    return withSlots.sort((a, b) => sign * (this.codings.forUnit(a).size - this.codings.forUnit(b).size));
+    return found;
   }
 
   /** Leases as stored (also expired ones: an expired lease is still the coder's own unit, `heldLease`). */
@@ -317,25 +331,24 @@ export function pickNext(
   const doneOverlap = overlap ? done.filter((id) => overlap.pool.has(id)).length : 0;
   const doneOwn = done.filter((id) => main.has(id) && !overlap?.pool.has(id)).length;
   const shuffleSeed = options.order === "random" ? options.seed + coderId : null;
-  let own: number[] = [];
+  let own: number | undefined;
   if (options.maxUnits === undefined || doneOwn < options.maxUnits) {
-    own = main.candidates(coderId, options.now, shuffleSeed);
-    if (own.length === 0) own = main.candidates(coderId, options.now, shuffleSeed, { reach: "full" });
-    if (own.length === 0 && options.minUnits !== undefined && doneOwn < options.minUnits) {
-      own = main.candidates(coderId, options.now, shuffleSeed, { reach: "pastMax" });
+    own = main.best(coderId, options.now, shuffleSeed);
+    own ??= main.best(coderId, options.now, shuffleSeed, { reach: "full" });
+    if (own === undefined && options.minUnits !== undefined && doneOwn < options.minUnits) {
+      own = main.best(coderId, options.now, shuffleSeed, { reach: "pastMax" });
     }
   }
-  const extra = overlap ? overlap.pool.candidates(coderId, options.now, shuffleSeed) : [];
-  const pick = (pool: UnitPool, ids: number[]) => ({ pool, unitId: ids[0] });
+  const extra = overlap ? overlap.pool.best(coderId, options.now, shuffleSeed) : undefined;
 
-  if (!overlap || extra.length === 0) return own.length > 0 ? pick(main, own) : null;
-  if (own.length === 0) return pick(overlap.pool, extra);
-  if (overlap.placement === "before") return pick(overlap.pool, extra);
-  if (overlap.placement === "after") return pick(main, own);
+  if (!overlap || extra === undefined) return own !== undefined ? { pool: main, unitId: own } : null;
+  if (own === undefined) return { pool: overlap.pool, unitId: extra };
+  if (overlap.placement === "before") return { pool: overlap.pool, unitId: extra };
+  if (overlap.placement === "after") return { pool: main, unitId: own };
 
   // Spread: the N own units are cut into M + 1 equal parts, and overlap unit
   // j (0-based) follows part j, i.e. comes after round((j + 1) * N / (M + 1)) own units.
   const expected = options.maxUnits ?? main.size;
   const due = Math.round(((doneOverlap + 1) * expected) / (overlap.pool.size + 1));
-  return doneOwn >= due ? pick(overlap.pool, extra) : pick(main, own);
+  return doneOwn >= due ? { pool: overlap.pool, unitId: extra } : { pool: main, unitId: own };
 }

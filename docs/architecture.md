@@ -223,7 +223,10 @@ units:
     first.
   - **Leases** last `leaseSeconds` (default 900). An expired lease frees the
     slot. A coder asking for "next" while holding leases gets the same units
-    again (their leases renewed), so a reload is safe.
+    again (their leases renewed), so a reload is safe. Finishing a unit
+    drops the coder's lease on it (in the same transaction as the coding);
+    a pick therefore reads the leases before the codings, so a unit
+    finished in between is seen as a coding.
   - **`priority`:** `cover` (default) prefers least-coded units;
     `saturate` prefers units closest to done.
 - **`sets`**: each coder gets one of `unitsets`, the one with the fewest
@@ -550,9 +553,13 @@ Roughly in order:
     the client today (§6.1), which keeps client-side encryption of answers
     possible (`plans/encryption.md`).
 11. **Scale.** A pick from a shared queue reads the loop's finished codings
-    and leases (bounded by units x `maxCoders`), under the queue's lock.
-    For very large queues, a per-unit summary kept up to date on submit
-    (codings, agreement, full) would let Postgres return only candidates.
+    and leases (bounded by units x `maxCoders`), under the queue's lock
+    (taken in turn within a process before a connection is used, so
+    waiting picks don't hold the pool). Measured (`hosting.md` "Capacity"):
+    with 10k units and ~12k codings a pick takes ~40 ms, most of it reading
+    the codings, so one queue serves ~25 picks per second. For very large
+    queues, a per-unit summary kept up to date on submit (codings,
+    agreement, full) would let Postgres return only candidates.
     Researcher status is computed on demand: fine for occasional use;
     aggregates kept in the database if it gets polled.
 12. **Admin unit cache.** A client-side cache of units for the researcher

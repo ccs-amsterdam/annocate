@@ -45,7 +45,8 @@ function pgliteSql(db: PGlite): Sql {
 export async function openPostgres(connectionString: string): Promise<Sql> {
   // BIGINT (COUNT(*), BIGINT ids) as number; ours stay far below 2^53.
   pg.types.setTypeParser(pg.types.builtins.INT8, Number);
-  const pool = new pg.Pool({ connectionString });
+  // PGPOOL_MAX: connections per server process (default 20).
+  const pool = new pg.Pool({ connectionString, max: Number(process.env.PGPOOL_MAX ?? 20) });
   const sql = postgresSql(pool);
   const c = await pool.connect();
   try {

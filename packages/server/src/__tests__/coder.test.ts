@@ -311,6 +311,43 @@ describe("shared queues", () => {
   });
 });
 
+describe("shared queues under concurrency", () => {
+  it("count a unit finished while another coder's pick reads the queue", async () => {
+    // b's pick reads the queue's leases and codings; a finishes their unit in
+    // between (in b's transaction here: PGlite has one connection). However
+    // the reads are ordered, b must see a's coding or a's lease.
+    let between: ((store: Store) => Promise<void>) | null = null;
+    const racing = (store: Store): Store =>
+      new Proxy(store, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
+          if (typeof value !== "function") return value;
+          if (prop === "locked") {
+            return (key: string, fn: (s: Store) => Promise<unknown>) => target.locked(key, (s) => fn(racing(s)));
+          }
+          return async (...args: unknown[]) => {
+            const result = await (value as (...a: unknown[]) => unknown).apply(target, args);
+            const finish = between;
+            if (finish && (prop === "listLeases" || prop === "listCodings") && (args[0] as { loop?: string }).loop) {
+              between = null;
+              await finish(target);
+            }
+            return result;
+          };
+        },
+      });
+    server = createApp(db, { secret: "test-secret", wrapStore: racing, devAuth: true });
+    await redeploy({ units: [{ mode: "shared", unitset: "__all__", until: { coders: 1 }, maxCoders: 1 }] });
+    const a = coder("a");
+    const unitA = (await a.next())!;
+    const { coderId } = await a.session();
+    between = (store) => store.putAnnotation({ unitId: unitA.id, coderId, variables: { sentiment: { done: true, skip: false, values: [{ value: "neutral" }] } }, codings: [{ loop: "1", agreement: {} }] });
+    const unitB = await coder("b").next();
+    expect(between).toBeNull();
+    expect(unitB?.id).not.toBe(unitA.id);
+  });
+});
+
 describe("one set per coder", () => {
   it("gives each coder the set with the fewest coders, counting dropouts only for 24 hours", async () => {
     let clock = Date.parse("2026-11-01T12:00:00Z");
@@ -586,6 +623,13 @@ describe("sessions", () => {
     expect(new Set([a.coderId, p1.coderId, p2.coderId]).size).toBe(3);
     // One cookie for all of it
     expect(devices.get("shared")!.cookies.size).toBe(1);
+  });
+
+  it("knows a deployment by one spelling only", async () => {
+    for (const id of ["01", "0001.preview", "1e3", "99999999999"]) {
+      const res = await server.request(`/d/${id}/session`, { headers: { "x-annotinder": "1", "x-invite-secret": "demo-secret" } });
+      expect(res.status).toBe(404);
+    }
   });
 
   it("sets no cookie when the invite is refused", async () => {

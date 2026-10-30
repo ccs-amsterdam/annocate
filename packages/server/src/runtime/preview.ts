@@ -182,8 +182,8 @@ export class PreviewStore implements Store {
     );
   }
 
-  async putLease(lease: Lease): Promise<void> {
-    this.leases.set(`${lease.loop}/${lease.unitset}/${lease.coderId}/${lease.unitId}`, lease);
+  async putLeases(leases: Lease[]): Promise<void> {
+    for (const lease of leases) this.leases.set(`${lease.loop}/${lease.unitset}/${lease.coderId}/${lease.unitId}`, lease);
   }
 
   async coderValuesOf(variable: string): Promise<VariableValue[]> {

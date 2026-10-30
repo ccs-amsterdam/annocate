@@ -6,4 +6,10 @@ export default tseslint.config({ ignores: ["dist"] }, js.configs.recommended, ..
   languageOptions: {
     ecmaVersion: 2022,
   },
+}, {
+  // Node scripts (scripts/)
+  files: ["**/*.mjs"],
+  languageOptions: {
+    globals: { console: "readonly", process: "readonly", fetch: "readonly", performance: "readonly", setTimeout: "readonly" },
+  },
 });

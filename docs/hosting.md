@@ -41,6 +41,7 @@ health check uses it).
 | `POSTGRES_PASSWORD` | Compose only: the database password |
 | `ANNOTINDER_DOMAIN` | Compose `tls` profile only: the domain Caddy gets a certificate for |
 | `PORT` | Default 8787 |
+| `PGPOOL_MAX` | Database connections per server process (default 20) |
 | `PGLITE_DIR` | Without `DATABASE_URL`: where the PGlite database lives (development; default `.pglite` in `packages/server`) |
 | `ANNOTINDER_CLIENT_DIR` | The built client; set in the image |
 | `ANNOTINDER_DEMO` | `1`: an empty database gets the demo job. Development only |
@@ -84,3 +85,23 @@ settings) in memory, so several
 processes can share one database (`architecture.md` §3), e.g. compose
 replicas behind a proxy. Exceptions: researcher previews live in one
 process's memory, and a job's limit on answers is counted per process.
+
+## Capacity
+
+`packages/server/scripts/load-test.mjs` simulates coders on one job. On a
+4-core machine with Postgres 17 in Docker, one server process, a job of
+10,000 units in a shared queue (until 2 coders, at most 2), batches of 5
+units:
+
+| Coders | Time per unit | Next batch p50 / p99 | Submit p50 / p99 |
+| --- | --- | --- | --- |
+| 300 | ~10 s (realistic) | 26 / 79 ms | 10 / 31 ms |
+| 300 | ~1 s (stress) | 8.9 s / 16.8 s | 32 / 87 ms |
+
+No unit was coded by more than its `maxCoders`. A shared queue hands out
+units one pick at a time (it holds a lock while it decides), and a pick
+reads the queue's codings: about 25 picks per second at 10k units and
+~12k codings, fewer as codings grow (`architecture.md` §10, item 11). That is
+far more than coders at a realistic pace need (300 coders at 10 s per unit
+and batches of 5: 6 picks per second); jobs without a shared queue
+don't take that lock.

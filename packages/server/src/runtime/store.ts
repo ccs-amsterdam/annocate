@@ -78,8 +78,8 @@ export interface Store {
   replaceCodings(basis: string, codings: Coding[]): Promise<void>;
   /** The leases of a loop (all coders'), or one coder's (all loops). Also expired ones. */
   listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]>;
-  /** Stores a lease (a coder holds up to a batch per queue), or renews it. */
-  putLease(lease: Lease): Promise<void>;
+  /** Stores leases (a coder holds up to a batch per queue), or renews them. */
+  putLeases(leases: Lease[]): Promise<void>;
   /** The values coders have for a coder-level question (for `balanced` assignment). */
   coderValuesOf(variable: string): Promise<VariableValue[]>;
   /**
@@ -286,12 +286,16 @@ export class DbStore implements Store {
   }
 
   async listCodings(filter: { loop?: string; coderId?: number }): Promise<Coding[]> {
-    return this.sql.query<Coding>(
-      `SELECT loop_key AS loop, unit_id AS "unitId", coder_id AS "coderId", agreement, created, updated FROM unit_codings
+    // Times as epoch ms: a shared queue reads every coding of the loop for each pick, and parsing timestamps dominated.
+    const rows = await this.sql.query<Omit<Coding, "created" | "updated"> & { created: number; updated: number }>(
+      `SELECT loop_key AS loop, unit_id AS "unitId", coder_id AS "coderId", agreement,
+              (extract(epoch FROM created) * 1000)::float8 AS created, (extract(epoch FROM updated) * 1000)::float8 AS updated
+       FROM unit_codings
        WHERE job_id = $1 AND ($2::text IS NULL OR loop_key = $2) AND ($3::int IS NULL OR coder_id = $3)
-       ORDER BY created, unit_id`,
+       ORDER BY unit_codings.created, unit_id`,
       [this.jobId, filter.loop ?? null, filter.coderId ?? null],
     );
+    return rows.map((r) => ({ ...r, created: new Date(r.created), updated: new Date(r.updated) }));
   }
 
   async codingsBasis(): Promise<string | null> {
@@ -315,11 +319,20 @@ export class DbStore implements Store {
     );
   }
 
-  async putLease(lease: Lease): Promise<void> {
+  async putLeases(leases: Lease[]): Promise<void> {
+    if (leases.length === 0) return;
     await this.sql.query(
-      `INSERT INTO unit_leases (job_id, loop_key, unitset, coder_id, unit_id, expires) VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO unit_leases (job_id, loop_key, unitset, coder_id, unit_id, expires)
+       SELECT $1, * FROM unnest($2::text[], $3::text[], $4::int[], $5::int[], $6::timestamptz[])
        ON CONFLICT (job_id, loop_key, unitset, coder_id, unit_id) DO UPDATE SET expires = excluded.expires`,
-      [this.jobId, lease.loop, lease.unitset, lease.coderId, lease.unitId, lease.expires],
+      [
+        this.jobId,
+        leases.map((l) => l.loop),
+        leases.map((l) => l.unitset),
+        leases.map((l) => l.coderId),
+        leases.map((l) => l.unitId),
+        leases.map((l) => l.expires),
+      ],
     );
   }
 
@@ -332,10 +345,15 @@ export class DbStore implements Store {
   }
 
   locked<T>(key: string, fn: (store: Store) => Promise<T>): Promise<T> {
-    return this.sql.transaction(async (tx) => {
-      await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`${this.jobId}/${key}`]);
-      return fn(new DbStore(tx, this.jobId, this.preview));
-    });
+    const lock = `${this.jobId}/${key}`;
+    // In this process, one at a time before taking a connection: requests
+    // waiting for the database lock would otherwise hold the whole pool.
+    return inTurn(this.sql, lock, () =>
+      this.sql.transaction(async (tx) => {
+        await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [lock]);
+        return fn(new DbStore(tx, this.jobId, this.preview));
+      }),
+    );
   }
 
   /**
@@ -371,6 +389,13 @@ export class DbStore implements Store {
       for (const coding of write.codings ?? []) {
         const now = new Date();
         await insertCoding(tx, jobId, { loop: coding.loop, unitId: write.unitId, coderId: write.coderId, agreement: coding.agreement, created: now, updated: now });
+        // Finished: the coder's lease on it has done its job (distribution ignores it from now on anyway).
+        await tx.query("DELETE FROM unit_leases WHERE job_id = $1 AND loop_key = $2 AND coder_id = $3 AND unit_id = $4", [
+          jobId,
+          coding.loop,
+          write.coderId,
+          write.unitId,
+        ]);
       }
       if (!unit.coded) await tx.query("UPDATE units SET coded = true WHERE id = $1", [write.unitId]);
     });
@@ -494,4 +519,20 @@ async function findOrCreateCoder(
   await putCoderValues(sql, jobId, { coderId: created!.id, values: presets, assigned: true });
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(sql, jobId, created!.id, coderKey, device) };
+}
+
+/** Per database and key, the last call in line (`inTurn`). */
+const lines = new WeakMap<Sql, Map<string, Promise<unknown>>>();
+
+/** Runs `fn` after earlier calls with the same key (on this database, in this process) have finished. */
+function inTurn<T>(sql: Sql, key: string, fn: () => Promise<T>): Promise<T> {
+  let byKey = lines.get(sql);
+  if (!byKey) lines.set(sql, (byKey = new Map()));
+  const run = (byKey.get(key) ?? Promise.resolve()).then(fn);
+  const last = run.catch(() => undefined);
+  byKey.set(key, last);
+  void last.then(() => {
+    if (byKey.get(key) === last) byKey.delete(key);
+  });
+  return run;
 }
