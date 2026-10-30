@@ -27,21 +27,23 @@ import {
 } from "../../admin/setupRecipe";
 import { guessSimpleLayout } from "../../codebook/simpleLayout";
 import { CsvUnitsForm } from "./units/UploadUnits";
-import { SimpleLayoutForm } from "./SimpleLayoutForm";
+import { LayoutDesigner, UnitPreview } from "./LayoutDesigner";
+import { SharedSettings } from "./UnitLoopForm";
 
 // The setup wizard (docs/plans/setup-wizard.md): what the job does, the
 // experiment's conditions, the units and how they are shown, the names of
 // the questions, and who codes what. It makes a recipe (admin/setupRecipe.ts); the job then
 // opens in the codebook editor, where the questions get their answer types.
 
-type Step = "start" | "experiment" | "units" | "questions" | "distribution" | "create";
+type Step = "start" | "experiment" | "units" | "distribution" | "layout" | "questions" | "create";
 
 const STEP_TITLES: Record<Step, string> = {
   start: "What do you want to do?",
   experiment: "The experiment",
   units: "Units",
-  questions: "Questions",
   distribution: "Who codes what",
+  layout: "How coders see a unit",
+  questions: "Questions",
   create: "Check and create",
 };
 
@@ -67,9 +69,8 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
   const steps: Step[] = [
     "start",
     ...(a.parts.experiment ? (["experiment"] as const) : []),
-    ...(a.parts.annotate ? (["units"] as const) : []),
+    ...(a.parts.annotate ? (["units", "distribution", "layout"] as const) : []),
     "questions",
-    ...(a.parts.annotate ? (["distribution"] as const) : []),
     "create",
   ];
   const at = steps.indexOf(step);
@@ -99,6 +100,7 @@ export function SetupWizard({ client, onCreated, onClose }: { client: Researcher
           {step === "units" && <UnitsStep a={a} set={set} onCsv={onCsv} />}
           {step === "questions" && <QuestionsStep a={a} set={set} />}
           {step === "distribution" && <DistributionStep a={a} set={set} />}
+          {step === "layout" && <LayoutStep a={a} set={set} />}
           {step === "create" && <CreateStep a={a} problems={problems} />}
         </div>
 
@@ -223,20 +225,12 @@ function ExperimentStep({ a, set }: StepProps) {
 }
 
 function UnitsStep({ a, set, onCsv }: StepProps & { onCsv: (result: CsvUnits | null) => void }) {
-  const fields = (a.units?.fields ?? []).filter((f) => f.type === "text").map((f) => f.name);
   return (
     <>
       <Intro>Upload the units coders work on, or skip this and upload them later on the Units tab.</Intro>
       <div className="space-y-3 rounded-lg border border-border p-3">
         <CsvUnitsForm jobFields={NO_FIELDS} onResult={onCsv} />
       </div>
-      {a.units && (
-        <section className="space-y-2">
-          <h3 className="text-sm font-medium text-foreground">How coders see a unit</h3>
-          <SimpleLayoutForm layout={a.layout} fields={fields} onChange={(layout) => set({ layout })} />
-          <p className="text-xs text-muted-foreground">The editor's Layout tab can change this, or (Advanced) write the layout as a template.</p>
-        </section>
-      )}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={a.order === "random"} onChange={(ev) => set({ order: ev.target.checked ? "random" : "sequential" })} />
         Random order per coder (otherwise as uploaded)
@@ -316,44 +310,18 @@ function DistributionStep({ a, set }: StepProps) {
 
         {d.mode === "crowd" && (
           <>
-            <fieldset className="space-y-1.5">
-              <legend className="text-xs font-medium text-muted-foreground">A unit is done</legend>
-              <label className="flex flex-wrap items-center gap-2">
-                <input type="radio" checked={d.rule === "coders"} onChange={() => update({ rule: "coders", until: 1, maxCoders: Math.max(1, d.maxCoders) })} />
-                when
-                <input aria-label="Coded until" type="number" min={1} className={numberInput} value={d.rule === "coders" ? d.until : 1} disabled={d.rule !== "coders"} onChange={(e) => update({ until: Number(e.target.value), maxCoders: Math.max(d.maxCoders, Number(e.target.value)) })} />
-                coders coded it
-              </label>
-              <label className="flex flex-wrap items-center gap-2">
-                <input type="radio" checked={d.rule === "agree"} onChange={() => update({ rule: "agree", until: 2, maxCoders: Math.max(3, d.maxCoders), on: d.on || (parseQuestions(a.questions.unit)[0]?.name ?? "") })} />
-                when
-                <input aria-label="Agreeing coders" type="number" min={2} className={numberInput} value={d.rule === "agree" ? d.until : 2} disabled={d.rule !== "agree"} onChange={(e) => update({ until: Number(e.target.value) })} />
-                coders gave the same answer to
-                <select aria-label="Question to agree on" disabled={d.rule !== "agree"} className={smallSelect} value={d.on} onChange={(e) => update({ on: e.target.value })}>
-                  <option value="">(choose)</option>
-                  {parseQuestions(a.questions.unit).map((q) => (
-                    <option key={q.name} value={q.name}>
-                      {q.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </fieldset>
-            <div className="grid w-fit grid-cols-[auto_auto_auto] items-center gap-x-3 gap-y-1.5 text-xs">
-              <span />
-              <span className="text-muted-foreground">min</span>
-              <span className="text-muted-foreground">max</span>
-              <span>Coders per unit</span>
-              <span className="text-muted-foreground">{d.until} (the rule)</span>
-              <input aria-label="Max coders per unit" type="number" min={d.until} className={numberInput} value={d.maxCoders} onChange={(e) => update({ maxCoders: Number(e.target.value) })} />
-              <span>Units per coder</span>
-              <input aria-label="Min units per coder" type="number" min={1} placeholder="-" className={numberInput} value={d.minUnits ?? ""} onChange={(e) => update({ minUnits: e.target.value === "" ? undefined : Number(e.target.value) })} />
-              <input aria-label="Max units per coder" type="number" min={1} placeholder="-" className={numberInput} value={d.maxUnits ?? ""} onChange={(e) => update({ maxUnits: e.target.value === "" ? undefined : Number(e.target.value) })} />
-            </div>
-            <OverlapInput overlap={d.overlap} units={a.units?.units.length ?? 0} onChange={(overlap) => update({ overlap })} />
-            {d.rule === "agree" && (
-              <p className="text-xs text-muted-foreground">The question to agree on must have options (nominal, ordinal or swipe): choose its type in the editor.</p>
+            <SharedSettings
+              branch={d.shared}
+              agreeable={parseQuestions(a.questions.unit).map((q) => q.name)}
+              onChange={(shared) => update({ shared: shared as typeof d.shared })}
+            />
+            {"agree" in d.shared.until && (
+              <p className="text-xs text-muted-foreground">
+                The question coders agree on is one of the questions about each unit, with options (nominal, ordinal or swipe):
+                name it in the next steps, and choose it and its type in the editor.
+              </p>
             )}
+            <OverlapInput overlap={d.overlap} units={a.units?.units.length ?? 0} onChange={(overlap) => update({ overlap })} />
           </>
         )}
 
@@ -439,6 +407,35 @@ function OverlapInput({ overlap, units, onChange }: { overlap: SetupOverlap; uni
   );
 }
 
+function LayoutStep({ a, set }: StepProps) {
+  const fields = (a.units?.fields ?? []).map((f) => f.name);
+  const first = a.units?.units[0];
+  return (
+    <>
+      <Intro>
+        Click a place in the sketch to put a field there: a title, a byline, and the body. The editor&apos;s Layout tab can change
+        this later, or (Advanced) write the layout as a template.
+      </Intro>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Layout</h3>
+          {fields.length > 0 ? (
+            <LayoutDesigner layout={a.layout} fields={fields} onChange={(layout) => set({ layout })} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Upload units first (or choose their fields in the editor later).</p>
+          )}
+        </section>
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">The first unit, as coders see it</h3>
+          <div className="rounded-lg border border-border bg-background p-4">
+            {first ? <UnitPreview layout={a.layout} unit={{ id: first.externalId, ...first.data }} /> : <p className="text-sm text-muted-foreground">No units yet.</p>}
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
 const LIST_TEXT: Record<"before" | "unit" | "after", { title: string; text: string }> = {
   before: { title: "Questions before the units", text: "Asked once, e.g. consent, age or prior opinions." },
   unit: { title: "Questions about each unit", text: "Asked for every unit a coder gets." },
@@ -492,8 +489,11 @@ function distributionSummary(d: SetupDistribution): string {
       return "Every coder codes every unit.";
     case "sets":
       return `${d.source === "split" ? `The units in ${d.sets} sets` : `A set per value of ${d.column}`}, one per coder${overlap}; ${d.handOut === "links" ? "a link per set" : "each new coder gets the set with the fewest coders"}.`;
-    case "crowd":
-      return `Crowd coding: each unit until ${d.until} coder${d.until > 1 ? "s" : ""} ${d.rule === "agree" ? `agree on ${d.on}` : "coded it"}, at most ${d.maxCoders}${overlap}.`;
+    case "crowd": {
+      const until = d.shared.until;
+      const rule = "agree" in until ? `${until.agree} coders agree${until.on ? ` on ${until.on}` : ""}` : `${until.coders} coder${until.coders > 1 ? "s" : ""} coded it`;
+      return `Crowd coding: each unit until ${rule}${d.shared.maxCoders ? `, at most ${d.shared.maxCoders} coders` : ""}${overlap}.`;
+    }
     case "groups":
       return `Each condition codes its own units (by ${d.column}).`;
     case "later":

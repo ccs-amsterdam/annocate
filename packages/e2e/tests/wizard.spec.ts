@@ -25,14 +25,6 @@ test("annotation with an experiment: a set of units per condition, questions bef
     buffer: Buffer.from("id,text,group\ns1,A neutral report.,control\ns2,A framed report.,treatment\ns3,Another framed one.,treatment\n"),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
-  // The layout: the text as body (group isn't shown)
-  await page.getByRole("checkbox", { name: "group" }).uncheck();
-  await page.getByRole("button", { name: "Next" }).click();
-
-  // Question names in three places
-  await page.getByLabel("Questions before the units").fill("age");
-  await page.getByLabel("Questions about each unit").fill("How credible is it?\ntopic");
-  await page.getByLabel("Questions after the units").fill("comments");
   await page.getByRole("button", { name: "Next" }).click();
 
   // Who codes what: the experimental groups, by the values of group
@@ -40,6 +32,18 @@ test("annotation with an experiment: a set of units per condition, questions bef
   await page.getByLabel("Column for the groups").selectOption("group");
   await page.getByRole("group", { name: "control" }).getByRole("checkbox", { name: "control" }).check();
   await page.getByRole("group", { name: "treatment" }).getByRole("checkbox", { name: "treatment" }).check();
+  await page.getByRole("button", { name: "Next" }).click();
+
+  // How coders see a unit: the text as body, group not shown (the preview shows the first unit)
+  await page.getByRole("button", { name: "Body: group" }).hover();
+  await page.getByRole("button", { name: "Remove group from the body" }).click();
+  await expect(page.getByText("A neutral report.")).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+
+  // Question names in three places
+  await page.getByLabel("Questions before the units").fill("age");
+  await page.getByLabel("Questions about each unit").fill("How credible is it?\ntopic");
+  await page.getByLabel("Questions after the units").fill("comments");
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("3 units, showing text.")).toBeVisible();
   await page.getByRole("button", { name: "Create job" }).click();
@@ -100,16 +104,18 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
     buffer: Buffer.from("id,headline,text\n" + Array.from({ length: 10 }, (_, i) => `u${i},Headline ${i},Text ${i}`).join("\n") + "\n"),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
-  // The headline was guessed as the title
-  await expect(page.getByLabel("Title")).toHaveValue("headline");
   await page.getByRole("button", { name: "Next" }).click();
-  await page.getByLabel("Questions about each unit").fill("sentiment");
-  await page.getByRole("button", { name: "Next" }).click();
+  // Crowd coding, with the editor's form: 2 coders per unit
   await page.getByLabel("Who codes which units").selectOption({ label: "Crowd coding" });
-  await page.getByLabel("Coded until").fill("2");
+  await page.getByLabel("Coders per unit", { exact: true }).fill("2");
   await page.getByRole("checkbox", { name: /Overlap/ }).check();
   await page.getByLabel("Overlap in").selectOption("units");
   await page.getByLabel("Overlap size").fill("2");
+  await page.getByRole("button", { name: "Next" }).click();
+  // The headline was guessed as the title
+  await expect(page.getByRole("button", { name: "Title: headline" })).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByLabel("Questions about each unit").fill("sentiment");
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Create job" }).click();
   await expect(page.getByText("to specify")).toHaveCount(1);

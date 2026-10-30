@@ -103,8 +103,9 @@ See [The codebook editor](codebook-editor.md) and
 
 Select the loop in the tree. Its form has two tabs:
 
-- **Layout**: how a unit is shown to coders. Choose `headline` as
-  **Title** and tick `text` under **Body**. The form writes this template:
+- **Layout**: how a unit is shown to coders. In the sketch, click the
+  title and choose `headline`, then the body and choose `text`. This makes
+  the template:
 
   ```template
   # $unit.headline
@@ -116,8 +117,8 @@ Select the loop in the tree. Its form has two tabs:
   title, byline and body (styles, blocks, conditions), click **Advanced**
   and write the template yourself. See [Layout templates](layout-templates.md).
 - **Units**: which units coders get. A new loop has none chosen yet (it is
-  marked *to specify*): under **Who codes which units**, choose **All
-  units**, with an empty unitset: every coder gets every unit. That is what
+  marked *to specify*): under **Who codes which units**, choose **Everyone codes
+  everything**, with an empty unitset: every coder gets every unit. That is what
   we want here. See [Handing out units](unit-distribution.md).
 
 Try the layout right here, with your own text:

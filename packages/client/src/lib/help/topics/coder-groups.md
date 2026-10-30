@@ -55,8 +55,8 @@ about as many participants). The unit loop has two groups:
 
 | Group | Condition | Units |
 | --- | --- | --- |
-| If | `group` is `treatment` | **All units** of `messages_treatment` |
-| Otherwise | | **All units** of `messages_control` |
+| If | `group` is `treatment` | **Everyone codes everything**, unitset `messages_treatment` |
+| Otherwise | | **Everyone codes everything**, unitset `messages_control` |
 
 Every participant rates all messages of their group, and the results show
 each participant's group in the `group` column of `coders.csv`.
@@ -72,8 +72,8 @@ part_$var.slot.value
 
 A coder whose `slot` is `2` gets the unitset `part_2`; a coder whose
 `language` is `nl` gets, with `articles_$var.language.value`, the set
-`articles_nl`. You type the name in the **Unitset** field, in **All units**
-or **Units shared among coders** mode, and in the overlap's unitset.
+`articles_nl`. You type the name in the **Unitset** field, in **Everyone codes everything**
+or **Crowd coding** mode, and in the overlap's unitset.
 
 This saves you a group per set. Some rules:
 
@@ -86,7 +86,7 @@ This saves you a group per set. Some rules:
 - use `.value`, the stored value of the answer, rather than the label: values
   are short and stable. See [Referring to answers and unit data](references.md).
 
-**One set per coder** doesn't take references in its sets: it chooses among
+**Assign sets** doesn't take references in its sets: it chooses among
 fixed names itself.
 
 ## Combining with assigned variables and invitations
@@ -104,11 +104,11 @@ see or change them:
 For example, to give named coders each their own part: an assigned variable
 `slot` with **Set by invitation**, the unitset name `part_$var.slot.value`,
 and per coder an invitation with the preset `slot=1`, `slot=2`, and so on.
-(The mode **The invitation's units** does the same without a variable: see
+(The mode **Assign sets by invitation link** does the same without a variable: see
 [Invitations](invitations.md).)
 
 To spread coders evenly over parts *without* naming them, you don't need a
-variable at all: use **One set per coder**.
+variable at all: use **Assign sets**.
 
 ## Routing is sticky
 
@@ -129,6 +129,6 @@ an experiment.
 > Routing is a convenience, not access control. The coder's own browser
 > works out which group they are in, so a determined coder could ask for the
 > units of another group. Assigned variables themselves can't be changed by
-> coders, and **One set per coder** and **The invitation's units** are
+> coders, and **Assign sets** and **Assign sets by invitation link** are
 > decided by the server. For an experiment that is rarely a problem; just
 > don't rely on routing to keep material secret.

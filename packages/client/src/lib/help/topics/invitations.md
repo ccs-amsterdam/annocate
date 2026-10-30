@@ -37,7 +37,7 @@ Under **Create invitation link**:
 | **Required URL parameter** | Other values the link must carry, e.g. a panel's study id; the codebook reads them as `$session.<name>` (see [Online panels](online-panels.md#values-from-the-link)) |
 | **Preset variables** | Values for the codebook's assigned variables, e.g. `group=experts` |
 | **Max uses** | Stop accepting new coders after this many |
-| **Units** | The unitset its coders get in loops with *The invitation's units* |
+| **Units** | The unitset its coders get in loops with *Assign sets by invitation link* |
 
 ## Participant ids
 
@@ -112,14 +112,14 @@ Typical uses:
 
 An invitation can carry its own units: choose a unitset under **Units**
 when you create it, or later in its row in the list. Its coders get these
-units in every unit loop whose units are set to **The invitation's units**
+units in every unit loop whose units are set to **Assign sets by invitation link**
 (see [Handing out units](unit-distribution.md)). In other loops the
 invitation's units play no role.
 
 - A coder gets the invitation's units when they reach the loop, and keeps
   them. Changing an invitation's units later only affects coders who reach
   the loop after the change.
-- If the live codebook gives coders *the invitation's units* and an
+- If the live codebook gives coders their invitation's units (*Assign sets by invitation link*) and an
   invitation has none, the Invitations tab warns you: its coders get no
   units in that loop.
 - A unitset that an invitation uses can't be deleted.
@@ -140,7 +140,7 @@ AnnoTinder shuffles the units, splits them into equal parts, and makes a
 unitset per coder (named after the coder) plus one named `overlap`, and a
 personal invitation per coder: labelled with their name, with their name as
 fixed participant id, and their unitset as its units. Then set the unit loop
-to **The invitation's units**, with the overlap set as its overlap. Send
+to **Assign sets by invitation link**, with the overlap set as its overlap. Send
 each coder their own link.
 
 You can also do this while coding runs, for coders who join later: new sets

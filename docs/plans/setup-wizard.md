@@ -60,15 +60,18 @@ the editor, a new question starts without an answer type and a new loop
 without units: the researcher chooses, rather than inheriting a default
 they may not notice (confirm, all units).
 
-## 2b. Layouts as a form
+## 2b. Layouts as a sketch
 
-A loop's Layout tab starts as a form: a field for the title, one for the
-byline, and the body fields (`client/src/lib/codebook/simpleLayout.ts`).
+A loop's Layout tab starts as a sketch of a document
+(`components/admin/LayoutDesigner.tsx`): click a place to put a field
+there. Title and byline take one field, the body any number, added and
+removed one by one (`client/src/lib/codebook/simpleLayout.ts`).
 The form writes an ordinary template (`# $unit.headline`,
 `*$unit.source*`, `$unit.text`). A template is shown as the form only if
 it has exactly that shape; otherwise it opens in the template editor
 (**Advanced**), so nothing written there is lost. "Use the simple form
-instead" replaces a template, after asking. Later: images and other roles.
+instead" replaces a template, after asking. Later: more places (an image, a footer), columns, and components such as
+mock engagement counts, chosen from a menu.
 
 ## 3. The steps
 
@@ -84,20 +87,10 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
    and how they are assigned: balanced (default) or random. This becomes an
    `auto` question, first in the codebook.
 3. **Units** (with Annotate). The CSV upload from the Units tab (or skip
-   it and upload later). Then how coders see a unit: a **simple layout
-   form** with a field each for **title** and **byline**, and the **body**
-   fields. Title and byline are guessed from field names like `headline`
-   and `source`. Last, random order per coder, or as uploaded.
-4. **Questions.** Names, one per line. A line can be a name (`age`) or the
-   question itself (`How old are you?`): the name is made from it
-   (`how_old_are_you`) and the line becomes the question text. Where they
-   go:
-   - **annotation alone**: one list, the questions about each unit;
-   - **a survey or experiment alone**: one list, asked once;
-   - **annotation with a survey or experiment**: three lists, before the
-     units, about each unit, and after the units.
-5. **Who codes what** (with Annotate). A dropdown, each option with its own
-   settings:
+   it and upload later; the id column is the type **unit id**), and random
+   order per coder, or as uploaded.
+4. **Who codes what** (with Annotate), right after the units. A dropdown,
+   each option with its own settings (named as in the editor's Units tab):
    - **Everyone codes everything**: no settings (`all`).
    - **Assign sets**: divide the units into N sets, or make one set per
      value of a column. Optionally add overlap units that every coder
@@ -107,11 +100,11 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
        (`sets`);
      - an invitation link per set (`invitation`), for the classic design
        with a few expert coders.
-   - **Crowd coding**: a shared queue. A unit is done when N coders coded
-     it, or when N gave the same answer to a question you choose (from the
-     unit questions; it needs options once specified). Also set max coders
-     per unit, min and max units per coder, and an optional overlap (the
-     queue is then the other units).
+   - **Crowd coding**: a shared queue, with the editor's own form for it
+     (units per coder, coders or agreement per unit, at least and at most,
+     priority), and an optional overlap (the queue is then the other units).
+     The question coders agree on can only be chosen from questions named
+     already (going back), otherwise in the editor.
    - **Experimental groups** (with an experiment): pick a column, and per
      condition which of its values belong to it. This makes a unitset per
      condition (`condition_<value>`), and the loop routes by the condition
@@ -120,7 +113,19 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
      (`units: []`). It is marked *to specify*, and its Units tab asks to
      choose.
 
-6. **Check and create.** A summary in sentences, what comes next in the
+5. **How coders see a unit** (with Annotate): the **layout sketch** (§2b)
+   beside a preview of the first unit. Title and byline are guessed from
+   field names like `headline` and `source`; the other text fields are the
+   body.
+6. **Questions.** Names, one per line. A line can be a name (`age`) or the
+   question itself (`How old are you?`): the name is made from it
+   (`how_old_are_you`) and the line becomes the question text. Where they
+   go:
+   - **annotation alone**: one list, the questions about each unit;
+   - **a survey or experiment alone**: one list, asked once;
+   - **annotation with a survey or experiment**: three lists, before the
+     units, about each unit, and after the units.
+7. **Check and create.** A summary in sentences, what comes next in the
    editor, and what still stops the job (no name, a question twice, no
    question about the units, conditions that don't match the units' field).
    Create makes the job: units, unitsets, the draft codebook, and an open

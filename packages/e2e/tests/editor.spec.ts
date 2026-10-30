@@ -21,7 +21,7 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   // A new loop's units are to specify: every coder codes every unit
   await expect(page.getByText("to specify")).toHaveCount(1);
   await page.getByRole("tab", { name: /Units/ }).click();
-  await page.getByLabel("Who codes which units").selectOption({ label: "All units" });
+  await page.getByLabel("Who codes which units").selectOption({ label: "Everyone codes everything" });
   await expect(page.getByText("to specify")).toHaveCount(0);
 
   // The first question, inside the loop: the row's "+", then where, then what

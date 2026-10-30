@@ -165,7 +165,7 @@ tab (see [Following progress](coders-and-progress.md)) and stop recruiting
 once the units are complete.
 
 For a survey experiment where everyone judges the same few messages, use
-**All units** instead, possibly with the order **Random (each coder their
+**Everyone codes everything** instead, possibly with the order **Random (each coder their
 own order)**.
 
 ## Before you launch

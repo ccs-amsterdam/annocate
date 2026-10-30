@@ -28,9 +28,9 @@ The overlap set should not also be part of the coders' own units: a unit in
 both is coded only once per coder. Sets made by **Split units into parts**
 and **Divide units over coders…** keep them apart.
 
-The overlap works with every mode. It is most useful with **One set per
-coder**, **The invitation's units** and **Units shared among coders**; with
-**All units** every coder already codes the same units.
+The overlap works with every mode. It is most useful with **Assign
+sets**, **Assign sets by invitation link** and **Crowd coding**; with
+**Everyone codes everything** every coder already codes the same units.
 
 ## Placement
 
@@ -71,8 +71,8 @@ coder too.
 
 A common design for a content analysis with student coders:
 
-1. **Pilot**: two or three coders code the same 50 units (**All units** of a
-   `pilot` set). Compute reliability, discuss the disagreements, improve the
+1. **Pilot**: two or three coders code the same 50 units (**Everyone codes everything**,
+   with a `pilot` unitset). Compute reliability, discuss the disagreements, improve the
    codebook and the coder instructions. Repeat if needed.
 2. **Main coding**: split the sample into a part per coder, plus an overlap
    of about 10% (and at least 50 to 100 units). Every coder codes their part

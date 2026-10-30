@@ -15,7 +15,7 @@ the job. You manage unitsets on the **Units** tab.
 
 ## Seeing unitsets
 
-Above the table of units is a row of buttons: **All units**, and one per
+Above the table of units is a row of buttons: **Everyone codes everything**, and one per
 unitset, each with its number of units. Click one to see its units, in the
 set's order. The **Unitsets** column of the table shows which sets a unit is
 in. A unit can be in any number of sets.
@@ -56,12 +56,12 @@ Click **Create … unitsets** to make them.
 With 1000 units, 4 parts and 10% overlap you get `part_overlap` with 100
 units and `part_1` to `part_4` with 225 units each. Then:
 
-- in a unit loop, choose **One set per coder** and tick `part_1` to
+- in a unit loop, choose **Assign sets** and tick `part_1` to
   `part_4`, and turn on **Overlap** with the set `part_overlap` (see
   [Handing out units](unit-distribution.md) and
   [Overlap](overlap.md)); or
 - give each coder's invitation its own part, and choose
-  **The invitation's units** in the loop.
+  **Assign sets by invitation link** in the loop.
 
 The shuffle uses a random seed, so splitting twice gives different parts.
 That is fine: the sets are stored, and the split is not made again.
@@ -110,7 +110,7 @@ Show the set, then:
 
 - **Rename** gives it another name. A codebook refers to sets by name, so
   update the codebook (and publish) too, or the loop won't find the set.
-- To add units, select them (in **All units** or another set) and choose
+- To add units, select them (in **Everyone codes everything** or another set) and choose
   the set under **Add to unitset…**. They are added at the end.
 - To remove units, select them while the set is shown and click **Remove
   from** *set*.

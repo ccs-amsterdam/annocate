@@ -80,7 +80,7 @@ then code the job as a coder would, with the job's real units:
   device under **Preset**, or type a width and height.
 - **Reset preview session** starts the preview over, as a new coder.
 - An end item's redirect is shown, but not followed.
-- In a loop with **The invitation's units**, the preview gives you the
+- In a loop with **Assign sets by invitation link**, the preview gives you the
   units of the first invitation that has units.
 - Assigned variables (random, balanced) are drawn for you as for any
   coder.

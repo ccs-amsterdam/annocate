@@ -2,10 +2,10 @@
 title: Shared queues: coding until enough coders agree
 section: Units and distribution
 order: 4
-summary: Units shared among coders - how many codings a unit needs, agreement rules, limits per coder, priority and what it means for analysis.
+summary: Crowd coding (units shared among coders) - how many codings a unit needs, agreement rules, limits per coder, priority and what it means for analysis.
 ---
 
-With **Units shared among coders**, all coders draw from one queue of units.
+With **Crowd coding**, all coders draw from one queue of units.
 Each unit is handed out until it is **done**, and then to no one else. You
 decide when a unit is done: when a number of coders coded it, or when a
 number of coders gave the same answer.

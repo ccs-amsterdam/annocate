@@ -80,7 +80,11 @@ describe("setup wizard recipes", () => {
   it("crowd coding: until coders agree, with limits per coder and an overlap", () => {
     const a = setup({
       questions: { before: [], unit: ["sentiment", "topic"], after: [] },
-      distribution: { mode: "crowd", rule: "agree", until: 2, on: "sentiment", maxCoders: 3, minUnits: 2, maxUnits: 5, overlap: { by: "units", value: 2 } },
+      distribution: {
+        mode: "crowd",
+        shared: { mode: "shared", unitset: "__all__", until: { agree: 2, on: "sentiment" }, maxCoders: 3, minUnits: 2, maxUnits: 5 },
+        overlap: { by: "units", value: 2 },
+      },
     });
     expect(setupProblems(a)).toEqual([]);
     // The agreement question needs a categorical type: reported until it is specified
@@ -95,7 +99,7 @@ describe("setup wizard recipes", () => {
   });
 
   it("crowd coding without overlap: a queue over all units", () => {
-    const a = setup({ distribution: { mode: "crowd", rule: "coders", until: 2, on: "", maxCoders: 2, overlap: null } });
+    const a = setup({ distribution: { mode: "crowd", shared: { mode: "shared", unitset: "__all__", until: { coders: 2 }, maxCoders: 2 }, overlap: null } });
     expect(otherIssues(a)).toEqual([]);
     expect(loopOf(a).units).toEqual([{ mode: "shared", unitset: "__all__", until: { coders: 2 }, maxCoders: 2 }]);
     expect(setupRecipe(a).unitsets).toEqual([]);
@@ -143,8 +147,9 @@ describe("setup wizard recipes", () => {
     ]);
     const twice = setup({ parts: { annotate: true, survey: true, experiment: false }, questions: { before: ["Age"], unit: ["age"], after: [] } });
     expect(setupProblems(twice)).toEqual(["Each question once: age"]);
-    const crowd = setup({ distribution: { mode: "crowd", rule: "agree", until: 2, on: "", maxCoders: 1, overlap: null } });
-    expect(setupProblems(crowd)).toEqual(["Max coders per unit must be at least the number it is coded until", "Choose the question coders must agree on"]);
+    // The queue's own rules; the question to agree on can wait for the editor
+    const crowd = setup({ distribution: { mode: "crowd", shared: { mode: "shared", unitset: "__all__", until: { agree: 2, on: "" }, maxCoders: 1 }, overlap: null } });
+    expect(setupProblems(crowd)).toEqual([expect.stringContaining("Max coders must be at least")]);
     const groups = setup({
       parts: { annotate: true, survey: false, experiment: true },
       distribution: { mode: "groups", column: "group", values: { control: ["a"] } },

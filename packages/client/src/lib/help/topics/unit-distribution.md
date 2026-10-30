@@ -19,10 +19,10 @@ and the design easy to report.
 
 | Mode | Who gets what | Typical use |
 | --- | --- | --- |
-| **All units** | Every coder codes every unit of a unitset | Small samples, reliability tests, survey experiments |
-| **Units shared among coders** | One queue for all coders: each unit until enough coders coded it | Large samples, crowd coding |
-| **One set per coder** | Each coder gets one of several unitsets | Dividing a sample into fixed parts |
-| **The invitation's units** | Each coder gets the unitset of their invitation link | Named coders, each with their own part |
+| **Everyone codes everything** | Every coder codes every unit of a unitset | Small samples, reliability tests, survey experiments |
+| **Crowd coding** | One queue for all coders: each unit until enough coders coded it | Large samples, crowd coding |
+| **Assign sets** | Each coder gets one of several unitsets | Dividing a sample into fixed parts |
+| **Assign sets by invitation link** | Each coder gets the unitset of their invitation link | Named coders, each with their own part |
 
 ### All units
 
@@ -92,9 +92,9 @@ first invitation that has some.
 - **Fixed parts, handed out in turn?** One set per coder.
 - **Fixed parts for named people?** The invitation's units.
 
-The difference between the last two: with **One set per coder** AnnoTinder
+The difference between the last two: with **Assign sets** AnnoTinder
 decides who gets which part, and fills the parts in turn; with
-**The invitation's units** you decide, through the links you send.
+**Assign sets by invitation link** you decide, through the links you send.
 
 Any mode can add an **overlap**: a set that every coder codes besides their
 own units, for intercoder reliability. See [Overlap](overlap.md).

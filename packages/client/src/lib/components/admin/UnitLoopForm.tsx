@@ -26,7 +26,7 @@ import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
 import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "../../codebook/simpleLayout";
-import { SimpleLayoutForm } from "./SimpleLayoutForm";
+import { LayoutDesigner } from "./LayoutDesigner";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -49,21 +49,22 @@ function agreementQuestions(items: CodebookItem[]): string[] {
   });
 }
 
+/** The modes, named as in the setup wizard (admin/setupRecipe.ts `DISTRIBUTIONS`). */
 const MODES: { value: UnitMode; label: string; help: string }[] = [
-  { value: "all", label: "All units", help: "Every coder codes every unit of the set." },
+  { value: "all", label: "Everyone codes everything", help: "Every coder codes every unit of the set." },
   {
     value: "shared",
-    label: "Units shared among coders",
-    help: "A queue: each unit goes to coders until enough coded it (or agree), and then to no one else.",
+    label: "Crowd coding",
+    help: "A shared queue: each unit goes to coders until enough coded it (or agree), and then to no one else.",
   },
   {
     value: "sets",
-    label: "One set per coder",
+    label: "Assign sets",
     help: "Each coder gets one of these sets: the one with the fewest coders. Coders who stop count for their set for 24 hours.",
   },
   {
     value: "invitation",
-    label: "The invitation's units",
+    label: "Assign sets by invitation link",
     help: "Each coder gets the unitset of their invitation. Set it per invitation, or divide units over coders, on the Invitations page.",
   },
 ];
@@ -404,7 +405,7 @@ function LayoutTab({
           {readOnly ? (
             <pre className="whitespace-pre-wrap rounded-md border border-input p-2 font-mono text-xs">{layout.template}</pre>
           ) : (
-            <SimpleLayoutForm layout={simple} fields={unitFields} onChange={(next) => setLayout({ template: simpleTemplate(next) })} />
+            <LayoutDesigner layout={simple} fields={names.fields} onChange={(next) => setLayout({ template: simpleTemplate(next) })} />
           )}
           <IssueList issues={issues} />
         </Section>
@@ -599,7 +600,7 @@ const numberOrUndefined = (v: string) => (v === "" ? undefined : Number(v));
  * A shared queue's numbers as a small grid: units per coder (min, max), and
  * coders per unit or agreement per unit (the `until` rule, and max coders).
  */
-function SharedSettings({ branch, agreeable, onChange }: { branch: SharedBranch; agreeable: string[]; onChange: (b: UnitBranch) => void }) {
+export function SharedSettings({ branch, agreeable, onChange }: { branch: SharedBranch; agreeable: string[]; onChange: (b: UnitBranch) => void }) {
   const agree = "agree" in branch.until;
   const needed = agree && "agree" in branch.until ? branch.until.agree : "coders" in branch.until ? branch.until.coders : 1;
   const numberInput = "h-8 w-full text-xs";

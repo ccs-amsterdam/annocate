@@ -53,10 +53,10 @@ Per unit loop, and per unitset within it, a bar with the number of
 given units from it. What *complete* means depends on how the loop hands
 out units (see [Handing out units](unit-distribution.md)):
 
-- **Units shared among coders**: the unit was coded by enough coders (or
+- **Crowd coding**: the unit was coded by enough coders (or
   enough agreed), so it goes to no one else. The bar reaching the end means
   the job is done.
-- **All units**, **One set per coder** and **The invitation's units**: every
+- **Everyone codes everything**, **Assign sets** and **Assign sets by invitation link**: every
   coder who got this unitset finished the unit. A coder who stopped halfway
   keeps the bar from filling up, so read it together with the Coders tab.
 

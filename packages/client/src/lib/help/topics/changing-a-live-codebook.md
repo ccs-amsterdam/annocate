@@ -51,11 +51,11 @@ When a loop gains a question, every unit that coders finished in it lacks
 the new answer, so it counts as unfinished: in the **Overview** progress,
 on the **Coders** tab, and for handing out units.
 
-- In loops where each coder has their own units (**All units**, **One set
-  per coder**, **The invitation's units**), these units come earlier in the
+- In loops where each coder has their own units (**Everyone codes everything**, **Assign
+  sets**, **Assign sets by invitation link**), these units come earlier in the
   coder's order, so they come back first, before new units. The coder sees
   their earlier answers and only answers the new question.
-- In a shared queue (**Units shared among coders**), they go back into the
+- In a shared queue (**Crowd coding**), they go back into the
   queue, and count again for how many coders a unit still needs. See
   [Shared queues](shared-queues.md).
 - This also happens when a condition hides the new question for some

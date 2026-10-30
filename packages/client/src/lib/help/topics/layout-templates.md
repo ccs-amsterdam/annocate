@@ -9,7 +9,8 @@ Every unit loop has a **layout**: the text coders see above the questions, for
 each unit. You find it on the loop's **Layout** tab in the codebook editor.
 
 Most layouts are a title, a byline and a body: the Layout tab starts as a
-form for those, where you pick a field for each. Behind the form is a
+sketch of a document, where you click a place (title, byline, body) to put
+a field there; the body takes any number of fields, in order. Behind the form is a
 template, and **Advanced** opens it: write it yourself for anything more
 (styles, blocks, conditions, snippets). A template that is more than a
 title, byline and body stays in the template editor.

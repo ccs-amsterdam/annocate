@@ -1,4 +1,4 @@
-import { seededShuffle, type RecipeInput, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import { SharedBranchSchema, seededShuffle, type RecipeInput, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
 import { simpleTemplate, type SimpleLayout } from "../codebook/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
@@ -37,20 +37,11 @@ export type SetupDistribution =
    */
   | { mode: "sets"; source: "split" | "column"; sets: number; column: string; overlap: SetupOverlap; handOut: "links" | "rotate" }
   /**
-   * Crowd coding: a queue that hands each unit out until `until` coders coded
-   * it (`coders`) or that many gave the same answer to `on` (`agree`), and to
-   * at most `maxCoders`; per coder at least `minUnits`, at most `maxUnits`.
+   * Crowd coding: a shared queue, with the settings the editor's form has
+   * (`shared`: until N coders or N agree, max coders, units per coder,
+   * priority; its unitset is set by the wizard), and optionally overlap units.
    */
-  | {
-      mode: "crowd";
-      rule: "coders" | "agree";
-      until: number;
-      on: string;
-      maxCoders: number;
-      minUnits?: number;
-      maxUnits?: number;
-      overlap: SetupOverlap;
-    }
+  | { mode: "crowd"; shared: SharedBranch; overlap: SetupOverlap }
   /** A set per experimental condition: the units whose `column` has one of the condition's values. */
   | { mode: "groups"; column: string; values: Record<string, string[]> }
   /** Decided later in the editor: the loop's units are not set. */
@@ -85,7 +76,7 @@ export function defaultDistribution(mode: SetupDistribution["mode"], columns: st
     case "sets":
       return { mode, source: "split", sets: 2, column: columns[0] ?? "", overlap: null, handOut: "rotate" };
     case "crowd":
-      return { mode, rule: "coders", until: 1, on: "", maxCoders: 1, overlap: null };
+      return { mode, shared: { mode: "shared", unitset: "__all__", until: { coders: 1 }, maxCoders: 1 }, overlap: null };
     case "groups":
       return { mode, column: columns[0] ?? "", values: {} };
   }
@@ -251,11 +242,9 @@ export function distributionProblems(a: SetupAnswers): string[] {
     if (a.units && d.source === "column" && !a.units.fields.some((f) => f.name === d.column)) problems.push("Choose the column that holds each unit's set");
   }
   if (d.mode === "crowd") {
-    if (d.until < 1) problems.push("Coded until: at least 1");
-    if (d.rule === "agree" && d.until < 2) problems.push("Until coders agree: at least 2 coders");
-    if (d.maxCoders < d.until) problems.push("Max coders per unit must be at least the number it is coded until");
-    if (d.rule === "agree" && !parseQuestions(a.questions.unit).some((q) => q.name === d.on)) problems.push("Choose the question coders must agree on");
-    if (d.minUnits !== undefined && d.maxUnits !== undefined && d.minUnits > d.maxUnits) problems.push("Min units per coder can't be more than max");
+    // The queue's own rules; the question to agree on may be chosen later, in the editor.
+    const parsed = SharedBranchSchema.safeParse(d.shared);
+    if (!parsed.success) problems.push(...parsed.error.issues.filter((i) => i.path.join(".") !== "until.on").map((i) => i.message));
   }
   if (d.mode === "groups") {
     if (!a.parts.experiment) problems.push("Experimental groups need an experiment");
@@ -313,15 +302,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         } else branch = { mode: "sets", unitsets: sets.map((set) => set.name), ...withOverlap };
         break;
       case "crowd":
-        branch = {
-          mode: "shared",
-          unitset: overlap.length > 0 ? "queue" : "__all__",
-          until: d.rule === "agree" ? { agree: d.until, on: d.on } : { coders: d.until },
-          maxCoders: d.maxCoders,
-          ...(d.minUnits !== undefined ? { minUnits: d.minUnits } : {}),
-          ...(d.maxUnits !== undefined ? { maxUnits: d.maxUnits } : {}),
-          ...withOverlap,
-        };
+        branch = { ...d.shared, unitset: overlap.length > 0 ? "queue" : "__all__", ...withOverlap };
         break;
       case "groups":
         branch = { mode: "all", unitset: conditionUnitset(`$var.${a.experiment.name}.value`) };

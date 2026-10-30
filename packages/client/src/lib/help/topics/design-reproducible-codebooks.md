@@ -68,7 +68,7 @@ Everything about specific people lives in [invitations](invitations.md):
 - a personal link per coder, with preset values (for example `slot=2`, so the
   codebook routes that coder to `part_2`);
 - a participant id, for linking answers to a panel's records;
-- the units of that link, for loops that hand out **The invitation's units**
+- the units of that link, for loops that hand out **Assign sets by invitation link**
   (what **Divide units over coders** sets up).
 
 Invitations stay on the server and are not part of the codebook. Two studies
@@ -114,7 +114,7 @@ For your replication materials:
   and a random unit order, give a different draw in a new run. The
   procedure is the same; the outcome per coder is not. The data records what
   each coder got.
-- **"The invitation's units" moves a decision out of the codebook.** The
+- **"Assign sets by invitation link" moves a decision out of the codebook.** The
   codebook then says only that each invitation has its own units; who got
   which is in your invitations. Document how you divided them.
 - **Routing by an answer is a convenience, not a lock.** It decides which
