@@ -430,6 +430,8 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`);
         } else if (loop && item.variable?.type === "auto") {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`);
+        } else if (item.variable?.type === "unspecified") {
+          issue([...itemPath, "variable", "type"], `Question '${item.name}' has no answer type yet: choose one`);
         }
       }
     });

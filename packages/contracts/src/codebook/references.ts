@@ -446,6 +446,8 @@ export function questionKind(variable: AnyVariableType): QuestionKind {
       return "ordinal";
     case "annotinder":
     case "auto":
+    // Not specified yet: references work as for one answer until a type is chosen.
+    case "unspecified":
       return "single";
     default:
       return variable.type;

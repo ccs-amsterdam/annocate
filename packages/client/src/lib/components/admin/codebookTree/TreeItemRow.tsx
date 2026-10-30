@@ -177,6 +177,11 @@ function ItemLabel({
       {item.type === "unit_loop" && (
         <span className="truncate text-xs text-muted-foreground">{loopUnitsSummary(item)}</span>
       )}
+      {"variable" in item && item.variable?.type === "unspecified" && (
+        <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+          to specify
+        </span>
+      )}
       {changed && (
         <span title="Unsaved changes" aria-label="Unsaved changes" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
       )}

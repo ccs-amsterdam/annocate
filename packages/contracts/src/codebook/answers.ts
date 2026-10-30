@@ -24,6 +24,7 @@ export function numericValueError(variable: { min?: number; max?: number; step?:
 export function validateAnswer(name: string, variable: AnyVariableType, value: VariableValue): string[] {
   const errors: string[] = [];
   if (value.skip) return errors;
+  if (variable.type === "unspecified") return [`'${name}': the question has no answer type yet`];
   const kind = questionKind(variable);
   const values = variable.type === "auto" && !variable.options?.length ? undefined : questionValues(variable);
   const allowed = values ? new Set<unknown>(values) : null;

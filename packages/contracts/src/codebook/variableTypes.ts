@@ -183,6 +183,18 @@ export const RelationTypeSchema = VariableBaseSchema.extend({
 });
 export type RelationType = z.infer<typeof RelationTypeSchema>;
 
+/**
+ * A question whose answer type isn't chosen yet: what the setup wizard
+ * makes from a question name (docs/plans/setup-wizard.md). Saving works;
+ * validation reports it, so the codebook can't be previewed or published
+ * until the researcher chooses a type in the editor.
+ */
+export const UnspecifiedTypeSchema = VariableBaseSchema.extend({
+  type: z.literal("unspecified"),
+  question: z.string().optional().describe("The question, if already written."),
+});
+export type UnspecifiedType = z.infer<typeof UnspecifiedTypeSchema>;
+
 /** The answer types allowed on a coder-level question (see codebook/item.ts). */
 export const UserVariableTypeSchema = z.discriminatedUnion("type", [
   NominalTypeSchema,
@@ -192,6 +204,7 @@ export const UserVariableTypeSchema = z.discriminatedUnion("type", [
   AnnotinderTypeSchema,
   ConfirmTypeSchema,
   AutoTypeSchema,
+  UnspecifiedTypeSchema,
 ]);
 export type UserVariableType = z.infer<typeof UserVariableTypeSchema>;
 
@@ -209,6 +222,7 @@ export const UnitVariableTypeSchema = z.discriminatedUnion("type", [
   ConfirmTypeSchema,
   SpanTypeSchema,
   RelationTypeSchema,
+  UnspecifiedTypeSchema,
 ]);
 export type UnitVariableType = z.infer<typeof UnitVariableTypeSchema>;
 

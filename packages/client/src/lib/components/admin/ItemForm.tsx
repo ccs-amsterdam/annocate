@@ -36,6 +36,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   auto: "auto",
   span: "span",
   relation: "relation",
+  unspecified: "question-types",
 };
 
 export function defaultItemForType(type: CodebookItem["type"], name: string): CodebookItem {
@@ -141,12 +142,20 @@ export function ItemForm({
             <HelpButton topic={TYPE_HELP[item.variable.type]} label="Help: this answer type" />
           </span>
             <select
-              className="h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold"
+              className={cn(
+                "h-9 rounded-md border border-input bg-background px-3 text-xs font-semibold",
+                item.variable.type === "unspecified" && "border-amber-500 text-amber-700 dark:text-amber-400",
+              )}
               value={item.variable.type}
               onChange={(e) =>
                 onChange({ ...item, variable: switchVariableType(item.variable, e.target.value as AnyVariableType["type"]) } as CodebookItem)
               }
             >
+              {item.variable.type === "unspecified" && (
+                <option value="unspecified" disabled>
+                  Choose an answer type...
+                </option>
+              )}
               {(isInsideLoop ? VARIABLE_TYPE_OPTIONS_UNIT : VARIABLE_TYPE_OPTIONS_USER).map((t) => (
                 <option key={t} value={t}>
                   {VARIABLE_TYPE_LABELS[t]}

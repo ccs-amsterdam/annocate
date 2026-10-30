@@ -1,4 +1,5 @@
 import {
+  CircleDashed,
   ArrowLeftRight,
   CircleCheck,
   GitBranch,
@@ -67,6 +68,7 @@ const ANSWER_TYPE_ICONS: Record<AnyVariableType["type"], LucideIcon> = {
   auto: Shuffle,
   span: Highlighter,
   relation: Spline,
+  unspecified: CircleDashed,
 };
 
 /** The icon of an item: its type's, or for a question its answer type's. */

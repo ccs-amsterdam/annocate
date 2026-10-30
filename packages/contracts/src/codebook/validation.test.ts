@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TopLevelItem, InLoopItem, TopLevelQuestionItem, InLoopQuestionItem } from "./item.js";
+import { TopLevelItemSchema, type TopLevelItem, type InLoopItem, type TopLevelQuestionItem, type InLoopQuestionItem } from "./item.js";
 import { availableQuestions, validateCodebookItems } from "./validation.js";
 import { CodebookItemsSchema } from "./codebook.js";
 import type { Condition } from "./condition.js";
@@ -32,6 +32,14 @@ describe("validateCodebookItems", () => {
     const items: TopLevelItem[] = [unitLoop("loop", [questionVar("q1")])];
     expect(validateCodebookItems(items)).toEqual([]);
     expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+  });
+
+  it("saves questions without an answer type, but reports them", () => {
+    const items = [questionVar("age", { type: "unspecified" }), unitLoop("loop", [questionVar("topic", { type: "unspecified" })])];
+    // A valid shape (a draft can be saved); not publishable
+    expect(TopLevelItemSchema.array().safeParse(items).success).toBe(true);
+    expect(CodebookItemsSchema.safeParse(items).success).toBe(false);
+    expect(messages(items)).toEqual(["Question 'age' has no answer type yet: choose one", "Question 'topic' has no answer type yet: choose one"]);
   });
 
   it("checks that loop branches refer to preceding coder variables", () => {
