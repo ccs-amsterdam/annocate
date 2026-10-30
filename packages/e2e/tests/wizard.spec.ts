@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { CodebookResponse, JobResponse, UnitsetResponse } from "@annotinder/contracts";
+import type { CodebookResponse, JobResponse, SetGroupResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
 // The setup wizard (docs/plans/setup-wizard.md): through its steps to a job
@@ -51,10 +51,10 @@ test("annotation with an experiment: a set of units per condition, questions bef
   // The editor, with the questions to specify
   await expect(page.getByText("to specify")).toHaveCount(4);
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Framing study")!;
-  const sets = await api<UnitsetResponse[]>(request, "GET", `/job/${job.id}/unitsets`);
-  expect(sets.map((s) => [s.name, s.unitIds.length])).toEqual([
-    ["condition_control", 1],
-    ["condition_treatment", 2],
+  const [group] = await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`);
+  expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
+    ["control", 1],
+    ["treatment", 2],
   ]);
   const [draft] = await api<CodebookResponse[]>(request, "GET", `/job/${job.id}/codebook`);
   const items = (await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${draft.id}`)).items as {
@@ -89,7 +89,8 @@ test("a survey alone: questions by name, no units", async ({ page, request }) =>
   await expect(page.getByText("to specify")).toHaveCount(2);
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Opinion survey")!;
   expect(await api<unknown[]>(request, "GET", `/job/${job.id}/units`)).toEqual([]);
-  expect((await api<unknown[]>(request, "GET", `/job/${job.id}/invites`)).length).toBe(1);
+  // A draft: its link comes when it is published
+  expect((await api<unknown[]>(request, "GET", `/job/${job.id}/invites`)).length).toBe(0);
 });
 
 test("crowd coding with an overlap; the loop's units are set by the wizard", async ({ page, request }) => {
@@ -123,11 +124,13 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Crowd pilot")!;
   const [draft] = await api<CodebookResponse[]>(request, "GET", `/job/${job.id}/codebook`);
   const [loop] = (await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
-  expect(loop.units).toEqual([{ mode: "shared", unitset: "queue", until: { coders: 2 }, maxCoders: 2, overlap: { unitset: "overlap" } }]);
+  expect(loop.units).toEqual([
+    { mode: "shared", set: { group: "sets", set: "queue" }, until: { coders: 2 }, maxCoders: 2, overlap: { placement: "first" } },
+  ]);
   expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
-  const sets = await api<UnitsetResponse[]>(request, "GET", `/job/${job.id}/unitsets`);
-  expect(sets.map((s) => [s.name, s.unitIds.length])).toEqual([
+  const [group] = await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`);
+  expect(group.sets.map((s) => [s.name, s.unitIds.length])).toEqual([
+    ["_overlap", 2],
     ["queue", 8],
-    ["overlap", 2],
   ]);
 });

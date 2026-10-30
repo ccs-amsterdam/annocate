@@ -295,7 +295,7 @@ function JobRunnerContent({
 
   if (snapshot.phase === "error" && snapshot.errorCode === "email_not_invited") {
     return (
-      <SessionNotice title="This invitation is for other people">
+      <SessionNotice title="This email address has no access to this study">
         <p>The researchers invited specific email addresses, and the account you are logged in with isn&apos;t one of them.</p>
         <p>If you were invited with another email address, log in with that account.</p>
         <Button
@@ -306,6 +306,14 @@ function JobRunnerContent({
         >
           Log in with another account
         </Button>
+      </SessionNotice>
+    );
+  }
+
+  if (snapshot.phase === "error" && snapshot.errorCode === "link_inactive") {
+    return (
+      <SessionNotice title="This link is no longer active">
+        <p>The researchers no longer use this link for new participants. If you were sent a new link, use that one.</p>
       </SessionNotice>
     );
   }

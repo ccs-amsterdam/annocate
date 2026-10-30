@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  setParameters,
   availableQuestions,
   itemName,
   templateNames,
@@ -9,7 +10,7 @@ import {
 } from "@annotinder/contracts";
 import { AlertTriangle, Code2, Edit3, Eye } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useUnitFieldsQuery, useUnitsetsQuery } from "../../../admin/queries";
+import { useSetGroupsQuery, useUnitFieldsQuery } from "../../../admin/queries";
 import { enclosingLoop, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } from "../../../codebook/tree";
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
@@ -112,12 +113,13 @@ function ItemEditForm({
   item: CodebookItem;
   readOnly: boolean;
 }) {
-  const unitsetsQuery = useUnitsetsQuery(client);
+  const groupsQuery = useSetGroupsQuery(client);
   const unitFieldsQuery = useUnitFieldsQuery(client);
   const { items, cleanItems, validationIssues } = draft;
   const key = getItemKey(item);
 
   const { unitVariableNames } = useMemo(() => variableNames(items), [items]);
+  const setParams = useMemo(() => setParameters(cleanItems), [cleanItems]);
   // What references may use at this item: the same rules as validation
   const available = useMemo(() => availableQuestions(cleanItems, itemPath(items, key) ?? []), [cleanItems, items, key]);
   const loop = enclosingLoop(items, item);
@@ -132,7 +134,8 @@ function ItemEditForm({
       <ItemForm
         key={draft.selected ?? undefined}
         item={item}
-        unitsets={unitsetsQuery.data ?? []}
+        groups={groupsQuery.data ?? []}
+        setParams={setParams}
         unitVariableNames={unitVariableNames}
         availableQuestions={available}
         inLoop={!!loop}

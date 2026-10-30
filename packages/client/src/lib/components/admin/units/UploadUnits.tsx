@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
-import type { UnitField, UnitFieldType } from "@annotinder/contracts";
+import { SetGroupNameSchema, parseSetCell, setsFromCells, type UnitField, type UnitFieldType } from "@annotinder/contracts";
 import { AlertCircle, Check, FileUp, Wand2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCreateUnitsMutation, useUnitsQuery } from "../../../admin/queries";
+import { useCreateUnitsMutation, usePutSetGroupMutation, useUnitsQuery } from "../../../admin/queries";
 import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv, type ColumnMapping, type CsvUnits } from "../../../admin/csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,15 @@ interface Csv {
   rows: string[][];
 }
 
+/** A sets column (docs/plans/sets-and-session-parameters.md §1): the group it makes, and per unit (by id) its cell. */
+export interface CsvSetGroup {
+  group: string;
+  cells: { externalId: string; cell: string }[];
+}
+
+/** What a CSV makes: the units, and the set groups of its sets columns. */
+export type CsvUpload = CsvUnits & { setGroups: CsvSetGroup[] };
+
 /**
  * Uploading units from a CSV (docs/client.md §7, "Units"): choose a file,
  * then per column whether and as which field it is uploaded, and its type.
@@ -27,9 +36,10 @@ interface Csv {
  */
 export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherApi; jobFields: UnitField[]; onDone: () => void }) {
   const createUnits = useCreateUnitsMutation(client);
+  const putGroup = usePutSetGroupMutation(client);
   const existingUnits = useUnitsQuery(client).data ?? [];
   const [overwriteCoded, setOverwriteCoded] = useState(false);
-  const [result, setResult] = useState<CsvUnits | null>(null);
+  const [result, setResult] = useState<CsvUpload | null>(null);
   const [overwrite, setOverwrite] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
 
@@ -44,13 +54,22 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
       setProgress(i);
       await createUnits.mutateAsync({ overwrite, overwriteCoded: overwrite && overwriteCoded, units: result.units.slice(i, i + BATCH) });
     }
+    // Sets columns: each replaces its group, by the units' ids
+    if (result.setGroups.length > 0) {
+      const ids = new Map((await client.listUnits()).map((u) => [u.externalId, u.id]));
+      for (const { group, cells } of result.setGroups) {
+        const sets = setsFromCells(cells.flatMap((c) => (ids.has(c.externalId) ? [{ unitId: ids.get(c.externalId)!, cell: c.cell }] : [])));
+        if ("error" in sets) throw new Error(sets.error);
+        await putGroup.mutateAsync({ group, body: { sets } });
+      }
+    }
     setProgress(null);
     onDone();
   }
 
   return (
     <Section onCancel={onDone}>
-      <CsvUnitsForm jobFields={jobFields} onResult={setResult} />
+      <CsvUnitsForm jobFields={jobFields} allowSets onResult={setResult} />
       {result && replaced.length > 0 && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
@@ -87,6 +106,7 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
             {progress !== null ? `Uploading ${progress} / ${result.units.length}...` : `Upload ${result.units.length} units`}
           </Button>
           {createUnits.isError && <p className="text-sm text-destructive">{createUnits.error.message}</p>}
+          {putGroup.isError && <p className="text-sm text-destructive">{putGroup.error.message}</p>}
         </div>
       )}
     </Section>
@@ -99,17 +119,40 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
  * preview. `onResult`: the units it makes (with `errors` that block them),
  * or null without a file. Also the setup wizard's units step.
  */
-export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; onResult: (result: CsvUnits | null) => void }) {
+export function CsvUnitsForm({
+  jobFields,
+  allowSets = false,
+  onResult,
+}: {
+  jobFields: UnitField[];
+  /** Offer the "sets" column type (a set group per column). */
+  allowSets?: boolean;
+  onResult: (result: CsvUpload | null) => void;
+}) {
   const [csv, setCsv] = useState<Csv | null>(null);
   const [idColumn, setIdColumn] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping[]>([]);
+  // Sets columns: column -> the group's name
+  const [setColumns, setSetColumns] = useState<Record<number, string>>({});
   const [fileError, setFileError] = useState<string | null>(null);
-  const result = useMemo(() => {
+  const result = useMemo((): CsvUpload | null => {
     if (!csv) return null;
     // One column is the units' ids (its type in the table)
-    if (idColumn < 0) return { fields: [], units: [], errors: ["Choose the column with each unit's id: set its type to Unit id"] };
-    return csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields);
-  }, [csv, idColumn, mapping, jobFields]);
+    if (idColumn < 0) return { fields: [], units: [], errors: ["Choose the column with each unit's id: set its type to Unit id"], setGroups: [] };
+    const units = csvToUnits(csv.headers, csv.rows, idColumn, mapping, jobFields);
+    const errors = [...units.errors];
+    const setGroups = Object.entries(setColumns).map(([column, group]) => {
+      if (!SetGroupNameSchema.safeParse(group).success) errors.push(`Group name "${group}": letters, digits and _, starting with a letter`);
+      const cells = csv.rows.map((r) => ({ externalId: (r[idColumn] ?? "").trim(), cell: r[Number(column)] ?? "" }));
+      const bad = cells.map((c) => parseSetCell(c.cell)).find((p) => "error" in p);
+      if (bad && "error" in bad) errors.push(`Column ${csv.headers[Number(column)]}: ${bad.error}`);
+      return { group, cells };
+    });
+    const groups = setGroups.map((g) => g.group);
+    const twice = groups.find((g, i) => groups.indexOf(g) !== i);
+    if (twice) errors.push(`Two sets columns make group ${twice}`);
+    return { ...units, errors, setGroups };
+  }, [csv, idColumn, mapping, jobFields, setColumns]);
   useEffect(() => onResult(result), [result, onResult]);
 
   async function handleFile(file: File) {
@@ -120,6 +163,7 @@ export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; 
       return;
     }
     setCsv({ name: file.name, ...parsed });
+    setSetColumns({});
     const id = parsed.headers.findIndex((h) => /^(id|externalid|external_id)$/i.test(h.trim()));
     const idAt = Math.max(0, id);
     setIdColumn(idAt);
@@ -194,13 +238,25 @@ export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; 
                   mapping={m}
                   existing={jobFields.find((f) => f.name === m.field)}
                   isId={m.column === idColumn}
+                  group={allowSets ? setColumns[m.column] : undefined}
+                  allowSets={allowSets}
                   problem={problems[i]}
                   onChange={(next) => setColumn(i, next)}
+                  onGroup={(group) => {
+                    const next = { ...setColumns };
+                    if (group === null) delete next[m.column];
+                    else next[m.column] = group;
+                    setSetColumns(next);
+                    if (group !== null) setColumn(i, { field: "" });
+                  }}
                   onId={(isId) => {
                     // The id column isn't also a field ($unit.id is its value in a layout)
                     if (isId) {
                       setIdColumn(m.column);
                       setColumn(i, { field: "" });
+                      const next = { ...setColumns };
+                      delete next[m.column];
+                      setSetColumns(next);
                     } else setIdColumn(-1);
                   }}
                 />
@@ -216,6 +272,14 @@ export function CsvUnitsForm({ jobFields, onResult }: { jobFields: UnitField[]; 
         <p className="text-[11px] text-muted-foreground">
           Field names: letters, digits and _, so a codebook can show them as <code>$unit.name</code>. A column named like a
           field of this job is uploaded as that field, with its type.
+          {allowSets && (
+            <>
+              {" "}
+              A <strong>sets</strong> column makes a set group: each cell names the unit&apos;s sets, e.g. <code>s1</code>,{" "}
+              <code>s1;s2</code> or <code>s1#3</code> (third in s1), and <code>_overlap</code> for the group&apos;s overlap. It replaces
+              the group&apos;s sets.
+            </>
+          )}
         </p>
       </div>
 
@@ -307,9 +371,12 @@ function ColumnRow({
   mapping,
   existing,
   isId,
+  group,
+  allowSets,
   problem,
   onChange,
   onId,
+  onGroup,
 }: {
   header: string;
   samples: string[];
@@ -317,12 +384,18 @@ function ColumnRow({
   /** The job's field this column is uploaded as, if it exists. */
   existing: UnitField | undefined;
   isId: boolean;
+  /** For a sets column: the group it makes. */
+  group: string | undefined;
+  allowSets: boolean;
   problem: string | null;
   onChange: (next: Partial<ColumnMapping>) => void;
   /** This column is (or is no longer) the units' ids. */
   onId: (isId: boolean) => void;
+  /** This column is a sets column making this group (null: no longer). */
+  onGroup: (group: string | null) => void;
 }) {
-  const uploaded = mapping.field !== "";
+  const isSets = group !== undefined;
+  const uploaded = mapping.field !== "" || isSets;
   return (
     <tr className={`border-b align-top last:border-0 ${isId ? "bg-primary/5" : uploaded ? "" : "text-muted-foreground"}`}>
       <td className="p-1.5 font-medium">{header}</td>
@@ -333,6 +406,11 @@ function ColumnRow({
         {isId ? (
           <span className="inline-flex h-8 items-center text-xs text-primary" title="In a layout: $unit.id">
             each unit&apos;s id
+          </span>
+        ) : isSets ? (
+          <span className="flex items-center gap-1 text-xs">
+            group
+            <Input aria-label={`Group of ${header}`} className="h-8 w-36 font-mono text-xs" value={group} onChange={(e) => onGroup(e.target.value.trim())} />
           </span>
         ) : (
           <Input
@@ -345,7 +423,7 @@ function ColumnRow({
         )}
       </td>
       <td className="p-1.5">
-        {existing && !isId ? (
+        {existing && !isId && !isSets ? (
           <span className="inline-flex h-8 items-center gap-1 text-muted-foreground" title="A field of this job keeps its type">
             {existing.type} <span className="text-[10px]">(existing field)</span>
           </span>
@@ -353,14 +431,17 @@ function ColumnRow({
           <select
             aria-label={`Type of ${header}`}
             className={`${selectClass} ${isId ? "border-primary font-semibold text-primary" : ""}`}
-            value={isId ? "id" : mapping.type}
+            value={isId ? "id" : isSets ? "sets" : mapping.type}
             onChange={(e) => {
               if (e.target.value === "id") return onId(true);
               if (isId) onId(false);
+              if (e.target.value === "sets") return onGroup(header.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^[^A-Za-z]+/, "") || "sets");
+              if (isSets) onGroup(null);
               onChange({ type: e.target.value as UnitFieldType });
             }}
           >
             <option value="id">unit id</option>
+            {allowSets && <option value="sets">sets</option>}
             {TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
@@ -373,7 +454,7 @@ function ColumnRow({
         {isId && <Check className="mt-1.5 h-3.5 w-3.5 text-primary" aria-label="OK" />}
         {uploaded &&
           !isId &&
-          (problem ? (
+          (problem && !isSets ? (
             <span className="flex items-start gap-1 text-destructive">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {problem}

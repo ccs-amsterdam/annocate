@@ -33,7 +33,8 @@ function locate(
   const counts = { condition: 0, unit_loop: 0 };
   for (const item of items) {
     const parentId = container?.id ?? "";
-    const id = item.type === "condition" || item.type === "unit_loop" ? `${parentId}/${item.type} ${counts[item.type]++}` : item.name;
+    const id =
+      item.type === "condition" || item.type === "unit_loop" ? `${parentId}/${item.type} ${counts[item.type]++}` : item.type === "session" ? "/session" : item.name;
     out.set(id, { item, parent: container?.title ?? null, parentId });
     if ("children" in item && Array.isArray(item.children)) locate(item.children, { id, title: itemTitle(item) }, out);
   }

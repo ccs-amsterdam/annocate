@@ -98,7 +98,7 @@ export function exampleCodebook(data: HelpExampleData): unknown[] {
       .map(([name, alternatives]) => question(name, exampleQuestion(alternatives))),
     {
       type: "unit_loop",
-      units: [{ mode: "all", unitset: "__all__" }],
+      units: [{ mode: "all" }],
       layout: { template: data.template, ...(data.snippets ? { snippets: data.snippets } : {}) },
       children: data.steps.length
         ? data.steps.map((name) => question(name, data.answers[name] ? exampleQuestion(data.answers[name]) : confirm))

@@ -43,7 +43,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
   const versions = describeVersions(codebooks, deployment?.codebookId ?? null);
   const overview = overviewQuery.data;
   const openInvites = (invitesQuery.data ?? []).filter(
-    (i) => !i.revokedAt && (i.maxUses === undefined || i.uses < i.maxUses),
+    (i) => !i.revokedAt && !i.retiredAt && (i.maxUses === undefined || i.uses < i.maxUses),
   ).length;
 
   return (
@@ -78,7 +78,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
         <StatTile
           label="Units"
           value={overview?.units}
-          detail={overview && `${overview.unitsets.length} unitset${overview.unitsets.length === 1 ? "" : "s"}`}
+          detail={overview && `${overview.groups.length} set group${overview.groups.length === 1 ? "" : "s"}`}
           onClick={() => onNavigate("Units")}
         />
         <StatTile
@@ -94,7 +94,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
           onClick={() => onNavigate("Coders")}
         />
         <StatTile
-          label="Open invitations"
+          label="Active links"
           value={invitesQuery.data ? openInvites : undefined}
           detail={invitesQuery.data && `of ${invitesQuery.data.length}`}
           onClick={() => onNavigate("Invitations")}
@@ -106,7 +106,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
           {overview ? <ActivityChart activity={overview.activity} /> : <Loading />}
         </Card>
 
-        <Card title="Progress" subtitle="Complete units per loop and unitset">
+        <Card title="Progress" subtitle="Complete units per loop and set">
           {deployment === null ? (
             <p className="text-sm text-muted-foreground">Publish a codebook version to start coding.</p>
           ) : statusQuery.data ? (
@@ -119,13 +119,18 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
         </Card>
       </div>
 
-      {overview && overview.unitsets.length > 0 && (
-        <Card title="Unitsets">
-          <ul className="flex flex-wrap gap-2">
-            {overview.unitsets.map((u) => (
-              <li key={u.name} className="rounded-md bg-muted px-2 py-1 text-xs">
-                <span className="font-mono">{u.name}</span>
-                <span className="text-muted-foreground"> · {u.units} units</span>
+      {overview && overview.groups.length > 0 && (
+        <Card title="Set groups">
+          <ul className="flex flex-col gap-2">
+            {overview.groups.map((g) => (
+              <li key={g.name} className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-mono font-medium">{g.name}</span>
+                {g.sets.map((set) => (
+                  <span key={set.name} className="rounded-md bg-muted px-2 py-1">
+                    <span className="font-mono">{set.name}</span>
+                    <span className="text-muted-foreground"> · {set.units} units</span>
+                  </span>
+                ))}
               </li>
             ))}
           </ul>

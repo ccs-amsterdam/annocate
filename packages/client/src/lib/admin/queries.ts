@@ -23,8 +23,8 @@ import type {
   UnitMeta,
   UnitPage,
   UnitsCreateBody,
-  UnitsetResponse,
-  UnitsetWrite,
+  SetGroupResponse,
+  SetGroupWrite,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../api/httpResearcherApi";
 
@@ -48,7 +48,7 @@ export const keys = {
   units: (jobId?: number) => ["admin", "job", jobId ?? "current", "units"] as const,
   unitFields: (jobId?: number) => ["admin", "job", jobId ?? "current", "units", "fields"] as const,
   unitPages: (jobId?: number) => ["admin", "job", jobId ?? "current", "units", "page"] as const,
-  unitsets: (jobId?: number) => ["admin", "job", jobId ?? "current", "unitsets"] as const,
+  sets: (jobId?: number) => ["admin", "job", jobId ?? "current", "sets"] as const,
   coders: (jobId?: number) => ["admin", "job", jobId ?? "current", "coders"] as const,
   coderDeletions: (jobId?: number) => ["admin", "job", jobId ?? "current", "coders", "deletions"] as const,
   deployment: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment"] as const,
@@ -186,7 +186,7 @@ export function useUnitFieldsQuery(client: ResearcherApi): UseQueryResult<UnitFi
 
 export function useUnitPageQuery(
   client: ResearcherApi,
-  query: { offset: number; limit: number; unitset?: string },
+  query: { offset: number; limit: number; group?: string; set?: string },
 ): UseQueryResult<UnitPage> {
   return useQuery({
     queryKey: [...keys.unitPages(client.jobId), query],
@@ -211,45 +211,30 @@ export function useDeleteUnitMutation(client: ResearcherApi): UseMutationResult<
   });
 }
 
-export function useUnitsetsQuery(client: ResearcherApi): UseQueryResult<UnitsetResponse[]> {
-  return useQuery({ queryKey: keys.unitsets(client.jobId), queryFn: () => client.listUnitsets() });
+export function useSetGroupsQuery(client: ResearcherApi): UseQueryResult<SetGroupResponse[]> {
+  return useQuery({ queryKey: keys.sets(client.jobId), queryFn: () => client.listSetGroups() });
 }
 
-export function useCreateUnitsetMutation(
-  client: ResearcherApi,
-): UseMutationResult<UnitsetResponse, Error, UnitsetWrite> {
+/** Changing sets changes links (link parameters with a group's sets) and the overview. */
+function useSetGroupMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) => Promise<T>) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: UnitsetWrite) => client.createUnitset(body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: keys.unitPages(client.jobId) });
-      return queryClient.invalidateQueries({ queryKey: keys.unitsets(client.jobId) });
-    },
+    mutationFn,
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.sets(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.invites(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.overview(client.jobId) }),
+      ]),
   });
 }
 
-export function useUpdateUnitsetMutation(
-  client: ResearcherApi,
-): UseMutationResult<UnitsetResponse, Error, { id: number; body: UnitsetWrite }> {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }) => client.updateUnitset(id, body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: keys.unitPages(client.jobId) });
-      return queryClient.invalidateQueries({ queryKey: keys.unitsets(client.jobId) });
-    },
-  });
+export function usePutSetGroupMutation(client: ResearcherApi): UseMutationResult<SetGroupResponse, Error, { group: string; body: SetGroupWrite }> {
+  return useSetGroupMutation(client, ({ group, body }: { group: string; body: SetGroupWrite }) => client.putSetGroup(group, body));
 }
 
-export function useDeleteUnitsetMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => client.deleteUnitset(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: keys.unitPages(client.jobId) });
-      return queryClient.invalidateQueries({ queryKey: keys.unitsets(client.jobId) });
-    },
-  });
+export function useDeleteSetGroupMutation(client: ResearcherApi): UseMutationResult<void, Error, string> {
+  return useSetGroupMutation(client, (group: string) => client.deleteSetGroup(group));
 }
 
 export function useCodersQuery(client: ResearcherApi): UseQueryResult<CoderProgress[]> {
@@ -275,7 +260,7 @@ export function useInvitesQuery(client: ResearcherApi): UseQueryResult<CoderInvi
   return useQuery({ queryKey: keys.invites(client.jobId), queryFn: () => client.listInvites(), refetchInterval: 30_000 });
 }
 
-/** Create, revoke or delete an invite; each refreshes the invite list. */
+/** Change, revoke or renew a link; each refreshes the link list. */
 function useInviteMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) => Promise<T>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -284,20 +269,16 @@ function useInviteMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) =>
   });
 }
 
-export function useCreateInviteMutation(client: ResearcherApi) {
-  return useInviteMutation(client, (body: CoderInviteWrite) => client.createInvite(body));
+export function useUpdateInviteMutation(client: ResearcherApi) {
+  return useInviteMutation(client, ({ id, body }: { id: number; body: CoderInviteWrite }) => client.updateInvite(id, body));
 }
 
 export function useRevokeInviteMutation(client: ResearcherApi) {
   return useInviteMutation(client, (id: number) => client.revokeInvite(id));
 }
 
-export function useDeleteInviteMutation(client: ResearcherApi) {
-  return useInviteMutation(client, (id: number) => client.deleteInvite(id));
-}
-
-export function useSetInviteUnitsetMutation(client: ResearcherApi) {
-  return useInviteMutation(client, ({ id, unitsetId }: { id: number; unitsetId: number | null }) => client.setInviteUnitset(id, unitsetId));
+export function useRenewInviteSecretMutation(client: ResearcherApi) {
+  return useInviteMutation(client, (id: number) => client.renewInviteSecret(id));
 }
 
 export function useOverviewQuery(client: ResearcherApi): UseQueryResult<JobOverview> {
@@ -367,15 +348,23 @@ export function useUnitQuery(client: ResearcherApi, id: number | null): UseQuery
   return useQuery({ queryKey: [...keys.units(client.jobId), "one", id], queryFn: () => client.getUnit(id!), enabled: id !== null });
 }
 
-export function usePublishMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, number> {
+/**
+ * Publishes a codebook. With many links (contracts CONFIRM_LINKS) the server
+ * asks to confirm (409 `confirm_links`): publish again with `confirmLinks`.
+ */
+export function usePublishMutation(
+  client: ResearcherApi,
+): UseMutationResult<DeploymentResponse, Error, number | { codebookId: number; confirmLinks?: boolean }> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (codebookId: number) => {
+    mutationFn: async (vars: number | { codebookId: number; confirmLinks?: boolean }) => {
+      const { codebookId, confirmLinks } = typeof vars === "number" ? { codebookId: vars, confirmLinks: undefined } : vars;
       const current = queryClient.getQueryData<DeploymentResponse | null>(keys.deployment(client.jobId));
-      return client.putDeployment({ codebookId, active: current?.active ?? true });
+      return client.putDeployment({ codebookId, active: current?.active ?? true, ...(confirmLinks ? { confirmLinks } : {}) });
     },
     onSuccess: (deployment) => {
       queryClient.setQueryData(keys.deployment(client.jobId), deployment);
+      void queryClient.invalidateQueries({ queryKey: keys.invites(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: ["admin", "job", client.jobId ?? "current", "codebook"] });
       return queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });
     },

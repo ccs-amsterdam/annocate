@@ -6,7 +6,7 @@ const items = [
   {
     type: "unit_loop",
     label: "loop",
-    units: [{ mode: "all", unitset: "main" }],
+    units: [{ mode: "all" }],
     layout: { template: "# {{$unit.headline}}\n\n$unit.body" },
     children: [
       { type: "question", name: "q1", variable: { type: "confirm", question: "Is {{$unit.topic}} right?" } },

@@ -1,4 +1,6 @@
 import {
+  cellsFromSets,
+  type SetGroupResponse,
   collectQuestions,
   loopTitle,
   optionLabel,
@@ -281,7 +283,7 @@ export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels)
  */
 export function codersTable(coders: CoderProgress[], order: string[] = [], labels?: Labels, nested: ReadonlySet<string> = new Set()): Table {
   const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort();
-  // The URL parameters invitations required, by their $session name
+  // Session values (link and URL parameters, source), by their $session name
   const sessionNames = [...new Set(coders.flatMap((c) => Object.keys(c.session ?? {})))].sort();
   const columns = answerColumns(
     coders.flatMap((c) => Object.entries(c.variables)),
@@ -326,18 +328,21 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
  * replaced after it was coded has several), with the fields as shown.
  * Join the annotations on `unit_version_id`.
  */
-export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]): Table {
+export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[], groups: SetGroupResponse[] = []): Table {
   const used = new Set(annotations.map((a) => a.unitVersionId));
   const coded = versions.filter((v) => used.has(v.id));
   const fields = [...new Set(coded.flatMap((v) => Object.keys(v.data)))];
+  // A column per set group: the unit's sets, as in a sets column of a CSV
+  const cells = groups.map((g) => cellsFromSets(g.sets));
   return {
-    headers: ["unit_version_id", "unit_id", "hash", "first_shown", ...fields],
+    headers: ["unit_version_id", "unit_id", "hash", "first_shown", ...fields, ...groups.map((g) => `sets.${g.name}`)],
     rows: coded.map((v) => [
       String(v.id),
       v.externalId,
       v.hash,
       time(v.created),
       ...fields.map((f) => (v.data[f] === null || v.data[f] === undefined ? "" : String(v.data[f]))),
+      ...cells.map((c) => c.get(v.unitId) ?? ""),
     ]),
   };
 }
@@ -489,12 +494,14 @@ coders.csv       A row per coder: participant id, email (coders who logged
                  in), invitation, started, last
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
-                 (deletion_requested; not done yet), the URL parameters their invitation
-                 required (session.<name>), units finished per loop, and
+                 (deletion_requested; not done yet), their session values
+                 from the link (session.<name>), units finished per loop, and
                  their answers outside unit loops.
 units.csv        The units as coders saw them (only the fields the codebook
                  used), a row per version: a unit replaced after it was coded
                  has a row per version. Join annotations on unit_version_id.
+                 A column per set group (sets.<group>): the unit's sets,
+                 e.g. s1 or s1;_overlap (#n: its position in an ordered set).
 variables.csv    Per codebook version, question and option: the question text,
                  the stored value and its label.
 devices.csv      The devices coders used: device type (phone, tablet,

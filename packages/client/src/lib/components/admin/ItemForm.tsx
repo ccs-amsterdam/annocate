@@ -3,12 +3,14 @@ import {
   type CodebookItem,
   type Condition,
   type UnitLoopItem,
-  type UnitsetResponse,
+  type SessionItem,
+  type SetGroupResponse,
   type CodebookValidationIssue,
   type EndItem,
 } from "@annotinder/contracts";
 import { cn } from "cn";
 import { UnitLoopForm } from "./UnitLoopForm";
+import { SessionItemForm } from "./SessionItemForm";
 import { HelpButton } from "../../help/HelpButton";
 import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
@@ -63,12 +65,15 @@ export function defaultItemForType(type: CodebookItem["type"], name: string): Co
       } as CodebookItem;
     case "end":
       return { type: "end", name, outcome: "screenout" };
+    case "session":
+      return { type: "session", params: [] };
   }
 }
 
 export function ItemForm({
   item,
-  unitsets,
+  groups,
+  setParams,
   unitVariableNames = [],
   availableQuestions = [],
   inLoop = false,
@@ -80,7 +85,10 @@ export function ItemForm({
   onChange,
 }: {
   item: CodebookItem;
-  unitsets: UnitsetResponse[];
+  /** The job's set groups (loops' sets, session parameters with a group's sets). */
+  groups: SetGroupResponse[];
+  /** The codebook's set-typed session parameters (name -> group). */
+  setParams?: Map<string, string>;
   unitVariableNames?: string[];
   /** Questions references may use at this item (contracts `availableQuestions`): for conditions and branches. */
   availableQuestions?: { name: string; variable: AnyVariableType }[];
@@ -104,7 +112,9 @@ export function ItemForm({
 
   return (
     <div className="flex flex-col gap-4">
-      {item.type === "condition" || item.type === "unit_loop" ? (
+      {item.type === "session" ? (
+        <SessionItemForm item={item as SessionItem} groups={groups} issues={validationIssues} onChange={onChange} />
+      ) : item.type === "condition" || item.type === "unit_loop" ? (
         // Conditions and unit loops have no name: an optional label shows in the tree (and for loops in exports).
         <div className="flex flex-col gap-1.5">
           <span className="flex items-center gap-1.5">
@@ -184,7 +194,8 @@ export function ItemForm({
       {item.type === "unit_loop" && (
         <UnitLoopForm
           loop={item as UnitLoopItem}
-          unitsets={unitsets}
+          groups={groups}
+          setParams={setParams}
           unitFields={unitFields}
           coderQuestions={availableQuestions}
           validationIssues={validationIssues}

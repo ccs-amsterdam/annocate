@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  ALL_UNITS_UNITSET,
   collectQuestions,
   parseTemplateBlocks,
   templateReferences,
@@ -13,7 +12,7 @@ import {
   type VariableValue,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useUnitPageQuery, useUnitsetsQuery } from "../../../admin/queries";
+import { useSetGroupsQuery, useUnitPageQuery } from "../../../admin/queries";
 import { enclosingLoop, flattenTree } from "../../../codebook/tree";
 import { CodebookPreviewVariable } from "../CodebookPreviewVariable";
 import type { CodebookDraft } from "./useCodebookDraft";
@@ -60,13 +59,14 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
   const order = loop ? loopQuestionNames(loop) : [];
 
   const [unitIndex, setUnitIndex] = useState(0);
-  // Units from a unitset: by default the loop's own (its first group's, if its name has no references)
-  const unitsets = useUnitsetsQuery(client).data ?? [];
+  // Units from a set: by default the loop's own (its first branch's set, if it has a fixed one)
+  const sets = (useSetGroupsQuery(client).data ?? []).flatMap((g) => g.sets.map((set) => ({ group: g.name, set: set.name, key: `${g.name}/${set.name}` })));
   const branch = loop?.units?.[0];
-  const loopSet = branch && "unitset" in branch && !branch.unitset.includes("$") && branch.unitset !== ALL_UNITS_UNITSET ? branch.unitset : null;
+  const loopSet = branch && branch.mode !== "assign" && branch.set ? `${branch.set.group}/${branch.set.set}` : null;
   const [chosenSet, setChosenSet] = useState<string | null | undefined>(undefined);
-  const unitset = chosenSet === undefined ? (unitsets.some((s) => s.name === loopSet) ? loopSet : null) : chosenSet;
-  const page = useUnitPageQuery(client, { offset: unitIndex, limit: 1, unitset: unitset ?? undefined });
+  const setKey = chosenSet === undefined ? (sets.some((s) => s.key === loopSet) ? loopSet : null) : chosenSet;
+  const chosen = sets.find((s) => s.key === setKey);
+  const page = useUnitPageQuery(client, { offset: unitIndex, limit: 1, group: chosen?.group, set: chosen?.set });
   const unit = loop ? page.data?.units[0] : undefined;
   const total = page.data?.total ?? 0;
 
@@ -85,20 +85,20 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
 
   const controls = loop && (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border/80 px-3.5 py-2 text-xs text-muted-foreground">
-      {unitsets.length > 0 && (
+      {sets.length > 0 && (
         <select
           aria-label="Units from"
           className={selectClass}
-          value={unitset ?? ""}
+          value={setKey ?? ""}
           onChange={(e) => {
             setChosenSet(e.target.value || null);
             setUnitIndex(0);
           }}
         >
           <option value="">All units</option>
-          {unitsets.map((s) => (
-            <option key={s.id} value={s.name}>
-              {s.name}
+          {sets.map((s) => (
+            <option key={s.key} value={s.key}>
+              {s.set} ({s.group})
             </option>
           ))}
         </select>

@@ -1,58 +1,69 @@
 import { useMemo, useState } from "react";
-import type { UnitField, UnitResponse, UnitsetResponse } from "@annotinder/contracts";
-import { ChevronLeft, ChevronRight, Lock, Pencil, RotateCcw, Trash2, Upload, Scissors } from "lucide-react";
+import { formatSetCell, type SetGroupResponse, type UnitField, type UnitResponse } from "@annotinder/contracts";
+import { ChevronLeft, ChevronRight, Lock, RotateCcw, Trash2, Upload, Scissors } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
-  useCreateUnitsetMutation,
+  useDeleteSetGroupMutation,
   useDeleteUnitMutation,
-  useDeleteUnitsetMutation,
+  usePutSetGroupMutation,
+  useSetGroupsQuery,
   useUnitFieldsQuery,
   useUnitPageQuery,
   useUnitQuery,
-  useUnitsetsQuery,
   useUnitsQuery,
-  useUpdateUnitsetMutation,
 } from "../../../admin/queries";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ResetAnswersDialog, type ResetScope } from "../ResetAnswersDialog";
 import { Button } from "@/components/ui/button";
 import { FieldBadge } from "./FieldBadge";
 import { UploadUnits } from "./UploadUnits";
-import { SplitUnitsets } from "./SplitUnitsets";
+import { SplitIntoSets } from "./SplitIntoSets";
 import { HelpButton } from "../../../help/HelpButton";
 
 const PAGE_SIZE = 50;
 
+/** A set of a group being shown. */
+interface ShownSet {
+  group: string;
+  set: string;
+}
+
 /**
- * Units and unitsets in one place (docs/client.md §7): a table
- * of units with a column per field and badges for the unitsets they're in.
- * Pick a unitset to see its units in its order; select units to make a new
- * unitset, or split units into parts.
+ * Units and their sets in one place (docs/client.md §7): a table of units
+ * with a column per field and a column per set group (its cell: the
+ * unit's sets, as in a sets column of a CSV). Pick a set to see its units
+ * in its order; select units to put them in a set, or split units into sets.
  */
 export function UnitsPage({ client }: { client: ResearcherApi }) {
   const fieldsQuery = useUnitFieldsQuery(client);
-  const unitsetsQuery = useUnitsetsQuery(client);
+  const groupsQuery = useSetGroupsQuery(client);
   const unitsQuery = useUnitsQuery(client);
-  const [unitset, setUnitset] = useState<string | null>(null);
+  const [shownSet, setShownSet] = useState<ShownSet | null>(null);
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [panel, setPanel] = useState<"upload" | "split" | null>(null);
 
-  const pageQuery = useUnitPageQuery(client, { offset, limit: PAGE_SIZE, unitset: unitset ?? undefined });
+  const pageQuery = useUnitPageQuery(client, { offset, limit: PAGE_SIZE, group: shownSet?.group, set: shownSet?.set });
   const fields = fieldsQuery.data ?? [];
-  const unitsets = useMemo(() => unitsetsQuery.data ?? [], [unitsetsQuery.data]);
-  const currentSet = unitsets.find((s) => s.name === unitset) ?? null;
+  const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
+  const currentSet = shownSet ? groups.find((g) => g.name === shownSet.group)?.sets.find((s) => s.name === shownSet.set) ?? null : null;
   const total = pageQuery.data?.total ?? 0;
 
-  // unit id -> names of the unitsets it is in
-  const setsOf = useMemo(() => {
-    const map = new Map<number, string[]>();
-    for (const set of unitsets) for (const id of set.unitIds) map.set(id, [...(map.get(id) ?? []), set.name]);
-    return map;
-  }, [unitsets]);
+  // group -> unit id -> its cell (the unit's sets in the group)
+  const cells = useMemo(() => {
+    const out = new Map<string, Map<number, string>>();
+    for (const g of groups) {
+      const entries = new Map<number, { set: string; position?: number }[]>();
+      for (const set of g.sets) {
+        set.unitIds.forEach((id, i) => entries.set(id, [...(entries.get(id) ?? []), set.ordered ? { set: set.name, position: i + 1 } : { set: set.name }]));
+      }
+      out.set(g.name, new Map([...entries].map(([id, e]) => [id, formatSetCell(e)])));
+    }
+    return out;
+  }, [groups]);
 
-  function selectSet(name: string | null) {
-    setUnitset(name);
+  function selectSet(next: ShownSet | null) {
+    setShownSet(next);
     setOffset(0);
     setPanel(null);
   }
@@ -85,34 +96,35 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
 
       {panel === "upload" && <UploadUnits client={client} jobFields={fields} onDone={() => setPanel(null)} />}
 
-      <UnitsetBar
+      <SetsBar
         client={client}
-        unitsets={unitsets}
+        groups={groups}
         allCount={unitsQuery.data?.length ?? 0}
-        current={currentSet}
+        current={shownSet}
         onSelect={selectSet}
         onSplit={() => setPanel(panel === "split" ? null : "split")}
       />
 
       {panel === "split" && (
-        <SplitUnitsets
+        <SplitIntoSets
           client={client}
-          source={unitset}
+          source={shownSet ? `${shownSet.set} (${shownSet.group})` : null}
           unitIds={currentSet ? currentSet.unitIds : (unitsQuery.data ?? []).map((u) => u.id)}
-          unitsets={unitsets}
+          groups={groups}
           onDone={() => setPanel(null)}
         />
       )}
 
       {selected.size > 0 && (
-        <SelectionBar client={client} selected={selected} unitsets={unitsets} current={currentSet} onClear={() => setSelected(new Set())} />
+        <SelectionBar client={client} selected={selected} groups={groups} current={shownSet} onClear={() => setSelected(new Set())} />
       )}
 
       <UnitTable
         client={client}
         units={pageQuery.data?.units ?? []}
         fields={fields}
-        setsOf={setsOf}
+        groups={groups.map((g) => g.name)}
+        cells={cells}
         selected={selected}
         onSelectedChange={setSelected}
         loading={pageQuery.isLoading}
@@ -138,23 +150,22 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
   );
 }
 
-function UnitsetBar({
+function SetsBar({
   client,
-  unitsets,
+  groups,
   allCount,
   current,
   onSelect,
   onSplit,
 }: {
   client: ResearcherApi;
-  unitsets: UnitsetResponse[];
+  groups: SetGroupResponse[];
   allCount: number;
-  current: UnitsetResponse | null;
-  onSelect: (name: string | null) => void;
+  current: ShownSet | null;
+  onSelect: (set: ShownSet | null) => void;
   onSplit: () => void;
 }) {
-  const deleteUnitset = useDeleteUnitsetMutation(client);
-  const updateUnitset = useUpdateUnitsetMutation(client);
+  const deleteGroup = useDeleteSetGroupMutation(client);
   const chip = (active: boolean) =>
     `rounded-full border px-2.5 py-1 text-xs transition-colors ${
       active ? "border-primary bg-primary/10 font-semibold text-foreground" : "border-border hover:border-primary/50"
@@ -166,61 +177,46 @@ function UnitsetBar({
         <button type="button" className={chip(current === null)} onClick={() => onSelect(null)}>
           All units <span className="text-muted-foreground">{allCount}</span>
         </button>
-        {unitsets.map((set) => (
-          <button key={set.id} type="button" className={chip(current?.id === set.id)} onClick={() => onSelect(set.name)}>
-            <span className="font-mono">{set.name}</span> <span className="text-muted-foreground">{set.unitIds.length}</span>
-          </button>
-        ))}
         <div className="ml-auto flex gap-1.5">
           <Button size="sm" variant="outline" onClick={onSplit} className="gap-1.5" disabled={allCount === 0}>
             <Scissors className="h-3.5 w-3.5" />
-            Split {current ? "set" : "units"} into parts
+            Split {current ? "set" : "units"} into sets
           </Button>
-          {current && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              disabled={updateUnitset.isPending}
-              onClick={() => {
-                const name = prompt(`Rename unitset "${current.name}" to:`, current.name)?.trim();
-                if (!name || name === current.name) return;
-                if (unitsets.some((s) => s.name === name)) return alert(`A unitset named ${name} already exists.`);
-                updateUnitset.mutate({ id: current.id, body: { name, unitIds: current.unitIds } }, { onSuccess: () => onSelect(name) });
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Rename
-            </Button>
-          )}
-          {current && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              disabled={deleteUnitset.isPending}
-              onClick={() => {
-                if (!confirm(`Delete unitset "${current.name}"? Its units stay.`)) return;
-                deleteUnitset.mutate(current.id, { onSuccess: () => onSelect(null) });
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete set
-            </Button>
-          )}
+          <HelpButton topic="unitsets" label="Help: sets" />
         </div>
       </div>
-      {current && (
-        <p className="text-xs text-muted-foreground">Showing the units of {current.name} in the set&apos;s order.</p>
-      )}
-      {current && (
-        <p className="text-[11px] text-muted-foreground">
-          Renaming a set that a codebook or invitation uses changes what they hand out: codebooks name sets, so update them
-          too.
-        </p>
-      )}
-      {deleteUnitset.isError && <p className="text-sm text-destructive">{deleteUnitset.error.message}</p>}
-      {updateUnitset.isError && <p className="text-sm text-destructive">{updateUnitset.error.message}</p>}
+      {groups.map((g) => (
+        <div key={g.name} className="flex flex-wrap items-center gap-1.5">
+          <span className="w-28 truncate font-mono text-xs font-semibold" title={`Group ${g.name}`}>
+            {g.name}
+          </span>
+          {g.sets.map((set) => (
+            <button
+              key={set.name}
+              type="button"
+              className={chip(current?.group === g.name && current.set === set.name)}
+              onClick={() => onSelect({ group: g.name, set: set.name })}
+            >
+              <span className="font-mono">{set.name}</span> <span className="text-muted-foreground">{set.unitIds.length}</span>
+            </button>
+          ))}
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            title={`Delete group ${g.name} (its units stay)`}
+            aria-label={`Delete group ${g.name}`}
+            disabled={deleteGroup.isPending}
+            onClick={() => {
+              if (!confirm(`Delete group "${g.name}" and its sets? Its units stay.`)) return;
+              deleteGroup.mutate(g.name, { onSuccess: () => current?.group === g.name && onSelect(null) });
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ))}
+      {current && <p className="text-xs text-muted-foreground">Showing the units of {current.set} (group {current.group}) in the set&apos;s order.</p>}
+      {deleteGroup.isError && <p className="text-sm text-destructive">{deleteGroup.error.message}</p>}
     </div>
   );
 }
@@ -228,68 +224,84 @@ function UnitsetBar({
 function SelectionBar({
   client,
   selected,
-  unitsets,
+  groups,
   current,
   onClear,
 }: {
   client: ResearcherApi;
   selected: Set<number>;
-  unitsets: UnitsetResponse[];
-  /** The unitset shown, if any: the selection can be removed from it. */
-  current: UnitsetResponse | null;
+  groups: SetGroupResponse[];
+  /** The set shown, if any: the selection can be removed from it. */
+  current: ShownSet | null;
   onClear: () => void;
 }) {
-  const createUnitset = useCreateUnitsetMutation(client);
-  const updateUnitset = useUpdateUnitsetMutation(client);
+  const putGroup = usePutSetGroupMutation(client);
   const [resetting, setResetting] = useState<ResetScope | null>(null);
-  const addTo = (set: UnitsetResponse) =>
-    updateUnitset.mutate({ id: set.id, body: { name: set.name, unitIds: [...set.unitIds, ...[...selected].filter((id) => !set.unitIds.includes(id))] } }, { onSuccess: onClear });
+  const [group, setGroup] = useState(current?.group ?? groups[0]?.name ?? "sets");
+  const [setName, setSetName] = useState("");
+  const sets = groups.find((g) => g.name === group)?.sets ?? [];
 
-  function create() {
-    const name = prompt(`Name for a new unitset with the ${selected.size} selected units:`)?.trim();
+  /** The group's sets with `change` applied to one set (made if new). */
+  const changed = (groupName: string, name: string, change: (ids: number[]) => number[]) => {
+    const existing = groups.find((g) => g.name === groupName)?.sets ?? [];
+    const has = existing.some((s) => s.name === name);
+    const next = has ? existing.map((s) => (s.name === name ? { ...s, unitIds: change(s.unitIds) } : s)) : [...existing, { name, unitIds: change([]), ordered: false }];
+    return next.filter((s) => s.unitIds.length > 0);
+  };
+  const putIn = () => {
+    const name = setName.trim();
     if (!name) return;
-    if (unitsets.some((s) => s.name === name)) return alert(`A unitset named ${name} already exists.`);
-    createUnitset.mutate({ name, unitIds: [...selected] }, { onSuccess: onClear });
-  }
+    putGroup.mutate({ group, body: { sets: changed(group, name, (ids) => [...ids, ...[...selected].filter((id) => !ids.includes(id))]) } }, { onSuccess: onClear });
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-sm">
       <span className="font-medium">{selected.size} selected</span>
-      <Button size="sm" onClick={create} disabled={createUnitset.isPending}>
-        New unitset from selection
-      </Button>
-      {unitsets.length > 0 && (
-        <select
-          aria-label="Add the selection to a unitset"
-          className="h-9 rounded-md border border-input bg-background px-2 text-xs"
-          value=""
-          disabled={updateUnitset.isPending}
-          onChange={(e) => {
-            const set = unitsets.find((s) => s.id === Number(e.target.value));
-            if (set) addTo(set);
-          }}
-        >
-          <option value="">Add to unitset…</option>
-          {unitsets.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
+      <span className="flex items-center gap-1.5 text-xs">
+        Put in set
+        <input
+          aria-label="Set"
+          list="unitpage-sets"
+          className="h-9 w-32 rounded-md border border-input bg-background px-2 font-mono text-xs"
+          placeholder="e.g. s1 or _overlap"
+          value={setName}
+          onChange={(e) => setSetName(e.target.value)}
+        />
+        <datalist id="unitpage-sets">
+          {sets.map((s) => (
+            <option key={s.name} value={s.name} />
           ))}
-        </select>
-      )}
+        </datalist>
+        of group
+        <input
+          aria-label="Group"
+          list="unitpage-groups"
+          className="h-9 w-28 rounded-md border border-input bg-background px-2 font-mono text-xs"
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+        />
+        <datalist id="unitpage-groups">
+          {groups.map((g) => (
+            <option key={g.name} value={g.name} />
+          ))}
+        </datalist>
+        <Button size="sm" onClick={putIn} disabled={!setName.trim() || !group || putGroup.isPending}>
+          Put in
+        </Button>
+      </span>
       {current && (
         <Button
           size="sm"
           variant="outline"
-          disabled={updateUnitset.isPending}
+          disabled={putGroup.isPending}
           onClick={() =>
-            updateUnitset.mutate(
-              { id: current.id, body: { name: current.name, unitIds: current.unitIds.filter((id) => !selected.has(id)) } },
+            putGroup.mutate(
+              { group: current.group, body: { sets: changed(current.group, current.set, (ids) => ids.filter((id) => !selected.has(id))) } },
               { onSuccess: onClear },
             )
           }
         >
-          Remove from {current.name}
+          Remove from {current.set}
         </Button>
       )}
       <Button size="sm" variant="outline" onClick={() => setResetting({ unitIds: [...selected], label: `${selected.size} unit${selected.size === 1 ? "" : "s"}` })}>
@@ -298,8 +310,7 @@ function SelectionBar({
       <Button size="sm" variant="ghost" onClick={onClear}>
         Clear
       </Button>
-      {createUnitset.isError && <span className="text-destructive">{createUnitset.error.message}</span>}
-      {updateUnitset.isError && <span className="text-destructive">{updateUnitset.error.message}</span>}
+      {putGroup.isError && <span className="text-destructive">{putGroup.error.message}</span>}
       <ResetAnswersDialog client={client} scope={resetting} onClose={() => setResetting(null)} />
     </div>
   );
@@ -309,7 +320,8 @@ function UnitTable({
   client,
   units,
   fields,
-  setsOf,
+  groups,
+  cells,
   selected,
   onSelectedChange,
   loading,
@@ -317,7 +329,10 @@ function UnitTable({
   client: ResearcherApi;
   units: UnitResponse[];
   fields: UnitField[];
-  setsOf: Map<number, string[]>;
+  /** The set groups: a column each. */
+  groups: string[];
+  /** group -> unit id -> the unit's sets in it (a cell as in a CSV). */
+  cells: Map<string, Map<number, string>>;
   selected: Set<number>;
   onSelectedChange: (next: Set<number>) => void;
   loading: boolean;
@@ -352,7 +367,11 @@ function UnitTable({
               />
             </th>
             <th className="p-2 font-medium">id</th>
-            <th className="p-2 font-medium">Unitsets</th>
+            {groups.map((g) => (
+              <th key={g} className="p-2 font-medium" title="Set group">
+                <span className="font-mono">{g}</span>
+              </th>
+            ))}
             {fields.map((f) => (
               <th key={f.name} className={`p-2 font-medium ${f.type === "text" ? "" : "text-right"}`}>
                 {f.name}
@@ -377,15 +396,11 @@ function UnitTable({
                   {unit.externalId}
                 </button>
               </td>
-              <td className="p-2">
-                <div className="flex flex-wrap gap-1">
-                  {(setsOf.get(unit.id) ?? []).map((name) => (
-                    <span key={name} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              </td>
+              {groups.map((g) => (
+                <td key={g} className="p-2 font-mono text-[11px] text-muted-foreground">
+                  {cells.get(g)?.get(unit.id) ?? ""}
+                </td>
+              ))}
               {fields.map((f) => (
                 <FieldCell key={f.name} field={f} value={unit.data[f.name]} />
               ))}

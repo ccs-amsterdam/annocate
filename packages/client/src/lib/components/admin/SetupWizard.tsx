@@ -303,7 +303,7 @@ function DistributionStep({ a, set }: StepProps) {
               </label>
               <label className="flex items-center gap-2">
                 <input type="radio" checked={d.handOut === "links"} onChange={() => update({ handOut: "links" })} />
-                An invitation link per set: you decide who gets which (e.g. a few expert coders)
+                A link per set (made when you publish): you decide who gets which (e.g. a few expert coders)
               </label>
             </fieldset>
             {a.units && sets.length > 0 && (
@@ -521,7 +521,7 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
     if (lists.includes("after") && count("after") > 0) lines.push(`${count("after")} question(s) after the units.`);
   }
   const perSet = a.parts.annotate && d.mode === "sets" && d.handOut === "links";
-  lines.push(perSet ? "An invitation link per set." : "An open invitation link.");
+  lines.push(perSet ? "A link per set, made when you publish." : "An open link, made when you publish.");
   return (
     <>
       <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">

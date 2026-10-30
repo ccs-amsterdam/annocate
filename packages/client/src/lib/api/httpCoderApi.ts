@@ -33,10 +33,9 @@ async function toError(res: Response, path: string): Promise<CoderApiError> {
   }
 }
 
-/** The branch of a unit loop's `units` the client chose for the coder, and its unitset names. */
+/** The branch of a unit loop's `units` the client chose for the coder. */
 export interface BranchChoice {
   branch: number;
-  unitsets: string[];
 }
 
 /**
@@ -49,7 +48,7 @@ export interface CoderApi {
   getSession(): Promise<SessionResponse>;
   /**
    * The coder's next units in a loop (up to `count`), chosen by the server; empty when the coder is done with it.
-   * `branch`: the branch of the loop the client chose, with its filled-in unitset names (contracts NextUnitQuerySchema).
+   * `branch`: the branch of the loop the client chose, (contracts NextUnitQuerySchema).
    */
   getNextUnits(loop: string, branch?: BranchChoice, count?: number): Promise<CoderUnitResponse[]>;
   /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
@@ -151,10 +150,7 @@ export class HttpCoderApi implements CoderApi {
 
   async getNextUnits(loop: string, branch?: BranchChoice, count = 1): Promise<CoderUnitResponse[]> {
     const query = new URLSearchParams({ count: String(count) });
-    if (branch) {
-      query.set("branch", String(branch.branch));
-      for (const name of branch.unitsets) query.append("unitsets", name);
-    }
+    if (branch) query.set("branch", String(branch.branch));
     const path = coderEndpoints.getNextUnits.path.replace(":loop", encodeURIComponent(loop));
     return (await this.request<NextUnitsResponse>(`${path}?${query}`)).units;
   }

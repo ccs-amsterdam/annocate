@@ -15,7 +15,7 @@ import type {
   ReferenceScope,
   UnitData,
 } from "@annotinder/contracts";
-import { branchUnitsets, buildScope, unitScopeData, loopDependencies, loopTitle, unitLoops, collectQuestions, fillRedirectUrl, fillUnitsetName, itemName, validateAnswer } from "@annotinder/contracts";
+import { buildScope, unitScopeData, loopDependencies, unitLoops, collectQuestions, fillRedirectUrl, itemName, validateAnswer } from "@annotinder/contracts";
 import type { BranchChoice, CoderApi } from "../api/httpCoderApi";
 import { evaluateCondition } from "../codebook/conditions";
 import { ExpressionCache } from "../codebook/expressionCache";
@@ -920,9 +920,9 @@ export class JobManager {
 
   /**
    * The branch of a loop's `units` for this coder: the first whose `when`
-   * holds, with its unitset names filled in; null if none matches.
-   * Evaluated here rather than on the server, so the server never
-   * needs the answers (docs/architecture.md §6).
+   * holds; null if none matches. Evaluated here rather than on the
+   * server, so the server never needs the answers (docs/architecture.md
+   * §6). The server picks the units of the branch (and the coder's set).
    */
   private async chooseBranch(loop: UnitLoopItem): Promise<BranchChoice | null> {
     const scope = this.scope(this.coderVisible);
@@ -930,14 +930,7 @@ export class JobManager {
       if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${this.keyOf(loop)}:${i}`))) {
         continue;
       }
-      // The server picks the set where the template is null (`sets` and `invitation` mode): sent as "".
-      const templates = branchUnitsets(branch);
-      const unitsets = templates.map((t) => (t === null ? "" : fillUnitsetName(t, scope)));
-      const missing = templates.find((t, s) => t !== null && unitsets[s] === null);
-      if (missing) {
-        throw new Error(`${loopTitle(loop, this.keyOf(loop))}: no unitset '${missing}' for this coder (an answer it uses is missing)`);
-      }
-      return { branch: i, unitsets: unitsets as string[] };
+      return { branch: i };
     }
     return null;
   }

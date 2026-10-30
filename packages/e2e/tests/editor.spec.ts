@@ -40,6 +40,6 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   const [saved] = await api<{ id: number }[]>(request, "GET", `/job/${job.id}/codebook`);
   const { items } = await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${saved.id}`);
   expect(items).toMatchObject([
-    { type: "unit_loop", label: "News articles", units: [{ mode: "all", unitset: "__all__" }], children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }] },
+    { type: "unit_loop", label: "News articles", units: [{ mode: "all" }], children: [{ name: "topic", variable: { type: "nominal", question: "What is this article mainly about?" } }] },
   ]);
 });

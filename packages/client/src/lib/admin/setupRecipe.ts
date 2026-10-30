@@ -1,4 +1,4 @@
-import { SharedBranchSchema, seededShuffle, type RecipeInput, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import { OVERLAP_SET, SharedBranchSchema, seededShuffle, type RecipeInput, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
 import { simpleTemplate, type SimpleLayout } from "../codebook/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
@@ -76,7 +76,7 @@ export function defaultDistribution(mode: SetupDistribution["mode"], columns: st
     case "sets":
       return { mode, source: "split", sets: 2, column: columns[0] ?? "", overlap: null, handOut: "rotate" };
     case "crowd":
-      return { mode, shared: { mode: "shared", unitset: "__all__", until: { coders: 1 }, maxCoders: 1 }, overlap: null };
+      return { mode, shared: { mode: "shared", until: { coders: 1 }, maxCoders: 1 }, overlap: null };
     case "groups":
       return { mode, column: columns[0] ?? "", values: {} };
   }
@@ -148,11 +148,11 @@ export function parseQuestions(lines: string[]): SetupQuestion[] {
     });
 }
 
-/** The unitset of a condition (`groups`). */
-export const conditionUnitset = (condition: string) => `condition_${condition}`;
+/** The group the wizard puts its sets in. */
+export const WIZARD_GROUP = "sets";
 
-/** A unitset name from a column's value. */
-const setName = (value: string) => `set_${value.replace(/[^A-Za-z0-9_-]+/g, "_").slice(0, 64) || "empty"}`;
+/** A set's name from a column's value: no `;` or `#`, and no leading `_` (reserved). */
+const setName = (value: string) => value.trim().replace(/[;#]+/g, "_").replace(/^_+/, "").slice(0, 128) || "empty";
 
 /** A unit's value in a column, as text. */
 const valueOf = (unit: UnitCreate, column: string) => String((unit.data as UnitData)[column] ?? "");
@@ -169,8 +169,8 @@ export function overlapCount(overlap: SetupOverlap, n: number): number {
 }
 
 /**
- * The unitsets a distribution makes, and the overlap's (if any): the
- * overlap is drawn at random (fixed seed) and taken out of the sets.
+ * The sets a distribution makes (of the wizard's group), and the overlap
+ * units (if any): drawn at random (fixed seed) and taken out of the sets.
  */
 export function distributionSets(d: SetupDistribution, units: SetupUnits | null): { sets: { name: string; units: string[] }[]; overlap: string[] } {
   const ids = (units?.units ?? []).map((u) => u.externalId);
@@ -190,7 +190,7 @@ export function distributionSets(d: SetupDistribution, units: SetupUnits | null)
       rest.map((u) => u.externalId),
       2,
     );
-    const sets = Array.from({ length: n }, (_, i) => ({ name: `set_${i + 1}`, units: shuffled.filter((_, j) => j % n === i) }));
+    const sets = Array.from({ length: n }, (_, i) => ({ name: `s${i + 1}`, units: shuffled.filter((_, j) => j % n === i) }));
     return { sets, overlap: overlapIds };
   }
   if (d.mode === "crowd") return { sets: overlapIds.length > 0 ? [{ name: "queue", units: rest.map((u) => u.externalId) }] : [], overlap: overlapIds };
@@ -266,61 +266,74 @@ const unspecified = (q: SetupQuestion) => ({
   variable: { type: "unspecified", ...(q.question ? { question: q.question } : {}) },
 });
 
-/** The recipe for `POST /job/from-recipe`: a draft codebook, the units and one open invitation link. */
+/**
+ * The recipe for `POST /job/from-recipe`: a draft codebook, the units and
+ * their sets. Publishing makes the links (one, or one per set when sets
+ * are handed out by link).
+ */
 export function setupRecipe(a: SetupAnswers): RecipeInput {
   const lists = questionLists(a.parts);
   const items: unknown[] = [];
+  const groups: NonNullable<RecipeInput["sets"]> = [];
+  const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
   if (a.parts.experiment) {
     items.push({
       type: "question",
       name: a.experiment.name,
-      variable: {
-        type: "auto",
-        source: a.experiment.assign,
-        options: a.experiment.conditions.map((c) => c.trim()).filter(Boolean).map((value) => ({ value })),
-      },
+      variable: { type: "auto", source: a.experiment.assign, options: conditions.map((value) => ({ value })) },
     });
   }
   items.push(...parseQuestions(a.questions.before).map(unspecified));
-  const unitsets: { name: string; units: string[] }[] = [];
-  const invites: RecipeInput["invites"] = [];
   if (a.parts.annotate) {
     const d = a.distribution;
     const { sets, overlap } = distributionSets(d, a.units);
-    unitsets.push(...sets);
-    if (overlap.length > 0) unitsets.push({ name: "overlap", units: overlap });
-    const withOverlap = overlap.length > 0 ? { overlap: { unitset: "overlap" } } : {};
-    let branch: object | null;
+    const overlapSet = overlap.length > 0 ? [{ name: OVERLAP_SET, units: overlap }] : [];
+    let branches: object[] = [];
     switch (d.mode) {
       case "all":
-        branch = { mode: "all", unitset: "__all__" };
+        branches = [{ mode: "all" }];
         break;
       case "sets":
-        if (d.handOut === "links") {
-          branch = { mode: "invitation", ...withOverlap };
-          invites!.push(...sets.map((set) => ({ label: set.name.replace(/^set_/, "Set "), unitset: set.name })));
-        } else branch = { mode: "sets", unitsets: sets.map((set) => set.name), ...withOverlap };
+        groups.push({ group: WIZARD_GROUP, sets: [...sets, ...overlapSet] });
+        branches = [
+          {
+            mode: "assign",
+            group: WIZARD_GROUP,
+            from: d.handOut === "links" ? { session: "set" } : { draw: "balanced" },
+            overlap: { placement: overlap.length > 0 ? "first" : "disabled" },
+          },
+        ];
+        // A link per set: a link parameter with the group's sets
+        if (d.handOut === "links") items.unshift({ type: "session", params: [{ name: "set", kind: "link", values: { sets: WIZARD_GROUP } }] });
         break;
       case "crowd":
-        branch = { ...d.shared, unitset: overlap.length > 0 ? "queue" : "__all__", ...withOverlap };
+        if (overlap.length > 0) {
+          groups.push({ group: WIZARD_GROUP, sets: [{ name: "queue", units: sets[0]?.units ?? [] }, ...overlapSet] });
+          branches = [{ ...d.shared, set: { group: WIZARD_GROUP, set: "queue" }, overlap: { placement: "first" } }];
+        } else branches = [d.shared];
         break;
       case "groups":
-        branch = { mode: "all", unitset: conditionUnitset(`$var.${a.experiment.name}.value`) };
-        for (const condition of a.experiment.conditions.filter((c) => c.trim())) {
-          const values = d.values[condition] ?? [];
-          unitsets.push({
-            name: conditionUnitset(condition),
-            units: (a.units?.units ?? []).filter((u) => values.includes(valueOf(u, d.column))).map((u) => u.externalId),
-          });
-        }
+        // A set per condition, and a coder group per condition that codes its set
+        groups.push({
+          group: WIZARD_GROUP,
+          sets: conditions.map((condition) => {
+            const values = d.values[condition] ?? [];
+            return { name: setName(condition), units: (a.units?.units ?? []).filter((u) => values.includes(valueOf(u, d.column))).map((u) => u.externalId) };
+          }),
+        });
+        branches = conditions.map((condition) => ({
+          when: { script: `$var.${a.experiment.name}.is(${JSON.stringify(condition)})` },
+          mode: "all",
+          set: { group: WIZARD_GROUP, set: setName(condition) },
+        }));
         break;
       case "later":
-        branch = null;
+        branches = [];
     }
     items.push({
       type: "unit_loop",
       label: "Units",
-      units: branch ? [branch] : [],
+      units: branches,
       ...(a.order === "random" ? { order: "random" } : {}),
       layout: { template: layoutTemplate(a.layout) },
       children: parseQuestions(a.questions.unit).map(unspecified),
@@ -330,9 +343,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
   return {
     name: a.name.trim(),
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
-    unitsets,
+    sets: groups.map((g) => ({ ...g, sets: g.sets.filter((s) => s.units.length > 0) })),
     codebook: { note: "Made with the setup wizard", items },
-    // A link per set, or one open link
-    invites: invites.length > 0 ? invites : [{ label: "Open link" }],
   };
 }

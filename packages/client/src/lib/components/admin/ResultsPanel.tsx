@@ -105,7 +105,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "devices.csv": strToU8(toCsv(devicesTable(devices))),
         "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList))),
         "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions))),
-        "units.csv": strToU8(toCsv(unitsTable(versions, annotations))),
+        "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()))),
         "variables.csv": strToU8(toCsv(variablesTable(codebooks))),
         ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels))) } : {}),
       });

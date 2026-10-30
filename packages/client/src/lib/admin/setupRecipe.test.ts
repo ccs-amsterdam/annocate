@@ -44,8 +44,8 @@ describe("setup wizard recipes", () => {
     const a = setup({ layout: { title: "group", body: ["text"] } });
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
-    expect(loopOf(a)).toMatchObject({ units: [{ mode: "all", unitset: "__all__" }], layout: { template: "# $unit.group\n\n$unit.text" } });
-    expect(setupRecipe(a).invites).toEqual([{ label: "Open link" }]);
+    expect(loopOf(a)).toMatchObject({ units: [{ mode: "all" }], layout: { template: "# $unit.group\n\n$unit.text" } });
+    expect(setupRecipe(a).sets).toEqual([]);
   });
 
   it("assign sets: split, with overlap, handed out by one rotating link", () => {
@@ -53,28 +53,27 @@ describe("setup wizard recipes", () => {
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
-    const sizes = Object.fromEntries(recipe.unitsets!.map((s) => [s.name, s.units.length]));
-    expect(sizes).toEqual({ set_1: 3, set_2: 3, set_3: 2, overlap: 2 });
+    const [group] = recipe.sets!;
+    expect(group.group).toBe("sets");
+    const sizes = Object.fromEntries(group.sets.map((s) => [s.name, s.units.length]));
+    expect(sizes).toEqual({ s1: 3, s2: 3, s3: 2, _overlap: 2 });
     // Every unit once
-    expect(new Set(recipe.unitsets!.flatMap((s) => s.units)).size).toBe(10);
-    expect(loopOf(a).units).toEqual([{ mode: "sets", unitsets: ["set_1", "set_2", "set_3"], overlap: { unitset: "overlap" } }]);
+    expect(new Set(group.sets.flatMap((s) => s.units)).size).toBe(10);
+    expect(loopOf(a).units).toEqual([{ mode: "assign", group: "sets", from: { draw: "balanced" }, overlap: { placement: "first" } }]);
   });
 
-  it("assign sets by a column, an invitation link per set", () => {
+  it("assign sets by a column, a link per set", () => {
     const a = setup({ distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "links" } });
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
-    expect(recipe.unitsets!.map((s) => [s.name, s.units.length])).toEqual([
-      ["set_a", 4],
-      ["set_b", 4],
-      ["set_c", 2],
+    expect(recipe.sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([
+      ["a", 4],
+      ["b", 4],
+      ["c", 2],
     ]);
-    expect(recipe.invites).toEqual([
-      { label: "Set a", unitset: "set_a" },
-      { label: "Set b", unitset: "set_b" },
-      { label: "Set c", unitset: "set_c" },
-    ]);
-    expect(loopOf(a).units).toEqual([{ mode: "invitation" }]);
+    // The links: a link parameter with the group's sets
+    expect(recipe.codebook.items[0]).toEqual({ type: "session", params: [{ name: "set", kind: "link", values: { sets: "sets" } }] });
+    expect(loopOf(a).units).toEqual([{ mode: "assign", group: "sets", from: { session: "set" }, overlap: { placement: "disabled" } }]);
   });
 
   it("crowd coding: until coders agree, with limits per coder and an overlap", () => {
@@ -82,7 +81,7 @@ describe("setup wizard recipes", () => {
       questions: { before: [], unit: ["sentiment", "topic"], after: [] },
       distribution: {
         mode: "crowd",
-        shared: { mode: "shared", unitset: "__all__", until: { agree: 2, on: "sentiment" }, maxCoders: 3, minUnits: 2, maxUnits: 5 },
+        shared: { mode: "shared", until: { agree: 2, on: "sentiment" }, maxCoders: 3, minUnits: 2, maxUnits: 5 },
         overlap: { by: "units", value: 2 },
       },
     });
@@ -90,19 +89,27 @@ describe("setup wizard recipes", () => {
     // The agreement question needs a categorical type: reported until it is specified
     expect(otherIssues(a).map((i) => i.message)).toEqual([expect.stringContaining("sentiment")]);
     expect(loopOf(a).units).toEqual([
-      { mode: "shared", unitset: "queue", until: { agree: 2, on: "sentiment" }, maxCoders: 3, minUnits: 2, maxUnits: 5, overlap: { unitset: "overlap" } },
+      {
+        mode: "shared",
+        set: { group: "sets", set: "queue" },
+        until: { agree: 2, on: "sentiment" },
+        maxCoders: 3,
+        minUnits: 2,
+        maxUnits: 5,
+        overlap: { placement: "first" },
+      },
     ]);
-    expect(setupRecipe(a).unitsets!.map((s) => [s.name, s.units.length])).toEqual([
+    expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([
       ["queue", 8],
-      ["overlap", 2],
+      ["_overlap", 2],
     ]);
   });
 
   it("crowd coding without overlap: a queue over all units", () => {
-    const a = setup({ distribution: { mode: "crowd", shared: { mode: "shared", unitset: "__all__", until: { coders: 2 }, maxCoders: 2 }, overlap: null } });
+    const a = setup({ distribution: { mode: "crowd", shared: { mode: "shared", until: { coders: 2 }, maxCoders: 2 }, overlap: null } });
     expect(otherIssues(a)).toEqual([]);
-    expect(loopOf(a).units).toEqual([{ mode: "shared", unitset: "__all__", until: { coders: 2 }, maxCoders: 2 }]);
-    expect(setupRecipe(a).unitsets).toEqual([]);
+    expect(loopOf(a).units).toEqual([{ mode: "shared", until: { coders: 2 }, maxCoders: 2 }]);
+    expect(setupRecipe(a).sets).toEqual([]);
   });
 
   it("experimental groups: the condition first, a set per condition by chosen values, questions before and after", () => {
@@ -114,13 +121,17 @@ describe("setup wizard recipes", () => {
     expect(setupProblems(a)).toEqual([]);
     expect(otherIssues(a)).toEqual([]);
     const recipe = setupRecipe(a);
-    expect(recipe.unitsets!.map((s) => [s.name, s.units.length])).toEqual([
-      ["condition_control", 4],
-      ["condition_treatment", 6],
+    expect(recipe.sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([
+      ["control", 4],
+      ["treatment", 6],
     ]);
     const items = recipe.codebook.items as { name?: string; type: string }[];
     expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "any_comments"]);
-    expect(loopOf(a).units).toEqual([{ mode: "all", unitset: "condition_$var.condition.value" }]);
+    // A coder group per condition, coding its set
+    expect(loopOf(a).units).toEqual([
+      { when: { script: '$var.condition.is("control")' }, mode: "all", set: { group: "sets", set: "control" } },
+      { when: { script: '$var.condition.is("treatment")' }, mode: "all", set: { group: "sets", set: "treatment" } },
+    ]);
   });
 
   it("decide later: the loop's units are not set, and reported", () => {
@@ -148,7 +159,7 @@ describe("setup wizard recipes", () => {
     const twice = setup({ parts: { annotate: true, survey: true, experiment: false }, questions: { before: ["Age"], unit: ["age"], after: [] } });
     expect(setupProblems(twice)).toEqual(["Each question once: age"]);
     // The queue's own rules; the question to agree on can wait for the editor
-    const crowd = setup({ distribution: { mode: "crowd", shared: { mode: "shared", unitset: "__all__", until: { agree: 2, on: "" }, maxCoders: 1 }, overlap: null } });
+    const crowd = setup({ distribution: { mode: "crowd", shared: { mode: "shared", until: { agree: 2, on: "" }, maxCoders: 1 }, overlap: null } });
     expect(setupProblems(crowd)).toEqual([expect.stringContaining("Max coders must be at least")]);
     const groups = setup({
       parts: { annotate: true, survey: false, experiment: true },

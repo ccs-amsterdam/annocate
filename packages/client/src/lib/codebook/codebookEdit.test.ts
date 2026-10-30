@@ -121,7 +121,7 @@ describe("codebookEdit", () => {
       const loop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        units: [{ mode: "all", unitset: "test" }],
+        units: [{ mode: "all" }],
         layout: { template: "" },
         children: [
           {
@@ -140,7 +140,7 @@ describe("codebookEdit", () => {
     const loop: TopLevelItem = {
       type: "unit_loop",
       ...{ _key: "loop" },
-      units: [{ mode: "all", unitset: "test" }],
+      units: [{ mode: "all" }],
       layout: { template: "" },
       children: [
         {
@@ -155,7 +155,7 @@ describe("codebookEdit", () => {
       const autoQ: TopLevelItem = {
         type: "question",
         name: "auto_q",
-        variable: { type: "auto", source: "random" },
+        variable: { type: "auto", source: "random", options: [{ value: "a" }] },
       };
       const items: TopLevelItem[] = [autoQ, loop];
       expect(canMoveItemTo(items, "auto_q", "in_loop_q", "before")).toBe(false);
@@ -166,7 +166,7 @@ describe("codebookEdit", () => {
       const spanLoop: TopLevelItem = {
         type: "unit_loop",
         ...{ _key: "loop" },
-        units: [{ mode: "all", unitset: "test" }],
+        units: [{ mode: "all" }],
         layout: { template: "" },
         children: [
           {
@@ -240,7 +240,7 @@ describe("codebookEdit", () => {
     // a, loop[ c[ x ] ], b
     const tree = (): TopLevelItem[] => [
       q("a") as TopLevelItem,
-      { _key: "loop", type: "unit_loop", units: [{ mode: "all", unitset: "all" }], layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
+      { _key: "loop", type: "unit_loop", units: [{ mode: "all" }], layout: { template: "text" }, children: [cond("c", [q("x")])] } as unknown as TopLevelItem,
       q("b") as TopLevelItem,
       cond("empty"),
     ];

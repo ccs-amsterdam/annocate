@@ -8,7 +8,7 @@ const loop = (name: string, children: unknown[]) =>
   ({
     type: "unit_loop",
     label: name,
-    units: [{ mode: "all", unitset: "main" }],
+    units: [{ mode: "all" }],
     layout: { template: "text" },
     children,
   }) as TopLevelItem;

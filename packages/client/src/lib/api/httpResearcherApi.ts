@@ -17,8 +17,8 @@ import {
   type UnitPage,
   type UnitResponse,
   type UnitsCreateBody,
-  type UnitsetResponse,
-  type UnitsetWrite,
+  type SetGroupResponse,
+  type SetGroupWrite,
   type CoderDeletion,
   type Device,
   type CoderProgress,
@@ -69,7 +69,7 @@ export class ResearcherApiError extends Error {
  * which is the coder-facing, annotation-time interface.
  *
  * Supports listing, creating, and selecting jobs. Per-job resources (codebooks,
- * units, unitsets, coders) are accessed via a job-scoped client created by
+ * units, set groups, coders) are accessed via a job-scoped client created by
  * calling `client.forJob(jobId)`.
  */
 export interface ResearcherApi {
@@ -96,7 +96,7 @@ export interface ResearcherApi {
   listExamples(): Promise<ExampleSummary[]>;
   /** A new job from an example: units, a published codebook, an invitation and example answers. */
   createJobFromExample(body: JobFromExample): Promise<JobResponse>;
-  /** A new job from a recipe (the setup wizard): units, unitsets, a codebook (a draft unless `publish`), invitations. */
+  /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; publishing makes its links). */
   createJobFromRecipe(body: RecipeInput): Promise<JobResponse>;
   updateJob(id: number, body: JobWrite): Promise<JobResponse>;
   deleteJob(id: number): Promise<void>;
@@ -112,16 +112,18 @@ export interface ResearcherApi {
   listUnits(): Promise<UnitMeta[]>;
   /** The job's unit fields (set by the first upload); empty without units. */
   getUnitFields(): Promise<UnitField[]>;
-  /** A page of units with data: all units, or one unitset's in its order. */
-  listUnitPage(query: { offset: number; limit: number; unitset?: string }): Promise<UnitPage>;
+  /** A page of units with data: all units, or one set's (of a group) in its order. */
+  listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage>;
   getUnit(id: number): Promise<UnitResponse>;
   createUnits(body: UnitsCreateBody): Promise<UnitResponse[]>;
   deleteUnit(id: number): Promise<void>;
 
-  listUnitsets(): Promise<UnitsetResponse[]>;
-  createUnitset(body: UnitsetWrite): Promise<UnitsetResponse>;
-  updateUnitset(id: number, body: UnitsetWrite): Promise<UnitsetResponse>;
-  deleteUnitset(id: number): Promise<void>;
+  /** The set groups (docs/plans/sets-and-session-parameters.md §1). */
+  listSetGroups(): Promise<SetGroupResponse[]>;
+  /** Makes or replaces a group; links with the group's sets follow. */
+  putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse>;
+  /** Refused (409) while the codebook uses the group. */
+  deleteSetGroup(group: string): Promise<void>;
 
   listCoders(): Promise<CoderProgress[]>;
   /** Deletes coders and all their answers for good, by id, participant id or email (ADMIN). */
@@ -130,14 +132,14 @@ export interface ResearcherApi {
   postponeDeletion(coderId: number): Promise<void>;
   /** The job's deletion log, newest first. */
   listCoderDeletions(): Promise<CoderDeletion[]>;
+  /** The links (made from the published codebook), active ones first. */
   listInvites(): Promise<CoderInviteResponse[]>;
-  createInvite(body: CoderInviteWrite): Promise<CoderInviteResponse>;
-  /** No new coders from this invite; coders who already started keep working. */
+  /** A link's access settings: label, login, emails, max uses, participant id. */
+  updateInvite(id: number, body: CoderInviteWrite): Promise<CoderInviteResponse>;
+  /** No new coders from this link; coders who started keep working. */
   revokeInvite(id: number): Promise<CoderInviteResponse>;
-  /** Only while unused: rejected once coders came in through it. */
-  deleteInvite(id: number): Promise<void>;
-  /** The unitset the invite's coders get in loops with "the invitation's units" (null: none). */
-  setInviteUnitset(id: number, unitsetId: number | null): Promise<CoderInviteResponse>;
+  /** A new secret: the old link stops working. */
+  renewInviteSecret(id: number): Promise<CoderInviteResponse>;
 
   /** Counts and activity for the job's overview page. */
   getOverview(): Promise<JobOverview>;
@@ -381,9 +383,12 @@ export class HttpResearcherApi implements ResearcherApi {
     return this.request(this.jobPath(researcherEndpoints.getUnitFields.path));
   }
 
-  async listUnitPage(query: { offset: number; limit: number; unitset?: string }): Promise<UnitPage> {
+  async listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage> {
     const params = new URLSearchParams({ offset: String(query.offset), limit: String(query.limit) });
-    if (query.unitset) params.set("unitset", query.unitset);
+    if (query.group && query.set) {
+      params.set("group", query.group);
+      params.set("set", query.set);
+    }
     return this.request(`${this.jobPath(researcherEndpoints.listUnitPage.path)}?${params}`);
   }
 
@@ -407,38 +412,20 @@ export class HttpResearcherApi implements ResearcherApi {
     });
   }
 
-  async listUnitsets(): Promise<UnitsetResponse[]> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.listUnitsets.path.replace(":jobId", String(jobId)));
+  async listSetGroups(): Promise<SetGroupResponse[]> {
+    return this.request(this.jobPath(researcherEndpoints.listSetGroups.path));
   }
 
-  async createUnitset(body: UnitsetWrite): Promise<UnitsetResponse> {
-    const jobId = this.requireJobId();
-    return this.request(researcherEndpoints.createUnitset.path.replace(":jobId", String(jobId)), {
-      method: "POST",
+  async putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse> {
+    return this.request(this.jobPath(researcherEndpoints.putSetGroup.path).replace(":group", encodeURIComponent(group)), {
+      method: "PUT",
       body: JSON.stringify(body),
     });
   }
 
-  async updateUnitset(id: number, body: UnitsetWrite): Promise<UnitsetResponse> {
-    const jobId = this.requireJobId();
-    return this.request(
-      researcherEndpoints.updateUnitset.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
-      {
-        method: "PUT",
-        body: JSON.stringify(body),
-      },
-    );
+  async deleteSetGroup(group: string): Promise<void> {
+    await this.request(this.jobPath(researcherEndpoints.deleteSetGroup.path).replace(":group", encodeURIComponent(group)), { method: "DELETE" });
   }
-
-  async deleteUnitset(id: number): Promise<void> {
-    const jobId = this.requireJobId();
-    await this.request(
-      researcherEndpoints.deleteUnitset.path.replace(":jobId", String(jobId)).replace(":id", String(id)),
-      { method: "DELETE" },
-    );
-  }
-
 
   async listCoders(): Promise<CoderProgress[]> {
     const jobId = this.requireJobId();
@@ -467,23 +454,16 @@ export class HttpResearcherApi implements ResearcherApi {
     return this.request(this.jobPath(researcherEndpoints.listInvites.path));
   }
 
-  async createInvite(body: CoderInviteWrite): Promise<CoderInviteResponse> {
-    return this.request(this.jobPath(researcherEndpoints.createInvite.path), { method: "POST", body: JSON.stringify(body) });
+  async updateInvite(id: number, body: CoderInviteWrite): Promise<CoderInviteResponse> {
+    return this.request(this.jobPath(researcherEndpoints.updateInvite.path, id), { method: "PUT", body: JSON.stringify(body) });
   }
 
   async revokeInvite(id: number): Promise<CoderInviteResponse> {
     return this.request(this.jobPath(researcherEndpoints.revokeInvite.path, id), { method: "POST" });
   }
 
-  async deleteInvite(id: number): Promise<void> {
-    return this.request(this.jobPath(researcherEndpoints.deleteInvite.path, id), { method: "DELETE" });
-  }
-
-  async setInviteUnitset(id: number, unitsetId: number | null): Promise<CoderInviteResponse> {
-    return this.request(this.jobPath(researcherEndpoints.setInviteUnitset.path, id), {
-      method: "PUT",
-      body: JSON.stringify({ unitsetId }),
-    });
+  async renewInviteSecret(id: number): Promise<CoderInviteResponse> {
+    return this.request(this.jobPath(researcherEndpoints.renewInviteSecret.path, id), { method: "POST" });
   }
 
   async getOverview(): Promise<JobOverview> {

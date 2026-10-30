@@ -129,6 +129,12 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
 
   function insertAt(position: TreePosition, type: ItemType) {
     const item = createItem(type);
+    // The Session item is always first
+    if (type === "session") {
+      setItems(ensureKeys([item as TopLevelItem, ...items]));
+      setSelected(item._key);
+      return;
+    }
     setItems(ensureKeys(insertAtPosition(items, position, item)));
     setSelected(item._key);
   }

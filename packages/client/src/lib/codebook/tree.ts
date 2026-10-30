@@ -1,5 +1,4 @@
 import {
-  ALL_UNITS_UNITSET,
   buildScope,
   itemName,
   type AnyVariableType,
@@ -98,21 +97,20 @@ export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string |
   return found;
 }
 
-/** What a unit loop goes over, for the codebook tree: its unitset(s) and mode, or the number of coder groups (branches). */
+/** What a unit loop goes over, for the codebook tree: its set and mode, or the number of coder groups (branches). */
 export function loopUnitsSummary(loop: UnitLoopItem): string {
   const branches = Array.isArray(loop.units) ? loop.units : [];
   if (branches.length !== 1) return branches.length > 1 ? `${branches.length} coder groups` : "";
   const branch = branches[0];
-  const name = (unitset: string) => (unitset === ALL_UNITS_UNITSET ? "all units" : unitset);
-  const own =
-    branch.mode === "all"
-      ? name(branch.unitset)
-      : branch.mode === "shared"
-        ? `${name(branch.unitset)}, shared`
-        : branch.mode === "sets"
-          ? `one of ${branch.unitsets.length} sets`
-          : "the invitation's units";
-  return branch.overlap ? `${own} + ${name(branch.overlap.unitset)}` : own;
+  if (branch.mode === "assign") {
+    const from = "draw" in branch.from ? (branch.from.draw === "balanced" ? "drawn, balanced" : "drawn at random") : `by ${branch.from.session}`;
+    const overlap = branch.overlap.placement === "disabled" ? "" : " + overlap";
+    return `a set of ${branch.group} (${from})${overlap}`;
+  }
+  const units = branch.set ? `set ${branch.set.set} of ${branch.set.group}` : "all units";
+  if (branch.mode === "all") return units;
+  const overlap = branch.overlap && branch.overlap.placement !== "disabled" ? " + overlap" : "";
+  return `${units}, shared${overlap}`;
 }
 
 /**
@@ -183,7 +181,7 @@ async function walkSteps(
     } else if (node.type === "end") {
       steps.push(node);
       return true;
-    } else {
+    } else if (node.type !== "session") {
       if (answers[node.name] !== undefined) visible[node.name] = answers[node.name];
       // `auto` questions are assigned (by the server or from the URL), never asked.
       if (node.variable.type !== "auto") steps.push(node);

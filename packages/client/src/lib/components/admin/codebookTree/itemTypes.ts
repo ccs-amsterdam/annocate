@@ -8,6 +8,7 @@ import {
   Highlighter,
   HelpCircle,
   ListOrdered,
+  Link2,
   LogOut,
   Repeat,
   Shuffle,
@@ -37,7 +38,7 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
   },
   unit_loop: {
     label: "Unit Loop",
-    description: "Loop over units in a unitset",
+    description: "Loop over units (all, or a set)",
     icon: Repeat,
     color: "text-primary-dark",
     blockClass: "border-y-2   rounded-none border-primary/20 py-1 my-1 [--iconcolor:var(--color-primary-dark)]",
@@ -48,6 +49,12 @@ export const ITEM_TYPES: Record<ItemType, ItemTypeInfo> = {
     icon: GitBranch,
     color: "text-secondary-dark",
     blockClass: "",
+  },
+  session: {
+    label: "Session",
+    description: "Link and URL parameters ($session), participant id",
+    icon: Link2,
+    color: "text-muted-foreground",
   },
   end: {
     label: "End",

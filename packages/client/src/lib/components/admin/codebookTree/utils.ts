@@ -16,5 +16,7 @@ export function getChildren(item: TreeNode): TreeNode[] | null {
 
 /** Item types that can be created at a position (no loops in a loop). */
 export function insertableTypesAt(items: TopLevelItem[], position: TreePosition): ItemType[] {
-  return positionInLoop(items, position) ? ["question", "condition", "end"] : ["question", "unit_loop", "condition", "end"];
+  if (positionInLoop(items, position)) return ["question", "condition", "end"];
+  // The Session item: once, at the top (inserted there wherever it is added)
+  return items.some((i) => i.type === "session") ? ["question", "unit_loop", "condition", "end"] : ["question", "unit_loop", "condition", "end", "session"];
 }

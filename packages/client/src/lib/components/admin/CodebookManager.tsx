@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { CodebookResponse } from "@annotinder/contracts";
-import type { ResearcherApi } from "../../api/httpResearcherApi";
+import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useCodebooksQuery,
   useCodebookQuery,
@@ -227,7 +227,14 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
           if (note !== (codebook.note ?? "")) {
             await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items } });
           }
-          const deployment = await publish.mutateAsync(codebook.id);
+          let deployment;
+          try {
+            deployment = await publish.mutateAsync(codebook.id);
+          } catch (err) {
+            // Many links (one per combination of link parameter values): published only when confirmed
+            if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
+            deployment = await publish.mutateAsync({ codebookId: codebook.id, confirmLinks: true });
+          }
           setSelectedId(null);
           return deployment;
         }}
