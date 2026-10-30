@@ -19,7 +19,7 @@ import { UnitFields } from "./UnitFields";
 import { DockedAnswerPane } from "./DockedAnswerPane";
 import { SessionEnd } from "./SessionEnd";
 import { QuitMenu } from "./QuitMenu";
-import { SwipeCard, SwipeProvider } from "./SwipeCard";
+import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { buildValues } from "./answerFields/answerValue";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -667,7 +667,7 @@ function JobRunnerContent({
         >
           {/* A size container: the answer pane's max height is a share of this area (cqh) */}
           {withSwipe(
-            <div className="flex flex-1 flex-col overflow-hidden relative [container-type:size]">
+            <SwipeSurface className="flex flex-1 flex-col overflow-hidden relative [container-type:size]">
               {/* Scrollable Unit Content (Document). Stable gutter: a scrollbar appearing doesn't move the text. */}
               <div className="subtle-scrollbar flex-1 min-h-[100px] overflow-y-auto overflow-x-hidden p-3 sm:p-5 [scrollbar-gutter:stable]">
                 <div
@@ -676,7 +676,8 @@ function JobRunnerContent({
                   onAnimationEnd={() => setUnitSlideClass("")}
                 >
                   {swipeVariable ? (
-                    <SwipeCard key={variableKey} className="rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5">
+                    // The unit moves when swiped; on a card only if the question asks for one (no layout jump otherwise)
+                    <SwipeCard key={variableKey} className={swipeVariable.card ? "rounded-2xl border border-border bg-card p-4 shadow-md sm:p-5" : "rounded-2xl bg-background"}>
                       <UnitFields layout={snapshot.currentUnitLayout!} rendered={snapshot.currentUnitTemplate!} focus={focus} focusDim={focusDim} />
                     </SwipeCard>
                   ) : (
@@ -691,18 +692,18 @@ function JobRunnerContent({
                   {questionElement}
                 </div>
               </DockedAnswerPane>
-            </div>,
+            </SwipeSurface>,
           )}
         </SpanAnnotationProvider>
       ) : (
         /* Standalone Question (intro, survey, user variable without document) */
-        <div className="flex flex-1 items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-8">
-          <div key={variableKey} className={`mx-auto w-full max-w-xl ${slideClass}`}>
-            {withSwipe(
-              <SwipeCard className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-sm">{questionElement}</SwipeCard>,
-            )}
-          </div>
-        </div>
+        withSwipe(
+          <SwipeSurface className="flex flex-1 items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-8">
+            <div key={variableKey} className={`mx-auto w-full max-w-xl ${slideClass}`}>
+              <SwipeCard className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-sm">{questionElement}</SwipeCard>
+            </div>
+          </SwipeSurface>,
+        )
       )}
     </div>
   );

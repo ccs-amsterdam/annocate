@@ -111,6 +111,10 @@ export type ScaleType = z.infer<typeof ScaleTypeSchema>;
 export const AnnotinderTypeSchema = VariableBaseSchema.extend({
   type: z.literal("annotinder"),
   options: SwipeOptionsSchema,
+  card: z
+    .boolean()
+    .optional()
+    .describe("In a unit loop: show the unit on a card while this question is asked. Default: the unit as it is (the layout doesn't change between questions); it moves when swiped either way."),
 });
 export type AnnotinderType = z.infer<typeof AnnotinderTypeSchema>;
 

@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { optionLabel, SWIPE_DIRECTIONS, type NominalOption } from "@annotinder/contracts";
 
 // Swipe answering (docs/client.md §4): the card (the unit, or the question
-// card outside a loop) is dragged left, right or up; the option for that
+// card outside a loop) is dragged left, right or up, from anywhere on the
+// surface around it (the whole coding area); the option for that
 // direction shows on it while dragging. Released past a threshold (or flung)
 // it flies off and the option is the answer; otherwise it springs back.
 // Buttons and arrow keys fly it off the same way (`useSwipe`).
@@ -25,6 +26,9 @@ interface SwipeState {
   swipe: (direction: SwipeDirection, from?: { x: number; y: number }) => void;
   /** The card's element registers here, so `swipe` can animate it. */
   register: (card: HTMLDivElement | null, overlay: HTMLDivElement | null) => void;
+  /** The registered card and its overlay (dragged from the `SwipeSurface`). */
+  card: () => HTMLDivElement | null;
+  overlay: () => HTMLDivElement | null;
 }
 
 const SwipeContext = createContext<SwipeState | null>(null);
@@ -124,6 +128,8 @@ export function SwipeProvider({
         card.current = c;
         overlay.current = o;
       },
+      card: () => card.current,
+      overlay: () => overlay.current,
     }),
     [options, flyOff],
   );
@@ -132,35 +138,60 @@ export function SwipeProvider({
 }
 
 /**
- * The card: drag it to answer. Vertical scrolling of long content keeps
- * working: a swipe up only starts when the content can't scroll further
- * down (or fits). Renders its children as is when there is no swipe.
+ * What moves when a swipe question is answered: the unit (with or without a
+ * card around it), or the question card outside a loop. It is dragged from
+ * anywhere on the `SwipeSurface` around it. Renders its children as is when
+ * there is no swipe.
  */
 export function SwipeCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   const swipe = useSwipe();
   const card = useRef<HTMLDivElement | null>(null);
   const overlay = useRef<HTMLDivElement | null>(null);
-  const drag = useRef<{ id: number; x0: number; y0: number; t0: number; x: number; y: number; active: boolean } | null>(null);
-  /** Whether an upward drag is a swipe (content at its bottom), which decides `touch-action`. */
-  const [upAllowed, setUpAllowed] = useState(true);
-  const hasUp = (swipe?.options.length ?? 0) >= 3;
 
   useEffect(() => {
     swipe?.register(card.current, overlay.current);
     return () => swipe?.register(null, null);
   }, [swipe]);
 
+  if (!swipe) return <div className={className}>{children}</div>;
+  return (
+    <div ref={card} className={`relative select-none ${className}`} data-swipe-card="">
+      {children}
+      <div
+        ref={overlay}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex items-start justify-center rounded-[inherit] opacity-0 data-[direction=left]:justify-end data-[direction=right]:justify-start data-[direction=up]:items-end"
+      >
+        <span className="m-4 rounded-lg border-4 border-foreground bg-background/90 px-3 py-1 text-xl font-extrabold uppercase tracking-wide text-foreground shadow-lg" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Where a swipe can start: the whole coding area, not only the card, so a
+ * coder can swipe anywhere on the screen; the card moves. Vertical
+ * scrolling of long content keeps working: a swipe up only starts when the
+ * content can't scroll further down (or fits). Renders its children as is
+ * when there is no swipe.
+ */
+export function SwipeSurface({ children, className = "" }: { children: ReactNode; className?: string }) {
+  const swipe = useSwipe();
+  const drag = useRef<{ id: number; x0: number; y0: number; t0: number; x: number; y: number; active: boolean } | null>(null);
+  /** Whether an upward drag is a swipe (content at its bottom), which decides `touch-action`. */
+  const [upAllowed, setUpAllowed] = useState(true);
+  const hasUp = (swipe?.options.length ?? 0) >= 3;
+
   // Track whether the scroll container around the card is at its bottom.
   useEffect(() => {
     if (!swipe || !hasUp) return;
-    const scroller = scrollParent(card.current);
+    const scroller = scrollParent(swipe.card());
     if (!scroller) return;
     const update = () => setUpAllowed(scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2);
     update();
     scroller.addEventListener("scroll", update, { passive: true });
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
     observer?.observe(scroller);
-    if (card.current) observer?.observe(card.current);
     return () => {
       scroller.removeEventListener("scroll", update);
       observer?.disconnect();
@@ -181,7 +212,7 @@ export function SwipeCard({ children, className = "" }: { children: ReactNode; c
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
-    const el = card.current;
+    const el = swipe.card();
     if (!d || d.id !== e.pointerId || !el) return;
     d.x = e.clientX - d.x0;
     d.y = e.clientY - d.y0;
@@ -193,7 +224,7 @@ export function SwipeCard({ children, className = "" }: { children: ReactNode; c
         return;
       }
       d.active = true;
-      el.setPointerCapture(e.pointerId);
+      e.currentTarget.setPointerCapture(e.pointerId);
       el.style.transition = "none";
     }
     // Only the axis of the swipe moves the card: sideways, or up.
@@ -203,12 +234,12 @@ export function SwipeCard({ children, className = "" }: { children: ReactNode; c
     el.style.transform = transformFor(x, y);
     const direction = directionOf(x, y);
     const strength = direction === "up" ? -y / UP_DISTANCE : Math.abs(x) / (el.offsetWidth * SIDEWAYS_SHARE);
-    showOverlay(overlay.current, direction ? optionFor(swipe.options, direction) : undefined, direction, strength);
+    showOverlay(swipe.overlay(), direction ? optionFor(swipe.options, direction) : undefined, direction, strength);
   };
 
   const end = (e: PointerEvent<HTMLDivElement>, cancelled: boolean) => {
     const d = drag.current;
-    const el = card.current;
+    const el = swipe.card();
     if (!d || d.id !== e.pointerId) return;
     drag.current = null;
     if (!d.active || !el) return;
@@ -226,13 +257,12 @@ export function SwipeCard({ children, className = "" }: { children: ReactNode; c
     // Not far enough: back to the middle.
     el.style.transition = "transform 200ms ease-out";
     el.style.transform = "";
-    showOverlay(overlay.current, undefined, null, 0);
+    showOverlay(swipe.overlay(), undefined, null, 0);
   };
 
   return (
     <div
-      ref={card}
-      className={`relative select-none ${className}`}
+      className={`select-none ${className}`}
       // Sideways is always ours; vertical scrolling stays the browser's, except
       // a swipe up when the content is at its bottom: then the browser only
       // scrolls back up ("pan-up" is the scroll direction: the finger moves down).
@@ -241,16 +271,9 @@ export function SwipeCard({ children, className = "" }: { children: ReactNode; c
       onPointerMove={onPointerMove}
       onPointerUp={(e) => end(e, false)}
       onPointerCancel={(e) => end(e, true)}
-      data-swipe-card=""
+      data-swipe-surface=""
     >
       {children}
-      <div
-        ref={overlay}
-        aria-hidden
-        className="pointer-events-none absolute inset-0 flex items-start justify-center rounded-[inherit] opacity-0 data-[direction=left]:justify-end data-[direction=right]:justify-start data-[direction=up]:items-end"
-      >
-        <span className="m-4 rounded-lg border-4 border-foreground bg-background/90 px-3 py-1 text-xl font-extrabold uppercase tracking-wide text-foreground shadow-lg" />
-      </div>
     </div>
   );
 }

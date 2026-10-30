@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { CodebookItem } from "@annotinder/contracts";
 import { Question } from "./Question";
-import { SwipeCard, SwipeProvider } from "./SwipeCard";
+import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 
 type QuestionItem = Extract<CodebookItem, { type: "question" }>;
@@ -130,22 +130,26 @@ describe("Question dispatcher", () => {
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // Without a card to swipe (e.g. the editor's preview), only keys and buttons.
-    expect(html).toContain("Use the arrow keys or tap.");
+    expect(html).toContain("Use the arrow keys or 1, 2, 3, or tap.");
   });
 
-  it("makes the card swipable when a swipe question is active", () => {
+  it("makes the card swipable, from anywhere on the surface, when a swipe question is active", () => {
     const options = [{ value: "no" }, { value: "yes" }];
     const html = renderToStaticMarkup(
       <SwipeProvider options={options} onAnswer={onAnswer}>
-        <SwipeCard className="card">unit text</SwipeCard>
-        <Question item={{ variable: { type: "annotinder", question: "?", options } }} onAnswer={onAnswer} />
+        <SwipeSurface>
+          <SwipeCard className="card">unit text</SwipeCard>
+          <Question item={{ variable: { type: "annotinder", question: "?", options } }} onAnswer={onAnswer} />
+        </SwipeSurface>
       </SwipeProvider>,
     );
     expect(html).toContain("data-swipe-card");
+    expect(html).toContain("data-swipe-surface");
     // Two options: no swipe up, so vertical scrolling stays the browser's.
     expect(html).toContain("touch-action:pan-y pinch-zoom");
-    expect(html).toContain("Swipe the card, use the arrow keys, or tap.");
+    expect(html).toContain("Swipe, use the arrow keys or 1, 2, 3, or tap.");
     expect(renderToStaticMarkup(<SwipeCard>unit text</SwipeCard>)).not.toContain("data-swipe-card");
+    expect(renderToStaticMarkup(<SwipeSurface>unit text</SwipeSurface>)).not.toContain("data-swipe-surface");
   });
 
   it("renders span (wrapped in SpanAnnotationProvider, as JobRunner does)", () => {

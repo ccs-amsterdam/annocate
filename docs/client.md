@@ -289,12 +289,14 @@ Number keys 1-9 pick an option; one answer is given on the first click,
 several are confirmed with Continue.
 
 **Swiping** (`annotinder`, `components/SwipeCard.tsx`): in a unit loop the
-unit itself is the card; outside one, the question card. The coder drags
-it left, right or up (1st, 2nd, 3rd option); while dragging it tilts and
+unit itself is the card (framed as one only with `card: true`, so by
+default the layout doesn't change between questions); outside one, the
+question card. The coder drags anywhere on the coding area
+(`SwipeSurface`), and the card moves left, right or up (1st, 2nd, 3rd option); while dragging it tilts and
 shows the option for that direction. Released past 30% of its width (120
 px up), or flung, it flies off and that option is the answer; otherwise it
 springs back. The answer pane keeps the question with a compact row of
-direction buttons (left, up, right), and the arrow keys work too; both fly
+direction buttons (left, up, right), and the arrow keys and 1, 2, 3 work too; both fly
 the card off the same way. Pointer events, no gesture library. Long units
 still scroll: vertical drags are the browser's (`touch-action: pan-y`),
 except an upward drag once the content is at its bottom (then `pan-up`, so

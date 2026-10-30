@@ -118,6 +118,20 @@ export function VariableTypeForm({
         <>
           <QuestionFields value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
           <OptionsEditor swipe max={3} options={v.options} onChange={(options) => onChange({ ...v, options })} />
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={v.card ?? false}
+              onChange={(e) => {
+                const next = { ...v };
+                if (e.target.checked) next.card = true;
+                else delete next.card;
+                onChange(next);
+              }}
+            />
+            In a unit loop: show the unit on a card while this question is asked
+            <span className="text-muted-foreground">(otherwise as it is, so the layout doesn&apos;t change between questions)</span>
+          </label>
         </>
       );
     }

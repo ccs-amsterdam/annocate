@@ -9,12 +9,14 @@ import { useSwipe, type SwipeDirection } from "../SwipeCard";
 type AnnotinderVariable = Extract<QuestionVariable, { type: "annotinder" }>;
 
 const ICONS = { left: ArrowLeft, right: ArrowRight, up: ArrowUp };
-const KEYS: Record<string, SwipeDirection> = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up" };
+/** Arrow keys, and 1, 2, 3 for the 1st, 2nd and 3rd option. */
+const KEYS: Record<string, SwipeDirection> = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", "1": "left", "2": "right", "3": "up" };
 
 /**
  * A swipe question: the card (the unit, see `SwipeCard`) is swiped left,
- * right or up for the 1st, 2nd and 3rd option. The buttons and arrow keys
- * do the same; with a card they fly it off first.
+ * right or up for the 1st, 2nd and 3rd option, from anywhere on the screen.
+ * The buttons, the arrow keys and 1, 2, 3 do the same; with a card they fly
+ * it off first.
  */
 export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<AnnotinderVariable>) {
   const swipe = useSwipe();
@@ -70,7 +72,7 @@ export function AnnotinderAnswerField({ variable, onAnswer }: AnswerFieldProps<A
         })}
       </div>
       <p className="text-center text-[11px] text-muted-foreground">
-        {swipe ? "Swipe the card, use the arrow keys, or tap." : "Use the arrow keys or tap."}
+        {swipe ? "Swipe, use the arrow keys or 1, 2, 3, or tap." : "Use the arrow keys or 1, 2, 3, or tap."}
       </p>
     </div>
   );

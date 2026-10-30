@@ -19,6 +19,28 @@ test("a coder swipes through their set with the arrow keys; every answer is save
   expect(new Set(mine.map((a) => a.unitId)).size).toBe(10);
 });
 
+test("a swipe starts anywhere on the screen, and 1, 2, 3 answer too", async ({ page, request }) => {
+  const { job, link } = await fromExample(request, "swipe-sentiment");
+  const examples = (await coders(request, job.id)).map((c) => c.id);
+  const mine = async () => (await answers(request, job.id)).filter((a) => !examples.includes(a.coderId) && a.unitId !== null);
+  await page.goto(link);
+  await question(page, "Is this headline good news or bad news?");
+  await page.waitForTimeout(500);
+  // Drag sideways over the question (not the unit): the unit flies off
+  const box = (await page.getByText("Is this headline good news or bad news?").first().boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + 40, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 400, y, { steps: 12 });
+  await page.mouse.up();
+  await expect.poll(async () => (await mine()).length).toBe(1);
+  await page.waitForTimeout(500);
+  await page.keyboard.press("1");
+  await expect.poll(async () => (await mine()).length).toBe(2);
+  const values = (await mine()).map((a) => (a.value as { values: { value: string }[] }).values[0].value);
+  expect(values).toEqual(["positive", "negative"]);
+});
+
 test("a respondent under 18 is screened out; an adult fills in the whole survey, follow-up included", async ({ page, request, browser }) => {
   const { job, link } = await fromExample(request, "simple-survey");
   const examples = (await coders(request, job.id)).map((c) => c.id);

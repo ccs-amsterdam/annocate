@@ -40,13 +40,15 @@ the label that appears on the card while it is dragged.
 
 ## How coders answer
 
-- **Swipe the card**: drag it to the side (or up). While dragging, the
-  option for that direction appears on the card. Let go far enough (about a
+- **Swipe**: drag anywhere on the screen to the side (or up): the unit
+  moves with it. While dragging, the option for that direction appears on
+  it. Let go far enough (about a
   third of the card's width) or with a quick flick, and the card flies off
   and the answer is given. Let go earlier and it springs back.
 - **Tap a button**: under the question there is a button per option, with
   its arrow: left on the left, right on the right, up in the middle.
-- **Press an arrow key**: **←**, **→** and **↑** on a keyboard.
+- **Press a key**: **←**, **→** and **↑**, or **1**, **2** and **3** for
+  the 1st, 2nd and 3rd option.
 
 Long units still scroll as usual: dragging up and down scrolls the text.
 Swiping up only answers once the unit is scrolled to the end, so a coder
@@ -54,7 +56,9 @@ can't skip the rest of a long text by accident.
 
 Outside a unit loop there is no unit, so the question itself is the card.
 
-Swiping has no layout setting: it always looks like this.
+By default the unit looks the same as during the loop's other questions,
+so nothing jumps when a swipe question comes up. Tick **show the unit on a
+card** in the question's form to frame it as a card while it is asked.
 
 ## When swiping is a good idea
 
