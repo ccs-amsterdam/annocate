@@ -64,6 +64,7 @@ function makeFlakyServer({ getNextUnit, ...overrides }: Partial<CoderApi> & { ge
     postCoderVariables: vi.fn(async () => {
       calls.postCoderVariables = (calls.postCoderVariables ?? 0) + 1;
     }),
+    assignAuto: vi.fn(async () => ({ done: true, skip: false, values: [{ value: "a" }] })),
     quitSession: vi.fn(async () => {
       calls.quitSession = (calls.quitSession ?? 0) + 1;
     }),
@@ -781,5 +782,31 @@ describe("saving in the background", () => {
     await ending;
     expect(endSession).toHaveBeenCalled();
     expect(manager.getSnapshot()).toMatchObject({ phase: "finished", unsaved: 0, retrying: false });
+  });
+});
+
+describe("auto questions", () => {
+  it("are assigned by the server when reached, after earlier answers are saved; conditions then use the value", async () => {
+    const order: string[] = [];
+    const gender = { type: "question", name: "gender", variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] } };
+    const condition = { type: "question", name: "condition", variable: { type: "auto", source: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender"] } };
+    const onlyB = { type: "condition", condition: { script: `$var.condition.is("b")` }, children: [confirm("seen_b")] };
+    const server = makeFlakyServer({
+      getSession: vi.fn(async () => session([gender, condition, onlyB, confirm("last")] as TopLevelItem[])),
+      postCoderVariables: vi.fn(async () => {
+        order.push("save");
+      }),
+      assignAuto: vi.fn(async (name: string) => {
+        order.push(`assign ${name}`);
+        return { done: true, skip: false, values: [{ value: "b" }] };
+      }),
+    });
+    const manager = new JobManager(server);
+    await manager.start();
+    expect(manager.getSnapshot().currentItem?.type === "question" && manager.getSnapshot().currentItem?.name).toBe("gender");
+    await manager.answer({ done: true, skip: false, values: [{ value: "f" }] });
+    // The answer saved before the server assigns; then the question only group b sees
+    expect(order).toEqual(["save", "assign condition"]);
+    expect(manager.getSnapshot().currentItem?.type === "question" && manager.getSnapshot().currentItem?.name).toBe("seen_b");
   });
 });

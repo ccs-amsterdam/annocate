@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CoderUnitResponseSchema } from "../unit.js";
-import { PostUnitVariablesSchema, PostCoderVariablesSchema } from "../variableValue.js";
+import { PostUnitVariablesSchema, PostCoderVariablesSchema, VariableValueSchema } from "../variableValue.js";
 import {
   SessionResponseSchema,
   EndSessionSchema,
@@ -60,6 +60,13 @@ export const coderEndpoints = {
     request: PostCoderVariablesSchema,
     response: z.void(),
   },
+  /**
+   * The coder reached an `auto` question (in the flow of the codebook): the
+   * server assigns its value now, once (random or balanced, counting only
+   * coders who reached it; stratified by the answers saved so far), and
+   * returns it. Reached again: the same value.
+   */
+  assignAuto: { method: "POST", path: "/variables/auto/:name", request: z.void(), response: z.object({ value: VariableValueSchema }) },
   /** The coder reached an `end` item: the session is over (screened out or complete). */
   endSession: { method: "POST", path: "/end", request: EndSessionSchema, response: EndSessionResponseSchema },
   /** Goes back after finishing (within `reopenUntil`): the session is open again. */

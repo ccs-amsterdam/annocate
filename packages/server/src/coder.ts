@@ -130,6 +130,8 @@ export function coderApi(server: Server): Hono {
     return c.body(null, 204);
   });
 
+  session.post("/variables/auto/:name", async (c) => c.json({ value: await c.get("runtime").assignAuto(c.get("coder"), c.req.param("name")) }));
+
   session.post("/end", async (c) => {
     const body = await parseBody(c, EndSessionSchema);
     return c.json(await c.get("runtime").endSession(c.get("coder"), body.item, body.unit));

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  sessionNames,
   setParameters,
   availableQuestions,
   itemName,
@@ -136,6 +137,7 @@ function ItemEditForm({
         item={item}
         groups={groupsQuery.data ?? []}
         setParams={setParams}
+        sessionValueNames={sessionNames(cleanItems)}
         unitVariableNames={unitVariableNames}
         availableQuestions={available}
         inLoop={!!loop}

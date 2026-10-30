@@ -137,8 +137,16 @@ export const AutoTypeSchema = z
     source: z.enum(["random", "balanced"]),
     /** The possible values. */
     options: z.array(NominalOptionSchema.extend({ weight: z.number().positive().optional() })).min(1, "List at least one value"),
+    /**
+     * Balanced within groups (stratified): coders count only against coders
+     * with the same answers to these earlier coder-level questions, or the
+     * same `$session` values (`session.<name>`). E.g. `["gender"]`: the
+     * conditions are balanced among women, and among men.
+     */
+    stratify: z.array(z.string().min(1).max(80)).max(5).optional(),
   })
   .superRefine((v, ctx) => {
+    if (v.stratify?.length && v.source !== "balanced") ctx.addIssue({ code: "custom", message: "Only a balanced draw can be balanced within groups", path: ["stratify"] });
     nominalValueErrors(v.options ?? []).forEach((message) => ctx.addIssue({ code: "custom", message, path: ["options"] }));
   });
 export type AutoType = z.infer<typeof AutoTypeSchema>;

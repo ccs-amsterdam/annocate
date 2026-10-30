@@ -69,6 +69,7 @@ export function VariableTypeForm({
   onChange,
   unitVariableNames,
   layoutFields,
+  stratifyChoices = [],
 }: {
   variable: AnyVariableType;
   onChange: (next: AnyVariableType) => void;
@@ -76,6 +77,8 @@ export function VariableTypeForm({
   unitVariableNames?: string[];
   /** In a loop: what span questions can select in (`unit.<field>` shown as plain text, ::: text blocks). */
   layoutFields?: string[];
+  /** For `auto`: what a balanced draw can balance within (earlier questions, `session.<name>`). */
+  stratifyChoices?: string[];
 }) {
   switch (variable.type) {
     case "nominal":
@@ -154,9 +157,38 @@ export function VariableTypeForm({
               <option value="balanced">Balanced (option with fewest coders)</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              For values from the link or URL (e.g. a condition per link), use a session parameter: $session.&lt;name&gt;.
+              Assigned when a coder reaches this question (coders screened out before don&apos;t count). For values from the
+              link or URL (e.g. a condition per link), use a session parameter: $session.&lt;name&gt;.
             </p>
           </div>
+          {v.source === "balanced" && stratifyChoices.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">Balance within groups of (optional)</label>
+              <div className="flex flex-wrap gap-1">
+                {[...new Set([...stratifyChoices, ...(v.stratify ?? [])])].map((name) => {
+                  const on = v.stratify?.includes(name) ?? false;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        const stratify = on ? (v.stratify ?? []).filter((n) => n !== name) : [...(v.stratify ?? []), name];
+                        const next: typeof v = { ...v, stratify };
+                        if (stratify.length === 0) delete next.stratify;
+                        onChange(next);
+                      }}
+                      className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${on ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"}`}
+                    >
+                      {name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Stratified: e.g. with gender, the options are balanced among women, and among men.
+              </p>
+            </div>
+          )}
           <OptionsEditor
             options={v.options}
             onChange={(options) => onChange({ ...v, options })}

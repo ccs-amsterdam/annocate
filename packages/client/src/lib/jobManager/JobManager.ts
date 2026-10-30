@@ -1102,6 +1102,16 @@ export class JobManager {
       return;
     }
 
+    // An `auto` question without a value: the server assigns it now (the
+    // answers it may balance on saved first), and the flow goes on with it.
+    if (next.type === "question" && next.variable.type === "auto") {
+      await this.flush();
+      this.userVariableValues[next.name] = await this.coderApi.assignAuto(next.name);
+      this.topIndex -= 1;
+      await this.advanceTop();
+      return;
+    }
+
     if (this.resuming && this.hasValidAnswer(next)) {
       await this.advanceTop();
       return;

@@ -183,8 +183,9 @@ async function walkSteps(
       return true;
     } else if (node.type !== "session") {
       if (answers[node.name] !== undefined) visible[node.name] = answers[node.name];
-      // `auto` questions are assigned (by the server or from the URL), never asked.
-      if (node.variable.type !== "auto") steps.push(node);
+      // `auto` questions are never asked: assigned by the server when the coder
+      // reaches them (a step until then, JobManager asks for the value).
+      if (node.variable.type !== "auto" || answers[node.name] === undefined) steps.push(node);
     }
   }
   return false;

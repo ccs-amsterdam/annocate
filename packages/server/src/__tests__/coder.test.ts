@@ -290,6 +290,13 @@ async function invite(settings: { auth?: string; emails?: string[]; participantI
   return secret;
 }
 
+/** The coder reached an `auto` question: its assigned value. */
+async function reach(c: ReturnType<typeof coder>, name: string) {
+  const res = await c.call(`/variables/auto/${name}`, { method: "POST" });
+  expect(res.status).toBe(200);
+  return ((await res.json()) as { value: VariableValue }).value.values;
+}
+
 /** A Session item (contracts SessionItemSchema). */
 const sessionItem = (extra: object) => ({ type: "session", params: [], ...extra });
 
@@ -522,7 +529,7 @@ describe("routing by branch", () => {
       [condition],
     );
     const carol = coder("carol");
-    expect((await carol.session()).variables.condition.values).toEqual([{ value: "s1" }]);
+    expect(await reach(carol, "condition")).toEqual([{ value: "s1" }]);
     const required = await carol.call("/loop/1/next");
     expect(required.status).toBe(409);
     expect(await required.json()).toMatchObject({ code: "branch_required" });
@@ -547,7 +554,7 @@ describe("routing by branch", () => {
     expect(Object.values(stored.assignments as object)).toEqual([{ set: "g/s1", at: expect.any(Number) }]);
 
     // balanced across a restart: the counts are in the database
-    expect((await coder("dave").session()).variables.condition.values).toEqual([{ value: "s2" }]);
+    expect(await reach(coder("dave"), "condition")).toEqual([{ value: "s2" }]);
   });
 
   it("routes by the branch the client chose", async () => {
@@ -726,6 +733,55 @@ describe("quitting and deleting a coder's data", () => {
   });
 });
 
+describe("auto questions", () => {
+  const value = (v: string) => ({ done: true, skip: false, values: [{ value: v }] });
+
+  it("are assigned when reached, once; coders who never reach them don't count", async () => {
+    const condition = { type: "question", name: "condition", variable: { type: "auto", source: "balanced", options: [{ value: "a" }, { value: "b" }] } };
+    await redeploy({}, [condition]);
+    // Loading the session assigns nothing: a coder screened out before the question doesn't count
+    const early = coder("early");
+    expect((await early.session()).variables.condition).toBeUndefined();
+    expect(await reach(coder("first"), "condition")).toEqual([{ value: "a" }]);
+    expect(await reach(coder("first", null), "condition")).toEqual([{ value: "a" }]); // the same, reached again
+    expect(await reach(coder("second"), "condition")).toEqual([{ value: "b" }]);
+    expect(await reach(early, "condition")).toEqual([{ value: "a" }]);
+    expect((await coder("x").call("/variables/auto/nope", { method: "POST" })).status).toBe(404);
+  });
+
+  it("balance within groups of earlier answers or session values (stratified)", async () => {
+    const gender = { type: "question", name: "gender", variable: { type: "nominal", question: "Gender?", options: [{ value: "f" }, { value: "m" }] } };
+    const condition = {
+      type: "question",
+      name: "condition",
+      variable: { type: "auto", source: "balanced", options: [{ value: "a" }, { value: "b" }], stratify: ["gender", "session.wave"] },
+    };
+    await redeploy({}, [sessionItem({ params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }, { value: "2" }] }, default: "1" }] }), gender, condition]);
+    const start = async (name: string, g: string, wave = "1") => {
+      const c = coder(name);
+      await send(name, "/session", {}, { "x-invite-secret": "demo-secret", "x-url-params": `wave=${wave}` });
+      await c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables: { gender: value(g) } }) });
+      return reach(c, "condition");
+    };
+    // Women and men are balanced separately: each group starts with a
+    expect(await start("w1", "f")).toEqual([{ value: "a" }]);
+    expect(await start("m1", "m")).toEqual([{ value: "a" }]);
+    expect(await start("w2", "f")).toEqual([{ value: "b" }]);
+    expect(await start("m2", "m")).toEqual([{ value: "b" }]);
+    // ... and per wave
+    expect(await start("w3", "f", "2")).toEqual([{ value: "a" }]);
+    // A stratify name that is no question before it, or no session value: an issue
+    const bad = await server.request("/job/1/codebook", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({
+        items: [{ ...condition, variable: { ...condition.variable, stratify: ["later", "session.nope"] } }, gender],
+      }),
+    });
+    expect(((await bad.json()) as { valid: boolean }).valid).toBe(false);
+  });
+});
+
 describe("coder-level answers", () => {
   it("are answer rows without a unit, one per question, assigned values marked; only changed answers are written", async () => {
     const group = { type: "question", name: "group", variable: { type: "auto", source: "random", options: [{ value: "a" }, { value: "b" }] } };
@@ -734,6 +790,7 @@ describe("coder-level answers", () => {
     await redeploy({}, [group, age, city]);
     const c = coder("surveyed");
     await c.session();
+    expect((await c.call("/variables/auto/group", { method: "POST" })).status).toBe(200);
     const post = (variables: object) => c.call("/variables/coder", { method: "POST", body: JSON.stringify({ variables }) });
     const value = (v: string | number) => ({ done: true, skip: false, values: [{ value: v }] });
     expect((await post({ age: value(30), city: value("Utrecht") })).status).toBe(204);

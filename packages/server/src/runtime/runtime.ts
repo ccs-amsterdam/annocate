@@ -262,32 +262,42 @@ export class DeploymentRuntime {
   }
 
   /**
-   * Assigns server-side `auto` variables (random / balanced) the coder doesn't have yet, into `values` (the
-   * coder's answers as stored). Once assigned they never change. Saved
-   * before the coder is answered. Done when the session is loaded
-   * (`session`): the client loads it before anything else, and again after
-   * a new codebook version, which may have new `auto` questions. A
-   * `balanced` one is chosen under a lock, counting every coder's value.
+   * The coder reached an `auto` question: its value, assigned now if the
+   * coder has none yet (random, or balanced: the option the fewest coders
+   * who reached it have, under a lock; with `stratify`, only among coders
+   * with the same answers to those questions, or session values). Once
+   * assigned it never changes. Coders who never reach it (screened out
+   * before) don't count.
    */
-  private async assignAutoVariables(coder: Coder, values: Record<string, CoderValue>): Promise<void> {
-    const assigned: Record<string, VariableValue> = {};
-    const balanced: [string, { value: string }[]][] = [];
-    for (const [name, variable] of this.autoVariables) {
-      if (values[name] !== undefined) continue;
-      if (variable.source === "random") assigned[name] = singleValue(this.drawWeighted(variable.options));
-      else balanced.push([name, variable.options]);
+  async assignAuto(coder: Coder, name: string): Promise<VariableValue> {
+    this.assertOpen(coder);
+    const variable = this.autoVariables.find(([n]) => n === name)?.[1];
+    if (!variable) throw new HttpError(404, `No auto question '${name}'`);
+    const stored = (await this.store.coderValues(coder.coderId))[name];
+    if (stored) return stored.value;
+    const put = (store: Store, value: VariableValue) =>
+      store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, codebookId: this.spec.codebook.id });
+    if (variable.source === "random") {
+      const value = singleValue(this.drawWeighted(variable.options));
+      await put(this.store, value);
+      return value;
     }
-    const put = (store: Store, write: Record<string, VariableValue>) =>
-      store.putCoderValues({ coderId: coder.coderId, values: write, assigned: true, codebookId: this.spec.codebook.id });
-    if (Object.keys(assigned).length > 0) await put(this.store, assigned);
-    for (const [name, options] of balanced) {
-      assigned[name] = await this.store.locked(`balanced/${name}`, async (store) => {
-        const value = singleValue(DeploymentRuntime.leastUsed(options, await store.coderValuesOf(name)));
-        await put(store, { [name]: value });
-        return value;
-      });
-    }
-    for (const [name, value] of Object.entries(assigned)) values[name] = { value, assigned: true, frozen: false };
+    const stratify = variable.stratify ?? [];
+    return this.store.locked(`balanced/${name}`, async (store) => {
+      // Another request of this coder may have assigned it meanwhile
+      const again = (await store.coderValues(coder.coderId))[name];
+      if (again) return again.value;
+      const own = await store.coderValues(coder.coderId);
+      const stratum = (values: Record<string, VariableValue | undefined>, session: Record<string, string>) =>
+        JSON.stringify(stratify.map((s) => (s.startsWith("session.") ? (session[s.slice("session.".length)] ?? null) : (valueOf(values[s]) ?? null))));
+      const mine = stratum(Object.fromEntries(Object.entries(own).map(([k, v]) => [k, v.value])), coder.session);
+      const others = (await store.coderValuesOf([name, ...stratify.filter((s) => !s.startsWith("session."))]))
+        .filter((c) => stratum(c.values, c.session) === mine)
+        .map((c) => c.values[name]);
+      const value = singleValue(DeploymentRuntime.leastUsed(variable.options, others));
+      await put(store, value);
+      return value;
+    });
   }
 
   private drawWeighted(options: { value: string; weight?: number }[]): string {
@@ -332,7 +342,6 @@ export class DeploymentRuntime {
   /** The session for the client. */
   async session(coder: Coder): Promise<SessionResponse> {
     const values = await this.store.coderValues(coder.coderId);
-    if (!coder.ended && this.autoVariables.length > 0) await this.assignAutoVariables(coder, values);
     const [endValues, codings] = await Promise.all([this.endValues(coder, values), this.store.listCodings({ coderId: coder.coderId })]);
     return {
       coderId: coder.coderId,

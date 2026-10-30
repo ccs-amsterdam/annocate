@@ -487,6 +487,12 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`);
         } else if (loop && item.variable?.type === "auto") {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type 'auto' can only be used outside a unit_loop`);
+        } else if (item.variable?.type === "auto" && item.variable.stratify) {
+          // Groups for a balanced draw: answers given before it, or session values
+          for (const name of item.variable.stratify) {
+            const known = name.startsWith("session.") ? sessionNamed.has(name.slice("session.".length)) : available.has(name);
+            if (!known) issue([...itemPath, "variable", "stratify"], `Question '${item.name}': balanced within '${name}', which is not a question before it or a session value (session.<name>)`);
+          }
         } else if (item.variable?.type === "unspecified") {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' has no answer type yet: choose one`);
         }

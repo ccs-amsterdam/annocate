@@ -81,8 +81,12 @@ export interface Store {
   listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]>;
   /** Stores leases (a coder holds up to a batch per queue), or renews them. */
   putLeases(leases: Lease[]): Promise<void>;
-  /** The values coders have for a coder-level question (for `balanced` assignment). */
-  coderValuesOf(variable: string): Promise<VariableValue[]>;
+  /**
+   * Per coder who has a value for `variables[0]` (an `auto` question): their
+   * values of `variables`, and their session values (for a stratified
+   * `balanced` assignment).
+   */
+  coderValuesOf(variables: string[]): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]>;
   /**
    * Runs `fn` in one transaction holding a lock on `key` (in this job), with
    * a store that works in that transaction. For decisions that count other
@@ -321,12 +325,21 @@ export class DbStore implements Store {
     );
   }
 
-  async coderValuesOf(variable: string): Promise<VariableValue[]> {
-    const rows = await this.sql.query<{ value: VariableValue }>(
-      "SELECT value FROM annotation_values WHERE job_id = $1 AND unit_id IS NULL AND variable = $2 AND retired_at IS NULL",
-      [this.jobId, variable],
+  async coderValuesOf(variables: string[]): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {
+    const rows = await this.sql.query<{ coderId: number; variable: string; value: VariableValue; session: Record<string, string> | null; participant: string | null }>(
+      `SELECT v.coder_id AS "coderId", v.variable, v.value, c.session, c.participant_id AS participant
+       FROM annotation_values v JOIN coders c ON c.id = v.coder_id
+       WHERE v.job_id = $1 AND v.unit_id IS NULL AND v.retired_at IS NULL AND v.variable = ANY($2)
+         AND EXISTS (SELECT 1 FROM annotation_values a WHERE a.job_id = $1 AND a.coder_id = v.coder_id AND a.unit_id IS NULL
+                     AND a.retired_at IS NULL AND a.variable = $3)`,
+      [this.jobId, variables, variables[0]],
     );
-    return rows.map((r) => r.value);
+    const byCoder = new Map<number, { values: Record<string, VariableValue>; session: Record<string, string> }>();
+    for (const r of rows) {
+      if (!byCoder.has(r.coderId)) byCoder.set(r.coderId, { values: {}, session: { ...r.session, ...(r.participant ? { participant: r.participant } : {}) } });
+      byCoder.get(r.coderId)!.values[r.variable] = r.value;
+    }
+    return [...byCoder.values()];
   }
 
   locked<T>(key: string, fn: (store: Store) => Promise<T>): Promise<T> {

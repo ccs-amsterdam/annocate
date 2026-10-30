@@ -337,13 +337,19 @@ The splitting logic is a pure function, `splitIntoSets` in contracts
 ## 7. Coder variables, session parameters and links
 
 **`auto` variables** are assigned, never asked, and never changed afterwards.
-The client skips them as steps.
+They are assigned when the coder *reaches* them in the codebook's flow: the
+client (which evaluates the conditions) saves the answers so far, then asks
+the server (`POST /variables/auto/:name`), and goes on with the value.
+Coders screened out before an auto question never get a value, so they
+don't count in the balance.
 
 - `random`: weighted draw from `options` (server).
 - `balanced`: the option fewest coders have so far (server), e.g. to
   spread coders over experimental groups. (To spread coders over sets of
   units, use a loop in `assign` mode.) Counted in the database, under a lock
-  per variable (§3).
+  per variable (§3). With `stratify` (earlier coder-level questions,
+  `session.<name>` values), only coders with the same values count:
+  balanced within groups.
 
 Values from the link or URL are session parameters, not `auto` variables
 (below).

@@ -20,6 +20,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
 | [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | – |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
+| [assignAuto](#assignauto) | `POST /variables/auto/:name` | – | `{ value }` |
 | [createTransfer](#createtransfer) | `POST /transfer` | – | `TransferResponseSchema` |
 | [redeemTransfer](#redeemtransfer) | `POST /transfer/redeem` | `RedeemTransferSchema` | `RedeemTransferResponseSchema` |
 | [endSession](#endsession) | `POST /end` | `EndSessionSchema` | `EndSessionResponseSchema` |
@@ -137,6 +138,18 @@ assigned (`auto` questions) and frozen answers (`frozen` in the session)
 are left as they are. `timings`: for the
 questions visited since the last post, how long the coder took; an
 answer that didn't change gets its timing updated.
+
+### assignAuto
+
+`POST /variables/auto/:name` → `{ value }` (a `VariableValue`)
+
+The coder reached the `auto` question `name` in the codebook's flow (the
+client evaluates conditions): the server assigns its value now, once, and
+returns it; reached again, the same value. `random` draws by weight;
+`balanced` takes the option the fewest coders who reached it have, under a
+lock, counting with `stratify` only coders with the same answers to those
+questions (as saved: the client saves its answers first) and the same
+`session.<name>` values. 404 for a name that is no `auto` question.
 
 ### endSession
 

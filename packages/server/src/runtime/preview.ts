@@ -185,8 +185,12 @@ export class PreviewStore implements Store {
     for (const lease of leases) this.leases.set(`${lease.loop}/${lease.unitset}/${lease.coderId}/${lease.unitId}`, lease);
   }
 
-  async coderValuesOf(variable: string): Promise<VariableValue[]> {
-    return [...this.values.values()].flatMap((values) => (values[variable] ? [values[variable].value] : []));
+  async coderValuesOf(variables: string[]): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {
+    return [...this.values].flatMap(([coderId, values]) =>
+      values[variables[0]]
+        ? [{ values: Object.fromEntries(variables.flatMap((v) => (values[v] ? [[v, values[v].value]] : []))), session: this.coders.get(coderId)?.session ?? {} }]
+        : [],
+    );
   }
 
   /** One process, no concurrent writers but its own: runs `fn` as it is. */

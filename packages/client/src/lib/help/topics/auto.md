@@ -6,8 +6,8 @@ summary: Auto variables give each coder a value without asking - for experimenta
 ---
 
 An **Auto (assigned, not asked)** question is never shown to coders.
-Instead, AnnoTinder gives every coder a value: drawn at random, or
-balanced over the options. You then use that value like any other
+Instead, AnnoTinder gives every coder a value when they reach it: drawn
+at random, or balanced over the options (optionally within groups). You then use that value like any other
 answer: to show different material to different groups, or to give
 different coders different units.
 
@@ -24,8 +24,9 @@ link, a group you know in advance) are not assigned variables but
 
 ## Where it goes
 
-An auto question can only be placed **outside unit loops**, normally at the
-top of the codebook: it is a property of the coder, not of a unit. It has
+An auto question can only be placed **outside unit loops**: it is a
+property of the coder, not of a unit. It is assigned where it is in the
+codebook, when the coder gets there (see below). It has
 no question text, because nobody sees it. Its **Item Name** is how you
 refer to it, e.g. `group`.
 
@@ -49,8 +50,8 @@ same chance of every condition, independently of everyone else. Group sizes
 then vary by chance; with 40 participants a 25/15 split is quite possible.
 
 **Balanced** keeps groups as equal as possible: each new coder gets the
-option with the fewest coders so far. It counts everyone who started,
-including coders who stopped halfway. Use it when equal group sizes matter
+option with the fewest coders so far. It counts everyone who reached the
+question, including coders who stopped later. Use it when equal group sizes matter
 more than strict independence, as when spreading a small team of coders
 over parts of the units.
 
@@ -63,15 +64,34 @@ Session item: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
 when the session starts, like an assigned variable, and works in the same
 places: conditions, texts, end items' return links.
 
-## Assigned once, never changed
+## Balanced within groups
 
-A coder's value is assigned when they start, and it never changes afterwards: not when they reload the page, come back
-the next day or continue on another device, and not when you publish a new
-version of the codebook. Coders can't see or change it.
+A balanced draw can be **stratified**: balanced within groups of coders
+who gave the same answers to earlier questions, or have the same
+[session values](session-parameters.md). Choose them under **Balance within
+groups of**. With `gender`, the conditions are balanced among women, and
+among men, so both conditions get about as many women and as many men.
+With `session.wave`, each wave is balanced on its own.
+
+The questions must come before the auto question (outside unit loops), so
+coders have answered them when they reach it. A coder who skipped one is in
+the group of coders without an answer.
+
+## Assigned when reached, never changed
+
+A coder's value is assigned when they **reach** the auto question in the
+codebook, not when they start. Put it where the assignment should happen:
+after the screening questions, so participants who are screened out never
+get a condition and don't count in the balance; after the questions it is
+stratified on.
+
+Once assigned, it never changes: not when they go back, reload the page,
+come back the next day or continue on another device, and not when you
+publish a new version of the codebook. Coders can't see or change it.
 
 This matters for experiments: a participant stays in their condition for
 the whole session. It also means that changing the options or weights
-later only affects coders who start after the change.
+later only affects coders who reach the question after the change.
 
 ## Using the value
 

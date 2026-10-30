@@ -74,6 +74,7 @@ export function ItemForm({
   item,
   groups,
   setParams,
+  sessionValueNames = [],
   unitVariableNames = [],
   availableQuestions = [],
   inLoop = false,
@@ -89,6 +90,8 @@ export function ItemForm({
   groups: SetGroupResponse[];
   /** The codebook's set-typed session parameters (name -> group). */
   setParams?: Map<string, string>;
+  /** The `$session` names (declared and built-in). */
+  sessionValueNames?: string[];
   unitVariableNames?: string[];
   /** Questions references may use at this item (contracts `availableQuestions`): for conditions and branches. */
   availableQuestions?: { name: string; variable: AnyVariableType }[];
@@ -177,6 +180,7 @@ export function ItemForm({
             variable={item.variable}
             unitVariableNames={unitVariableNames}
             layoutFields={isInsideLoop ? loopNames?.selectable : undefined}
+            stratifyChoices={[...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)]}
             onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
           />
           {isInsideLoop && loopNames && (
