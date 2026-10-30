@@ -120,7 +120,13 @@ export function ScaleAnswerField({ variable, onAnswer, initialValue }: AnswerFie
         </>
       )}
 
-      <Button type="button" className="h-10" variant={done ? "default" : "secondary"} onClick={submit}>
+      <Button
+        type="button"
+        className="h-10"
+        variant={done ? "default" : "secondary"}
+        onClick={submit}
+        aria-label={done ? "Continue" : `${nAnswered} of ${items.length} answered`}
+      >
         {done ? <Play className="size-4" /> : `${nAnswered} / ${items.length}`}
       </Button>
     </div>

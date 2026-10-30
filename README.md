@@ -53,6 +53,12 @@ codes it (deployment `1`). If you have a database from before, run
 Other useful root scripts: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`
 (each runs across all packages).
 
+`pnpm test:e2e` runs the end-to-end tests (`packages/e2e`, Playwright): a
+browser codes the example jobs, the researcher makes and downloads jobs,
+against a server with a fresh database and the built client. Install a
+browser once with `pnpm --filter @annotinder/e2e exec playwright install
+chromium`, or point `PLAYWRIGHT_CHROMIUM_PATH` at an installed Chromium.
+
 ## Hosting
 
 `docker compose up -d --build` runs AnnoTinder with Postgres, from
