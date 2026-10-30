@@ -70,7 +70,8 @@ asks its questions for every unit a coder gets.
    **Question**.
 2. Change **Item Name** to `topic`. The name is the question's column in
    your results.
-3. Set **Answer Type** to **Nominal (categories)**.
+3. A new question has no answer type yet (it is marked *to specify*): set
+   **Answer Type** to **Nominal (categories)**.
 4. Under **Question**, type *What is this article mainly about?*
 5. Under **Options**, change the labels to *Politics* and *Disasters*, and
    click **+ Add option** for a third, *Sports*. The values (what is stored)
@@ -100,7 +101,8 @@ See [The codebook editor](codebook-editor.md) and
 
 Select the loop in the tree. Its form has two tabs:
 
-- **Layout**: how a unit is shown to coders. Type this under **Template**:
+- **Layout**: how a unit is shown to coders. Choose `headline` as
+  **Title** and tick `text` under **Body**. The form writes this template:
 
   ```template
   # $unit.headline
@@ -108,12 +110,13 @@ Select the loop in the tree. Its form has two tabs:
   $unit.text
   ```
 
-  `$unit.headline` is filled in with each unit's headline. Type `$` and the
-  editor lists the fields you can use; or use the **Insert** menu above the
-  template. See [Layout templates](layout-templates.md).
-- **Units**: which units coders get. The default, **All units** with an
-  empty unitset, gives every coder every unit. That is what we want here.
-  See [Handing out units](unit-distribution.md).
+  `$unit.headline` is filled in with each unit's headline. For more than a
+  title, byline and body (styles, blocks, conditions), click **Advanced**
+  and write the template yourself. See [Layout templates](layout-templates.md).
+- **Units**: which units coders get. A new loop has none chosen yet (it is
+  marked *to specify*): under **Who codes which units**, choose **All
+  units**, with an empty unitset: every coder gets every unit. That is what
+  we want here. See [Handing out units](unit-distribution.md).
 
 Try the layout right here, with your own text:
 

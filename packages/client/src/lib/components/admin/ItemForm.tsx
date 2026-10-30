@@ -1,5 +1,4 @@
 import {
-  ALL_UNITS_UNITSET,
   type AnyVariableType,
   type CodebookItem,
   type Condition,
@@ -18,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   VariableTypeForm,
-  defaultVariableForAnyType,
   switchVariableType,
   VARIABLE_TYPE_LABELS,
   VARIABLE_TYPE_OPTIONS_USER,
@@ -45,13 +43,15 @@ export function defaultItemForType(type: CodebookItem["type"], name: string): Co
       return {
         type: "question",
         name,
-        variable: defaultVariableForAnyType("confirm"),
+        // The answer type is chosen in the form ("to specify" until then).
+        variable: { type: "unspecified" },
       } as CodebookItem;
     case "unit_loop":
-      // Like a condition, a new loop starts empty: its questions are added in the tree.
+      // Like a condition, a new loop starts empty: its questions are added in
+      // the tree. Which units coders get is chosen in its form ("to specify" until then).
       return {
         type: "unit_loop",
-        units: [{ mode: "all", unitset: ALL_UNITS_UNITSET }],
+        units: [],
         layout: { template: "" },
         children: [],
       } as CodebookItem;

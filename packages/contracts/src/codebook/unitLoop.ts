@@ -162,7 +162,7 @@ export type UnitMode = UnitBranch["mode"];
 /** Loop-level distribution settings, shared by `unit_loop` items. */
 export const UnitLoopDistributionShape = {
   /** First matching branch is used for a coder (and sticks, even if their answers change later). */
-  units: z.array(UnitBranchSchema).min(1, "A unit_loop needs at least one branch"),
+  units: z.array(UnitBranchSchema).min(1, "Which units coders get isn't set yet: choose how units are handed out"),
   /** `random`: each coder gets the units (and the overlap units) in their own random order. Default `sequential`: unitset order. */
   order: z.enum(["sequential", "random"]).optional(),
 };

@@ -318,7 +318,7 @@ function ColumnRow({
 }) {
   const uploaded = mapping.field !== "";
   return (
-    <tr className={`border-b align-top last:border-0 ${uploaded ? "" : "text-muted-foreground"}`}>
+    <tr className={`border-b align-top last:border-0 ${uploaded || isId ? "" : "text-muted-foreground"}`}>
       <td className="p-1.5 font-medium">
         {header}
         {isId && <span className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-normal">id</span>}
@@ -330,7 +330,9 @@ function ColumnRow({
         <Input
           list="unit-field-names"
           className="h-8 w-44 text-xs"
-          placeholder="not uploaded"
+          // The id column is each unit's id; it can also be uploaded as a field (type a name).
+          placeholder={isId ? "the unit id" : "not uploaded"}
+          title={isId ? "Each unit's id. Type a name to also upload it as a field." : undefined}
           value={mapping.field}
           onChange={(e) => onChange({ field: e.target.value.trim() })}
         />
@@ -342,7 +344,7 @@ function ColumnRow({
           </span>
         ) : (
           <select
-            className={selectClass}
+            className={`${selectClass} ${isId && !uploaded ? "invisible" : ""}`}
             value={mapping.type}
             disabled={!uploaded}
             onChange={(e) => onChange({ type: e.target.value as UnitFieldType })}
@@ -356,6 +358,7 @@ function ColumnRow({
         )}
       </td>
       <td className="p-1.5">
+        {isId && !uploaded && <Check className="mt-1.5 h-3.5 w-3.5 text-primary" aria-label="OK" />}
         {uploaded &&
           (problem ? (
             <span className="flex items-start gap-1 text-destructive">

@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from "react";
-import { Plus, Split, Trash2, X } from "lucide-react";
+import { Code, Plus, Split, Trash2, X } from "lucide-react";
 import { cn } from "cn";
 import {
   ALL_UNITS_UNITSET,
@@ -25,6 +25,8 @@ import { ConditionEditor } from "./ConditionEditor";
 import { IssueList } from "./IssueList";
 import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
+import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "../../codebook/simpleLayout";
+import { SimpleLayoutForm } from "./SimpleLayoutForm";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -83,6 +85,47 @@ function switchMode(branch: UnitBranch, mode: UnitMode): UnitBranch {
 }
 
 const defaultBranch = (): UnitBranch => ({ mode: "all", unitset: ALL_UNITS_UNITSET });
+
+/** A loop whose distribution isn't set: what that means, and the choice. */
+function UnsetUnits({ onChoose }: { onChoose: (mode: UnitMode) => void }) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="rounded-md border border-amber-500/60 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
+        Which units coders get isn't set yet. Choose how they are handed out: the form then shows the settings. The codebook
+        can be saved like this, but not previewed or published.
+      </p>
+      <div className={labelClass}>
+        <span className="flex items-center gap-1.5">
+          <label htmlFor={id}>Who codes which units</label>
+          <HelpButton topic="unit-distribution" label="Help: unit distribution" />
+        </span>
+        <select
+          id={id}
+          className={`${selectClass} w-fit border-amber-500`}
+          value=""
+          onChange={(e) => onChoose(e.target.value as UnitMode)}
+        >
+          <option value="" disabled>
+            Choose...
+          </option>
+          {MODES.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+        <ul className="list-disc pl-4 text-[11px] font-normal text-muted-foreground">
+          {MODES.map((m) => (
+            <li key={m.value}>
+              <span className="font-medium text-foreground">{m.label}:</span> {m.help}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 /** A branch without its condition (the only branch, or the last: "otherwise"). */
 function withoutWhen(branch: UnitBranch): UnitBranch {
@@ -189,9 +232,11 @@ function UnitsTab({
   validationIssues: CodebookValidationIssue[];
   onChange: (loop: UnitLoopItem) => void;
 }) {
-  const branches = loop.units?.length ? loop.units : [defaultBranch()];
   const agreeable = agreementQuestions(loop.children as CodebookItem[]);
   const setBranches = (units: UnitBranch[]) => onChange({ ...loop, units });
+  // Not set yet (the setup wizard's "decide later", or a new loop): choose how first.
+  if (!loop.units?.length) return <UnsetUnits onChoose={(mode) => setBranches([switchMode(defaultBranch(), mode)])} />;
+  const branches = loop.units;
   const setBranch = (b: number, branch: UnitBranch) => setBranches(branches.map((x, i) => (i === b ? branch : x)));
 
   // One branch without a condition: just its units. Several: every branch
@@ -290,7 +335,28 @@ function UnitsTab({
   );
 }
 
-/** How a unit is shown: the markdown template, and its snippets. */
+/** Light, dark, or the coder's mode. */
+function ColourScheme({ layout, onChange }: { layout: UnitLayout; onChange: (layout: UnitLayout) => void }) {
+  return (
+    <Section title="Colours" topic="colours-and-styles#light-or-dark">
+      <select
+        className={`${selectClass} w-fit`}
+        value={layout.colorScheme ?? ""}
+        onChange={(e) => {
+          const next = { ...layout, colorScheme: (e.target.value || undefined) as UnitLayout["colorScheme"] };
+          if (!next.colorScheme) delete next.colorScheme;
+          onChange(next);
+        }}
+      >
+        <option value="">Follow the coder&apos;s light or dark mode</option>
+        <option value="light">Always light</option>
+        <option value="dark">Always dark</option>
+      </select>
+    </Section>
+  );
+}
+
+/** How a unit is shown: a simple form (title, byline, body), or the markdown template and its snippets. */
 function LayoutTab({
   loop,
   unitFields,
@@ -319,6 +385,9 @@ function LayoutTab({
   };
   const [editor, setEditor] = useState<TemplateEditorApi | null>(null);
   const [editing, setEditing] = useState<{ condition: { script: string }; apply: (script: string) => void } | null>(null);
+  // The simple form (title, byline, body) unless the template is more than it can show, or the researcher chose to write it.
+  const simple = parseSimpleLayout(layout.template);
+  const [advanced, setAdvanced] = useState(simple === null);
   const setLayout = (next: Partial<UnitLayout>) => onChange({ ...loop, layout: { ...layout, ...next } });
   const setSnippets = (entries: [string, string][]) => {
     const next = { ...layout };
@@ -327,10 +396,51 @@ function LayoutTab({
     onChange({ ...loop, layout: next });
   };
 
+  if (!advanced && simple) {
+    return (
+      <div className="flex flex-col gap-5">
+        <Section title="Layout" help="What coders see of each unit." topic="layout-templates">
+          {readOnly ? (
+            <pre className="whitespace-pre-wrap rounded-md border border-input p-2 font-mono text-xs">{layout.template}</pre>
+          ) : (
+            <SimpleLayoutForm layout={simple} fields={unitFields} onChange={(next) => setLayout({ template: simpleTemplate(next) })} />
+          )}
+          <IssueList issues={issues} />
+        </Section>
+        <ColourScheme layout={layout} onChange={(next) => onChange({ ...loop, layout: next })} />
+        <button
+          type="button"
+          onClick={() => setAdvanced(true)}
+          className="flex w-fit cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <Code className="h-3.5 w-3.5" /> Advanced: write the layout as a template (markdown, blocks, styles, snippets)…
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {!readOnly && (
-        <div className="-mb-3 flex justify-end">
+        <div className="-mb-3 flex items-center justify-between gap-2">
+          {simple ? (
+            <button type="button" onClick={() => setAdvanced(false)} className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+              ← Simple form
+            </button>
+          ) : (
+            <button
+              type="button"
+              title="Replaces this template with a title, byline and body chosen in a form"
+              onClick={() => {
+                if (!confirm("Replace this template with the simple form (title, byline, body)?")) return;
+                setLayout({ template: simpleTemplate(guessSimpleLayout(unitFields)) });
+                setAdvanced(false);
+              }}
+              className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+            >
+              Use the simple form instead…
+            </button>
+          )}
           <TemplateInsertMenu
             editor={editor}
             fields={unitFields}
@@ -367,21 +477,7 @@ function LayoutTab({
         />
       </Section>
 
-      <Section title="Colours" topic="colours-and-styles#light-or-dark">
-        <select
-          className={`${selectClass} w-fit`}
-          value={layout.colorScheme ?? ""}
-          onChange={(e) => {
-            const next = { ...layout, colorScheme: (e.target.value || undefined) as UnitLayout["colorScheme"] };
-            if (!next.colorScheme) delete next.colorScheme;
-            onChange({ ...loop, layout: next });
-          }}
-        >
-          <option value="">Follow the coder&apos;s light or dark mode</option>
-          <option value="light">Always light</option>
-          <option value="dark">Always dark</option>
-        </select>
-      </Section>
+      <ColourScheme layout={layout} onChange={(next) => onChange({ ...loop, layout: next })} />
 
       <Section title="Snippets" topic="snippets">
         {snippets.map(([name, value], i) => (

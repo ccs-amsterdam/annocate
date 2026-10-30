@@ -177,7 +177,7 @@ function ItemLabel({
       {item.type === "unit_loop" && (
         <span className="truncate text-xs text-muted-foreground">{loopUnitsSummary(item)}</span>
       )}
-      {"variable" in item && item.variable?.type === "unspecified" && (
+      {(("variable" in item && item.variable?.type === "unspecified") || (item.type === "unit_loop" && !item.units?.length)) && (
         <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
           to specify
         </span>

@@ -6,8 +6,15 @@ summary: How a unit is shown to coders - one markdown text with the unit's data 
 ---
 
 Every unit loop has a **layout**: the text coders see above the questions, for
-each unit. You write it once, as a template, and AnnoTinder fills in each
-unit's data. You find it on the loop's **Layout** tab in the codebook editor.
+each unit. You find it on the loop's **Layout** tab in the codebook editor.
+
+Most layouts are a title, a byline and a body: the Layout tab starts as a
+form for those, where you pick a field for each. Behind the form is a
+template, and **Advanced** opens it: write it yourself for anything more
+(styles, blocks, conditions, snippets). A template that is more than a
+title, byline and body stays in the template editor.
+
+The template is written once, and AnnoTinder fills in each unit's data.
 
 The template is [markdown](https://commonmark.org/help/), the plain-text format
 for headings, bold text, lists and links, with **values** in it: places where
