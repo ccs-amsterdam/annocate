@@ -68,7 +68,7 @@ history.
 
 ## Previewing
 
-Click **Preview Job** at the top right, or open the **Preview** tab. You
+Click **Preview Job** at the top right. You
 then code the job as a coder would, with the job's real units:
 
 - The preview runs the **latest saved version**: the draft if there is one,

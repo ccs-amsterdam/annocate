@@ -446,8 +446,10 @@ pass with per-slot memoization:
 
 ## 7. Admin UI
 
-`components/admin/AdminApp.tsx` is a tabbed shell: Overview, Codebook,
-Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
+`components/admin/AdminApp.tsx` is a tabbed shell, grouped: Overview,
+Design (Codebook, Units), Deploy (Invitations, Coders), Results (Download),
+Settings; a group with several pages shows them as sub tabs. Preview opens
+from the Preview Job button. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 - **Login**: `account/ResearcherGate.tsx` shows its children to a logged-in
@@ -645,10 +647,10 @@ Units, Invitations, Coders, Results, Preview. It uses a `ResearcherApi`
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
   codebook versions (open them in the editor), unit/coder/invitation counts,
   answers per day (`GET /overview`), progress per loop
-  (`GET /deployment/status`), and
-  the job settings (rename, archive, keep sessions open, delete).
-  `LiveControls.tsx`: pause or resume. `TeamSettings.tsx`: who has access and
-  their role (the list keeps at least one admin).
+  (`GET /deployment/status`). `LiveControls.tsx`: pause or resume.
+- **Settings** (`JobSettingsPage`): `TeamSettings.tsx`, who has access and
+  their role (the list keeps at least one admin), and the job settings
+  (rename, archive, keep sessions open, delete).
 - **Invitations**: create links (login requirement, participant id fixed
   or from a URL parameter with a pattern, other required URL parameters,
   allowed emails, preset variables, max uses, units) and a table of all of them with uses, units

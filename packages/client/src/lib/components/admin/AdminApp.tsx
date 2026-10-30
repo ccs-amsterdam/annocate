@@ -12,26 +12,59 @@ import { UnitsPage } from "./units/UnitsPage";
 import { CodersPanel } from "./CodersPanel";
 import { ResultsPanel } from "./ResultsPanel";
 import { InvitationsPanel } from "./InvitationsPanel";
-import { JobOverview } from "./overview/JobOverview";
+import { JobOverview, JobSettingsPage } from "./overview/JobOverview";
 import { JobPreview } from "./JobPreview";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LayoutDashboard, BookOpen, Layers, Link2, Users, Play, Archive, FilePen, Download, CircleHelp } from "lucide-react";
+import {
+  ChevronLeft,
+  LayoutDashboard,
+  BookOpen,
+  Layers,
+  Link2,
+  Users,
+  Play,
+  Archive,
+  FilePen,
+  Download,
+  CircleHelp,
+  PencilRuler,
+  Send,
+  Settings,
+} from "lucide-react";
 import { clearBackup, readBackup, type CodebookBackup } from "../../codebook/localBackup";
 import { HelpDialog } from "../../help/HelpDialog";
 import { openHelp } from "../../help/helpStore";
 
-const TABS = [
-  { id: "Overview", label: "Overview", icon: LayoutDashboard },
-  { id: "Codebook", label: "Codebook", icon: BookOpen },
-  { id: "Units", label: "Units", icon: Layers },
-  { id: "Invitations", label: "Invitations", icon: Link2 },
-  { id: "Coders", label: "Coders", icon: Users },
-  { id: "Results", label: "Results", icon: Download },
-  { id: "Preview", label: "Preview", icon: Play },
-] as const;
+/** The job's pages. Preview is opened with the Preview Job button, not from the tabs. */
+type TabId = "Overview" | "Codebook" | "Units" | "Invitations" | "Coders" | "Results" | "Settings" | "Preview";
 
-type TabId = (typeof TABS)[number]["id"];
+/**
+ * The tabs, grouped: designing the job (codebook, units), deploying it
+ * (invitations, coders), its results, and settings. A group with more than
+ * one page shows them as sub tabs.
+ */
+const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId; label: string; icon: typeof LayoutDashboard }[] }[] = [
+  { label: "Overview", icon: LayoutDashboard, pages: [{ id: "Overview", label: "Overview", icon: LayoutDashboard }] },
+  {
+    label: "Design",
+    icon: PencilRuler,
+    pages: [
+      { id: "Codebook", label: "Codebook", icon: BookOpen },
+      { id: "Units", label: "Units", icon: Layers },
+    ],
+  },
+  {
+    label: "Deploy",
+    icon: Send,
+    pages: [
+      { id: "Invitations", label: "Invitations", icon: Link2 },
+      { id: "Coders", label: "Coders", icon: Users },
+    ],
+  },
+  { label: "Results", icon: Download, pages: [{ id: "Results", label: "Download", icon: Download }] },
+  { label: "Settings", icon: Settings, pages: [{ id: "Settings", label: "Settings", icon: Settings }] },
+];
 
 /** The help topic the Help button opens on each tab. */
 const TAB_HELP: Record<TabId, string> = {
@@ -41,6 +74,7 @@ const TAB_HELP: Record<TabId, string> = {
   Invitations: "invitations",
   Coders: "coders-and-progress",
   Results: "results",
+  Settings: "overview",
   Preview: "previewing-and-publishing",
 };
 
@@ -296,28 +330,53 @@ function JobAdminView({
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <nav className="mt-3 flex gap-1 overflow-x-auto border-t border-border/40 pt-2">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
+        {/* Tab Navigation: the groups, and the active group's pages */}
+        <nav className="mt-3 flex gap-1 overflow-x-auto border-t border-border/40 pt-2" aria-label="Job">
+          {GROUPS.map((g) => {
+            const Icon = g.icon;
+            const active = g.pages.some((p) => p.id === tab);
             return (
               <button
-                key={t.id}
+                key={g.label}
                 type="button"
-                onClick={() => requestNavigation(() => onTabChange(t.id))}
+                aria-current={active ? "page" : undefined}
+                onClick={() => requestNavigation(() => onTabChange(g.pages[0].id))}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  active ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
-                {t.label}
+                {g.label}
               </button>
             );
           })}
         </nav>
+        {(() => {
+          const group = GROUPS.find((g) => g.pages.some((p) => p.id === tab));
+          if (!group || group.pages.length < 2) return null;
+          return (
+            <nav className="mt-2 flex gap-1 overflow-x-auto" aria-label={group.label}>
+              {group.pages.map((p) => {
+                const Icon = p.icon;
+                const active = p.id === tab;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => requestNavigation(() => onTabChange(p.id))}
+                    className={`flex items-center gap-1.5 border-b-2 px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
+                      active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {p.label}
+                  </button>
+                );
+              })}
+            </nav>
+          );
+        })()}
       </header>
 
       {/* Main Tab Content */}
@@ -331,9 +390,9 @@ function JobAdminView({
               setCodebookTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
               onTabChange("Codebook");
             }}
-            onDeleted={onBackToJobs}
           />
         )}
+        {tab === "Settings" && <JobSettingsPage client={client} onDeleted={onBackToJobs} />}
         {tab === "Codebook" && (
           <CodebookManager
             key={`${codebookTarget?.n ?? 0}:${restore?.at ?? ""}`}

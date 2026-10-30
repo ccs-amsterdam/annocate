@@ -136,7 +136,7 @@ preview ends.
 
 ## Removing data
 
-- **Delete Job** (in the job's settings on the **Overview** tab) deletes the
+- **Delete Job** (on the job's **Settings** tab) deletes the
   job with everything in it: units, codebooks, invitations, coders and
   answers.
 - **Deleting a coder's data** (on the **Coders** tab) deletes one coder,

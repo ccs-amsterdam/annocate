@@ -37,9 +37,10 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 2. Give it a name under **Job Name**, for example *News pilot*, and click
    **Create Job**.
 
-The job opens on its **Overview** tab. The tabs along the top (**Codebook**,
-**Units**, **Invitations**, **Coders**, **Results**, **Preview**) are the
-steps below.
+The job opens on its **Overview** tab. The tabs along the top group the
+steps below: **Design** (the **Codebook** and **Units**), **Deploy**
+(**Invitations** and **Coders**), **Results**, and the job's **Settings**.
+**Preview Job** at the top right tries the job as a coder.
 
 ## 2. Upload the units
 
@@ -138,7 +139,7 @@ Click **Save** above the tree. Your codebook is now saved as a **draft**
 toolbar shows a red count of issues, click it to see what to fix; you can
 save with issues, but not preview or publish.
 
-Click **Preview Job** at the top right (or open the **Preview** tab). You
+Click **Preview Job** at the top right. You
 now code the job as a coder would, with your real units, on a phone-sized
 screen (switch to **Desktop** for a larger one). Nothing you answer in a
 preview is stored. Check that the questions read well and the units look

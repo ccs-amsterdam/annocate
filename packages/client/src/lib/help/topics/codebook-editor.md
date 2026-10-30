@@ -116,8 +116,8 @@ and controls above it:
 - A picker for each question that the layout uses, with its options and
   *(no answer)*: try how the layout looks after each answer.
 
-This preview shows a single item. To try the whole job as a coder, use the
-**Preview** tab (see
+This preview shows a single item. To try the whole job as a coder, use
+**Preview Job** at the top right (see
 [Preview, save and publish](previewing-and-publishing.md#previewing)).
 
 ## Errors and warnings

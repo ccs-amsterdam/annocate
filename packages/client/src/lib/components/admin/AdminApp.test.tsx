@@ -68,6 +68,7 @@ describe("AdminApp", () => {
     const html = renderToStaticMarkup(
       <AdminApp client={stubClient} initialJobId={1} baseUrl="http://localhost:8787" />,
     );
-    expect(html).toContain("Codebook");
+    expect(html).toContain("Design");
+    expect(html).toContain("Deploy");
   });
 });

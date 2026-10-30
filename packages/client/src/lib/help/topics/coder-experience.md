@@ -9,7 +9,7 @@ Coders (or participants) open the link of an invitation and start right
 away, without an account (unless the invitation asks them to
 [log in](invitations.md#login)). This page describes what they see
 and can do, so you can write instructions for them and know what to expect.
-The quickest way to see it for yourself is the **Preview** tab (see
+The quickest way to see it for yourself is **Preview Job** at the top right (see
 [Preview, save and publish](previewing-and-publishing.md#previewing)).
 
 ## The coding screen
@@ -200,4 +200,4 @@ device or login doesn't see their answers. For 15 minutes after finishing
 my answers**, for a coder who notices a mistake.
 
 To let coders always return to their answers, tick **Keep finished
-sessions open** in the job settings (on the **Overview** tab).
+sessions open** on the job's **Settings** tab.

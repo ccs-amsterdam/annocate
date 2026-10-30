@@ -11,7 +11,7 @@ test("writing a codebook in the editor, as the help describes it, and saving it"
   });
   await page.goto("/");
   await page.getByText("Editor test").click();
-  await page.getByRole("button", { name: "Codebook", exact: true }).click();
+  await page.getByRole("button", { name: "Design", exact: true }).click();
 
   // A unit loop
   // (Form labels aren't tied to their fields yet: placeholders find them.)

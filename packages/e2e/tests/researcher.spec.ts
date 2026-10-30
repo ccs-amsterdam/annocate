@@ -43,6 +43,7 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "News pilot")!;
 
   // 2. Upload the units
+  await page.getByRole("button", { name: "Design", exact: true }).click();
   await page.getByRole("button", { name: "Units", exact: true }).click();
   await page.getByRole("button", { name: /Upload CSV/ }).click();
   await page.locator("input[type=file]").setInputFiles({
@@ -92,6 +93,7 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   await expect.poll(async () => (await api<{ codebookId: number } | null>(request, "GET", `/job/${job.id}/deployment`))?.codebookId).toBe(codebook.id);
 
   // 7. Invite coders
+  await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await page.getByRole("button", { name: "Invitations", exact: true }).click();
   await page.getByPlaceholder(/label|Pilot/i).first().fill("Pilot coders");
   await page.getByRole("button", { name: "Create", exact: true }).click();

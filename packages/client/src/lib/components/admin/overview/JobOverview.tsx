@@ -24,15 +24,14 @@ interface JobOverviewProps {
   onNavigate: (tab: OverviewTarget) => void;
   /** Opens the Codebook tab on this version. */
   onOpenCodebook: (versionId: number) => void;
-  onDeleted?: () => void;
 }
 
 /**
  * The job's front page (docs/client.md §7): whether it's live, which
  * codebook versions are live and in draft, units, coders, activity and
- * progress, and the job settings.
+ * progress. The job's settings are on their own tab (`JobSettingsPage`).
  */
-export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: JobOverviewProps) {
+export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewProps) {
   const overviewQuery = useOverviewQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const codebooksQuery = useCodebooksQuery(client);
@@ -132,11 +131,17 @@ export function JobOverview({ client, onNavigate, onOpenCodebook, onDeleted }: J
           </ul>
         </Card>
       )}
+    </div>
+  );
+}
 
+/** The job's Settings tab: who has access, and the job's settings (name, sessions, archive, delete). */
+export function JobSettingsPage({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
+  return (
+    <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <Card title="Who has access" subtitle="People who can see and work on this job">
         <TeamSettings client={client} />
       </Card>
-
       <Card title="Settings">
         <JobSettings client={client} onDeleted={onDeleted} />
       </Card>

@@ -11,7 +11,7 @@ the results. Each has a **role** in the job.
 
 ## Who has access
 
-On the **Overview** tab, **Who has access** lists the people of the job and
+On the job's **Settings** tab, **Who has access** lists the people of the job and
 their roles. Only admins of the job see this list and can change it.
 
 - **Add** someone with their email address and a role. They see the job
