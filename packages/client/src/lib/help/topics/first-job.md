@@ -31,7 +31,9 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 > whether you annotate units, ask questions or run an experiment, upload
 > the units, choose who codes what, and name your questions. The job then
 > opens in the codebook editor, with each question marked *to specify*:
-> choose its answer type there (step 3), then continue with step 4.
+> choose its answer type there (step 3), then continue with step 4. See
+> [Guided setup](setup-wizard.md) for what it does and what only the editor
+> does.
 
 1. On the **Jobs** page, click **Create new job**, then **Empty job**.
 2. Give it a name under **Job Name**, for example *News pilot*, and click

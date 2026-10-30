@@ -103,8 +103,8 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
    - **Crowd coding**: a shared queue, with the editor's own form for it
      (units per coder, coders or agreement per unit, at least and at most,
      priority), and an optional overlap (the queue is then the other units).
-     The question coders agree on can only be chosen from questions named
-     already (going back), otherwise in the editor.
+     Coding until coders agree is left out: it needs a question with
+     options, which the wizard doesn't specify; the editor sets it.
    - **Experimental groups** (with an experiment): pick a column, and per
      condition which of its values belong to it. This makes a unitset per
      condition (`condition_<value>`), and the loop routes by the condition
@@ -146,6 +146,13 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
   guessed layout; and a survey alone.
 
 ## 5. Decisions taken
+
+- The wizard says on its first step that it is for setting up a job
+  quickly, and links to the help topic *Guided setup*
+  (`help/topics/setup-wizard.md`), which lists what only the editor does
+  (agreement, conditions, end items, coder groups, invitations and panels,
+  layouts beyond the sketch, snippets, several loops), each with a link to
+  its help topic.
 
 - No question details in the wizard: only names. The editor
   is where questions are specified, made conditional, and so on.

@@ -27,6 +27,7 @@ import {
 } from "../../admin/setupRecipe";
 import { guessSimpleLayout } from "../../codebook/simpleLayout";
 import { CsvUnitsForm } from "./units/UploadUnits";
+import { HelpButton } from "../../help/HelpButton";
 import { LayoutDesigner, UnitPreview } from "./LayoutDesigner";
 import { SharedSettings } from "./UnitLoopForm";
 
@@ -156,6 +157,12 @@ const PARTS: { key: keyof SetupParts; title: string; text: string; icon: typeof 
 function StartStep({ a, set }: StepProps) {
   return (
     <>
+      <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-foreground">
+        The guided setup makes a job quickly: what it does, the units, who codes what, how a unit looks, and the names of your
+        questions. It then opens in the editor, where you specify the questions and can add what the setup leaves out
+        (conditions, agreement, personal or panel links, and more).{" "}
+        <HelpButton topic="setup-wizard">What only the editor does</HelpButton>
+      </p>
       <label className="block text-xs font-medium text-muted-foreground">
         Job name
         <Input className="mt-1" autoFocus value={a.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. News pilot" />
@@ -310,17 +317,11 @@ function DistributionStep({ a, set }: StepProps) {
 
         {d.mode === "crowd" && (
           <>
-            <SharedSettings
-              branch={d.shared}
-              agreeable={parseQuestions(a.questions.unit).map((q) => q.name)}
-              onChange={(shared) => update({ shared: shared as typeof d.shared })}
-            />
-            {"agree" in d.shared.until && (
-              <p className="text-xs text-muted-foreground">
-                The question coders agree on is one of the questions about each unit, with options (nominal, ordinal or swipe):
-                name it in the next steps, and choose it and its type in the editor.
-              </p>
-            )}
+            <SharedSettings branch={d.shared} agreeable={[]} allowAgreement={false} onChange={(shared) => update({ shared: shared as typeof d.shared })} />
+            <p className="text-xs text-muted-foreground">
+              Coding until coders agree on a question is set in the editor, once the question has its answer type.{" "}
+              <HelpButton topic="setup-wizard">What only the editor does</HelpButton>
+            </p>
             <OverlapInput overlap={d.overlap} units={a.units?.units.length ?? 0} onChange={(overlap) => update({ overlap })} />
           </>
         )}

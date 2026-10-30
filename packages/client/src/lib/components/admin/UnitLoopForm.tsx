@@ -600,7 +600,18 @@ const numberOrUndefined = (v: string) => (v === "" ? undefined : Number(v));
  * A shared queue's numbers as a small grid: units per coder (min, max), and
  * coders per unit or agreement per unit (the `until` rule, and max coders).
  */
-export function SharedSettings({ branch, agreeable, onChange }: { branch: SharedBranch; agreeable: string[]; onChange: (b: UnitBranch) => void }) {
+export function SharedSettings({
+  branch,
+  agreeable,
+  onChange,
+  allowAgreement = true,
+}: {
+  branch: SharedBranch;
+  agreeable: string[];
+  onChange: (b: UnitBranch) => void;
+  /** Offer "agreement per unit" (not in the setup wizard: it needs a question with options). */
+  allowAgreement?: boolean;
+}) {
   const agree = "agree" in branch.until;
   const needed = agree && "agree" in branch.until ? branch.until.agree : "coders" in branch.until ? branch.until.coders : 1;
   const numberInput = "h-8 w-full text-xs";
@@ -634,6 +645,9 @@ export function SharedSettings({ branch, agreeable, onChange }: { branch: Shared
         />
         <span />
 
+        {!allowAgreement ? (
+          <span className="font-semibold">Coders per unit</span>
+        ) : (
         <select
           className={selectClass}
           aria-label="Each unit is coded until"
@@ -651,6 +665,7 @@ export function SharedSettings({ branch, agreeable, onChange }: { branch: Shared
           <option value="coders">Coders per unit</option>
           <option value="agree">Agreement per unit</option>
         </select>
+        )}
         <Input
           type="number"
           min={agree ? 2 : 1}
