@@ -17,6 +17,8 @@ docs live in `docs/`:
   answers, references and conditions, admin UI).
 - `docs/hosting.md`: running AnnoTinder (Docker Compose, settings, login
   provider, backups).
+- `docs/release-checklist.md`: before the first release: what is done and
+  checked (tests, security pass, load test), decisions, open items.
 - `docs/plans/`: plans for features that are not built.
 - `packages/contracts/CONTRACTS.md`: the contracts package (schemas, design
   notes).
