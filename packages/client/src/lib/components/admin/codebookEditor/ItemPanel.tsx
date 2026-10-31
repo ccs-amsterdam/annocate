@@ -135,6 +135,7 @@ function ItemEditForm({
       <ItemForm
         key={draft.selected ?? undefined}
         item={item}
+        client={readOnly ? undefined : client}
         groups={groupsQuery.data ?? []}
         setParams={setParams}
         sessionValueNames={sessionNames(cleanItems)}

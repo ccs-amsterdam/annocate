@@ -29,6 +29,8 @@ import { issuesAt } from "./issues";
 import { HelpButton } from "../../help/HelpButton";
 import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "../../codebook/simpleLayout";
 import { LayoutDesigner } from "./LayoutDesigner";
+import { GenerateSets } from "./units/GenerateSets";
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -77,8 +79,8 @@ function switchMode(branch: UnitBranch, mode: UnitMode, groups: SetGroupResponse
       return { ...common, ...set, mode, until: { coders: 1 }, maxCoders: 1 };
     case "assign": {
       const group = branch.mode === "assign" ? branch.group : branch.set?.group ?? groups[0]?.name ?? "";
-      // The overlap is chosen on purpose (first, last, spread or disabled): left open, so validation asks for it.
-      return { ...common, mode, group, from: { draw: "balanced" } } as AssignBranch;
+      // The overlap spread through the coder's units: best practice (first inflates reliability)
+      return { ...common, mode, group, from: { draw: "balanced" }, overlap: { placement: "spread" } };
     }
   }
 }
@@ -143,6 +145,7 @@ function withoutWhen(branch: UnitBranch): UnitBranch {
  */
 export function UnitLoopForm({
   loop,
+  client,
   groups,
   setParams = new Map(),
   unitFields,
@@ -152,6 +155,8 @@ export function UnitLoopForm({
   onChange,
 }: {
   loop: UnitLoopItem;
+  /** For "Generate sets…" (absent: not offered). */
+  client?: ResearcherApi;
   /** The job's set groups. */
   groups: SetGroupResponse[];
   /** The codebook's set-typed session parameters (name -> group): where an assigned set can come from. */
@@ -192,6 +197,7 @@ export function UnitLoopForm({
       {tab === "units" ? (
         <UnitsTab
           loop={loop}
+          client={client}
           groups={groups}
           setParams={setParams}
           coderQuestions={coderQuestions}
@@ -231,6 +237,7 @@ function Section({ title, help, topic, children }: { title: string; help?: strin
 /** Which units coders get: the branch (or branches), and the order. */
 function UnitsTab({
   loop,
+  client,
   groups,
   setParams,
   coderQuestions,
@@ -238,6 +245,7 @@ function UnitsTab({
   onChange,
 }: {
   loop: UnitLoopItem;
+  client?: ResearcherApi;
   groups: SetGroupResponse[];
   setParams: Map<string, string>;
   coderQuestions: { name: string; variable: AnyVariableType }[];
@@ -272,6 +280,7 @@ function UnitsTab({
   const editor = (b: number) => (
     <BranchEditor
       branch={branches[b]}
+      client={client}
       groups={groups}
       setParams={setParams}
       agreeable={agreeable}
@@ -546,6 +555,7 @@ function LayoutTab({
 /** One branch's units: its mode and settings, and the overlap. */
 function BranchEditor({
   branch,
+  client,
   groups,
   setParams,
   agreeable,
@@ -553,6 +563,7 @@ function BranchEditor({
   onChange,
 }: {
   branch: UnitBranch;
+  client?: ResearcherApi;
   groups: SetGroupResponse[];
   setParams: Map<string, string>;
   agreeable: string[];
@@ -600,10 +611,17 @@ function BranchEditor({
               onChange(next);
             }}
           />
+          {client && (
+            <GenerateSets
+              client={client}
+              groups={groups}
+              onCreated={(group) => onChange({ ...branch, set: { group, set: "s1" } } as UnitBranch)}
+            />
+          )}
         </label>
       )}
       {branch.mode === "shared" && <SharedSettings branch={branch} agreeable={agreeable} onChange={onChange} />}
-      {branch.mode === "assign" && <AssignSettings branch={branch} groups={groups} setParams={setParams} onChange={onChange} />}
+      {branch.mode === "assign" && <AssignSettings branch={branch} client={client} groups={groups} setParams={setParams} onChange={onChange} />}
 
       {overlapGroup !== undefined && branch.mode !== "all" && (
         <OverlapEditor
@@ -659,11 +677,13 @@ const fromValue = (from: AssignBranch["from"]) => ("draw" in from ? `draw:${from
 /** An `assign` branch: the group, and how a coder's set is chosen. */
 function AssignSettings({
   branch,
+  client,
   groups,
   setParams,
   onChange,
 }: {
   branch: AssignBranch;
+  client?: ResearcherApi;
   groups: SetGroupResponse[];
   setParams: Map<string, string>;
   onChange: (branch: UnitBranch) => void;
@@ -694,6 +714,7 @@ function AssignSettings({
             ))}
           </select>
         )}
+        {client && <GenerateSets client={client} groups={groups} onCreated={(group) => onChange({ ...branch, group })} />}
       </label>
       <label className={labelClass}>
         A coder&apos;s set is
@@ -914,11 +935,11 @@ function OverlapEditor({
             ) : (
               <option value="">None</option>
             )}
-            <option value="first">First, before the coder&apos;s own units</option>
-            <option value="last">Last, after them</option>
             <option value="spread" disabled={!canSpread}>
-              Spread through them{canSpread ? "" : " (needs max units per coder)"}
+              Spread through the coder&apos;s units (recommended){canSpread ? "" : " (needs max units per coder)"}
             </option>
+            <option value="first">First, before the coder&apos;s own units (inflates reliability)</option>
+            <option value="last">Last, after them</option>
             {required && <option value="disabled">Disabled: no overlap</option>}
           </select>
         </label>

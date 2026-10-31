@@ -21,9 +21,9 @@ group, or a **crowd coding** queue over one of its sets, can add it.
    the **Units** tab with an **overlap** of, say, 10%: it sets aside a random
    `_overlap` set and splits the rest into sets. Or give units the set
    `_overlap` in a sets column of your CSV.
-2. In the unit loop, choose where the overlap units go, under **Overlap**.
-   With **Assign sets** this is required, so you decide on purpose: choose
-   **Disabled** for no overlap.
+2. In the unit loop, choose where the overlap units go, under **Overlap**:
+   **Spread through them** by default (see below). With **Assign sets**
+   choose **Disabled** for no overlap.
 3. Optionally, **Recommended**: how many overlap units you want. Publishing
    warns when the group has fewer. **At most** limits how many a coder gets:
    **the first ones**, or **a random draw** (the same units for every coder,
@@ -38,9 +38,9 @@ units.
 
 | Placed | What coders get |
 | --- | --- |
+| **Spread through them** (the default) | The overlap units evenly spread among their own units |
 | **First** | First all overlap units, then their own |
 | **Last** | First their own units, then the overlap units |
-| **Spread through them** | The overlap units evenly spread among their own units |
 
 With **Spread through them**, a coder with 100 own units and 4 overlap units
 gets an overlap unit after every 20 of their own units. If a coder runs out
@@ -56,15 +56,15 @@ coder too.
 
 ### Which placement to choose
 
-- **Spread through them** is usually the best choice for reliability: the
+- **Spread through them** is the best practice, and the default: the
   overlap units are coded throughout the session, when coders are fresh and
   when they are tired, so they represent the whole coding. Coders can't tell
   which units are being compared, so they can't take extra care with them.
-- **First** makes the overlap a calibration round: you can
-  check the first codings of every coder early, and retrain coders before
-  they do the bulk of the work. But reliability measured at the start, while
-  coders are still learning, may be lower (or, if they are extra careful at
-  the start, higher) than later on.
+- **First** makes the overlap a calibration round: you can check the first
+  codings of every coder early, and retrain coders before they do the bulk
+  of the work. But it biases the reliability you report: at the start coders
+  are fresh and careful, which tends to inflate it compared with the rest of
+  the coding. Use it for training, not as the reliability estimate.
 - **Last** measures coders when they are most
   experienced, but also most tired, and coders who stop early never reach
   the overlap.

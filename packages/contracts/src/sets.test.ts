@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cellsFromSets, parseSetCell, setsFromCells, splitIntoSets } from "./sets.js";
+import { addToSets, cellsFromSets, parseSetCell, setsFromCells, splitIntoSets } from "./sets.js";
 
 describe("set cells", () => {
   it("read one set, several, and positions", () => {
@@ -50,5 +50,29 @@ describe("splitIntoSets", () => {
     expect(new Set(sets.flatMap((s) => s.units)).size).toBe(11);
     expect(splitIntoSets(ids, { sets: 3, seed: 7 })).toEqual(splitIntoSets(ids, { sets: 3, seed: 7 }));
     expect(splitIntoSets(ids, { sets: 2, overlapFraction: 0.1, shuffle: false })).toMatchObject([{ units: [2, 3, 4, 5, 6] }, {}, { name: "_overlap", units: [1] }]);
+  });
+});
+
+describe("addToSets", () => {
+  const sets = [
+    { name: "s1", unitIds: [1, 2, 3], ordered: false },
+    { name: "s2", unitIds: [4, 5], ordered: false },
+    { name: "_overlap", unitIds: [6], ordered: false },
+  ];
+  it("distributes new units over the existing sets, smallest first, never into the overlap", () => {
+    const next = addToSets(sets, [7, 8, 9], "distribute");
+    expect(next.map((s) => s.unitIds.length)).toEqual([4, 4, 1]);
+    expect(new Set(next.flatMap((s) => s.unitIds))).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]));
+  });
+  it("makes new sets the average size, named on", () => {
+    const next = addToSets(sets, [10, 11, 12, 13, 14, 15], "new");
+    expect(next.map((s) => [s.name, s.unitIds.length])).toEqual([
+      ["s1", 3],
+      ["s2", 2],
+      ["_overlap", 1],
+      // average 2.5, rounded to 3: two new sets of 3
+      ["s3", 3],
+      ["s4", 3],
+    ]);
   });
 });

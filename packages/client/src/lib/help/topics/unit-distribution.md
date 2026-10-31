@@ -82,7 +82,7 @@ told their email address has no access to the study.
 
 **Assign sets** also asks for the **Overlap**: the group's `_overlap` units
 every coder codes besides their set, first, last or spread through their
-units, or **Disabled**. You choose it on purpose. See [Overlap](overlap.md).
+units (the default), or **Disabled**. See [Overlap](overlap.md).
 
 ## Choosing a mode
 

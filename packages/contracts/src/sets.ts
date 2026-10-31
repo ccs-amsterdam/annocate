@@ -172,3 +172,36 @@ export function seededShuffle<T>(array: T[], seed: number): T[] {
 
 /** The key the server and its tables use for a set: `group/set`. */
 export const setKey = (group: string, set: string) => `${group}/${set}`;
+
+/**
+ * Adds new units to a group's sets (not `_overlap`), shuffled (seeded):
+ * `distribute` spreads them over the existing sets, smallest first, so the
+ * sets stay about equal; `new` makes new sets the average size of the
+ * existing ones, named on from the existing names (`s4`, `s5`, ... after
+ * `s1` to `s3`). Ordered sets get the units at their end.
+ */
+export function addToSets(sets: UnitSet[], unitIds: number[], mode: "distribute" | "new", seed = 0): UnitSet[] {
+  const own = sets.filter((s) => s.name !== OVERLAP_SET);
+  const ids = seededShuffle(unitIds, seed);
+  if (ids.length === 0) return sets;
+  if (mode === "distribute" && own.length > 0) {
+    const next = sets.map((s) => ({ ...s, unitIds: [...s.unitIds] }));
+    const targets = next.filter((s) => s.name !== OVERLAP_SET);
+    for (const id of ids) targets.reduce((a, b) => (b.unitIds.length < a.unitIds.length ? b : a)).unitIds.push(id);
+    return next;
+  }
+  const average = own.length > 0 ? Math.max(1, Math.round(own.reduce((n, s) => n + s.unitIds.length, 0) / own.length)) : ids.length;
+  const count = Math.max(1, Math.round(ids.length / average));
+  // Names on from the highest `<prefix><n>` (default `s`)
+  const numbered = own.map((s) => /^(.*?)(\d+)$/.exec(s.name)).filter((m): m is RegExpExecArray => m !== null);
+  const prefix = numbered[0]?.[1] ?? "s";
+  let n = Math.max(0, ...numbered.filter((m) => m[1] === prefix).map((m) => Number(m[2])));
+  const names = new Set(sets.map((s) => s.name));
+  const added: UnitSet[] = [];
+  for (let i = 0; i < count; i++) {
+    do n++;
+    while (names.has(`${prefix}${n}`));
+    added.push({ name: `${prefix}${n}`, unitIds: ids.filter((_, j) => j % count === i), ordered: false });
+  }
+  return [...sets, ...added];
+}

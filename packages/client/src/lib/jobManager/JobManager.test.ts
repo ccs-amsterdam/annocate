@@ -803,10 +803,10 @@ describe("auto questions", () => {
     });
     const manager = new JobManager(server);
     await manager.start();
-    expect(manager.getSnapshot().currentItem?.type === "question" && manager.getSnapshot().currentItem?.name).toBe("gender");
+    expect(manager.getSnapshot().currentItem).toMatchObject({ name: "gender" });
     await manager.answer({ done: true, skip: false, values: [{ value: "f" }] });
     // The answer saved before the server assigns; then the question only group b sees
     expect(order).toEqual(["save", "assign condition"]);
-    expect(manager.getSnapshot().currentItem?.type === "question" && manager.getSnapshot().currentItem?.name).toBe("seen_b");
+    expect(manager.getSnapshot().currentItem).toMatchObject({ name: "seen_b" });
   });
 });

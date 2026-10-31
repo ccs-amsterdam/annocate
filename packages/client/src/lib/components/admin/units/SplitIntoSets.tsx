@@ -25,7 +25,8 @@ export function SplitIntoSets({
   source: string | null;
   unitIds: number[];
   groups: SetGroupResponse[];
-  onDone: () => void;
+  /** Done: with the new group's name if it was made (null: cancelled). */
+  onDone: (group: string | null) => void;
 }) {
   const putGroup = usePutSetGroupMutation(client);
   const [group, setGroup] = useState(() => {
@@ -86,14 +87,14 @@ export function SplitIntoSets({
           onClick={() =>
             putGroup.mutate(
               { group, body: { sets: sets.map((s) => ({ name: s.name, unitIds: s.units, ordered: false })) } },
-              { onSuccess: onDone },
+              { onSuccess: () => onDone(group) },
             )
           }
           disabled={!validName || unitIds.length === 0 || taken || putGroup.isPending}
         >
           {putGroup.isPending ? "Creating..." : `Create group with ${sets.length} sets`}
         </Button>
-        <Button variant="outline" onClick={onDone}>
+        <Button variant="outline" onClick={() => onDone(null)}>
           Cancel
         </Button>
       </div>

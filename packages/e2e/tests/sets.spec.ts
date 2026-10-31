@@ -68,4 +68,23 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
   }
   await expect(coder.getByText(/completed|Thank you/i).first()).toBeVisible();
   await expect.poll(async () => (await answers(request, job.id)).length).toBe(2);
+
+  // More units, without the sets column: added to the existing sets on request
+  await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: "Units", exact: true }).click();
+  await page.getByRole("button", { name: /Upload CSV/ }).click();
+  await page.locator("input[type=file]").setInputFiles({
+    name: "more.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("id,text\nu4,Fourth text\nu5,Fifth text\n"),
+  });
+  await page.getByLabel("New units in group part").selectOption("distribute");
+  await page.getByRole("button", { name: /Upload 2 units/ }).click();
+  await expect
+    .poll(async () => (await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`))[0].sets.map((s) => [s.name, s.unitIds.length]))
+    .toEqual([
+      ["_overlap", 1],
+      ["s1", 2],
+      ["s2", 2],
+    ]);
 });

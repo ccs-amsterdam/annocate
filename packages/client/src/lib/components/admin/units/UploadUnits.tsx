@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { SetGroupNameSchema, parseSetCell, setsFromCells, type UnitField, type UnitFieldType } from "@annotinder/contracts";
+import { OVERLAP_SET, SetGroupNameSchema, addToSets, parseSetCell, setsFromCells, type UnitField, type UnitFieldType } from "@annotinder/contracts";
 import { AlertCircle, Check, FileUp, Wand2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCreateUnitsMutation, usePutSetGroupMutation, useUnitsQuery } from "../../../admin/queries";
+import { useCreateUnitsMutation, usePutSetGroupMutation, useSetGroupsQuery, useUnitsQuery } from "../../../admin/queries";
 import { assignAllColumns, csvToUnits, initialMapping, mappingProblems, parseCsv, type ColumnMapping, type CsvUnits } from "../../../admin/csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,10 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
   const createUnits = useCreateUnitsMutation(client);
   const putGroup = usePutSetGroupMutation(client);
   const existingUnits = useUnitsQuery(client).data ?? [];
+  const groups = useSetGroupsQuery(client).data ?? [];
+  // Per group (not in the file as a sets column): what to do with the new units
+  const [addTo, setAddTo] = useState<Record<string, "" | "distribute" | "new">>({});
+  const [seed] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [overwriteCoded, setOverwriteCoded] = useState(false);
   const [result, setResult] = useState<CsvUpload | null>(null);
   const [overwrite, setOverwrite] = useState(false);
@@ -47,6 +51,9 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
   const byId = new Map(existingUnits.map((u) => [u.externalId, u]));
   const replaced = result ? result.units.filter((u) => byId.has(u.externalId)) : [];
   const coded = replaced.filter((u) => byId.get(u.externalId)!.coded);
+  const added = result ? result.units.filter((u) => !byId.has(u.externalId)) : [];
+  // Groups with sets the new units could join: those the file doesn't set itself
+  const otherGroups = groups.filter((g) => !result?.setGroups.some((s) => s.group === g.name) && g.sets.some((s) => s.name !== OVERLAP_SET));
 
   async function upload() {
     if (!result) return;
@@ -55,8 +62,15 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
       await createUnits.mutateAsync({ overwrite, overwriteCoded: overwrite && overwriteCoded, units: result.units.slice(i, i + BATCH) });
     }
     // Sets columns: each replaces its group, by the units' ids
-    if (result.setGroups.length > 0) {
+    const chosen = otherGroups.filter((g) => addTo[g.name]);
+    if (result.setGroups.length > 0 || (chosen.length > 0 && added.length > 0)) {
       const ids = new Map((await client.listUnits()).map((u) => [u.externalId, u.id]));
+      // New units into existing groups, as chosen
+      const newIds = added.flatMap((u) => (ids.has(u.externalId) ? [ids.get(u.externalId)!] : []));
+      for (const g of chosen) {
+        const sets = addToSets(g.sets, newIds, addTo[g.name] as "distribute" | "new", seed);
+        await putGroup.mutateAsync({ group: g.name, body: { sets } });
+      }
       for (const { group, cells } of result.setGroups) {
         const sets = setsFromCells(cells.flatMap((c) => (ids.has(c.externalId) ? [{ unitId: ids.get(c.externalId)!, cell: c.cell }] : [])));
         if ("error" in sets) throw new Error(sets.error);
@@ -90,6 +104,39 @@ export function UploadUnits({ client, jobFields, onDone }: { client: ResearcherA
             <input type="checkbox" checked={overwriteCoded} onChange={(e) => setOverwriteCoded(e.target.checked)} />
             Also replace the {coded.length} coded unit{coded.length === 1 ? "" : "s"}
           </label>
+        </div>
+      )}
+      {result && result.errors.length === 0 && added.length > 0 && otherGroups.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm">
+          <p>
+            The {added.length} new unit{added.length === 1 ? " is" : "s are"} in no set. Add {added.length === 1 ? "it" : "them"} to the sets of:
+          </p>
+          {otherGroups.map((g) => {
+            const own = g.sets.filter((s) => s.name !== OVERLAP_SET);
+            const average = Math.max(1, Math.round(own.reduce((n, s) => n + s.unitIds.length, 0) / own.length));
+            return (
+              <label key={g.name} className="flex flex-wrap items-center gap-2 pl-2">
+                <span className="font-mono text-xs font-semibold">{g.name}</span>
+                <select
+                  aria-label={`New units in group ${g.name}`}
+                  className={selectClass}
+                  value={addTo[g.name] ?? ""}
+                  onChange={(e) => setAddTo({ ...addTo, [g.name]: e.target.value as "" | "distribute" | "new" })}
+                >
+                  <option value="">Not in this group</option>
+                  <option value="distribute">Distribute over its {own.length} sets</option>
+                  <option value="new">
+                    New sets of about {average} units ({Math.max(1, Math.round(added.length / average))} new set
+                    {Math.max(1, Math.round(added.length / average)) === 1 ? "" : "s"})
+                  </option>
+                </select>
+              </label>
+            );
+          })}
+          <p className="text-[11px] text-muted-foreground">
+            Shuffled first. Distributing fills the smallest sets first; new sets are named on (e.g. s5 after s4). The overlap stays as it
+            is. New sets get their own link if the codebook makes a link per set.
+          </p>
         </div>
       )}
       {result && (

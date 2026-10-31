@@ -63,8 +63,26 @@ and 10% overlap you get `_overlap` with 100 units and `s1` to `s4` with 225
 units each. Then, in a unit loop, choose **Assign sets** with this group
 (see [Handing out units](unit-distribution.md)).
 
+You can also do this from the codebook: a unit loop's **Units** tab has
+**Generate sets…** next to the group or set to choose, which splits the
+job's units into a new group and selects it.
+
 The shuffle uses a random seed, so splitting twice gives different sets.
 That is fine: the sets are stored, and the split is not made again.
+
+## Adding units later
+
+When you upload units that are new and the file has no sets column for a
+group, the upload asks what to do with them, per group:
+
+- **Not in this group**: they stay out of its sets;
+- **Distribute over its sets**: shuffled, and added to the smallest sets
+  first, so the sets stay about equal;
+- **New sets of about** *n* **units**: new sets the average size of the
+  existing ones, named on (`s5` after `s4`). A codebook that makes a link per
+  set gets their links at once.
+
+The group's `_overlap` stays as it is.
 
 ## Putting selected units in a set
 

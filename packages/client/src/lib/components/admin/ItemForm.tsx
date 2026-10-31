@@ -1,3 +1,4 @@
+import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   type AnyVariableType,
   type CodebookItem,
@@ -72,6 +73,7 @@ export function defaultItemForType(type: CodebookItem["type"], name: string): Co
 
 export function ItemForm({
   item,
+  client,
   groups,
   setParams,
   sessionValueNames = [],
@@ -86,6 +88,8 @@ export function ItemForm({
   onChange,
 }: {
   item: CodebookItem;
+  /** For "Generate sets…" in a loop's form. */
+  client?: ResearcherApi;
   /** The job's set groups (loops' sets, session parameters with a group's sets). */
   groups: SetGroupResponse[];
   /** The codebook's set-typed session parameters (name -> group). */
@@ -198,6 +202,7 @@ export function ItemForm({
       {item.type === "unit_loop" && (
         <UnitLoopForm
           loop={item as UnitLoopItem}
+          client={client}
           groups={groups}
           setParams={setParams}
           unitFields={unitFields}

@@ -300,7 +300,8 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
             mode: "assign",
             group: WIZARD_GROUP,
             from: d.handOut === "links" ? { session: "set" } : { draw: "balanced" },
-            overlap: { placement: overlap.length > 0 ? "first" : "disabled" },
+            // Spread: best practice (first inflates reliability: coders are fresh and careful)
+            overlap: { placement: overlap.length > 0 ? "spread" : "disabled" },
           },
         ];
         // A link per set: a link parameter with the group's sets
@@ -309,7 +310,8 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
       case "crowd":
         if (overlap.length > 0) {
           groups.push({ group: WIZARD_GROUP, sets: [{ name: "queue", units: sets[0]?.units ?? [] }, ...overlapSet] });
-          branches = [{ ...d.shared, set: { group: WIZARD_GROUP, set: "queue" }, overlap: { placement: "first" } }];
+          // Spread needs the units per coder (max); without it the overlap comes last
+          branches = [{ ...d.shared, set: { group: WIZARD_GROUP, set: "queue" }, overlap: { placement: d.shared.maxUnits !== undefined ? "spread" : "last" } }];
         } else branches = [d.shared];
         break;
       case "groups":

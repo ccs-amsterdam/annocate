@@ -59,7 +59,7 @@ describe("setup wizard recipes", () => {
     expect(sizes).toEqual({ s1: 3, s2: 3, s3: 2, _overlap: 2 });
     // Every unit once
     expect(new Set(group.sets.flatMap((s) => s.units)).size).toBe(10);
-    expect(loopOf(a).units).toEqual([{ mode: "assign", group: "sets", from: { draw: "balanced" }, overlap: { placement: "first" } }]);
+    expect(loopOf(a).units).toEqual([{ mode: "assign", group: "sets", from: { draw: "balanced" }, overlap: { placement: "spread" } }]);
   });
 
   it("assign sets by a column, a link per set", () => {
@@ -96,7 +96,7 @@ describe("setup wizard recipes", () => {
         maxCoders: 3,
         minUnits: 2,
         maxUnits: 5,
-        overlap: { placement: "first" },
+        overlap: { placement: "spread" },
       },
     ]);
     expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([
