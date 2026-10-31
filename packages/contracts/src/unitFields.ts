@@ -29,13 +29,15 @@ export const UNIT_FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export function unitFieldNameError(name: string): string | null {
   if (name.length > 64) return "at most 64 characters";
   if (!UNIT_FIELD_NAME.test(name)) return "only letters, digits and _, not starting with a digit";
+  // `$unit._practice` and the like are AnnoTinder's (docs/plans/special-sets.md §3)
+  if (name.startsWith("_")) return "names starting with _ are reserved";
   return null;
 }
 
 /**
  * A valid field name for a column header: other characters become `_`
- * (accents dropped), lowercase; `field` if nothing is left, `_` in front of
- * a leading digit; and `_2`, `_3`, ... if `taken` has it.
+ * (accents dropped), lowercase; `field` if nothing is left, `field_` in
+ * front of a leading digit; and `_2`, `_3`, ... if `taken` has it.
  */
 export function toUnitFieldName(header: string, taken: ReadonlySet<string> = new Set()): string {
   let name = header
@@ -46,7 +48,7 @@ export function toUnitFieldName(header: string, taken: ReadonlySet<string> = new
     .replace(/^_+|_+$/g, "")
     .slice(0, 60);
   if (name === "") name = "field";
-  if (/^[0-9]/.test(name)) name = `_${name}`;
+  if (/^[0-9]/.test(name)) name = `field_${name}`;
   let unique = name;
   for (let n = 2; taken.has(unique); n++) unique = `${name}_${n}`;
   return unique;

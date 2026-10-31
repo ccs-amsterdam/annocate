@@ -103,6 +103,14 @@ export function ItemPanel({
   );
 }
 
+/** The names of the codebook's end items that screen out, anywhere in it. */
+function screenoutEnds(items: CodebookItem[]): string[] {
+  return items.flatMap((i): string[] => {
+    if (i.type === "end") return i.outcome === "screenout" ? [i.name] : [];
+    return "children" in i && Array.isArray(i.children) ? screenoutEnds(i.children as CodebookItem[]) : [];
+  });
+}
+
 function ItemEditForm({
   client,
   draft,
@@ -147,6 +155,7 @@ function ItemEditForm({
         readOnly={readOnly}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
+        screenouts={item.type === "unitLoop" ? screenoutEnds(cleanItems) : undefined}
         onChange={(next) => draft.update(key, next)}
       />
     </fieldset>

@@ -545,3 +545,31 @@ describe("availableQuestions", () => {
     expect(names([2, "children", 0])).toEqual(["a"]);
   });
 });
+
+describe("practice and gold units", () => {
+  const loop = (branch: object, template = "$unit.text") => ({
+    type: "unit_loop",
+    units: [{ mode: "assign", group: "g", from: { draw: "balanced" }, overlap: { placement: "spread" }, ...branch }],
+    layout: { template },
+    children: [questionVar("sentiment", select(["pos", "neg"])), questionVar("note", { type: "unspecified" })],
+  });
+  const end = { type: "end", name: "low_quality", outcome: "screenout" };
+
+  it("check loop questions with a value to compare, and a screen-out end item", () => {
+    const ok = loop({ practice: { placement: "first", questions: ["sentiment"] }, gold: { placement: "spread", questions: ["sentiment"], health: { start: 3, wrong: -1, end: "low_quality" } } });
+    expect(messages([ok, end]).filter((m) => /practice|gold|end item/i.test(m))).toEqual([]);
+    const bad = loop({ gold: { placement: "spread", questions: ["nope", "note"], health: { start: 3, wrong: -1, end: "missing" } } });
+    expect(messages([bad, end])).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Gold question 'nope' is not a question in this loop"),
+        expect.stringContaining("'note' can't be checked"),
+        expect.stringContaining("No end item 'missing'"),
+      ]),
+    );
+  });
+
+  it("keep the answer columns hidden from coders", () => {
+    const shown = loop({ gold: { placement: "first", questions: ["sentiment"] } }, "$unit.text $unit.sentiment_gold");
+    expect(messages([shown])).toEqual(expect.arrayContaining([expect.stringContaining("sentiment_gold is shown to coders")]));
+  });
+});

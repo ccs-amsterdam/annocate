@@ -1,6 +1,11 @@
 import {
   ALL_UNITS_UNITSET,
   OVERLAP_SET,
+  PRACTICE_SET,
+  GOLD_SET,
+  branchGroup,
+  goldColumn,
+  practiceColumn,
   SetGroupNameSchema,
   loopTitle,
   overlapGroup,
@@ -103,6 +108,33 @@ export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[]
     for (const branch of loop.units) {
       if (branch.mode === "assign" && !(groups.get(branch.group) ?? []).some((s) => !s.name.startsWith("_"))) {
         warnings.push(`Loop '${title}': group '${branch.group}' has no sets yet, so coders get no units until it has.`);
+      }
+      // Practice and gold: units, and right answers in their columns
+      const special = branchGroup(branch);
+      if (special !== null && branch.mode !== "all") {
+        for (const [set, settings, column] of [
+          [PRACTICE_SET, branch.practice, practiceColumn],
+          [GOLD_SET, branch.gold, goldColumn],
+        ] as const) {
+          if (!settings) continue;
+          const units = (groups.get(special) ?? []).find((s) => s.name === set)?.unitIds ?? [];
+          if (units.length === 0) {
+            warnings.push(`Loop '${title}': ${set === GOLD_SET ? "gold" : "practice"} units are on, but group '${special}' has no ${set} units.`);
+            continue;
+          }
+          const rows = await sql.query<{ external_id: string; data: Record<string, unknown> }>(
+            "SELECT external_id, data FROM units WHERE job_id = $1 AND id = ANY($2) ORDER BY id",
+            [jobId, units],
+          );
+          for (const question of settings.questions ?? []) {
+            const empty = rows.filter((r) => r.data[column(question)] === undefined || r.data[column(question)] === null || String(r.data[column(question)]).trim() === "");
+            if (empty.length === 0) continue;
+            const which = empty.slice(0, 5).map((r) => r.external_id).join(", ") + (empty.length > 5 ? ", …" : "");
+            warnings.push(
+              `Loop '${title}': ${empty.length} ${set} unit${empty.length === 1 ? " has" : "s have"} no right answer for '${question}' in column ${column(question)} (${which})${set === GOLD_SET ? ": they aren't checked" : ": no feedback on them"}.`,
+            );
+          }
+        }
       }
       const group = overlapGroup(branch);
       if (group === null || branch.mode === "all" || !branch.overlap) continue;

@@ -18,7 +18,7 @@ All paths are under `/d/<deploymentId>`, e.g. `/d/42/session`
 | [getSession](#getsession) | `GET /session` | – | `SessionResponseSchema` |
 | [getNextUnits](#getnextunits) | `GET /loop/:loop/next?count=&branch=` | – | `NextUnitsResponseSchema` |
 | [getLoopUnit](#getloopunit) | `GET /loop/:loop/units/:unitId` | – | `CoderUnitResponseSchema` |
-| [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | – |
+| [postUnitVariables](#postunitvariables) | `POST /variables/unit` | `PostUnitVariablesSchema` | `SubmitUnitResponseSchema` |
 | [postCoderVariables](#postcodervariables) | `POST /variables/coder` | `PostCoderVariablesSchema` | – |
 | [assignAuto](#assignauto) | `POST /variables/auto/:name` | – | `{ value }` |
 | [createTransfer](#createtransfer) | `POST /transfer` | – | `TransferResponseSchema` |
@@ -104,6 +104,13 @@ shared queue each is leased to the coder (a lease they hold is renewed).
 Empty: the coder is done with the loop. 409 while the job is paused
 (`active: false`).
 
+A branch can add the group's **practice** and **gold** units
+(`docs/plans/special-sets.md`) among the coder's own, like the overlap.
+Their answer columns (`<question>_practice`, `<question>_practice_message`,
+`<question>_gold`) are never served. A practice unit's data has
+`_practice: true` (layouts and texts can use `$unit._practice`); gold and
+overlap units look like any other.
+
 The client chooses the branch (`NextUnitQuerySchema`): the index of the
 first branch in the loop's `units` whose `when` holds. The server picks the
 set (the branch's fixed set, or in `assign` mode a drawn set or the one a
@@ -123,7 +130,7 @@ answers: to go back to it, e.g. after resuming.
 
 ### postUnitVariables
 
-`POST /variables/unit` (`PostUnitVariablesSchema`) → 204
+`POST /variables/unit` (`PostUnitVariablesSchema`) → 200 `SubmitUnitResponseSchema`
 
 One finished unit's answers: every question of the loop (`skip` for
 questions a condition hid). Validated against the codebook, then stored
@@ -131,6 +138,13 @@ before the response; values of variables not sent (e.g. questions a
 codebook update removed) are kept. `timings`: per question, how long the
 coder took, as the browser measured it (`AnswerTimingSchema`,
 `coder-identity.md` §10).
+
+The response is usually `{}`. For a practice unit with checked questions:
+`practice: { correct, messages }` (the messages for wrong answers: the
+unit's own message column, the branch's `message`, or the expected
+answer; rendered on the server). For a gold unit that brings the coder's
+health to 0: `end`, the screen-out end item the session ended at (the
+client shows it). A gold unit's response never says right or wrong.
 
 ### postCoderVariables
 

@@ -6,6 +6,7 @@ import type {
   TopLevelItem,
   InLoopItem,
   CoderTopLevelItem,
+  SubmitUnitResponse,
   CoderUnitLoopItem,
   UnitLayout,
   VariableValue,
@@ -108,6 +109,11 @@ export interface JobManagerSnapshot {
   /** Saving failed for lack of a connection (or a server hiccup): it is tried again. */
   retrying: boolean;
   navigation: JobManagerNavigation;
+  /**
+   * After a practice unit answered wrongly: the feedback, shown until the
+   * coder continues (`continueAfterFeedback`). Null otherwise.
+   */
+  feedback: { messages: string[] } | null;
 }
 
 /** How the session ended at an `end` item: its message and redirect, with their values filled in. */
@@ -182,7 +188,7 @@ function findEnd(items: (TopLevelItem | InLoopItem)[], name: string): EndItem | 
 interface OutboxItem {
   /** What it saves: a newer item with the same key replaces one still waiting. */
   key: string;
-  send: () => Promise<void>;
+  send: () => Promise<unknown>;
   /** A unit's answers, to put back after a new codebook version (`carryOver`). */
   unit?: { loop: string; unitId: number; answers: Record<string, VariableValue> };
 }
@@ -326,6 +332,7 @@ export class JobManager {
     reopen: null,
     unsaved: 0,
     retrying: false,
+    feedback: null,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -868,6 +875,28 @@ export class JobManager {
     this.unitVisible = visible;
   }
 
+  /** The unit a loop question first showed its instruction on (`instructionWhen: "first"`), by loop and question. */
+  private instructionShownOn = new Map<string, number>();
+
+  /**
+   * Whether a question shows its instruction now (`instructionWhen`): always;
+   * in a loop, only on the first unit the coder answers it on (also after a
+   * reload: not once they finished units in the loop), or only on practice units.
+   */
+  private showsInstruction(item: CodebookItem): boolean {
+    const when = "variable" in item && "instructionWhen" in item.variable ? item.variable.instructionWhen : undefined;
+    if (!when || when === "always" || !this.activeLoop || !this.currentUnit) return true;
+    if (when === "practice") return this.currentUnit.data?._practice === true;
+    const key = `${this.keyOf(this.activeLoop)}/${"name" in item ? item.name : ""}`;
+    const unitId = this.currentUnit.id;
+    const shownOn = this.instructionShownOn.get(key);
+    if (shownOn !== undefined) return shownOn === unitId;
+    const done = this.progress.get(this.keyOf(this.activeLoop))?.doneUnitIds ?? [];
+    if (done.some((id) => id !== unitId)) return false;
+    this.instructionShownOn.set(key, unitId);
+    return true;
+  }
+
   /** A question's texts with their values filled in (in a loop, its snippets too). */
   private async questionTexts(
     item: CodebookItem | undefined,
@@ -875,7 +904,8 @@ export class JobManager {
     snippets?: Record<string, string>,
   ): Promise<QuestionTexts | null> {
     if (!item || !("variable" in item) || !("question" in item.variable)) return null;
-    const { question, instruction } = item.variable;
+    const { question } = item.variable;
+    const instruction = this.showsInstruction(item) ? item.variable.instruction : undefined;
     const [q, i] = await Promise.all([
       question ? renderTemplate(question, scope, this.expressionCache, `question:${item.name}`, { snippets }) : undefined,
       instruction ? renderTemplate(instruction, scope, this.expressionCache, `instruction:${item.name}`, { snippets }) : undefined,
@@ -1168,15 +1198,58 @@ export class JobManager {
       const { id } = this.currentUnit;
       const loopKey = this.keyOf(this.activeLoop);
       const timings = this.timer.take(`u:${id}:`);
+      const practice = this.currentUnit.data?._practice === true;
+      let submitted: SubmitUnitResponse | null = null;
       this.save({
         key: `unit:${loopKey}/${id}`,
-        send: () => this.coderApi.postUnitVariables(id, doneValues, loopKey, timings),
+        send: async () => {
+          submitted = (await this.coderApi.postUnitVariables(id, doneValues, loopKey, timings)) || null;
+          // Gold checks ended the session (health ran out): show its end.
+          if (submitted?.end) this.endedByServer(submitted.end);
+        },
         unit: { loop: loopKey, unitId: id, answers: doneValues },
       });
       for (const name of this.dependencies.get(loopKey) ?? []) if (name in this.userVariableValues) this.frozen.add(name);
       if (this.currentUnit && this.unitHistoryIndex >= 0 && this.unitHistoryIndex < this.unitHistory.length) {
         this.unitHistory[this.unitHistoryIndex].answers = { ...doneValues };
       }
+      // A practice unit: saved now, and the coder sees what was wrong before going on.
+      if (practice) {
+        await this.flush();
+        const result = (submitted as SubmitUnitResponse | null)?.practice;
+        if (result && !result.correct) {
+          this.afterFeedback = () => this.continueAfterUnit(next);
+          this.publish({ feedback: { messages: result.messages } });
+          return;
+        }
+      }
+      await this.continueAfterUnit(next);
+      return;
+    }
+
+    await this.nextUnitAtFrontier();
+  }
+
+  /** What to do once the coder read a practice unit's feedback. */
+  private afterFeedback: (() => Promise<void>) | null = null;
+
+  /** The coder read a practice unit's feedback: on to the next unit. */
+  async continueAfterFeedback(): Promise<void> {
+    const next = this.afterFeedback;
+    this.afterFeedback = null;
+    this.publish({ feedback: null });
+    if (next) await this.guarded(next);
+  }
+
+  /** The server ended the session at an `end` item (gold checks): show that ending. */
+  private endedByServer(name: string): void {
+    const item = findEnd(this.stepItems, name);
+    void this.guarded(() => this.reachEnd(item, this.scope(this.coderVisible)));
+  }
+
+  /** After a unit is finished and saved: an `end` in the loop, the next unit in history, or the next one from the server. */
+  private async continueAfterUnit(next: CodebookItem | undefined): Promise<void> {
+    if (this.activeLoop && this.currentUnit) {
       // An `end` item in the loop: the unit is saved, then the session ends.
       if (next?.type === "end") {
         const scope = this.scope(this.unitVisible, unitScopeData(this.currentUnit) as UnitData);
@@ -1199,7 +1272,11 @@ export class JobManager {
       this.unitVariableValues = {};
       this.currentUnit = null;
     }
+    await this.nextUnitAtFrontier();
+  }
 
+  private async nextUnitAtFrontier(): Promise<void> {
+    if (!this.activeLoop) return;
     // At frontier: ask the server for the next unit of this loop.
     const nextUnit = await this.fetchNextUnit(this.activeLoop);
     if (!nextUnit) {

@@ -1,7 +1,7 @@
 import { TopLevelItemSchema, loopTitle, unitLoops, type CodebookItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
-import { BUILTIN_SET_SOURCES, supportsAgreement, type UnitBranch } from "./unitLoop.js";
+import { BUILTIN_SET_SOURCES, CHECKABLE_TYPES, goldColumn, practiceColumn, practiceMessageColumn, supportsAgreement, type UnitBranch } from "./unitLoop.js";
 import { sessionNames, setParameters, type SessionItem } from "./session.js";
 import { expandSnippets, usesSnippets } from "./snippets.js";
 import { parseTemplateBlocks, templateNames, type DisplayNode, type FromStage, type TemplateNode } from "./templateBlocks.js";
@@ -297,6 +297,17 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     return { shown: new Set(names.shown), selectable: new Set(names.selectable) };
   }
 
+  /** End items anywhere in the codebook: name -> outcome. */
+  const endItems = new Map<string, unknown>();
+  const collectEnds = (list: unknown) => {
+    for (const raw of Array.isArray(list) ? list : []) {
+      const it = raw as { type?: unknown; name?: unknown; outcome?: unknown; children?: unknown } | null;
+      if (it?.type === "end" && typeof it.name === "string") endItems.set(it.name, it.outcome);
+      collectEnds(it?.children);
+    }
+  };
+  collectEnds(items);
+
   function checkLoop(item: RawItem, itemPath: Path, loopName: string) {
     const loop = item as { units?: UnitBranch[]; children?: unknown; layout?: { template?: unknown; snippets?: Record<string, string> } };
     const loopQuestions = questionNames(loop.children);
@@ -319,6 +330,34 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       const overlap = branch?.mode === "assign" || branch?.mode === "shared" ? branch.overlap : undefined;
       if (overlap?.max !== undefined && overlap.expect !== undefined && overlap.max < overlap.expect) {
         issue([...path, "overlap", "max"], `At most ${overlap.max} overlap units, but the design expects ${overlap.expect}`);
+      }
+      // Practice and gold: questions of this loop with answers compared by value; a gold screen-out at an end item
+      const checks = branch?.mode === "assign" || branch?.mode === "shared" ? { practice: branch.practice, gold: branch.gold } : {};
+      for (const [kind, settings] of Object.entries(checks) as ["practice" | "gold", { questions?: unknown; health?: { end?: unknown } } | undefined][]) {
+        if (!settings) continue;
+        (Array.isArray(settings.questions) ? settings.questions : []).forEach((name: unknown, q) => {
+          const at = [...path, kind, "questions", q];
+          if (typeof name !== "string" || !loopQuestions.has(name)) return issue(at, `${kind === "gold" ? "Gold" : "Practice"} question '${String(name)}' is not a question in this loop`);
+          const type = questions.get(name)?.type;
+          if (!(CHECKABLE_TYPES as readonly string[]).includes(type ?? "")) {
+            issue(at, `'${name}' can't be checked against a right answer: ${describeQuestion(questions.get(name)!)} (use nominal, ordinal, swipe, numeric or confirm)`);
+          }
+        });
+        // The right answers must never reach coders: no layout or question may show their columns
+        const shown = JSON.stringify([loop.layout, loop.children]);
+        for (const name of Array.isArray(settings.questions) ? (settings.questions as unknown[]) : []) {
+          if (typeof name !== "string") continue;
+          const columns = kind === "gold" ? [goldColumn(name)] : [practiceColumn(name), practiceMessageColumn(name)];
+          for (const column of columns) {
+            if (new RegExp(`\\$unit\\.${column}\\b`).test(shown)) issue([...path, kind], `The answer column ${column} is shown to coders (in the layout or a question): it must stay hidden`);
+          }
+        }
+        const end = settings.health?.end;
+        if (typeof end === "string") {
+          const found = endItems.get(end);
+          if (!found) issue([...path, kind, "health", "end"], `No end item '${end}': the session ends there when health runs out`);
+          else if (found !== "screenout") issue([...path, kind, "health", "end"], `End item '${end}' should be a screen-out (coders who fail the gold checks)`);
+        }
       }
       const agreement = branch?.mode === "shared" ? branch.until?.on : undefined;
       if (typeof agreement === "string") {

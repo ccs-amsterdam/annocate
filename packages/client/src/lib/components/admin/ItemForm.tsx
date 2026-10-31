@@ -85,6 +85,7 @@ export function ItemForm({
   readOnly = false,
   validationIssues = [],
   isInsideLoop = false,
+  screenouts = [],
   onChange,
 }: {
   item: CodebookItem;
@@ -108,6 +109,8 @@ export function ItemForm({
   readOnly?: boolean;
   validationIssues?: CodebookValidationIssue[];
   isInsideLoop?: boolean;
+  /** The codebook's screen-out end items (a loop's gold checks can end there). */
+  screenouts?: string[];
   onChange: (updated: CodebookItem) => void;
 }) {
   const getFieldError = (field: string) => {
@@ -207,6 +210,7 @@ export function ItemForm({
           setParams={setParams}
           unitFields={unitFields}
           coderQuestions={availableQuestions}
+          screenouts={screenouts}
           validationIssues={validationIssues}
           readOnly={readOnly}
           onChange={(loop) => onChange(loop)}

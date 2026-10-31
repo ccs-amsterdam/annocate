@@ -161,7 +161,7 @@ describe("coder flow", () => {
     expect(first?.externalId).toBe("unit-1");
     expect(first?.data.headline).toBeTypeOf("string");
 
-    expect((await c.submit(first!.id, demo("positive"))).status).toBe(204);
+    expect((await c.submit(first!.id, demo("positive"))).status).toBe(200);
     expect(await dbAnnotations()).toHaveLength(1);
     expect((await dbAnnotations())[0].variables.sentiment.values).toEqual([{ value: "positive" }]);
 
@@ -316,7 +316,7 @@ describe("shared queues", () => {
       const c = coder(key);
       const unit = await c.next();
       firstUnits.push(unit!.id);
-      expect((await c.submit(unit!.id, sentiment(answers[key]))).status).toBe(204);
+      expect((await c.submit(unit!.id, sentiment(answers[key]))).status).toBe(200);
     }
     // saturate: everyone gets the same unit until it reaches agreement (a and c agree on the 3rd coding)
     expect(new Set(firstUnits).size).toBe(1);
@@ -392,7 +392,7 @@ describe("assigned sets", () => {
     const a = coder("a");
     const unitA = await a.next();
     expect(unitA!.externalId).toBe("unit-1");
-    expect((await a.submit(unitA!.id, sentiment("positive"))).status).toBe(204); // a finished s1
+    expect((await a.submit(unitA!.id, sentiment("positive"))).status).toBe(200); // a finished s1
     expect((await coder("b").next())!.externalId).toBe("unit-2"); // b starts s2, and stops
 
     // An hour later both sets have a coder: the first set again.
@@ -706,7 +706,7 @@ describe("quitting and deleting a coder's data", () => {
     await redeploy({}, [sessionItem({ participant: { param: "participant" } })]);
     const link = { "x-invite-secret": "demo-secret", "x-url-params": "participant=P77" };
     const unit = ((await (await send("quitter", "/loop/1/next", {}, link)).json()) as { units: CoderUnitResponse[] }).units[0];
-    expect((await send("quitter", "/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("positive") }) }, link)).status).toBe(204);
+    expect((await send("quitter", "/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("positive") }) }, link)).status).toBe(200);
 
     const quit = await send("quitter", "/quit", { method: "POST", body: JSON.stringify({ requestDeletion: true }) }, link);
     expect(quit.status).toBe(204);
@@ -733,6 +733,67 @@ describe("quitting and deleting a coder's data", () => {
     // Nothing matches: nothing deleted
     const none = await server.request("/job/1/coders/delete", { method: "POST", headers: adminHeaders, body: JSON.stringify({ emails: ["x@y.z"] }) });
     expect(await none.json()).toEqual({ coderIds: [], answers: 0 });
+  });
+});
+
+describe("practice and gold units", () => {
+  it("practice units come first, with feedback when wrong; gold units are checked silently, and health running out ends the session", async () => {
+    const [{ data: base }] = await db.query<{ data: Record<string, unknown> }>("SELECT data FROM units WHERE job_id = 1 LIMIT 1");
+    const upload = await server.request("/job/1/units", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({
+        units: [
+          { externalId: "p1", data: { ...base, sentiment_practice: "negative", sentiment_practice_message: "It reports a disaster.", sentiment_gold: null } },
+          { externalId: "g1", data: { ...base, sentiment_practice: null, sentiment_practice_message: null, sentiment_gold: "neutral" } },
+          { externalId: "g2", data: { ...base, sentiment_practice: null, sentiment_practice_message: null, sentiment_gold: "neutral" } },
+        ],
+      }),
+    });
+    expect(upload.status, await upload.clone().text()).toBe(201);
+    await createSet("s1", ["unit-1"]);
+    await createSet("_practice", ["p1"]);
+    await createSet("_gold", ["g1", "g2"]);
+    const end = { type: "end", name: "low_quality", outcome: "screenout", message: "Thank you" };
+    await redeploy(
+      {
+        units: [
+          {
+            mode: "assign",
+            group: "g",
+            from: { draw: "balanced" },
+            overlap: { placement: "disabled" },
+            practice: { placement: "first", questions: ["sentiment"] },
+            gold: { placement: "last", questions: ["sentiment"], health: { start: 2, wrong: -1, end: "low_quality" } },
+          },
+        ],
+      },
+      [end],
+    );
+    const c = coder("trainee");
+    const submit = async (unitId: number, code: string) => {
+      const res = await c.submit(unitId, sentiment(code));
+      expect(res.status).toBe(200);
+      return res.json();
+    };
+    // The practice unit first, marked as such; its answer columns are never served
+    const practice = (await c.next())!;
+    expect(practice.externalId).toBe("p1");
+    expect(practice.data).toMatchObject({ _practice: true });
+    expect(practice.data).not.toHaveProperty("sentiment_practice");
+    expect(await submit(practice.id, "positive")).toEqual({ practice: { correct: false, messages: ["It reports a disaster."] } });
+    expect(await submit(practice.id, "negative")).toEqual({ practice: { correct: true, messages: [] } });
+    // Then their own unit, then the gold units: nothing tells them they are gold
+    const own = (await c.next())!;
+    expect(own.externalId).toBe("unit-1");
+    expect(own.data).not.toHaveProperty("_practice");
+    expect(await submit(own.id, "positive")).toEqual({});
+    const g1 = (await c.next())!;
+    expect(g1.data).not.toHaveProperty("sentiment_gold");
+    expect(await submit(g1.id, "positive")).toEqual({}); // wrong: health 1
+    const g2 = (await c.next())!;
+    expect(await submit(g2.id, "positive")).toEqual({ end: "low_quality" }); // wrong again: health 0
+    expect((await c.session()).ended).toMatchObject({ item: "low_quality", outcome: "screenout" });
   });
 });
 
@@ -834,8 +895,8 @@ describe("pausing a job", () => {
     await pause(false);
     expect((await c.session()).version).toBe(before); // no reload for coders
     // What they have open is saved
-    expect((await c.submit(first.id, demo("neutral"))).status).toBe(204);
-    expect((await c.submit(second.id, demo("neutral"))).status).toBe(204);
+    expect((await c.submit(first.id, demo("neutral"))).status).toBe(200);
+    expect((await c.submit(second.id, demo("neutral"))).status).toBe(200);
     // No new units, no new sessions
     const next = await c.call("/loop/1/next");
     expect(next.status).toBe(409);
@@ -863,7 +924,7 @@ describe("frozen answers", () => {
     expect((await c.session()).frozen).toEqual([]);
 
     const unit = await c.next();
-    expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(204);
+    expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(200);
     expect((await c.session()).frozen).toEqual(["role"]);
     // A change is ignored; one the loop doesn't depend on is stored
     expect((await post({ role: value("expert"), age: value(31) })).status).toBe(204);
@@ -888,7 +949,7 @@ describe("response times", () => {
     expect((await c.call("/variables/unit", {
       method: "POST",
       body: JSON.stringify({ unitId: unit!.id, variables: sentiment("positive"), timings: { sentiment: timing(4000), other: timing(1) } }),
-    })).status).toBe(204);
+    })).status).toBe(200);
 
     const page = (await (await server.request("/job/1/annotations", { headers: adminHeaders })).json()) as {
       annotations: { unitId: number | null; variable: string; timing: unknown; servedAt: string | null }[];
@@ -1067,7 +1128,7 @@ describe("resuming and codebook updates", () => {
       body: JSON.stringify({ unitId: unit!.id, variables: sentiment("neutral") }),
       ...withVersion(reloaded.version),
     });
-    expect(fresh.status).toBe(204);
+    expect(fresh.status).toBe(200);
   });
 
   it("serves units the coder already finished, but not other units", async () => {
@@ -1089,7 +1150,7 @@ describe("resuming and codebook updates", () => {
     await c.submit(unit!.id, { ...demo("neutral"), actors_and_issues: { done: true, spans: [] } });
 
     await redeploy({ units: [{ mode: "all" }] }); // v2: only `sentiment`
-    expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(204);
+    expect((await c.submit(unit!.id, sentiment("positive"))).status).toBe(200);
 
     const [stored] = await dbAnnotations();
     expect(stored.variables.sentiment.values).toEqual([{ value: "positive" }]);
@@ -1145,7 +1206,7 @@ describe("rebuilding from the database", () => {
 
     server = restart();
     const again = coder("upd", null);
-    expect((await again.submit(unit!.id, sentiment("positive"))).status).toBe(204);
+    expect((await again.submit(unit!.id, sentiment("positive"))).status).toBe(200);
     expect((await dbAnnotations())[0].variables).toHaveProperty("actors_and_issues");
   });
 
@@ -1176,7 +1237,7 @@ describe("rebuilding from the database", () => {
     const second = await c.next();
     await c.submit(second!.id, demo("neutral"));
     await new Promise((r) => setTimeout(r, 5)); // a later timestamp for the edit
-    expect((await c.submit(first!.id, demo("positive"))).status).toBe(204);
+    expect((await c.submit(first!.id, demo("positive"))).status).toBe(200);
 
     server = restart();
     expect((await coder("order", null).session()).progress[0].doneUnitIds).toEqual([first!.id, second!.id]);
@@ -1243,7 +1304,7 @@ describe("finished units follow the current codebook", () => {
     const c = coder("two");
     // Loops are numbered by position: second_loop (first in the codebook) is 1, main_loop 2.
     const unit = await c.next("2");
-    expect((await c.submit(unit!.id, sentiment("neutral"), "2")).status).toBe(204);
+    expect((await c.submit(unit!.id, sentiment("neutral"), "2")).status).toBe(200);
 
     // finished in main_loop, not in second_loop
     expect((await c.next("2"))!.id).not.toBe(unit!.id);
@@ -1309,8 +1370,8 @@ describe("state in the database, not in memory", () => {
     // the other coder gets what is left first (leased units are taken)
     expect((await b.next())!.externalId).toBe("unit-3");
     // a submits from the batch, in any order
-    expect((await a.submit(held[1].id, sentiment("positive"))).status).toBe(204);
-    expect((await a.submit(held[0].id, sentiment("positive"))).status).toBe(204);
+    expect((await a.submit(held[1].id, sentiment("positive"))).status).toBe(200);
+    expect((await a.submit(held[0].id, sentiment("positive"))).status).toBe(200);
   });
 
   it("forgets idle deployments, and reads them again when used", async () => {
@@ -1347,7 +1408,7 @@ describe("unit versions", () => {
     const [before] = await db.query<{ externalId: string; data: UnitData }>(`SELECT external_id AS "externalId", data FROM units WHERE id = $1`, [second.id]);
     // The researcher replaces it while the coder has it open (not coded yet).
     expect((await upload([{ externalId: before.externalId, data: { ...before.data, text: "edited" } }], { overwrite: true })).status).toBe(201);
-    expect((await c.submit(second.id, demo("neutral"))).status).toBe(204);
+    expect((await c.submit(second.id, demo("neutral"))).status).toBe(200);
     expect((await versionOf(second.id))?.text).toBe(before.data.text);
   });
 
@@ -1429,7 +1490,7 @@ describe("researcher preview", () => {
     const call = previewer(deploymentId, token);
     const unit = ((await (await call("/loop/1/next")).json()) as { units: CoderUnitResponse[] }).units[0];
     const submit = await call("/variables/unit", { method: "POST", body: JSON.stringify({ unitId: unit.id, variables: sentiment("neutral") }) });
-    expect(submit.status).toBe(204);
+    expect(submit.status).toBe(200);
     expect(((await (await call("/session")).json()) as SessionResponse).progress[0].doneUnitIds).toEqual([unit.id]);
     expect(await dbAnnotations()).toEqual([]);
     expect(await coders()).toBe(before);

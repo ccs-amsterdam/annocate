@@ -358,6 +358,21 @@ function JobRunnerContent({
     );
   }
 
+  // A practice unit answered wrongly: what was expected, before going on.
+  if (snapshot.feedback) {
+    return (
+      <SessionNotice title="Not quite">
+        {snapshot.feedback.messages.map((m) => (
+          <p key={m}>{m}</p>
+        ))}
+        <p className="text-muted-foreground">This was a practice unit: your answers are kept, and you go on with the next unit.</p>
+        <Button type="button" className="mt-2" onClick={() => void manager.continueAfterFeedback()}>
+          Continue
+        </Button>
+      </SessionNotice>
+    );
+  }
+
   const item = snapshot.currentItem;
   const isUnitVar = snapshot.phase === "unit_variable";
   const hasUnitLayout = Boolean(isUnitVar && snapshot.currentUnit && snapshot.currentUnitLayout && snapshot.currentUnitTemplate);

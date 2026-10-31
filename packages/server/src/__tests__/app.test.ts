@@ -199,7 +199,7 @@ describe("units: fields and pages", () => {
     const put = (group: string, sets: object[]) =>
       app.request(`/job/${job.id}/sets/${group}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ sets }) });
     expect((await put("g", [{ name: "s", unitIds: [mine.id, theirs.id] }])).status).toBe(400);
-    expect((await put("g", [{ name: "_gold", unitIds: [mine.id] }])).status).toBe(400);
+    expect((await put("g", [{ name: "_other", unitIds: [mine.id] }])).status).toBe(400);
     expect((await put("g", [{ name: "s", unitIds: [mine.id] }, { name: "s", unitIds: [] }])).status).toBe(400);
     expect((await put("_g", [{ name: "s", unitIds: [mine.id] }])).status).toBe(400);
     expect((await put("g", [{ name: "s", unitIds: [mine.id] }])).status).toBe(200);

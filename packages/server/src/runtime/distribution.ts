@@ -307,18 +307,20 @@ export interface OverlapPlacement {
 
 /**
  * Picks the next unit for a coder in one unit_loop, from their own pool
- * (`main`) and the branch's overlap. Returns null when the coder is done
+ * (`main`) and the special units mixed in (`extras`: practice, overlap,
+ * gold, in that order of precedence). Returns null when the coder is done
  * with the loop. `maxUnits` caps the coder's own units (shared queues), not
- * the overlap. Without open slots, a coder gets any unit that isn't full;
- * below `minUnits`, also units past `maxCoders` (`Reach`).
+ * the special ones. Without open slots, a coder gets any unit that isn't
+ * full; below `minUnits`, also units past `maxCoders` (`Reach`).
  *
- * Spread: the overlap units are placed evenly among the units the coder is
- * expected to get (`maxUnits`, else the size of their set). If they run out
- * of own units sooner, the overlap units left come at the end.
+ * `before` extras come first; `after` ones once the own units are done;
+ * `spread` ones evenly among the units the coder is expected to get
+ * (`maxUnits`, else the size of their set). Special units left when the
+ * own units run out come at the end.
  */
 export function pickNext(
   main: UnitPool,
-  overlap: OverlapPlacement | null,
+  extras: OverlapPlacement[],
   coderId: number,
   codings: Codings,
   options: { order: "sequential" | "random"; maxUnits?: number; minUnits?: number; seed: number; now: number },
@@ -328,8 +330,7 @@ export function pickNext(
   if (held !== undefined) return { pool: main, unitId: held };
 
   const done = codings.doneBy(coderId);
-  const doneOverlap = overlap ? done.filter((id) => overlap.pool.has(id)).length : 0;
-  const doneOwn = done.filter((id) => main.has(id) && !overlap?.pool.has(id)).length;
+  const doneOwn = done.filter((id) => main.has(id) && !extras.some((e) => e.pool.has(id))).length;
   const shuffleSeed = options.order === "random" ? options.seed + coderId : null;
   let own: number | undefined;
   if (options.maxUnits === undefined || doneOwn < options.maxUnits) {
@@ -339,16 +340,20 @@ export function pickNext(
       own = main.best(coderId, options.now, shuffleSeed, { reach: "pastMax" });
     }
   }
-  const extra = overlap ? overlap.pool.best(coderId, options.now, shuffleSeed) : undefined;
-
-  if (!overlap || extra === undefined) return own !== undefined ? { pool: main, unitId: own } : null;
-  if (own === undefined) return { pool: overlap.pool, unitId: extra };
-  if (overlap.placement === "before") return { pool: overlap.pool, unitId: extra };
-  if (overlap.placement === "after") return { pool: main, unitId: own };
-
-  // Spread: the N own units are cut into M + 1 equal parts, and overlap unit
-  // j (0-based) follows part j, i.e. comes after round((j + 1) * N / (M + 1)) own units.
   const expected = options.maxUnits ?? main.size;
-  const due = Math.round(((doneOverlap + 1) * expected) / (overlap.pool.size + 1));
-  return doneOwn >= due ? { pool: overlap.pool, unitId: extra } : { pool: main, unitId: own };
+  let fallback: { pool: UnitPool; unitId: number } | null = null;
+  for (const extra of extras) {
+    const unitId = extra.pool.best(coderId, options.now, shuffleSeed);
+    if (unitId === undefined) continue;
+    fallback ??= { pool: extra.pool, unitId };
+    if (own === undefined || extra.placement === "before") return { pool: extra.pool, unitId };
+    if (extra.placement === "spread") {
+      // The N own units are cut into M + 1 equal parts, and special unit j
+      // (0-based) follows part j, i.e. comes after round((j + 1) * N / (M + 1)) own units.
+      const doneExtra = done.filter((id) => extra.pool.has(id)).length;
+      const due = Math.round(((doneExtra + 1) * expected) / (extra.pool.size + 1));
+      if (doneOwn >= due) return { pool: extra.pool, unitId };
+    }
+  }
+  return own !== undefined ? { pool: main, unitId: own } : fallback;
 }

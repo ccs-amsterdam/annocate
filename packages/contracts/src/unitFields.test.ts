@@ -45,7 +45,7 @@ describe("field names", () => {
     expect(toUnitFieldName("Headline")).toBe("headline");
     expect(toUnitFieldName("Publication date (UTC)")).toBe("publication_date_utc");
     expect(toUnitFieldName("Café-naam")).toBe("cafe_naam");
-    expect(toUnitFieldName("2nd text")).toBe("_2nd_text");
+    expect(toUnitFieldName("2nd text")).toBe("field_2nd_text");
     expect(toUnitFieldName("!!!")).toBe("field");
     expect(toUnitFieldName("text", new Set(["text", "text_2"]))).toBe("text_3");
     expect(unitFieldNameError("a b")).toMatch(/only letters/);

@@ -43,6 +43,54 @@ export const OverlapSettingsSchema = z.object({
 });
 export type OverlapSettings = z.infer<typeof OverlapSettingsSchema>;
 
+/** Where practice or gold units go among the coder's own units. */
+const CheckPlacementSchema = z.enum(["first", "last", "spread"]);
+
+/**
+ * Practice units (docs/plans/special-sets.md §2): the group's `_practice`
+ * units, before the coder's own units by default. For the `questions`
+ * listed, a unit's right answer is in its column `<question>_practice`
+ * (optional per unit), and its own feedback in `<question>_practice_message`
+ * (optional): coders are told when they are wrong, after answering.
+ * Without questions: practice units without feedback.
+ */
+export const PracticeSettingsSchema = z.object({
+  placement: CheckPlacementSchema,
+  questions: z.array(SafeNameSchema).max(20).optional(),
+  /** Shown when an answer is wrong (unless the unit has its own message): a template that may use $var and $unit. Default: the expected answer. */
+  message: z.string().max(2000).optional(),
+});
+export type PracticeSettings = z.infer<typeof PracticeSettingsSchema>;
+
+/**
+ * Gold units (§2): the group's `_gold` units, checked silently: for each of
+ * `questions`, the unit's column `<question>_gold` has the right answer.
+ * With `health`: a score that starts at `start`, changes by `wrong` for a
+ * wrong answer and by `right` for a right one (never above `start`); at 0 or
+ * below the session ends at the end item `end` (a screen-out).
+ */
+export const GoldSettingsSchema = z.object({
+  placement: CheckPlacementSchema,
+  questions: z.array(SafeNameSchema).min(1, "Choose the questions gold units check").max(20),
+  health: z
+    .object({
+      start: z.number().positive().max(1000),
+      wrong: z.number().negative().min(-1000),
+      right: z.number().min(0).max(1000).optional(),
+      end: SafeNameSchema,
+    })
+    .optional(),
+});
+export type GoldSettings = z.infer<typeof GoldSettingsSchema>;
+
+/** The answer column of a checked question on gold and practice units (docs/plans/special-sets.md). */
+export const goldColumn = (question: string) => `${question}_gold`;
+export const practiceColumn = (question: string) => `${question}_practice`;
+export const practiceMessageColumn = (question: string) => `${question}_practice_message`;
+
+/** Answer types a gold or practice question can have: compared by value. */
+export const CHECKABLE_TYPES = ["nominal", "ordinal", "annotinder", "numeric", "confirm"] as const;
+
 const branchBase = {
   /**
    * Absent = always matches. The first matching branch wins. Evaluated by
@@ -101,6 +149,8 @@ export const SharedBranchSchema = z
     /** A unit handed to a coder is reserved for them this long (default 900), then returns to the queue. */
     leaseSeconds: z.number().int().positive().optional(),
     overlap: OverlapSettingsSchema.optional(),
+    practice: PracticeSettingsSchema.optional(),
+    gold: GoldSettingsSchema.optional(),
   })
   .refine((b) => !("agree" in b.until) || b.maxCoders !== undefined, {
     message: "Max coders is required when coding until coders agree (otherwise a unit nobody agrees on is coded forever)",
@@ -121,6 +171,14 @@ export const SharedBranchSchema = z
   .refine((b) => b.overlap?.placement !== "spread" || b.maxUnits !== undefined, {
     message: "Spreading the overlap units needs max units per coder (to know where to put them)",
     path: ["overlap", "placement"],
+  })
+  .refine((b) => (!b.practice && !b.gold) || b.set !== undefined, {
+    message: "Practice and gold units need a set: they are the _practice and _gold units of the set's group",
+    path: ["set"],
+  })
+  .refine((b) => (b.practice?.placement !== "spread" && b.gold?.placement !== "spread") || b.maxUnits !== undefined, {
+    message: "Spreading practice or gold units needs max units per coder (to know where to put them)",
+    path: ["maxUnits"],
   });
 export type SharedBranch = z.infer<typeof SharedBranchSchema>;
 
@@ -163,6 +221,8 @@ export const AssignBranchSchema = z.object({
   overlap: z.object(OverlapSettingsSchema.shape, {
     error: (issue) => (issue.input === undefined ? "Choose the overlap: first, last, spread, or disabled" : undefined),
   }),
+  practice: PracticeSettingsSchema.optional(),
+  gold: GoldSettingsSchema.optional(),
 });
 export type AssignBranch = z.infer<typeof AssignBranchSchema>;
 
@@ -182,6 +242,13 @@ export const UnitLoopDistributionShape = {
 export function overlapGroup(branch: UnitBranch): string | null {
   if (branch.mode === "assign") return branch.overlap.placement === "disabled" ? null : branch.group;
   if (branch.mode === "shared" && branch.set && branch.overlap && branch.overlap.placement !== "disabled") return branch.set.group;
+  return null;
+}
+
+/** The group whose special sets (`_overlap`, `_practice`, `_gold`) a branch can use, if any. */
+export function branchGroup(branch: UnitBranch): string | null {
+  if (branch.mode === "assign") return branch.group;
+  if (branch.mode === "shared" && branch.set) return branch.set.group;
   return null;
 }
 

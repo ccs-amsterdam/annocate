@@ -1,5 +1,6 @@
 import type { CoderSessionScope } from "../session/coderSession";
 import {
+  type SubmitUnitResponse,
   type AnswerTiming,
   coderEndpoints,
   type EndSessionResponse,
@@ -54,7 +55,13 @@ export interface CoderApi {
   /** A unit the coder already has in a loop (e.g. finished in an earlier visit), to navigate back to it. */
   getLoopUnit(loop: string, unitId: number): Promise<CoderUnitResponse>;
   /** A finished unit: answers to every question of the loop (`skip` for hidden ones), with how long each took. */
-  postUnitVariables(unitId: number, variables: Record<string, VariableValue>, loop?: string, timings?: Record<string, AnswerTiming>): Promise<void>;
+  /** A finished unit; on a practice unit, whether the answers were right (with feedback); a gold screen-out names its end. */
+  postUnitVariables(
+    unitId: number,
+    variables: Record<string, VariableValue>,
+    loop?: string,
+    timings?: Record<string, AnswerTiming>,
+  ): Promise<SubmitUnitResponse | void>;
   /** The coder-level answers, with how long the questions visited since the last post took. */
   postCoderVariables(variables: Record<string, VariableValue>, timings?: Record<string, AnswerTiming>): Promise<void>;
   /** The coder reached an `auto` question: its value, assigned by the server (once). */
@@ -168,8 +175,8 @@ export class HttpCoderApi implements CoderApi {
     variables: Record<string, VariableValue>,
     loop?: string,
     timings?: Record<string, AnswerTiming>,
-  ): Promise<void> {
-    await this.request(coderEndpoints.postUnitVariables.path, {
+  ): Promise<SubmitUnitResponse> {
+    return this.request(coderEndpoints.postUnitVariables.path, {
       method: "POST",
       body: JSON.stringify({ unitId, loop, variables, timings }),
     });

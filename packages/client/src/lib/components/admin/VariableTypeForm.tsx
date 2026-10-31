@@ -27,6 +27,7 @@ import { HelpButton } from "../../help/HelpButton";
 interface QuestionFieldsValue {
   question: string;
   instruction?: string;
+  instructionWhen?: "always" | "first" | "practice";
 }
 
 /** The shared `question`/`instruction` fields present on every non-`auto` variable type. */
@@ -53,6 +54,20 @@ function QuestionFields({
           value={value.instruction ?? ""}
           onChange={(e) => onChange({ instruction: e.target.value || undefined })}
         />
+        {value.instruction && (
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            Show it
+            <select
+              className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+              value={value.instructionWhen ?? "always"}
+              onChange={(e) => onChange({ instructionWhen: e.target.value === "always" ? undefined : (e.target.value as "first" | "practice") })}
+            >
+              <option value="always">Always</option>
+              <option value="first">The first time a coder sees the question</option>
+              <option value="practice">Only on practice units</option>
+            </select>
+          </label>
+        )}
       </div>
     </>
   );

@@ -16,6 +16,12 @@ export const VariableBaseSchema = z.object({
   questionStyle: z.record(z.string(), z.string()).optional(),
   instruction: z.string().optional().describe("Extra instructions for this variable; a markdown template like `question`."),
   instructionStyle: z.record(z.string(), z.string()).optional(),
+  /**
+   * When the instruction shows, in a unit loop: `always` (default), `first`
+   * (only for the first unit the coder answers this question on), or
+   * `practice` (only on practice units, docs/plans/special-sets.md).
+   */
+  instructionWhen: z.enum(["always", "first", "practice"]).optional(),
   focus: z
     .array(z.string().min(1))
     .optional()

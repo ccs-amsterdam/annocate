@@ -3,16 +3,30 @@ import {
   SET_ACTIVITY_MS,
   shownUnitFields,
   type UnitData,
+  type AnyVariableType,
   ALL_UNITS_UNITSET,
   OVERLAP_SET,
+  PRACTICE_SET,
+  GOLD_SET,
+  branchGroup,
   branchFingerprint,
   loopDependencies,
   loopTitle,
-  overlapGroup,
   seededShuffle,
   sessionItem,
   setKey,
   sharedDefaults,
+  buildScope,
+  collectQuestions,
+  goldColumn,
+  outputText,
+  parseTemplate,
+  practiceColumn,
+  practiceMessageColumn,
+  referenceValue,
+  type GoldSettings,
+  type PracticeSettings,
+  type SubmitUnitResponse,
   toCoderItems,
   type CoderCodebook,
   type CoderUnitResponse,
@@ -47,6 +61,20 @@ import {
   type LoopInfo,
   type VariableType,
 } from "./codebook.js";
+
+/** A unit's answer column as the values it names (`a;b` for several); null when empty. */
+function answerKey(cell: unknown): string[] | null {
+  if (cell === null || cell === undefined) return null;
+  const values = String(cell).split(";").map((v) => v.trim()).filter(Boolean);
+  return values.length > 0 ? values : null;
+}
+
+/** Whether an answer gives exactly the expected values (in any order). */
+function sameAnswer(answer: VariableValue | undefined, expected: string[]): boolean {
+  if (!answer || answer.skip) return false;
+  const given = (answer.values ?? []).map((v) => String(v.value));
+  return given.length === expected.length && expected.every((v) => given.includes(v));
+}
 
 /** Stored coder-level answers as plain values. */
 const plainValues = (values: Record<string, CoderValue>) => Object.fromEntries(Object.entries(values).map(([name, v]) => [name, v.value]));
@@ -86,8 +114,16 @@ const PLACEMENTS = { first: "before", last: "after", spread: "spread" } as const
 interface Routed {
   branch: UnitBranch;
   main: UnitPool;
-  overlap: OverlapPlacement | null;
+  /** The special sets' pools besides the coder's own units: practice, overlap, gold (in that order of precedence). */
+  extras: OverlapPlacement[];
 }
+
+/** The special sets a branch can mix in, in order of precedence when several are due. */
+const SPECIAL = [
+  { set: PRACTICE_SET, settings: (b: UnitBranch) => (b.mode === "all" ? undefined : b.practice) },
+  { set: OVERLAP_SET, settings: (b: UnitBranch) => (b.mode === "all" || b.overlap?.placement === "disabled" ? undefined : b.overlap) },
+  { set: GOLD_SET, settings: (b: UnitBranch) => (b.mode === "all" ? undefined : b.gold) },
+] as const;
 
 type AutoVariable = Extract<VariableType, { type: "auto" }>;
 
@@ -121,6 +157,8 @@ export class DeploymentRuntime {
   private sets = new Map<string, number[]>();
   /** Group -> its sets' names (without reserved ones). */
   private groups = new Map<string, string[]>();
+  /** The codebook's questions, by name (practice feedback, texts). */
+  private questions = new Map<string, AnyVariableType>();
   /** The unit fields the codebook shows (`shownUnitFields`): all coders get. */
   private shownFields: string[] = [];
   /** What coders get of the codebook (contracts `toCoderItems`). */
@@ -182,6 +220,7 @@ export class DeploymentRuntime {
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
+    this.questions = collectQuestions(items).questions;
     this.coderCodebook = { id: spec.codebook.id, items: toCoderItems(items) };
   }
 
@@ -499,30 +538,41 @@ export class DeploymentRuntime {
   }
 
   /**
-   * The overlap of a route (its group's `_overlap`, if the branch takes one
-   * and it exists), as many as `max` allows: the first ones, or a random
-   * draw (the same for every coder, so they code the same units).
+   * A route's special units (docs/plans/special-sets.md): its group's
+   * `_practice`, `_overlap` and `_gold` units, for those the branch uses.
+   * The overlap as many as `max` allows: the first ones, or a random draw
+   * (the same for every coder, so they code the same units).
    */
-  private overlapUnits(route: Route): number[] {
-    const group = overlapGroup(route.branch);
-    const settings = route.branch.mode === "all" ? undefined : route.branch.overlap;
-    if (group === null || !settings) return [];
-    const units = this.unitsOf(setKey(group, OVERLAP_SET));
-    if (settings.max === undefined || units.length <= settings.max) return units;
-    return settings.pick === "random" ? seededShuffle(units, this.spec.jobId).slice(0, settings.max) : units.slice(0, settings.max);
+  private specialUnits(route: Route): { set: string; units: number[]; placement: "first" | "last" | "spread" }[] {
+    const group = branchGroup(route.branch);
+    if (group === null) return [];
+    return SPECIAL.flatMap(({ set, settings }) => {
+      const s = settings(route.branch);
+      if (!s || s.placement === "disabled") return [];
+      let units = this.unitsOf(setKey(group, set));
+      const max = "max" in s ? s.max : undefined;
+      if (max !== undefined && units.length > max) {
+        units = "pick" in s && s.pick === "random" ? seededShuffle(units, this.spec.jobId).slice(0, max) : units.slice(0, max);
+      }
+      return units.length > 0 ? [{ set: setKey(group, set), units, placement: s.placement }] : [];
+    });
   }
 
-  /** The coder's own units of a route: their set, without its group's overlap units (handed out as overlap). */
+  /** The units of one special set of a route (empty if it doesn't use it). */
+  private specialSet(route: Route, set: string): number[] {
+    const group = branchGroup(route.branch);
+    return group === null ? [] : (this.specialUnits(route).find((s) => s.set === setKey(group, set))?.units ?? []);
+  }
+
+  /** The coder's own units of a route: their set, without the special units it mixes in (handed out as those). */
   private ownUnits(route: Route): number[] {
-    const group = overlapGroup(route.branch);
-    if (group === null) return this.unitsOf(route.set);
-    const overlap = new Set(this.unitsOf(setKey(group, OVERLAP_SET)));
-    return this.unitsOf(route.set).filter((id) => !overlap.has(id));
+    const special = new Set(this.specialUnits(route).flatMap((s) => s.units));
+    return special.size === 0 ? this.unitsOf(route.set) : this.unitsOf(route.set).filter((id) => !special.has(id));
   }
 
-  /** All units of a route (own set and overlap). */
+  /** All units of a route (own set and special units). */
   private routeUnits(route: Route | null): Set<number> {
-    return new Set(route ? [...this.ownUnits(route), ...this.overlapUnits(route)] : []);
+    return new Set(route ? [...this.ownUnits(route), ...this.specialUnits(route).flatMap((s) => s.units)] : []);
   }
 
   /** How many units the coder will get in a loop, if that doesn't depend on other coders. */
@@ -531,7 +581,7 @@ export class DeploymentRuntime {
     const { branch } = route;
     const size = this.ownUnits(route).length;
     const own = branch.mode === "shared" ? (branch.maxUnits === undefined ? null : Math.min(branch.maxUnits, size)) : size;
-    return own === null ? null : own + this.overlapUnits(route).length;
+    return own === null ? null : own + this.specialUnits(route).reduce((n, s) => n + s.units.length, 0);
   }
 
   /** A route's pools, working on these codings and (shared queues) leases. */
@@ -539,14 +589,8 @@ export class DeploymentRuntime {
     const { branch, set } = route;
     const main = new UnitPool(set, this.ownUnits(route), branch.mode === "shared" ? sharedDefaults(branch) : null, codings);
     main.loadLeases(leases.filter((l) => l.unitset === set).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
-    const overlapUnits = this.overlapUnits(route);
-    const group = overlapGroup(branch);
-    const placement = branch.mode === "all" ? undefined : branch.overlap?.placement;
-    const overlap =
-      group !== null && overlapUnits.length > 0 && placement && placement !== "disabled"
-        ? { pool: new UnitPool(setKey(group, OVERLAP_SET), overlapUnits, null, codings), placement: PLACEMENTS[placement] }
-        : null;
-    return { branch, main, overlap };
+    const extras = this.specialUnits(route).map((s) => ({ pool: new UnitPool(s.set, s.units, null, codings), placement: PLACEMENTS[s.placement] }));
+    return { branch, main, extras };
   }
 
   /** The set an `all` or `shared` branch hands out (its set, or every unit). */
@@ -677,7 +721,7 @@ export class DeploymentRuntime {
     return Promise.all(
       units.map(async (unit) => {
         const [shown, answers] = await Promise.all([this.markServed(coder.coderId, unit), this.store.unitAnswers(coder.coderId, unit.id)]);
-        return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: answers };
+        return { id: unit.id, externalId: unit.externalId, data: this.withPractice(route, unit.id, shown.data), variables: answers };
       }),
     );
   }
@@ -691,7 +735,7 @@ export class DeploymentRuntime {
     const leases = shared ? await store.listLeases({ loop: info.key }) : [];
     const rows = await store.listCodings(shared ? { loop: info.key } : { loop: info.key, coderId: coder.coderId });
     const codings = DeploymentRuntime.codingsOf(rows);
-    const { main, overlap } = this.pools(route, codings, leases);
+    const { main, extras } = this.pools(route, codings, leases);
     // Picks ids first, then reads them in one query: a unit deleted since the
     // spec was read is dropped from the pools and another one picked.
     const picked: { unitId: number; pool: UnitPool }[] = [];
@@ -700,7 +744,7 @@ export class DeploymentRuntime {
       const wanted: typeof picked = [];
       while (picked.length + wanted.length < count) {
         const now = this.options.now();
-        const next = pickNext(main, overlap, coder.coderId, codings, {
+        const next = pickNext(main, extras, coder.coderId, codings, {
           order: info.loop.order ?? "sequential",
           maxUnits: route.branch.mode === "shared" ? route.branch.maxUnits : undefined,
           minUnits: route.branch.mode === "shared" ? route.branch.minUnits : undefined,
@@ -722,7 +766,7 @@ export class DeploymentRuntime {
       const missing = wanted.filter((w) => !units.has(w.unitId));
       for (const { unitId } of missing) {
         main.removeUnit(unitId);
-        overlap?.pool.removeUnit(unitId);
+        for (const extra of extras) extra.pool.removeUnit(unitId);
       }
       picked.push(...wanted.filter((w) => units.has(w.unitId)));
       if (missing.length === 0) break;
@@ -752,7 +796,7 @@ export class DeploymentRuntime {
     const unit = (await this.getUnits([unitId])).get(unitId);
     if (!unit) throw new HttpError(404, "Unit not found");
     const shown = await this.markServed(coder.coderId, unit);
-    return { id: unit.id, externalId: unit.externalId, data: shown.data, variables: answers };
+    return { id: unit.id, externalId: unit.externalId, data: this.withPractice(route, unit.id, shown.data), variables: answers };
   }
 
   /**
@@ -767,7 +811,7 @@ export class DeploymentRuntime {
     loopName?: string,
     deviceId: number | null = null,
     timings: Record<string, AnswerTiming> = {},
-  ): Promise<void> {
+  ): Promise<SubmitUnitResponse> {
     this.assertOpen(coder);
     // Leases first (as in `pick`): a submit of this unit finishing in between shows up as a coding.
     const leases = await this.store.listLeases({ coderId: coder.coderId });
@@ -778,7 +822,7 @@ export class DeploymentRuntime {
     const canSubmit = (info: LoopInfo) => {
       const route = this.assignedRoute(coder, info.key);
       if (!route) return false;
-      if (this.overlapUnits(route).includes(unitId)) return true;
+      if (this.specialUnits(route).some((s) => s.units.includes(unitId))) return true;
       if (!this.ownUnits(route).includes(unitId)) return false;
       if (route.branch.mode !== "shared") return true;
       return own.some((c) => c.loop === info.key && c.unitId === unitId) || leases.some((l) => l.loop === info.key && l.unitset === route.set && l.unitId === unitId);
@@ -818,6 +862,86 @@ export class DeploymentRuntime {
     });
     // The coder-level answers this loop depends on can't change any more.
     await this.store.freezeCoderValues(coder.coderId, this.dependencies.get(info.key) ?? []);
+
+    // Practice and gold units (docs/plans/special-sets.md): checked here, against the unit's answer columns.
+    const route = this.assignedRoute(coder, info.key);
+    if (!route || route.branch.mode === "all") return {};
+    const response: SubmitUnitResponse = {};
+    const { practice, gold } = route.branch;
+    if (practice?.questions?.length && this.specialSet(route, PRACTICE_SET).includes(unitId)) {
+      const unit = (await this.getUnits([unitId])).get(unitId);
+      if (unit) response.practice = this.checkPractice(practice, unit.data, merged, coder);
+    }
+    if (gold?.health && this.specialSet(route, GOLD_SET).includes(unitId)) {
+      const health = await this.goldHealth(coder, info.key, gold, this.specialSet(route, GOLD_SET));
+      if (health <= 0) {
+        await this.endSession(coder, gold.health.end);
+        response.end = gold.health.end;
+      }
+    }
+    return response;
+  }
+
+  /** A practice unit's data marked as such (`$unit._practice`): the one special-set flag coders get. */
+  private withPractice(route: Route | null, unitId: number, data: UnitData): UnitData {
+    return route && this.specialSet(route, PRACTICE_SET).includes(unitId) ? { ...data, _practice: true } : data;
+  }
+
+  /**
+   * A practice unit's answers against its answer columns (`<question>_practice`):
+   * right, or the feedback per wrong question (the unit's own message, the
+   * loop's, or the expected answer). Questions whose column is empty aren't checked.
+   */
+  private checkPractice(practice: PracticeSettings, data: UnitData, answers: Record<string, VariableValue>, coder: Coder): NonNullable<SubmitUnitResponse["practice"]> {
+    const messages: string[] = [];
+    for (const name of practice.questions ?? []) {
+      const expected = answerKey(data[practiceColumn(name)]);
+      if (expected === null || sameAnswer(answers[name], expected)) continue;
+      const own = String(data[practiceMessageColumn(name)] ?? "").trim();
+      const question = this.questions.get(name);
+      if (own) messages.push(own);
+      else if (practice.message) messages.push(this.renderText(practice.message, answers, data, coder));
+      else {
+        const labels = expected.map((v) => (question && "options" in question ? (question.options as { value: unknown; label?: string }[] | undefined)?.find((o) => String(o.value) === v)?.label : undefined) ?? v);
+        const text = question && "question" in question && question.question ? `"${question.question}"` : name;
+        messages.push(`The expected answer to ${text} was ${labels.join(", ")}.`);
+      }
+    }
+    return { correct: messages.length === 0, messages };
+  }
+
+  /** A text with $var and $unit references filled in (no {{ }} expressions: the server runs no scripts). */
+  private renderText(template: string, answers: Record<string, VariableValue>, data: UnitData, coder: Coder): string {
+    const scope = buildScope(this.questions, answers, data, coder.session);
+    return parseTemplate(template)
+      .segments.map((s) => (s.type === "text" ? s.text : s.ref ? outputText(referenceValue(scope, s.ref)) : ""))
+      .join("");
+  }
+
+  /**
+   * A coder's gold health in a loop: it starts at `start`, and each checked
+   * question on a gold unit they finished changes it, in the order they
+   * finished them: `wrong` when wrong, `right` when right (never above
+   * `start`). Rebuilt from their answers and the units' answer columns.
+   */
+  private async goldHealth(coder: Coder, loop: string, gold: GoldSettings, goldUnits: number[]): Promise<number> {
+    const health = gold.health!;
+    const codings = (await this.store.listCodings({ coderId: coder.coderId, loop }))
+      .filter((c) => goldUnits.includes(c.unitId))
+      .sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime());
+    const units = await this.getUnits(codings.map((c) => c.unitId));
+    let value = health.start;
+    for (const coding of codings) {
+      const unit = units.get(coding.unitId);
+      if (!unit) continue;
+      const answers = await this.store.unitAnswers(coder.coderId, coding.unitId);
+      for (const name of gold.questions) {
+        const expected = answerKey(unit.data[goldColumn(name)]);
+        if (expected === null) continue;
+        value = sameAnswer(answers[name], expected) ? Math.min(health.start, value + (health.right ?? 0)) : value + health.wrong;
+      }
+    }
+    return value;
   }
 
   get version(): number {
@@ -839,7 +963,7 @@ export class DeploymentRuntime {
       const pools = new Map<string, { pool: UnitPool; coders: number[] }>();
       for (const { coderId, route } of routes) {
         const routed = this.pools(route, codings, leases.filter((l) => l.loop === loop));
-        for (const pool of [routed.main, ...(routed.overlap ? [routed.overlap.pool] : [])]) {
+        for (const pool of [routed.main, ...routed.extras.map((e) => e.pool)]) {
           const key = `${pool.unitset}/${JSON.stringify(pool.rule)}`;
           if (!pools.has(key)) pools.set(key, { pool, coders: [] });
           pools.get(key)!.coders.push(coderId);

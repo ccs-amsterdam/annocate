@@ -11,7 +11,12 @@ import { IdSchema } from "./common.js";
 export const OVERLAP_SET = "_overlap";
 
 /** Reserved set names (a leading `_`). */
-export const RESERVED_SETS = [OVERLAP_SET] as const;
+export const RESERVED_SETS = [OVERLAP_SET, "_practice", "_gold"] as const;
+
+/** Units with a known answer: coders are told when they are wrong (docs/plans/special-sets.md). */
+export const PRACTICE_SET = "_practice";
+/** Units with a known answer: coders are checked silently. */
+export const GOLD_SET = "_gold";
 
 /** A group's name: like a field (letters, digits, `_`), not starting with `_`. */
 export const SetGroupNameSchema = z
@@ -26,7 +31,7 @@ export const SetNameSchema = z
   .min(1)
   .max(128)
   .refine((s) => !/[;#]/.test(s) && s.trim() === s, "A set's name has no ; or #, and no spaces at its ends")
-  .refine((s) => !s.startsWith("_") || (RESERVED_SETS as readonly string[]).includes(s), "Set names starting with _ are reserved (_overlap)");
+  .refine((s) => !s.startsWith("_") || (RESERVED_SETS as readonly string[]).includes(s), "Set names starting with _ are reserved (_overlap, _practice, _gold)");
 
 /** A set of a group, as the codebook refers to it. */
 export const SetRefSchema = z.object({ group: SetGroupNameSchema, set: SetNameSchema });

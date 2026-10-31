@@ -37,6 +37,15 @@ export type NextUnitQuery = z.infer<typeof NextUnitQuerySchema>;
  * Paths are relative to that base: a coder is tied to one deployment by the
  * URL, and to one coder by their session cookie.
  */
+/** The answer to a submitted unit (`postUnitVariables`). */
+export const SubmitUnitResponseSchema = z.object({
+  /** A practice unit: right or wrong, and the feedback per wrong question. */
+  practice: z.object({ correct: z.boolean(), messages: z.array(z.string()) }).optional(),
+  /** Gold checks ended the session (health ran out) at this end item. */
+  end: z.string().optional(),
+});
+export type SubmitUnitResponse = z.infer<typeof SubmitUnitResponseSchema>;
+
 export const coderEndpoints = {
   getSession: { method: "GET", path: "/session", request: z.void(), response: SessionResponseSchema },
   getNextUnits: {
@@ -53,7 +62,12 @@ export const coderEndpoints = {
     request: z.void(),
     response: CoderUnitResponseSchema,
   },
-  postUnitVariables: { method: "POST", path: "/variables/unit", request: PostUnitVariablesSchema, response: z.void() },
+  /**
+   * A finished unit. On a practice unit (`$unit._practice`), whether the
+   * answers were right, with feedback; when gold checks ended the session
+   * (health ran out), the end item it ended at.
+   */
+  postUnitVariables: { method: "POST", path: "/variables/unit", request: PostUnitVariablesSchema, response: SubmitUnitResponseSchema },
   postCoderVariables: {
     method: "POST",
     path: "/variables/coder",

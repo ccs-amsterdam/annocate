@@ -22,7 +22,7 @@ function setup() {
     opts: { overlap?: OverlapPlacement; order?: "sequential" | "random"; maxUnits?: number; minUnits?: number; code?: string; now?: number } = {},
   ) => {
     const now = opts.now ?? 0;
-    const next = pickNext(main, opts.overlap ?? null, coderId, codings, {
+    const next = pickNext(main, opts.overlap ? [opts.overlap] : [], coderId, codings, {
       order: opts.order ?? "sequential",
       maxUnits: opts.maxUnits,
       minUnits: opts.minUnits,
@@ -117,7 +117,7 @@ describe("shared queues", () => {
     const { codings, pool } = setup();
     const p = pool([1, 2], shared({ leaseSeconds: 10 }));
     const next = (coder: number, now: number) => {
-      const n = pickNext(p, null, coder, codings, { order: "sequential", seed: 0, now });
+      const n = pickNext(p, [], coder, codings, { order: "sequential", seed: 0, now });
       if (n) p.take(coder, n.unitId, now);
       return n?.unitId ?? null;
     };
@@ -134,9 +134,9 @@ describe("shared queues", () => {
   it("resume a coder's own lease", () => {
     const { codings, pool } = setup();
     const p = pool([1, 2], shared());
-    const first = pickNext(p, null, 1, codings, { order: "sequential", seed: 0, now: 0 })!;
+    const first = pickNext(p, [], 1, codings, { order: "sequential", seed: 0, now: 0 })!;
     p.take(1, first.unitId, 0);
-    expect(pickNext(p, null, 1, codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(first.unitId);
+    expect(pickNext(p, [], 1, codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(first.unitId);
     expect(p.canSubmit(1, first.unitId)).toBe(true);
     expect(p.canSubmit(1, 2)).toBe(false);
   });
@@ -161,12 +161,12 @@ describe("shared queues", () => {
   it("cover prefers the least-coded unit, saturate the most-coded", () => {
     const cover = setup();
     cover.codings.record(9, 1, answer("x"));
-    expect(pickNext(cover.pool([1, 2], shared({ minCoders: 3 })), null, 1, cover.codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(2);
+    expect(pickNext(cover.pool([1, 2], shared({ minCoders: 3 })), [], 1, cover.codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(2);
 
     const saturate = setup();
     saturate.codings.record(9, 2, answer("x"));
     const p = saturate.pool([1, 2], shared({ minCoders: 3, priority: "saturate" }));
-    expect(pickNext(p, null, 1, saturate.codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(2);
+    expect(pickNext(p, [], 1, saturate.codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(2);
   });
 
   it("hand out units up to maxCoders past others' leases, least coded first, and past maxCoders below minUnits", () => {
@@ -184,7 +184,7 @@ describe("shared queues", () => {
     codings.record(8, 4, answer("x")); // unit 4 full
     codings.record(7, 5, answer("x")); // unit 5 enough, not full
     two.take(9, 6, 0); // unit 6 reserved
-    const next = () => pickNext(two, null, 1, codings, { order: "sequential", seed: 0, now: 0 })?.unitId ?? null;
+    const next = () => pickNext(two, [], 1, codings, { order: "sequential", seed: 0, now: 0 })?.unitId ?? null;
     // Unit 5 (1 coding) and 6 (1 lease) equally loaded: the first
     expect(next()).toBe(5);
 
@@ -194,7 +194,7 @@ describe("shared queues", () => {
     codings.record(8, 10, answer("a")); // agreed
     codings.record(7, 11, answer("a"));
     codings.record(8, 11, answer("b")); // full without agreement
-    const pick = (minUnits?: number) => pickNext(agree, null, 1, codings, { order: "sequential", seed: 0, now: 0, minUnits })?.unitId ?? null;
+    const pick = (minUnits?: number) => pickNext(agree, [], 1, codings, { order: "sequential", seed: 0, now: 0, minUnits })?.unitId ?? null;
     expect(pick()).toBeNull();
     expect(pick(1)).toBe(11);
   });
