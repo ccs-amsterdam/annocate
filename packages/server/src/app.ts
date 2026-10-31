@@ -1,3 +1,9 @@
+import { createHash } from "node:crypto";
+import { getCookie } from "hono/cookie";
+import { DEFAULT_RATE_LIMITS, RateLimiter, rateLimit, type RateLimits } from "./shared/rateLimit.js";
+import { readDevice } from "./runtime/session.js";
+import { SESSION_COOKIE } from "./researcher/login.js";
+import { securityHeaders } from "./shared/securityHeaders.js";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
@@ -62,6 +68,14 @@ export interface AppOptions {
    * (development) Vite serves the client and forwards API paths here.
    */
   clientDir?: string;
+  /** Origins that may show AnnoTinder in a frame besides itself (`ANNOTINDER_FRAME_ANCESTORS`), e.g. AmCAT's. */
+  frameAncestors?: string[];
+  /** Browsers reach the server over HTTPS (`ANNOTINDER_PUBLIC_URL`): sends HSTS. */
+  https?: boolean;
+  /** Rate limits per minute (docs/security.md); absent: none (tests). The server turns them on by default. */
+  rateLimits?: Partial<RateLimits>;
+  /** Behind a proxy that sets X-Forwarded-For (`ANNOTINDER_TRUST_PROXY`): the client's address comes from it. */
+  trustProxy?: boolean;
 }
 
 /**
@@ -82,6 +96,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   };
 
   const app = new Hono<Env>();
+  app.use("*", securityHeaders({ frameAncestors: options.frameAncestors, https: options.https ?? false }));
   app.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, err.status);
     // Postgres: a malformed or out-of-range value in a parameter (e.g. an id in the path).
@@ -102,6 +117,20 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   app.use("/job/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
   app.use("/admin/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
   app.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
+
+  // Rate limits (docs/security.md): generous, against floods and guessing.
+  const limiter = options.rateLimits ? new RateLimiter(db, { ...DEFAULT_RATE_LIMITS, ...options.rateLimits }, options.trustProxy ?? false) : null;
+  app.use("/d/*", rateLimit(limiter, "coder", { memory: true }));
+  app.use("/d/*", rateLimit(limiter, "coderStart", { when: (c) => !readDevice(c) }));
+  app.use("/d/*", rateLimit(limiter, "transfer", { when: (c) => c.req.path.endsWith("/transfer/redeem") }));
+  for (const path of ["/auth/login", "/auth/callback"]) app.use(path, rateLimit(limiter, "login"));
+  // Per account: the API key or login session (hashed: no secrets in the table), else per address.
+  const accountKey = (c: Context) => {
+    const credential = c.req.header("authorization") ?? getCookie(c, SESSION_COOKIE);
+    return credential ? `account:${createHash("sha256").update(credential).digest("hex").slice(0, 32)}` : null;
+  };
+  // ("/job/*" also matches "/job")
+  for (const path of ["/job/*", "/me/*", "/admin/*"]) app.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
 
   // Coder API (coder.ts): same origin as the client, no CORS.
   app.route("/d/:deployment", coderApi(server));

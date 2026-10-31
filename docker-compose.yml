@@ -12,6 +12,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgres://annotinder:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/annotinder
+      # Only reachable through a proxy on this machine (127.0.0.1 below): client addresses from X-Forwarded-For
+      ANNOTINDER_TRUST_PROXY: "1"
     ports:
       - "127.0.0.1:8787:8787"
     depends_on:

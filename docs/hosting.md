@@ -38,6 +38,9 @@ health check uses it).
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Researcher login (below). Without them nobody can log in |
 | `ANNOTINDER_ADMINS` | Comma-separated emails that get the admin role when they log in: the server's first admins (`accounts.md`) |
 | `ANNOTINDER_REQUIRE_MFA` | `1`: researcher access needs a login with a second factor, as the provider reports it (`amr`). Recommended |
+| `ANNOTINDER_TRUST_PROXY` | `1`: behind a proxy (Caddy, nginx) that sets `X-Forwarded-For`: rate limits count the client's address from it. Only when the server can't be reached except through the proxy |
+| `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits (e.g. for a load test from one machine). On by default (`security.md`) |
+| `ANNOTINDER_FRAME_ANCESTORS` | Origins (space or comma separated) that may show AnnoTinder in a frame besides itself, e.g. AmCAT's `https://amcat.example.org` |
 | `POSTGRES_PASSWORD` | Compose only: the database password |
 | `ANNOTINDER_DOMAIN` | Compose `tls` profile only: the domain Caddy gets a certificate for |
 | `PORT` | Default 8787 |

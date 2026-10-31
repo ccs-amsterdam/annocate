@@ -394,3 +394,52 @@ describe("links, coder progress and overview", () => {
     expect(overview.activity.at(-1)).toEqual({ day: new Date().toISOString().slice(0, 10), answers: 3, coders: 1 });
   });
 });
+
+describe("security headers", () => {
+  it("sends nosniff, a referrer policy and no framing by others; a CSP on pages; HSTS over HTTPS", async () => {
+    const res = await app.request("/health");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+    expect(res.headers.get("strict-transport-security")).toBeNull();
+    expect(res.headers.get("content-security-policy")).toBeNull(); // JSON: no policy needed
+
+    const { contentSecurityPolicy } = await import("../shared/securityHeaders.js");
+    const csp = contentSecurityPolicy({ frameAncestors: ["https://amcat.example"] });
+    expect(csp).toContain("frame-ancestors 'self' https://amcat.example");
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' 'sha256-");
+
+    // The client's pages get the policy
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const dir = mkdtempSync(join(tmpdir(), "client-"));
+    writeFileSync(join(dir, "index.html"), "<!doctype html><title>x</title>");
+    const page = await createApp(db, { clientDir: dir }).request("/some/page");
+    expect(page.headers.get("content-security-policy")).toContain("default-src 'self'");
+    expect(page.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+
+    const secure = createApp(db, { https: true });
+    expect((await secure.request("/health")).headers.get("strict-transport-security")).toBe("max-age=31536000");
+  });
+});
+
+describe("rate limits", () => {
+  it("count per kind and address (or account) per minute, in the database; 429 with Retry-After", async () => {
+    const limited = createApp(db, { devAuth: true, rateLimits: { coderStart: 2, researcher: 3 } });
+    const start = () => limited.request("/d/1/session", { headers: { "x-annotinder": "1", "x-invite-secret": "nope" } });
+    expect((await start()).status).not.toBe(429); // refused for other reasons (no such job), but counted
+    expect((await start()).status).not.toBe(429);
+    const third = await start();
+    expect(third.status).toBe(429);
+    expect(third.headers.get("retry-after")).toBe("60");
+    expect(await third.json()).toMatchObject({ code: "rate_limited" });
+    // A browser with a session cookie isn't starting one: not counted
+    expect((await limited.request("/d/1/session", { headers: { "x-annotinder": "1", cookie: "annotinder_device=x" } })).status).not.toBe(429);
+
+    const me = () => limited.request("/job", { headers: adminHeaders });
+    for (let i = 0; i < 3; i++) expect((await me()).status).toBe(200);
+    expect((await me()).status).toBe(429);
+    const [{ n }] = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM rate_limits");
+    expect(n).toBeGreaterThan(0);
+  });
+});

@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { answers, coders, fromExample, question } from "./helpers";
+import { expect, test } from "./fixtures";
+import { answers, api, coders, fromExample, question } from "./helpers";
 
 // Coders at work, in a real browser, on jobs made from the examples.
 
@@ -145,4 +145,30 @@ test("a coder selects actors in a text and labels them", async ({ page, request 
   await expect.poll(async () => (await answers(request, job.id)).filter((x) => !examples.includes(x.coderId)).length).toBe(1);
   const [row] = (await answers(request, job.id)).filter((x) => !examples.includes(x.coderId));
   expect(row.value.spans).toMatchObject([{ value: "person", field: "text", slices: [{ text: "Anna de Wit" }] }]);
+});
+
+test("an ::html field shows in its sandboxed frame, sized by its script, within the page's security policy", async ({ page, request }) => {
+  const job = await api<{ id: number }>(request, "POST", "/job/from-recipe", {
+    name: "HTML unit",
+    units: [{ id: "h1", data: { table: "<table><tr><th>Party</th><th>Seats</th></tr><tr><td>A</td><td>12</td></tr></table><p>Below</p>" } }],
+    codebook: {
+      items: [
+        {
+          type: "unit_loop",
+          units: [{ mode: "all" }],
+          layout: { template: "$unit.table::html" },
+          children: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Seen it?" } }],
+        },
+      ],
+    },
+    publish: true,
+  });
+  const [invite] = await api<{ secret: string }[]>(request, "GET", `/job/${job.id}/invites`);
+  await page.goto(`/?deployment=${job.id}&invite=${invite.secret}`);
+  await question(page, "Seen it?");
+  const frame = page.locator("iframe[sandbox]");
+  await expect(frame).toBeVisible();
+  // The frame's height script ran (allowed by its hash): it is taller than an empty frame
+  await expect.poll(async () => (await frame.boundingBox())?.height ?? 0).toBeGreaterThan(40);
+  await expect(page.frameLocator("iframe[sandbox]").getByText("Seats")).toBeVisible();
 });

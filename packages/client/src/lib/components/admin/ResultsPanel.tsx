@@ -58,6 +58,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
   const deployment = useDeploymentQuery(client).data;
   const [withLabels, setWithLabels] = useState(true);
   const [withReset, setWithReset] = useState(false);
+  const [spreadsheetSafe, setSpreadsheetSafe] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,15 +100,15 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       const labels = withLabels ? new Labels(codebooks, liveId) : undefined;
       const now = new Date();
       const zip = zipSync({
-        "README.txt": strToU8(readme(name, now, withLabels)),
-        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested))),
-        "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested))),
-        "devices.csv": strToU8(toCsv(devicesTable(devices))),
-        "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList))),
-        "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions))),
-        "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()))),
-        "variables.csv": strToU8(toCsv(variablesTable(codebooks))),
-        ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels))) } : {}),
+        "README.txt": strToU8(readme(name, now, withLabels, spreadsheetSafe)),
+        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested), spreadsheetSafe)),
+        "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested), spreadsheetSafe)),
+        "devices.csv": strToU8(toCsv(devicesTable(devices), spreadsheetSafe)),
+        "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList), spreadsheetSafe)),
+        "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions), spreadsheetSafe)),
+        "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()), spreadsheetSafe)),
+        "variables.csv": strToU8(toCsv(variablesTable(codebooks), spreadsheetSafe)),
+        ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels), spreadsheetSafe)) } : {}),
       });
       save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");
     } catch (e) {
@@ -168,6 +169,11 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={withReset} onChange={(e) => setWithReset(e.target.checked)} />
             Include answers that were reset (reset_answers.csv)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={spreadsheetSafe} onChange={(e) => setSpreadsheetSafe(e.target.checked)} />
+            Safe to open in a spreadsheet: text starting with =, +, - or @ gets a leading &apos; so it can&apos;t run as a formula
+            (README.txt says how to remove it in R or Python)
           </label>
           <Button className="self-start" disabled={busy !== null} onClick={() => void download()}>
             <Download className="mr-1 h-4 w-4" /> Download zip

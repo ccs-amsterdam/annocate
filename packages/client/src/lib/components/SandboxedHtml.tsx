@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { RESIZE_SCRIPT, RESIZE_SCRIPT_HASH } from "@annotinder/contracts";
 
 // `::html` values (docs/client.md §3, "::html"): shown in an iframe that
 // - is sandboxed with scripts only (`allow-scripts`, no `allow-same-origin`):
@@ -13,11 +14,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 // The HTML can come from unit data, which the researcher may not have
 // written (e.g. scraped articles).
 
-/** The only script allowed in the frame: it reports the content's height. */
-export const RESIZE_SCRIPT =
-  'new ResizeObserver(function(){parent.postMessage({annotinderFrameHeight:Math.ceil(document.body.getBoundingClientRect().height)},"*")}).observe(document.body);';
-/** sha256 of RESIZE_SCRIPT, base64 (checked in SandboxedHtml.test.tsx). */
-export const RESIZE_SCRIPT_HASH = "sha256-fDbURvv7d4gKnJzPJjgEyrTckVVa3JA+OmT2bxumx4Y=";
+export { RESIZE_SCRIPT, RESIZE_SCRIPT_HASH };
 
 const CSP = [
   "default-src 'none'",

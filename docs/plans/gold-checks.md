@@ -1,6 +1,6 @@
 # Plan: hidden unit fields and gold checks
 
-Status: proposed, not built (2026-10-28). To decide after the first release.
+Status: superseded by `special-sets.md` (2026-10-31), which keeps this plan's hidden fields (§1) and server-side checks (§2), and replaces the loop-level checks by a `_gold` set.
 
 ## Goal
 

@@ -477,7 +477,7 @@ export function deletedCodersTable(deletions: CoderDeletion[]): Table {
 }
 
 /** What the files in the download are, for the README. */
-export function readme(job: string, exported: Date, labels: boolean): string {
+export function readme(job: string, exported: Date, labels: boolean, spreadsheetSafe = true): string {
   return `Data of ${job}, downloaded ${exported.toISOString()} from AnnoTinder.
 
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
@@ -536,12 +536,39 @@ column with the full answer: spans with their field and, per fragment, the
 offset and length in that field of the unit version (units.csv), relations
 with the ids of their spans.
 Join annotations and coders on coder_id. Times are UTC (ISO 8601).
-`;
+${
+  spreadsheetSafe
+    ? `
+Text that starts with =, +, - or @ (and is not a number) starts with an
+extra ' in these files: spreadsheet programs (Excel, Google Sheets, Numbers)
+would otherwise run it as a formula, which a coder could abuse. Spreadsheets
+show the text without it. In R or Python remove it where it was added,
+e.g. sub("^'([=+@-])", "\\\\1", x) or x.str.replace(r"^'([=+@-])", r"\\1", regex=True).
+`
+    : `
+Downloaded without spreadsheet protection: text starting with =, +, - or @
+is written as it is. Don't open these files in a spreadsheet program, which
+may run such text as a formula.
+`
+}`;
 }
 
-/** A table as CSV (RFC 4180 quoting), with a byte order mark so spreadsheet programs read it as UTF-8. */
-export function toCsv(table: Table): string {
-  const cell = (v: string) => (/[",\n\r]/.test(v) || /^\s|\s$/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+/**
+ * Text a spreadsheet program would run as a formula: starting with `=`,
+ * `+`, `-` or `@` (or a tab or carriage return), unless it is a number
+ * (`-3`, `+1.5e3`). OWASP's "CSV injection".
+ */
+export const looksLikeFormula = (v: string) => /^[=+\-@\t\r]/.test(v) && !/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v);
+
+/**
+ * A table as CSV (RFC 4180 quoting), with a byte order mark so spreadsheet
+ * programs read it as UTF-8. `spreadsheetSafe` (default): text that would
+ * run as a formula gets a leading `'` (README.txt says so, and how to
+ * remove it).
+ */
+export function toCsv(table: Table, spreadsheetSafe = true): string {
+  const quote = (v: string) => (/[",\n\r]/.test(v) || /^\s|\s$/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const cell = (v: string) => quote(spreadsheetSafe && looksLikeFormula(v) ? `'${v}` : v);
   const lines = [table.headers, ...table.rows].map((row) => row.map(cell).join(","));
   return `\uFEFF${lines.join("\r\n")}\r\n`;
 }

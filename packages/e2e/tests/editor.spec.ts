@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import type { CodebookResponse, JobResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 

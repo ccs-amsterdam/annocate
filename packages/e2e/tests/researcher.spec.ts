@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { unzipSync, strFromU8 } from "fflate";
 import type { JobResponse } from "@annotinder/contracts";
 import { answers, api, question } from "./helpers";

@@ -14,7 +14,10 @@ import { createApp } from "./app.js";
 // researcher login: OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
 // ANNOTINDER_PUBLIC_URL (where browsers reach the server);
 // ANNOTINDER_ADMINS (comma-separated emails: the server's first admins);
-// ANNOTINDER_REQUIRE_MFA=1 (researcher access needs a second factor; recommended).
+// ANNOTINDER_REQUIRE_MFA=1 (researcher access needs a second factor; recommended);
+// ANNOTINDER_FRAME_ANCESTORS (origins that may frame AnnoTinder, e.g. AmCAT's);
+// ANNOTINDER_TRUST_PROXY=1 (behind a proxy: client addresses from X-Forwarded-For);
+// ANNOTINDER_RATE_LIMITS=off (no rate limits; docs/security.md).
 
 const port = Number(process.env.PORT ?? 8787);
 const db = await openDatabase();
@@ -40,7 +43,23 @@ if (login && !process.env.ANNOTINDER_SECRET) {
 const admins = (process.env.ANNOTINDER_ADMINS ?? "").split(",");
 const requireMfa = process.env.ANNOTINDER_REQUIRE_MFA === "1";
 const clientDir = process.env.ANNOTINDER_CLIENT_DIR || undefined;
-const app = createApp(db, { secret: process.env.ANNOTINDER_SECRET, devAuth, login, admins, requireMfa, clientDir });
+const frameAncestors = (process.env.ANNOTINDER_FRAME_ANCESTORS ?? "").split(/[\s,]+/).filter(Boolean);
+const https = ANNOTINDER_PUBLIC_URL?.startsWith("https://") ?? false;
+// Rate limits: on unless ANNOTINDER_RATE_LIMITS=off (e.g. a load test from one machine)
+const rateLimits = process.env.ANNOTINDER_RATE_LIMITS === "off" ? undefined : {};
+const trustProxy = process.env.ANNOTINDER_TRUST_PROXY === "1";
+const app = createApp(db, {
+  secret: process.env.ANNOTINDER_SECRET,
+  devAuth,
+  login,
+  admins,
+  requireMfa,
+  clientDir,
+  frameAncestors,
+  https,
+  rateLimits,
+  trustProxy,
+});
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`@annotinder/server listening on http://localhost:${info.port} (${describeDatabase()})`);

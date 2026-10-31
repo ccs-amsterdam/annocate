@@ -5,7 +5,7 @@
 // for DURATION seconds. Prints latencies per request and the errors.
 //
 // Against a server with development auth (never a reachable one), e.g.
-//   DATABASE_URL=postgres://... ANNOTINDER_DEV_AUTH=1 PORT=8797 pnpm --filter @annotinder/server exec tsx src/index.ts
+//   DATABASE_URL=postgres://... ANNOTINDER_DEV_AUTH=1 ANNOTINDER_RATE_LIMITS=off PORT=8797 pnpm --filter @annotinder/server exec tsx src/index.ts
 //   BASE=http://localhost:8797 CODERS=300 THINK_MS=10000 node packages/server/scripts/load-test.mjs
 // JOB and SECRET reuse a job (and its invite) from an earlier run.
 
