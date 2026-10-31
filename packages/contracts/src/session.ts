@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
-import { CodebookResponseSchema } from "./codebook/codebook.js";
+import { CoderCodebookSchema } from "./codebook/coderCodebook.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
@@ -89,8 +89,8 @@ export type EndSession = z.infer<typeof EndSessionSchema>;
 export const SessionResponseSchema = z.object({
   coderId: IdSchema,
   jobId: IdSchema,
-  /** The published codebook coders get now. */
-  codebook: CodebookResponseSchema,
+  /** The published codebook coders get now: its coder codebook (only what coding needs). */
+  codebook: CoderCodebookSchema,
   /**
    * The deployment's version: bumped on every publish. The client sends it
    * back as `x-annotinder-version`; after a publish the server answers

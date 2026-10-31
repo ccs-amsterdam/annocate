@@ -72,9 +72,14 @@ Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
 
 `GET /session` → `SessionResponseSchema`
 
-The codebook and its `version`, per-loop progress and the coder's
+The **coder codebook** (`CoderCodebookSchema`, contracts `toCoderItems`)
+and its `version`, per-loop progress and the coder's
 variables (including assigned `auto` variables), and `ended` if the
-session ended at an `end` item. Creates the coder and session on first
+session ended at an `end` item. The coder codebook has only what coding
+needs: unit loops keep their layout, questions, order and per branch only
+its `when` condition (the client sends the branch index; the server works
+out the units); no modes, sets or overlap, no Session item, no researcher
+notes, and `auto` questions only with their options. Creates the coder and session on first
 use. `login`: the email of the login the session belongs to, or null;
 `canLogIn`: the invite offers a login the coder hasn't used. `frozen`: the
 coder-level answers that can't change any more, because the coder coded

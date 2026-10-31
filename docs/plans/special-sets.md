@@ -1,9 +1,24 @@
 # Plan: special sets (overlap rate, gold, practice)
 
-Status: proposed, **to build later** (2026-10-31). Builds on
+Status: agreed 2026-10-31, being built in this order: (0) the coder
+codebook, (1) practice and gold, (2) "Create gold values", (3) help,
+(4) wizard step, (5) overlap at a rate and per-value URL lists. Builds on
 `sets-and-session-parameters.md` (set groups, `_overlap`) and replaces the
 loop-level checks in `gold-checks.md` (its server-side evaluation and
 hidden fields stay).
+
+## 0. The coder codebook
+
+Coders get a **coder codebook** (contracts `CoderCodebook`), not the
+codebook: only what the coding client needs. Unit loops keep their layout,
+questions, order and, per branch, only its `when` condition (the client
+evaluates it and sends the branch index; the server works out the units).
+No modes, sets, groups, overlap, practice or gold settings, no Session item,
+and `auto` questions without source, weights or stratification. The coding
+client compiles against this type, so it can't come to depend on a stripped
+field. Branch conditions stay in the client (decided): only people looking
+behind the scenes see them, and evaluating them on the server would mean
+QuickJS there; this can be hardened later.
 
 ## 1. Overlap at a rate
 
@@ -39,11 +54,18 @@ Set names starting with `_` are reserved. Three, all per group:
 | `_gold` | have a known answer: coders are checked silently | nothing special |
 | `_practice` | have a known answer: coders are told when they are wrong | feedback after answering |
 
-**Name:** "training" suggests a separate phase before the work, but the
-same units are also useful spread through the work as an attention check
-with feedback. Options: `_practice`, `_feedback`, `_check`. Recommended:
-**`_practice`** ("practice units"): clear for coders and researchers, and
-fine for both uses. To decide.
+**Name:** `_practice` (decided): practice units, placed first by default
+or spread through the work as an attention check with feedback.
+
+**Answer columns by name** (decided): the right answer to question `q` is
+in the unit column `q_gold` (gold) or `q_practice` (practice, optional),
+and a practice unit's own feedback in `q_practice_message` (optional).
+These columns are never served to coders. An explicit mapping can come
+later as an advanced option.
+
+**Instructions** (decided): a setting on every question, when its
+instruction shows: always (default), only the first time the coder sees
+the question, or only on practice units.
 
 A unit can be in one special set of a group at most (validation on upload
 and `putSetGroup`): a gold unit that is also overlap would be compared
@@ -125,7 +147,21 @@ visible:
 - Gold and overlap are deliberately not available: the server serves those
   units like any other.
 
-## 4. Order of work
+## 4. More (agreed)
+
+- **Editor warnings**: a gold or practice question whose column is empty
+  for a `_gold` / `_practice` unit, with a link **Create gold values**: an
+  answer-key mode that goes through those units with the question forms and
+  writes the answers (and practice messages) into the unit columns.
+- **Wizard**: an optional step: which unit questions get gold or practice
+  checks, and whether the answer column exists yet.
+- **Help**: one topic on overlap, gold and practice units, each starting
+  with "write it in your units (a sets column), or let AnnoTinder make it".
+- **Links** (decided): link parameters keep a stored link per combination.
+  URL parameters with a list or a group's sets get "list a link per value"
+  (built in the browser, no stored links).
+
+## 5. Order of work (original)
 
 1. Overlap `rate` and `rest` (distribution only; default for crowd coding).
 2. Reserved set validation (one special set per unit; `_` field names).
@@ -137,7 +173,6 @@ visible:
 
 ## 5. Open points
 
-- `_training` vs `_practice` (§2).
 - Practice: continue after a wrong answer, or answer again until right?
 - Gold: health only, or also a simple share rule (`gold-checks.md` §3:
   `minChecks`, `minShare`)? Health covers it in most cases.

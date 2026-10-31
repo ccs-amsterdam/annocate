@@ -152,7 +152,10 @@ describe("coder flow", () => {
     const c = coder("coder-a");
     const session = await c.session();
     expect(session.jobId).toBe(1);
-    expect(session.codebook.note).toBe("Demo: a tour of AnnoTinder's question types and features");
+    // The coder codebook: no researcher notes, and loops without how units are handed out
+    expect(session.codebook).not.toHaveProperty("note");
+    const loop = session.codebook.items.find((i) => i.type === "unit_loop");
+    expect(loop?.type === "unit_loop" && loop.units.every((b) => !("mode" in b))).toBe(true);
 
     const first = await c.next();
     expect(first?.externalId).toBe("unit-1");
@@ -1380,7 +1383,7 @@ describe("researcher preview", () => {
       headers: adminHeaders,
       body: JSON.stringify({
         note,
-        items: [{ type: "unit_loop", label: "main_loop", layout: { template: "" }, children: [sentimentQuestion], units: [{ mode: "all" }] }],
+        items: [{ type: "unit_loop", label: note, layout: { template: "" }, children: [sentimentQuestion], units: [{ mode: "all" }] }],
       }),
     });
     expect(res.status).toBe(201);
@@ -1409,12 +1412,13 @@ describe("researcher preview", () => {
     const { deploymentId, token } = await openPreview();
     expect(deploymentId).toBe("1.preview");
     const call = previewer(deploymentId, token);
-    expect(((await (await call("/session")).json()) as SessionResponse).codebook.note).toBe("draft 1");
+    const label = (session: SessionResponse) => (session.codebook.items[0] as { label?: string }).label;
+    expect(label((await (await call("/session")).json()) as SessionResponse)).toBe("draft 1");
     // the real deployment is untouched
-    expect((await coder("real").session()).codebook.note).not.toBe("draft 1");
+    expect(label(await coder("real").session())).not.toBe("draft 1");
 
     await draft("draft 2");
-    expect(((await (await call("/session")).json()) as SessionResponse).codebook.note).toBe("draft 2");
+    expect(label((await (await call("/session")).json()) as SessionResponse)).toBe("draft 2");
   });
 
   it("keeps the preview's coders and answers out of the database", async () => {

@@ -209,7 +209,7 @@ export async function computeTopLevelSteps(
  * `visible` holds those plus the unit's visible answers.
  */
 export async function computeLoopSteps(
-  loop: UnitLoopItem,
+  loop: Pick<UnitLoopItem, "children">,
   coderAnswers: Record<string, VariableValue>,
   unitAnswers: Record<string, VariableValue>,
   unit: UnitData,
@@ -232,7 +232,7 @@ export function enclosingLoop(items: TopLevelItem[], item: CodebookItem): UnitLo
 }
 
 /** The unit fields the span questions of a loop select in: shown as selectable text in its layout. */
-export function spanColumns(loop: UnitLoopItem): string[] {
+export function spanColumns(loop: Pick<UnitLoopItem, "children">): string[] {
   return flattenTree(loop.children).flatMap((item) =>
     "variable" in item && item.variable.type === "span" ? item.variable.fields : [],
   );

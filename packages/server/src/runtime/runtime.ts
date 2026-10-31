@@ -13,6 +13,8 @@ import {
   sessionItem,
   setKey,
   sharedDefaults,
+  toCoderItems,
+  type CoderCodebook,
   type CoderUnitResponse,
   type DeploymentStatus,
   type EndUnit,
@@ -121,6 +123,8 @@ export class DeploymentRuntime {
   private groups = new Map<string, string[]>();
   /** The unit fields the codebook shows (`shownUnitFields`): all coders get. */
   private shownFields: string[] = [];
+  /** What coders get of the codebook (contracts `toCoderItems`). */
+  private coderCodebook!: CoderCodebook;
   /** The deployment's stamp when the spec was read (`Store.deploymentStamp`). */
   private stamp: string | null = null;
   private refreshing: Promise<void> | null = null;
@@ -178,6 +182,7 @@ export class DeploymentRuntime {
     this.autoVariables = [...this.coderVariableTypes].filter((e): e is [string, AutoVariable] => e[1].type === "auto");
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
+    this.coderCodebook = { id: spec.codebook.id, items: toCoderItems(items) };
   }
 
   private applySets(spec: DeploymentSpec): void {
@@ -346,7 +351,8 @@ export class DeploymentRuntime {
     return {
       coderId: coder.coderId,
       jobId: this.spec.jobId,
-      codebook: this.spec.codebook,
+      // Only what coding needs (contracts toCoderItems): not how units are handed out
+      codebook: this.coderCodebook,
       version: this.spec.version,
       progress: [...this.loops.values()].map((info) => {
         const route = this.assignedRoute(coder, info.key);

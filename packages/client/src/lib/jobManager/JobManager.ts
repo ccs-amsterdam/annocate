@@ -5,7 +5,8 @@ import type {
   CodebookItem,
   TopLevelItem,
   InLoopItem,
-  UnitLoopItem,
+  CoderTopLevelItem,
+  CoderUnitLoopItem,
   UnitLayout,
   VariableValue,
   CoderUnitResponse,
@@ -135,7 +136,7 @@ interface LoopHistory {
 }
 
 /** Questions of a loop (through conditions) by name, as defined by the current codebook. */
-function loopVariables(loop: UnitLoopItem): Map<string, AnyVariableType> {
+function loopVariables(loop: CoderUnitLoopItem): Map<string, AnyVariableType> {
   const result = new Map<string, AnyVariableType>();
   const walk = (items: InLoopItem[]) => {
     for (const item of items) {
@@ -232,9 +233,19 @@ function plainLabel(text: string): string {
  * phase jumping, and editing previously submitted answers.
  */
 export class JobManager {
-  private items: TopLevelItem[] = [];
+  /** The coder codebook (contracts `CoderCodebook`): only what coding needs. */
+  private items: CoderTopLevelItem[] = [];
+
+  /**
+   * The items for the step helpers shared with the editor (codebook/tree.ts),
+   * typed for full codebooks: they only read item types, conditions,
+   * questions and children, which the coder codebook keeps.
+   */
+  private get stepItems(): TopLevelItem[] {
+    return this.items as TopLevelItem[];
+  }
   /** Each unit loop's key (its position, contracts `unitLoops`): how the coder API and progress refer to it. */
-  private loopKeys = new Map<UnitLoopItem, string>();
+  private loopKeys = new Map<CoderUnitLoopItem, string>();
   /** Coder-level answers that can't change any more (`currentFrozen`). */
   private frozen = new Set<string>();
   /** Per loop key, the coder-level questions it depends on (frozen once a unit there is saved). */
@@ -254,7 +265,7 @@ export class JobManager {
   private unitVisible: Record<string, VariableValue> = {};
   private topIndex = -1;
   private maxReachedTopIndex = 0;
-  private activeLoop: UnitLoopItem | null = null;
+  private activeLoop: CoderUnitLoopItem | null = null;
   private currentUnit: CoderUnitResponse | null = null;
   private loopSteps: CodebookItem[] = [];
   private loopIndex = -1;
@@ -362,7 +373,7 @@ export class JobManager {
     try {
       this.publish({ phase: "loading", error: null, errorCode: null });
       const session: SessionResponse = await this.coderApi.getSession();
-      this.items = session.codebook.items as TopLevelItem[];
+      this.items = session.codebook.items;
       this.loopKeys = new Map(unitLoops(this.items).map(({ key, loop }) => [loop, key]));
       this.dependencies = loopDependencies(this.items);
       this.frozen = new Set(session.frozen ?? []);
@@ -382,7 +393,7 @@ export class JobManager {
       if (session.ended) {
         // The coder reached an `end` item before, or quit: show the ending
         // again, with the values the server still gives for it (endValues).
-        const item = session.ended.item ? findEnd(this.items, session.ended.item) : null;
+        const item = session.ended.item ? findEnd(this.stepItems, session.ended.item) : null;
         await this.refreshTopSteps();
         this.publish({ reopen: session.reopen ?? null });
         await this.publishEnding(item, this.endScope(session.endValues ?? null), session.ended.outcome === "quit");
@@ -404,11 +415,11 @@ export class JobManager {
   }
 
   /** A loop's key (`loopKeys`). */
-  private keyOf(loop: UnitLoopItem): string {
+  private keyOf(loop: CoderUnitLoopItem): string {
     return this.loopKeys.get(loop) ?? "";
   }
 
-  private history(loop: UnitLoopItem | null = this.activeLoop): LoopHistory {
+  private history(loop: CoderUnitLoopItem | null = this.activeLoop): LoopHistory {
     const name = loop ? this.keyOf(loop) : "";
     let history = this.histories.get(name);
     if (!history) {
@@ -513,7 +524,7 @@ export class JobManager {
       const prevTop = this.topSteps[this.topIndex];
 
       if (prevTop.type === "unit_loop") {
-        this.activeLoop = prevTop as UnitLoopItem;
+        this.activeLoop = prevTop as CoderUnitLoopItem;
         if (this.unitHistory.length > 0) {
           await this.openEntry(this.unitHistory.length - 1);
           await this.refreshLoopSteps();
@@ -563,7 +574,7 @@ export class JobManager {
       this.topIndex += 1;
       const nextTop = this.topSteps[this.topIndex];
       if (nextTop.type === "unit_loop") {
-        this.activeLoop = nextTop as UnitLoopItem;
+        this.activeLoop = nextTop as CoderUnitLoopItem;
         this.currentUnit = null;
         this.loopIndex = -1;
         await this.advanceUnit();
@@ -638,7 +649,7 @@ export class JobManager {
     const target = this.topSteps[phaseIndex];
 
     if (target.type === "unit_loop") {
-      this.activeLoop = target as UnitLoopItem;
+      this.activeLoop = target as CoderUnitLoopItem;
       // Back to where the coder was in this loop; or, if they haven't been
       // in it during this visit (e.g. resumed session), to the frontier.
       if (this.unitHistoryIndex >= 0) {
@@ -839,7 +850,7 @@ export class JobManager {
   }
 
   private async refreshTopSteps(): Promise<void> {
-    const { steps, visible } = await computeTopLevelSteps(this.items, this.userVariableValues, this.stepContext);
+    const { steps, visible } = await computeTopLevelSteps(this.stepItems, this.userVariableValues, this.stepContext);
     this.topSteps = steps;
     this.coderVisible = visible;
   }
@@ -924,7 +935,7 @@ export class JobManager {
    * server, so the server never needs the answers (docs/architecture.md
    * §6). The server picks the units of the branch (and the coder's set).
    */
-  private async chooseBranch(loop: UnitLoopItem): Promise<BranchChoice | null> {
+  private async chooseBranch(loop: CoderUnitLoopItem): Promise<BranchChoice | null> {
     const scope = this.scope(this.coderVisible);
     for (const [i, branch] of loop.units.entries()) {
       if (branch.when && !(await evaluateCondition(branch.when, scope, this.expressionCache, `branch:${this.keyOf(loop)}:${i}`))) {
@@ -946,7 +957,7 @@ export class JobManager {
    * Units come in batches (`UNIT_BATCH`), fetched again in the background
    * before the batch runs out, so the coder doesn't wait.
    */
-  private async fetchNextUnit(loop: UnitLoopItem): Promise<CoderUnitResponse | null> {
+  private async fetchNextUnit(loop: CoderUnitLoopItem): Promise<CoderUnitResponse | null> {
     const queue = this.unitQueue(loop);
     if (queue.units.length === 0) await this.fillQueue(loop);
     // Units answered but not saved yet came back (the server doesn't know
@@ -960,7 +971,7 @@ export class JobManager {
     return unit;
   }
 
-  private unitQueue(loop: UnitLoopItem): { units: CoderUnitResponse[]; filling: Promise<void> | null } {
+  private unitQueue(loop: CoderUnitLoopItem): { units: CoderUnitResponse[]; filling: Promise<void> | null } {
     const key = this.keyOf(loop);
     let queue = this.unitQueues.get(key);
     if (!queue) this.unitQueues.set(key, (queue = { units: [], filling: null }));
@@ -968,7 +979,7 @@ export class JobManager {
   }
 
   /** Asks the server for the coder's next units; adds those the coder doesn't have yet. */
-  private fillQueue(loop: UnitLoopItem): Promise<void> {
+  private fillQueue(loop: CoderUnitLoopItem): Promise<void> {
     const queue = this.unitQueue(loop);
     queue.filling ??= (async () => {
       try {
@@ -990,7 +1001,7 @@ export class JobManager {
   }
 
   /** Answers to a unit kept over a new codebook version (`carryOver`), once. */
-  private takeCarryOver(loop: UnitLoopItem, unitId: number): Record<string, VariableValue> {
+  private takeCarryOver(loop: CoderUnitLoopItem, unitId: number): Record<string, VariableValue> {
     const key = `${this.keyOf(loop)}/${unitId}`;
     const answers = this.carryOver.get(key) ?? {};
     this.carryOver.delete(key);
@@ -1095,7 +1106,7 @@ export class JobManager {
     }
 
     if (next.type === "unit_loop") {
-      this.activeLoop = next as UnitLoopItem;
+      this.activeLoop = next as CoderUnitLoopItem;
       this.currentUnit = null;
       this.loopIndex = -1;
       await this.advanceUnit();
@@ -1127,7 +1138,7 @@ export class JobManager {
    * The answer itself stays here, should the question show again.
    */
   private async postedCoderValues(): Promise<Record<string, VariableValue>> {
-    const { visible } = await computeTopLevelSteps(this.items, this.userVariableValues, this.stepContext);
+    const { visible } = await computeTopLevelSteps(this.stepItems, this.userVariableValues, this.stepContext);
     return Object.fromEntries(Object.entries(this.userVariableValues).map(([name, value]) => [name, name in visible ? value : { done: true, skip: true }]));
   }
 
@@ -1293,6 +1304,6 @@ export class JobManager {
 }
 
 /** A loop's questions in codebook order (through conditions), for `::: from` blocks in its layout. */
-function loopQuestionNames(loop: UnitLoopItem): string[] {
+function loopQuestionNames(loop: CoderUnitLoopItem): string[] {
   return flattenTree(loop.children).flatMap((item) => (item.type === "condition" ? [] : (itemName(item) ?? [])));
 }
