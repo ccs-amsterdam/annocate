@@ -1,3 +1,4 @@
+import { securityLog } from "../shared/passkeys.js";
 import { Hono, type Context } from "hono";
 import { randomBytes } from "node:crypto";
 import {
@@ -243,6 +244,21 @@ export function admin(server: Server): Hono<Env> {
     });
     await log(c, update.blocked === true ? "block user" : update.blocked === false ? "unblock user" : "update user", before.email, update);
     return c.json(await userById(id));
+  });
+
+  // After checking who they are out of band (never by email alone): they add a new passkey at their next login.
+  app.post("/admin/users/:id/reset-passkeys", async (c) => {
+    const id = Number(c.req.param("id"));
+    const user = await userById(id);
+    await db.transaction(async (tx) => {
+      await tx.query("DELETE FROM passkeys WHERE user_id = $1", [id]);
+      await tx.query("DELETE FROM recovery_codes WHERE user_id = $1", [id]);
+      // Their sessions end: the next login starts with a new passkey.
+      await tx.query("DELETE FROM sessions WHERE user_id = $1", [id]);
+      await securityLog(tx, id, "passkeys_reset", { by: c.get("researcher").email });
+    });
+    await log(c, "reset passkeys", user.email);
+    return c.body(null, 204);
   });
 
   // ---- becoming a researcher ---------------------------------------------------

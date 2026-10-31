@@ -13,6 +13,8 @@ import {
   ApiKeyWriteSchema,
   AuthOptionsSchema,
   MeResponseSchema,
+  PasskeyRegisterSchema,
+  PasskeySchema,
   RedeemResearcherInviteSchema,
   ResearcherRequestWriteSchema,
 } from "../account.js";
@@ -48,6 +50,27 @@ export const researcherEndpoints = {
   requestResearcher: { method: "POST", path: "/me/researcher-request", request: ResearcherRequestWriteSchema, response: MeResponseSchema },
   /** Become a researcher with an invite link's secret. */
   redeemResearcherInvite: { method: "POST", path: "/me/researcher-invite", request: RedeemResearcherInviteSchema, response: MeResponseSchema },
+  // Passkeys, the second factor when ANNOTINDER_2FA=annotinder (docs/security.md). The WebAuthn
+  // options and responses are @simplewebauthn's JSON (browser: startRegistration / startAuthentication).
+  /** Options to add a passkey (the first one right after login; later ones only with a confirmed passkey). */
+  passkeyRegisterOptions: { method: "POST", path: "/auth/passkey/register/options", request: z.void(), response: z.unknown() },
+  /** Adds the passkey; it also confirms this login. The first one returns recovery codes, shown once. */
+  passkeyRegister: {
+    method: "POST",
+    path: "/auth/passkey/register",
+    request: PasskeyRegisterSchema,
+    response: z.object({ recoveryCodes: z.array(z.string()).nullable() }),
+  },
+  /** Options to confirm this login with a passkey. */
+  passkeyLoginOptions: { method: "POST", path: "/auth/passkey/login/options", request: z.void(), response: z.unknown() },
+  passkeyLogin: { method: "POST", path: "/auth/passkey/login", request: z.object({ response: z.unknown() }), response: z.void() },
+  /** Confirms this login with a recovery code (used up), e.g. to add a new passkey after losing one. */
+  passkeyRecover: { method: "POST", path: "/auth/passkey/recover", request: z.object({ code: z.string().min(1).max(64) }), response: z.void() },
+  listPasskeys: { method: "GET", path: "/me/passkeys", request: z.void(), response: z.array(PasskeySchema) },
+  /** Removes a passkey (not the last one). */
+  deletePasskey: { method: "DELETE", path: "/me/passkeys/:id", request: z.void(), response: z.void() },
+  /** New recovery codes (the old ones stop working), shown once. */
+  renewRecoveryCodes: { method: "POST", path: "/me/recovery-codes", request: z.void(), response: z.object({ recoveryCodes: z.array(z.string()) }) },
   listApiKeys: { method: "GET", path: "/me/keys", request: z.void(), response: z.array(ApiKeyResponseSchema) },
   createApiKey: { method: "POST", path: "/me/keys", request: ApiKeyWriteSchema, response: ApiKeyCreatedSchema },
   revokeApiKey: { method: "POST", path: "/me/keys/:id/revoke", request: z.void(), response: ApiKeyResponseSchema },

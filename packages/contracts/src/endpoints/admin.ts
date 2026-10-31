@@ -38,6 +38,8 @@ export const adminEndpoints = {
   listUsers: { method: "GET", path: "/admin/users", request: z.void(), response: z.array(AdminUserSchema) },
   createUser: { method: "POST", path: "/admin/users", request: AdminUserCreateSchema, response: AdminUserSchema },
   updateUser: { method: "PUT", path: "/admin/users/:id", request: AdminUserUpdateSchema, response: AdminUserSchema },
+  /** Removes a user's passkeys and recovery codes (after checking who they are out of band): they add a new passkey at their next login. */
+  resetPasskeys: { method: "POST", path: "/admin/users/:id/reset-passkeys", request: z.void(), response: z.void() },
 
   listResearcherRequests: { method: "GET", path: "/admin/requests", request: z.void(), response: z.array(ResearcherRequestSchema) },
   decideResearcherRequest: { method: "POST", path: "/admin/requests/:userId", request: ResearcherRequestDecisionSchema, response: z.void() },

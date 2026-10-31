@@ -11,7 +11,7 @@ what exists.
 | [special-sets.md](special-sets.md): overlap at a rate (default for crowd coding), and the special sets `_gold` (silent checks, health) and `_practice` (feedback), `$unit._practice` | Proposed; to build later |
 | [gold-checks.md](gold-checks.md): hidden unit fields, and checking coders against known answers | Superseded by special-sets.md, except hidden fields and server-side checks |
 | [question-loops.md](question-loops.md): the same questions once per value of a list | Idea, not designed in detail |
-| [passkeys.md](passkeys.md): passkeys as a second factor checked by AnnoTinder, and a login shared with AmCAT | Proposed, not built |
+| [passkeys.md](passkeys.md): passkeys as a second factor checked by AnnoTinder, and a login shared with AmCAT | Passkeys built (`ANNOTINDER_2FA=annotinder`); step-up and the AmCAT login not |
 | [encryption.md](encryption.md): encrypting participants' answers in the browser | On hold |
 
 Local coding from R and Python is planned in `../compositions.md`.

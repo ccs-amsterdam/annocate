@@ -1,3 +1,4 @@
+import type { TwoFactorMode } from "@annotinder/contracts";
 import type { Sql } from "./db.js";
 import type { Role } from "@annotinder/contracts";
 import type { Deployments } from "./runtime/registry.js";
@@ -17,8 +18,12 @@ export interface Server {
   secret: string;
   /** Emails that are admins on this server (`ANNOTINDER_ADMINS`), lowercased; admins can make more. */
   admins: readonly string[];
-  /** Researcher access needs a login with a second factor (`ANNOTINDER_REQUIRE_MFA`); coding never does. */
-  requireMfa: boolean;
+  /**
+   * Who checks the second factor for researcher access (`ANNOTINDER_2FA`):
+   * nobody, AnnoTinder (passkeys), or the login provider (its `amr`). Coding
+   * never needs one.
+   */
+  twoFactor: TwoFactorMode;
 }
 
 /** Hono context variables, set by the auth middleware. */

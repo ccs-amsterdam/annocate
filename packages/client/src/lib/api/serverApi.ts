@@ -73,6 +73,9 @@ export class ServerApi {
   createUser(user: AdminUserCreate): Promise<AdminUser> {
     return this.api.call("POST", adminEndpoints.createUser.path, user);
   }
+  resetPasskeys(id: number): Promise<void> {
+    return this.api.call("POST", this.path(adminEndpoints.resetPasskeys.path, { id }));
+  }
   updateUser(id: number, update: AdminUserUpdate): Promise<AdminUser> {
     return this.api.call("PUT", this.path(adminEndpoints.updateUser.path, { id }), update);
   }

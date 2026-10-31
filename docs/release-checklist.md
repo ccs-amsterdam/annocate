@@ -105,58 +105,29 @@ One shared queue serves about 25 picks per second at 10k units, fewer as
 codings grow. That is plenty at a realistic pace. Beyond it, see
 `architecture.md` §10 item 11.
 
-## 2. Decisions needed
+## 2. Decisions (decided 2026-10-31, built unless noted)
 
-1. **Second factor and a login shared with AmCAT** (`plans/passkeys.md`)
-   — **decide**. Recommended: option 1, single sign-on through one OIDC
-   provider that reports `amr`/`acr`, with `ANNOTINDER_REQUIRE_MFA`. Option
-   2 is a shared login cookie. Nothing is built for either. Until this is
-   decided, MFA is whatever the provider enforces.
-2. **Optional-login links link a login without asking** — **decide**. On
-   an invite with `auth: "optional"`, a browser that is already logged in
-   gets that email linked to the new session on its first request. This
-   happens to a researcher trying the link, or to a coder logged in for
-   another job. `coder-identity.md` says optional means the coder chooses.
-   Proposed fix: link only after the coder clicks "Log in" (the client sends
-   a header after the login round trip). This touches the identity flow, so
-   it is not changed yet.
-3. **Repeated sessions with a participant id** — **decide**. A known
-   participant id plus "start a new session" makes a new coder without
-   counting against `maxUses`. So a personal link with `maxUses: 1`, or a
-   participant who was screened out or quit, can start again. Each new
-   session also redraws `random`/`balanced` assignments, which skews the
-   balance. This is documented as a feature, a participant who lost their
-   first device. Options:
-   - count these sessions against `maxUses`;
-   - allow at most N per participant;
-   - refuse after a screen-out or quit.
-4. **Coders receive the whole codebook** — **decide**. Every question,
-   option, condition and end item goes to every coder's browser, including
-   branches they never see. That matters once hidden fields and gold
-   answers exist (`plans/gold-checks.md`), and for experiments whose
-   conditions should not be visible. Options:
-   - send only what the coder's route needs;
-   - document it as a property.
-5. **Security headers and framing** — **decide**. The server sends no
-   `Content-Security-Policy`, `X-Frame-Options`/`frame-ancestors`,
-   `X-Content-Type-Options` or `Referrer-Policy`. Framing depends on
-   embedding in AmCAT. Recommended: `nosniff` and
-   `frame-ancestors 'self'` (plus AmCAT's origin when needed) now, and a
-   CSP once the embedding is clear. The CSP needs care with Monaco's workers
-   and inline styles, and with the `::html` iframe's `srcdoc`.
-6. **CSV formula injection in exports** — **decide**. Coders' text and
-   participant ids go into CSV files as written. A value starting with `=`,
-   `+`, `-` or `@` runs as a formula when the file is opened in Excel.
-   Options:
-   - prefix such cells with `'`, which changes the data for R and Python
-     users;
-   - a warning in the README of the zip (recommended);
-   - an option at download.
-7. **Rate limiting** — **decide**. There is none in the server. Anyone
-   with an open link can create sessions, up to `maxUses` or the plan's
-   `codersPerJob`. Recommended: limit `/d/*/session` per IP at the proxy
-   (nginx `limit_req`; Caddy needs a rate-limit plugin) and document it in
-   `hosting.md`.
+1. **Second factor**: `ANNOTINDER_2FA = none | annotinder | oidc`. With
+   `annotinder` (recommended) AnnoTinder checks a passkey itself, with
+   recovery codes and admin resets (`security.md` §1). Researchers always
+   log in through the OIDC provider. Not built: step-up, the AmCAT login.
+2. **Optional-login links link a login**: decided as intended. Whoever has
+   the session on their device may link a login's email to it.
+3. **A participant id on a new device**: the coder is told to continue on
+   their first device (or move the session there). A new session only
+   after confirming they can't get back to it (a lost device); it should be
+   rare (`coder-identity.md` §4). New sessions still don't count against
+   `maxUses`.
+4. **Coders receive the whole codebook** — still to decide; matters once
+   gold units exist (`plans/special-sets.md`: answers stay on the server).
+5. **Security headers**: built (`security.md` §2): a CSP on pages,
+   `frame-ancestors 'self'` plus `ANNOTINDER_FRAME_ANCESTORS`, `nosniff`,
+   referrer policy, HSTS over HTTPS. The e2e tests fail on violations.
+6. **CSV formula injection**: text starting with `=`, `+`, `-` or `@`
+   gets a leading `'` by default, explained in the README; an option at
+   download turns it off (`security.md` §4).
+7. **Rate limiting**: in the server, counted in an unlogged Postgres table
+   (`security.md` §3); generous defaults.
 8. **Migration reset** — the migrations (`packages/server/migrations`,
    0001–0020) are reset to one initial migration before the release, as
    planned. Any test server's data is lost then.
@@ -180,7 +151,7 @@ From the review list:
 From the security review, low:
 
 - API keys always count as MFA. A key made from a login without a second
-  factor, before `ANNOTINDER_REQUIRE_MFA` was turned on, keeps full access.
+  factor, before `ANNOTINDER_2FA` was turned on, keeps full access.
   Fix: store an `mfa` flag per key, or revoke keys when the setting is
   turned on.
 - The routing check for unitset templates is wider than documented.
@@ -219,14 +190,14 @@ Development and tests:
 
 ## 4. Recommendations for the first release
 
-1. Decide §2 items 1, 2 and 5 before inviting anyone outside the team:
-   they are about logins and the browser's security model.
+1. Read `security.md` (second factor, headers, rate limits) before
+   inviting anyone outside the team.
 2. Reset the migrations (§2 item 8), with the `annotation_values` foreign
    key from §3.
 3. Run one server process at first (previews and answer limits are
-   per-process). Put a proxy in front with TLS and, where it can, a rate
-   limit on `/d/*/session`.
-4. Set `ANNOTINDER_SECRET`, `ANNOTINDER_REQUIRE_MFA=1` and
+   per-process). Put a proxy in front with TLS, and set
+   `ANNOTINDER_TRUST_PROXY=1` (the compose file does).
+4. Set `ANNOTINDER_SECRET`, `ANNOTINDER_2FA=annotinder` and
    `ANNOTINDER_ADMINS`. Never set `ANNOTINDER_DEV_AUTH` or
    `ANNOTINDER_DEMO`.
 5. Back up the database daily (`hosting.md` "Backups"), and test a restore

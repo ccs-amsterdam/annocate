@@ -84,11 +84,13 @@ in an end item's return link.
 A participant id is only a label, **never a key**: anyone who has the link
 could type it in. So a participant id never gives access to earlier work.
 If someone opens a link with a participant id that already has a session on
-another device (or browser), they see *"This link was already used on
-another device"*. If that was them, they continue on the original device,
-or move their session with **Continue on another device** there. If they
-can't, or it was someone else (a fixed participant id on a link that was
-passed on), they can start a new session here, without the earlier answers.
+another device (or browser), they see *"You already started on another
+device"*, and how to continue there, or move the session here with
+**Continue on another device** (or by logging in, where the link allows
+it). Only if they confirm that they can't get back to the earlier session
+(a lost device, cleared browser data) can they start a new session here,
+without the earlier answers. That should be rare; when it happens often,
+check whether a personal link was shared with several people.
 
 Two sessions with the same participant id are allowed, and kept apart: in
 the results they are two coders (two `coder_id`s) with the same

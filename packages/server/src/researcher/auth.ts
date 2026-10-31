@@ -17,8 +17,9 @@ import { SESSION_COOKIE } from "./login.js";
 //
 // Both identify a user by email; their role in a job is in `job_users`,
 // their account role (user, researcher, admin) on the user
-// (docs/accounts.md). With `requireMfa`, a login without a second factor
-// only gets `GET /me` (API keys count as with one: making one needs it).
+// (docs/accounts.md). With a second factor required (`twoFactor`), a login
+// without one only gets `GET /me` and the passkey routes (API keys count as
+// with one: making one needs it).
 // - Development only (`devAuth`, ANNOTINDER_DEV_AUTH=1): plain
 //   `x-dev-role` / `x-dev-email` headers, checked against nothing but
 //   `job_users`, and `x-dev-account-role` (default admin). A job without job
@@ -78,8 +79,8 @@ async function roleIn(server: Server, researcher: Researcher, jobId: number): Pr
 }
 
 /** Whether the server requires a second factor and this login lacks one. */
-const lacksMfa = (server: Server, researcher: Researcher) => server.requireMfa && !researcher.mfa;
-const MFA_REQUIRED = { error: "This server requires a login with a second factor", code: "mfa_required" } as const;
+export const lacksMfa = (server: Server, researcher: Researcher) => server.twoFactor !== "none" && !researcher.mfa;
+const MFA_REQUIRED = { error: "This server requires a second factor for researcher access", code: "mfa_required" } as const;
 
 /**
  * Middleware: an authenticated user (401 otherwise), as `researcher`; with

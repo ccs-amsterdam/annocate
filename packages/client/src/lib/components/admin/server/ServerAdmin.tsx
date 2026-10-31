@@ -110,6 +110,7 @@ function UsersTab({ server }: { server: ServerApi }) {
   const users = useQuery({ queryKey: ["admin", "server", "users", q], queryFn: () => server.listUsers(q) });
   const plans = usePlans(server);
   const invalidate = useInvalidate();
+  const resetPasskeys = useMutation({ mutationFn: (id: number) => server.resetPasskeys(id), onSuccess: invalidate });
   const update = useMutation({ mutationFn: (v: { id: number; body: Parameters<ServerApi["updateUser"]>[1] }) => server.updateUser(v.id, v.body), onSuccess: invalidate });
   const [limitsOf, setLimitsOf] = useState<AdminUser | null>(null);
   const planName = (id: number | null) => plans.data?.find((p) => p.id === id)?.name;
@@ -167,6 +168,18 @@ function UsersTab({ server }: { server: ServerApi }) {
                 }}
               >
                 <Ban className="h-3.5 w-3.5" /> {u.blockedAt ? "Unblock" : "Block"}
+              </Button>
+              <Button
+                size="xs"
+                variant="ghost"
+                title="For a user who lost their passkeys and recovery codes: they add a new passkey at their next login"
+                onClick={() => {
+                  if (confirm(`Reset the passkeys of ${u.email}? Only after checking who they are another way than by email (e.g. a video call). They are logged out, and add a new passkey at their next login.`)) {
+                    resetPasskeys.mutate(u.id);
+                  }
+                }}
+              >
+                Reset passkeys
               </Button>
             </td>
           </tr>

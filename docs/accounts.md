@@ -78,22 +78,17 @@ Every admin change is logged (`admin_log`).
 
 ## 5. Second factor
 
-`ANNOTINDER_REQUIRE_MFA=1` (recommended) requires a login with a second
-factor (the ID token's `amr`) for researcher and admin access. Logging in
-without one still works for coding, and `GET /me` says `mfaRequired`. The
+`ANNOTINDER_2FA` decides who checks the second factor for researcher and
+admin access: nobody (`none`), AnnoTinder with passkeys (`annotinder`,
+recommended), or the login provider (`oidc`, the ID token's `amr`). A login
+without it still works for coding, and `GET /me` says so (`twoFactor`). The
 session records it (`sessions.mfa`); API keys count as having one, since
-making one needs it.
-
-Today second factors are the login provider's: AnnoTinder doesn't store
-them, so losing one is solved there. Planned (`plans/passkeys.md`):
-AnnoTinder confirms a passkey itself, as a second layer independent of the
-provider, with recovery codes and admin resets instead of email recovery;
-and, for AmCAT and AnnoTinder on one server, AnnoTinder reading AmCAT's
-login cookie.
+making one needs it. Passkeys, recovery codes and admin resets:
+`security.md` §1. Still planned (`plans/passkeys.md`): step-up for
+sensitive actions, and AnnoTinder reading AmCAT's login cookie.
 
 ## 6. Open points
 
 - Groups other than email domains (e.g. a list of users sharing a plan).
 - Limits on total storage in bytes (now: counts, plus per-unit and
   per-answer sizes).
-- Rate limits per IP or account (`architecture.md` §10).

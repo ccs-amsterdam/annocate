@@ -132,10 +132,15 @@ confusion at a panel company over a leaked link.
      `409 { code: "participant_has_session" }`.
   2. The client explains: "continue on the original device, or make a
      transfer link there".
-  3. The client also offers **Start a new session**. That retries with
+  3. Only for a coder who can't get back to the earlier session (a lost
+     device, cleared browser data): **I can't get back to my earlier
+     session…** asks them to confirm that, and explains that starting again
+     should rarely be needed. Then **Start a new session** retries with
      `x-new-session: 1` (first request only) and creates a new coder with
      the same participant id, for this device. The new coder cannot see
-     the earlier annotations.
+     the earlier annotations. It exists so a coder who lost their device,
+     or got a personal link a researcher sent to several people by
+     mistake, can still take part.
 
   New sessions of a known participant don't count toward the link's
   `maxUses`.
@@ -231,9 +236,9 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   its previous owner's job roles. Job admins see who has a role and can
   remove it.
 - **Two-factor authentication is recommended; a server can require it.**
-  `ANNOTINDER_REQUIRE_MFA=1` requires a login whose ID token `amr` claim
-  names a second factor for managing jobs and the server; logging in and
-  coding work without (`accounts.md` §5).
+  `ANNOTINDER_2FA` requires a passkey checked by AnnoTinder (`annotinder`)
+  or the provider's second factor (`oidc`) for managing jobs and the
+  server; logging in and coding work without (`security.md` §1).
 - **Account roles** (user, researcher, admin), who becomes a researcher,
   and limits: `accounts.md`.
 - **Setting up a provider** (e.g. Authentik):

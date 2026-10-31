@@ -44,6 +44,10 @@ export const UsageSchema = z.object({ jobs: z.number().int(), units: z.number().
 export type Usage = z.infer<typeof UsageSchema>;
 
 /** `GET /me`: who the request is authenticated as. */
+/** Who checks the second factor for researcher access: nobody, AnnoTinder (passkeys), or the login provider. */
+export const TwoFactorModeSchema = z.enum(["none", "annotinder", "oidc"]);
+export type TwoFactorMode = z.infer<typeof TwoFactorModeSchema>;
+
 export const MeResponseSchema = z.object({
   email: z.string(),
   role: AccountRoleSchema,
@@ -55,12 +59,28 @@ export const MeResponseSchema = z.object({
   /** Whether users may ask to become researchers here (else: an invite link, or an admin). */
   canRequestResearcher: z.boolean(),
   /**
-   * The server requires a second factor for researcher access, and this
-   * login didn't use one: only coding, `GET /me` and logging out work.
+   * The second factor for researcher access (`ANNOTINDER_2FA`): `mode` is
+   * who checks it (`none`, `annotinder`: a passkey here, `oidc`: the login
+   * provider). `required`: this login hasn't given it yet: only coding,
+   * `GET /me`, the passkey routes and logging out work. `passkeys`: how many
+   * the user has (`annotinder` mode; 0: they must add one first).
    */
-  mfaRequired: z.boolean(),
+  twoFactor: z.object({ mode: TwoFactorModeSchema, required: z.boolean(), passkeys: z.number().int().nonnegative() }),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
+
+/** `POST /auth/passkey/register`: the browser's registration response, and a name for the passkey. */
+export const PasskeyRegisterSchema = z.object({ response: z.unknown(), name: z.string().trim().min(1).max(64).default("Passkey") });
+export type PasskeyRegister = z.input<typeof PasskeyRegisterSchema>;
+
+/** A passkey of the user (`GET /me/passkeys`). */
+export const PasskeySchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  created: z.coerce.date(),
+  lastUsed: z.coerce.date().nullable(),
+});
+export type Passkey = z.infer<typeof PasskeySchema>;
 
 /** `POST /me/researcher-request`: ask an admin to become a researcher. */
 export const ResearcherRequestWriteSchema = z.object({ message: z.string().max(2000).default("") });

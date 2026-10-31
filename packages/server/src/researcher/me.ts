@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { ApiKeyWriteSchema, RedeemResearcherInviteSchema, ResearcherRequestWriteSchema, type MeResponse } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { one } from "../db.js";
-import { requireResearcher } from "./auth.js";
+import { lacksMfa, requireResearcher } from "./auth.js";
 import { HttpError } from "../shared/http.js";
 import { createApiKey, effectiveLimits, ensureUser, getSettings, listApiKeys, revokeApiKey, usage } from "../shared/accounts.js";
 
@@ -27,7 +27,11 @@ export function me(server: Server): Hono<Env> {
       usage: await usage(db, id),
       researcherRequest: request ? { at: request.at } : null,
       canRequestResearcher: (await getSettings(db)).registration.requests,
-      mfaRequired: server.requireMfa && !researcher.mfa,
+      twoFactor: {
+        mode: server.twoFactor,
+        required: lacksMfa(server, researcher),
+        passkeys: server.twoFactor === "annotinder" ? (await one<{ n: number }>(db, "SELECT count(*)::int AS n FROM passkeys WHERE user_id = $1", [id]))!.n : 0,
+      },
     };
   }
 

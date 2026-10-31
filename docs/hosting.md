@@ -37,7 +37,7 @@ health check uses it).
 | `DATABASE_URL` | Postgres, e.g. `postgres://user:pass@host:5432/annotinder`. The compose file sets it from `POSTGRES_PASSWORD`. Without it the server uses PGlite in `PGLITE_DIR` (development) |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Researcher login (below). Without them nobody can log in |
 | `ANNOTINDER_ADMINS` | Comma-separated emails that get the admin role when they log in: the server's first admins (`accounts.md`) |
-| `ANNOTINDER_REQUIRE_MFA` | `1`: researcher access needs a login with a second factor, as the provider reports it (`amr`). Recommended |
+| `ANNOTINDER_2FA` | Second factor for researcher access: `none`, `annotinder` (a passkey checked by AnnoTinder; recommended) or `oidc` (the provider's, its `amr`). `security.md` §1 |
 | `ANNOTINDER_TRUST_PROXY` | `1`: behind a proxy (Caddy, nginx) that sets `X-Forwarded-For`: rate limits count the client's address from it. Only when the server can't be reached except through the proxy |
 | `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits (e.g. for a load test from one machine). On by default (`security.md`) |
 | `ANNOTINDER_FRAME_ANCESTORS` | Origins (space or comma separated) that may show AnnoTinder in a frame besides itself, e.g. AmCAT's `https://amcat.example.org` |
@@ -60,11 +60,12 @@ Microsoft).
   `<ANNOTINDER_PUBLIC_URL>/auth/callback`, scope `openid email`.
 - The provider must verify email addresses: AnnoTinder keys accounts on the
   email and refuses a login without `email_verified: true`.
-- For `ANNOTINDER_REQUIRE_MFA`, the provider must report the second factor
+- For `ANNOTINDER_2FA=oidc`, the provider must report the second factor
   in the ID token's `amr` claim (e.g. `mfa`, `otp`, `hwk`, `swk`; RFC 8176).
+  With `annotinder` it doesn't matter: AnnoTinder checks a passkey itself.
 
-`plans/passkeys.md` has the plan for a second factor checked by AnnoTinder
-itself.
+Security settings (second factor, headers, rate limits, framing):
+`security.md`.
 
 ## Backups
 

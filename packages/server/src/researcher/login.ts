@@ -74,7 +74,8 @@ export function login(server: Server): Hono<Env> {
 
     const user = await applyRegistration(server.db, await ensureUser(server.db, result.email), server.admins);
     if (await one(server.db, "SELECT 1 FROM users WHERE id = $1 AND blocked_at IS NOT NULL", [user.id])) return back(state.returnTo, "blocked");
-    setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id, result.mfa), {
+    // The provider's second factor counts only when it is the one this server relies on (`oidc`).
+    setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id, server.twoFactor === "oidc" && result.mfa), {
       path: "/",
       httpOnly: true,
       sameSite: "Lax",

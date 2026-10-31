@@ -40,6 +40,11 @@ export async function userForSession(sql: Sql, key: string): Promise<(User & { m
   return { id: row.id, email: row.email, role: row.role, mfa: row.mfa };
 }
 
+/** Marks a session as confirmed with a second factor (a passkey or a recovery code). */
+export async function confirmSession(sql: Sql, key: string): Promise<void> {
+  await sql.query("UPDATE sessions SET mfa = true WHERE key_hash = $1", [hashKey(key)]);
+}
+
 export async function deleteSession(sql: Sql, key: string): Promise<void> {
   await sql.query("DELETE FROM sessions WHERE key_hash = $1", [hashKey(key)]);
 }

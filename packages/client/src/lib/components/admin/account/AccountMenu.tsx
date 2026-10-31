@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { KeyRound, LogIn, LogOut, Moon, Sun, UserCircle } from "lucide-react";
+import { Fingerprint, KeyRound, LogIn, LogOut, Moon, Sun, UserCircle } from "lucide-react";
+import { PasskeysDialog } from "./SecondFactor";
 import { useTheme } from "../../../context/theme";
 
 /**
@@ -28,6 +29,7 @@ export function AccountMenu({
   onLoggedOut?: () => void;
 }) {
   const [keysOpen, setKeysOpen] = useState(false);
+  const [passkeysOpen, setPasskeysOpen] = useState(false);
   const [theme, setTheme] = useTheme();
 
   async function logOut() {
@@ -87,6 +89,11 @@ export function AccountMenu({
               <KeyRound className="h-4 w-4" /> API keys
             </Button>
           )}
+          {me?.twoFactor.mode === "annotinder" && (
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => setPasskeysOpen(true)}>
+              <Fingerprint className="h-4 w-4" /> Passkeys
+            </Button>
+          )}
           {me && !dev && (
             <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={logOut}>
               <LogOut className="h-4 w-4" /> Log out
@@ -100,6 +107,7 @@ export function AccountMenu({
         </PopoverContent>
       </Popover>
       {keysOpen && <ApiKeysDialog client={client} onClose={() => setKeysOpen(false)} />}
+      {passkeysOpen && <PasskeysDialog client={client} onClose={() => setPasskeysOpen(false)} />}
     </>
   );
 }

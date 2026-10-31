@@ -1,3 +1,5 @@
+import { passkeys } from "./researcher/passkeys.js";
+import type { TwoFactorMode } from "@annotinder/contracts";
 import { createHash } from "node:crypto";
 import { getCookie } from "hono/cookie";
 import { DEFAULT_RATE_LIMITS, RateLimiter, rateLimit, type RateLimits } from "./shared/rateLimit.js";
@@ -61,7 +63,7 @@ export interface AppOptions {
   /** Emails that are admins (docs/accounts.md). */
   admins?: string[];
   /** Researcher access needs a login with a second factor. */
-  requireMfa?: boolean;
+  twoFactor?: TwoFactorMode;
   /**
    * The built client (`packages/client/dist`): served from this server, so
    * coders and researchers reach one origin (session cookies). Without it
@@ -92,7 +94,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     login: options.login ? { oidc: new Oidc(options.login.oidc), publicUrl: options.login.publicUrl.replace(/\/$/, "") } : null,
     secret,
     admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
-    requireMfa: options.requireMfa ?? false,
+    twoFactor: options.twoFactor ?? "none",
   };
 
   const app = new Hono<Env>();
@@ -123,7 +125,8 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   app.use("/d/*", rateLimit(limiter, "coder", { memory: true }));
   app.use("/d/*", rateLimit(limiter, "coderStart", { when: (c) => !readDevice(c) }));
   app.use("/d/*", rateLimit(limiter, "transfer", { when: (c) => c.req.path.endsWith("/transfer/redeem") }));
-  for (const path of ["/auth/login", "/auth/callback"]) app.use(path, rateLimit(limiter, "login"));
+  // Logins, and confirming one with a passkey or a recovery code (against guessing)
+  for (const path of ["/auth/login", "/auth/callback", "/auth/passkey/*"]) app.use(path, rateLimit(limiter, "login"));
   // Per account: the API key or login session (hashed: no secrets in the table), else per address.
   const accountKey = (c: Context) => {
     const credential = c.req.header("authorization") ?? getCookie(c, SESSION_COOKIE);
@@ -140,6 +143,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
   // Cookies are same-origin only: CORS here is for API keys.
   for (const path of ["/job", "/job/*", "/me", "/me/*", "/admin/*"]) app.use(path, cors());
   app.route("/", login(server));
+  app.route("/", passkeys(server));
   app.route("/", me(server));
   app.route("/", admin(server));
   // Order matters: units/fields and units/page before units/:id.

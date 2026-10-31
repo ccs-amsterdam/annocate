@@ -1,6 +1,10 @@
 # Plan: login provider, passkeys as a second layer, and a shared login with AmCAT
 
-Status: proposed, not built (2026-10-28). Complements `coder-identity.md`
+Status: §3 built (2026-10-31) as `ANNOTINDER_2FA=annotinder`
+(`security.md` §1): enrolment at first login, confirming each login,
+recovery codes, admin reset, security log. Not built: step-up, API key
+expiry, emails about security events, the shared AmCAT login (§4).
+Originally proposed 2026-10-28. Complements `coder-identity.md`
 (§7: researcher login) and `accounts.md` (§5: second factor).
 
 ## 1. Goal

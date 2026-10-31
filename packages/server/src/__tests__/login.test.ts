@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Sql } from "../db.js";
+import type { TwoFactorMode } from "@annotinder/contracts";
 import { createApp } from "../app.js";
+import { softAuthenticator } from "./softAuthenticator.js";
 import { emptyDb } from "./testDb.js";
 import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
 
@@ -13,14 +15,14 @@ let db: Sql;
 let issuer: ReturnType<typeof mockIssuer>;
 let app: ReturnType<typeof createApp>;
 
-function newApp(requireMfa = false, admins: string[] = []) {
+function newApp(twoFactor: TwoFactorMode = "none", admins: string[] = []) {
   return createApp(db, {
     secret: "test-secret",
     login: {
       oidc: { issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, fetch: issuer.fetch },
       publicUrl: PUBLIC_URL,
     },
-    requireMfa,
+    twoFactor,
     admins,
   });
 }
@@ -114,20 +116,80 @@ describe("researcher login", () => {
     expect(b.cookies.has("annotinder_session")).toBe(false);
   });
 
-  it("requires a second factor for researcher access only when the server says so", async () => {
-    app = newApp(true, ["jane@uni.nl"]);
+  it("requires a second factor from the login provider when the server says so (oidc)", async () => {
+    app = newApp("oidc", ["jane@uni.nl"]);
     const b = browser();
     // Logged in, but without a second factor: only GET /me (and coding)
     expect(await b.logIn({ ...verified, amr: ["pwd"] })).toBe("/jobs?x=1");
-    expect(await (await b.api("/me")).json()).toMatchObject({ role: "admin", mfaRequired: true });
+    expect(await (await b.api("/me")).json()).toMatchObject({ role: "admin", twoFactor: { mode: "oidc", required: true } });
     const job = await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) });
     expect(job.status).toBe(403);
     expect(await job.json()).toMatchObject({ code: "mfa_required" });
     expect((await b.api("/me/keys")).status).toBe(403);
 
     expect(await b.logIn({ ...verified, amr: ["pwd", "otp"] })).toBe("/jobs?x=1");
-    expect(await (await b.api("/me")).json()).toMatchObject({ mfaRequired: false });
+    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { required: false } });
     expect((await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
+  });
+
+  it("requires a passkey checked by AnnoTinder (annotinder): add one, confirm with it, recover, reset", async () => {
+    app = newApp("annotinder", ["jane@uni.nl"]);
+    const b = browser();
+    const key = softAuthenticator(PUBLIC_URL);
+    // The provider's second factor doesn't count here
+    await b.logIn({ ...verified, amr: ["pwd", "otp"] });
+    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { mode: "annotinder", required: true, passkeys: 0 } });
+    expect((await b.api("/job")).status).toBe(403);
+
+    // The first passkey, right after login: it confirms the session, and comes with recovery codes
+    const options = (await (await b.api("/auth/passkey/register/options", { method: "POST" })).json()) as { challenge: string };
+    const added = await b.api("/auth/passkey/register", { method: "POST", body: JSON.stringify({ response: key.register(options), name: "Laptop" }) });
+    expect(added.status, await added.clone().text()).toBe(200);
+    const { recoveryCodes } = (await added.json()) as { recoveryCodes: string[] };
+    expect(recoveryCodes).toHaveLength(10);
+    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { required: false, passkeys: 1 } });
+    expect((await b.api("/job")).status).toBe(200);
+
+    // A new login: confirmed with the passkey (a replayed or foreign response is refused)
+    await b.logIn(verified);
+    expect((await b.api("/job")).status).toBe(403);
+    // Another passkey can't be added without confirming first
+    expect((await b.api("/auth/passkey/register/options", { method: "POST" })).status).toBe(403);
+    const login = (await (await b.api("/auth/passkey/login/options", { method: "POST" })).json()) as { challenge: string };
+    const stranger = softAuthenticator(PUBLIC_URL);
+    const wrong = await b.api("/auth/passkey/login", { method: "POST", body: JSON.stringify({ response: stranger.authenticate(login) }) });
+    expect(wrong.status).toBe(400);
+    const again = (await (await b.api("/auth/passkey/login/options", { method: "POST" })).json()) as { challenge: string };
+    expect((await b.api("/auth/passkey/login", { method: "POST", body: JSON.stringify({ response: key.authenticate(again) }) })).status).toBe(204);
+    expect((await b.api("/job")).status).toBe(200);
+    expect(((await (await b.api("/me/passkeys")).json()) as { name: string }[]).map((p) => p.name)).toEqual(["Laptop"]);
+    expect((await b.api("/me/passkeys/1", { method: "DELETE" })).status).toBe(409); // not the only one
+
+    // A lost passkey: a recovery code confirms, once
+    await b.logIn(verified);
+    const recover = (code: string) => b.api("/auth/passkey/recover", { method: "POST", body: JSON.stringify({ code }) });
+    expect((await recover("nope-nope-nope")).status).toBe(400);
+    expect((await recover(recoveryCodes[0].toUpperCase())).status).toBe(204);
+    expect((await b.api("/job")).status).toBe(200);
+    await b.logIn(verified);
+    expect((await recover(recoveryCodes[0])).status).toBe(400);
+
+    // An admin reset: passkeys and sessions gone; the next login adds a new passkey
+    const admin = createApp(db, { devAuth: true });
+    const [{ id }] = await db.query<{ id: number }>("SELECT id FROM users WHERE email = 'jane@uni.nl'");
+    expect((await admin.request(`/admin/users/${id}/reset-passkeys`, { method: "POST", headers: { "x-dev-role": "ADMIN", "x-dev-email": "root@uni.nl" } })).status).toBe(204);
+    expect((await b.api("/me")).status).toBe(401);
+    await b.logIn(verified);
+    expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { required: true, passkeys: 0 } });
+    const log = await db.query<{ event: string }>("SELECT event FROM security_log WHERE user_id = $1 ORDER BY id", [id]);
+    expect(log.map((l) => l.event)).toEqual([
+      "passkey_added",
+      "recovery_codes_made",
+      "recovery_code_refused",
+      "recovery_code_used",
+      "recovery_code_refused",
+      "passkeys_reset",
+    ]);
   });
 
   it("makes users, researchers (open registration, domains) and admins (named by the server)", async () => {
@@ -136,7 +198,7 @@ describe("researcher login", () => {
       await b.logIn({ ...verified, email });
       return ((await (await b.api("/me")).json()) as { role: string }).role;
     };
-    app = newApp(false, ["boss@uni.nl"]);
+    app = newApp("none", ["boss@uni.nl"]);
     expect(await role("anyone@gmail.com")).toBe("user");
     expect(await role("boss@uni.nl")).toBe("admin");
     await db.query("INSERT INTO domain_rules (domain, researcher) VALUES ('*.uni.nl', true)");

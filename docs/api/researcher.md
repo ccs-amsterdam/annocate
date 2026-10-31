@@ -40,10 +40,12 @@ on the server (`docs/accounts.md`): `user` (codes; works on jobs they have
 a role in), `researcher` (also creates jobs, within their limits), `admin`
 (also the [admin API](admin.md)).
 
-**Second factor.** A server with `ANNOTINDER_REQUIRE_MFA=1` answers 403
-`mfa_required` to a login that didn't use a second factor, except
-`GET /me` (which says `mfaRequired`). API keys count as having one (making
-one needs it).
+**Second factor.** A server with `ANNOTINDER_2FA` set (`annotinder`:
+passkeys, `oidc`: the provider's) answers 403 `mfa_required` to a login
+that didn't give the second factor, except `GET /me` (which says so in
+`twoFactor`) and the passkey routes (`/auth/passkey/...`, `security.md`
+§1). API keys count as having one (making one needs it). Too many requests:
+429 `rate_limited` (`security.md` §3).
 
 **Limits.** Adding units, and creating a job, can be refused with 403
 `limit_reached` (the job owner's limits), and a unit larger than the server

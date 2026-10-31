@@ -64,8 +64,10 @@ researcher.
 
 ## Second factor
 
-Set `ANNOTINDER_REQUIRE_MFA=1` to require a login with a second factor
-for managing jobs and the server (recommended, certainly for servers with
-sensitive data). Coding never requires it. AnnoTinder relies on the login
-provider for second factors and passkeys: losing one is solved there (for
-instance by an admin of the provider).
+Set `ANNOTINDER_2FA=annotinder` to require a **passkey** for managing jobs
+and the server (recommended, certainly for servers with sensitive data):
+researchers add one at their first login and confirm every login with it.
+Coding never requires it. A researcher who lost their passkey uses a
+recovery code; without codes, **Reset passkeys** on the **Users** tab
+removes them, after you checked who they are another way than by email.
+`ANNOTINDER_2FA=oidc` relies on the login provider's second factor instead.

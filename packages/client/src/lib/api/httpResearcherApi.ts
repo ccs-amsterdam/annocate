@@ -30,6 +30,7 @@ import {
   type DeploymentWrite,
   type JobOverview,
   type MeResponse,
+  type Passkey,
   type ApiKeyResponse,
   type ApiKeyCreated,
   type AnnotationPage,
@@ -84,6 +85,15 @@ export interface ResearcherApi {
   loginUrl(returnTo: string): string;
   /** Who the client is authenticated as. */
   getMe(): Promise<MeResponse>;
+  /** Passkeys (ANNOTINDER_2FA=annotinder): the WebAuthn ceremonies' options and results are @simplewebauthn's JSON. */
+  passkeyRegisterOptions(): Promise<unknown>;
+  passkeyRegister(response: unknown, name: string): Promise<{ recoveryCodes: string[] | null }>;
+  passkeyLoginOptions(): Promise<unknown>;
+  passkeyLogin(response: unknown): Promise<void>;
+  passkeyRecover(code: string): Promise<void>;
+  listPasskeys(): Promise<Passkey[]>;
+  deletePasskey(id: number): Promise<void>;
+  renewRecoveryCodes(): Promise<{ recoveryCodes: string[] }>;
   listApiKeys(): Promise<ApiKeyResponse[]>;
   /** A new API key: `key` is returned only this once. */
   createApiKey(label: string): Promise<ApiKeyCreated>;
@@ -247,6 +257,38 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async getMe(): Promise<MeResponse> {
     return this.request(researcherEndpoints.getMe.path);
+  }
+
+  async passkeyRegisterOptions(): Promise<unknown> {
+    return this.request(researcherEndpoints.passkeyRegisterOptions.path, { method: "POST" });
+  }
+
+  async passkeyRegister(response: unknown, name: string): Promise<{ recoveryCodes: string[] | null }> {
+    return this.request(researcherEndpoints.passkeyRegister.path, { method: "POST", body: JSON.stringify({ response, name }) });
+  }
+
+  async passkeyLoginOptions(): Promise<unknown> {
+    return this.request(researcherEndpoints.passkeyLoginOptions.path, { method: "POST" });
+  }
+
+  async passkeyLogin(response: unknown): Promise<void> {
+    await this.request(researcherEndpoints.passkeyLogin.path, { method: "POST", body: JSON.stringify({ response }) });
+  }
+
+  async passkeyRecover(code: string): Promise<void> {
+    await this.request(researcherEndpoints.passkeyRecover.path, { method: "POST", body: JSON.stringify({ code }) });
+  }
+
+  async listPasskeys(): Promise<Passkey[]> {
+    return this.request(researcherEndpoints.listPasskeys.path);
+  }
+
+  async deletePasskey(id: number): Promise<void> {
+    await this.request(researcherEndpoints.deletePasskey.path.replace(":id", String(id)), { method: "DELETE" });
+  }
+
+  async renewRecoveryCodes(): Promise<{ recoveryCodes: string[] }> {
+    return this.request(researcherEndpoints.renewRecoveryCodes.path, { method: "POST" });
   }
 
   async listApiKeys(): Promise<ApiKeyResponse[]> {

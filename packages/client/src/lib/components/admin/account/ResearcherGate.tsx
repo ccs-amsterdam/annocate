@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { AuthOptions, LoginError, MeResponse } from "@annotinder/contracts";
 import { ResearcherApiError, type ResearcherApi } from "../../../api/httpResearcherApi";
 import { Button } from "@/components/ui/button";
+import { SecondFactorGate } from "./SecondFactor";
 import { LogIn, ShieldCheck } from "lucide-react";
 
 const LOGIN_ERRORS: Record<LoginError, string> = {
@@ -51,21 +52,10 @@ export function ResearcherGate({ client, children }: { client: ResearcherApi; ch
     };
   }, [client]);
 
-  if (state.status === "in" && state.me.mfaRequired) {
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h1 className="font-heading text-lg font-bold">Log in with a second factor</h1>
-          <p className="text-sm text-muted-foreground">
-            This server asks for two-factor authentication to manage jobs, and your login ({state.me.email}) didn&apos;t use
-            one. Set it up with your login provider, then log out and in again. Coding works without it.
-          </p>
-          <Button variant="outline" onClick={() => void client.logout().then(() => window.location.reload())}>
-            Log out
-          </Button>
-        </div>
-      </div>
-    );
+  if (state.status === "in" && state.me.twoFactor.required) {
+    // Confirmed: load who they are again (the session now has its second factor).
+    const reload = () => void client.getMe().then((me) => setState({ status: "in", me }));
+    return <SecondFactorGate client={client} me={state.me} onConfirmed={reload} />;
   }
   if (state.status === "in") return <>{children(state.me)}</>;
   if (state.status === "loading") return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
