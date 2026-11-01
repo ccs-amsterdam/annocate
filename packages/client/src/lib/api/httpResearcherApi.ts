@@ -27,7 +27,9 @@ import {
   type PreviewSession,
   type DeploymentResponse,
   type DeploymentStatus,
+  type DeploymentVersion,
   type DeploymentWrite,
+  type PendingChanges,
   type JobOverview,
   type MeResponse,
   type Passkey,
@@ -158,6 +160,8 @@ export interface ResearcherApi {
   getDeployment(): Promise<DeploymentResponse | null>;
   /** Publishes a codebook version: coders switch to it, and it becomes read only. */
   putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
+  getPendingChanges(): Promise<PendingChanges>;
+  listDeploymentVersions(): Promise<DeploymentVersion[]>;
   /** Progress of the live job, per loop and unitset. */
   getDeploymentStatus(): Promise<DeploymentStatus>;
   /** Retires live answers, so units are coded again (ADMIN). */
@@ -523,6 +527,14 @@ export class HttpResearcherApi implements ResearcherApi {
   async getDeployment(): Promise<DeploymentResponse | null> {
     const jobId = this.requireJobId();
     return this.request(researcherEndpoints.getDeployment.path.replace(":jobId", String(jobId)));
+  }
+
+  async getPendingChanges(): Promise<PendingChanges> {
+    return this.request(this.jobPath(researcherEndpoints.getPendingChanges.path));
+  }
+
+  async listDeploymentVersions(): Promise<DeploymentVersion[]> {
+    return this.request(this.jobPath(researcherEndpoints.listDeploymentVersions.path));
   }
 
   async putDeployment(body: DeploymentWrite): Promise<DeploymentResponse> {

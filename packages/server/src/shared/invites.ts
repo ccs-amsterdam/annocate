@@ -50,10 +50,13 @@ export function toInviteResponse(row: InviteRow): CoderInviteResponse {
   };
 }
 
-/** The links a codebook makes with the job's sets: one per combination of its link parameters' values. */
-export async function linksOf(sql: Sql, jobId: number, items: CodebookItem[]): Promise<Record<string, string>[]> {
+/**
+ * The links a codebook makes with the sets of a snapshot (null: the
+ * draft's): one per combination of its link parameters' values.
+ */
+export async function linksOf(sql: Sql, jobId: number, items: CodebookItem[], snapshotId: number | null): Promise<Record<string, string>[]> {
   const sets = new Map<string, string[]>();
-  for (const group of new Set(setParameters(items).values())) sets.set(group, await groupSets(sql, jobId, group));
+  for (const group of new Set(setParameters(items).values())) sets.set(group, await groupSets(sql, jobId, group, snapshotId));
   return linkCombinations(sessionItem(items), (group) => sets.get(group) ?? []);
 }
 
@@ -62,8 +65,8 @@ export async function linksOf(sql: Sql, jobId: number, items: CodebookItem[]): P
  * (400), and more than `CONFIRM_LINKS` only when confirmed (409
  * `confirm_links`). Returns the number.
  */
-export async function checkLinkCount(sql: Sql, jobId: number, items: CodebookItem[], confirmed: boolean): Promise<number> {
-  const n = (await linksOf(sql, jobId, items)).length;
+export async function checkLinkCount(sql: Sql, jobId: number, items: CodebookItem[], confirmed: boolean, snapshotId: number | null): Promise<number> {
+  const n = (await linksOf(sql, jobId, items, snapshotId)).length;
   if (n > MAX_LINKS) throw new HttpError(400, `This codebook makes ${n} links; at most ${MAX_LINKS} are possible. List the combinations you need.`, "too_many_links");
   if (n > CONFIRM_LINKS && !confirmed) throw new HttpError(409, `This codebook makes ${n} links. Publish anyway?`, "confirm_links");
   return n;
@@ -81,14 +84,14 @@ const linkLabel = (values: Record<string, string>) => Object.values(values).join
  * Returns the number of active links.
  */
 export async function syncLinks(sql: Sql, jobId: number, options: { secrets?: string[] } = {}): Promise<number> {
-  const deployed = await one<{ items: unknown }>(
+  const deployed = await one<{ items: unknown; snapshot_id: number }>(
     sql,
-    "SELECT c.items FROM deployments d JOIN codebooks c ON c.id = d.codebook_id WHERE d.job_id = $1",
+    "SELECT c.items, d.snapshot_id FROM deployments d JOIN codebooks c ON c.id = d.codebook_id WHERE d.job_id = $1",
     [jobId],
   );
   const parsed = deployed ? CodebookItemsSchema.safeParse(deployed.items) : null;
   if (!parsed?.success) return 0;
-  const wanted = await linksOf(sql, jobId, parsed.data);
+  const wanted = await linksOf(sql, jobId, parsed.data, deployed!.snapshot_id);
   const rows = await sql.query<Pick<InviteRow, "id" | "link_key" | "retired_at">>(
     "SELECT id, link_key, retired_at FROM invites WHERE job_id = $1 ORDER BY id",
     [jobId],

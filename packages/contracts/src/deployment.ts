@@ -3,10 +3,54 @@ import { IdSchema } from "./common.js";
 
 // Deploying a job (researcher API): which codebook coders get, its status,
 // and previews. The coder side is the coder API (endpoints/coder.ts).
+// Everything is a draft until deployed (docs/plans/design.md §5): a
+// deployed version is a codebook with a snapshot of the units and sets.
+
+/** The draft's units compared with the deployed ones. */
+export const UnitChangesSchema = z.object({
+  added: z.number().int().nonnegative(),
+  /** Units with other content (a new version). */
+  changed: z.number().int().nonnegative(),
+  removed: z.number().int().nonnegative(),
+  /** The sets differ. */
+  sets: z.boolean(),
+});
+export type UnitChanges = z.infer<typeof UnitChangesSchema>;
+
+/** What a deployed version changed: the codebook, and the units (null: kept). */
+export const DeploymentChangesSchema = z.object({
+  codebook: z.boolean(),
+  units: UnitChangesSchema.nullable(),
+});
+export type DeploymentChanges = z.infer<typeof DeploymentChangesSchema>;
+
+/** `GET /job/:jobId/deployment/versions`: the deployed versions, newest first. */
+export const DeploymentVersionSchema = z.object({
+  version: z.number().int().positive(),
+  codebookId: IdSchema,
+  changes: DeploymentChangesSchema,
+  created: z.coerce.date(),
+});
+export type DeploymentVersion = z.infer<typeof DeploymentVersionSchema>;
+
+/** `GET /job/:jobId/deployment/pending`: what deploying the drafts would change. */
+export const PendingChangesSchema = z.object({
+  /** The draft units against the deployed ones (all added when nothing is deployed). */
+  units: UnitChangesSchema,
+  /** The latest codebook, if it isn't the deployed one. */
+  codebookId: IdSchema.nullable(),
+});
+export type PendingChanges = z.infer<typeof PendingChangesSchema>;
 
 /** Researcher-facing: `PUT /job/:jobId/deployment`. */
 export const DeploymentWriteSchema = z.object({
+  /** The codebook coders get (the deployed one: keep it). */
   codebookId: IdSchema,
+  /**
+   * Deploy the draft units and sets too (default). False: keep the deployed
+   * ones (the first deploy always takes the draft's).
+   */
+  units: z.boolean().default(true),
   /** Set to false to stop handing out units (coders get a 409). */
   active: z.boolean().default(true),
   /**
@@ -17,7 +61,7 @@ export const DeploymentWriteSchema = z.object({
 });
 export type DeploymentWrite = z.infer<typeof DeploymentWriteSchema>;
 
-export const DeploymentResponseSchema = DeploymentWriteSchema.extend({
+export const DeploymentResponseSchema = DeploymentWriteSchema.omit({ units: true }).extend({
   jobId: IdSchema,
   /** Bumped on every change. */
   version: z.number().int().positive(),

@@ -12,7 +12,9 @@ export interface DeploymentSpec {
   version: number;
   active: boolean;
   codebook: CodebookResponse;
-  /** All sets of the job, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit id in the job). */
+  /** The deployed units' snapshot (docs/plans/design.md §5); null: the drafts (a preview). */
+  snapshotId: number | null;
+  /** All sets of the snapshot, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit in it). */
   sets: { name: string; unitIds: number[] }[];
   /**
    * Bumped whenever annotations change outside the runtime (e.g. a
@@ -28,8 +30,10 @@ export interface Unit {
   id: number;
   externalId: string;
   data: UnitData;
-  /** Content hash: different when `data` changes. Stored with annotations when a coder saw older content. */
+  /** Content hash: different when `data` changes. */
   hash: string;
+  /** The unit version (`unit_versions`): what answers about it point to. */
+  versionId: number;
 }
 
 /**

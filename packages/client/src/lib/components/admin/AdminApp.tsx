@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { clearBackup, readBackup, type CodebookBackup } from "../../codebook/localBackup";
 import { HelpDialog } from "../../help/HelpDialog";
+import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
 
 /** The job's pages. Preview is opened with the Preview Job button, not from the tabs. */
@@ -382,6 +383,7 @@ function JobAdminView({
       {/* Main Tab Content */}
       <main className="flex-1 overflow-auto p-4 sm:p-6">
         {banner}
+        <PendingDeployBar client={client} />
         {tab === "Overview" && (
           <JobOverview
             client={client}

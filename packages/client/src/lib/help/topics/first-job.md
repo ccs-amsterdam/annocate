@@ -151,9 +151,10 @@ again.
 
 ## 6. Publish
 
-On the **Codebook** tab, click **Publish**. The dialog says what publishing
-does; click **Publish v1**. Coders can now start. You can keep improving the
-codebook: edits go into a new draft until you publish again. See
+On the **Codebook** tab, click **Publish**. The dialog says what deploying
+does; click **Deploy**. Coders can now start, with the codebook and your
+units. You can keep improving both: changes to the codebook, the units and
+the sets are drafts until you deploy them again. See
 [Preview, save and publish](previewing-and-publishing.md).
 
 ## 7. Invite coders

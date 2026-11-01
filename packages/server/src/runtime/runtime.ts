@@ -44,7 +44,6 @@ import {
   type VariableValue,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
-import { unitHash } from "../shared/units.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement } from "./distribution.js";
 import type { Store } from "./store.js";
 import type { DeviceDetails } from "../shared/devices.js";
@@ -982,12 +981,12 @@ export class DeploymentRuntime {
 
   /**
    * A unit as coders see it under this codebook (docs/architecture.md
-   * §8.4): only the fields it uses (`shownUnitFields`), and the id of that
-   * unit version, stored the first time it is shown.
+   * §8.4): only the fields it uses (`shownUnitFields`), and the deployed
+   * unit version (answers point to it).
    */
   private async shownVersion(unit: Unit): Promise<{ data: UnitData; versionId: number }> {
     const data: UnitData = Object.fromEntries(this.shownFields.filter((f) => f in unit.data).map((f) => [f, unit.data[f]]));
-    return { data, versionId: await this.store.unitVersion(unit.id, unitHash(unit.externalId, data), data) };
+    return { data, versionId: unit.versionId };
   }
 
   /** Records which version of a unit the coder was shown; returns it. */
@@ -998,7 +997,7 @@ export class DeploymentRuntime {
   }
 
   private async getUnits(ids: number[], store: Store = this.store): Promise<Map<number, Unit>> {
-    return new Map((await store.getUnits(ids)).map((unit) => [unit.id, unit]));
+    return new Map((await store.getUnits(ids, this.spec.snapshotId)).map((unit) => [unit.id, unit]));
   }
 }
 

@@ -1,7 +1,8 @@
 # Plan: the design as the source of truth
 
-Status: agreed 2026-11-01; to build after special-sets step 2 ("Create gold
-values"). Migrations are reset before release, so no legacy handling.
+Status: agreed 2026-11-01. Built: §5 (drafts until deployed, unit storage,
+the deploy dialog). Next: §1-3 (the design document, unit fields).
+Migrations are reset before release, so no legacy handling.
 
 ## 1. Names
 

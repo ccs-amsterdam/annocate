@@ -1,22 +1,22 @@
 import { Hono } from "hono";
-import { UnitsCreateBodySchema, addedFields, checkUnitData, type UnitField, type UnitResponse } from "@annotinder/contracts";
-import { one } from "../db.js";
+import { UnitsCreateBodySchema, addedFields, checkUnitData, type UnitField } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { checkUnitUpload } from "../shared/limits.js";
-import { getUnitFields, setUnitFields, toUnitMeta, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
+import { DRAFT_UNITS, getUnitFields, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
 
 export function units(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
   app.get("/job/:jobId/units", requireJobUser(server, "READ"), async (c) => {
-    const rows = await db.query<UnitRow>("SELECT * FROM units WHERE job_id = $1 ORDER BY id", [c.get("jobId")]);
+    const rows = await db.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 ORDER BY u.id`, [c.get("jobId")]);
     return c.json(rows.map(toUnitMeta));
   });
 
-  // All or nothing: every unit must fit the job's fields, and existing units
-  // may only be replaced with `overwrite`. The first upload sets the fields
+  // Into the draft (docs/plans/design.md §5): coders get the units when they
+  // are deployed. All or nothing: every unit must fit the job's fields, and
+  // existing units may only be replaced with `overwrite`. The first upload sets the fields
   // (types from the values); a later one may add fields (units already
   // stored have no value for them), but must give every existing field
   // (null for empty).
@@ -39,7 +39,7 @@ export function units(server: Server): Hono<Env> {
       if (problem) return c.json({ error: `Unit '${unit.externalId}': ${problem}` }, 400);
     }
 
-    const existingRows = await db.query<UnitRow>("SELECT * FROM units WHERE job_id = $1 AND external_id = ANY($2)", [
+    const existingRows = await db.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 AND u.external_id = ANY($2)`, [
       jobId,
       units.map((u) => u.externalId),
     ]);
@@ -61,23 +61,11 @@ export function units(server: Server): Hono<Env> {
 
     const created = await db.transaction(async (tx) => {
       if (added.fields.length > 0 || firstUpload) await setUnitFields(tx, jobId, fields);
-      const result: UnitResponse[] = [];
-      for (const unit of units) {
-        const data = JSON.stringify(unit.data);
-        const row = existing.get(unit.externalId);
-        const saved = row
-          ? await one<UnitRow>(tx, "UPDATE units SET data = $1 WHERE job_id = $2 AND id = $3 RETURNING *", [data, jobId, row.id])
-          : await one<UnitRow>(tx, "INSERT INTO units (job_id, external_id, data) VALUES ($1, $2, $3) RETURNING *", [
-              jobId,
-              unit.externalId,
-              data,
-            ]);
-        result.push(toUnitResponse(saved!));
-      }
-      return result;
+      const ids = await saveUnits(tx, jobId, units);
+      const rows = await tx.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 AND u.id = ANY($2)`, [jobId, [...ids.values()]]);
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      return units.map((u) => toUnitResponse(byId.get(ids.get(u.externalId)!)!));
     });
-    // New units in "all units" are handed out from now on.
-    await server.deployments.refresh(jobId);
     return c.json(created, 201);
   });
 

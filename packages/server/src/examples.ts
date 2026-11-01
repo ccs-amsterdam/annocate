@@ -4,13 +4,11 @@ import {
   CodebookItemsSchema,
   RecipeSchema,
   VariableValueSchema,
-  shownUnitFields,
   validateAnswer,
   validateCodebookItems,
   type AnyVariableType,
   type ExampleSummary,
   type TopLevelItem,
-  type UnitData,
   type VariableValue,
 } from "@annotinder/contracts";
 import { one, type Sql } from "./db.js";
@@ -19,7 +17,6 @@ import { putCoderValues } from "./shared/coders.js";
 import { HttpError } from "./shared/http.js";
 import type { JobRow } from "./shared/jobs.js";
 import { createJobFromRecipe } from "./shared/recipes.js";
-import { unitHash } from "./shared/units.js";
 
 // Example jobs (docs/plans/examples.md): recipes (shared/recipes.ts) that
 // ship with AnnoTinder, as files in `examples/<id>.json`, with a published
@@ -126,7 +123,6 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
     const coderTypes = collectCoderVariables(items);
     const loops = collectLoops(items);
     const unitTypes = new Map<string, AnyVariableType>(loops.flatMap((loop) => [...loop.variables]));
-    const shown = shownUnitFields(items);
     const check = (name: string, type: AnyVariableType | undefined, value: VariableValue) => {
       if (!type) throw new Error(`examples/${id}.json: no question '${name}'`);
       const errors = validateAnswer(name, type, value);
@@ -152,14 +148,8 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
           throw new Error(`examples/${id}.json: example coder ${i + 1}'s answers to ${externalId} don't finish a loop`);
         }
         const uid = unitId(externalId);
-        const unit = example.units.find((u) => u.id === externalId)!;
-        const data: UnitData = Object.fromEntries(shown.filter((f) => f in unit.data).map((f) => [f, unit.data[f]])) as UnitData;
-        const version = (await one<{ id: number }>(
-          tx,
-          `INSERT INTO unit_versions (job_id, unit_id, hash, data) VALUES ($1, $2, $3, $4)
-           ON CONFLICT (unit_id, hash) DO UPDATE SET hash = excluded.hash RETURNING id`,
-          [job.id, uid, unitHash(externalId, data), JSON.stringify(data)],
-        ))!.id;
+        // The deployed version of the unit, as coders' answers point to theirs
+        const version = (await one<{ version_id: number }>(tx, "SELECT version_id FROM units WHERE id = $1", [uid]))!.version_id;
         for (const [name, short] of Object.entries(answers)) {
           const value = answerValue(short);
           check(name, unitTypes.get(name), value);

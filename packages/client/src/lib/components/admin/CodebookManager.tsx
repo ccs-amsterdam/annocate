@@ -14,7 +14,7 @@ import { describeVersions } from "../../codebook/versions";
 import { CodebookEditor, type CodebookEditorMode, type SaveFn } from "./CodebookEditor";
 import { CodebookStatusBanner } from "./CodebookStatusBanner";
 import { CodebookVersionsDialog } from "./CodebookVersionsDialog";
-import { PublishDialog } from "./PublishDialog";
+import { DeployDialog } from "./DeployDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Loader2 } from "lucide-react";
 import { clearBackup, type CodebookBackup } from "../../codebook/localBackup";
@@ -217,25 +217,28 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
         onDeleteDraft={() => void deleteDraft()}
       />
 
-      <PublishDialog
+      <DeployDialog
         key={toPublish?.id ?? "closed"}
+        client={client}
+        open={toPublish !== null}
         codebook={toPublish}
         versionNumber={toPublish ? (versions.numberOf(toPublish.id) ?? codebooks.length + 1) : 0}
         live={versions.liveId !== null ? (liveQuery.data ?? null) : null}
         liveNumber={liveNumber}
-        onPublish={async (codebook, note) => {
-          if (note !== (codebook.note ?? "")) {
+        onDeploy={async (codebook, note, units) => {
+          if (codebook && note !== (codebook.note ?? "")) {
             await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items } });
           }
+          const codebookId = codebook?.id ?? versions.liveId!;
           let deployment;
           try {
-            deployment = await publish.mutateAsync(codebook.id);
+            deployment = await publish.mutateAsync({ codebookId, units });
           } catch (err) {
-            // Many links (one per combination of link parameter values): published only when confirmed
+            // Many links (one per combination of link parameter values): deployed only when confirmed
             if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
-            deployment = await publish.mutateAsync({ codebookId: codebook.id, confirmLinks: true });
+            deployment = await publish.mutateAsync({ codebookId, units, confirmLinks: true });
           }
-          setSelectedId(null);
+          if (codebook) setSelectedId(null);
           return deployment;
         }}
         onClose={() => setToPublish(null)}

@@ -9,7 +9,7 @@ what exists.
 | [setup-wizard.md](setup-wizard.md): a guided setup for a new job (annotate / survey / experiment, units and who codes what, question names), ending in the editor; recipes shared with examples | Built; next steps listed |
 | [sets-and-session-parameters.md](sets-and-session-parameters.md): set groups as columns, assign-a-set loops with overlap, session parameters in the codebook, links generated from them; auto variables assigned when reached, stratified balancing | Built |
 | [special-sets.md](special-sets.md): overlap at a rate (default for crowd coding), and the special sets `_gold` (silent checks, health) and `_practice` (feedback), `$unit._practice` | Coder codebook, practice and gold built; the rest in order |
-| [design.md](design.md): the design as the single source of truth: declared unit fields (the job's field specification), codebook as the coders' part, design vs deployment, targets | Agreed; after special-sets step 2 |
+| [design.md](design.md): the design as the single source of truth: declared unit fields (the job's field specification), codebook as the coders' part, design vs deployment, targets | Drafts until deployed (§5) built; the design document and unit fields next |
 | [gold-checks.md](gold-checks.md): hidden unit fields, and checking coders against known answers | Superseded by special-sets.md, except hidden fields and server-side checks |
 | [question-loops.md](question-loops.md): the same questions once per value of a list | Idea, not designed in detail |
 | [passkeys.md](passkeys.md): passkeys as a second factor checked by AnnoTinder, and a login shared with AmCAT | Passkeys built (`ANNOTINDER_2FA=annotinder`); step-up and the AmCAT login not |

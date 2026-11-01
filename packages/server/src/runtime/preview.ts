@@ -47,14 +47,7 @@ export class PreviewStore implements Store {
   ) {}
 
   getDeployment: Store["getDeployment"] = () => this.db.getDeployment();
-  getUnits: Store["getUnits"] = (ids) => this.db.getUnits(ids);
-  /** Previews keep their unit versions in memory, like their answers. */
-  private versions = new Map<string, number>();
-  unitVersion: Store["unitVersion"] = async (unitId, hash) => {
-    const key = `${unitId}/${hash}`;
-    if (!this.versions.has(key)) this.versions.set(key, this.versions.size + 1);
-    return this.versions.get(key)!;
-  };
+  getUnits: Store["getUnits"] = (ids, snapshotId) => this.db.getUnits(ids, snapshotId);
 
   async listCoders(): Promise<StoredCoder[]> {
     return [...this.coders.values()];

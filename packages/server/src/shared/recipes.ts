@@ -6,7 +6,7 @@ import type { JobRow } from "./jobs.js";
 import { checkUnitUpload } from "./limits.js";
 import { checkLinkCount, syncLinks } from "./invites.js";
 import { putSetGroup } from "./sets.js";
-import { setUnitFields } from "./units.js";
+import { saveUnits, setUnitFields } from "./units.js";
 
 // Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new job's
 // units, set groups and first codebook in one document; publishing it makes
@@ -76,14 +76,7 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
       recipe.units.length,
     );
     await setUnitFields(tx, job.id, added.fields);
-    for (const unit of recipe.units) {
-      const row = await one<{ id: number }>(tx, "INSERT INTO units (job_id, external_id, data) VALUES ($1, $2, $3) RETURNING id", [
-        job.id,
-        unit.id,
-        JSON.stringify(unit.data),
-      ]);
-      unitIds.set(unit.id, row!.id);
-    }
+    for (const [id, unitId] of await saveUnits(tx, job.id, recipe.units.map((u) => ({ externalId: u.id, data: u.data })))) unitIds.set(id, unitId);
   }
   const unitId = (id: string) => {
     const found = unitIds.get(id);
@@ -112,8 +105,8 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
   ]))!.id;
   let firstInvite: number | null = null;
   if (recipe.publish) {
-    await putDeployment(tx, job.id, { codebookId, active: true });
-    await checkLinkCount(tx, job.id, recipe.codebook.items as CodebookItem[], true);
+    await putDeployment(tx, job.id, { codebookId, active: true, units: true });
+    await checkLinkCount(tx, job.id, recipe.codebook.items as CodebookItem[], true, null);
     await syncLinks(tx, job.id, { secrets: options.secrets });
     firstInvite = (await one<{ id: number }>(tx, "SELECT id FROM invites WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
   }

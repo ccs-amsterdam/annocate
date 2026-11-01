@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 import type {
   CodebookMeta,
+  DeploymentVersion,
+  PendingChanges,
   CoderDeletion,
   CodebookResponse,
   CodebookWrite,
@@ -53,6 +55,8 @@ export const keys = {
   coderDeletions: (jobId?: number) => ["admin", "job", jobId ?? "current", "coders", "deletions"] as const,
   deployment: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment"] as const,
   deploymentStatus: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment", "status"] as const,
+  pending: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment", "pending"] as const,
+  deploymentVersions: (jobId?: number) => ["admin", "job", jobId ?? "current", "deployment", "versions"] as const,
   invites: (jobId?: number) => ["admin", "job", jobId ?? "current", "invites"] as const,
   overview: (jobId?: number) => ["admin", "job", jobId ?? "current", "overview"] as const,
 };
@@ -199,7 +203,11 @@ export function useCreateUnitsMutation(client: ResearcherApi) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: UnitsCreateBody) => client.createUnits(body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
+      ]),
   });
 }
 
@@ -207,7 +215,11 @@ export function useDeleteUnitMutation(client: ResearcherApi): UseMutationResult<
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteUnit(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
+      ]),
   });
 }
 
@@ -215,7 +227,7 @@ export function useSetGroupsQuery(client: ResearcherApi): UseQueryResult<SetGrou
   return useQuery({ queryKey: keys.sets(client.jobId), queryFn: () => client.listSetGroups() });
 }
 
-/** Changing sets changes links (link parameters with a group's sets) and the overview. */
+/** Changing the draft's sets changes what deploying would change, and the overview. */
 function useSetGroupMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) => Promise<T>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -223,7 +235,7 @@ function useSetGroupMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) 
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.sets(client.jobId) }),
-        queryClient.invalidateQueries({ queryKey: keys.invites(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
         queryClient.invalidateQueries({ queryKey: keys.overview(client.jobId) }),
       ]),
   });
@@ -296,6 +308,16 @@ export function useDeploymentStatusQuery(client: ResearcherApi, enabled: boolean
   });
 }
 
+/** What deploying the drafts would change (docs/plans/design.md §5). */
+export function usePendingChangesQuery(client: ResearcherApi, enabled = true): UseQueryResult<PendingChanges> {
+  return useQuery({ queryKey: keys.pending(client.jobId), queryFn: () => client.getPendingChanges(), enabled });
+}
+
+/** The deployed versions, newest first. */
+export function useDeploymentVersionsQuery(client: ResearcherApi, enabled = true): UseQueryResult<DeploymentVersion[]> {
+  return useQuery({ queryKey: keys.deploymentVersions(client.jobId), queryFn: () => client.listDeploymentVersions(), enabled });
+}
+
 /** The live codebook version; null if the job was never published. */
 export function useDeploymentQuery(client: ResearcherApi): UseQueryResult<DeploymentResponse | null> {
   return useQuery({ queryKey: keys.deployment(client.jobId), queryFn: () => client.getDeployment() });
@@ -348,22 +370,31 @@ export function useUnitQuery(client: ResearcherApi, id: number | null): UseQuery
   return useQuery({ queryKey: [...keys.units(client.jobId), "one", id], queryFn: () => client.getUnit(id!), enabled: id !== null });
 }
 
+/** What to deploy: a codebook (the deployed one: keep it), and the draft units and sets (default) or not. */
+export interface DeployVars {
+  codebookId: number;
+  units?: boolean;
+  confirmLinks?: boolean;
+}
+
 /**
- * Publishes a codebook. With many links (contracts CONFIRM_LINKS) the server
- * asks to confirm (409 `confirm_links`): publish again with `confirmLinks`.
+ * Deploys (docs/plans/design.md §5): a codebook and the draft units. With
+ * many links (contracts CONFIRM_LINKS) the server asks to confirm (409
+ * `confirm_links`): deploy again with `confirmLinks`.
  */
-export function usePublishMutation(
-  client: ResearcherApi,
-): UseMutationResult<DeploymentResponse, Error, number | { codebookId: number; confirmLinks?: boolean }> {
+export function usePublishMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, number | DeployVars> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: number | { codebookId: number; confirmLinks?: boolean }) => {
-      const { codebookId, confirmLinks } = typeof vars === "number" ? { codebookId: vars, confirmLinks: undefined } : vars;
+    mutationFn: async (vars: number | DeployVars) => {
+      const { codebookId, confirmLinks, units = true } = typeof vars === "number" ? { codebookId: vars } : vars;
       const current = queryClient.getQueryData<DeploymentResponse | null>(keys.deployment(client.jobId));
-      return client.putDeployment({ codebookId, active: current?.active ?? true, ...(confirmLinks ? { confirmLinks } : {}) });
+      return client.putDeployment({ codebookId, units, active: current?.active ?? true, ...(confirmLinks ? { confirmLinks } : {}) });
     },
     onSuccess: (deployment) => {
       queryClient.setQueryData(keys.deployment(client.jobId), deployment);
+      void queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) });
+      void queryClient.invalidateQueries({ queryKey: keys.deploymentVersions(client.jobId) });
+      void queryClient.invalidateQueries({ queryKey: keys.overview(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.invites(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: ["admin", "job", client.jobId ?? "current", "codebook"] });
       return queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });

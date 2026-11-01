@@ -85,7 +85,7 @@ const toInvite = (row: InviteRow): ResearcherInvite => ({
 });
 
 const JOB_SELECT = `SELECT j.id, j.name, j.created, j.archived, j.suspended_at, o.email AS owner,
-  (SELECT count(*)::int FROM units WHERE job_id = j.id) AS units,
+  (SELECT count(*)::int FROM units WHERE job_id = j.id AND version_id IS NOT NULL) AS units,
   (SELECT count(*)::int FROM coders WHERE job_id = j.id) AS coders,
   (SELECT count(*)::int FROM annotation_values WHERE job_id = j.id) AS answers
   FROM jobs j LEFT JOIN users o ON o.id = j.owner_id`;

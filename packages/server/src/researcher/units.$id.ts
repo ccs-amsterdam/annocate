@@ -2,13 +2,13 @@ import { Hono } from "hono";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { setUnitFields, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
+import { DRAFT_UNITS, removeUnit, setUnitFields, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
 
 export function unit(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const get = (jobId: number, id: number) => one<UnitRow>(db, "SELECT * FROM units WHERE job_id = $1 AND id = $2", [jobId, id]);
+  const get = (jobId: number, id: number) => one<UnitRow>(db, `${DRAFT_UNITS} AND u.job_id = $1 AND u.id = $2`, [jobId, id]);
 
   app.get("/job/:jobId/units/:id", requireJobUser(server, "READ"), async (c) => {
     const row = await get(c.get("jobId"), Number(c.req.param("id")));
@@ -21,15 +21,12 @@ export function unit(server: Server): Hono<Env> {
     const id = Number(c.req.param("id"));
     const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Unit not found" }, 404);
-    // Its answers would lose their unit; replace it instead (a new version).
-    if (existing.coded) return c.json({ error: "Unit has answers and cannot be deleted" }, 409);
-
+    // Out of the draft: deployed versions and answers keep it (docs/plans/design.md §5).
     await db.transaction(async (tx) => {
-      await tx.query("DELETE FROM units WHERE job_id = $1 AND id = $2 AND NOT coded", [jobId, id]);
+      await removeUnit(tx, jobId, id);
       // No units left: the next upload sets the fields anew
       if ((await unitCount(tx, jobId)) === 0) await setUnitFields(tx, jobId, []);
     });
-    await server.deployments.refresh(jobId);
     return c.body(null, 204);
   });
 

@@ -203,9 +203,10 @@ describe("coder flow", () => {
     expect((await again.next())?.externalId).toBe("unit-2");
   });
 
-  it("skips units that were deleted", async () => {
+  it("skips units that were deleted (once that is deployed)", async () => {
     const unit3 = await unitByExternalId("unit-3");
     expect((await server.request(`/job/1/units/${unit3.id}`, { method: "DELETE", headers: adminHeaders })).status).toBe(204);
+    await deployDrafts();
 
     const c = coder("coder-a");
     for (let i = 0; i < 2; i++) {
@@ -255,6 +256,23 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
   });
   expect(deploy.status).toBe(200);
   return (await deploy.json()) as DeploymentResponse;
+}
+
+/** Deploys the draft units and sets with the deployed codebook (docs/plans/design.md §5). */
+async function deployDrafts(): Promise<DeploymentResponse> {
+  const current = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { codebookId: number };
+  const res = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: current.codebookId }) });
+  expect(res.status, await res.clone().text()).toBe(200);
+  return (await res.json()) as DeploymentResponse;
+}
+
+/** A unit of the draft: its external id and data. */
+async function draftUnit(id: number): Promise<{ externalId: string; data: UnitData }> {
+  const [row] = await db.query<{ externalId: string; data: UnitData }>(
+    `SELECT u.external_id AS "externalId", unit_data(v.fields) AS data FROM units u JOIN unit_versions v ON v.id = u.version_id WHERE u.id = $1`,
+    [id],
+  );
+  return row;
 }
 
 /** Adds a set to a group (group `g` by default), replacing a set of that name. Returns its unit ids. */
@@ -423,6 +441,7 @@ describe("assigned sets", () => {
     // A set that no longer exists: routed again.
     await createSet("s1", ["unit-3"], "h");
     await server.request("/job/1/sets/g", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }] }) });
+    await deployDrafts();
     expect((await coder("b").next())!.externalId).toBe("unit-2");
   });
 
@@ -459,14 +478,17 @@ describe("assigned sets", () => {
     expect((await c.session()).session).toEqual({ part: "s2" });
     expect((await c.next())!.externalId).toBe("unit-2");
 
-    // A third set: a third link, without publishing again. Removing s1 retires its link.
+    // A third set: a third link once the sets are deployed. Removing s1 retires its link.
     await createSet("s3", ["unit-3"]);
+    expect((await links()).filter((l) => !l.retiredAt)).toHaveLength(2);
+    expect((await deployDrafts()).links).toBe(3);
     expect((await links()).filter((l) => !l.retiredAt)).toHaveLength(3);
     await server.request("/job/1/sets/g", {
       method: "PUT",
       headers: adminHeaders,
       body: JSON.stringify({ sets: [{ name: "s2", unitIds: [(await unitByExternalId("unit-2")).id] }, { name: "s3", unitIds: [(await unitByExternalId("unit-3")).id] }] }),
     });
+    await deployDrafts();
     const retired = await send("late", "/session", {}, { "x-invite-secret": bySet.s1 });
     expect(retired.status).toBe(403);
     expect(await retired.json()).toMatchObject({ code: "link_inactive" });
@@ -491,12 +513,17 @@ describe("assigned sets", () => {
     expect((await coder("b").next())!.externalId).toBe("unit-2");
   });
 
-  it("are handed out without a new codebook version, as are new units", async () => {
+  it("come with the next deploy, without a new codebook, as do new units", async () => {
     await redeploy(assign({ draw: "balanced" }));
-    // No sets yet: no units, until there are
+    // No sets yet: no units, until they are deployed
     expect(await coder("early").next()).toBeNull();
     const set = await createSet("late", ["unit-2"]);
+    expect(await coder("early").next()).toBeNull();
+    const deployed = await deployDrafts();
     expect((await coder("early").next())!.id).toBe(set[0]);
+    // A new version that changed the units, not the codebook
+    const versions = (await (await server.request("/job/1/deployment/versions", { headers: adminHeaders })).json()) as { version: number; changes: unknown }[];
+    expect(versions[0]).toMatchObject({ version: deployed.version, changes: { codebook: false, units: { added: 0, changed: 0, removed: 0, sets: true } } });
 
     // New units join "all units"
     await redeploy({});
@@ -506,13 +533,17 @@ describe("assigned sets", () => {
       seen.push(u.externalId);
       await c.submit(u.id, sentiment("positive"));
     }
-    const [{ data: before }] = await db.query<{ data: Record<string, unknown> }>("SELECT data FROM units WHERE job_id = 1 LIMIT 1");
+    const { data: before } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/job/1/units", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ units: [{ externalId: "unit-new", data: { ...before, text: "New" } }] }),
     });
     expect(upload.status, await upload.clone().text()).toBe(201);
+    const pending = (await (await server.request("/job/1/deployment/pending", { headers: adminHeaders })).json()) as { units: object };
+    expect(pending.units).toEqual({ added: 1, changed: 0, removed: 0, sets: false });
+    expect(await c.next()).toBeNull();
+    await deployDrafts();
     expect((await c.next())!.externalId).toBe("unit-new");
   });
 });
@@ -738,7 +769,7 @@ describe("quitting and deleting a coder's data", () => {
 
 describe("practice and gold units", () => {
   it("practice units come first, with feedback when wrong; gold units are checked silently, and health running out ends the session", async () => {
-    const [{ data: base }] = await db.query<{ data: Record<string, unknown> }>("SELECT data FROM units WHERE job_id = 1 LIMIT 1");
+    const { data: base } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/job/1/units", {
       method: "POST",
       headers: adminHeaders,
@@ -1315,13 +1346,17 @@ describe("finished units follow the current codebook", () => {
 });
 
 describe("state in the database, not in memory", () => {
-  it("keeps no units: a unit changed after it was served is served as it is now", async () => {
+  it("keeps no units: a unit changed after it was served is served as deployed now", async () => {
     const c = coder("units");
     const unit = (await c.next())!;
     await c.submit(unit.id, demo("neutral"));
-    await db.query("UPDATE units SET data = $1 WHERE id = $2", [JSON.stringify({ text: "fixed" }), unit.id]);
-    const back = ((await (await c.call(`/loop/1/units/${unit.id}`)).json()) as CoderUnitResponse).data;
-    expect(back).toEqual({ text: "fixed" });
+    const { externalId, data } = await draftUnit(unit.id);
+    const upload = { units: [{ externalId, data: { ...data, text: "fixed" } }], overwriteCoded: true };
+    expect((await server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify(upload) })).status).toBe(201);
+    const back = async () => ((await (await c.call(`/loop/1/units/${unit.id}`)).json()) as CoderUnitResponse).data.text;
+    expect(await back()).toBe(data.text);
+    await deployDrafts();
+    expect(await back()).toBe("fixed");
   });
 
   it("works across server processes: changes, sessions and transfer links are in the database", async () => {
@@ -1390,7 +1425,7 @@ describe("unit versions", () => {
   const versionOf = async (unitId: number) =>
     (
       await db.query<{ data: UnitData }>(
-        `SELECT v.data FROM annotation_values a JOIN unit_versions v ON v.id = a.unit_version_id
+        `SELECT unit_data(v.fields) AS data FROM annotation_values a JOIN unit_versions v ON v.id = a.unit_version_id
          WHERE a.unit_id = $1 AND a.retired_at IS NULL LIMIT 1`,
         [unitId],
       )
@@ -1402,10 +1437,10 @@ describe("unit versions", () => {
     const c = coder("hash");
     const first = (await c.next())!;
     await c.submit(first.id, demo("neutral"));
-    expect(await versionOf(first.id)).toEqual(first.data);
+    expect(await versionOf(first.id)).toMatchObject(first.data);
 
     const second = (await c.next())!;
-    const [before] = await db.query<{ externalId: string; data: UnitData }>(`SELECT external_id AS "externalId", data FROM units WHERE id = $1`, [second.id]);
+    const before = await draftUnit(second.id);
     // The researcher replaces it while the coder has it open (not coded yet).
     expect((await upload([{ externalId: before.externalId, data: { ...before.data, text: "edited" } }], { overwrite: true })).status).toBe(201);
     expect((await c.submit(second.id, demo("neutral"))).status).toBe(200);
@@ -1416,11 +1451,12 @@ describe("unit versions", () => {
     const a = coder("a");
     const unit = (await a.next())!;
     await a.submit(unit.id, demo("neutral"));
-    const [row] = await db.query<{ externalId: string; data: UnitData }>(`SELECT external_id AS "externalId", data FROM units WHERE id = $1`, [unit.id]);
+    const row = await draftUnit(unit.id);
     const edited = [{ externalId: row.externalId, data: { ...row.data, text: "edited" } }];
 
     expect((await upload(edited, { overwrite: true })).status).toBe(409);
     expect((await upload(edited, { overwrite: true, overwriteCoded: true })).status).toBe(201);
+    await deployDrafts();
     // The next coder sees the new text; the first answer still has the old one.
     expect((await coder("b").next())!.data.text).toBe("edited");
     expect((await versionOf(unit.id))?.text).toBe(row.data.text);
@@ -1430,7 +1466,7 @@ describe("unit versions", () => {
   });
 
   it("sends coders only the unit fields the codebook uses", async () => {
-    await upload([{ externalId: "secret", data: { headline: "h", text: "t" } }], {});
+    expect((await upload([{ externalId: "secret", data: { headline: "h", text: "t" } }], {})).status).toBe(201);
     await redeploy({ layout: { template: "$unit.headline" } });
     const unit = (await coder("c").next())!;
     expect(Object.keys(unit.data)).toEqual(["headline"]);

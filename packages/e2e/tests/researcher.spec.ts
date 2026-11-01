@@ -90,7 +90,7 @@ test("your first job, as the help describes it: units, a codebook, publish, invi
   });
   await page.getByRole("button", { name: "Codebook", exact: true }).click();
   await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await page.getByRole("button", { name: /Publish v1/ }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Deploy", exact: true }).click();
   await expect.poll(async () => (await api<{ codebookId: number } | null>(request, "GET", `/job/${job.id}/deployment`))?.codebookId).toBe(codebook.id);
 
   // 7. Invite coders: publishing made the job's link; give it a label

@@ -4,7 +4,7 @@ import { codebookItems, type CodebookRow } from "../shared/codebooks.js";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { getDeployment, putDeployment } from "../shared/deployments.js";
+import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from "../shared/deployments.js";
 import { checkLinkCount, syncLinks } from "../shared/invites.js";
 import { setWarnings } from "../shared/sets.js";
 
@@ -13,6 +13,8 @@ export function deployment(server: Server): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/job/:jobId/deployment", requireJobUser(server, "READ"), async (c) => c.json(await getDeployment(db, c.get("jobId"))));
+  app.get("/job/:jobId/deployment/pending", requireJobUser(server, "READ"), async (c) => c.json(await pendingChanges(db, c.get("jobId"))));
+  app.get("/job/:jobId/deployment/versions", requireJobUser(server, "READ"), async (c) => c.json(await deploymentVersions(db, c.get("jobId"))));
 
   app.put("/job/:jobId/deployment", requireJobUser(server, "ADMIN"), async (c) => {
     const parsed = DeploymentWriteSchema.safeParse(await c.req.json());
@@ -26,11 +28,14 @@ export function deployment(server: Server): Hono<Env> {
     if (errors.length > 0 || codebookItems(codebook).length === 0) {
       return c.json({ error: "Fix the codebook's issues before publishing it", issues: errors }, 400);
     }
+    // The units it runs: the drafts (`units`, and always the first time), or the deployed snapshot.
+    const current = await one<{ snapshot_id: number }>(db, "SELECT snapshot_id FROM deployments WHERE job_id = $1", [jobId]);
+    const snapshotId = parsed.data.units || !current ? null : current.snapshot_id;
     // Links follow the codebook's link parameters (docs/plans/sets-and-session-parameters.md §4).
-    await checkLinkCount(db, jobId, codebookItems(codebook), parsed.data.confirmLinks ?? false);
+    await checkLinkCount(db, jobId, codebookItems(codebook), parsed.data.confirmLinks ?? false, snapshotId);
     const deployed = await db.transaction(async (tx) => {
       const result = await putDeployment(tx, jobId, parsed.data);
-      const warnings = [...(result.warnings ?? []), ...(await setWarnings(tx, jobId, codebookItems(codebook)))];
+      const warnings = [...(result.warnings ?? []), ...(await setWarnings(tx, jobId, codebookItems(codebook), snapshotId))];
       return { ...result, links: await syncLinks(tx, jobId), ...(warnings.length > 0 ? { warnings } : {}) };
     });
     await server.deployments.refresh(jobId);

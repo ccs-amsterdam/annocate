@@ -117,10 +117,12 @@ the client, so the server stores only ciphertext (`plans/encryption.md`).
 ## 5. Lifecycle
 
 **Deploy.** A researcher calls `PUT /job/:jobId/deployment` with
-`{ codebookId, active }`. The server bumps the deployment `version`, freezes
-the codebook. Every runtime checks the deployment's stamp on each request
-and re-reads it when it changed; researcher changes that don't publish
-(units, sets, job settings) bump `deployments.revision` for that
+`{ codebookId, units, active }`: the codebook, with a snapshot of the
+draft units and sets (§8.4) or the deployed ones. The server bumps the
+deployment `version` when either changed, and freezes the codebook. Every
+runtime checks the deployment's stamp on each request and re-reads it when
+it changed; other changes coders' runtimes read (job settings, resets)
+bump `deployments.revision` for that
 (`Deployments.refresh`). Coders' browsers send the version their codebook belongs
 to; requests with an older one get 409 `codebook_changed`, and the client
 loads the session again (`api/coder.md`).
@@ -478,31 +480,34 @@ How it works:
   analysis. It bumps the deployment's `annotationEpoch`, so the runtime
   reloads.
 
-### 8.4 Unit versions: what coders saw
+### 8.4 Units: drafts, versions and snapshots
 
-Coders get only the unit fields the codebook uses (`shownUnitFields`:
-`$unit` references in loop layouts, question texts, conditions and end
-messages, span fields), which keeps other columns
-(e.g. metadata) from coders and responses small. A unit as shown, its
-external id and those fields, is a **unit version**: a row of
-`unit_versions` (`id`, `unit_id`, a `hash` of the shown content, the
-`data`), stored the first time it is shown. Every answer points to the
-version its coder saw (`annotation_values.unit_version_id`), and to the
-codebook version it was given under (`codebook_id`); both are foreign
-keys.
+Everything is a draft until deployed (`plans/design.md` §5), units and
+sets too (migration 0024):
 
-- Each serve computes the shown data and its hash and looks up the version
-  (`unit_versions`, inserted only the first time it is shown);
-  `unit_serves` records the version last shown to the coder, which is
-  stored with their answers.
+- **Values** (`unit_values`): every field value once per job, by content
+  (`unit_value_hash`). A unit **version** (`unit_versions`) is a map of
+  field -> value id, with a content hash (`unit_content_hash`); adding a
+  column makes new versions, but only the new values are new data.
+- **The draft**: `units` points to each unit's current version
+  (`version_id`; NULL: removed from the draft, kept for snapshots and
+  answers), with the draft's sets in `unit_sets`. Uploads, deletes and set
+  changes only change the draft; a preview runs it.
+- **Snapshots** (`unit_snapshots`, `snapshot_units`, `snapshot_sets`): the
+  units and sets a deployment runs. Deploying with `units` takes a new
+  snapshot of the draft when it differs from the deployed one;
+  `deployment_versions` records each deployed version and what it changed.
+- Coders get the snapshot's versions, with only the fields the codebook
+  uses (`shownUnitFields`: other columns, e.g. metadata or answer columns,
+  stay on the server). Every answer points to the full unit version its
+  coder saw (`annotation_values.unit_version_id`) and to its codebook
+  version; what was shown is that version limited to that codebook's shown
+  fields.
 - A unit can be replaced after it was coded, with a warning
-  (`overwriteCoded` on `POST /units`): later coders see the new
-  content, a new version; earlier answers keep theirs. So it is visible
-  which answers are about which content, and spans can always be read
-  against the text they were made on.
-- Editing a field the codebook doesn't use makes no new version; a
-  codebook that starts using another field does (coders then see more).
-- Units with answers can't be deleted (their answers would lose them).
+  (`overwriteCoded`): a new version, deployed with the next deploy;
+  earlier answers keep theirs, so spans can always be read against the
+  text they were made on. A unit in a snapshot or with answers is never
+  deleted, only taken out of the draft.
 
 ### 8.3 Open: choosing what reopens
 
@@ -580,8 +585,10 @@ Roughly in order:
 5. **Limits.** Quotas per account are built (`accounts.md`: plans, domain
    groups, per-user overrides, unit and answer sizes). Still open: rate
    limits, and storage in bytes.
-6. **Unit preprocessing.** Unit versions (§8.4) hold the fields as shown;
-   preprocessing (e.g. tokenizing once on the server) would be part of it.
+6. **Unit preprocessing.** Preprocessing (e.g. tokenizing once on the
+   server) would happen at deploy, with the snapshot (§8.4). Also open:
+   cleaning up unit versions never deployed and no longer current, and a
+   purge that blanks a value everywhere (privacy).
 7. **Keeping history.** Unit versions are kept (§8.4). Answers reset by a
    researcher are kept as retired rows; a coder changing an answer updates
    it in place (decided: no history of a coder's own edits for now; adding

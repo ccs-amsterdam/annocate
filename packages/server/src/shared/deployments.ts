@@ -4,8 +4,11 @@ import {
   unitLoops,
   CodebookItemsSchema,
   type CodebookItem,
+  type DeploymentChanges,
   type DeploymentResponse,
+  type DeploymentVersion,
   type DeploymentWrite,
+  type PendingChanges,
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { codebookItems, itemsValid, toCodebookResponse, type CodebookRow } from "./codebooks.js";
@@ -13,10 +16,12 @@ import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
 import { runtimeSets } from "./sets.js";
+import { anyUnitChanges, snapshotDraft, unitChanges } from "./units.js";
 
 interface DeploymentRow {
   job_id: number;
   codebook_id: number;
+  snapshot_id: number;
   active: boolean;
   version: number;
   annotation_epoch: number;
@@ -30,23 +35,58 @@ export async function getDeployment(sql: Sql, jobId: number): Promise<Deployment
 }
 
 /**
- * Creates or replaces a job's deployment, bumping its version and freezing
- * the codebook. Warns when a loop gains questions while coders already
- * finished units in it: those units count as unfinished again
- * (docs/architecture.md §8.2).
+ * Deploys: the codebook, with the draft units and sets (`units`, always on
+ * the first deploy) or the deployed ones. A new version when the codebook
+ * or the units change (docs/plans/design.md §5), recorded with what
+ * changed. Freezes the codebook. Warns when a loop gains questions while
+ * coders already finished units in it: those units count as unfinished
+ * again (docs/architecture.md §8.2).
  */
 export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWrite): Promise<DeploymentResponse> {
-  const previous = await getDeployment(sql, jobId);
-  const warnings = previous ? await reopenWarnings(sql, jobId, previous.codebookId, body.codebookId) : [];
+  const previous = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
+  const warnings = previous ? await reopenWarnings(sql, jobId, previous.codebook_id, body.codebookId) : [];
+  const units = !previous || body.units ? await unitChanges(sql, jobId, previous?.snapshot_id ?? null) : null;
+  const newUnits = units !== null && (!previous || anyUnitChanges(units));
+  const snapshotId = newUnits ? await snapshotDraft(sql, jobId) : previous!.snapshot_id;
+  const changes: DeploymentChanges = {
+    codebook: previous?.codebook_id !== body.codebookId,
+    units: newUnits ? units : null,
+  };
+  const changed = changes.codebook || changes.units !== null;
+  const version = !previous ? 1 : previous.version + (changed ? 1 : 0);
   await sql.query(
-    `INSERT INTO deployments (job_id, codebook_id, active, version, updated) VALUES ($1, $2, $3, 1, now())
-     ON CONFLICT (job_id) DO UPDATE SET codebook_id = excluded.codebook_id, active = excluded.active,
-       version = deployments.version + (deployments.codebook_id IS DISTINCT FROM excluded.codebook_id)::int,
-       updated = excluded.updated`,
-    [jobId, body.codebookId, body.active],
+    `INSERT INTO deployments (job_id, codebook_id, snapshot_id, active, version, updated) VALUES ($1, $2, $3, $4, $5, now())
+     ON CONFLICT (job_id) DO UPDATE SET codebook_id = excluded.codebook_id, snapshot_id = excluded.snapshot_id,
+       active = excluded.active, version = excluded.version, updated = excluded.updated`,
+    [jobId, body.codebookId, snapshotId, body.active, version],
   );
+  if (!previous || changed) {
+    await sql.query(
+      "INSERT INTO deployment_versions (job_id, version, codebook_id, snapshot_id, changes) VALUES ($1, $2, $3, $4, $5)",
+      [jobId, version, body.codebookId, snapshotId, JSON.stringify(changes)],
+    );
+  }
   await sql.query("UPDATE codebooks SET immutable = true WHERE job_id = $1 AND id = $2", [jobId, body.codebookId]);
   return { ...(await getDeployment(sql, jobId))!, ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/** What deploying the drafts would change: the units, and the latest codebook if it isn't deployed. */
+export async function pendingChanges(sql: Sql, jobId: number): Promise<PendingChanges> {
+  const deployed = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
+  const latest = await one<{ id: number }>(sql, "SELECT id FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
+  return {
+    units: await unitChanges(sql, jobId, deployed?.snapshot_id ?? null),
+    codebookId: latest && latest.id !== deployed?.codebook_id ? latest.id : null,
+  };
+}
+
+/** The deployed versions, newest first. */
+export async function deploymentVersions(sql: Sql, jobId: number): Promise<DeploymentVersion[]> {
+  const rows = await sql.query<{ version: number; codebook_id: number; changes: DeploymentChanges; created: Date }>(
+    "SELECT version, codebook_id, changes, created FROM deployment_versions WHERE job_id = $1 ORDER BY version DESC",
+    [jobId],
+  );
+  return rows.map((r) => ({ version: r.version, codebookId: r.codebook_id, changes: r.changes, created: r.created }));
 }
 
 /**
@@ -104,6 +144,7 @@ export async function getDeploymentSpec(sql: Sql, jobId: number): Promise<Deploy
     version: deployment.version,
     active: deployment.active,
     annotationEpoch: deployment.annotation_epoch,
+    snapshotId: deployment.snapshot_id,
   });
 }
 
@@ -116,7 +157,8 @@ export async function getPreviewSpec(sql: Sql, jobId: number): Promise<Deploymen
   const codebook = await one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
   if (!codebook) return null;
   if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest codebook has issues: fix them to preview it", "codebook_invalid");
-  const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0 });
+  // The drafts: the latest codebook with the draft units and sets.
+  const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0, snapshotId: null });
   const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.sets])).digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
@@ -125,7 +167,7 @@ async function buildSpec(
   sql: Sql,
   jobId: number,
   codebook: CodebookRow,
-  meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch">,
+  meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "snapshotId">,
 ): Promise<DeploymentSpec> {
   const job = await one<{ keep_sessions_open: boolean }>(sql, "SELECT keep_sessions_open FROM jobs WHERE id = $1", [jobId]);
   return {
@@ -133,6 +175,6 @@ async function buildSpec(
     ...meta,
     keepSessionsOpen: job?.keep_sessions_open ?? false,
     codebook: toCodebookResponse(codebook),
-    sets: await runtimeSets(sql, jobId),
+    sets: await runtimeSets(sql, jobId, meta.snapshotId),
   };
 }

@@ -116,6 +116,8 @@ response checked against its contract schema.
 | **Publishing** | | | | |
 | [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
 | [putDeployment](#putdeployment) | `PUT /job/:jobId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
+| [getPendingChanges](#getpendingchanges) | `GET /job/:jobId/deployment/pending` | READ | – | `PendingChangesSchema` |
+| [listDeploymentVersions](#listdeploymentversions) | `GET /job/:jobId/deployment/versions` | READ | – | `DeploymentVersionSchema[]` |
 | [getDeploymentStatus](#getdeploymentstatus) | `GET /job/:jobId/deployment/status` | READ | – | `DeploymentStatusSchema` |
 | [createPreview](#createpreview) | `POST /job/:jobId/deployment/preview` | WRITE | – | `PreviewSessionSchema` |
 | [resetAnnotations](#resetannotations) | `POST /job/:jobId/annotations/reset` | ADMIN | `ResetAnnotationsSchema` | `{ retired }` |
@@ -358,13 +360,16 @@ first upload sets them, later ones may add fields. An existing external id is a 
 `overwrite: true`; a unit that was coded (`coded`) also needs
 `overwriteCoded: true`. Its answers keep the unit version their coder saw
 ([listUnitVersions](#listunitversions)); spans may no longer fit the new
-text. A changed unit gets a new content hash, and coders get the new
-content from then on.
+text. Units go into the draft: coders get them, or a changed unit's new
+version (a new content hash), once they are deployed
+([putDeployment](#putdeployment)).
 
 ### deleteUnit
 
-`DELETE /job/:jobId/units/:id` → 204. 409 once coded (replace it
-instead). Deleting the last unit resets the fields.
+`DELETE /job/:jobId/units/:id` → 204. Takes the unit out of the draft
+(coders keep it until the next deploy). A unit that was deployed or coded
+is kept for those, and comes back when uploaded again. Deleting the last
+unit resets the fields.
 
 **Sets.** Units belong to named sets within set groups (table
 `unit_sets (job_id, grp, set_name, unit_id, position)`;
@@ -404,7 +409,7 @@ See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
 Links (invites) are not created by hand: publishing makes one per
 combination of the codebook's link parameter values (one if it has none),
-and set changes sync them ([putDeployment](#putdeployment)). A link no
+and deploying set changes syncs them ([putDeployment](#putdeployment)): links follow the deployed sets. A link no
 longer made is **retired** (`retiredAt`), never deleted: new coders get 403
 `link_inactive`, coders who started keep working. It comes back, with the
 same secret, if its combination returns.
@@ -484,19 +489,26 @@ codebook id, `active`, `version`; null if never published.
 
 ### putDeployment
 
-`PUT /job/:jobId/deployment` → `DeploymentResponseSchema`. Publish a
-codebook version (or pause/resume with `active`):
+`PUT /job/:jobId/deployment` → `DeploymentResponseSchema`. Deploy a
+codebook version with the draft units and sets (`units`, default true;
+false keeps the deployed ones; the first deploy always takes the draft's),
+or pause/resume with `active`. Units and sets are drafts until deployed
+(`docs/plans/design.md` §5):
 
 1. check that the codebook passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid codebooks);
-2. store it, bump `version` if the codebook version changed (pausing and
-   resuming don't: coders don't reload), and make the codebook immutable;
-3. sync the job's links: one per combination of the codebook's link
+2. with `units`: a snapshot of the draft units and sets, if they differ
+   from the deployed ones;
+3. store it, bump `version` if the codebook or the units changed (pausing
+   and resuming don't: coders don't reload), record the version with what
+   it changed ([listDeploymentVersions](#listdeploymentversions)), and make
+   the codebook immutable;
+4. sync the job's links: one per combination of the codebook's link
    parameter values; links no longer made are retired. Above 500 links this
    needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
    than 2000 is 400 `too_many_links`. The response's `links` is the number
    of active links;
-4. bump the deployment's revision, so every server process re-reads it on
+5. bump the deployment's revision, so every server process re-reads it on
    its next request.
 
 Paused (`active: false`): coders save what they have open, but get no new
@@ -506,6 +518,19 @@ study is paused) until it is resumed.
 Return `warnings` the researcher should see, e.g. a loop that gained
 questions, which makes units coders finished unfinished again, or a group
 with fewer overlap units than a loop expects.
+
+### getPendingChanges
+
+`GET /job/:jobId/deployment/pending` → `PendingChangesSchema`: what
+deploying the drafts would change: `units` (`added`, `changed`, `removed`,
+and whether the `sets` differ; all added before the first deploy) and
+`codebookId`, the latest codebook if it isn't the deployed one.
+
+### listDeploymentVersions
+
+`GET /job/:jobId/deployment/versions` → `DeploymentVersionSchema[]`,
+newest first: each deployed version with its codebook and what it changed
+(`changes.codebook`, `changes.units`: null when the units stayed).
 
 ### getDeploymentStatus
 

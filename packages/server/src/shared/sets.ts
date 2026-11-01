@@ -20,6 +20,7 @@ import {
 } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import { HttpError } from "./http.js";
+import { snapshotUnits } from "./units.js";
 
 // Set groups (docs/plans/sets-and-session-parameters.md §1): per unit its
 // sets in each group (`unit_sets`), with an optional position. A set is in
@@ -32,12 +33,21 @@ interface Row {
   position: number | null;
 }
 
-/** The job's groups with their sets, in order (groups and sets by name). */
-export async function listSetGroups(sql: Sql, jobId: number): Promise<SetGroupResponse[]> {
-  const rows = await sql.query<Row>(
-    "SELECT grp, set_name, unit_id, position FROM unit_sets WHERE job_id = $1 ORDER BY grp, set_name, position NULLS LAST, unit_id",
-    [jobId],
-  );
+/**
+ * The job's groups with their sets, in order (groups and sets by name): of
+ * a deployed snapshot, or (null) the draft's (docs/plans/design.md §5).
+ */
+export async function listSetGroups(sql: Sql, jobId: number, snapshotId: number | null = null): Promise<SetGroupResponse[]> {
+  const rows =
+    snapshotId === null
+      ? await sql.query<Row>(
+          "SELECT grp, set_name, unit_id, position FROM unit_sets WHERE job_id = $1 ORDER BY grp, set_name, position NULLS LAST, unit_id",
+          [jobId],
+        )
+      : await sql.query<Row>(
+          "SELECT grp, set_name, unit_id, position FROM snapshot_sets WHERE snapshot_id = $1 ORDER BY grp, set_name, position NULLS LAST, unit_id",
+          [snapshotId],
+        );
   const groups = new Map<string, Map<string, UnitSet>>();
   for (const r of rows) {
     if (!groups.has(r.grp)) groups.set(r.grp, new Map());
@@ -51,12 +61,9 @@ export async function listSetGroups(sql: Sql, jobId: number): Promise<SetGroupRe
 }
 
 /** The sets of a group (names), without the reserved ones. */
-export async function groupSets(sql: Sql, jobId: number, group: string): Promise<string[]> {
-  const rows = await sql.query<{ set_name: string }>(
-    "SELECT DISTINCT set_name FROM unit_sets WHERE job_id = $1 AND grp = $2 AND set_name NOT LIKE '\\_%' ORDER BY set_name",
-    [jobId, group],
-  );
-  return rows.map((r) => r.set_name);
+export async function groupSets(sql: Sql, jobId: number, group: string, snapshotId: number | null = null): Promise<string[]> {
+  const sets = (await listSetGroups(sql, jobId, snapshotId)).find((g) => g.name === group)?.sets ?? [];
+  return sets.map((s) => s.name).filter((name) => !name.startsWith("_"));
 }
 
 /** Makes or replaces a group: its sets' units, in order (positions for ordered sets). Units must be the job's. */
@@ -68,7 +75,7 @@ export async function putSetGroup(sql: Sql, jobId: number, group: string, sets: 
   const ids = [...new Set(sets.flatMap((s) => s.unitIds))];
   if (ids.length > 0) {
     const own = new Set(
-      (await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 AND id = ANY($2)", [jobId, ids])).map((r) => r.id),
+      (await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 AND id = ANY($2) AND version_id IS NOT NULL", [jobId, ids])).map((r) => r.id),
     );
     const foreign = ids.filter((id) => !own.has(id));
     if (foreign.length > 0) throw new HttpError(400, `Not units of this job: ${foreign.slice(0, 10).join(", ")}`);
@@ -89,9 +96,13 @@ export async function deleteSetGroup(sql: Sql, jobId: number, group: string): Pr
 }
 
 /** The sets as the runtime reads them: keyed `group/set`, plus every unit of the job (`__all__`). */
-export async function runtimeSets(sql: Sql, jobId: number): Promise<{ name: string; unitIds: number[] }[]> {
-  const allUnitIds = (await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 ORDER BY id", [jobId])).map((r) => r.id);
-  const groups = await listSetGroups(sql, jobId);
+export async function runtimeSets(sql: Sql, jobId: number, snapshotId: number | null): Promise<{ name: string; unitIds: number[] }[]> {
+  const allUnitIds = (
+    snapshotId === null
+      ? await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 AND version_id IS NOT NULL ORDER BY id", [jobId])
+      : await sql.query<{ id: number }>("SELECT unit_id AS id FROM snapshot_units WHERE snapshot_id = $1 ORDER BY unit_id", [snapshotId])
+  ).map((r) => r.id);
+  const groups = await listSetGroups(sql, jobId, snapshotId);
   return [
     { name: ALL_UNITS_UNITSET, unitIds: allUnitIds },
     ...groups.flatMap((g) => g.sets.map((s) => ({ name: setKey(g.name, s.name), unitIds: s.unitIds }))),
@@ -103,8 +114,8 @@ export async function runtimeSets(sql: Sql, jobId: number): Promise<{ name: stri
  * loop takes an overlap its group doesn't have (or fewer units than it
  * expects), or assigns sets of a group without sets.
  */
-export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[]): Promise<string[]> {
-  const groups = new Map((await listSetGroups(sql, jobId)).map((g) => [g.name, g.sets]));
+export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[], snapshotId: number | null = null): Promise<string[]> {
+  const groups = new Map((await listSetGroups(sql, jobId, snapshotId)).map((g) => [g.name, g.sets]));
   const warnings: string[] = [];
   const { questions } = collectQuestions(items);
   for (const { key, loop } of unitLoops(items)) {
@@ -126,10 +137,7 @@ export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[]
             warnings.push(`Loop '${title}': ${set === GOLD_SET ? "gold" : "practice"} units are on, but group '${special}' has no ${set} units.`);
             continue;
           }
-          const rows = await sql.query<{ external_id: string; data: Record<string, unknown> }>(
-            "SELECT external_id, data FROM units WHERE job_id = $1 AND id = ANY($2) ORDER BY id",
-            [jobId, units],
-          );
+          const rows = (await snapshotUnits(sql, jobId, snapshotId, units)).sort((a, b) => a.id - b.id);
           for (const question of settings.questions ?? []) {
             const empty = rows.filter((r) => parseAnswerKey(r.data[column(question)]) === null);
             // Right answers that aren't options of the question

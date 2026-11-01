@@ -1,5 +1,5 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import type { DeletionRequest, SessionEnd, UnitData, VariableValue } from "@annotinder/contracts";
+import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { coderAnswers, putCoderValues, toCoder, type CoderRow } from "../shared/coders.js";
 import { getDeploymentSpec, getPreviewSpec } from "../shared/deployments.js";
@@ -9,7 +9,7 @@ import type { InviteRow } from "../shared/invites.js";
 import { sessionValues } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, jobLimits } from "../shared/limits.js";
-import { unitHash, type UnitRow } from "../shared/units.js";
+import { snapshotUnits } from "../shared/units.js";
 import type {
   AnnotationWrite,
   Coder,
@@ -43,7 +43,8 @@ export interface Store {
    */
   deploymentStamp(): Promise<string | null>;
   /** Unit content by id; unknown ids are left out. */
-  getUnits(ids: number[]): Promise<Unit[]>;
+  /** Units as deployed: the snapshot's versions (null: the drafts, for previews). */
+  getUnits(ids: number[], snapshotId: number | null): Promise<Unit[]>;
   /** All coders (for researcher status). */
   listCoders(): Promise<Coder[]>;
   /** The coder for a coder key, created from an invite on first use (docs/coder-identity.md). */
@@ -104,11 +105,6 @@ export interface Store {
   servedVersion(coderId: number, unitId: number): Promise<number | null>;
   /** Refuses answers that are too large, or that would take the job past its limit on answers (shared/limits.ts). */
   checkAnswers(variables: Record<string, VariableValue>): Promise<void>;
-  /**
-   * The id of a unit version (a unit as shown: its shown fields), stored
-   * the first time it is shown (docs/architecture.md §8.4).
-   */
-  unitVersion(unitId: number, hash: string, data: UnitData): Promise<number>;
 }
 
 /** A job's data in the database. */
@@ -140,10 +136,11 @@ export class DbStore implements Store {
     return spec;
   }
 
-  async getUnits(ids: number[]): Promise<Unit[]> {
+  /** Units as deployed (the spec's snapshot; a preview: the drafts). */
+  async getUnits(ids: number[], snapshotId: number | null): Promise<Unit[]> {
     if (ids.length === 0) return [];
-    const rows = await this.sql.query<UnitRow>("SELECT * FROM units WHERE job_id = $1 AND id = ANY($2)", [this.jobId, ids]);
-    return rows.map((r) => ({ id: r.id, externalId: r.external_id, data: r.data, hash: unitHash(r.external_id, r.data) }));
+    const rows = await snapshotUnits(this.sql, this.jobId, snapshotId, ids);
+    return rows.map((r) => ({ id: r.id, externalId: r.external_id, data: r.data, hash: r.hash, versionId: r.version_id }));
   }
 
   async listCoders(): Promise<Coder[]> {
@@ -253,19 +250,6 @@ export class DbStore implements Store {
     return request.loops.length === 0 ? [] : listFinished(this.sql, this.jobId, request);
   }
 
-  async unitVersion(unitId: number, hash: string, data: UnitData): Promise<number> {
-    // Inserted once; usually it exists, so look first (no write per serve).
-    const found = await one<{ id: number }>(this.sql, "SELECT id FROM unit_versions WHERE unit_id = $1 AND hash = $2", [unitId, hash]);
-    if (found) return found.id;
-    const row = await one<{ id: number }>(
-      this.sql,
-      `INSERT INTO unit_versions (job_id, unit_id, hash, data) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (unit_id, hash) DO UPDATE SET hash = excluded.hash RETURNING id`,
-      [this.jobId, unitId, hash, JSON.stringify(data)],
-    );
-    return row!.id;
-  }
-
   async unitAnswers(coderId: number, unitId: number): Promise<Record<string, VariableValue>> {
     const rows = await this.sql.query<{ variable: string; value: VariableValue }>(
       "SELECT variable, value FROM annotation_values WHERE job_id = $1 AND coder_id = $2 AND unit_id = $3 AND retired_at IS NULL",
@@ -362,7 +346,7 @@ export class DbStore implements Store {
   async putAnnotation(write: AnnotationWrite): Promise<void> {
     const { jobId } = this;
     await this.sql.transaction(async (tx) => {
-      const unit = await one<UnitRow>(tx, "SELECT * FROM units WHERE job_id = $1 AND id = $2", [jobId, write.unitId]);
+      const unit = await one<{ coded: boolean }>(tx, "SELECT coded FROM units WHERE job_id = $1 AND id = $2", [jobId, write.unitId]);
       if (!unit) throw new HttpError(404, "Unit not found");
       for (const [variable, value] of Object.entries(write.variables)) {
         await tx.query(

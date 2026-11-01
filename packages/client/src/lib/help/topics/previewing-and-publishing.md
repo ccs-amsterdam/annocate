@@ -21,6 +21,12 @@ Every saved version gets a number: v1, v2, ... Published versions can never
 change again, so every answer stays linked to the exact version it was
 given under.
 
+**Units and sets work the same way.** Uploading units, replacing them,
+deleting them or changing sets changes the draft: coders keep getting the
+units as they were deployed, and **Preview** shows the drafts. A bar at the
+top of the job says what isn't deployed yet, with **Deploy…**. Every answer
+stays linked to the version of the unit its coder saw.
+
 ## Saving
 
 Click **Save** in the codebook editor's toolbar. You can save as often as
@@ -112,7 +118,11 @@ The dialog shows:
   ("Added a question about sources").
 - **What happens**: what publishing does (below).
 
-Click **Publish v3** to make the draft live. Afterwards a second dialog may
+The dialog has two parts, each with a checkbox: the **codebook** draft and
+the draft **units and sets** (how many were added, changed or removed).
+What you leave out stays a draft for a later deploy: deploy only the new
+units while you are still editing the codebook, for instance. Click
+**Deploy** to make it live. Afterwards a second dialog may
 list warnings from the server, for instance that a loop gained questions
 and finished units become unfinished again. See
 [Changing a codebook while coding runs](changing-a-live-codebook.md).

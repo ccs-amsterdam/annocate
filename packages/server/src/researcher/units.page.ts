@@ -2,12 +2,12 @@ import { Hono } from "hono";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { listSetGroups } from "../shared/sets.js";
-import { toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
+import { DRAFT_UNITS, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
 
 const MAX_PAGE = 200;
 
 // Static path: mounted before units.$id.ts so `/job/:jobId/units/page` is not read as a unit id.
-// A page of units with data: all units by id, or one set's (`group`, `set`) in its order.
+// A page of the draft's units with data: all by id, or one set's (`group`, `set`) in its order.
 export function unitsPage(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
@@ -20,13 +20,13 @@ export function unitsPage(server: Server): Hono<Env> {
     const setName = c.req.query("set");
 
     if (!group || !setName) {
-      const rows = await db.query<UnitRow>("SELECT * FROM units WHERE job_id = $1 ORDER BY id LIMIT $2 OFFSET $3", [jobId, limit, offset]);
+      const rows = await db.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 ORDER BY u.id LIMIT $2 OFFSET $3`, [jobId, limit, offset]);
       return c.json({ total: await unitCount(db, jobId), units: rows.map(toUnitResponse) });
     }
     const set = (await listSetGroups(db, jobId)).find((g) => g.name === group)?.sets.find((s) => s.name === setName);
     if (!set) return c.json({ error: `Set '${setName}' of group '${group}' not found` }, 404);
     const ids = set.unitIds.slice(offset, offset + limit);
-    const rows = ids.length ? await db.query<UnitRow>("SELECT * FROM units WHERE job_id = $1 AND id = ANY($2)", [jobId, ids]) : [];
+    const rows = ids.length ? await db.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 AND u.id = ANY($2)`, [jobId, ids]) : [];
     const byId = new Map(rows.map((r) => [r.id, r]));
     return c.json({
       total: set.unitIds.length,

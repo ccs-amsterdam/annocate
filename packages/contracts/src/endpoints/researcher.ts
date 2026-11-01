@@ -23,6 +23,8 @@ import {
   DeploymentWriteSchema,
   DeploymentResponseSchema,
   DeploymentStatusSchema,
+  DeploymentVersionSchema,
+  PendingChangesSchema,
   ResetAnnotationsSchema,
   PreviewSessionSchema,
 } from "../deployment.js";
@@ -202,6 +204,10 @@ export const researcherEndpoints = {
     request: DeploymentWriteSchema,
     response: DeploymentResponseSchema,
   },
+  /** What deploying the drafts would change (docs/plans/design.md §5). */
+  getPendingChanges: { method: "GET", path: "/job/:jobId/deployment/pending", request: z.void(), response: PendingChangesSchema },
+  /** The deployed versions, newest first. */
+  listDeploymentVersions: { method: "GET", path: "/job/:jobId/deployment/versions", request: z.void(), response: z.array(DeploymentVersionSchema) },
   getDeploymentStatus: {
     method: "GET",
     path: "/job/:jobId/deployment/status",
