@@ -1,9 +1,10 @@
 import { Hono } from "hono";
-import { UnitsCreateBodySchema, addedFields, checkUnitData, type UnitField } from "@annotinder/contracts";
+import { UnitsCreateBodySchema, addedFields, checkUnitData, fieldUsage, type UnitField } from "@annotinder/contracts";
+import { codebookItems } from "../shared/codebooks.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { checkUnitUpload } from "../shared/limits.js";
-import { DRAFT_UNITS, getUnitFields, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
+import { DRAFT_UNITS, getUnitFields, latestCodebook, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
 
 export function units(server: Server): Hono<Env> {
   const { db } = server;
@@ -15,11 +16,12 @@ export function units(server: Server): Hono<Env> {
   });
 
   // Into the draft (docs/plans/design.md §5): coders get the units when they
-  // are deployed. All or nothing: every unit must fit the job's fields, and
-  // existing units may only be replaced with `overwrite`. The first upload sets the fields
-  // (types from the values); a later one may add fields (units already
-  // stored have no value for them), but must give every existing field
-  // (null for empty).
+  // are deployed. All or nothing: every unit must fit the design's unit
+  // fields (§3), and existing units may only be replaced with `overwrite`.
+  // New columns are added to the draft design's fields (units already stored
+  // have no value for them); every declared field must be given (null for
+  // empty). The first upload (no units yet) takes its types from the values,
+  // and drops declared fields it lacks that the codebook doesn't use.
   app.post("/job/:jobId/units", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = UnitsCreateBodySchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -27,13 +29,25 @@ export function units(server: Server): Hono<Env> {
     const { units, overwrite, overwriteCoded } = parsed.data;
 
     const firstUpload = (await unitCount(db, jobId)) === 0;
-    const known: UnitField[] = firstUpload ? [] : await getUnitFields(db, jobId);
+    const declared = await getUnitFields(db, jobId);
+    let known: UnitField[] = declared;
+    if (firstUpload) {
+      const latest = await latestCodebook(db, jobId);
+      const used = latest ? fieldUsage(codebookItems(latest)) : new Map();
+      const given = new Set(units.flatMap((u) => Object.keys(u.data)));
+      known = declared.filter((f) => used.has(f.name) && !given.has(f.name));
+    }
     const added = addedFields(
       units.map((u) => u.data),
       known,
     );
     if ("error" in added) return c.json({ error: added.error }, 400);
-    const fields = [...known, ...added.fields];
+    // The declared fields' descriptions stay when the first upload retypes them
+    const describe = (f: UnitField) => {
+      const d = declared.find((x) => x.name === f.name)?.description;
+      return d ? { ...f, description: d } : f;
+    };
+    const fields = [...known, ...added.fields.map(describe)];
     for (const unit of units) {
       const problem = checkUnitData(unit.data, fields);
       if (problem) return c.json({ error: `Unit '${unit.externalId}': ${problem}` }, 400);
@@ -60,7 +74,7 @@ export function units(server: Server): Hono<Env> {
     }
 
     const created = await db.transaction(async (tx) => {
-      if (added.fields.length > 0 || firstUpload) await setUnitFields(tx, jobId, fields);
+      if (JSON.stringify(fields) !== JSON.stringify(declared)) await setUnitFields(tx, jobId, fields);
       const ids = await saveUnits(tx, jobId, units);
       const rows = await tx.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 AND u.id = ANY($2)`, [jobId, [...ids.values()]]);
       const byId = new Map(rows.map((r) => [r.id, r]));

@@ -44,9 +44,17 @@ export function codebook(server: Server): Hono<Env> {
 
     const row = await one<CodebookRow>(
       db,
-      `UPDATE codebooks SET note = $1, items = $2, updated = now(), updated_by = $3, revision = revision + 1
+      `UPDATE codebooks SET note = $1, items = $2, units = COALESCE($7::jsonb, units), updated = now(), updated_by = $3, revision = revision + 1
        WHERE job_id = $4 AND id = $5 AND NOT immutable AND ($6::int IS NULL OR revision = $6) RETURNING *`,
-      [parsed.data.note ?? null, JSON.stringify(parsed.data.items), c.get("jobUser")?.email ?? null, jobId, id, revision ?? null],
+      [
+        parsed.data.note ?? null,
+        JSON.stringify(parsed.data.items),
+        c.get("jobUser")?.email ?? null,
+        jobId,
+        id,
+        revision ?? null,
+        parsed.data.units ? JSON.stringify(parsed.data.units) : null,
+      ],
     );
     if (!row) {
       // Deployed or saved by someone else meanwhile.

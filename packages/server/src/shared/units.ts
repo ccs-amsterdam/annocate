@@ -1,5 +1,6 @@
 import type { UnitChanges, UnitData, UnitField, UnitMeta, UnitResponse } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
+import { codebookUnits, type CodebookRow } from "./codebooks.js";
 
 // Units (docs/plans/design.md §5, migration 0024): field values stored once
 // per job by content, a unit version is a map of field -> value id. `units`
@@ -23,9 +24,15 @@ export interface UnitRow {
 export const DRAFT_UNITS = `SELECT u.id, u.job_id, u.external_id, u.version_id, v.hash, unit_data(v.fields) AS data, u.coded
   FROM units u JOIN unit_versions v ON v.id = u.version_id WHERE u.version_id IS NOT NULL`;
 
-/** The job's unit fields (contracts unitFields.ts), set by the first upload. */
-export function getUnitFields(sql: Sql, jobId: number): Promise<UnitField[]> {
-  return sql.query<UnitField>("SELECT name, type FROM unit_fields WHERE job_id = $1 ORDER BY position", [jobId]);
+/** The job's latest codebook version (the draft, or the deployed one if there is no draft). */
+export function latestCodebook(sql: Sql, jobId: number): Promise<CodebookRow | undefined> {
+  return one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
+}
+
+/** The job's unit fields: the latest design's (docs/plans/design.md §3). */
+export async function getUnitFields(sql: Sql, jobId: number): Promise<UnitField[]> {
+  const latest = await latestCodebook(sql, jobId);
+  return latest ? codebookUnits(latest).fields : [];
 }
 
 /** Units in the draft. */
@@ -41,10 +48,23 @@ export function toUnitMeta(row: UnitRow): UnitMeta {
   return { id: row.id, externalId: row.external_id, hash: row.hash, coded: row.coded };
 }
 
+/**
+ * Writes the unit fields into the design's draft: the latest codebook if it
+ * is a draft (without a new revision: the fields aren't the editor's
+ * edits), else a new draft with the latest version's items.
+ */
 export async function setUnitFields(sql: Sql, jobId: number, fields: UnitField[]): Promise<void> {
-  await sql.query("DELETE FROM unit_fields WHERE job_id = $1", [jobId]);
-  for (const [i, f] of fields.entries()) {
-    await sql.query("INSERT INTO unit_fields (job_id, position, name, type) VALUES ($1, $2, $3, $4)", [jobId, i, f.name, f.type]);
+  const units = JSON.stringify({ fields });
+  const latest = await latestCodebook(sql, jobId);
+  if (latest && !latest.immutable) {
+    await sql.query("UPDATE codebooks SET units = $1 WHERE id = $2", [units, latest.id]);
+  } else {
+    await sql.query("INSERT INTO codebooks (job_id, note, items, units) VALUES ($1, $2, $3, $4)", [
+      jobId,
+      latest ? "Unit fields from an upload" : null,
+      JSON.stringify(latest?.items ?? []),
+      units,
+    ]);
   }
 }
 

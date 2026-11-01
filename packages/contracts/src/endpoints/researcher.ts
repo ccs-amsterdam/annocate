@@ -3,7 +3,7 @@ import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema, 
 import { RecipeSchema } from "../recipe.js";
 import { CodebookWriteSchema, CodebookResponseSchema, CodebookMetaSchema } from "../codebook/codebook.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
-import { UnitFieldSchema } from "../unitFields.js";
+import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
 import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
 import { CoderProgressSchema, CoderInviteWriteSchema, CoderInviteResponseSchema, CoderDeletionSchema, DeleteCodersSchema, DeleteCodersResponseSchema } from "../coder.js";
 import { JobOverviewSchema } from "../overview.js";
@@ -122,6 +122,17 @@ export const researcherEndpoints = {
     method: "GET",
     path: "/job/:jobId/units/fields",
     request: z.void(),
+    response: z.array(UnitFieldSchema),
+  },
+  /**
+   * Replaces the draft design's unit fields (docs/plans/design.md §3):
+   * declare, retype (the units' values must fit), describe, or remove
+   * fields the codebook doesn't use (their values leave the draft units).
+   */
+  putUnitFields: {
+    method: "PUT",
+    path: "/job/:jobId/units/fields",
+    request: UnitsSpecSchema,
     response: z.array(UnitFieldSchema),
   },
   /** Query: `offset`, `limit` (max 200), and `group` with `set` (that set's units, in its order). */

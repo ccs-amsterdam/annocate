@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { DRAFT_UNITS, removeUnit, setUnitFields, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
+import { DRAFT_UNITS, removeUnit, toUnitResponse, type UnitRow } from "../shared/units.js";
 
 export function unit(server: Server): Hono<Env> {
   const { db } = server;
@@ -22,11 +22,7 @@ export function unit(server: Server): Hono<Env> {
     const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Unit not found" }, 404);
     // Out of the draft: deployed versions and answers keep it (docs/plans/design.md §5).
-    await db.transaction(async (tx) => {
-      await removeUnit(tx, jobId, id);
-      // No units left: the next upload sets the fields anew
-      if ((await unitCount(tx, jobId)) === 0) await setUnitFields(tx, jobId, []);
-    });
+    await removeUnit(db, jobId, id);
     return c.body(null, 204);
   });
 

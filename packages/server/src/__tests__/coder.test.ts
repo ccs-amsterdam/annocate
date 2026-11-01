@@ -1473,6 +1473,52 @@ describe("unit versions", () => {
   });
 });
 
+describe("unit fields in the design", () => {
+  it("are declared by uploads in the draft design, kept by codebook writes, and required to deploy", async () => {
+    const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
+    const upload = await server.request("/job/1/units", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ units: [{ externalId: "with-extra", data: { ...data, source: "wire" } }] }),
+    });
+    expect(upload.status, await upload.clone().text()).toBe(201);
+    // The deployed version is frozen: the new field goes into a new draft
+    const list = (await (await server.request("/job/1/codebook", { headers: adminHeaders })).json()) as { id: number; note: string | null }[];
+    const draft = list.at(-1)!;
+    expect(draft.note).toBe("Unit fields from an upload");
+    const get = async (id: number) => (await (await server.request(`/job/1/codebook/${id}`, { headers: adminHeaders })).json()) as { items: unknown[]; units: { fields: { name: string; type: string }[] } };
+    expect((await get(draft.id)).units.fields).toContainEqual({ name: "source", type: "text" });
+    // A write without `units` keeps them
+    const items = (await get(draft.id)).items;
+    await server.request(`/job/1/codebook/${draft.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify({ items }) });
+    expect((await get(draft.id)).units.fields.map((f) => f.name)).toContain("source");
+    // A codebook using a field the design doesn't declare can't be deployed
+    const created = await server.request("/job/1/codebook", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ items: [{ type: "unit_loop", units: [{ mode: "all" }], layout: { template: "$unit.nowhere" }, children: [sentimentQuestion] }] }),
+    });
+    const { id } = (await created.json()) as { id: number };
+    const deploy = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: id }) });
+    expect(deploy.status).toBe(400);
+    expect(await deploy.json()).toMatchObject({ code: "undeclared_fields" });
+
+    // Declared on the Units page (PUT /units/fields): then it deploys. Removing an unused field drops it from the draft units.
+    const putFields = (fields: object[]) => server.request("/job/1/units/fields", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ fields }) });
+    const fields = (await get(id)).units.fields;
+    expect((await putFields([...fields, { name: "nowhere", type: "number" }])).status).toBe(200);
+    expect((await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: id }) })).status).toBe(200);
+    const unit = await unitByExternalId("with-extra");
+    expect((await draftUnit(unit.id)).data.source).toBe("wire");
+    const kept = [...fields.filter((f) => f.name !== "source"), { name: "nowhere", type: "number" }];
+    expect((await putFields(kept)).status).toBe(200);
+    expect((await draftUnit(unit.id)).data).not.toHaveProperty("source");
+    // A field the codebook uses can't be removed; a value that doesn't fit a new type stops a retype
+    expect((await putFields(kept.filter((f) => f.name !== "nowhere"))).status).toBe(409);
+    expect((await putFields(kept.map((f) => (f.name === "text" ? { ...f, type: "number" } : f)))).status).toBe(400);
+  });
+});
+
 describe("researcher preview", () => {
   const draft = async (note: string) => {
     const res = await server.request("/job/1/codebook", {

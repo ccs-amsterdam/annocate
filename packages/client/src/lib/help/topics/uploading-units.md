@@ -122,7 +122,13 @@ uploads add to them:
   new units get empty values there.
 
 You can see the job's fields, with an icon for their type, at the top of the
-**Units** tab.
+**Units** tab. They are part of the design, with the codebook: **Details**
+shows per field how the codebook uses it (*shown* to coders, *sent, not
+shown* when only conditions use it, *server only* for gold and practice
+answer columns, or *not used*), a description, and its type. A field the
+codebook doesn't use can be removed (with its values in the units). A field
+the codebook uses but no upload brought can be declared there; the
+codebook can't be deployed until its fields are declared.
 
 ## Replacing units
 

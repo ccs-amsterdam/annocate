@@ -1,4 +1,4 @@
-import { codebookErrors, type CodebookMeta, type CodebookResponse, type TopLevelItem } from "@annotinder/contracts";
+import { UnitsSpecSchema, codebookErrors, type CodebookMeta, type CodebookResponse, type TopLevelItem, type UnitsSpec } from "@annotinder/contracts";
 
 /** A row of `codebooks`. */
 export interface CodebookRow {
@@ -6,6 +6,7 @@ export interface CodebookRow {
   job_id: number;
   note: string | null;
   items: unknown;
+  units: unknown;
   created: Date;
   updated: Date;
   updated_by: string | null;
@@ -16,6 +17,12 @@ export interface CodebookRow {
 /** A stored codebook's items. */
 export function codebookItems(row: Pick<CodebookRow, "items">): TopLevelItem[] {
   return (Array.isArray(row.items) ? row.items : []) as TopLevelItem[];
+}
+
+/** A stored codebook's unit fields (docs/plans/design.md §3). */
+export function codebookUnits(row: Pick<CodebookRow, "units">): UnitsSpec {
+  const parsed = UnitsSpecSchema.safeParse(row.units);
+  return parsed.success ? parsed.data : { fields: [] };
 }
 
 /** Whether the items pass validation, as required to publish or preview them. */
@@ -38,5 +45,5 @@ export function toCodebookMeta(row: CodebookRow): CodebookMeta {
 
 /** A stored codebook as served. */
 export function toCodebookResponse(row: CodebookRow): CodebookResponse {
-  return { ...toCodebookMeta(row), jobId: row.job_id, items: codebookItems(row) };
+  return { ...toCodebookMeta(row), jobId: row.job_id, items: codebookItems(row), units: codebookUnits(row) };
 }

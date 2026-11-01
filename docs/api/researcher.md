@@ -97,6 +97,7 @@ response checked against its contract schema.
 | **Units and sets** | | | | |
 | [listUnits](#listunits) | `GET /job/:jobId/units` | READ | – | `UnitMetaSchema[]` |
 | [getUnitFields](#getunitfields) | `GET /job/:jobId/units/fields` | READ | – | `UnitFieldSchema[]` |
+| [putUnitFields](#putunitfields) | `PUT /job/:jobId/units/fields` | WRITE | `UnitsSpecSchema` | `UnitFieldSchema[]` |
 | [listUnitPage](#listunitpage) | `GET /job/:jobId/units/page` | READ | – | `UnitPageSchema` |
 | [getUnit](#getunit) | `GET /job/:jobId/units/:id` | READ | – | `UnitResponseSchema` |
 | [createUnits](#createunits) | `POST /job/:jobId/units` | WRITE | `UnitsCreateBodySchema` | `UnitResponseSchema[]` |
@@ -337,8 +338,23 @@ hash of every unit, without data.
 ### getUnitFields
 
 `GET /job/:jobId/units/fields` → `UnitFieldSchema[]`: the job's fields, in
-column order; empty without units. Match this static path (and `/units/page`)
-before `/units/:id`.
+column order: the latest codebook version's `units.fields`, the design's
+one specification of them (`docs/plans/design.md` §3). Match this static
+path (and `/units/page`) before `/units/:id`.
+
+Uploads keep it up to date: new columns are added to the draft design (a
+new draft if the latest version is deployed); the first upload (no units
+yet) takes its types from the values. A codebook write without `units`
+keeps the fields; deploying a codebook that uses an undeclared field is 400
+`undeclared_fields`.
+
+### putUnitFields
+
+`PUT /job/:jobId/units/fields` (`{ fields }`) → `UnitFieldSchema[]`: replaces
+the draft design's fields. Declare a field the codebook uses, retype one
+(400 if a unit's value doesn't fit), describe one, or remove one the
+codebook doesn't use (409 if it does): its values leave the draft units
+(deployed units keep them until the next deploy).
 
 ### listUnitPage
 

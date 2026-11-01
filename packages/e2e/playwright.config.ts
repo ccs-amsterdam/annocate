@@ -7,6 +7,7 @@ const port = Number(process.env.E2E_PORT ?? 8799);
 
 export default defineConfig({
   testDir: "tests",
+  globalSetup: "./tests/global-setup.ts",
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

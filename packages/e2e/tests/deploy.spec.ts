@@ -48,3 +48,39 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   await second.getByRole("button", { name: "1 politics" }).click();
   await expect(second.getByText("Second text")).toBeVisible();
 });
+
+test("the design's unit fields: how the codebook uses each, removing an unused one", async ({ page, request }) => {
+  const job = await api<JobResponse>(request, "POST", "/job", { name: "Field use" });
+  await api(request, "POST", `/job/${job.id}/units`, { units: [{ externalId: "a1", data: { text: "Hello", year: 2020, note: "x" } }] });
+  const [draft] = await api<{ id: number }[]>(request, "GET", `/job/${job.id}/codebook`);
+  const { units } = await api<{ units: unknown }>(request, "GET", `/job/${job.id}/codebook/${draft.id}`);
+  await api(request, "PUT", `/job/${job.id}/codebook/${draft.id}`, {
+    units,
+    items: [
+      {
+        type: "unit_loop",
+        units: [{ mode: "all" }],
+        layout: { template: "$unit.text" },
+        children: [
+          { type: "condition", condition: { script: "$unit.year > 2000" }, children: [
+            { type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "a" }, { value: "b" }] } },
+          ] },
+        ],
+      },
+    ],
+  });
+
+  await page.goto("/");
+  await page.getByText("Field use").click();
+  await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: "Units", exact: true }).click();
+  await page.getByRole("button", { name: "Details" }).click();
+  const row = (name: string) => page.locator("tr", { has: page.locator("td.font-mono", { hasText: new RegExp(`^${name}$`) }) });
+  await expect(row("text")).toContainText("shown");
+  await expect(row("year")).toContainText("sent, not shown");
+  await expect(row("note")).toContainText("not used");
+  page.once("dialog", (d) => void d.accept());
+  await page.getByRole("button", { name: "Remove field note" }).click();
+  await expect(row("note")).toHaveCount(0);
+  expect((await api<{ name: string }[]>(request, "GET", `/job/${job.id}/units/fields`)).map((f) => f.name)).toEqual(["text", "year"]);
+});

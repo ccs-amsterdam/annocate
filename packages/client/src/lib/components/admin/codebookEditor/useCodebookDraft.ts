@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  undeclaredFields,
   CodebookConflictSchema,
   validateCodebookItems,
   type CodebookConflict,
@@ -8,7 +9,7 @@ import {
   type TopLevelItem,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCreateCodebookMutation, useUpdateCodebookMutation } from "../../../admin/queries";
+import { useCreateCodebookMutation, useUnitFieldsQuery, useUpdateCodebookMutation } from "../../../admin/queries";
 import {
   deleteItems,
   ensureKeys,
@@ -69,7 +70,15 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
   const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
   // Errors and warnings. Drafts can be saved with errors; publishing needs none.
-  const validationIssues = useMemo(() => validateCodebookItems(cleanItems), [cleanItems]);
+  // Plus the unit fields it uses that the design doesn't declare (docs/plans/design.md §3)
+  const declared = useUnitFieldsQuery(client).data;
+  const validationIssues = useMemo(() => {
+    const issues = validateCodebookItems(cleanItems);
+    const undeclared = declared ? undeclaredFields(cleanItems, declared) : [];
+    if (undeclared.length === 0) return issues;
+    const message = `Uses unit fields the design doesn't declare: ${undeclared.join(", ")}. Upload units with them, or declare them on the Units page.`;
+    return [...issues, { path: [], message }];
+  }, [cleanItems, declared]);
   const validationErrors = useMemo(() => validationIssues.filter((i) => !i.warning), [validationIssues]);
   const dirty = serialized !== savedSerialized;
   const valid = items.length > 0 && validationErrors.length === 0;

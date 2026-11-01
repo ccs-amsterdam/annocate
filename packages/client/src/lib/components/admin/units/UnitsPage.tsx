@@ -15,7 +15,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ResetAnswersDialog, type ResetScope } from "../ResetAnswersDialog";
 import { Button } from "@/components/ui/button";
-import { FieldBadge } from "./FieldBadge";
+import { FieldsPanel } from "./FieldsPanel";
 import { UploadUnits } from "./UploadUnits";
 import { SplitIntoSets } from "./SplitIntoSets";
 import { HelpButton } from "../../../help/HelpButton";
@@ -75,16 +75,11 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
           <h2 className="flex items-center gap-1.5 text-lg font-medium">
             Units <HelpButton topic="uploading-units" label="Help: units" />
           </h2>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {fields.length === 0 ? (
-              "No units yet: upload a CSV to start. Its columns become the units' fields."
+          <div className="mt-1">
+            {fields.length === 0 && (unitsQuery.data?.length ?? 0) === 0 ? (
+              <p className="text-xs text-muted-foreground">No units yet: upload a CSV to start. Its columns become the units' fields.</p>
             ) : (
-              <>
-                Fields:
-                {fields.map((f) => (
-                  <FieldBadge key={f.name} field={f} />
-                ))}
-              </>
+              <FieldsPanel client={client} fields={fields} />
             )}
           </div>
         </div>

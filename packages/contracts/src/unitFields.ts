@@ -15,8 +15,18 @@ export type UnitFieldType = z.infer<typeof UnitFieldTypeSchema>;
 export const UnitFieldSchema = z.object({
   name: z.string().min(1).max(64),
   type: UnitFieldTypeSchema,
+  /** What the field holds, for people (and for whoever reuses the design). */
+  description: z.string().max(1000).optional(),
 });
 export type UnitField = z.infer<typeof UnitFieldSchema>;
+
+/**
+ * The design's units (docs/plans/design.md §3): the job's unit fields and
+ * their types, the one specification of them. Uploads write it (new
+ * columns are added); the codebook's `$unit` references must be declared.
+ */
+export const UnitsSpecSchema = z.object({ fields: z.array(UnitFieldSchema).max(500) });
+export type UnitsSpec = z.infer<typeof UnitsSpecSchema>;
 
 /**
  * What a new field may be called: letters, digits and underscores, not

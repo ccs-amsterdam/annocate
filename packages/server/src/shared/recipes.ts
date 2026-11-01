@@ -1,4 +1,4 @@
-import { CodebookItemsSchema, addedFields, checkUnitData, type CodebookItem, type Recipe, type UnitData } from "@annotinder/contracts";
+import { CodebookItemsSchema, addedFields, checkUnitData, type CodebookItem, type Recipe, type UnitData, type UnitField } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { putDeployment } from "./deployments.js";
 import { HttpError } from "./http.js";
@@ -6,7 +6,7 @@ import type { JobRow } from "./jobs.js";
 import { checkUnitUpload } from "./limits.js";
 import { checkLinkCount, syncLinks } from "./invites.js";
 import { putSetGroup } from "./sets.js";
-import { saveUnits, setUnitFields } from "./units.js";
+import { saveUnits } from "./units.js";
 
 // Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new job's
 // units, set groups and first codebook in one document; publishing it makes
@@ -56,6 +56,7 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
 
   // Units
   const unitIds = new Map<string, number>();
+  let fields: UnitField[] = [];
   if (recipe.units.length > 0) {
     const ids = recipe.units.map((u) => u.id);
     const twice = ids.find((id, i) => ids.indexOf(id) !== i);
@@ -75,7 +76,7 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
       recipe.units.map((u) => ({ externalId: u.id, data: u.data })),
       recipe.units.length,
     );
-    await setUnitFields(tx, job.id, added.fields);
+    fields = added.fields;
     for (const [id, unitId] of await saveUnits(tx, job.id, recipe.units.map((u) => ({ externalId: u.id, data: u.data })))) unitIds.set(id, unitId);
   }
   const unitId = (id: string) => {
@@ -98,10 +99,12 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
   }
 
   // The codebook: published, or the first draft
-  const codebookId = (await one<{ id: number }>(tx, "INSERT INTO codebooks (job_id, note, items) VALUES ($1, $2, $3) RETURNING id", [
+  // With the units' fields (docs/plans/design.md §3)
+  const codebookId = (await one<{ id: number }>(tx, "INSERT INTO codebooks (job_id, note, items, units) VALUES ($1, $2, $3, $4) RETURNING id", [
     job.id,
     recipe.codebook.note ?? null,
     JSON.stringify(recipe.codebook.items),
+    JSON.stringify({ fields }),
   ]))!.id;
   let firstInvite: number | null = null;
   if (recipe.publish) {

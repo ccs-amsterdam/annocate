@@ -124,6 +124,7 @@ export interface ResearcherApi {
   listUnits(): Promise<UnitMeta[]>;
   /** The job's unit fields (set by the first upload); empty without units. */
   getUnitFields(): Promise<UnitField[]>;
+  putUnitFields(fields: UnitField[]): Promise<UnitField[]>;
   /** A page of units with data: all units, or one set's (of a group) in its order. */
   listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage>;
   getUnit(id: number): Promise<UnitResponse>;
@@ -427,6 +428,10 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async getUnitFields(): Promise<UnitField[]> {
     return this.request(this.jobPath(researcherEndpoints.getUnitFields.path));
+  }
+
+  async putUnitFields(fields: UnitField[]): Promise<UnitField[]> {
+    return this.request(this.jobPath(researcherEndpoints.putUnitFields.path), { method: "PUT", body: JSON.stringify({ fields }) });
   }
 
   async listUnitPage(query: { offset: number; limit: number; group?: string; set?: string }): Promise<UnitPage> {

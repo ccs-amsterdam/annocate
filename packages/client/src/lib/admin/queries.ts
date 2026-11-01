@@ -188,6 +188,20 @@ export function useUnitFieldsQuery(client: ResearcherApi): UseQueryResult<UnitFi
   return useQuery({ queryKey: keys.unitFields(client.jobId), queryFn: () => client.getUnitFields() });
 }
 
+/** Replaces the design's unit fields (removed fields leave the draft units, and the draft codebook may be new). */
+export function useUnitFieldsMutation(client: ResearcherApi): UseMutationResult<UnitField[], Error, UnitField[]> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fields: UnitField[]) => client.putUnitFields(fields),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
+      ]),
+  });
+}
+
 export function useUnitPageQuery(
   client: ResearcherApi,
   query: { offset: number; limit: number; group?: string; set?: string },

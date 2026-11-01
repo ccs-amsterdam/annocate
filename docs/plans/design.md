@@ -1,7 +1,10 @@
 # Plan: the design as the source of truth
 
 Status: agreed 2026-11-01. Built: §5 (drafts until deployed, unit storage,
-the deploy dialog). Next: §1-3 (the design document, unit fields).
+the deploy dialog) and §3 (unit fields in the design: `codebooks.units`,
+the Units page's field details, deploy refuses undeclared fields). Next:
+§2 (the Session item as top-level `session`), §1 (the codebook export),
+§4 (targets, panel return URLs as deployment settings).
 Migrations are reset before release, so no legacy handling.
 
 ## 1. Names

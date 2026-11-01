@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
+import { UnitsSpecSchema } from "../unitFields.js";
 import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
 import { semanticIssues } from "./validation.js";
 
@@ -30,6 +31,11 @@ export const CodebookWriteSchema = z.object({
   note: z.string().max(1000).optional(),
   items: DraftItemsSchema,
   /**
+   * The unit fields (docs/plans/design.md §3). Left out: kept as they are
+   * (uploads keep them up to date).
+   */
+  units: UnitsSpecSchema.optional(),
+  /**
    * `PUT` only: the revision the edits are based on. If the draft was saved
    * since (by someone else), the server answers 409 `codebook_conflict`
    * instead of overwriting it. Leave out to overwrite regardless.
@@ -59,6 +65,7 @@ export type CodebookMeta = z.infer<typeof CodebookMetaSchema>;
 export const CodebookResponseSchema = CodebookMetaSchema.extend({
   jobId: IdSchema,
   items: z.custom<TopLevelItem[]>((v) => Array.isArray(v)),
+  units: UnitsSpecSchema,
 });
 export type CodebookResponse = z.infer<typeof CodebookResponseSchema>;
 

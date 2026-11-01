@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { DeploymentWriteSchema, codebookErrors } from "@annotinder/contracts";
-import { codebookItems, type CodebookRow } from "../shared/codebooks.js";
+import { DeploymentWriteSchema, codebookErrors, undeclaredFields } from "@annotinder/contracts";
+import { codebookItems, codebookUnits, type CodebookRow } from "../shared/codebooks.js";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -27,6 +27,11 @@ export function deployment(server: Server): Hono<Env> {
     const errors = codebookErrors(codebookItems(codebook));
     if (errors.length > 0 || codebookItems(codebook).length === 0) {
       return c.json({ error: "Fix the codebook's issues before publishing it", issues: errors }, 400);
+    }
+    // The unit fields it uses must be declared (docs/plans/design.md §3)
+    const undeclared = undeclaredFields(codebookItems(codebook), codebookUnits(codebook).fields);
+    if (undeclared.length > 0) {
+      return c.json({ error: `The codebook uses unit fields the design doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
     }
     // The units it runs: the drafts (`units`, and always the first time), or the deployed snapshot.
     const current = await one<{ snapshot_id: number }>(db, "SELECT snapshot_id FROM deployments WHERE job_id = $1", [jobId]);
