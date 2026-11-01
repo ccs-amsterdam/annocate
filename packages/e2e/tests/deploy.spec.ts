@@ -84,3 +84,26 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
   await expect(row("note")).toHaveCount(0);
   expect((await api<{ name: string }[]>(request, "GET", `/job/${job.id}/units/fields`)).map((f) => f.name)).toEqual(["text", "year"]);
 });
+
+test("the codebook as a document: what coders see", async ({ page, request }) => {
+  const job = await api<JobResponse>(request, "POST", "/job", { name: "Codebook export" });
+  await api(request, "POST", `/job/${job.id}/codebook`, {
+    items: [{ type: "question", name: "age", variable: { type: "numeric", question: "How old are you?", min: 18 } }],
+  });
+  await page.goto("/");
+  await page.getByText("Codebook export").click();
+  await page.getByRole("button", { name: "Design", exact: true }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("codebook.md");
+  const text = await new Promise<string>((resolve, reject) => {
+    void file.createReadStream().then((stream) => {
+      let out = "";
+      stream.on("data", (c) => (out += String(c)));
+      stream.on("end", () => resolve(out));
+      stream.on("error", reject);
+    });
+  });
+  expect(text).toContain("## age: How old are you?");
+});

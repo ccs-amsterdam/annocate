@@ -14,8 +14,9 @@ page explains the editor itself. What the items mean is on their own pages:
 From top to bottom, the tab has:
 
 - the **toolbar**: the number of issues and warnings, **Visual** or
-  **JSON**, undo and redo, **Revert**, **Versions**, **Save** and
-  **Publish**;
+  **JSON**, undo and redo, **Revert**, **Export** (the codebook as a
+  document: questions, instructions, options and what coders see, e.g.
+  for a paper's appendix), **Versions**, **Save** and **Publish**;
 - a **banner** saying which version you are editing and whether coders use
   it (see [Preview, save and publish](previewing-and-publishing.md));
 - the editor: the **tree** of items on the left, the selected **item** on

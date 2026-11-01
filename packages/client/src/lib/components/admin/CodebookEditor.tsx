@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { codebookMarkdown } from "../../codebook/codebookMarkdown";
 import type { CodebookResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useUnitFieldsQuery } from "../../admin/queries";
@@ -169,6 +170,14 @@ export function CodebookEditor({
         onSave={() => void draft.save().catch(() => {})}
         onPublish={onPublish && (() => void publish().catch(() => {}))}
         onOpenVersions={onOpenVersions}
+        onExport={() => {
+          const markdown = codebookMarkdown(draft.cleanItems, "Codebook", codebook?.note);
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
+          a.download = "codebook.md";
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }}
       />
 
       {banner}

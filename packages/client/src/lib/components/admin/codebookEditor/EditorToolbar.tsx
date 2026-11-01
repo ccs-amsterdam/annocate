@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, ChevronDown, Code2, History, Redo2, Rocket, RotateCcw, Sliders, Undo2, type LucideIcon } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronDown, Code2, FileDown, History, Redo2, Rocket, RotateCcw, Sliders, Undo2, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -43,6 +43,8 @@ interface EditorToolbarProps {
   /** Omit to hide the Publish button. */
   onPublish?: () => void;
   onOpenVersions?: () => void;
+  /** Downloads the codebook as a document (what coders see). */
+  onExport?: () => void;
 }
 
 /** Issue count and view toggle on the left; Versions, Save and Publish on the right. */
@@ -67,6 +69,7 @@ export function EditorToolbar({
   onSave,
   onPublish,
   onOpenVersions,
+  onExport,
 }: EditorToolbarProps) {
   const readOnly = mode === "history";
   const canPublish = !readOnly && valid && (dirty || mode === "draft");
@@ -104,6 +107,13 @@ export function EditorToolbar({
             </Button>
             <RevertMenu dirty={dirty} changedItems={changedItems} onRevertItem={onRevertItem} onRevertAll={onRevertAll} />
           </div>
+        )}
+
+        {onExport && (
+          <Button type="button" variant="outline" size="sm" onClick={onExport} className="flex items-center gap-1.5" title="Download the codebook as a document: what coders see">
+            <FileDown className="h-3.5 w-3.5" />
+            Export
+          </Button>
         )}
 
         {onOpenVersions && (

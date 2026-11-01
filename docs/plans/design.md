@@ -3,9 +3,9 @@
 Status: agreed 2026-11-01. Built: §5 (drafts until deployed, unit
 storage, the deploy dialog), §3 (unit fields in the design) and §2 (the
 session as the design's `session`, next to the items; editors and
-validation see it as the first item, contracts `designItems`). Next: §1
-(the codebook export), §4 (targets, panel return URLs as deployment
-settings).
+validation see it as the first item, contracts `designItems`), and §1's
+codebook export (the editor's Export: Markdown of what coders see). Next:
+§4 (targets, panel return URLs as deployment settings).
 Migrations are reset before release, so no legacy handling.
 
 ## 1. Names
