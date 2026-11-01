@@ -37,11 +37,8 @@ types writes it; the design editor edits it. So matching fields and types
 happens in one place, and fields the codebook doesn't use are kept too
 (they can matter for replication).
 
-**Versions.** The field specification describes stored data, which all of
-the design's versions share. So it is not drafted and published like the
-rest: a change (from an upload or the editor) applies to the job at once,
-and every version shows the current fields. Publishing checks the
-codebook's use of fields against it. (To confirm.)
+**Versions**: see §5: the field specification is part of the design and
+versioned with it, like everything else.
 
 **Per field, the editor shows** its type, whether units have it (how many
 miss it), and how it is used:
@@ -95,7 +92,40 @@ Test: would someone repeating the study need it?
 - **Panel return URLs** move out of end items: an end item names a
   deployment setting ("redirect: panel complete URL").
 
-## 5. Sharing designs (later)
+## 5. Everything is a draft until deployed
+
+One rule for researchers: **everything you edit is a draft; coders see
+what you deployed; deploying makes changes live.** That covers the design
+(codebook, unit fields, distribution) and the units and their sets.
+
+- A **deployed version** is a pair: a **design version** and a **unit
+  snapshot**. A snapshot lists `(unit, unit version, sets, position)`;
+  unit versions are content-addressed (`unit_versions`, by hash), so a
+  snapshot points to them and doesn't copy data. A version that changes
+  only the design reuses the previous snapshot.
+- The shown data and its hash are computed once at deploy (now: at each
+  serve). Coders on an older version reload (`codebook_changed`), as now.
+- The `units` and set tables become the draft workspace; coding reads the
+  deployed snapshot. Preview shows the drafts.
+- Uploading units no longer changes a running study; the upload ends with
+  **Deploy now**, which opens the deploy dialog.
+
+**The deploy dialog** lists both parts, each with a checkbox:
+
+- Units: added, changed, removed (with sets);
+- Design: the draft's changes (as the editor marks them).
+
+What is left out stays a draft, carried over onto the new version: deploy
+units only while a design draft exists, and the units go out as v2 with
+v1's design; the draft becomes the draft on v2 (for v3). Versions are
+numbered in order and say what changed ("v2: units +500", "v3: codebook").
+Deploy validates the combination chosen: coupled changes (a renamed field
+in the design and in the units) must go together, and the dialog says so
+and ticks both; a draft with errors can't be included. New columns in an
+upload are added to the draft's field list as "not used", so deploying
+units alone stays possible.
+
+## 6. Sharing designs (later)
 
 Export a design with its field specification. If it declares fields the
 design doesn't use: "Include them? Yes / No / Choose". Importing a design
