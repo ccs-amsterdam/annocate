@@ -76,6 +76,25 @@ describe("setup wizard recipes", () => {
     expect(loopOf(a).units).toEqual([{ mode: "assign", group: "sets", from: { session: "set" }, overlap: { placement: "disabled" } }]);
   });
 
+  it("gold and practice checks on per-unit questions, with a sets column keeping _gold and _practice", () => {
+    const a = setup({ distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: null, handOut: "rotate" } });
+    const units = a.units!.units.map((u, i) => (i === 0 ? { ...u, data: { ...u.data, group: "_gold" } } : i === 1 ? { ...u, data: { ...u.data, group: "_practice" } } : u));
+    const recipe = setupRecipe({ ...a, units: { ...a.units!, units }, checks: { gold: ["topic"], practice: ["topic", "nope"] } });
+    const names = recipe.sets![0].sets.map((s) => s.name);
+    expect(names).toContain("_gold");
+    expect(names).toContain("_practice");
+    expect(loopOf({ ...a, units: { ...a.units!, units }, checks: { gold: ["topic"], practice: ["topic", "nope"] } }).units).toEqual([
+      {
+        mode: "assign",
+        group: "sets",
+        from: { draw: "balanced" },
+        overlap: { placement: "disabled" },
+        practice: { placement: "first", questions: ["topic"] },
+        gold: { placement: "rate", every: 10, questions: ["topic"] },
+      },
+    ]);
+  });
+
   it("crowd coding: until coders agree, with limits per coder and an overlap", () => {
     const a = setup({
       questions: { before: [], unit: ["sentiment", "topic"], after: [] },

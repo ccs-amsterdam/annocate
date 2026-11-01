@@ -15,6 +15,7 @@ import {
   defaultDistribution,
   distributionProblems,
   distributionSets,
+  hasSetGroup,
   overlapCount,
   parseQuestions,
   questionLists,
@@ -478,7 +479,64 @@ function QuestionsStep({ a, set }: StepProps) {
           </label>
         );
       })}
+      {a.parts.annotate && hasSetGroup(a.distribution) && <ChecksSection a={a} set={set} />}
     </>
+  );
+}
+
+/**
+ * Gold and practice checks (docs/plans/special-sets.md): per unit question,
+ * whether units with a known answer check it silently (gold) or with
+ * feedback (practice), and whether the uploaded units have its answer column.
+ */
+function ChecksSection({ a, set }: StepProps) {
+  const questions = parseQuestions(a.questions.unit).map((q) => q.name).filter(Boolean);
+  if (questions.length === 0) return null;
+  const fields = new Set(a.units?.fields.map((f) => f.name) ?? []);
+  const toggle = (kind: "gold" | "practice", name: string, on: boolean) =>
+    set({ checks: { ...a.checks, [kind]: on ? [...a.checks[kind].filter((q) => q !== name), name] : a.checks[kind].filter((q) => q !== name) } });
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
+      <legend className="px-1 text-sm font-medium text-foreground">Units with a known answer (optional)</legend>
+      <p className="text-xs text-muted-foreground">
+        <strong>Gold</strong> units check coders silently; <strong>practice</strong> units tell them when they were wrong. They are the
+        units in the sets <code>_gold</code> and <code>_practice</code> (a sets column with those values, or later on the Units page), with
+        the right answer in a column per question. You can write the answers later with <strong>Create gold values</strong> in the
+        loop&apos;s Units tab.
+      </p>
+      <table className="w-fit text-left text-xs">
+        <thead className="text-muted-foreground">
+          <tr>
+            <th className="pr-4 font-medium">Question</th>
+            <th className="pr-4 font-medium">Gold</th>
+            <th className="pr-4 font-medium">Practice</th>
+          </tr>
+        </thead>
+        <tbody>
+          {questions.map((q) => (
+            <tr key={q}>
+              <td className="pr-4 font-mono">{q}</td>
+              {(["gold", "practice"] as const).map((kind) => {
+                const column = `${q}_${kind}`;
+                const checked = a.checks[kind].includes(q);
+                return (
+                  <td key={kind} className="pr-4">
+                    <label className="flex items-center gap-1.5">
+                      <input type="checkbox" aria-label={`${kind} ${q}`} checked={checked} onChange={(e) => toggle(kind, q, e.target.checked)} />
+                      {checked && (
+                        <span className={fields.has(column) ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}>
+                          {fields.has(column) ? `${column} found` : `no ${column} yet`}
+                        </span>
+                      )}
+                    </label>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </fieldset>
   );
 }
 

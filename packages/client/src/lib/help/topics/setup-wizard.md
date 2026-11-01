@@ -33,7 +33,11 @@ much more (below).
    body, with a preview of the first unit (see
    [Layout templates](layout-templates.md)).
 6. **Questions**: their names, one per line; before the units, about each
-   unit, and after the units.
+   unit, and after the units. With sets (assigned sets or crowd coding),
+   also which questions about each unit **gold** or **practice** units
+   check, and whether your units have the answer columns yet (see
+   [Overlap, gold and practice units](special-units.md)). A sets column with
+   the values `_gold` and `_practice` puts units in those sets.
 
 It then makes the units, their [sets](unitsets.md) (a group `sets`), and a
 design draft, and opens the editor. These are all drafts: deploying them

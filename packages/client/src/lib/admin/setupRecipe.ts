@@ -1,4 +1,4 @@
-import { DEFAULT_RATE, OVERLAP_SET, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import { DEFAULT_RATE, OVERLAP_SET, RESERVED_SETS, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
 import { simpleTemplate, type SimpleLayout } from "../codebook/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
@@ -98,6 +98,12 @@ export interface SetupAnswers {
   order: "sequential" | "random";
   /** Question lines, as typed: before the units (or the survey's), per unit, after the units. */
   questions: { before: string[]; unit: string[]; after: string[] };
+  /**
+   * Per-unit questions checked on units with a known answer
+   * (docs/plans/special-sets.md): `gold` silently, `practice` with
+   * feedback. Only with sets (assign sets, crowd coding).
+   */
+  checks: { gold: string[]; practice: string[] };
 }
 
 export const DEFAULT_SETUP: SetupAnswers = {
@@ -109,6 +115,7 @@ export const DEFAULT_SETUP: SetupAnswers = {
   distribution: { mode: "all" },
   order: "sequential",
   questions: { before: [], unit: [], after: [] },
+  checks: { gold: [], practice: [] },
 };
 
 /** Where questions go: a survey (or experiment) alone has one list; annotation with either has three. */
@@ -152,7 +159,22 @@ export function parseQuestions(lines: string[]): SetupQuestion[] {
 export const WIZARD_GROUP = "sets";
 
 /** A set's name from a column's value: no `;` or `#`, and no leading `_` (reserved). */
-const setName = (value: string) => value.trim().replace(/[;#]+/g, "_").replace(/^_+/, "").slice(0, 128) || "empty";
+const setName = (value: string) =>
+  (RESERVED_SETS as readonly string[]).includes(value.trim()) ? value.trim() : value.trim().replace(/[;#]+/g, "_").replace(/^_+/, "").slice(0, 128) || "empty";
+
+/** Whether a distribution puts the units in sets of a group: then gold and practice units can be mixed in. */
+export const hasSetGroup = (d: SetupDistribution) => d.mode === "sets" || d.mode === "crowd";
+
+/** A branch with the gold and practice checks the wizard asked for, on questions that are per-unit questions. */
+function withChecks(branch: object, checks: SetupAnswers["checks"], unitQuestions: string[]): object {
+  const gold = checks.gold.filter((q) => unitQuestions.includes(q));
+  const practice = checks.practice.filter((q) => unitQuestions.includes(q));
+  return {
+    ...branch,
+    ...(practice.length > 0 ? { practice: { placement: "first", questions: practice } } : {}),
+    ...(gold.length > 0 ? { gold: { placement: "rate", every: DEFAULT_RATE, questions: gold } } : {}),
+  };
+}
 
 /** A unit's value in a column, as text. */
 const valueOf = (unit: UnitCreate, column: string) => String((unit.data as UnitData)[column] ?? "");
@@ -309,10 +331,16 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         if (d.handOut === "links") session = { params: [{ name: "set", kind: "link", values: { sets: WIZARD_GROUP } }] };
         break;
       case "crowd":
-        if (overlap.length > 0) {
+        if (overlap.length > 0 || a.checks.gold.length > 0 || a.checks.practice.length > 0) {
           groups.push({ group: WIZARD_GROUP, sets: [{ name: "queue", units: sets[0]?.units ?? [] }, ...overlapSet] });
           // Spread needs the units per coder (max); without it the overlap comes last
-          branches = [{ ...d.shared, set: { group: WIZARD_GROUP, set: "queue" }, overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } }];
+          branches = [
+            {
+              ...d.shared,
+              set: { group: WIZARD_GROUP, set: "queue" },
+              ...(overlap.length > 0 ? { overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } } : {}),
+            },
+          ];
         } else branches = [d.shared];
         break;
       case "groups":
@@ -336,7 +364,10 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     items.push({
       type: "unit_loop",
       label: "Units",
-      units: branches,
+      // Gold and practice checks on the group's special sets (assign sets, crowd coding over a set)
+      units: hasSetGroup(d)
+        ? branches.map((b) => ("group" in b || "set" in b ? withChecks(b, a.checks, parseQuestions(a.questions.unit).map((q) => q.name)) : b))
+        : branches,
       ...(a.order === "random" ? { order: "random" } : {}),
       layout: { template: layoutTemplate(a.layout) },
       children: parseQuestions(a.questions.unit).map(unspecified),

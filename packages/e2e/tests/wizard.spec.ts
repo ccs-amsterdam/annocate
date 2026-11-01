@@ -117,15 +117,24 @@ test("crowd coding with an overlap; the loop's units are set by the wizard", asy
   await expect(page.getByRole("button", { name: "Title: headline" })).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByLabel("Questions about each unit").fill("sentiment");
+  // Gold units check the question silently; the units have no answer column yet
+  await page.getByLabel("gold sentiment").check();
+  await expect(page.getByText("no sentiment_gold yet")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Create job" }).click();
-  await expect(page.getByText("to specify")).toHaveCount(1);
 
   const job = (await api<JobResponse[]>(request, "GET", "/job")).find((j) => j.name === "Crowd pilot")!;
   const [draft] = await api<CodebookResponse[]>(request, "GET", `/job/${job.id}/codebook`);
   const [loop] = (await api<CodebookResponse>(request, "GET", `/job/${job.id}/codebook/${draft.id}`)).items as { units: unknown[]; layout: { template: string } }[];
   expect(loop.units).toEqual([
-    { mode: "shared", set: { group: "sets", set: "queue" }, until: { coders: 2 }, maxCoders: 2, overlap: { placement: "rate", every: 10, rest: "end" } },
+    {
+      mode: "shared",
+      set: { group: "sets", set: "queue" },
+      until: { coders: 2 },
+      maxCoders: 2,
+      overlap: { placement: "rate", every: 10, rest: "end" },
+      gold: { placement: "rate", every: 10, questions: ["sentiment"] },
+    },
   ]);
   expect(loop.layout.template).toBe("# $unit.headline\n\n$unit.text");
   const [group] = await api<SetGroupResponse[]>(request, "GET", `/job/${job.id}/sets`);
