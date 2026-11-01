@@ -28,6 +28,7 @@ const coder = (id: number, extra: Partial<CoderProgress> = {}): CoderProgress =>
   lastActive: at,
   answers: 0,
   finished: { main: 1 },
+  special: {},
   variables: {},
   ended: null,
   deletionRequest: null,

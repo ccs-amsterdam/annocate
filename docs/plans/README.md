@@ -8,7 +8,7 @@ what exists.
 | [examples.md](examples.md): example jobs for learning AnnoTinder, later templates and a library of reusable flows | Examples built; templates and library not |
 | [setup-wizard.md](setup-wizard.md): a guided setup for a new job (annotate / survey / experiment, units and who codes what, question names), ending in the editor; recipes shared with examples | Built; next steps listed |
 | [sets-and-session-parameters.md](sets-and-session-parameters.md): set groups as columns, assign-a-set loops with overlap, session parameters in the codebook, links generated from them; auto variables assigned when reached, stratified balancing | Built |
-| [special-sets.md](special-sets.md): overlap at a rate (default for crowd coding), and the special sets `_gold` (silent checks, health) and `_practice` (feedback), `$unit._practice` | Built, except the per-coder overlap status in the Coders tab |
+| [special-sets.md](special-sets.md): overlap at a rate (default for crowd coding), and the special sets `_gold` (silent checks, health) and `_practice` (feedback), `$unit._practice` | Built |
 | [design.md](design.md): the design as the single source of truth: declared unit fields (the job's field specification), codebook as the coders' part, design vs deployment, targets | Built (§1-5); open: sharing designs (§6), coders-per-set targets |
 | [gold-checks.md](gold-checks.md): hidden unit fields, and checking coders against known answers | Superseded by special-sets.md, except hidden fields and server-side checks |
 | [question-loops.md](question-loops.md): the same questions once per value of a list | Idea, not designed in detail |

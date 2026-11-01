@@ -34,6 +34,8 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
   const coders = sortByActivity(codersQuery.data ?? []);
   // Loops of the live codebook (every coder has the same keys)
   const loops = Object.keys(coders[0]?.finished ?? {});
+  // The special sets the job has (overlap, gold, practice): units of them each coder finished
+  const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders[0]?.special?.[kind]);
   const requests = coders.filter((c) => c.deletionRequest && !c.deletionRequest.postponedAt);
   const postponed = coders.filter((c) => c.deletionRequest?.postponedAt).length;
   const deletions = useCoderDeletionsQuery(client).data ?? [];
@@ -123,6 +125,11 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                     Finished in <span className="font-mono">{loop}</span>
                   </th>
                 ))}
+                {specials.map((kind) => (
+                  <th key={kind} className="p-2 text-right font-medium capitalize" title={`Units of the deployed _${kind} set this coder finished`}>
+                    {kind}
+                  </th>
+                ))}
                 <th className="p-2">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -152,6 +159,11 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                   {loops.map((loop) => (
                     <td key={loop} className="p-2 text-right tabular-nums">
                       {coder.finished[loop] ?? 0}
+                    </td>
+                  ))}
+                  {specials.map((kind) => (
+                    <td key={kind} className="p-2 text-right tabular-nums">
+                      {coder.special?.[kind]?.done ?? 0} of {coder.special?.[kind]?.total ?? 0}
                     </td>
                   ))}
                   <td className="p-2 text-right whitespace-nowrap">

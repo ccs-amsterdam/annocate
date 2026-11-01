@@ -33,6 +33,12 @@ export const CoderProgressSchema = z.object({
   answers: z.number().int().nonnegative(),
   /** unit loop title (`loopTitle`) -> units this coder finished, for the loops of the live codebook. */
   finished: z.record(z.string(), z.number().int().nonnegative()),
+  /**
+   * Units of the deployed special sets (`_overlap`, `_gold`, `_practice`;
+   * docs/plans/special-sets.md) the coder finished, of how many: for the
+   * kinds the job has.
+   */
+  special: z.partialRecord(z.enum(["overlap", "gold", "practice"]), z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() })),
   /** Coder-level values: answers outside unit loops, and `auto` variables (invite presets, random, URL). */
   variables: z.record(z.string(), VariableValueSchema),
   /** Set if the coder's session ended at an `end` item (screened out or complete), or they quit. */

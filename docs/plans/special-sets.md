@@ -8,7 +8,7 @@ practice answer), (2) "Create gold values" (done: a dialog from the loop's Pract
 step), (5) overlap at a rate and per-value URL lists (done:
 `placement: "rate"` with `every` and `rest` for overlap, gold and practice;
 the wizard's crowd default; a link per value of a URL parameter on the
-Links page; the per-coder overlap status in the Coders tab is not built). Builds on
+Links page; and in the Coders tab, per coder the units of each special set finished). Builds on
 `sets-and-session-parameters.md` (set groups, `_overlap`) and replaces the
 loop-level checks in `gold-checks.md` (its server-side evaluation and
 hidden fields stay).

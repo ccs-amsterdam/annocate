@@ -61,6 +61,24 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
   );
   const finished = await finishedPerLoop(sql, jobId);
   const values = await coderValues(sql, jobId);
+  // Special sets as deployed: their size (the largest group's), and per coder the units of them finished
+  const kinds = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
+  const totals = await sql.query<{ name: keyof typeof kinds; total: number }>(
+    `SELECT s.name, MAX(n)::int AS total FROM unit_sets s
+       JOIN (SELECT set_id, COUNT(*) AS n FROM unit_set_members GROUP BY set_id) m ON m.set_id = s.id
+     WHERE s.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY s.name`,
+    [jobId],
+  );
+  const doneRows = await sql.query<{ coderId: number; name: keyof typeof kinds; done: number }>(
+    `SELECT c.coder_id AS "coderId", s.name, COUNT(DISTINCT c.unit_id)::int AS done FROM unit_codings c
+       JOIN unit_set_members m ON m.unit_id = c.unit_id JOIN unit_sets s ON s.id = m.set_id
+     WHERE c.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY c.coder_id, s.name`,
+    [jobId],
+  );
+  const special = (coderId: number) =>
+    Object.fromEntries(
+      totals.map((t) => [kinds[t.name], { done: doneRows.find((d) => d.coderId === coderId && d.name === t.name)?.done ?? 0, total: t.total }]),
+    );
 
   return coders.map((c) => ({
     id: c.id,
@@ -72,6 +90,7 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,
     finished: Object.fromEntries([...finished].map(([loop, perCoder]) => [loop, perCoder.get(c.id) ?? 0])),
+    special: special(c.id),
     variables: values.get(c.id) ?? {},
     ended: c.ended,
     deletionRequest: c.deletionRequest,
