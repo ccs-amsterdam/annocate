@@ -18,55 +18,52 @@ import {
   type SetGroupResponse,
   type UnitSet,
 } from "@annotinder/contracts";
-import type { Sql } from "../db.js";
+import { one, type Sql } from "../db.js";
 import { HttpError } from "./http.js";
-import { snapshotUnits } from "./units.js";
+import { servedUnits } from "./units.js";
 
-// Set groups (docs/plans/sets-and-session-parameters.md §1): per unit its
-// sets in each group (`unit_sets`), with an optional position. A set is in
-// position order if its units have positions, else in the units' order.
+// Set groups (docs/plans/sets-and-session-parameters.md §1): sets
+// (`unit_sets`: group, name) and their units (`unit_set_members`), with an
+// optional position. A set is in position order if its units have
+// positions, else in the units' order. Two copies (docs/plans/design.md §5):
+// the draft's, and the deployed (`live`) ones a deploy copies from it.
 
 interface Row {
   grp: string;
-  set_name: string;
+  name: string;
   unit_id: number;
   position: number | null;
 }
 
-/**
- * The job's groups with their sets, in order (groups and sets by name): of
- * a deployed snapshot, or (null) the draft's (docs/plans/design.md §5).
- */
-export async function listSetGroups(sql: Sql, jobId: number, snapshotId: number | null = null): Promise<SetGroupResponse[]> {
-  const rows =
-    snapshotId === null
-      ? await sql.query<Row>(
-          "SELECT grp, set_name, unit_id, position FROM unit_sets WHERE job_id = $1 ORDER BY grp, set_name, position NULLS LAST, unit_id",
-          [jobId],
-        )
-      : await sql.query<Row>(
-          "SELECT grp, set_name, unit_id, position FROM snapshot_sets WHERE snapshot_id = $1 ORDER BY grp, set_name, position NULLS LAST, unit_id",
-          [snapshotId],
-        );
+/** The job's groups with their sets, in order (groups and sets by name): the draft's, or the deployed ones (`live`). */
+export async function listSetGroups(sql: Sql, jobId: number, live = false): Promise<SetGroupResponse[]> {
+  const rows = await sql.query<Row>(
+    `SELECT s.grp, s.name, m.unit_id, m.position FROM unit_sets s JOIN unit_set_members m ON m.set_id = s.id
+     WHERE s.job_id = $1 AND s.live = $2 ORDER BY s.grp, s.name, m.position NULLS LAST, m.unit_id`,
+    [jobId, live],
+  );
   const groups = new Map<string, Map<string, UnitSet>>();
   for (const r of rows) {
     if (!groups.has(r.grp)) groups.set(r.grp, new Map());
     const sets = groups.get(r.grp)!;
-    if (!sets.has(r.set_name)) sets.set(r.set_name, { name: r.set_name, unitIds: [], ordered: false });
-    const set = sets.get(r.set_name)!;
+    if (!sets.has(r.name)) sets.set(r.name, { name: r.name, unitIds: [], ordered: false });
+    const set = sets.get(r.name)!;
     set.unitIds.push(r.unit_id);
     if (r.position !== null) set.ordered = true;
   }
   return [...groups].map(([name, sets]) => ({ name, sets: [...sets.values()] }));
 }
 
-/** The sets of a group (names), without the reserved ones. */
-export async function groupSets(sql: Sql, jobId: number, group: string, snapshotId: number | null = null): Promise<string[]> {
-  const sets = (await listSetGroups(sql, jobId, snapshotId)).find((g) => g.name === group)?.sets ?? [];
-  return sets.map((s) => s.name).filter((name) => !name.startsWith("_"));
+/** The sets of a group (names), without the reserved ones: the draft's, or the deployed ones (`live`). */
+export async function groupSets(sql: Sql, jobId: number, group: string, live = false): Promise<string[]> {
+  const rows = await sql.query<{ name: string }>(
+    "SELECT name FROM unit_sets WHERE job_id = $1 AND live = $2 AND grp = $3 AND name NOT LIKE '\\_%' ORDER BY name",
+    [jobId, live, group],
+  );
+  return rows.map((r) => r.name);
 }
 
-/** Makes or replaces a group: its sets' units, in order (positions for ordered sets). Units must be the job's. */
+/** Makes or replaces a group of the draft: its sets' units, in order (positions for ordered sets). Units must be the draft's. */
 export async function putSetGroup(sql: Sql, jobId: number, group: string, sets: UnitSet[]): Promise<void> {
   if (!SetGroupNameSchema.safeParse(group).success) throw new HttpError(400, `'${group}' is not a group name: letters, digits and _, starting with a letter`);
   const names = sets.map((s) => s.name);
@@ -75,34 +72,43 @@ export async function putSetGroup(sql: Sql, jobId: number, group: string, sets: 
   const ids = [...new Set(sets.flatMap((s) => s.unitIds))];
   if (ids.length > 0) {
     const own = new Set(
-      (await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 AND id = ANY($2) AND version_id IS NOT NULL", [jobId, ids])).map((r) => r.id),
+      (await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 AND id = ANY($2) AND in_draft", [jobId, ids])).map((r) => r.id),
     );
     const foreign = ids.filter((id) => !own.has(id));
     if (foreign.length > 0) throw new HttpError(400, `Not units of this job: ${foreign.slice(0, 10).join(", ")}`);
   }
-  await sql.query("DELETE FROM unit_sets WHERE job_id = $1 AND grp = $2", [jobId, group]);
-  const rows = sets.flatMap((s) => [...new Set(s.unitIds)].map((unitId, i) => ({ set: s.name, unitId, position: s.ordered ? i + 1 : null })));
-  if (rows.length === 0) return;
-  await sql.query(
-    `INSERT INTO unit_sets (job_id, grp, set_name, unit_id, position)
-     SELECT $1, $2, * FROM unnest($3::text[], $4::int[], $5::int[])`,
-    [jobId, group, rows.map((r) => r.set), rows.map((r) => r.unitId), rows.map((r) => r.position)],
-  );
+  await sql.query("DELETE FROM unit_sets WHERE job_id = $1 AND NOT live AND grp = $2", [jobId, group]);
+  for (const set of sets) {
+    const created = await one<{ id: number }>(sql, "INSERT INTO unit_sets (job_id, live, grp, name) VALUES ($1, false, $2, $3) RETURNING id", [
+      jobId,
+      group,
+      set.name,
+    ]);
+    const unitIds = [...new Set(set.unitIds)];
+    if (unitIds.length === 0) continue;
+    await sql.query(
+      `INSERT INTO unit_set_members (set_id, unit_id, position) SELECT $1, * FROM unnest($2::int[], $3::int[])`,
+      [created!.id, unitIds, unitIds.map((_, i) => (set.ordered ? i + 1 : null))],
+    );
+  }
 }
 
 export async function deleteSetGroup(sql: Sql, jobId: number, group: string): Promise<boolean> {
-  const deleted = await sql.query("DELETE FROM unit_sets WHERE job_id = $1 AND grp = $2 RETURNING unit_id", [jobId, group]);
+  const deleted = await sql.query("DELETE FROM unit_sets WHERE job_id = $1 AND NOT live AND grp = $2 RETURNING id", [jobId, group]);
   return deleted.length > 0;
 }
 
-/** The sets as the runtime reads them: keyed `group/set`, plus every unit of the job (`__all__`). */
-export async function runtimeSets(sql: Sql, jobId: number, snapshotId: number | null): Promise<{ name: string; unitIds: number[] }[]> {
+/**
+ * The sets as the runtime reads them, keyed `group/set`, plus all its units
+ * (`__all__`): deployed (`live`), or the draft's (previews).
+ */
+export async function runtimeSets(sql: Sql, jobId: number, live: boolean): Promise<{ name: string; unitIds: number[] }[]> {
   const allUnitIds = (
-    snapshotId === null
-      ? await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 AND version_id IS NOT NULL ORDER BY id", [jobId])
-      : await sql.query<{ id: number }>("SELECT unit_id AS id FROM snapshot_units WHERE snapshot_id = $1 ORDER BY unit_id", [snapshotId])
+    live
+      ? await sql.query<{ id: number }>("SELECT DISTINCT unit_id AS id FROM unit_versions WHERE job_id = $1 AND to_deploy IS NULL ORDER BY unit_id", [jobId])
+      : await sql.query<{ id: number }>("SELECT id FROM units WHERE job_id = $1 AND in_draft ORDER BY id", [jobId])
   ).map((r) => r.id);
-  const groups = await listSetGroups(sql, jobId, snapshotId);
+  const groups = await listSetGroups(sql, jobId, live);
   return [
     { name: ALL_UNITS_UNITSET, unitIds: allUnitIds },
     ...groups.flatMap((g) => g.sets.map((s) => ({ name: setKey(g.name, s.name), unitIds: s.unitIds }))),
@@ -114,8 +120,8 @@ export async function runtimeSets(sql: Sql, jobId: number, snapshotId: number | 
  * loop takes an overlap its group doesn't have (or fewer units than it
  * expects), or assigns sets of a group without sets.
  */
-export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[], snapshotId: number | null = null): Promise<string[]> {
-  const groups = new Map((await listSetGroups(sql, jobId, snapshotId)).map((g) => [g.name, g.sets]));
+export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[], live = false): Promise<string[]> {
+  const groups = new Map((await listSetGroups(sql, jobId, live)).map((g) => [g.name, g.sets]));
   const warnings: string[] = [];
   const { questions } = collectQuestions(items);
   for (const { key, loop } of unitLoops(items)) {
@@ -137,7 +143,7 @@ export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[]
             warnings.push(`Loop '${title}': ${set === GOLD_SET ? "gold" : "practice"} units are on, but group '${special}' has no ${set} units.`);
             continue;
           }
-          const rows = (await snapshotUnits(sql, jobId, snapshotId, units)).sort((a, b) => a.id - b.id);
+          const rows = (await servedUnits(sql, jobId, live, units)).sort((a, b) => a.id - b.id);
           for (const question of settings.questions ?? []) {
             const empty = rows.filter((r) => parseAnswerKey(r.data[column(question)]) === null);
             // Right answers that aren't options of the question

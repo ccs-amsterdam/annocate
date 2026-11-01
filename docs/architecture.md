@@ -117,8 +117,8 @@ the client, so the server stores only ciphertext (`plans/encryption.md`).
 ## 5. Lifecycle
 
 **Deploy.** A researcher calls `PUT /job/:jobId/deployment` with
-`{ codebookId, units, active }`: the codebook, with a snapshot of the
-draft units and sets (§8.4) or the deployed ones. The server bumps the
+`{ codebookId, units, active }`: the codebook, with the draft units and
+sets (new unit versions, §8.4) or the deployed ones. The server bumps the
 deployment `version` when either changed, and freezes the codebook. Every
 runtime checks the deployment's stamp on each request and re-reads it when
 it changed; other changes coders' runtimes read (job settings, resets)
@@ -480,24 +480,27 @@ How it works:
   analysis. It bumps the deployment's `annotationEpoch`, so the runtime
   reloads.
 
-### 8.4 Units: drafts, versions and snapshots
+### 8.4 Units: drafts and versions
 
 Everything is a draft until deployed (`plans/design.md` §5), units and
-sets too (migration 0024):
+sets too (migration 0026):
 
 - **Values** (`unit_values`): every field value once per job, by content
-  (`unit_value_hash`). A unit **version** (`unit_versions`) is a map of
-  field -> value id, with a content hash (`unit_content_hash`); adding a
-  column makes new versions, but only the new values are new data.
-- **The draft**: `units` points to each unit's current version
-  (`version_id`; NULL: removed from the draft, kept for snapshots and
-  answers), with the draft's sets in `unit_sets`. Uploads, deletes and set
-  changes only change the draft; a preview runs it.
-- **Snapshots** (`unit_snapshots`, `snapshot_units`, `snapshot_sets`): the
-  units and sets a deployment runs. Deploying with `units` takes a new
-  snapshot of the draft when it differs from the deployed one;
-  `deployment_versions` records each deployed version and what it changed.
-- Coders get the snapshot's versions, with only the fields the codebook
+  (sha256). Field names are numbered per job (`unit_field_names`).
+- **The draft** (`unit_draft`): each unit's working copy, field -> value,
+  overwritten freely; `units.in_draft` says whether a unit is in it.
+  Uploads, deletes and set changes only change the draft; a preview runs it.
+- **Versions** (`unit_versions` + `unit_version_fields`) are made only by
+  deploys: a deploy that changes a unit closes its current version
+  (`to_deploy`) and opens one from that deployment version (`from_deploy`;
+  the current one has `to_deploy` NULL). A replaced version no answer
+  points to is deleted at that deploy, as are values nothing refers to:
+  only coded content is kept. `deployment_versions` records what each
+  deployed version changed.
+- **Sets** (`unit_sets`: group and name, `unit_set_members`): the draft's,
+  and the deployed (`live`) ones a deploy copies from it. No history:
+  coders' routing records their set.
+- Coders get the current versions, with only the fields the codebook
   uses (`shownUnitFields`: other columns, e.g. metadata or answer columns,
   stay on the server). Every answer points to the full unit version its
   coder saw (`annotation_values.unit_version_id`) and to its codebook
@@ -506,7 +509,7 @@ sets too (migration 0024):
 - A unit can be replaced after it was coded, with a warning
   (`overwriteCoded`): a new version, deployed with the next deploy;
   earlier answers keep theirs, so spans can always be read against the
-  text they were made on. A unit in a snapshot or with answers is never
+  text they were made on. A unit with versions or answers is never
   deleted, only taken out of the draft.
 
 ### 8.3 Open: choosing what reopens
@@ -586,9 +589,8 @@ Roughly in order:
    groups, per-user overrides, unit and answer sizes). Still open: rate
    limits, and storage in bytes.
 6. **Unit preprocessing.** Preprocessing (e.g. tokenizing once on the
-   server) would happen at deploy, with the snapshot (§8.4). Also open:
-   cleaning up unit versions never deployed and no longer current, and a
-   purge that blanks a value everywhere (privacy).
+   server) would happen at deploy, with the new versions (§8.4). Also
+   open: a purge that blanks a value everywhere (privacy).
 7. **Keeping history.** Unit versions are kept (§8.4). Answers reset by a
    researcher are kept as retired rows; a coder changing an answer updates
    it in place (decided: no history of a coder's own edits for now; adding

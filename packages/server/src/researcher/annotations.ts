@@ -53,7 +53,7 @@ export function annotations(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const { after, limit } = parsed.data;
     const rows = await db.query<UnitVersion>(
-      `SELECT v.id, v.unit_id AS "unitId", u.external_id AS "externalId", v.hash, unit_data(v.fields) AS data, v.created
+      `SELECT v.id, v.unit_id AS "unitId", u.external_id AS "externalId", unit_data_hash(unit_version_data(v.id)) AS hash, unit_version_data(v.id) AS data, v.created
        FROM unit_versions v JOIN units u ON u.id = v.unit_id
        WHERE v.job_id = $1 AND v.id > $2 ORDER BY v.id LIMIT $3`,
       [c.get("jobId"), after ?? 0, limit + 1],

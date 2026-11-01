@@ -269,7 +269,7 @@ async function deployDrafts(): Promise<DeploymentResponse> {
 /** A unit of the draft: its external id and data. */
 async function draftUnit(id: number): Promise<{ externalId: string; data: UnitData }> {
   const [row] = await db.query<{ externalId: string; data: UnitData }>(
-    `SELECT u.external_id AS "externalId", unit_data(v.fields) AS data FROM units u JOIN unit_versions v ON v.id = u.version_id WHERE u.id = $1`,
+    `SELECT external_id AS "externalId", unit_draft_data(id) AS data FROM units WHERE id = $1`,
     [id],
   );
   return row;
@@ -1425,7 +1425,7 @@ describe("unit versions", () => {
   const versionOf = async (unitId: number) =>
     (
       await db.query<{ data: UnitData }>(
-        `SELECT unit_data(v.fields) AS data FROM annotation_values a JOIN unit_versions v ON v.id = a.unit_version_id
+        `SELECT unit_version_data(v.id) AS data FROM annotation_values a JOIN unit_versions v ON v.id = a.unit_version_id
          WHERE a.unit_id = $1 AND a.retired_at IS NULL LIMIT 1`,
         [unitId],
       )
@@ -1470,6 +1470,40 @@ describe("unit versions", () => {
     await redeploy({ layout: { template: "$unit.headline" } });
     const unit = (await coder("c").next())!;
     expect(Object.keys(unit.data)).toEqual(["headline"]);
+  });
+});
+
+describe("unit versions are made by deploys", () => {
+  const count = async (sql: string, params: unknown[] = []) => (await db.query<{ n: number }>(sql, params))[0].n;
+  const upload = async (units: object[]) => {
+    const res = await server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units, overwrite: true, overwriteCoded: true }) });
+    expect(res.status, await res.clone().text()).toBe(201);
+  };
+
+  it("keeps only deployed content: draft edits make no versions, and a replaced version nobody coded goes", async () => {
+    const id = (await unitByExternalId("unit-1")).id;
+    const { data } = await draftUnit(id);
+    const versions = () => count("SELECT COUNT(*)::int AS n FROM unit_versions WHERE unit_id = $1", [id]);
+    const value = (text: string) => count("SELECT COUNT(*)::int AS n FROM unit_values WHERE job_id = 1 AND value = to_jsonb($1::text)", [text]);
+    expect(await versions()).toBe(1);
+    // Edited twice in the draft: no versions, and the first edit's value is gone
+    await upload([{ externalId: "unit-1", data: { ...data, text: "first edit" } }]);
+    await upload([{ externalId: "unit-1", data: { ...data, text: "second edit" } }]);
+    expect(await versions()).toBe(1);
+    expect(await value("first edit")).toBe(0);
+    // Deployed: a new version; the old one, never coded, is gone
+    await deployDrafts();
+    expect(await versions()).toBe(1);
+    expect((await draftUnit(id)).data.text).toBe("second edit");
+    // Coded, then replaced and deployed: the coded version stays
+    const c = coder("v");
+    const unit = (await c.next())!;
+    expect(unit.data.text).toBe("second edit");
+    await c.submit(unit.id, demo("neutral"));
+    await upload([{ externalId: "unit-1", data: { ...data, text: "third edit" } }]);
+    await deployDrafts();
+    expect(await versions()).toBe(2);
+    expect(await value("second edit")).toBe(1);
   });
 });
 

@@ -9,7 +9,7 @@ import type { InviteRow } from "../shared/invites.js";
 import { sessionValues } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, jobLimits } from "../shared/limits.js";
-import { snapshotUnits } from "../shared/units.js";
+import { servedUnits } from "../shared/units.js";
 import type {
   AnnotationWrite,
   Coder,
@@ -43,8 +43,8 @@ export interface Store {
    */
   deploymentStamp(): Promise<string | null>;
   /** Unit content by id; unknown ids are left out. */
-  /** Units as deployed: the snapshot's versions (null: the drafts, for previews). */
-  getUnits(ids: number[], snapshotId: number | null): Promise<Unit[]>;
+  /** Units as deployed: their current versions (`live`; else the drafts, for previews). */
+  getUnits(ids: number[], live: boolean): Promise<Unit[]>;
   /** All coders (for researcher status). */
   listCoders(): Promise<Coder[]>;
   /** The coder for a coder key, created from an invite on first use (docs/coder-identity.md). */
@@ -136,10 +136,10 @@ export class DbStore implements Store {
     return spec;
   }
 
-  /** Units as deployed (the spec's snapshot; a preview: the drafts). */
-  async getUnits(ids: number[], snapshotId: number | null): Promise<Unit[]> {
+  /** Units as deployed (their current versions; a preview: the drafts). */
+  async getUnits(ids: number[], live: boolean): Promise<Unit[]> {
     if (ids.length === 0) return [];
-    const rows = await snapshotUnits(this.sql, this.jobId, snapshotId, ids);
+    const rows = await servedUnits(this.sql, this.jobId, live, ids);
     return rows.map((r) => ({ id: r.id, externalId: r.external_id, data: r.data, hash: r.hash, versionId: r.version_id }));
   }
 
@@ -348,6 +348,12 @@ export class DbStore implements Store {
     await this.sql.transaction(async (tx) => {
       const unit = await one<{ coded: boolean }>(tx, "SELECT coded FROM units WHERE job_id = $1 AND id = $2", [jobId, write.unitId]);
       if (!unit) throw new HttpError(404, "Unit not found");
+      // The version the coder saw; one a deploy just deleted (nobody had answered on it) gives way to the current one.
+      const version = await one<{ id: number | null }>(
+        tx,
+        "SELECT COALESCE((SELECT id FROM unit_versions WHERE id = $1), (SELECT id FROM unit_versions WHERE unit_id = $2 AND to_deploy IS NULL)) AS id",
+        [write.unitVersionId ?? null, write.unitId],
+      );
       for (const [variable, value] of Object.entries(write.variables)) {
         await tx.query(
           `INSERT INTO annotation_values (job_id, unit_id, coder_id, variable, value, codebook_id, unit_version_id, device_id, timing, created, updated)
@@ -362,7 +368,7 @@ export class DbStore implements Store {
             variable,
             JSON.stringify(value),
             write.codebookId ?? null,
-            write.unitVersionId ?? null,
+            version?.id ?? null,
             write.deviceId ?? null,
             write.timings?.[variable] ? JSON.stringify(write.timings[variable]) : null,
           ],

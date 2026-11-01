@@ -16,12 +16,11 @@ import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
 import { runtimeSets } from "./sets.js";
-import { anyUnitChanges, snapshotDraft, unitChanges } from "./units.js";
+import { anyUnitChanges, deployDraftUnits, unitChanges } from "./units.js";
 
 interface DeploymentRow {
   job_id: number;
   codebook_id: number;
-  snapshot_id: number;
   active: boolean;
   version: number;
   annotation_epoch: number;
@@ -45,26 +44,29 @@ export async function getDeployment(sql: Sql, jobId: number): Promise<Deployment
 export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWrite): Promise<DeploymentResponse> {
   const previous = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
   const warnings = previous ? await reopenWarnings(sql, jobId, previous.codebook_id, body.codebookId) : [];
-  const units = !previous || body.units ? await unitChanges(sql, jobId, previous?.snapshot_id ?? null) : null;
+  const units = !previous || body.units ? await unitChanges(sql, jobId) : null;
   const newUnits = units !== null && (!previous || anyUnitChanges(units));
-  const snapshotId = newUnits ? await snapshotDraft(sql, jobId) : previous!.snapshot_id;
   const changes: DeploymentChanges = {
     codebook: previous?.codebook_id !== body.codebookId,
     units: newUnits ? units : null,
   };
   const changed = changes.codebook || changes.units !== null;
   const version = !previous ? 1 : previous.version + (changed ? 1 : 0);
+  // The units of this version: new versions of changed units, the draft's sets
+  if (newUnits) await deployDraftUnits(sql, jobId, version);
   await sql.query(
-    `INSERT INTO deployments (job_id, codebook_id, snapshot_id, active, version, updated) VALUES ($1, $2, $3, $4, $5, now())
-     ON CONFLICT (job_id) DO UPDATE SET codebook_id = excluded.codebook_id, snapshot_id = excluded.snapshot_id,
+    `INSERT INTO deployments (job_id, codebook_id, active, version, updated) VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT (job_id) DO UPDATE SET codebook_id = excluded.codebook_id,
        active = excluded.active, version = excluded.version, updated = excluded.updated`,
-    [jobId, body.codebookId, snapshotId, body.active, version],
+    [jobId, body.codebookId, body.active, version],
   );
   if (!previous || changed) {
-    await sql.query(
-      "INSERT INTO deployment_versions (job_id, version, codebook_id, snapshot_id, changes) VALUES ($1, $2, $3, $4, $5)",
-      [jobId, version, body.codebookId, snapshotId, JSON.stringify(changes)],
-    );
+    await sql.query("INSERT INTO deployment_versions (job_id, version, codebook_id, changes) VALUES ($1, $2, $3, $4)", [
+      jobId,
+      version,
+      body.codebookId,
+      JSON.stringify(changes),
+    ]);
   }
   await sql.query("UPDATE codebooks SET immutable = true WHERE job_id = $1 AND id = $2", [jobId, body.codebookId]);
   return { ...(await getDeployment(sql, jobId))!, ...(warnings.length > 0 ? { warnings } : {}) };
@@ -75,7 +77,7 @@ export async function pendingChanges(sql: Sql, jobId: number): Promise<PendingCh
   const deployed = await one<DeploymentRow>(sql, "SELECT * FROM deployments WHERE job_id = $1", [jobId]);
   const latest = await one<{ id: number }>(sql, "SELECT id FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
   return {
-    units: await unitChanges(sql, jobId, deployed?.snapshot_id ?? null),
+    units: await unitChanges(sql, jobId),
     codebookId: latest && latest.id !== deployed?.codebook_id ? latest.id : null,
   };
 }
@@ -144,7 +146,7 @@ export async function getDeploymentSpec(sql: Sql, jobId: number): Promise<Deploy
     version: deployment.version,
     active: deployment.active,
     annotationEpoch: deployment.annotation_epoch,
-    snapshotId: deployment.snapshot_id,
+    liveUnits: true,
   });
 }
 
@@ -158,7 +160,7 @@ export async function getPreviewSpec(sql: Sql, jobId: number): Promise<Deploymen
   if (!codebook) return null;
   if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest codebook has issues: fix them to preview it", "codebook_invalid");
   // The drafts: the latest codebook with the draft units and sets.
-  const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0, snapshotId: null });
+  const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
   const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.sets])).digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
@@ -167,7 +169,7 @@ async function buildSpec(
   sql: Sql,
   jobId: number,
   codebook: CodebookRow,
-  meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "snapshotId">,
+  meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
 ): Promise<DeploymentSpec> {
   const job = await one<{ keep_sessions_open: boolean }>(sql, "SELECT keep_sessions_open FROM jobs WHERE id = $1", [jobId]);
   return {
@@ -175,6 +177,6 @@ async function buildSpec(
     ...meta,
     keepSessionsOpen: job?.keep_sessions_open ?? false,
     codebook: toCodebookResponse(codebook),
-    sets: await runtimeSets(sql, jobId, meta.snapshotId),
+    sets: await runtimeSets(sql, jobId, meta.liveUnits),
   };
 }

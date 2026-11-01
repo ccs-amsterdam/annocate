@@ -4,14 +4,14 @@ import { codebookItems } from "../shared/codebooks.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { checkUnitUpload } from "../shared/limits.js";
-import { DRAFT_UNITS, getUnitFields, latestCodebook, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount, type UnitRow } from "../shared/units.js";
+import { draftUnits, getUnitFields, latestCodebook, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount } from "../shared/units.js";
 
 export function units(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
   app.get("/job/:jobId/units", requireJobUser(server, "READ"), async (c) => {
-    const rows = await db.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 ORDER BY u.id`, [c.get("jobId")]);
+    const rows = await draftUnits(db, "u.job_id = $1", [c.get("jobId")]);
     return c.json(rows.map(toUnitMeta));
   });
 
@@ -53,7 +53,7 @@ export function units(server: Server): Hono<Env> {
       if (problem) return c.json({ error: `Unit '${unit.externalId}': ${problem}` }, 400);
     }
 
-    const existingRows = await db.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 AND u.external_id = ANY($2)`, [
+    const existingRows = await draftUnits(db, "u.job_id = $1 AND u.external_id = ANY($2)", [
       jobId,
       units.map((u) => u.externalId),
     ]);
@@ -76,7 +76,7 @@ export function units(server: Server): Hono<Env> {
     const created = await db.transaction(async (tx) => {
       if (JSON.stringify(fields) !== JSON.stringify(declared)) await setUnitFields(tx, jobId, fields);
       const ids = await saveUnits(tx, jobId, units);
-      const rows = await tx.query<UnitRow>(`${DRAFT_UNITS} AND u.job_id = $1 AND u.id = ANY($2)`, [jobId, [...ids.values()]]);
+      const rows = await draftUnits(tx, "u.job_id = $1 AND u.id = ANY($2)", [jobId, [...ids.values()]]);
       const byId = new Map(rows.map((r) => [r.id, r]));
       return units.map((u) => toUnitResponse(byId.get(ids.get(u.externalId)!)!));
     });

@@ -149,7 +149,7 @@ export async function createJobFromExample(db: Sql, id: string, options: FromExa
         }
         const uid = unitId(externalId);
         // The deployed version of the unit, as coders' answers point to theirs
-        const version = (await one<{ version_id: number }>(tx, "SELECT version_id FROM units WHERE id = $1", [uid]))!.version_id;
+        const version = (await one<{ id: number }>(tx, "SELECT id FROM unit_versions WHERE unit_id = $1 AND to_deploy IS NULL", [uid]))!.id;
         for (const [name, short] of Object.entries(answers)) {
           const value = answerValue(short);
           check(name, unitTypes.get(name), value);

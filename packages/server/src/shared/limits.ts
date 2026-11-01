@@ -30,7 +30,7 @@ export async function checkUnitUpload(sql: Sql, jobId: number, units: { external
   if (added === 0) return;
   const { ownerId, limits } = await jobLimits(sql, jobId);
   if (limits.unitsPerJob != null) {
-    const row = await one<{ n: number }>(sql, "SELECT count(*)::int AS n FROM units WHERE job_id = $1 AND version_id IS NOT NULL", [jobId]);
+    const row = await one<{ n: number }>(sql, "SELECT count(*)::int AS n FROM units WHERE job_id = $1 AND in_draft", [jobId]);
     if (row!.n + added > limits.unitsPerJob) throw limitReached(`A job can have at most ${limits.unitsPerJob} units (this one has ${row!.n})`);
   }
   if (limits.units != null && ownerId !== null) {

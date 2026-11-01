@@ -166,7 +166,7 @@ export async function usage(sql: Sql, userId: number): Promise<{ jobs: number; u
   const row = await one<{ jobs: number; units: number }>(
     sql,
     `SELECT (SELECT count(*)::int FROM jobs WHERE owner_id = $1) AS jobs,
-            (SELECT count(*)::int FROM units u JOIN jobs j ON j.id = u.job_id WHERE j.owner_id = $1 AND u.version_id IS NOT NULL) AS units`,
+            (SELECT count(*)::int FROM units u JOIN jobs j ON j.id = u.job_id WHERE j.owner_id = $1 AND u.in_draft) AS units`,
     [userId],
   );
   return row!;

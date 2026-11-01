@@ -3,7 +3,7 @@ import { UnitsSpecSchema, fieldUsage, typeOfValue, unitFieldNameError, type Unit
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { codebookItems } from "../shared/codebooks.js";
-import { getUnitFields, latestCodebook, setUnitFields } from "../shared/units.js";
+import { dropDraftFields, getUnitFields, latestCodebook, setUnitFields } from "../shared/units.js";
 
 // The design's unit fields (docs/plans/design.md §3).
 // Static path: mounted before units.$id.ts so `/job/:jobId/units/fields` is not read as a unit id.
@@ -41,8 +41,9 @@ export function unitsFields(server: Server): Hono<Env> {
       const old = before.find((b) => b.name === f.name);
       if (!old || old.type === f.type) continue;
       const rows = await db.query<{ external_id: string; value: UnitDataValue }>(
-        `SELECT u.external_id, val.value FROM units u JOIN unit_versions v ON v.id = u.version_id
-         JOIN unit_values val ON val.id = (v.fields ->> $2)::int WHERE u.job_id = $1 AND v.fields ? $2`,
+        `SELECT u.external_id, val.value FROM units u JOIN unit_draft d ON d.unit_id = u.id
+         JOIN unit_field_names n ON n.id = d.field_id JOIN unit_values val ON val.id = d.value_id
+         WHERE u.job_id = $1 AND n.name = $2`,
         [jobId, f.name],
       );
       const misfit = rows.find((r) => typeOfValue(r.value) !== null && typeOfValue(r.value) !== f.type);
@@ -50,21 +51,7 @@ export function unitsFields(server: Server): Hono<Env> {
     }
 
     await db.transaction(async (tx) => {
-      if (removed.length > 0) {
-        // New draft versions without the removed fields
-        await tx.query(
-          `WITH changed AS (
-             SELECT u.id AS unit_id, v.fields - $2::text[] AS fields
-             FROM units u JOIN unit_versions v ON v.id = u.version_id WHERE u.job_id = $1 AND v.fields ?| $2::text[]
-           ), versions AS (
-             INSERT INTO unit_versions (job_id, unit_id, hash, fields)
-             SELECT $1, unit_id, unit_content_hash(unit_data(fields)), fields FROM changed
-             ON CONFLICT (unit_id, hash) DO UPDATE SET hash = excluded.hash RETURNING id, unit_id
-           )
-           UPDATE units u SET version_id = versions.id FROM versions WHERE u.id = versions.unit_id`,
-          [jobId, removed],
-        );
-      }
+      await dropDraftFields(tx, jobId, removed);
       await setUnitFields(tx, jobId, fields);
     });
     return c.json(await getUnitFields(db, jobId));

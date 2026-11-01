@@ -997,7 +997,7 @@ export class DeploymentRuntime {
   }
 
   private async getUnits(ids: number[], store: Store = this.store): Promise<Map<number, Unit>> {
-    return new Map((await store.getUnits(ids, this.spec.snapshotId)).map((unit) => [unit.id, unit]));
+    return new Map((await store.getUnits(ids, this.spec.liveUnits)).map((unit) => [unit.id, unit]));
   }
 }
 

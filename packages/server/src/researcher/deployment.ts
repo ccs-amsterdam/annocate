@@ -33,14 +33,14 @@ export function deployment(server: Server): Hono<Env> {
     if (undeclared.length > 0) {
       return c.json({ error: `The codebook uses unit fields the design doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
     }
-    // The units it runs: the drafts (`units`, and always the first time), or the deployed snapshot.
-    const current = await one<{ snapshot_id: number }>(db, "SELECT snapshot_id FROM deployments WHERE job_id = $1", [jobId]);
-    const snapshotId = parsed.data.units || !current ? null : current.snapshot_id;
+    // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
+    const current = await one(db, "SELECT 1 FROM deployments WHERE job_id = $1", [jobId]);
+    const live = !parsed.data.units && !!current;
     // Links follow the codebook's link parameters (docs/plans/sets-and-session-parameters.md §4).
-    await checkLinkCount(db, jobId, codebookItems(codebook), parsed.data.confirmLinks ?? false, snapshotId);
+    await checkLinkCount(db, jobId, codebookItems(codebook), parsed.data.confirmLinks ?? false, live);
     const deployed = await db.transaction(async (tx) => {
       const result = await putDeployment(tx, jobId, parsed.data);
-      const warnings = [...(result.warnings ?? []), ...(await setWarnings(tx, jobId, codebookItems(codebook), snapshotId))];
+      const warnings = [...(result.warnings ?? []), ...(await setWarnings(tx, jobId, codebookItems(codebook), live))];
       return { ...result, links: await syncLinks(tx, jobId), ...(warnings.length > 0 ? { warnings } : {}) };
     });
     await server.deployments.refresh(jobId);

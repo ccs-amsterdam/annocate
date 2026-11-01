@@ -1,14 +1,13 @@
 import { Hono } from "hono";
-import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { DRAFT_UNITS, removeUnit, toUnitResponse, type UnitRow } from "../shared/units.js";
+import { draftUnits, removeUnit, toUnitResponse } from "../shared/units.js";
 
 export function unit(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  const get = (jobId: number, id: number) => one<UnitRow>(db, `${DRAFT_UNITS} AND u.job_id = $1 AND u.id = $2`, [jobId, id]);
+  const get = async (jobId: number, id: number) => (await draftUnits(db, "u.job_id = $1 AND u.id = $2", [jobId, id]))[0];
 
   app.get("/job/:jobId/units/:id", requireJobUser(server, "READ"), async (c) => {
     const row = await get(c.get("jobId"), Number(c.req.param("id")));

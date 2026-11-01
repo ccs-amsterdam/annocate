@@ -109,7 +109,7 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
   let firstInvite: number | null = null;
   if (recipe.publish) {
     await putDeployment(tx, job.id, { codebookId, active: true, units: true });
-    await checkLinkCount(tx, job.id, recipe.codebook.items as CodebookItem[], true, null);
+    await checkLinkCount(tx, job.id, recipe.codebook.items as CodebookItem[], true, true);
     await syncLinks(tx, job.id, { secrets: options.secrets });
     firstInvite = (await one<{ id: number }>(tx, "SELECT id FROM invites WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
   }

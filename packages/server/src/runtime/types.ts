@@ -12,9 +12,9 @@ export interface DeploymentSpec {
   version: number;
   active: boolean;
   codebook: CodebookResponse;
-  /** The deployed units' snapshot (docs/plans/design.md §5); null: the drafts (a preview). */
-  snapshotId: number | null;
-  /** All sets of the snapshot, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit in it). */
+  /** The deployed units (docs/plans/design.md §5); false: the drafts (a preview). */
+  liveUnits: boolean;
+  /** All sets coders get, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit). */
   sets: { name: string; unitIds: number[] }[];
   /**
    * Bumped whenever annotations change outside the runtime (e.g. a

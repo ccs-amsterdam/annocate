@@ -93,7 +93,7 @@ export async function jobOverview(sql: Sql, jobId: number, now = new Date()): Pr
   for (const perCoder of (await finishedPerLoop(sql, jobId)).values()) for (const n of perCoder.values()) codings += n;
 
   return {
-    units: await count("SELECT COUNT(*)::int AS n FROM units WHERE job_id = $1 AND version_id IS NOT NULL"),
+    units: await count("SELECT COUNT(*)::int AS n FROM units WHERE job_id = $1 AND in_draft"),
     groups,
     coders: {
       total: await count("SELECT COUNT(*)::int AS n FROM coders WHERE job_id = $1"),

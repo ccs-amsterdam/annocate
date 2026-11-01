@@ -47,7 +47,7 @@ export class PreviewStore implements Store {
   ) {}
 
   getDeployment: Store["getDeployment"] = () => this.db.getDeployment();
-  getUnits: Store["getUnits"] = (ids, snapshotId) => this.db.getUnits(ids, snapshotId);
+  getUnits: Store["getUnits"] = (ids, live) => this.db.getUnits(ids, live);
 
   async listCoders(): Promise<StoredCoder[]> {
     return [...this.coders.values()];

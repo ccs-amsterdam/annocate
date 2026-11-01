@@ -513,8 +513,9 @@ or pause/resume with `active`. Units and sets are drafts until deployed
 
 1. check that the codebook passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid codebooks);
-2. with `units`: a snapshot of the draft units and sets, if they differ
-   from the deployed ones;
+2. with `units`: new versions of the units the draft changed (versions
+   they replace that no answer points to are deleted), and the draft's
+   sets become the deployed ones;
 3. store it, bump `version` if the codebook or the units changed (pausing
    and resuming don't: coders don't reload), record the version with what
    it changed ([listDeploymentVersions](#listdeploymentversions)), and make

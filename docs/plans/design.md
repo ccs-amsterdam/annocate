@@ -102,38 +102,36 @@ One rule for researchers: **everything you edit is a draft; coders see
 what you deployed; deploying makes changes live.** That covers the design
 (codebook, unit fields, distribution) and the units and their sets.
 
-- A **deployed version** is a pair: a **design version** and a **unit
-  snapshot**. A snapshot lists `(unit, unit version, sets, position)`;
-  unit versions are content-addressed (`unit_versions`, by hash), so a
-  snapshot points to them and doesn't copy data. A version that changes
-  only the design reuses the previous snapshot.
-- The shown data and its hash are computed once at deploy (now: at each
-  serve). Coders on an older version reload (`codebook_changed`), as now.
-- The `units` and set tables become the draft workspace; coding reads the
-  deployed snapshot. Preview shows the drafts.
-- Uploading units no longer changes a running study; the upload ends with
-  **Deploy now**, which opens the deploy dialog.
+- A **deployed version** is a design version with the units' current
+  versions and the deployed sets (storage below). A deploy that changes
+  only the design leaves the units as they are.
+- Coders on an older version reload (`codebook_changed`), as before.
+- Coding reads the deployed units; Preview shows the drafts.
+- Uploading units no longer changes a running study; a bar on the job page
+  says what isn't deployed yet and opens the deploy dialog.
 
-**Storage.** Field values are stored once by content; a unit version is a
-small map of field to value:
+**Storage** (built; migration 0026). Field values are stored once per job
+by content; units have a draft (overwritten freely) and versions made only
+by deploys:
 
 ```
-unit_values    (id, job_id, hash, value)            unique (job_id, hash)
-unit_versions  (id, unit_id, hash, fields)          fields = {"text": 17, ...}
-units          (id, job_id, external_id, version_id) the draft: current version
-snapshots      (id, job_id)
-snapshot_units (snapshot_id, unit_id, unit_version_id, sets, position)
+unit_values          (id, job_id, hash, value)          unique (job_id, hash)
+unit_field_names     (id, job_id, name)
+units                (id, job_id, external_id, in_draft, coded)
+unit_draft           (unit_id, field_id, value_id)
+unit_versions        (id, unit_id, from_deploy, to_deploy)   to_deploy NULL: current
+unit_version_fields  (version_id, field_id, value_id)
+unit_sets            (id, job_id, live, grp, name)      the draft's and the deployed sets
+unit_set_members     (set_id, unit_id, position)
 ```
 
-- A version's hash covers the content columns, not sets (those are in
-  the snapshot). Adding a column makes new versions, but only the new
-  values are new data.
-- Uploads make versions (editing the draft). Versions never deployed and
-  no longer current can be cleaned up; versions in a deployed snapshot or
-  with answers stay. Removing a unit from the draft keeps them.
-- Answers point to the full unit version. What a coder saw is that version
-  limited to the deployed design's shown fields, so the shown-fields hash
-  at each serve goes away.
+- A deploy that changes a unit closes its current version and opens a new
+  one; a replaced version no answer points to is deleted then, and values
+  nothing refers to go too. So draft edits never make versions, and only
+  coded content is kept.
+- Answers point to the version their coder saw (one deleted in the moment
+  of a deploy gives way to the current one).
+- Sets have no history: the draft's and the deployed ones.
 - Later: an explicit **purge** that blanks a value's content everywhere
   (privacy), with a warning.
 
