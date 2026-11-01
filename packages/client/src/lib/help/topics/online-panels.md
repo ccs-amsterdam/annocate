@@ -96,8 +96,15 @@ Unit loop                 10 news articles
 End: done                 complete → panel's completion link
 ```
 
-Put the panel's link in **Redirect to (optional)**, with `$session` (or
-`$var`) references where the panel wants values:
+A panel gives every study its own links, so they belong to the run, not to
+the design: in the end item, choose **Then send coders to**: *A panel's
+return link*, and give it a name (e.g. `panel_complete`). Put the links
+themselves in the job's **Settings**, under **Panel return links**; they
+take effect at once, without deploying, and someone who reuses your design
+fills in their own. Deploying warns about a name without a link. (A fixed
+link, the same for every run, can go in the end item itself: *This URL*.)
+
+Use `$session` (or `$var`) references where the panel wants values:
 
 ```text
 https://panel.example/complete?id=$session.participant&study=$session.STUDY_ID

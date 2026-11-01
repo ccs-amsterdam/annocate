@@ -497,9 +497,11 @@ async function findOrCreateCoder(
   // A new session of a known participant is the same person: it doesn't use up the invite.
   if (!knownParticipant) {
     // Checked and counted in one statement, so concurrent coders can't overrun `max_uses`.
-    const used = await sql.query("UPDATE invites SET uses = uses + 1 WHERE id = $1 AND (max_uses IS NULL OR uses < max_uses) RETURNING id", [
-      invite.id,
-    ]);
+    // The link's own limit, else the design's sample size per link (docs/plans/design.md §4)
+    const used = await sql.query(
+      "UPDATE invites SET uses = uses + 1 WHERE id = $1 AND (COALESCE(max_uses, $2::int) IS NULL OR uses < COALESCE(max_uses, $2::int)) RETURNING id",
+      [invite.id, request.sessionRules?.item?.maxUses ?? null],
+    );
     if (used.length === 0) throw new HttpError(401, "This invite has been used up");
   }
   const created = await one<CoderRow>(

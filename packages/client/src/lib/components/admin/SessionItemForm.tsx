@@ -140,6 +140,27 @@ export function SessionItemForm({
         </section>
       )}
 
+      <section className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 text-xs font-semibold">
+          Sessions per link (sample size)
+          <Input
+            type="number"
+            min={1}
+            className="h-8 w-28 text-xs font-normal"
+            placeholder="no limit"
+            value={item.maxUses ?? ""}
+            onChange={(e) => {
+              const next = { ...item, maxUses: e.target.value === "" ? undefined : Number(e.target.value) };
+              if (next.maxUses === undefined) delete next.maxUses;
+              onChange(next);
+            }}
+          />
+        </label>
+        <span className="text-[11px] text-muted-foreground">
+          Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Invitations) overrides it.
+        </span>
+      </section>
+
       <section className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-xs font-semibold">
           <input

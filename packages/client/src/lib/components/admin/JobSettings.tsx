@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { JobResponse } from "@annotinder/contracts";
+import { designItems, redirectSettings, type JobResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCreateJobMutation, useDeleteJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
+import { useCodebookQuery, useCodebooksQuery, useCreateJobMutation, useDeleteJobMutation, useJobQuery, useUpdateJobMutation } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
@@ -67,7 +67,13 @@ function JobEditForm({
   const [archived, setArchived] = useState(job.archived);
   const [keepOpen, setKeepOpen] = useState(job.keepSessionsOpen);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const dirty = name !== job.name || archived !== job.archived || keepOpen !== job.keepSessionsOpen;
+  const [redirects, setRedirects] = useState<Record<string, string>>(job.redirectUrls ?? {});
+  // The end items' redirect settings in the latest codebook version, and any URL already set
+  const codebooks = useCodebooksQuery(client).data ?? [];
+  const latest = useCodebookQuery(client, codebooks.at(-1)?.id ?? null).data;
+  const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(job.redirectUrls ?? {})])];
+  const redirectsDirty = JSON.stringify(redirects) !== JSON.stringify(job.redirectUrls ?? {});
+  const dirty = name !== job.name || archived !== job.archived || keepOpen !== job.keepSessionsOpen || redirectsDirty;
 
   return (
     <div className="max-w-md space-y-6">
@@ -75,7 +81,8 @@ function JobEditForm({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          updateJob.mutate({ id: job.id, body: { name, archived, keepSessionsOpen: keepOpen } });
+          const redirectUrls = Object.fromEntries(Object.entries(redirects).filter(([, url]) => url.trim() !== ""));
+          updateJob.mutate({ id: job.id, body: { name, archived, keepSessionsOpen: keepOpen, redirectUrls } });
         }}
       >
         <div>
@@ -108,6 +115,28 @@ function JobEditForm({
             </span>
           </span>
         </label>
+
+        {settingNames.length > 0 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium text-foreground">Panel return links</legend>
+            <p className="text-xs text-muted-foreground">
+              End items send coders on to these. They belong to this run (a panel gives each study its own links), not to the design,
+              and take effect without deploying. May use $var and $session values.
+            </p>
+            {settingNames.map((setting) => (
+              <label key={setting} className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                <span className="font-mono">{setting}</span>
+                <Input
+                  aria-label={`URL for ${setting}`}
+                  className="font-mono text-xs"
+                  placeholder="https://panel.example/return?id=$session.participant"
+                  value={redirects[setting] ?? ""}
+                  onChange={(e) => setRedirects({ ...redirects, [setting]: e.target.value })}
+                />
+              </label>
+            ))}
+          </fieldset>
+        )}
 
         <div className="pt-2">
           <Button type="submit" disabled={!dirty || updateJob.isPending}>

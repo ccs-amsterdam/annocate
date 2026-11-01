@@ -50,8 +50,48 @@ export const EndItemSchema = ItemBaseSchema.extend({
     .string()
     .optional()
     .describe("Where to send the coder, e.g. a panel's return link. May contain $var references (filled in URL-encoded)."),
+  redirectSetting: SafeNameSchema.optional().describe(
+    "Instead of redirectUrl: the name of a deployment setting holding the URL (the job's settings), for a link that differs per run, such as a panel's.",
+  ),
 });
 export type EndItem = z.infer<typeof EndItemSchema>;
+
+/** The deployment settings end items send coders to (`redirectSetting`), by name. */
+export function redirectSettings(items: readonly unknown[]): string[] {
+  const names = new Set<string>();
+  const walk = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    for (const raw of list) {
+      const item = raw as { type?: unknown; redirectSetting?: unknown; children?: unknown } | null;
+      if (!item || typeof item !== "object") continue;
+      if (item.type === "end" && typeof item.redirectSetting === "string") names.add(item.redirectSetting);
+      walk(item.children);
+    }
+  };
+  walk(items);
+  return [...names];
+}
+
+/**
+ * Items with each end item's `redirectSetting` replaced by its URL from the
+ * deployment settings (none set: no redirect). What coders get.
+ */
+export function resolveRedirects<T>(items: readonly T[], urls: Record<string, string>): T[] {
+  return items.map((raw) => {
+    const item = raw as { type?: unknown; redirectSetting?: unknown; children?: unknown };
+    if (!item || typeof item !== "object") return raw;
+    let next = item;
+    if (Array.isArray(item.children)) next = { ...next, children: resolveRedirects(item.children, urls) };
+    if (item.type === "end" && typeof item.redirectSetting === "string") {
+      const resolved: Record<string, unknown> = { ...next };
+      delete resolved.redirectSetting;
+      const url = urls[item.redirectSetting];
+      if (url) resolved.redirectUrl = url;
+      next = resolved;
+    }
+    return next as T;
+  });
+}
 
 /** An end item's redirect URL with its `$var` references filled in, URL-encoded. */
 export function fillRedirectUrl(url: string, scope: ReferenceScope): string {

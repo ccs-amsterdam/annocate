@@ -12,6 +12,13 @@ export const JobWriteSchema = z.object({
    * (docs/coder-identity.md §9). Left out: unchanged.
    */
   keepSessionsOpen: z.boolean().optional(),
+  /**
+   * Deployment settings (docs/plans/design.md §4): per name, the URL end
+   * items with that `redirectSetting` send coders to, e.g. a panel's return
+   * link, which differs per run. May contain `$var` and `$session`
+   * references, like an end item's own URL. Left out: unchanged.
+   */
+  redirectUrls: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(64), z.string().max(2000)).optional(),
 });
 export type JobWrite = z.infer<typeof JobWriteSchema>;
 
@@ -19,6 +26,7 @@ export const JobResponseSchema = JobWriteSchema.extend({
   id: IdSchema,
   created: z.coerce.date(),
   keepSessionsOpen: z.boolean(),
+  redirectUrls: z.record(z.string(), z.string()),
   /** Set when a server admin suspended the job: no coding and no changes (reading and deleting data still work). */
   suspendedAt: z.coerce.date().nullable().optional(),
   /** The example the job was made from (`ExampleSummary.id`), if any. */

@@ -1509,6 +1509,27 @@ describe("unit versions are made by deploys", () => {
   });
 });
 
+describe("deployment settings", () => {
+  it("fill in end items' panel return links, and the design's sample size per link limits its sessions", async () => {
+    const end = { type: "end", name: "done", outcome: "complete", redirectSetting: "panel_done" };
+    const deployed = await redeploy({}, [{ type: "session", params: [], maxUses: 1 }, end]);
+    expect(deployed.warnings).toContainEqual(expect.stringContaining("'panel_done', which has no URL yet"));
+    expect(JSON.stringify((await coder("first").session()).codebook.items)).not.toContain("redirectUrl");
+    // The URL is a setting of the job: coders get it without a new version
+    const put = await server.request("/job/1", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "Demo job", redirectUrls: { panel_done: "https://panel.example/done?id=$session.participant" } }),
+    });
+    expect(put.status).toBe(200);
+    expect((await put.json()).redirectUrls).toEqual({ panel_done: "https://panel.example/done?id=$session.participant" });
+    const items = (await coder("first").session()).codebook.items as { type: string; redirectUrl?: string }[];
+    expect(items.find((i) => i.type === "end")?.redirectUrl).toBe("https://panel.example/done?id=$session.participant");
+    // maxUses 1: the demo link took "first"; a second new coder is refused
+    expect((await send("second", "/session", {}, { "x-invite-secret": "demo-secret" })).status).toBe(401);
+  });
+});
+
 describe("unit fields in the design", () => {
   it("keeps the session next to the items, not among them", async () => {
     const session = { params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] } }] };

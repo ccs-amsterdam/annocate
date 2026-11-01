@@ -23,6 +23,8 @@ export interface DeploymentSpec {
   annotationEpoch: number;
   /** The job keeps finished sessions open (else they close: docs/coder-identity.md §9). */
   keepSessionsOpen: boolean;
+  /** Deployment settings: the URL per `redirectSetting` name of end items (docs/plans/design.md §4). */
+  redirectUrls: Record<string, string>;
 }
 
 /** A unit's content, as the runtime reads it. */

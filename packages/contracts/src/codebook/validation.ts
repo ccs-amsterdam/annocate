@@ -521,6 +521,9 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
         if (typeof end.redirectUrl === "string" && !/^https?:\/\//.test(end.redirectUrl)) {
           issue([...itemPath, "redirectUrl"], "The redirect URL must start with https:// (or http://)");
         }
+        if (typeof end.redirectUrl === "string" && typeof (item as { redirectSetting?: unknown }).redirectSetting === "string") {
+          issue([...itemPath, "redirectSetting"], "Give a redirect URL or a deployment setting, not both");
+        }
       } else if (item.type === "question") {
         if (!loop && (item.variable?.type === "span" || item.variable?.type === "relation")) {
           issue([...itemPath, "variable", "type"], `Question '${item.name}' with answer type '${item.variable.type}' can only be used inside a unit_loop`);

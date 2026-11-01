@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { DeploymentWriteSchema, codebookErrors, undeclaredFields } from "@annotinder/contracts";
+import { DeploymentWriteSchema, codebookErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
 import { codebookItems, codebookUnits, type CodebookRow } from "../shared/codebooks.js";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
@@ -40,7 +40,14 @@ export function deployment(server: Server): Hono<Env> {
     await checkLinkCount(db, jobId, codebookItems(codebook), parsed.data.confirmLinks ?? false, live);
     const deployed = await db.transaction(async (tx) => {
       const result = await putDeployment(tx, jobId, parsed.data);
-      const warnings = [...(result.warnings ?? []), ...(await setWarnings(tx, jobId, codebookItems(codebook), live))];
+      const job = await one<{ redirect_urls: Record<string, string> }>(tx, "SELECT redirect_urls FROM jobs WHERE id = $1", [jobId]);
+      // Panel return links are deployment settings: say which ones are missing
+      const unset = redirectSettings(codebookItems(codebook)).filter((name) => !job?.redirect_urls?.[name]);
+      const warnings = [
+        ...(result.warnings ?? []),
+        ...(await setWarnings(tx, jobId, codebookItems(codebook), live)),
+        ...unset.map((name) => `End items send coders on with the setting '${name}', which has no URL yet: set it in the job's Settings.`),
+      ];
       return { ...result, links: await syncLinks(tx, jobId), ...(warnings.length > 0 ? { warnings } : {}) };
     });
     await server.deployments.refresh(jobId);

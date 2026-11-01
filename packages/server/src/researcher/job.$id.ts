@@ -20,10 +20,17 @@ export function job(server: Server): Hono<Env> {
 
     const row = await one<JobRow>(
       db,
-      "UPDATE jobs SET name = $1, archived = $2, keep_sessions_open = COALESCE($3, keep_sessions_open) WHERE id = $4 RETURNING *",
-      [parsed.data.name, parsed.data.archived ?? false, parsed.data.keepSessionsOpen ?? null, c.get("jobId")],
+      `UPDATE jobs SET name = $1, archived = $2, keep_sessions_open = COALESCE($3, keep_sessions_open),
+         redirect_urls = COALESCE($5::jsonb, redirect_urls) WHERE id = $4 RETURNING *`,
+      [
+        parsed.data.name,
+        parsed.data.archived ?? false,
+        parsed.data.keepSessionsOpen ?? null,
+        c.get("jobId"),
+        parsed.data.redirectUrls ? JSON.stringify(parsed.data.redirectUrls) : null,
+      ],
     );
-    // The runtime reads whether sessions stay open with the deployment.
+    // The runtime reads whether sessions stay open, and the redirect URLs, with the deployment.
     await server.deployments.refresh(c.get("jobId"));
     return c.json(toJobResponse(row!));
   });

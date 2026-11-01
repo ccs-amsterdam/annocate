@@ -9,8 +9,18 @@ export interface JobRow {
   keep_sessions_open: boolean;
   suspended_at: Date | null;
   origin: string | null;
+  redirect_urls: Record<string, string>;
 }
 
 export function toJobResponse(row: JobRow): JobResponse {
-  return { id: row.id, name: row.name, archived: row.archived, created: row.created, keepSessionsOpen: row.keep_sessions_open, suspendedAt: row.suspended_at, origin: row.origin };
+  return {
+    id: row.id,
+    name: row.name,
+    archived: row.archived,
+    created: row.created,
+    keepSessionsOpen: row.keep_sessions_open,
+    redirectUrls: row.redirect_urls ?? {},
+    suspendedAt: row.suspended_at,
+    origin: row.origin,
+  };
 }

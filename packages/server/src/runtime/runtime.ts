@@ -31,6 +31,7 @@ import {
   type PracticeSettings,
   type SubmitUnitResponse,
   toCoderItems,
+  resolveRedirects,
   type CoderCodebook,
   type CoderUnitResponse,
   type DeploymentStatus,
@@ -192,8 +193,10 @@ export class DeploymentRuntime {
           this.applySpec(spec);
           await this.ensureCodings();
         } else {
-          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen, sets: spec.sets };
+          this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen, sets: spec.sets, redirectUrls: spec.redirectUrls };
           this.applySets(spec);
+          // Panel return links are deployment settings: they change without a new version
+          this.coderCodebook = { ...this.coderCodebook, items: resolveRedirects(toCoderItems(this.spec.codebook.items as TopLevelItem[]), spec.redirectUrls) };
         }
         // Only once read: a failed read (e.g. a suspended job) is tried again next time.
         this.stamp = stamp;
@@ -216,7 +219,7 @@ export class DeploymentRuntime {
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
     this.questions = collectQuestions(items).questions;
-    this.coderCodebook = { id: spec.codebook.id, items: toCoderItems(items) };
+    this.coderCodebook = { id: spec.codebook.id, items: resolveRedirects(toCoderItems(items), spec.redirectUrls) };
   }
 
   private applySets(spec: DeploymentSpec): void {

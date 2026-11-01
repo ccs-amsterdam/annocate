@@ -107,3 +107,19 @@ test("the codebook as a document: what coders see", async ({ page, request }) =>
   });
   expect(text).toContain("## age: How old are you?");
 });
+
+test("panel return links are settings of the run, filled in for coders", async ({ page, request }) => {
+  const job = await api<JobResponse>(request, "POST", "/job", { name: "Panel run" });
+  await api(request, "POST", `/job/${job.id}/codebook`, {
+    items: [
+      { type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } },
+      { type: "end", name: "done", outcome: "complete", redirectSetting: "panel_done" },
+    ],
+  });
+  await page.goto("/");
+  await page.getByText("Panel run").click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByLabel("URL for panel_done").fill("https://panel.example/done");
+  await page.getByRole("button", { name: "Save Changes" }).click();
+  await expect.poll(async () => (await api<JobResponse>(request, "GET", `/job/${job.id}`)).redirectUrls).toEqual({ panel_done: "https://panel.example/done" });
+});

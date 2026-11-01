@@ -87,6 +87,11 @@ export const SessionItemSchema = z.object({
   participant: ParticipantParamSchema.optional(),
   /** Link parameter values per link (name -> value); absent: every combination. */
   combinations: z.array(z.record(SafeNameSchema, z.string())).max(2000).optional(),
+  /**
+   * The sample size per link (docs/plans/design.md §4): each link takes at
+   * most this many sessions. A link's own limit (the deployment's) overrides it.
+   */
+  maxUses: z.number().int().positive().optional(),
 });
 export type SessionItem = z.infer<typeof SessionItemSchema>;
 

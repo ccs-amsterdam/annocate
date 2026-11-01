@@ -171,11 +171,16 @@ async function buildSpec(
   codebook: CodebookRow,
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits">,
 ): Promise<DeploymentSpec> {
-  const job = await one<{ keep_sessions_open: boolean }>(sql, "SELECT keep_sessions_open FROM jobs WHERE id = $1", [jobId]);
+  const job = await one<{ keep_sessions_open: boolean; redirect_urls: Record<string, string> }>(
+    sql,
+    "SELECT keep_sessions_open, redirect_urls FROM jobs WHERE id = $1",
+    [jobId],
+  );
   return {
     jobId,
     ...meta,
     keepSessionsOpen: job?.keep_sessions_open ?? false,
+    redirectUrls: job?.redirect_urls ?? {},
     // The runtime works on the items with the session first
     codebook: { ...toCodebookResponse(codebook), items: codebookItems(codebook) },
     sets: await runtimeSets(sql, jobId, meta.liveUnits),

@@ -277,14 +277,47 @@ function EndItemFields({
         <IssueList issues={issuesAt(issues, "message")} />
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">Redirect to (optional)</label>
-        <Input
-          value={item.redirectUrl ?? ""}
-          onChange={(e) => onChange({ ...item, redirectUrl: e.target.value || undefined })}
-          placeholder="https://panel.example/return?status=screenout&id=$var.pid.value"
-          className="font-mono text-xs"
-        />
-        <IssueList issues={issuesAt(issues, "redirectUrl")} />
+        <label className="text-xs font-semibold text-foreground">Then send coders to</label>
+        <select
+          aria-label="Redirect"
+          className="h-8 w-fit rounded-md border border-input bg-background px-2 text-xs"
+          value={item.redirectSetting !== undefined ? "setting" : item.redirectUrl !== undefined ? "url" : ""}
+          onChange={(e) => {
+            const next: EndItem = { ...item };
+            delete next.redirectUrl;
+            delete next.redirectSetting;
+            if (e.target.value === "url") next.redirectUrl = "";
+            if (e.target.value === "setting") next.redirectSetting = "panel_return";
+            onChange(next);
+          }}
+        >
+          <option value="">Nowhere: they stay on the end screen</option>
+          <option value="setting">A panel's return link (set per run, in the job's Settings)</option>
+          <option value="url">This URL</option>
+        </select>
+        {item.redirectSetting !== undefined && (
+          <>
+            <Input
+              aria-label="Setting name"
+              value={item.redirectSetting}
+              onChange={(e) => onChange({ ...item, redirectSetting: e.target.value })}
+              placeholder="panel_complete"
+              className="w-60 font-mono text-xs"
+            />
+            <span className="text-[11px] text-muted-foreground">
+              The URL itself goes in the job&apos;s Settings, under this name: a panel gives each run its own links.
+            </span>
+          </>
+        )}
+        {item.redirectUrl !== undefined && (
+          <Input
+            value={item.redirectUrl}
+            onChange={(e) => onChange({ ...item, redirectUrl: e.target.value })}
+            placeholder="https://example.org/thanks?id=$var.pid.value"
+            className="font-mono text-xs"
+          />
+        )}
+        <IssueList issues={[...issuesAt(issues, "redirectUrl"), ...issuesAt(issues, "redirectSetting")]} />
       </div>
     </div>
   );

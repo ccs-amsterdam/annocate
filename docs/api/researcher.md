@@ -247,8 +247,11 @@ group defined twice, or a codebook to publish that has issues; nothing is create
 ### updateJob
 
 `PUT /job/:id` → `JobResponseSchema`. Rename, set `archived` (hidden from
-active lists), or `keepSessionsOpen`: finished coder sessions stay open
-(off by default: `docs/coder-identity.md` §9). `JobResponseSchema` also has
+active lists), `keepSessionsOpen`: finished coder sessions stay open
+(off by default: `docs/coder-identity.md` §9), or `redirectUrls`: the
+deployment settings end items' `redirectSetting` names, e.g. a panel's
+return links (`docs/plans/design.md` §4); coders get them at once, without
+a deploy. `JobResponseSchema` also has
 `suspendedAt` (a server admin suspended the job).
 
 ### deleteJob
