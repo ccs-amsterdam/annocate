@@ -87,8 +87,8 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         (n) => setBusy(`Loading units: ${n}…`),
       );
       const annotations = rows.filter((a) => !a.retiredAt);
-      // The codebook versions answers were given under, and the live one.
-      setBusy("Loading codebooks…");
+      // The design versions answers were given under, and the live one.
+      setBusy("Loading design versions…");
       const ids = new Set(rows.flatMap((a) => (a.codebookId === null ? [] : [a.codebookId])));
       if (deployment) ids.add(deployment.codebookId);
       const codebooks = new Map<number, TopLevelItem[]>();
@@ -139,7 +139,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
               <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per item)
             </li>
             <li>
-              <strong>coders.csv</strong>: a row per coder: invitation, participant id, how their session ended, and their
+              <strong>coders.csv</strong>: a row per coder: link, participant id, how their session ended, and their
               answers outside unit loops
             </li>
             <li>
@@ -156,7 +156,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
               coded has several)
             </li>
             <li>
-              <strong>variables.csv</strong>: per codebook version, each question&apos;s options and labels
+              <strong>variables.csv</strong>: per design version, each question&apos;s options and labels
             </li>
             <li>
               <strong>README.txt</strong>: what the columns mean

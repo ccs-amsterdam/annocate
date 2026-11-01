@@ -57,7 +57,7 @@ question. Inside a loop, texts and conditions can use more than outside:
 
 Some answer types only make sense per unit, and only work inside a loop:
 [selecting text](span.md) and [relations](relation.md). The
-[assigned variables](auto.md) (`auto`) work the other way round: only
+[auto questions](auto.md) (`auto`) work the other way round: only
 outside a loop.
 
 The loop's answers belong to the loop. After the loop, or in another loop,
@@ -71,7 +71,7 @@ Coder-level questions before the loop are answered once, and the loop can use
 their answers everywhere: in the layout, in its questions' texts and in its
 conditions. Typical uses:
 
-- an experimental group (an [assigned variable](auto.md)) that decides which
+- an experimental group (an [auto question](auto.md)) that decides which
   version of a unit coders see, with `::: if` in the layout (see
   [Showing parts conditionally](template-blocks.md));
 - the coder's experience, to show extra instructions to beginners;
@@ -99,7 +99,7 @@ coders with another answer see.
 
 ## Several loops
 
-A codebook can have more than one loop, each with its own layout, units and
+A design can have more than one loop, each with its own layout, units and
 questions. Use this when a study has parts that work differently:
 
 - a **training** loop with a few practice units, followed by the **main**
@@ -132,5 +132,5 @@ By default coders get the units in the order of the set (for all units: the orde
 **Random (each coder their own order)**, so that order effects average out
 over coders. See [Order](unit-distribution.md#order).
 
-> Pilot a new loop with a few units in **Preview** before you invite coders:
+> Pilot a new loop with a few units in **Preview** before you send coders a link:
 > you see the layout and the questions exactly as coders do.

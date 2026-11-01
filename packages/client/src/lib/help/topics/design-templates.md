@@ -27,8 +27,8 @@ filled in.
 - **One syntax everywhere.** Question texts, instructions and end messages
   use the same syntax, so a question can say *"Is **$unit.headline** about
   politics?"*.
-- **It copies as text.** Templates are part of the codebook's JSON, so they
-  move with it when you share a codebook.
+- **It copies as text.** Templates are part of the design's JSON, so they
+  move with it when you share a design.
 
 The cost is a little syntax to learn. The **Insert** menu above the template
 writes most of it for you, and the editor suggests unit fields and questions
@@ -73,7 +73,7 @@ whose name is in another field". This is a restriction, and it buys a lot:
 
 - **Every reference can be checked.** The editor knows exactly which fields
   and questions a template uses, so a typo or a question that comes later in
-  the codebook is an error before you publish, not an empty space coders run
+  the codebook is an error before you deploy, not an empty space coders run
   into.
 - **Coders get only what is used.** AnnoTinder sends coders only the unit
   fields the codebook refers to. Metadata columns you uploaded for your

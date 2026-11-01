@@ -2,7 +2,7 @@
 title: What is AnnoTinder?
 section: Getting started
 order: 1
-summary: The main ideas - jobs, codebooks, units, coders - and how they fit together.
+summary: The main ideas - jobs, designs, units, coders - and how they fit together.
 ---
 
 AnnoTinder is a tool for **annotation**: people (coders) read or look at
@@ -12,7 +12,7 @@ and evaluating classifiers, and for survey experiments in which participants
 judge material.
 
 It is built for research: the same codebook gives every coder the same task on
-every device, everything that coders saw and answered is kept, and a codebook
+every device, everything that coders saw and answered is kept, and a design
 can be shared so others can repeat the study.
 
 ## The parts of a job
@@ -21,16 +21,16 @@ Everything belongs to a **job**: one study or coding project. A job has:
 
 | Part | What it is | Where |
 | --- | --- | --- |
-| **Codebook** | The questions coders answer, in order, and how units are shown and handed out | Codebook tab |
-| **Units** | The material to code: rows of data, each with an id and fields such as `headline` and `text` | Units tab |
-| **Sets** | Named lists of units, in groups, for handing out different units to different coders | Units tab |
-| **Links** | The links coders open to start, made when you publish | Invitations tab |
-| **Coders** | Everyone who started, and how far they got | Coders tab |
+| **Design** | The questions coders answer, in order, how units are shown and handed out, and the unit fields and session parameters. Its versions are v1, v2, ... | Design › Codebook |
+| **Units** | The material to code: rows of data, each with an id and fields such as `headline` and `text` | Design › Units |
+| **Sets** | Named lists of units, in groups, for handing out different units to different coders | Design › Units |
+| **Links** | The links coders open to start, made when you deploy | Deploy › Links |
+| **Coders** | Everyone who started, and how far they got | Deploy › Coders |
 | **Results** | All answers, as a download | Results tab |
 
-## How a codebook is built
+## How a design is built
 
-A codebook is a list of **items**, shown to coders one at a time:
+A design is mainly a list of **items**, shown to coders one at a time:
 
 - **Questions**, such as *"What is the main topic?"*. Each has a name (its
   column in the results) and an answer type: categories, a number, a scale,
@@ -62,17 +62,18 @@ Thank you             the end
 
 1. **Create a job** and upload your units (a CSV file).
 2. **Write the codebook** in the codebook editor. Save as often as you like:
-   a saved codebook is a draft only you and your co-editors see.
+   a saved design version is a draft only you and your co-editors see.
+   Uploaded units are drafts too.
 3. **Preview** it: you code as a coder would, with your real units, without
    storing anything.
-4. **Publish** the codebook. Coders now get this version.
-5. **Invite coders**: publishing made a link to send them.
+4. **Deploy** the design and the units. Coders now get this version.
+5. **Send coders a link**: deploying made a link to send them.
 6. **Follow progress** on the Overview and Coders tabs, and **download the
    results** whenever you like.
 
-You can keep improving the codebook after publishing: coders get the new
-version once you publish it again, and every answer remembers the version it
-was given under. See [Preview, save and publish](previewing-and-publishing.md).
+You can keep improving the design after deploying: coders get the new
+version once you deploy it again, and every answer remembers the version it
+was given under. See [Preview, save and deploy](previewing-and-publishing.md).
 
 ## Where to go next
 

@@ -268,7 +268,7 @@ const unspecified = (q: SetupQuestion) => ({
 
 /**
  * The recipe for `POST /job/from-recipe`: a draft codebook, the units and
- * their sets. Publishing makes the links (one, or one per set when sets
+ * their sets. Deploying makes the links (one, or one per set when sets
  * are handed out by link).
  */
 export function setupRecipe(a: SetupAnswers): RecipeInput {

@@ -28,7 +28,7 @@ interface EditorToolbarProps {
   onOpenIssue: (issue: EditorIssue) => void;
   dirty: boolean;
   canSave: boolean;
-  /** Whether the codebook passes validation (required to publish). */
+  /** Whether the codebook passes validation (required to deploy). */
   valid: boolean;
   canUndo: boolean;
   canRedo: boolean;
@@ -40,14 +40,14 @@ interface EditorToolbarProps {
   onRevertAll: () => void;
   saving: boolean;
   onSave: () => void;
-  /** Omit to hide the Publish button. */
+  /** Omit to hide the Deploy button. */
   onPublish?: () => void;
   onOpenVersions?: () => void;
   /** Downloads the codebook as a document (what coders see). */
   onExport?: () => void;
 }
 
-/** Issue count and view toggle on the left; Versions, Save and Publish on the right. */
+/** Issue count and view toggle on the left; Versions, Save and Deploy on the right. */
 export function EditorToolbar({
   mode,
   view,
@@ -134,9 +134,9 @@ export function EditorToolbar({
               !dirty
                 ? "No changes to save"
                 : mode === "live"
-                  ? "Save your changes as a new draft. Coders keep using the live version until you publish."
+                  ? "Save your changes as a new draft. Coders keep using the live version until you deploy."
                   : errors.length > 0
-                    ? "Saves the draft as it is; fix the issues before publishing"
+                    ? "Saves the draft as it is; fix the issues before deploying"
                     : undefined
             }
           >
@@ -152,15 +152,15 @@ export function EditorToolbar({
             disabled={!canPublish || saving}
             title={
               !valid
-                ? "Fix the codebook's issues before publishing"
+                ? "Fix the issues before deploying"
                 : !canPublish
                   ? "This version is already live"
-                  : "Make this version live: coders switch to it when they next save an answer"
+                  : "Deploy this version (and choose whether to deploy the draft units too): coders switch to it when they next save an answer"
             }
             className="flex items-center gap-1.5"
           >
             <Rocket className="h-3.5 w-3.5" />
-            Publish
+            Deploy…
           </Button>
         )}
       </div>

@@ -11,13 +11,13 @@ import { usePendingChangesQuery } from "../../admin/queries";
 interface DeployDialogProps {
   client: ResearcherApi;
   open: boolean;
-  /** A codebook version to deploy (a draft that isn't live); null: none, the live one stays. */
+  /** A design version to deploy (a draft that isn't live); null: none, the live one stays. */
   codebook: CodebookResponse | null;
   versionNumber: number;
   /** The version coders use now; null if nothing was deployed yet. */
   live: CodebookResponse | null;
   liveNumber: number | null;
-  /** Whether the codebook part starts ticked (the editor's Publish: yes; after uploading units: no). */
+  /** Whether the codebook part starts ticked (the editor's Deploy: yes; after uploading units: no). */
   includeCodebook?: boolean;
   /**
    * Deploys: the codebook (null: keep the live one; its note stored first,
@@ -40,7 +40,7 @@ export function describeUnitChanges(c: UnitChanges): string {
 
 /**
  * Deploying (docs/plans/design.md §5): everything is a draft until
- * deployed. Lists both parts, the codebook draft (what changed compared
+ * deployed. Lists both parts, the design draft (what changed compared
  * with the live version, and a version note) and the draft units and sets,
  * each with a checkbox; what is left out stays a draft. Shows the server's
  * warnings afterwards.
@@ -111,7 +111,7 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
               <DialogDescription>
                 {firstDeploy
                   ? "Nothing is deployed yet: after this, coders can start the job."
-                  : `Coders use codebook v${liveNumber} now. Everything you edit is a draft until you deploy it; what you leave out stays a draft.`}
+                  : `Coders use v${liveNumber} now. Everything you edit is a draft until you deploy it; what you leave out stays a draft.`}
               </DialogDescription>
             </DialogHeader>
 
@@ -120,10 +120,10 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
                 {codebook ? (
                   <label className="flex items-center gap-2 font-semibold text-foreground">
                     <input type="checkbox" checked={useCodebook} disabled={firstDeploy} onChange={(e) => setWithCodebook(e.target.checked)} />
-                    Codebook v{versionNumber}
+                    Design v{versionNumber}
                   </label>
                 ) : (
-                  <p className="font-semibold text-foreground">Codebook: v{liveNumber} stays</p>
+                  <p className="font-semibold text-foreground">Design: v{liveNumber} stays</p>
                 )}
                 {codebook && useCodebook && (
                   <>
@@ -182,8 +182,8 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
                 </h4>
                 <ul className="list-disc space-y-1 pl-5 text-foreground/80">
                   <li>{firstDeploy ? "Coders can start." : "Coders who are working now switch to it when they next save an answer; new coders start with it."}</li>
-                  {!firstDeploy && <li>Answers already given stay linked to the codebook version and unit versions they were given with.</li>}
-                  {useCodebook && <li>Codebook v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy that.</li>}
+                  {!firstDeploy && <li>Answers already given stay linked to the design version and unit versions they were given with.</li>}
+                  {useCodebook && <li>Design v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy that.</li>}
                 </ul>
               </section>
 

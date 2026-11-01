@@ -136,7 +136,7 @@ When all units that still need codings are reserved by others, a coder
 gets one of them anyway, or a unit that isn't full yet (see [Near the end
 of the queue](#near-the-end-of-the-queue)), rather than nothing.
 
-The 15 minutes can be changed in the codebook's JSON view, as
+The 15 minutes can be changed in the codebook editor's JSON view, as
 `leaseSeconds` in the loop's `units` (one entry per coder group; default `900`), for instance
 for units that take long to code.
 

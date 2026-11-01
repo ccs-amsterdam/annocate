@@ -10,7 +10,7 @@ import { coderValues } from "./coders.js";
  * Only filters; which variables make up a loop is the runtime's business
  * (it reads the codebook).
  *
- * Used by the runtime (runtime/store.ts) and when publishing (to warn about
+ * Used by the runtime (runtime/store.ts) and when deploying (to warn about
  * loops that gained questions).
  */
 export async function listFinished(sql: Sql, jobId: number, request: FinishedRequest): Promise<Finished[]> {

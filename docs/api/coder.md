@@ -38,7 +38,7 @@ Headers:
 
 - `x-annotinder: 1` on every request (CSRF: cross-site forms can't send it);
 - `x-invite-secret` from the URL (the link): create the coder on first
-  use. A retired link (no longer part of the published design) is 403
+  use. A retired link (no longer part of the deployed design) is 403
   `link_inactive` for new sessions;
 - `x-url-params`: the page's other query parameters. They hold the URL
   parameters the codebook's Session item declares, its participant id
@@ -56,9 +56,9 @@ Headers:
   (sets assigned by email) not among the group's set names;
 - `x-annotinder-version`: the `version` of the loaded session (below).
 
-**New codebook versions.** `GET /session` returns the deployment's
-`version`, bumped when another codebook version is published. The client sends it back with every
-request. After a publish, requests with the old version (all but
+**New design versions.** `GET /session` returns the deployment's
+`version`, bumped when another design version is deployed. The client sends it back with every
+request. After a deploy, requests with the old version (all but
 `/session` and `/transfer`) answer 409 `codebook_changed`, before anything
 is stored; the client then loads the session again and continues where it
 was (`docs/client.md` §2).
@@ -91,7 +91,7 @@ Assigns the coder's `auto` variables they don't have yet (`random` or
 
 `GET /loop/:loop/next?count=<k>&branch=<i>` → `NextUnitsResponseSchema` (`{ units }`)
 
-`:loop` is the loop's position in the codebook version the coder runs
+`:loop` is the loop's position in the design version the coder runs
 (contracts `unitLoops`: `1`, `2`, ...); loops have no name. The same goes for
 `loop` in `POST /variables/unit` and `unitset` in the session's `progress`.
 

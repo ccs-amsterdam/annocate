@@ -262,7 +262,7 @@ export function VariableTypeForm({
           <OptionsEditor options={v.options} onChange={(options) => onChange({ ...v, options })} />
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium">From (span variable)</label>
+              <label className="text-sm font-medium">From (span question)</label>
               <select
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 value={v.from.variable}
@@ -277,7 +277,7 @@ export function VariableTypeForm({
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium">To (span variable)</label>
+              <label className="text-sm font-medium">To (span question)</label>
               <select
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 value={v.to.variable}
@@ -301,7 +301,7 @@ export function VariableTypeForm({
         <>
           <p className="rounded-md border border-amber-500/60 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
             This question has a name but no answer type yet. Choose one above: the form then shows what that type needs
-            (options, labels, a range). The codebook can be saved like this, but not previewed or published.
+            (options, labels, a range). The design can be saved like this, but not previewed or deployed.
           </p>
           <QuestionFields value={{ ...v, question: v.question ?? "" }} onChange={(patch) => onChange({ ...v, ...patch })} />
         </>

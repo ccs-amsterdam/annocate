@@ -2,33 +2,33 @@
 title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - made from the codebook, with who may use them, participant ids and a maximum number of uses.
+summary: The links coders open to start - made from the design, with who may use them, participant ids and a maximum number of uses.
 ---
 
-Coders start a job by opening a **link**. You find the links on the
-**Invitations** tab. One link can be shared with many coders (in an email
+Coders start a job by opening a **link**. You find the links under
+**Deploy** › **Links**. One link can be shared with many coders (in an email
 to your student assistants, or on a crowd-coding platform), or each coder
 or group can get their own.
 
-Links are made by **publishing the codebook**: you don't create them by
-hand. A codebook without link parameters makes one link. A codebook whose
+Links are made by **deploying the design**: you don't create them by
+hand. A design without link parameters makes one link. A design whose
 Session item has **link parameters** makes a link per value, or per
 combination of values: a link per set of a group, per experimental
 condition, per panel. See [Session parameters](session-parameters.md).
-That way the codebook describes which links exist and what each one means,
+That way the design describes which links exist and what each one means,
 and the values a link carries are `$session` values in the codebook.
 
-Coders can only start once a codebook version is published (see
-[Preview, save and publish](previewing-and-publishing.md)).
+Coders can only start once a design version is deployed (see
+[Preview, save and deploy](previewing-and-publishing.md)).
 
 ## When links change
 
-Links follow the published codebook and the job's sets:
+Links follow the deployed design and the job's deployed sets:
 
-- publishing a codebook with other link parameters makes the links it
+- deploying a design with other link parameters makes the links it
   needs, and **retires** links it no longer makes;
-- a link parameter with the sets of a group gets a new link as soon as the
-  group gets a new set, without publishing again; a removed set's link is
+- a link parameter with the sets of a group gets a new link when a new set
+  of the group is deployed; a set whose removal is deployed has its link
   retired;
 - a link that comes back into the design (the same values) is the same link
   again, with the same address.
@@ -37,7 +37,7 @@ A retired link is never deleted: coders and their answers keep referring to
 the link they came in with. Opening it shows *"This link is no longer
 active"*; coders who already started with it keep working.
 
-Publishing a codebook that makes more than 500 links asks you to confirm;
+Deploying a design that makes more than 500 links asks you to confirm;
 at most 2000 links are possible. List the combinations you need in the
 Session item instead of every combination.
 
@@ -68,7 +68,7 @@ other data you have on the same people.
 - **No participant id**: coders are anonymous; the Coders tab shows a number.
 - **Fixed participant id**: everyone who uses the link gets the id you set
   on it. Use it for personal links.
-- **Participant id from a URL parameter**: set in the codebook's Session item
+- **Participant id from a URL parameter**: set in the design's Session item
   (see [Session parameters](session-parameters.md)). The id is taken from the
   link itself, from the parameter you name (`participant`, or a panel's own
   such as `PROLIFIC_PID`). The copied links end in
@@ -118,7 +118,7 @@ link or QR code it shows on the second (see
 
 **Max uses** limits how many coders can start with a link. Once that many
 have started, the status becomes *used up* and new coders get the message
-that the invitation has been used up. Coders who already started can still
+that the link has been used up. Coders who already started can still
 continue. A participant who starts a new session on another device (see
 above) doesn't count as a new use.
 
@@ -154,7 +154,7 @@ continues the same session.
   **Continue on another device** (the screen icon), which links their
   session so far.
 - **Only these email addresses**: only coders who log in with one of these
-  addresses can use the link (others see that the invitation is for other
+  addresses can use the link (others see that the link is for other
   people). A list makes login required.
 - **Sets assigned by email**: a unit loop can give each coder the set named
   after their login email (see [Handing out units](unit-distribution.md)).

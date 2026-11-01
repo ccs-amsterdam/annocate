@@ -105,7 +105,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
         <p className="text-sm text-muted-foreground">Loading coders...</p>
       ) : coders.length === 0 ? (
         <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          No coders yet. Coders appear here once they open an invitation link.
+          No coders yet. Coders appear here once they open a link.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
@@ -113,7 +113,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
             <thead>
               <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
                 <th className="p-2 font-medium">Coder</th>
-                <th className="p-2 font-medium">Invitation</th>
+                <th className="p-2 font-medium">Link</th>
                 <th className="p-2 font-medium">Started</th>
                 <th className="p-2 font-medium">Last active</th>
                 <th className="p-2 text-right font-medium">Answers</th>

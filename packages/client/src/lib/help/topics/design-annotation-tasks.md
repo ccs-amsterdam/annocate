@@ -126,7 +126,7 @@ button to go on.
 ## Pilot, then test reliability
 
 1. **Preview** the codebook yourself, on your real units, at phone and desktop
-   size. Nothing is stored. See [Preview, save and publish](previewing-and-publishing.md).
+   size. Nothing is stored. See [Preview, save and deploy](previewing-and-publishing.md).
 2. **Pilot** with two or three coders on the same 30 to 50 units: a pilot
    set that every coder codes in full (**Everyone codes everything**, with that set, see
    [Intercoder reliability designs](overlap.md#intercoder-reliability-designs)).
@@ -150,7 +150,7 @@ set up the overlap, see
 
 You can keep improving the codebook while coding runs, but each change makes
 the data harder to interpret. See
-[Changing a codebook while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-codebook.md).
 
 ## Order and fatigue
 

@@ -55,7 +55,7 @@ export const DeploymentWriteSchema = z.object({
   /** Set to false to stop handing out units (coders get a 409). */
   active: z.boolean().default(true),
   /**
-   * The researcher confirmed publishing although it makes more than
+   * The researcher confirmed deploying although it makes more than
    * `CONFIRM_LINKS` links (409 `confirm_links` otherwise). At most `MAX_LINKS`.
    */
   confirmLinks: z.boolean().optional(),

@@ -36,7 +36,7 @@ describe("example jobs", () => {
     const job = JobResponseSchema.parse(await res.json());
     expect(job.origin).toBe(id);
 
-    // The researcher owns it, and it is published with an invitation
+    // The researcher owns it, and it is deployed with an invitation
     expect((await researcher(`/job/${job.id}`)).status).toBe(200);
     const [invite] = (await (await researcher(`/job/${job.id}/invites`)).json()) as { secret: string }[];
     expect((await (await researcher(`/job/${job.id}/deployment`)).json()) as { active: boolean }).toMatchObject({ active: true });
@@ -114,7 +114,7 @@ describe("jobs from a recipe", () => {
         ],
       ],
     ]);
-    // A draft with a question to specify: saved, not published
+    // A draft with a question to specify: saved, not deployed
     const codebooks = (await (await researcher(`/job/${job.id}/codebook`)).json()) as { items: unknown[] }[];
     expect(codebooks).toHaveLength(1);
     expect(await (await researcher(`/job/${job.id}/deployment`)).json()).toBeNull();

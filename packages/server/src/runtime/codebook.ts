@@ -58,7 +58,7 @@ export function finishedLoops(variables: Record<string, VariableValue>, loops: I
 /**
  * What finished codings derived from annotations depend on: per loop, its
  * questions, whether it has dynamic sources, and their agreement variables.
- * If this doesn't change between codebook versions, codings can be kept.
+ * If this doesn't change between design versions, codings can be kept.
  */
 export function codingsSignature(loops: Iterable<LoopInfo>): string {
   return JSON.stringify(

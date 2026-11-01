@@ -33,7 +33,7 @@ export const AnnotationRowSchema = z.object({
   participantId: z.string().nullable(),
   variable: z.string(),
   value: VariableValueSchema,
-  /** The codebook version the coder answered under. */
+  /** The design version the coder answered under. */
   codebookId: IdSchema.nullable(),
   /** The unit as the coder saw it (`listUnitVersions`); null for answers from before versions were kept. */
   unitVersionId: IdSchema.nullable(),

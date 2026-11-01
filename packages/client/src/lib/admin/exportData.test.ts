@@ -167,7 +167,7 @@ describe("data download", () => {
     ];
     const answered = [{ ...row(1, 1, "q", { done: true, skip: false }), unitVersionId: 7 }, { ...row(1, 2, "q", { done: true, skip: false }), unitVersionId: 8 }];
     expect(unitsTable(versions, answered)).toEqual({
-      headers: ["unit_version_id", "unit_id", "hash", "first_shown", "text"],
+      headers: ["unit_version_id", "unit_id", "hash", "deployed", "text"],
       rows: [
         ["7", "u1", "h1", at.toISOString(), "old"],
         ["8", "u1", "h2", at.toISOString(), "new"],

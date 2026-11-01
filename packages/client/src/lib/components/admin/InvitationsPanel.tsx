@@ -37,7 +37,7 @@ interface InvitationsPanelProps {
 
 /**
  * The job's links (docs/plans/sets-and-session-parameters.md §4): made from
- * the published codebook, one per combination of its link parameters'
+ * the deployed design, one per combination of its link parameters'
  * values. Here their access settings (label, login, emails, max uses), and
  * revoking or renewing a link. Links the codebook no longer makes are
  * retired, never deleted: coders and their answers refer to the link they
@@ -79,8 +79,8 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
           Links <HelpButton topic="invitations" label="Help: links" />
         </h2>
         <p className="text-xs text-muted-foreground">
-          Publishing the codebook makes its links: one, or one per value of each link parameter (and per combination) in the
-          codebook&apos;s Session item, e.g. a link per set of a group. New sets get links at once; links whose value is gone are
+          Deploying the design makes its links: one, or one per value of each link parameter (and per combination) in its
+          Session item, e.g. a link per set of a group. Deployed sets get links; links whose value is gone are
           retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already started keep
           working.
         </p>
@@ -104,7 +104,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
           <p className="text-sm text-muted-foreground">Loading links...</p>
         ) : active.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            {deployment ? "The published codebook makes no links right now (a link parameter without values?)." : "Publish a codebook to get its links."}
+            {deployment ? "The deployed design makes no links right now (a link parameter without values?)." : "Deploy the design to get its links."}
           </p>
         ) : (
           <LinkTable client={client} links={active} linkOf={linkOf} />
@@ -114,7 +114,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
       {retired.length > 0 && (
         <section className="flex flex-col gap-2">
           <button type="button" className="w-fit cursor-pointer text-sm text-muted-foreground hover:text-foreground" onClick={() => setShowRetired(!showRetired)}>
-            {showRetired ? "▾" : "▸"} Retired links ({retired.length}): the codebook no longer makes them; they show &quot;This link is no
+            {showRetired ? "▾" : "▸"} Retired links ({retired.length}): the deployed design no longer makes them; they show &quot;This link is no
             longer active&quot;
           </button>
           {showRetired && <LinkTable client={client} links={retired} linkOf={linkOf} />}

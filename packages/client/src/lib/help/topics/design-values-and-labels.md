@@ -63,14 +63,14 @@ materials.
 
 You can change a label at any time, also after coding started. Earlier
 answers keep their value, so they keep their meaning. The download shows, for
-each answer, the label *in the codebook version it was given under* (what the
+each answer, the label *in the design version it was given under* (what the
 coder saw), and `variables.csv` lists every version's labels, so a changed
 label stays traceable.
 
 > In a nominal question whose value still follows its label, editing the
 > label changes the value too. After you change a label in a codebook that
 > coders already use, check the **Value (stored)** box: type the old value
-> back if it changed. The publish dialog warns you if you forget (see below).
+> back if it changed. The deploy dialog warns you if you forget (see below).
 
 ## Changing values is not
 
@@ -91,13 +91,13 @@ every value at once.
 > **Watch out with ordinal options.** Without **Custom values**, ordinal values
 > follow the order of the options. Moving an option, or adding one anywhere
 > but at the end, renumbers the options after it: an answer stored as `3` then
-> means something else, although no value disappeared. The publish dialog
+> means something else, although no value disappeared. The deploy dialog
 > warns when an option ends up with another value (*the value 3 was "Agree"
 > and is now "Neutral"*). Add new options at the end, or make a new question.
 
-## The publish warnings
+## The deploy warnings
 
-When you publish, the dialog compares the new version with the live one and
+When you deploy, the dialog compares the design draft with the deployed version and
 warns about value changes before you confirm:
 
 | Warning | What it means |
@@ -106,9 +106,9 @@ warns about value changes before you confirm:
 | *'tone' changed from nominal to ordinal: earlier answers no longer fit.* | The question's type changed |
 | *'tone': the value 3 was "Agree" and is now "Neutral": earlier answers 3 will read as "Neutral".* | An option moved to another value, e.g. ordinal options renumbered after a move |
 
-After publishing, AnnoTinder may also tell you that a loop *gained questions*:
+After deploying, AnnoTinder may also tell you that a loop *gained questions*:
 coders get the units they finished back, to answer only the new questions.
-See [Changing a codebook while coding runs](changing-a-live-codebook.md).
+See [Changing a design while coding runs](changing-a-live-codebook.md).
 
 ## When the meaning changes, make a new question
 

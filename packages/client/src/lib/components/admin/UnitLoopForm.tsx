@@ -116,8 +116,8 @@ function UnsetUnits({ onChoose }: { onChoose: (mode: UnitMode) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="rounded-md border border-amber-500/60 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
-        Which units coders get isn't set yet. Choose how they are handed out: the form then shows the settings. The codebook
-        can be saved like this, but not previewed or published.
+        Which units coders get isn't set yet. Choose how they are handed out: the form then shows the settings. The design
+        can be saved like this, but not previewed or deployed.
       </p>
       <div className={labelClass}>
         <span className="flex items-center gap-1.5">
@@ -821,7 +821,7 @@ function AssignSettings({
             ? `Only the ${sets.length} email addresses that are set names of this group can code: coders log in, and other emails get "This email address has no access to this study".`
             : branch.from.session === "participant"
               ? "The participant id (from the link's URL parameter, see the Session item) names the set. Coders whose id is no set get no units here."
-              : `Each set gets its own link (Invitations page), made from the link parameter ${branch.from.session}.`}
+              : `Each set gets its own link (Deploy, Links), made from the link parameter ${branch.from.session}.`}
         {"draw" in branch.from && params.length === 0 && " To give each set its own link instead, add a link parameter with this group's sets to the Session item."}
       </p>
     </div>
@@ -1024,7 +1024,7 @@ function OverlapEditor({
                 min={1}
                 className="h-8 w-24 text-xs font-normal"
                 placeholder="any"
-                title="Warns at publishing if the group has fewer overlap units"
+                title="Warns at deploying if the group has fewer overlap units"
                 value={overlap.expect ?? ""}
                 onChange={(e) => onChange({ ...overlap, expect: numberOrUndefined(e.target.value) })}
               />

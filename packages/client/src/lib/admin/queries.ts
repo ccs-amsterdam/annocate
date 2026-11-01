@@ -332,14 +332,14 @@ export function useDeploymentVersionsQuery(client: ResearcherApi, enabled = true
   return useQuery({ queryKey: keys.deploymentVersions(client.jobId), queryFn: () => client.listDeploymentVersions(), enabled });
 }
 
-/** The live codebook version; null if the job was never published. */
+/** The live design version; null if the job was never deployed. */
 export function useDeploymentQuery(client: ResearcherApi): UseQueryResult<DeploymentResponse | null> {
   return useQuery({ queryKey: keys.deployment(client.jobId), queryFn: () => client.getDeployment() });
 }
 
 /**
- * Publishes a codebook version (`PUT /deployment`), keeping the job's
- * active/paused state. The published version becomes read only, so the
+ * Deploys a design version (`PUT /deployment`), keeping the job's
+ * active/paused state. The deployed version becomes read only, so the
  * codebooks are refetched too.
  */
 /** The job's users and their roles (ADMIN only: others get an error). */

@@ -468,7 +468,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
           for (const end of ["from", "to"] as const) {
             const ref = variable[end]?.variable;
             if (ref && !spanVariables.has(ref)) {
-              issue([...itemPath, "variable", end, "variable"], `Relation '${end}' refers to '${ref}' which is not a preceding span variable`);
+              issue([...itemPath, "variable", end, "variable"], `Relation '${end}' refers to '${ref}' which is not a preceding span question`);
             }
           }
         }

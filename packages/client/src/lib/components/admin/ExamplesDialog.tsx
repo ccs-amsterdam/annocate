@@ -7,7 +7,7 @@ import { useCreateJobFromExampleMutation, useExamplesQuery } from "../../admin/q
 
 /**
  * "New job from an example" (docs/plans/examples.md): the examples by
- * category; the chosen one becomes an ordinary job, published, with an
+ * category; the chosen one becomes an ordinary job, deployed, with an
  * invitation and sometimes example answers.
  */
 export function ExamplesDialog({ client, onCreated, onClose }: { client: ResearcherApi; onCreated: (job: JobResponse) => void; onClose: () => void }) {
@@ -24,7 +24,7 @@ export function ExamplesDialog({ client, onCreated, onClose }: { client: Researc
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-card p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-foreground">New job from an example</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          An example makes a ready job: units, a published codebook and an invitation link, sometimes with example answers. It is yours
+          An example makes a ready job: units, a deployed design and a link, sometimes with example answers. It is yours
           to try, change and delete.
         </p>
         <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">

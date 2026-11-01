@@ -10,10 +10,10 @@ everything, or do coders share the work? Does each coder get their own
 part? You set this on the loop's **Units** tab in the codebook editor, under
 **Who codes which units**.
 
-The codebook describes *how* units are handed out, never *which* units go to
+The design describes *how* units are handed out, never *which* units go to
 *whom* by id: it refers to [sets and set groups](unitsets.md) by name, and
-to coders only through their answers or session values. That keeps a
-codebook shareable and the design easy to report.
+to coders only through their answers or session values. That keeps the
+design shareable and easy to report.
 
 ## The three modes
 
@@ -71,9 +71,9 @@ coders than sets, every set gets coded more than once.
 
 To give each set its own link, so *you* decide who gets which set (a few
 expert coders, each their own part), add a **link parameter** with the
-group's sets to the codebook's Session item, and choose **Named by the link
-or URL**: publishing makes a link per set, and a new set gets its link right
-away. A coder whose value names no set gets no units in this loop.
+group's sets to the design's Session item, and choose **Named by the link
+or URL**: deploying makes a link per set, and a new set gets its link once
+it is deployed. A coder whose value names no set gets no units in this loop.
 
 With the **login email**, the group's set names are email addresses (say a
 sets column in your CSV with `alice@uni.nl`, `bob@uni.nl`): only these
@@ -138,6 +138,6 @@ after the loop in the codebook, such as closing questions or a thank-you
 message. That also happens when a coder gets no units at all, for instance
 when no group matches them.
 
-> Check the distribution in the preview before you publish: a preview codes
-> with your real units and sets, but stores nothing, and it doesn't use
+> Check the distribution in the preview before you deploy: a preview codes
+> with your draft units and sets, but stores nothing, and it doesn't use
 > up units of a shared queue.

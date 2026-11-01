@@ -21,18 +21,18 @@ Everything of a job is stored on the AnnoTinder server you use:
 | What | Includes |
 | --- | --- |
 | **Units** | The data you uploaded, and each unit as coders saw it (see [Keeping track of what coders saw](design-what-coders-saw.md)) |
-| **Codebooks** | Every saved and published version |
+| **Design versions** | Every saved and deployed version |
 | **Links** | Their settings: label, link parameter values, login, emails, participant id, uses |
-| **Coders** | Per session: the invitation used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended |
+| **Coders** | Per session: the link used, the participant id (if any), the answers to questions outside unit loops, assigned groups, which units they were given, when they started, and how the session ended |
 | **Devices** | Per device a coder used: the kind of device (phone, tablet, desktop), browser and operating system, and on which device each answer was given |
-| **Answers** | Per unit and question: the answer, when it was first given and last changed, and the codebook and unit version |
+| **Answers** | Per unit and question: the answer, when it was first given and last changed, and the design version and unit version |
 | **Response times** | Per question: how long it was on screen until the first answer and in total, how long the page was hidden meanwhile, and how often the answer changed (measured in the coder's browser); per unit, when the server handed it out. Always recorded: mention it in your participant information if it matters for your study |
 
 What AnnoTinder itself does **not** store about coders: their name, their
-email address (unless the invitation has them [log in](invitations.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
-URL parameters other than the ones the codebook asks for (an
-[assigned variable](auto.md) that reads a URL parameter, and the participant
-id if the invitation takes it from the URL). The web server in front of
+email address (unless the link has them [log in](invitations.md#login)), their IP address, details of their device beyond its kind, browser and operating system, or
+URL parameters other than the ones the design asks for (an
+[auto question](auto.md) that reads a URL parameter, and the participant
+id if the link takes it from the URL). The web server in front of
 AnnoTinder may keep ordinary access logs; ask whoever runs it.
 
 A browser keeps one random device id (a cookie) for all jobs, but
@@ -74,7 +74,7 @@ you publish.
 
 ## Sessions live in the coder's browser
 
-Coders don't create accounts. When a coder opens an invitation, the server
+Coders don't create accounts. When a coder opens a link, the server
 starts a **session** for them. The browser keeps one random device id (a
 cookie); for this job the server stores only a code derived from it. So the
 same browser continues the same session later, for up to about a year (as
@@ -94,7 +94,7 @@ What this means for your study:
   In a lab, give every participant their own participant id (sessions are
   kept apart per participant id), or use a private window per participant.
 
-With an invitation that has coders log in, their email address is stored
+With a link that has coders log in, their email address is stored
 with their session, so their answers can be linked to them: say so in your
 consent text.
 
@@ -115,20 +115,20 @@ To run the study, a coder's browser gets:
 
 Conditions, including which group of a loop a coder belongs to, are worked
 out in the coder's browser. The server checks that the units a coder asks
-for are ones the codebook could give *someone*. A technically skilled coder
+for are ones the design could give *someone*. A technically skilled coder
 could therefore get the units of another group of the same loop. Routing on
 answers is meant to organise honest coders, not to keep material secret.
 Random and balanced group assignment, session values from the link, and
 assigned sets are decided on the server: coders can't change their own group.
 
 > If some coders must never see some material, put it in a separate job
-> with its own invitations.
+> with its own links.
 
 ## What researchers see
 
-Everyone with access to the job sees its units, codebook, coders and answers.
+Everyone with access to the job sees its units, design, coders and answers.
 The **Coders** tab lists each session with its participant id (or a
-number), invitation, start time and progress. The download contains the same
+number), link, start time and progress. The download contains the same
 information as the tables above. See [Downloading results](results.md).
 
 **Preview** sessions are not stored: your test answers disappear when the
@@ -137,7 +137,7 @@ preview ends.
 ## Removing data
 
 - **Delete Job** (on the job's **Settings** tab) deletes the
-  job with everything in it: units, codebooks, invitations, coders and
+  job with everything in it: units, design versions, links, coders and
   answers.
 - **Deleting a coder's data** (on the **Coders** tab) deletes one coder,
   found by participant id or email, with all their answers. Coders can ask

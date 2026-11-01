@@ -2,7 +2,7 @@
 title: Different units for different coders
 section: Units and distribution
 order: 5
-summary: Coder groups in a unit loop - routing coders to units by their answers, assigned variables or session values.
+summary: Coder groups in a unit loop - routing coders to units by their answers, auto questions or session values.
 ---
 
 Sometimes different coders should get different units. In a survey
@@ -19,7 +19,7 @@ There are two ways to do this in a unit loop:
 
 Coder groups work on **coder-level questions** and session values: questions
 outside unit loops, asked (or assigned) before the loop, such as an
-[assigned variable](auto.md) for an experimental condition, and
+[auto question](auto.md) for an experimental condition, and
 `$session` values from the link (see [Session parameters](session-parameters.md)).
 
 ## Coder groups
@@ -50,7 +50,7 @@ no units in this loop: they skip it. Use **+ Otherwise** to add it again.
 
 The units have a sets column `condition` with the sets `treatment` and
 `control` (see [Sets and set groups](unitsets.md)). The codebook starts with
-an assigned variable `group`, with the options `treatment` and `control` and
+an auto question `group`, with the options `treatment` and `control` and
 the source **Balanced (option with fewest coders)** (so both groups get
 about as many participants). The unit loop has two groups:
 
@@ -78,7 +78,7 @@ set, and remembers them. After that:
 - editing a condition, reordering the groups, or changing the loop's label
   moves nobody;
 - changing *which units* a group hands out (its mode, set or group, or
-  where an assigned set comes from) and publishing that routes its coders again the next time they ask for a
+  where an assigned set comes from) and deploying that routes its coders again the next time they ask for a
   unit. The units they finished stay finished.
 
 This keeps coders from switching between groups halfway, which would spoil
@@ -86,7 +86,7 @@ an experiment.
 
 > Routing is a convenience, not access control. The coder's own browser
 > works out which group they are in, so a determined coder could ask for the
-> units of another group. Assigned variables themselves can't be changed by
+> units of another group. Auto questions themselves can't be changed by
 > coders, and **Assign sets** is decided by the server. For an experiment
 > that is rarely a problem; just don't rely on routing to keep material
 > secret.

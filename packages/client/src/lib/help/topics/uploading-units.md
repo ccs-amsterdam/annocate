@@ -12,8 +12,10 @@ job. Each row becomes a unit, and the columns you choose become its
 `$unit.headline`.
 
 A small file is enough to start: you can upload more units at any time, and
-add new columns later. Loops over all units of the job hand out new units
-right away, also while coding runs, without publishing the codebook again.
+add new columns later. Uploaded units are a draft until you deploy them
+(**Deploy…** in the bar at the top of the job). Then loops over all units of
+the job hand out the new units, also while coding runs, without changing the
+design.
 
 ## Preparing the file
 
@@ -122,13 +124,13 @@ uploads add to them:
   new units get empty values there.
 
 You can see the job's fields, with an icon for their type, at the top of the
-**Units** tab. They are part of the design, with the codebook: **Details**
+**Units** tab. They are part of the design: **Details**
 shows per field how the codebook uses it (*shown* to coders, *sent, not
 shown* when only conditions use it, *server only* for gold and practice
 answer columns, or *not used*), a description, and its type. A field the
 codebook doesn't use can be removed (with its values in the units). A field
 the codebook uses but no upload brought can be declared there; the
-codebook can't be deployed until its fields are declared.
+design can't be deployed until its fields are declared.
 
 ## Replacing units
 
@@ -140,7 +142,7 @@ Replacing a unit that coders already answered about (a **coded** unit) needs
 a second tick, **Also replace the … coded units**, because it changes what
 later coders see:
 
-- Coders from then on get the new content.
+- Once you deploy the change, coders get the new content.
 - Earlier answers stay linked to the version their coder saw. Both versions
   are in the [results](results.md), so you can tell which answers are about
   which text.
@@ -167,7 +169,7 @@ Coders only receive the fields the codebook uses: the fields named in the
 loop's layout, in question texts, in conditions and so on. Other columns,
 such as metadata you need for analysis (a source, a date, a sample weight),
 stay on the server. If you later change the codebook to show another field,
-coders get that field too from then on.
+coders get that field too once you deploy the change.
 
 ## Next steps
 

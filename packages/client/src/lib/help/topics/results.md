@@ -18,7 +18,7 @@ The zip is named after the job and the date, such as
 | `annotations.csv` | unit and coder | the answers to the questions in unit loops |
 | `coders.csv` | coder | who they are, how far they got, and their answers outside unit loops |
 | `units.csv` | unit version | the units as coders saw them |
-| `variables.csv` | codebook version, question and option | the questions, their values and labels |
+| `variables.csv` | design version, question and option | the questions, their values and labels |
 | `devices.csv` | device | the devices coders used (kind, browser, operating system) |
 | `timings.csv` | answer | how long coders took per question |
 | `deleted_coders.csv` | deleted coder | coders whose data was deleted, to delete them from earlier downloads too |
@@ -38,9 +38,9 @@ A row for every unit a coder coded, in the order they coded them.
 | `unit_version_id` | The version of the unit the coder saw: see `units.csv` |
 | `coder_id` | The coder: see `coders.csv` |
 | `participant_id` | The coder's participant id, if they have one (e.g. from a panel) |
-| `invitation` | The label of the invitation the coder came in with |
+| `invitation` | The label of the link the coder came in with |
 | `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer |
-| `codebook_id` | The codebook version the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
+| `codebook_id` | The design version the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
 | `device_id` | The device the unit was (last) answered on: see `devices.csv` |
 | `unit_ms_client` | Milliseconds the unit's questions were on screen, as the coder's browser measured them: see `timings.csv` |
 | `unit_ms_server` | Milliseconds from the server handing out the unit to its last answer |
@@ -56,7 +56,7 @@ questions. A [scale](scale.md) has a column per item, named
   such as `2` or `pos`, not the text the coder clicked on.
 - **Label columns.** With **Add label columns** ticked (the default), every
   question with options gets a second column, `<question>_label`, with the
-  label the coder saw: the label in the codebook version they answered
+  label the coder saw: the label in the design version they answered
   under. Untick it for smaller files with values only; the labels are also in
   `variables.csv`.
 - **Several answers** (a question with multiple answers) are joined with
@@ -68,7 +68,7 @@ questions. A [scale](scale.md) has a column per item, named
   spans, for example `criticizes: Merkel → Commission`.
 - **A confirm question** (a button) is `true` once clicked.
 - **Empty** means no answer: the question was skipped because a condition
-  hid it, or it wasn't in the codebook version the coder answered under (a
+  hid it, or it wasn't in the design version the coder answered under (a
   question added later).
 - **JSON columns.** A question whose answer doesn't fit one cell (spans,
   relations, several answers) gets a third column, `<question>_json`, with
@@ -93,9 +93,9 @@ A row per coder who started.
 | `started`, `last_active` | When they started, and when they last answered |
 | `ended`, `ended_at` | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when |
 | `deletion_requested` | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
-| `session.<name>` | The URL parameters the invitation required (the participant id is `participant_id`) |
+| `session.<name>` | The URL parameters the link required (the participant id is `participant_id`) |
 | `finished_<loop>` | How many units they finished in each unit loop, such as `finished_News items` |
-| one column per question | Their answers outside unit loops, and their [assigned variables](auto.md) (experimental group, URL parameter variables) |
+| one column per question | Their answers outside unit loops, and their [auto questions](auto.md) (experimental group, URL parameter variables) |
 
 Answers outside unit loops (consent, background questions, a survey's
 questions) are only here, not in `annotations.csv`.
@@ -103,9 +103,11 @@ questions) are only here, not in `annotations.csv`.
 ## units.csv
 
 The units as coders saw them, a row per **unit version**: `unit_version_id`,
-`unit_id`, a `hash` of the content, `first_shown`, and a column per field.
-Only units that were coded are included, and only the fields the codebook
-showed (other columns of your upload stay out: you have them already).
+`unit_id`, a `hash` of the content, `deployed` (when that version was
+deployed), and a column per field of the unit as deployed. Only units that
+were coded are included. Coders were shown only the fields the codebook
+uses; the others (metadata, answer columns of gold units) are there for
+your analysis.
 
 A unit normally has one version. A unit that was replaced after it was
 coded (see [Uploading units](uploading-units.md#replacing-units)) has a row
@@ -146,7 +148,7 @@ units.
 
 ## variables.csv
 
-The codebook, as a table: a row per codebook version (`codebook_id`), question
+The codebook, as a table: a row per design version (`codebook_id`), question
 and option, with the `loop` the question is in (empty for questions asked
 once per coder), the `variable` name, its `type`, the `question` text, and
 the option's `value` and `label`. Questions without options, such as numbers,
@@ -212,7 +214,7 @@ d = (annotations
 | the unit as the coder saw it | `unit_version_id` |
 | the device an answer was given on | `device_id` in `devices.csv` |
 | response times to the answers | `unit_id`, `coder_id` and `variable` in `timings.csv` |
-| the labels of a codebook version | `codebook_id` and `variable` (and `value`) in `variables.csv` |
+| the labels of a design version | `codebook_id` and `variable` (and `value`) in `variables.csv` |
 | your own data (metadata not shown to coders) | `unit_id`, with the id column of your own file |
 
 ## More detail with scripts

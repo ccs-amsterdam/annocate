@@ -89,11 +89,11 @@ export type EndSession = z.infer<typeof EndSessionSchema>;
 export const SessionResponseSchema = z.object({
   coderId: IdSchema,
   jobId: IdSchema,
-  /** The published codebook coders get now: its coder codebook (only what coding needs). */
+  /** The deployed codebook coders get now: its coder codebook (only what coding needs). */
   codebook: CoderCodebookSchema,
   /**
-   * The deployment's version: bumped on every publish. The client sends it
-   * back as `x-annotinder-version`; after a publish the server answers
+   * The deployment's version: bumped on every deploy. The client sends it
+   * back as `x-annotinder-version`; after a deploy the server answers
    * 409 `codebook_changed`, and the client loads the session again
    * (docs/api/coder.md).
    */
@@ -141,11 +141,11 @@ export const CoderErrorCodeSchema = z.enum([
    * email) not one of the group's sets: "This email address has no access to this study".
    */
   "email_not_invited",
-  /** The link is no longer part of the published design (e.g. its set was removed): no new sessions. */
+  /** The link is no longer part of the deployed design (e.g. its set was removed): no new sessions. */
   "link_inactive",
   /** Transfer token unknown, used or expired. */
   "transfer_invalid",
-  /** A new codebook version was published since the session was loaded: load it again. */
+  /** A new design version was deployed since the session was loaded: load it again. */
   "codebook_changed",
   /** `GET /loop/:loop/next` needs the client's branch choice (`branch`), see NextUnitQuerySchema. */
   "branch_required",

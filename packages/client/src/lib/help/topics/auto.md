@@ -1,8 +1,8 @@
 ---
-title: Assigned variables
+title: Auto questions
 section: Question types
 order: 7
-summary: Auto variables give each coder a value without asking - for experimental groups and routing.
+summary: Auto questions give each coder a value without asking - for experimental groups and routing.
 ---
 
 An **Auto (assigned, not asked)** question is never shown to coders.
@@ -19,7 +19,7 @@ Typical uses:
   units.
 
 Values that come *from the link* (a panel's participant id, a condition per
-link, a group you know in advance) are not assigned variables but
+link, a group you know in advance) are not auto questions but
 [session parameters](session-parameters.md): `$session.<name>`.
 
 ## Where it goes
@@ -39,7 +39,7 @@ Under **Source**, choose how the value is assigned:
 | **Random draw** | One of the options, at random. Give options a **weight** to make some more likely: weights 2 and 1 give about two thirds and one third |
 | **Balanced (option with fewest coders)** | The option that the fewest coders have so far, so groups stay as equal as possible. Ties go to the first option in the list |
 
-The **Options** list the values the variable can take, each with a value
+The **Options** list the values the question can take, each with a value
 and an optional label, as for a [nominal question](nominal-and-ordinal.md).
 Both need at least one option.
 
@@ -59,9 +59,9 @@ over parts of the units.
 
 A value from the web address the coder opened (such as a panel's
 `PROLIFIC_PID`), or one fixed per link, is a
-[session parameter](session-parameters.md), declared in the codebook's
+[session parameter](session-parameters.md), declared in the design's
 Session item: `$session.PROLIFIC_PID`, `$session.condition`. It is stored
-when the session starts, like an assigned variable, and works in the same
+when the session starts, like the value of an auto question, and works in the same
 places: conditions, texts, end items' return links.
 
 ## Balanced within groups
@@ -87,7 +87,7 @@ stratified on.
 
 Once assigned, it never changes: not when they go back, reload the page,
 come back the next day or continue on another device, and not when you
-publish a new version of the codebook. Coders can't see or change it.
+deploy a new design version. Coders can't see or change it.
 
 This matters for experiments: a participant stays in their condition for
 the whole session. It also means that changing the options or weights
@@ -126,5 +126,5 @@ See [Showing parts conditionally](template-blocks.md).
 group per value, each with its own set (`$var.group.is("experiment")` gets
 the set `experiment`). See [Different units for different coders](coder-groups.md).
 
-In the results, auto variables are in `coders.csv`, with the coders'
+In the results, the values of auto questions are in `coders.csv`, with the coders'
 other answers outside unit loops. See [Downloading results](results.md).

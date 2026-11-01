@@ -63,7 +63,7 @@ and 10% overlap you get `_overlap` with 100 units and `s1` to `s4` with 225
 units each. Then, in a unit loop, choose **Assign sets** with this group
 (see [Handing out units](unit-distribution.md)).
 
-You can also do this from the codebook: a unit loop's **Units** tab has
+You can also do this from the codebook editor: a unit loop's **Units** tab has
 **Generate sets…** next to the group or set to choose, which splits the
 job's units into a new group and selects it.
 
@@ -79,8 +79,8 @@ group, the upload asks what to do with them, per group:
 - **Distribute over its sets**: shuffled, and added to the smallest sets
   first, so the sets stay about equal;
 - **New sets of about** *n* **units**: new sets the average size of the
-  existing ones, named on (`s5` after `s4`). A codebook that makes a link per
-  set gets their links at once.
+  existing ones, named on (`s5` after `s4`). A design that makes a link per
+  set gets their links once they are deployed.
 
 The group's `_overlap` stays as it is.
 
@@ -92,16 +92,17 @@ The group's `_overlap` stays as it is.
    in**. A set or group that doesn't exist yet is made.
 
 While a set is shown, **Remove from** *set* takes the selected units out of
-it. Coding that runs picks up changed sets at once; units a coder already
-got stay theirs.
+it. Changed sets are a draft: coding that runs picks them up once you deploy
+them; units a coder already got stay theirs.
 
 ## Sets and links
 
-A codebook can give each set of a group its own link, by a **link
-parameter** with the group's sets in the codebook's Session item (see
+A design can give each set of a group its own link, by a **link
+parameter** with the group's sets in the design's Session item (see
 [Session parameters](session-parameters.md)). A loop that assigns sets
 "named by the link" then gives coders of each link that link's set. A new
-set gets its link at once; a removed set's link is retired.
+set gets its link when it is deployed; a removed set's link is retired when
+the removal is deployed.
 
 A group can also hold email addresses as set names: a loop that assigns sets
 by the coder's **login email** then lets only those people code, each their
@@ -113,14 +114,14 @@ A set is a fixed list of units, not a rule such as *"all units from 2024"*.
 Once made, it doesn't change when you upload more units, and its order stays
 the same. A running study should not change because someone uploaded more
 material, and when you report the study, the sets say exactly which units
-were coded by whom. The codebook names groups and sets, but which units are
-in them is your data, not part of the codebook (see
-[A codebook describes a process](design-reproducible-codebooks.md)).
+were coded by whom. The design names groups and sets, but which units are
+in them is your data, not part of the design (see
+[A design describes a process](design-reproducible-codebooks.md)).
 
-*All units*, on the other hand, grows when you upload more units, also while
-coding runs.
+*All units*, on the other hand, grows when you upload and deploy more units,
+also while coding runs.
 
 ## Deleting a group
 
 Click the bin icon next to the group. Its units stay in the job. A group
-can't be deleted while the published or latest codebook uses it.
+can't be deleted while the deployed or latest design version uses it.

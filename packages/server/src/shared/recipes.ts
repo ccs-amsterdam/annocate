@@ -9,7 +9,7 @@ import { putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
 
 // Recipes (contracts recipe.ts, docs/plans/setup-wizard.md): a new job's
-// units, set groups and first codebook in one document; publishing it makes
+// units, set groups and first codebook in one document; deploying it makes
 // its links (shared/invites.ts `syncLinks`). Example
 // jobs and the setup wizard both make jobs through here.
 
@@ -29,7 +29,7 @@ export interface MadeJob {
   codebookId: number;
   /** Database ids of the recipe's units, by their ids in the recipe. */
   unitIds: Map<string, number>;
-  /** The first link's id, if published. */
+  /** The first link's id, if deployed. */
   firstInvite: number | null;
 }
 
@@ -41,10 +41,10 @@ const invalid = (message: string) => new HttpError(400, message, "recipe_invalid
  * limits on units; the caller checks the number of jobs.
  */
 export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: RecipeOptions): Promise<MadeJob> {
-  // A published codebook must pass validation; a draft may have issues (questions to specify).
+  // A deployed codebook must pass validation; a draft may have issues (questions to specify).
   if (recipe.publish) {
     const parsed = CodebookItemsSchema.safeParse(designItems(recipe.codebook));
-    if (!parsed.success) throw invalid(`The codebook can't be published: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
+    if (!parsed.success) throw invalid(`The design can't be deployed: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
   }
 
   const job = (await one<JobRow>(tx, "INSERT INTO jobs (name, owner_id, origin) VALUES ($1, $2, $3) RETURNING *", [
@@ -98,7 +98,7 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
     );
   }
 
-  // The codebook: published, or the first draft
+  // The codebook: deployed, or the first draft
   // With the units' fields (docs/plans/design.md §3)
   const codebookId = (await one<{ id: number }>(tx, "INSERT INTO codebooks (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5) RETURNING id", [
     job.id,

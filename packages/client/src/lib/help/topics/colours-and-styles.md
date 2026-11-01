@@ -106,7 +106,7 @@ unit:
 ```
 
 > Many coders use a phone. Two columns of text are narrow on a small screen:
-> check the layout in the **Mobile** preview before you publish.
+> check the layout in the **Mobile** preview before you deploy.
 
 ### Colours that follow light or dark
 

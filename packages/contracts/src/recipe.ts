@@ -10,7 +10,7 @@ import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
  * answers), the setup wizard writes one, and later templates will be
  * recipes without units. `POST /job/from-recipe` makes a job from it in
  * one transaction; afterwards it is an ordinary job. Its links follow from
- * its codebook once published.
+ * its codebook once deployed.
  */
 export const RecipeSchema = z.object({
   /** The new job's name. */
@@ -26,9 +26,9 @@ export const RecipeSchema = z.object({
       }),
     )
     .default([]),
-  /** The first codebook version: a draft, or published with `publish` (then it must pass validation). */
+  /** The first design version: a draft, or deployed with `publish` (then it must pass validation). */
   codebook: z.object({ note: z.string().max(1000).optional(), items: DraftItemsSchema, session: SessionSpecSchema.optional() }),
-  /** Publish the codebook, so coders can start right away (examples). Default: a draft. */
+  /** Deploy the codebook, so coders can start right away (examples). Default: a draft. */
   publish: z.boolean().default(false),
 });
 export type Recipe = z.infer<typeof RecipeSchema>;

@@ -2,7 +2,7 @@
 title: Your first job
 section: Getting started
 order: 2
-summary: Step by step from an empty job to coders at work - units, a small codebook, a layout, preview, publish, invite, results.
+summary: Step by step from an empty job to coders at work - units, a small codebook, a layout, preview, deploy, links, results.
 ---
 
 This page walks you through a complete, small job: coders read news
@@ -23,7 +23,7 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 ## 1. Create a job
 
 > To look around first, choose **Create new job** → **From an example** on
-> the **Jobs** page: it makes a ready job (units, a published codebook, a
+> the **Jobs** page: it makes a ready job (units, a deployed design, a
 > link, and often example answers) to try and change. Its overview
 > says what to try.
 >
@@ -41,7 +41,7 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 
 The job opens on its **Overview** tab. The tabs along the top group the
 steps below: **Design** (the **Codebook** and **Units**), **Deploy**
-(**Invitations** and **Coders**), **Results**, and the job's **Settings**.
+(**Links** and **Coders**), **Results**, and the job's **Settings**.
 **Preview Job** at the top right tries the job as a coder.
 
 ## 2. Upload the units
@@ -137,10 +137,10 @@ $unit.text
 
 ## 5. Save and preview
 
-Click **Save** above the tree. Your codebook is now saved as a **draft**
-(version 1, *v1*): you and your co-editors see it, coders don't. If the
+Click **Save** above the tree. Your design is now saved as a **draft**
+(design version 1, *v1*): you and your co-editors see it, coders don't. If the
 toolbar shows a red count of issues, click it to see what to fix; you can
-save with issues, but not preview or publish.
+save with issues, but not preview or deploy.
 
 Click **Preview Job** at the top right. You
 now code the job as a coder would, with your real units, on a phone-sized
@@ -149,19 +149,19 @@ preview is stored. Check that the questions read well and the units look
 right; go back to the **Codebook** tab to change things, save, and preview
 again.
 
-## 6. Publish
+## 6. Deploy
 
-On the **Codebook** tab, click **Publish**. The dialog says what deploying
+On the **Codebook** tab, click **Deploy…**. The dialog says what deploying
 does; click **Deploy**. Coders can now start, with the codebook and your
-units. You can keep improving both: changes to the codebook, the units and
+units. You can keep improving both: changes to the design, the units and
 the sets are drafts until you deploy them again. See
-[Preview, save and publish](previewing-and-publishing.md).
+[Preview, save and deploy](previewing-and-publishing.md).
 
-## 7. Invite coders
+## 7. Send coders a link
 
-Publishing made a link for the job: you don't create links by hand.
+Deploying made a link for the job: you don't create links by hand.
 
-1. Open the **Invitations** tab.
+1. Open the **Links** tab.
 2. Optionally, click the pencil icon to give the link a label (e.g. *Pilot
    coders*).
 3. Click **Copy link** in the table and send the link to your coders.

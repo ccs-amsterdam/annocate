@@ -190,7 +190,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
           {latest && (
             <span
               className="rounded-md bg-muted px-2 py-1 text-xs text-foreground"
-              title="Preview runs the latest version. Coders keep using the live version until you publish."
+              title="Preview runs the latest version. Coders keep using the live version until you deploy."
             >
               Previewing v{codebooks.length} ({latestStatus === "draft" ? "draft" : latestStatus === "live" ? "live" : "not live"})
             </span>

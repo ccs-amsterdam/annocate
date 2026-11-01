@@ -28,7 +28,7 @@ export type CoderTopLevelItem =
   | EndItem
   | { type: "condition"; label?: string; condition: Condition; children: CoderTopLevelItem[] };
 
-/** The coder codebook of a published (or previewed) codebook version. */
+/** The coder codebook of a deployed (or previewed) design version. */
 export const CoderCodebookSchema = z.object({
   id: IdSchema,
   items: z.custom<CoderTopLevelItem[]>((v) => Array.isArray(v)),

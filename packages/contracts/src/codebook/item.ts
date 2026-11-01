@@ -212,7 +212,7 @@ export function itemName(item: CodebookItem): string | undefined {
 /**
  * The unit loops of a codebook in document order, with their key: their
  * position (`"1"`, `"2"`, ...). The key identifies a loop within one
- * codebook version (the coder API's `/loop/:loop`, progress, distribution
+ * design version (the coder API's `/loop/:loop`, progress, distribution
  * state); a coder's routing is stored by branch (`branchFingerprint`), so
  * reordering or relabelling loops moves nobody.
  */

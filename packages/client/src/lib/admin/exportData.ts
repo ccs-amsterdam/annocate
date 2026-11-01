@@ -24,12 +24,12 @@ import {
 // - annotations: a row per unit and coder, a column per question;
 // - coders: a row per coder, with their coder-level answers;
 // - units: the unit versions answers were given on (what coders saw);
-// - variables: per codebook version, question and option its label;
+// - variables: per design version, question and option its label;
 // - devices, timings, deleted coders, and optionally reset answers
 //   (ResultsPanel.tsx puts them in the zip with a README).
 //
 // Answers are the stored option values; with labels, each answer column is
-// followed by a `_label` column, the label in the codebook version the
+// followed by a `_label` column, the label in the design version the
 // answer was given under (what the coder saw). A scale has a column per item
 // (`question.item`), several answers are joined with "; ", spans are
 // "value: text", a confirm question is `true`, and a question a condition
@@ -87,7 +87,7 @@ export function nestedQuestions(items: TopLevelItem[] | undefined): Set<string> 
 }
 
 /**
- * Option labels per codebook version: the label of a value in the version
+ * Option labels per design version: the label of a value in the version
  * an answer was given under, else in the live version, else in any (an
  * option an update removed), else the value itself.
  */
@@ -177,7 +177,7 @@ export function questionOrder(items: TopLevelItem[] | undefined): string[] {
 /**
  * Annotations as a table: a row per unit and coder (in the order the coder
  * first answered the unit), with the unit version they saw, when they first
- * and last answered it, the codebook version, and a column per question.
+ * and last answered it, the design version, and a column per question.
  */
 export function annotationsTable(
   annotations: AnnotationRow[],
@@ -187,7 +187,7 @@ export function annotationsTable(
   nested: ReadonlySet<string> = new Set(),
 ): Table {
   const coderById = new Map(coders.map((c) => [c.id, c]));
-  // Per answer also the codebook version it was given under: its labels are the ones its coder saw.
+  // Per answer also the design version it was given under: its labels are the ones its coder saw.
   // And the device of the latest answer: a unit is submitted from one device at a time.
   const byUnitCoder = new Map<
     string,
@@ -335,7 +335,7 @@ export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]
   // A column per set group: the unit's sets, as in a sets column of a CSV
   const cells = groups.map((g) => cellsFromSets(g.sets));
   return {
-    headers: ["unit_version_id", "unit_id", "hash", "first_shown", ...fields, ...groups.map((g) => `sets.${g.name}`)],
+    headers: ["unit_version_id", "unit_id", "hash", "deployed", ...fields, ...groups.map((g) => `sets.${g.name}`)],
     rows: coded.map((v) => [
       String(v.id),
       v.externalId,
@@ -348,7 +348,7 @@ export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]
 }
 
 /**
- * The questions of each codebook version and their options: a row per
+ * The questions of each design version and their options: a row per
  * version, question (a scale: per item, `question.item`) and option, with
  * its label; questions without options have one row. The loop is the one
  * the question is in (empty: asked once per coder).
@@ -497,12 +497,13 @@ coders.csv       A row per coder: participant id, email (coders who logged
                  (deletion_requested; not done yet), their session values
                  from the link (session.<name>), units finished per loop, and
                  their answers outside unit loops.
-units.csv        The units as coders saw them (only the fields the codebook
-                 used), a row per version: a unit replaced after it was coded
-                 has a row per version. Join annotations on unit_version_id.
+units.csv        The units as deployed, a row per version: a unit replaced
+                 after it was coded has a row per version (deployed: when).
+                 Coders saw only the fields the codebook uses; the others
+                 are for your analysis. Join annotations on unit_version_id.
                  A column per set group (sets.<group>): the unit's sets,
                  e.g. s1 or s1;_overlap (#n: its position in an ordered set).
-variables.csv    Per codebook version, question and option: the question text,
+variables.csv    Per design version, question and option: the question text,
                  the stored value and its label.
 devices.csv      The devices coders used: device type (phone, tablet,
                  desktop), browser and operating system, and when each

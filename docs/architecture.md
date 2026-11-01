@@ -127,7 +127,7 @@ bump `deployments.revision` for that
 to; requests with an older one get 409 `codebook_changed`, and the client
 loads the session again (`api/coder.md`).
 
-**Coder links.** Links (invites) are made by publishing: one per
+**Coder links.** Links (invites) are made by deploying: one per
 combination of the codebook's link parameter values (§7). They point at the
 client with the deployment id (the job id) and the link's secret; the
 client calls `/d/<jobId>/...`.
@@ -255,7 +255,7 @@ units:
 codes in full besides their own units, e.g. for intercoder reliability
 (and gold units). `placement`: `first`, `last`, `spread` evenly through
 them, or `disabled`; required in `assign` mode (a deliberate choice), and
-in `shared` mode only with a `set`. Optional: `expect` (a publish warning
+in `shared` mode only with a `set`. Optional: `expect` (a deploy warning
 when the group has fewer overlap units), and `max` with `pick` (`first` or
 a seeded `random` draw) to use at most that many. A coder's own set leaves
 out units that are also overlap units. Spreading needs to know how many
@@ -302,10 +302,10 @@ changing which units a branch hands out routes its coders again. Two loops
 whose branches hand out the same units share the routing (the same set in
 both).
 
-**Loops have no name.** Within one codebook version a loop is identified by
+**Loops have no name.** Within one design version a loop is identified by
 its position (`unitLoops`: `"1"`, `"2"`, ...): the coder API's
 `/loop/:loop/...`, progress per loop, and the runtime's queues and leases.
-All of that is rebuilt when a version is published. Answers and "finished"
+All of that is rebuilt when a version is deployed. Answers and "finished"
 don't depend on it either: they are keyed by the loop's questions (§8.2).
 The optional `label` is for people: the editor, progress and exports.
 
@@ -393,8 +393,8 @@ Built in: `$session.participant`, `$session.source` (an optional
 `?source=` on any link) and `$session.email` (the login's email).
 
 **Links** (invites; stored on the server, never in the codebook) are made
-by publishing: one per combination of link parameter values (one if there
-are none; above 500 publishing needs `confirmLinks`, at most 2000), keyed by
+by deploying: one per combination of link parameter values (one if there
+are none; above 500 deploying needs `confirmLinks`, at most 2000), keyed by
 their values so a link keeps its secret across versions. Set changes sync
 them too. A combination no longer made is **retired** (403 `link_inactive`
 for new coders; coders who started keep working), never deleted. The
@@ -439,7 +439,7 @@ between visits when distribution is dynamic.
 
 ### 8.2 What happens when the codebook changes
 
-A researcher deploys a new codebook version for a running job. Answers are
+A researcher deploys a new design version for a running job. Answers are
 keyed by question name, and the server and client always check them
 against the **current** codebook (`validateAnswer`, shared via contracts):
 
@@ -574,8 +574,8 @@ Roughly in order:
    batches of 5): ~50 submits, ~10 locked picks and ~60 coder lookups per
    second, well within one modest Postgres; size the connection pools so
    all processes together stay under `max_connections`.
-2. **Publishing follow-ups.**
-   - A dry run of a publish, so the reopen warnings (§8.2) show before
+2. **Deploying follow-ups.**
+   - A dry run of a deploy, so the reopen warnings (§8.2) show before
      confirming instead of after.
    - Choosing what reopens after a codebook update (§8.3).
 3. **Local coding from R and Python** (`compositions.md`): R or Python runs

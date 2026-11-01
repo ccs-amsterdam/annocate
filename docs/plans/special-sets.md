@@ -131,7 +131,7 @@ in the browser:
   answers and unit columns (nothing new stored), and per coder in the
   Coders tab and `coders.csv` (`gold_checked`, `gold_wrong`, `health`).
 
-### Validation (publish warnings, like the overlap's)
+### Validation (deploy warnings, like the overlap's)
 
 - The loop has `practice` or `gold`, but the group has no `_practice` /
   `_gold` units.

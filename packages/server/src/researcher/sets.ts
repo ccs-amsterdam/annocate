@@ -6,7 +6,7 @@ import { codebookItems } from "../shared/codebooks.js";
 import { requireJobUser } from "./auth.js";
 import { deleteSetGroup, listSetGroups, putSetGroup } from "../shared/sets.js";
 
-/** Whether the published or latest codebook uses a group (a loop's set, or a link or URL parameter's values). */
+/** Whether the deployed or latest codebook uses a group (a loop's set, or a link or URL parameter's values). */
 async function groupInUse(sql: Sql, jobId: number, group: string): Promise<boolean> {
   const rows = await sql.query<{ items: unknown; session: unknown }>(
     `SELECT items, session FROM codebooks WHERE job_id = $1 AND (id = (SELECT codebook_id FROM deployments WHERE job_id = $1)
@@ -43,7 +43,7 @@ export function sets(server: Server): Hono<Env> {
   app.delete("/job/:jobId/sets/:group", requireJobUser(server, "WRITE"), async (c) => {
     const jobId = c.get("jobId");
     const group = c.req.param("group")!;
-    if (await groupInUse(db, jobId, group)) return c.json({ error: `The codebook uses group '${group}': change it first` }, 409);
+    if (await groupInUse(db, jobId, group)) return c.json({ error: `The design uses group '${group}': change it first` }, 409);
     const deleted = await deleteSetGroup(db, jobId, group);
     if (!deleted) return c.json({ error: "Group not found" }, 404);
     return c.body(null, 204);

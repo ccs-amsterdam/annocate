@@ -8,7 +8,7 @@ interface CodebookStatusBannerProps {
   mode: CodebookEditorMode;
   /** Version number of the opened codebook; null for a new, unsaved codebook. */
   openNumber: number | null;
-  /** Version number of the live codebook; null if nothing was published yet. */
+  /** Version number of the live design version; null if nothing was deployed yet. */
   liveNumber: number | null;
   /** Version number of the draft, if there is one. */
   draftNumber: number | null;
@@ -32,8 +32,8 @@ export function CodebookStatusBanner({
 
   if (openNumber === null) {
     return (
-      <Banner tone="draft" icon={Sparkles} title="New codebook">
-        Save it as a draft, and publish it when coders can start.
+      <Banner tone="draft" icon={Sparkles} title="New design">
+        Save it as a draft, and deploy it when coders can start.
       </Banner>
     );
   }
@@ -70,7 +70,7 @@ export function CodebookStatusBanner({
       <Banner
         tone="live"
         icon={CircleDot}
-        title={openIsLive ? `v${openNumber} is live: coders are using it` : `v${openNumber} was published before`}
+        title={openIsLive ? `v${openNumber} is live: coders are using it` : `v${openNumber} was deployed before`}
       >
         It can't be changed anymore, so your edits are saved as a new draft.
         {openIsLive && ` Coders keep using v${openNumber} until you publish the draft.`}
@@ -85,8 +85,8 @@ export function CodebookStatusBanner({
       title={`Draft v${openNumber}: not live yet`}
     >
       {liveNumber !== null
-        ? `Coders are using v${liveNumber} until you publish this draft.`
-        : "Nothing is published yet, so coders can't start this job. Publish when it's ready."}
+        ? `Coders are using v${liveNumber} until you deploy this draft.`
+        : "Nothing is deployed yet, so coders can't start this job. Deploy when it's ready."}
     </Banner>
   );
 }

@@ -19,7 +19,7 @@ export const CodebookItemsSchema = z
 /**
  * A draft's items: any list. Drafts may be
  * saved while they don't pass validation (work in progress); a codebook is
- * only checked in full (`CodebookItemsSchema`) to publish or preview it.
+ * only checked in full (`CodebookItemsSchema`) to deploy or preview it.
  */
 export const DraftItemsSchema = z.array(z.unknown()).max(10_000);
 
@@ -63,7 +63,7 @@ export const CodebookMetaSchema = z.object({
   revision: z.number().int().positive(),
   /** Once true, the codebook can no longer be edited/deleted (CONTRACTS.md). */
   immutable: z.boolean(),
-  /** Whether it passes validation: required to publish or preview it. */
+  /** Whether it passes validation: required to deploy or preview it. */
   valid: z.boolean(),
 });
 export type CodebookMeta = z.infer<typeof CodebookMetaSchema>;

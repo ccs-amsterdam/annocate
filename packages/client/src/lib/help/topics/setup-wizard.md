@@ -20,7 +20,7 @@ much more (below).
    experiment.
 2. **The experiment**: the name of the condition, the conditions, and
    whether they are assigned balanced or at random (an
-   [assigned variable](auto.md)).
+   [auto question](auto.md)).
 3. **Units**: the CSV file, as in [Uploading units](uploading-units.md), or
    none yet.
 4. **Who codes what**: [everyone codes everything](unit-distribution.md),
@@ -36,15 +36,15 @@ much more (below).
    unit, and after the units.
 
 It then makes the units, their [sets](unitsets.md) (a group `sets`), and a
-draft codebook, and opens the editor. Publishing the codebook makes its
-links: an open link, or a link per set.
+design draft, and opens the editor. These are all drafts: deploying them
+makes the job's links (an open link, or a link per set) and lets coders start.
 
 ## What to do next
 
 The questions have names but no answer type yet: the editor marks them
 **to specify**. Select each one, choose its answer type (see
 [Choosing a question type](question-types.md)) and fill in the question.
-Then save, [preview and publish](previewing-and-publishing.md).
+Then save, [preview and deploy](previewing-and-publishing.md).
 
 ## What only the editor does
 

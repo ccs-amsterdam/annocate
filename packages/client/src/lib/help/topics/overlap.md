@@ -24,7 +24,7 @@ group, or a **crowd coding** queue over one of its sets, can add it.
 2. In the unit loop, choose where the overlap units go, under **Overlap**:
    **Spread through them** by default (see below). With **Assign sets**
    choose **Disabled** for no overlap.
-3. Optionally, **Recommended**: how many overlap units you want. Publishing
+3. Optionally, **Recommended**: how many overlap units you want. Deploying
    warns when the group has fewer. **At most** limits how many a coder gets:
    **the first ones**, or **a random draw** (the same units for every coder,
    so they can be compared).

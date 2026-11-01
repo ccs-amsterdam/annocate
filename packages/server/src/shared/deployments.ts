@@ -158,7 +158,7 @@ export async function getDeploymentSpec(sql: Sql, jobId: number): Promise<Deploy
 export async function getPreviewSpec(sql: Sql, jobId: number): Promise<DeploymentSpec | null> {
   const codebook = await one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
   if (!codebook) return null;
-  if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest codebook has issues: fix them to preview it", "codebook_invalid");
+  if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "codebook_invalid");
   // The drafts: the latest codebook with the draft units and sets.
   const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
   const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.sets])).digest("hex");

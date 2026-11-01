@@ -162,6 +162,6 @@ export function linkKey(values: Record<string, string>): string {
   return JSON.stringify(Object.keys(values).sort().map((k) => [k, values[k]]));
 }
 
-/** Links above this many need a confirmation to publish; more than `MAX_LINKS` can't be published. */
+/** Links above this many need a confirmation to deploy; more than `MAX_LINKS` can't be deployed. */
 export const CONFIRM_LINKS = 500;
 export const MAX_LINKS = 2000;

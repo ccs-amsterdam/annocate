@@ -27,8 +27,8 @@ accident.
 | Role | Can |
 | --- | --- |
 | **Read** | See the job, its coders' progress, and download the results |
-| **Write** | Also edit and save the codebook (and preview it), upload units, make sets and manage links |
-| **Admin** | Also publish the codebook, pause the job, reset answers, delete coders' data, rename or delete the job, and manage who has access |
+| **Write** | Also edit and save the design draft (and preview it), upload units, make sets and manage links |
+| **Admin** | Also deploy the design, units and sets, pause the job, reset answers, delete coders' data, rename or delete the job, and manage who has access |
 
 Give people the smallest role that lets them do their work. Coders are not
 on this list: they never log in to the job's management, they come in through
@@ -36,11 +36,11 @@ a [link](invitations.md).
 
 ## Editing together
 
-Everyone with **Write** works on the same codebook draft. AnnoTinder doesn't
+Everyone with **Write** works on the same design draft. AnnoTinder doesn't
 show who else is editing right now: if two people save at once, the second
 is asked whether to keep their own changes or load the other's (see
 [Working with co-editors](codebook-editor.md#working-with-co-editors)).
-Agree who edits when, and leave publishing to one person.
+Agree who edits when, and leave deploying to one person.
 
 ## Scripts
 

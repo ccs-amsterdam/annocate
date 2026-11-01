@@ -37,8 +37,8 @@ interface CodebookManagerProps {
  *
  * Versions (docs/client.md §7): coders get the *live* version
  * (the deployment's codebook), the editor works on the *draft* (the latest
- * version, if not yet published), and everything else is read-only history.
- * Publishing makes the draft live, which also freezes it.
+ * version, if not yet deployed), and everything else is read-only history.
+ * Deploying makes the draft live, which also freezes it.
  */
 export function CodebookManager({ client, onDirtyChange, registerSave, initialVersionId = null, restore = null }: CodebookManagerProps) {
   const codebooksQuery = useCodebooksQuery(client);

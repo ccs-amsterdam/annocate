@@ -10,7 +10,7 @@ the jobs page. The first admins are named in the server's configuration
 (`ANNOTINDER_ADMINS`); they can make others admin.
 
 Admins don't see job data: the server admin pages show what jobs hold
-(units, coders, answers), not their codebooks, units or answers. To work
+(units, coders, answers), not their designs, units or answers. To work
 in a job, an admin needs a role in it like anyone else. Every change an
 admin makes is kept in the **Log**.
 

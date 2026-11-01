@@ -87,7 +87,7 @@ In **Preview**, the redirect is shown as a button but not followed.
 
 The redirect link must start with `https://` (or `http://`). It can contain
 `$var` references, which are filled in with the coder's answers or
-assigned variables, **URL-encoded**: spaces, `&` and other special
+auto questions, **URL-encoded**: spaces, `&` and other special
 characters in a value can't break the link.
 
 ```text
@@ -96,9 +96,9 @@ https://panel.example/return?status=complete&id=$var.pid.value&group=$var.group.
 ```
 
 Here `pid` and `group` are questions of the codebook, typically
-[assigned variables](auto.md): `pid` taken from the link the participant
+[auto questions](auto.md): `pid` taken from the link the participant
 came in with, `group` drawn at random. How to get a panel's participant id
-into the codebook is explained in
+into the design is explained in
 [Online panels and crowd coding](online-panels.md).
 
 Only `$var` and `$session` references work in a redirect link: no `$unit` and no

@@ -30,7 +30,7 @@ export function draftUnits(sql: Sql, where: string, params: unknown[], tail = ""
   );
 }
 
-/** The job's latest codebook version (the draft, or the deployed one if there is no draft). */
+/** The job's latest design version (the draft, or the deployed one if there is no draft). */
 export function latestCodebook(sql: Sql, jobId: number): Promise<CodebookRow | undefined> {
   return one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
 }

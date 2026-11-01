@@ -291,7 +291,7 @@ async function createSet(name: string, externalIds: string[], group = "g") {
   return ids;
 }
 
-/** The published codebook's links: params -> secret. */
+/** The deployed codebook's links: params -> secret. */
 async function links(): Promise<{ id: number; secret: string; params: Record<string, string>; retiredAt: string | null }[]> {
   return (await (await server.request("/job/1/invites", { headers: adminHeaders })).json()) as never;
 }
@@ -299,8 +299,8 @@ async function links(): Promise<{ id: number; secret: string; params: Record<str
 let extraLinks = 0;
 /**
  * Another link to the job, with these access settings (as a researcher sets
- * them on a link). Made directly: links come from the published codebook,
- * so a later publish retires it.
+ * them on a link). Made directly: links come from the deployed codebook,
+ * so a later deploy retires it.
  */
 async function invite(settings: { auth?: string; emails?: string[]; participantId?: string; maxUses?: number } = {}) {
   const secret = `extra-${++extraLinks}`;

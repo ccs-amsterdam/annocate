@@ -174,13 +174,13 @@ Scripts run in a closed-off sandbox in the coder's browser:
 - A script inside `{{ }}` can't contain `}}`.
 - A script is only run again when a value it uses changes. Don't use it for
   randomness (`Math.random()`): to assign coders to groups at random, use an
-  [assigned variable](auto.md).
+  [auto question](auto.md).
 
 ## Checking a script
 
 In a condition's **Script** mode, a syntax error (such as a missing bracket)
 is shown as you type. Inside `{{ }}` in a template, the editor checks the
 references (every `$` name) but not the rest of the JavaScript, so check the result in the live preview
-or in **Preview** before you publish. A script that shows nothing where you
+or in **Preview** before you deploy. A script that shows nothing where you
 expected a value usually has a mistake in it, or uses a question that isn't
 answered yet.

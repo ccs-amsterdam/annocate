@@ -79,7 +79,7 @@ export interface ResolveCoderRequest {
   inviteSecret?: string;
   /** The page's URL parameters: the participant id and the codebook's URL parameters (`sessionValues`). */
   urlParams?: Record<string, string>;
-  /** What the published codebook asks of a new session (its Session item; set by the runtime). */
+  /** What the deployed codebook asks of a new session (its Session item; set by the runtime). */
   sessionRules?: SessionRules;
   /**
    * The coder confirmed starting a new session although their participant

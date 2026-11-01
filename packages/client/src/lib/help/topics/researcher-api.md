@@ -11,7 +11,7 @@ through AnnoTinder's **researcher API**. That is useful when you want to:
 - upload thousands of units straight from R or Python, or upload new units
   every day;
 - make sets from your own data, such as one set per newspaper;
-- list the links publishing made, and set who may use them;
+- list the links deploying made, and set who may use them;
 - download the answers into your analysis without clicking **Download zip**,
   or fetch only what is new since your last download.
 
@@ -68,8 +68,8 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/j
 | Upload units (at most 200 per request) | `POST /job/<id>/units` |
 | List the job's fields | `GET /job/<id>/units/fields` |
 | List set groups, replace or delete a group | `GET /job/<id>/sets`; `PUT`, `DELETE /job/<id>/sets/<group>` |
-| Save a codebook version | `POST /job/<id>/codebook` with `{ "items": [...], "note": ... }` |
-| Deploy: a codebook version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "codebookId": ..., "units": true }` (without `units`, the deployed units stay) |
+| Save a design version | `POST /job/<id>/codebook` with `{ "items": [...], "note": ... }` |
+| Deploy: a design version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "codebookId": ..., "units": true }` (without `units`, the deployed units stay) |
 | What deploying would change; the deployed versions | `GET /job/<id>/deployment/pending`, `GET /job/<id>/deployment/versions` |
 | List links, or change who may use one | `GET /job/<id>/invites`; `PUT /job/<id>/invites/<link id>` |
 | Coders, with their answers outside unit loops | `GET /job/<id>/coders` |
@@ -77,12 +77,13 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/j
 | Units as coders saw them, a page at a time | `GET /job/<id>/unit-versions` |
 
 What you may do depends on your role in the job, as on the pages: reading
-units, codebooks and answers needs any role; changing them, and seeing
-links and coders, needs a role that may edit; publishing needs the
+units, design versions and answers needs any role; changing them, and seeing
+links and coders, needs a role that may edit; deploying needs the
 job's admin role.
 
-A codebook is the same JSON as in the codebook editor's JSON view: write it
-in the editor, copy it, and a script can save it to another job.
+A design version is the same JSON as in the codebook editor's JSON view: write it
+in the editor, copy it, and a script can save it to another job. (The API
+still calls a design version a codebook: `/job/<id>/codebook`, `codebookId`.)
 
 ## Uploading units
 
@@ -104,6 +105,9 @@ of its type (`null` for empty) and may add fields. An id that already exists
 is refused, unless you add `"overwrite": true`; replacing a unit that was
 coded also needs `"overwriteCoded": true` (see
 [Replacing units](uploading-units.md#replacing-units)).
+
+Uploaded units, and the sets you write (below), are drafts: coders get
+them once you deploy them (`"units": true` above).
 
 In R, with the httr2 package:
 
@@ -147,13 +151,13 @@ api(sprintf("job/%d/sets/pilot", job)) |>
   req_perform()
 ```
 
-A group can't be deleted while the published or latest codebook uses it.
+A group can't be deleted while the deployed or latest design version uses it.
 
 ## Downloading answers
 
 `GET /job/<id>/annotations` gives every answer, one row per coder,
 question and unit (`unitId` is `null` for questions outside unit loops;
-`assigned: true` marks [assigned variables](auto.md)), in the order they were written, a page at a time
+`assigned: true` marks [auto questions](auto.md)), in the order they were written, a page at a time
 (up to `limit` rows, at most 10000). Pass the page's `next` as `after` to get
 the next page, until `next` is `null`:
 
@@ -200,7 +204,7 @@ while True:
 
 Each row has the unit (`unitId`, and your `externalId`), the coder
 (`coderId`, `participantId`), the question (`variable`), the answer
-(`value`), the codebook version (`codebookId`), the unit version the coder
+(`value`), the design version (`codebookId`), the unit version the coder
 saw (`unitVersionId`), and when it was first written and last changed
 (`created`, `updated`). An answer `value` has a list of `values` (each with
 `value`, and `item` for a scale), or `spans` for selected text, and

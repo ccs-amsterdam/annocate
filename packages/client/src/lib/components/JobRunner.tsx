@@ -827,7 +827,7 @@ function LoginNotice() {
   return (
     <SessionNotice title="Log in to take part">
       <p>
-        This invitation asks you to log in first. Your answers are then kept with your account: log in again to continue
+        This link asks you to log in first. Your answers are then kept with your account: log in again to continue
         later, on any device.
       </p>
       {available === false ? (

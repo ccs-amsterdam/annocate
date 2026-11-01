@@ -22,14 +22,14 @@ A **recipe** (`contracts/src/recipe.ts`) is everything a new job starts
 with:
 
 - units, and unitsets by the units' ids;
-- the first codebook, as a draft, or published when it passes validation;
+- the first codebook, as a draft, or deployed when it passes validation;
 - invitations.
 
 `POST /job/from-recipe` makes a job from one in a single transaction
 (`server/src/shared/recipes.ts`), with the same role, limits and ownership
 as creating a job. Three things share it:
 
-- **Example jobs** are recipe files with a published codebook, plus their
+- **Example jobs** are recipe files with a deployed codebook, plus their
   catalogue text and example answers (`packages/server/examples/`).
 - **The wizard** builds a recipe in the browser
   (`client/src/lib/admin/setupRecipe.ts`). The server knows nothing about
@@ -42,7 +42,7 @@ as creating a job. Three things share it:
 A question can exist before its answer type: `{ type: "unspecified" }`,
 with an optional question text. It saves in a draft. Validation reports
 it ("has no answer type yet: choose one"), so the codebook can't be
-previewed or published until every question has a type.
+previewed or deployed until every question has a type.
 
 In the editor:
 
@@ -138,7 +138,7 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
   the questions to specify.
 - `server/src/__tests__/examples.test.ts`: `POST /job/from-recipe`. Checks
   the draft, units, unitsets and invitation; that only a valid codebook is
-  published; that a bad recipe is refused and leaves nothing; and the limit
+  deployed; that a bad recipe is refused and leaves nothing; and the limit
   on jobs.
 - `e2e/tests/wizard.spec.ts`: three runs through the wizard in a browser:
   annotation with an experiment and experimental groups, ending with a
@@ -158,7 +158,7 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
   is where questions are specified, made conditional, and so on.
 - `unspecified` is a real answer type, not a missing one, so drafts stay
   valid JSON of a known shape and the editor can show it plainly.
-- The codebook is created as a draft: publishing stays a deliberate step
+- The codebook is created as a draft: deploying stays a deliberate step
   after previewing.
 - One open invitation link is made, or one per set when sets are handed
   out by link. More kinds of links (personal, panel) are in the editor's
@@ -191,7 +191,7 @@ Start the wizard with **Guided setup** on the Jobs page. It sits next to
   where its part of the job is empty. Not yet obvious how to do this
   without a second way to edit what the editor edits, so not built.
 - **An overview checklist** on every job's Overview tab: units uploaded,
-  codebook without issues, previewed, published, an invitation, someone
+  codebook without issues, previewed, deployed, an invitation, someone
   started. Each item is computed from the job, so it is right however the
   job was made.
 - **Templates**: "Save as template" writes a recipe without units; making

@@ -1,23 +1,23 @@
 ---
-title: Preview, save and publish
+title: Preview, save and deploy
 section: Getting started
 order: 3
-summary: Drafts and published versions, saving, the versions dialog, previewing a job, and what publishing does to coders who are at work.
+summary: Drafts and deployed design versions, saving, the versions dialog, previewing a job, and what deploying does to coders who are at work.
 ---
 
-A codebook goes through three stages: your **unsaved changes** in the
-editor, a saved **draft** that you and your co-editors share, and a
-**published** version that coders get. This works like Qualtrics or
+A design goes through three stages: your **unsaved changes** in the
+codebook editor, a saved **draft** that you and your co-editors share, and a
+**deployed** version that coders get. This works like Qualtrics or
 REDCap: you edit a draft, and coders only see your changes once you
-publish it.
+deploy it.
 
 | Stage | Who sees it | How you get there |
 | --- | --- | --- |
 | Unsaved changes | only you, in this browser | editing |
 | Draft | you and your co-editors, and **Preview** | **Save** |
-| Live version | coders | **Publish** |
+| Live version | coders | **Deploy…** |
 
-Every saved version gets a number: v1, v2, ... Published versions can never
+Every saved design version gets a number: v1, v2, ... Deployed versions can never
 change again, so every answer stays linked to the exact version it was
 given under.
 
@@ -30,15 +30,15 @@ stays linked to the version of the unit its coder saw.
 ## Saving
 
 Click **Save** in the codebook editor's toolbar. You can save as often as
-you like, also while the codebook still has issues: a draft is work in
-progress. Previewing and publishing need a codebook without issues.
+you like, also while the design still has issues: a draft is work in
+progress. Previewing and deploying need a design without issues.
 
 A banner under the toolbar always says what you are looking at:
 
 | Banner | Means |
 | --- | --- |
 | **New codebook** | nothing is saved yet; the first save makes v1 |
-| **Draft v3: not live yet** | you are editing the draft; coders use the live version (if any) until you publish it |
+| **Draft v3: not live yet** | you are editing the draft; coders use the live version (if any) until you deploy it |
 | **v2 is live: coders are using it** | you opened the live version and there is no draft. It can't be changed, so the button says **Save as draft**: your changes become a new draft, and coders keep using v2 |
 | **Viewing v1, an older version** | a version from the history: read only |
 
@@ -49,15 +49,15 @@ also kept in your browser, in case it closes; see
 
 ## The versions dialog
 
-Click **Versions** in the toolbar to see every version, newest first. Each
+Click **Versions** in the toolbar to see every design version, newest first. Each
 has its number, its note, when it was created (a draft: when it was last
 saved, and by whom), and a tag:
 
 - **Live**: the version coders get.
 - **Draft**: the version you are working on. There is at most one draft:
-  the newest version, if it was not published.
+  the newest version, if it was not deployed.
 - **In editor**: the version open in the editor now.
-- **Has issues: fix them before publishing**: the version doesn't pass the
+- **Has issues: fix them before deploying**: the version doesn't pass the
   editor's checks.
 
 Its buttons:
@@ -65,10 +65,10 @@ Its buttons:
 | Button | What it does |
 | --- | --- |
 | **Edit** / **View** | opens the draft to edit, or another version to read |
-| **Restore as draft** | copies an older (or the live) version into the draft. If there is a draft, its content is replaced, after you confirm. Then publish it to go back to that version |
+| **Restore as draft** | copies an older (or the live) version into the draft. If there is a draft, its content is replaced, after you confirm. Then deploy it to go back to that version |
 | **Delete draft** | deletes the draft and everything saved in it since the live version, for all editors. It asks first, and can't be undone |
 
-To go back to an earlier version, restore it as the draft and publish that.
+To go back to an earlier version, restore it as the draft and deploy that.
 Nothing is ever lost this way: the version you go back from stays in the
 history.
 
@@ -89,10 +89,10 @@ then code the job as a coder would, with the job's real units:
 - Session values come from the preview page's URL (by parameter name), else
   their default or first value: a loop that assigns sets by link gets the
   first set.
-- Assigned variables (random, balanced) are drawn for you as for any
+- Auto questions (random, balanced) are drawn for you as for any
   coder.
 
-The preview needs a saved codebook with at least one item and uploaded
+The preview needs a saved design with at least one item and uploaded
 units. If the latest version has issues, the preview says so: fix them,
 save, and open the preview again.
 
@@ -100,13 +100,14 @@ save, and open the preview again.
 > unsaved changes at once. See [The codebook editor](codebook-editor.md).
 > Use it while writing, and the full preview to try the whole job.
 
-## Publishing
+## Deploying
 
-Click **Publish** in the toolbar. Unsaved changes are saved first. The
-**Publish** button is greyed out while the codebook has issues, or when the
-version in the editor is already live and unchanged.
+Click **Deploy…** in the toolbar, or in the bar at the top of the job.
+Unsaved changes are saved first. A draft with issues can't be deployed.
 
-The dialog shows:
+The **Deploy changes?** dialog has two parts, each with a checkbox: the
+**design** draft and the draft **units and sets** (how many were added,
+changed or removed). For the design draft it shows:
 
 - **Warnings** about answers that no longer fit, for example when an option
   value was removed or a question changed type: coders' earlier answers
@@ -116,21 +117,19 @@ The dialog shows:
 - **What changed?**: a note for the version history. It is filled in with
   a summary of the changes; rewrite it in your own words if you like
   ("Added a question about sources").
-- **What happens**: what publishing does (below).
+- **What happens**: what deploying does (below).
 
-The dialog has two parts, each with a checkbox: the **codebook** draft and
-the draft **units and sets** (how many were added, changed or removed).
 What you leave out stays a draft for a later deploy: deploy only the new
-units while you are still editing the codebook, for instance. Click
+units while you are still editing the design, for instance. Click
 **Deploy** to make it live. Afterwards a second dialog may
 list warnings from the server, for instance that a loop gained questions
 and finished units become unfinished again. See
-[Changing a codebook while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-codebook.md).
 
-The first publish is what lets coders start, and it makes the job's links
+The first deploy is what lets coders start, and it makes the job's links
 (see [Links](invitations.md)): until then, there is no link to open.
 
-## What coders experience when you publish
+## What coders experience when you deploy
 
 Coders who are working keep the version they started with until their
 browser next talks to the server (an answer is saved, or more units are
@@ -145,8 +144,8 @@ continue where they were:
   under.
 - New coders start with the new version.
 
-So you can publish while people are coding. Still, small, deliberate
+So you can deploy while people are coding. Still, small, deliberate
 changes are best: every change during a study is a change in the
 instrument. Write a clear version note, so you can later tell which coders
-worked with which version. The results download has the codebook version of
+worked with which version. The results download has the design version of
 every answer.

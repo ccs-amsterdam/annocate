@@ -80,9 +80,9 @@ export const researcherEndpoints = {
   listJobs: { method: "GET", path: "/job", request: z.void(), response: z.array(JobResponseSchema) },
   createJob: { method: "POST", path: "/job", request: JobWriteSchema, response: JobResponseSchema },
   listExamples: { method: "GET", path: "/examples", request: z.void(), response: z.array(ExampleSummarySchema) },
-  /** A new job from an example: units, codebook (published), invitation and example answers. */
+  /** A new job from an example: units, codebook (deployed), invitation and example answers. */
   createJobFromExample: { method: "POST", path: "/job/from-example", request: JobFromExampleSchema, response: JobResponseSchema },
-  /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; publishing makes its links). */
+  /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
   createJobFromRecipe: { method: "POST", path: "/job/from-recipe", request: RecipeSchema, response: JobResponseSchema },
   getJob: { method: "GET", path: "/job/:id", request: z.void(), response: JobResponseSchema },
   updateJob: { method: "PUT", path: "/job/:id", request: JobWriteSchema, response: JobResponseSchema },
@@ -180,7 +180,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: z.array(CoderInviteResponseSchema),
   },
-  /** A link's access settings (label, login, emails, max uses, participant id). Links themselves come from the published codebook. */
+  /** A link's access settings (label, login, emails, max uses, participant id). Links themselves come from the deployed codebook. */
   updateInvite: {
     method: "PUT",
     path: "/job/:jobId/invites/:id",

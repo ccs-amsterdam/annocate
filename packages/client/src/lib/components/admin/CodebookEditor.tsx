@@ -37,7 +37,7 @@ interface CodebookEditorProps {
   /** Shown below the toolbar: what version this is and what to do next. */
   banner?: ReactNode;
   onSaved: (codebook: CodebookResponse) => void;
-  /** Shows a Publish button; called with the saved version (unsaved changes are saved first). */
+  /** Shows a Deploy button; called with the saved version (unsaved changes are saved first). */
   onPublish?: (codebook: CodebookResponse) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   onOpenVersions?: () => void;
@@ -58,7 +58,7 @@ interface CodebookEditorProps {
  *
  * Parts (see ./codebookEditor):
  * - useCodebookDraft  items, selection, validation, unsaved changes, saving
- * - EditorToolbar     issue count, Visual/JSON toggle, Versions/Save/Publish
+ * - EditorToolbar     issue count, Visual/JSON toggle, Versions/Save/Deploy
  * - TreePanel         the item tree (left)
  * - ItemPanel         the selected item's form or preview (right)
  * - PreviewPanel      on wide screens, the live preview in a third column
@@ -142,7 +142,7 @@ export function CodebookEditor({
 
   async function publish() {
     if (!onPublish) return;
-    // A live version that wasn't changed can't be published again; anything unsaved is saved first
+    // A live version that wasn't changed can't be deployed again; anything unsaved is saved first
     if (dirty || !codebook || codebook.immutable) onPublish(await draft.save());
     else onPublish(codebook);
   }

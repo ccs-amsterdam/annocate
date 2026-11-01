@@ -5,6 +5,7 @@ import {
   useCodebooksQuery,
   useDeploymentQuery,
   useDeploymentStatusQuery,
+  useDeploymentVersionsQuery,
   useInvitesQuery,
   useOverviewQuery,
 } from "../../../admin/queries";
@@ -16,6 +17,7 @@ import { LoopProgress } from "./LoopProgress";
 import { LiveControls } from "./LiveControls";
 import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
+import { describeUnitChanges } from "../DeployDialog";
 
 export type OverviewTarget = "Units" | "Invitations" | "Coders";
 
@@ -28,7 +30,7 @@ interface JobOverviewProps {
 
 /**
  * The job's front page (docs/client.md §7): whether it's live, which
- * codebook versions are live and in draft, units, coders, activity and
+ * design versions are live and in draft, units, coders, activity and
  * progress. The job's settings are on their own tab (`JobSettingsPage`).
  */
 export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewProps) {
@@ -59,7 +61,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
             version={versions.liveId}
             number={versions.liveId !== null ? versions.numberOf(versions.liveId) : null}
             note={codebooks.find((c) => c.id === versions.liveId)?.note ?? null}
-            empty="None published"
+            empty="None deployed"
             onOpen={onOpenCodebook}
           />
           <VersionLink
@@ -68,11 +70,13 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
             version={versions.draftId}
             number={versions.draftId !== null ? versions.numberOf(versions.draftId) : null}
             note={null}
-            empty="No unpublished changes"
+            empty="No changes waiting to be deployed"
             onOpen={onOpenCodebook}
           />
         </div>
       </Card>
+
+      {deployment && <DeployHistory client={client} numberOf={versions.numberOf} />}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
@@ -108,7 +112,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
 
         <Card title="Progress" subtitle="Complete units per loop and set">
           {deployment === null ? (
-            <p className="text-sm text-muted-foreground">Publish a codebook version to start coding.</p>
+            <p className="text-sm text-muted-foreground">Deploy the design to start coding.</p>
           ) : statusQuery.data ? (
             <LoopProgress status={statusQuery.data} />
           ) : statusQuery.isError ? (
@@ -156,7 +160,7 @@ export function JobSettingsPage({ client, onDeleted }: { client: ResearcherApi; 
 
 function LiveStatus({ live, active, since }: { live: boolean; active: boolean; since: Date | null }) {
   const [Icon, label, detail, className] = !live
-    ? [CircleOff, "Not published", "Coders can't start yet", "text-muted-foreground"]
+    ? [CircleOff, "Not deployed", "Coders can't start yet", "text-muted-foreground"]
     : active
       ? [CircleDot, "Live", `Since ${formatWhen(since)}`, "text-primary"]
       : [PauseCircle, "Paused", "Coders get no new units", "text-amber-600 dark:text-amber-400"];
@@ -252,4 +256,33 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
 
 function Loading() {
   return <p className="text-sm text-muted-foreground">Loading...</p>;
+}
+
+/**
+ * The deploys, newest first (docs/plans/design.md §5): which design version
+ * each made live and what changed. Deploys are numbered on their own (#3),
+ * design versions as v2.
+ */
+function DeployHistory({ client, numberOf }: { client: ResearcherApi; numberOf: (id: number) => number | null }) {
+  const versions = useDeploymentVersionsQuery(client).data ?? [];
+  if (versions.length === 0) return null;
+  return (
+    <Card title="Deploys" subtitle="What each deploy made live">
+      <ol className="flex flex-col gap-1 text-sm">
+        {versions.slice(0, 8).map((v) => {
+          const parts = [
+            v.changes.codebook && `design v${numberOf(v.codebookId) ?? "?"}`,
+            v.changes.units && `units: ${describeUnitChanges(v.changes.units)}`,
+          ].filter(Boolean);
+          return (
+            <li key={v.version} className="flex flex-wrap items-baseline gap-x-2">
+              <span className="font-mono text-xs text-muted-foreground">#{v.version}</span>
+              <span>{parts.length > 0 ? parts.join("; ") : "settings only"}</span>
+              <span className="text-xs text-muted-foreground">{formatWhen(v.created)}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </Card>
+  );
 }

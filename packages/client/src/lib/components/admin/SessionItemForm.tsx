@@ -65,7 +65,7 @@ export function SessionItemForm({
         </h3>
         <p className="text-[11px] text-muted-foreground">
           Values a session starts with, used as <span className="font-mono">$session.name</span> in conditions, texts and to assign sets.
-          A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets its own link on the Invitations
+          A <strong>link parameter</strong> is fixed in the link: every value (or combination of values) gets its own link on the Links
           page. A <strong>URL parameter</strong> is added to a link by whoever shares it (e.g. <span className="font-mono">?wave=2</span>).
           Built in: <span className="font-mono">$session.participant</span>, <span className="font-mono">$session.source</span> (the
           optional <span className="font-mono">?source=</span> of any link) and <span className="font-mono">$session.email</span>.
@@ -89,12 +89,12 @@ export function SessionItemForm({
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold">Links</h3>
           <p className={`text-[11px] ${links.length > CONFIRM_LINKS ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
-            Publishing makes {links.length} link{links.length === 1 ? "" : "s"}
+            Deploying makes {links.length} link{links.length === 1 ? "" : "s"}
             {item.combinations ? ` (of ${all.length} combinations)` : ""}.
             {links.length > MAX_LINKS
               ? ` At most ${MAX_LINKS} are possible: choose the combinations you need.`
               : links.length > CONFIRM_LINKS
-                ? " That is a lot: publishing asks to confirm."
+                ? " That is a lot: deploying asks to confirm."
                 : ""}
           </p>
           {linkParams.length > 1 && (
@@ -157,7 +157,7 @@ export function SessionItemForm({
           />
         </label>
         <span className="text-[11px] text-muted-foreground">
-          Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Invitations) overrides it.
+          Each link takes at most this many sessions, e.g. 40 per condition. A link&apos;s own limit (Deploy, Links) overrides it.
         </span>
       </section>
 
@@ -282,7 +282,7 @@ function ParamEditor({
             ))}
           </select>
           <span className="text-[11px] font-normal text-muted-foreground">
-            A loop can assign the set this names (Assign sets: named by the link or URL). New sets get links without publishing again.
+            A loop can assign the set this names (Assign sets: named by the link or URL). New sets get links when they are deployed.
           </span>
         </label>
       )}

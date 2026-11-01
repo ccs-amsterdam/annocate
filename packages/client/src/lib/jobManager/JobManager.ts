@@ -191,7 +191,7 @@ interface OutboxItem {
   /** What it saves: a newer item with the same key replaces one still waiting. */
   key: string;
   send: () => Promise<unknown>;
-  /** A unit's answers, to put back after a new codebook version (`carryOver`). */
+  /** A unit's answers, to put back after a new design version (`carryOver`). */
   unit?: { loop: string; unitId: number; answers: Record<string, VariableValue> };
 }
 
@@ -292,7 +292,7 @@ export class JobManager {
   private lastFailedOperation: (() => Promise<void>) | null = null;
   private starting: Promise<void> | null = null;
   /**
-   * After a new codebook version: answers to units that weren't saved yet
+   * After a new design version: answers to units that weren't saved yet
    * (the unit the coder was working on, and finished units still waiting to
    * be saved), by `<loop>/<unitId>`: put back when the reloaded session
    * serves the unit again (`reloadAfterPublish`).
@@ -303,7 +303,7 @@ export class JobManager {
   /**
    * Answers still to be saved, in order: sent in the background, so the
    * coder never waits for the server (`save`). A unit's carries its answers,
-   * to put them back after a new codebook version.
+   * to put them back after a new design version.
    */
   private outbox: OutboxItem[] = [];
   private draining: Promise<void> | null = null;
@@ -608,7 +608,7 @@ export class JobManager {
     while (allowFetchAhead && this.unitHistory.length <= unitIndex) {
       const nextUnit = await this.fetchNextUnit(this.activeLoop);
       if (!nextUnit) break;
-      // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
+      // Back at the unit the coder had open before a new design version: keep their unsaved answers.
     const carried = this.takeCarryOver(this.activeLoop, nextUnit.id);
     this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     }
@@ -758,7 +758,7 @@ export class JobManager {
   /**
    * Saving failed in the background. While the coder's last action is still
    * being handled, that action meets the error itself (`guarded`).
-   * Otherwise: a new codebook version loads the session again
+   * Otherwise: a new design version loads the session again
    * (`reloadAfterPublish`; unsaved answers to units are put back when those
    * come again); another error shows, and `retry()` saves again.
    */
@@ -784,7 +784,7 @@ export class JobManager {
 
   /**
    * Runs an operation that talks to the server (answering, navigating). A
-   * failure shows as an error that `retry()` repeats; a new codebook version
+   * failure shows as an error that `retry()` repeats; a new design version
    * (`codebook_changed`) loads the session again.
    */
   private async guarded(operation: () => Promise<void>): Promise<void> {
@@ -809,7 +809,7 @@ export class JobManager {
   }
 
   /**
-   * A new codebook version was published while the coder was working (the
+   * A new design version was deployed while the coder was working (the
    * server answered `codebook_changed`): load the session again, as after a
    * reload, so the coder continues where they were under the new version.
    * Answers to units that weren't saved yet are kept, if they still fit;
@@ -1033,7 +1033,7 @@ export class JobManager {
     return queue.filling;
   }
 
-  /** Answers to a unit kept over a new codebook version (`carryOver`), once. */
+  /** Answers to a unit kept over a new design version (`carryOver`), once. */
   private takeCarryOver(loop: CoderUnitLoopItem, unitId: number): Record<string, VariableValue> {
     const key = `${this.keyOf(loop)}/${unitId}`;
     const answers = this.carryOver.get(key) ?? {};
@@ -1290,7 +1290,7 @@ export class JobManager {
       return;
     }
 
-    // Back at the unit the coder had open before a new codebook version: keep their unsaved answers.
+    // Back at the unit the coder had open before a new design version: keep their unsaved answers.
     const carried = this.takeCarryOver(this.activeLoop, nextUnit.id);
     this.unitHistory.push({ unitId: nextUnit.id, unit: nextUnit, answers: { ...carried, ...(nextUnit.variables ?? {}) } });
     await this.openEntry(this.unitHistory.length - 1);

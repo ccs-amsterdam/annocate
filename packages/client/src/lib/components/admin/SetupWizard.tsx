@@ -303,7 +303,7 @@ function DistributionStep({ a, set }: StepProps) {
               </label>
               <label className="flex items-center gap-2">
                 <input type="radio" checked={d.handOut === "links"} onChange={() => update({ handOut: "links" })} />
-                A link per set (made when you publish): you decide who gets which (e.g. a few expert coders)
+                A link per set (made when you deploy): you decide who gets which (e.g. a few expert coders)
               </label>
             </fieldset>
             {a.units && sets.length > 0 && (
@@ -533,7 +533,7 @@ function CreateStep({ a, problems }: { a: SetupAnswers; problems: string[] }) {
         <p className="font-medium">Next, in the codebook editor</p>
         <p className="mt-1 text-muted-foreground">
           The job opens on its Codebook tab. Questions marked <em>to specify</em> need an answer type: select each one and choose
-          it. Then save, preview, and publish; coders can start once it is published.
+          it. Then save, preview, and deploy; coders can start once it is deployed.
         </p>
       </div>
       {problems.length > 0 && (

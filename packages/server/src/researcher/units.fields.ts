@@ -34,7 +34,7 @@ export function unitsFields(server: Server): Hono<Env> {
     const latest = await latestCodebook(db, jobId);
     const used = latest ? fieldUsage(codebookItems(latest)) : new Map();
     const inUse = removed.filter((name) => used.has(name));
-    if (inUse.length > 0) return c.json({ error: `The codebook uses ${inUse.join(", ")}: change it first` }, 409);
+    if (inUse.length > 0) return c.json({ error: `The design uses ${inUse.join(", ")}: change it first` }, 409);
 
     // Retyped: every draft unit's value must fit
     for (const f of fields) {

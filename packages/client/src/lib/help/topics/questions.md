@@ -41,7 +41,7 @@ question: answers given under the old name stay in the data under the old
 name, coders are asked the "new" question again, and units they finished
 count as unfinished. Change the **question text** instead if you only
 want other wording. See
-[Changing a codebook while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-codebook.md).
 
 ## The question text
 

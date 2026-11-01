@@ -15,7 +15,7 @@ a particular job is their role there (see [Working together](working-together.md
 | **Researcher** | Also create jobs. The jobs you create are yours: they count against your limits |
 | **Admin** | Also manage the server's users, limits and registration (see [Server admin](server-admin.md)) |
 
-Coders don't need an account at all, unless an invitation asks them to
+Coders don't need an account at all, unless their link asks them to
 [log in](invitations.md#login).
 
 ## Becoming a researcher

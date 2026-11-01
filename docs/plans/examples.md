@@ -4,7 +4,7 @@ Status: §1–§5 built (2026-10-30): `packages/server/examples/<id>.json`
 (one file per example, units inline), `src/examples.ts` (loader),
 `GET /examples`, `POST /job/from-example`, the "From an example" dialog and
 the overview note. Example files are recipes (`setup-wizard.md` §1) with
-a published codebook and example answers. Not built: "Actors and their stance" (§2, needs a
+a deployed codebook and example answers. Not built: "Actors and their stance" (§2, needs a
 feature) and templates and a library (§6).
 
 ## Goal
@@ -81,7 +81,7 @@ existing annotation reset, or delete the example coders.
 
 - `GET /examples`: the catalogue (id, category, title, description).
 - `POST /job/from-example` (`{ example, name? }`): creates the job, its
-  units, unitsets, invitation, codebook (published, so it can be tried right
+  units, unitsets, invitation, codebook (deployed, so it can be tried right
   away) and example answers; returns the job. The job records the example it
   came from (`origin`).
 

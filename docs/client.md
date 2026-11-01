@@ -54,14 +54,14 @@ Status: current (2026-10-26). Server-side design lives in
 - **Response times.** `QuestionTimer` (`jobManager/timing.ts`) times each
   question; the timings go with the posts (`coder-identity.md` §10).
 - An `end` item that is reached is the last step: it tells the server and
-  publishes the ending (§4 "End items"). Reaching the end without one also
+  deploys the ending (§4 "End items"). Reaching the end without one also
   tells the server (`POST /end`).
 - Navigation: back and forward, jumping to a phase, unit or question. Unit
   history is kept **per loop**. On resume it is rebuilt from the session's
   finished unit ids, and units are loaded lazily (`architecture.md` §8.1).
 - `currentUnitVariables` on the snapshot exposes the current unit's answers
   so far. Relation questions need it to find sibling span answers.
-- **A new codebook version while coding**: the server answers 409
+- **A new design version while coding**: the server answers 409
   `codebook_changed` to any request made under the old version (except
   `/session` and `/transfer`; `api/coder.md`). `JobManager` then loads the
   session again, as after a reload, and returns to the unit the coder had
@@ -224,8 +224,8 @@ Every option is `{ value, label?, color? }` (`contracts/src/codebook/options.ts`
 as in SPSS or Stata value labels:
 
 - **The value** is what is stored, compared in conditions and exported.
-  Values are unique within a question. Changing one in a published codebook
-  changes what earlier answers mean; the publish dialog warns
+  Values are unique within a question. Changing one in a deployed codebook
+  changes what earlier answers mean; the deploy dialog warns
   (`codebook/diff.ts` `valueChanges`).
 - **The label** is what coders see (default: the value). It can change
   without touching data.
@@ -523,10 +523,10 @@ from the Preview Job button. It uses a `ResearcherApi`
 
   The toolbar counts errors and warnings; each opens a list in which a
   click opens the item concerned. Unsaved edits are the researcher's own;
-  the saved draft is shared with co-editors; publishing gives a version to
+  the saved draft is shared with co-editors; deploying gives a version to
   coders. So:
   - **Save** works while the codebook has issues (work in progress);
-    publishing and previewing need a valid codebook.
+    deploying and previewing need a valid codebook.
   - A save carries the `revision` it is based on. If someone else saved
     meanwhile, a dialog says who and when, and offers "Save mine over
     theirs" or "Discard mine, load theirs".
@@ -588,8 +588,8 @@ from the Preview Job button. It uses a `ResearcherApi`
   `UnitFields`; `template` code blocks get template highlighting. A test
   checks the front matter, links and anchors, the topics the UI opens, and
   that every example is a valid template (as a codebook) and renders.
-- **Versions and publishing** (as in Qualtrics or REDCap: edit a draft,
-  publish it), derived from `GET /codebook` and `GET /deployment`
+- **Versions and deploying** (as in Qualtrics or REDCap: edit a draft,
+  deploy it), derived from `GET /codebook` and `GET /deployment`
   (`codebook/versions.ts`):
   - *live*: the version coders get (the deployment's codebook), frozen,
     since annotations refer to it (`codebookId`);
@@ -599,8 +599,8 @@ from the Preview Job button. It uses a `ResearcherApi`
     draft.
 
   Editing the live version saves a new draft; coders keep the live one
-  until it is published. A status banner says which you're looking at and
-  what to do next. **Publish** (`PUT /deployment`) makes the draft live and
+  until it is deployed. A status banner says which you're looking at and
+  what to do next. **Deploy** (`PUT /deployment`) makes the draft live and
   freezes it. Its dialog lists the changes against the live version
   (`codebook/diff.ts`), prefills the version note (versions are numbered,
   with an optional `note`) and shows the server's warnings (e.g. a loop
@@ -608,7 +608,7 @@ from the Preview Job button. It uses a `ResearcherApi`
   switch to the new version on their next request to the server (§2),
   keeping their unsaved answers to units; saved answers stay linked to the version they
   were given under.
-  The publish dialog also warns when option values disappear or a
+  The deploy dialog also warns when option values disappear or a
   question's type changes, e.g. from nominal to ordinal (earlier answers
   no longer fit).
   The answer type select converts between nominal and ordinal, keeping
@@ -658,13 +658,13 @@ from the Preview Job button. It uses a `ResearcherApi`
   A coded unit can only be replaced by uploading it again, after a warning (its answers keep the version their coder saw). The codebook editor warns about `$unit.x`
   references to fields that don't exist (`codebook/unitFieldRefs.ts`).
 - **Overview** (`overview/`): live/paused/unpublished, the live and draft
-  codebook versions (open them in the editor), unit/coder/link counts, set groups with their sets' sizes,
+  design versions (open them in the editor), unit/coder/link counts, set groups with their sets' sizes,
   answers per day (`GET /overview`), progress per loop
   (`GET /deployment/status`). `LiveControls.tsx`: pause or resume.
 - **Settings** (`JobSettingsPage`): `TeamSettings.tsx`, who has access and
   their role (the list keeps at least one admin), and the job settings
   (rename, archive, keep sessions open, delete).
-- **Invitations** (`InvitationsPanel.tsx`): the links publishing made,
+- **Invitations** (`InvitationsPanel.tsx`): the links deploying made,
   one per combination of the codebook's link parameter values, with their
   values, uses and status, and the URL parameters a link takes (copied
   with placeholders). Per link: label, login requirement, allowed emails,
@@ -681,16 +681,16 @@ from the Preview Job button. It uses a `ResearcherApi`
 - **Results** (`ResultsPanel.tsx`, `admin/exportData.ts`): one zip,
   built in the browser from the researcher API (all pages of
   `GET /annotations` and `GET /unit-versions`, `GET /coders`,
-  `GET /devices`, `GET /coders/deletions`, and the codebook versions
+  `GET /devices`, `GET /coders/deletions`, and the design versions
   answers were given under), with `fflate`:
   - `annotations.csv`: a row per unit and coder (with the unit version
-    they saw and the codebook version), a column per question (a scale a
+    they saw and the design version), a column per question (a scale a
     column per item), in the live codebook's order;
   - `coders.csv`: a row per coder with their coder-level answers, how
     their session ended and units finished per loop;
   - `units.csv`: the unit versions answers were given on (`architecture.md`
     §8.4), with the fields as shown;
-  - `variables.csv`: per codebook version, question and option, its label;
+  - `variables.csv`: per design version, question and option, its label;
   - `devices.csv`, `timings.csv`, `deleted_coders.csv`: devices coders
     used, response times, and coders whose data was deleted
     (`coder-identity.md` §4, §10, §8);
@@ -699,7 +699,7 @@ from the Preview Job button. It uses a `ResearcherApi`
 
   Answers are stored values; "Add label columns" (on by default) puts a
   `_label` column after each answer column with options: the label in the
-  codebook version the answer was given under (what the coder saw), else
+  design version the answer was given under (what the coder saw), else
   the live one. Several answers are joined with "; ", spans written as
   "value: text", relations as "value: from → to" (span texts), a confirm
   question as `true`, skipped questions empty. Questions whose answers don't

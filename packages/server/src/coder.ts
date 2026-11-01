@@ -57,12 +57,12 @@ export function coderApi(server: Server): Hono {
     await runtime.refresh();
     c.set("runtime", runtime);
     // The client works with the codebook of the version it loaded; after a
-    // publish it must load the session again (the session and transfer
+    // deploy it must load the session again (the session and transfer
     // links don't depend on the codebook).
     const version = c.req.header(VERSION_HEADER);
     const exempt = c.req.path.endsWith("/session") || c.req.path.endsWith("/transfer");
     if (version !== undefined && version !== String(runtime.version) && !exempt) {
-      throw new HttpError(409, "A new version of the codebook was published", "codebook_changed");
+      throw new HttpError(409, "A new version of the study was deployed", "codebook_changed");
     }
 
     // The device's session in this deployment (docs/coder-identity.md §4):

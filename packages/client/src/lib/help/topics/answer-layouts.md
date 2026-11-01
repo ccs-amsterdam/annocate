@@ -96,7 +96,7 @@ editor checks whether it fits on a small phone, and warns under the
 | *This layout doesn't fit half a small phone screen; coders would have to scroll* | **Flex** with too many options |
 | *Too many options for one row of the compact layout* | **Compact** with more than about twelve options |
 
-A warning doesn't stop you from saving or publishing. Labels on buttons
+A warning doesn't stop you from saving or deploying. Labels on buttons
 wrap onto several lines rather than being cut off, so nothing becomes
 unreadable; but coders on small phones may have to scroll to see all
 options, and the unit above gets less room. Check the question in the

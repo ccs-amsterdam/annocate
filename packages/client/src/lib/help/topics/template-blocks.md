@@ -48,7 +48,7 @@ $unit.text
 
 Switch the answer to `group` above the result to see what each group sees.
 This is how a survey experiment shows two versions of the same stimulus: an
-[assigned variable](auto.md) puts coders (or participants) in a group at
+[auto question](auto.md) puts coders (or participants) in a group at
 random, and the layout shows each group its version.
 
 ### Else if and else

@@ -35,7 +35,7 @@ sessions.
 
 ## 3. Links (invites)
 
-Links are made by publishing the codebook, one per combination of its link
+Links are made by deploying the codebook, one per combination of its link
 parameter values (`docs/architecture.md` §7); the researcher sets who may
 use each. A link no longer part of the design is retired: new sessions get
 403 `link_inactive` ("This link is no longer active"), sessions that

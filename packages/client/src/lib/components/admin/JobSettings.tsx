@@ -68,7 +68,7 @@ function JobEditForm({
   const [keepOpen, setKeepOpen] = useState(job.keepSessionsOpen);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [redirects, setRedirects] = useState<Record<string, string>>(job.redirectUrls ?? {});
-  // The end items' redirect settings in the latest codebook version, and any URL already set
+  // The end items' redirect settings in the latest design version, and any URL already set
   const codebooks = useCodebooksQuery(client).data ?? [];
   const latest = useCodebookQuery(client, codebooks.at(-1)?.id ?? null).data;
   const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(job.redirectUrls ?? {})])];

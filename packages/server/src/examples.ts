@@ -19,7 +19,7 @@ import type { JobRow } from "./shared/jobs.js";
 import { createJobFromRecipe } from "./shared/recipes.js";
 
 // Example jobs (docs/plans/examples.md): recipes (shared/recipes.ts) that
-// ship with AnnoTinder, as files in `examples/<id>.json`, with a published
+// ship with AnnoTinder, as files in `examples/<id>.json`, with a deployed
 // codebook and sometimes example answers. Making a job from one gives an
 // ordinary job, to try and adapt.
 

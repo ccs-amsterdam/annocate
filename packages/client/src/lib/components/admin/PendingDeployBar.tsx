@@ -11,7 +11,7 @@ import { DeployDialog, describeUnitChanges } from "./DeployDialog";
  * Everything is a draft until deployed (docs/plans/design.md §5): when a
  * deployed job's drafts differ from what coders get, says what differs and
  * opens the deploy dialog. Draft units and sets are ticked there; a
- * codebook draft is offered, not ticked (it's deployed from the editor
+ * design draft is offered, not ticked (it's deployed from the editor
  * as a rule).
  */
 export function PendingDeployBar({ client, includeCodebook = false }: { client: ResearcherApi; includeCodebook?: boolean }) {
@@ -32,7 +32,7 @@ export function PendingDeployBar({ client, includeCodebook = false }: { client: 
   const draftValid = draft !== null && codebookErrors(designItems(draft) as TopLevelItem[]).length === 0;
   if (!unitsChanged && draftId === null) return null;
 
-  const parts = [unitsChanged && `units ${describeUnitChanges(units)}`, draftId !== null && `codebook draft v${versions.numberOf(draftId)}`].filter(Boolean);
+  const parts = [unitsChanged && `units ${describeUnitChanges(units)}`, draftId !== null && `design draft v${versions.numberOf(draftId)}`].filter(Boolean);
   return (
     <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm">
       <span>

@@ -88,7 +88,7 @@ export type CoderDeletion = z.infer<typeof CoderDeletionSchema>;
 
 /**
  * An invitation link (docs/coder-identity.md §3). Links are generated from
- * the published codebook: one per combination of its link parameters
+ * the deployed codebook: one per combination of its link parameters
  * (docs/plans/sets-and-session-parameters.md §4). The researcher manages
  * who may use a link, not which links exist.
  */
@@ -129,7 +129,7 @@ export const CoderInviteResponseSchema = CoderInviteWriteSchema.extend({
   /** The link parameter values this link carries (`$session.<name>`). */
   params: z.record(z.string(), z.string()),
   /**
-   * Set when the published codebook no longer makes this link (e.g. its set
+   * Set when the deployed codebook no longer makes this link (e.g. its set
    * was removed): no new coders ("This link is no longer active"). Cleared
    * if the link is part of the design again.
    */

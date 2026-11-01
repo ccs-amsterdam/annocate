@@ -106,9 +106,9 @@ export interface ResearcherApi {
   createJob(body: JobWrite): Promise<JobResponse>;
   /** The example jobs AnnoTinder ships (docs/plans/examples.md). */
   listExamples(): Promise<ExampleSummary[]>;
-  /** A new job from an example: units, a published codebook, an invitation and example answers. */
+  /** A new job from an example: units, a deployed codebook, an invitation and example answers. */
   createJobFromExample(body: JobFromExample): Promise<JobResponse>;
-  /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; publishing makes its links). */
+  /** A new job from a recipe (the setup wizard): units, set groups, a codebook (a draft unless `publish`; deploying makes its links). */
   createJobFromRecipe(body: RecipeInput): Promise<JobResponse>;
   updateJob(id: number, body: JobWrite): Promise<JobResponse>;
   deleteJob(id: number): Promise<void>;
@@ -145,7 +145,7 @@ export interface ResearcherApi {
   postponeDeletion(coderId: number): Promise<void>;
   /** The job's deletion log, newest first. */
   listCoderDeletions(): Promise<CoderDeletion[]>;
-  /** The links (made from the published codebook), active ones first. */
+  /** The links (made from the deployed codebook), active ones first. */
   listInvites(): Promise<CoderInviteResponse[]>;
   /** A link's access settings: label, login, emails, max uses, participant id. */
   updateInvite(id: number, body: CoderInviteWrite): Promise<CoderInviteResponse>;
@@ -157,9 +157,9 @@ export interface ResearcherApi {
   /** Counts and activity for the job's overview page. */
   getOverview(): Promise<JobOverview>;
 
-  /** The live codebook version (what coders get); null if nothing was published yet. */
+  /** The live design version (what coders get); null if nothing was deployed yet. */
   getDeployment(): Promise<DeploymentResponse | null>;
-  /** Publishes a codebook version: coders switch to it, and it becomes read only. */
+  /** Deploys a design version: coders switch to it, and it becomes read only. */
   putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
   getPendingChanges(): Promise<PendingChanges>;
   listDeploymentVersions(): Promise<DeploymentVersion[]>;

@@ -8,15 +8,15 @@ summary: Values a session starts with - from its link or URL - as $session value
 A **session parameter** is a value a coder's session starts with, taken
 from the link they open. The codebook can use it anywhere as
 `$session.<name>`: in conditions, in texts, in an end item's return link,
-and to give coders a set of units. You declare them in the codebook's
+and to give coders a set of units. You declare them in the design's
 **Session** item: add it in the codebook tree (**+** at the top level,
-**Session**). It is always the codebook's first item.
+**Session**). It is always the first item.
 
 There are two kinds:
 
 | Kind | Where the value comes from | Example |
 | --- | --- | --- |
-| **Link parameter** | Fixed in the link: publishing makes a link per value (and per combination) | a link per set, per condition, per class |
+| **Link parameter** | Fixed in the link: deploying makes a link per value (and per combination) | a link per set, per condition, per class |
 | **URL parameter** | Added to a link by whoever shares it: `?wave=2` | a panel's study id, a wave number |
 
 The values are stored with the session when it starts, so coders can come
@@ -29,7 +29,7 @@ A parameter's values are one of:
 - **From a list**: the values you type, one per line;
 - **The sets of a group**: the names of a group's sets (see
   [Sets and set groups](unitsets.md)), so a loop can give coders the set
-  their link names. New sets get their link without publishing again;
+  their link names. New sets get their link when they are deployed;
 - **Any value** (URL parameters only): any value up to 256 characters,
   optionally matching a **pattern** (a regular expression).
 
@@ -40,7 +40,7 @@ start.
 
 ## A link per value
 
-Every value of a link parameter gets its own link on the Invitations tab,
+Every value of a link parameter gets its own link under Deploy › Links,
 labelled with the value. With two link parameters, every combination gets a
 link: `condition` (a, b) and `class` (1, 2, 3) make six links. Tick **Only
 some combinations** to list the combinations you need. See
@@ -49,7 +49,7 @@ some combinations** to list the combinations you need. See
 Use link parameters when *you* decide who gets which value: a link per
 class, a link per expert coder's set, or an experiment in which you send
 each condition's link to other people. When the value should be drawn
-(random or balanced), use an [assigned variable](auto.md) instead.
+(random or balanced), use an [auto question](auto.md) instead.
 
 ## Built-in values
 

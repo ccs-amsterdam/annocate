@@ -71,7 +71,7 @@ async function setUpJob(key: string): Promise<{ jobId: number; unitIds: number[]
     })
   ).data;
   expect((await call(key, "putDeployment", { jobId: job.id }, { codebookId: codebook.id })).status).toBe(200);
-  // Publishing made the job's link
+  // Deploying made the job's link
   const [invite] = (await call(key, "listInvites", { jobId: job.id })).data;
   return { jobId: job.id, unitIds: units.map((u) => u.id), invite: invite.secret };
 }
@@ -140,7 +140,7 @@ describe("jobs and roles", () => {
     expect((await call(bob, "getJob", { id: jobId, jobId })).status).toBe(403);
     expect((await call(alice, "getJob", { id: 999, jobId: 999 })).status).toBe(404);
 
-    // Alice gives Bob read access (emails don't depend on case): he can download, not publish.
+    // Alice gives Bob read access (emails don't depend on case): he can download, not deploy.
     const users = [
       { email: "alice@uni.nl", role: "ADMIN" },
       { email: "Bob@Uni.nl", role: "READ" },

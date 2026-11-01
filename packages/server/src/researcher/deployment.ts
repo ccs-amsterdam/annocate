@@ -26,12 +26,12 @@ export function deployment(server: Server): Hono<Env> {
     // Drafts may be saved with issues; coders only ever get a valid codebook.
     const errors = codebookErrors(codebookItems(codebook));
     if (errors.length > 0 || codebookItems(codebook).length === 0) {
-      return c.json({ error: "Fix the codebook's issues before publishing it", issues: errors }, 400);
+      return c.json({ error: "Fix the design's issues before deploying it", issues: errors }, 400);
     }
     // The unit fields it uses must be declared (docs/plans/design.md §3)
     const undeclared = undeclaredFields(codebookItems(codebook), codebookUnits(codebook).fields);
     if (undeclared.length > 0) {
-      return c.json({ error: `The codebook uses unit fields the design doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
+      return c.json({ error: `The design uses unit fields it doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
     }
     // The units it runs: the drafts (`units`, and always the first time), or the deployed ones.
     const current = await one(db, "SELECT 1 FROM deployments WHERE job_id = $1", [jobId]);

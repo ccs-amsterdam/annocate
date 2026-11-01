@@ -7,7 +7,7 @@ import { requireJobUser } from "./auth.js";
 import { forgetLink, toInviteResponse, type InviteRow } from "../shared/invites.js";
 
 // Links (docs/plans/sets-and-session-parameters.md §4): made from the
-// published codebook (shared/invites.ts `syncLinks`); here only their access
+// deployed codebook (shared/invites.ts `syncLinks`); here only their access
 // settings, revoking, and a new secret.
 export function invites(server: Server): Hono<Env> {
   const { db } = server;

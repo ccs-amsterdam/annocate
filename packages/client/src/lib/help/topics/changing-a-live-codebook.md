@@ -1,20 +1,20 @@
 ---
-title: Changing a codebook while coding runs
+title: Changing a design while coding runs
 section: Codebook
 order: 7
-summary: What happens to finished units, units in progress and earlier answers when you publish a new version during a study, and how to change things safely.
+summary: What happens to finished units, units in progress and earlier answers when you deploy a new design version during a study, and how to change things safely.
 ---
 
-You can keep improving a codebook after coders started: edit the draft and
-publish it (see [Preview, save and publish](previewing-and-publishing.md)).
+You can keep improving a design after coders started: edit the draft and
+deploy it (see [Preview, save and deploy](previewing-and-publishing.md)).
 Nothing coders answered is ever overwritten or deleted. But some changes
 affect the units coders already finished, or what earlier answers mean.
 This page says what each kind of change does, so you can decide before you
-publish.
+deploy.
 
 Two rules explain most of it:
 
-- **Answers are stored per question name**, together with the codebook
+- **Answers are stored per question name**, together with the design
   version they were given under. A new version doesn't touch them.
 - **A unit counts as finished when every question of its loop has an
   answer** in the *current* version (a question a condition hid counts as
@@ -33,15 +33,15 @@ Two rules explain most of it:
 | **Answer type** changed | As a removed value: earlier answers no longer fit | The new type |
 | **Question renamed** | As removing the old question and adding a new one: units are unfinished again | Asked under the new name |
 | **Question text, instruction or layout** changed | Stay finished | Coders see the new text |
-| **Conditions or order** changed | Stay finished | Follow the new codebook |
+| **Conditions or order** changed | Stay finished | Follow the new design |
 | **Distribution** changed (the loop's **Units** tab) | Coders keep the units they were given, as long as the loop still hands out those units in the same way; otherwise they are routed again (see [Different units for different coders](coder-groups.md#routing-is-sticky)) | The new rules apply |
 
-Units and sets are not part of the codebook: units you upload and sets
-you make while coding runs are handed out right away, without a new version
-(see [Sets and set groups](unitsets.md)).
+Units and sets are drafts too: units you upload and sets you make while
+coding runs reach coders once you deploy them, with a design draft or on
+their own (see [Sets and set groups](unitsets.md)).
 
-The publish dialog warns about removed option values and changed answer
-types, before you publish. After publishing, it warns if a loop gained
+The deploy dialog warns about removed option values and changed answer
+types, before you deploy. After deploying, it warns if a loop gained
 questions while coders had finished units in it, with the number of
 codings that are unfinished again.
 
@@ -70,7 +70,7 @@ on the **Coders** tab, and for handing out units.
 The download keeps every answer that counts (see
 [Downloading results](results.md)):
 
-- Each row of `annotations.csv` says which codebook version the answers
+- Each row of `annotations.csv` says which design version the answers
   were given under (`codebook_id`), and which version of the unit the coder
   saw.
 - Answers to a question you removed or renamed still have their column,
@@ -83,7 +83,7 @@ The download keeps every answer that counts (see
 Coders don't need to reload. When their browser next talks to the server,
 they switch to the new version and continue where they were, usually on
 the same unit, with their answers to it as far as they still fit. See
-[What coders experience when you publish](previewing-and-publishing.md#what-coders-experience-when-you-publish).
+[What coders experience when you deploy](previewing-and-publishing.md#what-coders-experience-when-you-deploy).
 
 ## Resetting answers
 
@@ -107,7 +107,7 @@ unit loops can be reset. To keep the reset answers in your download, tick
 
 ## Advice
 
-- **Pilot before you publish to real coders.** Most changes are cheap
+- **Pilot before you deploy to real coders.** Most changes are cheap
   before anyone codes, and every change during a study is a change in your
   measurement instrument. Use **Preview**, and a pilot with two or three
   coders on the same units.
@@ -121,11 +121,11 @@ unit loops can be reset. To keep the reset answers in your download, tick
 - **Adding a question costs your coders time**: all their finished units
   come back. If the new question only matters from now on, consider a new
   loop or a new job instead.
-- **Write a version note** for every publish that says what changed and
+- **Write a version note** for every deploy that says what changed and
   why. Report the changes, and the moment they were made, in your methods
   section.
-- **Check the warnings** in the publish dialog. If one surprises you,
+- **Check the warnings** in the deploy dialog. If one surprises you,
   click **Cancel** and look at the change again. The warning about
-  unfinished units only comes after publishing; to undo that change,
-  restore the previous version as the draft from **Versions** and publish
+  unfinished units only comes after deploying; to undo that change,
+  restore the previous version as the draft from **Versions** and deploy
   it. The units then count as finished again, as before.

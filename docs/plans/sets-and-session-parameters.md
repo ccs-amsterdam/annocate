@@ -102,14 +102,14 @@ the N email addresses in column `coder` can code"). Email requires login.
 
 ## 4. Generated links
 
-- Links are made from the **published** codebook: one per combination of
+- Links are made from the **deployed** codebook: one per combination of
   link parameter values (one link if there are none). They are keyed by
   their values, so a link's secret survives new versions and set changes.
-- Sync: on publish and when set groups change. A combination that is no
+- Sync: on deploy and when set groups change. A combination that is no
   longer part of the design (a removed set, a parameter value dropped) is
   **retired**: the link says "This link is no longer active", coders who
   started keep working. It comes back if the combination returns.
-- Limits: above 500 links publishing asks for confirmation; at most 2000.
+- Limits: above 500 links deploying asks for confirmation; at most 2000.
 - The **Invitations** page manages links, not design: label, login
   (none, optional, required), allowed emails, max uses, fixed participant
   id, revoke, and a new secret. It shows each link's parameter values and
@@ -129,8 +129,8 @@ balanced within the groups of earlier answers).
 ## 6. Recipes, examples and the setup wizard
 
 - A recipe has `sets` (groups by the units' ids) instead of `unitsets`,
-  and no `invites`: links are generated when its codebook is published
-  (examples publish; the development demo keeps its fixed secret).
+  and no `invites`: links are generated when its codebook is deployed
+  (examples deploy; the development demo keeps its fixed secret).
 - The wizard's **Assign sets** writes a group (split or by a column) and
   an `assign` branch: drawn (`balanced`), or by link (a set-typed link
   parameter, so a link per set). **Experimental groups**: a group from the

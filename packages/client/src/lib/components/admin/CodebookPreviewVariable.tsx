@@ -141,7 +141,7 @@ export function CodebookPreviewVariable({
           {/* Auto variables are assigned, never asked */}
           {isVariable && isAuto && (
             <div className="p-4 text-sm">
-              <span className="text-xs font-semibold text-primary">Assigned variable</span>
+              <span className="text-xs font-semibold text-primary">Auto question</span>
               <p className="mt-1 text-xs text-muted-foreground">
                 Coders never see this item. The server assigns its value when a coder starts; use it in conditions
                 and layout templates.

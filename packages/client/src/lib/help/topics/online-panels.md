@@ -25,15 +25,15 @@ survey experiments (participants judge a few messages) and for crowd coding
 
 ## The link for the panel
 
-Panels send participants to a link with their id in it. Tell the codebook
-which URL parameter has the id: add a **Session** item to the codebook (see
+Panels send participants to a link with their id in it. Tell the design
+which URL parameter has the id: in the design's **Session** item (see
 [Session parameters](session-parameters.md)) and tick **Participant id from
 a URL parameter**, with the name the panel uses, such as `PROLIFIC_PID`.
 Optionally give a **pattern** the id must fit, e.g. `[0-9a-f]{24}` for
 Prolific's ids, so a link with a typo or a placeholder that wasn't filled in
 doesn't start.
 
-After publishing, the link on the **Invitations** tab ends in
+After deploying, the link under **Deploy** › **Links** ends in
 `PROLIFIC_PID=<participant id>`. In the link you give the panel, replace
 `<participant id>` with the panel's placeholder, which the panel fills in
 for each participant. On Prolific that is `{{%PROLIFIC_PID%}}`; other panels
@@ -52,7 +52,7 @@ another device is told they already started (see
 
 Panels often send more than the participant id, for instance a study id and
 a session id, and want some of them back in the return link. Add them to the
-Session item as **URL parameters**: a name for the codebook (`study`), the
+Session item as **URL parameters**: a name for the design (`study`), the
 **URL key** as the panel sends it (`STUDY_ID`), and its values (any value,
 optionally with a pattern; or a list). Without a default a URL parameter is
 required.
@@ -137,10 +137,10 @@ column of `coders.csv`, so you can check the panel's list against yours.
 ## Experimental conditions
 
 For a survey experiment, give each participant a condition with an
-[assigned variable](auto.md) (**Random draw** or **Balanced**), and show
+[auto question](auto.md) (**Random draw** or **Balanced**), and show
 different material with conditions or `::: if` blocks. If the panel assigns
 the condition (for example two panel studies, one per condition), make the
-condition a **link parameter** with the conditions as its values: publishing
+condition a **link parameter** with the conditions as its values: deploying
 makes a link per condition, to give each panel study its own (see
 [Session parameters](session-parameters.md)).
 
@@ -175,7 +175,7 @@ own order)**.
 
 1. **Preview** the whole codebook, on a phone too: many panel participants
    use one.
-2. Publish, and open the panel link yourself with made-up values, e.g.
+2. Deploy, and open the panel link yourself with made-up values, e.g.
    `PROLIFIC_PID=test1&STUDY_ID=s1` (fitting your patterns). Go through to
    the end and check that you land on the panel's page with the right
    values.

@@ -132,7 +132,7 @@ export class DbStore implements Store {
       throw new HttpError(403, "This job isn't available", "job_suspended");
     }
     const spec = this.preview ? await getPreviewSpec(this.sql, this.jobId) : await getDeploymentSpec(this.sql, this.jobId);
-    if (!spec) throw new HttpError(404, this.preview ? "Job has no codebook" : "Job is not deployed");
+    if (!spec) throw new HttpError(404, this.preview ? "Job has no design yet" : "Job is not deployed");
     return spec;
   }
 
@@ -340,7 +340,7 @@ export class DbStore implements Store {
 
   /**
    * Upserts a live value per given variable; variables not given are left
-   * alone (so values from older codebook versions stay). `created` is kept
+   * alone (so values from older design versions stay). `created` is kept
    * on update. Also marks the unit coded.
    */
   async putAnnotation(write: AnnotationWrite): Promise<void> {

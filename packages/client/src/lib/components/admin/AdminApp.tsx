@@ -59,7 +59,7 @@ const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId;
     label: "Deploy",
     icon: Send,
     pages: [
-      { id: "Invitations", label: "Invitations", icon: Link2 },
+      { id: "Invitations", label: "Links", icon: Link2 },
       { id: "Coders", label: "Coders", icon: Users },
     ],
   },
@@ -243,7 +243,7 @@ function JobAdminView({
   const [isCodebookDirty, setIsCodebookDirty] = useState(false);
   const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
   const saveCodebook = useRef<SaveFn | null>(null);
-  // A codebook version to open, from the overview; `n` remounts the manager on each request
+  // A design version to open, from the overview; `n` remounts the manager on each request
   const [codebookTarget, setCodebookTarget] = useState<{ id: number; n: number } | null>(null);
   const [savingCodebook, setSavingCodebook] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -457,7 +457,7 @@ function BackupBanner({
       <div className="flex items-start gap-2.5">
         <FilePen className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <div>
-          <p className="font-semibold text-foreground">You have unsaved codebook changes</p>
+          <p className="font-semibold text-foreground">You have unsaved changes in the codebook editor</p>
           <p className="text-muted-foreground">
             In {job ? `"${job.name}"` : `job #${backup.jobId}`}, from {when}. They were kept in this browser.
           </p>

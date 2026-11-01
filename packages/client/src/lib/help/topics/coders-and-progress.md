@@ -18,15 +18,16 @@ every 10); for the full data, download the results.
 
 | Shows | Meaning |
 | --- | --- |
-| **Not published** | No codebook version is live yet: coders can't start |
+| **Not deployed** | No design version is live yet: coders can't start |
 | **Live** | Coders can work, since the date shown |
 | **Paused** | Nothing new starts: no new sessions and no new units. Coders save what they have open (also units loaded ahead), then see that the study is paused, and continue where they were once you resume. **Pause** and **Resume** are next to the status |
-| **Live version** | The codebook version coders get, with its note. Click it to open it in the codebook editor |
-| **Draft** | Your unpublished changes, if any |
+| **Live version** | The design version coders get, with its note. Click it to open it in the codebook editor |
+| **Draft** | Your changes that aren't deployed yet, if any |
 
-Changes reach coders right away: after you publish, upload or replace
-units, change sets or reset answers, coders get them with the next
-units they load (units already loaded ahead stay as they were).
+Uploading or replacing units and changing sets only change the drafts.
+Once you deploy them (or a design version), or reset answers, coders get
+the changes with the next units they load (units already loaded ahead stay
+as they were).
 
 ### Numbers
 
@@ -62,7 +63,7 @@ out units (see [Handing out units](unit-distribution.md)):
 
 A set appears here once the first coder was given units from it; a loop
 over all units of the job shows *all units*. Progress is counted for
-the live codebook version.
+the live design version.
 
 ## The Coders tab
 
@@ -71,7 +72,7 @@ Every coder who opened a link, most recently active first:
 | Column | Shows |
 | --- | --- |
 | **Coder** | The participant id, or a number if they have none |
-| **Invitation** | The label of the link they came in with |
+| **Link** | The label of the link they came in with |
 | **Started** | When they first opened the link |
 | **Last active** | When they last gave an answer |
 | **Answers** | All their answers: one per question (per unit, in loops), including questions outside unit loops and questions a condition skipped |
@@ -142,10 +143,10 @@ because they hold your units' content, not the coder's.
 ## What counts as finished
 
 A unit is **finished** for a coder when every question of its loop in the
-live codebook has an answer, or was skipped by a condition. This matters
-when you change a live codebook: adding a question to a loop makes units
+live design version has an answer, or was skipped by a condition. This matters
+when you change a live design: adding a question to a loop makes units
 that coders had finished unfinished again until they answer it (see
-[Changing a codebook while coding runs](changing-a-live-codebook.md)).
+[Changing a design while coding runs](changing-a-live-codebook.md)).
 
 ## Previews don't count
 

@@ -31,12 +31,12 @@ just as you would for a survey item.
 
 A question made with **Guided setup** starts without a type: the tree marks
 it **to specify**, and **Answer Type** says *Choose an answer type...*. The
-codebook can be saved like that, but not previewed or published until
+design can be saved like that, but not previewed or deployed until
 every question has a type.
 
 See [Categories: nominal and ordinal](nominal-and-ordinal.md),
 [Numbers](numeric.md), [Scales](scale.md), [Swipe](swipe.md),
-[Confirm](confirm.md), [Assigned variables](auto.md),
+[Confirm](confirm.md), [Auto questions](auto.md),
 [Selecting text (spans)](span.md) and [Relations](relation.md).
 
 ## Where each type can go
@@ -109,4 +109,4 @@ starts over from that type's defaults.
 
 Once coding has started, changing a question's type changes what its
 answers mean. See
-[Changing a codebook while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-codebook.md).

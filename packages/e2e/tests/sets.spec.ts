@@ -52,7 +52,7 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
 
   // The Invitations tab lists a link per set
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
-  await page.getByRole("button", { name: "Invitations", exact: true }).click();
+  await page.getByRole("button", { name: "Links", exact: true }).click();
   await expect(page.getByRole("cell", { name: "part=s1" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "part=s2" })).toBeVisible();
   const links = await api<{ secret: string; params: Record<string, string> }[]>(request, "GET", `/job/${job.id}/invites`);

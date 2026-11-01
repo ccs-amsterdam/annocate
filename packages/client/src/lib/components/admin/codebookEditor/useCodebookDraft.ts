@@ -45,7 +45,7 @@ interface UseCodebookDraftOptions {
 }
 
 /**
- * The editor's in-memory copy of a codebook version: its items (with
+ * The editor's in-memory copy of a design version: its items (with
  * client-side `_key`s), the selected item, validation, unsaved-change
  * tracking (per item, with revert), undo/redo, and saving (with a check
  * that nobody else saved meanwhile).
@@ -72,7 +72,7 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
   const cleanItems = useMemo(() => stripKeys(items), [items]);
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
   const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
-  // Errors and warnings. Drafts can be saved with errors; publishing needs none.
+  // Errors and warnings. Drafts can be saved with errors; deploying needs none.
   // Plus the unit fields it uses that the design doesn't declare (docs/plans/design.md §3)
   const declared = useUnitFieldsQuery(client).data;
   const validationIssues = useMemo(() => {

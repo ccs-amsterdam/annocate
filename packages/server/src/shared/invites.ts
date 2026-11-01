@@ -62,14 +62,14 @@ export async function linksOf(sql: Sql, jobId: number, items: CodebookItem[], li
 }
 
 /**
- * Checks how many links publishing a codebook makes: at most `MAX_LINKS`
+ * Checks how many links deploying a codebook makes: at most `MAX_LINKS`
  * (400), and more than `CONFIRM_LINKS` only when confirmed (409
  * `confirm_links`). Returns the number.
  */
 export async function checkLinkCount(sql: Sql, jobId: number, items: CodebookItem[], confirmed: boolean, live: boolean): Promise<number> {
   const n = (await linksOf(sql, jobId, items, live)).length;
-  if (n > MAX_LINKS) throw new HttpError(400, `This codebook makes ${n} links; at most ${MAX_LINKS} are possible. List the combinations you need.`, "too_many_links");
-  if (n > CONFIRM_LINKS && !confirmed) throw new HttpError(409, `This codebook makes ${n} links. Publish anyway?`, "confirm_links");
+  if (n > MAX_LINKS) throw new HttpError(400, `This design makes ${n} links; at most ${MAX_LINKS} are possible. List the combinations you need.`, "too_many_links");
+  if (n > CONFIRM_LINKS && !confirmed) throw new HttpError(409, `This design makes ${n} links. Deploy anyway?`, "confirm_links");
   return n;
 }
 
@@ -77,7 +77,7 @@ export async function checkLinkCount(sql: Sql, jobId: number, items: CodebookIte
 const linkLabel = (values: Record<string, string>) => Object.values(values).join(" · ") || "Open link";
 
 /**
- * Makes the job's links match its published codebook (§4): a link per
+ * Makes the job's links match its deployed codebook (§4): a link per
  * combination of the link parameters' values. Missing links are made (with
  * `secrets` in order, else random ones); links the design no longer makes
  * are retired, never deleted (coders came from them); retired links that

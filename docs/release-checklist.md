@@ -41,9 +41,9 @@ fresh database and the built client:
 - coders swipe, fill in a survey with a screen-out, code an experiment,
   and select and label spans;
 - sessions quit with a deletion request, move to another device, see a
-  pause, and follow a new codebook version;
+  pause, and follow a new design version;
 - the researcher creates jobs from an example and from a CSV through the
-  UI, edits the codebook, publishes, invites, and downloads the zip.
+  UI, edits the codebook, deploys, invites, and downloads the zip.
 
 Found and fixed while writing them: the scale question's submit button had
 no accessible name.

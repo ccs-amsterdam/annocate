@@ -2,7 +2,7 @@
 
 Served by the **server** at `/job/...`, called by the client's **researcher
 UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
-managing jobs, codebooks, units and sets, links (invites), publishing and progress.
+managing jobs, codebooks, units and sets, links (invites), deploying and progress.
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
@@ -56,10 +56,10 @@ deleting the job still work).
 **Errors** are `{ error, code? }` with a 4xx/5xx status: 400 invalid body or
 parameter, 401 no valid API key, 403 no (sufficient) role in the job (or
 account role: `researcher_required`), 404 not found, 409 not allowed in
-this state (e.g. editing a published codebook), 413 too large.
+this state (e.g. editing a deployed codebook), 413 too large.
 
 **From R or Python**: everything a script needs is here: create a job,
-upload units ([createUnits](#createunits)) and a codebook, publish it
+upload units ([createUnits](#createunits)) and a codebook, deploy it
 (which makes its links), send coders a link, then download the annotations ([listAnnotations](#listannotations))
 and the coders with their coder-level answers ([listCoders](#listcoders)).
 `server/src/__tests__/researcherApi.test.ts` does exactly this, with every
@@ -114,7 +114,7 @@ response checked against its contract schema.
 | [deleteCoders](#deletecoders) | `POST /job/:jobId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
 | [postponeDeletion](#postponedeletion) | `POST /job/:jobId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
 | [listCoderDeletions](#listcoderdeletions) | `GET /job/:jobId/coders/deletions` | READ | – | `CoderDeletionSchema[]` |
-| **Publishing** | | | | |
+| **Deploying** | | | | |
 | [getDeployment](#getdeployment) | `GET /job/:jobId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
 | [putDeployment](#putdeployment) | `PUT /job/:jobId/deployment` | ADMIN | `DeploymentWriteSchema` | `DeploymentResponseSchema` |
 | [getPendingChanges](#getpendingchanges) | `GET /job/:jobId/deployment/pending` | READ | – | `PendingChangesSchema` |
@@ -218,7 +218,7 @@ shows and what to try (`docs/plans/examples.md`).
 
 `POST /job/from-example` (`{ example, name? }`) → `JobResponseSchema`
 (201): a new job from an example, like `createJob` (the same role, limits
-and ownership): its units and sets, its codebook published (which makes
+and ownership): its units and sets, its codebook deployed (which makes
 its links), and its example answers (coders named "Example coder n").
 The job's `origin` is the example's id. 404 for an unknown example.
 
@@ -233,11 +233,11 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
   ordered? }] }]`);
 - `codebook` (`{ note?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
-  `publish: true` it is published, and must then pass validation.
+  `publish: true` it is deployed, and must then pass validation.
 
-A recipe has no links: publishing its codebook makes them. 400
+A recipe has no links: deploying its codebook makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
-group defined twice, or a codebook to publish that has issues; nothing is created then. Example jobs are recipes too
+group defined twice, or a codebook to deploy that has issues; nothing is created then. Example jobs are recipes too
 (`packages/server/examples/`), with example answers.
 
 ### getJob
@@ -300,13 +300,13 @@ The body is always the full document, with an optional `note` (what
 changed). A draft may be saved while it doesn't pass validation (work in
 progress): `items` only has to be a list (`DraftItemsSchema`). The response says whether it is `valid`
 (`CodebookItemsSchema`: nesting rules, unique names, references), which
-publishing and previewing require. Codebooks also have `updated`,
+deploying and previewing require. Codebooks also have `updated`,
 `updatedBy` (the email of who saved last) and `revision`.
 
 ### updateCodebook
 
 `PUT /job/:jobId/codebook/:id` → `CodebookResponseSchema`. Full replace of
-items and note; bumps `revision`. 409 once `immutable` (published). With
+items and note; bumps `revision`. 409 once `immutable` (deployed). With
 `revision` (the revision the edits are based on): 409
 `CodebookConflictSchema` (`code: "codebook_conflict"`, who saved when) if
 someone saved since, instead of overwriting their work. Without it, the
@@ -341,7 +341,7 @@ hash of every unit, without data.
 ### getUnitFields
 
 `GET /job/:jobId/units/fields` → `UnitFieldSchema[]`: the job's fields, in
-column order: the latest codebook version's `units.fields`, the design's
+column order: the latest design version's `units.fields`, the design's
 one specification of them (`docs/plans/design.md` §3). Match this static
 path (and `/units/page`) before `/units/:id`.
 
@@ -413,7 +413,7 @@ the job's own units (400 otherwise).
 
 ### deleteSetGroup
 
-`DELETE /job/:jobId/sets/:group` → 204. 409 while the published or latest
+`DELETE /job/:jobId/sets/:group` → 204. 409 while the deployed or latest
 codebook uses the group (a loop's set, or a set-typed session parameter).
 
 Splitting units into sets (`s1..sN`, plus `_overlap`) is done by the client
@@ -426,7 +426,7 @@ Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
 Implementation: [`researcher/invites.ts`](../../packages/server/src/researcher/invites.ts), [`shared/invites.ts`](../../packages/server/src/shared/invites.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
-Links (invites) are not created by hand: publishing makes one per
+Links (invites) are not created by hand: deploying makes one per
 combination of the codebook's link parameter values (one if it has none),
 and deploying set changes syncs them ([putDeployment](#putdeployment)): links follow the deployed sets. A link no
 longer made is **retired** (`retiredAt`), never deleted: new coders get 403
@@ -494,7 +494,7 @@ they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
 after the data is gone, with the ids downloaded results use, so the coder
 can be deleted from those too.
 
-## Publishing
+## Deploying
 
 These change or read what coders get; status and preview go to the job's
 runtime (`server.deployments`). Schemas:
@@ -504,12 +504,12 @@ Implementation: [`researcher/deployment*.ts`](../../packages/server/src/research
 ### getDeployment
 
 `GET /job/:jobId/deployment` → `DeploymentResponseSchema | null`: the live
-codebook id, `active`, `version`; null if never published.
+codebook id, `active`, `version`; null if never deployed.
 
 ### putDeployment
 
 `PUT /job/:jobId/deployment` → `DeploymentResponseSchema`. Deploy a
-codebook version, with the draft units and sets if `units: true`
+design version, with the draft units and sets if `units: true`
 (default false: the deployed ones stay, so a new codebook or a pause deploys
 no units by accident; the first deploy always takes the draft's),
 or pause/resume with `active`. Units and sets are drafts until deployed
@@ -558,12 +558,12 @@ newest first: each deployed version with its codebook and what it changed
 `GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: per loop
 and set (`unitset`: `group/set`, or `__all__` for all units) the units complete, started and leased, codings and coders,
 computed on demand. 404 if not
-published.
+deployed.
 
 ### createPreview
 
 `POST /job/:jobId/deployment/preview` → `PreviewSessionSchema`. A preview of
-the latest codebook (published or not), as deployment `<jobId>.preview`:
+the latest codebook (deployed or not), as deployment `<jobId>.preview`:
 the real units, but coders and answers kept in memory only. The token (an
 HMAC with the server's secret, valid 12 hours) is used like an invite
 secret. A latest codebook with validation issues can't be previewed: the
@@ -587,7 +587,7 @@ Implementation: [`researcher/annotations.ts`](../../packages/server/src/research
 `GET /job/:jobId/annotations?after=&limit=&retired=` → `AnnotationPageSchema`:
 one row per answer: unit, coder and variable (`value` is a
 `VariableValue`), with the unit's `externalId`, the coder's
-`participantId`, the codebook version it was answered under, the unit
+`participantId`, the design version it was answered under, the unit
 version the coder saw (`unitVersionId`), the device (`deviceId`), how
 long the coder took as their browser measured it (`timing`), for unit
 answers when the server first handed the unit to the coder (`servedAt`),

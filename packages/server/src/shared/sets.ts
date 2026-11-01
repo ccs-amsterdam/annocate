@@ -116,7 +116,7 @@ export async function runtimeSets(sql: Sql, jobId: number, live: boolean): Promi
 }
 
 /**
- * Warnings for a codebook about to be published, from the job's sets: a
+ * Warnings for a codebook about to be deployed, from the job's sets: a
  * loop takes an overlap its group doesn't have (or fewer units than it
  * expects), or assigns sets of a group without sets.
  */

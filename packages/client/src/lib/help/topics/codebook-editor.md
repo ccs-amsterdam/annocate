@@ -5,7 +5,7 @@ order: 1
 summary: The item tree, the item form, the preview, errors and warnings, saving, undo, reverting, backups and co-editors.
 ---
 
-The **Codebook** tab is where you write the codebook: the questions,
+The **Codebook** tab (under **Design**) is where you write the codebook: the questions,
 unit loops, conditions and end items, in the order coders meet them. This
 page explains the editor itself. What the items mean is on their own pages:
 [Questions](questions.md), [Unit loops](unit-loops.md),
@@ -16,9 +16,9 @@ From top to bottom, the tab has:
 - the **toolbar**: the number of issues and warnings, **Visual** or
   **JSON**, undo and redo, **Revert**, **Export** (the codebook as a
   document: questions, instructions, options and what coders see, e.g.
-  for a paper's appendix), **Versions**, **Save** and **Publish**;
-- a **banner** saying which version you are editing and whether coders use
-  it (see [Preview, save and publish](previewing-and-publishing.md));
+  for a paper's appendix), **Versions**, **Save** and **Deploy…**;
+- a **banner** saying which design version you are editing and whether coders use
+  it (see [Preview, save and deploy](previewing-and-publishing.md));
 - the editor: the **tree** of items on the left, the selected **item** on
   the right and, on wide screens, a **preview** of that item in a third
   column.
@@ -119,7 +119,7 @@ and controls above it:
 
 This preview shows a single item. To try the whole job as a coder, use
 **Preview Job** at the top right (see
-[Preview, save and publish](previewing-and-publishing.md#previewing)).
+[Preview, save and deploy](previewing-and-publishing.md#previewing)).
 
 ## Errors and warnings
 
@@ -127,11 +127,11 @@ The editor checks the codebook as you type. The toolbar counts the
 results:
 
 - **issues** (red): things that must be fixed before you can preview or
-  publish, such as a duplicate name, an empty loop, or a reference to a
-  question that doesn't exist (yet) at that point.
-- **warnings** (amber): things to check, which don't block anything, such
-  as `$unit.byline` while the job's units have no field `byline`. Units
-  may be uploaded later, so that is not an error.
+  deploy, such as a duplicate name, an empty loop, a reference to a
+  question that doesn't exist (yet) at that point, or a unit field the
+  design doesn't declare (upload units with it, or declare it on the
+  **Units** page: **Details**).
+- **warnings** (amber): things to check, which don't block anything.
 
 Click a count to see the list; click a line to open the item it is about.
 Inside a loop's form, a red dot on the **Layout** or **Units** tab shows
@@ -141,8 +141,8 @@ You can **save** with issues: a draft is work in progress.
 
 ## Saving, undo and revert
 
-- **Save** stores the codebook as the draft. You can save at any time; see
-  [Preview, save and publish](previewing-and-publishing.md#saving).
+- **Save** stores your changes as the design draft. You can save at any time; see
+  [Preview, save and deploy](previewing-and-publishing.md#saving).
 - **Undo** and **Redo** (the curved arrows) step through your last 100
   changes since you opened the codebook. Changes less than a second apart
   count as one step, so a typed word is undone at once.
@@ -188,10 +188,10 @@ saved it and when:
 
 To avoid this, agree who edits when, and save often.
 
-## The whole codebook as JSON
+## The whole design as JSON
 
-**JSON** in the toolbar (next to **Visual**) shows the whole codebook as
-one JSON document: useful for an overview, for copying a codebook between
+**JSON** in the toolbar (next to **Visual**) shows the whole design as
+one JSON document: useful for an overview, for copying a design between
 jobs, or for larger edits such as renaming many things at once. The editor
 completes property names, checks the structure, and explains a property
 when you hover over it. **Fold details** collapses the details of

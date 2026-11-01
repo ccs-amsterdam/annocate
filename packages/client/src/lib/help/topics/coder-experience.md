@@ -5,12 +5,12 @@ order: 4
 summary: The coding screen, moving back and forward, saving and resuming, continuing on another device, keyboard shortcuts, phones, and light or dark mode.
 ---
 
-Coders (or participants) open the link of an invitation and start right
-away, without an account (unless the invitation asks them to
+Coders (or participants) open a link and start right
+away, without an account (unless the link asks them to
 [log in](invitations.md#login)). This page describes what they see
 and can do, so you can write instructions for them and know what to expect.
 The quickest way to see it for yourself is **Preview Job** at the top right (see
-[Preview, save and publish](previewing-and-publishing.md#previewing)).
+[Preview, save and deploy](previewing-and-publishing.md#previewing)).
 
 ## The coding screen
 
@@ -145,7 +145,7 @@ phones and on computers answer the same form (see
 [The same form on every device](design-fixed-layouts.md)).
 
 Check long units and many options on a phone-sized screen before you
-publish: the **Mobile** preview has the sizes of common phones.
+deploy: the **Mobile** preview has the sizes of common phones.
 
 ## Light or dark
 

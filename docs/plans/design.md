@@ -13,7 +13,7 @@ Migrations are reset before release, so no legacy handling.
 
 ## 1. Names
 
-- **Design**: one JSON document per job (versioned: drafts, published
+- **Design**: one JSON document per job (versioned: drafts, deployed
   versions) with everything someone repeating the study needs. The job
   page's Design tab already holds it.
 - **Codebook**: the part coders see: questions, instructions, layout. It is

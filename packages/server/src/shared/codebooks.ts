@@ -45,7 +45,7 @@ export function codebookUnits(row: Pick<CodebookRow, "units">): UnitsSpec {
   return parsed.success ? parsed.data : { fields: [] };
 }
 
-/** Whether the items pass validation, as required to publish or preview them. */
+/** Whether the items pass validation, as required to deploy or preview them. */
 export function itemsValid(items: unknown[]): boolean {
   return items.length > 0 && codebookErrors(items).length === 0;
 }

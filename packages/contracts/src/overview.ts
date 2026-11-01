@@ -19,7 +19,7 @@ export const JobOverviewSchema = z.object({
   /**
    * (unit, coder) pairs that finished a loop of the live codebook: every
    * question of the loop answered (the rule of the backend `finished` endpoint).
-   * Zero if nothing is published.
+   * Zero if nothing is deployed.
    */
   codings: z.number().int().nonnegative(),
   lastActivity: z.coerce.date().nullable(),

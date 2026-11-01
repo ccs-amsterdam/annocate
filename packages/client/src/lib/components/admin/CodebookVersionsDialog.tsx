@@ -35,7 +35,7 @@ export function CodebookVersionsView({ codebooks, versions, openId, onView, onRe
               <strong className="text-foreground">draft</strong>, and it only reaches coders when you publish it.
             </p>
             <p>
-              Published versions are read only, so every answer stays linked to the exact version it was given
+              Deployed versions are read only, so every answer stays linked to the exact version it was given
               under. To go back to an older version, restore it as the draft and publish that.
             </p>
           </div>
@@ -97,7 +97,7 @@ export function CodebookVersionsView({ codebooks, versions, openId, onView, onRe
                     {!cb.valid && (
                       <div className="flex items-center gap-1.5 text-xs text-destructive">
                         <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                        Has issues: fix them before publishing
+                        Has issues: fix them before deploying
                       </div>
                     )}
                   </div>

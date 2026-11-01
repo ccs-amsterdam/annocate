@@ -145,5 +145,5 @@ is, so without them `[[reactions]] * 2` would become
 - A snippet belongs to its loop. Another loop needs its own copy.
 - Snippets make a template shorter, but the reader has to look them up.
   For a piece used once, a snippet only helps if it is long.
-- Snippets are part of the codebook: when you share a codebook, its
+- Snippets are part of the design: when you share a design, its
   snippets come with it.

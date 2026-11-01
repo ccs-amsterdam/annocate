@@ -22,8 +22,8 @@ same loop**:
 | Setting | What it does |
 | --- | --- |
 | **Options** | The kinds of relation, e.g. *criticizes*, *supports*, *agrees with* |
-| **From (span variable)** | The span question whose spans are where a relation starts |
-| **To (span variable)** | The span question whose spans are where it ends |
+| **From (span question)** | The span question whose spans are where a relation starts |
+| **To (span question)** | The span question whose spans are where it ends |
 
 **From** and **To** can be the same span question: linking actors to other
 actors. They can also differ: linking actors (from an `actors` question) to
@@ -32,7 +32,7 @@ the issues they talk about (from an `issues` question).
 The editor lists the loop's questions under **From** and **To**; pick span
 questions that come **before** the relation question. Anything else is
 reported as an error, such as *Relation 'from' refers to 'tone' which is
-not a preceding span variable*.
+not a preceding span question*.
 
 Relations have a direction: *A criticizes B* is not *B criticizes A*. Name
 the options so that the direction is clear, and read them as
