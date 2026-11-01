@@ -217,13 +217,13 @@ function JobRunnerContent({
   }, [unsaved]);
 
   // A practice unit answered right: a check, briefly, over the next unit.
-  const [rightFlash, setRightFlash] = useState(false);
+  const [rightSeen, setRightSeen] = useState(0);
+  const rightFlash = snapshot.practiceRight > rightSeen;
   useEffect(() => {
-    if (snapshot.practiceRight === 0) return;
-    setRightFlash(true);
-    const timer = window.setTimeout(() => setRightFlash(false), 900);
+    if (!rightFlash) return;
+    const timer = window.setTimeout(() => setRightSeen(snapshot.practiceRight), 900);
     return () => window.clearTimeout(timer);
-  }, [snapshot.practiceRight]);
+  }, [rightFlash, snapshot.practiceRight]);
 
   const currentUnitId = snapshot.currentUnit?.id ?? snapshot.navigation.currentUnitIndex ?? "none";
   const prevUnitIdRef = useRef<number | string | null>(currentUnitId);
