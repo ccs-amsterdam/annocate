@@ -85,3 +85,50 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
   await coder.getByRole("button", { name: "2 other" }).click();
   await expect(coder.getByText("Sorry, this study is over for you.")).toBeVisible();
 });
+
+test("the right answers of gold units, written in the loop editor", async ({ page, request }) => {
+  const job = await api<JobResponse>(request, "POST", "/job", { name: "Gold answers" });
+  const units = await api<{ id: number; externalId: string }[]>(request, "POST", `/job/${job.id}/units`, {
+    units: [
+      { externalId: "u1", data: { text: "Own text" } },
+      { externalId: "g1", data: { text: "An election report" } },
+    ],
+  });
+  const id = (externalId: string) => units.find((u) => u.externalId === externalId)!.id;
+  await api(request, "PUT", `/job/${job.id}/sets/part`, {
+    sets: [
+      { name: "s1", unitIds: [id("u1")] },
+      { name: "_gold", unitIds: [id("g1")] },
+    ],
+  });
+  await api(request, "POST", `/job/${job.id}/codebook`, {
+    items: [
+      {
+        type: "unit_loop",
+        name: "articles",
+        units: [{ mode: "assign", group: "part", from: { draw: "balanced" }, overlap: { placement: "disabled" }, gold: { placement: "last", questions: ["topic"] } }],
+        layout: { template: "$unit.text" },
+        children: [{ type: "question", name: "topic", variable: { type: "nominal", question: "Topic?", options: [{ value: "politics" }, { value: "other" }] } }],
+      },
+    ],
+  });
+
+  await page.goto("/");
+  await page.getByText("Gold answers").click();
+  await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("button", { name: /^Unit loop/ }).click();
+  await page.getByRole("tab", { name: /Units/ }).click();
+  await page.getByRole("button", { name: "Create gold values…" }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("An election report")).toBeVisible();
+  await expect(dialog.getByText("0 of 1 have answers")).toBeVisible();
+  await dialog.getByRole("button", { name: "politics" }).click();
+  await dialog.getByRole("button", { name: "other" }).click();
+  await expect(dialog.getByLabel("topic: cell")).toHaveValue("politics|other");
+  await dialog.getByRole("button", { name: /Save 1 unit/ }).click();
+  await expect(dialog).toBeHidden();
+
+  const page1 = await api<{ units: { externalId: string; data: Record<string, unknown> }[] }>(request, "GET", `/job/${job.id}/units/page?offset=0&limit=10`);
+  expect(page1.units.find((u) => u.externalId === "g1")!.data.topic_gold).toBe("politics|other");
+});

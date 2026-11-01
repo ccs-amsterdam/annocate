@@ -38,6 +38,7 @@ import { HelpButton } from "../../help/HelpButton";
 import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "../../codebook/simpleLayout";
 import { LayoutDesigner } from "./LayoutDesigner";
 import { GenerateSets } from "./units/GenerateSets";
+import { AnswerKeyDialog, type AnswerKeyQuestion } from "./units/AnswerKeyDialog";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
@@ -55,11 +56,17 @@ function questionsOf(items: CodebookItem[]): { name: string; variable: AnyVariab
 
 /** The loop's questions an agreement rule can compare (contracts `supportsAgreement`). */
 /** The loop's questions that gold and practice units can check (compared by value). */
-function checkableQuestions(items: CodebookItem[]): string[] {
-  return items.flatMap((i) => {
+function checkableQuestions(items: CodebookItem[]): AnswerKeyQuestion[] {
+  return items.flatMap((i): AnswerKeyQuestion[] => {
     if (i.type === "condition") return checkableQuestions(i.children as CodebookItem[]);
-    return "variable" in i && (CHECKABLE_TYPES as readonly string[]).includes(i.variable.type) ? [i.name] : [];
+    return "variable" in i && (CHECKABLE_TYPES as readonly string[]).includes(i.variable.type) ? [{ name: i.name, variable: i.variable }] : [];
   });
+}
+
+/** What "Right answers…" needs: the API and the loop's layout. */
+interface AnswerKeyContext {
+  client: ResearcherApi;
+  layout: UnitLayout;
 }
 
 function agreementQuestions(items: CodebookItem[]): string[] {
@@ -308,6 +315,7 @@ function UnitsTab({
       setParams={setParams}
       agreeable={agreeable}
       checkable={checkable}
+      answerKey={client && loop.layout ? { client, layout: loop.layout } : undefined}
       screenouts={screenouts}
       issues={issuesAt(validationIssues, "units", b)}
       onChange={(branch) => setBranch(b, branch)}
@@ -585,16 +593,18 @@ function BranchEditor({
   setParams,
   agreeable,
   checkable,
+  answerKey,
   screenouts,
   issues,
   onChange,
 }: {
   branch: UnitBranch;
+  answerKey?: AnswerKeyContext;
   client?: ResearcherApi;
   groups: SetGroupResponse[];
   setParams: Map<string, string>;
   agreeable: string[];
-  checkable: string[];
+  checkable: AnswerKeyQuestion[];
   screenouts: string[];
   issues: CodebookValidationIssue[];
   onChange: (branch: UnitBranch) => void;
@@ -675,6 +685,7 @@ function BranchEditor({
             practice={branch.practice}
             group={groups.find((g) => g.name === overlapGroup)}
             checkable={checkable}
+            answerKey={answerKey}
             canSpread={branch.mode !== "shared" || branch.maxUnits !== undefined}
             onChange={(practice) => {
               const next = { ...branch, practice } as UnitBranch;
@@ -686,6 +697,7 @@ function BranchEditor({
             gold={branch.gold}
             group={groups.find((g) => g.name === overlapGroup)}
             checkable={checkable}
+            answerKey={answerKey}
             screenouts={screenouts}
             canSpread={branch.mode !== "shared" || branch.maxUnits !== undefined}
             onChange={(gold) => {
@@ -1096,7 +1108,7 @@ function CheckedQuestions({
   column,
   onChange,
 }: {
-  checkable: string[];
+  checkable: AnswerKeyQuestion[];
   value: string[];
   column: (question: string) => string;
   onChange: (questions: string[]) => void;
@@ -1105,12 +1117,14 @@ function CheckedQuestions({
     return <p className="text-[11px] text-muted-foreground">The loop has no questions that can be checked (choices, numbers or confirm).</p>;
   return (
     <div className="flex flex-col gap-1">
-      {checkable.map((q) => (
+      {checkable.map(({ name: q }) => (
         <label key={q} className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={value.includes(q)}
-            onChange={(e) => onChange(e.target.checked ? checkable.filter((c) => c === q || value.includes(c)) : value.filter((c) => c !== q))}
+            onChange={(e) =>
+              onChange(e.target.checked ? checkable.map((c) => c.name).filter((c) => c === q || value.includes(c)) : value.filter((c) => c !== q))
+            }
           />
           <span className="font-medium">{q}</span>
           <span className="text-muted-foreground">
@@ -1146,12 +1160,14 @@ function PracticeEditor({
   practice,
   group,
   checkable,
+  answerKey,
   canSpread,
   onChange,
 }: {
   practice: PracticeSettings | undefined;
   group: SetGroupResponse | undefined;
-  checkable: string[];
+  checkable: AnswerKeyQuestion[];
+  answerKey?: AnswerKeyContext;
   canSpread: boolean;
   onChange: (practice: PracticeSettings | undefined) => void;
 }) {
@@ -1200,6 +1216,17 @@ function PracticeEditor({
             </label>
           )}
           <SpecialSetNote group={group} set={PRACTICE_SET} what="practice units" />
+          {answerKey && group && (practice.questions?.length ?? 0) > 0 && (
+            <RightAnswersButton
+              context={answerKey}
+              group={group.name}
+              set={PRACTICE_SET}
+              what="practice"
+              questions={checkable.filter((q) => practice.questions!.includes(q.name))}
+              column={practiceColumn}
+              messageColumn={practiceMessageColumn}
+            />
+          )}
         </div>
       )}
     </div>
@@ -1215,13 +1242,15 @@ function GoldEditor({
   gold,
   group,
   checkable,
+  answerKey,
   screenouts,
   canSpread,
   onChange,
 }: {
   gold: GoldSettings | undefined;
   group: SetGroupResponse | undefined;
-  checkable: string[];
+  checkable: AnswerKeyQuestion[];
+  answerKey?: AnswerKeyContext;
   screenouts: string[];
   canSpread: boolean;
   onChange: (gold: GoldSettings | undefined) => void;
@@ -1310,8 +1339,42 @@ function GoldEditor({
             </p>
           )}
           <SpecialSetNote group={group} set={GOLD_SET} what="gold units" />
+          {answerKey && group && gold.questions.length > 0 && (
+            <RightAnswersButton
+              context={answerKey}
+              group={group.name}
+              set={GOLD_SET}
+              what="gold"
+              questions={checkable.filter((q) => gold.questions.includes(q.name))}
+              column={goldColumn}
+            />
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Opens the answer-key dialog: the right answers of a group's gold or practice units. */
+function RightAnswersButton({
+  context,
+  ...props
+}: {
+  context: AnswerKeyContext;
+  group: string;
+  set: string;
+  what: string;
+  questions: AnswerKeyQuestion[];
+  column: (question: string) => string;
+  messageColumn?: (question: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setOpen(true)}>
+        {props.what === "gold" ? "Create gold values…" : "Write practice answers…"}
+      </Button>
+      {open && <AnswerKeyDialog client={context.client} layout={context.layout} {...props} onClose={() => setOpen(false)} />}
+    </>
   );
 }
