@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CodebookResponse, TopLevelItem, UnitChanges } from "@annotinder/contracts";
+import { designItems, type CodebookResponse, type TopLevelItem, type UnitChanges } from "@annotinder/contracts";
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -60,8 +60,10 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
   const useCodebook = codebook !== null && (withCodebook || firstDeploy);
   const useUnits = firstDeploy || (hasUnitChanges && withUnits);
 
-  const changes = codebook && live ? diffCodebooks(live.items as TopLevelItem[], codebook.items as TopLevelItem[]) : null;
-  const valueWarnings = codebook && live ? valueChanges(live.items as TopLevelItem[], codebook.items as TopLevelItem[]) : [];
+  const liveItems = live ? (designItems(live) as TopLevelItem[]) : [];
+  const draftItems = codebook ? (designItems(codebook) as TopLevelItem[]) : [];
+  const changes = codebook && live ? diffCodebooks(liveItems, draftItems) : null;
+  const valueWarnings = codebook && live ? valueChanges(liveItems, draftItems) : [];
   const [note, setNote] = useState(() => codebook?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""));
 
   function close() {

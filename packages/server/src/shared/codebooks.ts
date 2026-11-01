@@ -1,4 +1,13 @@
-import { UnitsSpecSchema, codebookErrors, type CodebookMeta, type CodebookResponse, type TopLevelItem, type UnitsSpec } from "@annotinder/contracts";
+import {
+  UnitsSpecSchema,
+  codebookErrors,
+  designItems,
+  type CodebookMeta,
+  type CodebookResponse,
+  type SessionSpec,
+  type TopLevelItem,
+  type UnitsSpec,
+} from "@annotinder/contracts";
 
 /** A row of `codebooks`. */
 export interface CodebookRow {
@@ -7,6 +16,7 @@ export interface CodebookRow {
   note: string | null;
   items: unknown;
   units: unknown;
+  session: unknown;
   created: Date;
   updated: Date;
   updated_by: string | null;
@@ -14,9 +24,19 @@ export interface CodebookRow {
   immutable: boolean;
 }
 
-/** A stored codebook's items. */
-export function codebookItems(row: Pick<CodebookRow, "items">): TopLevelItem[] {
+/** A stored codebook's items, without the session. */
+function storedItems(row: Pick<CodebookRow, "items">): TopLevelItem[] {
   return (Array.isArray(row.items) ? row.items : []) as TopLevelItem[];
+}
+
+/** A stored codebook's session (docs/plans/design.md §2). */
+export function codebookSession(row: Pick<CodebookRow, "session">): SessionSpec | null {
+  return (row.session as SessionSpec | null) ?? null;
+}
+
+/** A stored codebook's items with its session as the first item: what validation, links and the runtime work on. */
+export function codebookItems(row: Pick<CodebookRow, "items" | "session">): TopLevelItem[] {
+  return designItems({ items: storedItems(row), session: codebookSession(row) }) as TopLevelItem[];
 }
 
 /** A stored codebook's unit fields (docs/plans/design.md §3). */
@@ -45,5 +65,5 @@ export function toCodebookMeta(row: CodebookRow): CodebookMeta {
 
 /** A stored codebook as served. */
 export function toCodebookResponse(row: CodebookRow): CodebookResponse {
-  return { ...toCodebookMeta(row), jobId: row.job_id, items: codebookItems(row), units: codebookUnits(row) };
+  return { ...toCodebookMeta(row), jobId: row.job_id, items: storedItems(row), units: codebookUnits(row), session: codebookSession(row) };
 }

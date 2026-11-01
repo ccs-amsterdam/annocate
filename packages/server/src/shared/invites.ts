@@ -12,6 +12,7 @@ import {
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { groupSets } from "./sets.js";
+import { codebookItems } from "./codebooks.js";
 import { HttpError } from "./http.js";
 
 /** A row of `invites`: a link (docs/plans/sets-and-session-parameters.md §4). */
@@ -84,12 +85,12 @@ const linkLabel = (values: Record<string, string>) => Object.values(values).join
  * Returns the number of active links.
  */
 export async function syncLinks(sql: Sql, jobId: number, options: { secrets?: string[] } = {}): Promise<number> {
-  const deployed = await one<{ items: unknown }>(
+  const deployed = await one<{ items: unknown; session: unknown }>(
     sql,
-    "SELECT c.items FROM deployments d JOIN codebooks c ON c.id = d.codebook_id WHERE d.job_id = $1",
+    "SELECT c.items, c.session FROM deployments d JOIN codebooks c ON c.id = d.codebook_id WHERE d.job_id = $1",
     [jobId],
   );
-  const parsed = deployed ? CodebookItemsSchema.safeParse(deployed.items) : null;
+  const parsed = deployed ? CodebookItemsSchema.safeParse(codebookItems(deployed)) : null;
   if (!parsed?.success) return 0;
   const wanted = await linksOf(sql, jobId, parsed.data, true);
   const rows = await sql.query<Pick<InviteRow, "id" | "link_key" | "retired_at">>(

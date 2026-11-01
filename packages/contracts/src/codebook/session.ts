@@ -90,6 +90,28 @@ export const SessionItemSchema = z.object({
 });
 export type SessionItem = z.infer<typeof SessionItemSchema>;
 
+/**
+ * The design's `session` (docs/plans/design.md §2): the Session item's
+ * content, stored next to the items. Editors and validation work on the
+ * items with it as their first item (`designItems`).
+ */
+export const SessionSpecSchema = SessionItemSchema.omit({ type: true });
+export type SessionSpec = z.infer<typeof SessionSpecSchema>;
+
+/** A design's items with its session as the first item (the Session item): what validation, the runtime and the editor work on. */
+export function designItems<T>(design: { items: readonly T[]; session?: SessionSpec | null }): (T | SessionItem)[] {
+  return design.session ? [{ type: "session", ...design.session }, ...design.items] : [...design.items];
+}
+
+/** The other way round: a Session item out of the items, into `session`. */
+export function splitSession<T>(items: readonly T[]): { items: T[]; session: SessionSpec | null } {
+  const found = items.find((i) => (i as { type?: unknown } | null)?.type === "session") as SessionItem | undefined;
+  if (!found) return { items: [...items], session: null };
+  const session: Partial<SessionItem> = { ...found };
+  delete session.type;
+  return { items: items.filter((i) => i !== (found as unknown)), session: session as SessionSpec };
+}
+
 /** The URL key of a URL parameter. */
 export const sessionParamKey = (p: SessionParam) => p.param ?? p.name;
 

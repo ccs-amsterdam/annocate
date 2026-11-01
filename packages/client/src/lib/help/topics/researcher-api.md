@@ -69,7 +69,7 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/j
 | List the job's fields | `GET /job/<id>/units/fields` |
 | List set groups, replace or delete a group | `GET /job/<id>/sets`; `PUT`, `DELETE /job/<id>/sets/<group>` |
 | Save a codebook version | `POST /job/<id>/codebook` with `{ "items": [...], "note": ... }` |
-| Deploy: a codebook version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "codebookId": ... }` (`"units": false` keeps the deployed units) |
+| Deploy: a codebook version and the draft units and sets (this makes its links) | `PUT /job/<id>/deployment` with `{ "codebookId": ..., "units": true }` (without `units`, the deployed units stay) |
 | What deploying would change; the deployed versions | `GET /job/<id>/deployment/pending`, `GET /job/<id>/deployment/versions` |
 | List links, or change who may use one | `GET /job/<id>/invites`; `PUT /job/<id>/invites/<link id>` |
 | Coders, with their answers outside unit loops | `GET /job/<id>/coders` |

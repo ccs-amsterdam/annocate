@@ -120,7 +120,7 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
     requestNavigation(async () => {
       try {
         const source = await client.getCodebook(id);
-        const body = { items: source.items };
+        const body = { items: source.items, session: source.session };
         if (versions.draftId !== null) {
           if (!confirm(`Replace the draft (v${draftNumber}) with the content of v${versions.numberOf(id)}?`)) return;
           await updateCodebook.mutateAsync({ id: versions.draftId, body });

@@ -97,9 +97,9 @@ export async function deploymentVersions(sql: Sql, jobId: number): Promise<Deplo
  * progress per loop and warnings.
  */
 export async function loopVariables(sql: Sql, jobId: number, codebookId: number): Promise<Map<string, string[]>> {
-  const row = await one<{ items: unknown }>(sql, "SELECT items FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, codebookId]);
+  const row = await one<{ items: unknown; session: unknown }>(sql, "SELECT items, session FROM codebooks WHERE job_id = $1 AND id = $2", [jobId, codebookId]);
   const loops = new Map<string, string[]>();
-  const parsed = row ? CodebookItemsSchema.safeParse(row.items) : null;
+  const parsed = row ? CodebookItemsSchema.safeParse(codebookItems(row)) : null;
   if (!parsed?.success) return loops;
   const questions = (items: CodebookItem[]): string[] =>
     items.flatMap((i) => (i.type === "condition" ? questions(i.children as CodebookItem[]) : "variable" in i ? [i.name] : []));
@@ -176,7 +176,8 @@ async function buildSpec(
     jobId,
     ...meta,
     keepSessionsOpen: job?.keep_sessions_open ?? false,
-    codebook: toCodebookResponse(codebook),
+    // The runtime works on the items with the session first
+    codebook: { ...toCodebookResponse(codebook), items: codebookItems(codebook) },
     sets: await runtimeSets(sql, jobId, meta.liveUnits),
   };
 }

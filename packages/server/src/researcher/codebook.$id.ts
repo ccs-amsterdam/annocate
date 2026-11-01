@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { CodebookWriteSchema, type CodebookConflict } from "@annotinder/contracts";
+import { CodebookWriteSchema, sessionItem, type CodebookConflict } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -38,13 +38,14 @@ export function codebook(server: Server): Hono<Env> {
     const parsed = CodebookWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
+    if (sessionItem(parsed.data.items)) return c.json({ error: "The session goes in `session`, not among the items" }, 400);
     // Saved by someone else since the edits started: don't overwrite their work.
     const { revision } = parsed.data;
     if (revision !== undefined && revision !== existing.revision) return c.json(conflict(existing), 409);
 
     const row = await one<CodebookRow>(
       db,
-      `UPDATE codebooks SET note = $1, items = $2, units = COALESCE($7::jsonb, units), updated = now(), updated_by = $3, revision = revision + 1
+      `UPDATE codebooks SET note = $1, items = $2, units = COALESCE($7::jsonb, units), session = CASE WHEN $9 THEN $8::jsonb ELSE session END, updated = now(), updated_by = $3, revision = revision + 1
        WHERE job_id = $4 AND id = $5 AND NOT immutable AND ($6::int IS NULL OR revision = $6) RETURNING *`,
       [
         parsed.data.note ?? null,
@@ -54,6 +55,9 @@ export function codebook(server: Server): Hono<Env> {
         id,
         revision ?? null,
         parsed.data.units ? JSON.stringify(parsed.data.units) : null,
+        parsed.data.session ? JSON.stringify(parsed.data.session) : null,
+        // Left out: kept; null: none
+        parsed.data.session !== undefined,
       ],
     );
     if (!row) {

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { CodebookWriteSchema } from "@annotinder/contracts";
+import { CodebookWriteSchema, sessionItem } from "@annotinder/contracts";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -19,12 +19,20 @@ export function codebooks(server: Server): Hono<Env> {
     const parsed = CodebookWriteSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
+    if (sessionItem(parsed.data.items)) return c.json({ error: "The session goes in `session`, not among the items" }, 400);
     // The unit fields, unless given: the latest version's (docs/plans/design.md §3)
     const units = parsed.data.units ?? (await getUnitFields(db, c.get("jobId")).then((fields) => ({ fields })));
     const row = await one<CodebookRow>(
       db,
-      "INSERT INTO codebooks (job_id, note, items, units, updated_by) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [c.get("jobId"), parsed.data.note ?? null, JSON.stringify(parsed.data.items), JSON.stringify(units), c.get("jobUser")?.email ?? null],
+      "INSERT INTO codebooks (job_id, note, items, units, session, updated_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+      [
+        c.get("jobId"),
+        parsed.data.note ?? null,
+        JSON.stringify(parsed.data.items),
+        JSON.stringify(units),
+        parsed.data.session ? JSON.stringify(parsed.data.session) : null,
+        c.get("jobUser")?.email ?? null,
+      ],
     );
     return c.json(toCodebookResponse(row!), 201);
   });

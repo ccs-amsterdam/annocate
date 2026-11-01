@@ -155,7 +155,7 @@ function ItemEditForm({
         readOnly={readOnly}
         validationIssues={itemIssues}
         isInsideLoop={isInsideUnitLoop(items, key)}
-        screenouts={item.type === "unitLoop" ? screenoutEnds(cleanItems) : undefined}
+        screenouts={item.type === "unit_loop" ? screenoutEnds(cleanItems) : undefined}
         onChange={(next) => draft.update(key, next)}
       />
     </fieldset>

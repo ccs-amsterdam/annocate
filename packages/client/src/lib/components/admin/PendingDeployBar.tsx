@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { codebookErrors, type TopLevelItem } from "@annotinder/contracts";
+import { codebookErrors, designItems, type TopLevelItem } from "@annotinder/contracts";
 import { Rocket } from "lucide-react";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import { useCodebookQuery, useCodebooksQuery, useDeploymentQuery, usePendingChangesQuery, usePublishMutation } from "../../admin/queries";
@@ -29,7 +29,7 @@ export function PendingDeployBar({ client, includeCodebook = false }: { client: 
   if (!deployment || !pending) return null;
   const units = pending.units;
   const unitsChanged = units.added > 0 || units.changed > 0 || units.removed > 0 || units.sets;
-  const draftValid = draft !== null && codebookErrors(draft.items as TopLevelItem[]).length === 0;
+  const draftValid = draft !== null && codebookErrors(designItems(draft) as TopLevelItem[]).length === 0;
   if (!unitsChanged && draftId === null) return null;
 
   const parts = [unitsChanged && `units ${describeUnitChanges(units)}`, draftId !== null && `codebook draft v${versions.numberOf(draftId)}`].filter(Boolean);

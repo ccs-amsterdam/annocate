@@ -36,8 +36,8 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
   const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+    session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
     items: [
-      { type: "session", params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
       {
         type: "unit_loop",
         units: [

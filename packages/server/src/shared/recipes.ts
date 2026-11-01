@@ -1,4 +1,4 @@
-import { CodebookItemsSchema, addedFields, checkUnitData, type CodebookItem, type Recipe, type UnitData, type UnitField } from "@annotinder/contracts";
+import { CodebookItemsSchema, addedFields, designItems, checkUnitData, type CodebookItem, type Recipe, type UnitData, type UnitField } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { putDeployment } from "./deployments.js";
 import { HttpError } from "./http.js";
@@ -43,7 +43,7 @@ const invalid = (message: string) => new HttpError(400, message, "recipe_invalid
 export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: RecipeOptions): Promise<MadeJob> {
   // A published codebook must pass validation; a draft may have issues (questions to specify).
   if (recipe.publish) {
-    const parsed = CodebookItemsSchema.safeParse(recipe.codebook.items);
+    const parsed = CodebookItemsSchema.safeParse(designItems(recipe.codebook));
     if (!parsed.success) throw invalid(`The codebook can't be published: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
   }
 
@@ -100,16 +100,17 @@ export async function createJobFromRecipe(tx: Sql, recipe: Recipe, options: Reci
 
   // The codebook: published, or the first draft
   // With the units' fields (docs/plans/design.md §3)
-  const codebookId = (await one<{ id: number }>(tx, "INSERT INTO codebooks (job_id, note, items, units) VALUES ($1, $2, $3, $4) RETURNING id", [
+  const codebookId = (await one<{ id: number }>(tx, "INSERT INTO codebooks (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5) RETURNING id", [
     job.id,
     recipe.codebook.note ?? null,
     JSON.stringify(recipe.codebook.items),
     JSON.stringify({ fields }),
+    recipe.codebook.session ? JSON.stringify(recipe.codebook.session) : null,
   ]))!.id;
   let firstInvite: number | null = null;
   if (recipe.publish) {
     await putDeployment(tx, job.id, { codebookId, active: true, units: true });
-    await checkLinkCount(tx, job.id, recipe.codebook.items as CodebookItem[], true, true);
+    await checkLinkCount(tx, job.id, designItems(recipe.codebook) as CodebookItem[], true, true);
     await syncLinks(tx, job.id, { secrets: options.secrets });
     firstInvite = (await one<{ id: number }>(tx, "SELECT id FROM invites WHERE job_id = $1 ORDER BY id LIMIT 1", [job.id]))?.id ?? null;
   }

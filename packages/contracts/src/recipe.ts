@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DraftItemsSchema } from "./codebook/codebook.js";
+import { SessionSpecSchema } from "./codebook/session.js";
 import { UnitDataSchema } from "./common.js";
 import { SetGroupNameSchema, SetNameSchema } from "./sets.js";
 
@@ -26,7 +27,7 @@ export const RecipeSchema = z.object({
     )
     .default([]),
   /** The first codebook version: a draft, or published with `publish` (then it must pass validation). */
-  codebook: z.object({ note: z.string().max(1000).optional(), items: DraftItemsSchema }),
+  codebook: z.object({ note: z.string().max(1000).optional(), items: DraftItemsSchema, session: SessionSpecSchema.optional() }),
   /** Publish the codebook, so coders can start right away (examples). Default: a draft. */
   publish: z.boolean().default(false),
 });

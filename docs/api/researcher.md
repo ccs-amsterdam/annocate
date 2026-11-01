@@ -506,8 +506,9 @@ codebook id, `active`, `version`; null if never published.
 ### putDeployment
 
 `PUT /job/:jobId/deployment` → `DeploymentResponseSchema`. Deploy a
-codebook version with the draft units and sets (`units`, default true;
-false keeps the deployed ones; the first deploy always takes the draft's),
+codebook version, with the draft units and sets if `units: true`
+(default false: the deployed ones stay, so a new codebook or a pause deploys
+no units by accident; the first deploy always takes the draft's),
 or pause/resume with `active`. Units and sets are drafts until deployed
 (`docs/plans/design.md` §5):
 

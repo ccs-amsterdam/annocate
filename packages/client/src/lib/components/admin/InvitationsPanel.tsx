@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   OVERLAP_SET,
+  designItems,
   sessionItem,
   sessionParamKey,
   unitLoops,
@@ -46,7 +47,7 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
   const invitesQuery = useInvitesQuery(client);
   const deployment = useDeploymentQuery(client).data;
   const codebook = useCodebookQuery(client, deployment?.codebookId ?? null).data;
-  const items = (codebook?.items ?? []) as TopLevelItem[];
+  const items = (codebook ? designItems(codebook) : []) as TopLevelItem[];
   const session = sessionItem(items);
   const groups = useSetGroupsQuery(client).data ?? [];
   const [showRetired, setShowRetired] = useState(false);

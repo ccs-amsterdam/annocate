@@ -8,6 +8,7 @@ import type {
   UnitData,
   VariableValue,
 } from "@annotinder/contracts";
+import { splitSession } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import { emptyDb } from "./testDb.js";
 import { seed } from "../seed.js";
@@ -234,7 +235,8 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
     headers: adminHeaders,
     body: JSON.stringify({
       note: "v2",
-      items: [
+      // A Session item among them goes into `session` (docs/plans/design.md §2)
+      ...splitSession([
         ...extraItems,
         {
           type: "unit_loop",
@@ -244,7 +246,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
           children: [sentimentQuestion],
           ...loop,
         },
-      ],
+      ]),
     }),
   });
   expect(res.status).toBe(201);
@@ -252,7 +254,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
   const deploy = await server.request("/job/1/deployment", {
     method: "PUT",
     headers: adminHeaders,
-    body: JSON.stringify({ codebookId: codebook.id }),
+    body: JSON.stringify({ codebookId: codebook.id, units: true }),
   });
   expect(deploy.status).toBe(200);
   return (await deploy.json()) as DeploymentResponse;
@@ -261,7 +263,7 @@ async function redeploy(loop: object, extraItems: object[] = []): Promise<Deploy
 /** Deploys the draft units and sets with the deployed codebook (docs/plans/design.md §5). */
 async function deployDrafts(): Promise<DeploymentResponse> {
   const current = (await (await server.request("/job/1/deployment", { headers: adminHeaders })).json()) as { codebookId: number };
-  const res = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: current.codebookId }) });
+  const res = await server.request("/job/1/deployment", { method: "PUT", headers: adminHeaders, body: JSON.stringify({ codebookId: current.codebookId, units: true }) });
   expect(res.status, await res.clone().text()).toBe(200);
   return (await res.json()) as DeploymentResponse;
 }
@@ -1508,6 +1510,19 @@ describe("unit versions are made by deploys", () => {
 });
 
 describe("unit fields in the design", () => {
+  it("keeps the session next to the items, not among them", async () => {
+    const session = { params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] } }] };
+    const post = (body: object) => server.request("/job/1/codebook", { method: "POST", headers: adminHeaders, body: JSON.stringify(body) });
+    expect((await post({ items: [{ type: "session", ...session }] })).status).toBe(400);
+    const created = (await (await post({ items: [], session })).json()) as { id: number; items: unknown[]; session: unknown };
+    expect(created).toMatchObject({ items: [], session });
+    // A write without `session` keeps it; null clears it
+    const put = async (body: object) =>
+      (await (await server.request(`/job/1/codebook/${created.id}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify(body) })).json()) as { session: unknown };
+    expect((await put({ items: [] })).session).toEqual(session);
+    expect((await put({ items: [], session: null })).session).toBeNull();
+  });
+
   it("are declared by uploads in the draft design, kept by codebook writes, and required to deploy", async () => {
     const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
     const upload = await server.request("/job/1/units", {

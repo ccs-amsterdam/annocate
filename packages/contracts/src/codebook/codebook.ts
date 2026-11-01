@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IdSchema } from "../common.js";
 import { UnitsSpecSchema } from "../unitFields.js";
+import { SessionSpecSchema, type SessionSpec } from "./session.js";
 import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
 import { semanticIssues } from "./validation.js";
 
@@ -36,6 +37,12 @@ export const CodebookWriteSchema = z.object({
    */
   units: UnitsSpecSchema.optional(),
   /**
+   * The session (docs/plans/design.md §2): URL and link parameters, the
+   * participant id, link combinations. Null or absent: none. Not an item:
+   * `items` can't hold a Session item.
+   */
+  session: SessionSpecSchema.nullable().optional(),
+  /**
    * `PUT` only: the revision the edits are based on. If the draft was saved
    * since (by someone else), the server answers 409 `codebook_conflict`
    * instead of overwriting it. Leave out to overwrite regardless.
@@ -66,6 +73,7 @@ export const CodebookResponseSchema = CodebookMetaSchema.extend({
   jobId: IdSchema,
   items: z.custom<TopLevelItem[]>((v) => Array.isArray(v)),
   units: UnitsSpecSchema,
+  session: z.custom<SessionSpec | null>((v) => v === null || typeof v === "object"),
 });
 export type CodebookResponse = z.infer<typeof CodebookResponseSchema>;
 

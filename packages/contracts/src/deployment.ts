@@ -47,10 +47,11 @@ export const DeploymentWriteSchema = z.object({
   /** The codebook coders get (the deployed one: keep it). */
   codebookId: IdSchema,
   /**
-   * Deploy the draft units and sets too (default). False: keep the deployed
-   * ones (the first deploy always takes the draft's).
+   * Deploy the draft units and sets too. Default false: keep the deployed
+   * ones, so changing the codebook or pausing deploys no units by accident
+   * (the first deploy always takes the draft's).
    */
-  units: z.boolean().default(true),
+  units: z.boolean().default(false),
   /** Set to false to stop handing out units (coders get a 409). */
   active: z.boolean().default(true),
   /**

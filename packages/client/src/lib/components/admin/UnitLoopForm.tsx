@@ -688,7 +688,7 @@ function BranchEditor({
             answerKey={answerKey}
             canSpread={branch.mode !== "shared" || branch.maxUnits !== undefined}
             onChange={(practice) => {
-              const next = { ...branch, practice } as UnitBranch;
+              const next = { ...branch, practice } as AssignBranch | SharedBranch;
               if (!practice) delete next.practice;
               onChange(next);
             }}
@@ -701,7 +701,7 @@ function BranchEditor({
             screenouts={screenouts}
             canSpread={branch.mode !== "shared" || branch.maxUnits !== undefined}
             onChange={(gold) => {
-              const next = { ...branch, gold } as UnitBranch;
+              const next = { ...branch, gold } as AssignBranch | SharedBranch;
               if (!gold) delete next.gold;
               onChange(next);
             }}
@@ -1190,7 +1190,7 @@ function PracticeEditor({
             value={practice.questions ?? []}
             column={practiceColumn}
             onChange={(questions) => {
-              const next = { ...practice, questions };
+              const next: PracticeSettings = { ...practice, questions };
               if (questions.length === 0) delete next.questions;
               onChange(next);
             }}
@@ -1203,7 +1203,7 @@ function PracticeEditor({
                 placeholder="Default: the expected answer"
                 value={practice.message ?? ""}
                 onChange={(e) => {
-                  const next = { ...practice, message: e.target.value };
+                  const next: PracticeSettings = { ...practice, message: e.target.value };
                   if (!e.target.value) delete next.message;
                   onChange(next);
                 }}

@@ -362,7 +362,8 @@ export function useJobUsersMutation(client: ResearcherApi): UseMutationResult<vo
 export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, { codebookId: number; active: boolean }> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body) => client.putDeployment(body),
+    // Keeps the deployed units: pausing deploys nothing
+    mutationFn: (body) => client.putDeployment({ ...body, units: false }),
     onSuccess: (deployment) => {
       queryClient.setQueryData(keys.deployment(client.jobId), deployment);
       return queryClient.invalidateQueries({ queryKey: keys.job(client.jobId) });

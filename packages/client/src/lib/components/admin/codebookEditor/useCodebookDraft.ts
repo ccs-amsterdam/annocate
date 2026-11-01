@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   undeclaredFields,
+  designItems,
+  splitSession,
   CodebookConflictSchema,
   validateCodebookItems,
   type CodebookConflict,
@@ -53,7 +55,8 @@ interface UseCodebookDraftOptions {
  */
 export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore }: UseCodebookDraftOptions) {
   const [items, setItemsState] = useState<TopLevelItem[]>(() =>
-    restore ? ensureKeys(restore.items) : ensureKeys((codebook?.items ?? []) as TopLevelItem[]),
+    // The session is edited as the first item (contracts designItems), stored next to the items
+    restore ? ensureKeys(restore.items) : ensureKeys(codebook ? (designItems(codebook) as TopLevelItem[]) : []),
   );
   const [selected, setSelected] = useState<string | null>(null);
   // The items as last saved (with the same keys), to tell what changed and to revert to
@@ -188,9 +191,9 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
         codebook && !codebook.immutable
           ? await updateCodebook.mutateAsync({
               id: codebook.id,
-              body: { note: codebook.note ?? undefined, items: cleanItems, revision: overwrite ? undefined : revision },
+              body: { note: codebook.note ?? undefined, ...splitSession(cleanItems), revision: overwrite ? undefined : revision },
             })
-          : await createCodebook.mutateAsync({ items: cleanItems });
+          : await createCodebook.mutateAsync(splitSession(cleanItems));
       setSaved(sent);
       setRevision(result.revision);
       clearBackup(backupOf);

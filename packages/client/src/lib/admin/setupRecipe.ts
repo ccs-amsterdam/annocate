@@ -1,4 +1,4 @@
-import { OVERLAP_SET, SharedBranchSchema, seededShuffle, type RecipeInput, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import { OVERLAP_SET, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
 import { simpleTemplate, type SimpleLayout } from "../codebook/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
@@ -274,6 +274,7 @@ const unspecified = (q: SetupQuestion) => ({
 export function setupRecipe(a: SetupAnswers): RecipeInput {
   const lists = questionLists(a.parts);
   const items: unknown[] = [];
+  let session: SessionSpec | undefined;
   const groups: NonNullable<RecipeInput["sets"]> = [];
   const conditions = a.experiment.conditions.map((c) => c.trim()).filter(Boolean);
   if (a.parts.experiment) {
@@ -305,7 +306,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
           },
         ];
         // A link per set: a link parameter with the group's sets
-        if (d.handOut === "links") items.unshift({ type: "session", params: [{ name: "set", kind: "link", values: { sets: WIZARD_GROUP } }] });
+        if (d.handOut === "links") session = { params: [{ name: "set", kind: "link", values: { sets: WIZARD_GROUP } }] };
         break;
       case "crowd":
         if (overlap.length > 0) {
@@ -346,6 +347,6 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     name: a.name.trim(),
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
     sets: groups.map((g) => ({ ...g, sets: g.sets.filter((s) => s.units.length > 0) })),
-    codebook: { note: "Made with the setup wizard", items },
+    codebook: { note: "Made with the setup wizard", items, ...(session ? { session } : {}) },
   };
 }

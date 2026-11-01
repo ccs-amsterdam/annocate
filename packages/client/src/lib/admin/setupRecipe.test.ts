@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RecipeSchema, validateCodebookItems } from "@annotinder/contracts";
+import { RecipeSchema, designItems, validateCodebookItems } from "@annotinder/contracts";
 import { DEFAULT_SETUP, defaultDistribution, parseQuestions, questionLists, setupProblems, setupRecipe, type SetupAnswers } from "./setupRecipe";
 
 const units = {
@@ -20,7 +20,7 @@ const setup = (patch: Partial<SetupAnswers>): SetupAnswers => ({
 /** The validation issues of a recipe's codebook, besides the questions to specify. */
 const otherIssues = (a: SetupAnswers) => {
   const recipe = RecipeSchema.parse(setupRecipe(a));
-  return validateCodebookItems(recipe.codebook.items).filter((i) => !i.message.includes("no answer type yet"));
+  return validateCodebookItems(designItems(recipe.codebook)).filter((i) => !i.message.includes("no answer type yet"));
 };
 const loopOf = (a: SetupAnswers) => (setupRecipe(a).codebook.items as { type: string; units?: unknown[]; layout?: { template: string } }[]).find((i) => i.type === "unit_loop")!;
 
@@ -72,7 +72,7 @@ describe("setup wizard recipes", () => {
       ["c", 2],
     ]);
     // The links: a link parameter with the group's sets
-    expect(recipe.codebook.items[0]).toEqual({ type: "session", params: [{ name: "set", kind: "link", values: { sets: "sets" } }] });
+    expect(recipe.codebook.session).toEqual({ params: [{ name: "set", kind: "link", values: { sets: "sets" } }] });
     expect(loopOf(a).units).toEqual([{ mode: "assign", group: "sets", from: { session: "set" }, overlap: { placement: "disabled" } }]);
   });
 

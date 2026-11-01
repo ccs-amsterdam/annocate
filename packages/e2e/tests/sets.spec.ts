@@ -38,8 +38,8 @@ test("a sets column makes a group; a link per set; a coder codes their link's se
 
   // A codebook that gives each set its own link, with the overlap first
   const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+    session: { params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
     items: [
-      { type: "session", params: [{ name: "part", kind: "link", values: { sets: "part" } }] },
       {
         type: "unit_loop",
         units: [{ mode: "assign", group: "part", from: { session: "part" }, overlap: { placement: "first" } }],
