@@ -3,8 +3,9 @@
 Status: agreed 2026-10-31, being built in this order: (0) the coder
 codebook (done), (1) practice and gold (done: placements `first`, `last`,
 `spread`; the rate comes with step 5; coders continue after a wrong
-practice answer), (2) "Create gold values" (done: a dialog from the loop's Practice and Gold sections), (3) help,
-(4) wizard step, (5) overlap at a rate and per-value URL lists (done:
+practice answer), (2) "Create gold values" (done: a dialog from the loop's Practice and Gold sections), (3) help
+(done: topic `special-units`), (4) wizard step (done: on the questions
+step), (5) overlap at a rate and per-value URL lists (done:
 `placement: "rate"` with `every` and `rest` for overlap, gold and practice;
 the wizard's crowd default; a link per value of a URL parameter on the
 Links page; the per-coder overlap status in the Coders tab is not built). Builds on
