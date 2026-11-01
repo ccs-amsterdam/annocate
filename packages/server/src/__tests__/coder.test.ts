@@ -1533,6 +1533,29 @@ describe("deployment settings", () => {
   });
 });
 
+describe("review regressions", () => {
+  it("an upload that makes a design draft keeps the session; an empty set is deployed", async () => {
+    const session = { type: "session", params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] }, default: "1" }] };
+    const end = { type: "end", name: "done", outcome: "complete", redirectSetting: "panel" };
+    await redeploy({}, [session, end]);
+    // An upload with a new column after the deploy: the new draft keeps the session
+    const { data } = await draftUnit((await unitByExternalId("unit-1")).id);
+    const upload = await server.request("/job/1/units", { method: "POST", headers: adminHeaders, body: JSON.stringify({ units: [{ externalId: "n1", data: { ...data, extra: "x" } }] }) });
+    expect(upload.status).toBe(201);
+    const list = (await (await server.request("/job/1/codebook", { headers: adminHeaders })).json()) as { id: number }[];
+    const draft = (await (await server.request(`/job/1/codebook/${list.at(-1)!.id}`, { headers: adminHeaders })).json()) as { session: unknown };
+    expect(draft.session).toMatchObject({ params: [{ name: "wave" }] });
+    // An empty set is a change to deploy, and reaches the live sets
+    await createSet("empty", []);
+    const pending = (await (await server.request("/job/1/deployment/pending", { headers: adminHeaders })).json()) as { units: { sets: boolean } };
+    expect(pending.units.sets).toBe(true);
+    const deployed = await deployDrafts();
+    const live = (await db.query<{ name: string }>("SELECT name FROM unit_sets WHERE job_id = 1 AND live AND name = 'empty'"));
+    expect(live).toHaveLength(1);
+    expect(deployed.version).toBeGreaterThan(1);
+  });
+});
+
 describe("unit fields in the design", () => {
   it("keeps the session next to the items, not among them", async () => {
     const session = { params: [{ name: "wave", kind: "url", values: { list: [{ value: "1" }] } }] };

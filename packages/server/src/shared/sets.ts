@@ -20,7 +20,7 @@ import {
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { HttpError } from "./http.js";
-import { servedUnits } from "./units.js";
+import { lockUnits, servedUnits } from "./units.js";
 
 // Set groups (docs/plans/sets-and-session-parameters.md §1): sets
 // (`unit_sets`: group, name) and their units (`unit_set_members`), with an
@@ -37,8 +37,9 @@ interface Row {
 
 /** The job's groups with their sets, in order (groups and sets by name): the draft's, or the deployed ones (`live`). */
 export async function listSetGroups(sql: Sql, jobId: number, live = false): Promise<SetGroupResponse[]> {
-  const rows = await sql.query<Row>(
-    `SELECT s.grp, s.name, m.unit_id, m.position FROM unit_sets s JOIN unit_set_members m ON m.set_id = s.id
+  // Empty sets too (a set without units yet still names a link, a set to assign)
+  const rows = await sql.query<Omit<Row, "unit_id"> & { unit_id: number | null }>(
+    `SELECT s.grp, s.name, m.unit_id, m.position FROM unit_sets s LEFT JOIN unit_set_members m ON m.set_id = s.id
      WHERE s.job_id = $1 AND s.live = $2 ORDER BY s.grp, s.name, m.position NULLS LAST, m.unit_id`,
     [jobId, live],
   );
@@ -48,7 +49,7 @@ export async function listSetGroups(sql: Sql, jobId: number, live = false): Prom
     const sets = groups.get(r.grp)!;
     if (!sets.has(r.name)) sets.set(r.name, { name: r.name, unitIds: [], ordered: false });
     const set = sets.get(r.name)!;
-    set.unitIds.push(r.unit_id);
+    if (r.unit_id !== null) set.unitIds.push(r.unit_id);
     if (r.position !== null) set.ordered = true;
   }
   return [...groups].map(([name, sets]) => ({ name, sets: [...sets.values()] }));
@@ -65,6 +66,7 @@ export async function groupSets(sql: Sql, jobId: number, group: string, live = f
 
 /** Makes or replaces a group of the draft: its sets' units, in order (positions for ordered sets). Units must be the draft's. */
 export async function putSetGroup(sql: Sql, jobId: number, group: string, sets: UnitSet[]): Promise<void> {
+  await lockUnits(sql, jobId, "write");
   if (!SetGroupNameSchema.safeParse(group).success) throw new HttpError(400, `'${group}' is not a group name: letters, digits and _, starting with a letter`);
   const names = sets.map((s) => s.name);
   const twice = names.find((n, i) => names.indexOf(n) !== i);
@@ -94,6 +96,7 @@ export async function putSetGroup(sql: Sql, jobId: number, group: string, sets: 
 }
 
 export async function deleteSetGroup(sql: Sql, jobId: number, group: string): Promise<boolean> {
+  await lockUnits(sql, jobId, "write");
   const deleted = await sql.query("DELETE FROM unit_sets WHERE job_id = $1 AND NOT live AND grp = $2 RETURNING id", [jobId, group]);
   return deleted.length > 0;
 }

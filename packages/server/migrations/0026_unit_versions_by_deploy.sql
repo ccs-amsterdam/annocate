@@ -51,6 +51,9 @@ ALTER TABLE unit_versions ADD COLUMN to_deploy INTEGER;
 UPDATE unit_versions v SET from_deploy = d.version
 FROM deployments d JOIN snapshot_units s ON s.snapshot_id = d.snapshot_id
 WHERE s.version_id = v.id;
+-- The old pointers to versions (the draft's, older snapshots') go: the draft is in unit_draft now
+ALTER TABLE units DROP CONSTRAINT units_version_id_fkey;
+ALTER TABLE snapshot_units DROP CONSTRAINT snapshot_units_version_id_fkey;
 DELETE FROM unit_versions v
 WHERE v.from_deploy IS NULL AND NOT EXISTS (SELECT 1 FROM annotation_values a WHERE a.unit_version_id = v.id);
 -- Answered versions from before deploys were recorded: deployment 0

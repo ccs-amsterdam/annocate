@@ -21,7 +21,7 @@ export function unit(server: Server): Hono<Env> {
     const existing = await get(jobId, id);
     if (!existing) return c.json({ error: "Unit not found" }, 404);
     // Out of the draft: deployed versions and answers keep it (docs/plans/design.md §5).
-    await removeUnit(db, jobId, id);
+    await db.transaction((tx) => removeUnit(tx, jobId, id));
     return c.body(null, 204);
   });
 

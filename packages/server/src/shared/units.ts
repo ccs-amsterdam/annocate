@@ -30,6 +30,18 @@ export function draftUnits(sql: Sql, where: string, params: unknown[], tail = ""
   );
 }
 
+/**
+ * Serializes a job's unit writes with its deploys (`write`), and answer
+ * writes against them (`read`, shared): a deploy deletes versions nobody
+ * answered and values nothing refers to, which a concurrent upload or
+ * answer could be about to use. Held until the transaction ends: call it
+ * inside one.
+ */
+export async function lockUnits(sql: Sql, jobId: number, mode: "write" | "read"): Promise<void> {
+  await sql.query(mode === "write" ? "SELECT pg_advisory_xact_lock($1, $2)" : "SELECT pg_advisory_xact_lock_shared($1, $2)", [UNITS_LOCK, jobId]);
+}
+const UNITS_LOCK = 24026;
+
 /** The job's latest design version (the draft, or the deployed one if there is no draft). */
 export function latestCodebook(sql: Sql, jobId: number): Promise<CodebookRow | undefined> {
   return one<CodebookRow>(sql, "SELECT * FROM codebooks WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
@@ -65,11 +77,13 @@ export async function setUnitFields(sql: Sql, jobId: number, fields: UnitField[]
   if (latest && !latest.immutable) {
     await sql.query("UPDATE codebooks SET units = $1 WHERE id = $2", [units, latest.id]);
   } else {
-    await sql.query("INSERT INTO codebooks (job_id, note, items, units) VALUES ($1, $2, $3, $4)", [
+    // A copy of the latest version (items and session), with the new fields
+    await sql.query("INSERT INTO codebooks (job_id, note, items, units, session) VALUES ($1, $2, $3, $4, $5)", [
       jobId,
       latest ? "Unit fields from an upload" : null,
       JSON.stringify(latest?.items ?? []),
       units,
+      latest?.session ? JSON.stringify(latest.session) : null,
     ]);
   }
 }
@@ -82,6 +96,7 @@ export async function setUnitFields(sql: Sql, jobId: number, fields: UnitField[]
 export async function saveUnits(sql: Sql, jobId: number, units: { externalId: string; data: UnitData }[]): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
   if (units.length === 0) return ids;
+  await lockUnits(sql, jobId, "write");
   const all = JSON.stringify(units.map((u) => u.data));
   await sql.query(
     `INSERT INTO unit_values (job_id, hash, value)
@@ -119,6 +134,7 @@ export async function saveUnits(sql: Sql, jobId: number, units: { externalId: st
 /** Takes fields out of every draft unit (their values stay in deployed versions). */
 export async function dropDraftFields(sql: Sql, jobId: number, names: string[]): Promise<void> {
   if (names.length === 0) return;
+  await lockUnits(sql, jobId, "write");
   await sql.query(
     `DELETE FROM unit_draft d USING units u, unit_field_names n
      WHERE d.unit_id = u.id AND u.job_id = $1 AND d.field_id = n.id AND n.name = ANY($2)`,
@@ -132,6 +148,7 @@ export async function dropDraftFields(sql: Sql, jobId: number, names: string[]):
  * is deleted; otherwise it stays for those (and comes back when uploaded again).
  */
 export async function removeUnit(sql: Sql, jobId: number, unitId: number): Promise<void> {
+  await lockUnits(sql, jobId, "write");
   await sql.query("DELETE FROM unit_set_members m USING unit_sets s WHERE m.set_id = s.id AND NOT s.live AND s.job_id = $1 AND m.unit_id = $2", [
     jobId,
     unitId,
@@ -167,8 +184,8 @@ const CONTENT = `
 
 /** The sets' membership, draft or live, as comparable rows. */
 const SETS = `
-  dsets AS (SELECT s.grp, s.name, m.unit_id, m.position FROM unit_sets s JOIN unit_set_members m ON m.set_id = s.id WHERE s.job_id = $1 AND NOT s.live),
-  lsets AS (SELECT s.grp, s.name, m.unit_id, m.position FROM unit_sets s JOIN unit_set_members m ON m.set_id = s.id WHERE s.job_id = $1 AND s.live)`;
+  dsets AS (SELECT s.grp, s.name, m.unit_id, m.position FROM unit_sets s LEFT JOIN unit_set_members m ON m.set_id = s.id WHERE s.job_id = $1 AND NOT s.live),
+  lsets AS (SELECT s.grp, s.name, m.unit_id, m.position FROM unit_sets s LEFT JOIN unit_set_members m ON m.set_id = s.id WHERE s.job_id = $1 AND s.live)`;
 
 /** The draft's units compared with the deployed ones: added, changed, removed, and whether the sets differ. */
 export async function unitChanges(sql: Sql, jobId: number): Promise<UnitChanges> {
@@ -195,6 +212,7 @@ export const anyUnitChanges = (c: UnitChanges) => c.added > 0 || c.changed > 0 |
  * keeps and values nothing refers to.
  */
 export async function deployDraftUnits(sql: Sql, jobId: number, deploy: number): Promise<void> {
+  await lockUnits(sql, jobId, "write");
   const changed = await sql.query<{ unit_id: number; version_id: number | null }>(
     `WITH ${CONTENT}
      SELECT d.unit_id, l.version_id FROM draft d LEFT JOIN live l ON l.unit_id = d.unit_id WHERE l.unit_id IS NULL OR l.content <> d.content

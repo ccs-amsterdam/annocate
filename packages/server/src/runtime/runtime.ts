@@ -464,7 +464,9 @@ export class DeploymentRuntime {
   private async endValues(coder: Coder, values: Record<string, CoderValue>): Promise<EndValues | null> {
     const { ended } = coder;
     if (!ended) return null;
-    const end = ended.item ? findEndItem(this.spec.codebook.items, ended.item) : null;
+    const found = ended.item ? findEndItem(this.spec.codebook.items, ended.item) : null;
+    // A panel return link from the deployment settings counts too
+    const end = found ? resolveRedirects([found], this.spec.redirectUrls)[0] : null;
     const source = `${end?.message ?? ""}\n${end?.redirectUrl ?? ""}`;
     // Every `$var.x` / `$unit.x` written anywhere in them (texts, scripts, block conditions).
     const names = (ns: string) => new Set([...source.matchAll(new RegExp(`\\$${ns}\\.([A-Za-z0-9_]+)`, "g"))].map((m) => m[1]));

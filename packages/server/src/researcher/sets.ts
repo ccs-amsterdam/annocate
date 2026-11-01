@@ -35,7 +35,7 @@ export function sets(server: Server): Hono<Env> {
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
     const jobId = c.get("jobId");
     const group = c.req.param("group")!;
-    await putSetGroup(db, jobId, group, parsed.data.sets);
+    await db.transaction((tx) => putSetGroup(tx, jobId, group, parsed.data.sets));
     const stored = (await listSetGroups(db, jobId)).find((g) => g.name === group) ?? { name: group, sets: [] };
     return c.json(stored);
   });
@@ -44,7 +44,7 @@ export function sets(server: Server): Hono<Env> {
     const jobId = c.get("jobId");
     const group = c.req.param("group")!;
     if (await groupInUse(db, jobId, group)) return c.json({ error: `The design uses group '${group}': change it first` }, 409);
-    const deleted = await deleteSetGroup(db, jobId, group);
+    const deleted = await db.transaction((tx) => deleteSetGroup(tx, jobId, group));
     if (!deleted) return c.json({ error: "Group not found" }, 404);
     return c.body(null, 204);
   });

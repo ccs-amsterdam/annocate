@@ -9,7 +9,7 @@ import type { InviteRow } from "../shared/invites.js";
 import { sessionValues } from "./sessionValues.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, checkNewCoder, jobLimits } from "../shared/limits.js";
-import { servedUnits } from "../shared/units.js";
+import { lockUnits, servedUnits } from "../shared/units.js";
 import type {
   AnnotationWrite,
   Coder,
@@ -348,6 +348,8 @@ export class DbStore implements Store {
     await this.sql.transaction(async (tx) => {
       const unit = await one<{ coded: boolean }>(tx, "SELECT coded FROM units WHERE job_id = $1 AND id = $2", [jobId, write.unitId]);
       if (!unit) throw new HttpError(404, "Unit not found");
+      // No deploy deletes versions meanwhile
+      await lockUnits(tx, jobId, "read");
       // The version the coder saw; one a deploy just deleted (nobody had answered on it) gives way to the current one.
       const version = await one<{ id: number | null }>(
         tx,
@@ -390,12 +392,16 @@ export class DbStore implements Store {
   }
 
   async recordServe(coderId: number, unitId: number, unitVersionId: number): Promise<void> {
-    await this.sql.query(
-      `INSERT INTO unit_serves (job_id, coder_id, unit_id, unit_version_id) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (coder_id, unit_id) DO UPDATE SET unit_version_id = excluded.unit_version_id
-       WHERE unit_serves.unit_version_id IS DISTINCT FROM excluded.unit_version_id`,
-      [this.jobId, coderId, unitId, unitVersionId],
-    );
+    await this.sql.transaction(async (tx) => {
+      // No deploy deletes the version meanwhile; one deleted just before: none recorded
+      await lockUnits(tx, this.jobId, "read");
+      await tx.query(
+        `INSERT INTO unit_serves (job_id, coder_id, unit_id, unit_version_id) VALUES ($1, $2, $3, (SELECT id FROM unit_versions WHERE id = $4))
+         ON CONFLICT (coder_id, unit_id) DO UPDATE SET unit_version_id = excluded.unit_version_id
+         WHERE unit_serves.unit_version_id IS DISTINCT FROM excluded.unit_version_id`,
+        [this.jobId, coderId, unitId, unitVersionId],
+      );
+    });
   }
 
   async servedVersion(coderId: number, unitId: number): Promise<number | null> {
