@@ -820,6 +820,9 @@ export class JobManager {
     for (const { unit } of this.outbox) if (unit) this.carryOver.set(`${unit.loop}/${unit.unitId}`, unit.answers);
     this.outbox = [];
     this.saveError = null;
+    // A practice unit's feedback belongs to the unit, which is served again
+    this.afterFeedback = null;
+    this.publish({ feedback: null });
     if (this.activeLoop && this.currentUnit) this.carryOver.set(`${this.keyOf(this.activeLoop)}/${this.currentUnit.id}`, { ...this.unitVariableValues });
     this.unitQueues.clear();
     this.publish({ unsaved: 0, retrying: false });

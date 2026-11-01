@@ -196,16 +196,28 @@ export function overlapCount(overlap: SetupOverlap, n: number): number {
  */
 export function distributionSets(d: SetupDistribution, units: SetupUnits | null): { sets: { name: string; units: string[] }[]; overlap: string[] } {
   const ids = (units?.units ?? []).map((u) => u.externalId);
-  const overlapIds = "overlap" in d ? seededShuffle(ids, 1).slice(0, overlapCount(d.overlap, ids.length)) : [];
+  // Units a column already puts in a special set (_gold, _practice, _overlap) aren't drawn for the overlap
+  const special = new Set(
+    d.mode === "sets" && d.source === "column"
+      ? (units?.units ?? []).filter((u) => (RESERVED_SETS as readonly string[]).includes(valueOf(u, d.column).trim())).map((u) => u.externalId)
+      : [],
+  );
+  const drawable = ids.filter((id) => !special.has(id));
+  const overlapIds = "overlap" in d ? seededShuffle(drawable, 1).slice(0, overlapCount(d.overlap, ids.length)) : [];
   const inOverlap = new Set(overlapIds);
   const rest = (units?.units ?? []).filter((u) => !inOverlap.has(u.externalId));
   if (d.mode === "sets") {
     if (d.source === "column") {
-      const sets = columnValues({ fields: [], units: rest }, d.column).map((value) => ({
-        name: setName(value),
-        units: rest.filter((u) => valueOf(u, d.column) === value).map((u) => u.externalId),
-      }));
-      return { sets, overlap: overlapIds };
+      // By set name: values that make the same name (e.g. "a;b" and "a#b") are one set
+      const byName = new Map<string, string[]>();
+      for (const u of rest) {
+        const name = setName(valueOf(u, d.column));
+        byName.set(name, [...(byName.get(name) ?? []), u.externalId]);
+      }
+      // A column's _overlap units join the drawn overlap
+      const overlap = [...overlapIds, ...(byName.get(OVERLAP_SET) ?? [])];
+      byName.delete(OVERLAP_SET);
+      return { sets: [...byName].map(([name, units]) => ({ name, units })), overlap };
     }
     const n = Math.max(1, d.sets);
     const shuffled = seededShuffle(
@@ -332,7 +344,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         break;
       case "crowd":
         if (overlap.length > 0 || a.checks.gold.length > 0 || a.checks.practice.length > 0) {
-          groups.push({ group: WIZARD_GROUP, sets: [{ name: "queue", units: sets[0]?.units ?? [] }, ...overlapSet] });
+          groups.push({ group: WIZARD_GROUP, sets: [{ name: "queue", units: sets[0]?.units ?? (a.units?.units ?? []).map((u) => u.externalId) }, ...overlapSet] });
           // Spread needs the units per coder (max); without it the overlap comes last
           branches = [
             {

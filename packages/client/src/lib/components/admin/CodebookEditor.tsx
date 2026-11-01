@@ -176,7 +176,8 @@ export function CodebookEditor({
           a.href = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
           a.download = "codebook.md";
           a.click();
-          URL.revokeObjectURL(a.href);
+          // Revoked later: right away can cancel the download in some browsers
+          setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
         }}
       />
 

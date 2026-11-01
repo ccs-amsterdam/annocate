@@ -1386,7 +1386,7 @@ function GoldEditor({
               </label>
             </div>
           )}
-          {health && (
+          {health && health.wrong < 0 && (
             <p className="text-[11px] text-muted-foreground">
               Health never goes above its start. With these numbers a coder can answer {Math.ceil(health.start / -health.wrong) - 1} gold
               units wrong in a row; the next one ends their session.

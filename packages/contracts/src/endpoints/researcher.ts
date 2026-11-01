@@ -147,6 +147,7 @@ export const researcherEndpoints = {
   deleteUnit: { method: "DELETE", path: "/job/:jobId/units/:id", request: z.void(), response: z.void() },
 
   /** The set groups (docs/plans/sets-and-session-parameters.md §1), each with its sets in order. */
+  /** The draft's set groups; `?live=true`: the deployed ones. */
   listSetGroups: { method: "GET", path: "/job/:jobId/sets", request: z.void(), response: z.array(SetGroupResponseSchema) },
   /** Makes or replaces a group (its sets). Republished links follow (link parameters with the group's sets). */
   putSetGroup: { method: "PUT", path: "/job/:jobId/sets/:group", request: SetGroupWriteSchema, response: SetGroupResponseSchema },

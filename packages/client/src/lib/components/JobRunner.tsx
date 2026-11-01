@@ -372,8 +372,8 @@ function JobRunnerContent({
   if (snapshot.feedback) {
     return (
       <SessionNotice title="Not quite">
-        {snapshot.feedback.messages.map((m) => (
-          <p key={m}>{m}</p>
+        {[...new Set(snapshot.feedback.messages)].map((m, i) => (
+          <p key={i}>{m}</p>
         ))}
         <p className="text-muted-foreground">This was a practice unit: your answers are kept, and you go on with the next unit.</p>
         <Button type="button" className="mt-2" onClick={() => void manager.continueAfterFeedback()}>

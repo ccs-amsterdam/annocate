@@ -194,7 +194,7 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
               <Button variant="outline" onClick={close} disabled={state.step === "publishing"}>
                 Cancel
               </Button>
-              <Button onClick={() => void deploy()} disabled={state.step === "publishing" || nothing}>
+              <Button onClick={() => void deploy()} disabled={state.step === "publishing" || nothing || (!firstDeploy && !pending)}>
                 {state.step === "publishing" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Rocket className="mr-1.5 h-4 w-4" />}
                 Deploy
               </Button>

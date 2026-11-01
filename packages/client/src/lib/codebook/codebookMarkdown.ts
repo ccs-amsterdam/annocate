@@ -32,9 +32,9 @@ function optionLines(variable: AnyVariableType): string[] {
     if (range) lines.push(`- ${range}`);
   }
   if (variable.type === "scale") {
-    lines.push("Items:", ...variable.items.map((i) => `- \`${i.name}\`: ${i.label ?? i.name}`));
+    lines.push("Items:", ...(variable.items ?? []).map((i) => `- \`${i.name}\`: ${i.label ?? i.name}`));
   }
-  if (variable.type === "span") lines.push(`- In: ${variable.fields.map((f) => `\`${f}\``).join(", ")}`);
+  if (variable.type === "span") lines.push(`- In: ${(variable.fields ?? []).map((f) => `\`${f}\``).join(", ")}`);
   if ("multiple" in variable && variable.multiple) lines.push("- Several answers allowed");
   return lines;
 }
@@ -52,17 +52,20 @@ function question(name: string, variable: AnyVariableType, depth: number): strin
   return out;
 }
 
-function items(list: CodebookItem[], depth: number): string[] {
+/** The loops' keys, as numbered in the whole codebook (for their titles). */
+type LoopKeys = Map<unknown, string>;
+
+function items(list: CodebookItem[], depth: number, keys: LoopKeys): string[] {
   const out: string[] = [];
   for (const item of list) {
     if (item.type === "session") continue;
     if (item.type === "condition") {
       const label = item.label ? `${item.label}: ` : "";
-      out.push(`*Only if ${label}\`${item.condition.script}\`*`, "", ...items(item.children as CodebookItem[], depth));
+      out.push(`*Only if ${label}\`${item.condition?.script ?? ""}\`*`, "", ...items((item.children ?? []) as CodebookItem[], depth, keys));
     } else if (item.type === "end") {
       out.push(`${"#".repeat(depth)} End: ${item.name} (${item.outcome})`, "", ...(item.message ? [item.message, ""] : []));
     } else if (item.type === "unit_loop") {
-      out.push(...loop(item as UnitLoopItem, depth));
+      out.push(...loop(item as UnitLoopItem, depth, keys));
     } else if ("variable" in item) {
       out.push(...question(item.name, item.variable as AnyVariableType, depth));
     }
@@ -70,19 +73,19 @@ function items(list: CodebookItem[], depth: number): string[] {
   return out;
 }
 
-function loop(item: UnitLoopItem, depth: number): string[] {
-  const key = unitLoops([item]).at(0)?.key ?? "1";
+function loop(item: UnitLoopItem, depth: number, keys: LoopKeys): string[] {
+  const key = keys.get(item) ?? "1";
   const shown = [...fieldUsage([item])].filter(([, use]) => use === "shown").map(([f]) => `\`${f}\``);
   return [
     `${"#".repeat(depth)} For each unit: ${loopTitle(item, key)}`,
     "",
     ...(shown.length > 0 ? [`Coders see the unit's ${shown.join(", ")}.`, ""] : []),
-    ...items(item.children as CodebookItem[], depth + 1),
+    ...items((item.children ?? []) as CodebookItem[], depth + 1, keys),
   ];
 }
 
 /** The codebook (its items, the session among them or not) as Markdown. */
 export function codebookMarkdown(list: readonly TopLevelItem[], title = "Codebook", note?: string | null): string {
-  const out = [`# ${title}`, "", ...(note ? [note, ""] : []), ...items(list as CodebookItem[], 2)];
+  const out = [`# ${title}`, "", ...(note ? [note, ""] : []), ...items(list as CodebookItem[], 2, new Map(unitLoops(list).map(({ loop, key }) => [loop, key])))];
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }

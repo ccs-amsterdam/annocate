@@ -402,7 +402,8 @@ the job's links (a link per set of a group).
 ### listSetGroups
 
 `GET /job/:jobId/sets` → `SetGroupResponseSchema[]`: per group its sets,
-each with its unit ids in order and `ordered` (positions were given).
+each with its unit ids in order and `ordered` (positions were given). The
+draft's sets; `?live=true`: the deployed ones (what coders and links get).
 
 ### putSetGroup
 

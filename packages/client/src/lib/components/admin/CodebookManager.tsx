@@ -117,12 +117,13 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
 
   /** Copies a version into the draft (replacing the draft's content, if there is one). */
   function restoreVersion(id: number) {
+    // Asked first: cancelling it after unsaved edits were discarded would leave them untracked
+    if (versions.draftId !== null && !confirm(`Replace the draft (v${draftNumber}) with the content of v${versions.numberOf(id)}?`)) return;
     requestNavigation(async () => {
       try {
         const source = await client.getCodebook(id);
         const body = { items: source.items, session: source.session };
         if (versions.draftId !== null) {
-          if (!confirm(`Replace the draft (v${draftNumber}) with the content of v${versions.numberOf(id)}?`)) return;
           await updateCodebook.mutateAsync({ id: versions.draftId, body });
           setSelectedId(null);
         } else {
@@ -227,7 +228,10 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
         liveNumber={liveNumber}
         onDeploy={async (codebook, note, units) => {
           if (codebook && note !== (codebook.note ?? "")) {
-            await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items } });
+            // Based on the saved revision; the editor reloads after (its revision is now old), deploy or not
+            const updated = await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items, revision: codebook.revision } });
+            setToPublish(updated);
+            setEditorEpoch((n) => n + 1);
           }
           const codebookId = codebook?.id ?? versions.liveId!;
           let deployment;

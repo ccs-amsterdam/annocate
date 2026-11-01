@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { codebookErrors, designItems, type TopLevelItem } from "@annotinder/contracts";
+import { codebookErrors, designItems, undeclaredFields, type TopLevelItem } from "@annotinder/contracts";
 import { Rocket } from "lucide-react";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
-import { useCodebookQuery, useCodebooksQuery, useDeploymentQuery, usePendingChangesQuery, usePublishMutation } from "../../admin/queries";
+import { useCodebookQuery, useCodebooksQuery, useDeploymentQuery, usePendingChangesQuery, usePublishMutation, useUpdateCodebookMutation } from "../../admin/queries";
 import { describeVersions } from "../../codebook/versions";
 import { Button } from "@/components/ui/button";
 import { DeployDialog, describeUnitChanges } from "./DeployDialog";
@@ -17,19 +17,24 @@ import { DeployDialog, describeUnitChanges } from "./DeployDialog";
 export function PendingDeployBar({ client, includeCodebook = false }: { client: ResearcherApi; includeCodebook?: boolean }) {
   const deployment = useDeploymentQuery(client).data;
   const pending = usePendingChangesQuery(client, !!deployment).data;
-  const codebooks = useCodebooksQuery(client).data ?? [];
+  const codebooksQuery = useCodebooksQuery(client);
+  const codebooks = codebooksQuery.data ?? [];
   const versions = describeVersions(codebooks, deployment?.codebookId ?? null);
   // Only a draft (not frozen) codebook is offered: an older version is restored from the editor first.
   const draftId = pending?.codebookId !== null && pending?.codebookId === versions.draftId ? versions.draftId : null;
   const draft = useCodebookQuery(client, draftId).data ?? null;
   const live = useCodebookQuery(client, deployment?.codebookId ?? null).data ?? null;
   const publish = usePublishMutation(client);
+  const updateCodebook = useUpdateCodebookMutation(client);
   const [open, setOpen] = useState(false);
 
-  if (!deployment || !pending) return null;
+  // The versions are needed to number them (and not take a deployed job for a first deploy)
+  if (!deployment || !pending || !codebooksQuery.data) return null;
   const units = pending.units;
   const unitsChanged = units.added > 0 || units.changed > 0 || units.removed > 0 || units.sets;
-  const draftValid = draft !== null && codebookErrors(designItems(draft) as TopLevelItem[]).length === 0;
+  // As the server checks it: no errors, and every unit field it uses declared
+  const draftValid =
+    draft !== null && codebookErrors(designItems(draft) as TopLevelItem[]).length === 0 && undeclaredFields(designItems(draft), draft.units.fields).length === 0;
   if (!unitsChanged && draftId === null) return null;
 
   const parts = [unitsChanged && `units ${describeUnitChanges(units)}`, draftId !== null && `design draft v${versions.numberOf(draftId)}`].filter(Boolean);
@@ -50,7 +55,10 @@ export function PendingDeployBar({ client, includeCodebook = false }: { client: 
           live={live}
           liveNumber={versions.numberOf(deployment.codebookId)}
           includeCodebook={includeCodebook}
-          onDeploy={async (codebook, _note, withUnits) => {
+          onDeploy={async (codebook, note, withUnits) => {
+            if (codebook && note !== (codebook.note ?? "")) {
+              await updateCodebook.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items, revision: codebook.revision } });
+            }
             const codebookId = codebook?.id ?? deployment.codebookId;
             try {
               return await publish.mutateAsync({ codebookId, units: withUnits });

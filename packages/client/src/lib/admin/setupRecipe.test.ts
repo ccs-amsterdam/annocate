@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { RecipeSchema, designItems, validateCodebookItems } from "@annotinder/contracts";
 import { DEFAULT_SETUP, defaultDistribution, parseQuestions, questionLists, setupProblems, setupRecipe, type SetupAnswers } from "./setupRecipe";
 
-const units = {
+const setupUnits = {
   fields: [
     { name: "text", type: "text" as const },
     { name: "group", type: "text" as const },
@@ -12,7 +12,7 @@ const units = {
 const setup = (patch: Partial<SetupAnswers>): SetupAnswers => ({
   ...DEFAULT_SETUP,
   name: "Pilot",
-  units,
+  units: setupUnits,
   layout: { body: ["text"] },
   questions: { before: [], unit: ["topic"], after: [] },
   ...patch,
@@ -129,6 +129,25 @@ describe("setup wizard recipes", () => {
     expect(otherIssues(a)).toEqual([]);
     expect(loopOf(a).units).toEqual([{ mode: "shared", until: { coders: 2 }, maxCoders: 2 }]);
     expect(setupRecipe(a).sets).toEqual([]);
+  });
+
+  it("crowd coding with checks but no overlap: a queue over all units", () => {
+    const a = setup({ distribution: { mode: "crowd", shared: { mode: "shared", until: { coders: 2 }, maxCoders: 2 }, overlap: null }, checks: { gold: ["topic"], practice: [] } });
+    expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([["queue", 10]]);
+    expect(loopOf(a).units).toMatchObject([{ set: { group: "sets", set: "queue" }, gold: { questions: ["topic"] } }]);
+  });
+
+  it("sets from a column: values with the same set name are one set; special units stay out of the overlap", () => {
+    const names = ["a;b", "a#b", "_gold", "_gold", "_overlap", "c", "c", "c", "c", "c"];
+    const units = { ...setupUnits, units: setupUnits.units.map((u, i) => ({ ...u, data: { ...u.data, group: names[i] } })) };
+    const a = setup({ units, distribution: { mode: "sets", source: "column", sets: 0, column: "group", overlap: { by: "units", value: 2 }, handOut: "rotate" } });
+    const sets = Object.fromEntries(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units]));
+    expect(Object.keys(sets).sort()).toEqual(["_gold", "_overlap", "a_b", "c"].sort());
+    expect(sets._gold).toEqual(["u2", "u3"]);
+    // The column's _overlap unit and the two drawn ones
+    expect(sets._overlap).toHaveLength(3);
+    expect(sets._overlap).toContain("u4");
+    expect(sets._overlap).not.toContain("u2");
   });
 
   it("experimental groups: the condition first, a set per condition by chosen values, questions before and after", () => {

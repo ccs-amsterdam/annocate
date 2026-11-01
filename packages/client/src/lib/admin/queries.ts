@@ -154,7 +154,10 @@ export function useCreateCodebookMutation(
     mutationFn: (body: CodebookWrite) => client.createCodebook(body),
     onSuccess: (codebook) => {
       queryClient.setQueryData(keys.codebook(client.jobId, codebook.id), codebook);
-      return queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
+      ]);
     },
   });
 }
@@ -168,6 +171,7 @@ export function useUpdateCodebookMutation(
     onSuccess: (codebook) => {
       queryClient.setQueryData(keys.codebook(client.jobId, codebook.id), codebook);
       void queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });
+      void queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) });
     },
   });
 }
@@ -176,7 +180,11 @@ export function useDeleteCodebookMutation(client: ResearcherApi): UseMutationRes
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteCodebook(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
+      ]),
   });
 }
 
@@ -217,9 +225,11 @@ export function useCreateUnitsMutation(client: ResearcherApi) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: UnitsCreateBody) => client.createUnits(body),
+    // New fields go into the design: possibly a new draft codebook
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
       ]),
   });
@@ -229,16 +239,20 @@ export function useDeleteUnitMutation(client: ResearcherApi): UseMutationResult<
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => client.deleteUnit(id),
+    // The unit also leaves the draft's sets
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.units(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.sets(client.jobId) }),
+        queryClient.invalidateQueries({ queryKey: keys.overview(client.jobId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.jobId) }),
       ]),
   });
 }
 
-export function useSetGroupsQuery(client: ResearcherApi): UseQueryResult<SetGroupResponse[]> {
-  return useQuery({ queryKey: keys.sets(client.jobId), queryFn: () => client.listSetGroups() });
+/** The draft's set groups, or (`live`) the deployed ones. */
+export function useSetGroupsQuery(client: ResearcherApi, live = false): UseQueryResult<SetGroupResponse[]> {
+  return useQuery({ queryKey: [...keys.sets(client.jobId), live ? "live" : "draft"], queryFn: () => client.listSetGroups(live) });
 }
 
 /** Changing the draft's sets changes what deploying would change, and the overview. */
@@ -362,8 +376,8 @@ export function useJobUsersMutation(client: ResearcherApi): UseMutationResult<vo
 export function useDeploymentActiveMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, { codebookId: number; active: boolean }> {
   const queryClient = useQueryClient();
   return useMutation({
-    // Keeps the deployed units: pausing deploys nothing
-    mutationFn: (body) => client.putDeployment({ ...body, units: false }),
+    // Keeps the deployed units, and their links (confirmed at deploy): pausing deploys nothing
+    mutationFn: (body) => client.putDeployment({ ...body, units: false, confirmLinks: true }),
     onSuccess: (deployment) => {
       queryClient.setQueryData(keys.deployment(client.jobId), deployment);
       return queryClient.invalidateQueries({ queryKey: keys.job(client.jobId) });
@@ -401,7 +415,7 @@ export function usePublishMutation(client: ResearcherApi): UseMutationResult<Dep
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (vars: number | DeployVars) => {
-      const { codebookId, confirmLinks, units = true } = typeof vars === "number" ? { codebookId: vars } : vars;
+      const { codebookId, confirmLinks, units = false } = typeof vars === "number" ? { codebookId: vars } : vars;
       const current = queryClient.getQueryData<DeploymentResponse | null>(keys.deployment(client.jobId));
       return client.putDeployment({ codebookId, units, active: current?.active ?? true, ...(confirmLinks ? { confirmLinks } : {}) });
     },
@@ -411,6 +425,7 @@ export function usePublishMutation(client: ResearcherApi): UseMutationResult<Dep
       void queryClient.invalidateQueries({ queryKey: keys.deploymentVersions(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.overview(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: keys.invites(client.jobId) });
+      void queryClient.invalidateQueries({ queryKey: keys.sets(client.jobId) });
       void queryClient.invalidateQueries({ queryKey: ["admin", "job", client.jobId ?? "current", "codebook"] });
       return queryClient.invalidateQueries({ queryKey: keys.codebooks(client.jobId) });
     },

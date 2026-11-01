@@ -28,7 +28,8 @@ export function sets(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
 
-  app.get("/job/:jobId/sets", requireJobUser(server, "READ"), async (c) => c.json(await listSetGroups(db, c.get("jobId"))));
+  // ?live=true: the deployed sets (what links and coders get)
+  app.get("/job/:jobId/sets", requireJobUser(server, "READ"), async (c) => c.json(await listSetGroups(db, c.get("jobId"), c.req.query("live") === "true")));
 
   app.put("/job/:jobId/sets/:group", requireJobUser(server, "WRITE"), async (c) => {
     const parsed = SetGroupWriteSchema.safeParse(await c.req.json());

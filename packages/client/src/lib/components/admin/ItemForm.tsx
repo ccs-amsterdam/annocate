@@ -287,7 +287,8 @@ function EndItemFields({
             delete next.redirectUrl;
             delete next.redirectSetting;
             if (e.target.value === "url") next.redirectUrl = "";
-            if (e.target.value === "setting") next.redirectSetting = "panel_return";
+            // Separate settings by default: panels give a return link per outcome
+            if (e.target.value === "setting") next.redirectSetting = item.outcome === "screenout" ? "panel_screenout" : "panel_return";
             onChange(next);
           }}
         >

@@ -52,7 +52,8 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
   const codebook = useCodebookQuery(client, deployment?.codebookId ?? null).data;
   const items = (codebook ? designItems(codebook) : []) as TopLevelItem[];
   const session = sessionItem(items);
-  const groups = useSetGroupsQuery(client).data ?? [];
+  // The deployed sets: links are the deployed design's
+  const groups = useSetGroupsQuery(client, true).data ?? [];
   const [showRetired, setShowRetired] = useState(false);
 
   // The URL parameters a link takes, with placeholders the panel (or the researcher) fills in.
@@ -416,7 +417,7 @@ function LinksPerValue({
         <table className="w-full text-left text-xs">
           <tbody>
             {rows.slice(0, 200).map((r) => (
-              <tr key={`${r.label}/${r.value}`} className="border-t border-border">
+              <tr key={r.link} className="border-t border-border">
                 {links.length > 1 && <td className="py-1 pr-2">{r.label}</td>}
                 <td className="py-1 pr-2 font-mono">{r.value}</td>
                 <td className="break-all py-1 font-mono text-muted-foreground">{r.link}</td>

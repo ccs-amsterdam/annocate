@@ -132,7 +132,7 @@ export interface ResearcherApi {
   deleteUnit(id: number): Promise<void>;
 
   /** The set groups (docs/plans/sets-and-session-parameters.md §1). */
-  listSetGroups(): Promise<SetGroupResponse[]>;
+  listSetGroups(live?: boolean): Promise<SetGroupResponse[]>;
   /** Makes or replaces a group; links with the group's sets follow. */
   putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse>;
   /** Refused (409) while the codebook uses the group. */
@@ -463,8 +463,8 @@ export class HttpResearcherApi implements ResearcherApi {
     });
   }
 
-  async listSetGroups(): Promise<SetGroupResponse[]> {
-    return this.request(this.jobPath(researcherEndpoints.listSetGroups.path));
+  async listSetGroups(live = false): Promise<SetGroupResponse[]> {
+    return this.request(this.jobPath(researcherEndpoints.listSetGroups.path) + (live ? "?live=true" : ""));
   }
 
   async putSetGroup(group: string, body: SetGroupWrite): Promise<SetGroupResponse> {

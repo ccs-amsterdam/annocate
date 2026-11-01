@@ -52,6 +52,14 @@ function CreateJobForm({ createJob }: { createJob: ReturnType<typeof useCreateJo
   );
 }
 
+/** The redirect URLs that are set, sorted by name. */
+const setUrls = (urls: Record<string, string>) =>
+  Object.fromEntries(
+    Object.entries(urls)
+      .filter(([, url]) => url.trim() !== "")
+      .sort(([a], [b]) => a.localeCompare(b)),
+  );
+
 function JobEditForm({
   job,
   client,
@@ -72,7 +80,8 @@ function JobEditForm({
   const codebooks = useCodebooksQuery(client).data ?? [];
   const latest = useCodebookQuery(client, codebooks.at(-1)?.id ?? null).data;
   const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(job.redirectUrls ?? {})])];
-  const redirectsDirty = JSON.stringify(redirects) !== JSON.stringify(job.redirectUrls ?? {});
+  // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
+  const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(job.redirectUrls ?? {}));
   const dirty = name !== job.name || archived !== job.archived || keepOpen !== job.keepSessionsOpen || redirectsDirty;
 
   return (
@@ -81,7 +90,7 @@ function JobEditForm({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          const redirectUrls = Object.fromEntries(Object.entries(redirects).filter(([, url]) => url.trim() !== ""));
+          const redirectUrls = setUrls(redirects);
           updateJob.mutate({ id: job.id, body: { name, archived, keepSessionsOpen: keepOpen, redirectUrls } });
         }}
       >
