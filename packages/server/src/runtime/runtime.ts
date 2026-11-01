@@ -23,6 +23,9 @@ import {
   parseTemplate,
   practiceColumn,
   practiceMessageColumn,
+  parseAnswerKey,
+  matchesAnswerKey,
+  type AnswerAlternative,
   referenceValue,
   type GoldSettings,
   type PracticeSettings,
@@ -63,17 +66,10 @@ import {
 } from "./codebook.js";
 
 /** A unit's answer column as the values it names (`a;b` for several); null when empty. */
-function answerKey(cell: unknown): string[] | null {
-  if (cell === null || cell === undefined) return null;
-  const values = String(cell).split(";").map((v) => v.trim()).filter(Boolean);
-  return values.length > 0 ? values : null;
-}
-
-/** Whether an answer gives exactly the expected values (in any order). */
-function sameAnswer(answer: VariableValue | undefined, expected: string[]): boolean {
+/** Whether an answer matches a unit's answer key (contracts answerKey.ts). */
+function sameAnswer(answer: VariableValue | undefined, key: AnswerAlternative[]): boolean {
   if (!answer || answer.skip) return false;
-  const given = (answer.values ?? []).map((v) => String(v.value));
-  return given.length === expected.length && expected.every((v) => given.includes(v));
+  return matchesAnswerKey(key, (answer.values ?? []).map((v) => String(v.value)));
 }
 
 /** Stored coder-level answers as plain values. */
@@ -895,16 +891,18 @@ export class DeploymentRuntime {
   private checkPractice(practice: PracticeSettings, data: UnitData, answers: Record<string, VariableValue>, coder: Coder): NonNullable<SubmitUnitResponse["practice"]> {
     const messages: string[] = [];
     for (const name of practice.questions ?? []) {
-      const expected = answerKey(data[practiceColumn(name)]);
+      const expected = parseAnswerKey(data[practiceColumn(name)]);
       if (expected === null || sameAnswer(answers[name], expected)) continue;
       const own = String(data[practiceMessageColumn(name)] ?? "").trim();
       const question = this.questions.get(name);
       if (own) messages.push(own);
       else if (practice.message) messages.push(this.renderText(practice.message, answers, data, coder));
       else {
-        const labels = expected.map((v) => (question && "options" in question ? (question.options as { value: unknown; label?: string }[] | undefined)?.find((o) => String(o.value) === v)?.label : undefined) ?? v);
+        const options = question && "options" in question ? (question.options as { value: unknown; label?: string }[] | undefined) : undefined;
+        const label = (v: string) => options?.find((o) => String(o.value) === v)?.label ?? v;
+        const right = expected.map((alt) => ("range" in alt ? `between ${alt.range[0]} and ${alt.range[1]}` : alt.values.map(label).join(" and ")));
         const text = question && "question" in question && question.question ? `"${question.question}"` : name;
-        messages.push(`The expected answer to ${text} was ${labels.join(", ")}.`);
+        messages.push(`The expected answer to ${text} was ${right.join(" or ")}.`);
       }
     }
     return { correct: messages.length === 0, messages };
@@ -936,7 +934,7 @@ export class DeploymentRuntime {
       if (!unit) continue;
       const answers = await this.store.unitAnswers(coder.coderId, coding.unitId);
       for (const name of gold.questions) {
-        const expected = answerKey(unit.data[goldColumn(name)]);
+        const expected = parseAnswerKey(unit.data[goldColumn(name)]);
         if (expected === null) continue;
         value = sameAnswer(answers[name], expected) ? Math.min(health.start, value + (health.right ?? 0)) : value + health.wrong;
       }

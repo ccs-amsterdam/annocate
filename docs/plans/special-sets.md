@@ -59,6 +59,13 @@ Set names starting with `_` are reserved. Three, all per group:
 **Name:** `_practice` (decided): practice units, placed first by default
 or spread through the work as an attention check with feedback.
 
+**Answer cells** (built, contracts `answerKey.ts`): `positive` (exactly
+this), `a;b` (these together), `positive|neutral` (any alternative),
+`3..5` (a number in the range). Gold and practice share them; checked on
+the server, no scripts. A right practice answer shows a short check; a
+wrong one, one message per question (more messages may come later as
+extra columns).
+
 **Answer columns by name** (decided): the right answer to question `q` is
 in the unit column `q_gold` (gold) or `q_practice` (practice, optional),
 and a practice unit's own feedback in `q_practice_message` (optional).

@@ -114,6 +114,8 @@ export interface JobManagerSnapshot {
    * coder continues (`continueAfterFeedback`). Null otherwise.
    */
   feedback: { messages: string[] } | null;
+  /** Practice units answered right so far: the coding screen flashes a check when it goes up. */
+  practiceRight: number;
 }
 
 /** How the session ended at an `end` item: its message and redirect, with their values filled in. */
@@ -333,6 +335,7 @@ export class JobManager {
     unsaved: 0,
     retrying: false,
     feedback: null,
+    practiceRight: 0,
     navigation: {
       canGoBack: false,
       canGoForward: false,
@@ -1222,6 +1225,7 @@ export class JobManager {
           this.publish({ feedback: { messages: result.messages } });
           return;
         }
+        if (result?.correct) this.publish({ practiceRight: this.snapshot.practiceRight + 1 });
       }
       await this.continueAfterUnit(next);
       return;

@@ -39,6 +39,7 @@ import {
   MonitorSmartphone,
   Copy,
   CloudOff,
+  CircleCheck,
 } from "lucide-react";
 
 export interface JobRunnerProps {
@@ -214,6 +215,15 @@ function JobRunnerContent({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [unsaved]);
+
+  // A practice unit answered right: a check, briefly, over the next unit.
+  const [rightFlash, setRightFlash] = useState(false);
+  useEffect(() => {
+    if (snapshot.practiceRight === 0) return;
+    setRightFlash(true);
+    const timer = window.setTimeout(() => setRightFlash(false), 900);
+    return () => window.clearTimeout(timer);
+  }, [snapshot.practiceRight]);
 
   const currentUnitId = snapshot.currentUnit?.id ?? snapshot.navigation.currentUnitIndex ?? "none";
   const prevUnitIdRef = useRef<number | string | null>(currentUnitId);
@@ -432,6 +442,13 @@ function JobRunnerContent({
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background">
+      {rightFlash && (
+        <div role="status" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center">
+          <div className="flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-lg font-semibold text-white shadow-lg animate-in fade-in zoom-in-90">
+            <CircleCheck className="h-6 w-6" /> Correct
+          </div>
+        </div>
+      )}
       {/* Top Header / Progress Bar */}
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-primary/20 bg-primary px-3 sm:px-4 text-primary-foreground shadow-sm">
         {/* Left Section: Menu Popover, Global Position Counter, Back/Forward Chevrons */}

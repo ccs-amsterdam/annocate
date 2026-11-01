@@ -4,7 +4,10 @@ import {
   PRACTICE_SET,
   GOLD_SET,
   branchGroup,
+  collectQuestions,
   goldColumn,
+  parseAnswerKey,
+  unknownAnswerValues,
   practiceColumn,
   SetGroupNameSchema,
   loopTitle,
@@ -103,6 +106,7 @@ export async function runtimeSets(sql: Sql, jobId: number): Promise<{ name: stri
 export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[]): Promise<string[]> {
   const groups = new Map((await listSetGroups(sql, jobId)).map((g) => [g.name, g.sets]));
   const warnings: string[] = [];
+  const { questions } = collectQuestions(items);
   for (const { key, loop } of unitLoops(items)) {
     const title = loopTitle(loop, key);
     for (const branch of loop.units) {
@@ -127,7 +131,19 @@ export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[]
             [jobId, units],
           );
           for (const question of settings.questions ?? []) {
-            const empty = rows.filter((r) => r.data[column(question)] === undefined || r.data[column(question)] === null || String(r.data[column(question)]).trim() === "");
+            const empty = rows.filter((r) => parseAnswerKey(r.data[column(question)]) === null);
+            // Right answers that aren't options of the question
+            const variable = questions.get(question);
+            const options = variable && "options" in variable ? (variable.options as { value: unknown }[]).map((o) => String(o.value)) : undefined;
+            const odd = rows.flatMap((r) => {
+              const key = parseAnswerKey(r.data[column(question)]);
+              return key ? unknownAnswerValues(key, options).map((v) => `${r.external_id}: ${v}`) : [];
+            });
+            if (odd.length > 0) {
+              warnings.push(
+                `Loop '${title}': ${column(question)} has values that aren't options of '${question}' (${odd.slice(0, 5).join(", ")}${odd.length > 5 ? ", …" : ""}): those answers can never be right.`,
+              );
+            }
             if (empty.length === 0) continue;
             const which = empty.slice(0, 5).map((r) => r.external_id).join(", ") + (empty.length > 5 ? ", …" : "");
             warnings.push(

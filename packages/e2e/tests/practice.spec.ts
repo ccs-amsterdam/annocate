@@ -25,13 +25,14 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
     buffer: Buffer.from(
       "id,text,part,topic_practice,topic_practice_message,topic_gold\n" +
         "p1,Practice text,_practice,politics,It is about an election.,\n" +
+        "p2,Second practice,_practice,politics|other,,\n" +
         "u1,Own text,s1,,,\n" +
         "g1,Gold text,_gold,,,politics\n",
     ),
   });
   await page.getByRole("button", { name: /Use column names/ }).click();
   await page.getByLabel("Type of part").selectOption("sets");
-  await page.getByRole("button", { name: /Upload 3 units/ }).click();
+  await page.getByRole("button", { name: /Upload 4 units/ }).click();
   await expect(page.getByRole("button", { name: /^s1 1$/ })).toBeVisible();
 
   const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
@@ -69,6 +70,11 @@ test("a practice unit gives feedback when wrong; a wrong gold unit ends the sess
   await expect(coder.getByText("Not quite")).toBeVisible();
   await expect(coder.getByText("It is about an election.")).toBeVisible();
   await coder.getByRole("button", { name: "Continue", exact: true }).click();
+
+  // The second practice unit accepts either answer: a check, then on
+  await expect(coder.getByText("Second practice")).toBeVisible();
+  await coder.getByRole("button", { name: "2 other" }).click();
+  await expect(coder.getByRole("status").filter({ hasText: "Correct" })).toBeVisible();
 
   // Their own unit
   await expect(coder.getByText("Own text")).toBeVisible();
