@@ -459,9 +459,11 @@ coders who already started keep working.
 
 ### listCoders
 
-`GET /job/:jobId/coders` → `CoderProgressSchema[]`: per coder the invite,
+`GET /job/:jobId/coders` → `CoderProgressSchema[]`: per coder the link,
 participant id, started, last active, live answers, finished units per
-loop of the live codebook, `variables`: their coder-level values
+loop of the live design version, `special`: the units of the deployed
+`_overlap`, `_gold` and `_practice` sets they finished, of how many (for
+the kinds the job has), `variables`: their coder-level values
 (answers outside unit loops, and `auto` variables: random or balanced
 conditions), `session`: their `$session` values (link and URL parameters,
 `source`), `ended`: how the
