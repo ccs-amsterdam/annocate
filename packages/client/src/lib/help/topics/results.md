@@ -38,7 +38,7 @@ A row for every unit a coder coded, in the order they coded them.
 | `unit_version_id` | The version of the unit the coder saw: see `units.csv` |
 | `coder_id` | The coder: see `coders.csv` |
 | `participant_id` | The coder's participant id, if they have one (e.g. from a panel) |
-| `invitation` | The label of the link the coder came in with |
+| `link` | The label of the link the coder came in with |
 | `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer |
 | `codebook_id` | The design version the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
 | `device_id` | The device the unit was (last) answered on: see `devices.csv` |
@@ -89,12 +89,13 @@ A row per coder who started.
 
 | Column | Meaning |
 | --- | --- |
-| `coder_id`, `participant_id`, `email`, `invitation` | Who the coder is (`email` for coders who [logged in](invitations.md#login)) |
+| `coder_id`, `participant_id`, `email`, `link` | Who the coder is (`email` for coders who [logged in](invitations.md#login)) |
 | `started`, `last_active` | When they started, and when they last answered |
 | `ended`, `ended_at` | `complete` or `screenout` if their session ended at an end item (see [Ending a session](end-items.md)), `quit` if the coder quit, and when |
 | `deletion_requested` | When the coder asked for their answers to be deleted, if they did and you haven't deleted them yet (see [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)) |
 | `session.<name>` | The URL parameters the link required (the participant id is `participant_id`) |
 | `finished_<loop>` | How many units they finished in each unit loop, such as `finished_News items` |
+| `overlap_finished`, `gold_finished`, `practice_finished` | How many units of the deployed `_overlap`, `_gold` and `_practice` sets they finished, if the job has them (see [Overlap, gold and practice units](special-units.md)) |
 | one column per question | Their answers outside unit loops, and their [auto questions](auto.md) (experimental group, URL parameter variables) |
 
 Answers outside unit loops (consent, background questions, a survey's
@@ -173,7 +174,7 @@ units       <- read_csv("results/units.csv", col_types = cols(unit_id = "c"))
 
 # Answers with the coder's background and the text they coded
 d <- annotations |>
-  left_join(select(coders, -participant_id, -invitation), by = "coder_id") |>
+  left_join(select(coders, -participant_id, -link), by = "coder_id") |>
   left_join(select(units, -unit_id), by = "unit_version_id")
 
 # Answers per coder
@@ -200,7 +201,7 @@ coders = read("coders")
 units = read("units", dtype={"unit_id": str})
 
 d = (annotations
-     .merge(coders.drop(columns=["participant_id", "invitation"]), on="coder_id", how="left")
+     .merge(coders.drop(columns=["participant_id", "link"]), on="coder_id", how="left")
      .merge(units.drop(columns=["unit_id"]), on="unit_version_id", how="left"))
 ```
 

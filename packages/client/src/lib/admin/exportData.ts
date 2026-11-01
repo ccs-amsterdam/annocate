@@ -219,7 +219,7 @@ export function annotationsTable(
       "unit_version_id",
       "coder_id",
       "participant_id",
-      "invitation",
+      "link",
       "first_answer",
       "last_change",
       "codebook_id",
@@ -276,13 +276,15 @@ export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels)
 }
 
 /**
- * Coders as a table: who they are (invitation, participant id), when they
+ * Coders as a table: who they are (link, participant id), when they
  * started and were last active, how their session ended, units finished
  * per loop, and their coder-level answers (survey questions, `auto` groups;
  * labels from the live codebook).
  */
 export function codersTable(coders: CoderProgress[], order: string[] = [], labels?: Labels, nested: ReadonlySet<string> = new Set()): Table {
   const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))].sort();
+  // Units of the special sets each coder finished (overlap, gold, practice)
+  const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
   // Session values (link and URL parameters, source), by their $session name
   const sessionNames = [...new Set(coders.flatMap((c) => Object.keys(c.session ?? {})))].sort();
   const columns = answerColumns(
@@ -296,7 +298,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       "coder_id",
       "participant_id",
       "email",
-      "invitation",
+      "link",
       "started",
       "last_active",
       "ended",
@@ -304,6 +306,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       "deletion_requested",
       ...sessionNames.map((n) => `session.${n}`),
       ...loops.map((l) => `finished_${l}`),
+      ...specials.map((kind) => `${kind}_finished`),
       ...columns.map(header),
     ],
     rows: coders.map((c) => [
@@ -318,6 +321,7 @@ export function codersTable(coders: CoderProgress[], order: string[] = [], label
       time(c.deletionRequest?.at),
       ...sessionNames.map((n) => c.session?.[n] ?? ""),
       ...loops.map((l) => String(c.finished[l] ?? 0)),
+      ...specials.map((kind) => String(c.special?.[kind]?.done ?? 0)),
       ...columns.map((col) => cellOf(c.variables[col.variable], col, labels, null)),
     ]),
   };
@@ -491,7 +495,7 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  Each answer column is followed by a _label column: the label
                  in the codebook version the answer was given under.` : ""}
 coders.csv       A row per coder: participant id, email (coders who logged
-                 in), invitation, started, last
+                 in), link, started, last
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), their session values

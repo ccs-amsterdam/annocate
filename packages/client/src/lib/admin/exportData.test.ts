@@ -70,7 +70,7 @@ describe("data download", () => {
       "unit_version_id",
       "coder_id",
       "participant_id",
-      "invitation",
+      "link",
       "first_answer",
       "last_change",
       "codebook_id",
@@ -96,7 +96,7 @@ describe("data download", () => {
         ended: { item: "done", outcome: "complete", at },
       }),
     ]);
-    expect(table.headers).toEqual(["coder_id", "participant_id", "email", "invitation", "started", "last_active", "ended", "ended_at", "deletion_requested", "finished_main", "age"]);
+    expect(table.headers).toEqual(["coder_id", "participant_id", "email", "link", "started", "last_active", "ended", "ended_at", "deletion_requested", "finished_main", "age"]);
     expect(table.rows[0]).toEqual(["1", "p1", "", "Open link", at.toISOString(), at.toISOString(), "complete", at.toISOString(), "", "1", "42"]);
   });
 
