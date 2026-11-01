@@ -39,6 +39,7 @@ units.
 | Placed | What coders get |
 | --- | --- |
 | **Spread through them** (the default) | The overlap units evenly spread among their own units |
+| **At a rate** | About one overlap unit in every 10 of their own (you choose the number), at random |
 | **First** | First all overlap units, then their own |
 | **Last** | First their own units, then the overlap units |
 
@@ -49,6 +50,16 @@ of own units sooner, the overlap units that are left come at the end.
 Spreading needs to know how many units a coder will get. In a shared queue
 that is **Units per coder, at most**, so the option needs it (the menu says
 *needs max units per coder* until it is set).
+
+**At a rate** doesn't need to know: after each of their own units, a coder
+gets an overlap unit with a chance of one in 10 (or the number you set),
+never more than twice that apart. The order is random per coder, so coders
+can't tell which units are compared, and a reload gives the same order.
+Overlap units left when a coder's own units run out come **at the end**
+(every coder codes them all), or are **dropped** (each coder codes the ones
+they happened to get). It is the default for crowd coding made by the setup
+wizard. Gold and practice units can come at a rate too
+([Overlap, gold and practice units](special-units.md)).
 
 Coders don't see which units are overlap units. With a random
 [order](unit-distribution.md#order), the overlap units are shuffled per

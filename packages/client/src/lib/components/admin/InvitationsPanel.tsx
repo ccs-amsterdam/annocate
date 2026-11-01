@@ -7,6 +7,9 @@ import {
   unitLoops,
   type CoderInviteResponse,
   type CoderInviteWrite,
+  type SessionItem,
+  type SessionParam,
+  type SetGroupResponse,
   type TopLevelItem,
 } from "@annotinder/contracts";
 import { Ban, Check, Copy, KeyRound, Pencil } from "lucide-react";
@@ -110,6 +113,8 @@ export function InvitationsPanel({ client, baseUrl, inviteUrl }: InvitationsPane
           <LinkTable client={client} links={active} linkOf={linkOf} />
         )}
       </section>
+
+      {active.length > 0 && <LinksPerValue session={session} groups={groups} links={active.map((l) => ({ label: l.label ?? "", link: linkOf(l) }))} />}
 
       {retired.length > 0 && (
         <section className="flex flex-col gap-2">
@@ -339,5 +344,87 @@ function CopyLink({ link, disabled }: { link: string; disabled: boolean }) {
       {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "Copied" : "Copy link"}
     </button>
+  );
+}
+
+/**
+ * URL parameters with known values (a list, or a group's sets): a link per
+ * value, built here from the links (nothing is stored), e.g. to hand each
+ * school or panel its own (docs/plans/special-sets.md §4). Other URL
+ * parameters keep their placeholders.
+ */
+function LinksPerValue({
+  session,
+  groups,
+  links,
+}: {
+  session: SessionItem | null;
+  groups: SetGroupResponse[];
+  links: { label: string; link: string }[];
+}) {
+  const [param, setParam] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const params = (session?.params ?? []).filter((p) => p.kind === "url" && !("open" in p.values));
+  if (params.length === 0) return null;
+  const valuesOf = (p: SessionParam): string[] =>
+    "list" in p.values
+      ? p.values.list.map((v) => String(v.value))
+      : "sets" in p.values
+        ? (groups.find((g) => g.name === (p.values as { sets: string }).sets)?.sets ?? []).map((s) => s.name).filter((n) => !n.startsWith("_"))
+        : [];
+  const chosen = params.find((p) => p.name === param) ?? null;
+  const rows = chosen
+    ? links.flatMap(({ label, link }) =>
+        valuesOf(chosen).map((value) => {
+          const key = sessionParamKey(chosen);
+          const placeholder = `${key}=<${chosen.name}>`;
+          const filled = `${key}=${encodeURIComponent(value)}`;
+          return { label, value, link: link.includes(placeholder) ? link.replace(placeholder, filled) : `${link}${link.includes("?") ? "&" : "?"}${filled}` };
+        }),
+      )
+    : [];
+  const text = rows.map((r) => [r.label, r.value, r.link].join("\t")).join("\n");
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-sm font-medium">A link per value of a URL parameter</h3>
+      <p className="text-xs text-muted-foreground">
+        For a URL parameter with known values, list a link per value, e.g. one per school to send around. Nothing is stored: these are
+        the links above with the value filled in.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {params.map((p) => (
+          <Button key={p.name} type="button" size="sm" variant={param === p.name ? "default" : "outline"} onClick={() => setParam(param === p.name ? null : p.name)}>
+            {p.name}
+          </Button>
+        ))}
+        {rows.length > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+          >
+            {copied ? "Copied" : `Copy all ${rows.length} (tab separated)`}
+          </Button>
+        )}
+      </div>
+      {rows.length > 0 && (
+        <table className="w-full text-left text-xs">
+          <tbody>
+            {rows.slice(0, 200).map((r) => (
+              <tr key={`${r.label}/${r.value}`} className="border-t border-border">
+                {links.length > 1 && <td className="py-1 pr-2">{r.label}</td>}
+                <td className="py-1 pr-2 font-mono">{r.value}</td>
+                <td className="break-all py-1 font-mono text-muted-foreground">{r.link}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   );
 }

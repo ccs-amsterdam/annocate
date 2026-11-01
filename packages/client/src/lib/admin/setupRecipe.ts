@@ -1,4 +1,4 @@
-import { OVERLAP_SET, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
+import { DEFAULT_RATE, OVERLAP_SET, SharedBranchSchema, seededShuffle, type RecipeInput, type SessionSpec, type SharedBranch, type UnitCreate, type UnitField, type UnitData } from "@annotinder/contracts";
 import { simpleTemplate, type SimpleLayout } from "../codebook/simpleLayout";
 
 // The setup wizard (docs/plans/setup-wizard.md) as data: what the
@@ -312,7 +312,7 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
         if (overlap.length > 0) {
           groups.push({ group: WIZARD_GROUP, sets: [{ name: "queue", units: sets[0]?.units ?? [] }, ...overlapSet] });
           // Spread needs the units per coder (max); without it the overlap comes last
-          branches = [{ ...d.shared, set: { group: WIZARD_GROUP, set: "queue" }, overlap: { placement: d.shared.maxUnits !== undefined ? "spread" : "last" } }];
+          branches = [{ ...d.shared, set: { group: WIZARD_GROUP, set: "queue" }, overlap: { placement: "rate", every: DEFAULT_RATE, rest: "end" } }];
         } else branches = [d.shared];
         break;
       case "groups":

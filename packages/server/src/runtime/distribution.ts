@@ -302,7 +302,47 @@ export type Reach = "slots" | "full" | "pastMax";
 /** Where a branch's overlap units go among the coder's own units (contracts OverlapSchema). */
 export interface OverlapPlacement {
   pool: UnitPool;
-  placement: "before" | "after" | "spread";
+  placement: "before" | "after" | "spread" | "rate";
+  /** `rate`: about one special unit per `every` own units. */
+  every?: number;
+  /** `rate`: special units left when the own units run out: at the `end`, or `drop` them. */
+  rest?: "end" | "drop";
+}
+
+/** A small seeded random generator (mulberry32): the same sequence for the same seed. */
+function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A string as a number, for seeds. */
+function hashString(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/**
+ * At a rate: after how many own units the `index`-th special unit (0-based)
+ * is due. After each own unit, the chance of a special one is 1/`every`;
+ * never more than 2 x `every` own units apart. Seeded per coder and pool,
+ * so the schedule is the same on every request.
+ */
+export function rateDue(index: number, every: number, seed: number): number {
+  const random = seededRandom(seed);
+  let position = 0;
+  for (let i = 0; i <= index; i++) {
+    let gap = 1;
+    while (gap < 2 * every && random() >= 1 / every) gap++;
+    position += gap;
+  }
+  return position;
 }
 
 /**
@@ -345,8 +385,14 @@ export function pickNext(
   for (const extra of extras) {
     const unitId = extra.pool.best(coderId, options.now, shuffleSeed);
     if (unitId === undefined) continue;
-    fallback ??= { pool: extra.pool, unitId };
-    if (own === undefined || extra.placement === "before") return { pool: extra.pool, unitId };
+    // At a rate with `drop`: what is left when the own units run out isn't coded.
+    const dropRest = extra.placement === "rate" && extra.rest === "drop";
+    if (!dropRest) fallback ??= { pool: extra.pool, unitId };
+    if ((own === undefined && !dropRest) || extra.placement === "before") return { pool: extra.pool, unitId };
+    if (extra.placement === "rate" && own !== undefined) {
+      const doneExtra = done.filter((id) => extra.pool.has(id)).length;
+      if (doneOwn >= rateDue(doneExtra, extra.every ?? 10, hashString(`${options.seed}/${coderId}/${extra.pool.unitset}`))) return { pool: extra.pool, unitId };
+    }
     if (extra.placement === "spread") {
       // The N own units are cut into M + 1 equal parts, and special unit j
       // (0-based) follows part j, i.e. comes after round((j + 1) * N / (M + 1)) own units.

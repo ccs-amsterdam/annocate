@@ -31,6 +31,7 @@ import {
   type PracticeSettings,
   type SubmitUnitResponse,
   toCoderItems,
+  DEFAULT_RATE,
   resolveRedirects,
   type CoderCodebook,
   type CoderUnitResponse,
@@ -104,7 +105,7 @@ interface Route {
   set: string;
 }
 
-const PLACEMENTS = { first: "before", last: "after", spread: "spread" } as const;
+const PLACEMENTS = { first: "before", last: "after", spread: "spread", rate: "rate" } as const;
 
 /** A route's pools, with the state they were loaded with. */
 interface Routed {
@@ -541,7 +542,7 @@ export class DeploymentRuntime {
    * The overlap as many as `max` allows: the first ones, or a random draw
    * (the same for every coder, so they code the same units).
    */
-  private specialUnits(route: Route): { set: string; units: number[]; placement: "first" | "last" | "spread" }[] {
+  private specialUnits(route: Route): { set: string; units: number[]; placement: "first" | "last" | "spread" | "rate"; every?: number; rest?: "end" | "drop" }[] {
     const group = branchGroup(route.branch);
     if (group === null) return [];
     return SPECIAL.flatMap(({ set, settings }) => {
@@ -552,7 +553,7 @@ export class DeploymentRuntime {
       if (max !== undefined && units.length > max) {
         units = "pick" in s && s.pick === "random" ? seededShuffle(units, this.spec.jobId).slice(0, max) : units.slice(0, max);
       }
-      return units.length > 0 ? [{ set: setKey(group, set), units, placement: s.placement }] : [];
+      return units.length > 0 ? [{ set: setKey(group, set), units, placement: s.placement, every: s.every, rest: s.rest }] : [];
     });
   }
 
@@ -587,7 +588,13 @@ export class DeploymentRuntime {
     const { branch, set } = route;
     const main = new UnitPool(set, this.ownUnits(route), branch.mode === "shared" ? sharedDefaults(branch) : null, codings);
     main.loadLeases(leases.filter((l) => l.unitset === set).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
-    const extras = this.specialUnits(route).map((s) => ({ pool: new UnitPool(s.set, s.units, null, codings), placement: PLACEMENTS[s.placement] }));
+    const extras = this.specialUnits(route).map(
+      (s): OverlapPlacement => ({
+        pool: new UnitPool(s.set, s.units, null, codings),
+        placement: PLACEMENTS[s.placement],
+        ...(s.placement === "rate" ? { every: s.every ?? DEFAULT_RATE, rest: s.rest ?? "end" } : {}),
+      }),
+    );
     return { branch, main, extras };
   }
 

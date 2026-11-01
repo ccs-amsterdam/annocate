@@ -123,3 +123,19 @@ test("panel return links are settings of the run, filled in for coders", async (
   await page.getByRole("button", { name: "Save Changes" }).click();
   await expect.poll(async () => (await api<JobResponse>(request, "GET", `/job/${job.id}`)).redirectUrls).toEqual({ panel_done: "https://panel.example/done" });
 });
+
+test("a link per value of a URL parameter, built in the browser", async ({ page, request }) => {
+  const job = await api<JobResponse>(request, "POST", "/job", { name: "Schools" });
+  const codebook = await api<{ id: number }>(request, "POST", `/job/${job.id}/codebook`, {
+    session: { params: [{ name: "school", kind: "url", values: { list: [{ value: "north" }, { value: "south" }] } }] },
+    items: [{ type: "question", name: "ok", variable: { type: "confirm", question: "Ready?" } }],
+  });
+  await api(request, "PUT", `/job/${job.id}/deployment`, { codebookId: codebook.id });
+  await page.goto("/");
+  await page.getByText("Schools").click();
+  await page.getByRole("button", { name: "Deploy", exact: true }).click();
+  await page.getByRole("button", { name: "Links", exact: true }).click();
+  await page.getByRole("button", { name: "school", exact: true }).click();
+  await expect(page.getByRole("cell", { name: /school=north/ })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /school=south/ })).toBeVisible();
+});

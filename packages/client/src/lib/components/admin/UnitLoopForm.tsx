@@ -3,6 +3,7 @@ import { Code, Plus, Split, Trash2 } from "lucide-react";
 import { cn } from "cn";
 import {
   CHECKABLE_TYPES,
+  DEFAULT_RATE,
   GOLD_SET,
   OVERLAP_SET,
   PRACTICE_SET,
@@ -1010,11 +1011,13 @@ function OverlapEditor({
             <option value="spread" disabled={!canSpread}>
               Spread through the coder&apos;s units (recommended){canSpread ? "" : " (needs max units per coder)"}
             </option>
+            <option value="rate">At a rate: about one in every few units{canSpread ? "" : " (recommended for crowd coding)"}</option>
             <option value="first">First, before the coder&apos;s own units (inflates reliability)</option>
             <option value="last">Last, after them</option>
             {required && <option value="disabled">Disabled: no overlap</option>}
           </select>
         </label>
+        {on && overlap.placement === "rate" && <RateFields value={overlap} onChange={(rate) => onChange({ ...overlap, ...rate })} />}
         {on && (
           <>
             <label className={labelClass}>
@@ -1096,8 +1099,49 @@ function PlacementSelect({
       <option value="spread" disabled={!canSpread}>
         Spread through the coder&apos;s units{canSpread ? "" : " (needs max units per coder)"}
       </option>
+      <option value="rate">At a rate: about one in every few units</option>
       <option value="last">Last, after the coder&apos;s own units</option>
     </select>
+  );
+}
+
+/**
+ * At a rate (contracts RateSettings): about one special unit in `every`,
+ * at random per coder; what is left when the coder's own units run out
+ * comes at the end or is dropped.
+ */
+function RateFields({
+  value,
+  onChange,
+}: {
+  value: { every?: number; rest?: "end" | "drop" };
+  onChange: (rate: { every?: number; rest?: "end" | "drop" }) => void;
+}) {
+  return (
+    <>
+      <label className={labelClass}>
+        One in
+        <Input
+          type="number"
+          min={2}
+          className="h-8 w-20 text-xs font-normal"
+          placeholder={String(DEFAULT_RATE)}
+          value={value.every ?? ""}
+          onChange={(e) => onChange({ every: numberOrUndefined(e.target.value) })}
+        />
+      </label>
+      <label className={labelClass}>
+        Left when a coder&apos;s own units run out
+        <select
+          className={`${selectClass} w-fit font-normal`}
+          value={value.rest ?? "end"}
+          onChange={(e) => onChange({ rest: e.target.value as "end" | "drop" })}
+        >
+          <option value="end">At the end: every coder codes them all</option>
+          <option value="drop">Dropped: coders code the ones they happened to get</option>
+        </select>
+      </label>
+    </>
   );
 }
 
@@ -1182,6 +1226,11 @@ function PracticeEditor({
           onChange={(placement) => onChange(placement ? { ...practice, placement } : undefined)}
         />
       </label>
+      {practice?.placement === "rate" && (
+        <div className="flex flex-wrap items-end gap-3">
+          <RateFields value={practice} onChange={(rate) => onChange({ ...practice, ...rate })} />
+        </div>
+      )}
       {practice && (
         <div className="flex flex-col gap-2 border-l-2 border-border pl-3">
           <span className="text-xs font-semibold">Questions with feedback</span>
@@ -1268,6 +1317,11 @@ function GoldEditor({
           onChange={(placement) => onChange(placement ? { questions: [], ...gold, placement } : undefined)}
         />
       </label>
+      {gold?.placement === "rate" && (
+        <div className="flex flex-wrap items-end gap-3">
+          <RateFields value={gold} onChange={(rate) => onChange({ ...gold, ...rate })} />
+        </div>
+      )}
       {gold && (
         <div className="flex flex-col gap-2 border-l-2 border-border pl-3">
           <span className="text-xs font-semibold">Questions checked</span>

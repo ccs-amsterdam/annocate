@@ -28,15 +28,31 @@ export const ALL_UNITS_UNITSET = "__all__";
 export const SET_ACTIVITY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * At a rate (docs/plans/special-sets.md §1): about one special unit per
+ * `every` own units, at random (seeded per coder: a reload gives the same
+ * order) but never more than 2 x `every` apart, so it works without
+ * knowing how many units a coder gets (crowd coding). `rest`: special
+ * units left when the coder's own units run out come at the `end`
+ * (default: everyone gets them all) or are dropped (`drop`).
+ */
+export const RateSettings = {
+  every: z.number().int().min(2).max(1000).optional(),
+  rest: z.enum(["end", "drop"]).optional(),
+};
+/** The default rate: about one in ten. */
+export const DEFAULT_RATE = 10;
+
+/**
  * The overlap: the `_overlap` units of the branch's group, which every
  * coder codes besides their own set, e.g. for intercoder reliability.
- * `first` or `last` of the coder's units, `spread` evenly through them, or
- * `disabled`. `expect`: how many overlap units the design wants (a
- * warning when the group has fewer). `max`: use at most this many, the
- * `first` in order or a `random` (seeded) draw.
+ * `first` or `last` of the coder's units, `spread` evenly through them, at
+ * a `rate` (`every`, `rest`), or `disabled`. `expect`: how many overlap
+ * units the design wants (a warning when the group has fewer). `max`: use
+ * at most this many, the `first` in order or a `random` (seeded) draw.
  */
 export const OverlapSettingsSchema = z.object({
-  placement: z.enum(["first", "last", "spread", "disabled"]),
+  placement: z.enum(["first", "last", "spread", "rate", "disabled"]),
+  ...RateSettings,
   expect: z.number().int().positive().optional(),
   max: z.number().int().positive().optional(),
   pick: z.enum(["first", "random"]).optional(),
@@ -44,7 +60,7 @@ export const OverlapSettingsSchema = z.object({
 export type OverlapSettings = z.infer<typeof OverlapSettingsSchema>;
 
 /** Where practice or gold units go among the coder's own units. */
-const CheckPlacementSchema = z.enum(["first", "last", "spread"]);
+const CheckPlacementSchema = z.enum(["first", "last", "spread", "rate"]);
 
 /**
  * Practice units (docs/plans/special-sets.md §2): the group's `_practice`
@@ -56,6 +72,7 @@ const CheckPlacementSchema = z.enum(["first", "last", "spread"]);
  */
 export const PracticeSettingsSchema = z.object({
   placement: CheckPlacementSchema,
+  ...RateSettings,
   questions: z.array(SafeNameSchema).max(20).optional(),
   /** Shown when an answer is wrong (unless the unit has its own message): a template that may use $var and $unit. Default: the expected answer. */
   message: z.string().max(2000).optional(),
@@ -71,6 +88,7 @@ export type PracticeSettings = z.infer<typeof PracticeSettingsSchema>;
  */
 export const GoldSettingsSchema = z.object({
   placement: CheckPlacementSchema,
+  ...RateSettings,
   questions: z.array(SafeNameSchema).min(1, "Choose the questions gold units check").max(20),
   health: z
     .object({

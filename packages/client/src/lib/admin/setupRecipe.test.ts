@@ -96,7 +96,7 @@ describe("setup wizard recipes", () => {
         maxCoders: 3,
         minUnits: 2,
         maxUnits: 5,
-        overlap: { placement: "spread" },
+        overlap: { placement: "rate", every: 10, rest: "end" },
       },
     ]);
     expect(setupRecipe(a).sets![0].sets.map((s) => [s.name, s.units.length])).toEqual([

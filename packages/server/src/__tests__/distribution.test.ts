@@ -92,6 +92,38 @@ describe("overlap", () => {
     expect(codeAll2(pool2([1], shared({ maxCoders: 1 })), 1, { overlap: overlap2, maxUnits: 4 })).toEqual([1, 10]);
   });
 
+  it("comes at a rate: about one in `every`, never more than 2 x every apart, the same per coder on every request", () => {
+    const own = Array.from({ length: 60 }, (_, i) => i + 1);
+    const special = [101, 102, 103, 104, 105];
+    const run = (coderId: number, rest: "end" | "drop") => {
+      const { pool, codeAll } = setup();
+      return codeAll(pool(own), coderId, { overlap: { pool: pool(special, null, "overlap"), placement: "rate", every: 10, rest } });
+    };
+    const a = run(1, "end");
+    expect(a).toEqual(run(1, "end")); // deterministic per coder
+    expect(a.filter((id) => id > 100)).toEqual(special); // all of them, in order
+    // Gaps of own units before each special unit: at least 1, at most 2 x every
+    let gap = 0;
+    for (const id of a) {
+      if (id > 100) {
+        expect(gap).toBeGreaterThanOrEqual(1);
+        expect(gap).toBeLessThanOrEqual(20);
+        gap = 0;
+      } else gap++;
+    }
+    // Another coder gets another schedule
+    expect(run(2, "end")).not.toEqual(a);
+    // Few own units: the rest comes at the end, or is dropped
+    const { pool, codeAll } = setup();
+    const short = codeAll(pool([1, 2]), 1, { overlap: { pool: pool(special, null, "overlap"), placement: "rate", every: 10, rest: "end" } });
+    expect(short.filter((id) => id > 100)).toEqual(special);
+    expect(short.filter((id) => id <= 100)).toEqual([1, 2]);
+    const s2 = setup();
+    const dropped = s2.codeAll(s2.pool([1, 2]), 1, { overlap: { pool: s2.pool(special, null, "overlap"), placement: "rate", every: 10, rest: "drop" } });
+    expect(dropped.filter((id) => id > 100).length).toBeLessThan(special.length);
+    expect(dropped.filter((id) => id <= 100)).toEqual([1, 2]);
+  });
+
   it("skips units the coder already did in their own set", () => {
     const { pool, codeAll } = setup();
     expect(codeAll(pool([1, 2]), 1, { overlap: { pool: pool([2, 3], null, "overlap"), placement: "after" } })).toEqual([1, 2, 3]);
