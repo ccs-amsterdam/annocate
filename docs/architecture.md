@@ -486,7 +486,8 @@ Everything is a draft until deployed (`plans/design.md` §5), units and
 sets too (migration 0026):
 
 - **Values** (`unit_values`): every field value once per job, by content
-  (sha256). Field names are numbered per job (`unit_field_names`).
+  (sha256, as 32 bytes: md5 pairs can be made on purpose). Field names are
+  numbered per job (`unit_field_names`).
 - **The draft** (`unit_draft`): each unit's working copy, field -> value,
   overwritten freely; `units.in_draft` says whether a unit is in it.
   Uploads, deletes and set changes only change the draft; a preview runs it.
