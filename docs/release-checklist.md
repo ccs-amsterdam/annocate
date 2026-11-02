@@ -150,10 +150,10 @@ From the review list:
 
 From the security review, low:
 
-- API keys always count as MFA. A key made from a login without a second
-  factor, before `ANNOTINDER_2FA` was turned on, keeps full access.
-  Fix: store an `mfa` flag per key, or revoke keys when the setting is
-  turned on.
+- Done (2026-11-02): API keys record whether they were made with a second
+  factor (`api_keys.mfa`); a key made without one counts as a login
+  without one when `ANNOTINDER_2FA` is on. Keys made by the server's
+  operator (`keys` command) count as having one.
 - The routing check for unitset templates is wider than documented.
   `part_{$var.x}` accepts any unitset named `part_*`; a bare `{$var.x}`
   accepts every unitset. Fix: when the variable has options, check against
@@ -164,10 +164,10 @@ From the security review, low:
 - `coder_deletions` keeps the deleted coder's email and participant id, so
   "delete for good" still keeps who was deleted. **Decide** whether that
   log is intended.
-- A researcher-written URL parameter pattern could backtrack
-  catastrophically on a crafted value, blocking the server. Values are
-  capped at 256 characters. Fix: a linear regex engine (RE2) or a check for
-  nested quantifiers.
+- Done (2026-11-02): a researcher-written URL parameter pattern can't
+  backtrack catastrophically: patterns with a repeated group that holds a
+  repetition or alternatives, or with a backreference, are refused
+  (contracts `slowPattern`); values stay capped at 256 characters.
 
 Several server processes:
 

@@ -50,7 +50,7 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   const bearer = /^Bearer (.+)$/.exec(c.req.header("authorization") ?? "")?.[1];
   if (bearer) {
     const user = await userForKey(server.db, bearer.trim());
-    return user ? { email: user.email, userId: user.id, accountRole: user.role, mfa: true } : null;
+    return user ? { email: user.email, userId: user.id, accountRole: user.role, mfa: user.mfa } : null;
   }
   const session = getCookie(c, SESSION_COOKIE);
   if (session && c.req.header(CLIENT_HEADER) === "1") {

@@ -19,7 +19,7 @@ beforeEach(async () => {
 async function keyFor(email: string, role: AccountRole): Promise<string> {
   const user = await ensureUser(db, email);
   await db.query("UPDATE users SET role = $1 WHERE id = $2", [role, user.id]);
-  return (await createApiKey(db, user.id, "test")).key;
+  return (await createApiKey(db, user.id, "test", true)).key;
 }
 
 const endpoints = { ...researcherEndpoints, ...adminEndpoints };

@@ -22,7 +22,7 @@ async function keyFor(email: string): Promise<string> {
   // Researchers: they create jobs in these tests.
   const user = await ensureUser(db, email);
   await db.query("UPDATE users SET role = 'researcher' WHERE id = $1", [user.id]);
-  return (await createApiKey(db, user.id, "test")).key;
+  return (await createApiKey(db, user.id, "test", true)).key;
 }
 
 type Endpoint = (typeof researcherEndpoints)[ResearcherEndpointName];

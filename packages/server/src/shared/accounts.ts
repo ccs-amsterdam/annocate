@@ -39,13 +39,17 @@ export async function ensureUser(sql: Sql, email: string): Promise<User> {
   return row!;
 }
 
-/** A new key for a user: returned this once, stored as a hash. */
-export async function createApiKey(sql: Sql, userId: number, label: string): Promise<ApiKeyCreated> {
+/**
+ * A new key for a user: returned this once, stored as a hash. `mfa`: made
+ * from a login with a second factor (or by the server's operator); a key
+ * without it counts as a login without one (`ANNOTINDER_2FA`, security.md).
+ */
+export async function createApiKey(sql: Sql, userId: number, label: string, mfa: boolean): Promise<ApiKeyCreated> {
   const key = KEY_PREFIX + randomBytes(32).toString("base64url");
   const row = await one<ApiKeyRow>(
     sql,
-    "INSERT INTO api_keys (user_id, label, key_hash, prefix) VALUES ($1, $2, $3, $4) RETURNING *",
-    [userId, label, hashKey(key), key.slice(0, KEY_PREFIX.length + 6)],
+    "INSERT INTO api_keys (user_id, label, key_hash, prefix, mfa) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+    [userId, label, hashKey(key), key.slice(0, KEY_PREFIX.length + 6), mfa],
   );
   return { ...toApiKeyResponse(row!), key };
 }
@@ -64,14 +68,14 @@ export async function revokeApiKey(sql: Sql, userId: number, id: number): Promis
   return row ? toApiKeyResponse(row) : null;
 }
 
-/** The user an API key belongs to, if the key is valid (and not revoked) and the user isn't blocked. Records its use. */
-export async function userForKey(sql: Sql, key: string): Promise<User | null> {
+/** The user an API key belongs to (and whether the key has a second factor), if the key is valid (and not revoked) and the user isn't blocked. Records its use. */
+export async function userForKey(sql: Sql, key: string): Promise<(User & { mfa: boolean }) | null> {
   if (!key.startsWith(KEY_PREFIX)) return null;
-  const row = await one<User>(
+  const row = await one<User & { mfa: boolean }>(
     sql,
     `UPDATE api_keys k SET last_used = now() FROM users u
      WHERE k.key_hash = $1 AND k.revoked_at IS NULL AND u.id = k.user_id AND u.blocked_at IS NULL
-     RETURNING u.id, u.email, u.role`,
+     RETURNING u.id, u.email, u.role, k.mfa`,
     [hashKey(key)],
   );
   return row ?? null;

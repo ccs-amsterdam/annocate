@@ -18,7 +18,7 @@ beforeEach(async () => {
   app = createApp(db);
   const user = await ensureUser(db, "r@uni.nl");
   await db.query("UPDATE users SET role = 'researcher' WHERE id = $1", [user.id]);
-  key = (await createApiKey(db, user.id, "test")).key;
+  key = (await createApiKey(db, user.id, "test", true)).key;
 });
 
 const researcher = (path: string, init: RequestInit = {}) =>

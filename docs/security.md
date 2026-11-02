@@ -18,7 +18,7 @@ decides who checks the second one:
 
 Coding never needs one. A login without the required second factor only
 gets `GET /me`, the passkey routes and logging out (403 `mfa_required`
-otherwise). API keys count as having one: creating a key needs it.
+otherwise). A key made with a second factor counts as having one (creating a key needs it once the setting is on); a key made before, without one, does not.
 
 **Why `annotinder`.** With `oidc`, both factors are the provider's: someone
 who gets into a researcher's provider account (or the email it sends codes

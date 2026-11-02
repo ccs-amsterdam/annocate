@@ -18,19 +18,67 @@ export const MAX_SESSION_VALUE = 256;
 /** A URL parameter name, as it appears in links (e.g. `PROLIFIC_PID`). */
 export const UrlParamNameSchema = z.string().min(1).max(64).regex(/^[A-Za-z0-9_.~-]+$/, "A URL parameter name is letters, digits, _, -, . or ~");
 
+/**
+ * Why a pattern could make matching take very long (catastrophic
+ * backtracking, a way to block the server with a crafted value), or null:
+ * a repeated group that itself holds a repetition or an alternation
+ * (`(a+)+`, `(a|ab)*`), or a backreference (`\1`). Character classes
+ * (`[a-z0-9]+`), fixed repeats and plain alternation (`a|b|c`) are fine.
+ */
+export function slowPattern(pattern: string): string | null {
+  // Per open group: whether it holds a repetition or an alternation
+  const groups: { risky: boolean }[] = [{ risky: false }];
+  let closedRisky = false;
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    const quantifier = ch === "*" || ch === "+" || ch === "?" || (ch === "{" && /^\{\d*,?\d*\}/.test(pattern.slice(i)));
+    if (quantifier) {
+      // A repeated group that can match in many ways
+      if (closedRisky && ch !== "?") return "a repeated group can't hold a repetition or alternatives";
+      if (ch !== "?" || closedRisky) groups[groups.length - 1].risky = true;
+      if (ch === "{") i = pattern.indexOf("}", i);
+      closedRisky = false;
+      continue;
+    }
+    closedRisky = false;
+    if (ch === "\\") {
+      if (/[1-9k]/.test(pattern[i + 1] ?? "")) return "backreferences aren't allowed";
+      i++;
+    } else if (ch === "[") {
+      // A character class: skip to its end
+      let j = i + 1;
+      if (pattern[j] === "^") j++;
+      if (pattern[j] === "]") j++;
+      while (j < pattern.length && pattern[j] !== "]") j += pattern[j] === "\\" ? 2 : 1;
+      i = j;
+    } else if (ch === "(") {
+      groups.push({ risky: false });
+    } else if (ch === ")") {
+      const group = groups.pop() ?? { risky: false };
+      closedRisky = group.risky;
+      if (group.risky) groups[groups.length - 1].risky = true;
+    } else if (ch === "|") {
+      groups[groups.length - 1].risky = true;
+    }
+  }
+  return null;
+}
+
 /** A regular expression a URL parameter's value must match in full, e.g. `[0-9a-f]{24}` or `a|b|c`. */
 export const UrlParamPatternSchema = z
   .string()
   .min(1)
   .max(256)
-  .refine((p) => {
+  .superRefine((p, ctx) => {
     try {
       new RegExp(p);
-      return true;
     } catch {
-      return false;
+      ctx.addIssue({ code: "custom", message: "Not a valid regular expression" });
+      return;
     }
-  }, "Not a valid regular expression");
+    const slow = slowPattern(p);
+    if (slow) ctx.addIssue({ code: "custom", message: `This pattern could make checking a value very slow: ${slow}` });
+  });
 
 /**
  * A session parameter's values: a list, the sets of a group (from the units'

@@ -79,7 +79,8 @@ export function me(server: Server): Hono<Env> {
   app.post("/me/keys", signedIn, async (c) => {
     const parsed = ApiKeyWriteSchema.safeParse(await c.req.json().catch(() => undefined));
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
-    return c.json(await createApiKey(db, await userId(c), parsed.data.label), 201);
+    // The key has a second factor if the login that makes it has one
+    return c.json(await createApiKey(db, await userId(c), parsed.data.label, c.get("researcher").mfa), 201);
   });
 
   app.post("/me/keys/:id/revoke", signedIn, async (c) => {

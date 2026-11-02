@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Sql } from "../db.js";
 import type { TwoFactorMode } from "@annotinder/contracts";
 import { createApp } from "../app.js";
+import { createApiKey } from "../shared/accounts.js";
 import { softAuthenticator } from "./softAuthenticator.js";
 import { emptyDb } from "./testDb.js";
 import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
@@ -130,6 +131,24 @@ describe("researcher login", () => {
     expect(await b.logIn({ ...verified, amr: ["pwd", "otp"] })).toBe("/jobs?x=1");
     expect(await (await b.api("/me")).json()).toMatchObject({ twoFactor: { required: false } });
     expect((await b.api("/job", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
+  });
+
+  it("an API key made without a second factor counts as a login without one when the server turns it on", async () => {
+    app = newApp("none", ["jane@uni.nl"]);
+    const b = browser();
+    await b.logIn({ ...verified, amr: ["pwd"] });
+    const made = await b.api("/me/keys", { method: "POST", body: JSON.stringify({ label: "script" }) });
+    expect(made.status).toBe(201);
+    const { key } = (await made.json()) as { key: string };
+    const asKey = () => app.request("/job", { headers: { authorization: `Bearer ${key}` } });
+    expect((await asKey()).status).toBe(200);
+    // The server now requires a second factor: this key doesn't have one
+    app = newApp("oidc", ["jane@uni.nl"]);
+    expect(await (await asKey()).json()).toMatchObject({ code: "mfa_required" });
+    // One made by the server's operator (the keys command) does
+    const user = (await db.query<{ id: number }>("SELECT id FROM users WHERE email = 'jane@uni.nl'"))[0];
+    const operator = (await createApiKey(db, user.id, "operator", true)).key;
+    expect((await app.request("/job", { headers: { authorization: `Bearer ${operator}` } })).status).toBe(200);
   });
 
   it("requires a passkey checked by AnnoTinder (annotinder): add one, confirm with it, recover, reset", async () => {
