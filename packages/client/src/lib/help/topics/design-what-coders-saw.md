@@ -87,9 +87,10 @@ finished units. See
 
 | File | What it records |
 | --- | --- |
-| `annotations.csv` | Per unit and coder: `unit_version_id` (what they saw), `design_version_id` (the design version), `first_answer` and `last_change`, and the answers |
+| `annotations.csv` | Per unit and coder: `unit_version_id` (what they saw), `design_version` (the design version: v<n>, as in `designs/v<n>.json`), `first_answer` and `last_change`, and the answers |
 | `units.csv` | Each unit version that has answers, with the fields as shown. Join on `unit_version_id` |
-| `variables.csv` | Each design version's questions, options and labels. Join on `design_version_id` |
+| `variables.csv` | Each design version's questions, options and labels. Join on `design_version` |
+| `designs/v<n>.json` | Each design version as a whole (questions, layouts, how units were handed out, session, unit fields), with the AnnoTinder release and commit it ran on |
 
 The `_label` columns show the label in the version the answer was given
 under, which is what the coder saw. See [Downloading results](results.md).

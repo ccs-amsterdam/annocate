@@ -179,12 +179,20 @@ export function questionOrder(items: TopLevelItem[] | undefined): string[] {
  * first answered the unit), with the unit version they saw, when they first
  * and last answered it, the design version, and a column per question.
  */
+/**
+ * A design version's number as people see it (v1, v2, ...: `design_version`
+ * in the files, as in `designs/v<n>.json`), from its id.
+ */
+export type VersionOf = (designVersionId: number) => number | null;
+const versionCell = (versionOf: VersionOf, id: number | null) => (id === null ? "" : String(versionOf(id) ?? ""));
+
 export function annotationsTable(
   annotations: AnnotationRow[],
   coders: CoderProgress[],
   order: string[] = [],
   labels?: Labels,
   nested: ReadonlySet<string> = new Set(),
+  versionOf: VersionOf = (id) => id,
 ): Table {
   const coderById = new Map(coders.map((c) => [c.id, c]));
   // Per answer also the design version it was given under: its labels are the ones its coder saw.
@@ -222,7 +230,7 @@ export function annotationsTable(
       "link",
       "first_answer",
       "last_change",
-      "design_version_id",
+      "design_version",
       "device_id",
       "unit_ms_client",
       "unit_ms_server",
@@ -240,7 +248,7 @@ export function annotationsTable(
       coderById.get(first.coderId)?.linkLabel ?? "",
       time(first.created),
       time(last),
-      first.designVersionId === null ? "" : String(first.designVersionId),
+      versionCell(versionOf, first.designVersionId),
       deviceId === null ? "" : String(deviceId),
       times?.client == null ? "" : String(times.client),
       times?.server == null ? "" : String(times.server),
@@ -255,10 +263,10 @@ export function annotationsTable(
  * a row per answer, with when it was given and reset. The live answers that
  * replaced them, if any, are in annotations.csv.
  */
-export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels): Table {
+export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels, versionOf: VersionOf = (id) => id): Table {
   const reset = annotations.filter((a) => a.retiredAt);
   return {
-    headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "design_version_id", "answered", "reset_at"],
+    headers: ["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", ...(labels ? ["value_label"] : []), "value_json", "design_version", "answered", "reset_at"],
     rows: reset.map((a) => [
       a.externalId ?? "",
       a.unitVersionId === null ? "" : String(a.unitVersionId),
@@ -268,7 +276,7 @@ export function resetAnswersTable(annotations: AnnotationRow[], labels?: Labels)
       answerText(a.value),
       ...(labels ? [answerText(a.value, undefined, labels.writer(a.variable, a.designVersionId))] : []),
       answerJson(a.value),
-      a.designVersionId === null ? "" : String(a.designVersionId),
+      versionCell(versionOf, a.designVersionId),
       time(a.updated),
       time(a.retiredAt),
     ]),
@@ -357,7 +365,7 @@ export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]
  * its label; questions without options have one row. The loop is the one
  * the question is in (empty: asked once per coder).
  */
-export function variablesTable(designVersions: ReadonlyMap<number, TopLevelItem[]>): Table {
+export function variablesTable(designVersions: ReadonlyMap<number, TopLevelItem[]>, versionOf: VersionOf = (id) => id): Table {
   const rows: string[][] = [];
   for (const [id, items] of [...designVersions].sort(([a], [b]) => a - b)) {
     const { questions, loopOf } = collectQuestions(items);
@@ -368,12 +376,12 @@ export function variablesTable(designVersions: ReadonlyMap<number, TopLevelItem[
       const names = variable.type === "scale" ? variable.items.map((i) => `${name}.${i.name}`) : [name];
       const options = optionsOf(variable) ?? [];
       for (const n of names) {
-        if (options.length === 0) rows.push([String(id), loop, n, variable.type, text, "", ""]);
-        for (const o of options) rows.push([String(id), loop, n, variable.type, text, String(o.value), optionLabel(o)]);
+        if (options.length === 0) rows.push([versionCell(versionOf, id), loop, n, variable.type, text, "", ""]);
+        for (const o of options) rows.push([versionCell(versionOf, id), loop, n, variable.type, text, String(o.value), optionLabel(o)]);
       }
     }
   }
-  return { headers: ["design_version_id", "loop", "variable", "type", "question", "value", "label"], rows };
+  return { headers: ["design_version", "loop", "variable", "type", "question", "value", "label"], rows };
 }
 
 /** Leeway when comparing the browser's times with the server's (clocks, network). */
@@ -487,14 +495,15 @@ export function readme(job: string, exported: Date, labels: boolean, spreadsheet
 
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  version the coder saw (unit_version_id), the coder, when they
-                 first and last answered, the codebook version (design_version_id),
+                 first and last answered, the design version (design_version:
+                 n of designs/v<n>.json),
                  the time the coder's browser measured on the unit's
                  questions (unit_ms_client; see timings.csv) and the time
                  from the server handing out the unit to its last answer
                  (unit_ms_server), and a column per question (a scale: a column per item,
                  question.item).${labels ? `
                  Each answer column is followed by a _label column: the label
-                 in the codebook version the answer was given under.` : ""}
+                 in the design version the answer was given under.` : ""}
 coders.csv       A row per coder: participant id, email (coders who logged
                  in), link, started, last
                  active, how their session ended (complete, screenout or
@@ -504,11 +513,11 @@ coders.csv       A row per coder: participant id, email (coders who logged
                  their answers outside unit loops.
 units.csv        The units as deployed, a row per version: a unit replaced
                  after it was coded has a row per version (deployed: when).
-                 Coders saw only the fields the codebook uses; the others
+                 Coders saw only the fields the design shows; the others
                  are for your analysis. Join annotations on unit_version_id.
                  A column per set group (sets.<group>): the unit's sets,
                  e.g. s1 or s1;_overlap (#n: its position in an ordered set).
-variables.csv    Per design version, question and option: the question text,
+variables.csv    Per design version (design_version), question and option: the question text,
                  the stored value and its label.
 designs/v<n>.json  Each design version answers were given under (and the
                  live one): the whole design (questions, layouts, how units

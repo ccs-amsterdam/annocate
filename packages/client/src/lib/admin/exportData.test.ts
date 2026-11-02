@@ -73,7 +73,7 @@ describe("data download", () => {
       "link",
       "first_answer",
       "last_change",
-      "design_version_id",
+      "design_version",
       "device_id",
       "unit_ms_client",
       "unit_ms_server",
@@ -156,7 +156,7 @@ describe("data download", () => {
     const live = row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "neg" }] });
     const reset = { ...row(1, 1, "sentiment", { done: true, skip: false, values: [{ value: "pos" }] }), retiredAt: new Date(at.getTime() + 60_000) };
     const table = resetAnswersTable([live, reset]);
-    expect(table.headers).toEqual(["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", "value_json", "design_version_id", "answered", "reset_at"]);
+    expect(table.headers).toEqual(["unit_id", "unit_version_id", "coder_id", "participant_id", "variable", "value", "value_json", "design_version", "answered", "reset_at"]);
     expect(table.rows).toEqual([["u1", "", "1", "p1", "sentiment", "pos", '["pos"]', "2", at.toISOString(), new Date(at.getTime() + 60_000).toISOString()]]);
   });
 

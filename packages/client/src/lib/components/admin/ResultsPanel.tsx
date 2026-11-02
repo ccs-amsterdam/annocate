@@ -114,15 +114,15 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       const now = new Date();
       const zip = zipSync({
         "README.txt": strToU8(readme(name, now, withLabels, spreadsheetSafe)),
-        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested), spreadsheetSafe)),
+        "annotations.csv": strToU8(toCsv(annotationsTable(annotations, coderList, order, labels, nested, numbers.numberOf), spreadsheetSafe)),
         "coders.csv": strToU8(toCsv(codersTable(coderList, order, labels, nested), spreadsheetSafe)),
         "devices.csv": strToU8(toCsv(devicesTable(devices), spreadsheetSafe)),
         "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList), spreadsheetSafe)),
         "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions), spreadsheetSafe)),
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()), spreadsheetSafe)),
-        "variables.csv": strToU8(toCsv(variablesTable(designVersions), spreadsheetSafe)),
+        "variables.csv": strToU8(toCsv(variablesTable(designVersions, numbers.numberOf), spreadsheetSafe)),
         ...designs,
-        ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels), spreadsheetSafe)) } : {}),
+        ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels, numbers.numberOf), spreadsheetSafe)) } : {}),
       });
       save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");
     } catch (e) {

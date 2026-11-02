@@ -19,6 +19,7 @@ The zip is named after the job and the date, such as
 | `coders.csv` | coder | who they are, how far they got, and their answers outside unit loops |
 | `units.csv` | unit version | the units as coders saw them |
 | `variables.csv` | design version, question and option | the questions, their values and labels |
+| `designs/v<n>.json` | design version | the whole design, with the AnnoTinder release and commit it ran on: to archive or reproduce the study |
 | `devices.csv` | device | the devices coders used (kind, browser, operating system) |
 | `timings.csv` | answer | how long coders took per question |
 | `deleted_coders.csv` | deleted coder | coders whose data was deleted, to delete them from earlier downloads too |
@@ -40,7 +41,7 @@ A row for every unit a coder coded, in the order they coded them.
 | `participant_id` | The coder's participant id, if they have one (e.g. from a panel) |
 | `link` | The label of the link the coder came in with |
 | `first_answer`, `last_change` | When the coder first answered about this unit, and last changed an answer |
-| `design_version_id` | The design version the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
+| `design_version` | The design version (its number, v1, v2, ...; `designs/v<n>.json`) the unit was first answered under (the `_label` columns use each answer's own version): see `variables.csv` |
 | `device_id` | The device the unit was (last) answered on: see `devices.csv` |
 | `unit_ms_client` | Milliseconds the unit's questions were on screen, as the coder's browser measured them: see `timings.csv` |
 | `unit_ms_server` | Milliseconds from the server handing out the unit to its last answer |
@@ -149,7 +150,7 @@ units.
 
 ## variables.csv
 
-The codebook, as a table: a row per design version (`design_version_id`), question
+The codebook, as a table: a row per design version (`design_version`), question
 and option, with the `loop` the question is in (empty for questions asked
 once per coder), the `variable` name, its `type`, the `question` text, and
 the option's `value` and `label`. Questions without options, such as numbers,
@@ -215,7 +216,7 @@ d = (annotations
 | the unit as the coder saw it | `unit_version_id` |
 | the device an answer was given on | `device_id` in `devices.csv` |
 | response times to the answers | `unit_id`, `coder_id` and `variable` in `timings.csv` |
-| the labels of a design version | `design_version_id` and `variable` (and `value`) in `variables.csv` |
+| the labels of a design version | `design_version` and `variable` (and `value`) in `variables.csv` |
 | your own data (metadata not shown to coders) | `unit_id`, with the id column of your own file |
 
 ## More detail with scripts
