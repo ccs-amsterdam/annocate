@@ -11,15 +11,15 @@ import {
   useUpdateDesignVersionMutation,
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
-import { CodebookEditor, type CodebookEditorMode, type SaveFn } from "./CodebookEditor";
-import { CodebookStatusBanner } from "./CodebookStatusBanner";
-import { CodebookVersionsDialog } from "./CodebookVersionsDialog";
+import { DesignEditor, type DesignEditorMode, type SaveFn } from "./DesignEditor";
+import { DesignStatusBanner } from "./DesignStatusBanner";
+import { DesignVersionsDialog } from "./DesignVersionsDialog";
 import { DeployDialog } from "./DeployDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Loader2 } from "lucide-react";
-import { clearBackup, type CodebookBackup } from "../../design/localBackup";
+import { clearBackup, type DesignBackup } from "../../design/localBackup";
 
-interface CodebookManagerProps {
+interface DesignManagerProps {
   client: ResearcherApi;
   /** Callback to notify parent (AdminApp) if there are unsaved changes */
   onDirtyChange?: (isDirty: boolean) => void;
@@ -28,23 +28,23 @@ interface CodebookManagerProps {
   /** Version to open first (e.g. from the overview); null opens the current version. */
   initialVersionId?: number | null;
   /** Unsaved edits from an earlier session to continue with (localBackup.ts): opens their version. */
-  restore?: CodebookBackup | null;
+  restore?: DesignBackup | null;
 }
 
 /**
- * The codebook tab: one editor on the current version, a banner saying how it
+ * The Codebook tab (the design editor): one editor on the current version, a banner saying how it
  * relates to what coders use, and the versions dialog.
  *
  * Versions (docs/client.md §7): coders get the *live* version
- * (the deployment's codebook), the editor works on the *draft* (the latest
+ * (the deployment's design version), the editor works on the *draft* (the latest
  * version, if not yet deployed), and everything else is read-only history.
  * Deploying makes the draft live, which also freezes it.
  */
-export function CodebookManager({ client, onDirtyChange, registerSave, initialVersionId = null, restore = null }: CodebookManagerProps) {
-  const codebooksQuery = useDesignVersionsQuery(client);
+export function DesignManager({ client, onDirtyChange, registerSave, initialVersionId = null, restore = null }: DesignManagerProps) {
+  const designVersionsQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
-  const codebooks = codebooksQuery.data ?? [];
-  const versions = describeVersions(codebooks, deploymentQuery.data?.designVersionId ?? null);
+  const designVersions = designVersionsQuery.data ?? [];
+  const versions = describeVersions(designVersions, deploymentQuery.data?.designVersionId ?? null);
 
   // The version shown in the editor; null follows the current version (draft, else latest)
   const [selectedId, setSelectedId] = useState<number | null>(restore ? restore.designVersionId : initialVersionId);
@@ -98,16 +98,16 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
 
   // An id that isn't listed yet was just created: it's the new current version
   const isListed = openId !== null && versions.numberOf(openId) !== null;
-  const openCodebook = openId === null ? null : (openQuery.data ?? null);
-  const mode: CodebookEditorMode =
+  const openVersion = openId === null ? null : (openQuery.data ?? null);
+  const mode: DesignEditorMode =
     openId === null
       ? "draft"
       : isListed && openId !== versions.currentId
         ? "history"
-        : openCodebook?.immutable
+        : openVersion?.immutable
           ? "live"
           : "draft";
-  const openNumber = openId === null ? null : (versions.numberOf(openId) ?? codebooks.length + 1);
+  const openNumber = openId === null ? null : (versions.numberOf(openId) ?? designVersions.length + 1);
   const liveNumber = versions.liveId === null ? null : versions.numberOf(versions.liveId);
   const draftNumber = versions.draftId === null ? null : versions.numberOf(versions.draftId);
 
@@ -143,7 +143,7 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
     if (versions.draftId === null) return;
     const message =
       `Delete draft v${draftNumber}? Everything saved in it since v${liveNumber ?? draftNumber} is deleted, ` +
-      `for everyone who edits this codebook. This can't be undone.` +
+      `for everyone who edits this design. This can't be undone.` +
       (isDirty && openId === versions.draftId ? " Your unsaved changes are lost too." : "");
     if (!confirm(message)) return;
     try {
@@ -159,11 +159,11 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
     setEditorEpoch((n) => n + 1);
   }
 
-  if (codebooksQuery.isLoading || deploymentQuery.isLoading || (openId !== null && !openCodebook)) {
+  if (designVersionsQuery.isLoading || deploymentQuery.isLoading || (openId !== null && !openVersion)) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        Loading codebook...
+        Loading design...
       </div>
     );
   }
@@ -171,17 +171,17 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex-1 overflow-hidden">
-        <CodebookEditor
+        <DesignEditor
           key={`${openId ?? "new"}:${editorEpoch}`}
           client={client}
-          codebook={openCodebook}
+          version={openVersion}
           mode={mode}
           registerSave={(save) => {
             saveRef.current = save;
             registerSave?.(save);
           }}
           banner={
-            <CodebookStatusBanner
+            <DesignStatusBanner
               mode={mode}
               openNumber={openNumber}
               liveNumber={liveNumber}
@@ -207,10 +207,10 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
         />
       </div>
 
-      <CodebookVersionsDialog
+      <DesignVersionsDialog
         open={versionsDialogOpen}
         onClose={() => setVersionsDialogOpen(false)}
-        codebooks={codebooks}
+        designVersions={designVersions}
         versions={versions}
         openId={openId}
         onView={viewVersion}
@@ -222,18 +222,18 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
         key={toPublish?.id ?? "closed"}
         client={client}
         open={toPublish !== null}
-        codebook={toPublish}
-        versionNumber={toPublish ? (versions.numberOf(toPublish.id) ?? codebooks.length + 1) : 0}
+        version={toPublish}
+        versionNumber={toPublish ? (versions.numberOf(toPublish.id) ?? designVersions.length + 1) : 0}
         live={versions.liveId !== null ? (liveQuery.data ?? null) : null}
         liveNumber={liveNumber}
-        onDeploy={async (codebook, note, units) => {
-          if (codebook && note !== (codebook.note ?? "")) {
+        onDeploy={async (version, note, units) => {
+          if (version && note !== (version.note ?? "")) {
             // Based on the saved revision; the editor reloads after (its revision is now old), deploy or not
-            const updated = await updateDesignVersion.mutateAsync({ id: codebook.id, body: { note: note || undefined, items: codebook.items, revision: codebook.revision } });
+            const updated = await updateDesignVersion.mutateAsync({ id: version.id, body: { note: note || undefined, items: version.items, revision: version.revision } });
             setToPublish(updated);
             setEditorEpoch((n) => n + 1);
           }
-          const designVersionId = codebook?.id ?? versions.liveId!;
+          const designVersionId = version?.id ?? versions.liveId!;
           let deployment;
           try {
             deployment = await publish.mutateAsync({ designVersionId, units });
@@ -242,7 +242,7 @@ export function CodebookManager({ client, onDirtyChange, registerSave, initialVe
             if (!(err instanceof ResearcherApiError && err.code === "confirm_links") || !confirm(err.reason)) throw err;
             deployment = await publish.mutateAsync({ designVersionId, units, confirmLinks: true });
           }
-          if (codebook) setSelectedId(null);
+          if (version) setSelectedId(null);
           return deployment;
         }}
         onClose={() => setToPublish(null)}

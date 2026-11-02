@@ -4,9 +4,9 @@ import {
   designItems,
   splitSession,
   DesignConflictSchema,
-  validateCodebookItems,
+  validateDesignItems,
   type DesignConflict,
-  type CodebookItem,
+  type DesignItem,
   type DesignVersion,
   type TopLevelItem,
 } from "@annotinder/contracts";
@@ -27,21 +27,21 @@ import { findItem } from "../../../codebook/tree";
 import { carryKeys } from "../../../design/itemShape";
 import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../design/editHistory";
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
-import { clearBackup, writeBackup, type CodebookBackup } from "../../../design/localBackup";
+import { clearBackup, writeBackup, type DesignBackup } from "../../../design/localBackup";
 
 /** Unsaved edits are copied to the browser's storage this long after the last change. */
 const BACKUP_DELAY_MS = 1000;
 import { defaultItemForType } from "../ItemForm";
-import type { ItemType } from "../codebookTree/utils";
+import type { ItemType } from "../designTree/utils";
 
-interface UseCodebookDraftOptions {
+interface UseDesignDraftOptions {
   client: ResearcherApi;
-  /** The version being edited; null/undefined for a new codebook. */
-  codebook?: DesignVersion | null;
+  /** The version being edited; null/undefined for a new design version. */
+  version?: DesignVersion | null;
   readOnly: boolean;
-  onSaved: (codebook: DesignVersion) => void;
+  onSaved: (version: DesignVersion) => void;
   /** Unsaved edits of this version from an earlier session (localBackup.ts), to continue with. */
-  restore?: CodebookBackup | null;
+  restore?: DesignBackup | null;
 }
 
 /**
@@ -50,19 +50,19 @@ interface UseCodebookDraftOptions {
  * tracking (per item, with revert), undo/redo, and saving (with a check
  * that nobody else saved meanwhile).
  *
- * State is initialised from `codebook` once: mount the editor with a `key`
- * per version (CodebookManager does) to start over for another version.
+ * State is initialised from `version` once: mount the editor with a `key`
+ * per version (DesignManager does) to start over for another version.
  */
-export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore }: UseCodebookDraftOptions) {
+export function useDesignDraft({ client, version, readOnly, onSaved, restore }: UseDesignDraftOptions) {
   const [items, setItemsState] = useState<TopLevelItem[]>(() =>
     // The session is edited as the first item (contracts designItems), stored next to the items
-    restore ? ensureKeys(restore.items) : ensureKeys(codebook ? (designItems(codebook) as TopLevelItem[]) : []),
+    restore ? ensureKeys(restore.items) : ensureKeys(version ? (designItems(version) as TopLevelItem[]) : []),
   );
   const [selected, setSelected] = useState<string | null>(null);
   // The items as last saved (with the same keys), to tell what changed and to revert to
   const [saved, setSaved] = useState<TopLevelItem[]>(() => (restore ? ensureKeys(restore.saved) : items));
   // The saved revision the edits are based on (contracts DesignWriteSchema `revision`)
-  const [revision, setRevision] = useState<number | undefined>(restore ? restore.revision : codebook?.revision);
+  const [revision, setRevision] = useState<number | undefined>(restore ? restore.revision : version?.revision);
   const [history, setHistory] = useState(() => emptyHistory<TopLevelItem[]>());
   const [conflict, setConflict] = useState<DesignConflict | null>(null);
 
@@ -76,7 +76,7 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
   // Plus the unit fields it uses that the design doesn't declare (docs/plans/design.md §3)
   const declared = useUnitFieldsQuery(client).data;
   const validationIssues = useMemo(() => {
-    const issues = validateCodebookItems(cleanItems);
+    const issues = validateDesignItems(cleanItems);
     const undeclared = declared ? undeclaredFields(cleanItems, declared) : [];
     if (undeclared.length === 0) return issues;
     const message = `Uses unit fields the design doesn't declare: ${undeclared.join(", ")}. Upload units with them, or declare them on the Units page.`;
@@ -92,7 +92,7 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
   useWarnBeforeUnload(dirty);
 
   // A copy of unsaved edits in the browser, in case it closes (localBackup.ts)
-  const backupOf = useMemo(() => ({ jobId: client.jobId ?? 0, designVersionId: codebook?.id ?? null }), [client.jobId, codebook?.id]);
+  const backupOf = useMemo(() => ({ jobId: client.jobId ?? 0, designVersionId: version?.id ?? null }), [client.jobId, version?.id]);
   useEffect(() => {
     if (readOnly) return;
     if (!dirty) {
@@ -162,12 +162,12 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
     return true;
   }
 
-  /** Items (topmost selected, in codebook order) moved to a position. */
+  /** Items (topmost selected, in design order) moved to a position. */
   function move(keys: string[], position: TreePosition) {
     setItems(moveAllTo(items, keys, position));
   }
 
-  function update(key: string, next: CodebookItem) {
+  function update(key: string, next: DesignItem) {
     // Keep the client-side key, so the item stays selected
     setItems(updateItem(items, key, Object.assign({}, next, { _key: key })));
   }
@@ -188,10 +188,10 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
     try {
       // A frozen (live) version is never overwritten: its changes become a new draft
       const result =
-        codebook && !codebook.immutable
+        version && !version.immutable
           ? await updateDesignVersion.mutateAsync({
-              id: codebook.id,
-              body: { note: codebook.note ?? undefined, ...splitSession(cleanItems), revision: overwrite ? undefined : revision },
+              id: version.id,
+              body: { note: version.note ?? undefined, ...splitSession(cleanItems), revision: overwrite ? undefined : revision },
             })
           : await createDesignVersion.mutateAsync(splitSession(cleanItems));
       setSaved(sent);
@@ -243,7 +243,7 @@ export function useCodebookDraft({ client, codebook, readOnly, onSaved, restore 
   };
 }
 
-export type CodebookDraft = ReturnType<typeof useCodebookDraft>;
+export type DesignDraft = ReturnType<typeof useDesignDraft>;
 
 /** Asks the browser to confirm closing or reloading the tab while there are unsaved changes. */
 function useWarnBeforeUnload(active: boolean) {

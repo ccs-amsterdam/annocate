@@ -17,9 +17,9 @@ export const UnitChangesSchema = z.object({
 });
 export type UnitChanges = z.infer<typeof UnitChangesSchema>;
 
-/** What a deployed version changed: the codebook, and the units (null: kept). */
+/** What a deployed version changed: the design version, and the units (null: kept). */
 export const DeploymentChangesSchema = z.object({
-  codebook: z.boolean(),
+  design: z.boolean(),
   units: UnitChangesSchema.nullable(),
 });
 export type DeploymentChanges = z.infer<typeof DeploymentChangesSchema>;

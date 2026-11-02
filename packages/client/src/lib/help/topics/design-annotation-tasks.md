@@ -150,7 +150,7 @@ set up the overlap, see
 
 You can keep improving the codebook while coding runs, but each change makes
 the data harder to interpret. See
-[Changing a design while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-design.md).
 
 ## Order and fatigue
 

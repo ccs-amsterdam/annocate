@@ -1,11 +1,11 @@
-import { itemName, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
+import { itemName, type DesignItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
 import { positionInLoop, type TreePosition } from "../../../design/itemEdit";
 
 export type TreeNode = TopLevelItem | InLoopItem;
-export type ItemType = CodebookItem["type"];
+export type ItemType = DesignItem["type"];
 
 /** Stable identifier of an item: the client-side `_key`, falling back to its name. */
-export function getItemKey(item: CodebookItem): string {
+export function getItemKey(item: DesignItem): string {
   return (item as { _key?: string })._key || itemName(item) || "";
 }
 

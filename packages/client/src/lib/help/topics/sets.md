@@ -116,7 +116,7 @@ the same. A running study should not change because someone uploaded more
 material, and when you report the study, the sets say exactly which units
 were coded by whom. The design names groups and sets, but which units are
 in them is your data, not part of the design (see
-[A design describes a process](design-reproducible-codebooks.md)).
+[A design describes a process](design-reproducible.md)).
 
 *All units*, on the other hand, grows when you upload and deploy more units,
 also while coding runs.

@@ -58,7 +58,7 @@ export const JobFromExampleSchema = z.object({
 export type JobFromExample = z.infer<typeof JobFromExampleSchema>;
 
 /**
- * A "job user" manages the job (create/edit codebooks, units, link
+ * A "job user" manages the job (create/edit design versions, units, link
  * coders, ...). Distinct from a "coder", who annotates via a link/access
  * link (see coder.ts). Whole-resource replace via `PUT /job/:id/users`.
  */

@@ -146,7 +146,7 @@ A unit is **finished** for a coder when every question of its loop in the
 live design version has an answer, or was skipped by a condition. This matters
 when you change a live design: adding a question to a loop makes units
 that coders had finished unfinished again until they answer it (see
-[Changing a design while coding runs](changing-a-live-codebook.md)).
+[Changing a design while coding runs](changing-a-live-design.md)).
 
 ## Previews don't count
 

@@ -98,7 +98,7 @@ News articles      the unit loop
   └ tone           ordinal: negative (1), neutral (2), positive (3)
 ```
 
-See [The codebook editor](codebook-editor.md) and
+See [The codebook editor](design-editor.md) and
 [Questions](questions.md) for everything the editor can do.
 
 ## 4. Say how a unit is shown

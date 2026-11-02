@@ -7,22 +7,22 @@
 
 export * from "./common.js";
 
-export * from "./codebook/options.js";
-export * from "./codebook/variableTypes.js";
-export * from "./codebook/references.js";
-export * from "./codebook/templateBlocks.js";
-export * from "./codebook/snippets.js";
-export * from "./codebook/condition.js";
-export * from "./codebook/layout.js";
-export * from "./codebook/answerLayout.js";
-export * from "./codebook/unitLoop.js";
-export * from "./codebook/session.js";
-export * from "./codebook/item.js";
-export * from "./codebook/shownFields.js";
-export * from "./codebook/validation.js";
-export * from "./codebook/answers.js";
-export * from "./codebook/codebook.js";
-export * from "./codebook/jsonSchema.js";
+export * from "./design/options.js";
+export * from "./design/variableTypes.js";
+export * from "./design/references.js";
+export * from "./design/templateBlocks.js";
+export * from "./design/snippets.js";
+export * from "./design/condition.js";
+export * from "./design/layout.js";
+export * from "./design/answerLayout.js";
+export * from "./design/unitLoop.js";
+export * from "./design/session.js";
+export * from "./design/item.js";
+export * from "./design/shownFields.js";
+export * from "./design/validation.js";
+export * from "./design/answers.js";
+export * from "./design/designVersion.js";
+export * from "./design/jsonSchema.js";
 
 export * from "./unit.js";
 export * from "./unitFields.js";
@@ -43,4 +43,4 @@ export * from "./endpoints/index.js";
 
 export const CONTRACTS_VERSION = "0.1.0";
 export * from "./frame.js";
-export * from "./codebook/coderCodebook.js";
+export * from "./design/coderCodebook.js";

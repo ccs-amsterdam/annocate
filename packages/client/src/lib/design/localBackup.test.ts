@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearBackup, readBackup, writeBackup, type CodebookBackup } from "./localBackup";
+import { clearBackup, readBackup, writeBackup, type DesignBackup } from "./localBackup";
 
 const store = new Map<string, string>();
 let full = false;
@@ -16,7 +16,7 @@ beforeEach(() => {
   } as Storage;
 });
 
-const backup = (jobId: number, designVersionId: number | null): CodebookBackup => ({ jobId, designVersionId, revision: 2, items: [], saved: [], at: 1 });
+const backup = (jobId: number, designVersionId: number | null): DesignBackup => ({ jobId, designVersionId, revision: 2, items: [], saved: [], at: 1 });
 
 describe("local backup", () => {
   it("keeps one backup, cleared only by its own codebook", () => {

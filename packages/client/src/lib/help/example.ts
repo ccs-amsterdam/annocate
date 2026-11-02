@@ -89,7 +89,7 @@ function exampleQuestion(alternatives: (string | number | null)[]): AnyVariableT
  * before a loop (those in `steps` in the loop, in that order, the other
  * steps as confirm questions), and the template as the loop's layout.
  */
-export function exampleCodebook(data: HelpExampleData): unknown[] {
+export function exampleDesign(data: HelpExampleData): unknown[] {
   const question = (name: string, variable: AnyVariableType) => ({ type: "question", name, variable });
   const confirm = { type: "confirm", question: "?" } as AnyVariableType;
   return [

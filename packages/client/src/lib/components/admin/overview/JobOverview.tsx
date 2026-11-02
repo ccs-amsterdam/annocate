@@ -25,7 +25,7 @@ interface JobOverviewProps {
   client: ResearcherApi;
   onNavigate: (tab: OverviewTarget) => void;
   /** Opens the Codebook tab on this version. */
-  onOpenCodebook: (versionId: number) => void;
+  onOpenDesign: (versionId: number) => void;
 }
 
 /**
@@ -33,16 +33,16 @@ interface JobOverviewProps {
  * design versions are live and in draft, units, coders, activity and
  * progress. The job's settings are on their own tab (`JobSettingsPage`).
  */
-export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewProps) {
+export function JobOverview({ client, onNavigate, onOpenDesign }: JobOverviewProps) {
   const overviewQuery = useOverviewQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
-  const codebooksQuery = useDesignVersionsQuery(client);
+  const designVersionsQuery = useDesignVersionsQuery(client);
   const linksQuery = useLinksQuery(client);
   const deployment = deploymentQuery.data ?? null;
   const statusQuery = useDeploymentStatusQuery(client, deployment !== null);
 
-  const codebooks = codebooksQuery.data ?? [];
-  const versions = describeVersions(codebooks, deployment?.designVersionId ?? null);
+  const designVersions = designVersionsQuery.data ?? [];
+  const versions = describeVersions(designVersions, deployment?.designVersionId ?? null);
   const overview = overviewQuery.data;
   const openLinks = (linksQuery.data ?? []).filter(
     (i) => !i.revokedAt && !i.retiredAt && (i.maxUses === undefined || i.uses < i.maxUses),
@@ -60,9 +60,9 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
             label="Live version"
             version={versions.liveId}
             number={versions.liveId !== null ? versions.numberOf(versions.liveId) : null}
-            note={codebooks.find((c) => c.id === versions.liveId)?.note ?? null}
+            note={designVersions.find((c) => c.id === versions.liveId)?.note ?? null}
             empty="None deployed"
-            onOpen={onOpenCodebook}
+            onOpen={onOpenDesign}
           />
           <VersionLink
             icon={FilePen}
@@ -71,7 +71,7 @@ export function JobOverview({ client, onNavigate, onOpenCodebook }: JobOverviewP
             number={versions.draftId !== null ? versions.numberOf(versions.draftId) : null}
             note={null}
             empty="No changes waiting to be deployed"
-            onOpen={onOpenCodebook}
+            onOpen={onOpenDesign}
           />
         </div>
       </Card>
@@ -271,7 +271,7 @@ function DeployHistory({ client, numberOf }: { client: ResearcherApi; numberOf: 
       <ol className="flex flex-col gap-1 text-sm">
         {versions.slice(0, 8).map((v) => {
           const parts = [
-            v.changes.codebook && `design v${numberOf(v.designVersionId) ?? "?"}`,
+            v.changes.design && `design v${numberOf(v.designVersionId) ?? "?"}`,
             v.changes.units && `units: ${describeUnitChanges(v.changes.units)}`,
           ].filter(Boolean);
           return (

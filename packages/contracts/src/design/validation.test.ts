@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TopLevelItemSchema, type TopLevelItem, type InLoopItem, type TopLevelQuestionItem, type InLoopQuestionItem } from "./item.js";
-import { availableQuestions, validateCodebookItems } from "./validation.js";
-import { CodebookItemsSchema } from "./codebook.js";
+import { availableQuestions, validateDesignItems } from "./validation.js";
+import { DesignItemsSchema } from "./designVersion.js";
 import type { Condition } from "./condition.js";
 
 const confirmVariable = { type: "confirm" as const, question: "Confirm?" };
@@ -25,20 +25,20 @@ const select = (values: string[], extra: object = {}) => ({
   options: values.map((value) => ({ value })),
   ...extra,
 });
-const messages = (items: unknown[]) => validateCodebookItems(items).map((i) => i.message);
+const messages = (items: unknown[]) => validateDesignItems(items).map((i) => i.message);
 
-describe("validateCodebookItems", () => {
+describe("validateDesignItems", () => {
   it("accepts a minimal valid tree codebook", () => {
     const items: TopLevelItem[] = [unitLoop("loop", [questionVar("q1")])];
-    expect(validateCodebookItems(items)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+    expect(validateDesignItems(items)).toEqual([]);
+    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
   });
 
   it("saves questions without an answer type, but reports them", () => {
     const items = [questionVar("age", { type: "unspecified" }), unitLoop("loop", [questionVar("topic", { type: "unspecified" })])];
     // A valid shape (a draft can be saved); not publishable
     expect(TopLevelItemSchema.array().safeParse(items).success).toBe(true);
-    expect(CodebookItemsSchema.safeParse(items).success).toBe(false);
+    expect(DesignItemsSchema.safeParse(items).success).toBe(false);
     expect(messages(items)).toEqual(["Question 'age' has no answer type yet: choose one", "Question 'topic' has no answer type yet: choose one"]);
   });
 
@@ -60,8 +60,8 @@ describe("validateCodebookItems", () => {
         { mode: "shared", set: { group: "pool", set: "main" }, until: { agree: 2, on: "q1" }, maxCoders: 4 },
       ]),
     ];
-    expect(validateCodebookItems(valid)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(valid)).not.toThrow();
+    expect(validateDesignItems(valid)).toEqual([]);
+    expect(() => DesignItemsSchema.parse(valid)).not.toThrow();
 
     const when = (value: string) => ({ script: `$var.slot.is("${value}")` });
     // variable defined after the loop
@@ -92,7 +92,7 @@ describe("validateCodebookItems", () => {
         children: [questionVar("q1")],
       },
     ];
-    expect(() => CodebookItemsSchema.parse(items)).toThrow(/Max coders is required/);
+    expect(() => DesignItemsSchema.parse(items)).toThrow(/Max coders is required/);
   });
 
   it("checks the settings of each mode", () => {
@@ -184,15 +184,15 @@ describe("the Session item", () => {
   });
 });
 
-describe("validateCodebookItems (more)", () => {
+describe("validateDesignItems (more)", () => {
   it("allows questions and condition items outside a unit_loop", () => {
     const items: TopLevelItem[] = [
       questionVar("consent"),
       topCondition("gate", [questionVar("followup")]),
       unitLoop("loop", [questionVar("q1")]),
     ];
-    expect(validateCodebookItems(items)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+    expect(validateDesignItems(items)).toEqual([]);
+    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
   });
 
   it("allows questions both inside and outside a unit_loop", () => {
@@ -208,8 +208,8 @@ describe("validateCodebookItems (more)", () => {
         }),
       ], "$unit.text"),
     ];
-    expect(validateCodebookItems(items)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+    expect(validateDesignItems(items)).toEqual([]);
+    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
   });
 
   it("rejects span question outside a unit_loop", () => {
@@ -222,17 +222,17 @@ describe("validateCodebookItems (more)", () => {
       }),
       unitLoop("loop", [questionVar("q1")]),
     ];
-    const issues = validateCodebookItems(items);
+    const issues = validateDesignItems(items);
     expect(issues.some((i) => i.message.includes("can only be used inside a unit_loop"))).toBe(true);
-    expect(() => CodebookItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(items)).toThrow();
   });
 
   it("allows condition items nested inside a unit_loop", () => {
     const items: TopLevelItem[] = [
       unitLoop("loop", [inLoopCondition("gate", [questionVar("q1")])]),
     ];
-    expect(validateCodebookItems(items)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+    expect(validateDesignItems(items)).toEqual([]);
+    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
   });
 
   it("rejects duplicate names across the entire tree", () => {
@@ -240,9 +240,9 @@ describe("validateCodebookItems (more)", () => {
       questionVar("dup_name"),
       unitLoop("loop", [questionVar("dup_name")]),
     ];
-    const issues = validateCodebookItems(items);
+    const issues = validateDesignItems(items);
     expect(issues.some((i) => i.message.includes("Duplicate name 'dup_name'"))).toBe(true);
-    expect(() => CodebookItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(items)).toThrow();
   });
 
   it("rejects a unit_loop with no children via schema", () => {
@@ -255,7 +255,7 @@ describe("validateCodebookItems (more)", () => {
         children: [],
       },
     ];
-    expect(() => CodebookItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(items)).toThrow();
   });
 
   it("rejects nested unit_loops via schema", () => {
@@ -276,16 +276,16 @@ describe("validateCodebookItems (more)", () => {
         ],
       },
     ];
-    expect(() => CodebookItemsSchema.parse(items)).toThrow();
+    expect(() => DesignItemsSchema.parse(items)).toThrow();
   });
 
-  it("detects empty and invalid names via validateCodebookItems", () => {
+  it("detects empty and invalid names via validateDesignItems", () => {
     const emptyNameItems: TopLevelItem[] = [questionVar("")];
-    const emptyIssues = validateCodebookItems(emptyNameItems);
+    const emptyIssues = validateDesignItems(emptyNameItems);
     expect(emptyIssues.some((i) => i.message.includes("cannot be empty"))).toBe(true);
 
     const invalidNameItems: TopLevelItem[] = [questionVar("invalid name with spaces!")];
-    const invalidIssues = validateCodebookItems(invalidNameItems);
+    const invalidIssues = validateDesignItems(invalidNameItems);
     expect(invalidIssues.some((i) => i.message.includes("contains invalid characters"))).toBe(true);
   });
 });
@@ -316,7 +316,7 @@ describe("reference validation", () => {
         { subject: "politics" },
       ),
     ];
-    expect(validateCodebookItems(items)).toEqual([]);
+    expect(validateDesignItems(items)).toEqual([]);
   });
 
   it("rejects unknown $names in scripts, once, but not $ in text", () => {
@@ -471,10 +471,10 @@ describe("reference validation", () => {
 });
 
 describe("question types", () => {
-  const parse = (variable: object) => CodebookItemsSchema.safeParse([questionVar("q", variable)]);
-  // What the editor shows (validateCodebookItems), checked against the schema.
+  const parse = (variable: object) => DesignItemsSchema.safeParse([questionVar("q", variable)]);
+  // What the editor shows (validateDesignItems), checked against the schema.
   const errorsOf = (variable: object) => {
-    const messages = validateCodebookItems([questionVar("q", variable)]).map((i) => i.message);
+    const messages = validateDesignItems([questionVar("q", variable)]).map((i) => i.message);
     expect(parse(variable).success).toBe(messages.length === 0);
     return messages;
   };
@@ -518,14 +518,14 @@ describe("end items", () => {
       }),
       unitLoop("l", [inLoopCondition("check", [end({ name: "fail", outcome: "complete" }) as never], { script: "$unit.x > 1" })]),
     ];
-    expect(validateCodebookItems(items)).toEqual([]);
-    expect(() => CodebookItemsSchema.parse(items)).not.toThrow();
+    expect(validateDesignItems(items)).toEqual([]);
+    expect(() => DesignItemsSchema.parse(items)).not.toThrow();
   });
 
   it("checks the redirect URL", () => {
     expect(messages([end({ redirectUrl: "panel.example/end" })])).toEqual(["The redirect URL must start with https:// (or http://)"]);
     expect(messages([end({ redirectUrl: "https://x/{{ 1 }}" })])).toEqual(["Redirect URLs can only use $var and $session references, not {{ }}"]);
-    expect(() => CodebookItemsSchema.parse([end({ outcome: "done" })])).toThrow();
+    expect(() => DesignItemsSchema.parse([end({ outcome: "done" })])).toThrow();
     // The session's values (participant id, required URL parameters) fit a panel's return link
     expect(messages([end({ redirectUrl: "https://panel.example/end?id=$session.participant" })])).toEqual([]);
   });

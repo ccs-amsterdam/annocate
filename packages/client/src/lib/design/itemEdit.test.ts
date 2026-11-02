@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { TopLevelItem, CodebookItem } from "@annotinder/contracts";
+import type { TopLevelItem, DesignItem } from "@annotinder/contracts";
 import {
   addPositions,
   canMoveAllTo,
@@ -22,11 +22,11 @@ import {
 import { flattenTree, keyOf } from "../codebook/tree";
 
 /** A condition; it has no name, so the tests identify it by its editor key. */
-function cond(key: string, children: CodebookItem[] = []): TopLevelItem {
+function cond(key: string, children: DesignItem[] = []): TopLevelItem {
   return { _key: key, type: "condition", condition: { script: "true" }, children: children as TopLevelItem[] } as TopLevelItem;
 }
 
-describe("codebookEdit", () => {
+describe("itemEdit", () => {
   describe("insertItem", () => {
     it("appends a new root item when parent is null", () => {
       const items: TopLevelItem[] = [cond("a")];
@@ -234,8 +234,8 @@ describe("codebookEdit", () => {
   });
 
   describe("positions, selections and moving several items", () => {
-    function q(name: string): CodebookItem {
-      return { type: "question", name, variable: { type: "confirm", question: "?" } } as CodebookItem;
+    function q(name: string): DesignItem {
+      return { type: "question", name, variable: { type: "confirm", question: "?" } } as DesignItem;
     }
     // a, loop[ c[ x ] ], b
     const tree = (): TopLevelItem[] => [

@@ -202,10 +202,10 @@ export type ConditionItem = Extract<TopLevelItem | InLoopItem, { type: "conditio
 /**
  * Any codebook item anywhere in the tree.
  */
-export type CodebookItem = TopLevelItem | InLoopItem;
+export type DesignItem = TopLevelItem | InLoopItem;
 
 /** An item's name; conditions have none. */
-export function itemName(item: CodebookItem): string | undefined {
+export function itemName(item: DesignItem): string | undefined {
   return item.type === "condition" || item.type === "unit_loop" || item.type === "session" ? undefined : item.name;
 }
 
@@ -221,7 +221,7 @@ export function unitLoops(items: readonly unknown[]): { key: string; loop: UnitL
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
-      const item = raw as Partial<CodebookItem> | null;
+      const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "unit_loop") loops.push({ key: String(loops.length + 1), loop: item as UnitLoopItem });
       else if (item.type === "condition") walk(item.children);

@@ -25,7 +25,7 @@ goes straight on to the next item after the condition.
 ## Adding a condition
 
 1. In the codebook tree, add an item of the type **Condition** where the
-   condition should go (see [The codebook editor](codebook-editor.md)).
+   condition should go (see [The codebook editor](design-editor.md)).
 2. Under **Show the items in this condition if**, set the rule (below).
 3. Add the items it governs *inside* the condition, or move existing items
    into it.

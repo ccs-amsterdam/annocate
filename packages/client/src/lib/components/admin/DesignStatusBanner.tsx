@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { CircleDot, FilePen, History, Sparkles } from "lucide-react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
-import type { CodebookEditorMode } from "./CodebookEditor";
+import type { DesignEditorMode } from "./DesignEditor";
 
-interface CodebookStatusBannerProps {
-  mode: CodebookEditorMode;
+interface DesignStatusBannerProps {
+  mode: DesignEditorMode;
   /** Version number of the opened codebook; null for a new, unsaved codebook. */
   openNumber: number | null;
   /** Version number of the live design version; null if nothing was deployed yet. */
@@ -20,14 +20,14 @@ interface CodebookStatusBannerProps {
  * Says which version is open, whether coders are using it, and what to do
  * to change it (docs/client.md §7).
  */
-export function CodebookStatusBanner({
+export function DesignStatusBanner({
   mode,
   openNumber,
   liveNumber,
   draftNumber,
   onRestore,
   onBackToCurrent,
-}: CodebookStatusBannerProps) {
+}: DesignStatusBannerProps) {
   const openIsLive = openNumber !== null && openNumber === liveNumber;
 
   if (openNumber === null) {

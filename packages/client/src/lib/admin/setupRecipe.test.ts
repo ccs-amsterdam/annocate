@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RecipeSchema, designItems, validateCodebookItems } from "@annotinder/contracts";
+import { RecipeSchema, designItems, validateDesignItems } from "@annotinder/contracts";
 import { DEFAULT_SETUP, defaultDistribution, parseQuestions, questionLists, setupProblems, setupRecipe, type SetupAnswers } from "./setupRecipe";
 
 const setupUnits = {
@@ -20,9 +20,9 @@ const setup = (patch: Partial<SetupAnswers>): SetupAnswers => ({
 /** The validation issues of a recipe's codebook, besides the questions to specify. */
 const otherIssues = (a: SetupAnswers) => {
   const recipe = RecipeSchema.parse(setupRecipe(a));
-  return validateCodebookItems(designItems(recipe.codebook)).filter((i) => !i.message.includes("no answer type yet"));
+  return validateDesignItems(designItems(recipe.design)).filter((i) => !i.message.includes("no answer type yet"));
 };
-const loopOf = (a: SetupAnswers) => (setupRecipe(a).codebook.items as { type: string; units?: unknown[]; layout?: { template: string } }[]).find((i) => i.type === "unit_loop")!;
+const loopOf = (a: SetupAnswers) => (setupRecipe(a).design.items as { type: string; units?: unknown[]; layout?: { template: string } }[]).find((i) => i.type === "unit_loop")!;
 
 describe("setup wizard recipes", () => {
   it("turn typed lines into question names, keeping the text as the question", () => {
@@ -72,7 +72,7 @@ describe("setup wizard recipes", () => {
       ["c", 2],
     ]);
     // The links: a link parameter with the group's sets
-    expect(recipe.codebook.session).toEqual({ params: [{ name: "set", kind: "link", values: { sets: "sets" } }] });
+    expect(recipe.design.session).toEqual({ params: [{ name: "set", kind: "link", values: { sets: "sets" } }] });
     expect(loopOf(a).units).toEqual([{ mode: "assign", group: "sets", from: { session: "set" }, overlap: { placement: "disabled" } }]);
   });
 
@@ -163,7 +163,7 @@ describe("setup wizard recipes", () => {
       ["control", 4],
       ["treatment", 6],
     ]);
-    const items = recipe.codebook.items as { name?: string; type: string }[];
+    const items = recipe.design.items as { name?: string; type: string }[];
     expect(items.map((i) => i.name ?? i.type)).toEqual(["condition", "age", "unit_loop", "any_comments"]);
     // A coder group per condition, coding its set
     expect(loopOf(a).units).toEqual([
@@ -182,10 +182,10 @@ describe("setup wizard recipes", () => {
   it("a survey alone, or an experiment alone (a survey with an experiment)", () => {
     const survey = setup({ parts: { annotate: false, survey: true, experiment: false }, units: null, questions: { before: ["age"], unit: [], after: [] } });
     expect(setupProblems(survey)).toEqual([]);
-    expect(setupRecipe(survey).codebook.items).toEqual([{ type: "question", name: "age", variable: { type: "unspecified" } }]);
+    expect(setupRecipe(survey).design.items).toEqual([{ type: "question", name: "age", variable: { type: "unspecified" } }]);
     const experiment = setup({ parts: { annotate: false, survey: false, experiment: true }, units: null, questions: { before: ["support"], unit: [], after: [] } });
     expect(otherIssues(experiment)).toEqual([]);
-    expect(setupRecipe(experiment).codebook.items).toHaveLength(2);
+    expect(setupRecipe(experiment).design.items).toHaveLength(2);
   });
 
   it("say what is missing or wrong", () => {

@@ -91,13 +91,13 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       setBusy("Loading design versions…");
       const ids = new Set(rows.flatMap((a) => (a.designVersionId === null ? [] : [a.designVersionId])));
       if (deployment) ids.add(deployment.designVersionId);
-      const codebooks = new Map<number, TopLevelItem[]>();
-      for (const id of ids) codebooks.set(id, (await client.getDesignVersion(id)).items as TopLevelItem[]);
+      const designVersions = new Map<number, TopLevelItem[]>();
+      for (const id of ids) designVersions.set(id, (await client.getDesignVersion(id)).items as TopLevelItem[]);
 
       const liveId = deployment?.designVersionId ?? null;
-      const order = questionOrder(liveId === null ? undefined : codebooks.get(liveId));
-      const nested = nestedQuestions(liveId === null ? undefined : codebooks.get(liveId));
-      const labels = withLabels ? new Labels(codebooks, liveId) : undefined;
+      const order = questionOrder(liveId === null ? undefined : designVersions.get(liveId));
+      const nested = nestedQuestions(liveId === null ? undefined : designVersions.get(liveId));
+      const labels = withLabels ? new Labels(designVersions, liveId) : undefined;
       const now = new Date();
       const zip = zipSync({
         "README.txt": strToU8(readme(name, now, withLabels, spreadsheetSafe)),
@@ -107,7 +107,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "timings.csv": strToU8(toCsv(timingsTable(annotations, coderList), spreadsheetSafe)),
         "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions), spreadsheetSafe)),
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()), spreadsheetSafe)),
-        "variables.csv": strToU8(toCsv(variablesTable(codebooks), spreadsheetSafe)),
+        "variables.csv": strToU8(toCsv(variablesTable(designVersions), spreadsheetSafe)),
         ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels), spreadsheetSafe)) } : {}),
       });
       save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");

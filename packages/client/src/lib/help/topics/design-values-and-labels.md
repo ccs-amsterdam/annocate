@@ -108,7 +108,7 @@ warns about value changes before you confirm:
 
 After deploying, AnnoTinder may also tell you that a loop *gained questions*:
 coders get the units they finished back, to answer only the new questions.
-See [Changing a design while coding runs](changing-a-live-codebook.md).
+See [Changing a design while coding runs](changing-a-live-design.md).
 
 ## When the meaning changes, make a new question
 

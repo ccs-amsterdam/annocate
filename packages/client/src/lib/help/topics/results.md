@@ -222,7 +222,7 @@ d = (annotations
 
 The download has the answers as they are now. With **Include answers that
 were reset** it also has `reset_answers.csv`: the answers a researcher reset
-(see [Resetting answers](changing-a-live-codebook.md#resetting-answers)), a
+(see [Resetting answers](changing-a-live-design.md#resetting-answers)), a
 row per answer with when it was given (`answered`) and reset (`reset_at`).
 
 Scripts can get the same data from the API, also only what is new since

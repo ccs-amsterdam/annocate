@@ -1,6 +1,6 @@
 import {
   UnitsSpecSchema,
-  codebookErrors,
+  designErrors,
   designItems,
   type DesignVersionMeta,
   type DesignVersion,
@@ -30,24 +30,24 @@ function storedItems(row: Pick<DesignVersionRow, "items">): TopLevelItem[] {
 }
 
 /** A stored codebook's session (docs/plans/design.md §2). */
-export function codebookSession(row: Pick<DesignVersionRow, "session">): SessionSpec | null {
+export function designVersionSession(row: Pick<DesignVersionRow, "session">): SessionSpec | null {
   return (row.session as SessionSpec | null) ?? null;
 }
 
 /** A stored codebook's items with its session as the first item: what validation, links and the runtime work on. */
-export function codebookItems(row: Pick<DesignVersionRow, "items" | "session">): TopLevelItem[] {
-  return designItems({ items: storedItems(row), session: codebookSession(row) }) as TopLevelItem[];
+export function designVersionItems(row: Pick<DesignVersionRow, "items" | "session">): TopLevelItem[] {
+  return designItems({ items: storedItems(row), session: designVersionSession(row) }) as TopLevelItem[];
 }
 
 /** A stored codebook's unit fields (docs/plans/design.md §3). */
-export function codebookUnits(row: Pick<DesignVersionRow, "units">): UnitsSpec {
+export function designVersionUnits(row: Pick<DesignVersionRow, "units">): UnitsSpec {
   const parsed = UnitsSpecSchema.safeParse(row.units);
   return parsed.success ? parsed.data : { fields: [] };
 }
 
 /** Whether the items pass validation, as required to deploy or preview them. */
 export function itemsValid(items: unknown[]): boolean {
-  return items.length > 0 && codebookErrors(items).length === 0;
+  return items.length > 0 && designErrors(items).length === 0;
 }
 
 export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
@@ -59,11 +59,11 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
     updatedBy: row.updated_by,
     revision: row.revision,
     immutable: row.immutable,
-    valid: itemsValid(codebookItems(row)),
+    valid: itemsValid(designVersionItems(row)),
   };
 }
 
 /** A stored codebook as served. */
 export function toDesignVersion(row: DesignVersionRow): DesignVersion {
-  return { ...toDesignVersionMeta(row), jobId: row.job_id, items: storedItems(row), units: codebookUnits(row), session: codebookSession(row) };
+  return { ...toDesignVersionMeta(row), jobId: row.job_id, items: storedItems(row), units: designVersionUnits(row), session: designVersionSession(row) };
 }

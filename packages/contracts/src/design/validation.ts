@@ -1,4 +1,4 @@
-import { TopLevelItemSchema, loopTitle, unitLoops, type CodebookItem } from "./item.js";
+import { TopLevelItemSchema, loopTitle, unitLoops, type DesignItem } from "./item.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { BUILTIN_SET_SOURCES, CHECKABLE_TYPES, goldColumn, practiceColumn, practiceMessageColumn, supportsAgreement, type UnitBranch } from "./unitLoop.js";
@@ -18,7 +18,7 @@ import {
   type ReferenceShape,
 } from "./references.js";
 
-export interface CodebookValidationIssue {
+export interface DesignIssue {
   path: (string | number)[];
   message: string;
   /** A warning doesn't block saving. */
@@ -27,7 +27,7 @@ export interface CodebookValidationIssue {
 
 type Path = (string | number)[];
 /** An item as stored: any field may be missing; conditions have no name. */
-type RawItem = Partial<CodebookItem> & { name?: string };
+type RawItem = Partial<DesignItem> & { name?: string };
 
 /** Where references are checked, and what they may refer to there. */
 interface RefContext {
@@ -63,13 +63,13 @@ interface RefContext {
  * In simple conditions (condition.ts) the helper arguments are checked too.
  * Script syntax isn't checked here (no JS engine); the admin editor does that.
  */
-export function validateCodebookItems(items: unknown[]): CodebookValidationIssue[] {
+export function validateDesignItems(items: unknown[]): DesignIssue[] {
   return [...schemaIssues(items), ...semanticIssues(items)];
 }
 
 /** Zod schema validation of each item. */
-function schemaIssues(items: unknown[]): CodebookValidationIssue[] {
-  const issues: CodebookValidationIssue[] = [];
+function schemaIssues(items: unknown[]): DesignIssue[] {
+  const issues: DesignIssue[] = [];
   for (let i = 0; i < items.length; i++) {
     const result = TopLevelItemSchema.safeParse(items[i]);
     if (!result.success) {
@@ -102,9 +102,9 @@ function flattenUnions(issues: readonly RawIssue[], prefix: (string | number)[] 
     return flattenUnions(best, path);
   });
 }
-/** What the item schemas can't check: names, structure, references (see validateCodebookItems). */
-export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
-  const issues: CodebookValidationIssue[] = [];
+/** What the item schemas can't check: names, structure, references (see validateDesignItems). */
+export function semanticIssues(items: unknown[]): DesignIssue[] {
+  const issues: DesignIssue[] = [];
   const { questions, loopOf } = collectQuestions(items);
   /** Loop key -> how messages call it. */
   const loopTitles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)]));
@@ -578,8 +578,8 @@ export function callArgumentProblems(variable: AnyVariableType, call: Pick<Simpl
 }
 
 /** Validation errors only (warnings left out): what blocks saving a codebook. */
-export function codebookErrors(items: unknown[]): CodebookValidationIssue[] {
-  return validateCodebookItems(items).filter((i) => !i.warning);
+export function designErrors(items: unknown[]): DesignIssue[] {
+  return validateDesignItems(items).filter((i) => !i.warning);
 }
 
 /** Every question in the tree (name -> type), and the key of the loop it is in (`unitLoops`; null: coder-level). */

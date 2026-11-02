@@ -1,12 +1,12 @@
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   type AnyVariableType,
-  type CodebookItem,
+  type DesignItem,
   type Condition,
   type UnitLoopItem,
   type SessionItem,
   type SetGroupResponse,
-  type CodebookValidationIssue,
+  type DesignIssue,
   type EndItem,
 } from "@annotinder/contracts";
 import { cn } from "cn";
@@ -40,7 +40,7 @@ const TYPE_HELP: Record<AnyVariableType["type"], string> = {
   unspecified: "question-types",
 };
 
-export function defaultItemForType(type: CodebookItem["type"], name: string): CodebookItem {
+export function defaultItemForType(type: DesignItem["type"], name: string): DesignItem {
   switch (type) {
     case "question":
       return {
@@ -48,7 +48,7 @@ export function defaultItemForType(type: CodebookItem["type"], name: string): Co
         name,
         // The answer type is chosen in the form ("to specify" until then).
         variable: { type: "unspecified" },
-      } as CodebookItem;
+      } as DesignItem;
     case "unit_loop":
       // Like a condition, a new loop starts empty: its questions are added in
       // the tree. Which units coders get is chosen in its form ("to specify" until then).
@@ -57,13 +57,13 @@ export function defaultItemForType(type: CodebookItem["type"], name: string): Co
         units: [],
         layout: { template: "" },
         children: [],
-      } as CodebookItem;
+      } as DesignItem;
     case "condition":
       return {
         type: "condition",
         condition: { script: "true" },
         children: [],
-      } as CodebookItem;
+      } as DesignItem;
     case "end":
       return { type: "end", name, outcome: "screenout" };
     case "session":
@@ -88,7 +88,7 @@ export function ItemForm({
   screenouts = [],
   onChange,
 }: {
-  item: CodebookItem;
+  item: DesignItem;
   /** For "Generate sets…" in a loop's form. */
   client?: ResearcherApi;
   /** The job's set groups (loops' sets, session parameters with a group's sets). */
@@ -107,11 +107,11 @@ export function ItemForm({
   /** For a question in a loop: the names its layout shows ("Show field"), and what span questions can select in. */
   loopNames?: { shown: string[]; selectable: string[] };
   readOnly?: boolean;
-  validationIssues?: CodebookValidationIssue[];
+  validationIssues?: DesignIssue[];
   isInsideLoop?: boolean;
   /** The codebook's screen-out end items (a loop's gold checks can end there). */
   screenouts?: string[];
-  onChange: (updated: CodebookItem) => void;
+  onChange: (updated: DesignItem) => void;
 }) {
   const getFieldError = (field: string) => {
     const issue = validationIssues.find((i) => i.path.includes(field));
@@ -168,7 +168,7 @@ export function ItemForm({
               )}
               value={item.variable.type}
               onChange={(e) =>
-                onChange({ ...item, variable: switchVariableType(item.variable, e.target.value as AnyVariableType["type"]) } as CodebookItem)
+                onChange({ ...item, variable: switchVariableType(item.variable, e.target.value as AnyVariableType["type"]) } as DesignItem)
               }
             >
               {item.variable.type === "unspecified" && (
@@ -188,13 +188,13 @@ export function ItemForm({
             unitVariableNames={unitVariableNames}
             layoutFields={isInsideLoop ? loopNames?.selectable : undefined}
             stratifyChoices={[...availableQuestions.map((q) => q.name), ...sessionValueNames.map((n) => `session.${n}`)]}
-            onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
+            onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
           />
           {isInsideLoop && loopNames && (
             <FocusSelect
               variable={item.variable}
               loopIds={loopNames.shown}
-              onChange={(variable) => onChange({ ...item, variable } as CodebookItem)}
+              onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
             />
           )}
           {/* Reference problems in the question and instruction texts, and others about the answer type */}
@@ -229,7 +229,7 @@ export function ItemForm({
           </span>
           <ConditionEditor
             condition={(item as { condition: Condition }).condition ?? { script: "true" }}
-            onChange={(condition) => onChange({ ...item, condition } as CodebookItem)}
+            onChange={(condition) => onChange({ ...item, condition } as DesignItem)}
             questions={availableQuestions}
             loop={inLoop}
             issues={issuesAt(validationIssues, "condition")}
@@ -247,8 +247,8 @@ function EndItemFields({
   issues,
 }: {
   item: EndItem;
-  onChange: (updated: CodebookItem) => void;
-  issues: CodebookValidationIssue[];
+  onChange: (updated: DesignItem) => void;
+  issues: DesignIssue[];
 }) {
   return (
     <div className="flex flex-col gap-3 border-t border-border/60 pt-4">

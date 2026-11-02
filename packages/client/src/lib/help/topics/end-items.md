@@ -35,7 +35,7 @@ End: done                 complete, back to the panel
 ## Adding an end item
 
 Click the **+** in the codebook tree where the session should end, and
-choose **End** (see [Adding items](codebook-editor.md#adding-items)). It has
+choose **End** (see [Adding items](design-editor.md#adding-items)). It has
 these fields:
 
 | Field | What it does |

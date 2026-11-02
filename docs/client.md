@@ -220,7 +220,7 @@ A template is read in two steps: first the **text is put together**
 
 ### Options: a value and a label
 
-Every option is `{ value, label?, color? }` (`contracts/src/codebook/options.ts`),
+Every option is `{ value, label?, color? }` (`contracts/src/design/options.ts`),
 as in SPSS or Stata value labels:
 
 - **The value** is what is stored, compared in conditions and exported.
@@ -266,7 +266,7 @@ one type). Nominal and ordinal share their answer form
 
 `layout: "auto"` (the default) is fixed per question, not per device, so
 every coder sees the same form and devices don't become a mode effect.
-`resolveLayout` (`contracts/src/codebook/answerLayout.ts`) picks it for the
+`resolveLayout` (`contracts/src/design/answerLayout.ts`) picks it for the
 smallest phones (about 360 px wide) within half such a screen's height; the
 editor shows what `auto` picks, and `layoutWarning` warns when a chosen
 layout doesn't fit. Buttons are about 40 px tall.
@@ -370,7 +370,7 @@ the server is only told the chosen branch (`architecture.md` §6.1).
 
 One reference syntax is used everywhere: scripts, templates, question and
 instruction texts, conditions and redirect links
-(`contracts/src/codebook/references.ts`). The name says the shape:
+(`contracts/src/design/references.ts`). The name says the shape:
 
 | Reference | Meaning | Questions |
 | --- | --- | --- |
@@ -407,7 +407,7 @@ matches the ordinal value `2`. `applyHelper` (contracts) is the TypeScript
 implementation; `HELPER_PRELUDE` adds the same methods to `$var` inside
 QuickJS; a client test checks that both agree.
 
-A **condition** (`contracts/src/codebook/condition.ts`) is a script, used by
+A **condition** (`contracts/src/design/condition.ts`) is a script, used by
 `condition` items and unit loop branch `when`; truthy = holds:
 
 ```yaml
@@ -422,7 +422,7 @@ condition:
 - Anything else is an **advanced** script, run in QuickJS with the same
   references and helpers, e.g. `$var.age.gte(18) && $unit.source !== "blog"`.
 
-**Validation** (`validateCodebookItems`) walks the codebook in document
+**Validation** (`validateDesignItems`) walks the codebook in document
 order and checks every reference in scripts, templates and texts: the
 question exists and comes before this point (not the question itself, not
 inside the condition's own children, not in another loop); the property or
@@ -475,10 +475,10 @@ from the Preview Job button. It uses a `ResearcherApi`
   jobs, admin log; `docs/accounts.md`).
 
 - **Codebook editor**: edits the whole document in memory, validated
-  client-side with the contract's `validateCodebookItems`, and saved as a
+  client-side with the contract's `validateDesignItems`, and saved as a
   whole with Save. Views:
   - **Visual**: the item tree, and the selected item as a form, as JSON
-    (`codebookEditor/ItemJsonEditor.tsx`: the item without its children,
+    (`designEditor/ItemJsonEditor.tsx`: the item without its children,
     which are items of their own), or as a preview. On screens at least
     1500px wide the preview is a third column next to the form
     (`PreviewPanel`) instead of a pane. The preview (`ItemPreview.tsx`)
@@ -506,11 +506,11 @@ from the Preview Job button. It uses a `ResearcherApi`
     where it changes something); where that is ambiguous it asks, as
     adding does. "Move to the top" is in the toolbar. The items keep
     their order.
-  - **JSON**: the whole codebook (`CodebookJsonEditor.tsx`). JSON rather
+  - **JSON**: the whole codebook (`DesignJsonEditor.tsx`). JSON rather
     than YAML: the structure is explicit (no indentation to get right in a
     browser), and the editor (Monaco, bundled and loaded only with the
     editor: `jsonEditor/`) completes and checks it against the codebook's
-    JSON Schema (contracts `codebookItemsJsonSchema`), with the schemas'
+    JSON Schema (contracts `designItemsJsonSchema`), with the schemas'
     descriptions on hover. Formatting (`design/jsonFormat.ts`) keeps small
     objects on one line (an option: `{ "value": "neg", "label": "Negative" }`)
     and puts keys in reading order (`name`, `type`, `value`, `label` first,
@@ -549,7 +549,7 @@ from the Preview Job button. It uses a `ResearcherApi`
 
   Unit loops have two tabs (`UnitLoopForm.tsx`), Layout first; a loop's
   row in the tree has a button for each, which opens the loop on it
-  (`codebookEditor/loopTab.ts`). **Units**: per branch
+  (`designEditor/loopTab.ts`). **Units**: per branch
   which units coders get (Everyone codes everything, Crowd coding, Assign
   sets; `architecture.md` §6.1) with that mode's settings (All units or a
   set; for Assign sets the group and where a coder's set comes from), the

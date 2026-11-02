@@ -178,7 +178,7 @@
       ]
     }
   ],
-  "codebook": {
+  "design": {
     "note": "Example: sentiment by swiping",
     "items": [
       {

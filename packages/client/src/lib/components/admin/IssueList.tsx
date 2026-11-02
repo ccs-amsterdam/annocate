@@ -1,7 +1,7 @@
-import type { CodebookValidationIssue } from "@annotinder/contracts";
+import type { DesignIssue } from "@annotinder/contracts";
 
 /** Validation messages under a field: errors in red, warnings in amber. */
-export function IssueList({ issues }: { issues: CodebookValidationIssue[] }) {
+export function IssueList({ issues }: { issues: DesignIssue[] }) {
   if (issues.length === 0) return null;
   return (
     <ul className="flex flex-col gap-0.5">

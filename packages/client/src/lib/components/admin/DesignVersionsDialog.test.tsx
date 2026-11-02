@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CodebookVersionsView } from "./CodebookVersionsDialog";
+import { DesignVersionsView } from "./DesignVersionsDialog";
 import type { DesignVersionMeta } from "@annotinder/contracts";
 import { describeVersions } from "../../design/versions";
 
-describe("CodebookVersionsDialog", () => {
-  const mockCodebooks: DesignVersionMeta[] = [
+describe("DesignVersionsDialog", () => {
+  const mockDesignVersions: DesignVersionMeta[] = [
     {
       id: 1,
       note: "Initial Codebook",
@@ -30,9 +30,9 @@ describe("CodebookVersionsDialog", () => {
 
   it("renders versions with their live/draft status and the explanation", () => {
     const html = renderToStaticMarkup(
-      <CodebookVersionsView
-        codebooks={mockCodebooks}
-        versions={describeVersions(mockCodebooks, 1)}
+      <DesignVersionsView
+        designVersions={mockDesignVersions}
+        versions={describeVersions(mockDesignVersions, 1)}
         openId={2}
         onView={vi.fn()}
         onRestore={vi.fn()}

@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { UnitsSpecSchema, fieldUsage, typeOfValue, unitFieldNameError, type UnitDataValue } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
-import { codebookItems } from "../shared/designVersions.js";
-import { dropDraftFields, getUnitFields, latestCodebook, setUnitFields } from "../shared/units.js";
+import { designVersionItems } from "../shared/designVersions.js";
+import { dropDraftFields, getUnitFields, latestDesignVersion, setUnitFields } from "../shared/units.js";
 
 // The design's unit fields (docs/plans/design.md §3).
 // Static path: mounted before units.$id.ts so `/job/:jobId/units/fields` is not read as a unit id.
@@ -31,8 +31,8 @@ export function unitsFields(server: Server): Hono<Env> {
     }
 
     const removed = before.filter((b) => !names.includes(b.name)).map((b) => b.name);
-    const latest = await latestCodebook(db, jobId);
-    const used = latest ? fieldUsage(codebookItems(latest)) : new Map();
+    const latest = await latestDesignVersion(db, jobId);
+    const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
     const inUse = removed.filter((name) => used.has(name));
     if (inUse.length > 0) return c.json({ error: `The design uses ${inUse.join(", ")}: change it first` }, 409);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateCodebookItems } from "@annotinder/contracts";
+import { validateDesignItems } from "@annotinder/contracts";
 import { guessSimpleLayout, parseSimpleLayout, simpleTemplate } from "./simpleLayout";
 
 describe("simple layouts", () => {
@@ -15,7 +15,7 @@ describe("simple layouts", () => {
   it("are a valid layout", () => {
     const template = simpleTemplate({ title: "headline", byline: "source", body: ["text"] });
     const loop = { type: "unit_loop", units: [{ mode: "all" }], layout: { template }, children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }] };
-    expect(validateCodebookItems([loop])).toEqual([]);
+    expect(validateDesignItems([loop])).toEqual([]);
   });
 
   it("leave templates with anything else to the template editor", () => {

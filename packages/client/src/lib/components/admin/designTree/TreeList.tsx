@@ -3,7 +3,7 @@ import type { TreePosition } from "../../../design/itemEdit";
 import { TreeItemRow } from "./TreeItemRow";
 import { ITEM_TYPES } from "./itemTypes";
 import { InsertionLine } from "./TreeRow";
-import { samePosition, useCodebookTree } from "./context";
+import { samePosition, useDesignTree } from "./context";
 import { getChildren, getItemKey, type TreeNode } from "./utils";
 
 interface TreeListProps {
@@ -58,7 +58,7 @@ function TreeNodeView({ item }: { item: TreeNode }) {
 
 /** Where an add or move button will put items. */
 function PreviewLine({ position }: { position: TreePosition }) {
-  const { preview } = useCodebookTree();
+  const { preview } = useDesignTree();
   if (!preview.some((p) => samePosition(p, position))) return null;
   return (
     <div className="relative h-0">

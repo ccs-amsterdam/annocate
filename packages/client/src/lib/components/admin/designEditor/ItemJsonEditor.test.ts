@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CodebookItem } from "@annotinder/contracts";
+import type { DesignItem } from "@annotinder/contracts";
 import { itemFromJson, itemToJson } from "./ItemJsonEditor";
 
 const loop = {
@@ -9,7 +9,7 @@ const loop = {
   units: [{ mode: "all" }],
   layout: { template: "$unit.text" },
   children: [{ type: "question", name: "q", variable: { type: "confirm", question: "?" } }],
-} as unknown as CodebookItem;
+} as unknown as DesignItem;
 
 describe("item JSON", () => {
   it("shows the item without its key and children, compactly", () => {

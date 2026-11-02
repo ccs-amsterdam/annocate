@@ -1,7 +1,7 @@
 import {
   collectQuestions,
   itemName,
-  type CodebookItem,
+  type DesignItem,
   type TopLevelItem,
   type InLoopItem,
   type TopLevelQuestionItem,
@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { computeLoopSteps, computeTopLevelSteps, findItem, findParent, flattenTree, isInsideUnitLoop, itemAtPath, keyOf } from "./tree";
 
 /** Items by name; conditions (which have none) by their editor key. */
-const id = (item: CodebookItem) => itemName(item) ?? keyOf(item);
+const id = (item: DesignItem) => itemName(item) ?? keyOf(item);
 
 function confirm(name: string): TopLevelQuestionItem {
   return { name, type: "question", variable: { type: "confirm", question: "?" } };

@@ -2,17 +2,17 @@ import { randomBytes } from "node:crypto";
 import {
   CONFIRM_LINKS,
   MAX_LINKS,
-  CodebookItemsSchema,
+  DesignItemsSchema,
   linkCombinations,
   linkKey,
   sessionItem,
   setParameters,
-  type CodebookItem,
+  type DesignItem,
   type LinkResponse,
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
 import { groupSets } from "./sets.js";
-import { codebookItems } from "./designVersions.js";
+import { designVersionItems } from "./designVersions.js";
 import { HttpError } from "./http.js";
 
 /** A row of `links`: a link (docs/plans/sets-and-session-parameters.md §4). */
@@ -55,7 +55,7 @@ export function toLinkResponse(row: LinkRow): LinkResponse {
  * The links a codebook makes with the deployed sets (`live`) or the draft's:
  * one per combination of its link parameters' values.
  */
-export async function linksOf(sql: Sql, jobId: number, items: CodebookItem[], live: boolean): Promise<Record<string, string>[]> {
+export async function linksOf(sql: Sql, jobId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
   const sets = new Map<string, string[]>();
   for (const group of new Set(setParameters(items).values())) sets.set(group, await groupSets(sql, jobId, group, live));
   return linkCombinations(sessionItem(items), (group) => sets.get(group) ?? []);
@@ -66,7 +66,7 @@ export async function linksOf(sql: Sql, jobId: number, items: CodebookItem[], li
  * (400), and more than `CONFIRM_LINKS` only when confirmed (409
  * `confirm_links`). Returns the number.
  */
-export async function checkLinkCount(sql: Sql, jobId: number, items: CodebookItem[], confirmed: boolean, live: boolean): Promise<number> {
+export async function checkLinkCount(sql: Sql, jobId: number, items: DesignItem[], confirmed: boolean, live: boolean): Promise<number> {
   const n = (await linksOf(sql, jobId, items, live)).length;
   if (n > MAX_LINKS) throw new HttpError(400, `This design makes ${n} links; at most ${MAX_LINKS} are possible. List the combinations you need.`, "too_many_links");
   if (n > CONFIRM_LINKS && !confirmed) throw new HttpError(409, `This design makes ${n} links. Deploy anyway?`, "confirm_links");
@@ -90,7 +90,7 @@ export async function syncLinks(sql: Sql, jobId: number, options: { secrets?: st
     "SELECT c.items, c.session FROM deployments d JOIN design_versions c ON c.id = d.design_version_id WHERE d.job_id = $1",
     [jobId],
   );
-  const parsed = deployed ? CodebookItemsSchema.safeParse(codebookItems(deployed)) : null;
+  const parsed = deployed ? DesignItemsSchema.safeParse(designVersionItems(deployed)) : null;
   if (!parsed?.success) return 0;
   const wanted = await linksOf(sql, jobId, parsed.data, true);
   const rows = await sql.query<Pick<LinkRow, "id" | "link_key" | "retired_at">>(

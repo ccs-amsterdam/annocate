@@ -9,7 +9,7 @@ A **question** is an item that coders answer. Every question has a
 **name**, a **question text**, an optional **instruction**, and an
 **answer type** that decides how coders answer and what is stored. You add
 one with the **+** in the codebook tree (see
-[The codebook editor](codebook-editor.md#adding-items)), and edit it in the
+[The codebook editor](design-editor.md#adding-items)), and edit it in the
 form on the right.
 
 ## The name
@@ -41,7 +41,7 @@ question: answers given under the old name stay in the data under the old
 name, coders are asked the "new" question again, and units they finished
 count as unfinished. Change the **question text** instead if you only
 want other wording. See
-[Changing a design while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-design.md).
 
 ## The question text
 

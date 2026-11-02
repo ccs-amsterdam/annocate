@@ -2,14 +2,14 @@ import {
   unitLoops,
   validateVariables,
   type AnyVariableType,
-  type CodebookItem,
+  type DesignItem,
   type EndItem,
   type TopLevelItem,
   type UnitLoopItem,
   type VariableValue,
 } from "@annotinder/contracts";
 
-// Codebook-derived lookups and annotation validation.
+// Lookups on the design items and annotation validation.
 
 export type VariableType = AnyVariableType;
 export { validateVariables };
@@ -24,7 +24,7 @@ export interface LoopInfo {
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
   return unitLoops(items).map(({ key, loop }) => {
     const variables = new Map<string, VariableType>();
-    collectQuestions(loop.children as CodebookItem[], variables);
+    collectQuestions(loop.children as DesignItem[], variables);
     return { key, loop, variables };
   });
 }
@@ -81,9 +81,9 @@ export function collectCoderVariables(items: TopLevelItem[]): Map<string, Variab
   return variables;
 }
 
-function collectQuestions(items: CodebookItem[], into: Map<string, VariableType>) {
+function collectQuestions(items: DesignItem[], into: Map<string, VariableType>) {
   for (const item of items) {
-    if (item.type === "condition") collectQuestions(item.children as CodebookItem[], into);
+    if (item.type === "condition") collectQuestions(item.children as DesignItem[], into);
     else if (item.type !== "unit_loop" && item.type !== "end" && item.type !== "session") into.set(item.name, item.variable);
   }
 }
@@ -112,11 +112,11 @@ export function agreementKey(variables: Record<string, VariableValue>, variable:
 
 
 /** The `end` item with this name, anywhere in the codebook. */
-export function findEndItem(items: readonly CodebookItem[], name: string): EndItem | null {
+export function findEndItem(items: readonly DesignItem[], name: string): EndItem | null {
   for (const item of items) {
     if (item.type === "end" && item.name === name) return item;
     if ("children" in item) {
-      const found = findEndItem(item.children as CodebookItem[], name);
+      const found = findEndItem(item.children as DesignItem[], name);
       if (found) return found;
     }
   }

@@ -9,7 +9,7 @@
   ],
   "name": "A simple experiment",
   "publish": true,
-  "codebook": {
+  "design": {
     "note": "Example: a simple experiment",
     "items": [
       {

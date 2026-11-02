@@ -34,11 +34,11 @@ function dropChildren(node: unknown): void {
 }
 
 /** The JSON Schema of a codebook's items (a list of top-level items). */
-export function codebookItemsJsonSchema(): JsonSchema {
+export function designItemsJsonSchema(): JsonSchema {
   return (cached ?? build()).items;
 }
 
 /** The JSON Schema of one item without its `children`, as the item editor shows it. */
-export function codebookItemJsonSchema(): JsonSchema {
+export function designItemJsonSchema(): JsonSchema {
   return (cached ?? build()).item;
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { CodebookJsonEditor, getFoldableLineNumbers } from "./CodebookJsonEditor";
+import { DesignJsonEditor, getFoldableLineNumbers } from "./DesignJsonEditor";
 import { formatJson } from "../../design/jsonFormat";
 
-describe("CodebookJsonEditor", () => {
+describe("DesignJsonEditor", () => {
   const items = [
     { type: "question", name: "consent", variable: { type: "confirm", question: "Do you agree?" } },
     {
@@ -17,7 +17,7 @@ describe("CodebookJsonEditor", () => {
   ] as unknown as TopLevelItem[];
 
   it("renders its controls", () => {
-    const html = renderToStaticMarkup(<CodebookJsonEditor items={items} onChange={vi.fn()} />);
+    const html = renderToStaticMarkup(<DesignJsonEditor items={items} onChange={vi.fn()} />);
     expect(html).toContain("Fold details");
     expect(html).toContain("Unfold all");
     expect(html).toContain("Format");

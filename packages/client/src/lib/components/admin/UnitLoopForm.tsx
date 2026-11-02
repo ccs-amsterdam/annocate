@@ -15,8 +15,8 @@ import {
   type PracticeSettings,
   type AnyVariableType,
   type AssignBranch,
-  type CodebookItem,
-  type CodebookValidationIssue,
+  type DesignItem,
+  type DesignIssue,
   type OverlapSettings,
   type SetGroupResponse,
   type SetRef,
@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useLoopTab, type LoopTab } from "./codebookEditor/loopTab";
+import { useLoopTab, type LoopTab } from "./designEditor/loopTab";
 import { TemplateCodeEditor, type TemplateEditorApi } from "./jsonEditor/TemplateCodeEditor";
 import { ConditionDialog, TemplateInsertMenu } from "./TemplateInsertMenu";
 import { ConditionEditor } from "./ConditionEditor";
@@ -46,20 +46,20 @@ const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /** The names of a loop's questions, in order (through conditions). */
-function questionNames(items: CodebookItem[]): string[] {
-  return items.flatMap((i) => (i.type === "condition" ? questionNames(i.children as CodebookItem[]) : "name" in i ? [i.name] : []));
+function questionNames(items: DesignItem[]): string[] {
+  return items.flatMap((i) => (i.type === "condition" ? questionNames(i.children as DesignItem[]) : "name" in i ? [i.name] : []));
 }
 
 /** A loop's questions with their answer types (through conditions). */
-function questionsOf(items: CodebookItem[]): { name: string; variable: AnyVariableType }[] {
-  return items.flatMap((i) => (i.type === "condition" ? questionsOf(i.children as CodebookItem[]) : "variable" in i ? [{ name: i.name, variable: i.variable }] : []));
+function questionsOf(items: DesignItem[]): { name: string; variable: AnyVariableType }[] {
+  return items.flatMap((i) => (i.type === "condition" ? questionsOf(i.children as DesignItem[]) : "variable" in i ? [{ name: i.name, variable: i.variable }] : []));
 }
 
 /** The loop's questions an agreement rule can compare (contracts `supportsAgreement`). */
 /** The loop's questions that gold and practice units can check (compared by value). */
-function checkableQuestions(items: CodebookItem[]): AnswerKeyQuestion[] {
+function checkableQuestions(items: DesignItem[]): AnswerKeyQuestion[] {
   return items.flatMap((i): AnswerKeyQuestion[] => {
-    if (i.type === "condition") return checkableQuestions(i.children as CodebookItem[]);
+    if (i.type === "condition") return checkableQuestions(i.children as DesignItem[]);
     return "variable" in i && (CHECKABLE_TYPES as readonly string[]).includes(i.variable.type) ? [{ name: i.name, variable: i.variable }] : [];
   });
 }
@@ -70,9 +70,9 @@ interface AnswerKeyContext {
   layout: UnitLayout;
 }
 
-function agreementQuestions(items: CodebookItem[]): string[] {
+function agreementQuestions(items: DesignItem[]): string[] {
   return items.flatMap((i) => {
-    if (i.type === "condition") return agreementQuestions(i.children as CodebookItem[]);
+    if (i.type === "condition") return agreementQuestions(i.children as DesignItem[]);
     return "variable" in i && supportsAgreement(i.variable) ? [i.name] : [];
   });
 }
@@ -192,12 +192,12 @@ export function UnitLoopForm({
   unitFields: string[];
   /** Coder-level questions before the loop: what branch conditions may use. */
   coderQuestions: { name: string; variable: AnyVariableType }[];
-  validationIssues: CodebookValidationIssue[];
+  validationIssues: DesignIssue[];
   readOnly?: boolean;
   onChange: (loop: UnitLoopItem) => void;
 }) {
   const [tab, setTab] = useLoopTab();
-  const tabs: { value: LoopTab; label: string; issues: CodebookValidationIssue[] }[] = [
+  const tabs: { value: LoopTab; label: string; issues: DesignIssue[] }[] = [
     { value: "layout", label: "Layout", issues: issuesAt(validationIssues, "layout") },
     { value: "units", label: "Units", issues: [...issuesAt(validationIssues, "units"), ...issuesAt(validationIssues, "order")] },
   ];
@@ -279,11 +279,11 @@ function UnitsTab({
   setParams: Map<string, string>;
   coderQuestions: { name: string; variable: AnyVariableType }[];
   screenouts: string[];
-  validationIssues: CodebookValidationIssue[];
+  validationIssues: DesignIssue[];
   onChange: (loop: UnitLoopItem) => void;
 }) {
-  const agreeable = agreementQuestions(loop.children as CodebookItem[]);
-  const checkable = checkableQuestions(loop.children as CodebookItem[]);
+  const agreeable = agreementQuestions(loop.children as DesignItem[]);
+  const checkable = checkableQuestions(loop.children as DesignItem[]);
   const setBranches = (units: UnitBranch[]) => onChange({ ...loop, units });
   // Not set yet (the setup wizard's "decide later", or a new loop): choose how first.
   if (!loop.units?.length) return <UnsetUnits onChoose={(mode) => setBranches([switchMode(defaultBranch(), mode, groups)])} />;
@@ -418,15 +418,15 @@ function LayoutTab({
   loop: UnitLoopItem;
   unitFields: string[];
   coderQuestions: { name: string; variable: AnyVariableType }[];
-  issues: CodebookValidationIssue[];
+  issues: DesignIssue[];
   readOnly: boolean;
   onChange: (loop: UnitLoopItem) => void;
 }) {
   const layout = loop.layout ?? { template: "" };
   const snippets = Object.entries(layout.snippets ?? {});
-  const loopQuestions = questionNames(loop.children as CodebookItem[]);
+  const loopQuestions = questionNames(loop.children as DesignItem[]);
   // `::: if` in the layout may use coder-level questions, and (inside `::: from`) the loop's own.
-  const conditionQuestions = [...coderQuestions, ...questionsOf(loop.children as CodebookItem[])];
+  const conditionQuestions = [...coderQuestions, ...questionsOf(loop.children as DesignItem[])];
   const names = {
     // `$unit.id` is each unit's id (unless a field is called id)
     fields: unitFields.includes("id") ? unitFields : [...unitFields, "id"],
@@ -607,7 +607,7 @@ function BranchEditor({
   agreeable: string[];
   checkable: AnswerKeyQuestion[];
   screenouts: string[];
-  issues: CodebookValidationIssue[];
+  issues: DesignIssue[];
   onChange: (branch: UnitBranch) => void;
 }) {
   const mode = MODES.find((m) => m.value === branch.mode)!;

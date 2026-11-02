@@ -6,8 +6,8 @@ import { ServerAdmin } from "./server/ServerAdmin";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useJobQuery, useJobsQuery } from "../../admin/queries";
 import { JobList } from "./JobList";
-import { CodebookManager } from "./CodebookManager";
-import type { SaveFn } from "./CodebookEditor";
+import { DesignManager } from "./DesignManager";
+import type { SaveFn } from "./DesignEditor";
 import { UnitsPage } from "./units/UnitsPage";
 import { CodersPanel } from "./CodersPanel";
 import { ResultsPanel } from "./ResultsPanel";
@@ -32,7 +32,7 @@ import {
   Send,
   Settings,
 } from "lucide-react";
-import { clearBackup, readBackup, type CodebookBackup } from "../../design/localBackup";
+import { clearBackup, readBackup, type DesignBackup } from "../../design/localBackup";
 import { HelpDialog } from "../../help/HelpDialog";
 import { PendingDeployBar } from "./PendingDeployBar";
 import { openHelp } from "../../help/helpStore";
@@ -70,7 +70,7 @@ const GROUPS: { label: string; icon: typeof LayoutDashboard; pages: { id: TabId;
 /** The help topic the Help button opens on each tab. */
 const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
-  Codebook: "codebook-editor",
+  Codebook: "design-editor",
   Units: "uploading-units",
   Links: "links",
   Coders: "coders-and-progress",
@@ -144,7 +144,7 @@ function AdminAppInner({
   const [tab, setTab] = useState<TabId>("Overview");
   // Unsaved codebook edits from an earlier session (localBackup.ts), read once
   const [backup, setBackup] = useState(() => readBackup());
-  const [restore, setRestore] = useState<CodebookBackup | null>(null);
+  const [restore, setRestore] = useState<DesignBackup | null>(null);
   const banner = backup && (
     <BackupBanner
       client={client}
@@ -225,7 +225,7 @@ function JobAdminView({
   /** Offers unsaved codebook edits from an earlier session, if any. */
   banner: ReactNode;
   /** Those edits, once the researcher chose to continue with them. */
-  restore: CodebookBackup | null;
+  restore: DesignBackup | null;
   client: ResearcherApi;
   rootClient: ResearcherApi;
   baseUrl: string;
@@ -240,32 +240,32 @@ function JobAdminView({
   const allJobsQuery = useJobsQuery(rootClient);
   const job = jobQuery.data;
 
-  const [isCodebookDirty, setIsCodebookDirty] = useState(false);
+  const [isDesignDirty, setIsDesignDirty] = useState(false);
   const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
-  const saveCodebook = useRef<SaveFn | null>(null);
+  const saveDesign = useRef<SaveFn | null>(null);
   // A design version to open, from the overview; `n` remounts the manager on each request
-  const [codebookTarget, setCodebookTarget] = useState<{ id: number; n: number } | null>(null);
-  const [savingCodebook, setSavingCodebook] = useState(false);
+  const [designTarget, setDesignTarget] = useState<{ id: number; n: number } | null>(null);
+  const [savingDesign, setSavingDesign] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   async function saveAndNavigate() {
-    setSavingCodebook(true);
+    setSavingDesign(true);
     setSaveError(null);
     try {
-      await saveCodebook.current?.();
-      setIsCodebookDirty(false);
+      await saveDesign.current?.();
+      setIsDesignDirty(false);
       const nav = pendingNav;
       setPendingNav(null);
       nav?.();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e));
     } finally {
-      setSavingCodebook(false);
+      setSavingDesign(false);
     }
   }
 
   function requestNavigation(action: () => void) {
-    if (isCodebookDirty && tab === "Codebook") {
+    if (isDesignDirty && tab === "Codebook") {
       setPendingNav(() => action);
     } else {
       action();
@@ -388,22 +388,22 @@ function JobAdminView({
           <JobOverview
             client={client}
             onNavigate={onTabChange}
-            onOpenCodebook={(id) => {
-              setCodebookTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
+            onOpenDesign={(id) => {
+              setDesignTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
               onTabChange("Codebook");
             }}
           />
         )}
         {tab === "Settings" && <JobSettingsPage client={client} onDeleted={onBackToJobs} />}
         {tab === "Codebook" && (
-          <CodebookManager
-            key={`${codebookTarget?.n ?? 0}:${restore?.at ?? ""}`}
-            initialVersionId={codebookTarget?.id ?? null}
+          <DesignManager
+            key={`${designTarget?.n ?? 0}:${restore?.at ?? ""}`}
+            initialVersionId={designTarget?.id ?? null}
             restore={restore}
             client={client}
-            onDirtyChange={setIsCodebookDirty}
+            onDirtyChange={setIsDesignDirty}
             registerSave={(save) => {
-              saveCodebook.current = save;
+              saveDesign.current = save;
             }}
           />
         )}
@@ -417,7 +417,7 @@ function JobAdminView({
       {/* Unsaved Changes Confirmation Modal */}
       <UnsavedChangesDialog
         open={pendingNav !== null}
-        isSaving={savingCodebook}
+        isSaving={savingDesign}
         error={saveError}
         onCancel={() => {
           setPendingNav(null);
@@ -425,7 +425,7 @@ function JobAdminView({
         }}
         onDiscard={() => {
           clearBackup();
-          setIsCodebookDirty(false);
+          setIsDesignDirty(false);
           const nav = pendingNav;
           setPendingNav(null);
           setSaveError(null);
@@ -445,7 +445,7 @@ function BackupBanner({
   onDiscard,
 }: {
   client: ResearcherApi;
-  backup: CodebookBackup;
+  backup: DesignBackup;
   onContinue: () => void;
   onDiscard: () => void;
 }) {

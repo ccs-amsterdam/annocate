@@ -1,6 +1,6 @@
 import {
   itemName,
-  type CodebookItem,
+  type DesignItem,
   type TopLevelItem,
   type InLoopItem,
   type UnitLoopItem,
@@ -22,12 +22,12 @@ interface Node {
   children?: Node[];
 }
 
-const asNodes = (items: (TopLevelItem | InLoopItem | CodebookItem)[]) => items as unknown as Node[];
+const asNodes = (items: (TopLevelItem | InLoopItem | DesignItem)[]) => items as unknown as Node[];
 const asItems = (nodes: Node[]) => nodes as unknown as TopLevelItem[];
 const hasChildren = (node: Node): node is Node & { children: Node[] } => Array.isArray(node.children);
 
 /** An item's children (loops and conditions), else none. */
-function childrenOf(item: CodebookItem | TopLevelItem | InLoopItem): (TopLevelItem | InLoopItem)[] {
+function childrenOf(item: DesignItem | TopLevelItem | InLoopItem): (TopLevelItem | InLoopItem)[] {
   return "children" in item && Array.isArray(item.children) ? (item.children as (TopLevelItem | InLoopItem)[]) : [];
 }
 
@@ -77,7 +77,7 @@ export function getUniqueItemName(
 export function insertItem(
   items: TopLevelItem[],
   parentIdentifier: string | null,
-  newItem: CodebookItem,
+  newItem: DesignItem,
 ): TopLevelItem[] {
   if (parentIdentifier === null) {
     return [...items, newItem as TopLevelItem];
@@ -110,7 +110,7 @@ export function insertItem(
 export function insertItemBefore(
   items: TopLevelItem[],
   targetIdentifier: string,
-  newItem: CodebookItem,
+  newItem: DesignItem,
 ): TopLevelItem[] {
   function insertInNodes(nodes: Node[]): { list: Node[]; inserted: boolean } {
     const idx = nodes.findIndex(
@@ -463,7 +463,7 @@ export function outdentItem(items: TopLevelItem[], identifier: string): TopLevel
 export function updateItem(
   items: TopLevelItem[],
   identifier: string,
-  updated: CodebookItem,
+  updated: DesignItem,
 ): TopLevelItem[] {
   function updateInNodes(nodes: Node[]): Node[] {
     return nodes.map((node) => {
@@ -496,7 +496,7 @@ export function updateItem(
  */
 export type TreePosition = { before: string } | { after: string } | { into: string | null };
 
-const idOf = (item: CodebookItem | TopLevelItem | InLoopItem) => keyOf(item) || itemName(item) || "";
+const idOf = (item: DesignItem | TopLevelItem | InLoopItem) => keyOf(item) || itemName(item) || "";
 
 /**
  * Where a row's "add" (or "move below") can put an item: below the row.
@@ -535,7 +535,7 @@ export function positionInLoop(items: TopLevelItem[], position: TreePosition): b
 }
 
 /** A new item inserted at a position. */
-export function insertAt(items: TopLevelItem[], position: TreePosition, newItem: CodebookItem): TopLevelItem[] {
+export function insertAt(items: TopLevelItem[], position: TreePosition, newItem: DesignItem): TopLevelItem[] {
   if ("into" in position) return insertItem(items, position.into, newItem);
   if ("before" in position) return insertItemBefore(items, position.before, newItem);
   const target = position.after;

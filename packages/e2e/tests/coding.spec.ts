@@ -151,7 +151,7 @@ test("an ::html field shows in its sandboxed frame, sized by its script, within 
   const job = await api<{ id: number }>(request, "POST", "/job/from-recipe", {
     name: "HTML unit",
     units: [{ id: "h1", data: { table: "<table><tr><th>Party</th><th>Seats</th></tr><tr><td>A</td><td>12</td></tr></table><p>Below</p>" } }],
-    codebook: {
+    design: {
       items: [
         {
           type: "unit_loop",

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { CodebookItem, CodebookValidationIssue } from "@annotinder/contracts";
+import type { DesignItem, DesignIssue } from "@annotinder/contracts";
 import { AlertCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatJson } from "../../../design/jsonFormat";
@@ -8,7 +8,7 @@ import { IssueList } from "../IssueList";
 import { ITEM_MODEL, JsonCodeEditor } from "../jsonEditor/JsonCodeEditor";
 
 /** The item as JSON: without the editor's `_key`, and without children (they are items of their own). */
-export function itemToJson(item: CodebookItem): string {
+export function itemToJson(item: DesignItem): string {
   const own: Record<string, unknown> = { ...item };
   delete own._key;
   delete own.children;
@@ -20,7 +20,7 @@ export function itemToJson(item: CodebookItem): string {
  * conditions) the children; or why it can't be applied. Only the shape the
  * editor needs is checked here; validation shows the rest.
  */
-export function itemFromJson(text: string, current: CodebookItem): { item: CodebookItem } | { error: string } {
+export function itemFromJson(text: string, current: DesignItem): { item: DesignItem } | { error: string } {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -35,7 +35,7 @@ export function itemFromJson(text: string, current: CodebookItem): { item: Codeb
   if (type === "unit_loop" || type === "condition") next.children = Array.isArray(children) ? children : [];
   const key = (current as { _key?: string })._key;
   if (key) next._key = key;
-  return { item: next as unknown as CodebookItem };
+  return { item: next as unknown as DesignItem };
 }
 
 /**
@@ -48,9 +48,9 @@ export function ItemJsonEditor({
   issues,
   readOnly,
 }: {
-  item: CodebookItem;
-  onChange: (item: CodebookItem) => void;
-  issues: CodebookValidationIssue[];
+  item: DesignItem;
+  onChange: (item: DesignItem) => void;
+  issues: DesignIssue[];
   readOnly: boolean;
 }) {
   const [text, setText] = useState(() => itemToJson(item));

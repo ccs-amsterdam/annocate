@@ -62,7 +62,7 @@ own previous answer: AnnoTinder keeps their latest answer, with when it was
 first given and when it was last changed. You can also
 **reset** answers, for example to have units coded again: reset answers are
 not deleted but marked as no longer counting, and you can still download
-them (see [Resetting answers](changing-a-live-codebook.md#resetting-answers)).
+them (see [Resetting answers](changing-a-live-design.md#resetting-answers)).
 
 ## When a unit is finished
 
@@ -81,7 +81,7 @@ This is a choice with a trade-off: your data stays complete (every finished
 unit has an answer to every question), but adding a question to a running job
 costs coders time. AnnoTinder can't yet add a question *without* reopening
 finished units. See
-[Changing a design while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-design.md).
 
 ## In your download
 

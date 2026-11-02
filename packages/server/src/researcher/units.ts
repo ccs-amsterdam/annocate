@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { UnitsCreateBodySchema, addedFields, checkUnitData, fieldUsage, type UnitField } from "@annotinder/contracts";
-import { codebookItems } from "../shared/designVersions.js";
+import { designVersionItems } from "../shared/designVersions.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
 import { checkUnitUpload } from "../shared/limits.js";
-import { draftUnits, getUnitFields, latestCodebook, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount } from "../shared/units.js";
+import { draftUnits, getUnitFields, latestDesignVersion, saveUnits, setUnitFields, toUnitMeta, toUnitResponse, unitCount } from "../shared/units.js";
 
 export function units(server: Server): Hono<Env> {
   const { db } = server;
@@ -32,8 +32,8 @@ export function units(server: Server): Hono<Env> {
     const declared = await getUnitFields(db, jobId);
     let known: UnitField[] = declared;
     if (firstUpload) {
-      const latest = await latestCodebook(db, jobId);
-      const used = latest ? fieldUsage(codebookItems(latest)) : new Map();
+      const latest = await latestDesignVersion(db, jobId);
+      const used = latest ? fieldUsage(designVersionItems(latest)) : new Map();
       const given = new Set(units.flatMap((u) => Object.keys(u.data)));
       known = declared.filter((f) => used.has(f.name) && !given.has(f.name));
     }

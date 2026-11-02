@@ -7,7 +7,7 @@ import {
   questionKind,
   referenceOptions,
   type AnyVariableType,
-  type CodebookValidationIssue,
+  type DesignIssue,
   type Condition,
   type OptionValue,
 } from "@annotinder/contracts";
@@ -28,7 +28,7 @@ import {
   type RuleRows,
   type RuleTarget,
 } from "../../design/conditionRules";
-import { SegmentedToggle } from "./codebookEditor/SegmentedToggle";
+import { SegmentedToggle } from "./designEditor/SegmentedToggle";
 import { IssueList } from "./IssueList";
 import { HelpButton } from "../../help/HelpButton";
 
@@ -44,7 +44,7 @@ export interface ConditionEditorProps {
   /** Inside a unit loop: `$unit` fields can be used too. */
   loop?: boolean;
   /** Validation issues of this condition (errors and warnings). */
-  issues?: CodebookValidationIssue[];
+  issues?: DesignIssue[];
 }
 
 /**

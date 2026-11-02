@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { diffCodebooks, summarizeChanges, valueChanges } from "./diff";
+import { diffDesigns, summarizeChanges, valueChanges } from "./diff";
 
 const question = (name: string, question = "?") =>
   ({ type: "question", name, variable: { type: "confirm", question } }) as TopLevelItem;
@@ -13,16 +13,16 @@ const loop = (name: string, children: unknown[]) =>
     children,
   }) as TopLevelItem;
 
-describe("diffCodebooks", () => {
-  it("finds no changes in identical codebooks", () => {
+describe("diffDesigns", () => {
+  it("finds no changes in identical design versions", () => {
     const items = [question("a"), loop("l", [question("b")])];
-    expect(diffCodebooks(items, items)).toEqual([]);
+    expect(diffDesigns(items, items)).toEqual([]);
   });
 
   it("reports added, removed, changed and moved items", () => {
     const before = [question("a"), question("gone"), loop("l", [question("b"), question("c")])];
     const after = [question("a", "new wording"), question("c"), loop("l", [question("b"), question("new")])];
-    expect(diffCodebooks(before, after)).toEqual([
+    expect(diffDesigns(before, after)).toEqual([
       { kind: "removed", name: "gone", type: "question", parent: null },
       { kind: "changed", name: "a", type: "question", parent: null },
       { kind: "moved", name: "c", type: "question", parent: null },
@@ -33,7 +33,7 @@ describe("diffCodebooks", () => {
   it("doesn't report a container as changed when only its children changed", () => {
     const before = [loop("l", [question("b")])];
     const after = [loop("l", [question("b", "other")])];
-    expect(diffCodebooks(before, after)).toEqual([{ kind: "changed", name: "b", type: "question", parent: "l" }]);
+    expect(diffDesigns(before, after)).toEqual([{ kind: "changed", name: "b", type: "question", parent: "l" }]);
   });
 });
 

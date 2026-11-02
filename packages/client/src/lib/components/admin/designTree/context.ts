@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { CodebookItem, TopLevelItem } from "@annotinder/contracts";
+import type { DesignItem, TopLevelItem } from "@annotinder/contracts";
 import type { TreePosition } from "../../../design/itemEdit";
 import type { ItemType } from "./utils";
 
@@ -7,7 +7,7 @@ import type { ItemType } from "./utils";
  * Everything the tree rows need, shared via context so the recursive
  * components don't have to drill a dozen props through every level.
  */
-export interface CodebookTreeState {
+export interface DesignTreeState {
   items: TopLevelItem[];
   /** The item open in the editor. */
   selected: string | null;
@@ -34,18 +34,18 @@ export interface CodebookTreeState {
   preview: TreePosition[];
   setPreview: (positions: TreePosition[]) => void;
 
-  getIssue: (item: CodebookItem) => string | null;
+  getIssue: (item: DesignItem) => string | null;
   /** Whether the item has unsaved changes. */
-  isChanged: (item: CodebookItem) => boolean;
+  isChanged: (item: DesignItem) => boolean;
 }
 
-const CodebookTreeContext = createContext<CodebookTreeState | null>(null);
+const DesignTreeContext = createContext<DesignTreeState | null>(null);
 
-export const CodebookTreeProvider = CodebookTreeContext.Provider;
+export const DesignTreeProvider = DesignTreeContext.Provider;
 
-export function useCodebookTree(): CodebookTreeState {
-  const state = useContext(CodebookTreeContext);
-  if (!state) throw new Error("useCodebookTree must be used inside <CodebookTreeProvider>");
+export function useDesignTree(): DesignTreeState {
+  const state = useContext(DesignTreeContext);
+  if (!state) throw new Error("useDesignTree must be used inside <DesignTreeProvider>");
   return state;
 }
 

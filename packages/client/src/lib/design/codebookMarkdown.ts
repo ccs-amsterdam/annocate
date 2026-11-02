@@ -1,4 +1,4 @@
-import { fieldUsage, unitLoops, loopTitle, type AnyVariableType, type CodebookItem, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
+import { fieldUsage, unitLoops, loopTitle, type AnyVariableType, type DesignItem, type TopLevelItem, type UnitLoopItem } from "@annotinder/contracts";
 
 // The codebook as a document (docs/plans/design.md §1): what coders see,
 // for a paper's appendix or a colleague: questions with their instructions
@@ -55,13 +55,13 @@ function question(name: string, variable: AnyVariableType, depth: number): strin
 /** The loops' keys, as numbered in the whole codebook (for their titles). */
 type LoopKeys = Map<unknown, string>;
 
-function items(list: CodebookItem[], depth: number, keys: LoopKeys): string[] {
+function items(list: DesignItem[], depth: number, keys: LoopKeys): string[] {
   const out: string[] = [];
   for (const item of list) {
     if (item.type === "session") continue;
     if (item.type === "condition") {
       const label = item.label ? `${item.label}: ` : "";
-      out.push(`*Only if ${label}\`${item.condition?.script ?? ""}\`*`, "", ...items((item.children ?? []) as CodebookItem[], depth, keys));
+      out.push(`*Only if ${label}\`${item.condition?.script ?? ""}\`*`, "", ...items((item.children ?? []) as DesignItem[], depth, keys));
     } else if (item.type === "end") {
       out.push(`${"#".repeat(depth)} End: ${item.name} (${item.outcome})`, "", ...(item.message ? [item.message, ""] : []));
     } else if (item.type === "unit_loop") {
@@ -80,12 +80,12 @@ function loop(item: UnitLoopItem, depth: number, keys: LoopKeys): string[] {
     `${"#".repeat(depth)} For each unit: ${loopTitle(item, key)}`,
     "",
     ...(shown.length > 0 ? [`Coders see the unit's ${shown.join(", ")}.`, ""] : []),
-    ...items((item.children ?? []) as CodebookItem[], depth + 1, keys),
+    ...items((item.children ?? []) as DesignItem[], depth + 1, keys),
   ];
 }
 
 /** The codebook (its items, the session among them or not) as Markdown. */
 export function codebookMarkdown(list: readonly TopLevelItem[], title = "Codebook", note?: string | null): string {
-  const out = [`# ${title}`, "", ...(note ? [note, ""] : []), ...items(list as CodebookItem[], 2, new Map(unitLoops(list).map(({ loop, key }) => [loop, key])))];
+  const out = [`# ${title}`, "", ...(note ? [note, ""] : []), ...items(list as DesignItem[], 2, new Map(unitLoops(list).map(({ loop, key }) => [loop, key])))];
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }

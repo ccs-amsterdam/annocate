@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { JobWriteSchema, JobResponseSchema, JobUsersWriteSchema, JobUserSchema, ExampleSummarySchema, JobFromExampleSchema } from "../job.js";
 import { RecipeSchema } from "../recipe.js";
-import { DesignWriteSchema, DesignVersionSchema, DesignVersionMetaSchema } from "../codebook/codebook.js";
+import { DesignWriteSchema, DesignVersionSchema, DesignVersionMetaSchema } from "../design/designVersion.js";
 import { UnitsCreateBodySchema, UnitMetaSchema, UnitPageSchema, UnitResponseSchema } from "../unit.js";
 import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
 import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
@@ -32,7 +32,7 @@ import {
 /**
  * The researcher API (docs/api/researcher.md): called by the client's
  * researcher UI (`ResearcherApi`), and by scripts (R, Python) and other
- * systems. Jobs, codebooks, units, set groups, links, coder progress,
+ * systems. Jobs, design versions, units, set groups, links, coder progress,
  * deployment.
  *
  * Path params are written as `:param`. A server hosts any number of jobs;

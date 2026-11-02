@@ -39,7 +39,7 @@ test("new units are drafts until deployed: the bar, the dialog, and then coders 
   await dialog.getByRole("button", { name: "Deploy", exact: true }).click();
   await expect(page.getByText(/Not deployed yet/)).toBeHidden();
   const versions = await api<{ version: number; changes: unknown }[]>(request, "GET", `/job/${job.id}/deployment/versions`);
-  expect(versions[0]).toMatchObject({ version: 2, changes: { codebook: false, units: { added: 1 } } });
+  expect(versions[0]).toMatchObject({ version: 2, changes: { design: false, units: { added: 1 } } });
 
   // A new coder gets both
   const second = await (await browser.newContext()).newPage();

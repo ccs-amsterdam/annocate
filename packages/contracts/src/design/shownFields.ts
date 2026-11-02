@@ -1,4 +1,4 @@
-import { unitLoops, type CodebookItem, type UnitLoopItem } from "./item.js";
+import { unitLoops, type DesignItem, type UnitLoopItem } from "./item.js";
 import { goldColumn, practiceColumn, practiceMessageColumn } from "./unitLoop.js";
 import { extractReferences, type Reference } from "./references.js";
 import { expandSnippets } from "./snippets.js";
@@ -23,7 +23,7 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
-      const item = raw as Partial<CodebookItem> | null;
+      const item = raw as Partial<DesignItem> | null;
       if (!item || typeof item !== "object") continue;
       if (item.type === "condition") {
         script(item.condition?.script);
@@ -72,7 +72,7 @@ export function loopDependencies(items: readonly unknown[]): Map<string, string[
     const collect = (list: unknown) => {
       if (!Array.isArray(list)) return;
       for (const raw of list) {
-        const item = raw as Partial<CodebookItem> | null;
+        const item = raw as Partial<DesignItem> | null;
         if (!item || typeof item !== "object") continue;
         if (item.type === "condition") collect(item.children);
         else if ("name" in item && typeof item.name === "string") own.add(item.name);
@@ -130,7 +130,7 @@ function scriptCount(loop: UnitLoopItem, field: string): number {
   const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
-      const item = raw as Partial<CodebookItem> | null;
+      const item = raw as Partial<DesignItem> | null;
       if (item?.type !== "condition") continue;
       count(item.condition?.script);
       walk(item.children);

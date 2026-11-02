@@ -354,7 +354,7 @@ export function useDeploymentQuery(client: ResearcherApi): UseQueryResult<Deploy
 /**
  * Deploys a design version (`PUT /deployment`), keeping the job's
  * active/paused state. The deployed version becomes read only, so the
- * codebooks are refetched too.
+ * design versions are refetched too.
  */
 /** The job's users and their roles (ADMIN only: others get an error). */
 export function useJobUsersQuery(client: ResearcherApi): UseQueryResult<JobUser[]> {

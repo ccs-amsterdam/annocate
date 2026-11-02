@@ -9,7 +9,7 @@
   ],
   "name": "A simple survey",
   "publish": true,
-  "codebook": {
+  "design": {
     "note": "Example: a simple survey",
     "items": [
       {

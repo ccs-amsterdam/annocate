@@ -25,7 +25,7 @@ import { effectiveLimits, getSettings } from "../shared/accounts.js";
 
 // The server admin's API (contracts admin.ts, docs/accounts.md): account
 // role `admin`. Admins manage accounts and jobs, never job data: nothing
-// here returns codebooks, units or answers. Every change is logged.
+// here returns design versions, units or answers. Every change is logged.
 
 interface UserRow {
   id: number;

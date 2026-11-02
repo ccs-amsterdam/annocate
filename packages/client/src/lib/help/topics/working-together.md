@@ -39,7 +39,7 @@ a [link](links.md).
 Everyone with **Write** works on the same design draft. AnnoTinder doesn't
 show who else is editing right now: if two people save at once, the second
 is asked whether to keep their own changes or load the other's (see
-[Working with co-editors](codebook-editor.md#working-with-co-editors)).
+[Working with co-editors](design-editor.md#working-with-co-editors)).
 Agree who edits when, and leave deploying to one person.
 
 ## Scripts

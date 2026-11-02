@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { DeploymentWriteSchema, codebookErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
-import { codebookItems, codebookUnits, type DesignVersionRow } from "../shared/designVersions.js";
+import { DeploymentWriteSchema, designErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
+import { designVersionItems, designVersionUnits, type DesignVersionRow } from "../shared/designVersions.js";
 import { one } from "../db.js";
 import type { Server, Env } from "../context.js";
 import { requireJobUser } from "./auth.js";
@@ -22,14 +22,14 @@ export function deployment(server: Server): Hono<Env> {
 
     const jobId = c.get("jobId");
     const codebook = await one<DesignVersionRow>(db, "SELECT * FROM design_versions WHERE job_id = $1 AND id = $2", [jobId, parsed.data.designVersionId]);
-    if (!codebook) return c.json({ error: "Codebook not found" }, 404);
+    if (!codebook) return c.json({ error: "Design version not found" }, 404);
     // Drafts may be saved with issues; coders only ever get a valid codebook.
-    const errors = codebookErrors(codebookItems(codebook));
-    if (errors.length > 0 || codebookItems(codebook).length === 0) {
+    const errors = designErrors(designVersionItems(codebook));
+    if (errors.length > 0 || designVersionItems(codebook).length === 0) {
       return c.json({ error: "Fix the design's issues before deploying it", issues: errors }, 400);
     }
     // The unit fields it uses must be declared (docs/plans/design.md §3)
-    const undeclared = undeclaredFields(codebookItems(codebook), codebookUnits(codebook).fields);
+    const undeclared = undeclaredFields(designVersionItems(codebook), designVersionUnits(codebook).fields);
     if (undeclared.length > 0) {
       return c.json({ error: `The design uses unit fields it doesn't declare: ${undeclared.join(", ")}`, code: "undeclared_fields" }, 400);
     }
@@ -37,15 +37,15 @@ export function deployment(server: Server): Hono<Env> {
     const current = await one(db, "SELECT 1 FROM deployments WHERE job_id = $1", [jobId]);
     const live = !parsed.data.units && !!current;
     // Links follow the codebook's link parameters (docs/plans/sets-and-session-parameters.md §4).
-    await checkLinkCount(db, jobId, codebookItems(codebook), parsed.data.confirmLinks ?? false, live);
+    await checkLinkCount(db, jobId, designVersionItems(codebook), parsed.data.confirmLinks ?? false, live);
     const deployed = await db.transaction(async (tx) => {
       const result = await putDeployment(tx, jobId, parsed.data);
       const job = await one<{ redirect_urls: Record<string, string> }>(tx, "SELECT redirect_urls FROM jobs WHERE id = $1", [jobId]);
       // Panel return links are deployment settings: say which ones are missing
-      const unset = redirectSettings(codebookItems(codebook)).filter((name) => !job?.redirect_urls?.[name]);
+      const unset = redirectSettings(designVersionItems(codebook)).filter((name) => !job?.redirect_urls?.[name]);
       const warnings = [
         ...(result.warnings ?? []),
-        ...(await setWarnings(tx, jobId, codebookItems(codebook), live)),
+        ...(await setWarnings(tx, jobId, designVersionItems(codebook), live)),
         ...unset.map((name) => `End items send coders on with the setting '${name}', which has no URL yet: set it in the job's Settings.`),
       ];
       return { ...result, links: await syncLinks(tx, jobId), ...(warnings.length > 0 ? { warnings } : {}) };

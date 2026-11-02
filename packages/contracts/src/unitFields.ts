@@ -30,7 +30,7 @@ export type UnitsSpec = z.infer<typeof UnitsSpecSchema>;
 
 /**
  * What a new field may be called: letters, digits and underscores, not
- * starting with a digit, so codebooks can refer to it as `$unit.<name>`.
+ * starting with a digit, so design versions can refer to it as `$unit.<name>`.
  * (Fields of older jobs may have other names.)
  */
 export const UNIT_FIELD_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;

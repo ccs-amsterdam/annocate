@@ -109,4 +109,4 @@ starts over from that type's defaults.
 
 Once coding has started, changing a question's type changes what its
 answers mean. See
-[Changing a design while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-design.md).

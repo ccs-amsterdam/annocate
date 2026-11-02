@@ -39,7 +39,7 @@ const DESKTOP_PRESETS: DimensionPreset[] = [
  * fresh token, and with it a fresh coder.
  */
 export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
-  const codebooksQuery = useDesignVersionsQuery(client);
+  const designVersionsQuery = useDesignVersionsQuery(client);
   const deploymentQuery = useDeploymentQuery(client);
   const unitsQuery = useUnitsQuery(client);
 
@@ -89,15 +89,15 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
     setPreviewKey(`preview-${client.jobId}-${Date.now()}`);
   };
 
-  const codebooks = codebooksQuery.data ?? [];
-  const hasCodebook = codebooks.length > 0;
-  const latest = codebooks.at(-1);
+  const designVersions = designVersionsQuery.data ?? [];
+  const hasDesign = designVersions.length > 0;
+  const latest = designVersions.at(-1);
   const latestStatus = latest
-    ? describeVersions(codebooks, deploymentQuery.data?.designVersionId ?? null).statusOf(latest.id)
+    ? describeVersions(designVersions, deploymentQuery.data?.designVersionId ?? null).statusOf(latest.id)
     : null;
   const hasUnits = (unitsQuery.data?.length ?? 0) > 0;
 
-  if (codebooksQuery.isLoading || unitsQuery.isLoading) {
+  if (designVersionsQuery.isLoading || unitsQuery.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <p className="text-sm text-muted-foreground animate-pulse">Loading job preview...</p>
@@ -105,7 +105,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
     );
   }
 
-  if (!hasCodebook || !hasUnits) {
+  if (!hasDesign || !hasUnits) {
     return (
       <div className="mx-auto max-w-lg rounded-xl border border-border bg-card p-8 text-center shadow-sm">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
@@ -117,10 +117,10 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
         </p>
         <ul className="mt-3 text-left text-sm space-y-2 bg-muted/50 p-4 rounded-lg">
           <li className="flex items-center gap-2">
-            <span className={hasCodebook ? "text-primary font-bold" : "text-muted-foreground"}>
-              {hasCodebook ? "✓" : "○"}
+            <span className={hasDesign ? "text-primary font-bold" : "text-muted-foreground"}>
+              {hasDesign ? "✓" : "○"}
             </span>
-            <span>Codebook with questions {hasCodebook ? "(Ready)" : "(Missing)"}</span>
+            <span>Codebook with questions {hasDesign ? "(Ready)" : "(Missing)"}</span>
           </li>
           <li className="flex items-center gap-2">
             <span className={hasUnits ? "text-primary font-bold" : "text-muted-foreground"}>
@@ -192,7 +192,7 @@ export function JobPreview({ client, coderApiUrl = "" }: JobPreviewProps) {
               className="rounded-md bg-muted px-2 py-1 text-xs text-foreground"
               title="Preview runs the latest version. Coders keep using the live version until you deploy."
             >
-              Previewing v{codebooks.length} ({latestStatus === "draft" ? "draft" : latestStatus === "live" ? "live" : "not live"})
+              Previewing v{designVersions.length} ({latestStatus === "draft" ? "draft" : latestStatus === "live" ? "live" : "not live"})
             </span>
           )}
 

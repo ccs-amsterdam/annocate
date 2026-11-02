@@ -2,12 +2,12 @@ import type { DesignVersionMeta } from "@annotinder/contracts";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { History, Info, CircleDot, FilePen, Clock, Eye, RotateCcw, Trash2, AlertCircle } from "lucide-react";
-import type { CodebookVersions } from "../../design/versions";
+import type { DesignVersions } from "../../design/versions";
 import { HelpButton } from "../../help/HelpButton";
 
-export interface CodebookVersionsViewProps {
-  codebooks: DesignVersionMeta[];
-  versions: CodebookVersions;
+export interface DesignVersionsViewProps {
+  designVersions: DesignVersionMeta[];
+  versions: DesignVersions;
   /** Id of the version open in the editor; null for a new, unsaved codebook. */
   openId: number | null;
   onView: (id: number) => void;
@@ -17,7 +17,7 @@ export interface CodebookVersionsViewProps {
   onClose?: () => void;
 }
 
-export function CodebookVersionsView({ codebooks, versions, openId, onView, onRestore, onDeleteDraft, onClose }: CodebookVersionsViewProps) {
+export function DesignVersionsView({ designVersions, versions, openId, onView, onRestore, onDeleteDraft, onClose }: DesignVersionsViewProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <h2 className="flex shrink-0 items-center gap-2 pr-8 text-lg font-bold text-foreground">
@@ -43,10 +43,10 @@ export function CodebookVersionsView({ codebooks, versions, openId, onView, onRe
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto py-3 pr-1">
-        {codebooks.length === 0 ? (
+        {designVersions.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">No saved versions yet.</div>
         ) : (
-          codebooks
+          designVersions
             .slice()
             .reverse()
             .map((cb) => {
@@ -156,16 +156,16 @@ export function CodebookVersionsView({ codebooks, versions, openId, onView, onRe
   );
 }
 
-export interface CodebookVersionsDialogProps extends CodebookVersionsViewProps {
+export interface DesignVersionsDialogProps extends DesignVersionsViewProps {
   open: boolean;
   onClose: () => void;
 }
 
-export function CodebookVersionsDialog({ open, onClose, ...props }: CodebookVersionsDialogProps) {
+export function DesignVersionsDialog({ open, onClose, ...props }: DesignVersionsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-6 sm:max-w-2xl">
-        <CodebookVersionsView {...props} onClose={onClose} />
+        <DesignVersionsView {...props} onClose={onClose} />
       </DialogContent>
     </Dialog>
   );

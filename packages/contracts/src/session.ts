@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
-import { CoderCodebookSchema } from "./codebook/coderCodebook.js";
+import { CoderCodebookSchema } from "./design/coderCodebook.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
@@ -154,7 +154,7 @@ export const CoderErrorCodeSchema = z.enum([
   /** The session ended and its job closes finished sessions: its answers can't be looked at again. */
   "session_closed",
   /** Preview only: the latest codebook has issues, so it can't run. */
-  "codebook_invalid",
+  "design_invalid",
   /** The codebook requires a URL parameter the link doesn't have. */
   "url_param_missing",
   /** A URL parameter's value isn't one the codebook accepts (its values, pattern or length). */

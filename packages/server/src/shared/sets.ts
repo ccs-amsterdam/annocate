@@ -14,7 +14,7 @@ import {
   overlapGroup,
   setKey,
   unitLoops,
-  type CodebookItem,
+  type DesignItem,
   type SetGroupResponse,
   type UnitSet,
 } from "@annotinder/contracts";
@@ -123,7 +123,7 @@ export async function runtimeSets(sql: Sql, jobId: number, live: boolean): Promi
  * loop takes an overlap its group doesn't have (or fewer units than it
  * expects), or assigns sets of a group without sets.
  */
-export async function setWarnings(sql: Sql, jobId: number, items: CodebookItem[], live = false): Promise<string[]> {
+export async function setWarnings(sql: Sql, jobId: number, items: DesignItem[], live = false): Promise<string[]> {
   const groups = new Map((await listSetGroups(sql, jobId, live)).map((g) => [g.name, g.sets]));
   const warnings: string[] = [];
   const { questions } = collectQuestions(items);

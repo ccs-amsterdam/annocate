@@ -6,7 +6,7 @@ import {
   itemName,
   templateNames,
   expandSnippets,
-  type CodebookItem,
+  type DesignItem,
   type TopLevelItem,
 } from "@annotinder/contracts";
 import { AlertTriangle, Code2, Edit3, Eye } from "lucide-react";
@@ -16,10 +16,10 @@ import { enclosingLoop, flattenTree, isInsideUnitLoop, issueIsAbout, itemPath } 
 import { itemTitle } from "../../../codebook/conditions";
 import { ItemForm } from "../ItemForm";
 import { ItemPreview } from "./ItemPreview";
-import { getItemKey } from "../codebookTree/utils";
+import { getItemKey } from "../designTree/utils";
 import { SegmentedToggle } from "./SegmentedToggle";
 import { ItemJsonEditor } from "./ItemJsonEditor";
-import type { CodebookDraft } from "./useCodebookDraft";
+import type { DesignDraft } from "./useDesignDraft";
 import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
 
 type ItemPane = "edit" | "json" | "preview";
@@ -33,7 +33,7 @@ export function ItemPanel({
   previewBeside = false,
 }: {
   client: ResearcherApi;
-  draft: CodebookDraft;
+  draft: DesignDraft;
   readOnly: boolean;
   warnings: UnitFieldWarning[];
   /** The preview has its own column (wide screens): no Preview pane here. */
@@ -104,10 +104,10 @@ export function ItemPanel({
 }
 
 /** The names of the codebook's end items that screen out, anywhere in it. */
-function screenoutEnds(items: CodebookItem[]): string[] {
+function screenoutEnds(items: DesignItem[]): string[] {
   return items.flatMap((i): string[] => {
     if (i.type === "end") return i.outcome === "screenout" ? [i.name] : [];
-    return "children" in i && Array.isArray(i.children) ? screenoutEnds(i.children as CodebookItem[]) : [];
+    return "children" in i && Array.isArray(i.children) ? screenoutEnds(i.children as DesignItem[]) : [];
   });
 }
 
@@ -118,8 +118,8 @@ function ItemEditForm({
   readOnly,
 }: {
   client: ResearcherApi;
-  draft: CodebookDraft;
-  item: CodebookItem;
+  draft: DesignDraft;
+  item: DesignItem;
   readOnly: boolean;
 }) {
   const groupsQuery = useSetGroupsQuery(client);
@@ -165,7 +165,7 @@ function ItemEditForm({
 /** Names of unit-level questions (inside a loop), for references in forms. */
 function variableNames(items: TopLevelItem[]) {
   const all = flattenTree(items);
-  const inLoop = (i: CodebookItem) => isInsideUnitLoop(items, getItemKey(i));
+  const inLoop = (i: DesignItem) => isInsideUnitLoop(items, getItemKey(i));
   return {
     unitVariableNames: all
       .filter((i) => i.type === "question" && inLoop(i))
@@ -173,8 +173,8 @@ function variableNames(items: TopLevelItem[]) {
   };
 }
 
-/** The preview's own column on wide screens (CodebookEditor). */
-export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: CodebookDraft }) {
+/** The preview's own column on wide screens (DesignEditor). */
+export function PreviewPanel({ client, draft }: { client: ResearcherApi; draft: DesignDraft }) {
   const item = draft.selectedItem;
   return (
     <div className="flex flex-col overflow-hidden">

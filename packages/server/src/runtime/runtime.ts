@@ -64,7 +64,7 @@ import {
   valueOf,
   type LoopInfo,
   type VariableType,
-} from "./codebook.js";
+} from "./designItems.js";
 
 /** A unit's answer column as the values it names (`a;b` for several); null when empty. */
 /** Whether an answer matches a unit's answer key (contracts answerKey.ts). */
@@ -197,7 +197,7 @@ export class DeploymentRuntime {
           this.spec = { ...this.spec, active: spec.active, keepSessionsOpen: spec.keepSessionsOpen, sets: spec.sets, redirectUrls: spec.redirectUrls };
           this.applySets(spec);
           // Panel return links are deployment settings: they change without a new version
-          this.coderCodebook = { ...this.coderCodebook, items: resolveRedirects(toCoderItems(this.spec.codebook.items as TopLevelItem[]), spec.redirectUrls) };
+          this.coderCodebook = { ...this.coderCodebook, items: resolveRedirects(toCoderItems(this.spec.design.items as TopLevelItem[]), spec.redirectUrls) };
         }
         // Only once read: a failed read (e.g. a suspended job) is tried again next time.
         this.stamp = stamp;
@@ -210,7 +210,7 @@ export class DeploymentRuntime {
 
   private applySpec(spec: DeploymentSpec): void {
     this.spec = spec;
-    const items = spec.codebook.items as TopLevelItem[];
+    const items = spec.design.items as TopLevelItem[];
     this.loops = new Map(collectLoops(items).map((l) => [l.key, l]));
     this.coderVariableTypes = collectCoderVariables(items);
     this.dependencies = new Map(
@@ -220,7 +220,7 @@ export class DeploymentRuntime {
     this.applySets(spec);
     this.shownFields = shownUnitFields(items);
     this.questions = collectQuestions(items).questions;
-    this.coderCodebook = { id: spec.codebook.id, items: resolveRedirects(toCoderItems(items), spec.redirectUrls) };
+    this.coderCodebook = { id: spec.design.id, items: resolveRedirects(toCoderItems(items), spec.redirectUrls) };
   }
 
   private applySets(spec: DeploymentSpec): void {
@@ -241,7 +241,7 @@ export class DeploymentRuntime {
    * sets its values may name, and the groups whose set is the login's email.
    */
   private get sessionRules(): SessionRules {
-    const items = this.spec.codebook.items as TopLevelItem[];
+    const items = this.spec.design.items as TopLevelItem[];
     const emailGroups = [...this.loops.values()].flatMap((info) =>
       info.loop.units.flatMap((b) => (b.mode === "assign" && "session" in b.from && b.from.session === "email" ? [b.group] : [])),
     );
@@ -250,7 +250,7 @@ export class DeploymentRuntime {
 
   /** The URL parameter with the participant id (the codebook's Session item), if any: part of a device's session key. */
   get participantParam(): string | null {
-    return sessionItem(this.spec.codebook.items as TopLevelItem[])?.participant?.param ?? null;
+    return sessionItem(this.spec.design.items as TopLevelItem[])?.participant?.param ?? null;
   }
 
   /** Sets are assigned by the login's email: coders log in to start. */
@@ -319,7 +319,7 @@ export class DeploymentRuntime {
     const stored = (await this.store.coderValues(coder.coderId))[name];
     if (stored) return stored.value;
     const put = (store: Store, value: VariableValue) =>
-      store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, designVersionId: this.spec.codebook.id });
+      store.putCoderValues({ coderId: coder.coderId, values: { [name]: value }, assigned: true, designVersionId: this.spec.design.id });
     if (variable.source === "random") {
       const value = singleValue(this.drawWeighted(variable.options));
       await put(this.store, value);
@@ -423,7 +423,7 @@ export class DeploymentRuntime {
   async endSession(coder: Coder, item?: string, unit?: EndUnit): Promise<{ reopen: Reopen }> {
     if (coder.ended) return { reopen: this.reopen(coder) };
     // Without an item: the coder went through the whole job.
-    const end = item === undefined ? null : findEndItem(this.spec.codebook.items, item);
+    const end = item === undefined ? null : findEndItem(this.spec.design.items, item);
     if (item !== undefined && !end) throw new HttpError(400, `No end item '${item}'`);
     if (unit && (!this.loops.has(unit.loop) || Object.keys(await this.store.unitAnswers(coder.coderId, unit.id)).length === 0)) {
       throw new HttpError(400, "The end's unit is not one you answered");
@@ -464,7 +464,7 @@ export class DeploymentRuntime {
   private async endValues(coder: Coder, values: Record<string, CoderValue>): Promise<EndValues | null> {
     const { ended } = coder;
     if (!ended) return null;
-    const found = ended.item ? findEndItem(this.spec.codebook.items, ended.item) : null;
+    const found = ended.item ? findEndItem(this.spec.design.items, ended.item) : null;
     // A panel return link from the deployment settings counts too
     const end = found ? resolveRedirects([found], this.spec.redirectUrls)[0] : null;
     const source = `${end?.message ?? ""}\n${end?.redirectUrl ?? ""}`;
@@ -528,7 +528,7 @@ export class DeploymentRuntime {
     const timed = Object.fromEntries(Object.entries(timings).filter(([name]) => open(name) && (name in changed || name in stored)));
     if (Object.keys(changed).length === 0 && Object.keys(timed).length === 0) return;
     await this.store.checkAnswers(changed);
-    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, designVersionId: this.spec.codebook.id, deviceId, timings: timed });
+    await this.store.putCoderValues({ coderId: coder.coderId, values: changed, designVersionId: this.spec.design.id, deviceId, timings: timed });
   }
 
   // --- routing ----------------------------------------------------------------
@@ -861,7 +861,7 @@ export class DeploymentRuntime {
       unitId,
       coderId: coder.coderId,
       variables,
-      designVersionId: this.spec.codebook.id,
+      designVersionId: this.spec.design.id,
       unitVersionId,
       deviceId,
       timings: Object.fromEntries(Object.entries(timings).filter(([name]) => name in variables)),

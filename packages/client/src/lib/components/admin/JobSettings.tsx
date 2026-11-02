@@ -77,8 +77,8 @@ function JobEditForm({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [redirects, setRedirects] = useState<Record<string, string>>(job.redirectUrls ?? {});
   // The end items' redirect settings in the latest design version, and any URL already set
-  const codebooks = useDesignVersionsQuery(client).data ?? [];
-  const latest = useDesignVersionQuery(client, codebooks.at(-1)?.id ?? null).data;
+  const designVersions = useDesignVersionsQuery(client).data ?? [];
+  const latest = useDesignVersionQuery(client, designVersions.at(-1)?.id ?? null).data;
   const settingNames = [...new Set([...(latest ? redirectSettings(designItems(latest)) : []), ...Object.keys(job.redirectUrls ?? {})])];
   // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
   const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(job.redirectUrls ?? {}));
@@ -162,7 +162,7 @@ function JobEditForm({
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 shadow-sm">
         <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Deleting this job will permanently remove all associated codebooks, units, and coder annotations.
+          Deleting this job will permanently remove all associated designVersions, units, and coder annotations.
         </p>
 
         {!showConfirmDelete ? (

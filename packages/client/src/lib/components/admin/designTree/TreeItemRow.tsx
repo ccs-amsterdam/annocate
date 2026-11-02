@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { AlertCircle, CornerDownLeft, Layers, LayoutTemplate } from "lucide-react";
-import { useLoopTab } from "../codebookEditor/loopTab";
+import { useLoopTab } from "../designEditor/loopTab";
 import { cn } from "cn";
-import { useCodebookTree } from "./context";
+import { useDesignTree } from "./context";
 import { ITEM_TYPES, itemIcon } from "./itemTypes";
 import { AddItemMenu, type AddOption } from "./AddItemMenu";
 import { ActionButton, TreeRow } from "./TreeRow";
@@ -57,7 +57,7 @@ function moveLabel(label: string): string {
  * "move below this item", at the same place: rows never shift.
  */
 export function TreeItemRow({ item }: { item: TreeNode }) {
-  const tree = useCodebookTree();
+  const tree = useDesignTree();
   const key = getItemKey(item);
   const [loopTab, setLoopTab] = useLoopTab();
   const ticked = tree.isChecked(key);

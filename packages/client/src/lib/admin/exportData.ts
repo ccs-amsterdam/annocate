@@ -93,33 +93,33 @@ export function nestedQuestions(items: TopLevelItem[] | undefined): Set<string> 
  */
 export class Labels {
   /** codebook id -> question -> value -> label. */
-  private byCodebook = new Map<number, Map<string, Map<string, string>>>();
+  private byVersion = new Map<number, Map<string, Map<string, string>>>();
 
   constructor(
-    codebooks: ReadonlyMap<number, TopLevelItem[]>,
+    designVersions: ReadonlyMap<number, TopLevelItem[]>,
     private liveId: number | null = null,
   ) {
-    for (const [id, items] of codebooks) {
+    for (const [id, items] of designVersions) {
       const questions = new Map<string, Map<string, string>>();
       for (const [name, variable] of collectQuestions(items).questions) {
         const options = optionsOf(variable);
         if (options) questions.set(name, new Map(options.map((o) => [String(o.value), optionLabel(o)])));
       }
-      this.byCodebook.set(id, questions);
+      this.byVersion.set(id, questions);
     }
   }
 
   /** Whether the question has labels (options) in any version. */
   has(question: string): boolean {
-    return [...this.byCodebook.values()].some((q) => q.has(question));
+    return [...this.byVersion.values()].some((q) => q.has(question));
   }
 
   /** How to write a question's values as labels, for an answer given under `designVersionId`. */
   writer(question: string, designVersionId: number | null): Write {
-    const order = [designVersionId, this.liveId, ...this.byCodebook.keys()];
+    const order = [designVersionId, this.liveId, ...this.byVersion.keys()];
     return (value) => {
       for (const id of order) {
-        const label = id === null ? undefined : this.byCodebook.get(id)?.get(question)?.get(String(value));
+        const label = id === null ? undefined : this.byVersion.get(id)?.get(question)?.get(String(value));
         if (label !== undefined) return label;
       }
       return String(value);
@@ -191,7 +191,7 @@ export function annotationsTable(
   // And the device of the latest answer: a unit is submitted from one device at a time.
   const byUnitCoder = new Map<
     string,
-    { first: AnnotationRow; last: Date; deviceId: number | null; values: Map<string, VariableValue>; codebooks: Map<string, number | null> }
+    { first: AnnotationRow; last: Date; deviceId: number | null; values: Map<string, VariableValue>; designVersions: Map<string, number | null> }
   >();
   const unitTimes = unitTimings(annotations);
   // Answers outside unit loops (no unit) are in coders.csv.
@@ -199,9 +199,9 @@ export function annotationsTable(
     if (a.unitId === null) continue;
     const key = `${a.unitId}/${a.coderId}`;
     let row = byUnitCoder.get(key);
-    if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), deviceId: a.deviceId ?? null, values: new Map(), codebooks: new Map() }));
+    if (!row) byUnitCoder.set(key, (row = { first: a, last: new Date(a.updated), deviceId: a.deviceId ?? null, values: new Map(), designVersions: new Map() }));
     row.values.set(a.variable, a.value);
-    row.codebooks.set(a.variable, a.designVersionId);
+    row.designVersions.set(a.variable, a.designVersionId);
     if (new Date(a.updated) > row.last) {
       row.last = new Date(a.updated);
       row.deviceId = a.deviceId ?? null;
@@ -228,7 +228,7 @@ export function annotationsTable(
       "unit_ms_server",
       ...columns.map(header),
     ],
-    rows: [...byUnitCoder.values()].map(({ first, last, deviceId, values, codebooks }) => {
+    rows: [...byUnitCoder.values()].map(({ first, last, deviceId, values, designVersions }) => {
       const times = unitTimes.get(`${first.unitId}/${first.coderId}`);
       // The unit's spans, by id, so relations can name them by their text
       const spans = new Map([...values.values()].flatMap((v) => (v.spans ?? []).map((s) => [s.id, s] as const)));
@@ -244,7 +244,7 @@ export function annotationsTable(
       deviceId === null ? "" : String(deviceId),
       times?.client == null ? "" : String(times.client),
       times?.server == null ? "" : String(times.server),
-      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, codebooks.get(c.variable) ?? first.designVersionId, spans)),
+      ...columns.map((c) => cellOf(values.get(c.variable), c, labels, designVersions.get(c.variable) ?? first.designVersionId, spans)),
       ];
     }),
   };
@@ -357,9 +357,9 @@ export function unitsTable(versions: UnitVersion[], annotations: AnnotationRow[]
  * its label; questions without options have one row. The loop is the one
  * the question is in (empty: asked once per coder).
  */
-export function variablesTable(codebooks: ReadonlyMap<number, TopLevelItem[]>): Table {
+export function variablesTable(designVersions: ReadonlyMap<number, TopLevelItem[]>): Table {
   const rows: string[][] = [];
-  for (const [id, items] of [...codebooks].sort(([a], [b]) => a - b)) {
+  for (const [id, items] of [...designVersions].sort(([a], [b]) => a - b)) {
     const { questions, loopOf } = collectQuestions(items);
     const titles = new Map(unitLoops(items).map(({ key, loop }) => [key, loopTitle(loop, key)]));
     for (const [name, variable] of questions) {

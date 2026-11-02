@@ -30,7 +30,7 @@ describe("describeVersions", () => {
     expect(v.draftId).toBe(3);
   });
 
-  it("has no current version without codebooks", () => {
+  it("has no current version without design versions", () => {
     expect(describeVersions([], null).currentId).toBeNull();
   });
 });

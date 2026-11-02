@@ -6,7 +6,7 @@ import {
   OVERLAP_SET,
   linkCombinations,
   linkKey,
-  type CodebookValidationIssue,
+  type DesignIssue,
   type SessionItem,
   type SessionParam,
   type SessionValues,
@@ -38,7 +38,7 @@ export function SessionItemForm({
 }: {
   item: SessionItem;
   groups: SetGroupResponse[];
-  issues: CodebookValidationIssue[];
+  issues: DesignIssue[];
   onChange: (item: SessionItem) => void;
 }) {
   const setsOf = (group: string) => groups.find((g) => g.name === group)?.sets.filter((s) => s.name !== OVERLAP_SET).map((s) => s.name) ?? [];
@@ -217,7 +217,7 @@ function ParamEditor({
 }: {
   param: SessionParam;
   groups: SetGroupResponse[];
-  issues: CodebookValidationIssue[];
+  issues: DesignIssue[];
   onChange: (param: SessionParam) => void;
   onRemove: () => void;
 }) {

@@ -1,8 +1,7 @@
 # Glossary
 
-How AnnoTinder names things, in the app, the help and these docs. Code
-identifiers that predate a term are listed under "In code" with what they
-mean; renaming them is proposed in §3.
+How AnnoTinder names things, in the app, the help and these docs. Where code
+keeps the word "codebook", "In code" says why.
 
 ## 1. Terms
 
@@ -28,14 +27,16 @@ mean; renaming them is proposed in §3.
 
 ## 2. In code
 
-Older identifiers that mean a term above:
+Code says what the app says (§3). Where "codebook" stays, it means the
+coders' part:
 
 | Identifier | Means |
 | --- | --- |
-| `CodebookEditor`, `useCodebookDraft`, `client/src/lib/codebook/` | the **codebook editor** and design-item helpers |
-| `codebookItems`, `codebookSession`, `codebookUnits` (server `shared/designVersions.ts`) | the items, session and units of a **design version** |
-| `codebook_changed` (coder API error) | a new **design version** was deployed |
-| `toCoderItems`, `CoderCodebook` | the **codebook** (coders' part) |
+| `CoderCodebook`, `toCoderItems`, the coder session's `codebook` | the **codebook** (what the coding client gets) |
+| `codebook_changed` (coder API error) | the coder's **codebook** changed: a new design version was deployed |
+| `codebookMarkdown`, `codebook.md` (the editor's Export) | the **codebook** as a document |
+| client `codebook/` | the coding client's runtime (templates, conditions, expressions, the item tree) |
+| The **Codebook** tab (Design › Codebook), help section "Codebook" | UI wording: the design editor, kept as the user-facing name |
 | `putDeployment` (`PUT /deployment`) | **deploy** |
 | `variable` (a question's answer type; `VariableValue`) | a question's **answer type**; an **answer** |
 
@@ -57,3 +58,14 @@ public researcher API, so the R/Python clients follow):
 4. Done: client `codebook/` holds the coding runtime (templates, conditions,
    expressions, the item tree); the editor's helpers moved to `design/`
    (`codebookEdit` → `design/itemEdit`).
+5. Done: design-meaning identifiers say design: contracts `codebook/` →
+   `design/` (`DesignItem`, `DesignItemsSchema`, `validateDesignItems`,
+   `DesignIssue`, `designErrors`, `designItemsJsonSchema`), the recipe's and
+   the deploy history's `codebook` → `design`, server `designVersionItems`,
+   `designVersionSession`, `designVersionUnits`, `runtime/designItems.ts`,
+   client `DesignEditor`, `DesignManager`, `DesignTreeView`, `designTree/`,
+   `designEditor/`, `useDesignDraft`, `DesignJsonEditor`,
+   `DesignVersionsDialog`, `DesignStatusBanner`, `QuestionPreview`,
+   `diffDesigns`, help topics `design-editor`, `changing-a-live-design`,
+   `design-reproducible`. The local backup key is now
+   `annotinder:design-backup`.

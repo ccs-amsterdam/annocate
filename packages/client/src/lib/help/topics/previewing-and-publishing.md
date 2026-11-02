@@ -45,7 +45,7 @@ A banner under the toolbar always says what you are looking at:
 If you leave the **Codebook** tab with unsaved changes, AnnoTinder asks
 whether to **Save changes** or **Discard changes**. Unsaved changes are
 also kept in your browser, in case it closes; see
-[Backups in your browser](codebook-editor.md#backups-in-your-browser).
+[Backups in your browser](design-editor.md#backups-in-your-browser).
 
 ## The versions dialog
 
@@ -97,7 +97,7 @@ units. If the latest version has issues, the preview says so: fix them,
 save, and open the preview again.
 
 > The editor also has a preview of the selected item, which shows your
-> unsaved changes at once. See [The codebook editor](codebook-editor.md).
+> unsaved changes at once. See [The codebook editor](design-editor.md).
 > Use it while writing, and the full preview to try the whole job.
 
 ## Deploying
@@ -124,7 +124,7 @@ units while you are still editing the design, for instance. Click
 **Deploy** to make it live. Afterwards a second dialog may
 list warnings from the server, for instance that a loop gained questions
 and finished units become unfinished again. See
-[Changing a design while coding runs](changing-a-live-codebook.md).
+[Changing a design while coding runs](changing-a-live-design.md).
 
 The first deploy is what lets coders start, and it makes the job's links
 (see [Links](links.md)): until then, there is no link to open.

@@ -3,7 +3,7 @@ import {
   buildScope,
   itemName,
   type AnyVariableType,
-  type CodebookItem,
+  type DesignItem,
   type UnitData,
   type UnitLayout,
   type VariableValue,
@@ -25,9 +25,9 @@ const MOCK_UNIT_DATA: UnitData = {
   image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80",
 };
 
-interface CodebookPreviewVariableProps {
-  item: CodebookItem;
-  parentLoop?: Extract<CodebookItem, { type: "unit_loop" }> | null;
+interface QuestionPreviewProps {
+  item: DesignItem;
+  parentLoop?: Extract<DesignItem, { type: "unit_loop" }> | null;
   /** The unit to show (default: a made-up one). */
   unitData?: UnitData;
   /** Answers to use in the layout's references and blocks, with the questions they answer. */
@@ -44,7 +44,7 @@ interface CodebookPreviewVariableProps {
  * Displays real-time updates as the author edits the item's question prompt,
  * options, scale items, codes, colors, or unit layout.
  */
-export function CodebookPreviewVariable({
+export function QuestionPreview({
   item,
   parentLoop,
   unitData = MOCK_UNIT_DATA,
@@ -52,7 +52,7 @@ export function CodebookPreviewVariable({
   answers,
   progress,
   controls,
-}: CodebookPreviewVariableProps) {
+}: QuestionPreviewProps) {
   const [answerState, setAnswerState] = useState<{ value: VariableValue } | null>(null);
 
   const isVariable = item.type === "question";

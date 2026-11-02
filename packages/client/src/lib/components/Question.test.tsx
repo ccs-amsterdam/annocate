@@ -1,11 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { CodebookItem } from "@annotinder/contracts";
+import type { DesignItem } from "@annotinder/contracts";
 import { Question } from "./Question";
 import { SwipeCard, SwipeProvider, SwipeSurface } from "./SwipeCard";
 import { SpanAnnotationProvider } from "../context/SpanAnnotationContext";
 
-type QuestionItem = Extract<CodebookItem, { type: "question" }>;
+type QuestionItem = Extract<DesignItem, { type: "question" }>;
 
 describe("Question dispatcher", () => {
   const onAnswer = vi.fn();

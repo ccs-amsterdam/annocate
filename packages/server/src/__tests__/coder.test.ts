@@ -115,7 +115,7 @@ function coder(name: string, invite: string | null = "demo-secret", app = () => 
   };
 }
 
-/** A finished unit in the one-question codebooks `redeploy` creates. */
+/** A finished unit in the one-question design versions `redeploy` creates. */
 const sentiment = (code: string) => ({ sentiment: { done: true, values: [{ value: code }] } });
 /** A finished unit in the seeded demo codebook: sentiment, plus its other loop questions skipped. */
 const demo = (code: string) => ({
@@ -525,7 +525,7 @@ describe("assigned sets", () => {
     expect((await coder("early").next())!.id).toBe(set[0]);
     // A new version that changed the units, not the codebook
     const versions = (await (await server.request("/job/1/deployment/versions", { headers: adminHeaders })).json()) as { version: number; changes: unknown }[];
-    expect(versions[0]).toMatchObject({ version: deployed.version, changes: { codebook: false, units: { added: 0, changed: 0, removed: 0, sets: true } } });
+    expect(versions[0]).toMatchObject({ version: deployed.version, changes: { design: false, units: { added: 0, changed: 0, removed: 0, sets: true } } });
 
     // New units join "all units"
     await redeploy({});

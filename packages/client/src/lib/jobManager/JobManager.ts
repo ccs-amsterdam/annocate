@@ -2,7 +2,7 @@ import type {
   EndUnit,
   EndValues,
   Reopen,
-  CodebookItem,
+  DesignItem,
   TopLevelItem,
   InLoopItem,
   CoderTopLevelItem,
@@ -75,7 +75,7 @@ export interface JobManagerNavigation {
 
 export interface JobManagerSnapshot {
   phase: JobManagerPhase;
-  currentItem: CodebookItem | null;
+  currentItem: DesignItem | null;
   currentUnit: CoderUnitResponse | null;
   currentUnitLayout: UnitLayout | null;
   /** The layout's template with its values evaluated for the current unit. */
@@ -211,7 +211,7 @@ function errorCodeOf(err: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
-function getQuestionLabel(item: CodebookItem): string {
+function getQuestionLabel(item: DesignItem): string {
   if ("variable" in item && item.variable && "question" in item.variable) {
     const q = item.variable.question;
     if (typeof q === "string" && q.trim().length > 0) return plainLabel(q) || (itemName(item) ?? "");
@@ -246,7 +246,7 @@ export class JobManager {
 
   /**
    * The items for the step helpers shared with the editor (codebook/tree.ts),
-   * typed for full codebooks: they only read item types, conditions,
+   * typed for full designVersions: they only read item types, conditions,
    * questions and children, which the coder codebook keeps.
    */
   private get stepItems(): TopLevelItem[] {
@@ -264,7 +264,7 @@ export class JobManager {
 
   /** Every question in the codebook, for building `$var` scopes. */
   private questions = new Map<string, AnyVariableType>();
-  private topSteps: CodebookItem[] = [];
+  private topSteps: DesignItem[] = [];
   /** Answers of coder-level questions that are currently shown (hidden ones count as unanswered). */
   private coderVisible: Record<string, VariableValue> = {};
   /** The session's `$session` values (participant id, URL parameters its link required). */
@@ -275,7 +275,7 @@ export class JobManager {
   private maxReachedTopIndex = 0;
   private activeLoop: CoderUnitLoopItem | null = null;
   private currentUnit: CoderUnitResponse | null = null;
-  private loopSteps: CodebookItem[] = [];
+  private loopSteps: DesignItem[] = [];
   private loopIndex = -1;
 
   private userVariableValues: Record<string, VariableValue> = {};
@@ -467,7 +467,7 @@ export class JobManager {
   }
 
   /** Whether a top-level question already has an answer that fits the current codebook. */
-  private hasValidAnswer(item: CodebookItem): boolean {
+  private hasValidAnswer(item: DesignItem): boolean {
     if (!("variable" in item)) return false;
     const value = this.userVariableValues[item.name];
     return value !== undefined && validateAnswer(item.name, item.variable, value).length === 0;
@@ -889,7 +889,7 @@ export class JobManager {
    * in a loop, only on the first unit the coder answers it on (also after a
    * reload: not once they finished units in the loop), or only on practice units.
    */
-  private showsInstruction(item: CodebookItem): boolean {
+  private showsInstruction(item: DesignItem): boolean {
     const when = "variable" in item && "instructionWhen" in item.variable ? item.variable.instructionWhen : undefined;
     if (!when || when === "always" || !this.activeLoop || !this.currentUnit) return true;
     if (when === "practice") return this.currentUnit.data?._practice === true;
@@ -905,7 +905,7 @@ export class JobManager {
 
   /** A question's texts with their values filled in (in a loop, its snippets too). */
   private async questionTexts(
-    item: CodebookItem | undefined,
+    item: DesignItem | undefined,
     scope: ReferenceScope,
     snippets?: Record<string, string>,
   ): Promise<QuestionTexts | null> {
@@ -952,7 +952,7 @@ export class JobManager {
   }
 
   /** Publishes a top-level (coder-level) question. */
-  private async publishTopStep(item: CodebookItem): Promise<void> {
+  private async publishTopStep(item: DesignItem): Promise<void> {
     this.publish({
       phase: "user_variable",
       currentItem: item,
@@ -1255,7 +1255,7 @@ export class JobManager {
   }
 
   /** After a unit is finished and saved: an `end` in the loop, the next unit in history, or the next one from the server. */
-  private async continueAfterUnit(next: CodebookItem | undefined): Promise<void> {
+  private async continueAfterUnit(next: DesignItem | undefined): Promise<void> {
     if (this.activeLoop && this.currentUnit) {
       // An `end` item in the loop: the unit is saved, then the session ends.
       if (next?.type === "end") {

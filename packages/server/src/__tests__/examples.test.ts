@@ -94,12 +94,12 @@ describe("jobs from a recipe", () => {
         ],
       },
     ],
-    codebook: { items },
+    design: { items },
   };
   const post = (body: object) => researcher("/job/from-recipe", { method: "POST", body: JSON.stringify(body) });
   const jobCount = async () => (await db.query<{ n: number }>("SELECT count(*)::int AS n FROM jobs"))[0].n;
 
-  it("makes the units, set groups and a draft codebook; publishing makes its links", async () => {
+  it("makes the units, set groups and a draft design; deploying makes its links", async () => {
     const res = await post(recipe);
     expect(res.status).toBe(201);
     const job = JobResponseSchema.parse(await res.json());
@@ -115,15 +115,15 @@ describe("jobs from a recipe", () => {
       ],
     ]);
     // A draft with a question to specify: saved, not deployed
-    const codebooks = (await (await researcher(`/job/${job.id}/design`)).json()) as { items: unknown[] }[];
-    expect(codebooks).toHaveLength(1);
+    const designVersions = (await (await researcher(`/job/${job.id}/design`)).json()) as { items: unknown[] }[];
+    expect(designVersions).toHaveLength(1);
     expect(await (await researcher(`/job/${job.id}/deployment`)).json()).toBeNull();
     expect(((await (await researcher(`/job/${job.id}/links`)).json()) as unknown[]).length).toBe(0);
 
     // Published (the question specified): one open link
     const specified = structuredClone(items);
     (specified[1] as { children: { variable: object }[] }).children[0].variable = { type: "confirm", question: "?" };
-    const published = await post({ ...recipe, codebook: { items: specified }, publish: true });
+    const published = await post({ ...recipe, design: { items: specified }, publish: true });
     expect(published.status, await published.clone().text()).toBe(201);
     const { id } = JobResponseSchema.parse(await published.json());
     expect(((await (await researcher(`/job/${id}/links`)).json()) as { label: string }[]).map((l) => l.label)).toEqual(["Open link"]);

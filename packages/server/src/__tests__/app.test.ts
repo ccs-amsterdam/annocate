@@ -4,7 +4,7 @@ import { emptyDb } from "./testDb.js";
 import { createApp } from "../app.js";
 import { DbStore } from "../runtime/store.js";
 import { HttpError } from "../shared/http.js";
-import { splitSession, type CodebookItem, type VariableValue } from "@annotinder/contracts";
+import { splitSession, type DesignItem, type VariableValue } from "@annotinder/contracts";
 
 let db: Sql;
 let app: ReturnType<typeof createApp>;
@@ -53,9 +53,9 @@ describe("job routes", () => {
 });
 
 describe("codebook routes", () => {
-  it("saves drafts with issues, but only publishes valid codebooks", async () => {
+  it("saves drafts with issues, but only publishes valid design versions", async () => {
     const job = await createJob();
-    const validItems: CodebookItem[] = [
+    const validItems: DesignItem[] = [
       {
         type: "unit_loop",
         label: "loop",

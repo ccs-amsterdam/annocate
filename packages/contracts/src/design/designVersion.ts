@@ -6,7 +6,7 @@ import { TopLevelItemSchema, type TopLevelItem } from "./item.js";
 import { semanticIssues } from "./validation.js";
 
 /** A codebook's items. */
-export const CodebookItemsSchema = z
+export const DesignItemsSchema = z
   .array(TopLevelItemSchema)
   .min(1, "A codebook needs at least one item")
   .superRefine((items, ctx) => {
@@ -19,12 +19,12 @@ export const CodebookItemsSchema = z
 /**
  * A draft's items: any list. Drafts may be
  * saved while they don't pass validation (work in progress); a codebook is
- * only checked in full (`CodebookItemsSchema`) to deploy or preview it.
+ * only checked in full (`DesignItemsSchema`) to deploy or preview it.
  */
 export const DraftItemsSchema = z.array(z.unknown()).max(10_000);
 
 /**
- * Body for `POST /codebook` and `PUT /codebook/:id` -- always the full document.
+ * Body for `POST /design` and `PUT /design/:id` -- always the full document.
  * Versions are identified by their order of creation, not by name.
  */
 export const DesignWriteSchema = z.object({
@@ -51,7 +51,7 @@ export const DesignWriteSchema = z.object({
 });
 export type DesignWrite = z.input<typeof DesignWriteSchema>;
 
-/** Codebook metadata, e.g. for `GET /codebook`. */
+/** A design version's metadata, e.g. for `GET /design`. */
 export const DesignVersionMetaSchema = z.object({
   id: IdSchema,
   note: z.string().nullable(),
@@ -78,7 +78,7 @@ export const DesignVersionSchema = DesignVersionMetaSchema.extend({
 export type DesignVersion = z.infer<typeof DesignVersionSchema>;
 
 /**
- * The 409 body of a `PUT /codebook/:id` whose `revision` is out of date:
+ * The 409 body of a `PUT /design/:id` whose `revision` is out of date:
  * someone saved the draft since. The client offers to overwrite it or to
  * load the saved version.
  */

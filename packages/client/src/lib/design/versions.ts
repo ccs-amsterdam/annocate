@@ -9,7 +9,7 @@ import type { DesignVersionMeta } from "@annotinder/contracts";
  */
 export type VersionStatus = "live" | "draft" | "history";
 
-export interface CodebookVersions {
+export interface DesignVersions {
   liveId: number | null;
   draftId: number | null;
   /** The version the editor opens by default: the draft, else the latest. */
@@ -19,11 +19,11 @@ export interface CodebookVersions {
   statusOf: (id: number) => VersionStatus;
 }
 
-/** `codebooks` in order of creation, as `GET /codebook` returns them. */
-export function describeVersions(codebooks: DesignVersionMeta[], liveId: number | null): CodebookVersions {
-  const latest = codebooks.at(-1) ?? null;
+/** `designVersions` in order of creation, as `GET /design` returns them. */
+export function describeVersions(designVersions: DesignVersionMeta[], liveId: number | null): DesignVersions {
+  const latest = designVersions.at(-1) ?? null;
   const draftId = latest && !latest.immutable && latest.id !== liveId ? latest.id : null;
-  const index = new Map(codebooks.map((c, i) => [c.id, i + 1]));
+  const index = new Map(designVersions.map((c, i) => [c.id, i + 1]));
   return {
     liveId,
     draftId,

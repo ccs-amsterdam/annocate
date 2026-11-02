@@ -301,7 +301,7 @@ const unspecified = (q: SetupQuestion) => ({
 });
 
 /**
- * The recipe for `POST /job/from-recipe`: a draft codebook, the units and
+ * The recipe for `POST /job/from-recipe`: a draft design, the units and
  * their sets. Deploying makes the links (one, or one per set when sets
  * are handed out by link).
  */
@@ -390,6 +390,6 @@ export function setupRecipe(a: SetupAnswers): RecipeInput {
     name: a.name.trim(),
     units: (a.units?.units ?? []).map((u) => ({ id: u.externalId, data: u.data })),
     sets: groups.map((g) => ({ ...g, sets: g.sets.filter((s) => s.units.length > 0) })),
-    codebook: { note: "Made with the setup wizard", items, ...(session ? { session } : {}) },
+    design: { note: "Made with the setup wizard", items, ...(session ? { session } : {}) },
   };
 }

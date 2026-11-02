@@ -11,7 +11,7 @@ export interface DeploymentSpec {
   jobId: number;
   version: number;
   active: boolean;
-  codebook: DesignVersion;
+  design: DesignVersion;
   /** The deployed units (docs/plans/design.md §5); false: the drafts (a preview). */
   liveUnits: boolean;
   /** All sets coders get, keyed `group/set` (contracts `setKey`), plus `__all__` (every unit). */

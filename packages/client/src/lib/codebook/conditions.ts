@@ -1,7 +1,7 @@
 import {
   evaluateSimpleCondition,
   parseSimpleCondition,
-  type CodebookItem,
+  type DesignItem,
   type Condition,
   type ReferenceScope,
   type SimpleCondition,
@@ -93,7 +93,7 @@ export function readableCondition(condition: SimpleCondition, nested = false): s
  * none) its label, or else its condition; for a unit loop its label, or
  * "Unit loop".
  */
-export function itemTitle(item: CodebookItem): string {
+export function itemTitle(item: DesignItem): string {
   if (item.type === "condition") return item.label?.trim() || `if ${describeCondition(item.condition)}`;
   if (item.type === "unit_loop") return item.label?.trim() || "Unit loop";
   if (item.type === "session") return item.label?.trim() || "Session";

@@ -27,8 +27,8 @@ const TYPES: UnitFieldType[] = ["text", "number", "boolean"];
  * units); fields it uses but the design doesn't declare can be declared.
  */
 export function FieldsPanel({ client, fields }: { client: ResearcherApi; fields: UnitField[] }) {
-  const codebooks = useDesignVersionsQuery(client).data ?? [];
-  const latest = useDesignVersionQuery(client, codebooks.at(-1)?.id ?? null).data;
+  const designVersions = useDesignVersionsQuery(client).data ?? [];
+  const latest = useDesignVersionQuery(client, designVersions.at(-1)?.id ?? null).data;
   const items = useMemo(() => (latest?.items ?? []) as TopLevelItem[], [latest]);
   const usage = useMemo(() => fieldUsage(items), [items]);
   const undeclared = useMemo(() => undeclaredFields(items, fields), [items, fields]);

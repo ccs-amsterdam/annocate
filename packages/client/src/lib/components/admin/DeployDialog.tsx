@@ -3,7 +3,7 @@ import { designItems, type DesignVersion, type TopLevelItem, type UnitChanges } 
 import { AlertTriangle, Loader2, Rocket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { diffCodebooks, summarizeChanges, valueChanges, type CodebookChange } from "../../design/diff";
+import { diffDesigns, summarizeChanges, valueChanges, type DesignChange } from "../../design/diff";
 import { HelpButton } from "../../help/HelpButton";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { usePendingChangesQuery } from "../../admin/queries";
@@ -12,18 +12,18 @@ interface DeployDialogProps {
   client: ResearcherApi;
   open: boolean;
   /** A design version to deploy (a draft that isn't live); null: none, the live one stays. */
-  codebook: DesignVersion | null;
+  version: DesignVersion | null;
   versionNumber: number;
   /** The version coders use now; null if nothing was deployed yet. */
   live: DesignVersion | null;
   liveNumber: number | null;
-  /** Whether the codebook part starts ticked (the editor's Deploy: yes; after uploading units: no). */
-  includeCodebook?: boolean;
+  /** Whether the design part starts ticked (the editor's Deploy: yes; after uploading units: no). */
+  includeDesign?: boolean;
   /**
-   * Deploys: the codebook (null: keep the live one; its note stored first,
+   * Deploys: the design version (null: keep the live one; its note stored first,
    * empty: none) and the draft units and sets or not.
    */
-  onDeploy: (codebook: DesignVersion | null, note: string, units: boolean) => Promise<{ warnings?: string[] }>;
+  onDeploy: (version: DesignVersion | null, note: string, units: boolean) => Promise<{ warnings?: string[] }>;
   onClose: () => void;
 }
 
@@ -45,9 +45,9 @@ export function describeUnitChanges(c: UnitChanges): string {
  * each with a checkbox; what is left out stays a draft. Shows the server's
  * warnings afterwards.
  *
- * Mount it with a `key` per codebook, so the note starts fresh.
+ * Mount it with a `key` per design version, so the note starts fresh.
  */
-export function DeployDialog({ client, open, codebook, versionNumber, live, liveNumber, includeCodebook = true, onDeploy, onClose }: DeployDialogProps) {
+export function DeployDialog({ client, open, version, versionNumber, live, liveNumber, includeDesign = true, onDeploy, onClose }: DeployDialogProps) {
   const [state, setState] = useState<
     { step: "confirm" } | { step: "publishing" } | { step: "done"; warnings: string[] } | { step: "error"; message: string }
   >({ step: "confirm" });
@@ -55,16 +55,16 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
   const firstDeploy = liveNumber === null;
   const unitChanges = pending?.units ?? null;
   const hasUnitChanges = unitChanges !== null && (unitChanges.added > 0 || unitChanges.changed > 0 || unitChanges.removed > 0 || unitChanges.sets);
-  const [withCodebook, setWithCodebook] = useState(includeCodebook || firstDeploy);
+  const [withDesign, setWithDesign] = useState(includeDesign || firstDeploy);
   const [withUnits, setWithUnits] = useState(true);
-  const useCodebook = codebook !== null && (withCodebook || firstDeploy);
+  const deployDesign = version !== null && (withDesign || firstDeploy);
   const useUnits = firstDeploy || (hasUnitChanges && withUnits);
 
   const liveItems = live ? (designItems(live) as TopLevelItem[]) : [];
-  const draftItems = codebook ? (designItems(codebook) as TopLevelItem[]) : [];
-  const changes = codebook && live ? diffCodebooks(liveItems, draftItems) : null;
-  const valueWarnings = codebook && live ? valueChanges(liveItems, draftItems) : [];
-  const [note, setNote] = useState(() => codebook?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""));
+  const draftItems = version ? (designItems(version) as TopLevelItem[]) : [];
+  const changes = version && live ? diffDesigns(liveItems, draftItems) : null;
+  const valueWarnings = version && live ? valueChanges(liveItems, draftItems) : [];
+  const [note, setNote] = useState(() => version?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""));
 
   function close() {
     setState({ step: "confirm" });
@@ -74,7 +74,7 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
   async function deploy() {
     setState({ step: "publishing" });
     try {
-      const result = await onDeploy(useCodebook ? codebook : null, note.trim(), useUnits);
+      const result = await onDeploy(deployDesign ? version : null, note.trim(), useUnits);
       if (result.warnings?.length) setState({ step: "done", warnings: result.warnings });
       else close();
     } catch (e) {
@@ -82,7 +82,7 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
     }
   }
 
-  const nothing = !useCodebook && !useUnits;
+  const nothing = !deployDesign && !useUnits;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && state.step !== "publishing" && close()}>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-lg">
@@ -117,15 +117,15 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto text-sm">
               <section className="space-y-2 rounded-md border border-border p-3">
-                {codebook ? (
+                {version ? (
                   <label className="flex items-center gap-2 font-semibold text-foreground">
-                    <input type="checkbox" checked={useCodebook} disabled={firstDeploy} onChange={(e) => setWithCodebook(e.target.checked)} />
+                    <input type="checkbox" checked={deployDesign} disabled={firstDeploy} onChange={(e) => setWithDesign(e.target.checked)} />
                     Design v{versionNumber}
                   </label>
                 ) : (
                   <p className="font-semibold text-foreground">Design: v{liveNumber} stays</p>
                 )}
-                {codebook && useCodebook && (
+                {version && deployDesign && (
                   <>
                     {valueWarnings.length > 0 && (
                       <ul className="space-y-2">
@@ -161,7 +161,7 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
                     />
                   </>
                 )}
-                {codebook && !useCodebook && <p className="text-xs text-muted-foreground">The draft stays a draft, for a later deploy.</p>}
+                {version && !deployDesign && <p className="text-xs text-muted-foreground">The draft stays a draft, for a later deploy.</p>}
               </section>
 
               <section className="space-y-1 rounded-md border border-border p-3">
@@ -178,12 +178,12 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
 
               <section>
                 <h4 className="mb-1.5 flex items-center gap-1.5 font-semibold text-foreground">
-                  What happens <HelpButton topic="changing-a-live-codebook" label="Help: changing a live codebook" />
+                  What happens <HelpButton topic="changing-a-live-design" label="Help: changing a live design" />
                 </h4>
                 <ul className="list-disc space-y-1 pl-5 text-foreground/80">
                   <li>{firstDeploy ? "Coders can start." : "Coders who are working now switch to it when they next save an answer; new coders start with it."}</li>
                   {!firstDeploy && <li>Answers already given stay linked to the design version and unit versions they were given with.</li>}
-                  {useCodebook && <li>Design v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy that.</li>}
+                  {deployDesign && <li>Design v{versionNumber} becomes read only. To change it later, you edit a new draft and deploy that.</li>}
                 </ul>
               </section>
 
@@ -206,14 +206,14 @@ export function DeployDialog({ client, open, codebook, versionNumber, live, live
   );
 }
 
-const KIND_LABEL: Record<CodebookChange["kind"], { label: string; className: string }> = {
+const KIND_LABEL: Record<DesignChange["kind"], { label: string; className: string }> = {
   added: { label: "Added", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
   removed: { label: "Removed", className: "bg-destructive/15 text-destructive" },
   changed: { label: "Changed", className: "bg-sky-500/15 text-sky-700 dark:text-sky-400" },
   moved: { label: "Moved", className: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
 };
 
-function ChangeLine({ change }: { change: CodebookChange }) {
+function ChangeLine({ change }: { change: DesignChange }) {
   const { label, className } = KIND_LABEL[change.kind];
   const where = change.kind === "moved" ? (change.parent ? ` to ${change.parent}` : " to the top level") : change.parent ? ` in ${change.parent}` : "";
   return (

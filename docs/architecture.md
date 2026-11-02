@@ -182,7 +182,7 @@ There are three layers:
 
 ### 6.1 Unit loops
 
-Defined in `contracts/src/codebook/unitLoop.ts`. A loop has branches (the
+Defined in `contracts/src/design/unitLoop.ts`. A loop has branches (the
 first whose `when` matches is used; no match = no units). Each branch has a
 **mode**, which says which units a coder gets, and (in `shared` and
 `assign`) an **overlap**:
@@ -530,9 +530,9 @@ Other open points:
 
 | Where | What |
 | --- | --- |
-| `contracts/src/codebook/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, set references |
-| `contracts/src/codebook/session.ts` | The Session item: link and URL parameters, combinations |
-| `contracts/src/codebook/references.ts`, `condition.ts` | `$unit`/`$var` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
+| `contracts/src/design/unitLoop.ts` | `unit_loop` branches: modes, overlap, `when`, set references |
+| `contracts/src/design/session.ts` | The Session item: link and URL parameters, combinations |
+| `contracts/src/design/references.ts`, `condition.ts` | `$unit`/`$var` references, template parsing, scopes; conditions (scripts), helper methods, simple conditions |
 | `contracts/src/sets.ts` | Set groups and sets, set columns, `splitIntoSets` |
 | `contracts/src/deployment.ts` | Deployment, reset, status and preview schemas (researcher API) |
 | `contracts/src/endpoints/` | The two API registries: researcher, coder ([docs/api](api/README.md)) |
@@ -549,7 +549,7 @@ Other open points:
 | `server/src/runtime/session.ts` | Coder session cookies, CSRF header |
 | `server/src/runtime/preview.ts` | Researcher previews: preview tokens, `PreviewStore` with in-memory coders and answers |
 | `server/src/runtime/distribution.ts` | `UnitPool` (fixed, or a shared queue), `pickNext` (own units and overlap), `Codings` |
-| `server/src/runtime/codebook.ts` | Loop/variable lookup, annotation validation, agreement keys |
+| `server/src/runtime/designItems.ts` | Loop/variable lookup, annotation validation, agreement keys |
 | `client/.../admin/UnitLoopForm.tsx` | Editor for loop branches, modes and overlap |
 
 Tests (`server/src/__tests__/`) run through the app's fetch handler on

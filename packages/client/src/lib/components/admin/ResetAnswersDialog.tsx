@@ -57,7 +57,7 @@ export function ResetAnswersDialog({ client, scope, onClose }: { client: Researc
         <DialogHeader>
           <DialogTitle className="flex items-center gap-1.5">
             Reset answers{scope?.label ? ` of ${scope.label}` : ""}
-            <HelpButton topic="changing-a-live-codebook#resetting-answers" label="Help: resetting answers" />
+            <HelpButton topic="changing-a-live-design#resetting-answers" label="Help: resetting answers" />
           </DialogTitle>
           <DialogDescription>
             The answers to the questions you choose become unanswered, so these units are coded again. The old answers are kept

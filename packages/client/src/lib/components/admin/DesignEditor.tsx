@@ -4,41 +4,41 @@ import type { DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../design/unitFieldRefs";
-import { CodebookJsonEditor } from "./CodebookJsonEditor";
-import { useCodebookDraft } from "./codebookEditor/useCodebookDraft";
-import { EditorToolbar, type ChangedItem, type EditorIssue, type EditorView } from "./codebookEditor/EditorToolbar";
+import { DesignJsonEditor } from "./DesignJsonEditor";
+import { useDesignDraft } from "./designEditor/useDesignDraft";
+import { EditorToolbar, type ChangedItem, type EditorIssue, type EditorView } from "./designEditor/EditorToolbar";
 import { findItem, flattenTree, itemAtPath, keyOf } from "../../codebook/tree";
 import { itemTitle } from "../../codebook/conditions";
-import type { CodebookBackup } from "../../design/localBackup";
+import type { DesignBackup } from "../../design/localBackup";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { TreePanel } from "./codebookEditor/TreePanel";
-import { ItemPanel, PreviewPanel } from "./codebookEditor/ItemPanel";
+import { TreePanel } from "./designEditor/TreePanel";
+import { ItemPanel, PreviewPanel } from "./designEditor/ItemPanel";
 
 /**
  * How the opened version can be edited (docs/client.md §7):
- * - draft:   saving updates it (or creates it, for a new codebook).
+ * - draft:   saving updates it (or creates it, for a new design version).
  * - live:    the live version, with no draft yet. Editable, but saving
- *            creates a new codebook: the draft. Coders keep the live version.
+ *            creates a new design version: the draft. Coders keep the live version.
  * - history: an older version, read only.
  */
-export type CodebookEditorMode = "draft" | "live" | "history";
+export type DesignEditorMode = "draft" | "live" | "history";
 
 /** The editor's save function, for a parent to save from e.g. an "unsaved changes" dialog. */
 export type SaveFn = () => Promise<DesignVersion>;
 
-interface CodebookEditorProps {
+interface DesignEditorProps {
   client: ResearcherApi;
-  /** The version to edit; null/undefined for a new codebook. Mount with a `key` per version. */
-  codebook?: DesignVersion | null;
-  mode?: CodebookEditorMode;
+  /** The version to edit; null/undefined for a new design version. Mount with a `key` per version. */
+  version?: DesignVersion | null;
+  mode?: DesignEditorMode;
   /** Shown below the toolbar: what version this is and what to do next. */
   banner?: ReactNode;
-  onSaved: (codebook: DesignVersion) => void;
+  onSaved: (version: DesignVersion) => void;
   /** Shows a Deploy button; called with the saved version (unsaved changes are saved first). */
-  onPublish?: (codebook: DesignVersion) => void;
+  onPublish?: (version: DesignVersion) => void;
   onDirtyChange?: (isDirty: boolean) => void;
   onOpenVersions?: () => void;
   /** Receives the editor's save function (and null on unmount). */
@@ -46,18 +46,18 @@ interface CodebookEditorProps {
   /** Loads the saved version again, dropping the editor's state (after a save conflict). */
   onReload?: () => void;
   /** Unsaved edits of this version from an earlier session, to continue with. */
-  restore?: CodebookBackup | null;
+  restore?: DesignBackup | null;
   /** Called once the editor started from `restore` (it is used once). */
   onRestored?: () => void;
 }
 
 /**
- * Whole-document codebook editor (docs/client.md §7): holds one in-memory
- * copy of the items (`useCodebookDraft`), edited purely client-side, and
+ * Whole-document design editor (docs/client.md §7): holds one in-memory
+ * copy of the items (`useDesignDraft`), edited purely client-side, and
  * saved in one `PUT`/`POST /design` call.
  *
- * Parts (see ./codebookEditor):
- * - useCodebookDraft  items, selection, validation, unsaved changes, saving
+ * Parts (see ./designEditor):
+ * - useDesignDraft  items, selection, validation, unsaved changes, saving
  * - EditorToolbar     issue count, Visual/JSON toggle, Versions/Save/Deploy
  * - TreePanel         the item tree (left)
  * - ItemPanel         the selected item's form or preview (right)
@@ -66,9 +66,9 @@ interface CodebookEditorProps {
 /** Wide enough for the tree, the form and the preview side by side. */
 const WIDE_SCREEN = "(min-width: 1500px)";
 
-export function CodebookEditor({
+export function DesignEditor({
   client,
-  codebook,
+  version,
   mode = "draft",
   banner,
   onSaved,
@@ -79,13 +79,13 @@ export function CodebookEditor({
   onReload,
   restore,
   onRestored,
-}: CodebookEditorProps) {
+}: DesignEditorProps) {
   const readOnly = mode === "history";
-  const draft = useCodebookDraft({ client, codebook, readOnly, onSaved, restore });
+  const draft = useDesignDraft({ client, version, readOnly, onSaved, restore });
   const wide = useMediaQuery(WIDE_SCREEN);
   const [view, setView] = useState<EditorView>("tree");
   const unitFieldsQuery = useUnitFieldsQuery(client);
-  // Warnings, not errors: units may still be uploaded after the codebook is written
+  // Warnings, not errors: units may still be uploaded after the design is written
   const warnings = useMemo(
     () => unknownUnitFields(draft.cleanItems, unitFieldsQuery.data ?? []),
     [draft.cleanItems, unitFieldsQuery.data],
@@ -143,8 +143,8 @@ export function CodebookEditor({
   async function publish() {
     if (!onPublish) return;
     // A live version that wasn't changed can't be deployed again; anything unsaved is saved first
-    if (dirty || !codebook || codebook.immutable) onPublish(await draft.save());
-    else onPublish(codebook);
+    if (dirty || !version || version.immutable) onPublish(await draft.save());
+    else onPublish(version);
   }
 
   return (
@@ -171,7 +171,7 @@ export function CodebookEditor({
         onPublish={onPublish && (() => void publish().catch(() => {}))}
         onOpenVersions={onOpenVersions}
         onExport={() => {
-          const markdown = codebookMarkdown(draft.cleanItems, "Codebook", codebook?.note);
+          const markdown = codebookMarkdown(draft.cleanItems, "Codebook", version?.note);
           const a = document.createElement("a");
           a.href = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
           a.download = "codebook.md";
@@ -213,7 +213,7 @@ export function CodebookEditor({
 
       {view === "json" ? (
         <div className="flex-1 overflow-hidden">
-          <CodebookJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
+          <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
         </div>
       ) : (
         <div className={cn("grid flex-1 gap-4 overflow-hidden", wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2")}>

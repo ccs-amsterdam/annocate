@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import {
   loopTitle,
   unitLoops,
-  CodebookItemsSchema,
-  type CodebookItem,
+  DesignItemsSchema,
+  type DesignItem,
   type DeploymentChanges,
   type DeploymentResponse,
   type DeploymentVersion,
@@ -11,7 +11,7 @@ import {
   type PendingChanges,
 } from "@annotinder/contracts";
 import { one, type Sql } from "../db.js";
-import { codebookItems, itemsValid, toDesignVersion, type DesignVersionRow } from "./designVersions.js";
+import { designVersionItems, itemsValid, toDesignVersion, type DesignVersionRow } from "./designVersions.js";
 import { HttpError } from "./http.js";
 import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
@@ -47,10 +47,10 @@ export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWri
   const units = !previous || body.units ? await unitChanges(sql, jobId) : null;
   const newUnits = units !== null && (!previous || anyUnitChanges(units));
   const changes: DeploymentChanges = {
-    codebook: previous?.design_version_id !== body.designVersionId,
+    design: previous?.design_version_id !== body.designVersionId,
     units: newUnits ? units : null,
   };
-  const changed = changes.codebook || changes.units !== null;
+  const changed = changes.design || changes.units !== null;
   const version = !previous ? 1 : previous.version + (changed ? 1 : 0);
   // The units of this version: new versions of changed units, the draft's sets
   if (newUnits) await deployDraftUnits(sql, jobId, version);
@@ -99,13 +99,13 @@ export async function deploymentVersions(sql: Sql, jobId: number): Promise<Deplo
 export async function loopVariables(sql: Sql, jobId: number, designVersionId: number): Promise<Map<string, string[]>> {
   const row = await one<{ items: unknown; session: unknown }>(sql, "SELECT items, session FROM design_versions WHERE job_id = $1 AND id = $2", [jobId, designVersionId]);
   const loops = new Map<string, string[]>();
-  const parsed = row ? CodebookItemsSchema.safeParse(codebookItems(row)) : null;
+  const parsed = row ? DesignItemsSchema.safeParse(designVersionItems(row)) : null;
   if (!parsed?.success) return loops;
-  const questions = (items: CodebookItem[]): string[] =>
-    items.flatMap((i) => (i.type === "condition" ? questions(i.children as CodebookItem[]) : "variable" in i ? [i.name] : []));
+  const questions = (items: DesignItem[]): string[] =>
+    items.flatMap((i) => (i.type === "condition" ? questions(i.children as DesignItem[]) : "variable" in i ? [i.name] : []));
   for (const { key, loop } of unitLoops(parsed.data)) {
     const title = loopTitle(loop, key);
-    loops.set(loops.has(title) ? `${title} (${key})` : title, questions(loop.children as CodebookItem[]));
+    loops.set(loops.has(title) ? `${title} (${key})` : title, questions(loop.children as DesignItem[]));
   }
   return loops;
 }
@@ -158,10 +158,10 @@ export async function getDeploymentSpec(sql: Sql, jobId: number): Promise<Deploy
 export async function getPreviewSpec(sql: Sql, jobId: number): Promise<DeploymentSpec | null> {
   const codebook = await one<DesignVersionRow>(sql, "SELECT * FROM design_versions WHERE job_id = $1 ORDER BY id DESC LIMIT 1", [jobId]);
   if (!codebook) return null;
-  if (!itemsValid(codebookItems(codebook))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "codebook_invalid");
+  if (!itemsValid(designVersionItems(codebook))) throw new HttpError(409, "The latest design version has issues: fix them to preview it", "design_invalid");
   // The drafts: the latest codebook with the draft units and sets.
   const spec = await buildSpec(sql, jobId, codebook, { version: 1, active: true, annotationEpoch: 0, liveUnits: false });
-  const digest = createHash("sha256").update(JSON.stringify([spec.codebook, spec.sets])).digest("hex");
+  const digest = createHash("sha256").update(JSON.stringify([spec.design, spec.sets])).digest("hex");
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
 
@@ -182,7 +182,7 @@ async function buildSpec(
     keepSessionsOpen: job?.keep_sessions_open ?? false,
     redirectUrls: job?.redirect_urls ?? {},
     // The runtime works on the items with the session first
-    codebook: { ...toDesignVersion(codebook), items: codebookItems(codebook) },
+    design: { ...toDesignVersion(codebook), items: designVersionItems(codebook) },
     sets: await runtimeSets(sql, jobId, meta.liveUnits),
   };
 }

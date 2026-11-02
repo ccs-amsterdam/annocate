@@ -5,7 +5,7 @@ import { AccountRoleSchema, LimitsSchema } from "./account.js";
 // The server admin's API (`/admin/...`, account role `admin`;
 // docs/accounts.md): registration, plans and limits, users, researcher
 // invites and requests, jobs (suspend, owner) and the log of admin actions.
-// Admins don't see job data: no codebooks, units or answers.
+// Admins don't see job data: no design versions, units or answers.
 
 /**
  * Who becomes a researcher: `open`: anyone who logs in (with a verified

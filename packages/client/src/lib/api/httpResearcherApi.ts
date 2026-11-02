@@ -71,7 +71,7 @@ export class ResearcherApiError extends Error {
  * (docs/client.md §7) -- distinct from `CoderApi` (api/httpCoderApi.ts),
  * which is the coder-facing, annotation-time interface.
  *
- * Supports listing, creating, and selecting jobs. Per-job resources (codebooks,
+ * Supports listing, creating, and selecting jobs. Per-job resources (design versions,
  * units, set groups, coders) are accessed via a job-scoped client created by
  * calling `client.forJob(jobId)`.
  */
@@ -191,7 +191,7 @@ export interface HttpResearcherApiConfig {
   /** Development auth headers instead of a key; only accepted by a server with ANNOTINDER_DEV_AUTH=1. */
   devRole?: "ADMIN" | "WRITE" | "READ";
   devEmail?: string;
-  /** Optional job ID to scope per-job requests (codebooks, units, etc.). */
+  /** Optional job ID to scope per-job requests (design versions, units, etc.). */
   jobId?: number;
 }
 

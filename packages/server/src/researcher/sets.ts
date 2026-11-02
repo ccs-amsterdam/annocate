@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { CodebookItemsSchema, SetGroupWriteSchema, branchGroups, setParameters, unitLoops, type CodebookItem } from "@annotinder/contracts";
+import { DesignItemsSchema, SetGroupWriteSchema, branchGroups, setParameters, unitLoops, type DesignItem } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import type { Server, Env } from "../context.js";
-import { codebookItems } from "../shared/designVersions.js";
+import { designVersionItems } from "../shared/designVersions.js";
 import { requireJobUser } from "./auth.js";
 import { deleteSetGroup, listSetGroups, putSetGroup } from "../shared/sets.js";
 
@@ -14,9 +14,9 @@ async function groupInUse(sql: Sql, jobId: number, group: string): Promise<boole
     [jobId],
   );
   return rows.some((row) => {
-    const parsed = CodebookItemsSchema.safeParse(codebookItems(row));
+    const parsed = DesignItemsSchema.safeParse(designVersionItems(row));
     if (!parsed.success) return false;
-    const items = parsed.data as CodebookItem[];
+    const items = parsed.data as DesignItem[];
     const loops = unitLoops(items).some(({ loop }) => loop.units.some((b) => branchGroups(b).includes(group)));
     return loops || [...setParameters(items).values()].includes(group);
   });

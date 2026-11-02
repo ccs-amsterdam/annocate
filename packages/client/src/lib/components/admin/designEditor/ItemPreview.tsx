@@ -5,7 +5,7 @@ import {
   parseTemplateBlocks,
   templateReferences,
   type AnyVariableType,
-  type CodebookItem,
+  type DesignItem,
   type OptionValue,
   type TemplateNode,
   type UnitLoopItem,
@@ -14,8 +14,8 @@ import {
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useSetGroupsQuery, useUnitPageQuery } from "../../../admin/queries";
 import { enclosingLoop, flattenTree } from "../../../codebook/tree";
-import { CodebookPreviewVariable } from "../CodebookPreviewVariable";
-import type { CodebookDraft } from "./useCodebookDraft";
+import { QuestionPreview } from "../QuestionPreview";
+import type { DesignDraft } from "./useDesignDraft";
 
 const selectClass = "h-7 rounded-md border border-input bg-background px-1.5 text-xs";
 
@@ -53,7 +53,7 @@ function optionsOf(variable: AnyVariableType | undefined): { value: OptionValue;
  * screen (for `::: from` blocks) and answers to the questions the layout
  * uses (for `::: if` blocks and values).
  */
-export function ItemPreview({ client, draft, item }: { client: ResearcherApi; draft: CodebookDraft; item: CodebookItem }) {
+export function ItemPreview({ client, draft, item }: { client: ResearcherApi; draft: DesignDraft; item: DesignItem }) {
   const loop = item.type === "unit_loop" ? (item as UnitLoopItem) : enclosingLoop(draft.items, item);
   const { questions } = useMemo(() => collectQuestions(draft.cleanItems), [draft.cleanItems]);
   const order = loop ? loopQuestionNames(loop) : [];
@@ -150,7 +150,7 @@ export function ItemPreview({ client, draft, item }: { client: ResearcherApi; dr
   );
 
   return (
-    <CodebookPreviewVariable
+    <QuestionPreview
       item={item}
       parentLoop={loop}
       unitData={unit?.data}

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CodebookTreeView } from "./CodebookTreeView";
+import { DesignTreeView } from "./DesignTreeView";
 import type { TopLevelItem } from "@annotinder/contracts";
 import { ensureKeys } from "../../design/itemEdit";
 
-describe("CodebookTreeView", () => {
+describe("DesignTreeView", () => {
   // As in the editor: every item has a key (a loop has no name).
   const dummyItems: TopLevelItem[] = ensureKeys([
     {
@@ -29,7 +29,7 @@ describe("CodebookTreeView", () => {
 
   it("renders the items, with a + and a tick box per row", () => {
     const html = renderToStaticMarkup(
-      <CodebookTreeView
+      <DesignTreeView
         items={dummyItems}
         selected="consent"
         onSelect={vi.fn()}
@@ -49,7 +49,7 @@ describe("CodebookTreeView", () => {
 
   it("has no actions on a read-only codebook", () => {
     const html = renderToStaticMarkup(
-      <CodebookTreeView items={dummyItems} selected={null} onSelect={vi.fn()} onAdd={vi.fn()} onDelete={vi.fn()} onMove={vi.fn()} readOnly />,
+      <DesignTreeView items={dummyItems} selected={null} onSelect={vi.fn()} onAdd={vi.fn()} onDelete={vi.fn()} onMove={vi.fn()} readOnly />,
     );
     expect(html).not.toContain("Add an item below");
     expect(html).not.toContain("checkbox");

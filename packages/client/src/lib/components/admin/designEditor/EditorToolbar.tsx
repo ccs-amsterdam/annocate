@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SegmentedToggle } from "./SegmentedToggle";
-import type { CodebookEditorMode } from "../CodebookEditor";
+import type { DesignEditorMode } from "../DesignEditor";
 
 export type EditorView = "tree" | "json";
 
@@ -17,7 +17,7 @@ export interface EditorIssue {
 }
 
 interface EditorToolbarProps {
-  mode: CodebookEditorMode;
+  mode: DesignEditorMode;
   view: EditorView;
   onViewChange: (view: EditorView) => void;
   /** Problems that block saving. */

@@ -2,7 +2,7 @@ import {
   buildScope,
   itemName,
   type AnyVariableType,
-  type CodebookItem,
+  type DesignItem,
   type TopLevelItem,
   type InLoopItem,
   type UnitData,
@@ -18,8 +18,8 @@ import type { ExpressionCache } from "./expressionCache";
  */
 
 /** Flattens all items in the tree into a single array in document order. */
-export function flattenTree(items: (TopLevelItem | InLoopItem)[]): CodebookItem[] {
-  const result: CodebookItem[] = [];
+export function flattenTree(items: (TopLevelItem | InLoopItem)[]): DesignItem[] {
+  const result: DesignItem[] = [];
   for (const item of items) {
     result.push(item);
     if ("children" in item && Array.isArray(item.children)) {
@@ -30,12 +30,12 @@ export function flattenTree(items: (TopLevelItem | InLoopItem)[]): CodebookItem[
 }
 
 /** The codebook editor's key of an item (stable while its name is edited), if it has one. */
-export function keyOf(item: CodebookItem | TopLevelItem | InLoopItem): string | undefined {
+export function keyOf(item: DesignItem | TopLevelItem | InLoopItem): string | undefined {
   return (item as { _key?: string })._key;
 }
 
 /** Finds an item anywhere in the tree by its unique name or _key. */
-export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: string): CodebookItem | null {
+export function findItem(items: (TopLevelItem | InLoopItem)[], identifier: string): DesignItem | null {
   for (const item of items) {
     if (keyOf(item) === identifier || itemName(item) === identifier) return item;
     if ("children" in item && Array.isArray(item.children)) {
@@ -81,15 +81,15 @@ export function itemPath(items: (TopLevelItem | InLoopItem)[], identifier: strin
  * with an item index, and goes deeper only through `children` (so
  * `[1, "units", 0, ...]` is about item 1 itself, not its first child).
  */
-export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string | number)[]): CodebookItem | null {
+export function itemAtPath(items: (TopLevelItem | InLoopItem)[], path: (string | number)[]): DesignItem | null {
   let list: unknown = items;
-  let found: CodebookItem | null = null;
+  let found: DesignItem | null = null;
   for (let i = 0; i < path.length; i++) {
     const index = path[i];
     if (typeof index !== "number" || !Array.isArray(list)) break;
     const item = list[index] as unknown;
     if (!item || typeof item !== "object" || !("type" in item)) break;
-    found = item as CodebookItem;
+    found = item as DesignItem;
     if (path[i + 1] !== "children") break;
     list = (item as { children?: unknown }).children;
     i++;
@@ -117,7 +117,7 @@ export function loopUnitsSummary(loop: UnitLoopItem): string {
  * Whether a validation issue is about an item of `items`: its path points
  * into the item, or (without a path to an item) its message names it.
  */
-export function issueIsAbout(items: (TopLevelItem | InLoopItem)[], issue: { path: (string | number)[]; message: string }, item: CodebookItem): boolean {
+export function issueIsAbout(items: (TopLevelItem | InLoopItem)[], issue: { path: (string | number)[]; message: string }, item: DesignItem): boolean {
   const at = itemAtPath(items, issue.path);
   if (at) return at === item || (keyOf(at) !== undefined && keyOf(at) === keyOf(item));
   const name = itemName(item);
@@ -147,7 +147,7 @@ export interface StepContext {
 
 export interface Steps {
   /** The items to show, in order. */
-  steps: CodebookItem[];
+  steps: DesignItem[];
   /**
    * Answers of questions that are currently shown (or assigned, for `auto`).
    * Answers of questions a condition hides count as unanswered: a stale
@@ -168,7 +168,7 @@ async function walkSteps(
   visible: Record<string, VariableValue>,
   ctx: StepContext,
   unit: { data: UnitData } | null,
-  steps: CodebookItem[],
+  steps: DesignItem[],
 ): Promise<boolean> {
   for (const node of nodes) {
     if (node.type === "condition") {
@@ -197,7 +197,7 @@ export async function computeTopLevelSteps(
   answers: Record<string, VariableValue>,
   ctx: StepContext,
 ): Promise<Steps> {
-  const steps: CodebookItem[] = [];
+  const steps: DesignItem[] = [];
   const visible: Record<string, VariableValue> = {};
   await walkSteps(items, answers, visible, ctx, null, steps);
   return { steps, visible };
@@ -215,14 +215,14 @@ export async function computeLoopSteps(
   unit: UnitData,
   ctx: StepContext,
 ): Promise<Steps> {
-  const steps: CodebookItem[] = [];
+  const steps: DesignItem[] = [];
   const visible: Record<string, VariableValue> = { ...coderAnswers };
   await walkSteps(loop.children, unitAnswers, visible, ctx, { data: unit }, steps);
   return { steps, visible };
 }
 
 /** The unit loop the item is in (through conditions), if any. */
-export function enclosingLoop(items: TopLevelItem[], item: CodebookItem): UnitLoopItem | undefined {
+export function enclosingLoop(items: TopLevelItem[], item: DesignItem): UnitLoopItem | undefined {
   let parent = findParent(items, keyOf(item) || itemName(item) || "");
   while (parent) {
     if (parent.type === "unit_loop") return parent as UnitLoopItem;

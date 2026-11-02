@@ -83,7 +83,7 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Jobs</h1>
           <p className="text-sm text-muted-foreground">
-            Manage annotation jobs, codebooks, units, and coders.{" "}
+            Manage annotation jobs, designVersions, units, and coders.{" "}
             <HelpButton topic="overview" className="align-middle">
               New here? Read the guide
             </HelpButton>
@@ -303,7 +303,7 @@ export function JobList({ client, onSelectJob, me = null, server, onMe, onOpenSe
             <h2 className="text-lg font-semibold text-foreground">Delete Job</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Are you sure you want to delete <strong className="text-foreground">{jobToDelete.name}</strong>?
-              This will permanently delete all its codebooks, units, and coder annotations.
+              This will permanently delete all its designVersions, units, and coder annotations.
             </p>
 
             {deleteJob.isError && (

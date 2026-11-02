@@ -1,18 +1,18 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { z } from "zod";
 import {
-  CodebookItemsSchema,
+  DesignItemsSchema,
   RecipeSchema,
   VariableValueSchema,
   validateAnswer,
-  validateCodebookItems,
+  validateDesignItems,
   type AnyVariableType,
   type ExampleSummary,
   type TopLevelItem,
   type VariableValue,
 } from "@annotinder/contracts";
 import { one, type Sql } from "./db.js";
-import { collectCoderVariables, collectLoops } from "./runtime/codebook.js";
+import { collectCoderVariables, collectLoops } from "./runtime/designItems.js";
 import { putCoderValues } from "./shared/coders.js";
 import { HttpError } from "./shared/http.js";
 import type { JobRow } from "./shared/jobs.js";
@@ -103,8 +103,8 @@ export interface FromExampleOptions {
 export async function createJobFromExample(db: Sql, id: string, options: FromExampleOptions): Promise<JobRow> {
   const example = examples().get(id);
   if (!example) throw new HttpError(404, `No example '${id}'`);
-  const items = CodebookItemsSchema.parse(example.codebook.items) as TopLevelItem[];
-  const issues = validateCodebookItems(items);
+  const items = DesignItemsSchema.parse(example.design.items) as TopLevelItem[];
+  const issues = validateDesignItems(items);
   if (issues.length > 0) throw new Error(`examples/${id}.json: ${issues.map((i) => i.message).join("; ")}`);
 
   return db.transaction(async (tx) => {

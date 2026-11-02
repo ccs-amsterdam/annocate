@@ -43,7 +43,7 @@ async function foldDetails(editor: MonacoEditor | null) {
  * parses to items the editor can show; validation issues are listed in the
  * toolbar as for the visual editor.
  */
-export function CodebookJsonEditor({
+export function DesignJsonEditor({
   items,
   onChange,
   disabled,

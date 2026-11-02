@@ -2,7 +2,7 @@
 
 Served by the **server** at `/job/...`, called by the client's **researcher
 UI** (`ResearcherApi`), and by scripts (R, Python) and other systems (AmCAT):
-managing jobs, codebooks, units and sets, links, deploying and progress.
+managing jobs, design versions, units and sets, links, deploying and progress.
 
 - Contracts: `researcherEndpoints` in
   [`contracts/src/endpoints/researcher.ts`](../../packages/contracts/src/endpoints/researcher.ts).
@@ -56,10 +56,10 @@ deleting the job still work).
 **Errors** are `{ error, code? }` with a 4xx/5xx status: 400 invalid body or
 parameter, 401 no valid API key, 403 no (sufficient) role in the job (or
 account role: `researcher_required`), 404 not found, 409 not allowed in
-this state (e.g. editing a deployed codebook), 413 too large.
+this state (e.g. editing a deployed design version), 413 too large.
 
 **From R or Python**: everything a script needs is here: create a job,
-upload units ([createUnits](#createunits)) and a codebook, deploy it
+upload units ([createUnits](#createunits)) and a design version, deploy it
 (which makes its links), send coders a link, then download the annotations ([listAnnotations](#listannotations))
 and the coders with their coder-level answers ([listCoders](#listcoders)).
 `server/src/__tests__/researcherApi.test.ts` does exactly this, with every
@@ -218,7 +218,7 @@ shows and what to try (`docs/plans/examples.md`).
 
 `POST /job/from-example` (`{ example, name? }`) → `JobResponseSchema`
 (201): a new job from an example, like `createJob` (the same role, limits
-and ownership): its units and sets, its codebook deployed (which makes
+and ownership): its units and sets, its design deployed (which makes
 its links), and its example answers (coders named "Example coder n").
 The job's `origin` is the example's id. 404 for an unknown example.
 
@@ -231,13 +231,13 @@ recipe (`contracts/src/recipe.ts`), as the setup wizard writes one, like
 - `units` (`{ id, data }`; the first unit's fields become the job's) and
   `sets`: set groups by the units' ids (`[{ group, sets: [{ name, units,
   ordered? }] }]`);
-- `codebook` (`{ note?, items }`): the first version, saved as a draft that
+- `design` (`{ note?, items, session? }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
   `publish: true` it is deployed, and must then pass validation.
 
-A recipe has no links: deploying its codebook makes them. 400
+A recipe has no links: deploying its design makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
-group defined twice, or a codebook to deploy that has issues; nothing is created then. Example jobs are recipes too
+group defined twice, or a design to deploy that has issues; nothing is created then. Example jobs are recipes too
 (`packages/server/examples/`), with example answers.
 
 ### getJob
@@ -271,18 +271,18 @@ a deploy. `JobResponseSchema` also has
 `GET /job/:jobId/overview` → `JobOverviewSchema`. Counts for the overview
 page: units, set groups with their sets' sizes (`groups: [{ name, sets:
 [{ name, units }] }]`), coders (total, started, active in the last
-24 hours), live answers, finished codings for the live codebook's loops, and
+24 hours), live answers, finished codings for the live design's loops, and
 answers per day for the last 30 days. "Finished": every question of the
 loop has a live answer.
 Index answers by (job, created) to keep the per-day count cheap.
 
 ## Codebooks
 
-Versions of the job's codebook, in order of creation. One is **live** (the
+Versions of the job's design, in order of creation. One is **live** (the
 deployment's); the latest, if unpublished, is the **draft**
 ([`docs/client.md`](../client.md) §7).
-Schemas: [`contracts/src/codebook/codebook.ts`](../../packages/contracts/src/codebook/codebook.ts).
-Implementation: [`researcher/codebook.ts`](../../packages/server/src/researcher/codebook.ts), [`codebook.$id.ts`](../../packages/server/src/researcher/codebook.$id.ts).
+Schemas: [`contracts/src/design/designVersion.ts`](../../packages/contracts/src/design/designVersion.ts).
+Implementation: [`researcher/design.ts`](../../packages/server/src/researcher/design.ts), [`design.$id.ts`](../../packages/server/src/researcher/design.$id.ts).
 
 ### listDesignVersions
 
@@ -299,7 +299,7 @@ immutable), oldest first: the position is the version number.
 The body is always the full document, with an optional `note` (what
 changed). A draft may be saved while it doesn't pass validation (work in
 progress): `items` only has to be a list (`DraftItemsSchema`). The response says whether it is `valid`
-(`CodebookItemsSchema`: nesting rules, unique names, references), which
+(`DesignItemsSchema`: nesting rules, unique names, references), which
 deploying and previewing require. Codebooks also have `updated`,
 `updatedBy` (the email of who saved last) and `revision`.
 
@@ -329,7 +329,7 @@ is an empty value of any type. The first upload sets the fields
 existing field a fitting value (`checkUnitData`; `null` for empty) and may
 add fields (`addedFields`): they are appended, and units already stored
 have no value for them. New field names are letters, digits and `_`, not
-starting with a digit (`UNIT_FIELD_NAME`), so codebooks can refer to them
+starting with a digit (`UNIT_FIELD_NAME`), so designs can refer to them
 as `$unit.<name>`. Deleting all units resets the fields. Clients infer the
 types of CSV columns (`inferFieldType`) and send typed values.
 
@@ -347,16 +347,16 @@ path (and `/units/page`) before `/units/:id`.
 
 Uploads keep it up to date: new columns are added to the draft design (a
 new draft if the latest version is deployed); the first upload (no units
-yet) takes its types from the values. A codebook write without `units`
-keeps the fields; deploying a codebook that uses an undeclared field is 400
+yet) takes its types from the values. A design write without `units`
+keeps the fields; deploying a design version that uses an undeclared field is 400
 `undeclared_fields`.
 
 ### putUnitFields
 
 `PUT /job/:jobId/units/fields` (`{ fields }`) → `UnitFieldSchema[]`: replaces
-the draft design's fields. Declare a field the codebook uses, retype one
+the draft design's fields. Declare a field the design uses, retype one
 (400 if a unit's value doesn't fit), describe one, or remove one the
-codebook doesn't use (409 if it does): its values leave the draft units
+design doesn't use (409 if it does): its values leave the draft units
 (deployed units keep them until the next deploy).
 
 ### listUnitPage
@@ -415,7 +415,7 @@ the job's own units (400 otherwise).
 ### deleteSetGroup
 
 `DELETE /job/:jobId/sets/:group` → 204. 409 while the deployed or latest
-codebook uses the group (a loop's set, or a set-typed session parameter).
+design uses the group (a loop's set, or a set-typed session parameter).
 
 Splitting units into sets (`s1..sN`, plus `_overlap`) is done by the client
 (`splitIntoSets` in `sets.ts`), which then writes the group with
@@ -428,7 +428,7 @@ Implementation: [`researcher/links.ts`](../../packages/server/src/researcher/lin
 See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
 Links are not created by hand: deploying makes one per
-combination of the codebook's link parameter values (one if it has none),
+combination of the design's link parameter values (one if it has none),
 and deploying set changes syncs them ([putDeployment](#putdeployment)): links follow the deployed sets. A link no
 longer made is **retired** (`retiredAt`), never deleted: new coders get 403
 `link_inactive`, coders who started keep working. It comes back, with the
@@ -507,27 +507,27 @@ Implementation: [`researcher/deployment*.ts`](../../packages/server/src/research
 ### getDeployment
 
 `GET /job/:jobId/deployment` → `DeploymentResponseSchema | null`: the live
-codebook id, `active`, `version`; null if never deployed.
+design version id, `active`, `version`; null if never deployed.
 
 ### putDeployment
 
 `PUT /job/:jobId/deployment` → `DeploymentResponseSchema`. Deploy a
 design version, with the draft units and sets if `units: true`
-(default false: the deployed ones stay, so a new codebook or a pause deploys
+(default false: the deployed ones stay, so a new design version or a pause deploys
 no units by accident; the first deploy always takes the draft's),
 or pause/resume with `active`. Units and sets are drafts until deployed
 (`docs/plans/design.md` §5):
 
-1. check that the codebook passes validation (400 with `issues` if not:
-   drafts may be saved with issues, coders only get valid codebooks);
+1. check that the design version passes validation (400 with `issues` if not:
+   drafts may be saved with issues, coders only get valid designs);
 2. with `units`: new versions of the units the draft changed (versions
    they replace that no answer points to are deleted), and the draft's
    sets become the deployed ones;
-3. store it, bump `version` if the codebook or the units changed (pausing
+3. store it, bump `version` if the design version or the units changed (pausing
    and resuming don't: coders don't reload), record the version with what
    it changed ([listDeploymentVersions](#listdeploymentversions)), and make
-   the codebook immutable;
-4. sync the job's links: one per combination of the codebook's link
+   the design version immutable;
+4. sync the job's links: one per combination of the design's link
    parameter values; links no longer made are retired. Above 500 links this
    needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
    than 2000 is 400 `too_many_links`. The response's `links` is the number
@@ -548,13 +548,13 @@ with fewer overlap units than a loop expects.
 `GET /job/:jobId/deployment/pending` → `PendingChangesSchema`: what
 deploying the drafts would change: `units` (`added`, `changed`, `removed`,
 and whether the `sets` differ; all added before the first deploy) and
-`designVersionId`, the latest codebook if it isn't the deployed one.
+`designVersionId`, the latest design version if it isn't the deployed one.
 
 ### listDeploymentVersions
 
 `GET /job/:jobId/deployment/versions` → `DeploymentVersionSchema[]`,
-newest first: each deployed version with its codebook and what it changed
-(`changes.codebook`, `changes.units`: null when the units stayed).
+newest first: each deployed version with its design version and what it changed
+(`changes.design`, `changes.units`: null when the units stayed).
 
 ### getDeploymentStatus
 
@@ -566,11 +566,11 @@ deployed.
 ### createPreview
 
 `POST /job/:jobId/deployment/preview` → `PreviewSessionSchema`. A preview of
-the latest codebook (deployed or not), as deployment `<jobId>.preview`:
+the latest design version (deployed or not), as deployment `<jobId>.preview`:
 the real units, but coders and answers kept in memory only. The token (an
 HMAC with the server's secret, valid 12 hours) is used like a link
-secret. A latest codebook with validation issues can't be previewed: the
-preview's coder API answers 409 `codebook_invalid`.
+secret. A latest design version with validation issues can't be previewed: the
+preview's coder API answers 409 `design_invalid`.
 
 ### resetAnnotations
 
@@ -616,7 +616,7 @@ or balanced groups), marked `assigned`.
 `GET /job/:jobId/unit-versions?after=&limit=` → `UnitVersionPageSchema`:
 units as coders saw them (`architecture.md` §8.4), one row per version:
 the unit's id and `externalId`, a `hash`, the `data` shown (only the
-fields the codebook used), and when it was first shown. Paged like
+fields the design used), and when it was first shown. Paged like
 annotations. Join answers on `unitVersionId`.
 
 ### listDevices

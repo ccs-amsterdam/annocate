@@ -1,19 +1,19 @@
-import { collectQuestions, optionLabel, questionValues, type AnyVariableType, type CodebookItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
+import { collectQuestions, optionLabel, questionValues, type AnyVariableType, type DesignItem, type InLoopItem, type TopLevelItem } from "@annotinder/contracts";
 import { itemTitle } from "../codebook/conditions";
 
-export type CodebookChangeKind = "added" | "removed" | "changed" | "moved";
+export type DesignChangeKind = "added" | "removed" | "changed" | "moved";
 
-export interface CodebookChange {
-  kind: CodebookChangeKind;
+export interface DesignChange {
+  kind: DesignChangeKind;
   /** The item's name, or for a condition its label or condition (`itemTitle`). */
   name: string;
-  type: CodebookItem["type"];
+  type: DesignItem["type"];
   /** Name of the containing loop or condition; null at the top level. */
   parent: string | null;
 }
 
 interface Located {
-  item: CodebookItem;
+  item: DesignItem;
   /** The container's title (`itemTitle`); null at the top level. */
   parent: string | null;
   /** The container's identity ("" at the top level). */
@@ -42,24 +42,24 @@ function locate(
 }
 
 /** The item's own content, without its children (those are compared separately). */
-function ownContent(item: CodebookItem): string {
+function ownContent(item: DesignItem): string {
   const own: Record<string, unknown> = { ...item };
   delete own.children;
   return JSON.stringify(own);
 }
 
 /**
- * What changed between two codebooks, item by item (items are matched by
+ * What changed between two design versions, item by item (items are matched by
  * name, which is unique in a codebook; conditions by place). In document order: removed items in
  * the order of `before`, then the rest in the order of `after`.
  */
-export function diffCodebooks(
+export function diffDesigns(
   before: (TopLevelItem | InLoopItem)[],
   after: (TopLevelItem | InLoopItem)[],
-): CodebookChange[] {
+): DesignChange[] {
   const old = locate(before);
   const now = locate(after);
-  const changes: CodebookChange[] = [];
+  const changes: DesignChange[] = [];
 
   for (const [id, { item, parent }] of old) {
     if (!now.has(id)) changes.push({ kind: "removed", name: itemTitle(item), type: item.type, parent });
@@ -74,7 +74,7 @@ export function diffCodebooks(
   return changes;
 }
 
-const SUMMARY_VERBS: Record<CodebookChangeKind, string> = {
+const SUMMARY_VERBS: Record<DesignChangeKind, string> = {
   added: "Added",
   changed: "changed",
   moved: "moved",
@@ -82,7 +82,7 @@ const SUMMARY_VERBS: Record<CodebookChangeKind, string> = {
 };
 
 /** A one-line description of the changes, as a starting point for a version note. */
-export function summarizeChanges(changes: CodebookChange[], maxLength = 200): string {
+export function summarizeChanges(changes: DesignChange[], maxLength = 200): string {
   const parts: string[] = [];
   for (const kind of ["added", "changed", "moved", "removed"] as const) {
     const names = changes.filter((c) => c.kind === kind).map((c) => c.name);

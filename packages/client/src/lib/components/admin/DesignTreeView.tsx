@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CornerDownLeft, Move, Trash2, X } from "lucide-react";
-import type { CodebookValidationIssue, TopLevelItem } from "@annotinder/contracts";
+import type { DesignIssue, TopLevelItem } from "@annotinder/contracts";
 import {
   addPositions,
   canMoveAllTo,
@@ -11,12 +11,12 @@ import {
 } from "../../design/itemEdit";
 import { issueIsAbout } from "../../codebook/tree";
 import { Button } from "@/components/ui/button";
-import { CodebookTreeProvider, type CodebookTreeState } from "./codebookTree/context";
-import { TreeList } from "./codebookTree/TreeList";
-import { AddItemMenu } from "./codebookTree/AddItemMenu";
-import { getItemKey, insertableTypesAt, type ItemType } from "./codebookTree/utils";
+import { DesignTreeProvider, type DesignTreeState } from "./designTree/context";
+import { TreeList } from "./designTree/TreeList";
+import { AddItemMenu } from "./designTree/AddItemMenu";
+import { getItemKey, insertableTypesAt, type ItemType } from "./designTree/utils";
 
-interface CodebookTreeViewProps {
+interface DesignTreeViewProps {
   items: TopLevelItem[];
   selected: string | null;
   onSelect: (identifier: string) => void;
@@ -24,7 +24,7 @@ interface CodebookTreeViewProps {
   /** Deletes items (asking first); returns whether they were deleted. */
   onDelete: (keys: string[]) => boolean;
   onMove: (keys: string[], position: TreePosition) => void;
-  validationIssues?: CodebookValidationIssue[];
+  validationIssues?: DesignIssue[];
   /** Keys of items with unsaved changes (marked in the tree). */
   changed?: ReadonlySet<string>;
   /** Immutable codebook: items can be selected, but not added, moved or deleted. */
@@ -42,13 +42,13 @@ interface CodebookTreeViewProps {
  *   "move below this item" (asking where if ambiguous, like adding), on
  *   rows where all ticked items may go; nothing else in the tree changes.
  *
- * Components (see ./codebookTree):
+ * Components (see ./designTree):
  * - TreeList     recursive list of items
  * - TreeItemRow  an item row: tick box, item, +
  * - TreeRow      shared fixed-height row layout + insertion line
  * - AddItemMenu  "+" button: where (if ambiguous), then item type; or where to move
  */
-export function CodebookTreeView({
+export function DesignTreeView({
   items,
   selected,
   onSelect,
@@ -58,7 +58,7 @@ export function CodebookTreeView({
   validationIssues = [],
   changed,
   readOnly = false,
-}: CodebookTreeViewProps) {
+}: DesignTreeViewProps) {
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const [moving, setMoving] = useState(false);
   const [preview, setPreview] = useState<TreePosition[]>([]);
@@ -81,7 +81,7 @@ export function CodebookTreeView({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [moving, checked.size]);
 
-  const state: CodebookTreeState = {
+  const state: DesignTreeState = {
     items,
     selected,
     readOnly,
@@ -121,7 +121,7 @@ export function CodebookTreeView({
   const count = ticked.length === 1 ? "1 item" : `${ticked.length} items`;
 
   return (
-    <CodebookTreeProvider value={state}>
+    <DesignTreeProvider value={state}>
       {!readOnly && (
         <div className="sticky top-0 z-10 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
           {moving ? (
@@ -170,6 +170,6 @@ export function CodebookTreeView({
       <div className="flex flex-col p-1 pb-3">
         <TreeList nodes={items} parent={null} />
       </div>
-    </CodebookTreeProvider>
+    </DesignTreeProvider>
   );
 }

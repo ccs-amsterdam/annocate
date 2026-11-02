@@ -1,9 +1,9 @@
 import { flattenTree } from "../../../codebook/tree";
-import { CodebookTreeView } from "../CodebookTreeView";
-import type { CodebookDraft } from "./useCodebookDraft";
+import { DesignTreeView } from "../DesignTreeView";
+import type { DesignDraft } from "./useDesignDraft";
 
 /** Left column of the visual editor: the item tree. */
-export function TreePanel({ draft, readOnly }: { draft: CodebookDraft; readOnly: boolean }) {
+export function TreePanel({ draft, readOnly }: { draft: DesignDraft; readOnly: boolean }) {
   return (
     <div className="flex flex-col gap-2 overflow-auto rounded-xl border border-border bg-card px-1 pt-3 shadow-xs">
       <div className="flex items-center justify-between border-b border-border/60 pb-2">
@@ -19,7 +19,7 @@ export function TreePanel({ draft, readOnly }: { draft: CodebookDraft; readOnly:
       )}
 
       <div className="flex-1 scroll-pt-10 overflow-y-auto">
-        <CodebookTreeView
+        <DesignTreeView
           items={draft.items}
           selected={draft.selected}
           onSelect={draft.select}

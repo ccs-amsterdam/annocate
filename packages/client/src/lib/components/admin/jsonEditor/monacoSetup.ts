@@ -2,7 +2,7 @@ import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import JsonWorker from "monaco-editor/language/json/json.worker?worker";
 import { loader } from "@monaco-editor/react";
-import { codebookItemJsonSchema, codebookItemsJsonSchema } from "@annotinder/contracts";
+import { designItemJsonSchema, designItemsJsonSchema } from "@annotinder/contracts";
 import { CODEBOOK_MODEL, ITEM_MODEL } from "./models";
 
 // Monaco, bundled with the client instead of loaded from a CDN (self-hosted
@@ -21,8 +21,8 @@ monaco.json.jsonDefaults.setDiagnosticsOptions({
   schemaValidation: "warning",
   enableSchemaRequest: false,
   schemas: [
-    { uri: "annotinder://schemas/codebook-items.json", fileMatch: [`*${CODEBOOK_MODEL}`], schema: codebookItemsJsonSchema() },
-    { uri: "annotinder://schemas/codebook-item.json", fileMatch: [`*${ITEM_MODEL}`], schema: codebookItemJsonSchema() },
+    { uri: "annotinder://schemas/codebook-items.json", fileMatch: [`*${CODEBOOK_MODEL}`], schema: designItemsJsonSchema() },
+    { uri: "annotinder://schemas/codebook-item.json", fileMatch: [`*${ITEM_MODEL}`], schema: designItemJsonSchema() },
   ],
 });
 

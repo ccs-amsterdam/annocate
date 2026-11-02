@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { HELP_SECTIONS, HELP_TOPICS, headingId, helpLink, helpTopic, parseFrontMatter } from "./topics";
-import { validateCodebookItems } from "@annotinder/contracts";
-import { exampleCodebook, exampleScope, parseExample } from "./example";
+import { validateDesignItems } from "@annotinder/contracts";
+import { exampleDesign, exampleScope, parseExample } from "./example";
 import { renderTemplate } from "../codebook/renderTemplate";
 import { parseHelpTarget } from "./helpStore";
 
@@ -64,7 +64,7 @@ describe("help topics", () => {
     for (const t of HELP_TOPICS) {
       for (const [, source] of t.body.matchAll(/```example\n([\s\S]*?)```/g)) {
         const data = parseExample(source);
-        for (const issue of validateCodebookItems(exampleCodebook(data))) if (!issue.warning) problems.push(`${t.slug}: ${issue.message}\n${data.template}`);
+        for (const issue of validateDesignItems(exampleDesign(data))) if (!issue.warning) problems.push(`${t.slug}: ${issue.message}\n${data.template}`);
         const scope = exampleScope(data, Object.fromEntries(Object.entries(data.answers).map(([q, a]) => [q, a[0]])));
         const rendered = await renderTemplate(data.template, scope, undefined, "help", {
           snippets: data.snippets,
