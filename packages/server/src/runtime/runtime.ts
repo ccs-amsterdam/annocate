@@ -4,7 +4,7 @@ import {
   shownUnitFields,
   type UnitData,
   type AnyVariableType,
-  ALL_UNITS_UNITSET,
+  ALL_UNITS_SET,
   OVERLAP_SET,
   PRACTICE_SET,
   GOLD_SET,
@@ -396,7 +396,7 @@ export class DeploymentRuntime {
         const route = this.assignedRoute(coder, info.key);
         const units = this.routeUnits(route);
         return {
-          unitset: info.key,
+          set: info.key,
           doneUnitIds: codings.filter((c) => c.loop === info.key && units.has(c.unitId)).map((c) => c.unitId),
           totalUnits: this.expectedUnits(route),
         };
@@ -589,7 +589,7 @@ export class DeploymentRuntime {
   private pools(route: Route, codings: Codings, leases: Lease[]): Routed {
     const { branch, set } = route;
     const main = new UnitPool(set, this.ownUnits(route), branch.mode === "shared" ? sharedDefaults(branch) : null, codings);
-    main.loadLeases(leases.filter((l) => l.unitset === set).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
+    main.loadLeases(leases.filter((l) => l.set === set).map((l) => ({ ...l, expires: new Date(l.expires).getTime() })));
     const extras = this.specialUnits(route).map(
       (s): OverlapPlacement => ({
         pool: new UnitPool(s.set, s.units, null, codings),
@@ -603,7 +603,7 @@ export class DeploymentRuntime {
   /** The set an `all` or `shared` branch hands out (its set, or every unit). */
   private static fixedSet(branch: UnitBranch): string | null {
     if (branch.mode === "assign") return null;
-    return branch.set ? setKey(branch.set.group, branch.set.set) : ALL_UNITS_UNITSET;
+    return branch.set ? setKey(branch.set.group, branch.set.set) : ALL_UNITS_SET;
   }
 
   /** Whether a stored set fits a branch: its set, or (assign) a set of its group that exists. */
@@ -782,7 +782,7 @@ export class DeploymentRuntime {
     await store.putLeases(
       picked
         .filter((p) => p.pool.rule)
-        .map((p) => ({ loop: info.key, unitset: p.pool.unitset, coderId: coder.coderId, unitId: p.unitId, expires: new Date(now + p.pool.rule!.leaseSeconds * 1000) })),
+        .map((p) => ({ loop: info.key, set: p.pool.set, coderId: coder.coderId, unitId: p.unitId, expires: new Date(now + p.pool.rule!.leaseSeconds * 1000) })),
     );
     return picked.map((p) => units.get(p.unitId)!);
   }
@@ -832,7 +832,7 @@ export class DeploymentRuntime {
       if (this.specialUnits(route).some((s) => s.units.includes(unitId))) return true;
       if (!this.ownUnits(route).includes(unitId)) return false;
       if (route.branch.mode !== "shared") return true;
-      return own.some((c) => c.loop === info.key && c.unitId === unitId) || leases.some((l) => l.loop === info.key && l.unitset === route.set && l.unitId === unitId);
+      return own.some((c) => c.loop === info.key && c.unitId === unitId) || leases.some((l) => l.loop === info.key && l.set === route.set && l.unitId === unitId);
     };
     const loops = [...this.loops.values()].filter((info) => (loopName === undefined || info.key === loopName) && canSubmit(info));
     if (loops.length === 0) throw new HttpError(409, "Unit is not assigned to this coder");
@@ -957,7 +957,7 @@ export class DeploymentRuntime {
     return this.spec.version;
   }
 
-  /** Progress per loop and unitset: from every coder's codings, routing and leases. */
+  /** Progress per loop and set: from every coder's codings, routing and leases. */
   async status(): Promise<DeploymentStatus> {
     const now = this.options.now();
     const [rows, allCoders, leases] = await Promise.all([this.store.listCodings({}), this.store.listCoders(), this.store.listLeases({})]);
@@ -968,18 +968,18 @@ export class DeploymentRuntime {
         const route = this.assignedRoute(c, loop);
         return route ? [{ coderId: c.coderId, route }] : [];
       });
-      // One row per pool: a unitset with its rule (a shared queue, or handed out whole).
+      // One row per pool: a set with its rule (a shared queue, or handed out whole).
       const pools = new Map<string, { pool: UnitPool; coders: number[] }>();
       for (const { coderId, route } of routes) {
         const routed = this.pools(route, codings, leases.filter((l) => l.loop === loop));
         for (const pool of [routed.main, ...routed.extras.map((e) => e.pool)]) {
-          const key = `${pool.unitset}/${JSON.stringify(pool.rule)}`;
+          const key = `${pool.set}/${JSON.stringify(pool.rule)}`;
           if (!pools.has(key)) pools.set(key, { pool, coders: [] });
           pools.get(key)!.coders.push(coderId);
         }
       }
       for (const { pool, coders } of pools.values()) {
-        sources.push({ loop: loopTitle(info.loop, loop), unitset: pool.unitset, ...pool.status(now, coders), coders: coders.length });
+        sources.push({ loop: loopTitle(info.loop, loop), set: pool.set, ...pool.status(now, coders), coders: coders.length });
       }
     }
     return {

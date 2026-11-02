@@ -21,7 +21,7 @@ unit is checked twice, and a practice unit tells coders the answer.
 ## Write them in your units
 
 The most direct way: a **sets column** in your CSV (see
-[Sets and set groups](unitsets.md#a-sets-column-in-your-csv)), and a column
+[Sets and set groups](sets.md#a-sets-column-in-your-csv)), and a column
 with the right answer for each question you check. The right answer to the
 question `sentiment` goes in the column `sentiment_gold` (gold units) or
 `sentiment_practice` (practice units); a practice unit's own feedback in

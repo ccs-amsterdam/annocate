@@ -93,7 +93,7 @@ export type ResetAnnotations = z.infer<typeof ResetAnnotationsSchema>;
 /** Progress of one source (a set, as `group/set`, or `__all__`) of one unit_loop. */
 export const SourceStatusSchema = z.object({
   loop: z.string(),
-  unitset: z.string(),
+  set: z.string(),
   mode: z.enum(["fixed", "dynamic"]),
   totalUnits: z.number().int().nonnegative(),
   /** Dynamic: units that met their saturation rule. Fixed: units every routed coder finished. */

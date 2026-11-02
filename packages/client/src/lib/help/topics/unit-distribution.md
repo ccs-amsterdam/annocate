@@ -11,7 +11,7 @@ part? You set this on the loop's **Units** tab in the codebook editor, under
 **Who codes which units**.
 
 The design describes *how* units are handed out, never *which* units go to
-*whom* by id: it refers to [sets and set groups](unitsets.md) by name, and
+*whom* by id: it refers to [sets and set groups](sets.md) by name, and
 to coders only through their answers or session values. That keeps the
 design shareable and easy to report.
 
@@ -52,7 +52,7 @@ or how much each will do. The settings are explained in
 
 Each coder gets one set of a **Group**: for example the group `parts` with
 the sets `s1` to `s4` made by **Split units into sets** (see
-[Sets and set groups](unitsets.md)). Under **A coder's set is** you choose
+[Sets and set groups](sets.md)). Under **A coder's set is** you choose
 how:
 
 | Choice | A coder gets |

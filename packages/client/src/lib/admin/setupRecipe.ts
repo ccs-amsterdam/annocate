@@ -39,7 +39,7 @@ export type SetupDistribution =
   /**
    * Crowd coding: a shared queue, with the settings the editor's form has
    * (`shared`: until N coders or N agree, max coders, units per coder,
-   * priority; its unitset is set by the wizard), and optionally overlap units.
+   * priority; its set is set by the wizard), and optionally overlap units.
    */
   | { mode: "crowd"; shared: SharedBranch; overlap: SetupOverlap }
   /** A set per experimental condition: the units whose `column` has one of the condition's values. */

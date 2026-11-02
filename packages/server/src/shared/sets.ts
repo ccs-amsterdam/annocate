@@ -1,5 +1,5 @@
 import {
-  ALL_UNITS_UNITSET,
+  ALL_UNITS_SET,
   OVERLAP_SET,
   PRACTICE_SET,
   GOLD_SET,
@@ -113,7 +113,7 @@ export async function runtimeSets(sql: Sql, jobId: number, live: boolean): Promi
   ).map((r) => r.id);
   const groups = await listSetGroups(sql, jobId, live);
   return [
-    { name: ALL_UNITS_UNITSET, unitIds: allUnitIds },
+    { name: ALL_UNITS_SET, unitIds: allUnitIds },
     ...groups.flatMap((g) => g.sets.map((s) => ({ name: setKey(g.name, s.name), unitIds: s.unitIds }))),
   ];
 }

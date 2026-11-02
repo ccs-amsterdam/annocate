@@ -37,7 +37,6 @@ Older identifiers that mean a term above:
 | `toCoderItems`, `CoderCodebook` | the **codebook** (coders' part) |
 | `invites` table, `/invites` endpoints, `CoderInvite*` | **links** |
 | `putDeployment` (`PUT /deployment`) | **deploy** |
-| `unitset` (`SourceStatus.unitset`, `unit_leases.unitset`, help slug `unitsets`) | a **set** (as `group/set`) |
 | `variable` (a question's answer type; `VariableValue`) | a question's **answer type**; an **answer** |
 
 ## 3. Proposed renames (not done)

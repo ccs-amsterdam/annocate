@@ -204,7 +204,7 @@ function ItemIcon({ item }: { item: TreeNode }) {
 }
 
 /**
- * A loop in the tree: its label, else just "Unit loop" (its unitsets show
+ * A loop in the tree: its label, else just "Unit loop" (its sets show
  * next to it). Messages and exports, where loops must be told apart without
  * the tree, number them (contracts `loopTitle`).
  */

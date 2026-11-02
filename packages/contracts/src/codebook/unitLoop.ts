@@ -22,7 +22,7 @@ export function supportsAgreement(variable: AnyVariableType): boolean {
 }
 
 /** The key for "every unit in the job" (the server's sets are keyed `group/set`, `setKey`). */
-export const ALL_UNITS_UNITSET = "__all__";
+export const ALL_UNITS_SET = "__all__";
 
 /** How long a coder of an `assign` branch with a drawn set keeps their set without finishing it or being active (ms). */
 export const SET_ACTIVITY_MS = 24 * 60 * 60 * 1000;

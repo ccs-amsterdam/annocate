@@ -104,12 +104,12 @@ nothing.
 
 ### Sets columns
 
-A column can also say which [sets](unitsets.md) each unit is in. Give it the
+A column can also say which [sets](sets.md) each unit is in. Give it the
 type **sets**: it isn't uploaded as a field, but makes a set group named
 after the column. Each cell names the unit's sets, such as `s1`, `s1;s2` or
 `s1#3` (third in `s1`), and `_overlap` for the group's overlap. Uploading
 such a column replaces the group's sets. See
-[A sets column in your CSV](unitsets.md#a-sets-column-in-your-csv).
+[A sets column in your CSV](sets.md#a-sets-column-in-your-csv).
 
 ## Uploading more units later
 
@@ -173,7 +173,7 @@ coders get that field too once you deploy the change.
 
 ## Next steps
 
-- Make [sets](unitsets.md) if different coders should get different
+- Make [sets](sets.md) if different coders should get different
   units.
 - Decide how units are [handed out](unit-distribution.md).
 - Show the fields in a [layout template](layout-templates.md).

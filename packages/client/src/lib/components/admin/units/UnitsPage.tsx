@@ -177,7 +177,7 @@ function SetsBar({
             <Scissors className="h-3.5 w-3.5" />
             Split {current ? "set" : "units"} into sets
           </Button>
-          <HelpButton topic="unitsets" label="Help: sets" />
+          <HelpButton topic="sets" label="Help: sets" />
         </div>
       </div>
       {groups.map((g) => (

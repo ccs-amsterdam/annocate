@@ -42,7 +42,7 @@ interface RefContext {
   self?: string;
   /** Questions inside the condition being checked. */
   inside?: ReadonlySet<string>;
-  /** Checking a branch `when` or unitset name: only coder-level `$var` refs from before the loop. */
+  /** Checking a branch `when` or set name: only coder-level `$var` refs from before the loop. */
   branch?: boolean;
   /** In a loop's layout: the loop's questions in order (`::: from` stages make the ones before them available). */
   loopOrder?: string[];
@@ -55,7 +55,7 @@ interface RefContext {
  * 3. Enforces that span variable references in relations exist in preceding items
  * 4. Enforces structural rules (unit_loop cannot be nested, etc.)
  * 5. Checks every reference (`$var`, `$unit`; snippets put in first) in conditions,
- *    branch `when`, unitset names, the layout template and question texts:
+ *    branch `when`, set names, the layout template and question texts:
  *    it must exist, be available at that point (asked before, not in
  *    another loop), and fit the question's type. Agreement rules must refer
  *    to questions inside the loop, span columns must be shown as plain text.
@@ -196,12 +196,12 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
    * stages only in a layout). Returns the context at a place in it: inside
    * `from` stages, the loop's questions before theirs are available too.
    */
-  function checkBlocks(source: string, ctx: RefContext, kind: "layout" | "text" | "unitset" | "url"): (at: number) => RefContext {
+  function checkBlocks(source: string, ctx: RefContext, kind: "layout" | "text" | "set" | "url"): (at: number) => RefContext {
     // Blocks: their conditions, and `from` stages, which make the loop's
     // questions before their question available inside them.
     const blocks = parseTemplateBlocks(source);
     refErrors(blocks.errors, ctx.path);
-    if (blocks.hasBlocks && (kind === "unitset" || kind === "url")) issue(ctx.path, "Blocks (:::) can't be used here");
+    if (blocks.hasBlocks && (kind === "set" || kind === "url")) issue(ctx.path, "Blocks (:::) can't be used here");
     const stages: FromStage[] = [];
     const conditions: { script: string; at: number }[] = [];
     const walkBlocks = (nodes: TemplateNode[]) => {
@@ -247,7 +247,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
   function checkTemplate(
     raw: unknown,
     ctx: RefContext,
-    kind: "layout" | "text" | "unitset" | "url",
+    kind: "layout" | "text" | "set" | "url",
   ): { shown: Set<string>; selectable: Set<string> } {
     const empty = { shown: new Set<string>(), selectable: new Set<string>() };
     if (typeof raw !== "string") return empty;
@@ -269,8 +269,8 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
     for (const segment of parsed.segments) {
       if (segment.type !== "expression") continue;
       const here = ctxAt(segment.start);
-      if (kind === "unitset" || kind === "url") {
-        const what = kind === "url" ? "Redirect URLs" : "Unitset names";
+      if (kind === "set" || kind === "url") {
+        const what = kind === "url" ? "Redirect URLs" : "Set names";
         if (!segment.ref) issue(here.path, `${what} can only use ${kind === "url" ? "$var and $session" : "$var"} references, not {{ }}`);
         else if (segment.ref.suffix) issue(here.path, `${what} can't use ::${segment.ref.suffix}`);
       } else {
@@ -285,7 +285,7 @@ export function semanticIssues(items: unknown[]): CodebookValidationIssue[] {
       }
       for (const ref of segment.references) {
         const shape = checkRef(ref, here);
-        if (kind === "unitset" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a unitset name needs a single value`);
+        if (kind === "set" && shape?.ok && shape.array) issue(here.path, `${referenceText(ref)} holds a list; a set name needs a single value`);
         if (kind === "url" && ref.ns === "unit") issue(here.path, `${referenceText(ref)}: redirect URLs can only use $var and $session references`);
       }
     }

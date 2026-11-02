@@ -136,7 +136,7 @@ for (batch in split(units, ceiling(seq_along(units) / 200))) {
 }
 ```
 
-A [set group](unitsets.md) is written as a whole: `PUT /job/<id>/sets/<group>`
+A [set group](sets.md) is written as a whole: `PUT /job/<id>/sets/<group>`
 replaces the group's sets. Each set is a name with a list of AnnoTinder's
 own unit ids (`id` in the response to the upload, or from
 `GET /job/<id>/units`); with `"ordered": true` coders get them in that

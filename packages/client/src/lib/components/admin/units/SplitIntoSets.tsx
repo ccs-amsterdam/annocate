@@ -48,7 +48,7 @@ export function SplitIntoSets({
     <section className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
       <h3 className="flex items-center gap-1.5 font-semibold">
         Split {source ? <span className="font-mono">{source}</span> : "all units"} ({unitIds.length}) into sets
-        <HelpButton topic="unitsets" label="Help: sets" />
+        <HelpButton topic="sets" label="Help: sets" />
       </h3>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">

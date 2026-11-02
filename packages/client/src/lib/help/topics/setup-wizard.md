@@ -24,7 +24,7 @@ much more (below).
 3. **Units**: the CSV file, as in [Uploading units](uploading-units.md), or
    none yet.
 4. **Who codes what**: [everyone codes everything](unit-distribution.md),
-   [assign sets](unitsets.md) (by a number of sets or a column, by one link
+   [assign sets](sets.md) (by a number of sets or a column, by one link
    or a link per set), [crowd coding](shared-queues.md) (until a number of
    coders coded a unit), experimental groups (a set of units per condition),
    or **decide later** in the editor. Optionally with an
@@ -39,7 +39,7 @@ much more (below).
    [Overlap, gold and practice units](special-units.md)). A sets column with
    the values `_gold` and `_practice` puts units in those sets.
 
-It then makes the units, their [sets](unitsets.md) (a group `sets`), and a
+It then makes the units, their [sets](sets.md) (a group `sets`), and a
 design draft, and opens the editor. These are all drafts: deploying them
 makes the job's links (an open link, or a link per set) and lets coders start.
 

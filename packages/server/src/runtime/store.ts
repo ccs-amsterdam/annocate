@@ -286,7 +286,7 @@ export class DbStore implements Store {
 
   async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
     return this.sql.query<Lease>(
-      `SELECT loop_key AS loop, unitset, coder_id AS "coderId", unit_id AS "unitId", expires FROM unit_leases
+      `SELECT loop_key AS loop, set_name AS "set", coder_id AS "coderId", unit_id AS "unitId", expires FROM unit_leases
        WHERE job_id = $1 AND ($2::text IS NULL OR loop_key = $2) AND ($3::int IS NULL OR coder_id = $3)`,
       [this.jobId, filter.loop ?? null, filter.coderId ?? null],
     );
@@ -295,13 +295,13 @@ export class DbStore implements Store {
   async putLeases(leases: Lease[]): Promise<void> {
     if (leases.length === 0) return;
     await this.sql.query(
-      `INSERT INTO unit_leases (job_id, loop_key, unitset, coder_id, unit_id, expires)
+      `INSERT INTO unit_leases (job_id, loop_key, set_name, coder_id, unit_id, expires)
        SELECT $1, * FROM unnest($2::text[], $3::text[], $4::int[], $5::int[], $6::timestamptz[])
-       ON CONFLICT (job_id, loop_key, unitset, coder_id, unit_id) DO UPDATE SET expires = excluded.expires`,
+       ON CONFLICT (job_id, loop_key, set_name, coder_id, unit_id) DO UPDATE SET expires = excluded.expires`,
       [
         this.jobId,
         leases.map((l) => l.loop),
-        leases.map((l) => l.unitset),
+        leases.map((l) => l.set),
         leases.map((l) => l.coderId),
         leases.map((l) => l.unitId),
         leases.map((l) => l.expires),

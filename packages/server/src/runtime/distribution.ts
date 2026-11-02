@@ -62,7 +62,7 @@ export class Codings {
 }
 
 /**
- * One unitset of one unit_loop branch, handed out either `fixed` (every
+ * One set of one unit_loop branch, handed out either `fixed` (every
  * routed coder gets every unit: `all`, `sets` and `invitation` mode, and
  * overlaps) or `dynamic` (a shared queue with saturation rules: `shared`
  * mode, see contracts unitLoop.ts).
@@ -76,7 +76,7 @@ export class UnitPool {
   private coderLeases = new Map<number, number[]>();
 
   constructor(
-    readonly unitset: string,
+    readonly set: string,
     unitIds: number[],
     /** The shared queue's rule; null: fixed. */
     readonly rule: SharedRule | null,
@@ -111,7 +111,7 @@ export class UnitPool {
 
   /**
    * The unit this coder should get next, if any. `order` is this coder's
-   * view of the unitset order (shuffled for random loops); among equally
+   * view of the set order (shuffled for random loops); among equally
    * good units the first in that order wins. Has no side effects; call
    * `take` for the unit actually handed out.
    */
@@ -391,7 +391,7 @@ export function pickNext(
     if ((own === undefined && !dropRest) || extra.placement === "before") return { pool: extra.pool, unitId };
     if (extra.placement === "rate" && own !== undefined) {
       const doneExtra = done.filter((id) => extra.pool.has(id)).length;
-      if (doneOwn >= rateDue(doneExtra, extra.every ?? 10, hashString(`${options.seed}/${coderId}/${extra.pool.unitset}`))) return { pool: extra.pool, unitId };
+      if (doneOwn >= rateDue(doneExtra, extra.every ?? 10, hashString(`${options.seed}/${coderId}/${extra.pool.set}`))) return { pool: extra.pool, unitId };
     }
     if (extra.placement === "spread") {
       // The N own units are cut into M + 1 equal parts, and special unit j

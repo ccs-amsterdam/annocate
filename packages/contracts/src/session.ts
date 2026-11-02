@@ -8,9 +8,9 @@ import { VariableValueSchema } from "./variableValue.js";
  * in the order they were coded. Which unit comes next is decided by the job
  * server (`GET /loop/:loop/next`).
  */
-export const UnitsetProgressSchema = z.object({
+export const SetProgressSchema = z.object({
   /** The unit loop's key: its position in the codebook (`unitLoops`). */
-  unitset: z.string(),
+  set: z.string(),
   doneUnitIds: z.array(IdSchema),
   /**
    * How many units this coder will get in the loop, if known: the size of
@@ -98,7 +98,7 @@ export const SessionResponseSchema = z.object({
    * (docs/api/coder.md).
    */
   version: z.number().int().positive(),
-  progress: z.array(UnitsetProgressSchema),
+  progress: z.array(SetProgressSchema),
   /**
    * The coder's coder-level variables so far, including server-assigned
    * `auto` variables (experimental condition, slot, ...), so conditions in

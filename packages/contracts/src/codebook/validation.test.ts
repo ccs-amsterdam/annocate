@@ -250,7 +250,7 @@ describe("validateCodebookItems (more)", () => {
       {
         type: "unit_loop",
         label: "empty_loop",
-        units: [{ mode: "all", unitset: "main" }],
+        units: [{ mode: "all", set: "main" }],
         layout: { template: "" },
         children: [],
       },
@@ -263,13 +263,13 @@ describe("validateCodebookItems (more)", () => {
       {
         type: "unit_loop",
         label: "outer",
-        units: [{ mode: "all", unitset: "main" }],
+        units: [{ mode: "all", set: "main" }],
         layout: { template: "" },
         children: [
           {
             type: "unit_loop",
             label: "inner",
-            units: [{ mode: "all", unitset: "main" }],
+            units: [{ mode: "all", set: "main" }],
             layout: { template: "" },
             children: [questionVar("q1")],
           },

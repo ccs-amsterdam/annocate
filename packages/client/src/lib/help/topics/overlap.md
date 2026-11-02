@@ -12,7 +12,7 @@ can compare them: for intercoder reliability, or to check coders against
 units with a known answer.
 
 The overlap of a group is its set `_overlap` (see
-[Sets and set groups](unitsets.md)). A loop that **assigns sets** of the
+[Sets and set groups](sets.md)). A loop that **assigns sets** of the
 group, or a **crowd coding** queue over one of its sets, can add it.
 
 ## Setting it up

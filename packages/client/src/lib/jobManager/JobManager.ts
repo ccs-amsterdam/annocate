@@ -396,7 +396,7 @@ export class JobManager {
       this.topIndex = -1;
       this.maxReachedTopIndex = 0;
       this.histories.clear();
-      this.progress = new Map(session.progress.map((p) => [p.unitset, p]));
+      this.progress = new Map(session.progress.map((p) => [p.set, p]));
       this.session = session.session ?? {};
       if (session.deletionRequest) this.publish({ deletionRequested: true });
       this.publish({ login: session.login ?? null, canLogIn: session.canLogIn ?? false });

@@ -155,7 +155,7 @@ export interface Coding {
 /** A unit of a shared queue handed out to a coder (`unit_leases`): one per coder per queue. */
 export interface Lease {
   loop: string;
-  unitset: string;
+  set: string;
   coderId: number;
   unitId: number;
   expires: Date;

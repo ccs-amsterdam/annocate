@@ -385,7 +385,7 @@ describe("resuming a session", () => {
       getSession: vi.fn(async () => ({
         ...session(opts.items ?? [confirm("consent"), unitLoop("main", [select("q1", ["a", "b"]), select("q2", ["x", "y"])])]),
         variables: opts.variables ?? { consent: { done: true, skip: false } },
-        progress: [{ unitset: "1", doneUnitIds: [10, 11], totalUnits: 5 }],
+        progress: [{ set: "1", doneUnitIds: [10, 11], totalUnits: 5 }],
       }) as SessionResponse),
       getNextUnit: vi.fn(async () => {
         if (served) return null;
@@ -554,7 +554,7 @@ describe("a new codebook version while coding", () => {
     let refuse = false;
     let served = false;
     const getSession = vi.fn(
-      async () => ({ ...session([unitLoop("loop", [unitVar("q1")])]), progress: [{ unitset: "1", doneUnitIds: [10], totalUnits: 2 }] }) as SessionResponse,
+      async () => ({ ...session([unitLoop("loop", [unitVar("q1")])]), progress: [{ set: "1", doneUnitIds: [10], totalUnits: 2 }] }) as SessionResponse,
     );
     const server = makeFlakyServer({
       getSession,

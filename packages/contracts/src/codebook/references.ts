@@ -292,7 +292,7 @@ export function templateFences(source: string): TemplateFence[] {
 
 /**
  * Splits a template (the unit layout, a question or instruction text, a
- * unitset name) into literal text and expressions. Syntax: `$unit.x`,
+ * set name) into literal text and expressions. Syntax: `$unit.x`,
  * `$var.q.value` or `{{ js }}`, each with an optional
  * `::text|markdown|image|html` suffix. `\$` is a literal `$`; references
  * inside markdown code spans and fences stay literal. Block fence lines

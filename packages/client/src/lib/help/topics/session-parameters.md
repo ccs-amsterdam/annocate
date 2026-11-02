@@ -28,7 +28,7 @@ A parameter's values are one of:
 
 - **From a list**: the values you type, one per line;
 - **The sets of a group**: the names of a group's sets (see
-  [Sets and set groups](unitsets.md)), so a loop can give coders the set
+  [Sets and set groups](sets.md)), so a loop can give coders the set
   their link names. New sets get their link when they are deployed;
 - **Any value** (URL parameters only): any value up to 256 characters,
   optionally matching a **pattern** (a regular expression).

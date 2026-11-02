@@ -165,7 +165,7 @@ export class PreviewStore implements Store {
     this.basis = basis;
   }
 
-  /** `<loop>/<unitset>/<coderId>/<unitId>` -> a lease. */
+  /** `<loop>/<set>/<coderId>/<unitId>` -> a lease. */
   private leases = new Map<string, Lease>();
 
   async listLeases(filter: { loop?: string; coderId?: number }): Promise<Lease[]> {
@@ -175,7 +175,7 @@ export class PreviewStore implements Store {
   }
 
   async putLeases(leases: Lease[]): Promise<void> {
-    for (const lease of leases) this.leases.set(`${lease.loop}/${lease.unitset}/${lease.coderId}/${lease.unitId}`, lease);
+    for (const lease of leases) this.leases.set(`${lease.loop}/${lease.set}/${lease.coderId}/${lease.unitId}`, lease);
   }
 
   async coderValuesOf(variables: string[]): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {

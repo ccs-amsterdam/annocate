@@ -49,7 +49,7 @@ no units in this loop: they skip it. Use **+ Otherwise** to add it again.
 ### Example: an experiment
 
 The units have a sets column `condition` with the sets `treatment` and
-`control` (see [Sets and set groups](unitsets.md)). The codebook starts with
+`control` (see [Sets and set groups](sets.md)). The codebook starts with
 an auto question `group`, with the options `treatment` and `control` and
 the source **Balanced (option with fewest coders)** (so both groups get
 about as many participants). The unit loop has two groups:

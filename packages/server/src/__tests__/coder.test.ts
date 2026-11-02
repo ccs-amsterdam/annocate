@@ -167,7 +167,7 @@ describe("coder flow", () => {
     expect((await dbAnnotations())[0].variables.sentiment.values).toEqual([{ value: "positive" }]);
 
     expect((await c.next())?.externalId).toBe("unit-2");
-    expect((await c.session()).progress).toEqual([{ unitset: "1", doneUnitIds: [first!.id], totalUnits: 3 }]);
+    expect((await c.session()).progress).toEqual([{ set: "1", doneUnitIds: [first!.id], totalUnits: 3 }]);
   });
 
   it("rejects invalid annotations without writing them", async () => {
@@ -348,7 +348,7 @@ describe("shared queues", () => {
     const status = (await (await server.request("/job/1/deployment/status", { headers: adminHeaders })).json()) as DeploymentStatus;
     expect(status.version).toBe(2);
     expect(status.sources).toEqual([
-      expect.objectContaining({ loop: "main_loop", unitset: "__all__", mode: "dynamic", completeUnits: 1, leasedUnits: 1, codings: 3, coders: 4 }),
+      expect.objectContaining({ loop: "main_loop", set: "__all__", mode: "dynamic", completeUnits: 1, leasedUnits: 1, codings: 3, coders: 4 }),
     ]);
   });
 
@@ -1345,7 +1345,7 @@ describe("finished units follow the current codebook", () => {
     // finished in main_loop, not in second_loop
     expect((await c.next("2"))!.id).not.toBe(unit!.id);
     expect((await c.next("1"))!.id).toBe(unit!.id);
-    const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.unitset, p.doneUnitIds]));
+    const progress = Object.fromEntries((await c.session()).progress.map((p) => [p.set, p.doneUnitIds]));
     expect(progress).toEqual({ 1: [], 2: [unit!.id] });
   });
 });

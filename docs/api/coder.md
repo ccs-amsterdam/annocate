@@ -93,7 +93,7 @@ Assigns the coder's `auto` variables they don't have yet (`random` or
 
 `:loop` is the loop's position in the design version the coder runs
 (contracts `unitLoops`: `1`, `2`, ...); loops have no name. The same goes for
-`loop` in `POST /variables/unit` and `unitset` in the session's `progress`.
+`loop` in `POST /variables/unit` and `set` in the session's `progress`.
 
 The server picks the coder's next `count` units (default 1, at most
 `MAX_UNIT_BATCH`, 20) from the coder's branch: their own units (a set, or a

@@ -163,7 +163,7 @@ export interface ResearcherApi {
   putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
   getPendingChanges(): Promise<PendingChanges>;
   listDeploymentVersions(): Promise<DeploymentVersion[]>;
-  /** Progress of the live job, per loop and unitset. */
+  /** Progress of the live job, per loop and set. */
   getDeploymentStatus(): Promise<DeploymentStatus>;
   /** Retires live answers, so units are coded again (ADMIN). */
   resetAnnotations(body: ResetAnnotations): Promise<{ retired: number }>;

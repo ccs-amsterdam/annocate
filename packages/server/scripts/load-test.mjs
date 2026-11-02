@@ -45,7 +45,7 @@ async function setUp() {
     {
       type: "unit_loop",
       label: "Headlines",
-      units: [{ mode: "shared", unitset: "__all__", until: { coders: 2 }, maxCoders: 2 }],
+      units: [{ mode: "shared", set: "__all__", until: { coders: 2 }, maxCoders: 2 }],
       layout: { template: "# $unit.headline\n\n$unit.text" },
       children: [
         { type: "question", name: "sentiment", variable: { type: "nominal", question: "Sentiment?", options: [{ value: "pos" }, { value: "neg" }] } },
@@ -97,7 +97,7 @@ async function coder(jobId, secret, until, n) {
   await sleep(Math.random() * 10_000);
   const session = await call("session", "GET", "/session");
   if (!session) return 0;
-  const loop = session.progress[0].unitset;
+  const loop = session.progress[0].set;
   await call("coder vars", "POST", "/variables/coder", { variables: { age: value(n % 2 ? "young" : "old") }, timings: { age: timing } });
   let done = 0;
   while (Date.now() < until) {

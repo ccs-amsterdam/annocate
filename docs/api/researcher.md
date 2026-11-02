@@ -559,7 +559,7 @@ newest first: each deployed version with its codebook and what it changed
 ### getDeploymentStatus
 
 `GET /job/:jobId/deployment/status` → `DeploymentStatusSchema`: per loop
-and set (`unitset`: `group/set`, or `__all__` for all units) the units complete, started and leased, codings and coders,
+and set (`set`: `group/set`, or `__all__` for all units) the units complete, started and leased, codings and coders,
 computed on demand. 404 if not
 deployed.
 

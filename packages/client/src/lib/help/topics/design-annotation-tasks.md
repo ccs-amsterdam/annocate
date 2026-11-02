@@ -164,7 +164,7 @@ the data harder to interpret. See
   another one, so long jobs can be spread over days. For crowd coding, cap
   the units per coder: **Units per coder, at most** in a
   [shared queue](shared-queues.md), or split the units into smaller
-  [sets](unitsets.md).
+  [sets](sets.md).
 - **Look at timing.** The download has the time each unit was first answered
   and last changed. Implausibly fast coders show up as tiny gaps between
   units.

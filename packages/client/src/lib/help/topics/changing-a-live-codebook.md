@@ -38,7 +38,7 @@ Two rules explain most of it:
 
 Units and sets are drafts too: units you upload and sets you make while
 coding runs reach coders once you deploy them, with a design draft or on
-their own (see [Sets and set groups](unitsets.md)).
+their own (see [Sets and set groups](sets.md)).
 
 The deploy dialog warns about removed option values and changed answer
 types, before you deploy. After deploying, it warns if a loop gained
