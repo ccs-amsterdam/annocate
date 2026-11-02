@@ -63,7 +63,11 @@ A cell holds the right answer to one question:
 | `3..5` | a number from 3 to 5 |
 
 An empty cell: the unit isn't checked for that question. Deploying warns
-about units without answers and answers that aren't options of the question.
+about units without answers and answers that can never be right: a value
+that isn't an option (or, for a number question, not a number), or a range
+(`lo..hi`, for numbers and ordered options like a 1-5 scale) with no option
+in it or outside the question's min and max. Numbers compare as numbers
+(`3` matches 3.0).
 
 ## Practice units
 

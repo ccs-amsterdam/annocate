@@ -47,8 +47,15 @@ export function matchesAnswerKey(key: AnswerAlternative[], given: string[]): boo
       const n = Number(given[0]);
       return Number.isFinite(n) && n >= alt.range[0] && n <= alt.range[1];
     }
-    return given.length === alt.values.length && alt.values.every((v) => given.includes(v));
+    return given.length === alt.values.length && alt.values.every((v) => given.some((g) => sameValue(g, v)));
   });
+}
+
+/** Equal as text, or as numbers (`3` and `3.0`). */
+function sameValue(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [x, y] = [Number(a), Number(b)];
+  return a.trim() !== "" && b.trim() !== "" && Number.isFinite(x) && Number.isFinite(y) && x === y;
 }
 
 /** Whether an answer (a question's value) matches a key; a skipped or missing answer never does. */
@@ -63,10 +70,35 @@ export function formatAnswerKey(key: AnswerAlternative[]): string {
 }
 
 /**
- * Values in a cell that aren't options of the question (for warnings).
- * `options` absent: any value goes (numeric, confirm).
+ * What in a cell can never be right for its question (for warnings): a value
+ * that isn't one of the options (or, for a numeric question, not a number),
+ * a range no option value falls in (e.g. on unordered text options), or a
+ * range outside a numeric question's min..max. Empty: fine.
  */
-export function unknownAnswerValues(key: AnswerAlternative[], options: string[] | undefined): string[] {
-  if (!options) return [];
-  return key.flatMap((alt) => ("values" in alt ? alt.values.filter((v) => !options.includes(v)) : [`${alt.range[0]}..${alt.range[1]}`]));
+export function answerKeyProblems(
+  key: AnswerAlternative[],
+  question: { type: string; options?: { value: unknown }[]; min?: number; max?: number } | undefined,
+): string[] {
+  if (!question) return [];
+  const options = question.options?.map((o) => String(o.value));
+  const numeric = question.type === "numeric";
+  return key.flatMap((alt) => {
+    if ("range" in alt) {
+      const [lo, hi] = alt.range;
+      const text = `${lo}..${hi}`;
+      if (options) return options.some((o) => o.trim() !== "" && Number(o) >= lo && Number(o) <= hi) ? [] : [`${text} (no option in this range)`];
+      if (numeric && ((question.min !== undefined && hi < question.min) || (question.max !== undefined && lo > question.max)))
+        return [`${text} (outside ${question.min ?? ""}..${question.max ?? ""})`];
+      return [];
+    }
+    return alt.values.flatMap((v) => {
+      if (options) return options.some((o) => sameValue(o, v)) ? [] : [`${v} (not an option)`];
+      if (numeric) {
+        const n = Number(v);
+        if (v.trim() === "" || !Number.isFinite(n)) return [`${v} (not a number)`];
+        if ((question.min !== undefined && n < question.min) || (question.max !== undefined && n > question.max)) return [`${v} (outside ${question.min ?? ""}..${question.max ?? ""})`];
+      }
+      return [];
+    });
+  });
 }

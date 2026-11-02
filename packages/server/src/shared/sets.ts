@@ -7,7 +7,7 @@ import {
   collectQuestions,
   goldColumn,
   parseAnswerKey,
-  unknownAnswerValues,
+  answerKeyProblems,
   practiceColumn,
   SetGroupNameSchema,
   loopTitle,
@@ -149,16 +149,15 @@ export async function setWarnings(sql: Sql, jobId: number, items: DesignItem[], 
           const rows = (await servedUnits(sql, jobId, live, units)).sort((a, b) => a.id - b.id);
           for (const question of settings.questions ?? []) {
             const empty = rows.filter((r) => parseAnswerKey(r.data[column(question)]) === null);
-            // Right answers that aren't options of the question
-            const variable = questions.get(question);
-            const options = variable && "options" in variable ? (variable.options as { value: unknown }[]).map((o) => String(o.value)) : undefined;
+            // Right answers that can never be right: not an option, not a number, a range without options in it
+            const variable = questions.get(question) as Parameters<typeof answerKeyProblems>[1];
             const odd = rows.flatMap((r) => {
               const key = parseAnswerKey(r.data[column(question)]);
-              return key ? unknownAnswerValues(key, options).map((v) => `${r.external_id}: ${v}`) : [];
+              return key ? answerKeyProblems(key, variable).map((v) => `${r.external_id}: ${v}`) : [];
             });
             if (odd.length > 0) {
               warnings.push(
-                `Loop '${title}': ${column(question)} has values that aren't options of '${question}' (${odd.slice(0, 5).join(", ")}${odd.length > 5 ? ", …" : ""}): those answers can never be right.`,
+                `Loop '${title}': ${column(question)} has answers that don't fit '${question}' (${odd.slice(0, 5).join(", ")}${odd.length > 5 ? ", …" : ""}): those can never be right.`,
               );
             }
             if (empty.length === 0) continue;

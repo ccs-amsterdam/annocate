@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAnswerKey, matchesAnswerKey, parseAnswerKey, unknownAnswerValues } from "./answerKey.js";
+import { answerKeyProblems, formatAnswerKey, matchesAnswerKey, parseAnswerKey } from "./answerKey.js";
 
 describe("answer keys", () => {
   const matches = (cell: string, given: string[]) => matchesAnswerKey(parseAnswerKey(cell)!, given);
@@ -27,7 +27,18 @@ describe("answer keys", () => {
   it("format back and list values that aren't options", () => {
     const key = parseAnswerKey(" a ; b | 1..2 ")!;
     expect(formatAnswerKey(key)).toBe("a;b|1..2");
-    expect(unknownAnswerValues(key, ["a", "c"])).toEqual(["b", "1..2"]);
-    expect(unknownAnswerValues(key, undefined)).toEqual([]);
+    const nominal = { type: "nominal", options: [{ value: "a" }, { value: "c" }] };
+    expect(answerKeyProblems(key, nominal)).toEqual(["b (not an option)", "1..2 (no option in this range)"]);
+    expect(answerKeyProblems(key, undefined)).toEqual([]);
+  });
+
+  it("numbers compare as numbers; ranges suit ordered options and numeric questions", () => {
+    expect(matchesAnswerKey(parseAnswerKey("3")!, ["3.0"])).toBe(true);
+    const scale = { type: "ordinal", options: [1, 2, 3, 4, 5].map((value) => ({ value })) };
+    expect(answerKeyProblems(parseAnswerKey("2..4|5")!, scale)).toEqual([]);
+    expect(answerKeyProblems(parseAnswerKey("6..9")!, scale)).toEqual(["6..9 (no option in this range)"]);
+    const numeric = { type: "numeric", min: 0, max: 10 };
+    expect(answerKeyProblems(parseAnswerKey("3..5|7")!, numeric)).toEqual([]);
+    expect(answerKeyProblems(parseAnswerKey("x|11|20..30")!, numeric)).toEqual(["x (not a number)", "11 (outside 0..10)", "20..30 (outside 0..10)"]);
   });
 });
