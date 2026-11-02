@@ -43,9 +43,10 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     ended: SessionEnd | null;
     deletionRequest: DeletionRequest | null;
     session: Record<string, string>;
+    assignments: Record<string, { set?: string }>;
   }>(
     `SELECT c.id, c.email, c.participant_id AS "participantId", c.link_id AS "linkId", c.created, i.label AS "linkLabel",
-       c.ended, c.deletion_request AS "deletionRequest", c.session
+       c.ended, c.deletion_request AS "deletionRequest", c.session, c.assignments
      FROM coders c LEFT JOIN links i ON i.id = c.link_id
      WHERE c.job_id = $1 ORDER BY c.id`,
     [jobId],
@@ -61,24 +62,38 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
   );
   const finished = await finishedPerLoop(sql, jobId);
   const values = await coderValues(sql, jobId);
-  // Special sets as deployed: their size (the largest group's), and per coder the units of them finished
+  // Special sets as deployed, per group: their size, and per coder the units of them finished. A coder
+  // counts the special sets of the groups they were routed to (their assignments are `group/set`).
   const kinds = { _overlap: "overlap", _gold: "gold", _practice: "practice" } as const;
-  const totals = await sql.query<{ name: keyof typeof kinds; total: number }>(
-    `SELECT s.name, MAX(n)::int AS total FROM unit_sets s
-       JOIN (SELECT set_id, COUNT(*) AS n FROM unit_set_members GROUP BY set_id) m ON m.set_id = s.id
-     WHERE s.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY s.name`,
+  type Kind = keyof typeof kinds;
+  const sizes = await sql.query<{ grp: string; name: Kind; total: number }>(
+    `SELECT s.grp, s.name, COUNT(m.unit_id)::int AS total FROM unit_sets s LEFT JOIN unit_set_members m ON m.set_id = s.id
+     WHERE s.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY s.grp, s.name`,
     [jobId],
   );
-  const doneRows = await sql.query<{ coderId: number; name: keyof typeof kinds; done: number }>(
-    `SELECT c.coder_id AS "coderId", s.name, COUNT(DISTINCT c.unit_id)::int AS done FROM unit_codings c
+  const doneRows = await sql.query<{ coderId: number; grp: string; name: Kind; done: number }>(
+    `SELECT c.coder_id AS "coderId", s.grp, s.name, COUNT(DISTINCT c.unit_id)::int AS done FROM unit_codings c
        JOIN unit_set_members m ON m.unit_id = c.unit_id JOIN unit_sets s ON s.id = m.set_id
-     WHERE c.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY c.coder_id, s.name`,
+     WHERE c.job_id = $1 AND s.live AND s.name IN ('_overlap', '_gold', '_practice') GROUP BY c.coder_id, s.grp, s.name`,
     [jobId],
   );
-  const special = (coderId: number) =>
-    Object.fromEntries(
-      totals.map((t) => [kinds[t.name], { done: doneRows.find((d) => d.coderId === coderId && d.name === t.name)?.done ?? 0, total: t.total }]),
+  const special = (coderId: number, assignments: Record<string, { set?: string }>) => {
+    const groups = new Set(
+      Object.values(assignments ?? {})
+        .map((a) => a?.set ?? "")
+        .filter((set) => set.includes("/"))
+        .map((set) => set.slice(0, set.indexOf("/"))),
     );
+    const out: CoderProgress["special"] = {};
+    for (const size of sizes) {
+      if (!groups.has(size.grp)) continue;
+      const done = doneRows.find((d) => d.coderId === coderId && d.grp === size.grp && d.name === size.name)?.done ?? 0;
+      const kind = kinds[size.name];
+      const sum = out[kind] ?? { done: 0, total: 0 };
+      out[kind] = { done: sum.done + done, total: sum.total + size.total };
+    }
+    return out;
+  };
 
   return coders.map((c) => ({
     id: c.id,
@@ -90,7 +105,7 @@ export async function listCoderProgress(sql: Sql, jobId: number): Promise<CoderP
     lastActive: activity.get(c.id)?.lastActive ?? null,
     answers: activity.get(c.id)?.answers ?? 0,
     finished: Object.fromEntries([...finished].map(([loop, perCoder]) => [loop, perCoder.get(c.id) ?? 0])),
-    special: special(c.id),
+    special: special(c.id, c.assignments),
     variables: values.get(c.id) ?? {},
     ended: c.ended,
     deletionRequest: c.deletionRequest,

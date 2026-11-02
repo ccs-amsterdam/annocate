@@ -6,6 +6,7 @@ import {
   DesignConflictSchema,
   validateDesignItems,
   type DesignConflict,
+  type DesignIssue,
   type DesignItem,
   type DesignVersion,
   type TopLevelItem,
@@ -24,6 +25,7 @@ import {
   type TreePosition,
 } from "../../../design/itemEdit";
 import { findItem } from "../../../codebook/tree";
+import { pathOfItem, unknownUnitFields } from "../../../design/unitFieldRefs";
 import { carryKeys } from "../../../design/itemShape";
 import { changedKeys, emptyHistory, recordChange, redo, revertItem, undo } from "../../../design/editHistory";
 import { ResearcherApiError } from "../../../api/httpResearcherApi";
@@ -73,15 +75,28 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
   const serialized = useMemo(() => JSON.stringify(cleanItems), [cleanItems]);
   const savedSerialized = useMemo(() => JSON.stringify(stripKeys(saved)), [saved]);
   // Errors and warnings. Drafts can be saved with errors; deploying needs none.
-  // Plus the unit fields it uses that the design doesn't declare (docs/plans/design.md §3)
-  const declared = useUnitFieldsQuery(client).data;
+  // Plus the unit fields it uses that the design doesn't declare (docs/plans/design.md §3): the open
+  // version's fields, as the server checks them at deploy (a new design gets the job's current fields)
+  const jobFields = useUnitFieldsQuery(client).data;
+  const declared = version ? version.units.fields : jobFields;
+  const undeclared = useMemo(() => (declared ? undeclaredFields(cleanItems, declared) : []), [cleanItems, declared]);
   const validationIssues = useMemo(() => {
-    const issues = validateDesignItems(cleanItems);
-    const undeclared = declared ? undeclaredFields(cleanItems, declared) : [];
+    const issues: DesignIssue[] = validateDesignItems(cleanItems);
     if (undeclared.length === 0) return issues;
-    const message = `Uses unit fields the design doesn't declare: ${undeclared.join(", ")}. Upload units with them, or declare them on the Units page.`;
-    return [...issues, { path: [], message }];
-  }, [cleanItems, declared]);
+    // At the items that use them, where they can be found; the rest (e.g. answer columns) in one issue
+    const located = new Set<string>();
+    for (const use of unknownUnitFields(cleanItems as TopLevelItem[], declared ?? [], true)) {
+      if (!undeclared.includes(use.field)) continue;
+      located.add(use.field);
+      const message = `${use.item}: the design doesn't declare the unit field '${use.field}'. Upload units with it, or declare it on the Units page.`;
+      issues.push({ path: pathOfItem(cleanItems as TopLevelItem[], use.item) ?? [], message });
+    }
+    const rest = undeclared.filter((f) => !located.has(f));
+    if (rest.length > 0) {
+      issues.push({ path: [], message: `Uses unit fields the design doesn't declare: ${rest.join(", ")}. Upload units with them, or declare them on the Units page.` });
+    }
+    return issues;
+  }, [cleanItems, declared, undeclared]);
   const validationErrors = useMemo(() => validationIssues.filter((i) => !i.warning), [validationIssues]);
   const dirty = serialized !== savedSerialized;
   const valid = items.length > 0 && validationErrors.length === 0;
@@ -216,6 +231,8 @@ export function useDesignDraft({ client, version, readOnly, onSaved, restore }: 
     selectedItem,
     validationIssues,
     validationErrors,
+    /** Unit fields the design uses but doesn't declare (errors, at the items that use them). */
+    undeclared,
     dirty,
     valid,
     canSave,

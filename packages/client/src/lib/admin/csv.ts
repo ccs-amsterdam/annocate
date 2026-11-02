@@ -1,5 +1,6 @@
 import {
   inferFieldType,
+  isAnswerColumn,
   parseFieldValue,
   toUnitFieldName,
   unitFieldNameError,
@@ -91,7 +92,8 @@ export interface ColumnMapping {
 
 /** The type of each column, from its values (`inferFieldType`). */
 export function columnTypes(headers: string[], rows: string[][]): UnitFieldType[] {
-  return headers.map((_, i) => inferFieldType(rows.map((r) => r[i] ?? "")));
+  // Answer columns are text (cells like `3..5` or `a|b`)
+  return headers.map((h, i) => (isAnswerColumn(h.trim()) ? "text" : inferFieldType(rows.map((r) => r[i] ?? ""))));
 }
 
 /**

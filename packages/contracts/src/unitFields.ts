@@ -64,6 +64,14 @@ export function toUnitFieldName(header: string, taken: ReadonlySet<string> = new
   return unique;
 }
 
+/**
+ * An answer column of gold or practice units (`<question>_gold`,
+ * `<question>_practice`, `<question>_practice_message`; design/unitLoop.ts):
+ * text, since a cell may hold alternatives (`a|b`) and ranges (`3..5`)
+ * (answerKey.ts). It takes numbers and booleans too, whatever its type.
+ */
+export const isAnswerColumn = (name: string) => /_(gold|practice|practice_message)$/.test(name);
+
 /** The type of a stored value; null for an empty value (fits every type). */
 export function typeOfValue(value: UnitDataValue): UnitFieldType | null {
   if (value === null) return null;
@@ -81,7 +89,7 @@ export function fieldsOfUnits(units: UnitData[]): { fields: UnitField[] } | { er
   const types = new Map<string, UnitFieldType | null>();
   for (const data of units) {
     for (const [name, value] of Object.entries(data)) {
-      const type = typeOfValue(value);
+      const type = isAnswerColumn(name) ? "text" : typeOfValue(value);
       const known = types.get(name);
       if (known === undefined || known === null) types.set(name, type);
       else if (type !== null && type !== known) {
@@ -115,7 +123,7 @@ export function checkUnitData(data: UnitData, fields: UnitField[]): string | nul
     const type = known.get(name);
     if (type === undefined) return `Unknown field '${name}' (the fields are: ${fields.map((f) => f.name).join(", ")})`;
     const actual = typeOfValue(value);
-    if (actual !== null && actual !== type) return `Field '${name}' is ${type}, got ${actual} (${JSON.stringify(value)})`;
+    if (actual !== null && actual !== type && !isAnswerColumn(name)) return `Field '${name}' is ${type}, got ${actual} (${JSON.stringify(value)})`;
   }
   const missing = fields.find((f) => !(f.name in data));
   return missing ? `Missing field '${missing.name}'` : null;

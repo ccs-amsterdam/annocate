@@ -38,6 +38,14 @@ describe("unit fields", () => {
     expect(checkUnitData({ a: 1 }, fields)).toMatch(/Missing field 'b'/);
     expect(checkUnitData({ a: 1, b: "x", c: 2 }, fields)).toMatch(/Unknown field 'c'/);
   });
+
+  it("types answer columns as text, and lets them hold any value (cells like 3..5 or a|b)", () => {
+    expect(fieldsOfUnits([{ score_gold: 3 }, { score_gold: "3..5" }])).toEqual({ fields: [{ name: "score_gold", type: "text" }] });
+    // Also a column typed number before: an answer-key cell fits
+    const fields = [{ name: "score_practice", type: "number" as const }];
+    expect(checkUnitData({ score_practice: "3..5" }, fields)).toBeNull();
+    expect(checkUnitData({ score_practice: 4 }, [{ name: "score_practice", type: "text" as const }])).toBeNull();
+  });
 });
 
 describe("field names", () => {

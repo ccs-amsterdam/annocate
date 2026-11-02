@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assignAllColumns, csvToUnits, initialMapping, parseCsv } from "./csv";
+import { assignAllColumns, columnTypes, csvToUnits, initialMapping, parseCsv } from "./csv";
 
 describe("parseCsv", () => {
   it("parses a simple CSV", () => {
@@ -88,5 +88,11 @@ describe("csvToUnits", () => {
   it("checks the ids", () => {
     const result = csvToUnits(["id", "t"], [["1", "a"], ["1", "b"], ["", "c"]], 0, [{ column: 1, field: "t", type: "text" }]);
     expect(result.errors).toEqual(["Some rows have no id", "The id '1' occurs more than once in id"]);
+  });
+});
+
+describe("columnTypes", () => {
+  it("types columns by their values, answer columns as text", () => {
+    expect(columnTypes(["n", "n_gold", "n_practice"], [["1", "2", "3"], ["4", "5", "6"]])).toEqual(["number", "text", "text"]);
   });
 });

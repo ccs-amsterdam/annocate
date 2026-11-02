@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   buildScope,
   formatAnswerKey,
+  isAnswerColumn,
   parseAnswerKey,
   unitScopeData,
   type AnswerAlternative,
@@ -35,10 +36,11 @@ type Cells = Record<string, string>;
 
 const cellText = (value: unknown) => (value === null || value === undefined ? "" : String(value));
 
-/** A cell as the column's type: numbers and booleans where the field has that type. */
+/** A cell as the column's type: numbers and booleans where the field has that type; answer columns as text. */
 function cellValue(text: string, field: UnitField | undefined): UnitDataValue | { error: string } {
   const t = text.trim();
   if (t === "") return null;
+  if (field && isAnswerColumn(field.name)) return t;
   if (field?.type === "number") {
     const n = Number(t);
     return Number.isFinite(n) ? n : { error: `Column ${field.name} holds numbers: "${t}" can't go in it.` };

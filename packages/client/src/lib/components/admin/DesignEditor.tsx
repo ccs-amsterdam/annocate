@@ -86,9 +86,10 @@ export function DesignEditor({
   const [view, setView] = useState<EditorView>("tree");
   const unitFieldsQuery = useUnitFieldsQuery(client);
   // Warnings, not errors: units may still be uploaded after the design is written
+  // (Fields the design doesn't declare are errors already, at the same items)
   const warnings = useMemo(
-    () => unknownUnitFields(draft.cleanItems, unitFieldsQuery.data ?? []),
-    [draft.cleanItems, unitFieldsQuery.data],
+    () => unknownUnitFields(draft.cleanItems, unitFieldsQuery.data ?? []).filter((w) => !draft.undeclared.includes(w.field)),
+    [draft.cleanItems, unitFieldsQuery.data, draft.undeclared],
   );
 
   const errors = useMemo<EditorIssue[]>(

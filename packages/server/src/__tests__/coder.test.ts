@@ -1764,3 +1764,31 @@ describe("end items", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("special units per coder", () => {
+  it("count the special sets of the coder's own set group, not of other groups", async () => {
+    const { data: base } = await draftUnit((await unitByExternalId("unit-1")).id);
+    const upload = await server.request("/job/1/units", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ units: ["g1", "g2"].map((externalId) => ({ externalId, data: { ...base, sentiment_gold: "neutral" } })) }),
+    });
+    expect(upload.status, await upload.clone().text()).toBe(201);
+    await createSet("s1", ["unit-1"]);
+    await createSet("_gold", ["g1"]);
+    // Another group with a bigger special set, used by no loop of this coder
+    await createSet("_gold", ["g1", "g2"], "h");
+    await redeploy({ units: [{ mode: "assign", group: "g", from: { draw: "balanced" }, overlap: { placement: "disabled" }, gold: { placement: "last", questions: ["sentiment"] } }] });
+    const c = coder("routed");
+    for (let i = 0; i < 2; i++) {
+      const unit = (await c.next())!;
+      expect((await c.submit(unit.id, sentiment("positive"))).status).toBe(200);
+    }
+    // A coder who never asked for units: not routed, so no special sets yet
+    await coder("idle").session();
+    const coders = (await (await server.request("/job/1/coders", { headers: adminHeaders })).json()) as CoderProgress[];
+    const routed = coders.find((x) => x.finished.main_loop === 2)!;
+    expect(routed.special).toEqual({ gold: { done: 1, total: 1 } });
+    expect(coders.filter((x) => x.id !== routed.id).map((x) => x.special)).toEqual([{}]);
+  });
+});

@@ -11,6 +11,19 @@ import {
 } from "@annotinder/contracts";
 import { itemTitle } from "../codebook/conditions";
 
+/** Where an item (by its title, as in the warnings) is: a validation issue path. */
+export function pathOfItem(items: (TopLevelItem | InLoopItem)[], title: string): (string | number)[] | null {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (itemTitle(item) === title || ("name" in item && item.name === title)) return [i];
+    if ("children" in item && Array.isArray(item.children)) {
+      const inner = pathOfItem(item.children as InLoopItem[], title);
+      if (inner) return [i, "children", ...inner];
+    }
+  }
+  return null;
+}
+
 export interface UnitFieldWarning {
   /** The item that refers to the field (the loop itself for its layout). */
   item: string;
@@ -28,10 +41,11 @@ function conditionReferences(condition: Condition | undefined): Reference[] {
  * loop (layout template with its snippets, conditions, question texts), and
  * the `column` of span questions. Warnings, not
  * errors: units may still be uploaded after the codebook is written.
- * Nothing to check while the job has no units (`fields` empty).
+ * Nothing to check while the job has no units (`fields` empty), unless
+ * `always` (to locate the uses of fields the design doesn't declare).
  */
-export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[]): UnitFieldWarning[] {
-  if (fields.length === 0) return [];
+export function unknownUnitFields(items: TopLevelItem[], fields: UnitField[], always = false): UnitFieldWarning[] {
+  if (fields.length === 0 && !always) return [];
   const known = new Set(fields.map((f) => f.name));
   const warnings: UnitFieldWarning[] = [];
   const seen = new Set<string>();

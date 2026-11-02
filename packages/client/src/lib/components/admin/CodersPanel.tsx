@@ -35,7 +35,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
   // Loops of the live codebook (every coder has the same keys)
   const loops = Object.keys(coders[0]?.finished ?? {});
   // The special sets the job has (overlap, gold, practice): units of them each coder finished
-  const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders[0]?.special?.[kind]);
+  const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
   const requests = coders.filter((c) => c.deletionRequest && !c.deletionRequest.postponedAt);
   const postponed = coders.filter((c) => c.deletionRequest?.postponedAt).length;
   const deletions = useCoderDeletionsQuery(client).data ?? [];
@@ -163,7 +163,7 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
                   ))}
                   {specials.map((kind) => (
                     <td key={kind} className="p-2 text-right tabular-nums">
-                      {coder.special?.[kind]?.done ?? 0} of {coder.special?.[kind]?.total ?? 0}
+                      {coder.special?.[kind] ? `${coder.special[kind].done} of ${coder.special[kind].total}` : "–"}
                     </td>
                   ))}
                   <td className="p-2 text-right whitespace-nowrap">

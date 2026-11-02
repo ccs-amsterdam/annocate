@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TopLevelItem } from "@annotinder/contracts";
-import { unknownUnitFields } from "./unitFieldRefs";
+import { pathOfItem, unknownUnitFields } from "./unitFieldRefs";
 
 const items = [
   {
@@ -36,7 +36,16 @@ describe("unknownUnitFields", () => {
     ]);
   });
 
-  it("checks nothing while the job has no units", () => {
+  it("checks nothing while the job has no units, unless asked to (to locate undeclared fields)", () => {
     expect(unknownUnitFields(items, [])).toEqual([]);
+    expect(unknownUnitFields(items, [], true).map((w) => w.field)).toContain("topic");
+  });
+});
+
+describe("pathOfItem", () => {
+  it("finds an item by its title, as a validation issue path", () => {
+    expect(pathOfItem(items, "loop")).toEqual([0]);
+    expect(pathOfItem(items, "q1")).toEqual([0, "children", 0]);
+    expect(pathOfItem(items, "nope")).toBeNull();
   });
 });
