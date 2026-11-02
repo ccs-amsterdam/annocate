@@ -279,6 +279,11 @@ function DeployHistory({ client, numberOf }: { client: ResearcherApi; numberOf: 
               <span className="font-mono text-xs text-muted-foreground">#{v.version}</span>
               <span>{parts.length > 0 ? parts.join("; ") : "settings only"}</span>
               <span className="text-xs text-muted-foreground">{formatWhen(v.created)}</span>
+              {v.client && (
+                <span className="text-xs text-muted-foreground" title={`AnnoTinder ${v.client.release}, commit ${v.client.commit}`}>
+                  on {v.client.release}
+                </span>
+              )}
             </li>
           );
         })}

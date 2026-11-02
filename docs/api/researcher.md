@@ -554,7 +554,10 @@ and whether the `sets` differ; all added before the first deploy) and
 
 `GET /job/:jobId/deployment/versions` → `DeploymentVersionSchema[]`,
 newest first: each deployed version with its design version and what it changed
-(`changes.design`, `changes.units`: null when the units stayed).
+(`changes.design`, `changes.units`: null when the units stayed), and the
+client it ran on (`client: { release, commit }`; null for deployments
+before this was recorded). A design version as a file (`design.json`,
+contracts `DesignFileSchema`) is built from `getDesignVersion` and this.
 
 ### getDeploymentStatus
 

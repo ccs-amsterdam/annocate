@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import type { JobResponse } from "@annotinder/contracts";
+import { RELEASE, type JobResponse } from "@annotinder/contracts";
 import { api } from "./helpers";
 
 // Everything is a draft until deployed (docs/plans/design.md §5): units and
@@ -85,7 +85,7 @@ test("the design's unit fields: how the codebook uses each, removing an unused o
   expect((await api<{ name: string }[]>(request, "GET", `/job/${job.id}/units/fields`)).map((f) => f.name)).toEqual(["text", "year"]);
 });
 
-test("the codebook as a document: what coders see", async ({ page, request }) => {
+test("export: the codebook as a document (what coders see), and the design file", async ({ page, request }) => {
   const job = await api<JobResponse>(request, "POST", "/job", { name: "Codebook export" });
   await api(request, "POST", `/job/${job.id}/design`, {
     items: [{ type: "question", name: "age", variable: { type: "numeric", question: "How old are you?", min: 18 } }],
@@ -93,19 +93,35 @@ test("the codebook as a document: what coders see", async ({ page, request }) =>
   await page.goto("/");
   await page.getByText("Codebook export").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
-  const file = await download;
-  expect(file.suggestedFilename()).toBe("codebook.md");
-  const text = await new Promise<string>((resolve, reject) => {
-    void file.createReadStream().then((stream) => {
-      let out = "";
-      stream.on("data", (c) => (out += String(c)));
-      stream.on("end", () => resolve(out));
-      stream.on("error", reject);
+  const exported = async (choice: RegExp) => {
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export" }).click();
+    await page.getByRole("button", { name: choice }).click();
+    const file = await download;
+    const text = await new Promise<string>((resolve, reject) => {
+      void file.createReadStream().then((stream) => {
+        let out = "";
+        stream.on("data", (c) => (out += String(c)));
+        stream.on("end", () => resolve(out));
+        stream.on("error", reject);
+      });
     });
+    return { name: file.suggestedFilename(), text };
+  };
+  const codebook = await exported(/^Codebook \(Markdown\)/);
+  expect(codebook.name).toBe("codebook.md");
+  expect(codebook.text).toContain("## age: How old are you?");
+  // The design file: the whole design, with the release it was exported from
+  const design = await exported(/^Design file \(JSON\)/);
+  expect(design.name).toBe("design.json");
+  expect(JSON.parse(design.text)).toMatchObject({
+    format: "annotinder-design",
+    formatVersion: 1,
+    client: { release: RELEASE },
+    name: "Codebook export",
+    version: 1,
+    design: { items: [{ name: "age" }] },
   });
-  expect(text).toContain("## age: How old are you?");
 });
 
 test("panel return links are settings of the run, filled in for coders", async ({ page, request }) => {

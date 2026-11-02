@@ -6,7 +6,11 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      # The commit, recorded with each deployment: ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+      args:
+        ANNOTINDER_COMMIT: ${ANNOTINDER_COMMIT:-unknown}
     image: annotinder
     restart: unless-stopped
     env_file: .env

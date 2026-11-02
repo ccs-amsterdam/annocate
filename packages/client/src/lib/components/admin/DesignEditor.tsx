@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { codebookMarkdown } from "../../design/codebookMarkdown";
-import type { DesignVersion } from "@annotinder/contracts";
+import { RELEASE, designFile, splitSession, type DesignVersion } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useUnitFieldsQuery } from "../../admin/queries";
+import { useJobQuery, useUnitFieldsQuery } from "../../admin/queries";
 import { unknownUnitFields } from "../../design/unitFieldRefs";
 import { DesignJsonEditor } from "./DesignJsonEditor";
 import { useDesignDraft } from "./designEditor/useDesignDraft";
@@ -31,6 +31,8 @@ export type SaveFn = () => Promise<DesignVersion>;
 
 interface DesignEditorProps {
   client: ResearcherApi;
+  /** The version's number as people see it (v1, v2, ...): in an exported design file. */
+  versionNumber?: number | null;
   /** The version to edit; null/undefined for a new design version. Mount with a `key` per version. */
   version?: DesignVersion | null;
   mode?: DesignEditorMode;
@@ -68,6 +70,7 @@ const WIDE_SCREEN = "(min-width: 1500px)";
 
 export function DesignEditor({
   client,
+  versionNumber,
   version,
   mode = "draft",
   banner,
@@ -85,6 +88,7 @@ export function DesignEditor({
   const wide = useMediaQuery(WIDE_SCREEN);
   const [view, setView] = useState<EditorView>("tree");
   const unitFieldsQuery = useUnitFieldsQuery(client);
+  const jobName = useJobQuery(client).data?.name;
   // Warnings, not errors: units may still be uploaded after the design is written
   // (Fields the design doesn't declare are errors already, at the same items)
   const warnings = useMemo(
@@ -171,14 +175,19 @@ export function DesignEditor({
         onSave={() => void draft.save().catch(() => {})}
         onPublish={onPublish && (() => void publish().catch(() => {}))}
         onOpenVersions={onOpenVersions}
-        onExport={() => {
-          const markdown = codebookMarkdown(draft.cleanItems, "Codebook", version?.note);
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(new Blob([markdown], { type: "text/markdown" }));
-          a.download = "codebook.md";
-          a.click();
-          // Revoked later: right away can cancel the download in some browsers
-          setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+        onExport={async (kind) => {
+          if (kind === "codebook") {
+            download(codebookMarkdown(draft.cleanItems, "Codebook", version?.note), "codebook.md", "text/markdown");
+            return;
+          }
+          // The whole design as a design file (contracts version.ts), as edited now, with this server's release
+          const client_ = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
+          const { items, session } = splitSession(draft.cleanItems);
+          const file = designFile(
+            { items, session: session ?? null, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
+            { name: jobName ?? "design", version: versionNumber ?? null, client: client_ },
+          );
+          download(JSON.stringify(file, null, 2), "design.json", "application/json");
         }}
       />
 
@@ -225,4 +234,14 @@ export function DesignEditor({
       )}
     </div>
   );
+}
+
+/** Saves text as a file (a download). */
+function download(text: string, filename: string, type: string): void {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = filename;
+  a.click();
+  // Revoked later: right away can cancel the download in some browsers
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }

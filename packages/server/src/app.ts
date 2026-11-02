@@ -12,7 +12,7 @@ import { bodyLimit } from "hono/body-limit";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Sql } from "./db.js";
-import { CONTRACTS_VERSION } from "@annotinder/contracts";
+import { CLIENT_VERSION } from "./version.js";
 import type { Env, Server } from "./context.js";
 import { coderApi } from "./coder.js";
 import { Deployments } from "./runtime/registry.js";
@@ -109,7 +109,7 @@ export function createApp(db: Sql, options: AppOptions = {}) {
     console.error(err);
     return c.json({ error: "Internal error" }, 500);
   });
-  app.get("/health", (c) => c.json({ ok: true, service: "annotinder", contractsVersion: CONTRACTS_VERSION }));
+  app.get("/health", (c) => c.json({ ok: true, service: "annotinder", ...CLIENT_VERSION }));
 
   // Request bodies: a coder sends one unit's answers at a time; a researcher
   // may upload all units at once (each unit is also checked against the

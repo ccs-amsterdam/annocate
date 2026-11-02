@@ -103,8 +103,10 @@ saw, years later, without an account or a server. So:
 
 ## 5. Steps
 
-1. Design file: the format, Export in the editor, `design.json` per
-   version in the results export, and the client version per deployment.
+1. Done (2026-11-02): design file format (contracts `version.ts`:
+   `RELEASE`, `DESIGN_FORMAT_VERSION`, `DesignFileSchema`), Export ›
+   Design file in the editor, `designs/v<n>.json` in the results export,
+   and the release and commit per deployment (`ANNOTINDER_COMMIT`).
 2. Local coder API and the viewer page (`/viewer`, inside the app, no
    login), with placeholder units.
 3. Units from the export file.

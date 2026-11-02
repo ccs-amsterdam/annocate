@@ -44,7 +44,8 @@ interface EditorToolbarProps {
   onPublish?: () => void;
   onOpenVersions?: () => void;
   /** Downloads the codebook as a document (what coders see). */
-  onExport?: () => void;
+  /** Download the codebook (what coders see, Markdown) or the design file (all of the design, JSON). */
+  onExport?: (kind: "codebook" | "design") => void;
 }
 
 /** Issue count and view toggle on the left; Versions, Save and Deploy on the right. */
@@ -71,6 +72,7 @@ export function EditorToolbar({
   onOpenVersions,
   onExport,
 }: EditorToolbarProps) {
+  const [exportOpen, setExportOpen] = useState(false);
   const readOnly = mode === "history";
   const canPublish = !readOnly && valid && (dirty || mode === "draft");
 
@@ -110,10 +112,32 @@ export function EditorToolbar({
         )}
 
         {onExport && (
-          <Button type="button" variant="outline" size="sm" onClick={onExport} className="flex items-center gap-1.5" title="Download the codebook as a document: what coders see">
-            <FileDown className="h-3.5 w-3.5" />
-            Export
-          </Button>
+          <Popover open={exportOpen} onOpenChange={setExportOpen}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="flex items-center gap-1.5">
+                <FileDown className="h-3.5 w-3.5" />
+                Export
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="flex w-72 flex-col gap-1 p-1">
+              <button type="button" className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => {
+                  setExportOpen(false);
+                  onExport("codebook");
+                }}
+              >
+                Codebook (Markdown)
+                <span className="block text-xs text-muted-foreground">What coders see, as a document, e.g. for a paper</span>
+              </button>
+              <button type="button" className="rounded px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => {
+                  setExportOpen(false);
+                  onExport("design");
+                }}
+              >
+                Design file (JSON)
+                <span className="block text-xs text-muted-foreground">All of the design, with the AnnoTinder version: to archive or reproduce it</span>
+              </button>
+            </PopoverContent>
+          </Popover>
         )}
 
         {onOpenVersions && (

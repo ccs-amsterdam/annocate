@@ -28,6 +28,7 @@ import {
   type DeploymentResponse,
   type DeploymentStatus,
   type DeploymentVersion,
+  type ClientVersion,
   type DeploymentWrite,
   type PendingChanges,
   type JobOverview,
@@ -163,6 +164,8 @@ export interface ResearcherApi {
   putDeployment(body: DeploymentWrite): Promise<DeploymentResponse>;
   getPendingChanges(): Promise<PendingChanges>;
   listDeploymentVersions(): Promise<DeploymentVersion[]>;
+  /** The server's (and its client's) release and commit (`GET /health`): what a design file exported now records. */
+  getServerVersion(): Promise<ClientVersion>;
   /** Progress of the live job, per loop and set. */
   getDeploymentStatus(): Promise<DeploymentStatus>;
   /** Retires live answers, so units are coded again (ADMIN). */
@@ -536,6 +539,11 @@ export class HttpResearcherApi implements ResearcherApi {
 
   async getPendingChanges(): Promise<PendingChanges> {
     return this.request(this.jobPath(researcherEndpoints.getPendingChanges.path));
+  }
+
+  async getServerVersion(): Promise<ClientVersion> {
+    const { release, commit } = await this.request<ClientVersion>("/health");
+    return { release, commit };
   }
 
   async listDeploymentVersions(): Promise<DeploymentVersion[]> {

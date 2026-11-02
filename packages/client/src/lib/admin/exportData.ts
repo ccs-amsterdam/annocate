@@ -510,6 +510,11 @@ units.csv        The units as deployed, a row per version: a unit replaced
                  e.g. s1 or s1;_overlap (#n: its position in an ordered set).
 variables.csv    Per design version, question and option: the question text,
                  the stored value and its label.
+designs/v<n>.json  Each design version answers were given under (and the
+                 live one): the whole design (questions, layouts, how units
+                 were handed out, session, unit fields), with the AnnoTinder
+                 release and commit it ran on (client). Open it in the
+                 design viewer of that release to see what coders saw.
 devices.csv      The devices coders used: device type (phone, tablet,
                  desktop), browser and operating system, and when each
                  joined its coder's session (a coder who continued on

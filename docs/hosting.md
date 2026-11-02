@@ -24,9 +24,21 @@ The database schema is created and updated when the server starts
 (`packages/server/migrations`). Until the first release the migrations may
 be reset: a test server's data then has to be thrown away.
 
-`GET /health` answers `{ ok: true, service, contractsVersion }` when the
-server runs (the image's
-health check uses it).
+`GET /health` answers `{ ok: true, service, release, commit }` when the
+server runs (the image's health check uses it).
+
+**Versions.** Each deployment records the release and commit it ran on
+(the deploy history, and `design.json` in the results export), so a study
+says exactly what coders' screens were. The release is in the code; the
+commit comes from `ANNOTINDER_COMMIT`, which the image takes as a build
+argument. Build with it:
+
+```
+ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+```
+
+Without it the commit is recorded as "unknown" (a server run from a git
+checkout finds it itself).
 
 ## Settings
 

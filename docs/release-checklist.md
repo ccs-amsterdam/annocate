@@ -190,6 +190,10 @@ Development and tests:
 
 ## 4. Recommendations for the first release
 
+0. A release bumps `RELEASE` (contracts `version.ts`) and every
+   `package.json` version together (a server test checks they agree), and
+   builds the image with `ANNOTINDER_COMMIT` (`hosting.md`, "Versions").
+   A breaking change to the design schema bumps `DESIGN_FORMAT_VERSION`.
 1. Read `security.md` (second factor, headers, rate limits) before
    inviting anyone outside the team.
 2. Reset the migrations (§2 item 8), with the `annotation_values` foreign

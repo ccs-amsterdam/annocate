@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { CLIENT_VERSION } from "../version.js";
 import {
   loopTitle,
   unitLoops,
@@ -61,12 +62,10 @@ export async function putDeployment(sql: Sql, jobId: number, body: DeploymentWri
     [jobId, body.designVersionId, body.active, version],
   );
   if (!previous || changed) {
-    await sql.query("INSERT INTO deployment_versions (job_id, version, design_version_id, changes) VALUES ($1, $2, $3, $4)", [
-      jobId,
-      version,
-      body.designVersionId,
-      JSON.stringify(changes),
-    ]);
+    await sql.query(
+      "INSERT INTO deployment_versions (job_id, version, design_version_id, changes, client_release, client_commit) VALUES ($1, $2, $3, $4, $5, $6)",
+      [jobId, version, body.designVersionId, JSON.stringify(changes), CLIENT_VERSION.release, CLIENT_VERSION.commit],
+    );
   }
   await sql.query("UPDATE design_versions SET immutable = true WHERE job_id = $1 AND id = $2", [jobId, body.designVersionId]);
   return { ...(await getDeployment(sql, jobId))!, ...(warnings.length > 0 ? { warnings } : {}) };
@@ -84,11 +83,24 @@ export async function pendingChanges(sql: Sql, jobId: number): Promise<PendingCh
 
 /** The deployed versions, newest first. */
 export async function deploymentVersions(sql: Sql, jobId: number): Promise<DeploymentVersion[]> {
-  const rows = await sql.query<{ version: number; design_version_id: number; changes: DeploymentChanges; created: Date }>(
-    "SELECT version, design_version_id, changes, created FROM deployment_versions WHERE job_id = $1 ORDER BY version DESC",
+  const rows = await sql.query<{
+    version: number;
+    design_version_id: number;
+    changes: DeploymentChanges;
+    client_release: string | null;
+    client_commit: string | null;
+    created: Date;
+  }>(
+    "SELECT version, design_version_id, changes, client_release, client_commit, created FROM deployment_versions WHERE job_id = $1 ORDER BY version DESC",
     [jobId],
   );
-  return rows.map((r) => ({ version: r.version, designVersionId: r.design_version_id, changes: r.changes, created: r.created }));
+  return rows.map((r) => ({
+    version: r.version,
+    designVersionId: r.design_version_id,
+    changes: r.changes,
+    client: r.client_release ? { release: r.client_release, commit: r.client_commit ?? "unknown" } : null,
+    created: r.created,
+  }));
 }
 
 /**

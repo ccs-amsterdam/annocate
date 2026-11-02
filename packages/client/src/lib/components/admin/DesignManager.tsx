@@ -175,6 +175,7 @@ export function DesignManager({ client, onDirtyChange, registerSave, initialVers
           key={`${openId ?? "new"}:${editorEpoch}`}
           client={client}
           version={openVersion}
+          versionNumber={openId === null ? null : versions.numberOf(openId)}
           mode={mode}
           registerSave={(save) => {
             saveRef.current = save;

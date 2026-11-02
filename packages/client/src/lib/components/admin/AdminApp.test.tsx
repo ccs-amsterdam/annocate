@@ -46,6 +46,7 @@ const stubClient: ResearcherApi = {
   putDeployment: () => new Promise(() => {}),
   getPendingChanges: () => new Promise(() => {}),
   listDeploymentVersions: () => new Promise(() => {}),
+  getServerVersion: () => new Promise(() => {}),
   putUnitFields: () => new Promise(() => {}),
   createPreview: () => new Promise(() => {}),
   listAnnotations: () => new Promise(() => {}),

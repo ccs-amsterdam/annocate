@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { strToU8, zipSync } from "fflate";
-import type { AnnotationRow, TopLevelItem, UnitVersion } from "@annotinder/contracts";
+import { designFile, type AnnotationRow, type TopLevelItem, type UnitVersion } from "@annotinder/contracts";
+import { describeVersions } from "../../design/versions";
 import { Download, FileArchive } from "lucide-react";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCodersQuery, useDeploymentQuery, useJobQuery } from "../../admin/queries";
@@ -92,7 +93,19 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
       const ids = new Set(rows.flatMap((a) => (a.designVersionId === null ? [] : [a.designVersionId])));
       if (deployment) ids.add(deployment.designVersionId);
       const designVersions = new Map<number, TopLevelItem[]>();
-      for (const id of ids) designVersions.set(id, (await client.getDesignVersion(id)).items as TopLevelItem[]);
+      const designs: Record<string, Uint8Array> = {};
+      // Per design version: design.json, with the client it ran on (its latest deployment)
+      const numbers = describeVersions(await client.listDesignVersions(), deployment?.designVersionId ?? null);
+      const deployments = await client.listDeploymentVersions();
+      for (const id of ids) {
+        const version = await client.getDesignVersion(id);
+        designVersions.set(id, version.items as TopLevelItem[]);
+        const ran = deployments.find((d) => d.designVersionId === id && d.client)?.client;
+        const number = numbers.numberOf(id);
+        designs[`designs/v${number ?? id}.json`] = strToU8(
+          JSON.stringify(designFile(version, { name, version: number, client: ran ?? { release: "unknown", commit: "unknown" }, exportedAt: new Date() }), null, 2),
+        );
+      }
 
       const liveId = deployment?.designVersionId ?? null;
       const order = questionOrder(liveId === null ? undefined : designVersions.get(liveId));
@@ -108,6 +121,7 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
         "deleted_coders.csv": strToU8(toCsv(deletedCodersTable(deletions), spreadsheetSafe)),
         "units.csv": strToU8(toCsv(unitsTable(versions, annotations, await client.listSetGroups()), spreadsheetSafe)),
         "variables.csv": strToU8(toCsv(variablesTable(designVersions), spreadsheetSafe)),
+        ...designs,
         ...(withReset ? { "reset_answers.csv": strToU8(toCsv(resetAnswersTable(rows, labels), spreadsheetSafe)) } : {}),
       });
       save(zip, `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`, "application/zip");

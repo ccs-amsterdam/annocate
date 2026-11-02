@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ClientVersionSchema } from "./version.js";
 import { IdSchema } from "./common.js";
 
 // Deploying a job (researcher API): which codebook coders get, its status,
@@ -29,6 +30,8 @@ export const DeploymentVersionSchema = z.object({
   version: z.number().int().positive(),
   designVersionId: IdSchema,
   changes: DeploymentChangesSchema,
+  /** The client this deployment ran on (release and commit; null: deployed before this was recorded). */
+  client: ClientVersionSchema.nullable(),
   created: z.coerce.date(),
 });
 export type DeploymentVersion = z.infer<typeof DeploymentVersionSchema>;

@@ -8,7 +8,7 @@ import type {
   UnitData,
   VariableValue,
 } from "@annotinder/contracts";
-import { splitSession } from "@annotinder/contracts";
+import { RELEASE, splitSession } from "@annotinder/contracts";
 import type { Sql } from "../db.js";
 import { emptyDb } from "./testDb.js";
 import { seed } from "../seed.js";
@@ -526,6 +526,8 @@ describe("assigned sets", () => {
     // A new version that changed the units, not the codebook
     const versions = (await (await server.request("/job/1/deployment/versions", { headers: adminHeaders })).json()) as { version: number; changes: unknown }[];
     expect(versions[0]).toMatchObject({ version: deployed.version, changes: { design: false, units: { added: 0, changed: 0, removed: 0, sets: true } } });
+    // With the release (and commit) it ran on
+    expect(versions[0]).toMatchObject({ client: { release: RELEASE, commit: expect.any(String) } });
 
     // New units join "all units"
     await redeploy({});

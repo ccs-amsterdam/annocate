@@ -41,6 +41,6 @@ export * from "./annotations.js";
 
 export * from "./endpoints/index.js";
 
-export const CONTRACTS_VERSION = "0.1.0";
+export * from "./version.js";
 export * from "./frame.js";
 export * from "./design/coderCodebook.js";
